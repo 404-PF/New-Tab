@@ -27,19 +27,22 @@ function updateTime() {
   let timeStr;
 
   if (clockFormat === "24h") {
-    // Explicit 24-hour: use zero-padded format (legacy behavior)
+    // Explicit 24h - legacy zero-padded format
     timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   } else if (clockFormat === "12h") {
-    // Explicit 12-hour: use system locale for localized day periods
+    // Explicit 12h - locale-aware with localized day periods
     timeStr = now.toLocaleTimeString(systemLocale, { hour: 'numeric', minute: '2-digit', hour12: true });
-  } else {
-    // Auto / no preference: respect system locale
+  } else if (clockFormat === "auto") {
+    // Explicit auto - respect system locale preference
     const hour12 = localeUses12Hour(systemLocale);
     timeStr = now.toLocaleTimeString(systemLocale, { hour: 'numeric', minute: '2-digit', hour12 });
+  } else {
+    // null/undefined - no preference, preserve legacy 24h for existing users
+    timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   }
   timeElement.textContent = timeStr;
 
-  // Update date based on format preference (use system locale for locale-aware formatting)
+  // Update date based on format preference
   if (dateFormat === "short") {
     dateElement.textContent = now.toLocaleDateString(systemLocale, {
       month: "numeric",
@@ -51,10 +54,13 @@ function updateTime() {
       month: "short",
       day: "numeric"
     });
-  } else {
-    // Long/auto/default: use system locale for all date formatting
+  } else if (dateFormat === "long") {
+    // Explicit long - use specific options
     const options = { weekday: "long", month: "long", day: "numeric" };
     dateElement.textContent = now.toLocaleDateString(systemLocale, options);
+  } else {
+    // auto / undefined - use locale's default date format
+    dateElement.textContent = now.toLocaleDateString(systemLocale);
   }
 }
 
