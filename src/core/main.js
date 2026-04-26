@@ -19,14 +19,13 @@ function migrateClockFormat() {
   if (localStorage.getItem("clockMigrationComplete")) return;
 
   const clockFormat = localStorage.getItem("clockFormat");
-  if (clockFormat === null || clockFormat === "") {
-    const systemLocale = getSystemLocale();
-    if (localeUses12Hour(systemLocale)) {
-      localStorage.setItem("clockFormat", "auto");
-    } else {
-      localStorage.setItem("clockFormat", "24h");
-    }
+  if (clockFormat !== null && clockFormat !== "") {
+    // User already has a preference - mark migration complete without changes
+    localStorage.setItem("clockMigrationComplete", "true");
+    return;
   }
+  // No preference exists - do NOT write anything
+  // Legacy behavior (24h zero-padded) is preserved via updateTime null/undefined path
   localStorage.setItem("clockMigrationComplete", "true");
 }
 

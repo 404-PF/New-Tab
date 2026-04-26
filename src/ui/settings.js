@@ -512,6 +512,7 @@ if (clockStyleReset) {
     localStorage.removeItem("clockFont");
     localStorage.removeItem("clockSize");
     localStorage.removeItem("clockFormat");
+    localStorage.removeItem("clockMigrationComplete");
     applyClockStyle();
     applyClockFormat();
   });
