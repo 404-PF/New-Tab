@@ -5,6 +5,15 @@ function localeUses12Hour(locale) {
   return new Intl.DateTimeFormat(locale, { hour: 'numeric' }).resolvedOptions().hour12;
 }
 
+// Get actual system locale for runtime locale-aware formatting
+function getSystemLocale() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale;
+  } catch (e) {
+    return 'en-US';  // Fallback
+  }
+}
+
 function updateTime() {
   const now = new Date();
   const timeElement = document.getElementById("clock-time") || document.getElementById("clock");
@@ -12,52 +21,40 @@ function updateTime() {
 
   const clockFormat = localStorage.getItem("clockFormat");
   const dateFormat = localStorage.getItem("dateFormat");
-  const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
-  const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
+  const systemLocale = getSystemLocale();
 
   // Update time based on format preference
   let timeStr;
 
-  if (clockFormat === "12h") {
-    // Explicit 12-hour: use locale-aware formatting for localized day periods
-    timeStr = now.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12: true });
-  } else if (clockFormat === "24h") {
+  if (clockFormat === "24h") {
     // Explicit 24-hour: use zero-padded format (legacy behavior)
     timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  } else if (clockFormat === "auto" && locale) {
-    // Auto: respect locale preference
-    const hour12 = localeUses12Hour(locale);
-    timeStr = now.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12 });
+  } else if (clockFormat === "12h") {
+    // Explicit 12-hour: use system locale for localized day periods
+    timeStr = now.toLocaleTimeString(systemLocale, { hour: 'numeric', minute: '2-digit', hour12: true });
   } else {
-    // No preference / legacy: 24h for English, Chinese-specific for Chinese
-    // This preserves existing user appearance until they explicitly choose a format
-    timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    // Auto / no preference: respect system locale
+    const hour12 = localeUses12Hour(systemLocale);
+    timeStr = now.toLocaleTimeString(systemLocale, { hour: 'numeric', minute: '2-digit', hour12 });
   }
   timeElement.textContent = timeStr;
 
-  // Update date based on format preference
+  // Update date based on format preference (use system locale for locale-aware formatting)
   if (dateFormat === "short") {
-    dateElement.textContent = now.toLocaleDateString(locale, {
+    dateElement.textContent = now.toLocaleDateString(systemLocale, {
       month: "numeric",
       day: "numeric",
       year: "numeric"
     });
   } else if (dateFormat === "compact") {
-    dateElement.textContent = now.toLocaleDateString(locale, {
+    dateElement.textContent = now.toLocaleDateString(systemLocale, {
       month: "short",
       day: "numeric"
     });
   } else {
-    // Long/auto/default: use locale-based format
-    if (currentLang === 'zh') {
-      const weekday = now.toLocaleDateString('zh-CN', { weekday: "long" });
-      const month = now.toLocaleDateString('zh-CN', { month: "long" });
-      const day = now.toLocaleDateString('zh-CN', { day: "numeric" });
-      dateElement.textContent = `${month}${day} ${weekday}`;
-    } else {
-      const options = { weekday: "long", month: "long", day: "numeric" };
-      dateElement.textContent = now.toLocaleDateString(locale, options);
-    }
+    // Long/auto/default: use system locale for all date formatting
+    const options = { weekday: "long", month: "long", day: "numeric" };
+    dateElement.textContent = now.toLocaleDateString(systemLocale, options);
   }
 }
 
