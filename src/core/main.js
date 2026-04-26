@@ -16,25 +16,22 @@ function updateTime() {
   const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
 
   // Update time based on format preference
-  let hours = now.getHours();
-  let minutes = String(now.getMinutes()).padStart(2, "0");
   let timeStr;
 
   if (clockFormat === "12h") {
-    const period = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12 || 12;
-    timeStr = `${hours}:${minutes} ${period}`;
+    // Explicit 12-hour: use locale-aware formatting for localized day periods
+    timeStr = now.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12: true });
   } else if (clockFormat === "24h") {
-    timeStr = `${String(hours).padStart(2, "0")}:${minutes}`;
+    // Explicit 24-hour: use zero-padded format (legacy behavior)
+    timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  } else if (clockFormat === "auto" && locale) {
+    // Auto: respect locale preference
+    const hour12 = localeUses12Hour(locale);
+    timeStr = now.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12 });
   } else {
-    // Auto: respect locale preference (12h or 24h)
-    if (localeUses12Hour(locale)) {
-      const period = hours >= 12 ? "PM" : "AM";
-      hours = hours % 12 || 12;
-      timeStr = `${hours}:${minutes} ${period}`;
-    } else {
-      timeStr = `${String(hours).padStart(2, "0")}:${minutes}`;
-    }
+    // No preference / legacy: 24h for English, Chinese-specific for Chinese
+    // This preserves existing user appearance until they explicitly choose a format
+    timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   }
   timeElement.textContent = timeStr;
 
