@@ -14,6 +14,22 @@ function getSystemLocale() {
   }
 }
 
+// Migrate existing users without stored clock preference to appropriate format
+function migrateClockFormat() {
+  if (localStorage.getItem("clockMigrationComplete")) return;
+
+  const clockFormat = localStorage.getItem("clockFormat");
+  if (clockFormat === null || clockFormat === "") {
+    const systemLocale = getSystemLocale();
+    if (localeUses12Hour(systemLocale)) {
+      localStorage.setItem("clockFormat", "auto");
+    } else {
+      localStorage.setItem("clockFormat", "24h");
+    }
+  }
+  localStorage.setItem("clockMigrationComplete", "true");
+}
+
 function updateTime() {
   const now = new Date();
   const timeElement = document.getElementById("clock-time") || document.getElementById("clock");
@@ -63,6 +79,9 @@ function updateTime() {
     dateElement.textContent = now.toLocaleDateString(systemLocale);
   }
 }
+
+// Migrate existing users to appropriate clock format before first update
+migrateClockFormat();
 
 // Update time immediately and then every minute using visibility-aware interval
 updateTime();

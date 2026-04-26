@@ -41,12 +41,19 @@ function generateTodoId() {
 
 // Date utilities
 
+function getSystemLocale() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale;
+  } catch (e) {
+    return 'en-US';
+  }
+}
+
 // Date utilities
 function formatDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
-  const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
-  const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
+  const locale = getSystemLocale();
   return date.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
@@ -1209,8 +1216,7 @@ class CustomDatePicker {
   }
 
   formatDateForDisplay(date) {
-    const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
-    const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
+    const locale = getSystemLocale();
     return date.toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric',
