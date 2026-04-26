@@ -102,6 +102,13 @@ function validateSearchEngineUrl(url) {
   }
 }
 
+function escapeHtml(str) {
+  if (!str || typeof str !== "string") return "";
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 let isSearchHandlerBound = false;
 let outsideClickHandler = null;
 
@@ -177,8 +184,8 @@ function renderSearchEngineSelector() {
   }
 
   enginesEl.innerHTML = `
-    <div class="selected-engine" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false" title="${savedEngineLabel}">
-      <img src="${savedEngineData.icon}" alt="${savedEngineLabel}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23999%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><path d=%22M12 8v4m0 4h.01%22/></svg>'" />
+    <div class="selected-engine" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false" title="${escapeHtml(savedEngineLabel)}">
+      <img src="${escapeHtml(savedEngineData.icon)}" alt="${escapeHtml(savedEngineLabel)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23999%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><path d=%22M12 8v4m0 4h.01%22/></svg>'" />
       <span class="dropdown-arrow">▼</span>
     </div>
     <div class="engine-dropdown" role="listbox">
@@ -186,9 +193,9 @@ function renderSearchEngineSelector() {
         .map((engineKey) => {
           const engineLabel = getEngineLabel(engineKey);
           return `
-        <div class="engine-option${engineKey === savedEngine ? " is-selected" : ""}" data-key="${engineKey}" role="option" aria-selected="${engineKey === savedEngine}">
-          <img src="${allEngines[engineKey].icon}" alt="${engineLabel}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23999%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><path d=%22M12 8v4m0 4h.01%22/></svg>'" />
-          <span>${engineLabel}</span>
+        <div class="engine-option${engineKey === savedEngine ? " is-selected" : ""}" data-key="${escapeHtml(engineKey)}" role="option" aria-selected="${engineKey === savedEngine}">
+          <img src="${escapeHtml(allEngines[engineKey].icon)}" alt="${escapeHtml(engineLabel)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23999%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><path d=%22M12 8v4m0 4h.01%22/></svg>'" />
+          <span>${escapeHtml(engineLabel)}</span>
         </div>
       `;
         })
@@ -324,3 +331,5 @@ window.validateSearchEngineUrl = validateSearchEngineUrl;
 window.getSavedEngine = getSavedEngine;
 window.saveEngine = saveEngine;
 window.getEngineLabel = getEngineLabel;
+window.renderSearchEngineSelector = renderSearchEngineSelector;
+window.escapeHtml = escapeHtml;

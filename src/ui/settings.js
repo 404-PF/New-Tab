@@ -874,26 +874,29 @@ function applySearchEnginesSettings() {
   const listEl = document.getElementById("custom-search-engines-list");
   if (!listEl) return;
 
+  const t = window.i18n && window.i18n.t ? window.i18n.t : (key) => key;
   const engines = loadSearchEnginesSettings();
+  const escapeFn = window.escapeHtml || ((str) => str);
+
   if (engines.length === 0) {
     listEl.innerHTML = `
       <div class="no-custom-engines" style="padding: 16px; text-align: center; color: rgba(107, 114, 128, 0.6); font-size: 13px;">
-        No custom search engines yet. Add one below.
+        ${t("noCustomEngines")}
       </div>
     `;
   } else {
     listEl.innerHTML = engines
       .map(
         (engine) => `
-      <div class="custom-engine-item" data-id="${engine.id}">
-        <img src="${engine.icon || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23999%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><path d=%22M12 8v4m0 4h.01%22/></svg>'}" alt="${engine.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23999%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><path d=%22M12 8v4m0 4h.01%22/></svg>'" />
+      <div class="custom-engine-item" data-id="${escapeFn(engine.id)}">
+        <img src="${escapeFn(engine.icon) || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23999%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><path d=%22M12 8v4m0 4h.01%22/></svg>'}" alt="${escapeFn(engine.name)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23999%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><path d=%22M12 8v4m0 4h.01%22/></svg>'" />
         <div class="custom-engine-info">
-          <span class="custom-engine-name">${engine.name}</span>
-          <span class="custom-engine-url">${engine.url}</span>
+          <span class="custom-engine-name">${escapeFn(engine.name)}</span>
+          <span class="custom-engine-url">${escapeFn(engine.url)}</span>
         </div>
         <div class="custom-engine-actions">
-          <button class="edit-btn" data-id="${engine.id}">Edit</button>
-          <button class="delete-btn" data-id="${engine.id}">Delete</button>
+          <button class="edit-btn" data-id="${escapeFn(engine.id)}">${t("editEngineBtn")}</button>
+          <button class="delete-btn" data-id="${escapeFn(engine.id)}">${t("deleteEngineBtn")}</button>
         </div>
       </div>
     `
@@ -966,22 +969,23 @@ function initSearchEnginesSection() {
   const addBtn = document.getElementById("add-engine-btn");
   if (addBtn) {
     addBtn.addEventListener("click", () => {
+      const t = window.i18n && window.i18n.t ? window.i18n.t : (key) => key;
       const name = document.getElementById("new-engine-name").value.trim();
       const url = document.getElementById("new-engine-url").value.trim();
       const icon = document.getElementById("new-engine-icon").value.trim();
 
       if (!name) {
-        showFormError("add-engine-error", "Please enter a name for the search engine.");
+        showFormError("add-engine-error", t("enterEngineName"));
         return;
       }
 
       if (!url) {
-        showFormError("add-engine-error", "Please enter a search URL.");
+        showFormError("add-engine-error", t("enterEngineUrl"));
         return;
       }
 
       if (!window.validateSearchEngineUrl || !window.validateSearchEngineUrl(url)) {
-        showFormError("add-engine-error", "Please enter a valid URL starting with http:// or https://.");
+        showFormError("add-engine-error", t("invalidEngineUrl"));
         return;
       }
 
@@ -999,23 +1003,24 @@ function initSearchEnginesSection() {
   const saveBtn = document.getElementById("save-engine-btn");
   if (saveBtn) {
     saveBtn.addEventListener("click", () => {
+      const t = window.i18n && window.i18n.t ? window.i18n.t : (key) => key;
       const id = document.getElementById("edit-engine-id").value;
       const name = document.getElementById("edit-engine-name").value.trim();
       const url = document.getElementById("edit-engine-url").value.trim();
       const icon = document.getElementById("edit-engine-icon").value.trim();
 
       if (!name) {
-        showFormError("edit-engine-error", "Please enter a name for the search engine.");
+        showFormError("edit-engine-error", t("enterEngineName"));
         return;
       }
 
       if (!url) {
-        showFormError("edit-engine-error", "Please enter a search URL.");
+        showFormError("edit-engine-error", t("enterEngineUrl"));
         return;
       }
 
       if (!window.validateSearchEngineUrl || !window.validateSearchEngineUrl(url)) {
-        showFormError("edit-engine-error", "Please enter a valid URL starting with http:// or https://.");
+        showFormError("edit-engine-error", t("invalidEngineUrl"));
         return;
       }
 
