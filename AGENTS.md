@@ -13,7 +13,7 @@ This is a Chrome/Edge browser extension (manifest v3) that provides a personaliz
 ### Testing
 - No automated test framework is currently set up
 - Manual testing: Load the extension in browser and verify functionality
-- Test individual features by opening `New-Tab.html` in browser
+- Opening `New-Tab.html` directly is only a limited smoke test; extension APIs such as manifest-backed version checks require loading the unpacked extension
 
 ### Linting
 - No ESLint or other linter is configured
