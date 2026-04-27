@@ -13,15 +13,17 @@ function getCurrentVersion() {
 }
 
 const CURRENT_VERSION = getCurrentVersion();
+const VERSION_DISPLAY_UNAVAILABLE_TEXT = 'extension only';
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { CURRENT_VERSION, getCurrentVersion };
+  module.exports = { CURRENT_VERSION, VERSION_DISPLAY_UNAVAILABLE_TEXT, getCurrentVersion };
 }
 
 // Also expose to window for global access
 if (typeof window !== 'undefined') {
   window.CURRENT_VERSION = CURRENT_VERSION;
+  window.VERSION_DISPLAY_UNAVAILABLE_TEXT = VERSION_DISPLAY_UNAVAILABLE_TEXT;
 }
 
 // Update version display in HTML when DOM is ready
@@ -29,7 +31,7 @@ if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', function() {
     const versionDisplay = document.getElementById('version-display');
     if (versionDisplay) {
-      versionDisplay.textContent = CURRENT_VERSION ? `v${CURRENT_VERSION}` : 'extension only';
+      versionDisplay.textContent = CURRENT_VERSION ? `v${CURRENT_VERSION}` : VERSION_DISPLAY_UNAVAILABLE_TEXT;
     }
   });
 }

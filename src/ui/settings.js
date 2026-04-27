@@ -721,7 +721,8 @@ function initAboutSection() {
     const isEnabled = window.updateChecker ? updateChecker.isEnabled() : true;
 
     const currentVersion = window.CURRENT_VERSION;
-    const versionText = currentVersion ? `v${currentVersion}` : 'Version unavailable outside extension';
+    const versionFallback = window.VERSION_DISPLAY_UNAVAILABLE_TEXT || 'extension only';
+    const versionText = currentVersion ? `v${currentVersion}` : versionFallback;
     const t = window.i18n ? window.i18n.t : (key => key);
     aboutSection.innerHTML = `
       <div class="about-setting-group">
