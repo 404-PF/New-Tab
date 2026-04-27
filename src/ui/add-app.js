@@ -91,6 +91,21 @@ function resetPreviewState() {
   }
 }
 
+function closeAddAppModal() {
+  if (addAppModal) {
+    addAppModal.style.display = 'none';
+  }
+  if (addAppUrlInput) {
+    addAppUrlInput.value = '';
+  }
+
+  resetPreviewState();
+
+  if (addAppConfirm) {
+    addAppConfirm.disabled = true;
+  }
+}
+
 // Extract app name from URL
 function extractAppName(url) {
   try {
@@ -212,13 +227,13 @@ if (addAppBtn && addAppModal && addAppUrlInput) {
 
   // Close on outside click
   addAppModal.addEventListener("click", function (e) {
-    if (e.target === addAppModal) addAppModal.style.display = "none";
+    if (e.target === addAppModal) closeAddAppModal();
   });
 
   // Cancel button
   if (addAppCancel) {
     addAppCancel.addEventListener("click", function () {
-      addAppModal.style.display = "none";
+      closeAddAppModal();
     });
   }
 
