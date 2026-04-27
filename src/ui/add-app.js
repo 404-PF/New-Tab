@@ -57,6 +57,39 @@ const addAppModal = document.getElementById("add-app-modal");
 const addAppUrlInput = document.getElementById("add-app-url");
 const addAppCancel = document.getElementById("add-app-cancel");
 const addAppConfirm = document.getElementById("add-app-confirm");
+const DEFAULT_PREVIEW_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+    <polyline points="21,15 16,10 5,21"></polyline>
+  </svg>
+`;
+
+function resetPreviewIcon() {
+  const previewIcon = document.getElementById('preview-icon');
+  if (previewIcon) {
+    previewIcon.innerHTML = DEFAULT_PREVIEW_ICON;
+  }
+}
+
+function resetPreviewState() {
+  const previewSection = document.getElementById('add-app-preview');
+  const validationIcon = document.querySelector('.add-app-url-validation');
+  const validationMessage = document.querySelector('.add-app-validation-message');
+
+  resetPreviewIcon();
+
+  if (previewSection) {
+    previewSection.classList.remove('visible', 'valid', 'invalid');
+  }
+  if (validationIcon) {
+    validationIcon.classList.remove('show', 'valid', 'invalid');
+  }
+  if (validationMessage) {
+    validationMessage.textContent = '';
+    validationMessage.classList.remove('show', 'malformed', 'undetectable');
+  }
+}
 
 // Extract app name from URL
 function extractAppName(url) {
@@ -120,12 +153,7 @@ function updatePreview() {
   const validationMessage = document.querySelector('.add-app-validation-message');
   
   if (!url) {
-    previewSection.classList.remove('visible', 'valid', 'invalid');
-    validationIcon.classList.remove('show', 'valid', 'invalid');
-    if (validationMessage) {
-      validationMessage.textContent = '';
-      validationMessage.classList.remove('show');
-    }
+    resetPreviewState();
     addAppConfirm.disabled = true;
     return;
   }
@@ -144,6 +172,8 @@ function updatePreview() {
   const faviconUrl = getFaviconUrl(url);
   if (faviconUrl) {
     previewIcon.innerHTML = `<img src="${faviconUrl}" alt="${appName}" onerror="this.parentElement.innerHTML='<svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'1.5\\'><rect x=\\'3\\' y=\\'3\\' width=\\'18\\' height=\\'18\\' rx=\\'2\\' ry=\\'2\\'></rect><circle cx=\\'8.5\\' cy=\\'8.5\\' r=\\'1.5\\'></circle><polyline points=\\'21,15 16,10 5,21\\'></polyline></svg>'" />`;
+  } else {
+    resetPreviewIcon();
   }
   
   // Show validation state
@@ -175,17 +205,8 @@ if (addAppBtn && addAppModal && addAppUrlInput) {
     addAppUrlInput.value = "";
     addAppUrlInput.focus();
     renderDefaultAppsList();
-    
-    // Reset preview
-    const previewSection = document.getElementById('add-app-preview');
-    const validationIcon = document.querySelector('.add-app-url-validation');
-    const validationMessage = document.querySelector('.add-app-validation-message');
-    previewSection.classList.remove('visible', 'valid', 'invalid');
-    validationIcon.classList.remove('show', 'valid', 'invalid');
-    if (validationMessage) {
-      validationMessage.textContent = '';
-      validationMessage.classList.remove('show', 'malformed', 'undetectable');
-    }
+
+    resetPreviewState();
     addAppConfirm.disabled = true;
   });
 
