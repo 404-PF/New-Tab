@@ -1,129 +1,112 @@
 // src/core/utils.js - Common utility functions
 
+function createUrlValidationResult(status, url, message, originalInput) {
+  return {
+    status,
+    url,
+    message,
+    originalInput
+  };
+}
+
+function detectUrlInput(input) {
+  const hasDot = input.includes('.');
+  const isIP = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(input);
+  const isLocalhost = /^localhost(:\d+)?$/.test(input.toLowerCase());
+  const hasProtocol = /^https?:\/\//i.test(input);
+
+  return {
+    hasDot,
+    isIP,
+    isLocalhost,
+    hasProtocol,
+    looksLikeUrl: hasDot || isIP || isLocalhost || hasProtocol
+  };
+}
+
+function normalizeUrlForParsing(input, hasProtocol) {
+  if (hasProtocol) {
+    return input;
+  }
+
+  return 'https://' + input;
+}
+
+function validateHostname(hostname, detection, url, originalInput) {
+  if (!hostname) {
+    return createUrlValidationResult('malformed', null, 'Invalid URL: missing hostname', originalInput);
+  }
+
+  const validHostnameChars = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
+  if (!validHostnameChars.test(hostname) && !detection.isIP && !detection.isLocalhost) {
+    return createUrlValidationResult('malformed', null, 'Invalid URL: hostname contains invalid characters', originalInput);
+  }
+
+  const hostnameParts = hostname.split('.');
+  if (hostnameParts.length > 1) {
+    const tld = hostnameParts[hostnameParts.length - 1];
+    if (tld.length < 2) {
+      return createUrlValidationResult('malformed', null, 'Invalid URL: top-level domain too short', originalInput);
+    }
+    return null;
+  }
+
+  if (!detection.isIP && !detection.isLocalhost && (url.port || url.pathname.length > 1)) {
+    return createUrlValidationResult('malformed', null, 'Invalid URL: incomplete domain name', originalInput);
+  }
+
+  return null;
+}
+
+function validateIpv4Hostname(hostname, originalInput) {
+  const ip = hostname.split('.');
+  for (const part of ip) {
+    const num = parseInt(part, 10);
+    if (num > 255) {
+      return createUrlValidationResult('malformed', null, 'Invalid URL: IP address out of range', originalInput);
+    }
+  }
+
+  return null;
+}
+
 // URL Validation Utility
 // Returns an object with status, url, message, and originalInput
 function validateUrl(input) {
   const originalInput = input.trim();
   
   if (!originalInput) {
-    return {
-      status: 'undetectable',
-      url: null,
-      message: 'Please enter a URL or search query',
-      originalInput: input
-    };
+    return createUrlValidationResult('undetectable', null, 'Please enter a URL or search query', input);
   }
 
-  // Check if it looks like it could be a URL (contains dots or looks like an IP)
-  const hasDot = originalInput.includes('.');
-  const isIP = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(originalInput);
-  const isLocalhost = /^localhost(:\d+)?$/.test(originalInput.toLowerCase());
-  const hasProtocol = /^https?:\/\//i.test(originalInput);
+  const detection = detectUrlInput(originalInput);
   
-  // Detect if it looks like a URL at all
-  const looksLikeUrl = hasDot || isIP || isLocalhost || hasProtocol;
-  
-  if (!looksLikeUrl) {
-    // Doesn't look like a URL - treat as search query
-    return {
-      status: 'undetectable',
-      url: null,
-      message: 'This URL appears to be invalid. Press Enter to Create',
-      originalInput: originalInput
-    };
+  if (!detection.looksLikeUrl) {
+    return createUrlValidationResult('undetectable', null, 'This URL appears to be invalid. Press Enter to Create', originalInput);
   }
 
-  // Try to parse as URL with https:// prefix if no protocol
-  let urlToParse = originalInput;
-  if (!hasProtocol) {
-    urlToParse = 'https://' + originalInput;
-  }
+  const urlToParse = normalizeUrlForParsing(originalInput, detection.hasProtocol);
 
   try {
     const url = new URL(urlToParse);
-    
-    // Validate hostname
     const hostname = url.hostname;
-    
-    // Check for empty hostname
-    if (!hostname) {
-      return {
-        status: 'malformed',
-        url: null,
-        message: 'Invalid URL: missing hostname',
-        originalInput: originalInput
-      };
+
+    const hostnameValidation = validateHostname(hostname, detection, url, originalInput);
+    if (hostnameValidation) {
+      return hostnameValidation;
     }
 
-    // Validate hostname characters
-    const validHostnameChars = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
-    if (!validHostnameChars.test(hostname) && !isIP && !isLocalhost) {
-      return {
-        status: 'malformed',
-        url: null,
-        message: 'Invalid URL: hostname contains invalid characters',
-        originalInput: originalInput
-      };
-    }
-
-    // Check for valid TLD (minimum 2 characters for common TLDs)
-    const hostnameParts = hostname.split('.');
-    if (hostnameParts.length > 1) {
-      const tld = hostnameParts[hostnameParts.length - 1];
-      if (tld.length < 2) {
-        return {
-          status: 'malformed',
-          url: null,
-          message: 'Invalid URL: top-level domain too short',
-          originalInput: originalInput
-        };
-      }
-    } else if (!isIP && !isLocalhost) {
-      // Single-part hostname (no dot) - could be valid for localhost or single-word domains
-      // but if it has a port or path, it might be malformed
-      if (url.port || url.pathname.length > 1) {
-        return {
-          status: 'malformed',
-          url: null,
-          message: 'Invalid URL: incomplete domain name',
-          originalInput: originalInput
-        };
+    if (detection.isIP) {
+      const ipValidation = validateIpv4Hostname(hostname, originalInput);
+      if (ipValidation) {
+        return ipValidation;
       }
     }
 
-    // Validate IP addresses
-    if (isIP) {
-      const ipParts = hostname.split(':');
-      const ip = ipParts[0].split('.');
-      for (const part of ip) {
-        const num = parseInt(part, 10);
-        if (num > 255) {
-          return {
-            status: 'malformed',
-            url: null,
-            message: 'Invalid URL: IP address out of range',
-            originalInput: originalInput
-          };
-        }
-      }
-    }
-
-    // URL is valid!
-    return {
-      status: 'valid',
-      url: url,
-      message: 'Valid URL',
-      originalInput: originalInput
-    };
+    return createUrlValidationResult('valid', url, 'Valid URL', originalInput);
 
   } catch (e) {
-    // URL parsing failed - this is a malformed URL
-    return {
-      status: 'malformed',
-      url: null,
-      message: 'Malformed URL: ' + (e.message || 'could not parse'),
-      originalInput: originalInput
-    };
+    return createUrlValidationResult('malformed', null, 'Malformed URL: ' + (e.message || 'could not parse'), originalInput);
   }
 }
 
