@@ -721,6 +721,7 @@ function initAboutSection() {
     const isEnabled = window.updateChecker ? updateChecker.isEnabled() : true;
 
     const currentVersion = window.CURRENT_VERSION;
+    const versionText = currentVersion ? `v${currentVersion}` : 'Version unavailable outside extension';
     const t = window.i18n ? window.i18n.t : (key => key);
     aboutSection.innerHTML = `
       <div class="about-setting-group">
@@ -739,7 +740,7 @@ function initAboutSection() {
             <div class="setting-content">
               <label data-i18n="project">${t('project')}</label>
               <div style="font-size: 16px; font-weight: 600; color: var(--settings-text-color); margin-bottom: 4px;">New-Tab</div>
-              <div style="font-size: 14px; color: rgba(107, 114, 128, 0.8);">${t('versionLabel')} v${currentVersion}</div>
+              <div style="font-size: 14px; color: rgba(107, 114, 128, 0.8);">${t('versionLabel')} ${versionText}</div>
             </div>
           </div>
 

@@ -4,10 +4,14 @@ class UpdateChecker {
   constructor() {
     this.repo = '404-Page-Found/New-Tab';
     this.apiUrl = `https://api.github.com/repos/${this.repo}/releases/latest`;
-    this.currentVersion = window.CURRENT_VERSION; // Use centralized version
+    this.currentVersion = typeof window !== 'undefined' ? window.CURRENT_VERSION || null : null;
     this.checkInterval = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     this._autoHideTimeoutId = null; // Track auto-hide timeout for cleanup
     this._autoHideUnsubscribe = null; // Track visibility unsubscribe for cleanup
+  }
+
+  hasCurrentVersion() {
+    return typeof this.currentVersion === 'string' && this.currentVersion.length > 0;
   }
 
   // Check if update checking is enabled
@@ -33,6 +37,7 @@ class UpdateChecker {
 
   // Check if we should perform an update check
   shouldCheck() {
+    if (!this.hasCurrentVersion()) return false;
     if (!this.isEnabled()) return false;
     const lastCheck = this.getLastCheckTime();
     const now = Date.now();
@@ -342,6 +347,13 @@ class UpdateChecker {
 
   // Manual check for updates (called from settings)
   async manualCheck() {
+    if (!this.hasCurrentVersion()) {
+      const message = 'Version checks are only available when the extension is loaded in the browser.';
+      this.showManualCheckNotification(message, 'info');
+      this.showManualCheckResult(message);
+      return;
+    }
+
     const latestRelease = await this.fetchLatestRelease();
     if (!latestRelease) {
       const errorMessage = 'Failed to check for updates. Please try again later.';
@@ -393,6 +405,10 @@ class UpdateChecker {
   // Get update status for about section
   getUpdateStatus() {
     const t = window.i18n ? window.i18n.t : (key => key);
+
+    if (!this.hasCurrentVersion()) {
+      return 'Update checks are unavailable outside the extension runtime.';
+    }
 
     if (!this.isEnabled()) {
       return t('updateChecksDisabled');
