@@ -29,6 +29,21 @@ function migrateClockFormat() {
   localStorage.setItem("clockMigrationComplete", "true");
 }
 
+// Migrate existing users without stored date preference to preserve legacy behavior
+function migrateDateFormat() {
+  if (localStorage.getItem("dateMigrationComplete")) return;
+
+  const dateFormat = localStorage.getItem("dateFormat");
+  if (dateFormat !== null && dateFormat !== "") {
+    // User already has a preference - mark migration complete without changes
+    localStorage.setItem("dateMigrationComplete", "true");
+    return;
+  }
+  // No preference exists - do NOT write anything
+  // Legacy behavior (long date format) is preserved via updateTime null/undefined path
+  localStorage.setItem("dateMigrationComplete", "true");
+}
+
 function updateTime() {
   const now = new Date();
   const timeElement = document.getElementById("clock-time") || document.getElementById("clock");
@@ -81,6 +96,7 @@ function updateTime() {
 
 // Migrate existing users to appropriate clock format before first update
 migrateClockFormat();
+migrateDateFormat();
 
 // Update time immediately and then every minute using visibility-aware interval
 updateTime();

@@ -582,6 +582,7 @@ if (dateStyleReset) {
     localStorage.removeItem("dateSize");
     // Set to "auto" instead of removing so main.js shows locale-aware (not legacy)
     localStorage.setItem("dateFormat", "auto");
+    localStorage.removeItem("dateMigrationComplete");
     applyDateStyle();
     applyDateFormat();
   });
@@ -600,8 +601,10 @@ function loadDateFormat() {
 }
 
 function applyClockFormat() {
-  // Persist "auto" for new installs or reset states so main.js and settings.js agree
-  if (localStorage.getItem("clockFormat") === null) {
+  const existing = localStorage.getItem("clockFormat");
+  // Only write "auto" for fresh installs (no migration flag exists yet)
+  // For upgrades with no preference, leave null so main.js preserves legacy
+  if (existing === null && !localStorage.getItem("clockMigrationComplete")) {
     localStorage.setItem("clockFormat", "auto");
   }
   const format = localStorage.getItem("clockFormat") || "auto";
@@ -613,8 +616,10 @@ function applyClockFormat() {
 }
 
 function applyDateFormat() {
-  // Persist "auto" for new installs or reset states so main.js and settings.js agree
-  if (localStorage.getItem("dateFormat") === null) {
+  const existing = localStorage.getItem("dateFormat");
+  // Only write "auto" for fresh installs (no migration flag exists yet)
+  // For upgrades with no preference, leave null so main.js preserves legacy
+  if (existing === null && !localStorage.getItem("dateMigrationComplete")) {
     localStorage.setItem("dateFormat", "auto");
   }
   const format = localStorage.getItem("dateFormat") || "auto";
