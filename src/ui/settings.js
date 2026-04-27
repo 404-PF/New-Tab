@@ -511,7 +511,8 @@ if (clockStyleReset) {
     localStorage.removeItem("clockColor");
     localStorage.removeItem("clockFont");
     localStorage.removeItem("clockSize");
-    localStorage.removeItem("clockFormat");
+    // Set to "auto" instead of removing so main.js shows locale-aware (not legacy)
+    localStorage.setItem("clockFormat", "auto");
     localStorage.removeItem("clockMigrationComplete");
     applyClockStyle();
     applyClockFormat();
@@ -579,7 +580,8 @@ if (dateStyleReset) {
     localStorage.removeItem("dateColor");
     localStorage.removeItem("dateFont");
     localStorage.removeItem("dateSize");
-    localStorage.removeItem("dateFormat");
+    // Set to "auto" instead of removing so main.js shows locale-aware (not legacy)
+    localStorage.setItem("dateFormat", "auto");
     applyDateStyle();
     applyDateFormat();
   });
@@ -598,7 +600,11 @@ function loadDateFormat() {
 }
 
 function applyClockFormat() {
-  const format = loadClockFormat();
+  // Persist "auto" for new installs or reset states so main.js and settings.js agree
+  if (localStorage.getItem("clockFormat") === null) {
+    localStorage.setItem("clockFormat", "auto");
+  }
+  const format = localStorage.getItem("clockFormat") || "auto";
   const picker = document.getElementById("clock-format-picker");
   if (picker && picker.value !== format) {
     picker.value = format;
@@ -607,7 +613,11 @@ function applyClockFormat() {
 }
 
 function applyDateFormat() {
-  const format = loadDateFormat();
+  // Persist "auto" for new installs or reset states so main.js and settings.js agree
+  if (localStorage.getItem("dateFormat") === null) {
+    localStorage.setItem("dateFormat", "auto");
+  }
+  const format = localStorage.getItem("dateFormat") || "auto";
   const picker = document.getElementById("date-format-picker");
   if (picker && picker.value !== format) {
     picker.value = format;
