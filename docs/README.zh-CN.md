@@ -1,10 +1,10 @@
 ![New Tab icon](../icons/icon.svg)
 
-# New Tab v0.4.2
+# New Tab v0.4.3
 [![Edge 插件商店](https://img.shields.io/badge/Edge-插件商店-0A7CFF?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/new-tab/mcbemnamenhelofgaclcanfcdjnjnhmi)
 [![下载 CRX](https://img.shields.io/badge/下载-CRX-111827?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/404-PF/New-Tab/releases/latest/download/New-Tab.crx)
 [![许可证: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
-[![版本](https://img.shields.io/badge/version-0.4.2-blue)](../CHANGELOG.md)
+[![版本](https://img.shields.io/badge/version-0.4.3-blue)](../CHANGELOG.md)
 
 这是一个面向 Chromium 浏览器的个性化新标签页扩展。它会用一个可自定义的仪表盘替换默认新标签页，并提供搜索、快捷方式、背景、待办、引导和 AI 助手等能力。
 

@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.4.3 (2026-04-28)
+
+### Bug Fixes
+- Fix(todo): localize inline date picker and action tooltips (#133)
+- Fix(storage): harden localStorage JSON parsing for todo and app-grid state (#132, #134)
+- Fix(app): keep the Add App preview favicon in sync with the selected site (#123)
+- Fix(urls): update GitHub repository URLs after the repository transfer (#128)
+
+### UI Improvements
+- Localize update notification banner and manual check messages (#129)
+
+### Refactoring
+- Refactor(i18n): decouple language switching from window globals (#131)
+- Refactor(url): split validateUrl helpers (#124)
+
+### Documentation
+- Docs: align release workflow docs with the protected main-branch flow (#135, #137)
+- Docs: update stale file headers from js/ to src/ paths (#102)
+
+### Maintenance
+- Chore(version): centralize extension version management (#126)
+- Chore(repo): add CODEOWNERS file to define repository ownership (#130)
+
+### Contributors
+- 404-Page-Found
+- LWWZH
+- Copilot
+
 ## v0.4.2 (2026-04-23)
 
 ### Features
