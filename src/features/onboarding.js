@@ -493,10 +493,6 @@ class OnboardingTour {
             if (window.i18n && window.i18n.applyLanguage) {
               window.i18n.applyLanguage(selectedLanguage);
             }
-            // Update motto to match the new language
-            if (window.displayDailyMotto) {
-              window.displayDailyMotto();
-            }
             // Proceed to next step after a short delay
             setTimeout(() => this.nextStep(), 500);
           });

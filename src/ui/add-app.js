@@ -289,5 +289,10 @@ if (addAppBtn && addAppModal && addAppUrlInput) {
   }
 }
 
-// Expose updatePreview globally for language switching
-window.updateAddAppPreview = updatePreview;
+// Refresh preview when language changes while modal is open
+window.addEventListener('languageChanged', () => {
+  const addAppModal = document.getElementById('add-app-modal');
+  if (addAppModal && addAppModal.style.display !== 'none') {
+    updatePreview();
+  }
+});
