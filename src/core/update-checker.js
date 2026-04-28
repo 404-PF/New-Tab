@@ -2,7 +2,7 @@
 
 class UpdateChecker {
   constructor() {
-    this.repo = '404-Page-Found/New-Tab';
+    this.repo = '404-PF/New-Tab';
     this.apiUrl = `https://api.github.com/repos/${this.repo}/releases/latest`;
     this.currentVersion = typeof window !== 'undefined' ? window.CURRENT_VERSION || null : null;
     this.checkInterval = 24 * 60 * 60 * 1000; // 24 hours in milliseconds

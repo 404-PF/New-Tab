@@ -2,7 +2,7 @@
 
 # New Tab v0.4.2
 [![Edge 插件商店](https://img.shields.io/badge/Edge-插件商店-0A7CFF?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/new-tab/mcbemnamenhelofgaclcanfcdjnjnhmi)
-[![下载 CRX](https://img.shields.io/badge/下载-CRX-111827?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/404-Page-Found/New-Tab/releases/latest/download/New-Tab.crx)
+[![下载 CRX](https://img.shields.io/badge/下载-CRX-111827?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/404-PF/New-Tab/releases/latest/download/New-Tab.crx)
 [![许可证: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![版本](https://img.shields.io/badge/version-0.4.2-blue)](../CHANGELOG.md)
 
@@ -21,7 +21,7 @@
 ## 🚀 安装方式
 推荐安装方式：
 1. Microsoft Edge 用户：优先通过 [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/new-tab/mcbemnamenhelofgaclcanfcdjnjnhmi) 安装。
-2. 其他 Chromium 浏览器用户：请按照下方手动安装说明进行安装；最新安装包也可从 [Releases](https://github.com/404-Page-Found/New-Tab/releases/latest) 下载为 [New-Tab.crx](https://github.com/404-Page-Found/New-Tab/releases/latest/download/New-Tab.crx)。
+2. 其他 Chromium 浏览器用户：请按照下方手动安装说明进行安装；最新安装包也可从 [Releases](https://github.com/404-PF/New-Tab/releases/latest) 下载为 [New-Tab.crx](https://github.com/404-PF/New-Tab/releases/latest/download/New-Tab.crx)。
 
 手动安装或本地开发：
 1. 下载或克隆本仓库。
