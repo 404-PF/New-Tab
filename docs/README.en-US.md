@@ -1,10 +1,10 @@
 ![New Tab icon](../icons/icon.svg)
 
-# New Tab v0.4.2
+# New Tab v0.4.3
 [![Microsoft Edge Add-ons](https://img.shields.io/badge/Microsoft%20Edge-Add--ons-0A7CFF?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/new-tab/mcbemnamenhelofgaclcanfcdjnjnhmi)
 [![Download CRX](https://img.shields.io/badge/Download-CRX-111827?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/404-PF/New-Tab/releases/latest/download/New-Tab.crx)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.2-blue)](../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.3-blue)](../CHANGELOG.md)
 
 A personalized new tab extension for Chromium-based browsers. It replaces the default new tab page with a customizable dashboard for search, shortcuts, backgrounds, todos, onboarding, and AI assistance.
 

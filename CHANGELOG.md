@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.4.3 (2026-04-28)
+
+### Bug Fixes
+- Fix(release): update documentation to reflect branch naming changes for releases (#135)
+- Fix(storage): harden localStorage JSON parsing to prevent crashes from corrupted data (#134, #132)
+- Fix(lang): localize update notification banner and manual check messages (#129)
+- Fix(repo): update repository URLs to reflect the new naming convention (#128)
+
+### Refactoring
+- Refactor(lang): decouple language switching from window globals (#131)
+- Refactor(version): centralize extension version management (#126)
+
+### Maintenance
+- Chore(repo): add CODEOWNERS to define repository ownership (#130)
+
 ## v0.4.2 (2026-04-23)
 
 ### Features
