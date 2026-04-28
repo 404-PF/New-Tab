@@ -230,8 +230,9 @@ function renderTodos() {
 
 function getInlineMonthLabel(monthIndex) {
   const monthKeys = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+  const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const monthKey = monthKeys[monthIndex];
-  return window.i18n ? window.i18n.t(monthKey) : monthKey;
+  return window.i18n ? window.i18n.t(monthKey) : monthLabels[monthIndex];
 }
 
 // Add a new todo
@@ -728,7 +729,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
   const todo = todos.find(t => t.id === todoId);
   if (!todo) return;
 
-  let currentDate = todo.dueDate ? new Date(todo.dueDate) : new Date();
+  let currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? new Date(todo.dueDate) : new Date());
 
   // Navigation buttons
   const prevBtn = pickerContainer.querySelector('.inline-prev-month');
@@ -803,13 +804,19 @@ function updateInlineCalendar(pickerContainer, currentDate, selectedDateString) 
 function refreshInlineDatePickers() {
   document.querySelectorAll('.inline-date-picker').forEach(pickerContainer => {
     const todoId = pickerContainer.dataset.todoId;
-    const dueDateElement = pickerContainer._dueDateElement;
     const todo = todos.find(t => t.id === todoId);
 
-    if (!todo || !dueDateElement) return;
+    const dueDateElement = document.querySelector(`.todo-due-date[data-todo-id="${todoId}"]`);
+
+    if (!todo || !dueDateElement) {
+      closeInlineDatePicker(pickerContainer);
+      return;
+    }
 
     const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? new Date(todo.dueDate) : new Date());
     pickerContainer._currentDate = currentDate;
+    pickerContainer._dueDateElement = dueDateElement;
+    positionPickerRelativeToElement(pickerContainer, dueDateElement);
     pickerContainer.innerHTML = createCalendarHtml(currentDate, todo.dueDate);
     setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement);
   });
