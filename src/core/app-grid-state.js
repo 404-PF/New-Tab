@@ -7,7 +7,19 @@ const AppGridState = {
   // --- Raw storage access ---
 
   getOrder() {
-    return JSON.parse(localStorage.getItem('appOrder') || 'null');
+    try {
+      const raw = localStorage.getItem('appOrder');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        console.warn("Invalid appOrder data in localStorage: expected array, resetting to null");
+        return null;
+      }
+      return parsed;
+    } catch (e) {
+      console.warn("Failed to parse appOrder from localStorage, resetting to null:", e);
+      return null;
+    }
   },
 
   saveOrder(order) {
@@ -15,7 +27,19 @@ const AppGridState = {
   },
 
   getCustomApps() {
-    return JSON.parse(localStorage.getItem('customApps') || '[]');
+    try {
+      const raw = localStorage.getItem('customApps');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        console.warn("Invalid customApps data in localStorage: expected array, resetting to empty list");
+        return [];
+      }
+      return parsed;
+    } catch (e) {
+      console.warn("Failed to parse customApps from localStorage, resetting to empty list:", e);
+      return [];
+    }
   },
 
   saveCustomApps(apps) {
