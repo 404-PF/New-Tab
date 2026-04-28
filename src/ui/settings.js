@@ -717,13 +717,13 @@ if (settingsMenu) {
 function initAboutSection() {
   const aboutSection = document.querySelector('.settings-section[data-section="about"]');
   if (aboutSection) {
-    const updateStatus = window.updateChecker ? updateChecker.getUpdateStatus() : 'Update checker not loaded';
+    const t = window.i18n ? window.i18n.t : (key => key);
+    const updateStatus = window.updateChecker ? updateChecker.getUpdateStatus() : t('updateCheckerNotLoaded');
     const isEnabled = window.updateChecker ? updateChecker.isEnabled() : true;
 
     const currentVersion = window.CURRENT_VERSION;
     const versionFallback = window.VERSION_DISPLAY_UNAVAILABLE_TEXT || 'extension only';
     const versionText = currentVersion ? `v${currentVersion}` : versionFallback;
-    const t = window.i18n ? window.i18n.t : (key => key);
     aboutSection.innerHTML = `
       <div class="about-setting-group">
         <h4 data-i18n="aboutSettings">${t('aboutSettings')}</h4>

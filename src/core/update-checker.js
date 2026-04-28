@@ -14,6 +14,20 @@ class UpdateChecker {
     return typeof this.currentVersion === 'string' && this.currentVersion.length > 0;
   }
 
+  t(key) {
+    return window.i18n ? window.i18n.t(key) : key;
+  }
+
+  formatMessage(key, replacements = {}) {
+    let message = this.t(key);
+
+    Object.entries(replacements).forEach(([placeholder, value]) => {
+      message = message.replace(`{${placeholder}}`, value);
+    });
+
+    return message;
+  }
+
   // Check if update checking is enabled
   isEnabled() {
     return localStorage.getItem('updateCheckEnabled') !== 'false';
@@ -114,22 +128,27 @@ class UpdateChecker {
     // Remove existing notification if present
     this.hideUpdateNotification();
 
+    const title = this.t('updateNotificationTitle');
+    const message = this.formatMessage('updateNotificationBody', { version: release.version });
+    const viewReleaseLabel = this.t('updateNotificationViewRelease');
+    const dismissLabel = this.t('dismiss');
+
     const notification = document.createElement('div');
     notification.className = 'update-notification';
     notification.innerHTML = `
       <div class="update-notification-content">
         <div class="update-notification-icon">🚀</div>
         <div class="update-notification-text">
-          <strong>New version available!</strong>
+          <strong>${title}</strong>
           <br>
-          New-Tab v${release.version} is now available.
+          ${message}
         </div>
         <div class="update-notification-actions">
           <button class="update-btn update-btn-primary" id="update-view-btn">
-            View Release
+            ${viewReleaseLabel}
           </button>
           <button class="update-btn update-btn-secondary" id="update-dismiss-btn">
-            Dismiss
+            ${dismissLabel}
           </button>
         </div>
       </div>
@@ -246,7 +265,7 @@ class UpdateChecker {
         </div>
         <div class="manual-check-notification-actions">
           <button class="manual-check-btn" id="manual-check-dismiss-btn">
-            Dismiss
+            ${this.t('dismiss')}
           </button>
         </div>
       </div>
@@ -348,7 +367,7 @@ class UpdateChecker {
   // Manual check for updates (called from settings)
   async manualCheck() {
     if (!this.hasCurrentVersion()) {
-      const message = 'Version checks are only available when the extension is loaded in the browser.';
+      const message = this.t('updateChecksBrowserOnly');
       this.showManualCheckNotification(message, 'info');
       this.showManualCheckResult(message);
       return;
@@ -356,7 +375,7 @@ class UpdateChecker {
 
     const latestRelease = await this.fetchLatestRelease();
     if (!latestRelease) {
-      const errorMessage = 'Failed to check for updates. Please try again later.';
+      const errorMessage = this.t('updateCheckFailed');
       this.showManualCheckNotification(errorMessage, 'error');
       this.showManualCheckResult(errorMessage);
       return;
@@ -368,17 +387,20 @@ class UpdateChecker {
     if (comparison > 0) {
       // New version available - show both update notification and manual check notification
       this.showUpdateNotification(latestRelease);
-      const message = `New version v${latestRelease.version} is available!`;
+      const message = this.formatMessage('updateManualNewVersion', { version: latestRelease.version });
       this.showManualCheckNotification(message, 'success');
       this.showManualCheckResult(message);
     } else if (comparison < 0) {
       // Development version
-      const message = `You're running a development version (v${this.currentVersion}). Latest release is v${latestRelease.version}.`;
+      const message = this.formatMessage('updateManualDevelopmentVersion', {
+        currentVersion: this.currentVersion,
+        latestVersion: latestRelease.version
+      });
       this.showManualCheckNotification(message, 'warning');
       this.showManualCheckResult(message);
     } else {
       // Up to date
-      const message = 'You\'re running the latest version!';
+      const message = this.t('updateManualLatestVersion');
       this.showManualCheckNotification(message, 'success');
       this.showManualCheckResult(message);
     }
@@ -404,32 +426,30 @@ class UpdateChecker {
 
   // Get update status for about section
   getUpdateStatus() {
-    const t = window.i18n ? window.i18n.t : (key => key);
-
     if (!this.hasCurrentVersion()) {
-      return 'Update checks are unavailable outside the extension runtime.';
+      return this.t('updateChecksUnavailableOutsideRuntime');
     }
 
     if (!this.isEnabled()) {
-      return t('updateChecksDisabled');
+      return this.t('updateChecksDisabled');
     }
 
     const lastCheck = this.getLastCheckTime();
     if (lastCheck === 0) {
-      return t('neverChecked');
+      return this.t('neverChecked');
     }
 
     const now = Date.now();
     const hoursSince = Math.floor((now - lastCheck) / (1000 * 60 * 60));
     if (hoursSince < 1) {
-      return t('lastCheckedLessThanHour');
+      return this.t('lastCheckedLessThanHour');
     } else if (hoursSince < 24) {
       const key = hoursSince === 1 ? 'lastCheckedHoursAgo' : 'lastCheckedHoursAgoPlural';
-      return t(key).replace('{n}', hoursSince);
+      return this.formatMessage(key, { n: hoursSince });
     } else {
       const daysSince = Math.floor(hoursSince / 24);
       const key = daysSince === 1 ? 'lastCheckedDaysAgo' : 'lastCheckedDaysAgoPlural';
-      return t(key).replace('{n}', daysSince);
+      return this.formatMessage(key, { n: daysSince });
     }
   }
 }
