@@ -1286,6 +1286,11 @@ function initCustomDatePicker() {
   customDatePicker = new CustomDatePicker();
 }
 
+// Re-render calendar when language changes
+window.addEventListener('languageChanged', () => {
+  if (customDatePicker) customDatePicker.renderCalendar();
+});
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   initTodo();

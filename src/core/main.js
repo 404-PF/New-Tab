@@ -46,8 +46,8 @@ if (document.readyState === 'loading') {
   initClock();
 }
 
-// Make updateTime globally accessible for language switching
-window.updateTime = updateTime;
+// Listen for language changes to update time and date display
+window.addEventListener('languageChanged', updateTime);
 
 // Display a motto that stays the same for each day
 function displayDailyMotto() {
@@ -144,8 +144,8 @@ function setupCopyMotto() {
   }
 }
 
-// Make displayDailyMotto globally accessible for language switching
-window.displayDailyMotto = displayDailyMotto;
+// Listen for language changes to update daily motto
+window.addEventListener('languageChanged', displayDailyMotto);
 
 // Hide footer-left / footer-right when they overlap with the motto container
 function checkFooterOverlap() {

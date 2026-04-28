@@ -602,35 +602,10 @@ function updateDynamicTranslations() {
     if (cancelBtn) cancelBtn.textContent = translations[currentLanguage].cancel;
   }
 
-  // Re-render apps to update default app names
-  if (window.renderCustomApps) {
-    window.renderCustomApps();
-  }
-
-  // Update date display with new language
-  if (window.updateTime) {
-    window.updateTime();
-  }
-
-  // Re-render calendar if it's open
-  if (window.customDatePicker && window.customDatePicker.renderCalendar) {
-    window.customDatePicker.renderCalendar();
-  }
-
-  // Refresh search handling
-  if (window.initSearchEngine) {
-    window.initSearchEngine();
-  }
-
-  // Update motto to match new language
-  if (window.displayDailyMotto) {
-    window.displayDailyMotto();
-  }
-
-  // Re-render the About section so version label and last-checked text update
-  if (window.initAboutSection) {
-    window.initAboutSection();
-  }
+  // Notify other modules that language has changed so they can re-render
+  window.dispatchEvent(new CustomEvent('languageChanged', {
+    detail: { language: currentLanguage }
+  }));
 
   // Update background section headers if they exist
   const bgStaticHeader = document.querySelector('#bg-static-section .bg-subsection-header');
@@ -659,15 +634,6 @@ function updateDynamicTranslations() {
   }
   if (uploadLiveBtn) {
     uploadLiveBtn.title = translations[currentLanguage].uploadLiveBackground || 'Upload Live Background';
-  }
-
-  // Update Add App modal if it's open
-  const addAppModal = document.getElementById('add-app-modal');
-  if (addAppModal && addAppModal.style.display !== 'none') {
-    // Trigger updatePreview to refresh validation messages
-    if (window.updateAddAppPreview) {
-      window.updateAddAppPreview();
-    }
   }
 }
 

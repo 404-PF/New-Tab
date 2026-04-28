@@ -88,6 +88,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.renderCustomApps = renderAllApps;
 window.renderAllApps = renderAllApps;
 
+// Re-render when language changes
+window.addEventListener('languageChanged', renderAllApps);
+
 // Load and apply open in new tab setting
 function loadOpenNewTabSetting() {
   return localStorage.getItem("openAppsInNewTab") !== "false";

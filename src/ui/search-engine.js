@@ -213,5 +213,5 @@ function clearSearchValidationFeedback() {
 // Initialize on page load
 initSearchEngine();
 
-// Expose for global access (used by language switching)
-window.initSearchEngine = initSearchEngine;
+// Re-initialize selector when language changes
+window.addEventListener('languageChanged', initSearchEngine);

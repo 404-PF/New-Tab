@@ -624,10 +624,6 @@ document.addEventListener("change", function (e) {
     const selectedLanguage = e.target.value;
     localStorage.setItem("language", selectedLanguage);
     applyLanguageSetting();
-    // Update motto to match the new language
-    if (window.displayDailyMotto) {
-      window.displayDailyMotto();
-    }
   }
 });
 
@@ -855,8 +851,8 @@ function initAboutSection() {
   }
 }
 
-// Expose initAboutSection globally so language changes can re-render it
-window.initAboutSection = initAboutSection;
+// Re-render About section when language changes
+window.addEventListener('languageChanged', initAboutSection);
 
 function initSettings() {
   // Apply initial settings
