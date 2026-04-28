@@ -155,7 +155,7 @@ function renderTodos() {
           <line x1="8" y1="2" x2="8" y2="6"></line>
           <line x1="3" y1="10" x2="21" y2="10"></line>
         </svg>
-        <span class="due-date-text">${todo.dueDate ? formatDate(todo.dueDate) : 'Set date'}</span>
+        <span class="due-date-text">${todo.dueDate ? formatDate(todo.dueDate) : (window.i18n ? window.i18n.t('todoSetDate') : 'Set date')}</span>
       </div>
     `;
 
@@ -177,13 +177,13 @@ function renderTodos() {
       </div>
       ${dueDateHtml}
       <div class="todo-actions">
-        <button class="todo-edit-btn" data-id="${todo.id}" title="Edit Todo">
+        <button class="todo-edit-btn" data-id="${todo.id}" title="${window.i18n ? window.i18n.t('todoEditTooltip') : 'Edit Todo'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
           </svg>
         </button>
-        <button class="todo-delete-btn" data-id="${todo.id}" title="Delete Todo">
+        <button class="todo-delete-btn" data-id="${todo.id}" title="${window.i18n ? window.i18n.t('todoDeleteTooltip') : 'Delete Todo'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3,6 5,6 21,6"></polyline>
             <path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
@@ -226,6 +226,12 @@ function renderTodos() {
       }
     });
   });
+}
+
+function getInlineMonthLabel(monthIndex) {
+  const monthKeys = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+  const monthKey = monthKeys[monthIndex];
+  return window.i18n ? window.i18n.t(monthKey) : monthKey;
 }
 
 // Add a new todo
@@ -574,6 +580,7 @@ function showInlineDatePicker(todoId, dueDateElement) {
 
   // Create calendar HTML
   const currentDate = todo.dueDate ? new Date(todo.dueDate) : new Date();
+  pickerContainer._currentDate = currentDate;
   const calendarHtml = createCalendarHtml(currentDate, todo.dueDate);
 
   pickerContainer.innerHTML = calendarHtml;
@@ -630,9 +637,6 @@ function createCalendarHtml(currentDate, selectedDateString) {
   const month = currentDate.getMonth();
   const selectedDate = selectedDateString ? new Date(selectedDateString) : null;
   
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                      'July', 'August', 'September', 'October', 'November', 'December'];
-  
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const startDate = new Date(firstDay);
@@ -660,36 +664,36 @@ function createCalendarHtml(currentDate, selectedDateString) {
   
   return `
     <div class="inline-calendar-header">
-      <button type="button" class="inline-prev-month" aria-label="Previous month">
+      <button type="button" class="inline-prev-month" aria-label="${window.i18n ? window.i18n.t('todoInlinePrevMonth') : 'Previous month'}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="15,18 9,12 15,6"></polyline>
         </svg>
       </button>
       <div class="inline-calendar-title">
-        <span class="inline-calendar-month">${monthNames[month]}</span>
+        <span class="inline-calendar-month">${getInlineMonthLabel(month)}</span>
         <span class="inline-calendar-year">${year}</span>
       </div>
-      <button type="button" class="inline-next-month" aria-label="Next month">
+      <button type="button" class="inline-next-month" aria-label="${window.i18n ? window.i18n.t('todoInlineNextMonth') : 'Next month'}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="9,18 15,12 9,6"></polyline>
         </svg>
       </button>
     </div>
     <div class="inline-calendar-weekdays">
-      <span>Su</span>
-      <span>Mo</span>
-      <span>Tu</span>
-      <span>We</span>
-      <span>Th</span>
-      <span>Fr</span>
-      <span>Sa</span>
+      <span>${window.i18n ? window.i18n.t('sunday') : 'Su'}</span>
+      <span>${window.i18n ? window.i18n.t('monday') : 'Mo'}</span>
+      <span>${window.i18n ? window.i18n.t('tuesday') : 'Tu'}</span>
+      <span>${window.i18n ? window.i18n.t('wednesday') : 'We'}</span>
+      <span>${window.i18n ? window.i18n.t('thursday') : 'Th'}</span>
+      <span>${window.i18n ? window.i18n.t('friday') : 'Fr'}</span>
+      <span>${window.i18n ? window.i18n.t('saturday') : 'Sa'}</span>
     </div>
     <div class="inline-calendar-days">
       ${daysHtml}
     </div>
     <div class="inline-calendar-footer">
-      <button type="button" class="inline-clear-date">Clear</button>
-      <button type="button" class="inline-today-date">Today</button>
+      <button type="button" class="inline-clear-date">${window.i18n ? window.i18n.t('clearDate') : 'Clear'}</button>
+      <button type="button" class="inline-today-date">${window.i18n ? window.i18n.t('todayDate') : 'Today'}</button>
     </div>
   `;
 }
@@ -734,6 +738,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
     prevBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       currentDate.setMonth(currentDate.getMonth() - 1);
+      pickerContainer._currentDate = currentDate;
       updateInlineCalendar(pickerContainer, currentDate, todo.dueDate);
     });
   }
@@ -742,6 +747,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
     nextBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       currentDate.setMonth(currentDate.getMonth() + 1);
+      pickerContainer._currentDate = currentDate;
       updateInlineCalendar(pickerContainer, currentDate, todo.dueDate);
     });
   }
@@ -786,11 +792,27 @@ function updateInlineCalendar(pickerContainer, currentDate, selectedDateString) 
   const todoId = pickerContainer.dataset.todoId;
   const dueDateElement = pickerContainer._dueDateElement;
 
+  pickerContainer._currentDate = currentDate;
   const calendarHtml = createCalendarHtml(currentDate, selectedDateString);
   pickerContainer.innerHTML = calendarHtml;
 
   // Rebind calendar DOM handlers only (globals are already bound once)
   setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement);
+}
+
+function refreshInlineDatePickers() {
+  document.querySelectorAll('.inline-date-picker').forEach(pickerContainer => {
+    const todoId = pickerContainer.dataset.todoId;
+    const dueDateElement = pickerContainer._dueDateElement;
+    const todo = todos.find(t => t.id === todoId);
+
+    if (!todo || !dueDateElement) return;
+
+    const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? new Date(todo.dueDate) : new Date());
+    pickerContainer._currentDate = currentDate;
+    pickerContainer.innerHTML = createCalendarHtml(currentDate, todo.dueDate);
+    setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement);
+  });
 }
 
 // Update todo due date with visual feedback
@@ -825,7 +847,7 @@ function updateDueDateDisplay(dueDateElement, dueDate) {
     dueDateElement.classList.remove('empty');
     dueDateElement.classList.toggle('overdue', isOverdue(dueDate));
   } else {
-    textElement.textContent = 'Set date';
+    textElement.textContent = window.i18n ? window.i18n.t('todoSetDate') : 'Set date';
     dueDateElement.classList.add('empty');
     dueDateElement.classList.remove('overdue');
   }
@@ -1286,8 +1308,10 @@ function initCustomDatePicker() {
   customDatePicker = new CustomDatePicker();
 }
 
-// Re-render calendar when language changes
+// Re-render todo items and calendar when language changes
 window.addEventListener('languageChanged', () => {
+  renderTodos();
+  refreshInlineDatePickers();
   if (customDatePicker) customDatePicker.renderCalendar();
 });
 
