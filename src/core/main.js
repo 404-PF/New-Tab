@@ -144,6 +144,95 @@ function setupCopyMotto() {
   }
 }
 
+let isSearchHandlerBound = false;
+
+const SEARCH_UNAVAILABLE_MESSAGE = "Search is unavailable in this browser.";
+
+function runDefaultSearch(query) {
+  if (typeof chrome !== "undefined" && chrome.search && typeof chrome.search.query === "function") {
+    chrome.search.query({
+      text: query,
+      disposition: "CURRENT_TAB",
+    }).catch((error) => {
+      console.warn("Failed to run default search:", error);
+      showSearchValidationFeedback(SEARCH_UNAVAILABLE_MESSAGE);
+    });
+    return;
+  }
+
+  console.warn("chrome.search.query is unavailable in this browser.");
+  showSearchValidationFeedback(SEARCH_UNAVAILABLE_MESSAGE);
+}
+
+function runSearch(query) {
+  const validation = validateUrl(query);
+
+  if (validation.status === "valid") {
+    window.location.href = validation.url.href;
+    return;
+  }
+
+  if (validation.status === "malformed") {
+    showSearchValidationFeedback(validation.message);
+  }
+
+  runDefaultSearch(query);
+}
+
+function initSearchEngine() {
+  if (isSearchHandlerBound) {
+    return;
+  }
+
+  const searchInput = document.querySelector(".search-bar input");
+  if (!searchInput) {
+    return;
+  }
+
+  searchInput.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    const query = this.value.trim();
+    if (!query) return;
+
+    runSearch(query);
+  });
+
+  searchInput.addEventListener("input", clearSearchValidationFeedback);
+  isSearchHandlerBound = true;
+}
+
+function showSearchValidationFeedback(message) {
+  let feedbackEl = document.querySelector(".search-validation-feedback");
+  if (!feedbackEl) {
+    feedbackEl = document.createElement("div");
+    feedbackEl.className = "search-validation-feedback";
+    const searchBar = document.querySelector(".search-bar");
+    if (searchBar) {
+      searchBar.appendChild(feedbackEl);
+    }
+  }
+
+  feedbackEl.textContent = message;
+  feedbackEl.classList.add("show");
+}
+
+function clearSearchValidationFeedback() {
+  const feedbackEl = document.querySelector(".search-validation-feedback");
+  if (feedbackEl) {
+    feedbackEl.classList.remove("show");
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSearchEngine);
+} else {
+  initSearchEngine();
+}
+
 // Listen for language changes to update daily motto
 window.addEventListener('languageChanged', displayDailyMotto);
 
