@@ -955,6 +955,8 @@ function hideEditForm() {
     editForm.style.display = "none";
     hideFormError("edit-engine-error");
   }
+  const addForm = document.querySelector(".add-search-engine-form");
+  if (addForm) addForm.style.display = "block";
 }
 
 function initSearchEnginesSection() {
