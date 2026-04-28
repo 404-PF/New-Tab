@@ -101,7 +101,7 @@ try {
 - Background scripts go in `background/` directory
 
 ### Git Conventions
-- Branch: `dev` for development, `main` for stable releases
+- Branch: `main` for development and stable releases
 - Follow existing commit message style
 - Test thoroughly before merging to main
 
