@@ -75,10 +75,11 @@ function updateCustomEngine(id, name, url, icon) {
 }
 
 function removeCustomEngine(id) {
+  const currentlySaved = getSavedEngine();
   const engines = getCustomEnginesList();
   const filtered = engines.filter((e) => e.id !== id);
   saveCustomEngines(filtered);
-  if (getSavedEngine() === id) {
+  if (currentlySaved === id) {
     saveEngine("bing");
   }
 }
