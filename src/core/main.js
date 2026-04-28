@@ -14,36 +14,6 @@ function getSystemLocale() {
   }
 }
 
-// Migrate existing users without stored clock preference to appropriate format
-function migrateClockFormat() {
-  if (localStorage.getItem("clockMigrationComplete")) return;
-
-  const clockFormat = localStorage.getItem("clockFormat");
-  if (clockFormat !== null && clockFormat !== "") {
-    // User already has a preference - mark migration complete without changes
-    localStorage.setItem("clockMigrationComplete", "true");
-    return;
-  }
-  // No preference exists - do NOT write anything
-  // Legacy behavior (24h zero-padded) is preserved via updateTime null/undefined path
-  localStorage.setItem("clockMigrationComplete", "true");
-}
-
-// Migrate existing users without stored date preference to preserve legacy behavior
-function migrateDateFormat() {
-  if (localStorage.getItem("dateMigrationComplete")) return;
-
-  const dateFormat = localStorage.getItem("dateFormat");
-  if (dateFormat !== null && dateFormat !== "") {
-    // User already has a preference - mark migration complete without changes
-    localStorage.setItem("dateMigrationComplete", "true");
-    return;
-  }
-  // No preference exists - do NOT write anything
-  // Legacy behavior (long date format) is preserved via updateTime null/undefined path
-  localStorage.setItem("dateMigrationComplete", "true");
-}
-
 function updateTime() {
   const now = new Date();
   const timeElement = document.getElementById("clock-time") || document.getElementById("clock");
@@ -88,15 +58,15 @@ function updateTime() {
     // Explicit long - use specific options
     const options = { weekday: "long", month: "long", day: "numeric" };
     dateElement.textContent = now.toLocaleDateString(systemLocale, options);
-  } else {
-    // auto / undefined - use locale's default date format
+  } else if (dateFormat === "auto") {
+    // Explicit auto - respect system locale default
     dateElement.textContent = now.toLocaleDateString(systemLocale);
+  } else {
+    // null/undefined - no preference, preserve legacy long date format for existing users
+    const options = { weekday: "long", month: "long", day: "numeric" };
+    dateElement.textContent = now.toLocaleDateString(systemLocale, options);
   }
 }
-
-// Migrate existing users to appropriate clock format before first update
-migrateClockFormat();
-migrateDateFormat();
 
 // Update time immediately and then every minute using visibility-aware interval
 updateTime();

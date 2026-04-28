@@ -513,7 +513,6 @@ if (clockStyleReset) {
     localStorage.removeItem("clockSize");
     // Set to "auto" instead of removing so main.js shows locale-aware (not legacy)
     localStorage.setItem("clockFormat", "auto");
-    localStorage.removeItem("clockMigrationComplete");
     applyClockStyle();
     applyClockFormat();
   });
@@ -582,7 +581,6 @@ if (dateStyleReset) {
     localStorage.removeItem("dateSize");
     // Set to "auto" instead of removing so main.js shows locale-aware (not legacy)
     localStorage.setItem("dateFormat", "auto");
-    localStorage.removeItem("dateMigrationComplete");
     applyDateStyle();
     applyDateFormat();
   });
@@ -600,13 +598,48 @@ function loadDateFormat() {
   return localStorage.getItem("dateFormat") || "auto";
 }
 
-function applyClockFormat() {
-  const existing = localStorage.getItem("clockFormat");
-  // Only write "auto" for fresh installs (no migration flag exists yet)
-  // For upgrades with no preference, leave null so main.js preserves legacy
-  if (existing === null && !localStorage.getItem("clockMigrationComplete")) {
-    localStorage.setItem("clockFormat", "auto");
+function migrateFormatSettings() {
+  try {
+    if (localStorage.getItem("formatSettingsMigrated")) return;
+
+    const formatKeys = new Set([
+      "clockMigrationComplete",
+      "dateMigrationComplete",
+      "formatSettingsMigrated"
+    ]);
+
+    // If old migration flags exist, this is definitely an upgrade
+    const hasOldMigrationFlags =
+      localStorage.getItem("clockMigrationComplete") ||
+      localStorage.getItem("dateMigrationComplete");
+    let hasExistingData = !!hasOldMigrationFlags;
+
+    if (!hasExistingData) {
+      for (let i = 0; i < localStorage.length; i++) {
+        if (!formatKeys.has(localStorage.key(i))) {
+          hasExistingData = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasExistingData) {
+      // Fresh install: explicitly persist "auto" so main.js uses locale-aware formatting
+      localStorage.setItem("clockFormat", "auto");
+      localStorage.setItem("dateFormat", "auto");
+    }
+    // Upgrade: leave clockFormat/dateFormat null so main.js preserves legacy behavior
+
+    // Clean up old migration flags and mark new migration complete
+    localStorage.removeItem("clockMigrationComplete");
+    localStorage.removeItem("dateMigrationComplete");
+    localStorage.setItem("formatSettingsMigrated", "true");
+  } catch (e) {
+    console.error("Failed to migrate format settings:", e);
   }
+}
+
+function applyClockFormat() {
   const format = localStorage.getItem("clockFormat") || "auto";
   const picker = document.getElementById("clock-format-picker");
   if (picker && picker.value !== format) {
@@ -616,12 +649,6 @@ function applyClockFormat() {
 }
 
 function applyDateFormat() {
-  const existing = localStorage.getItem("dateFormat");
-  // Only write "auto" for fresh installs (no migration flag exists yet)
-  // For upgrades with no preference, leave null so main.js preserves legacy
-  if (existing === null && !localStorage.getItem("dateMigrationComplete")) {
-    localStorage.setItem("dateFormat", "auto");
-  }
   const format = localStorage.getItem("dateFormat") || "auto";
   const picker = document.getElementById("date-format-picker");
   if (picker && picker.value !== format) {
@@ -924,6 +951,8 @@ function initAboutSection() {
 window.initAboutSection = initAboutSection;
 
 function initSettings() {
+  // Apply migration before format functions
+  migrateFormatSettings();
   // Apply initial settings
   applyBg();
   applyClockStyle();
