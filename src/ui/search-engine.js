@@ -100,7 +100,7 @@ function validateSearchEngineUrl(url) {
       return false;
     }
     const hasQueryPlaceholder = url.includes("{query}");
-    const hasQuerySlot = url.endsWith("?") || url.endsWith("&");
+    const hasQuerySlot = /[?&]$/.test(url) || /[?&][^=]+=$/.test(url);
     return hasQueryPlaceholder || hasQuerySlot;
   } catch {
     return false;
