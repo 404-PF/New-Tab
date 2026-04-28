@@ -21,7 +21,19 @@ let editModalState = {
 
 // Load todos from localStorage
 function loadTodos() {
-  return JSON.parse(localStorage.getItem("todos") || "[]");
+  try {
+    const raw = localStorage.getItem("todos");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      console.warn("Invalid todos data in localStorage: expected array, resetting to empty list");
+      return [];
+    }
+    return parsed;
+  } catch (e) {
+    console.warn("Failed to parse todos from localStorage, resetting to empty list:", e);
+    return [];
+  }
 }
 
 // Save todos to localStorage
