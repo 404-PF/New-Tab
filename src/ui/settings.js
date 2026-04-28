@@ -754,7 +754,7 @@ function initAboutSection() {
             </svg>
             <div class="setting-content">
               <label data-i18n="createdBy">${t('createdBy')}</label>
-              <div style="font-size: 16px; font-weight: 600; color: var(--settings-text-color);">404-Page-Found</div>
+              <div style="font-size: 16px; font-weight: 600; color: var(--settings-text-color);">404-PF</div>
               <div style="font-size: 14px; color: rgba(107, 114, 128, 0.8);" data-i18n="openSource">${t('openSource')}</div>
             </div>
           </div>
@@ -783,7 +783,7 @@ function initAboutSection() {
             </svg>
             <div class="setting-content">
               <label data-i18n="repository">${t('repository')}</label>
-              <a href="https://github.com/404-Page-Found/New-Tab" target="_blank" style="font-size: 16px; font-weight: 600; color: #2196f3; text-decoration: none; transition: all 0.2s ease;">GitHub Repository</a>
+              <a href="https://github.com/404-PF/New-Tab" target="_blank" style="font-size: 16px; font-weight: 600; color: #2196f3; text-decoration: none; transition: all 0.2s ease;">GitHub Repository</a>
               <div style="font-size: 14px; color: rgba(107, 114, 128, 0.8);" data-i18n="viewSource">${t('viewSource')}</div>
             </div>
           </div>
