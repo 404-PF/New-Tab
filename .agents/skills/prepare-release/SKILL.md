@@ -24,11 +24,11 @@ gh release create <tag> --title "<title>" --notes "<notes>" --draft
 
 1. **Review merged PRs** - List merged PRs since last release
 2. **Update CHANGELOG** - Add entries for each significant change
-3. **Update version** - CRITICAL: Update version on dev branch BEFORE creating release PR:
+3. **Update version** - CRITICAL: Update version on main branch BEFORE creating release PR:
    - Update `manifest.json` version field
    - Update version in all README files: `README.md`, `docs/README.en-US.md`, `docs/README.zh-CN.md`
    - Commit with message "chore: bump version to v<x.y.z>"
-4. **Push version bump** - Push version commit to dev branch before creating release PR
+4. **Push version bump** - Push version commit to main branch before creating release PR
 5. **Acknowledge contributors** - Credit contributors in release notes
 6. **Create release PR** - Branch from main, include CHANGELOG and version updates
 7. **Review changes** - Verify files changed match expectations
