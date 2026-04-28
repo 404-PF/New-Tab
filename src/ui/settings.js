@@ -718,7 +718,7 @@ function initAboutSection() {
   const aboutSection = document.querySelector('.settings-section[data-section="about"]');
   if (aboutSection) {
     const t = window.i18n ? window.i18n.t : (key => key);
-    const updateStatus = window.updateChecker ? updateChecker.getUpdateStatus() : t('updateStatus');
+    const updateStatus = window.updateChecker ? updateChecker.getUpdateStatus() : t('updateCheckerNotLoaded');
     const isEnabled = window.updateChecker ? updateChecker.isEnabled() : true;
 
     const currentVersion = window.CURRENT_VERSION;
