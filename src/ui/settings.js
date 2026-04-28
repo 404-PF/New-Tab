@@ -1065,6 +1065,7 @@ function initSearchEnginesSection() {
 }
 
 window.initSearchEnginesSection = initSearchEnginesSection;
+window.applySearchEnginesSettings = applySearchEnginesSettings;
 
 function initSettings() {
   // Apply initial settings

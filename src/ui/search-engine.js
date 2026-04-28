@@ -96,7 +96,12 @@ function validateSearchEngineUrl(url) {
   if (!url || typeof url !== "string") return false;
   try {
     const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+    const hasQueryPlaceholder = url.includes("{query}");
+    const hasQuerySlot = url.endsWith("?") || url.endsWith("&");
+    return hasQueryPlaceholder || hasQuerySlot;
   } catch {
     return false;
   }

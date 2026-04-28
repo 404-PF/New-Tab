@@ -685,6 +685,11 @@ function updateDynamicTranslations() {
       window.updateAddAppPreview();
     }
   }
+
+  // Re-render Search Engines settings section if visible
+  if (window.applySearchEnginesSettings) {
+    window.applySearchEnginesSettings();
+  }
 }
 
 // Get translated text
