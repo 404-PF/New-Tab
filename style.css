@@ -806,6 +806,7 @@ body {
   align-items: center;
   background: #f0f0f0;
   display: flex;
+  gap: 12px;
   padding: 7px 20px;
   border-radius: 25px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -829,6 +830,12 @@ body {
   font-size: 20px;
   outline: none;
   flex: 1;
+}
+.search-bar-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  opacity: 0.72;
 }
 .search-engines {
   position: relative;
