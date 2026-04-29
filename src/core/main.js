@@ -173,7 +173,7 @@ function runSearch(query) {
   }
 
   if (validation.status === "malformed") {
-    showSearchValidationFeedback(validation.message);
+    showSearchValidationFeedback(translateValidationMessage(validation.message));
   }
 
   runDefaultSearch(query);

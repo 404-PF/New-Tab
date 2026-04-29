@@ -129,34 +129,6 @@ function getFaviconUrl(url) {
   }
 }
 
-// Translate validation message
-function translateValidationMessage(message) {
-  if (!message) return '';
-  
-  // Use window.i18n.t if available, otherwise use original message
-  const translateFn = (window.i18n && window.i18n.t) ? window.i18n.t : (key => key);
-  
-  // Map English validation messages to translation keys
-  const messageMap = {
-    'Please enter a URL or search query': 'validationPleaseEnter',
-    'This URL appears to be invalid. Press Enter to Create': 'validationInvalidAppears',
-    'Invalid URL: missing hostname': 'validationMissingHostname',
-    'Invalid URL: hostname contains invalid characters': 'validationInvalidChars',
-    'Invalid URL: top-level domain too short': 'validationTldTooShort',
-    'Invalid URL: incomplete domain name': 'validationIncompleteDomain',
-    'Invalid URL: IP address out of range': 'validationIpOutOfRange',
-    'Valid URL': 'validationValid'
-  };
-  
-  // Check if message starts with 'Malformed URL:'
-  if (message.startsWith('Malformed URL:')) {
-    return translateFn('validationMalformed');
-  }
-  
-  const key = messageMap[message];
-  return key ? translateFn(key) : message;
-}
-
 // Update preview based on input
 function updatePreview() {
   const url = addAppUrlInput.value.trim();

@@ -110,6 +110,30 @@ function validateUrl(input) {
   }
 }
 
+function translateValidationMessage(message) {
+  if (!message) return '';
+
+  const translateFn = (window.i18n && window.i18n.t) ? window.i18n.t : (key => key);
+
+  const messageMap = {
+    'Please enter a URL or search query': 'validationPleaseEnter',
+    'This URL appears to be invalid. Press Enter to Create': 'validationInvalidAppears',
+    'Invalid URL: missing hostname': 'validationMissingHostname',
+    'Invalid URL: hostname contains invalid characters': 'validationInvalidChars',
+    'Invalid URL: top-level domain too short': 'validationTldTooShort',
+    'Invalid URL: incomplete domain name': 'validationIncompleteDomain',
+    'Invalid URL: IP address out of range': 'validationIpOutOfRange',
+    'Valid URL': 'validationValid'
+  };
+
+  if (message.startsWith('Malformed URL:')) {
+    return translateFn('validationMalformed');
+  }
+
+  const key = messageMap[message];
+  return key ? translateFn(key) : message;
+}
+
 // Check if input is a valid URL (simple boolean version)
 function isValidUrl(string) {
   const result = validateUrl(string);
