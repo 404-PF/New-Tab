@@ -1,0 +1,579 @@
+// src/ai/ai-renderer.js - AI chat rendering and DOM helpers
+
+const AIRenderer = (function() {
+  const elements = {};
+
+  function getTranslation(key) {
+    if (window.i18n && window.i18n.t) {
+      return window.i18n.t(key);
+    }
+    console.warn('i18n not available, using fallback for:', key);
+    return key;
+  }
+
+  function cacheElements() {
+    elements.modal = document.getElementById('ai-chat-modal');
+    elements.container = document.getElementById('ai-chat-container');
+    elements.input = document.getElementById('ai-chat-input');
+    elements.sendBtn = document.getElementById('ai-chat-send');
+    elements.stopBtn = document.getElementById('ai-chat-stop');
+    elements.loadingIndicator = document.getElementById('ai-chat-loading');
+    elements.errorDisplay = document.getElementById('ai-chat-error');
+    elements.title = document.getElementById('ai-chat-title');
+    elements.newChatBtn = document.getElementById('ai-new-chat-btn');
+    elements.topicsList = document.getElementById('ai-topics-list');
+    elements.topicsSearch = document.getElementById('ai-topics-search-input');
+    elements.topicsCount = document.getElementById('ai-topics-count');
+    elements.confirmDialog = document.getElementById('ai-confirm-dialog');
+    elements.confirmCancel = document.querySelector('.ai-confirm-cancel');
+    elements.confirmDelete = document.querySelector('.ai-confirm-delete');
+    elements.scrollToBottomBtn = document.getElementById('ai-scroll-to-bottom');
+    return elements;
+  }
+
+  function getElements() {
+    return elements;
+  }
+
+  function hasModal() {
+    return !!document.getElementById('ai-chat-modal');
+  }
+
+  function escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
+  function formatTopicTime(timestamp) {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return getTranslation('aiJustNow');
+    if (minutes < 60) return `${minutes}m`;
+    if (hours < 24) return `${hours}h`;
+    if (days < 7) return `${days}d`;
+
+    return new Date(timestamp).toLocaleDateString();
+  }
+
+  function renderTopicsList(options = {}) {
+    if (!elements.topicsList) {
+      cacheElements();
+    }
+    if (!elements.topicsList) return;
+
+    const state = AIStore.state;
+    const filteredConversations = AIStore.getFilteredConversations();
+
+    if (elements.topicsCount) {
+      const total = state.conversations.length;
+      const shown = filteredConversations.length;
+      elements.topicsCount.textContent = shown === total ? total : `${shown}/${total}`;
+    }
+
+    if (filteredConversations.length === 0) {
+      if (state.searchQuery.trim()) {
+        elements.topicsList.innerHTML = `
+          <div class="ai-topics-no-results">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+            <p>${getTranslation('aiNoSearchResults')}</p>
+          </div>
+        `;
+      } else {
+        elements.topicsList.innerHTML = `
+          <div class="ai-topics-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <p>${getTranslation('aiNoConversations')}</p>
+          </div>
+        `;
+      }
+      return;
+    }
+
+    elements.topicsList.innerHTML = filteredConversations.map((conversation, index) => {
+      const isActive = conversation.id === state.currentConversationId;
+      const isKeyboardSelected = index === state.keyboardSelectedIndex;
+      return `
+        <div class="ai-topic-item ${isActive ? 'active' : ''} ${isKeyboardSelected ? 'keyboard-selected' : ''}" data-id="${conversation.id}" data-index="${index}">
+          <div class="ai-topic-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+          <div class="ai-topic-info">
+            <div class="ai-topic-title">${escapeHTML(conversation.title)}</div>
+            <div class="ai-topic-time">${formatTopicTime(conversation.updatedAt)}</div>
+          </div>
+          <button class="ai-topic-delete" data-id="${conversation.id}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3,6 5,6 21,6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    const onSelectConversation = options.onSelectConversation || (() => {});
+    const onDeleteConversation = options.onDeleteConversation || (() => {});
+    const onRequestDeleteConfirm = options.onRequestDeleteConfirm || ((callback) => callback());
+
+    elements.topicsList.querySelectorAll('.ai-topic-item').forEach(item => {
+      item.addEventListener('click', event => {
+        if (event.target.closest('.ai-topic-delete')) return;
+        onSelectConversation(item.dataset.id);
+      });
+    });
+
+    document.querySelectorAll('.ai-topic-tooltip').forEach(tooltip => tooltip.remove());
+
+    elements.topicsList.querySelectorAll('.ai-topic-delete').forEach(button => {
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        const conversationId = button.dataset.id;
+
+        if (event.ctrlKey) {
+          onDeleteConversation(conversationId);
+        } else {
+          onRequestDeleteConfirm(() => onDeleteConversation(conversationId));
+        }
+      });
+
+      const tooltip = document.createElement('div');
+      tooltip.className = 'ai-topic-tooltip';
+      document.body.appendChild(tooltip);
+
+      let tooltipTimeout = null;
+
+      button.addEventListener('mouseenter', () => {
+        AIStore.setHoveredDeleteTarget(button, tooltip);
+        tooltip.textContent = getTranslation('aiDeleteConversation');
+
+        const rect = button.getBoundingClientRect();
+        tooltip.style.left = `${rect.left + rect.width / 2}px`;
+        tooltip.style.top = `${rect.top - 8}px`;
+        tooltip.style.transform = 'translateX(-50%) translateY(-100%)';
+
+        tooltipTimeout = setTimeout(() => {
+          tooltip.classList.add('visible');
+          updateDeleteButtonFeedback();
+        }, 2000);
+      });
+
+      button.addEventListener('mouseleave', () => {
+        if (tooltipTimeout) {
+          clearTimeout(tooltipTimeout);
+          tooltipTimeout = null;
+        }
+
+        AIStore.clearHoveredDeleteTarget(button);
+        tooltip.classList.remove('visible');
+        button.classList.remove('ctrl-ready');
+      });
+
+      button.addEventListener('mousemove', () => {
+        const rect = button.getBoundingClientRect();
+        tooltip.style.left = `${rect.left + rect.width / 2}px`;
+        tooltip.style.top = `${rect.top - 8}px`;
+      });
+    });
+
+    if (AIStore.state.keyboardSelectedIndex >= 0) {
+      const selectedItem = elements.topicsList.querySelector('.keyboard-selected');
+      if (selectedItem) {
+        selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }
+
+  function getMessageHTML(message) {
+    const isUser = message.role === 'user';
+    const time = message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : '';
+    const isStreaming = message.isStreaming;
+    const content = isStreaming ? (message.content || '') : message.content;
+
+    const renderedContent = isUser
+      ? escapeHTML(content)
+      : window.MarkdownParser ? window.MarkdownParser.parse(content) : escapeHTML(content);
+
+    const plainTextContent = (content || '').replace(/<[^>]*>/g, '').trim();
+
+    return `
+      <div class="ai-message ${isUser ? 'ai-message-user' : 'ai-message-assistant'}">
+        <div class="ai-message-avatar">
+          ${isUser
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><line x1="12" y1="9.5" x2="12" y2="5"/><circle cx="12" cy="4" r="1.2" fill="currentColor" stroke="none"/><line x1="14.3" y1="10.2" x2="17" y2="7"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/><line x1="14.5" y1="12" x2="19" y2="12"/><circle cx="19.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><line x1="14.3" y1="13.8" x2="17" y2="17"/><circle cx="17.5" cy="17.5" r="1.2" fill="currentColor" stroke="none"/><line x1="12" y1="14.5" x2="12" y2="19"/><circle cx="12" cy="20" r="1.2" fill="currentColor" stroke="none"/><line x1="9.7" y1="13.8" x2="7" y2="17"/><circle cx="6.5" cy="17.5" r="1.2" fill="currentColor" stroke="none"/><line x1="9.5" y1="12" x2="5" y2="12"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><line x1="9.7" y1="10.2" x2="7" y2="7"/><circle cx="6.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>'}
+        </div>
+        <div class="ai-message-content">
+          <div class="ai-message-text ${isStreaming ? 'ai-message-streaming' : ''}">${renderedContent}</div>
+          <div class="ai-message-meta">
+            <div class="ai-message-time">${time}</div>
+            <button class="ai-message-copy" data-content="${escapeHTML(plainTextContent)}" aria-label="Copy message" tabindex="0">
+              <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span class="copy-text">Copy</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMessages() {
+    if (!elements.container) {
+      cacheElements();
+    }
+    if (!elements.container) return;
+
+    const messages = AIStore.getCurrentMessages();
+
+    if (messages.length === 0) {
+      elements.container.innerHTML = `
+        <div class="ai-welcome">
+          <div class="ai-welcome-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+              <line x1="12" y1="9.5" x2="12" y2="5"/>
+              <circle cx="12" cy="4" r="1.2" fill="currentColor" stroke="none"/>
+              <line x1="14.3" y1="10.2" x2="17" y2="7"/>
+              <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/>
+              <line x1="14.5" y1="12" x2="19" y2="12"/>
+              <circle cx="19.5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+              <line x1="14.3" y1="13.8" x2="17" y2="17"/>
+              <circle cx="17.5" cy="17.5" r="1.2" fill="currentColor" stroke="none"/>
+              <line x1="12" y1="14.5" x2="12" y2="19"/>
+              <circle cx="12" cy="20" r="1.2" fill="currentColor" stroke="none"/>
+              <line x1="9.7" y1="13.8" x2="7" y2="17"/>
+              <circle cx="6.5" cy="17.5" r="1.2" fill="currentColor" stroke="none"/>
+              <line x1="9.5" y1="12" x2="5" y2="12"/>
+              <circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+              <line x1="9.7" y1="10.2" x2="7" y2="7"/>
+              <circle cx="6.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/>
+            </svg>
+          </div>
+          <div class="ai-welcome-title">${getTranslation('aiWelcome')}</div>
+          <div class="ai-welcome-subtitle">${getTranslation('aiWelcomeSubtitle')}</div>
+        </div>
+      `;
+      AIStore.setUserScrolledUp(false);
+      updateScrollToBottomButton();
+      return;
+    }
+
+    elements.container.innerHTML = messages.map(message => getMessageHTML(message)).join('');
+    initCopyButtons();
+
+    if (!AIStore.state.isUserScrolledUp) {
+      scrollToBottom(false);
+    }
+  }
+
+  function initCopyButtons() {
+    const copyButtons = elements.container?.querySelectorAll('.ai-message-copy');
+    if (!copyButtons) return;
+
+    copyButtons.forEach(button => {
+      const newButton = button.cloneNode(true);
+      button.parentNode.replaceChild(newButton, button);
+
+      newButton.addEventListener('click', event => {
+        event.stopPropagation();
+        handleCopyClick(newButton);
+      });
+
+      newButton.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          event.stopPropagation();
+          handleCopyClick(newButton);
+        }
+      });
+    });
+  }
+
+  async function handleCopyClick(button) {
+    const content = button.dataset.content;
+    if (!content) return;
+
+    const copyIcon = button.querySelector('.copy-icon');
+    const copyText = button.querySelector('.copy-text');
+    const originalText = copyText?.textContent || 'Copy';
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(content);
+      } else {
+        await fallbackCopyText(content);
+      }
+
+      showCopyFeedback(button, true, originalText, copyIcon, copyText);
+    } catch (error) {
+      console.error('Copy failed:', error);
+      showCopyFeedback(button, false, originalText, copyIcon, copyText);
+      showCopyError();
+    }
+  }
+
+  function fallbackCopyText(text) {
+    return new Promise((resolve, reject) => {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          resolve();
+        } else {
+          reject(new Error('Fallback copy failed'));
+        }
+      } catch (error) {
+        document.body.removeChild(textArea);
+        reject(error);
+      }
+    });
+  }
+
+  function showCopyFeedback(button, success, originalText, copyIcon, copyText) {
+    if (success) {
+      if (copyIcon) {
+        copyIcon.innerHTML = '<polyline points="20,6 9,17 4,12"></polyline>';
+      }
+      if (copyText) {
+        copyText.textContent = 'Copied!';
+      }
+      button.classList.add('copy-success');
+    } else {
+      if (copyText) {
+        copyText.textContent = 'Failed';
+      }
+      button.classList.add('copy-error');
+    }
+
+    setTimeout(() => {
+      if (copyIcon) {
+        copyIcon.innerHTML = '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>';
+      }
+      if (copyText) {
+        copyText.textContent = originalText;
+      }
+      button.classList.remove('copy-success', 'copy-error');
+    }, 2000);
+  }
+
+  function showCopyError() {
+    let notification = document.querySelector('.ai-copy-error-notification');
+
+    if (!notification) {
+      notification = document.createElement('div');
+      notification.className = 'ai-copy-error-notification';
+      document.body.appendChild(notification);
+    }
+
+    notification.textContent = 'Failed to copy text. Please select and copy manually.';
+    notification.classList.add('visible');
+
+    setTimeout(() => {
+      notification.classList.remove('visible');
+    }, 3000);
+  }
+
+  function isAtBottom() {
+    if (!elements.container) return true;
+    const { scrollTop, scrollHeight, clientHeight } = elements.container;
+    return scrollHeight - scrollTop - clientHeight < AIStore.state.scrollThreshold;
+  }
+
+  function scrollToBottom(smooth = true) {
+    if (!elements.container) return;
+    elements.container.scrollTo({
+      top: elements.container.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+    AIStore.setUserScrolledUp(false);
+    updateScrollToBottomButton();
+  }
+
+  function updateScrollToBottomButton() {
+    if (!elements.scrollToBottomBtn) return;
+
+    if (AIStore.state.isUserScrolledUp) {
+      elements.scrollToBottomBtn.classList.add('visible');
+    } else {
+      elements.scrollToBottomBtn.classList.remove('visible');
+    }
+  }
+
+  function handleScroll() {
+    const wasScrolledUp = AIStore.state.isUserScrolledUp;
+    AIStore.setUserScrolledUp(!isAtBottom());
+
+    if (wasScrolledUp !== AIStore.state.isUserScrolledUp) {
+      updateScrollToBottomButton();
+    }
+  }
+
+  function updateDeleteButtonFeedback() {
+    document.querySelectorAll('.ai-topic-delete').forEach(button => {
+      if (AIStore.state.isCtrlPressed) {
+        button.classList.add('ctrl-ready');
+      } else {
+        button.classList.remove('ctrl-ready');
+      }
+    });
+  }
+
+  function initCtrlKeyTracking() {
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Control' && !AIStore.state.isCtrlPressed) {
+        AIStore.setCtrlPressed(true);
+        updateDeleteButtonFeedback();
+
+        if (AIStore.state.hoveredDeleteTooltip && AIStore.state.hoveredDeleteBtn) {
+          AIStore.state.hoveredDeleteTooltip.textContent = getTranslation('aiDeleteConversation');
+          AIStore.state.hoveredDeleteBtn.classList.add('ctrl-ready');
+        }
+      }
+    });
+
+    document.addEventListener('keyup', event => {
+      if (event.key === 'Control') {
+        AIStore.setCtrlPressed(false);
+        updateDeleteButtonFeedback();
+
+        if (AIStore.state.hoveredDeleteTooltip && AIStore.state.hoveredDeleteBtn) {
+          AIStore.state.hoveredDeleteTooltip.textContent = getTranslation('aiDeleteConversation');
+          AIStore.state.hoveredDeleteBtn.classList.remove('ctrl-ready');
+        }
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      AIStore.setCtrlPressed(false);
+      updateDeleteButtonFeedback();
+
+      if (AIStore.state.hoveredDeleteTooltip) {
+        AIStore.state.hoveredDeleteTooltip.classList.remove('visible');
+        if (AIStore.state.hoveredDeleteBtn) {
+          AIStore.state.hoveredDeleteBtn.classList.remove('ctrl-ready');
+        }
+      }
+    });
+  }
+
+  function loadTheme() {
+    return localStorage.getItem('theme') || 'dark';
+  }
+
+  function applyThemeToAI() {
+    const theme = loadTheme();
+    const modal = document.getElementById('ai-chat-modal');
+    if (!modal) return;
+
+    if (theme === 'light') {
+      modal.classList.add('light-theme');
+    } else {
+      modal.classList.remove('light-theme');
+    }
+  }
+
+  function updateConnectionStatus(isOfflineMode) {
+    const statusIndicator = document.getElementById('ai-connection-status');
+    if (!statusIndicator) return;
+
+    const onlineText = getTranslation('aiOnline');
+    const offlineText = getTranslation('aiOffline');
+
+    if (isOfflineMode) {
+      statusIndicator.className = 'ai-connection-status offline';
+      statusIndicator.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg><span>' + offlineText + '</span>';
+    } else {
+      statusIndicator.className = 'ai-connection-status online';
+      statusIndicator.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg><span>' + onlineText + '</span>';
+    }
+  }
+
+  function createConnectionStatusIndicator(isOfflineMode) {
+    const titleArea = document.querySelector('.ai-chat-header');
+    if (!titleArea) return;
+
+    const statusDiv = document.createElement('div');
+    statusDiv.id = 'ai-connection-status';
+
+    const onlineText = getTranslation('aiOnline');
+    const offlineText = getTranslation('aiOffline');
+
+    statusDiv.className = isOfflineMode ? 'ai-connection-status offline' : 'ai-connection-status online';
+    statusDiv.innerHTML = isOfflineMode
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg><span>' + offlineText + '</span>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg><span>' + onlineText + '</span>';
+
+    titleArea.appendChild(statusDiv);
+  }
+
+  function updateStreamingContent(element, content) {
+    if (element && window.MarkdownParser) {
+      element.innerHTML = window.MarkdownParser.parse(content);
+    } else if (element) {
+      element.textContent = content;
+    }
+  }
+
+  function clearMarkdownCache() {
+    if (window.MarkdownParser && window.MarkdownParser.clearCache) {
+      window.MarkdownParser.clearCache();
+    }
+  }
+
+  function getMarkdownCacheStats() {
+    if (window.MarkdownParser && window.MarkdownParser.getCacheStats) {
+      return window.MarkdownParser.getCacheStats();
+    }
+    return { size: 0, maxSize: 0 };
+  }
+
+  return {
+    cacheElements,
+    getElements,
+    hasModal,
+    renderTopicsList,
+    renderMessages,
+    initCopyButtons,
+    isAtBottom,
+    scrollToBottom,
+    updateScrollToBottomButton,
+    handleScroll,
+    updateDeleteButtonFeedback,
+    initCtrlKeyTracking,
+    applyThemeToAI,
+    loadTheme,
+    updateConnectionStatus,
+    createConnectionStatusIndicator,
+    updateStreamingContent,
+    clearMarkdownCache,
+    getMarkdownCacheStats,
+    formatTopicTime,
+    escapeHTML
+  };
+})();
+
+window.AIRenderer = AIRenderer;
