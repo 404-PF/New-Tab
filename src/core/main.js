@@ -109,14 +109,16 @@ function setupCopyMotto() {
     copyBtn.addEventListener("click", async () => {
       const mottoText = document.getElementById("motto-text");
       if (mottoText && mottoText.textContent) {
+        const copiedText = window.i18n ? window.i18n.t('copyMottoCopied') : 'Copied';
         // Show copy notification
         let notification = document.querySelector('.copy-notification');
         if (!notification) {
           notification = document.createElement('div');
           notification.className = 'copy-notification';
-          notification.textContent = 'Copied';
           document.body.appendChild(notification);
         }
+
+        notification.textContent = copiedText;
 
         notification.classList.add('show');
         setTimeout(() => {
