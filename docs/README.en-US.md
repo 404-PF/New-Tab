@@ -10,7 +10,7 @@ A personalized new tab extension for Chromium-based browsers. It replaces the de
 
 ## ✨ Highlights
 - Clock, date, and daily motto on a clean dashboard
-- Search bar with switchable search engines
+- Search bar that uses your browser's default search provider
 - App grid with built-in actions, custom shortcuts, and drag-and-drop ordering
 - Static and live backgrounds, including uploaded images and videos
 - Todo list with due dates, overdue state, filters, and progress tracking
@@ -45,7 +45,7 @@ src/
 	core/              # startup, language, version, utilities, update checks
 	data/              # built-in backgrounds, custom backgrounds, motto data
 	features/          # todo list, onboarding, simple mode, drag/drop helpers
-	ui/                # settings, app manager, add-app flow, search engine UI
+	ui/                # settings, app manager, add-app flow, search bar handling
 _locales/            # extension translations
 background/tools/    # background thumbnail and video preview generators
 ```
