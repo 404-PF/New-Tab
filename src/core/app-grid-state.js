@@ -7,43 +7,23 @@ const AppGridState = {
   // --- Raw storage access ---
 
   getOrder() {
-    try {
-      const raw = localStorage.getItem('appOrder');
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        console.warn("Invalid appOrder data in localStorage: expected array, resetting to null");
-        return null;
-      }
-      return parsed;
-    } catch (e) {
-      console.warn("Failed to parse appOrder from localStorage, resetting to null:", e);
-      return null;
-    }
+    return window.AppGridStorage ? window.AppGridStorage.loadOrder() : null;
   },
 
   saveOrder(order) {
-    localStorage.setItem('appOrder', JSON.stringify(order));
-  },
-
-  getCustomApps() {
-    try {
-      const raw = localStorage.getItem('customApps');
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        console.warn("Invalid customApps data in localStorage: expected array, resetting to empty list");
-        return [];
-      }
-      return parsed;
-    } catch (e) {
-      console.warn("Failed to parse customApps from localStorage, resetting to empty list:", e);
-      return [];
+    if (window.AppGridStorage) {
+      window.AppGridStorage.saveOrder(order);
     }
   },
 
+  getCustomApps() {
+    return window.AppGridStorage ? window.AppGridStorage.loadCustomApps() : [];
+  },
+
   saveCustomApps(apps) {
-    localStorage.setItem('customApps', JSON.stringify(apps));
+    if (window.AppGridStorage) {
+      window.AppGridStorage.saveCustomApps(apps);
+    }
   },
 
   // --- Id helpers ---
