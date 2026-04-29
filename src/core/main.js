@@ -4,26 +4,103 @@ function updateTime() {
   const now = new Date();
   const timeElement = document.getElementById("clock-time") || document.getElementById("clock");
   const dateElement = document.getElementById("date");
+  const locale = getDisplayLocale();
 
   // Update time
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-  timeElement.textContent = `${hours}:${minutes}`;
+  if (timeElement) {
+    timeElement.textContent = formatClockTime(now, locale);
+  }
 
   // Update date - use current language for locale
-  const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
-  const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
-  
-  // For Chinese locale, manually format to add space between weekday and date
-  if (currentLang === 'zh') {
-    const weekday = now.toLocaleDateString('zh-CN', { weekday: "long" });
-    const month = now.toLocaleDateString('zh-CN', { month: "long" });
-    const day = now.toLocaleDateString('zh-CN', { day: "numeric" });
-    dateElement.textContent = `${month}${day} ${weekday}`;
-  } else {
-    const options = { weekday: "long", month: "long", day: "numeric" };
-    dateElement.textContent = now.toLocaleDateString(locale, options);
+  if (dateElement) {
+    dateElement.textContent = formatDateDisplay(now, locale);
   }
+}
+
+window.updateTime = updateTime;
+
+function getDisplayLocale() {
+  const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
+  return currentLang === 'zh' ? 'zh-CN' : 'en-US';
+}
+
+function getClockFormat() {
+  return localStorage.getItem('clockFormat') || 'auto';
+}
+
+function getDateFormat() {
+  return localStorage.getItem('dateFormat') || 'auto';
+}
+
+function formatClockTime(now, locale) {
+  const clockFormat = getClockFormat();
+
+  if (clockFormat === '12h') {
+    return now.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+
+  if (clockFormat === '24h') {
+    return now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  return now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatLocaleDefaultDate(now, locale) {
+  const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
+
+  // Keep the existing Chinese spacing, otherwise let the locale choose the default order.
+  if (currentLang === 'zh') {
+    const weekday = now.toLocaleDateString('zh-CN', { weekday: 'long' });
+    const month = now.toLocaleDateString('zh-CN', { month: 'long' });
+    const day = now.toLocaleDateString('zh-CN', { day: 'numeric' });
+    return `${month}${day} ${weekday}`;
+  }
+
+  return now.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+function formatLongDate(now, locale) {
+  const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
+
+  if (currentLang === 'zh') {
+    const weekday = now.toLocaleDateString('zh-CN', { weekday: 'long' });
+    const month = now.toLocaleDateString('zh-CN', { month: 'long' });
+    const day = now.toLocaleDateString('zh-CN', { day: 'numeric' });
+    return `${weekday} ${month}${day}`;
+  }
+
+  return now.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+function formatCompactDate(now, locale) {
+  const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
+
+  if (currentLang === 'zh') {
+    const month = now.toLocaleDateString('zh-CN', { month: 'numeric' });
+    const day = now.toLocaleDateString('zh-CN', { day: 'numeric' });
+    return `${month}月${day}日`;
+  }
+
+  return now.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+}
+
+function formatDateDisplay(now, locale) {
+  const dateFormat = getDateFormat();
+
+  if (dateFormat === 'long') {
+    return formatLongDate(now, locale);
+  }
+
+  if (dateFormat === 'compact') {
+    return formatCompactDate(now, locale);
+  }
+
+  if (dateFormat === 'numeric') {
+    return now.toLocaleDateString(locale, { year: 'numeric', month: '2-digit', day: '2-digit' });
+  }
+
+  return formatLocaleDefaultDate(now, locale);
 }
 
 // Update time immediately and then every minute using visibility-aware interval
