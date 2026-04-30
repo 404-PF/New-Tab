@@ -478,6 +478,23 @@ function applyClockStyle() {
   syncSizeButtons("clock", parseInt(style.size, 10), CLOCK_SIZE_OPTIONS);
 }
 
+function loadClockFormatSetting() {
+  const format = localStorage.getItem("clockFormat") || "auto";
+  if (format !== "auto" && format !== "12h" && format !== "24h") {
+    localStorage.setItem("clockFormat", "auto");
+    return "auto";
+  }
+  return format;
+}
+
+function applyClockFormatSetting() {
+  const clockFormatPicker = document.getElementById("clock-format-picker");
+  const format = loadClockFormatSetting();
+  if (clockFormatPicker && clockFormatPicker.value !== format) {
+    clockFormatPicker.value = format;
+  }
+}
+
 // Event listeners for clock
 const clockColorPicker = document.getElementById("clock-color-picker");
 const clockFontPicker = document.getElementById("clock-font-picker");
@@ -511,7 +528,18 @@ if (clockStyleReset) {
     localStorage.removeItem("clockColor");
     localStorage.removeItem("clockFont");
     localStorage.removeItem("clockSize");
+    localStorage.removeItem("clockFormat");
     applyClockStyle();
+    applyClockFormatSetting();
+    if (window.updateTime) updateTime();
+  });
+}
+
+const clockFormatPicker = document.getElementById("clock-format-picker");
+if (clockFormatPicker) {
+  clockFormatPicker.addEventListener("change", function () {
+    localStorage.setItem("clockFormat", this.value);
+    if (window.updateTime) updateTime();
   });
 }
 
@@ -541,6 +569,23 @@ function applyDateStyle() {
   if (dateColorPicker && dateColorPicker.value !== style.color) dateColorPicker.value = style.color;
   if (dateFontPicker && dateFontPicker.value !== style.font) dateFontPicker.value = style.font;
   syncSizeButtons("date", parseInt(style.size, 10), DATE_SIZE_OPTIONS);
+}
+
+function loadDateFormatSetting() {
+  const format = localStorage.getItem("dateFormat") || "auto";
+  if (format !== "auto" && format !== "long" && format !== "compact" && format !== "numeric") {
+    localStorage.setItem("dateFormat", "auto");
+    return "auto";
+  }
+  return format;
+}
+
+function applyDateFormatSetting() {
+  const dateFormatPicker = document.getElementById("date-format-picker");
+  const format = loadDateFormatSetting();
+  if (dateFormatPicker && dateFormatPicker.value !== format) {
+    dateFormatPicker.value = format;
+  }
 }
 
 // Event listeners for date
@@ -576,7 +621,18 @@ if (dateStyleReset) {
     localStorage.removeItem("dateColor");
     localStorage.removeItem("dateFont");
     localStorage.removeItem("dateSize");
+    localStorage.removeItem("dateFormat");
     applyDateStyle();
+    applyDateFormatSetting();
+    if (window.updateTime) updateTime();
+  });
+}
+
+const dateFormatPicker = document.getElementById("date-format-picker");
+if (dateFormatPicker) {
+  dateFormatPicker.addEventListener("change", function () {
+    localStorage.setItem("dateFormat", this.value);
+    if (window.updateTime) updateTime();
   });
 }
 
@@ -858,7 +914,9 @@ function initSettings() {
   // Apply initial settings
   applyBg();
   applyClockStyle();
+  applyClockFormatSetting();
   applyDateStyle();
+  applyDateFormatSetting();
   applyTheme();
   applyTodoEnabled();
   applyLanguageSetting();

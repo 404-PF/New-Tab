@@ -356,8 +356,8 @@
           </section>
           <section class="settings-section" data-section="clock" style="display: none">
             <div class="clock-setting-group">
-              <h4>Clock &amp; Date Style</h4>
-              <p>Customize the appearance of your clock and date display</p>
+              <h4 data-i18n="clockSettings">Clock &amp; Date Style</h4>
+              <p data-i18n="clockSettingsDesc">Customize the appearance of your clock and date display</p>
               <div class="clock-options">
                 <div class="clock-option">
                   <div class="setting-card">
@@ -409,6 +409,25 @@
                 <div class="clock-option">
                   <div class="setting-card">
                     <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 7V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v3"></path>
+                      <path d="M4 7h16l-1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 7z"></path>
+                      <path d="M9 11v5"></path>
+                      <path d="M12 11v5"></path>
+                      <path d="M15 11v5"></path>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="clock-format-picker" data-i18n="clockFormat">Time Format</label>
+                      <select id="clock-format-picker">
+                        <option value="auto" data-i18n="clockFormatAuto">Locale Default</option>
+                        <option value="12h" data-i18n="clockFormat12Hour">12-Hour</option>
+                        <option value="24h" data-i18n="clockFormat24Hour">24-Hour</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="clock-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <circle cx="12" cy="12" r="3"></circle>
                       <path d="m12 1 0 6"></path>
                       <path d="m12 17 0 6"></path>
@@ -445,8 +464,8 @@
               </div>
             </div>
             <div class="date-setting-group">
-              <h4>Date Style</h4>
-              <p>Customize the appearance of your date display</p>
+              <h4 data-i18n="dateSettings">Date Style</h4>
+              <p data-i18n="dateSettingsDesc">Customize the appearance of your date display</p>
               <div class="date-options">
                 <div class="date-option">
                   <div class="setting-card">
@@ -491,6 +510,26 @@
                         <option value="'Poppins', 'Segoe UI', sans-serif">Poppins</option>
                         <option value="'Raleway', 'Segoe UI', sans-serif">Raleway</option>
                         <option value="'Source Sans Pro', 'Segoe UI', sans-serif">Source Sans Pro</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="date-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 7V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v3"></path>
+                      <path d="M4 7h16l-1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 7z"></path>
+                      <path d="M9 11v5"></path>
+                      <path d="M12 11v5"></path>
+                      <path d="M15 11v5"></path>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="date-format-picker" data-i18n="dateFormat">Date Format</label>
+                      <select id="date-format-picker">
+                        <option value="auto" data-i18n="dateFormatAuto">Locale Default</option>
+                        <option value="long" data-i18n="dateFormatLong">Long</option>
+                        <option value="compact" data-i18n="dateFormatCompact">Compact</option>
+                        <option value="numeric" data-i18n="dateFormatNumeric">Numeric</option>
                       </select>
                     </div>
                   </div>
