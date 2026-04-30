@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![Version](https://img.shields.io/badge/version-0.4.3-blue)](../CHANGELOG.md)
 
+Chrome Web Store copy: [en-US](CHROME-WEB-STORE.en-US.md) | [zh-CN](CHROME-WEB-STORE.zh-CN.md)
+
 A personalized new tab extension for Chromium-based browsers. It replaces the default new tab page with a customizable dashboard for search, shortcuts, backgrounds, todos, onboarding, and AI assistance.
 
 ## ✨ Highlights
