@@ -9,6 +9,8 @@
 [![English](https://img.shields.io/badge/English-blue)](docs/README.en-US.md)
 [![简体中文](https://img.shields.io/badge/简体中文-blue)](docs/README.zh-CN.md)
 
+Chrome Web Store copy: [en-US](docs/CHROME-WEB-STORE.en-US.md) | [zh-CN](docs/CHROME-WEB-STORE.zh-CN.md)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.4.3-blue)](CHANGELOG.md)
 

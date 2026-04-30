@@ -6,6 +6,8 @@
 [![许可证: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![版本](https://img.shields.io/badge/version-0.4.3-blue)](../CHANGELOG.md)
 
+Chrome Web Store 文案：[en-US](CHROME-WEB-STORE.en-US.md) | [zh-CN](CHROME-WEB-STORE.zh-CN.md)
+
 这是一个面向 Chromium 浏览器的个性化新标签页扩展。它会用一个可自定义的仪表盘替换默认新标签页，并提供搜索、快捷方式、背景、待办、引导和 AI 助手等能力。
 
 ## ✨ 主要功能
