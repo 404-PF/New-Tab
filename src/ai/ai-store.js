@@ -75,7 +75,7 @@ const AIStore = (function() {
   function saveConversations() {
     try {
       if (state.conversations.length > MAX_CONVERSATIONS) {
-        state.conversations = state.conversations.slice(-MAX_CONVERSATIONS);
+        state.conversations = state.conversations.slice(0, MAX_CONVERSATIONS);
       }
 
       localStorage.setItem(STORAGE_KEYS.conversations, JSON.stringify(state.conversations));

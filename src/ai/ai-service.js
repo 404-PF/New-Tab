@@ -16,13 +16,18 @@ const AIService = (function() {
     AIRenderer.cacheElements();
   }
 
-  function renderConversationUI() {
+  function renderConversationUI(options = {}) {
+    const { renderMessages = true } = options;
+
     AIRenderer.renderTopicsList({
       onSelectConversation: switchConversation,
       onDeleteConversation: deleteConversation,
       onRequestDeleteConfirm: showDeleteConfirm
     });
-    AIRenderer.renderMessages();
+
+    if (renderMessages) {
+      AIRenderer.renderMessages();
+    }
   }
 
   function showDeleteConfirm(onConfirm) {
@@ -242,13 +247,13 @@ const AIService = (function() {
       case 'ArrowDown':
         event.preventDefault();
         AIStore.setKeyboardSelectedIndex(Math.min(AIStore.state.keyboardSelectedIndex + 1, filteredConversations.length - 1));
-        renderConversationUI();
+        renderConversationUI({ renderMessages: false });
         break;
 
       case 'ArrowUp':
         event.preventDefault();
         AIStore.setKeyboardSelectedIndex(Math.max(AIStore.state.keyboardSelectedIndex - 1, 0));
-        renderConversationUI();
+        renderConversationUI({ renderMessages: false });
         break;
 
       case 'Enter':
@@ -585,14 +590,14 @@ const AIService = (function() {
     if (elements.topicsSearch) {
       elements.topicsSearch.addEventListener('input', event => {
         AIStore.setSearchQuery(event.target.value);
-        renderConversationUI();
+        renderConversationUI({ renderMessages: false });
       });
 
       elements.topicsSearch.addEventListener('keydown', event => {
         if (event.key === 'Escape') {
           elements.topicsSearch.value = '';
           AIStore.setSearchQuery('');
-          renderConversationUI();
+          renderConversationUI({ renderMessages: false });
           elements.topicsSearch.blur();
         }
       });
@@ -630,11 +635,6 @@ const AIService = (function() {
         AIRenderer.applyThemeToAI();
       }
     });
-  }
-
-  function initNetworkListener() {
-    NetworkDetector.addListener(handleNetworkStatusChange);
-    handleNetworkStatusChange(NetworkDetector.getStatus());
   }
 
   function init() {
