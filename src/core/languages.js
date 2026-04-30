@@ -529,6 +529,26 @@ const translations = {
 // Current language
 let currentLanguage = 'en';
 
+function getTranslation(lang, key) {
+  const localeTranslations = translations[lang];
+  if (localeTranslations && Object.prototype.hasOwnProperty.call(localeTranslations, key)) {
+    const translation = localeTranslations[key];
+    if (translation !== "") {
+      return translation;
+    }
+  }
+
+  const englishTranslations = translations.en;
+  if (englishTranslations && Object.prototype.hasOwnProperty.call(englishTranslations, key)) {
+    const translation = englishTranslations[key];
+    if (translation !== "") {
+      return translation;
+    }
+  }
+
+  return key;
+}
+
 // Load language from localStorage
 function loadLanguage() {
   return localStorage.getItem("language") || "en";
@@ -551,19 +571,17 @@ function applyLanguage(lang) {
   const elements = document.querySelectorAll('[data-i18n]');
   elements.forEach(element => {
     const key = element.getAttribute('data-i18n');
-    if (translations[lang] && translations[lang][key]) {
-      const translation = translations[lang][key];
+    const translation = getTranslation(lang, key);
 
-      // Different handling based on element type
-      if (element.tagName === 'INPUT' && element.placeholder) {
-        element.placeholder = translation;
-      } else if (element.tagName === 'OPTION') {
-        element.textContent = translation;
-      } else if (element.hasAttribute('title')) {
-        element.title = translation;
-      } else {
-        element.textContent = translation;
-      }
+    // Different handling based on element type
+    if (element.tagName === 'INPUT' && element.placeholder) {
+      element.placeholder = translation;
+    } else if (element.tagName === 'OPTION') {
+      element.textContent = translation;
+    } else if (element.hasAttribute('title')) {
+      element.title = translation;
+    } else {
+      element.textContent = translation;
     }
   });
 
@@ -571,9 +589,7 @@ function applyLanguage(lang) {
   const placeholderElements = document.querySelectorAll('[data-i18n-placeholder]');
   placeholderElements.forEach(element => {
     const key = element.getAttribute('data-i18n-placeholder');
-    if (translations[lang] && translations[lang][key]) {
-      element.placeholder = translations[lang][key];
-    }
+    element.placeholder = getTranslation(lang, key);
   });
 
   // Update any dynamic content that might have been added after initial load
@@ -585,18 +601,18 @@ function updateDynamicTranslations() {
   // Update todo section if it exists
   const todoTitle = document.querySelector('.todo-title');
   if (todoTitle) {
-    todoTitle.textContent = translations[currentLanguage].todoList;
+    todoTitle.textContent = getTranslation(currentLanguage, 'todoList');
   }
 
   // Update empty state messages
   const emptyStateP = document.querySelector('.empty-state p');
   if (emptyStateP) {
-    emptyStateP.textContent = translations[currentLanguage].emptyStateTitle;
+    emptyStateP.textContent = getTranslation(currentLanguage, 'emptyStateTitle');
   }
 
   const emptyStateSmall = document.querySelector('.empty-state small');
   if (emptyStateSmall) {
-    emptyStateSmall.textContent = translations[currentLanguage].emptyStateDesc;
+    emptyStateSmall.textContent = getTranslation(currentLanguage, 'emptyStateDesc');
   }
   
   // Update filter pills
@@ -605,17 +621,17 @@ function updateDynamicTranslations() {
   const filterCompleted = document.querySelector('.filter-pill[data-filter="completed"]');
   const filterOverdue = document.querySelector('.filter-pill[data-filter="overdue"]');
   
-  if (filterAll) filterAll.childNodes[0].textContent = translations[currentLanguage].filterAll + ' ';
-  if (filterPending) filterPending.childNodes[0].textContent = translations[currentLanguage].filterPending + ' ';
-  if (filterCompleted) filterCompleted.childNodes[0].textContent = translations[currentLanguage].filterCompleted + ' ';
-  if (filterOverdue) filterOverdue.childNodes[0].textContent = translations[currentLanguage].filterOverdue + ' ';
+  if (filterAll) filterAll.childNodes[0].textContent = getTranslation(currentLanguage, 'filterAll') + ' ';
+  if (filterPending) filterPending.childNodes[0].textContent = getTranslation(currentLanguage, 'filterPending') + ' ';
+  if (filterCompleted) filterCompleted.childNodes[0].textContent = getTranslation(currentLanguage, 'filterCompleted') + ' ';
+  if (filterOverdue) filterOverdue.childNodes[0].textContent = getTranslation(currentLanguage, 'filterOverdue') + ' ';
   
   // Update quick action button text
   const clearCompletedBtn = document.getElementById('clear-completed');
   
   if (clearCompletedBtn) {
     const span = clearCompletedBtn.querySelector('span');
-    if (span) span.textContent = translations[currentLanguage].clearCompletedText;
+    if (span) span.textContent = getTranslation(currentLanguage, 'clearCompletedText');
   }
 
   // Update clear completed confirmation dialog
@@ -626,10 +642,10 @@ function updateDynamicTranslations() {
     const confirmBtn = clearCompletedDialog.querySelector('.ai-confirm-delete');
     const cancelBtn = clearCompletedDialog.querySelector('.ai-confirm-cancel');
     
-    if (titleEl) titleEl.textContent = translations[currentLanguage].clearCompletedConfirmTitle;
-    if (messageEl) messageEl.textContent = translations[currentLanguage].clearCompletedConfirmMessage;
-    if (confirmBtn) confirmBtn.textContent = translations[currentLanguage].clearCompletedConfirmButton;
-    if (cancelBtn) cancelBtn.textContent = translations[currentLanguage].cancel;
+    if (titleEl) titleEl.textContent = getTranslation(currentLanguage, 'clearCompletedConfirmTitle');
+    if (messageEl) messageEl.textContent = getTranslation(currentLanguage, 'clearCompletedConfirmMessage');
+    if (confirmBtn) confirmBtn.textContent = getTranslation(currentLanguage, 'clearCompletedConfirmButton');
+    if (cancelBtn) cancelBtn.textContent = getTranslation(currentLanguage, 'cancel');
   }
 
   // Notify other modules that language has changed so they can re-render
@@ -644,32 +660,32 @@ function updateDynamicTranslations() {
   const bgLiveDesc = document.querySelector('#bg-live-section .bg-subsection-desc');
   
   if (bgStaticHeader) {
-    bgStaticHeader.textContent = translations[currentLanguage].background || 'Background';
+    bgStaticHeader.textContent = getTranslation(currentLanguage, 'background');
   }
   if (bgLiveHeader) {
-    bgLiveHeader.textContent = translations[currentLanguage].liveBackground || 'Live Background';
+    bgLiveHeader.textContent = getTranslation(currentLanguage, 'liveBackground');
   }
   if (bgStaticDesc) {
-    bgStaticDesc.textContent = translations[currentLanguage].backgroundSettingsDesc || 'Choose your background image';
+    bgStaticDesc.textContent = getTranslation(currentLanguage, 'backgroundSettingsDesc');
   }
   if (bgLiveDesc) {
-    bgLiveDesc.textContent = translations[currentLanguage].liveBackgroundSettingsDesc || 'Choose an animated background video';
+    bgLiveDesc.textContent = getTranslation(currentLanguage, 'liveBackgroundSettingsDesc');
   }
 
   // Update upload button titles
   const uploadBgBtn = document.querySelector('.upload-bg-btn[data-upload-type="image"]');
   const uploadLiveBtn = document.querySelector('.upload-bg-btn[data-upload-type="video"]');
   if (uploadBgBtn) {
-    uploadBgBtn.title = translations[currentLanguage].uploadBackground || 'Upload Background';
+    uploadBgBtn.title = getTranslation(currentLanguage, 'uploadBackground');
   }
   if (uploadLiveBtn) {
-    uploadLiveBtn.title = translations[currentLanguage].uploadLiveBackground || 'Upload Live Background';
+    uploadLiveBtn.title = getTranslation(currentLanguage, 'uploadLiveBackground');
   }
 }
 
 // Get translated text
 function t(key) {
-  return translations[currentLanguage] && translations[currentLanguage][key] ? translations[currentLanguage][key] : key;
+  return getTranslation(currentLanguage, key);
 }
 
 // Initialize language system
