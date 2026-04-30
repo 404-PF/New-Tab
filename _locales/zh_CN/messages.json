@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "description": {
-    "message": "一个美丽的新标签页，包含时钟、搜索、应用和待办事项",
+    "message": "一个美观、可定制的新标签页，提供时钟、搜索、应用、背景、待办和 AI 助手。",
     "description": "The description of the extension"
   }
 }
