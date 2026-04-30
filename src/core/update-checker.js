@@ -79,16 +79,83 @@ class UpdateChecker {
   }
 
   // Compare versions using semantic versioning
-  compareVersions(version1, version2) {
-    const v1Parts = version1.split('.').map(Number);
-    const v2Parts = version2.split('.').map(Number);
+  parseVersion(version) {
+    if (typeof version !== 'string') {
+      return null;
+    }
 
-    for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
-      const v1Part = v1Parts[i] || 0;
-      const v2Part = v2Parts[i] || 0;
+    const normalizedVersion = version.trim().replace(/^v/i, '');
+    const match = normalizedVersion.match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/);
+
+    if (!match) {
+      return null;
+    }
+
+    return {
+      coreParts: [Number(match[1]), Number(match[2]), Number(match[3])],
+      prereleaseParts: match[4] ? match[4].split('.') : []
+    };
+  }
+
+  compareVersions(version1, version2) {
+    const parsedVersion1 = this.parseVersion(version1);
+    const parsedVersion2 = this.parseVersion(version2);
+
+    if (!parsedVersion1 || !parsedVersion2) {
+      return null;
+    }
+
+    const maxCoreLength = Math.max(parsedVersion1.coreParts.length, parsedVersion2.coreParts.length);
+
+    for (let i = 0; i < maxCoreLength; i++) {
+      const v1Part = parsedVersion1.coreParts[i] || 0;
+      const v2Part = parsedVersion2.coreParts[i] || 0;
 
       if (v1Part > v2Part) return 1;
       if (v1Part < v2Part) return -1;
+    }
+
+    const hasPrerelease1 = parsedVersion1.prereleaseParts.length > 0;
+    const hasPrerelease2 = parsedVersion2.prereleaseParts.length > 0;
+
+    if (!hasPrerelease1 && !hasPrerelease2) {
+      return 0;
+    }
+
+    if (!hasPrerelease1) {
+      return 1;
+    }
+
+    if (!hasPrerelease2) {
+      return -1;
+    }
+
+    const maxPrereleaseLength = Math.max(parsedVersion1.prereleaseParts.length, parsedVersion2.prereleaseParts.length);
+
+    for (let i = 0; i < maxPrereleaseLength; i++) {
+      const identifier1 = parsedVersion1.prereleaseParts[i];
+      const identifier2 = parsedVersion2.prereleaseParts[i];
+
+      if (identifier1 === undefined) return -1;
+      if (identifier2 === undefined) return 1;
+
+      const identifier1IsNumber = /^\d+$/.test(identifier1);
+      const identifier2IsNumber = /^\d+$/.test(identifier2);
+
+      if (identifier1IsNumber && identifier2IsNumber) {
+        const numeric1 = Number(identifier1);
+        const numeric2 = Number(identifier2);
+
+        if (numeric1 > numeric2) return 1;
+        if (numeric1 < numeric2) return -1;
+        continue;
+      }
+
+      if (identifier1IsNumber) return -1;
+      if (identifier2IsNumber) return 1;
+
+      if (identifier1 > identifier2) return 1;
+      if (identifier1 < identifier2) return -1;
     }
     return 0;
   }
@@ -100,9 +167,17 @@ class UpdateChecker {
     const latestRelease = await this.fetchLatestRelease();
     if (!latestRelease) return null;
 
+    const comparison = this.compareVersions(latestRelease.version, this.currentVersion);
+    if (comparison === null) {
+      console.warn('Skipping update check because version strings could not be compared:', {
+        latestReleaseVersion: latestRelease.version,
+        currentVersion: this.currentVersion
+      });
+      return null;
+    }
+
     this.setLastCheckTime();
 
-    const comparison = this.compareVersions(latestRelease.version, this.currentVersion);
     if (comparison > 0) {
       // New version available
       return latestRelease;
@@ -381,9 +456,20 @@ class UpdateChecker {
       return;
     }
 
+    const comparison = this.compareVersions(latestRelease.version, this.currentVersion);
+    if (comparison === null) {
+      const message = this.t('updateCheckUnsupportedVersion');
+      console.warn('Skipping manual update check because version strings could not be compared:', {
+        latestReleaseVersion: latestRelease.version,
+        currentVersion: this.currentVersion
+      });
+      this.showManualCheckNotification(message, 'warning');
+      this.showManualCheckResult(message);
+      return;
+    }
+
     this.setLastCheckTime();
 
-    const comparison = this.compareVersions(latestRelease.version, this.currentVersion);
     if (comparison > 0) {
       // New version available - show both update notification and manual check notification
       this.showUpdateNotification(latestRelease);
