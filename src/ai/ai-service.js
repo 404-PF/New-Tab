@@ -35,19 +35,20 @@ const AIService = (function() {
 
     if (!elements.confirmDialog) return;
 
+    // Always clean up a stale handler first so we never leak listeners
     if (activeConfirmKeydownHandler) {
       document.removeEventListener('keydown', activeConfirmKeydownHandler);
       activeConfirmKeydownHandler = null;
     }
-
-    AIStore.setConfirmDialogCallback(onConfirm);
-    elements.confirmDialog.classList.add('ai-confirm-open');
 
     const cancelBtn = elements.confirmDialog.querySelector('.ai-confirm-cancel');
     const deleteBtn = elements.confirmDialog.querySelector('.ai-confirm-delete');
     const overlay = elements.confirmDialog.querySelector('.ai-confirm-overlay');
 
     if (!cancelBtn || !deleteBtn || !overlay) return;
+
+    AIStore.setConfirmDialogCallback(onConfirm);
+    elements.confirmDialog.classList.add('ai-confirm-open');
 
     const newCancelBtn = cancelBtn.cloneNode(true);
     cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
@@ -61,13 +62,7 @@ const AIService = (function() {
     newCancelBtn.addEventListener('click', hideDeleteConfirm);
     newDeleteBtn.addEventListener('click', () => {
       const callback = AIStore.state.confirmDialogCallback;
-      AIStore.clearConfirmDialogCallback();
-      elements.confirmDialog.classList.remove('ai-confirm-open');
-      if (activeConfirmKeydownHandler) {
-        document.removeEventListener('keydown', activeConfirmKeydownHandler);
-        activeConfirmKeydownHandler = null;
-      }
-
+      hideDeleteConfirm();
       if (callback) {
         callback();
       }
@@ -79,13 +74,7 @@ const AIService = (function() {
         hideDeleteConfirm();
       } else if (event.key === 'Enter') {
         const callback = AIStore.state.confirmDialogCallback;
-        AIStore.clearConfirmDialogCallback();
-        elements.confirmDialog.classList.remove('ai-confirm-open');
-        if (activeConfirmKeydownHandler) {
-          document.removeEventListener('keydown', activeConfirmKeydownHandler);
-          activeConfirmKeydownHandler = null;
-        }
-
+        hideDeleteConfirm();
         if (callback) {
           callback();
         }
