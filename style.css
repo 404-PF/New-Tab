@@ -622,6 +622,9 @@ body.light-theme .btn-secondary:hover {
   --modal-width: 420px;
   --modal-min-height: 500px;
   --overlay-max-height: calc(100vh - 225px);
+  /* Shared overlay layers keep drag feedback below context menus. */
+  --z-drag-overlay: 3000;
+  --z-context-menu: 10003;
   --icon-radius: 35%;
   /* Theme specific colors */
   --body-bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -983,6 +986,7 @@ body {
   opacity: 0;
   pointer-events: none;
   transform: none;
+  z-index: var(--z-drag-overlay);
 }
 
 .app-icon.drag-over {
@@ -1042,6 +1046,8 @@ body.light-theme .app-icon.drag-over .icon {
   background: rgba(33, 150, 243, 0.1);
   border: 2px dashed rgba(33, 150, 243, 0.5);
   border-radius: var(--icon-radius, 35%);
+  position: relative;
+  z-index: var(--z-drag-overlay);
   flex-shrink: 0;
   animation: placeholderPulse 1.5s ease-in-out infinite;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2568,7 +2574,7 @@ body.light-theme .upload-bg-btn:hover {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  z-index: 3000;
+  z-index: var(--z-context-menu);
   min-width: 180px;
   font-size: 14px;
   font-weight: 500;
