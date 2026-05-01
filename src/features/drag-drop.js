@@ -110,7 +110,7 @@
   }
 
   // Insert placeholder at the calculated position
-  function insertPlaceholder(index) {
+  function insertPlaceholder(index, sourceElement = dragState.sourceElement) {
     const grid = getAppGrid();
     const icons = getDraggableIcons();
     const addAppBtn = document.getElementById('new-app');
@@ -120,7 +120,8 @@
     
     // Create new placeholder if needed
     if (!dragState.placeholder) {
-      dragState.placeholder = createPlaceholder(dragState.sourceElement);
+      if (!sourceElement) return;
+      dragState.placeholder = createPlaceholder(sourceElement);
     }
     
     // Ensure we never place placeholder after the add app button
@@ -183,6 +184,41 @@
     dragState.dropIndex = -1;
   }
 
+  function cleanupDragSession() {
+    const sourceElement = dragState.sourceElement;
+
+    if (sourceElement) {
+      sourceElement.classList.remove('dragging');
+    }
+
+    getDraggableIcons().forEach(icon => {
+      icon.classList.remove('drag-over');
+    });
+
+    removePlaceholder();
+    document.removeEventListener('dragover', handleGlobalDragOver);
+    window.removeEventListener('blur', handleDragAbort);
+    window.removeEventListener('pagehide', handleDragAbort);
+    document.removeEventListener('visibilitychange', handleDragAbort);
+
+    dragState.sourceId = null;
+    dragState.sourceElement = null;
+    dragState.sourceOrderIndex = -1;
+    dragState.placeholder = null;
+    dragState.placeholderIndex = -1;
+    dragState.dropIndex = -1;
+  }
+
+  function handleDragAbort(e) {
+    if (!dragState.sourceId) return;
+
+    if (e && e.type === 'visibilitychange' && document.visibilityState !== 'hidden') {
+      return;
+    }
+
+    cleanupDragSession();
+  }
+
   // Handle drag events using event delegation.  We want drop events
   // even when the pointer isn't over another icon, so `handleDrop` may be
   // invoked with `target===null`.
@@ -230,7 +266,7 @@
     // Use requestAnimationFrame so the browser captures the drag image
     // before we replace the source slot with a placeholder.
     requestAnimationFrame(() => {
-      insertPlaceholder(dragState.placeholderIndex);
+      insertPlaceholder(dragState.placeholderIndex, target);
       target.classList.add('dragging');
     });
     e.dataTransfer.effectAllowed = 'move';
@@ -244,6 +280,9 @@
     
     // Add global drag over listener for calculating drop position
     document.addEventListener('dragover', handleGlobalDragOver);
+    window.addEventListener('blur', handleDragAbort);
+    window.addEventListener('pagehide', handleDragAbort);
+    document.addEventListener('visibilitychange', handleDragAbort);
   }
 
   // Handle global drag over for placeholder positioning
@@ -258,25 +297,7 @@
 
   // Drag end handler
   function handleDragEnd(e, target) {
-    target.classList.remove('dragging');
-
-    // Clean up any remaining drag-over classes
-    getDraggableIcons().forEach(icon => {
-      icon.classList.remove('drag-over');
-    });
-    
-    // Remove placeholder
-    removePlaceholder();
-    
-    // Remove global drag over listener
-    document.removeEventListener('dragover', handleGlobalDragOver);
-    
-    // Reset state
-    dragState.sourceId = null;
-    dragState.sourceElement = null;
-    dragState.sourceOrderIndex = -1;
-    dragState.placeholder = null;
-    dragState.placeholderIndex = -1;
+    cleanupDragSession();
   }
 
   // Drag over handler (fires when cursor is over an icon).  It is
