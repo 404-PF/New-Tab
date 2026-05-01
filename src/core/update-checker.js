@@ -41,7 +41,17 @@ class UpdateChecker {
   // Get last check time
   getLastCheckTime() {
     const time = localStorage.getItem('lastUpdateCheck');
-    return time ? parseInt(time) : 0;
+    if (!time) {
+      return 0;
+    }
+
+    const parsedTime = Number(time);
+    if (!Number.isSafeInteger(parsedTime) || parsedTime < 0 || parsedTime > Date.now()) {
+      localStorage.setItem('lastUpdateCheck', '0');
+      return 0;
+    }
+
+    return parsedTime;
   }
 
   // Set last check time
