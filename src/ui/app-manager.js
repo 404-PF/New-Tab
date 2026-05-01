@@ -35,11 +35,23 @@ const addApp = document.getElementById('new-app');
   Array.from(appGrid.children).forEach(child => { if (child.id !== 'new-app') appGrid.removeChild(child); });
   let order = getAppOrder();
   const allApps = getAllAppData();
-  if (!order || order.length !== allApps.length) {
-    order = allApps.map(app => app.id);
+  // Deduplicate by id so corrupted storage can't permanently invalidate the order
+  const seenIds = new Set();
+  const dedupedApps = allApps.filter(app => {
+    if (seenIds.has(app.id)) return false;
+    seenIds.add(app.id);
+    return true;
+  });
+  const validIds = new Set(dedupedApps.map(app => app.id));
+  const isValidOrder = Array.isArray(order)
+    && order.length === dedupedApps.length
+    && order.every(id => validIds.has(id))
+    && new Set(order).size === order.length;
+  if (!isValidOrder) {
+    order = dedupedApps.map(app => app.id);
     saveAppOrder(order);
   }
-  const appMap = Object.fromEntries(allApps.map(app => [app.id, app]));
+  const appMap = Object.fromEntries(dedupedApps.map(app => [app.id, app]));
   order.forEach(appId => {
     const app = appMap[appId];
     if (!app) return;
