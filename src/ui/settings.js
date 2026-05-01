@@ -5,6 +5,47 @@ function loadBg() {
   return localStorage.getItem("homepageBg") || "Water Beside Forest";
 }
 
+let initialBackgroundApplied = false;
+
+function syncBackgroundSelection() {
+  const bg = loadBg();
+  document.body.setAttribute("data-bg", bg);
+
+  const thumbs = document.querySelectorAll('.bg-thumb');
+  for (let i = 0; i < thumbs.length; i++) {
+    thumbs[i].classList.toggle('selected', thumbs[i].getAttribute('data-bg') === bg);
+  }
+
+  return bg;
+}
+
+function setBackgroundSectionLoadingState(isLoading) {
+  const loadingEl = document.getElementById('bg-loading-state');
+  if (loadingEl) {
+    loadingEl.hidden = !isLoading;
+  }
+}
+
+function scheduleBackgroundInitialization(callback) {
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(callback, { timeout: 1000 });
+    return;
+  }
+
+  window.setTimeout(callback, 0);
+}
+
+function scheduleBackgroundSectionInitialization(callback) {
+  if (typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(() => {
+      window.setTimeout(callback, 0);
+    });
+    return;
+  }
+
+  window.setTimeout(callback, 0);
+}
+
 // Check if browser supports video
 function supportsVideo() {
   const video = document.createElement('video');
@@ -148,14 +189,8 @@ if (document.readyState === 'loading') {
 }
 
 function applyBg() {
-  const bg = loadBg();
-  document.body.setAttribute("data-bg", bg);
-
-  // Update thumbnail selection
-  const thumbs = document.querySelectorAll('.bg-thumb');
-  for (let i = 0; i < thumbs.length; i++) {
-    thumbs[i].classList.toggle('selected', thumbs[i].getAttribute('data-bg') === bg);
-  }
+  const bg = syncBackgroundSelection();
+  initialBackgroundApplied = true;
 
   const thumbnailEl = document.getElementById('bg-thumbnail');
   const fullEl = document.getElementById('bg-full');
@@ -713,6 +748,7 @@ const settingsMenu = document.querySelector(".settings-menu");
 let settingsMenuItems = [];
 const settingsSections = document.querySelectorAll(".settings-section"); // This will include the About section if present in HTML
 let backgroundsInitialized = false;
+let backgroundsInitializing = false;
 
 if (settingsMenu) {
   // Collect menu items, sort them alphabetically by their visible label,
@@ -738,15 +774,27 @@ if (settingsMenu) {
         }
       });
       // Lazy load backgrounds
-      if (section === 'background' && !backgroundsInitialized) {
-        backgroundsInitialized = true;
-        if (window._initBackgrounds) window._initBackgrounds();
-        if (window._initStaticBackgrounds) window._initStaticBackgrounds();
-        if (window._initLiveBackgrounds) window._initLiveBackgrounds();
-        // Render custom backgrounds
-        if (window._customBackgrounds) window._customBackgrounds.render();
-        // Apply background selection after loading
-        applyBg();
+      if (section === 'background' && !backgroundsInitialized && !backgroundsInitializing) {
+        backgroundsInitializing = true;
+        setBackgroundSectionLoadingState(true);
+        scheduleBackgroundSectionInitialization(function () {
+          try {
+            if (window._initStaticBackgrounds) window._initStaticBackgrounds();
+            if (window._initLiveBackgrounds) window._initLiveBackgrounds();
+            if (window._customBackgrounds) window._customBackgrounds.render();
+
+            if (initialBackgroundApplied) {
+              syncBackgroundSelection();
+            } else {
+              applyBg();
+            }
+
+            backgroundsInitialized = true;
+          } finally {
+            backgroundsInitializing = false;
+            setBackgroundSectionLoadingState(false);
+          }
+        });
       }
       // No special logic needed for 'about' tab, just show the section
     });
@@ -912,7 +960,11 @@ window.addEventListener('languageChanged', initAboutSection);
 
 function initSettings() {
   // Apply initial settings
-  applyBg();
+  scheduleBackgroundInitialization(function () {
+    if (!initialBackgroundApplied) {
+      applyBg();
+    }
+  });
   applyClockStyle();
   applyClockFormatSetting();
   applyDateStyle();

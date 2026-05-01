@@ -1284,6 +1284,36 @@ body.light-theme .drag-placeholder {
   margin-top: 8px;
   margin-bottom: 16px;
 }
+
+.bg-loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 68px;
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+
+.bg-loading-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(148, 163, 184, 0.28);
+  border-top-color: #2196f3;
+  animation: bgLoadingSpin 0.8s linear infinite;
+}
+
+@keyframes bgLoadingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+body.light-theme .bg-loading-spinner {
+  border-color: rgba(0, 0, 0, 0.16);
+  border-top-color: #2196f3;
+}
+
 .bg-thumb {
   width: 64px;
   height: 64px;
