@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.4.5 (unreleased)
+
+### Bug Fixes
+- Fix(app): validate saved appOrder content, not just length, to prevent hidden apps (#112)
+
 ## v0.4.3 (2026-04-28)
 
 ### Bug Fixes
