@@ -253,6 +253,7 @@ function runSearch(query) {
 
   if (validation.status === "malformed") {
     showSearchValidationFeedback(translateValidationMessage(validation.message));
+    return;
   }
 
   runDefaultSearch(query);
