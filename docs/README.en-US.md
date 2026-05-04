@@ -8,11 +8,11 @@
 
 Chrome Web Store copy: [en-US](CHROME-WEB-STORE.en-US.md) | [zh-CN](CHROME-WEB-STORE.zh-CN.md)
 
-A personalized new tab extension for Chromium-based browsers. It replaces the default new tab page with a customizable dashboard for search, shortcuts, backgrounds, todos, onboarding, and AI assistance.
+A personalized new tab extension for Chromium-based browsers. It replaces the default new tab page with a customizable dashboard for shortcuts, backgrounds, todos, onboarding, and AI assistance, plus an optional search box that uses your browser's default search provider.
 
 ## ✨ Highlights
 - Clock, date, and daily motto on a clean dashboard
-- Search bar that uses your browser's default search provider
+- Optional search box that uses your browser's default search provider
 - App grid with built-in actions, custom shortcuts, and drag-and-drop ordering
 - Static and live backgrounds, including uploaded images and videos
 - Todo list with due dates, overdue state, filters, and progress tracking

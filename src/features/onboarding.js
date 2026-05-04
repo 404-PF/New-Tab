@@ -86,8 +86,8 @@ class OnboardingTour {
       },
       {
         id: 'search',
-        title: window.i18n ? window.i18n.t('onboardingSearchTitle') : 'Smart Search',
-        content: window.i18n ? window.i18n.t('onboardingSearchContent') : "Search the web directly from your new tab. Results use your browser's default search provider.",
+        title: window.i18n ? window.i18n.t('onboardingSearchTitle') : 'Web Search',
+        content: window.i18n ? window.i18n.t('onboardingSearchContent') : "Search the web from your new tab using your browser's default search provider.",
         target: '.search-bar',
         position: 'bottom',
         action: null,
