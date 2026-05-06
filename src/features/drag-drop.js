@@ -10,7 +10,9 @@
     sourceOrderIndex: -1,
     placeholder: null,
     placeholderIndex: -1,
-    dropIndex: -1
+    dropIndex: -1,
+    // Cached layout measured at drag start to avoid repeated reflows
+    cachedLayout: null
   };
 
   // Get container element
@@ -43,19 +45,39 @@
     const paddingLeft = parseInt(style.paddingLeft) || 70;
     const paddingRight = parseInt(style.paddingRight) || 70;
     
+    const rawWidth = grid.offsetWidth;
+    const gridWidth = rawWidth - paddingLeft - paddingRight;
+
+    // If the grid hasn't been laid out (hidden, display:none, or zero width),
+    // abort layout calculations so callers can handle it gracefully.
+    if (!isFinite(gridWidth) || gridWidth <= 0) {
+      return null;
+    }
+
     return {
       columnGap,
       rowGap,
       paddingLeft,
       paddingRight,
-      gridWidth: grid.offsetWidth - paddingLeft - paddingRight
+      gridWidth
     };
+  }
+
+  // Update the cached layout while a drag session is active
+  function updateCachedLayout() {
+    dragState.cachedLayout = getGridLayout();
+  }
+
+  // On resize while dragging, refresh cached layout
+  function handleLayoutResize() {
+    if (!dragState.sourceId) return;
+    updateCachedLayout();
   }
 
   // Calculate the drop index based on mouse position
   function calculateDropIndex(e) {
     const grid = getAppGrid();
-    const layout = getGridLayout();
+    const layout = dragState.cachedLayout || getGridLayout();
     if (!grid || !layout) return -1;
     
     const icons = getDraggableIcons();
@@ -63,12 +85,19 @@
     
     // Get the first icon to calculate item dimensions
     const firstIcon = icons[0];
-    const itemWidth = firstIcon.offsetWidth + layout.columnGap;
-    const itemsPerRow = Math.floor((layout.gridWidth + layout.columnGap) / itemWidth) || 1;
-    
+    const firstWidth = firstIcon.offsetWidth || firstIcon.clientWidth;
+    const itemWidth = firstWidth + layout.columnGap;
+    if (!isFinite(itemWidth) || itemWidth <= 0) return -1;
+
+    const itemsPerRow = Math.max(1, Math.floor((layout.gridWidth + layout.columnGap) / itemWidth));
+
     // Get grid bounding rect
     const gridRect = grid.getBoundingClientRect();
-    
+    if (!gridRect || gridRect.width <= 0) return -1;
+
+    // Validate event coordinates
+    if (!isFinite(e.clientX) || !isFinite(e.clientY)) return -1;
+
     // Calculate position relative to grid
     const relativeX = e.clientX - gridRect.left - layout.paddingLeft;
     // NOTE: the || operator had lower precedence, causing a constant 30 when
@@ -104,8 +133,11 @@
   function createPlaceholder(sourceElement) {
     const placeholder = document.createElement('div');
     placeholder.className = 'drag-placeholder';
-    placeholder.style.width = sourceElement.offsetWidth + 'px';
-    placeholder.style.height = sourceElement.offsetHeight + 'px';
+    const computed = window.getComputedStyle(sourceElement);
+    const width = sourceElement.offsetWidth || parseFloat(computed.width) || 40;
+    const height = sourceElement.offsetHeight || parseFloat(computed.height) || 40;
+    placeholder.style.width = width + 'px';
+    placeholder.style.height = height + 'px';
     return placeholder;
   }
 
@@ -200,6 +232,7 @@
     window.removeEventListener('blur', handleDragAbort);
     window.removeEventListener('pagehide', handleDragAbort);
     document.removeEventListener('visibilitychange', handleDragAbort);
+    window.removeEventListener('resize', handleLayoutResize);
 
     dragState.sourceId = null;
     dragState.sourceElement = null;
@@ -207,6 +240,7 @@
     dragState.placeholder = null;
     dragState.placeholderIndex = -1;
     dragState.dropIndex = -1;
+    dragState.cachedLayout = null;
   }
 
   function handleDragAbort(e) {
@@ -263,6 +297,10 @@
     dragState.placeholderIndex = dragState.sourceOrderIndex;
     dragState.dropIndex = getOrderIndexFromPlaceholderIndex(dragState.placeholderIndex);
 
+    // Cache layout measurements at drag start to avoid repeated reflows
+    dragState.cachedLayout = getGridLayout();
+    window.addEventListener('resize', handleLayoutResize);
+
     // Use requestAnimationFrame so the browser captures the drag image
     // before we replace the source slot with a placeholder.
     requestAnimationFrame(() => {
@@ -287,10 +325,16 @@
 
   // Handle global drag over for placeholder positioning
   function handleGlobalDragOver(e) {
-    e.preventDefault();
     const newIndex = calculateDropIndex(e);
-    
-    if (newIndex !== dragState.placeholderIndex && newIndex >= 0) {
+
+    // If layout isn't ready, remove placeholder and allow default handling.
+    if (newIndex < 0) {
+      removePlaceholder();
+      return;
+    }
+
+    e.preventDefault();
+    if (newIndex !== dragState.placeholderIndex) {
       insertPlaceholder(newIndex);
     }
   }
@@ -305,6 +349,12 @@
   // space; the global dragover listener already handles placeholder
   // positioning in that case.
   function handleDragOver(e, target) {
+    // Guard against unstable/hidden layouts - skip placeholder math
+    if (calculateDropIndex(e) < 0) {
+      removePlaceholder();
+      return;
+    }
+
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
 
@@ -325,7 +375,9 @@
 
   // Drag leave handler
   function handleDragLeave(e, target) {
-    target.classList.remove('drag-over');
+    if (target) {
+      target.classList.remove('drag-over');
+    }
   }
 
   // Drop handler
