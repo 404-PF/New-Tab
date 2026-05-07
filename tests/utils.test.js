@@ -78,6 +78,26 @@ describe('URL validation', () => {
     expect(result.status).toBe('malformed');
   });
 
+  it('rejects out-of-range IPv4 with path', () => {
+    const result = validateUrl('256.0.0.1/foo');
+    expect(result.status).toBe('malformed');
+  });
+
+  it('rejects out-of-range IPv4 with query', () => {
+    const result = validateUrl('999.999.999.999?x=1');
+    expect(result.status).toBe('malformed');
+  });
+
+  it('rejects out-of-range IPv4 with protocol', () => {
+    const result = validateUrl('http://256.0.0.1');
+    expect(result.status).toBe('malformed');
+  });
+
+  it('validates IPv4 with path', () => {
+    const result = validateUrl('192.168.1.1/path');
+    expect(result.status).toBe('valid');
+  });
+
   it('rejects invalid hostname characters', () => {
     const result = validateUrl('exa_mple.com');
     expect(result.status).toBe('malformed');
