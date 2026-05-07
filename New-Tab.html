@@ -12,6 +12,9 @@
   <script src="src/core/version.js" defer></script>
   </head>
 <body>
+  <!-- Weather Widget -->
+  <div id="weather-widget" class="weather-widget" style="display: none;"></div>
+
   <!-- Simple Mode Toggle -->
   <div id="simple-mode-toggle" class="simple-mode-toggle" title="Simple Mode">
     <span class="simple-mode-label" data-i18n="simpleMode">Simple</span>
@@ -212,6 +215,9 @@
           <button class="settings-menu-item" data-section="apps" data-i18n="apps">Apps</button>
           <button class="settings-menu-item" data-section="clock" data-i18n="clock">
             Clock
+          </button>
+          <button class="settings-menu-item" data-section="weather" data-i18n="weather">
+            Weather
           </button>
           <button class="settings-menu-item" data-section="themes" data-i18n="themes">
             Themes
@@ -619,6 +625,101 @@
               </div>
             </div>
           </section>
+          <section class="settings-section" data-section="weather" style="display: none">
+            <div class="weather-setting-group">
+              <h4 data-i18n="weatherSettings">Weather</h4>
+              <p data-i18n="weatherSettingsDesc">Configure weather widget display</p>
+              <div class="weather-options">
+                <div class="weather-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                      <polyline points="15,3 21,3 21,9"></polyline>
+                      <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="weather-enabled-setting" data-i18n="enableWeatherWidget">Enable weather widget</label>
+                      <input type="checkbox" id="weather-enabled-setting" />
+                    </div>
+                  </div>
+                </div>
+                <div class="weather-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <path d="m12 1 0 6"></path>
+                      <path d="m12 17 0 6"></path>
+                      <path d="m21 12-6 0"></path>
+                      <path d="m3 12 6 0"></path>
+                      <path d="m18.36 5.64-4.24 4.24"></path>
+                      <path d="m5.64 18.36 4.24-4.24"></path>
+                      <path d="m18.36 18.36-4.24-4.24"></path>
+                      <path d="m5.64 5.64 4.24 4.24"></path>
+                    </svg>
+                    <div class="setting-content">
+                      <label data-i18n="weatherUnit">Temperature Unit</label>
+                      <div class="unit-choice-group" data-unit-group="weather">
+                        <label class="unit-choice-label">
+                          <input type="radio" name="weather-unit" id="weather-unit-celsius" value="celsius" checked />
+                          <span data-i18n="weatherCelsius">Celsius</span>
+                        </label>
+                        <label class="unit-choice-label">
+                          <input type="radio" name="weather-unit" id="weather-unit-fahrenheit" value="fahrenheit" />
+                          <span data-i18n="weatherFahrenheit">Fahrenheit</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="weather-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M16.2 7.8l-2 6.3l-6.4 2.1l2-6.3z"></path>
+                    </svg>
+                    <div class="setting-content">
+                      <label data-i18n="weatherLocation">Location</label>
+                      <div class="location-choice-group" data-location-group="weather">
+                        <label class="location-choice-label">
+                          <input type="radio" name="weather-mode" id="weather-mode-auto" value="auto" checked />
+                          <span data-i18n="weatherAutoDetect">Auto-detect</span>
+                        </label>
+                        <label class="location-choice-label">
+                          <input type="radio" name="weather-mode" id="weather-mode-manual" value="manual" />
+                          <span data-i18n="weatherManual">Manual</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="weather-option" id="weather-manual-group">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="weather-manual-city" data-i18n="weatherCityPlaceholder">City name</label>
+                      <input type="text" id="weather-manual-city" data-i18n-placeholder="weatherCityPlaceholder" placeholder="Enter city name" />
+                    </div>
+                  </div>
+                </div>
+                <div class="weather-option">
+                  <div class="setting-card reset-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                      <path d="M21 3v5h-5"></path>
+                      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                      <path d="M3 21v-5h5"></path>
+                    </svg>
+                    <div class="setting-content">
+                      <button id="weather-refresh-btn" data-i18n="weatherRefresh">Refresh Weather</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
           <section class="settings-section" data-section="about" style="display: none"></section>
         </div>
       </div>
@@ -1019,6 +1120,7 @@
 <script src="src/ai/ai-store.js"></script>
 <script src="src/ai/ai-renderer.js"></script>
 <script src="src/ai/ai-service.js"></script>
+<script src="src/features/weather.js"></script>
   <!-- Motto area -->
   <div id="motto-container">
     <span id="motto-text">Loading...</span>
