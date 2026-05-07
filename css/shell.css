@@ -1,0 +1,589 @@
+/* Shell, tooltip, and add-app modal scaffolding */
+
+/* Disable browser default tooltips while preserving interactivity */
+*[title] {
+  /* Use empty title to prevent tooltips without blocking pointer events */
+  pointer-events: auto;
+}
+
+/* For elements that should never show tooltips, use empty title attribute */
+/* This is handled via JavaScript - elements with title="" won't show tooltips */
+
+#motto-container {
+  position: fixed;
+  bottom: 10px;
+
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: fit-content;
+  max-width: min(800px, calc(100% - 40px));
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  color: #666;
+  padding: 2px 12px;
+  background: rgb(200, 200, 200);
+  z-index: 1999;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  user-select: none;
+}
+
+#motto-text {
+  display: block;
+  text-align: center;
+  font-size: 0.7em;
+}
+
+.motto-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+#refresh-motto-btn,
+#copy-motto-btn {
+  color: #343232;
+  background: rgb(200, 200, 200);
+  padding: 2px 5px;
+  border: none;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#refresh-motto-btn:hover,
+#copy-motto-btn:hover {
+  background: rgba(33, 150, 243, 0.15);
+  transform: scale(1.08) translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+
+#refresh-motto-btn:active,
+#copy-motto-btn:active {
+  transform: scale(0.96) translateY(0);
+}
+
+.footer-left {
+  position: fixed;
+  bottom: 10px;
+  left: 20px;
+  color: #888;
+  font-size: 0.95em;
+  z-index: 2000;
+  transition: opacity 0.3s ease;
+}
+.footer-link {
+  color: #888;
+  text-decoration: none;
+}
+.footer-right {
+  position: fixed;
+  bottom: 10px;
+  right: 20px;
+  color: #888;
+  font-size: 0.95em;
+  z-index: 2000;
+  user-select: none;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.add-app-actions {
+  text-align: right;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Modern Add App Modal Styles */
+#add-app-modal > div {
+  padding: 28px 24px;
+  min-width: 520px;
+}
+
+.add-app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.add-app-header-icon {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  animation: iconPulse 3s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%,
+  100% {
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 30px rgba(139, 92, 246, 0.5);
+  }
+}
+
+.add-app-header-icon svg {
+  width: 26px;
+  height: 26px;
+  color: white;
+}
+
+.add-app-header-text h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.3em;
+  font-weight: 600;
+  color: rgba(203, 213, 225, 0.95);
+}
+
+.add-app-header-text p {
+  margin: 0;
+  font-size: 0.85em;
+  color: rgba(203, 213, 225, 0.5);
+}
+
+.add-app-input-wrapper {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.add-app-input-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.add-app-input-icon {
+  position: absolute;
+  left: 14px;
+  top: 23%;
+  width: 20px;
+  height: 20px;
+  color: rgba(203, 213, 225, 0.5);
+  pointer-events: none;
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.add-app-input-container input {
+  padding-left: 44px !important;
+  padding-right: 44px;
+  width: 100%;
+}
+
+.add-app-input-container:focus-within .add-app-input-icon {
+  color: #2196f3;
+}
+
+.add-app-input-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.add-app-url-validation {
+  position: absolute;
+  right: 14px;
+  top: 40%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.add-app-url-validation.show {
+  opacity: 1;
+}
+
+.add-app-url-validation.valid .valid-icon {
+  display: block;
+  color: #4caf50;
+}
+
+.add-app-url-validation.valid .invalid-icon {
+  display: none;
+}
+
+.add-app-url-validation.invalid .valid-icon {
+  display: none;
+}
+
+.add-app-url-validation.invalid .invalid-icon {
+  display: block;
+  color: #f44336;
+}
+
+.add-app-url-validation svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Validation Message Styles */
+.add-app-validation-message {
+  font-size: 12px;
+  padding: 8px 12px;
+  margin-top: -8px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.2s ease;
+}
+
+.add-app-validation-message.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.add-app-validation-message.malformed,
+.add-app-validation-message.undetectable {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.2);
+}
+
+/* Search Bar Validation Feedback */
+.search-validation-feedback {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.85);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.search-validation-feedback.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.search-bar {
+  position: relative;
+}
+
+body.light-theme .add-app-validation-message.malformed,
+body.light-theme .add-app-validation-message.undetectable {
+  color: #dc3545;
+  background: rgba(220, 53, 69, 0.08);
+  border-color: rgba(220, 53, 69, 0.2);
+}
+
+body.light-theme .search-validation-feedback {
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Preview Section */
+.add-app-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.add-app-preview.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.add-app-preview.valid {
+  border-color: rgba(76, 175, 80, 0.3);
+  background: rgba(76, 175, 80, 0.05);
+}
+
+.add-app-preview.invalid {
+  border-color: rgba(244, 67, 54, 0.3);
+  background: rgba(244, 67, 54, 0.05);
+}
+
+.add-app-preview-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.add-app-preview-icon svg {
+  width: 22px;
+  height: 22px;
+  color: rgba(203, 213, 225, 0.6);
+}
+
+.add-app-preview-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.add-app-preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.preview-name {
+  font-size: 0.95em;
+  font-weight: 600;
+  color: rgba(203, 213, 225, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-url {
+  font-size: 0.8em;
+  color: rgba(203, 213, 225, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Quick Add Section */
+.add-app-section {
+  margin-bottom: 24px;
+}
+
+.add-app-section h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: rgba(203, 213, 225, 0.8);
+}
+
+.add-app-section > p {
+  margin: 0 0 12px 0;
+  font-size: 0.8em;
+  color: rgba(203, 213, 225, 0.5);
+}
+
+#default-apps-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quick-add-btn:hover {
+  background: rgba(33, 150, 243, 0.1);
+  border-color: rgba(33, 150, 243, 0.3);
+  transform: translateY(-2px);
+}
+
+.quick-add-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quick-add-icon svg {
+  width: 18px;
+  height: 18px;
+  color: rgba(203, 213, 225, 0.6);
+}
+
+.quick-add-icon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.quick-add-name {
+  font-size: 0.85em;
+  color: rgba(203, 213, 225, 0.8);
+  font-weight: 500;
+}
+
+/* Action Buttons */
+.add-app-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.95em;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.add-app-actions button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(203, 213, 225, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Light Theme Add App Modal */
+body.light-theme .add-app-header-icon {
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+}
+
+body.light-theme .add-app-header-text h3 {
+  color: #1f2937;
+}
+
+body.light-theme .add-app-header-text p {
+  color: rgba(55, 65, 81, 0.6);
+}
+
+body.light-theme .add-app-input-icon {
+  color: rgba(55, 65, 81, 0.5);
+}
+
+body.light-theme .add-app-input-container input {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #1f2937;
+}
+
+body.light-theme .add-app-input-container input:focus {
+  border-color: #2196f3;
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+body.light-theme .add-app-preview {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .add-app-preview.valid {
+  background: rgba(76, 175, 80, 0.08);
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+body.light-theme .add-app-preview.invalid {
+  background: rgba(244, 67, 54, 0.08);
+  border-color: rgba(244, 67, 54, 0.3);
+}
+
+body.light-theme .preview-name {
+  color: #1f2937;
+}
+
+body.light-theme .preview-url {
+  color: rgba(55, 65, 81, 0.6);
+}
+
+body.light-theme .add-app-section h4 {
+  color: #374151;
+}
+
+body.light-theme .add-app-section > p {
+  color: rgba(55, 65, 81, 0.6);
+}
+
+body.light-theme .quick-add-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .quick-add-btn:hover {
+  background: rgba(33, 150, 243, 0.08);
+  border-color: rgba(33, 150, 243, 0.2);
+}
+
+body.light-theme .quick-add-icon svg {
+  color: rgba(55, 65, 81, 0.6);
+}
+
+body.light-theme .quick-add-name {
+  color: #374151;
+}
+
+body.light-theme .btn-secondary {
+  background: rgba(0, 0, 0, 0.05);
+  color: #374151;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
+}
