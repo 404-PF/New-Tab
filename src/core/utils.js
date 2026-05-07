@@ -42,8 +42,9 @@ function validateHostname(hostname, detection, url, originalInput) {
     return createUrlValidationResult('malformed', null, 'Invalid URL: hostname contains invalid characters', originalInput);
   }
 
+  const isIpHostname = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
   const hostnameParts = hostname.split('.');
-  if (hostnameParts.length > 1) {
+  if (hostnameParts.length > 1 && !detection.isIP && !isIpHostname) {
     const tld = hostnameParts[hostnameParts.length - 1];
     if (tld.length < 2) {
       return createUrlValidationResult('malformed', null, 'Invalid URL: top-level domain too short', originalInput);
@@ -51,7 +52,7 @@ function validateHostname(hostname, detection, url, originalInput) {
     return null;
   }
 
-  if (!detection.isIP && !detection.isLocalhost && (url.port || url.pathname.length > 1)) {
+  if (!detection.isIP && !isIpHostname && !detection.isLocalhost && (url.port || url.pathname.length > 1)) {
     return createUrlValidationResult('malformed', null, 'Invalid URL: incomplete domain name', originalInput);
   }
 
