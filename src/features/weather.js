@@ -99,29 +99,100 @@
     return WEATHER_ICONS[type] || WEATHER_ICONS['clear'];
   }
 
-  // ===================== Cache Management =====================
+  // ===================== Storage =====================
 
-  function loadCache() {
-    if (currentCache) return currentCache;
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (!raw) return null;
-      currentCache = JSON.parse(raw);
-      return currentCache;
-    } catch (e) {
-      console.warn('Failed to parse weather cache:', e);
-      return null;
-    }
-  }
+  const WeatherStorage = {
+    loadEnabled() {
+      try {
+        return localStorage.getItem('weatherEnabled') === 'true';
+      } catch (e) {
+        console.warn('Failed to read weather enabled setting:', e);
+        return false;
+      }
+    },
 
-  function saveCache(cacheData) {
-    currentCache = cacheData;
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-    } catch (e) {
-      console.warn('Failed to save weather cache:', e);
+    saveEnabled(value) {
+      try {
+        localStorage.setItem('weatherEnabled', value ? 'true' : 'false');
+      } catch (e) {
+        console.warn('Failed to save weather enabled setting:', e);
+      }
+    },
+
+    loadUnit() {
+      try {
+        const unit = localStorage.getItem('weatherUnit');
+        return unit === 'fahrenheit' ? 'fahrenheit' : 'celsius';
+      } catch (e) {
+        console.warn('Failed to read weather unit setting:', e);
+        return 'celsius';
+      }
+    },
+
+    saveUnit(value) {
+      try {
+        localStorage.setItem('weatherUnit', value);
+      } catch (e) {
+        console.warn('Failed to save weather unit setting:', e);
+      }
+    },
+
+    loadLocationMode() {
+      try {
+        return localStorage.getItem('weatherLocationMode') || 'auto';
+      } catch (e) {
+        console.warn('Failed to read weather location mode setting:', e);
+        return 'auto';
+      }
+    },
+
+    saveLocationMode(value) {
+      try {
+        localStorage.setItem('weatherLocationMode', value);
+      } catch (e) {
+        console.warn('Failed to save weather location mode setting:', e);
+      }
+    },
+
+    loadManualCity() {
+      try {
+        return localStorage.getItem('weatherManualCity') || '';
+      } catch (e) {
+        console.warn('Failed to read weather manual city setting:', e);
+        return '';
+      }
+    },
+
+    saveManualCity(value) {
+      try {
+        localStorage.setItem('weatherManualCity', value);
+      } catch (e) {
+        console.warn('Failed to save weather manual city setting:', e);
+      }
+    },
+
+    loadCache() {
+      if (currentCache) return currentCache;
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        currentCache = JSON.parse(raw);
+        return currentCache;
+      } catch (e) {
+        console.warn('Failed to parse weather cache:', e);
+        return null;
+      }
+    },
+
+    saveCache(cacheData) {
+      currentCache = cacheData;
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+      } catch (e) {
+        console.warn('Failed to save weather cache:', e);
+      }
     }
-  }
+  };
 
   function isCacheValid(cache) {
     if (!cache || !cache.timestamp || !cache.data) return false;
@@ -131,8 +202,8 @@
 
   function isCacheMatchingSettings(cache) {
     if (!cache) return false;
-    const locationMode = loadWeatherLocationMode();
-    const manualCity = loadWeatherManualCity();
+    const locationMode = WeatherStorage.loadLocationMode();
+    const manualCity = WeatherStorage.loadManualCity();
     if (cache.locationMode !== locationMode) return false;
     if (locationMode === 'auto' && (cache.lat === undefined || cache.lon === undefined)) return false;
     if (locationMode === 'manual' && cache.manualCity !== manualCity.trim()) return false;
@@ -224,25 +295,6 @@
     });
   }
 
-  // ===================== Settings =====================
-
-  function loadWeatherEnabled() {
-    return localStorage.getItem('weatherEnabled') === 'true';
-  }
-
-  function loadWeatherUnit() {
-    const unit = localStorage.getItem('weatherUnit');
-    return unit === 'fahrenheit' ? 'fahrenheit' : 'celsius';
-  }
-
-  function loadWeatherLocationMode() {
-    return localStorage.getItem('weatherLocationMode') || 'auto';
-  }
-
-  function loadWeatherManualCity() {
-    return localStorage.getItem('weatherManualCity') || '';
-  }
-
   // ===================== DOM Rendering =====================
 
   function getWidgetElement() {
@@ -250,7 +302,7 @@
   }
 
   function renderLoading() {
-    if (!loadWeatherEnabled()) {
+    if (!WeatherStorage.loadEnabled()) {
       hideWidget();
       return;
     }
@@ -265,7 +317,7 @@
   }
 
   function renderError(message) {
-    if (!loadWeatherEnabled()) {
+    if (!WeatherStorage.loadEnabled()) {
       hideWidget();
       return;
     }
@@ -286,7 +338,7 @@
   }
 
   function renderWeather(data, locationName, unit) {
-    if (!loadWeatherEnabled()) {
+    if (!WeatherStorage.loadEnabled()) {
       hideWidget();
       return;
     }
@@ -345,17 +397,17 @@
   }
 
   async function refreshWeather(force = false) {
-    if (!loadWeatherEnabled()) {
+    if (!WeatherStorage.loadEnabled()) {
       hideWidget();
       return;
     }
 
-    const unit = loadWeatherUnit();
-    const locationMode = loadWeatherLocationMode();
-    const manualCity = loadWeatherManualCity();
+    const unit = WeatherStorage.loadUnit();
+    const locationMode = WeatherStorage.loadLocationMode();
+    const manualCity = WeatherStorage.loadManualCity();
 
     // Check cache first (unless forced)
-    const cache = loadCache();
+    const cache = WeatherStorage.loadCache();
     if (!force && cache && isCacheValid(cache) && isCacheMatchingSettings(cache)) {
       renderWeather(cache.data, cache.locationName, unit);
       return;
@@ -422,7 +474,7 @@
         locationName: locationDisplay
       };
 
-      saveCache(newCache);
+      WeatherStorage.saveCache(newCache);
       renderWeather(weatherData, newCache.locationName, unit);
     } catch (e) {
       console.error('Weather refresh failed:', e);
@@ -442,7 +494,7 @@
   }
 
   function initWeather() {
-    const enabled = loadWeatherEnabled();
+    const enabled = WeatherStorage.loadEnabled();
     if (!enabled) {
       hideWidget();
       return;
@@ -462,10 +514,10 @@
   // ===================== Settings Integration =====================
 
   function applyWeatherSettings() {
-    const enabled = loadWeatherEnabled();
-    const unit = loadWeatherUnit();
-    const locationMode = loadWeatherLocationMode();
-    const manualCity = loadWeatherManualCity();
+    const enabled = WeatherStorage.loadEnabled();
+    const unit = WeatherStorage.loadUnit();
+    const locationMode = WeatherStorage.loadLocationMode();
+    const manualCity = WeatherStorage.loadManualCity();
 
     // Update UI controls if they exist
     const enabledCheckbox = document.getElementById('weather-enabled-setting');
@@ -507,11 +559,7 @@
 
     if (enabledCheckbox) {
       enabledCheckbox.addEventListener('change', function() {
-        try {
-          localStorage.setItem('weatherEnabled', this.checked);
-        } catch (e) {
-          console.warn('Failed to save weather setting:', e);
-        }
+        WeatherStorage.saveEnabled(this.checked);
         applyWeatherSettings();
       });
     }
@@ -519,12 +567,8 @@
     if (unitCelsius) {
       unitCelsius.addEventListener('change', function() {
         if (this.checked) {
-          try {
-            localStorage.setItem('weatherUnit', 'celsius');
-          } catch (e) {
-            console.warn('Failed to save weather unit:', e);
-          }
-          const cache = loadCache();
+          WeatherStorage.saveUnit('celsius');
+          const cache = WeatherStorage.loadCache();
           if (cache && cache.data && isCacheMatchingSettings(cache)) {
             renderWeather(cache.data, cache.locationName, 'celsius');
           } else {
@@ -537,12 +581,8 @@
     if (unitFahrenheit) {
       unitFahrenheit.addEventListener('change', function() {
         if (this.checked) {
-          try {
-            localStorage.setItem('weatherUnit', 'fahrenheit');
-          } catch (e) {
-            console.warn('Failed to save weather unit:', e);
-          }
-          const cache = loadCache();
+          WeatherStorage.saveUnit('fahrenheit');
+          const cache = WeatherStorage.loadCache();
           if (cache && cache.data && isCacheMatchingSettings(cache)) {
             renderWeather(cache.data, cache.locationName, 'fahrenheit');
           } else {
@@ -555,11 +595,7 @@
     if (modeAuto) {
       modeAuto.addEventListener('change', function() {
         if (this.checked) {
-          try {
-            localStorage.setItem('weatherLocationMode', 'auto');
-          } catch (e) {
-            console.warn('Failed to save weather location mode:', e);
-          }
+          WeatherStorage.saveLocationMode('auto');
           const manualGroup = document.getElementById('weather-manual-group');
           if (manualGroup) manualGroup.style.display = 'none';
           refreshWeather(true);
@@ -570,11 +606,7 @@
     if (modeManual) {
       modeManual.addEventListener('change', function() {
         if (this.checked) {
-          try {
-            localStorage.setItem('weatherLocationMode', 'manual');
-          } catch (e) {
-            console.warn('Failed to save weather location mode:', e);
-          }
+          WeatherStorage.saveLocationMode('manual');
           const manualGroup = document.getElementById('weather-manual-group');
           if (manualGroup) manualGroup.style.display = 'block';
           refreshWeather(true);
@@ -587,23 +619,15 @@
         if (event.key === 'Enter') {
           event.preventDefault();
           const trimmed = this.value.trim();
-          if (trimmed === loadWeatherManualCity()) return;
-          try {
-            localStorage.setItem('weatherManualCity', trimmed);
-          } catch (e) {
-            console.warn('Failed to save manual city:', e);
-          }
+          if (trimmed === WeatherStorage.loadManualCity()) return;
+          WeatherStorage.saveManualCity(trimmed);
           refreshWeather(true);
         }
       });
       manualInput.addEventListener('blur', function() {
         const trimmed = this.value.trim();
-        if (trimmed === loadWeatherManualCity()) return;
-        try {
-          localStorage.setItem('weatherManualCity', trimmed);
-        } catch (e) {
-          console.warn('Failed to save manual city:', e);
-        }
+        if (trimmed === WeatherStorage.loadManualCity()) return;
+        WeatherStorage.saveManualCity(trimmed);
         refreshWeather(true);
       });
     }
@@ -619,11 +643,17 @@
 
   // Listen for language changes
   window.addEventListener('languageChanged', function() {
-    if (!loadWeatherEnabled()) return;
+    if (!WeatherStorage.loadEnabled()) return;
     if (isRefreshing) return;
-    const cache = loadCache();
+    const cache = WeatherStorage.loadCache();
     if (cache && cache.data && isCacheValid(cache) && isCacheMatchingSettings(cache)) {
-      renderWeather(cache.data, cache.locationName, loadWeatherUnit());
+      // Manual mode location labels come from the geocoding API and are
+      // language-specific, so re-fetch to get the new translation.
+      if (WeatherStorage.loadLocationMode() === 'manual') {
+        refreshWeather(true);
+      } else {
+        renderWeather(cache.data, cache.locationName, WeatherStorage.loadUnit());
+      }
     } else {
       refreshWeather();
     }
@@ -649,10 +679,10 @@
   window.WeatherWidget = {
     init: initWeather,
     refresh: refreshWeather,
-    loadEnabled: loadWeatherEnabled,
-    loadUnit: loadWeatherUnit,
-    loadLocationMode: loadWeatherLocationMode,
-    loadManualCity: loadWeatherManualCity,
+    loadEnabled: WeatherStorage.loadEnabled,
+    loadUnit: WeatherStorage.loadUnit,
+    loadLocationMode: WeatherStorage.loadLocationMode,
+    loadManualCity: WeatherStorage.loadManualCity,
     applySettings: applyWeatherSettings
   };
 
