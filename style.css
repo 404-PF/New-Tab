@@ -673,6 +673,29 @@ body.light-theme .btn-secondary:hover {
   transition: opacity 1.2s ease-in;
 }
 
+/* Interactive background overlay */
+.background-interactive {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 4;
+  opacity: 0;
+  transition:
+    opacity 0.45s ease,
+    filter 0.45s ease;
+  mix-blend-mode: screen;
+  filter: saturate(1.08) contrast(1.04);
+}
+
+.background-container.interactive-active .background-interactive {
+  opacity: 1;
+}
+
 /* When full image is loaded */
 .background-full.loaded {
   opacity: 1;
@@ -1331,6 +1354,10 @@ body.light-theme .bg-loading-spinner {
 }
 .bg-thumb.selected {
   border: 2px solid #2196f3;
+}
+
+.bg-thumb.bg-thumb-interactive {
+  border-color: rgba(96, 165, 250, 0.12);
 }
 
 /* Subsection headers */
