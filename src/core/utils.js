@@ -98,7 +98,7 @@ function validateUrl(input) {
     }
 
     const isIpHostname = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
-    if (detection.isIP || isIpHostname) {
+    if (isIpHostname) {
       const ipValidation = validateIpv4Hostname(hostname, originalInput);
       if (ipValidation) {
         return ipValidation;

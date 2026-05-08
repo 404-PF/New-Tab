@@ -39,7 +39,11 @@ const localStorageMock = {
   }
 };
 
-globalThis.localStorage = localStorageMock;
+Object.defineProperty(globalThis, 'localStorage', {
+  value: localStorageMock,
+  writable: true,
+  configurable: true
+});
 
 // ------------------------------------------------------------------
 // chrome API mock
@@ -53,7 +57,13 @@ globalThis.chrome = {
 // ------------------------------------------------------------------
 // window.i18n mock
 // ------------------------------------------------------------------
-globalThis.window = globalThis.window || globalThis;
+if (!globalThis.window) {
+  Object.defineProperty(globalThis, 'window', {
+    value: globalThis,
+    writable: true,
+    configurable: true
+  });
+}
 
 globalThis.window.i18n = {
   currentLanguage() {
