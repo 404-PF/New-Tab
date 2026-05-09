@@ -47,8 +47,17 @@
   }
 
   function clampParticleToBounds(particle) {
-    particle.x = clamp(particle.x, 0, width);
-    particle.y = clamp(particle.y, 0, height);
+    if (particle.x < 0) {
+      particle.x = 0;
+    } else if (particle.x > width) {
+      particle.x = width;
+    }
+
+    if (particle.y < 0) {
+      particle.y = 0;
+    } else if (particle.y > height) {
+      particle.y = height;
+    }
   }
 
   function supportsCanvas() {
@@ -74,6 +83,10 @@
 
     while (particles.length < count) {
       particles.push(createParticle());
+    }
+
+    while (particles.length > count) {
+      particles.pop();
     }
 
     for (let index = 0; index < particles.length; index += 1) {
