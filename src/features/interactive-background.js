@@ -46,6 +46,11 @@
     };
   }
 
+  function clampParticleToBounds(particle) {
+    particle.x = clamp(particle.x, 0, width);
+    particle.y = clamp(particle.y, 0, height);
+  }
+
   function supportsCanvas() {
     if (canvasSupported !== null) {
       return canvasSupported;
@@ -71,13 +76,8 @@
       particles.push(createParticle());
     }
 
-    if (particles.length > count) {
-      particles.length = count;
-    }
-
     for (let index = 0; index < particles.length; index += 1) {
-      particles[index].x = clamp(particles[index].x, 0, width);
-      particles[index].y = clamp(particles[index].y, 0, height);
+      clampParticleToBounds(particles[index]);
     }
   }
 
