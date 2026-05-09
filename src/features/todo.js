@@ -3,7 +3,7 @@
 // State management
 let todos = [];
 let filteredTodos = [];
-let currentFilters = {
+const currentFilters = {
   status: 'all'
 };
 
@@ -14,7 +14,7 @@ const STAGGER_DELAY = 0.05; // seconds between each item
 let elements = {};
 
 // Edit modal state
-let editModalState = {
+const editModalState = {
   currentTodoId: null,
   isOpen: false
 };
@@ -22,23 +22,23 @@ let editModalState = {
 // Load todos from localStorage
 function loadTodos() {
   try {
-    const raw = localStorage.getItem("todos");
+    const raw = localStorage.getItem('todos');
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      console.warn("Invalid todos data in localStorage: expected array, resetting to empty list");
+      console.warn('Invalid todos data in localStorage: expected array, resetting to empty list');
       return [];
     }
     return parsed;
   } catch (e) {
-    console.warn("Failed to parse todos from localStorage, resetting to empty list:", e);
+    console.warn('Failed to parse todos from localStorage, resetting to empty list:', e);
     return [];
   }
 }
 
 // Save todos to localStorage
 function saveTodos(todos) {
-  localStorage.setItem("todos", JSON.stringify(todos));
+  localStorage.setItem('todos', JSON.stringify(todos));
 }
 
 // Format date as local ISO string (YYYY-MM-DD)
@@ -741,7 +741,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
   const todo = todos.find(t => t.id === todoId);
   if (!todo) return;
 
-  let currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? new Date(todo.dueDate) : new Date());
+  const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? new Date(todo.dueDate) : new Date());
 
   // Navigation buttons
   const prevBtn = pickerContainer.querySelector('.inline-prev-month');
@@ -1265,7 +1265,7 @@ class CustomDatePicker {
     // Update month/year display
     const monthIndex = this.currentDate.getMonth();
     const monthKey = ['january', 'february', 'march', 'april', 'may', 'june',
-                      'july', 'august', 'september', 'october', 'november', 'december'][monthIndex];
+      'july', 'august', 'september', 'october', 'november', 'december'][monthIndex];
     const monthName = window.i18n ? window.i18n.t(monthKey) : monthKey;
     this.monthElement.textContent = monthName;
     this.yearElement.textContent = this.currentDate.getFullYear();

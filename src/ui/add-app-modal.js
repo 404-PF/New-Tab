@@ -18,29 +18,29 @@ function getAddAppElements() {
   }
 
   addAppElementsCache = {
-    addAppBtn: document.getElementById("new-app"),
-    addAppModal: document.getElementById("add-app-modal"),
-    addAppUrlInput: document.getElementById("add-app-url"),
-    addAppCancel: document.getElementById("add-app-cancel"),
-    addAppConfirm: document.getElementById("add-app-confirm"),
-    defaultAppsContainer: document.getElementById("default-apps-list"),
-    previewSection: document.getElementById("add-app-preview"),
-    previewIcon: document.getElementById("preview-icon"),
-    previewName: document.getElementById("preview-name"),
-    previewUrl: document.getElementById("preview-url"),
-    validationIcon: document.querySelector(".add-app-url-validation"),
-    validationMessage: document.querySelector(".add-app-validation-message"),
+    addAppBtn: document.getElementById('new-app'),
+    addAppModal: document.getElementById('add-app-modal'),
+    addAppUrlInput: document.getElementById('add-app-url'),
+    addAppCancel: document.getElementById('add-app-cancel'),
+    addAppConfirm: document.getElementById('add-app-confirm'),
+    defaultAppsContainer: document.getElementById('default-apps-list'),
+    previewSection: document.getElementById('add-app-preview'),
+    previewIcon: document.getElementById('preview-icon'),
+    previewName: document.getElementById('preview-name'),
+    previewUrl: document.getElementById('preview-url'),
+    validationIcon: document.querySelector('.add-app-url-validation'),
+    validationMessage: document.querySelector('.add-app-validation-message'),
   };
 
   return addAppElementsCache;
 }
 
 function normalizeAppUrl(url) {
-  return url.startsWith("http") ? url : "https://" + url;
+  return url.startsWith('http') ? url : 'https://' + url;
 }
 
 function getExistingAppNames() {
-  return new Set(Array.from(document.querySelectorAll(".app-icon .app-name")).map((element) => element.textContent));
+  return new Set(Array.from(document.querySelectorAll('.app-icon .app-name')).map((element) => element.textContent));
 }
 
 function resetPreviewIcon() {
@@ -61,11 +61,11 @@ function setPreviewIcon(faviconUrl, appName) {
     return;
   }
 
-  previewIcon.innerHTML = "";
-  const image = document.createElement("img");
+  previewIcon.innerHTML = '';
+  const image = document.createElement('img');
   image.src = faviconUrl;
   image.alt = appName;
-  image.addEventListener("error", () => {
+  image.addEventListener('error', () => {
     resetPreviewIcon();
   });
   previewIcon.appendChild(image);
@@ -81,14 +81,14 @@ function resetPreviewState() {
   resetPreviewIcon();
 
   if (previewSection) {
-    previewSection.classList.remove("visible", "valid", "invalid");
+    previewSection.classList.remove('visible', 'valid', 'invalid');
   }
   if (validationIcon) {
-    validationIcon.classList.remove("show", "valid", "invalid");
+    validationIcon.classList.remove('show', 'valid', 'invalid');
   }
   if (validationMessage) {
-    validationMessage.textContent = "";
-    validationMessage.classList.remove("show", "malformed", "undetectable");
+    validationMessage.textContent = '';
+    validationMessage.classList.remove('show', 'malformed', 'undetectable');
   }
 }
 
@@ -96,10 +96,10 @@ function closeAddAppModal() {
   const { addAppModal, addAppUrlInput, addAppConfirm } = getAddAppElements();
 
   if (addAppModal) {
-    addAppModal.style.display = "none";
+    addAppModal.style.display = 'none';
   }
   if (addAppUrlInput) {
-    addAppUrlInput.value = "";
+    addAppUrlInput.value = '';
   }
   if (addAppConfirm) {
     addAppConfirm.disabled = true;
@@ -111,10 +111,10 @@ function closeAddAppModal() {
 function extractAppName(url) {
   try {
     const urlObj = new URL(normalizeAppUrl(url));
-    let name = urlObj.hostname.replace(/^www\./, "").split(".")[0];
+    const name = urlObj.hostname.replace(/^www\./, '').split('.')[0];
     return name.charAt(0).toUpperCase() + name.slice(1);
   } catch (_) {
-    return "App Name";
+    return 'App Name';
   }
 }
 
@@ -129,7 +129,7 @@ function getFaviconUrl(url) {
 
 function createAppData(url, name, icon) {
   return {
-    id: "custom-app-" + Date.now() + "-" + Math.floor(Math.random() * 100000),
+    id: 'custom-app-' + Date.now() + '-' + Math.floor(Math.random() * 100000),
     url: normalizeAppUrl(url),
     name,
     icon,
@@ -145,7 +145,7 @@ async function cacheAppIcon(appData) {
     const cachedIcon = await window.iconCache.getIconWithCache(appData.icon);
     return { ...appData, cachedIcon };
   } catch (error) {
-    console.warn("Failed to cache icon:", error);
+    console.warn('Failed to cache icon:', error);
     return appData;
   }
 }
@@ -175,27 +175,27 @@ function renderDefaultAppsList() {
     return;
   }
 
-  defaultAppsContainer.innerHTML = "";
+  defaultAppsContainer.innerHTML = '';
   const existingNames = getExistingAppNames();
 
   for (let i = 0; i < defaultAppsList.length; i++) {
     const app = defaultAppsList[i];
-    const button = document.createElement("button");
-    button.className = "quick-add-btn";
+    const button = document.createElement('button');
+    button.className = 'quick-add-btn';
     button.innerHTML = `
       <div class="quick-add-icon">
         ${app.icon
-          ? `<img src="${app.icon}" alt="${app.name}" />`
-          : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    ? `<img src="${app.icon}" alt="${app.name}" />`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <circle cx="8.5" cy="8.5" r="1.5"></circle>
               <polyline points="21,15 16,10 5,21"></polyline>
             </svg>`
-        }
+}
       </div>
       <span class="quick-add-name">${app.name}</span>
     `;
-    button.addEventListener("click", async function () {
+    button.addEventListener('click', async function () {
       if (existingNames.has(app.name)) {
         return;
       }
@@ -230,7 +230,7 @@ function updatePreview() {
   }
 
   const validation = validateUrl(url);
-  const isValid = validation.status === "valid";
+  const isValid = validation.status === 'valid';
   const fullUrl = validation.url ? validation.url.href : normalizeAppUrl(url);
   const appName = extractAppName(url);
 
@@ -244,22 +244,22 @@ function updatePreview() {
   setPreviewIcon(getFaviconUrl(url), appName);
 
   if (previewSection) {
-    previewSection.classList.add("visible");
-    previewSection.classList.toggle("valid", isValid);
-    previewSection.classList.toggle("invalid", !isValid);
+    previewSection.classList.add('visible');
+    previewSection.classList.toggle('valid', isValid);
+    previewSection.classList.toggle('invalid', !isValid);
   }
 
   if (validationIcon) {
-    validationIcon.classList.add("show");
-    validationIcon.classList.toggle("valid", isValid);
-    validationIcon.classList.toggle("invalid", !isValid);
+    validationIcon.classList.add('show');
+    validationIcon.classList.toggle('valid', isValid);
+    validationIcon.classList.toggle('invalid', !isValid);
   }
 
   if (validationMessage) {
     validationMessage.textContent = translateValidationMessage(validation.message);
-    validationMessage.classList.add("show");
-    validationMessage.classList.toggle("malformed", validation.status === "malformed");
-    validationMessage.classList.toggle("undetectable", validation.status === "undetectable");
+    validationMessage.classList.add('show');
+    validationMessage.classList.toggle('malformed', validation.status === 'malformed');
+    validationMessage.classList.toggle('undetectable', validation.status === 'undetectable');
   }
 
   if (addAppConfirm) {
@@ -271,10 +271,10 @@ function openAddAppModal() {
   const { addAppModal, addAppUrlInput, addAppConfirm } = getAddAppElements();
 
   if (addAppModal) {
-    addAppModal.style.display = "flex";
+    addAppModal.style.display = 'flex';
   }
   if (addAppUrlInput) {
-    addAppUrlInput.value = "";
+    addAppUrlInput.value = '';
     addAppUrlInput.focus();
   }
   if (addAppConfirm) {
@@ -302,26 +302,26 @@ function bindAddAppModal() {
     return;
   }
 
-  addAppBtn.addEventListener("click", function (event) {
+  addAppBtn.addEventListener('click', function (event) {
     event.preventDefault();
     openAddAppModal();
   });
 
-  addAppModal.addEventListener("click", function (event) {
+  addAppModal.addEventListener('click', function (event) {
     if (event.target === addAppModal) {
       closeAddAppModal();
     }
   });
 
   if (addAppCancel) {
-    addAppCancel.addEventListener("click", function () {
+    addAppCancel.addEventListener('click', function () {
       closeAddAppModal();
     });
   }
 
-  addAppUrlInput.addEventListener("input", updatePreview);
-  addAppUrlInput.addEventListener("keypress", async function (event) {
-    if (event.key !== "Enter") {
+  addAppUrlInput.addEventListener('input', updatePreview);
+  addAppUrlInput.addEventListener('keypress', async function (event) {
+    if (event.key !== 'Enter') {
       return;
     }
 
@@ -334,7 +334,7 @@ function bindAddAppModal() {
   });
 
   if (addAppConfirm) {
-    addAppConfirm.addEventListener("click", async function () {
+    addAppConfirm.addEventListener('click', async function () {
       const url = addAppUrlInput.value.trim();
       if (!url) {
         return;
@@ -343,9 +343,9 @@ function bindAddAppModal() {
     });
   }
 
-  window.addEventListener("languageChanged", function () {
+  window.addEventListener('languageChanged', function () {
     const { addAppModal } = getAddAppElements();
-    if (addAppModal && addAppModal.style.display !== "none") {
+    if (addAppModal && addAppModal.style.display !== 'none') {
       updatePreview();
     }
   });

@@ -296,7 +296,7 @@ const MarkdownParser = (function() {
     const lines = text.split('\n');
     let inBlockquote = false;
     let blockquoteContent = [];
-    let result = [];
+    const result = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -332,7 +332,7 @@ const MarkdownParser = (function() {
    */
   function parseTaskLists(text) {
     const lines = text.split('\n');
-    let result = [];
+    const result = [];
     let inList = false;
     let listItems = [];
 
@@ -411,8 +411,8 @@ const MarkdownParser = (function() {
    */
   function parseLists(text) {
     const lines = text.split('\n');
-    let result = [];
-    let listStack = [];
+    const result = [];
+    const listStack = [];
     let currentIndent = -1;
 
     for (let i = 0; i < lines.length; i++) {
@@ -532,7 +532,7 @@ const MarkdownParser = (function() {
    */
   function parseTables(text) {
     const lines = text.split('\n');
-    let result = [];
+    const result = [];
     let i = 0;
 
     while (i < lines.length) {

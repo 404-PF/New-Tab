@@ -32,7 +32,7 @@ window.appGridReady = false;
 // Render the app grid
 function renderAllApps() {
   const appGrid = document.getElementById('app-grid');
-const addApp = document.getElementById('new-app');
+  const addApp = document.getElementById('new-app');
   if (!appGrid || !addApp) {
     window.appGridReady = false;
     return;
@@ -78,7 +78,7 @@ const addApp = document.getElementById('new-app');
     a.title = displayName;
     // Load icon from external file (use images/icons/feedback.svg) rather than embedding inline SVG in JS.
     // The SVG file (`images/icons/feedback.svg`) uses `currentColor` where appropriate.
-    let iconHtml = `<div class="icon"><img src="${escapeHtml(iconUrl)}" alt="${escapeHtml(displayName)}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/globe.svg';"></div>`;
+    const iconHtml = `<div class="icon"><img src="${escapeHtml(iconUrl)}" alt="${escapeHtml(displayName)}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/globe.svg';"></div>`;
     a.innerHTML = iconHtml + `<span class="app-name">${escapeHtml(displayName)}</span>`;
     appGrid.insertBefore(a, addApp);
   });
@@ -113,28 +113,28 @@ window.addEventListener('languageChanged', renderAllApps);
 
 // Load and apply open in new tab setting
 function loadOpenNewTabSetting() {
-  return localStorage.getItem("openAppsInNewTab") !== "false";
+  return localStorage.getItem('openAppsInNewTab') !== 'false';
 }
 function applyOpenNewTabSetting() {
   const openInNewTab = loadOpenNewTabSetting();
-  const appLinks = document.querySelectorAll(".app-grid .app-icon");
+  const appLinks = document.querySelectorAll('.app-grid .app-icon');
   appLinks.forEach((link) => {
-    if (link.id === "settings-app") return;
+    if (link.id === 'settings-app') return;
     if (openInNewTab) {
-      link.setAttribute("target", "_blank");
-      link.setAttribute("rel", "noopener noreferrer");
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
     } else {
-      link.removeAttribute("target");
-      link.removeAttribute("rel");
+      link.removeAttribute('target');
+      link.removeAttribute('rel');
     }
   });
-  const openNewTabSetting = document.getElementById("open-new-tab-setting");
+  const openNewTabSetting = document.getElementById('open-new-tab-setting');
   if (openNewTabSetting) openNewTabSetting.checked = openInNewTab;
 }
-const openNewTabSetting = document.getElementById("open-new-tab-setting");
+const openNewTabSetting = document.getElementById('open-new-tab-setting');
 if (openNewTabSetting) {
-  openNewTabSetting.addEventListener("change", function () {
-    localStorage.setItem("openAppsInNewTab", this.checked);
+  openNewTabSetting.addEventListener('change', function () {
+    localStorage.setItem('openAppsInNewTab', this.checked);
     applyOpenNewTabSetting();
   });
 }
@@ -142,7 +142,7 @@ if (openNewTabSetting) {
 // Apply on load
 applyOpenNewTabSetting();
 
-window.addEventListener("themeChanged", applyOpenNewTabSetting);
+window.addEventListener('themeChanged', applyOpenNewTabSetting);
 
 // Load and apply icon size
 const ICON_SIZE_OPTIONS = [48, 60, 72];
@@ -159,16 +159,16 @@ function syncSizeButtons(groupName, size, options) {
   buttons.forEach((button) => {
     const buttonSize = parseInt(button.dataset.size, 10);
     const isActive = buttonSize === activeSize;
-    button.classList.toggle("active", isActive);
-    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
 }
 
 function loadIconSize() {
-  const size = parseInt(localStorage.getItem("iconSize") || "60", 10);
+  const size = parseInt(localStorage.getItem('iconSize') || '60', 10);
   const normalizedSize = Number.isFinite(size) ? getClosestSize(size, ICON_SIZE_OPTIONS) : 60;
   if (normalizedSize !== size) {
-    localStorage.setItem("iconSize", normalizedSize);
+    localStorage.setItem('iconSize', normalizedSize);
   }
   return normalizedSize;
 }
@@ -176,26 +176,26 @@ function applyIconSize() {
   const size = loadIconSize();
   document.documentElement.style.setProperty('--app-icon-size', size + 'px');
   applyCurvature();
-  syncSizeButtons("icon", size, ICON_SIZE_OPTIONS);
+  syncSizeButtons('icon', size, ICON_SIZE_OPTIONS);
 }
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener('DOMContentLoaded', function() {
   const iconSizeGroup = document.querySelector('[data-size-group="icon"]');
   if (iconSizeGroup) {
-    iconSizeGroup.addEventListener("click", function (event) {
-      const button = event.target.closest(".size-choice-button");
+    iconSizeGroup.addEventListener('click', function (event) {
+      const button = event.target.closest('.size-choice-button');
       if (!button) return;
       const size = parseInt(button.dataset.size, 10);
       if (!Number.isFinite(size)) return;
-      localStorage.setItem("iconSize", size);
+      localStorage.setItem('iconSize', size);
       applyIconSize();
     });
   }
 
-  const iconSizeReset = document.getElementById("icon-size-reset");
+  const iconSizeReset = document.getElementById('icon-size-reset');
   if (iconSizeReset) {
-    iconSizeReset.addEventListener("click", function() {
-      localStorage.removeItem("iconSize");
+    iconSizeReset.addEventListener('click', function() {
+      localStorage.removeItem('iconSize');
       applyIconSize();
     });
   }
@@ -213,7 +213,7 @@ const curvatureToPercentage = {
 
 // Load and apply app button curvature (now using percentage values)
 function loadCurvature() {
-  return localStorage.getItem("appsButtonCurvature") || "20";
+  return localStorage.getItem('appsButtonCurvature') || '20';
 }
 function applyCurvature() {
   const baseRadius = loadCurvature();
@@ -229,9 +229,9 @@ function applyCurvature() {
 }
 const curvatureRadios = document.querySelectorAll('input[name="curvature"]');
 curvatureRadios.forEach((radio) => {
-  radio.addEventListener("change", function () {
+  radio.addEventListener('change', function () {
     if (this.checked) {
-      localStorage.setItem("appsButtonCurvature", this.value);
+      localStorage.setItem('appsButtonCurvature', this.value);
       applyCurvature();
     }
   });
@@ -244,26 +244,26 @@ applyCurvature();
 
 // Attach settings app click handler
 function attachSettingsAppHandler() {
-  const settingsApp = document.getElementById("settings-app");
+  const settingsApp = document.getElementById('settings-app');
   if (settingsApp) {
     // Remove existing listeners to avoid duplicates
-    settingsApp.removeEventListener("click", settingsApp._clickHandler);
+    settingsApp.removeEventListener('click', settingsApp._clickHandler);
     // Create and attach new handler
     settingsApp._clickHandler = function (e) {
       e.preventDefault();
-      const settingsModal = document.getElementById("settings-modal");
+      const settingsModal = document.getElementById('settings-modal');
       if (settingsModal) {
-        settingsModal.style.display = "flex";
+        settingsModal.style.display = 'flex';
       }
     };
-    settingsApp.addEventListener("click", settingsApp._clickHandler);
+    settingsApp.addEventListener('click', settingsApp._clickHandler);
   }
 
   // Attach AI app click handler
-  const aiApp = document.getElementById("ai-app");
+  const aiApp = document.getElementById('ai-app');
   if (aiApp) {
     // Remove existing listeners to avoid duplicates
-    aiApp.removeEventListener("click", aiApp._clickHandler);
+    aiApp.removeEventListener('click', aiApp._clickHandler);
     // Create and attach new handler
     aiApp._clickHandler = function (e) {
       e.preventDefault();
@@ -271,15 +271,15 @@ function attachSettingsAppHandler() {
         window.AIService.open();
       }
     };
-    aiApp.addEventListener("click", aiApp._clickHandler);
+    aiApp.addEventListener('click', aiApp._clickHandler);
   }
 
   // Attach modal close handler (only once)
-  const settingsModal = document.getElementById("settings-modal");
+  const settingsModal = document.getElementById('settings-modal');
   if (settingsModal && !settingsModal._closeHandlerAttached) {
     settingsModal._closeHandlerAttached = true;
-    settingsModal.addEventListener("click", function (e) {
-      if (e.target === settingsModal) settingsModal.style.display = "none";
+    settingsModal.addEventListener('click', function (e) {
+      if (e.target === settingsModal) settingsModal.style.display = 'none';
     });
   }
 }

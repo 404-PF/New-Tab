@@ -4,33 +4,33 @@ class ModernFontPicker {
   constructor(options = {}) {
     // Define available fonts with display names
     this.fonts = [
-      { value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", name: "System Default", category: "system" },
-      { value: "'Arial', sans-serif", name: "Arial", category: "sans-serif" },
-      { value: "'Helvetica Neue', Helvetica, Arial, sans-serif", name: "Helvetica", category: "sans-serif" },
-      { value: "'Verdana', Geneva, sans-serif", name: "Verdana", category: "sans-serif" },
-      { value: "'Trebuchet MS', 'Lucida Grande', sans-serif", name: "Trebuchet MS", category: "sans-serif" },
-      { value: "'Gill Sans', 'Gill Sans MT', Calibri, sans-serif", name: "Gill Sans", category: "sans-serif" },
-      { value: "'Palatino Linotype', 'Book Antiqua', Palatino, serif", name: "Palatino", category: "serif" },
-      { value: "'Times New Roman', Times, serif", name: "Times New Roman", category: "serif" },
-      { value: "Georgia, 'Times New Roman', Times, serif", name: "Georgia", category: "serif" },
-      { value: "'Courier New', Courier, monospace", name: "Courier New", category: "monospace" },
-      { value: "'Comic Sans MS', 'Chalkboard SE', sans-serif", name: "Comic Sans", category: "display" },
-      { value: "Impact, 'Arial Black', sans-serif", name: "Impact", category: "display" },
-      { value: "'Roboto', sans-serif", name: "Roboto", category: "sans-serif" },
-      { value: "'Open Sans', 'Segoe UI', sans-serif", name: "Open Sans", category: "sans-serif" },
-      { value: "'Lato', 'Segoe UI', sans-serif", name: "Lato", category: "sans-serif" },
-      { value: "'Montserrat', 'Segoe UI', sans-serif", name: "Montserrat", category: "sans-serif" },
-      { value: "'Nunito', 'Segoe UI', sans-serif", name: "Nunito", category: "sans-serif" },
-      { value: "'Poppins', 'Segoe UI', sans-serif", name: "Poppins", category: "sans-serif" },
-      { value: "'Raleway', 'Segoe UI', sans-serif", name: "Raleway", category: "sans-serif" },
-      { value: "'Source Sans Pro', 'Segoe UI', sans-serif", name: "Source Sans Pro", category: "sans-serif" }
+      { value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", name: 'System Default', category: 'system' },
+      { value: "'Arial', sans-serif", name: 'Arial', category: 'sans-serif' },
+      { value: "'Helvetica Neue', Helvetica, Arial, sans-serif", name: 'Helvetica', category: 'sans-serif' },
+      { value: "'Verdana', Geneva, sans-serif", name: 'Verdana', category: 'sans-serif' },
+      { value: "'Trebuchet MS', 'Lucida Grande', sans-serif", name: 'Trebuchet MS', category: 'sans-serif' },
+      { value: "'Gill Sans', 'Gill Sans MT', Calibri, sans-serif", name: 'Gill Sans', category: 'sans-serif' },
+      { value: "'Palatino Linotype', 'Book Antiqua', Palatino, serif", name: 'Palatino', category: 'serif' },
+      { value: "'Times New Roman', Times, serif", name: 'Times New Roman', category: 'serif' },
+      { value: "Georgia, 'Times New Roman', Times, serif", name: 'Georgia', category: 'serif' },
+      { value: "'Courier New', Courier, monospace", name: 'Courier New', category: 'monospace' },
+      { value: "'Comic Sans MS', 'Chalkboard SE', sans-serif", name: 'Comic Sans', category: 'display' },
+      { value: "Impact, 'Arial Black', sans-serif", name: 'Impact', category: 'display' },
+      { value: "'Roboto', sans-serif", name: 'Roboto', category: 'sans-serif' },
+      { value: "'Open Sans', 'Segoe UI', sans-serif", name: 'Open Sans', category: 'sans-serif' },
+      { value: "'Lato', 'Segoe UI', sans-serif", name: 'Lato', category: 'sans-serif' },
+      { value: "'Montserrat', 'Segoe UI', sans-serif", name: 'Montserrat', category: 'sans-serif' },
+      { value: "'Nunito', 'Segoe UI', sans-serif", name: 'Nunito', category: 'sans-serif' },
+      { value: "'Poppins', 'Segoe UI', sans-serif", name: 'Poppins', category: 'sans-serif' },
+      { value: "'Raleway', 'Segoe UI', sans-serif", name: 'Raleway', category: 'sans-serif' },
+      { value: "'Source Sans Pro', 'Segoe UI', sans-serif", name: 'Source Sans Pro', category: 'sans-serif' }
     ];
 
     this.options = {
       element: null,
       defaultFont: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       onFontSelect: null,
-      previewText: "Aa Bb Cc 123",
+      previewText: 'Aa Bb Cc 123',
       ...options
     };
 

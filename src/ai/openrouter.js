@@ -236,7 +236,7 @@ const OpenRouterAPI = (function() {
         buffer += chunk;
         
         // Parse SSE format - handle multiple events in buffer
-        let lines = buffer.split('\n');
+        const lines = buffer.split('\n');
         
         // Keep the last potentially incomplete line in buffer
         buffer = lines.pop() || '';

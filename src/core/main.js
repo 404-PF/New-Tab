@@ -2,8 +2,8 @@
 
 function updateTime() {
   const now = new Date();
-  const timeElement = document.getElementById("clock-time") || document.getElementById("clock");
-  const dateElement = document.getElementById("date");
+  const timeElement = document.getElementById('clock-time') || document.getElementById('clock');
+  const dateElement = document.getElementById('date');
   const locale = getDisplayLocale();
 
   // Update time
@@ -138,27 +138,27 @@ function displayDailyMotto() {
     const currentMottos = mottos[currentLang] || mottos.en;
     // Deterministically pick a motto for the day
     const index = daySeed % currentMottos.length;
-    const mottoText = document.getElementById("motto-text");
+    const mottoText = document.getElementById('motto-text');
     if (mottoText) {
       mottoText.textContent = currentMottos[index];
       // Add fade-in effect
-      mottoText.style.opacity = "0";
+      mottoText.style.opacity = '0';
       setTimeout(() => {
-        mottoText.style.transition = "opacity 0.5s";
-        mottoText.style.opacity = "1";
+        mottoText.style.transition = 'opacity 0.5s';
+        mottoText.style.opacity = '1';
       }, 50);
     }
   } catch (e) {
-    console.error("Error displaying motto:", e);
+    console.error('Error displaying motto:', e);
   }
 }
 
 // Handle refresh motto functionality
 function setupRefreshMotto() {
-  const refreshBtn = document.getElementById("refresh-motto-btn");
+  const refreshBtn = document.getElementById('refresh-motto-btn');
   if (refreshBtn) {
-    refreshBtn.addEventListener("click", () => {
-      const mottoText = document.getElementById("motto-text");
+    refreshBtn.addEventListener('click', () => {
+      const mottoText = document.getElementById('motto-text');
       if (mottoText) {
         // Get current language
         const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
@@ -168,10 +168,10 @@ function setupRefreshMotto() {
         const randomIndex = Math.floor(Math.random() * currentMottos.length);
         mottoText.textContent = currentMottos[randomIndex];
         // Add refresh animation
-        mottoText.style.opacity = "0";
+        mottoText.style.opacity = '0';
         setTimeout(() => {
-          mottoText.style.transition = "opacity 0.3s ease";
-          mottoText.style.opacity = "1";
+          mottoText.style.transition = 'opacity 0.3s ease';
+          mottoText.style.opacity = '1';
           checkFooterOverlap();
         }, 50);
       }
@@ -181,10 +181,10 @@ function setupRefreshMotto() {
 
 // Handle copy motto functionality
 function setupCopyMotto() {
-  const copyBtn = document.getElementById("copy-motto-btn");
+  const copyBtn = document.getElementById('copy-motto-btn');
   if (copyBtn) {
-    copyBtn.addEventListener("click", async () => {
-      const mottoText = document.getElementById("motto-text");
+    copyBtn.addEventListener('click', async () => {
+      const mottoText = document.getElementById('motto-text');
       if (mottoText && mottoText.textContent) {
         const copiedText = window.i18n ? window.i18n.t('copyMottoCopied') : 'Copied';
         // Show copy notification
@@ -205,16 +205,16 @@ function setupCopyMotto() {
         try {
           await navigator.clipboard.writeText(mottoText.textContent);
         } catch (err) {
-          console.error("Failed to copy motto:", err);
+          console.error('Failed to copy motto:', err);
           // Fallback for older browsers
-          const textArea = document.createElement("textarea");
+          const textArea = document.createElement('textarea');
           textArea.value = mottoText.textContent;
           document.body.appendChild(textArea);
           textArea.select();
           try {
             document.execCommand('copy');
           } catch (fallbackErr) {
-            console.error("Fallback copy failed:", fallbackErr);
+            console.error('Fallback copy failed:', fallbackErr);
           }
           document.body.removeChild(textArea);
         }
@@ -225,33 +225,33 @@ function setupCopyMotto() {
 
 let isSearchHandlerBound = false;
 
-const SEARCH_UNAVAILABLE_MESSAGE = "Search is unavailable in this browser.";
+const SEARCH_UNAVAILABLE_MESSAGE = 'Search is unavailable in this browser.';
 
 function runDefaultSearch(query) {
-  if (typeof chrome !== "undefined" && chrome.search && typeof chrome.search.query === "function") {
+  if (typeof chrome !== 'undefined' && chrome.search && typeof chrome.search.query === 'function') {
     chrome.search.query({
       text: query,
-      disposition: "CURRENT_TAB",
+      disposition: 'CURRENT_TAB',
     }).catch((error) => {
-      console.warn("Failed to run default search:", error);
+      console.warn('Failed to run default search:', error);
       showSearchValidationFeedback(SEARCH_UNAVAILABLE_MESSAGE);
     });
     return;
   }
 
-  console.warn("chrome.search.query is unavailable in this browser.");
+  console.warn('chrome.search.query is unavailable in this browser.');
   showSearchValidationFeedback(SEARCH_UNAVAILABLE_MESSAGE);
 }
 
 function runSearch(query) {
   const validation = validateUrl(query);
 
-  if (validation.status === "valid") {
+  if (validation.status === 'valid') {
     window.location.href = validation.url.href;
     return;
   }
 
-  if (validation.status === "malformed") {
+  if (validation.status === 'malformed') {
     showSearchValidationFeedback(translateValidationMessage(validation.message));
     return;
   }
@@ -264,13 +264,13 @@ function initSearchEngine() {
     return;
   }
 
-  const searchInput = document.querySelector(".search-bar input");
+  const searchInput = document.querySelector('.search-bar input');
   if (!searchInput) {
     return;
   }
 
-  searchInput.addEventListener("keydown", function (event) {
-    if (event.key !== "Enter") {
+  searchInput.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter') {
       return;
     }
 
@@ -281,29 +281,29 @@ function initSearchEngine() {
     runSearch(query);
   });
 
-  searchInput.addEventListener("input", clearSearchValidationFeedback);
+  searchInput.addEventListener('input', clearSearchValidationFeedback);
   isSearchHandlerBound = true;
 }
 
 function showSearchValidationFeedback(message) {
-  let feedbackEl = document.querySelector(".search-validation-feedback");
+  let feedbackEl = document.querySelector('.search-validation-feedback');
   if (!feedbackEl) {
-    feedbackEl = document.createElement("div");
-    feedbackEl.className = "search-validation-feedback";
-    const searchBar = document.querySelector(".search-bar");
+    feedbackEl = document.createElement('div');
+    feedbackEl.className = 'search-validation-feedback';
+    const searchBar = document.querySelector('.search-bar');
     if (searchBar) {
       searchBar.appendChild(feedbackEl);
     }
   }
 
   feedbackEl.textContent = message;
-  feedbackEl.classList.add("show");
+  feedbackEl.classList.add('show');
 }
 
 function clearSearchValidationFeedback() {
-  const feedbackEl = document.querySelector(".search-validation-feedback");
+  const feedbackEl = document.querySelector('.search-validation-feedback');
   if (feedbackEl) {
-    feedbackEl.classList.remove("show");
+    feedbackEl.classList.remove('show');
   }
 }
 
@@ -318,9 +318,9 @@ window.addEventListener('languageChanged', displayDailyMotto);
 
 // Hide footer-left / footer-right when they overlap with the motto container
 function checkFooterOverlap() {
-  const motto = document.getElementById("motto-container");
-  const footerLeft = document.querySelector(".footer-left");
-  const footerRight = document.querySelector(".footer-right");
+  const motto = document.getElementById('motto-container');
+  const footerLeft = document.querySelector('.footer-left');
+  const footerRight = document.querySelector('.footer-right');
 
   if (!motto || (!footerLeft && !footerRight)) return;
 
@@ -330,14 +330,14 @@ function checkFooterOverlap() {
     const leftRect = footerLeft.getBoundingClientRect();
     // Check if the right edge of footer-left is past the left edge of motto (with 5px buffer)
     const overlaps = leftRect.right + 5 >= mottoRect.left;
-    footerLeft.style.opacity = overlaps ? "0" : "";
+    footerLeft.style.opacity = overlaps ? '0' : '';
   }
 
   if (footerRight) {
     const rightRect = footerRight.getBoundingClientRect();
     // Check if the left edge of footer-right is before the right edge of motto (with 5px buffer)
     const overlaps = rightRect.left - 5 <= mottoRect.right;
-    footerRight.style.opacity = overlaps ? "0" : "";
+    footerRight.style.opacity = overlaps ? '0' : '';
   }
 }
 
@@ -345,10 +345,10 @@ function checkFooterOverlap() {
 window.checkFooterOverlap = checkFooterOverlap;
 
 // Set the motto and button functionality after the page has finished loading
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
   displayDailyMotto();
   setupRefreshMotto();
   setupCopyMotto();
   checkFooterOverlap();
-  window.addEventListener("resize", checkFooterOverlap);
+  window.addEventListener('resize', checkFooterOverlap);
 });
