@@ -34,6 +34,18 @@
     return Math.min(max, Math.max(min, value));
   }
 
+  function createParticle() {
+    return {
+      x: Math.random() * width,
+      y: Math.random() * height,
+      radius: 1.2 + Math.random() * 2.8,
+      speedX: (Math.random() - 0.5) * 0.18,
+      speedY: (Math.random() - 0.5) * 0.16,
+      drift: 0.6 + Math.random() * 1.4,
+      alpha: 0.18 + Math.random() * 0.28,
+    };
+  }
+
   function supportsCanvas() {
     if (canvasSupported !== null) {
       return canvasSupported;
@@ -53,19 +65,19 @@
   }
 
   function initParticles() {
-    particles = [];
     const count = Math.min(MAX_PARTICLES, Math.max(12, Math.round((width * height) / 90000)));
 
-    for (let index = 0; index < count; index += 1) {
-      particles.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        radius: 1.2 + Math.random() * 2.8,
-        speedX: (Math.random() - 0.5) * 0.18,
-        speedY: (Math.random() - 0.5) * 0.16,
-        drift: 0.6 + Math.random() * 1.4,
-        alpha: 0.18 + Math.random() * 0.28,
-      });
+    while (particles.length < count) {
+      particles.push(createParticle());
+    }
+
+    if (particles.length > count) {
+      particles.length = count;
+    }
+
+    for (let index = 0; index < particles.length; index += 1) {
+      particles[index].x = clamp(particles[index].x, 0, width);
+      particles[index].y = clamp(particles[index].y, 0, height);
     }
   }
 
@@ -298,7 +310,7 @@
       window.addEventListener('pointermove', pointerMoveHandler, { passive: true });
     }
     if (pointerLeaveHandler) {
-      window.addEventListener('pointerleave', pointerLeaveHandler, { passive: true });
+      containerEl.addEventListener('pointerleave', pointerLeaveHandler, { passive: true });
     }
 
     animationListenersBound = true;
@@ -316,7 +328,7 @@
       window.removeEventListener('pointermove', pointerMoveHandler);
     }
     if (pointerLeaveHandler) {
-      window.removeEventListener('pointerleave', pointerLeaveHandler);
+      containerEl.removeEventListener('pointerleave', pointerLeaveHandler);
     }
 
     animationListenersBound = false;
