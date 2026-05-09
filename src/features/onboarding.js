@@ -584,6 +584,10 @@ function checkRequiredElements() {
   });
 }
 
+function isTourReady() {
+  return window.appGridReady === true && checkRequiredElements();
+}
+
 // Auto-start for new users
 document.addEventListener('DOMContentLoaded', () => {
   // Wait for all elements to be ready
@@ -606,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     attempts++;
 
-    if (!onboardingTour.isCompleted() && checkRequiredElements()) {
+    if (!onboardingTour.isCompleted() && isTourReady()) {
       console.log('🎯 Starting New-Tab onboarding tour...');
       onboardingTour.start();
     } else if (attempts < maxAttempts) {
@@ -625,6 +629,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (checkTimeout) clearTimeout(checkTimeout);
   });
 
+  window.addEventListener('appGridReady', checkAndStart);
+
   // Initial delay to let other scripts initialize
   setTimeout(checkAndStart, 500);
 });
@@ -632,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Also try on window load as fallback
 window.addEventListener('load', () => {
   setTimeout(() => {
-    if (!onboardingTour.isCompleted() && !onboardingTour.isActive && checkRequiredElements()) {
+    if (!onboardingTour.isCompleted() && !onboardingTour.isActive && isTourReady()) {
       console.log('🎯 Starting New-Tab onboarding tour (fallback)...');
       onboardingTour.start();
     }

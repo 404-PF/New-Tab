@@ -27,10 +27,16 @@ const getAllAppData = () => {
   return [...defaultApps, ...customApps];
 };
 
+window.appGridReady = false;
+
 // Render the app grid
 function renderAllApps() {
   const appGrid = document.getElementById('app-grid');
 const addApp = document.getElementById('new-app');
+  if (!appGrid || !addApp) {
+    window.appGridReady = false;
+    return;
+  }
   // Remove all except New
   Array.from(appGrid.children).forEach(child => { if (child.id !== 'new-app') appGrid.removeChild(child); });
   let order = getAppOrder();
@@ -82,6 +88,8 @@ const addApp = document.getElementById('new-app');
 
   // Re-apply the open-in-new-tab preference after rebuilding links.
   applyOpenNewTabSetting();
+  window.appGridReady = true;
+  window.dispatchEvent(new CustomEvent('appGridReady'));
 }
 
 // Initial render after caching
