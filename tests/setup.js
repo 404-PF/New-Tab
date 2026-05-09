@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach } from 'vitest';
+import { injectScript } from './helpers/inject-script.js';
 
 // ------------------------------------------------------------------
 // requestAnimationFrame / cancelAnimationFrame polyfills for jsdom
@@ -17,11 +18,142 @@ if (typeof globalThis.cancelAnimationFrame === 'undefined') {
 // ------------------------------------------------------------------
 // chrome API mock
 // ------------------------------------------------------------------
+const createEvent = () => {
+  const listeners = new Set();
+
+  return {
+    addListener(listener) {
+      listeners.add(listener);
+    },
+
+    removeListener(listener) {
+      listeners.delete(listener);
+    },
+
+    hasListener(listener) {
+      return listeners.has(listener);
+    },
+
+    _emit(...args) {
+      listeners.forEach((listener) => {
+        listener(...args);
+      });
+    }
+  };
+};
+
+const createStorageArea = () => {
+  let store = {};
+
+  return {
+    get(keys, callback) {
+      let result = {};
+
+      if (keys === null) {
+        result = { ...store };
+      } else if (typeof keys === 'string') {
+        result[keys] = store[keys];
+      } else if (Array.isArray(keys)) {
+        keys.forEach((key) => {
+          result[key] = store[key];
+        });
+      } else if (typeof keys === 'object') {
+        result = { ...keys };
+        Object.keys(keys).forEach((key) => {
+          if (Object.prototype.hasOwnProperty.call(store, key)) {
+            result[key] = store[key];
+          }
+        });
+      }
+
+      if (callback) {
+        callback(result);
+      }
+
+      return Promise.resolve(result);
+    },
+
+    set(items, callback) {
+      const changes = {};
+      Object.keys(items).forEach((key) => {
+        changes[key] = {
+          oldValue: Object.prototype.hasOwnProperty.call(store, key) ? store[key] : undefined,
+          newValue: items[key]
+        };
+      });
+
+      store = { ...store, ...items };
+
+      if (globalThis.chrome && chrome.storage && chrome.storage.onChanged) {
+        chrome.storage.onChanged._emit(changes, 'local');
+      }
+
+      if (callback) {
+        callback();
+      }
+
+      return Promise.resolve();
+    },
+
+    remove(keys, callback) {
+      const list = Array.isArray(keys) ? keys : [keys];
+      const changes = {};
+
+      list.forEach((key) => {
+        changes[key] = {
+          oldValue: Object.prototype.hasOwnProperty.call(store, key) ? store[key] : undefined,
+          newValue: undefined
+        };
+        delete store[key];
+      });
+
+      if (globalThis.chrome && chrome.storage && chrome.storage.onChanged) {
+        chrome.storage.onChanged._emit(changes, 'local');
+      }
+
+      if (callback) {
+        callback();
+      }
+
+      return Promise.resolve();
+    },
+
+    clear(callback) {
+      const changes = {};
+      Object.keys(store).forEach((key) => {
+        changes[key] = {
+          oldValue: store[key],
+          newValue: undefined
+        };
+      });
+
+      store = {};
+
+      if (globalThis.chrome && chrome.storage && chrome.storage.onChanged) {
+        chrome.storage.onChanged._emit(changes, 'local');
+      }
+
+      if (callback) {
+        callback();
+      }
+
+      return Promise.resolve();
+    }
+  };
+};
+
 globalThis.chrome = {
+  storage: {
+    onChanged: createEvent(),
+    local: createStorageArea(),
+    sync: createStorageArea()
+  },
   search: {
     query: async () => ({}) // no-op
   }
 };
+
+injectScript('src/core/storage.js');
 
 // ------------------------------------------------------------------
 // window.i18n mock
