@@ -101,82 +101,71 @@
 
   // ===================== Storage =====================
 
+  // Safe localStorage accessors — degrade gracefully when storage is unavailable
+  const _safeGet = function(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      console.warn('Failed to read from localStorage:', e);
+      return null;
+    }
+  };
+
+  const _safeSet = function(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (e) {
+      console.warn('Failed to write to localStorage:', e);
+      return false;
+    }
+  };
+
   const WeatherStorage = {
     loadEnabled() {
-      try {
-        return localStorage.getItem('weatherEnabled') === 'true';
-      } catch (e) {
-        console.warn('Failed to read weather enabled setting:', e);
-        return false;
-      }
+      return _safeGet('weatherEnabled') === 'true';
     },
 
     saveEnabled(value) {
-      try {
-        localStorage.setItem('weatherEnabled', value ? 'true' : 'false');
-      } catch (e) {
-        console.warn('Failed to save weather enabled setting:', e);
-      }
+      _safeSet('weatherEnabled', value ? 'true' : 'false');
     },
 
     loadUnit() {
-      try {
-        const unit = localStorage.getItem('weatherUnit');
-        return unit === 'fahrenheit' ? 'fahrenheit' : 'celsius';
-      } catch (e) {
-        console.warn('Failed to read weather unit setting:', e);
-        return 'celsius';
-      }
+      const unit = _safeGet('weatherUnit');
+      return unit === 'fahrenheit' ? 'fahrenheit' : 'celsius';
     },
 
     saveUnit(value) {
-      try {
-        localStorage.setItem('weatherUnit', value);
-      } catch (e) {
-        console.warn('Failed to save weather unit setting:', e);
-      }
+      _safeSet('weatherUnit', value);
     },
 
     loadLocationMode() {
-      try {
-        return localStorage.getItem('weatherLocationMode') || 'auto';
-      } catch (e) {
-        console.warn('Failed to read weather location mode setting:', e);
-        return 'auto';
-      }
+      return _safeGet('weatherLocationMode') || 'auto';
     },
 
     saveLocationMode(value) {
-      try {
-        localStorage.setItem('weatherLocationMode', value);
-      } catch (e) {
-        console.warn('Failed to save weather location mode setting:', e);
-      }
+      _safeSet('weatherLocationMode', value);
     },
 
     loadManualCity() {
-      try {
-        return localStorage.getItem('weatherManualCity') || '';
-      } catch (e) {
-        console.warn('Failed to read weather manual city setting:', e);
-        return '';
-      }
+      return _safeGet('weatherManualCity') || '';
     },
 
     saveManualCity(value) {
-      try {
-        localStorage.setItem('weatherManualCity', value);
-      } catch (e) {
-        console.warn('Failed to save weather manual city setting:', e);
-      }
+      _safeSet('weatherManualCity', value);
     },
 
     loadCache() {
       if (currentCache) return currentCache;
+      const raw = _safeGet(CACHE_KEY);
+      if (!raw) return null;
       try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        currentCache = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || !parsed.data || !parsed.timestamp) {
+          console.warn('Invalid weather cache data shape, discarding');
+          return null;
+        }
+        currentCache = parsed;
         return currentCache;
       } catch (e) {
         console.warn('Failed to parse weather cache:', e);
@@ -186,11 +175,7 @@
 
     saveCache(cacheData) {
       currentCache = cacheData;
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-      } catch (e) {
-        console.warn('Failed to save weather cache:', e);
-      }
+      _safeSet(CACHE_KEY, JSON.stringify(cacheData));
     }
   };
 
@@ -400,6 +385,14 @@
     if (!WeatherStorage.loadEnabled()) {
       hideWidget();
       return;
+    }
+
+    // Persist any in-flight manual city input before reading stored value,
+    // so the refresh always uses what the user actually typed (not just
+    // what was previously saved on blur/Enter).
+    const manualInput = document.getElementById('weather-manual-city');
+    if (manualInput) {
+      WeatherStorage.saveManualCity(manualInput.value.trim());
     }
 
     const unit = WeatherStorage.loadUnit();
@@ -641,22 +634,13 @@
 
   // ===================== Event Listeners =====================
 
-  // Listen for language changes
+  // Listen for language changes — always re-fetch because geocoding
+  // results (location names) are language-specific and cached labels
+  // from the previous language would be stale.
   window.addEventListener('languageChanged', function() {
     if (!WeatherStorage.loadEnabled()) return;
     if (isRefreshing) return;
-    const cache = WeatherStorage.loadCache();
-    if (cache && cache.data && isCacheValid(cache) && isCacheMatchingSettings(cache)) {
-      // Manual mode location labels come from the geocoding API and are
-      // language-specific, so re-fetch to get the new translation.
-      if (WeatherStorage.loadLocationMode() === 'manual') {
-        refreshWeather(true);
-      } else {
-        renderWeather(cache.data, cache.locationName, WeatherStorage.loadUnit());
-      }
-    } else {
-      refreshWeather();
-    }
+    refreshWeather(true);
   });
 
   // ===================== Initialization =====================
