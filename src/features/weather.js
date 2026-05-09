@@ -639,7 +639,7 @@
   // from the previous language would be stale.
   window.addEventListener('languageChanged', function() {
     if (!WeatherStorage.loadEnabled()) return;
-    if (isRefreshing) return;
+    if (isRefreshing) { pendingRefresh = true; return; }
     refreshWeather(true);
   });
 
