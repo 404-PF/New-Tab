@@ -1,4 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
+
+beforeEach(() => {
+  localStorage.clear();
+});
 
 describe('storage bridge', () => {
   it('persists localStorage writes to chrome.storage.local', async () => {
@@ -20,5 +24,20 @@ describe('storage bridge', () => {
 
     const stored = await chrome.storage.local.get(null);
     expect(stored.language).toBeUndefined();
+  });
+
+  it('exposes length and key ordering', () => {
+    localStorage.setItem('first', '1');
+    localStorage.setItem('second', '2');
+
+    expect(localStorage.length).toBe(2);
+    expect(localStorage.key(0)).toBe('first');
+    expect(localStorage.key(1)).toBe('second');
+  });
+
+  it('returns empty-string keys without coercing them to null', () => {
+    localStorage.setItem('', 'empty');
+
+    expect(localStorage.key(0)).toBe('');
   });
 });

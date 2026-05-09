@@ -1092,7 +1092,6 @@
     </div>
   </div>
 
-
 <script>
   (function () {
     const scriptSources = [
@@ -1131,18 +1130,15 @@
       return new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = source;
+        script.async = false;
         script.onload = resolve;
         script.onerror = () => reject(new Error(`Failed to load ${source}`));
         document.body.appendChild(script);
       });
     }
 
-    function loadScriptsSequentially(sources) {
-      return sources.reduce((promise, source) => promise.then(() => loadScript(source)), Promise.resolve());
-    }
-
     const ready = window.__storageBridgeReady || Promise.resolve();
-    ready.then(() => loadScriptsSequentially(scriptSources)).catch((error) => {
+    ready.then(() => Promise.all(scriptSources.map(loadScript))).catch((error) => {
       console.error('Failed to bootstrap New-Tab scripts:', error);
     });
   })();

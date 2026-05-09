@@ -96,7 +96,6 @@
         if (Object.keys(storageSnapshot).length === 0 && Object.keys(nativeSnapshot).length > 0) {
           const migratedSnapshot = { ...nativeSnapshot };
           applySnapshot(migratedSnapshot);
-          writeNativeSnapshot(migratedSnapshot);
 
           try {
             storageArea.set(migratedSnapshot, () => {
@@ -115,7 +114,6 @@
 
         const mergedSnapshot = { ...nativeSnapshot, ...storageSnapshot };
         applySnapshot(mergedSnapshot);
-        writeNativeSnapshot(mergedSnapshot);
         resolveStorageReady();
       });
     } catch (error) {
@@ -222,24 +220,43 @@
     setItem(key, value) {
       const stringValue = String(value);
       cache.set(key, stringValue);
-      writeNativeSnapshot(snapshotToObject());
+
+      if (!getStorageArea()) {
+        writeNativeSnapshot(snapshotToObject());
+        return;
+      }
+
       persistSet(key, stringValue);
     },
 
     removeItem(key) {
       cache.delete(key);
-      writeNativeSnapshot(snapshotToObject());
+
+      if (!getStorageArea()) {
+        writeNativeSnapshot(snapshotToObject());
+        return;
+      }
+
       persistRemove(key);
     },
 
     clear() {
       cache.clear();
-      writeNativeSnapshot({});
+
+      if (!getStorageArea()) {
+        writeNativeSnapshot({});
+        return;
+      }
+
       persistClear();
     },
 
     key(index) {
-      return Array.from(cache.keys())[index] || null;
+      if (index < 0 || index >= cache.size) {
+        return null;
+      }
+
+      return Array.from(cache.keys())[index];
     }
   };
 
