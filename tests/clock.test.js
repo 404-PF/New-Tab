@@ -1,8 +1,13 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  vi.useFakeTimers();
   injectScript('src/core/main.js');
+});
+
+afterAll(() => {
+  vi.useRealTimers();
 });
 
 describe('Clock formatting', () => {

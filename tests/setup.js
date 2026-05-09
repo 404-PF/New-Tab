@@ -1,3 +1,4 @@
+import { beforeAll, beforeEach } from 'vitest';
 import { resetLocalStorage, getLocalStorageMap } from './helpers/inject-script.js';
 
 // ------------------------------------------------------------------
@@ -269,6 +270,10 @@ document.body.appendChild(todoFilters);
 // ------------------------------------------------------------------
 // Reset between test files
 // ------------------------------------------------------------------
+beforeAll(() => {
+  resetLocalStorage();
+});
+
 beforeEach(() => {
   resetLocalStorage();
   // Remove dynamically added elements that some scripts might append
