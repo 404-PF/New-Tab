@@ -11,9 +11,12 @@ This is a Chrome/Edge browser extension (manifest v3) that provides a personaliz
 - No build commands required - this is a vanilla JS project with no bundler
 
 ### Testing
-- No automated test framework is currently set up
-- Manual testing: Load the extension in browser and verify functionality
-- Opening `New-Tab.html` directly is only a limited smoke test; extension APIs such as manifest-backed version checks require loading the unpacked extension
+- Automated tests are set up with **Vitest** + **jsdom**
+- Run tests: `npm test`
+- Run with coverage: `npm run test:coverage`
+- Watch mode: `npm run test:watch`
+- Tests live in `tests/` and use script injection to load vanilla JS source files into jsdom
+- Manual testing is still required for browser-specific behavior (e.g., extension APIs, media playback)
 
 ### Linting
 - No ESLint or other linter is configured
@@ -22,9 +25,7 @@ This is a Chrome/Edge browser extension (manifest v3) that provides a personaliz
 ### Code Quality Tools (Recommended)
 If you want to add linting, consider:
 ```bash
-npm init -y
-npm install eslint --save-dev
-npx eslint js/**/*.js
+npx eslint src/**/*.js
 ```
 
 ## Code Style Guidelines
