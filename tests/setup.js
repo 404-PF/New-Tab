@@ -1,5 +1,4 @@
 import { beforeAll, beforeEach } from 'vitest';
-import { resetLocalStorage, getLocalStorageMap } from './helpers/inject-script.js';
 
 // ------------------------------------------------------------------
 // requestAnimationFrame / cancelAnimationFrame polyfills for jsdom
@@ -14,37 +13,6 @@ if (typeof globalThis.cancelAnimationFrame === 'undefined') {
     clearTimeout(id);
   };
 }
-
-// ------------------------------------------------------------------
-// LocalStorage mock
-// ------------------------------------------------------------------
-const localStorageMock = {
-  getItem(key) {
-    const map = getLocalStorageMap();
-    return map.has(key) ? String(map.get(key)) : null;
-  },
-  setItem(key, value) {
-    getLocalStorageMap().set(key, String(value));
-  },
-  removeItem(key) {
-    getLocalStorageMap().delete(key);
-  },
-  clear() {
-    getLocalStorageMap().clear();
-  },
-  get length() {
-    return getLocalStorageMap().size;
-  },
-  key(index) {
-    return Array.from(getLocalStorageMap().keys())[index] || null;
-  }
-};
-
-Object.defineProperty(globalThis, 'localStorage', {
-  value: localStorageMock,
-  writable: true,
-  configurable: true
-});
 
 // ------------------------------------------------------------------
 // chrome API mock
@@ -271,12 +239,11 @@ document.body.appendChild(todoFilters);
 // Reset between test files
 // ------------------------------------------------------------------
 beforeAll(() => {
-  resetLocalStorage();
+  localStorage.clear();
 });
 
 beforeEach(() => {
-  resetLocalStorage();
-  // Remove dynamically added elements that some scripts might append
+  localStorage.clear();
   document.querySelectorAll('.toast-notification, .copy-notification, .search-validation-feedback, .inline-date-picker')
     .forEach(el => el.remove());
 });

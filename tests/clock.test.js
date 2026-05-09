@@ -3,10 +3,15 @@ import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
   vi.useFakeTimers();
+  window.VisibilityInterval = class {
+    constructor() {}
+    destroy() {}
+  };
   injectScript('src/core/main.js');
 });
 
 afterAll(() => {
+  vi.clearAllTimers();
   vi.useRealTimers();
 });
 
