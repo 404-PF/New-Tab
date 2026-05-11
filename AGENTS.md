@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a Chrome/Edge browser extension (manifest v3) that provides a personalized new tab page. The project uses vanilla JavaScript with no build system - files are loaded directly in the browser.
+This is a Chrome/Edge browser extension (manifest v3) that provides a personalized new tab page. It uses vanilla JavaScript with no build step; browser-loaded scripts live in `New-Tab.html` and the main application code is under `src/`.
 
 ## Build & Development Commands
 
@@ -17,6 +17,7 @@ This is a Chrome/Edge browser extension (manifest v3) that provides a personaliz
 - Watch mode: `npm run test:watch`
 - Tests live in `tests/` and use script injection to load vanilla JS source files into jsdom
 - Manual testing is still required for browser-specific behavior (e.g., extension APIs, media playback)
+- `src/core/storage.js` bridges `localStorage` onto `chrome.storage.local`; `tests/setup.js` mocks the Chrome APIs so tests exercise the same persistence path.
 
 ### Linting
 - No ESLint or other linter is configured
@@ -37,10 +38,14 @@ npx eslint src/**/*.js
 - Add comments for complex logic (but avoid obvious comments)
 
 ### File Organization
-- Main UI code: `js/` directory
-- Background scripts: `background/` directory
+- Main UI code: `src/` directory
+- Core/runtime logic: `src/core/`
+- Feature modules: `src/features/`
+- UI modules: `src/ui/`
+- Data modules: `src/data/`
+- Background scripts: `background/`
 - Entry point: `New-Tab.html`
-- Styles: `style.css`
+- Global styles: `style.css`
 - Entry script loading order determined by `<script>` tags in HTML
 
 ### JavaScript Conventions
@@ -164,14 +169,21 @@ function loadTodos() {
 New-Tab/               # Project root
 ├── New-Tab.html       # Main entry point
 ├── style.css          # Styles
-├── js/                # JavaScript modules
-│   ├── main.js        # Clock, date, motto
-│   ├── settings.js    # Background, theme settings
-│   ├── todo.js        # Todo list functionality
-│   ├── app-manager.js # App grid management
-│   └── ai/            # AI-related features
+├── src/                # JavaScript modules
+│   ├── core/           # Startup, storage, versioning, utilities
+│   ├── data/           # Built-in backgrounds and motto data
+│   ├── features/       # Todo, onboarding, simple mode, drag-and-drop
+│   ├── ui/             # Settings, app manager, add-app flow, search UI
+│   └── ai/             # AI assistant, network detection, offline handling
 ├── background/        # Chrome extension background scripts
 │   └── tools/         # Thumbnail generation (Node.js)
 ├── docs/              # Documentation
 └── manifest.json      # Chrome extension manifest
 ```
+
+## Reference Docs
+
+Keep deeper guidance in the existing docs instead of duplicating it here:
+- [README](README.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
