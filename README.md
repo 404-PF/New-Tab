@@ -23,6 +23,7 @@ A personalized new tab extension for Chromium-based browsers. It replaces the de
 - Static and live backgrounds, including uploaded images and videos
 - Todo list with due dates, overdue state, filters, and progress tracking
 - Simple mode plus settings for themes, colors, fonts, icon size, and icon shape
+- Weather widget with auto-geolocation, manual city input, and Celsius/Fahrenheit toggle
 - English and Simplified Chinese interface support
 - Built-in onboarding tour, update checks, and AI chat with offline fallback
 

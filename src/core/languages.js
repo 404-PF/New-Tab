@@ -106,6 +106,26 @@ const translations = {
     dateFormatCompact: "Compact",
     dateFormatNumeric: "Numeric",
 
+    // Weather settings
+    weather: "Weather",
+    weatherSettings: "Weather",
+    weatherSettingsDesc: "Configure weather widget display",
+    enableWeatherWidget: "Enable weather widget",
+    weatherUnit: "Temperature Unit",
+    weatherCelsius: "Celsius",
+    weatherFahrenheit: "Fahrenheit",
+    weatherLocation: "Location",
+    weatherAutoDetect: "Auto-detect",
+    weatherManual: "Manual",
+    weatherCityPlaceholder: "City name",
+    weatherRefresh: "Refresh Weather",
+    weatherLoading: "Loading...",
+    weatherError: "Unable to load weather",
+    weatherEnterCity: "Enter a city name",
+    weatherUnknownLocation: "Unknown location",
+    weatherLocationUnavailable: "Location unavailable",
+    weatherLocationNotFound: "City not found",
+
     // Themes settings
     themeSettings: "Theme",
     themeSettingsDesc: "Choose your preferred interface theme",
@@ -370,6 +390,26 @@ const translations = {
     dateFormatLong: "长格式",
     dateFormatCompact: "紧凑格式",
     dateFormatNumeric: "数字格式",
+
+    // Weather settings
+    weather: "天气",
+    weatherSettings: "天气",
+    weatherSettingsDesc: "配置天气小部件显示",
+    enableWeatherWidget: "启用天气小部件",
+    weatherUnit: "温度单位",
+    weatherCelsius: "摄氏度",
+    weatherFahrenheit: "华氏度",
+    weatherLocation: "位置",
+    weatherAutoDetect: "自动检测",
+    weatherManual: "手动输入",
+    weatherCityPlaceholder: "城市名称",
+    weatherRefresh: "刷新天气",
+    weatherLoading: "加载中...",
+    weatherError: "无法加载天气",
+    weatherEnterCity: "请输入城市名称",
+    weatherUnknownLocation: "未知位置",
+    weatherLocationUnavailable: "位置不可用",
+    weatherLocationNotFound: "未找到城市",
 
     // Themes settings
     themeSettings: "主题",
