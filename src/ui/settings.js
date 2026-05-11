@@ -197,6 +197,10 @@ function applyBg() {
   const videoEl = document.getElementById('bg-video');
   const containerEl = document.getElementById('background-container');
 
+  if (window._interactiveBackground) {
+    window._interactiveBackground.stop();
+  }
+
   // Handle custom backgrounds (stored in IndexedDB)
   if (window._customBackgrounds && window._customBackgrounds.isCustom(bg)) {
     backgroundLoadVersion += 1;
@@ -220,6 +224,41 @@ function applyBg() {
   clearBackgroundTransitionTimeout();
   
   if (!thumbnailEl || !fullEl) return;
+
+  if (bgData.type === 'interactive') {
+    resetBackgroundVideo(videoEl, true);
+    containerEl && containerEl.classList.remove('video-fallback', 'video-error');
+
+    fullEl.classList.remove('loaded');
+    thumbnailEl.classList.remove('hidden');
+    thumbnailEl.classList.remove('clearing');
+    thumbnailEl.src = bgData.thumb;
+
+    fullEl.src = bgData.url || bgData.thumb;
+    requestAnimationFrame(() => {
+      if (loadVersion !== backgroundLoadVersion) {
+        return;
+      }
+
+      fullEl.classList.add('loaded');
+      thumbnailEl.classList.add('clearing');
+
+      backgroundTransitionTimeout = setTimeout(() => {
+        if (loadVersion !== backgroundLoadVersion) {
+          return;
+        }
+
+        thumbnailEl.classList.add('hidden');
+        thumbnailEl.classList.remove('clearing');
+        backgroundTransitionTimeout = null;
+      }, IMAGE_THUMBNAIL_HIDE_DELAY_MS);
+
+      if (window._interactiveBackground) {
+        window._interactiveBackground.apply(bgData.id);
+      }
+    });
+    return;
+  }
   
   // Handle video background
   if (bgData.type === 'video') {
@@ -780,6 +819,7 @@ if (settingsMenu) {
         scheduleBackgroundSectionInitialization(function () {
           try {
             if (window._initStaticBackgrounds) window._initStaticBackgrounds();
+            if (window._initInteractiveBackgrounds) window._initInteractiveBackgrounds();
             if (window._initLiveBackgrounds) window._initLiveBackgrounds();
             if (window._customBackgrounds) window._customBackgrounds.render();
 
