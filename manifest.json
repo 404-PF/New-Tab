@@ -13,7 +13,8 @@
     "newtab": "New-Tab.html"
   },
   "permissions": [
-    "search"
+    "search",
+    "storage"
   ],
   "action": {
     "default_icon": {

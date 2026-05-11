@@ -6,10 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>New-Tab</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="src/data/motto.js" defer></script>
-  <script src="src/data/backgrounds.js" defer></script>
-  <script src="src/data/custom-backgrounds.js" defer></script>
-  <script src="src/core/version.js" defer></script>
+  <script src="src/core/storage.js"></script>
   </head>
 <body>
   <!-- Weather Widget -->
@@ -1095,32 +1092,57 @@
     </div>
   </div>
 
+<script>
+  (function () {
+    const scriptSources = [
+      'src/data/motto.js',
+      'src/data/backgrounds.js',
+      'src/data/custom-backgrounds.js',
+      'src/core/version.js',
+      'src/core/utils.js',
+      'src/core/app-grid-storage.js',
+      'src/core/main.js',
+      'src/core/app-grid-state.js',
+      'src/ui/app-manager.js',
+      'src/features/drag-drop.js',
+      'src/ui/add-app-modal.js',
+      'src/ui/add-app.js',
+      'src/ui/color-picker.js',
+      'src/ui/font-picker.js',
+      'src/core/languages.js',
+      'src/ui/settings.js',
+      'src/features/context-menu.js',
+      'src/core/update-checker.js',
+      'src/features/onboarding.js',
+      'src/features/todo.js',
+      'src/features/simple-mode.js',
+      'src/ai/network-detector.js',
+      'src/ai/offline-mode.js',
+      'src/ai/openrouter.js',
+      'src/ai/markdown-parser.js',
+      'src/ai/ai-store.js',
+      'src/ai/ai-renderer.js',
+      'src/ai/ai-service.js',
+      'src/features/weather.js'
+    ];
 
-<script src="src/core/utils.js"></script>
-<script src="src/core/app-grid-storage.js"></script>
-<script src="src/core/main.js"></script>
-<script src="src/core/app-grid-state.js"></script>
-<script src="src/ui/app-manager.js"></script>
-<script src="src/features/drag-drop.js"></script>
-<script src="src/ui/add-app-modal.js"></script>
-<script src="src/ui/add-app.js"></script>
-<script src="src/ui/color-picker.js"></script>
-<script src="src/ui/font-picker.js"></script>
-<script src="src/core/languages.js"></script>
-<script src="src/ui/settings.js"></script>
-<script src="src/features/context-menu.js"></script>
-<script src="src/core/update-checker.js"></script>
-<script src="src/features/onboarding.js"></script>
-<script src="src/features/todo.js"></script>
-<script src="src/features/simple-mode.js"></script>
-<script src="src/ai/network-detector.js"></script>
-<script src="src/ai/offline-mode.js"></script>
-<script src="src/ai/openrouter.js"></script>
-<script src="src/ai/markdown-parser.js"></script>
-<script src="src/ai/ai-store.js"></script>
-<script src="src/ai/ai-renderer.js"></script>
-<script src="src/ai/ai-service.js"></script>
-<script src="src/features/weather.js"></script>
+    function loadScript(source) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = source;
+        script.async = false;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error(`Failed to load ${source}`));
+        document.body.appendChild(script);
+      });
+    }
+
+    const ready = window.__storageBridgeReady || Promise.resolve();
+    ready.then(() => Promise.all(scriptSources.map(loadScript))).catch((error) => {
+      console.error('Failed to bootstrap New-Tab scripts:', error);
+    });
+  })();
+</script>
   <!-- Motto area -->
   <div id="motto-container">
     <span id="motto-text">Loading...</span>
