@@ -64,6 +64,8 @@ const translations = {
     // Background settings
     backgroundSettings: "Background",
     backgroundSettingsDesc: "Choose your background image",
+    interactiveBackground: "Interactive Background",
+    interactiveBackgroundSettingsDesc: "Choose a subtle pointer-reactive background",
     liveBackground: "Live Background",
     liveBackgroundSettings: "Live Background",
     liveBackgroundSettingsDesc: "Choose an animated background video",
@@ -347,6 +349,8 @@ const translations = {
     // Background settings
     backgroundSettings: "背景",
     backgroundSettingsDesc: "选择您的背景图片",
+    interactiveBackground: "交互式背景",
+    interactiveBackgroundSettingsDesc: "选择一个会轻微响应指针的背景",
     liveBackground: "动态背景",
     liveBackgroundSettings: "动态背景",
     liveBackgroundSettingsDesc: "选择动态背景视频",
@@ -697,18 +701,26 @@ function updateDynamicTranslations() {
 
   // Update background section headers if they exist
   const bgStaticHeader = document.querySelector('#bg-static-section .bg-subsection-header');
+  const bgInteractiveHeader = document.querySelector('#bg-interactive-section .bg-subsection-header');
   const bgLiveHeader = document.querySelector('#bg-live-section .bg-subsection-header');
   const bgStaticDesc = document.querySelector('#bg-static-section .bg-subsection-desc');
+  const bgInteractiveDesc = document.querySelector('#bg-interactive-section .bg-subsection-desc');
   const bgLiveDesc = document.querySelector('#bg-live-section .bg-subsection-desc');
   
   if (bgStaticHeader) {
     bgStaticHeader.textContent = getTranslation(currentLanguage, 'background');
+  }
+  if (bgInteractiveHeader) {
+    bgInteractiveHeader.textContent = getTranslation(currentLanguage, 'interactiveBackground');
   }
   if (bgLiveHeader) {
     bgLiveHeader.textContent = getTranslation(currentLanguage, 'liveBackground');
   }
   if (bgStaticDesc) {
     bgStaticDesc.textContent = getTranslation(currentLanguage, 'backgroundSettingsDesc');
+  }
+  if (bgInteractiveDesc) {
+    bgInteractiveDesc.textContent = getTranslation(currentLanguage, 'interactiveBackgroundSettingsDesc');
   }
   if (bgLiveDesc) {
     bgLiveDesc.textContent = getTranslation(currentLanguage, 'liveBackgroundSettingsDesc');
