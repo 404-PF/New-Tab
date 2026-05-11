@@ -12,7 +12,9 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.js": "eslint --fix"
+    "src/**/*.js": "eslint --fix",
+    "tests/**/*.js": "eslint --fix",
+    "*.{js,mjs}": "eslint --fix"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.0.0",
