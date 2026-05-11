@@ -2,7 +2,7 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["background/", "coverage/", "node_modules/"],
+    ignores: ["coverage/", "node_modules/"],
   },
   {
     files: ["src/**/*.js"],
@@ -86,6 +86,34 @@ export default [
         beforeAll: "readonly",
         afterAll: "readonly",
       },
+    },
+  },
+  {
+    files: ["background/tools/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "commonjs",
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      semi: "error",
+      quotes: ["error", "single", { avoidEscape: true }],
+      indent: ["error", 2, { SwitchCase: 1 }],
+      eqeqeq: "error",
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "no-undef": "warn",
+      "no-var": "warn",
+      "prefer-const": "warn",
+      "no-dupe-keys": "error",
+      "no-redeclare": ["error", { builtinGlobals: false }],
+      "no-unreachable": "error",
+      "no-fallthrough": "error",
+      "no-empty": ["warn", { allowEmptyCatch: true }],
+      "no-extra-semi": "error",
+      "comma-dangle": "off",
+      strict: "off",
     },
   },
 ];

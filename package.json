@@ -7,13 +7,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src/ tests/",
-    "lint:fix": "eslint src/ tests/ --fix",
-    "prepare": "husky"
+    "lint": "eslint src/ tests/ background/tools/",
+    "lint:fix": "eslint src/ tests/ background/tools/ --fix",
+    "prepare": "node -e \"try{require('child_process').execSync('husky',{stdio:'inherit'})}catch(e){}\""
   },
   "lint-staged": {
     "src/**/*.js": "eslint --fix",
     "tests/**/*.js": "eslint --fix",
+    "background/tools/**/*.js": "eslint --fix",
     "*.{js,mjs}": "eslint --fix"
   },
   "devDependencies": {
