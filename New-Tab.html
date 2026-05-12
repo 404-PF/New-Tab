@@ -147,6 +147,23 @@
               </button>
             </div>
             <div class="quick-actions">
+              <button class="quick-action-btn" id="export-todos">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7,10 12,15 17,10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span data-i18n="exportTodos">Export</span>
+              </button>
+              <button class="quick-action-btn" id="import-todos">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="3,15 12,15 21,15"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span data-i18n="importTodos">Import</span>
+              </button>
+              <input type="file" id="todo-import-file" accept=".json" style="display:none">
               <button class="quick-action-btn danger" id="clear-completed">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="3,6 5,6 21,6"></polyline>
@@ -195,6 +212,27 @@
       <div class="ai-confirm-actions">
         <button class="ai-confirm-cancel" data-i18n="cancel">Cancel</button>
         <button class="ai-confirm-delete" id="clear-completed-confirm" data-i18n="clearCompletedConfirmButton">Clear Completed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Todos Confirmation Dialog -->
+  <div id="import-todos-dialog" class="ai-confirm-dialog screen-overlay">
+    <div class="ai-confirm-overlay"></div>
+    <div class="ai-confirm-content">
+      <div class="ai-confirm-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="3,15 12,15 21,15"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+      </div>
+      <h3 class="ai-confirm-title" data-i18n="importConfirmTitle">Import Todos</h3>
+      <p class="ai-confirm-message" data-i18n="importConfirmMessage">How would you like to import?</p>
+      <div class="ai-confirm-actions">
+        <button class="ai-confirm-cancel" data-i18n="cancel">Cancel</button>
+        <button class="ai-confirm-primary" id="import-merge-btn" data-i18n="importMerge">Merge</button>
+        <button class="ai-confirm-delete" id="import-replace-btn" data-i18n="importReplace">Replace</button>
       </div>
     </div>
   </div>

@@ -19,6 +19,13 @@ let editModalState = {
   isOpen: false
 };
 
+// Escape HTML entities to prevent XSS
+const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, c => HTML_ESCAPE_MAP[c]);
+}
+
 // Load todos from localStorage
 function loadTodos() {
   try {
@@ -160,7 +167,7 @@ function renderTodos() {
 
     // Format due date if exists - make it clickable for inline editing
     const dueDateHtml = `
-      <div class="todo-due-date clickable ${todo.dueDate ? (isOverdue(todo.dueDate) ? 'overdue' : '') : 'empty'}" data-todo-id="${todo.id}">
+      <div class="todo-due-date clickable ${todo.dueDate ? (isOverdue(todo.dueDate) ? 'overdue' : '') : 'empty'}" data-todo-id="${escapeHtml(todo.id)}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
           <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -172,7 +179,7 @@ function renderTodos() {
     `;
 
     li.innerHTML = `
-      <div class="todo-bullet" data-id="${todo.id}">
+      <div class="todo-bullet" data-id="${escapeHtml(todo.id)}">
         ${todo.completed ? `
           <svg viewBox="0 0 24 24" fill="none" class="bullet-checked">
             <circle cx="12" cy="12" r="10" fill="currentColor"/>
@@ -185,17 +192,17 @@ function renderTodos() {
         `}
       </div>
       <div class="todo-content">
-        <p class="todo-text">${todo.text}</p>
+        <p class="todo-text">${escapeHtml(todo.text)}</p>
       </div>
       ${dueDateHtml}
       <div class="todo-actions">
-        <button class="todo-edit-btn" data-id="${todo.id}" title="${window.i18n ? window.i18n.t('todoEditTooltip') : 'Edit Todo'}">
+        <button class="todo-edit-btn" data-id="${escapeHtml(todo.id)}" title="${window.i18n ? window.i18n.t('todoEditTooltip') : 'Edit Todo'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
           </svg>
         </button>
-        <button class="todo-delete-btn" data-id="${todo.id}" title="${window.i18n ? window.i18n.t('todoDeleteTooltip') : 'Delete Todo'}">
+        <button class="todo-delete-btn" data-id="${escapeHtml(todo.id)}" title="${window.i18n ? window.i18n.t('todoDeleteTooltip') : 'Delete Todo'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3,6 5,6 21,6"></polyline>
             <path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
@@ -892,24 +899,27 @@ function showDateUpdateFeedback(dueDateElement, oldDate, newDate) {
 }
 
 // Show toast notification
-function showToast(message) {
+function showToast(message, type = '') {
   // Remove existing toast if any
   const existingToast = document.querySelector('.toast-notification');
   if (existingToast) {
     existingToast.remove();
   }
-  
+
   const toast = document.createElement('div');
   toast.className = 'toast-notification';
+  if (type) {
+    toast.classList.add('toast-' + type);
+  }
   toast.textContent = message;
-  
+
   document.body.appendChild(toast);
-  
+
   // Trigger animation
   requestAnimationFrame(() => {
     toast.classList.add('show');
   });
-  
+
   // Remove after 2 seconds
   setTimeout(() => {
     toast.classList.remove('show');
@@ -1055,6 +1065,21 @@ function initTodo() {
     clearCompletedBtn.addEventListener('click', clearCompleted);
   }
 
+  // Export and Import buttons
+  const exportBtn = document.getElementById('export-todos');
+  const importBtn = document.getElementById('import-todos');
+  const importFileInput = document.getElementById('todo-import-file');
+  
+  if (exportBtn) {
+    exportBtn.addEventListener('click', exportTodos);
+  }
+  if (importBtn) {
+    importBtn.addEventListener('click', importTodos);
+  }
+  if (importFileInput) {
+    importFileInput.addEventListener('change', handleImportFile);
+  }
+
   // Todo list event delegation
   elements.todoList.addEventListener('click', handleTodoListClick);
 
@@ -1112,6 +1137,195 @@ function initTodo() {
   // Initialize progress ring and counts
   updateProgressRing();
   updateFilterCounts();
+}
+
+// Export todos to JSON file
+function exportTodos() {
+  const exportData = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    count: todos.length,
+    todos: todos
+  };
+  
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const dateStr = formatDateISO(new Date());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `new-tab-todos-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Trigger file input for import
+function importTodos() {
+  const fileInput = document.getElementById('todo-import-file');
+  if (!fileInput) return;
+  fileInput.value = '';
+  fileInput.click();
+}
+
+// Validate imported todo data
+function validateTodoData(data) {
+  if (!data || typeof data !== 'object') return false;
+  
+  const todos = data.todos;
+  if (!Array.isArray(todos)) return false;
+  
+  for (const item of todos) {
+    if (!item || typeof item !== 'object') return false;
+    if (typeof item.id !== 'string' || !item.id) return false;
+    if (typeof item.text !== 'string' || !item.text.trim()) return false;
+    if (typeof item.completed !== 'boolean') return false;
+    if (item.dueDate !== undefined && item.dueDate !== null && typeof item.dueDate !== 'string') return false;
+    if (item.createdAt !== undefined && item.createdAt !== null && typeof item.createdAt !== 'string') return false;
+    if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
+    if (item.order !== undefined && typeof item.order !== 'number') return false;
+  }
+  
+  return true;
+}
+
+// Handle file selection for import
+function handleImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onerror = function() {
+    console.error('Failed to read import file');
+    showToast(window.i18n ? window.i18n.t('importReadError') : 'Failed to read file.', 'error');
+  };
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!validateTodoData(data)) {
+        showToast(window.i18n ? window.i18n.t('importInvalidData') : 'Invalid todo data.', 'error');
+        return;
+      }
+      if (!data.todos.length) {
+        showToast(window.i18n ? window.i18n.t('importEmptyFile') : 'No todos found in the selected file.', 'error');
+        return;
+      }
+      showImportDialog(data.todos);
+    } catch (err) {
+      console.error('Failed to parse import file:', err);
+      showToast(window.i18n ? window.i18n.t('importInvalidData') : 'Invalid todo data.', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Show import confirmation dialog (merge vs replace)
+function showImportDialog(importedTodos) {
+  const dialog = document.getElementById('import-todos-dialog');
+  const overlay = dialog?.querySelector('.ai-confirm-overlay');
+  const cancelBtn = dialog?.querySelector('.ai-confirm-cancel');
+  const mergeBtn = document.getElementById('import-merge-btn');
+  const replaceBtn = document.getElementById('import-replace-btn');
+
+  if (!dialog) return;
+  if (dialog.classList.contains('ai-confirm-open')) return;
+
+  dialog.classList.add('ai-confirm-open');
+
+  requestAnimationFrame(() => {
+    const firstBtn = dialog.querySelector('button');
+    if (firstBtn) firstBtn.focus();
+  });
+  
+  const cleanup = () => {
+    mergeBtn?.removeEventListener('click', handleMerge);
+    replaceBtn?.removeEventListener('click', handleReplace);
+    cancelBtn?.removeEventListener('click', handleCancel);
+    overlay?.removeEventListener('click', handleCancel);
+    dialog?.removeEventListener('keydown', handleKeydown);
+  };
+
+  const hideDialog = () => {
+    dialog.classList.remove('ai-confirm-open');
+    cleanup();
+  };
+
+  const handleKeydown = (e) => {
+    if (e.key === 'Escape') {
+      handleCancel();
+    }
+  };
+  
+  const handleMerge = () => {
+    const existingTodos = loadTodos();
+    const existingIds = new Set(existingTodos.map(t => t.id));
+    let addedCount = 0;
+    let maxOrder = existingTodos.reduce((max, t) => t.order !== undefined ? Math.max(max, t.order) : max, -1);
+    
+    for (const item of importedTodos) {
+      if (!existingIds.has(item.id)) {
+        const todo = {
+          id: item.id,
+          text: item.text,
+          completed: item.completed || false,
+          completedAt: item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null,
+          dueDate: item.dueDate || null,
+          createdAt: item.createdAt || new Date().toISOString(),
+          order: ++maxOrder
+        };
+        existingTodos.push(todo);
+        existingIds.add(item.id);
+        addedCount++;
+      }
+    }
+    
+    closeAllInlineDatePickers();
+    saveTodos(existingTodos);
+    todos = existingTodos;
+    applyFilters();
+    if (addedCount > 0) {
+      const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, addedCount);
+      showToast(msg, 'success');
+    } else {
+      showToast(window.i18n ? window.i18n.t('importNoNewTodos') : 'No new todos to import.', 'info');
+    }
+    hideDialog();
+  };
+  
+  const handleReplace = () => {
+    const maxImported = importedTodos.reduce((max, t) => {
+      return t.order !== undefined ? Math.max(max, t.order) : max;
+    }, -1);
+    let nextOrder = maxImported + 1;
+
+    const newTodos = importedTodos.map((item) => ({
+      id: item.id,
+      text: item.text,
+      completed: item.completed || false,
+      completedAt: item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null,
+      dueDate: item.dueDate || null,
+      createdAt: item.createdAt || new Date().toISOString(),
+      order: item.order !== undefined ? item.order : nextOrder++
+    }));
+    
+    closeAllInlineDatePickers();
+    saveTodos(newTodos);
+    todos = newTodos;
+    applyFilters();
+    const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, newTodos.length);
+    showToast(msg, 'success');
+    hideDialog();
+  };
+  
+  const handleCancel = () => {
+    hideDialog();
+  };
+  
+  mergeBtn?.addEventListener('click', handleMerge);
+  replaceBtn?.addEventListener('click', handleReplace);
+  cancelBtn?.addEventListener('click', handleCancel);
+  overlay?.addEventListener('click', handleCancel);
+  dialog?.addEventListener('keydown', handleKeydown);
 }
 
 // Custom Date Picker Functionality

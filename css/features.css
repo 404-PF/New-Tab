@@ -360,7 +360,8 @@ body.light-theme .settings-section button:hover {
 }
 
 .ai-confirm-cancel,
-.ai-confirm-delete {
+.ai-confirm-delete,
+.ai-confirm-primary {
   padding: 10px 24px;
   border-radius: 10px;
   font-size: 14px;
@@ -393,6 +394,21 @@ body.light-theme .settings-section button:hover {
 }
 
 .ai-confirm-delete:active {
+  transform: translateY(0);
+}
+
+.ai-confirm-primary {
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.ai-confirm-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
+}
+
+.ai-confirm-primary:active {
   transform: translateY(0);
 }
 
@@ -454,6 +470,18 @@ body.light-theme .ai-confirm-cancel {
 
 body.light-theme .ai-confirm-cancel:hover {
   background: rgba(0, 0, 0, 0.1);
+}
+
+#import-todos-dialog .ai-confirm-icon {
+  background: rgba(33, 150, 243, 0.15);
+}
+
+#import-todos-dialog .ai-confirm-icon svg {
+  stroke: #2196f3;
+}
+
+body.light-theme #import-todos-dialog .ai-confirm-icon {
+  background: rgba(33, 150, 243, 0.1);
 }
 
 /* Background Delete Confirm Dialog */
