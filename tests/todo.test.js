@@ -336,4 +336,59 @@ describe('Todo import', () => {
     expect(all).toHaveLength(1);
     expect(all[0].text).toBe('Replacement');
   });
+
+  it('merge preserves extra fields like priority', () => {
+    const imported = [
+      { id: 'p1', text: 'Priority todo', completed: false, priority: 'high' }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].priority).toBe('high');
+    expect(all[0].text).toBe('Priority todo');
+  });
+
+  it('replace preserves extra fields like priority', () => {
+    addTodo('Old');
+
+    const imported = [
+      { id: 'p1', text: 'Priority todo', completed: false, priority: 'low' }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-replace-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].priority).toBe('low');
+    expect(all[0].text).toBe('Priority todo');
+  });
+
+  it('replace with empty array clears all existing todos', () => {
+    addTodo('One');
+    addTodo('Two');
+
+    const allBefore = loadTodos();
+    expect(allBefore).toHaveLength(2);
+
+    showImportDialog([]);
+    document.getElementById('import-replace-btn').click();
+
+    const allAfter = loadTodos();
+    expect(allAfter).toHaveLength(0);
+  });
+
+  it('merge with empty array does nothing', () => {
+    addTodo('Existing');
+
+    showImportDialog([]);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].text).toBe('Existing');
+  });
 });

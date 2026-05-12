@@ -228,7 +228,6 @@ const translations = {
     importReplace: "Replace",
     importInvalidData: "Invalid todo data. Please select a valid JSON file.",
     importReadError: "Failed to read the selected file.",
-    importEmptyFile: "No todos found in the selected file.",
     importSuccess: "Imported {count} todos successfully.",
     importNoNewTodos: "No new todos to import.",
 
@@ -524,7 +523,6 @@ const translations = {
     importReplace: "替换",
     importInvalidData: "无效的待办数据。请选择有效的 JSON 文件。",
     importReadError: "无法读取选定的文件。",
-    importEmptyFile: "所选文件中没有找到待办事项。",
     importSuccess: "已成功导入 {count} 个待办事项。",
     importNoNewTodos: "没有新的待办事项可导入。",
 

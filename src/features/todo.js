@@ -1206,10 +1206,6 @@ function handleImportFile(event) {
         showToast(window.i18n ? window.i18n.t('importInvalidData') : 'Invalid todo data.', 'error');
         return;
       }
-      if (!data.todos.length) {
-        showToast(window.i18n ? window.i18n.t('importEmptyFile') : 'No todos found in the selected file.', 'error');
-        return;
-      }
       showImportDialog(data.todos);
     } catch (err) {
       console.error('Failed to parse import file:', err);
@@ -1264,15 +1260,12 @@ function showImportDialog(importedTodos) {
     
     for (const item of importedTodos) {
       if (!existingIds.has(item.id)) {
-        const todo = {
-          id: item.id,
-          text: item.text,
-          completed: item.completed || false,
-          completedAt: item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null,
-          dueDate: item.dueDate || null,
-          createdAt: item.createdAt || new Date().toISOString(),
-          order: ++maxOrder
-        };
+        const todo = { ...item };
+        todo.completed = !!item.completed;
+        todo.completedAt = item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null;
+        todo.dueDate = item.dueDate || null;
+        todo.createdAt = item.createdAt || new Date().toISOString();
+        todo.order = ++maxOrder;
         existingTodos.push(todo);
         existingIds.add(item.id);
         addedCount++;
@@ -1298,15 +1291,15 @@ function showImportDialog(importedTodos) {
     }, -1);
     let nextOrder = maxImported + 1;
 
-    const newTodos = importedTodos.map((item) => ({
-      id: item.id,
-      text: item.text,
-      completed: item.completed || false,
-      completedAt: item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null,
-      dueDate: item.dueDate || null,
-      createdAt: item.createdAt || new Date().toISOString(),
-      order: item.order !== undefined ? item.order : nextOrder++
-    }));
+    const newTodos = importedTodos.map((item) => {
+      const todo = { ...item };
+      todo.completed = !!item.completed;
+      todo.completedAt = item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null;
+      todo.dueDate = item.dueDate || null;
+      todo.createdAt = item.createdAt || new Date().toISOString();
+      todo.order = item.order !== undefined ? item.order : nextOrder++;
+      return todo;
+    });
     
     closeAllInlineDatePickers();
     saveTodos(newTodos);
