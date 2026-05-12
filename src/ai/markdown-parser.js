@@ -152,6 +152,131 @@ const MarkdownParser = (function() {
   }
 
   /**
+   * Escape HTML attribute values.
+   * @param {string} str - Raw attribute value
+   * @returns {string} Escaped attribute-safe string
+   */
+  function escapeAttribute(str) {
+    return escapeHTML(str)
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /**
+   * Validate markdown URLs before rendering them into HTML.
+   * @param {string} url - URL extracted from markdown
+   * @param {boolean} isImage - Whether the URL belongs to an image
+   * @returns {string|null} Sanitized URL or null when unsafe
+   */
+  function sanitizeMarkdownUrl(url, isImage = false) {
+    if (!url || typeof url !== 'string') {
+      return null;
+    }
+
+    const trimmed = url.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const protocolMatch = trimmed.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
+    if (protocolMatch) {
+      const protocol = protocolMatch[1].toLowerCase();
+      const allowedProtocols = isImage
+        ? ['http', 'https', 'data', 'blob']
+        : ['http', 'https', 'mailto', 'tel'];
+
+      if (!allowedProtocols.includes(protocol)) {
+        return null;
+      }
+
+      if (isImage && protocol === 'data' && !/^data:image\//i.test(trimmed)) {
+        return null;
+      }
+
+      try {
+        return escapeHTML(new URL(trimmed).href);
+      } catch (error) {
+        return escapeHTML(encodeURI(trimmed));
+      }
+    }
+
+    return escapeHTML(encodeURI(trimmed));
+  }
+
+  /**
+   * Replace markdown links and images while preserving balanced parentheses in URLs.
+   * @param {string} html - HTML-escaped inline text
+   * @returns {string} HTML with sanitized links and images
+   */
+  function replaceMarkdownLinksAndImages(html) {
+    let result = '';
+    let index = 0;
+
+    while (index < html.length) {
+      const isImage = html[index] === '!' && html[index + 1] === '[';
+      const isLink = html[index] === '[';
+
+      if (!isImage && !isLink) {
+        result += html[index];
+        index++;
+        continue;
+      }
+
+      const textStart = index + (isImage ? 2 : 1);
+      const textEnd = html.indexOf(']', textStart);
+
+      if (textEnd === -1 || html[textEnd + 1] !== '(') {
+        result += html[index];
+        index++;
+        continue;
+      }
+
+      const urlStart = textEnd + 2;
+      let cursor = urlStart;
+      let depth = 1;
+
+      while (cursor < html.length && depth > 0) {
+        const currentChar = html[cursor];
+
+        if (currentChar === '\\' && cursor + 1 < html.length) {
+          cursor += 2;
+          continue;
+        }
+
+        if (currentChar === '(') {
+          depth++;
+        } else if (currentChar === ')') {
+          depth--;
+        }
+
+        cursor++;
+      }
+
+      if (depth !== 0) {
+        result += html[index];
+        index++;
+        continue;
+      }
+
+      const text = html.slice(textStart, textEnd);
+      const url = html.slice(urlStart, cursor - 1);
+      const safeUrl = sanitizeMarkdownUrl(url, isImage);
+
+      if (safeUrl) {
+        result += isImage
+          ? `<img src="${escapeAttribute(safeUrl)}" alt="${escapeAttribute(text)}" class="md-image" />`
+          : `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${text}</a>`;
+      } else {
+        result += text;
+      }
+
+      index = cursor;
+    }
+
+    return result;
+  }
+
+  /**
    * Apply syntax highlighting to code
    * @param {string} code - Code to highlight
    * @param {string} language - Programming language
@@ -254,11 +379,8 @@ const MarkdownParser = (function() {
     // Strikethrough (~~text~~)
     html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
     
-    // Links [text](url)
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>');
-    
-    // Images ![alt](url)
-    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="md-image" />');
+    // Images and links - images first so the link pass does not consume them
+    html = replaceMarkdownLinksAndImages(html);
     
     return html;
   }
