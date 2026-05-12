@@ -280,6 +280,16 @@ describe('Todo validateTodoData', () => {
     };
     expect(validateTodoData(data)).toBe(true);
   });
+
+  it('rejects duplicate IDs', () => {
+    const data = {
+      todos: [
+        { id: 'dup', text: 'First', completed: false },
+        { id: 'dup', text: 'Second', completed: false }
+      ]
+    };
+    expect(validateTodoData(data)).toBe(false);
+  });
 });
 
 describe('Todo import', () => {
@@ -390,5 +400,24 @@ describe('Todo import', () => {
     const all = loadTodos();
     expect(all).toHaveLength(1);
     expect(all[0].text).toBe('Existing');
+  });
+
+  it('imports todos with CSS-special characters in IDs', () => {
+    addTodo('Original');
+
+    const imported = [
+      { id: 'todo"quoted"', text: 'Has quotes in id', completed: false },
+      { id: 'todo]bracket[', text: 'Has brackets in id', completed: false },
+      { id: 'todo\\backslash', text: 'Has backslash in id', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(4);
+    expect(all.find(t => t.id === 'todo"quoted"').text).toBe('Has quotes in id');
+    expect(all.find(t => t.id === 'todo]bracket[').text).toBe('Has brackets in id');
+    expect(all.find(t => t.id === 'todo\\backslash').text).toBe('Has backslash in id');
   });
 });

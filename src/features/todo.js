@@ -825,7 +825,7 @@ function refreshInlineDatePickers() {
     const todoId = pickerContainer.dataset.todoId;
     const todo = todos.find(t => t.id === todoId);
 
-    const dueDateElement = document.querySelector(`.todo-due-date[data-todo-id="${todoId}"]`);
+    const dueDateElement = Array.from(document.querySelectorAll('.todo-due-date')).find(el => el.dataset.todoId === todoId);
 
     if (!todo || !dueDateElement) {
       closeInlineDatePicker(pickerContainer);
@@ -1175,9 +1175,12 @@ function validateTodoData(data) {
   const todos = data.todos;
   if (!Array.isArray(todos)) return false;
   
+  const seenIds = new Set();
   for (const item of todos) {
     if (!item || typeof item !== 'object') return false;
     if (typeof item.id !== 'string' || !item.id) return false;
+    if (seenIds.has(item.id)) return false;
+    seenIds.add(item.id);
     if (typeof item.text !== 'string' || !item.text.trim()) return false;
     if (typeof item.completed !== 'boolean') return false;
     if (item.dueDate !== undefined && item.dueDate !== null && typeof item.dueDate !== 'string') return false;
