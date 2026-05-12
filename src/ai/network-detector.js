@@ -2,11 +2,6 @@
 // Detects online/offline status and checks API health
 
 const NetworkDetector = (function() {
-  // Configuration
-  const CONFIG = {
-    // No API health checking - let actual requests determine availability
-  };
-
   // State
   let isOnline = navigator.onLine;
   const listeners = [];

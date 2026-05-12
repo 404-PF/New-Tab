@@ -112,6 +112,7 @@ function validateUrl(input) {
   }
 }
 
+/* exported translateValidationMessage */
 function translateValidationMessage(message) {
   if (!message) return '';
 

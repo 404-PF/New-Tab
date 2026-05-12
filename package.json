@@ -9,7 +9,7 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/ tests/ background/tools/",
     "lint:fix": "eslint src/ tests/ background/tools/ --fix",
-    "prepare": "node -e \"try{require('child_process').execSync('husky',{stdio:'inherit'})}catch(e){}\""
+    "prepare": "node -e \"try{require.resolve('husky')}catch(e){process.exit(0)}\" && husky"
   },
   "lint-staged": {
     "src/**/*.js": "eslint --fix",

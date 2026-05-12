@@ -222,7 +222,7 @@
     let data;
     try {
       data = await response.json();
-    } catch (e) {
+    } catch {
       throw createWeatherError('Geocoding response invalid', 'GEOCODING_INVALID');
     }
     if (!data.results || data.results.length === 0) throw createWeatherError('City not found', 'CITY_NOT_FOUND');
@@ -440,7 +440,7 @@
       } else {
         try {
           location = await getLocation();
-        } catch (e) {
+        } catch {
           // Try to use stale cache as fallback only if it matches current mode
           if (cache && cache.data && isCacheMatchingSettings(cache)) {
             renderWeather(cache.data, cache.locationName, unit);

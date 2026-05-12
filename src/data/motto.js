@@ -1,4 +1,5 @@
 // motto.js - Multilingual mottos
+/* exported mottos */
 const mottos = {
   en: [
     'When one is young and eager to learn, he is like the sun at sunrise; when one is strong and eager to learn, he is like the sun at noon; when one is old and eager to learn, he is like the light of a bright candle ———— Liu Xiang',
@@ -137,6 +138,3 @@ const mottos = {
     '你能想象的一切都是真实的 ———— 巴勃罗·毕加索',
   ]
 };
-
-// Backward compatibility - return English mottos as default
-const motto = mottos.en;

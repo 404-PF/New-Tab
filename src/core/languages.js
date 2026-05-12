@@ -595,11 +595,6 @@ function getTranslation(lang, key) {
   return key;
 }
 
-// Load language from localStorage
-function loadLanguage() {
-  return localStorage.getItem('language') || 'en';
-}
-
 // Save language to localStorage
 function saveLanguage(lang) {
   localStorage.setItem('language', lang);
@@ -740,12 +735,6 @@ function updateDynamicTranslations() {
 // Get translated text
 function t(key) {
   return getTranslation(currentLanguage, key);
-}
-
-// Initialize language system
-function initLanguage() {
-  const lang = loadLanguage();
-  applyLanguage(lang);
 }
 
 // Export functions for global use

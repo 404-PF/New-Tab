@@ -105,14 +105,13 @@ function formatDateDisplay(now, locale) {
 
 // Update time immediately and then every minute using visibility-aware interval
 updateTime();
-let clockInterval = null;
 
 function initClock() {
   // Use VisibilityInterval if available, fallback to regular setInterval
   if (window.VisibilityInterval) {
-    clockInterval = new VisibilityInterval(updateTime, 1000);
+    new VisibilityInterval(updateTime, 1000);
   } else {
-    clockInterval = setInterval(updateTime, 1000);
+    setInterval(updateTime, 1000);
   }
 }
 

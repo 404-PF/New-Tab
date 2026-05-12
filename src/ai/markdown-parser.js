@@ -514,10 +514,9 @@ const MarkdownParser = (function() {
    * @returns {string} HTML string
    */
   function buildList(type, items) {
-    const itemsHtml = items.map((item, index) => {
+    const itemsHtml = items.map((item, _index) => {
       const nestedHtml = item.nested || '';
       const contentHtml = parseInline(item.content);
-      const startAttr = type === 'ol' && item.number ? ` start="${item.number}"` : '';
       return `<li class="md-list-item">${contentHtml}${nestedHtml}</li>`;
     }).join('');
     

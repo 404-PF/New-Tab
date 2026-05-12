@@ -113,7 +113,7 @@ function extractAppName(url) {
     const urlObj = new URL(normalizeAppUrl(url));
     const name = urlObj.hostname.replace(/^www\./, '').split('.')[0];
     return name.charAt(0).toUpperCase() + name.slice(1);
-  } catch (_) {
+  } catch {
     return 'App Name';
   }
 }
@@ -122,7 +122,7 @@ function getFaviconUrl(url) {
   try {
     const urlObj = new URL(normalizeAppUrl(url));
     return `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
-  } catch (_) {
+  } catch {
     return null;
   }
 }

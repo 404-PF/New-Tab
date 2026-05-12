@@ -208,7 +208,7 @@ function initModernColorPickers() {
     const picker = new ModernColorPicker({
       element: input,
       defaultColor: input.value || '#ffffff',
-      onColorSelect: (color) => {
+      onColorSelect: (_color) => {
         // Trigger any existing handlers
         const event = new Event('input', { bubbles: true });
         input.dispatchEvent(event);

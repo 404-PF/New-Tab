@@ -193,11 +193,10 @@
   }
 
   // Animate icons to dodge around the placeholder
-  function animateDodging(placeholderIndex) {
+  function animateDodging(_placeholderIndex) {
     const icons = getDraggableIcons();
-    const placeholder = dragState.placeholder;
     
-    icons.forEach((icon, idx) => {
+    icons.forEach((icon, _idx) => {
       // Skip the source element - don't change its opacity
       if (icon.id === dragState.sourceId) {
         return;
@@ -340,7 +339,7 @@
   }
 
   // Drag end handler
-  function handleDragEnd(e, target) {
+  function handleDragEnd(_e, _target) {
     cleanupDragSession();
   }
 
