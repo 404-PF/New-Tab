@@ -347,12 +347,34 @@
     animationListenersBound = false;
   }
 
+  function unbindLifecycleListeners() {
+    if (!lifecycleListenersBound) {
+      return;
+    }
+
+    if (visibilityHandler) {
+      document.removeEventListener('visibilitychange', visibilityHandler);
+    }
+
+    if (reducedMotionQuery && mediaQueryHandler) {
+      if (typeof reducedMotionQuery.removeEventListener === 'function') {
+        reducedMotionQuery.removeEventListener('change', mediaQueryHandler);
+      } else if (typeof reducedMotionQuery.removeListener === 'function') {
+        reducedMotionQuery.removeListener(mediaQueryHandler);
+      }
+    }
+
+    lifecycleListenersBound = false;
+  }
+
   function apply(backgroundId) {
     init();
 
     if (!canvasEl || !ctx || !containerEl || !isSupported()) {
       return false;
     }
+
+    bindLifecycleListeners();
 
     currentBackgroundId = backgroundId || '';
     isEnabled = true;
@@ -366,6 +388,7 @@
     currentBackgroundId = '';
     isEnabled = false;
     stopAnimation();
+    unbindLifecycleListeners();
   }
 
   window._interactiveBackground = {
