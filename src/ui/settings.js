@@ -243,7 +243,10 @@ function applyBg() {
 
   // Get background data from the map
   const bgData = window._backgrounds ? window._backgrounds.find(b => b.id === bg) : null;
-  if (!bgData) return;
+  if (!bgData) {
+    stopBackground();
+    return;
+  }
 
   // If the same video background is already active, skip teardown and setup
   if (bgData.type === 'video' && canReuseCurrentVideo(videoEl, bgData.id)) {

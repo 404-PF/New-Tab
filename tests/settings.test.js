@@ -122,6 +122,27 @@ describe('Utility functions', () => {
   });
 });
 
+describe('applyBg stale background regression', () => {
+  beforeEach(() => {
+    localStorage.setItem('homepageBg', 'stale-bg-id');
+    window._backgrounds = [
+      { id: 'Mountain View', type: 'image', thumb: 'thumb.jpg', url: 'full.jpg' }
+    ];
+    window._interactiveBackground = { stop: vi.fn() };
+  });
+
+  it('calls stopBackground when bgData lookup returns null', () => {
+    applyBg();
+    expect(window._interactiveBackground.stop).toHaveBeenCalled();
+  });
+
+  it('calls stopBackground when _backgrounds is undefined', () => {
+    delete window._backgrounds;
+    applyBg();
+    expect(window._interactiveBackground.stop).toHaveBeenCalled();
+  });
+});
+
 describe('Language settings', () => {
   it('loadLanguageSetting returns en by default', () => {
     expect(loadLanguageSetting()).toBe('en');
