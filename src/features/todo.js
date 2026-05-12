@@ -1157,7 +1157,7 @@ function exportTodos() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 // Trigger file input for import
@@ -1256,6 +1256,7 @@ function showImportDialog(importedTodos) {
   };
   
   const handleMerge = () => {
+    closeEditModal();
     const existingTodos = loadTodos();
     const existingIds = new Set(existingTodos.map(t => t.id));
     let addedCount = 0;
@@ -1289,6 +1290,7 @@ function showImportDialog(importedTodos) {
   };
   
   const handleReplace = () => {
+    closeEditModal();
     const maxImported = importedTodos.reduce((max, t) => {
       return t.order !== undefined ? Math.max(max, t.order) : max;
     }, -1);
