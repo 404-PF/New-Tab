@@ -38,6 +38,13 @@ describe('MarkdownParser URL sanitization', () => {
     expect(html).not.toContain('href="hello world"');
   });
 
+  it('preserves query string characters in safe URLs', () => {
+    const html = MarkdownParser.parse('Search [docs](https://example.com/?a=1&b=2)');
+
+    expect(html).toContain('<a href="https://example.com/?a=1&amp;b=2" target="_blank" rel="noopener noreferrer" class="md-link">docs</a>');
+    expect(html).not.toContain('&amp;amp;');
+  });
+
   it('escapes quote characters in image alt text', () => {
     const html = MarkdownParser.parse('![a"b\'c](https://example.com/image.png)');
 

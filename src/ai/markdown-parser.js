@@ -163,6 +163,17 @@ const MarkdownParser = (function() {
   }
 
   /**
+   * Decode HTML entities from already-escaped markdown fragments.
+   * @param {string} str - Escaped fragment
+   * @returns {string} Decoded text
+   */
+  function decodeHTML(str) {
+    const div = document.createElement('div');
+    div.innerHTML = str;
+    return div.textContent || '';
+  }
+
+  /**
    * Validate markdown URLs before rendering them into HTML.
    * @param {string} url - URL extracted from markdown
    * @param {boolean} isImage - Whether the URL belongs to an image
@@ -194,13 +205,13 @@ const MarkdownParser = (function() {
       }
 
       try {
-        return escapeHTML(new URL(trimmed).href);
+        return new URL(trimmed).href;
       } catch (error) {
-        return escapeHTML(encodeURI(trimmed));
+        return encodeURI(trimmed);
       }
     }
 
-    return escapeHTML(encodeURI(trimmed));
+    return encodeURI(trimmed);
   }
 
   /**
@@ -259,7 +270,7 @@ const MarkdownParser = (function() {
       }
 
       const text = html.slice(textStart, textEnd);
-      const url = html.slice(urlStart, cursor - 1);
+      const url = decodeHTML(html.slice(urlStart, cursor - 1));
       const safeUrl = sanitizeMarkdownUrl(url, isImage);
 
       if (safeUrl) {
