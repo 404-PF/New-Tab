@@ -51,4 +51,11 @@ describe('MarkdownParser URL sanitization', () => {
     expect(html).toContain('alt="a&quot;b&#39;c"');
     expect(html).toContain('<img src="https://example.com/image.png" alt="a&quot;b&#39;c" class="md-image" />');
   });
+
+  it('preserves escaped parentheses in markdown URLs', () => {
+    const html = MarkdownParser.parse('Read [docs](https://example.com/a\\(b\\))');
+
+    expect(html).toContain('<a href="https://example.com/a(b)" target="_blank" rel="noopener noreferrer" class="md-link">docs</a>');
+    expect(html).not.toContain('a/(b/)');
+  });
 });

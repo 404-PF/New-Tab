@@ -174,6 +174,15 @@ const MarkdownParser = (function() {
   }
 
   /**
+   * Remove markdown escape backslashes from URL fragments.
+   * @param {string} str - Raw URL fragment
+   * @returns {string} Unescaped URL fragment
+   */
+  function unescapeMarkdownUrl(str) {
+    return str.replace(/\\(.)/g, '$1');
+  }
+
+  /**
    * Validate markdown URLs before rendering them into HTML.
    * @param {string} url - URL extracted from markdown
    * @param {boolean} isImage - Whether the URL belongs to an image
@@ -270,7 +279,7 @@ const MarkdownParser = (function() {
       }
 
       const text = html.slice(textStart, textEnd);
-      const url = decodeHTML(html.slice(urlStart, cursor - 1));
+      const url = unescapeMarkdownUrl(decodeHTML(html.slice(urlStart, cursor - 1)));
       const safeUrl = sanitizeMarkdownUrl(url, isImage);
 
       if (safeUrl) {
