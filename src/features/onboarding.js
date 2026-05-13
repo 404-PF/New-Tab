@@ -8,6 +8,7 @@ class OnboardingTour {
     this.tooltip = null;
     this.isActive = false;
     this.completed = this.isCompleted();
+    this._endTimeout = null;
   }
 
   // Check if an element is visible (not hidden by CSS)
@@ -34,6 +35,7 @@ class OnboardingTour {
   // Mark onboarding as completed
   markCompleted() {
     localStorage.setItem('onboardingCompleted', 'true');
+    localStorage.removeItem('onboardingStep');
     this.completed = true;
   }
 
@@ -43,6 +45,17 @@ class OnboardingTour {
     localStorage.removeItem('onboardingStep');
     this.completed = false;
     this.currentStep = 0;
+    this.isActive = false;
+
+    if (this._endTimeout) {
+      clearTimeout(this._endTimeout);
+      this._endTimeout = null;
+    }
+
+    if (this.overlay && this.overlay.parentNode) {
+      this.overlay.parentNode.removeChild(this.overlay);
+    }
+    this.overlay = null;
   }
 
   // Define all onboarding steps
@@ -141,16 +154,30 @@ class OnboardingTour {
     ];
   }
 
-  // Initialize and start the tour
-  async start() {
+  // Initialize and start the tour (optionally from a saved step)
+  start(startStep = 0) {
     if (this.isActive || this.completed) {
-      console.log('⚠️ Onboarding tour already active or completed');
+      if (this.isActive) console.log('⚠️ Onboarding tour already active');
       return;
     }
 
+    // Validate step index
+    const safeStep = Math.max(0, Math.min(startStep, this.steps.length - 1));
+
     console.log('🚀 Starting onboarding tour...');
     this.isActive = true;
-    this.currentStep = 0;
+    this.currentStep = safeStep;
+    this.completed = false;
+
+    // Cancel any pending end timeout and remove stale overlay
+    if (this._endTimeout) {
+      clearTimeout(this._endTimeout);
+      this._endTimeout = null;
+    }
+    if (this.overlay && this.overlay.parentNode) {
+      this.overlay.parentNode.removeChild(this.overlay);
+    }
+
     this.createOverlay();
     this.showStep();
   }
@@ -195,7 +222,7 @@ class OnboardingTour {
     console.log('✅ Overlay created and appended to body');
 
     // Add event listeners
-    this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end());
+    this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end(true));
     this.overlay.querySelector('#onboarding-next').addEventListener('click', () => this.nextStep());
     this.overlay.querySelector('#onboarding-prev').addEventListener('click', () => this.prevStep());
 
@@ -522,44 +549,78 @@ class OnboardingTour {
 
   // Navigate to next step
   nextStep() {
+    if (!this.isActive) return;
     if (this.currentStep < this.steps.length - 1) {
       this.currentStep++;
+      localStorage.setItem('onboardingStep', String(this.currentStep));
       this.showStep();
     } else {
-      this.end();
+      this.end(true);
     }
   }
 
   // Navigate to previous step
   prevStep() {
+    if (!this.isActive) return;
     if (this.currentStep > 0) {
       this.currentStep--;
+      localStorage.setItem('onboardingStep', String(this.currentStep));
       this.showStep();
     }
   }
 
   // Go to specific step
   goToStep(stepIndex) {
+    if (!this.isActive) return;
     if (stepIndex >= 0 && stepIndex < this.steps.length) {
       this.currentStep = stepIndex;
+      localStorage.setItem('onboardingStep', String(this.currentStep));
       this.showStep();
     }
   }
 
+  // Resolve saved step from localStorage, returns a valid step index or 0
+  _resolveSavedStep() {
+    const savedStep = localStorage.getItem('onboardingStep');
+    if (savedStep !== null) {
+      const step = parseInt(savedStep, 10);
+      if (!isNaN(step) && step >= 0 && step < this.steps.length) {
+        return step;
+      }
+    }
+    return 0;
+  }
+
+  // Start or resume the tour based on saved progress
+  _tryStart() {
+    const step = this._resolveSavedStep();
+    if (step > 0) {
+      console.log('🎯 Resuming New-Tab onboarding tour from step', step, '...');
+    } else {
+      console.log('🎯 Starting New-Tab onboarding tour...');
+    }
+    this.start(step);
+  }
+
   // End the tour
-  end() {
-    // Always mark as completed once the user has seen the tour (even partially)
-    this.markCompleted();
+  end(completed = false) {
+    if (!this.isActive) return;
+    if (completed) {
+      this.markCompleted();
+    } else {
+      localStorage.setItem('onboardingStep', String(this.currentStep));
+    }
 
     this.isActive = false;
 
     if (this.overlay) {
       this.overlay.style.opacity = '0';
-      setTimeout(() => {
+      this._endTimeout = setTimeout(() => {
         if (this.overlay && this.overlay.parentNode) {
           this.overlay.parentNode.removeChild(this.overlay);
         }
         this.overlay = null;
+        this._endTimeout = null;
       }, 300);
     }
   }
@@ -611,8 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
     attempts++;
 
     if (!onboardingTour.isCompleted() && isTourReady()) {
-      console.log('🎯 Starting New-Tab onboarding tour...');
-      onboardingTour.start();
+      onboardingTour._tryStart();
     } else if (attempts < maxAttempts) {
       checkTimeout = setTimeout(checkAndStart, 100);
     } else {
@@ -639,8 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('load', () => {
   setTimeout(() => {
     if (!onboardingTour.isCompleted() && !onboardingTour.isActive && isTourReady()) {
-      console.log('🎯 Starting New-Tab onboarding tour (fallback)...');
-      onboardingTour.start();
+      onboardingTour._tryStart();
     }
   }, 1000);
 });
