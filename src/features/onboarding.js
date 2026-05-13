@@ -222,7 +222,7 @@ class OnboardingTour {
     console.log('✅ Overlay created and appended to body');
 
     // Add event listeners
-    this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end(true));
+    this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end(false));
     this.overlay.querySelector('#onboarding-next').addEventListener('click', () => this.nextStep());
     this.overlay.querySelector('#onboarding-prev').addEventListener('click', () => this.prevStep());
 

@@ -94,6 +94,17 @@ describe('Progress saving on navigation', () => {
     expect(localStorage.getItem('onboardingCompleted')).toBeNull();
   });
 
+  it('close button dismisses without marking completed', () => {
+    const tour = window.onboardingTour;
+    tour.start(4);
+    const closeBtn = document.querySelector('.onboarding-close-btn');
+    expect(closeBtn).not.toBeNull();
+    closeBtn.click();
+    expect(localStorage.getItem('onboardingStep')).toBe('4');
+    expect(localStorage.getItem('onboardingCompleted')).toBeNull();
+    expect(tour.completed).toBe(false);
+  });
+
   it('nextStep on last step calls end(true)', () => {
     window.onboardingTour.currentStep = window.onboardingTour.steps.length - 1;
     window.onboardingTour.isActive = true;
