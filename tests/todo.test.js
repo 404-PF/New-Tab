@@ -272,6 +272,26 @@ describe('Todo validateTodoData', () => {
     expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: 'abc' }] })).toBe(false);
   });
 
+  it('rejects Infinity order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: Infinity }] })).toBe(false);
+  });
+
+  it('rejects -Infinity order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: -Infinity }] })).toBe(false);
+  });
+
+  it('rejects NaN order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: NaN }] })).toBe(false);
+  });
+
+  it('rejects negative order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: -1 }] })).toBe(false);
+  });
+
+  it('rejects float order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: 1.5 }] })).toBe(false);
+  });
+
   it('accepts valid complete data', () => {
     const data = {
       todos: [
@@ -400,6 +420,42 @@ describe('Todo import', () => {
     const all = loadTodos();
     expect(all).toHaveLength(1);
     expect(all[0].text).toBe('Existing');
+  });
+
+  it('replace preserves array order with mixed order fields', () => {
+    const imported = [
+      { id: 'a', text: 'First', completed: false, order: 10 },
+      { id: 'b', text: 'Second', completed: false },
+      { id: 'c', text: 'Third', completed: false, order: 5 },
+      { id: 'd', text: 'Fourth', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-replace-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(4);
+    expect(all[0].id).toBe('a');
+    expect(all[1].id).toBe('b');
+    expect(all[2].id).toBe('c');
+    expect(all[3].id).toBe('d');
+  });
+
+  it('replace assigns sequential order to items without order', () => {
+    const imported = [
+      { id: 'x', text: 'No order 1', completed: false },
+      { id: 'y', text: 'No order 2', completed: false },
+      { id: 'z', text: 'No order 3', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-replace-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(3);
+    expect(all[0].order).toBe(0);
+    expect(all[1].order).toBe(1);
+    expect(all[2].order).toBe(2);
   });
 
   it('imports todos with CSS-special characters in IDs', () => {

@@ -1186,7 +1186,7 @@ function validateTodoData(data) {
     if (item.dueDate !== undefined && item.dueDate !== null && typeof item.dueDate !== 'string') return false;
     if (item.createdAt !== undefined && item.createdAt !== null && typeof item.createdAt !== 'string') return false;
     if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
-    if (item.order !== undefined && typeof item.order !== 'number') return false;
+    if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
   }
   
   return true;
@@ -1291,18 +1291,19 @@ function showImportDialog(importedTodos) {
   
   const handleReplace = () => {
     closeEditModal();
-    const maxImported = importedTodos.reduce((max, t) => {
-      return t.order !== undefined ? Math.max(max, t.order) : max;
-    }, -1);
-    let nextOrder = maxImported + 1;
-
+    let nextOrder = 0;
     const newTodos = importedTodos.map((item) => {
       const todo = { ...item };
       todo.completed = !!item.completed;
       todo.completedAt = item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null;
       todo.dueDate = item.dueDate || null;
       todo.createdAt = item.createdAt || new Date().toISOString();
-      todo.order = item.order !== undefined ? item.order : nextOrder++;
+      if (item.order !== undefined && Number.isFinite(item.order) && Number.isInteger(item.order) && item.order >= 0) {
+        todo.order = item.order;
+        if (item.order >= nextOrder) nextOrder = item.order + 1;
+      } else {
+        todo.order = nextOrder++;
+      }
       return todo;
     });
     
