@@ -1,0 +1,10 @@
+{
+  "name": {
+    "message": "New Tab",
+    "description": "The name of the extension"
+  },
+  "description": {
+    "message": "Une belle page de nouvel onglet avec horloge, recherche, applications et liste de tâches",
+    "description": "The description of the extension"
+  }
+}

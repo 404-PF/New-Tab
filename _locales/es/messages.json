@@ -1,0 +1,10 @@
+{
+  "name": {
+    "message": "New Tab",
+    "description": "The name of the extension"
+  },
+  "description": {
+    "message": "Una hermosa página de nueva pestaña con reloj, búsqueda, aplicaciones y lista de tareas",
+    "description": "The description of the extension"
+  }
+}

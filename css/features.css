@@ -1770,6 +1770,7 @@ body.light-theme .about-cards .setting-card a:hover {
 
 .language-options {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
 }
 
