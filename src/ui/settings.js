@@ -747,15 +747,26 @@ function applyTheme() {
 function loadLanguageSetting() {
   return localStorage.getItem("language") || "en";
 }
+function renderLanguageOptions() {
+  const container = document.getElementById('language-options-container');
+  if (!container) return;
+  const languages = window.i18n && window.i18n.getSupportedLanguages ? window.i18n.getSupportedLanguages() : [];
+  const currentLang = loadLanguageSetting();
+  container.innerHTML = languages.map(lang => `
+    <label class="language-option modern">
+      <div class="language-preview">
+        <span class="language-flag">${lang.flag}</span>
+        <span class="language-code">${lang.nativeName}</span>
+      </div>
+      <input type="radio" name="language" value="${lang.code}" ${currentLang === lang.code ? 'checked' : ''} />
+      <span class="label">${window.i18n ? window.i18n.t(lang.nameKey) : lang.nativeName}</span>
+    </label>
+  `).join('');
+}
 function applyLanguageSetting() {
   const lang = loadLanguageSetting();
-  // Update radio buttons
-  const enRadio = document.querySelector('input[name="language"][value="en"]');
-  const zhRadio = document.querySelector('input[name="language"][value="zh"]');
-  if (enRadio) enRadio.checked = lang === "en";
-  if (zhRadio) zhRadio.checked = lang === "zh";
 
-  // Apply language if i18n is available
+  // Apply language — the languageChanged listener handles re-rendering
   if (window.i18n && window.i18n.applyLanguage) {
     window.i18n.applyLanguage(lang);
   }
@@ -1014,8 +1025,11 @@ function initAboutSection() {
   }
 }
 
-// Re-render About section when language changes
-window.addEventListener('languageChanged', initAboutSection);
+// Re-render About section and language options when language changes
+window.addEventListener('languageChanged', function() {
+  initAboutSection();
+  renderLanguageOptions();
+});
 
 function initSettings() {
   // Apply initial settings

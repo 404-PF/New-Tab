@@ -278,23 +278,20 @@ class OnboardingTour {
     title.textContent = translatedTitle;
     
     if (step.id === 'language') {
+      const languages = window.i18n && window.i18n.getSupportedLanguages ? window.i18n.getSupportedLanguages() : [];
+      const currentLang = localStorage.getItem('language') || 'en';
       text.innerHTML = `
         <p>${translatedContent}</p>
         <div class="language-options">
-          <label class="language-option modern">
-            <div class="language-preview">
-              <span class="language-flag">🇺🇸</span>
-              <span class="language-code">EN</span>
-            </div>
-            <input type="radio" name="onboarding-language" value="en" ${localStorage.getItem('language') === 'en' || !localStorage.getItem('language') ? 'checked' : ''} />
-          </label>
-          <label class="language-option modern">
-            <div class="language-preview">
-              <span class="language-flag">🇨🇳</span>
-              <span class="language-code">中文</span>
-            </div>
-            <input type="radio" name="onboarding-language" value="zh" ${localStorage.getItem('language') === 'zh' ? 'checked' : ''} />
-          </label>
+          ${languages.map(lang => `
+            <label class="language-option modern">
+              <div class="language-preview">
+                <span class="language-flag">${lang.flag}</span>
+                <span class="language-code">${lang.nativeName}</span>
+              </div>
+              <input type="radio" name="onboarding-language" value="${lang.code}" ${currentLang === lang.code ? 'checked' : ''} />
+            </label>
+          `).join('')}
         </div>
       `;
     } else if (step.id === 'theme') {

@@ -1,0 +1,10 @@
+{
+  "name": {
+    "message": "New Tab",
+    "description": "The name of the extension"
+  },
+  "description": {
+    "message": "時計、検索、アプリ、ToDoリストを備えた美しい新しいタブページ",
+    "description": "The description of the extension"
+  }
+}
