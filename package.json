@@ -2,6 +2,9 @@
   "name": "new-tab",
   "version": "0.4.3",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "description": "Chrome/Edge new tab extension",
   "scripts": {
     "test": "vitest run",
@@ -9,7 +12,7 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/ tests/ background/tools/",
     "lint:fix": "eslint src/ tests/ background/tools/ --fix",
-    "prepare": "node -e \"try{require.resolve('husky')}catch(e){process.exit(0)}\" && husky"
+    "prepare": "husky"
   },
   "lint-staged": {
     "src/**/*.js": "eslint --fix",
