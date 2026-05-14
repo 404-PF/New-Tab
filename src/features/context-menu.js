@@ -2,6 +2,8 @@
 
 
 let currentAppId = null;
+let contextMenuInitialized = false;
+const runContextMenuOnDomReady = window.onDomReady;
 
 // Create context menu element
 const contextMenu = document.createElement("div");
@@ -100,47 +102,57 @@ document.getElementById("rename-app").addEventListener("click", function () {
   document.body.classList.remove("context-menu-open");
 });
 
-// Rename modal event handlers
-document.addEventListener('DOMContentLoaded', function() {
+function initRenameModalHandlers() {
   const renameModal = document.getElementById('rename-app-modal');
   const renameInput = document.getElementById('rename-app-input');
   const renameCancel = document.getElementById('rename-app-cancel');
   const renameConfirm = document.getElementById('rename-app-confirm');
-  
-  if (renameModal && renameInput && renameCancel && renameConfirm) {
-    // Close modal on cancel button
-    renameCancel.addEventListener('click', function() {
-      renameModal.style.display = 'none';
-      window.renameAppId = null;
-    });
-    
-    // Close modal on confirm
-    renameConfirm.addEventListener('click', function() {
-      const newName = renameInput.value.trim();
-      if (newName && window.renameAppId) {
-        AppGridState.renameApp(window.renameAppId, newName);
-        if (window.renderCustomApps) window.renderCustomApps();
-      }
-      renameModal.style.display = 'none';
-      window.renameAppId = null;
-    });
-    
-    // Close modal on Enter key in input
-    renameInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        renameConfirm.click();
-      }
-    });
-    
-    // Close modal on backdrop click
-    renameModal.addEventListener('click', function(e) {
-      if (e.target === renameModal) {
-        renameModal.style.display = 'none';
-        window.renameAppId = null;
-      }
-    });
+  const missingElements = getMissingElementIds({
+    'rename-app-modal': renameModal,
+    'rename-app-input': renameInput,
+    'rename-app-cancel': renameCancel,
+    'rename-app-confirm': renameConfirm
+  });
+
+  if (missingElements) {
+    console.warn('Context menu rename modal elements were not found:', missingElements.join(', '));
+    return false;
   }
-});
+
+  // Close modal on cancel button
+  renameCancel.addEventListener('click', function() {
+    renameModal.style.display = 'none';
+    window.renameAppId = null;
+  });
+  
+  // Close modal on confirm
+  renameConfirm.addEventListener('click', function() {
+    const newName = renameInput.value.trim();
+    if (newName && window.renameAppId) {
+      AppGridState.renameApp(window.renameAppId, newName);
+      if (window.renderCustomApps) window.renderCustomApps();
+    }
+    renameModal.style.display = 'none';
+    window.renameAppId = null;
+  });
+  
+  // Close modal on Enter key in input
+  renameInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      renameConfirm.click();
+    }
+  });
+  
+  // Close modal on backdrop click
+  renameModal.addEventListener('click', function(e) {
+    if (e.target === renameModal) {
+      renameModal.style.display = 'none';
+      window.renameAppId = null;
+    }
+  });
+
+  return true;
+}
 
 // Change thumbnail functionality
 document.getElementById("change-thumbnail").addEventListener("click", function () {
@@ -178,62 +190,72 @@ document.getElementById("change-thumbnail").addEventListener("click", function (
   document.body.classList.remove("context-menu-open");
 });
 
-// Thumbnail modal event handlers
-document.addEventListener('DOMContentLoaded', function() {
+function initThumbnailModalHandlers() {
   const thumbnailModal = document.getElementById('thumbnail-app-modal');
   const thumbnailInput = document.getElementById('thumbnail-app-input');
   const thumbnailCancel = document.getElementById('thumbnail-app-cancel');
   const thumbnailConfirm = document.getElementById('thumbnail-app-confirm');
-  
-  if (thumbnailModal && thumbnailInput && thumbnailCancel && thumbnailConfirm) {
-    // Close modal on cancel button
-    thumbnailCancel.addEventListener('click', function() {
-      thumbnailModal.style.display = 'none';
-      window.thumbnailAppId = null;
-    });
-    
-    // Update preview when input changes
-    thumbnailInput.addEventListener('input', function() {
-      const iconUrl = this.value.trim();
-      const previewIcon = document.getElementById('thumbnail-preview-icon');
-      if (iconUrl) {
-        previewIcon.innerHTML = `<img src="${iconUrl}" alt="Icon" onerror="this.parentElement.innerHTML='<svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'1.5\'><rect x=\'3\' y=\'3\' width=\'18\' height=\'18\' rx=\'2\' ry=\'2\'></rect><circle cx=\'8.5\' cy=\'8.5\' r=\'1.5\'></circle><polyline points=\'21,15 16,10 5,21\'></polyline></svg>'">`;
-      } else {
-        previewIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21,15 16,10 5,21"></polyline></svg>`;
-      }
-    });
-    
-    // Close modal on confirm
-    thumbnailConfirm.addEventListener('click', function() {
-      const newIcon = thumbnailInput.value.trim();
-      if (newIcon && window.thumbnailAppId) {
-        try {
-          AppGridState.updateThumbnail(window.thumbnailAppId, newIcon);
-          if (window.renderCustomApps) window.renderCustomApps();
-        } catch (e) {
-          console.error("Failed to update custom app thumbnail:", e);
-        }
-      }
-      thumbnailModal.style.display = 'none';
-      window.thumbnailAppId = null;
-    });
-    
-    // Close modal on Enter key in input
-    thumbnailInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        thumbnailConfirm.click();
-      }
-    });
-    
-    // Close modal on backdrop click
-    thumbnailModal.addEventListener('click', function(e) {
-      if (e.target === thumbnailModal) {
-        thumbnailModal.style.display = 'none';
-        window.thumbnailAppId = null;
-      }
-    });
+  const missingElements = getMissingElementIds({
+    'thumbnail-app-modal': thumbnailModal,
+    'thumbnail-app-input': thumbnailInput,
+    'thumbnail-app-cancel': thumbnailCancel,
+    'thumbnail-app-confirm': thumbnailConfirm
+  });
+
+  if (missingElements) {
+    console.warn('Context menu thumbnail modal elements were not found:', missingElements.join(', '));
+    return false;
   }
-});
+
+  // Close modal on cancel button
+  thumbnailCancel.addEventListener('click', function() {
+    thumbnailModal.style.display = 'none';
+    window.thumbnailAppId = null;
+  });
+  
+  // Update preview when input changes
+  thumbnailInput.addEventListener('input', function() {
+    const iconUrl = this.value.trim();
+    const previewIcon = document.getElementById('thumbnail-preview-icon');
+    if (iconUrl) {
+      previewIcon.innerHTML = `<img src="${iconUrl}" alt="Icon" onerror="this.parentElement.innerHTML='<svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'1.5\'><rect x=\'3\' y=\'3\' width=\'18\' height=\'18\' rx=\'2\' ry=\'2\'></rect><circle cx=\'8.5\' cy=\'8.5\' r=\'1.5\'></circle><polyline points=\'21,15 16,10 5,21\'></polyline></svg>'">`;
+    } else {
+      previewIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21,15 16,10 5,21"></polyline></svg>`;
+    }
+  });
+  
+  // Close modal on confirm
+  thumbnailConfirm.addEventListener('click', function() {
+    const newIcon = thumbnailInput.value.trim();
+    if (newIcon && window.thumbnailAppId) {
+      try {
+        AppGridState.updateThumbnail(window.thumbnailAppId, newIcon);
+        if (window.renderCustomApps) window.renderCustomApps();
+      } catch (e) {
+        console.error("Failed to update custom app thumbnail:", e);
+      }
+    }
+    thumbnailModal.style.display = 'none';
+    window.thumbnailAppId = null;
+  });
+  
+  // Close modal on Enter key in input
+  thumbnailInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      thumbnailConfirm.click();
+    }
+  });
+  
+  // Close modal on backdrop click
+  thumbnailModal.addEventListener('click', function(e) {
+    if (e.target === thumbnailModal) {
+      thumbnailModal.style.display = 'none';
+      window.thumbnailAppId = null;
+    }
+  });
+
+  return true;
+}
 
 // Delete functionality
 document.getElementById("delete-app").addEventListener("click", function () {
@@ -263,38 +285,65 @@ document.getElementById("delete-app").addEventListener("click", function () {
   document.body.classList.remove("context-menu-open");
 });
 
-// Delete modal event handlers
-document.addEventListener('DOMContentLoaded', function() {
+function initDeleteModalHandlers() {
   const deleteModal = document.getElementById('delete-app-modal');
   const deleteCancel = document.getElementById('delete-app-cancel');
   const deleteConfirm = document.getElementById('delete-app-confirm');
-  
-  if (deleteModal && deleteCancel && deleteConfirm) {
-    // Close modal on cancel button
-    deleteCancel.addEventListener('click', function() {
-      deleteModal.style.display = 'none';
-      window.deleteAppId = null;
-    });
-    
-    // Delete on confirm
-    deleteConfirm.addEventListener('click', function() {
-      if (window.deleteAppId) {
-        AppGridState.deleteApp(window.deleteAppId);
-        if (window.renderCustomApps) window.renderCustomApps();
-      }
-      deleteModal.style.display = 'none';
-      window.deleteAppId = null;
-    });
-    
-    // Close modal on backdrop click
-    deleteModal.addEventListener('click', function(e) {
-      if (e.target === deleteModal) {
-        deleteModal.style.display = 'none';
-        window.deleteAppId = null;
-      }
-    });
+  const missingElements = getMissingElementIds({
+    'delete-app-modal': deleteModal,
+    'delete-app-cancel': deleteCancel,
+    'delete-app-confirm': deleteConfirm
+  });
+
+  if (missingElements) {
+    console.warn('Context menu delete modal elements were not found:', missingElements.join(', '));
+    return false;
   }
-});
+
+  // Close modal on cancel button
+  deleteCancel.addEventListener('click', function() {
+    deleteModal.style.display = 'none';
+    window.deleteAppId = null;
+  });
+  
+  // Delete on confirm
+  deleteConfirm.addEventListener('click', function() {
+    if (window.deleteAppId) {
+      AppGridState.deleteApp(window.deleteAppId);
+      if (window.renderCustomApps) window.renderCustomApps();
+    }
+    deleteModal.style.display = 'none';
+    window.deleteAppId = null;
+  });
+  
+  // Close modal on backdrop click
+  deleteModal.addEventListener('click', function(e) {
+    if (e.target === deleteModal) {
+      deleteModal.style.display = 'none';
+      window.deleteAppId = null;
+    }
+  });
+
+  return true;
+}
+
+function initContextMenu() {
+  const renameReady = initRenameModalHandlers();
+  const thumbnailReady = initThumbnailModalHandlers();
+  const deleteReady = initDeleteModalHandlers();
+
+  if (renameReady && thumbnailReady && deleteReady) {
+    contextMenuInitialized = true;
+    return true;
+  }
+
+  return false;
+}
+
+const getMissingElementIds = (elementsById) => {
+  const missing = Object.keys(elementsById).filter((id) => !elementsById[id]);
+  return missing.length > 0 ? missing : null;
+};
 
 // Initialize modal ids
 window.renameAppId = null;
@@ -307,4 +356,12 @@ document.addEventListener("contextmenu", function (e) {
   if (appIcon) {
     e.preventDefault();
   }
+});
+
+runContextMenuOnDomReady(() => {
+  if (contextMenuInitialized) {
+    return;
+  }
+
+  initContextMenu();
 });
