@@ -1220,14 +1220,26 @@ function handleImportFile(event) {
 
 // Show import confirmation dialog (merge vs replace)
 function showImportDialog(importedTodos) {
-  const dialog = document.getElementById('import-todos-dialog');
-  const overlay = dialog?.querySelector('.ai-confirm-overlay');
-  const cancelBtn = dialog?.querySelector('.ai-confirm-cancel');
-  const mergeBtn = document.getElementById('import-merge-btn');
-  const replaceBtn = document.getElementById('import-replace-btn');
+  let dialog = document.getElementById('import-todos-dialog');
+  let overlay = dialog?.querySelector('.ai-confirm-overlay');
+  let cancelBtn = dialog?.querySelector('.ai-confirm-cancel');
+  let mergeBtn = document.getElementById('import-merge-btn');
+  let replaceBtn = document.getElementById('import-replace-btn');
 
   if (!dialog) return;
-  if (dialog.classList.contains('ai-confirm-open')) return;
+
+  // If dialog is already open, close and reset before re-opening with new data
+  if (dialog.classList.contains('ai-confirm-open')) {
+    const newDialog = dialog.cloneNode(true);
+    dialog.parentNode?.replaceChild(newDialog, dialog);
+    newDialog.classList.remove('ai-confirm-open');
+    // Re-query after cloning to get fresh element references
+    dialog = document.getElementById('import-todos-dialog');
+    overlay = dialog?.querySelector('.ai-confirm-overlay');
+    cancelBtn = dialog?.querySelector('.ai-confirm-cancel');
+    mergeBtn = document.getElementById('import-merge-btn');
+    replaceBtn = document.getElementById('import-replace-btn');
+  }
 
   dialog.classList.add('ai-confirm-open');
 

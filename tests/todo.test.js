@@ -476,4 +476,40 @@ describe('Todo import', () => {
     expect(all.find(t => t.id === 'todo]bracket[').text).toBe('Has brackets in id');
     expect(all.find(t => t.id === 'todo\\backslash').text).toBe('Has backslash in id');
   });
+
+  it('replaces stale imported data when dialog is re-opened with a new file', () => {
+    const first = [
+      { id: 'a', text: 'First file', completed: false }
+    ];
+    const second = [
+      { id: 'b', text: 'Second file', completed: false }
+    ];
+
+    showImportDialog(first);
+    showImportDialog(second);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].text).toBe('Second file');
+  });
+
+  it('replaces stale data with replace action after re-opening dialog', () => {
+    addTodo('Existing');
+
+    const first = [
+      { id: 'x', text: 'First file', completed: false }
+    ];
+    const second = [
+      { id: 'y', text: 'Second file', completed: false }
+    ];
+
+    showImportDialog(first);
+    showImportDialog(second);
+    document.getElementById('import-replace-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].text).toBe('Second file');
+  });
 });
