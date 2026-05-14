@@ -94,15 +94,15 @@ describe('Progress saving on navigation', () => {
     expect(localStorage.getItem('onboardingCompleted')).toBeNull();
   });
 
-  it('close button skips tour and marks completed', () => {
+  it('close button saves progress for resume', () => {
     const tour = window.onboardingTour;
     tour.start(4);
     const closeBtn = document.querySelector('.onboarding-close-btn');
     expect(closeBtn).not.toBeNull();
     closeBtn.click();
-    expect(localStorage.getItem('onboardingCompleted')).toBe('true');
-    expect(localStorage.getItem('onboardingStep')).toBeNull();
-    expect(tour.completed).toBe(true);
+    expect(localStorage.getItem('onboardingCompleted')).toBeNull();
+    expect(localStorage.getItem('onboardingStep')).toBe('4');
+    expect(tour.completed).toBe(false);
   });
 
   it('nextStep on last step calls end(true)', () => {

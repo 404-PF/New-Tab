@@ -207,7 +207,7 @@ class OnboardingTour {
             <span class="current-step">1</span>
             <span class="total-steps">/ ${this.steps.length}</span>
           </div>
-          <button class="onboarding-close-btn" title="Skip tour">×</button>
+          <button class="onboarding-close-btn" title="Close">×</button>
         </div>
         <div class="onboarding-tooltip-content">
           <h3 class="onboarding-tooltip-title"></h3>
@@ -231,7 +231,7 @@ class OnboardingTour {
     console.log('✅ Overlay created and appended to body');
 
     // Add event listeners
-    this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end(true));
+    this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end(false));
     this.overlay.querySelector('#onboarding-next').addEventListener('click', () => this.nextStep());
     this.overlay.querySelector('#onboarding-prev').addEventListener('click', () => this.prevStep());
 
