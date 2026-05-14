@@ -1,6 +1,6 @@
 {
   "name": "new-tab",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "private": true,
   "engines": {
     "node": ">=20.19.0"
@@ -12,7 +12,7 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/ tests/ background/tools/",
     "lint:fix": "eslint src/ tests/ background/tools/ --fix",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "lint-staged": {
     "src/**/*.js": "eslint --fix",
