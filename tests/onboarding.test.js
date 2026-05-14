@@ -316,4 +316,14 @@ describe('Timeout cleanup', () => {
     tour._clearActionTimeouts();
     expect(tour._actionTimeouts).toEqual([]);
   });
+
+  it('end clears pending action timeouts', () => {
+    const tour = window.onboardingTour;
+    tour.start(0);
+    const radio = document.querySelector('input[name="onboarding-language"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change'));
+    tour.end(false);
+    expect(tour._actionTimeouts).toEqual([]);
+  });
 });

@@ -520,6 +520,7 @@ class OnboardingTour {
         // This step doesn't require specific action
         break;
       case 'select-language':
+        this._clearActionTimeouts();
         // Add event listeners to language radio buttons
         const languageRadios = this.overlay.querySelectorAll('input[name="onboarding-language"]');
         languageRadios.forEach(radio => {
@@ -542,6 +543,7 @@ class OnboardingTour {
         });
         break;
       case 'select-theme':
+        this._clearActionTimeouts();
         // Add event listeners to theme radio buttons
         const themeRadios = this.overlay.querySelectorAll('input[name="onboarding-theme"]');
         themeRadios.forEach(radio => {
