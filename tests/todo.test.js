@@ -197,6 +197,16 @@ describe('Todo utilities', () => {
     expect(() => migrateTodos()).not.toThrow();
     expect(loadTodos()).toHaveLength(1);
   });
+
+  it('escapeHtml escapes special characters', () => {
+    expect(escapeHtml('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+    expect(escapeHtml("it's a test")).toBe('it&#39;s a test');
+    expect(escapeHtml('safe text')).toBe('safe text');
+    expect(escapeHtml('')).toBe('');
+    expect(escapeHtml(null)).toBe('');
+    expect(escapeHtml(undefined)).toBe('');
+    expect(escapeHtml('a & b < c > d')).toBe('a &amp; b &lt; c &gt; d');
+  });
 });
 
 describe('Todo clear completed', () => {
@@ -211,5 +221,342 @@ describe('Todo clear completed', () => {
     const remaining = loadTodos();
     expect(remaining).toHaveLength(1);
     expect(remaining[0].text).toBe('Keep');
+  });
+});
+
+describe('Todo validateTodoData', () => {
+  it('rejects null', () => {
+    expect(validateTodoData(null)).toBe(false);
+  });
+
+  it('rejects non-object', () => {
+    expect(validateTodoData('string')).toBe(false);
+  });
+
+  it('rejects missing todos array', () => {
+    expect(validateTodoData({})).toBe(false);
+  });
+
+  it('rejects non-array todos', () => {
+    expect(validateTodoData({ todos: 'not-array' })).toBe(false);
+  });
+
+  it('rejects item without id', () => {
+    expect(validateTodoData({ todos: [{ text: 'foo', completed: false }] })).toBe(false);
+  });
+
+  it('rejects empty id', () => {
+    expect(validateTodoData({ todos: [{ id: '', text: 'foo', completed: false }] })).toBe(false);
+  });
+
+  it('rejects empty text', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: '  ', completed: false }] })).toBe(false);
+  });
+
+  it('rejects non-boolean completed', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: 'yes' }] })).toBe(false);
+  });
+
+  it('rejects non-string dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: 123 }] })).toBe(false);
+  });
+
+  it('accepts null dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: null, createdAt: '2025-01-01T00:00:00Z', completedAt: null, order: 0 }] })).toBe(true);
+  });
+
+  it('accepts undefined dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false }] })).toBe(true);
+  });
+
+  it('rejects non-number order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: 'abc' }] })).toBe(false);
+  });
+
+  it('rejects Infinity order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: Infinity }] })).toBe(false);
+  });
+
+  it('rejects -Infinity order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: -Infinity }] })).toBe(false);
+  });
+
+  it('rejects NaN order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: NaN }] })).toBe(false);
+  });
+
+  it('rejects negative order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: -1 }] })).toBe(false);
+  });
+
+  it('rejects float order', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, order: 1.5 }] })).toBe(false);
+  });
+
+  it('accepts valid complete data', () => {
+    const data = {
+      todos: [
+        { id: 'abc', text: 'Test', completed: false, dueDate: null, createdAt: '2025-01-01T00:00:00Z', completedAt: null, order: 0 }
+      ]
+    };
+    expect(validateTodoData(data)).toBe(true);
+  });
+
+  it('rejects duplicate IDs', () => {
+    const data = {
+      todos: [
+        { id: 'dup', text: 'First', completed: false },
+        { id: 'dup', text: 'Second', completed: false }
+      ]
+    };
+    expect(validateTodoData(data)).toBe(false);
+  });
+});
+
+describe('Todo import', () => {
+  beforeEach(() => {
+    if (typeof initTodo === 'function') {
+      initTodo();
+    }
+  });
+
+  it('merge imports adds new todos', () => {
+    addTodo('Existing');
+
+    const imported = [
+      { id: 'new1', text: 'New 1', completed: false, dueDate: null, createdAt: '2025-01-01T00:00:00Z', completedAt: null, order: 0 },
+      { id: 'new2', text: 'New 2', completed: true, completedAt: '2025-01-01T00:00:00Z', createdAt: '2025-01-01T00:00:00Z', dueDate: null, order: 1 }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(3);
+    expect(all.find(t => t.id === 'new1').text).toBe('New 1');
+    expect(all.find(t => t.id === 'new2').completed).toBe(true);
+  });
+
+  it('merge skips duplicate IDs', () => {
+    addTodo('Existing');
+    const existing = loadTodos()[0];
+
+    const imported = [
+      { id: existing.id, text: 'Should be skipped', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].text).toBe('Existing');
+  });
+
+  it('replace clears all existing todos', () => {
+    addTodo('Will be removed');
+
+    const imported = [
+      { id: 'replacement', text: 'Replacement', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-replace-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].text).toBe('Replacement');
+  });
+
+  it('merge preserves extra fields like priority', () => {
+    const imported = [
+      { id: 'p1', text: 'Priority todo', completed: false, priority: 'high' }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].priority).toBe('high');
+    expect(all[0].text).toBe('Priority todo');
+  });
+
+  it('replace preserves extra fields like priority', () => {
+    addTodo('Old');
+
+    const imported = [
+      { id: 'p1', text: 'Priority todo', completed: false, priority: 'low' }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-replace-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].priority).toBe('low');
+    expect(all[0].text).toBe('Priority todo');
+  });
+
+  it('replace with empty array clears all existing todos', () => {
+    addTodo('One');
+    addTodo('Two');
+
+    const allBefore = loadTodos();
+    expect(allBefore).toHaveLength(2);
+
+    showImportDialog([]);
+    document.getElementById('import-replace-btn').click();
+
+    const allAfter = loadTodos();
+    expect(allAfter).toHaveLength(0);
+  });
+
+  it('merge with empty array does nothing', () => {
+    addTodo('Existing');
+
+    showImportDialog([]);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].text).toBe('Existing');
+  });
+
+  it('replace preserves array order with mixed order fields', () => {
+    const imported = [
+      { id: 'a', text: 'First', completed: false, order: 10 },
+      { id: 'b', text: 'Second', completed: false },
+      { id: 'c', text: 'Third', completed: false, order: 5 },
+      { id: 'd', text: 'Fourth', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-replace-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(4);
+    expect(all[0].id).toBe('a');
+    expect(all[1].id).toBe('b');
+    expect(all[2].id).toBe('c');
+    expect(all[3].id).toBe('d');
+  });
+
+  it('replace assigns sequential order to items without order', () => {
+    const imported = [
+      { id: 'x', text: 'No order 1', completed: false },
+      { id: 'y', text: 'No order 2', completed: false },
+      { id: 'z', text: 'No order 3', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-replace-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(3);
+    expect(all[0].order).toBe(0);
+    expect(all[1].order).toBe(1);
+    expect(all[2].order).toBe(2);
+  });
+
+  it('imports todos with CSS-special characters in IDs', () => {
+    addTodo('Original');
+
+    const imported = [
+      { id: 'todo"quoted"', text: 'Has quotes in id', completed: false },
+      { id: 'todo]bracket[', text: 'Has brackets in id', completed: false },
+      { id: 'todo\\backslash', text: 'Has backslash in id', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(4);
+    expect(all.find(t => t.id === 'todo"quoted"').text).toBe('Has quotes in id');
+    expect(all.find(t => t.id === 'todo]bracket[').text).toBe('Has brackets in id');
+    expect(all.find(t => t.id === 'todo\\backslash').text).toBe('Has backslash in id');
+  });
+
+  it('replaces stale imported data when dialog is re-opened with a new file', () => {
+    const first = [
+      { id: 'a', text: 'First file', completed: false }
+    ];
+    const second = [
+      { id: 'b', text: 'Second file', completed: false }
+    ];
+
+    showImportDialog(first);
+    showImportDialog(second);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].text).toBe('Second file');
+  });
+
+  it('replaces stale data with replace action after re-opening dialog', () => {
+    addTodo('Existing');
+
+    const first = [
+      { id: 'x', text: 'First file', completed: false }
+    ];
+    const second = [
+      { id: 'y', text: 'Second file', completed: false }
+    ];
+
+    showImportDialog(first);
+    showImportDialog(second);
+    document.getElementById('import-replace-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(1);
+    expect(all[0].text).toBe('Second file');
+  });
+
+  it('merge appends imported todos after existing legacy items without order', () => {
+    // Simulate legacy items that predate the order field
+    const legacy = [
+      { id: 'old1', text: 'Legacy 1', completed: false, createdAt: '2020-01-01T00:00:00Z' },
+      { id: 'old2', text: 'Legacy 2', completed: false, createdAt: '2020-06-01T00:00:00Z' }
+    ];
+    localStorage.setItem('todos', JSON.stringify(legacy));
+    initTodo();
+
+    const imported = [
+      { id: 'new1', text: 'Imported 1', completed: false },
+      { id: 'new2', text: 'Imported 2', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(4);
+    const sorted = filterTodos();
+    // Legacy items should come first (in order by createdAt), imported items after
+    expect(sorted[0].id).toBe('old1');
+    expect(sorted[1].id).toBe('old2');
+    expect(sorted[2].id).toBe('new1');
+    expect(sorted[3].id).toBe('new2');
+  });
+
+  it('replace renders imported items in file array order regardless of order field', () => {
+    const imported = [
+      { id: 'a', text: 'First', completed: false, order: 10 },
+      { id: 'b', text: 'Second', completed: false },
+      { id: 'c', text: 'Third', completed: false, order: 5 },
+      { id: 'd', text: 'Fourth', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-replace-btn').click();
+
+    const sorted = filterTodos();
+    expect(sorted).toHaveLength(4);
+    expect(sorted[0].id).toBe('a');
+    expect(sorted[1].id).toBe('b');
+    expect(sorted[2].id).toBe('c');
+    expect(sorted[3].id).toBe('d');
   });
 });

@@ -368,6 +368,22 @@ clearDialog.innerHTML = `
 `;
 document.body.appendChild(clearDialog);
 
+// Import-todos dialog with required children
+const importDialog = document.createElement('div');
+importDialog.id = 'import-todos-dialog';
+importDialog.innerHTML = `
+  <div class="ai-confirm-overlay"></div>
+  <div class="ai-confirm-content">
+    <p class="ai-confirm-message"></p>
+    <div class="ai-confirm-actions">
+      <button class="ai-confirm-cancel">Cancel</button>
+      <button id="import-merge-btn">Merge</button>
+      <button id="import-replace-btn">Replace</button>
+    </div>
+  </div>
+`;
+document.body.appendChild(importDialog);
+
 document.body.appendChild(createStubElement('div', 'settings-modal'));
 document.body.appendChild(createStubElement('input', 'clock-color-picker'));
 document.body.appendChild(createStubElement('select', 'clock-font-picker'));
