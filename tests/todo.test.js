@@ -512,4 +512,50 @@ describe('Todo import', () => {
     expect(all).toHaveLength(1);
     expect(all[0].text).toBe('Second file');
   });
+
+  it('merge appends imported todos after existing legacy items without order', () => {
+    // Simulate legacy items that predate the order field
+    const legacy = [
+      { id: 'old1', text: 'Legacy 1', completed: false, createdAt: '2020-01-01T00:00:00Z' },
+      { id: 'old2', text: 'Legacy 2', completed: false, createdAt: '2020-06-01T00:00:00Z' }
+    ];
+    localStorage.setItem('todos', JSON.stringify(legacy));
+    initTodo();
+
+    const imported = [
+      { id: 'new1', text: 'Imported 1', completed: false },
+      { id: 'new2', text: 'Imported 2', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(4);
+    const sorted = filterTodos();
+    // Legacy items should come first (in order by createdAt), imported items after
+    expect(sorted[0].id).toBe('old1');
+    expect(sorted[1].id).toBe('old2');
+    expect(sorted[2].id).toBe('new1');
+    expect(sorted[3].id).toBe('new2');
+  });
+
+  it('replace renders imported items in file array order regardless of order field', () => {
+    const imported = [
+      { id: 'a', text: 'First', completed: false, order: 10 },
+      { id: 'b', text: 'Second', completed: false },
+      { id: 'c', text: 'Third', completed: false, order: 5 },
+      { id: 'd', text: 'Fourth', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-replace-btn').click();
+
+    const sorted = filterTodos();
+    expect(sorted).toHaveLength(4);
+    expect(sorted[0].id).toBe('a');
+    expect(sorted[1].id).toBe('b');
+    expect(sorted[2].id).toBe('c');
+    expect(sorted[3].id).toBe('d');
+  });
 });

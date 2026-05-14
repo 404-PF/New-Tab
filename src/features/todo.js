@@ -1272,7 +1272,12 @@ function showImportDialog(importedTodos) {
     const existingTodos = loadTodos();
     const existingIds = new Set(existingTodos.map(t => t.id));
     let addedCount = 0;
-    let maxOrder = existingTodos.reduce((max, t) => t.order !== undefined ? Math.max(max, t.order) : max, -1);
+
+    // Ensure all existing items have order for correct sort position
+    existingTodos.forEach((t, i) => {
+      if (t.order === undefined) t.order = i;
+    });
+    let maxOrder = existingTodos.reduce((max, t) => Math.max(max, t.order), -1);
     
     for (const item of importedTodos) {
       if (!existingIds.has(item.id)) {
@@ -1303,19 +1308,13 @@ function showImportDialog(importedTodos) {
   
   const handleReplace = () => {
     closeEditModal();
-    let nextOrder = 0;
-    const newTodos = importedTodos.map((item) => {
+    const newTodos = importedTodos.map((item, index) => {
       const todo = { ...item };
       todo.completed = !!item.completed;
       todo.completedAt = item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null;
       todo.dueDate = item.dueDate || null;
       todo.createdAt = item.createdAt || new Date().toISOString();
-      if (item.order !== undefined && Number.isFinite(item.order) && Number.isInteger(item.order) && item.order >= 0) {
-        todo.order = item.order;
-        if (item.order >= nextOrder) nextOrder = item.order + 1;
-      } else {
-        todo.order = nextOrder++;
-      }
+      todo.order = index;
       return todo;
     });
     
