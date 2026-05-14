@@ -766,7 +766,6 @@ function renderLanguageOptions() {
 function applyLanguageSetting() {
   const lang = loadLanguageSetting();
 
-
   // Apply language — the languageChanged listener handles re-rendering
   if (window.i18n && window.i18n.applyLanguage) {
     window.i18n.applyLanguage(lang);
