@@ -633,7 +633,12 @@ class OnboardingTour {
     if (completed) {
       this.markCompleted();
     } else {
-      localStorage.setItem('onboardingStep', String(this.currentStep));
+      const existingRaw = localStorage.getItem('onboardingStep');
+      const existingStep = existingRaw !== null ? parseInt(existingRaw, 10) : NaN;
+      const savedStep = (!isNaN(existingStep) && existingStep > this.currentStep)
+        ? existingStep
+        : this.currentStep;
+      localStorage.setItem('onboardingStep', String(savedStep));
     }
 
     this.isActive = false;

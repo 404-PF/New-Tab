@@ -236,6 +236,38 @@ describe('Immediate progress saving on language/theme selection', () => {
     expect(localStorage.getItem('onboardingStep')).toBe('2');
     tour.end(true);
   });
+
+  it('end(false) after language selection preserves optimistically saved next step', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    tour.start(0);
+    const radio = document.querySelector('input[name="onboarding-language"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change'));
+    // Radio handler saved step 1 and scheduled 500ms nextStep
+    expect(localStorage.getItem('onboardingStep')).toBe('1');
+    // Dismiss before the 500ms timeout fires
+    tour.end(false);
+    // Should keep step 1, not overwrite with currentStep (0)
+    expect(localStorage.getItem('onboardingStep')).toBe('1');
+    expect(localStorage.getItem('onboardingCompleted')).toBeNull();
+  });
+
+  it('end(false) after theme selection preserves optimistically saved next step', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    tour.start(1);
+    const radio = document.querySelector('input[name="onboarding-theme"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change'));
+    // Radio handler saved step 2 and scheduled 500ms nextStep
+    expect(localStorage.getItem('onboardingStep')).toBe('2');
+    // Dismiss before the 500ms timeout fires
+    tour.end(false);
+    // Should keep step 2, not overwrite with currentStep (1)
+    expect(localStorage.getItem('onboardingStep')).toBe('2');
+    expect(localStorage.getItem('onboardingCompleted')).toBeNull();
+  });
 });
 
 describe('Timeout cleanup', () => {
