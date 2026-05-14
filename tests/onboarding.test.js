@@ -94,15 +94,15 @@ describe('Progress saving on navigation', () => {
     expect(localStorage.getItem('onboardingCompleted')).toBeNull();
   });
 
-  it('close button dismisses without marking completed', () => {
+  it('close button skips tour and marks completed', () => {
     const tour = window.onboardingTour;
     tour.start(4);
     const closeBtn = document.querySelector('.onboarding-close-btn');
     expect(closeBtn).not.toBeNull();
     closeBtn.click();
-    expect(localStorage.getItem('onboardingStep')).toBe('4');
-    expect(localStorage.getItem('onboardingCompleted')).toBeNull();
-    expect(tour.completed).toBe(false);
+    expect(localStorage.getItem('onboardingCompleted')).toBe('true');
+    expect(localStorage.getItem('onboardingStep')).toBeNull();
+    expect(tour.completed).toBe(true);
   });
 
   it('nextStep on last step calls end(true)', () => {
@@ -207,5 +207,49 @@ describe('Saved step detection in auto-start', () => {
     // Auto-start callers (DOMContentLoaded / load handlers) check
     // isCompleted() before calling _tryStart(), so this guard
     // correctly prevents resuming a previously completed tour.
+  });
+});
+
+describe('Immediate progress saving on language/theme selection', () => {
+  it('language radio selection saves progress to next step immediately', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    tour.start(0);
+    const radio = document.querySelector('input[name="onboarding-language"]');
+    expect(radio).not.toBeNull();
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change'));
+    // Step should be saved immediately, not only after the 500ms timeout
+    expect(localStorage.getItem('onboardingStep')).toBe('1');
+    tour.end(true);
+  });
+
+  it('theme radio selection saves progress to next step immediately', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    tour.start(1);
+    const radio = document.querySelector('input[name="onboarding-theme"]');
+    expect(radio).not.toBeNull();
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change'));
+    // Step should be saved immediately, not only after the 500ms timeout
+    expect(localStorage.getItem('onboardingStep')).toBe('2');
+    tour.end(true);
+  });
+});
+
+describe('Timeout cleanup', () => {
+  it('reset clears pending action timeouts', () => {
+    const tour = window.onboardingTour;
+    tour._actionTimeouts = [123, 456];
+    tour.reset();
+    expect(tour._actionTimeouts).toEqual([]);
+  });
+
+  it('_clearActionTimeouts empties the timeouts array', () => {
+    const tour = window.onboardingTour;
+    tour._actionTimeouts = [789];
+    tour._clearActionTimeouts();
+    expect(tour._actionTimeouts).toEqual([]);
   });
 });

@@ -9,6 +9,7 @@ class OnboardingTour {
     this.isActive = false;
     this.completed = this.isCompleted();
     this._endTimeout = null;
+    this._actionTimeouts = [];
   }
 
   // Check if an element is visible (not hidden by CSS)
@@ -47,6 +48,7 @@ class OnboardingTour {
     this.currentStep = 0;
     this.isActive = false;
 
+    this._clearActionTimeouts();
     if (this._endTimeout) {
       clearTimeout(this._endTimeout);
       this._endTimeout = null;
@@ -56,6 +58,12 @@ class OnboardingTour {
       this.overlay.parentNode.removeChild(this.overlay);
     }
     this.overlay = null;
+  }
+
+  // Clear pending action timeouts (language/theme auto-advance)
+  _clearActionTimeouts() {
+    this._actionTimeouts.forEach(tid => clearTimeout(tid));
+    this._actionTimeouts = [];
   }
 
   // Define all onboarding steps
@@ -169,7 +177,8 @@ class OnboardingTour {
     this.currentStep = safeStep;
     this.completed = false;
 
-    // Cancel any pending end timeout and remove stale overlay
+    // Cancel any pending timeouts and remove stale overlay
+    this._clearActionTimeouts();
     if (this._endTimeout) {
       clearTimeout(this._endTimeout);
       this._endTimeout = null;
@@ -222,7 +231,7 @@ class OnboardingTour {
     console.log('✅ Overlay created and appended to body');
 
     // Add event listeners
-    this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end(false));
+    this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end(true));
     this.overlay.querySelector('#onboarding-next').addEventListener('click', () => this.nextStep());
     this.overlay.querySelector('#onboarding-prev').addEventListener('click', () => this.prevStep());
 
@@ -520,8 +529,14 @@ class OnboardingTour {
             if (window.i18n && window.i18n.applyLanguage) {
               window.i18n.applyLanguage(selectedLanguage);
             }
-            // Proceed to next step after a short delay
-            setTimeout(() => this.nextStep(), 500);
+            // Save progress immediately before the delayed advance
+            if (this.currentStep < this.steps.length - 1) {
+              localStorage.setItem('onboardingStep', String(this.currentStep + 1));
+            }
+            // Cancel any pending auto-advance before scheduling a new one
+            this._clearActionTimeouts();
+            const tid = setTimeout(() => this.nextStep(), 500);
+            this._actionTimeouts.push(tid);
           });
         });
         break;
@@ -539,8 +554,14 @@ class OnboardingTour {
               // Fallback: directly apply theme
               document.body.classList.toggle('light-theme', selectedTheme === 'light');
             }
-            // Proceed to next step after a short delay
-            setTimeout(() => this.nextStep(), 500);
+            // Save progress immediately before the delayed advance
+            if (this.currentStep < this.steps.length - 1) {
+              localStorage.setItem('onboardingStep', String(this.currentStep + 1));
+            }
+            // Cancel any pending auto-advance before scheduling a new one
+            this._clearActionTimeouts();
+            const tid = setTimeout(() => this.nextStep(), 500);
+            this._actionTimeouts.push(tid);
           });
         });
         break;
@@ -550,6 +571,7 @@ class OnboardingTour {
   // Navigate to next step
   nextStep() {
     if (!this.isActive) return;
+    this._clearActionTimeouts();
     if (this.currentStep < this.steps.length - 1) {
       this.currentStep++;
       localStorage.setItem('onboardingStep', String(this.currentStep));
@@ -562,6 +584,7 @@ class OnboardingTour {
   // Navigate to previous step
   prevStep() {
     if (!this.isActive) return;
+    this._clearActionTimeouts();
     if (this.currentStep > 0) {
       this.currentStep--;
       localStorage.setItem('onboardingStep', String(this.currentStep));
@@ -572,6 +595,7 @@ class OnboardingTour {
   // Go to specific step
   goToStep(stepIndex) {
     if (!this.isActive) return;
+    this._clearActionTimeouts();
     if (stepIndex >= 0 && stepIndex < this.steps.length) {
       this.currentStep = stepIndex;
       localStorage.setItem('onboardingStep', String(this.currentStep));
@@ -605,6 +629,7 @@ class OnboardingTour {
   // End the tour
   end(completed = false) {
     if (!this.isActive) return;
+    this._clearActionTimeouts();
     if (completed) {
       this.markCompleted();
     } else {
