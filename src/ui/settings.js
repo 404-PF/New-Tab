@@ -165,6 +165,9 @@ function initVideoVisibilityHandler() {
 
   // Pause video when page is hidden
   document.addEventListener('visibilitychange', function() {
+    // Only act when a video background is active (has a source set)
+    if (!videoEl.currentSrc) return;
+
     if (document.hidden) {
       // Page is hidden - pause video
       if (!videoEl.paused) {
@@ -188,6 +191,39 @@ if (document.readyState === 'loading') {
   initVideoVisibilityHandler();
 }
 
+function stopBackground() {
+  clearBackgroundTransitionTimeout();
+
+  if (window._interactiveBackground) {
+    window._interactiveBackground.stop();
+  }
+
+  const videoEl = document.getElementById('bg-video');
+  const fullEl = document.getElementById('bg-full');
+  const thumbnailEl = document.getElementById('bg-thumbnail');
+  const containerEl = document.getElementById('background-container');
+
+  resetBackgroundVideo(videoEl, true);
+
+  if (window._customBackgrounds) {
+    window._customBackgrounds.revokeAll();
+  }
+
+  if (containerEl) {
+    containerEl.classList.remove('video-fallback', 'video-error');
+  }
+
+  if (fullEl) {
+    fullEl.classList.remove('loaded');
+    fullEl.src = '';
+  }
+
+  if (thumbnailEl) {
+    thumbnailEl.classList.add('hidden');
+    thumbnailEl.classList.remove('clearing');
+  }
+}
+
 function applyBg() {
   const bg = syncBackgroundSelection();
   initialBackgroundApplied = true;
@@ -197,37 +233,35 @@ function applyBg() {
   const videoEl = document.getElementById('bg-video');
   const containerEl = document.getElementById('background-container');
 
-  if (window._interactiveBackground) {
-    window._interactiveBackground.stop();
-  }
-
   // Handle custom backgrounds (stored in IndexedDB)
   if (window._customBackgrounds && window._customBackgrounds.isCustom(bg)) {
     backgroundLoadVersion += 1;
-    clearBackgroundTransitionTimeout();
-    resetBackgroundVideo(videoEl, true);
-    containerEl && containerEl.classList.remove('video-fallback', 'video-error');
+    stopBackground();
     window._customBackgrounds.apply(bg);
     return;
   }
 
   // Get background data from the map
   const bgData = window._backgrounds ? window._backgrounds.find(b => b.id === bg) : null;
-  if (!bgData) return;
+  if (!bgData) {
+    backgroundLoadVersion += 1;
+    stopBackground();
+    return;
+  }
 
+  // If the same video background is already active, skip teardown and setup
   if (bgData.type === 'video' && canReuseCurrentVideo(videoEl, bgData.id)) {
     return;
   }
 
+  // Guaranteed shutdown of any previous live/animated background activity
+  stopBackground();
+
   const loadVersion = ++backgroundLoadVersion;
 
-  clearBackgroundTransitionTimeout();
-  
   if (!thumbnailEl || !fullEl) return;
 
   if (bgData.type === 'interactive') {
-    resetBackgroundVideo(videoEl, true);
-    containerEl && containerEl.classList.remove('video-fallback', 'video-error');
 
     fullEl.classList.remove('loaded');
     thumbnailEl.classList.remove('hidden');
@@ -287,14 +321,7 @@ function applyBg() {
       return;
     }
     
-    // Remove fallback class and setup video
-    containerEl.classList.remove('video-fallback');
-    containerEl.classList.remove('video-error');
-    
     if (videoEl) {
-      resetBackgroundVideo(videoEl, false);
-
-      // Reset video element state
       videoEl.classList.remove('hidden');
       videoEl.dataset.currentBg = bgData.id;
       
@@ -444,14 +471,6 @@ function applyBg() {
     return;
   }
   
-  // Reset video element for image backgrounds
-  resetBackgroundVideo(videoEl, true);
-  containerEl && containerEl.classList.remove('video-fallback');
-  containerEl && containerEl.classList.remove('video-error');
-  
-  // Handle image background (original logic)
-  // Reset states
-  fullEl.classList.remove('loaded');
   thumbnailEl.classList.remove('hidden');
   thumbnailEl.classList.remove('clearing');
   
@@ -728,15 +747,27 @@ function applyTheme() {
 function loadLanguageSetting() {
   return localStorage.getItem('language') || 'en';
 }
+function renderLanguageOptions() {
+  const container = document.getElementById('language-options-container');
+  if (!container) return;
+  const languages = window.i18n && window.i18n.getSupportedLanguages ? window.i18n.getSupportedLanguages() : [];
+  const currentLang = loadLanguageSetting();
+  container.innerHTML = languages.map(lang => `
+    <label class="language-option modern">
+      <div class="language-preview">
+        <span class="language-flag">${lang.flag}</span>
+        <span class="language-code">${lang.nativeName}</span>
+      </div>
+      <input type="radio" name="language" value="${lang.code}" ${currentLang === lang.code ? 'checked' : ''} />
+      <span class="label">${window.i18n ? window.i18n.t(lang.nameKey) : lang.nativeName}</span>
+    </label>
+  `).join('');
+}
 function applyLanguageSetting() {
   const lang = loadLanguageSetting();
-  // Update radio buttons
-  const enRadio = document.querySelector('input[name="language"][value="en"]');
-  const zhRadio = document.querySelector('input[name="language"][value="zh"]');
-  if (enRadio) enRadio.checked = lang === 'en';
-  if (zhRadio) zhRadio.checked = lang === 'zh';
 
-  // Apply language if i18n is available
+
+  // Apply language — the languageChanged listener handles re-rendering
   if (window.i18n && window.i18n.applyLanguage) {
     window.i18n.applyLanguage(lang);
   }
@@ -995,8 +1026,11 @@ function initAboutSection() {
   }
 }
 
-// Re-render About section when language changes
-window.addEventListener('languageChanged', initAboutSection);
+// Re-render About section and language options when language changes
+window.addEventListener('languageChanged', function() {
+  initAboutSection();
+  renderLanguageOptions();
+});
 
 function initSettings() {
   // Apply initial settings

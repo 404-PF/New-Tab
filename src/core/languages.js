@@ -137,6 +137,13 @@ const translations = {
     languageSettingsDesc: 'Choose your preferred language',
     english: 'English',
     chinese: '中文',
+    japanese: 'Japanese',
+    korean: 'Korean',
+    spanish: 'Spanish',
+    french: 'French',
+    german: 'German',
+    portuguese: 'Portuguese',
+    russian: 'Russian',
 
     // About settings
     aboutSettings: 'About New-Tab',
@@ -422,6 +429,13 @@ const translations = {
     languageSettingsDesc: '选择您喜欢的语言',
     english: 'English',
     chinese: '中文',
+    japanese: '日语',
+    korean: '韩语',
+    spanish: '西班牙语',
+    french: '法语',
+    german: '德语',
+    portuguese: '葡萄牙语',
+    russian: '俄语',
 
     // About settings
     aboutSettings: '关于 New-Tab',
@@ -571,6 +585,22 @@ const translations = {
     aiScrollToBottom: '滚动到底部'
   }
 };
+
+const SUPPORTED_LANGUAGES = [
+  { code: 'en', flag: '\uD83C\uDDFA\uD83C\uDDF8', nativeName: 'English', nameKey: 'english' },
+  { code: 'zh', flag: '\uD83C\uDDE8\uD83C\uDDF3', nativeName: '中文', nameKey: 'chinese' },
+  { code: 'ja', flag: '\uD83C\uDDEF\uD83C\uDDF5', nativeName: '日本語', nameKey: 'japanese' },
+  { code: 'ko', flag: '\uD83C\uDDF0\uD83C\uDDF7', nativeName: '한국어', nameKey: 'korean' },
+  { code: 'es', flag: '\uD83C\uDDEA\uD83C\uDDF8', nativeName: 'Español', nameKey: 'spanish' },
+  { code: 'fr', flag: '\uD83C\uDDEB\uD83C\uDDF7', nativeName: 'Français', nameKey: 'french' },
+  { code: 'de', flag: '\uD83C\uDDE9\uD83C\uDDEA', nativeName: 'Deutsch', nameKey: 'german' },
+  { code: 'pt', flag: '\uD83C\uDDE7\uD83C\uDDF7', nativeName: 'Português', nameKey: 'portuguese' },
+  { code: 'ru', flag: '\uD83C\uDDF7\uD83C\uDDFA', nativeName: 'Русский', nameKey: 'russian' }
+];
+
+function getSupportedLanguages() {
+  return SUPPORTED_LANGUAGES;
+}
 
 // Current language
 let currentLanguage = 'en';
@@ -741,5 +771,6 @@ function t(key) {
 window.i18n = {
   applyLanguage,
   t,
-  currentLanguage: () => currentLanguage
+  currentLanguage: () => currentLanguage,
+  getSupportedLanguages
 };

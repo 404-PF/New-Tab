@@ -122,6 +122,27 @@ describe('Utility functions', () => {
   });
 });
 
+describe('applyBg stale background regression', () => {
+  beforeEach(() => {
+    localStorage.setItem('homepageBg', 'stale-bg-id');
+    window._backgrounds = [
+      { id: 'Mountain View', type: 'image', thumb: 'thumb.jpg', url: 'full.jpg' }
+    ];
+    window._interactiveBackground = { stop: vi.fn() };
+  });
+
+  it('calls stopBackground when bgData lookup returns null', () => {
+    applyBg();
+    expect(window._interactiveBackground.stop).toHaveBeenCalled();
+  });
+
+  it('calls stopBackground when _backgrounds is undefined', () => {
+    delete window._backgrounds;
+    applyBg();
+    expect(window._interactiveBackground.stop).toHaveBeenCalled();
+  });
+});
+
 describe('Language settings', () => {
   it('loadLanguageSetting returns en by default', () => {
     expect(loadLanguageSetting()).toBe('en');
@@ -130,5 +151,39 @@ describe('Language settings', () => {
   it('loadLanguageSetting reads localStorage', () => {
     localStorage.setItem('language', 'zh');
     expect(loadLanguageSetting()).toBe('zh');
+  });
+
+  it('getSupportedLanguages returns all 9 languages', () => {
+    const languages = window.i18n.getSupportedLanguages();
+    expect(languages).toHaveLength(9);
+    const codes = languages.map(l => l.code);
+    expect(codes).toContain('en');
+    expect(codes).toContain('zh');
+    expect(codes).toContain('ja');
+    expect(codes).toContain('ko');
+    expect(codes).toContain('es');
+    expect(codes).toContain('fr');
+    expect(codes).toContain('de');
+    expect(codes).toContain('pt');
+    expect(codes).toContain('ru');
+  });
+
+  it('renderLanguageOptions creates radio buttons in container', () => {
+    const container = document.createElement('div');
+    container.id = 'language-options-container';
+    container.className = 'language-options';
+    document.body.appendChild(container);
+    renderLanguageOptions();
+    const radios = container.querySelectorAll('input[type="radio"][name="language"]');
+    expect(radios).toHaveLength(9);
+    expect(radios[0].value).toBe('en');
+    expect(radios[0].checked).toBe(true);
+    document.body.removeChild(container);
+  });
+
+  it('returns key as fallback for missing translation', () => {
+    localStorage.setItem('language', 'ja');
+    const result = window.i18n.t('nonexistentKey');
+    expect(result).toBe('nonexistentKey');
   });
 });
