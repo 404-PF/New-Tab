@@ -18,6 +18,7 @@ let editModalState = {
   currentTodoId: null,
   isOpen: false
 };
+const runTodoOnDomReady = window.onDomReady;
 
 // Load todos from localStorage
 function loadTodos() {
@@ -1024,7 +1025,7 @@ function initTodo() {
   const requiredElements = ['todoInput', 'addTodoBtn', 'todoList'];
   if (!requiredElements.every(key => elements[key])) {
     console.warn('Required todo elements not found');
-    return;
+    return false;
   }
 
   // Load todos
@@ -1112,6 +1113,8 @@ function initTodo() {
   // Initialize progress ring and counts
   updateProgressRing();
   updateFilterCounts();
+
+  return true;
 }
 
 // Custom Date Picker Functionality
@@ -1334,8 +1337,10 @@ window.addEventListener('languageChanged', () => {
   if (customDatePicker) customDatePicker.renderCalendar();
 });
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+function initTodoModule() {
   initTodo();
   initCustomDatePicker();
-});
+}
+
+// Initialize when DOM is ready
+runTodoOnDomReady(initTodoModule);
