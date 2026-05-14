@@ -524,6 +524,7 @@ class OnboardingTour {
         const languageRadios = this.overlay.querySelectorAll('input[name="onboarding-language"]');
         languageRadios.forEach(radio => {
           radio.addEventListener('change', (e) => {
+            if (!this.isActive) return;
             const selectedLanguage = e.target.value;
             localStorage.setItem('language', selectedLanguage);
             if (window.i18n && window.i18n.applyLanguage) {
@@ -545,6 +546,7 @@ class OnboardingTour {
         const themeRadios = this.overlay.querySelectorAll('input[name="onboarding-theme"]');
         themeRadios.forEach(radio => {
           radio.addEventListener('change', (e) => {
+            if (!this.isActive) return;
             const selectedTheme = e.target.value;
             localStorage.setItem('theme', selectedTheme);
             // Apply theme immediately
