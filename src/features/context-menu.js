@@ -5,6 +5,57 @@ let currentAppId = null;
 let contextMenuInitialized = false;
 const runContextMenuOnDomReady = window.onDomReady;
 
+function createFallbackIconSvg() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "1.5");
+
+  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  rect.setAttribute("x", "3");
+  rect.setAttribute("y", "3");
+  rect.setAttribute("width", "18");
+  rect.setAttribute("height", "18");
+  rect.setAttribute("rx", "2");
+  rect.setAttribute("ry", "2");
+
+  const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  circle.setAttribute("cx", "8.5");
+  circle.setAttribute("cy", "8.5");
+  circle.setAttribute("r", "1.5");
+
+  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  polyline.setAttribute("points", "21,15 16,10 5,21");
+
+  svg.appendChild(rect);
+  svg.appendChild(circle);
+  svg.appendChild(polyline);
+  return svg;
+}
+
+function setPreviewIcon(previewIcon, iconUrl) {
+  if (!previewIcon) return;
+
+  previewIcon.textContent = "";
+
+  const normalizedIconUrl = typeof iconUrl === "string" ? iconUrl.trim() : "";
+  if (!normalizedIconUrl) {
+    previewIcon.appendChild(createFallbackIconSvg());
+    return;
+  }
+
+  const img = document.createElement("img");
+  img.alt = "Icon";
+  img.src = normalizedIconUrl;
+  img.addEventListener("error", () => {
+    previewIcon.textContent = "";
+    previewIcon.appendChild(createFallbackIconSvg());
+  }, { once: true });
+
+  previewIcon.appendChild(img);
+}
+
 // Create context menu element
 const contextMenu = document.createElement("div");
 contextMenu.id = "app-context-menu";
@@ -171,11 +222,7 @@ document.getElementById("change-thumbnail").addEventListener("click", function (
   // Update the preview
   const previewIcon = document.getElementById('thumbnail-preview-icon');
   const previewName = document.getElementById('thumbnail-preview-name');
-  if (currentApp.icon) {
-    previewIcon.innerHTML = `<img src="${currentApp.icon}" alt="Icon" onerror="this.parentElement.innerHTML='<svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'1.5\'><rect x=\'3\' y=\'3\' width=\'18\' height=\'18\' rx=\'2\' ry=\'2\'></rect><circle cx=\'8.5\' cy=\'8.5\' r=\'1.5\'></circle><polyline points=\'21,15 16,10 5,21\'></polyline></svg>'">`;
-  } else {
-    previewIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21,15 16,10 5,21"></polyline></svg>`;
-  }
+  setPreviewIcon(previewIcon, currentApp.icon);
   previewName.textContent = currentApp.name;
   
   // Show the thumbnail modal
@@ -217,11 +264,7 @@ function initThumbnailModalHandlers() {
   thumbnailInput.addEventListener('input', function() {
     const iconUrl = this.value.trim();
     const previewIcon = document.getElementById('thumbnail-preview-icon');
-    if (iconUrl) {
-      previewIcon.innerHTML = `<img src="${iconUrl}" alt="Icon" onerror="this.parentElement.innerHTML='<svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'1.5\'><rect x=\'3\' y=\'3\' width=\'18\' height=\'18\' rx=\'2\' ry=\'2\'></rect><circle cx=\'8.5\' cy=\'8.5\' r=\'1.5\'></circle><polyline points=\'21,15 16,10 5,21\'></polyline></svg>'">`;
-    } else {
-      previewIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21,15 16,10 5,21"></polyline></svg>`;
-    }
+    setPreviewIcon(previewIcon, iconUrl);
   });
   
   // Close modal on confirm
@@ -271,11 +314,7 @@ document.getElementById("delete-app").addEventListener("click", function () {
   // Update the delete preview
   const previewIcon = document.getElementById('delete-preview-icon');
   const previewName = document.getElementById('delete-preview-name');
-  if (currentApp.icon) {
-    previewIcon.innerHTML = `<img src="${currentApp.icon}" alt="Icon" onerror="this.parentElement.innerHTML='<svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'1.5\'><rect x=\'3\' y=\'3\' width=\'18\' height=\'18\' rx=\'2\' ry=\'2\'></rect><circle cx=\'8.5\' cy=\'8.5\' r=\'1.5\'></circle><polyline points=\'21,15 16,10 5,21\'></polyline></svg>'">`;
-  } else {
-    previewIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21,15 16,10 5,21"></polyline></svg>`;
-  }
+  setPreviewIcon(previewIcon, currentApp.icon);
   previewName.textContent = currentApp.name;
   
   // Show the delete modal
