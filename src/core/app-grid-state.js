@@ -26,6 +26,51 @@ const AppGridState = {
     }
   },
 
+  cloneAppRecord(app) {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(app);
+    }
+
+    return JSON.parse(JSON.stringify(app));
+  },
+
+  updateCustomApps(updater) {
+    if (!window.AppGridStorage || typeof updater !== 'function') {
+      return null;
+    }
+
+    const latestApps = this.getCustomApps().map(app => this.cloneAppRecord(app));
+    const nextApps = updater(latestApps);
+
+    if (!Array.isArray(nextApps)) {
+      return null;
+    }
+
+    this.saveCustomApps(nextApps);
+    return nextApps;
+  },
+
+  // allowMissing is only for first-write flows, where appOrder has not been
+  // created yet and the caller needs to append a new id safely.
+  updateOrder(updater, { allowMissing = false } = {}) {
+    if (!window.AppGridStorage || typeof updater !== 'function') {
+      return null;
+    }
+
+    const currentOrder = this.getOrder();
+    if (!Array.isArray(currentOrder) && !allowMissing) {
+      return null;
+    }
+
+    const nextOrder = updater(Array.isArray(currentOrder) ? currentOrder.slice() : []);
+    if (!Array.isArray(nextOrder)) {
+      return null;
+    }
+
+    this.saveOrder(nextOrder);
+    return nextOrder;
+  },
+
   // --- Id helpers ---
 
   // --- Higher-level operations ---
@@ -45,47 +90,57 @@ const AppGridState = {
   addApp(appData) {
     if (!this.isValidAppData(appData)) return false;
 
-    const apps = this.getCustomApps();
-    apps.push(appData);
-    this.saveCustomApps(apps);
-    const order = this.getOrder() || [];
-    order.push(appData.id);
-    this.saveOrder(order);
+    const savedApps = this.updateCustomApps((apps) => {
+      apps.push(this.cloneAppRecord(appData));
+      return apps;
+    });
+    if (!savedApps) return false;
+
+    this.updateOrder((order) => {
+      order.push(appData.id);
+      return order;
+    }, { allowMissing: true });
+
     return true;
   },
 
   // Rename a custom app identified by id.
   renameApp(id, newName) {
-    const apps = this.getCustomApps();
-    const idx = apps.findIndex(app => app.id === id);
-    if (idx === -1) return false;
-    apps[idx].name = newName;
-    this.saveCustomApps(apps);
-    return true;
+    const updatedApps = this.updateCustomApps((apps) => {
+      const idx = apps.findIndex(app => app.id === id);
+      if (idx === -1) return null;
+      apps[idx].name = newName;
+      return apps;
+    });
+    return !!updatedApps;
   },
 
   // Update the thumbnail of a custom app identified by id.
   // Clears any previously cached icon so the new one is fetched.
   updateThumbnail(id, newIcon) {
-    const apps = this.getCustomApps();
-    const idx = apps.findIndex(app => app.id === id);
-    if (idx === -1) return false;
-    apps[idx].icon = newIcon;
-    delete apps[idx].cachedIcon;
-    this.saveCustomApps(apps);
-    return true;
+    const updatedApps = this.updateCustomApps((apps) => {
+      const idx = apps.findIndex(app => app.id === id);
+      if (idx === -1) return null;
+      apps[idx].icon = newIcon;
+      delete apps[idx].cachedIcon;
+      return apps;
+    });
+    return !!updatedApps;
   },
 
   // Delete a custom app identified by id and remove it from appOrder.
   deleteApp(id) {
-    const apps = this.getCustomApps();
-    const idx = apps.findIndex(app => app.id === id);
-    if (idx === -1) return false;
-    apps.splice(idx, 1);
-    this.saveCustomApps(apps);
+    const updatedApps = this.updateCustomApps((apps) => {
+      const idx = apps.findIndex(app => app.id === id);
+      if (idx === -1) return null;
+      apps.splice(idx, 1);
+      return apps;
+    });
+    if (!updatedApps) return false;
+
     const order = this.getOrder();
-    if (order) {
-      this.saveOrder(order.filter(oid => oid !== id));
+    if (Array.isArray(order)) {
+      this.updateOrder((latestOrder) => latestOrder.filter(oid => oid !== id));
     }
     return true;
   },
@@ -94,27 +149,29 @@ const AppGridState = {
   // toIdx is the desired insertion position in the current order array;
   // pass -1 or a value beyond the array length to append at the end.
   reorder(sourceId, toIdx) {
-    const order = this.getOrder();
-    if (!order) return false;
-    const fromIdx = order.indexOf(sourceId);
-    if (fromIdx === -1) return false;
+    const updatedOrder = this.updateOrder((order) => {
+      const fromIdx = order.indexOf(sourceId);
+      if (fromIdx === -1) return null;
 
-    let targetIdx = toIdx;
-    if (targetIdx === -1 || targetIdx > order.length) {
-      targetIdx = order.length;
-    }
+      let targetIdx = toIdx;
+      if (targetIdx === -1 || targetIdx > order.length) {
+        targetIdx = order.length;
+      }
 
-    // When moving forward the removal shifts indices left; compensate so the
-    // item ends up after the intended drop position.
-    let adjustedToIdx = targetIdx;
-    if (fromIdx < targetIdx) {
-      adjustedToIdx = targetIdx - 1;
-    }
+      // When moving forward the removal shifts indices left; compensate so the
+      // item ends up after the intended drop position.
+      let adjustedToIdx = targetIdx;
+      if (fromIdx < targetIdx) {
+        adjustedToIdx = targetIdx - 1;
+      }
 
-    const newOrder = order.slice();
-    const [movedItem] = newOrder.splice(fromIdx, 1);
-    newOrder.splice(adjustedToIdx, 0, movedItem);
-    this.saveOrder(newOrder);
+      const newOrder = order.slice();
+      const [movedItem] = newOrder.splice(fromIdx, 1);
+      newOrder.splice(adjustedToIdx, 0, movedItem);
+      return newOrder;
+    });
+    if (!updatedOrder) return false;
+
     return true;
   }
 };

@@ -264,6 +264,12 @@ const iconCache = {
   async cacheExistingAppIcons() {
     try {
       const apps = AppGridState.getCustomApps();
+      const appSnapshotsById = new Map(
+        apps.map((app) => [app.id, {
+          url: app.url,
+          icon: app.icon
+        }])
+      );
       const promises = apps.map(async (app) => {
         if (app.icon && !app.cachedIcon) {
           try {
@@ -279,7 +285,32 @@ const iconCache = {
       });
 
       const updatedApps = await Promise.all(promises);
-      AppGridState.saveCustomApps(updatedApps);
+      const cachedIconsById = new Map(
+        updatedApps
+          .filter((app) => app.cachedIcon)
+          .map((app) => [app.id, app.cachedIcon])
+      );
+
+      AppGridState.updateCustomApps((latestApps) => {
+        return latestApps.map((app) => {
+          const cachedIcon = cachedIconsById.get(app.id);
+          const snapshot = appSnapshotsById.get(app.id);
+          if (
+            !cachedIcon ||
+            !snapshot ||
+            app.cachedIcon ||
+            app.url !== snapshot.url ||
+            app.icon !== snapshot.icon
+          ) {
+            return app;
+          }
+
+          return {
+            ...app,
+            cachedIcon
+          };
+        });
+      });
       return updatedApps;
     } catch (error) {
       console.warn('Failed to cache existing app icons:', error);
