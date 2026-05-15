@@ -1,8 +1,17 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  injectScript('src/core/app-grid-storage.js');
+  injectScript('src/core/app-grid-state.js');
   injectScript('src/core/utils.js');
+});
+
+beforeEach(() => {
+  localStorage.clear();
+  if (typeof iconCache !== 'undefined' && typeof iconCache.__originalGetIconWithCache === 'function') {
+    iconCache.getIconWithCache = iconCache.__originalGetIconWithCache;
+  }
 });
 
 describe('URL validation', () => {
@@ -162,6 +171,95 @@ describe('iconCache', () => {
 
   it('isOffline reflects navigator.onLine', () => {
     expect(typeof iconCache.isOffline()).toBe('boolean');
+  });
+
+  it('preserves app changes while caching icons', async () => {
+    AppGridStorage.saveCustomApps([
+      {
+        id: 'app1',
+        url: 'https://one.example',
+        name: 'One',
+        icon: 'https://cdn.example/one.svg'
+      },
+      {
+        id: 'app2',
+        url: 'https://two.example',
+        name: 'Two',
+        icon: 'https://cdn.example/two.svg'
+      }
+    ]);
+
+    const createDeferred = () => {
+      let resolve;
+      const promise = new Promise((innerResolve) => {
+        resolve = innerResolve;
+      });
+      return { promise, resolve };
+    };
+
+    const first = createDeferred();
+    const second = createDeferred();
+    const originalGetIconWithCache = iconCache.getIconWithCache.bind(iconCache);
+    iconCache.__originalGetIconWithCache = originalGetIconWithCache;
+    iconCache.getIconWithCache = (iconUrl) => {
+      if (iconUrl.includes('one.svg')) return first.promise;
+      return second.promise;
+    };
+
+    const cachingPromise = iconCache.cacheExistingAppIcons();
+    AppGridState.deleteApp('app1');
+    AppGridState.updateThumbnail('app2', 'https://cdn.example/two-new.svg');
+
+    first.resolve('data:image/png;base64,one');
+    second.resolve('data:image/png;base64,two');
+    await cachingPromise;
+
+    expect(AppGridState.getCustomApps()).toEqual([
+      {
+        id: 'app2',
+        url: 'https://two.example',
+        name: 'Two',
+        icon: 'https://cdn.example/two-new.svg'
+      }
+    ]);
+  });
+
+  it('does not overwrite an app that already has a cached icon', async () => {
+    AppGridStorage.saveCustomApps([
+      {
+        id: 'app3',
+        url: 'https://three.example',
+        name: 'Three',
+        icon: 'https://cdn.example/three.svg',
+        cachedIcon: 'data:image/png;base64,existing'
+      }
+    ]);
+
+    const deferred = (() => {
+      let resolve;
+      const promise = new Promise((innerResolve) => {
+        resolve = innerResolve;
+      });
+      return { promise, resolve };
+    })();
+
+    const originalGetIconWithCache = iconCache.getIconWithCache.bind(iconCache);
+    iconCache.__originalGetIconWithCache = originalGetIconWithCache;
+    iconCache.getIconWithCache = () => deferred.promise;
+
+    const cachingPromise = iconCache.cacheExistingAppIcons();
+    deferred.resolve('data:image/png;base64,new');
+    await cachingPromise;
+
+    expect(AppGridState.getCustomApps()).toEqual([
+      {
+        id: 'app3',
+        url: 'https://three.example',
+        name: 'Three',
+        icon: 'https://cdn.example/three.svg',
+        cachedIcon: 'data:image/png;base64,existing'
+      }
+    ]);
   });
 });
 
