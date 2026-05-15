@@ -24,6 +24,37 @@ describe('Todo persistence', () => {
     expect(loadTodos()).toEqual(data);
   });
 
+  it('saveTodos failures roll back todo mutations', () => {
+    addTodo('Keep me');
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      const todoId = loadTodos()[0].id;
+
+      expect(() => editTodo(todoId, 'Updated', null, null)).not.toThrow();
+      expect(loadTodos()[0].text).toBe('Keep me');
+
+      expect(() => toggleTodo(todoId)).not.toThrow();
+      expect(loadTodos()[0].completed).toBe(false);
+
+      expect(() => deleteTodo(todoId)).not.toThrow();
+      expect(loadTodos()).toHaveLength(1);
+
+      const todoItem = document.querySelector('.todo-item');
+      expect(todoItem).not.toBeNull();
+      expect(todoItem.querySelector('.todo-text')?.textContent).toBe('Keep me');
+      expect(warnSpy).toHaveBeenCalled();
+      expect(document.querySelector('.toast-notification')?.textContent).toContain('Failed to save todo changes');
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
   it('loadTodos handles corrupted localStorage gracefully', () => {
     localStorage.setItem('todos', 'not-json');
     expect(loadTodos()).toEqual([]);

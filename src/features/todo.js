@@ -46,7 +46,21 @@ function loadTodos() {
 
 // Save todos to localStorage
 function saveTodos(todos) {
-  localStorage.setItem("todos", JSON.stringify(todos));
+  try {
+    localStorage.setItem("todos", JSON.stringify(todos));
+    return true;
+  } catch (error) {
+    console.warn("Failed to save todos to localStorage:", error);
+    return false;
+  }
+}
+
+function cloneTodos(sourceTodos) {
+  return sourceTodos.map(todo => ({ ...todo }));
+}
+
+function showTodoSaveError() {
+  showToast('Failed to save todo changes. Your last action was not saved.', 'error');
 }
 
 // Format date as local ISO string (YYYY-MM-DD)
@@ -281,7 +295,13 @@ function addTodo(text, dueDate = null) {
   };
 
   todos.push(newTodo);
-  saveTodos(todos);
+  if (!saveTodos(todos)) {
+    todos = todos.filter(todo => todo.id !== newTodo.id);
+    applyFilters();
+    showTodoSaveError();
+    return;
+  }
+
   applyFilters();
   clearInputs();
 }
@@ -308,10 +328,17 @@ function migrateTodos() {
 function editTodo(id, newText, newPriority, newDueDate) {
   const todo = todos.find(t => t.id === id);
   if (todo) {
+    const previousTodo = { ...todo };
     todo.text = newText.trim();
     todo.priority = newPriority;
     todo.dueDate = newDueDate;
-    saveTodos(todos);
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return;
+    }
+
     applyFilters();
   }
 }
@@ -320,6 +347,7 @@ function editTodo(id, newText, newPriority, newDueDate) {
 function toggleTodo(id) {
   const todo = todos.find(t => t.id === id);
   if (todo) {
+    const previousTodo = { ...todo };
     todo.completed = !todo.completed;
     
     // Track completion time for sorting
@@ -329,15 +357,28 @@ function toggleTodo(id) {
       todo.completedAt = null;
     }
     
-    saveTodos(todos);
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return;
+    }
+
     applyFilters();
   }
 }
 
 // Delete a todo
 function deleteTodo(id) {
+  const previousTodos = cloneTodos(todos);
   todos = todos.filter(t => t.id !== id);
-  saveTodos(todos);
+  if (!saveTodos(todos)) {
+    todos = previousTodos;
+    applyFilters();
+    showTodoSaveError();
+    return;
+  }
+
   applyFilters();
 }
 
@@ -432,9 +473,16 @@ function showClearCompletedDialog() {
   
   // Handle confirm button click
   const handleConfirm = () => {
+    const previousTodos = cloneTodos(todos);
     // Actually clear the completed todos
     todos = todos.filter(t => !t.completed);
-    saveTodos(todos);
+    if (!saveTodos(todos)) {
+      todos = previousTodos;
+      applyFilters();
+      showTodoSaveError();
+      return;
+    }
+
     applyFilters();
     hideClearCompletedDialog();
     
@@ -528,10 +576,17 @@ function handleDrop(event) {
   });
 
   // Update the main todos array to match the new order
+  const previousTodos = cloneTodos(todos);
   const newOrder = filteredTodos.map(todo => todo.id);
   todos.sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
 
-  saveTodos(todos);
+  if (!saveTodos(todos)) {
+    todos = previousTodos;
+    applyFilters();
+    showTodoSaveError();
+    return;
+  }
+
   renderTodos();
 }
 
@@ -854,10 +909,18 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   if (!todo) return;
   
   const oldDate = todo.dueDate;
+  const previousTodo = { ...todo };
   todo.dueDate = newDate ? formatDateISO(newDate) : null;
   
   // Save to localStorage
-  saveTodos(todos);
+  if (!saveTodos(todos)) {
+    Object.assign(todo, previousTodo);
+    if (dueDateElement) {
+      updateDueDateDisplay(dueDateElement, oldDate);
+    }
+    showTodoSaveError();
+    return;
+  }
   
   // Update the display with visual feedback
   updateDueDateDisplay(dueDateElement, todo.dueDate);
@@ -1278,7 +1341,8 @@ function showImportDialog(importedTodos) {
   
   const handleMerge = () => {
     closeEditModal();
-    const existingTodos = loadTodos();
+    const previousTodos = cloneTodos(todos);
+    const existingTodos = cloneTodos(todos);
     const existingIds = new Set(existingTodos.map(t => t.id));
     let addedCount = 0;
 
@@ -1303,7 +1367,13 @@ function showImportDialog(importedTodos) {
     }
     
     closeAllInlineDatePickers();
-    saveTodos(existingTodos);
+    if (!saveTodos(existingTodos)) {
+      todos = previousTodos;
+      applyFilters();
+      showTodoSaveError();
+      return;
+    }
+
     todos = existingTodos;
     applyFilters();
     if (addedCount > 0) {
@@ -1317,6 +1387,7 @@ function showImportDialog(importedTodos) {
   
   const handleReplace = () => {
     closeEditModal();
+    const previousTodos = cloneTodos(todos);
     const newTodos = importedTodos.map((item, index) => {
       const todo = { ...item };
       todo.completed = !!item.completed;
@@ -1328,7 +1399,13 @@ function showImportDialog(importedTodos) {
     });
     
     closeAllInlineDatePickers();
-    saveTodos(newTodos);
+    if (!saveTodos(newTodos)) {
+      todos = previousTodos;
+      applyFilters();
+      showTodoSaveError();
+      return;
+    }
+
     todos = newTodos;
     applyFilters();
     const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, newTodos.length);
