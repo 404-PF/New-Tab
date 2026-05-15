@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -48,6 +48,39 @@ describe('Todo CRUD', () => {
   it('addTodo ignores empty text', () => {
     addTodo('  ');
     expect(loadTodos()).toHaveLength(0);
+  });
+
+  it('addTodo renders a todo item in the list', () => {
+    addTodo('Render me');
+    const items = document.querySelectorAll('.todo-item');
+    expect(items).toHaveLength(1);
+    expect(items[0].querySelector('.todo-text')?.textContent).toBe('Render me');
+  });
+
+  it('renderTodos displays todo text literally', () => {
+    addTodo('<b>test</b>');
+    const todoText = document.querySelector('.todo-text');
+    expect(todoText).not.toBeNull();
+    expect(todoText.textContent).toBe('<b>test</b>');
+    expect(todoText.querySelector('b')).toBeNull();
+  });
+
+  it('renderTodos falls back to empty text for missing todo text', () => {
+    saveTodos([
+      {
+        id: '1',
+        completed: false,
+        dueDate: null,
+        createdAt: new Date().toISOString(),
+        order: 0
+      }
+    ]);
+
+    initTodo();
+
+    const todoText = document.querySelector('.todo-text');
+    expect(todoText).not.toBeNull();
+    expect(todoText.textContent).toBe('');
   });
 
   it('addTodo assigns incremental order', () => {

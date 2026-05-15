@@ -9,6 +9,7 @@ let currentFilters = {
 
 // Animation config
 const STAGGER_DELAY = 0.05; // seconds between each item
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // DOM elements
 let elements = {};
@@ -81,6 +82,73 @@ function isOverdue(dateString) {
   today.setHours(0, 0, 0, 0);
   dueDate.setHours(0, 0, 0, 0);
   return dueDate < today;
+}
+
+function createSvgElement(tagName, attributes = {}) {
+  const element = document.createElementNS(SVG_NS, tagName);
+  Object.entries(attributes).forEach(([name, value]) => {
+    element.setAttribute(name, value);
+  });
+  return element;
+}
+
+function createTodoIconButton(className, title, todoId, iconChildren) {
+  const button = document.createElement('button');
+  button.className = className;
+  button.dataset.id = todoId;
+  button.title = title;
+
+  const svg = createSvgElement('svg', {
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': '2',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round'
+  });
+
+  iconChildren.forEach(child => {
+    svg.appendChild(createSvgElement(child.tagName, child.attributes));
+  });
+
+  button.appendChild(svg);
+  return button;
+}
+
+function createTodoBullet(completed) {
+  const svg = createSvgElement('svg', {
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    class: completed ? 'bullet-checked' : 'bullet-unchecked'
+  });
+
+  if (completed) {
+    svg.appendChild(createSvgElement('circle', {
+      cx: '12',
+      cy: '12',
+      r: '10',
+      fill: 'currentColor'
+    }));
+    svg.appendChild(createSvgElement('path', {
+      d: 'M9 12l2 2 4-4',
+      stroke: 'white',
+      'stroke-width': '2',
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      fill: 'none'
+    }));
+    return svg;
+  }
+
+  svg.appendChild(createSvgElement('circle', {
+    cx: '12',
+    cy: '12',
+    r: '9',
+    stroke: 'currentColor',
+    'stroke-width': '2',
+    fill: 'none'
+  }));
+  return svg;
 }
 
 
@@ -166,53 +234,80 @@ function renderTodos() {
     li.dataset.id = todo.id;
     li.draggable = true;
 
-    // Format due date if exists - make it clickable for inline editing
-    const dueDateHtml = `
-      <div class="todo-due-date clickable ${todo.dueDate ? (isOverdue(todo.dueDate) ? 'overdue' : '') : 'empty'}" data-todo-id="${escapeHtml(todo.id)}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        <span class="due-date-text">${todo.dueDate ? formatDate(todo.dueDate) : (window.i18n ? window.i18n.t('todoSetDate') : 'Set date')}</span>
-      </div>
-    `;
+    const bullet = document.createElement('div');
+    bullet.className = 'todo-bullet';
+    bullet.dataset.id = todo.id;
+    bullet.appendChild(createTodoBullet(todo.completed));
+    const todoContent = document.createElement('div');
+    todoContent.className = 'todo-content';
 
-    li.innerHTML = `
-      <div class="todo-bullet" data-id="${escapeHtml(todo.id)}">
-        ${todo.completed ? `
-          <svg viewBox="0 0 24 24" fill="none" class="bullet-checked">
-            <circle cx="12" cy="12" r="10" fill="currentColor"/>
-            <path d="M9 12l2 2 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          </svg>
-        ` : `
-          <svg viewBox="0 0 24 24" fill="none" class="bullet-unchecked">
-            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/>
-          </svg>
-        `}
-      </div>
-      <div class="todo-content">
-        <p class="todo-text">${escapeHtml(todo.text)}</p>
-      </div>
-      ${dueDateHtml}
-      <div class="todo-actions">
-        <button class="todo-edit-btn" data-id="${escapeHtml(todo.id)}" title="${window.i18n ? window.i18n.t('todoEditTooltip') : 'Edit Todo'}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-        </button>
-        <button class="todo-delete-btn" data-id="${escapeHtml(todo.id)}" title="${window.i18n ? window.i18n.t('todoDeleteTooltip') : 'Delete Todo'}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3,6 5,6 21,6"></polyline>
-            <path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
-            <line x1="10" y1="11" x2="10" y2="17"></line>
-            <line x1="14" y1="11" x2="14" y2="17"></line>
-          </svg>
-        </button>
-      </div>
-    `;
+    const todoText = document.createElement('p');
+    todoText.className = 'todo-text';
+    todoText.textContent = todo.text ?? '';
+    todoContent.appendChild(todoText);
+
+    const dueDate = document.createElement('div');
+    dueDate.className = `todo-due-date clickable ${todo.dueDate ? (isOverdue(todo.dueDate) ? 'overdue' : '') : 'empty'}`;
+    dueDate.dataset.todoId = todo.id;
+
+    const dueDateSvg = createSvgElement('svg', {
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': '2',
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round'
+    });
+    dueDateSvg.appendChild(createSvgElement('rect', {
+      x: '3',
+      y: '4',
+      width: '18',
+      height: '18',
+      rx: '2',
+      ry: '2'
+    }));
+    dueDateSvg.appendChild(createSvgElement('line', {
+      x1: '16',
+      y1: '2',
+      x2: '16',
+      y2: '6'
+    }));
+    dueDateSvg.appendChild(createSvgElement('line', {
+      x1: '8',
+      y1: '2',
+      x2: '8',
+      y2: '6'
+    }));
+    dueDateSvg.appendChild(createSvgElement('line', {
+      x1: '3',
+      y1: '10',
+      x2: '21',
+      y2: '10'
+    }));
+    dueDate.appendChild(dueDateSvg);
+
+    const dueDateText = document.createElement('span');
+    dueDateText.className = 'due-date-text';
+    dueDateText.textContent = todo.dueDate ? formatDate(todo.dueDate) : (window.i18n ? window.i18n.t('todoSetDate') : 'Set date');
+    dueDate.appendChild(dueDateText);
+
+    const todoActions = document.createElement('div');
+    todoActions.className = 'todo-actions';
+    todoActions.appendChild(createTodoIconButton('todo-edit-btn', window.i18n ? window.i18n.t('todoEditTooltip') : 'Edit Todo', todo.id, [
+      { tagName: 'path', attributes: { d: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' } },
+      { tagName: 'path', attributes: { d: 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' } }
+    ]));
+    todoActions.appendChild(createTodoIconButton('todo-delete-btn', window.i18n ? window.i18n.t('todoDeleteTooltip') : 'Delete Todo', todo.id, [
+      { tagName: 'polyline', attributes: { points: '3,6 5,6 21,6' } },
+      { tagName: 'path', attributes: { d: 'M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2' } },
+      { tagName: 'line', attributes: { x1: '10', y1: '11', x2: '10', y2: '17' } },
+      { tagName: 'line', attributes: { x1: '14', y1: '11', x2: '14', y2: '17' } }
+    ]));
+
+    li.appendChild(bullet);
+    li.appendChild(todoContent);
+    li.appendChild(dueDate);
+    li.appendChild(todoActions);
 
     // Add staggered animation delay
     li.style.animationDelay = `${index * STAGGER_DELAY}s`;
