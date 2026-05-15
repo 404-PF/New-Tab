@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -48,6 +48,27 @@ describe('Todo CRUD', () => {
   it('addTodo ignores empty text', () => {
     addTodo('  ');
     expect(loadTodos()).toHaveLength(0);
+  });
+
+  it('renderTodos displays todo text literally', () => {
+    addTodo('<b>test</b>');
+    const todoText = document.querySelector('.todo-text');
+    expect(todoText).not.toBeNull();
+    expect(todoText.textContent).toBe('<b>test</b>');
+    expect(todoText.querySelector('b')).toBeNull();
+  });
+
+  it('addTodo triggers renderTodos after adding a todo', () => {
+    const originalRenderTodos = globalThis.renderTodos;
+    const renderSpy = vi.fn((...args) => originalRenderTodos(...args));
+    globalThis.renderTodos = renderSpy;
+
+    try {
+      addTodo('Render me');
+      expect(renderSpy).toHaveBeenCalled();
+    } finally {
+      globalThis.renderTodos = originalRenderTodos;
+    }
   });
 
   it('addTodo assigns incremental order', () => {

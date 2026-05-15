@@ -193,7 +193,8 @@ function renderTodos() {
         `}
       </div>
       <div class="todo-content">
-        <p class="todo-text">${escapeHtml(todo.text)}</p>
+        <!-- Filled via textContent below so user input never becomes HTML -->
+        <p class="todo-text" data-todo-text></p>
       </div>
       ${dueDateHtml}
       <div class="todo-actions">
@@ -213,6 +214,11 @@ function renderTodos() {
         </button>
       </div>
     `;
+
+    const todoTextElement = li.querySelector('[data-todo-text]');
+    if (todoTextElement) {
+      todoTextElement.textContent = todo.text || '';
+    }
 
     // Add staggered animation delay
     li.style.animationDelay = `${index * STAGGER_DELAY}s`;
