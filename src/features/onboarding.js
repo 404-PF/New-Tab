@@ -10,6 +10,7 @@ class OnboardingTour {
     this.completed = this.isCompleted();
     this._endTimeout = null;
     this._actionTimeouts = [];
+    this._dismissedThisSession = false;
   }
 
   // Check if an element is visible (not hidden by CSS)
@@ -47,6 +48,7 @@ class OnboardingTour {
     this.completed = false;
     this.currentStep = 0;
     this.isActive = false;
+    this._dismissedThisSession = false;
 
     this._clearActionTimeouts();
     if (this._endTimeout) {
@@ -173,6 +175,7 @@ class OnboardingTour {
     const safeStep = Math.max(0, Math.min(startStep, this.steps.length - 1));
 
     console.log('🚀 Starting onboarding tour...');
+    this._dismissedThisSession = false;
     this.isActive = true;
     this.currentStep = safeStep;
     this.completed = false;
@@ -637,6 +640,7 @@ class OnboardingTour {
     if (completed) {
       this.markCompleted();
     } else {
+      this._dismissedThisSession = true;
       const existingRaw = localStorage.getItem('onboardingStep');
       const existingStep = existingRaw !== null ? parseInt(existingRaw, 10) : NaN;
       const savedStep = (!isNaN(existingStep) && existingStep > this.currentStep)
@@ -705,7 +709,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     attempts++;
 
-    if (!onboardingTour.isCompleted() && isTourReady()) {
+    if (!onboardingTour.isCompleted() && !onboardingTour._dismissedThisSession && isTourReady()) {
       onboardingTour._tryStart();
     } else if (attempts < maxAttempts) {
       checkTimeout = setTimeout(checkAndStart, 100);
@@ -732,7 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Also try on window load as fallback
 window.addEventListener('load', () => {
   setTimeout(() => {
-    if (!onboardingTour.isCompleted() && !onboardingTour.isActive && isTourReady()) {
+    if (!onboardingTour.isCompleted() && !onboardingTour._dismissedThisSession && !onboardingTour.isActive && isTourReady()) {
       onboardingTour._tryStart();
     }
   }, 1000);

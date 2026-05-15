@@ -141,6 +141,43 @@ describe('Resume behavior', () => {
     expect(window.onboardingTour.currentStep).toBe(0);
     window.onboardingTour.end(true);
   });
+
+  it('_dismissedThisSession prevents re-trigger on same page load', () => {
+    const tour = window.onboardingTour;
+    tour.start(0);
+    expect(tour.isActive).toBe(true);
+    // Dismiss the tour
+    tour.end(false);
+    expect(tour._dismissedThisSession).toBe(true);
+    expect(tour.isActive).toBe(false);
+    // Simulate the auto-start guard — _tryStart should NOT re-launch
+    expect(tour.isCompleted()).toBe(false);
+    expect(tour._dismissedThisSession).toBe(true);
+    // Just checking the guard flags; _tryStart would be blocked by
+    // the check in the auto-start callers (DOMContentLoaded / load handlers)
+  });
+
+  it('_dismissedThisSession is false after start() for restart', () => {
+    const tour = window.onboardingTour;
+    tour._dismissedThisSession = true;
+    tour.start(0);
+    expect(tour._dismissedThisSession).toBe(false);
+    tour.end(true);
+  });
+
+  it('_dismissedThisSession is false after reset()', () => {
+    const tour = window.onboardingTour;
+    tour._dismissedThisSession = true;
+    tour.reset();
+    expect(tour._dismissedThisSession).toBe(false);
+  });
+
+  it('end(true) does not set _dismissedThisSession', () => {
+    const tour = window.onboardingTour;
+    tour.start(0);
+    tour.end(true);
+    expect(tour._dismissedThisSession).toBe(false);
+  });
 });
 
 describe('Saved step detection in auto-start', () => {
