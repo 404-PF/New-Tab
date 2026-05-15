@@ -8,6 +8,9 @@ class OnboardingTour {
     this.tooltip = null;
     this.isActive = false;
     this.completed = this.isCompleted();
+    this._endTimeout = null;
+    this._actionTimeouts = [];
+    this._dismissedThisSession = false;
   }
 
   // Check if an element is visible (not hidden by CSS)
@@ -34,6 +37,7 @@ class OnboardingTour {
   // Mark onboarding as completed
   markCompleted() {
     localStorage.setItem('onboardingCompleted', 'true');
+    localStorage.removeItem('onboardingStep');
     this.completed = true;
   }
 
@@ -43,6 +47,25 @@ class OnboardingTour {
     localStorage.removeItem('onboardingStep');
     this.completed = false;
     this.currentStep = 0;
+    this.isActive = false;
+    this._dismissedThisSession = false;
+
+    this._clearActionTimeouts();
+    if (this._endTimeout) {
+      clearTimeout(this._endTimeout);
+      this._endTimeout = null;
+    }
+
+    if (this.overlay && this.overlay.parentNode) {
+      this.overlay.parentNode.removeChild(this.overlay);
+    }
+    this.overlay = null;
+  }
+
+  // Clear pending action timeouts (language/theme auto-advance)
+  _clearActionTimeouts() {
+    this._actionTimeouts.forEach(tid => clearTimeout(tid));
+    this._actionTimeouts = [];
   }
 
   // Define all onboarding steps
@@ -141,16 +164,32 @@ class OnboardingTour {
     ];
   }
 
-  // Initialize and start the tour
-  async start() {
+  // Initialize and start the tour (optionally from a saved step)
+  start(startStep = 0) {
     if (this.isActive || this.completed) {
-      console.log('⚠️ Onboarding tour already active or completed');
+      if (this.isActive) console.log('⚠️ Onboarding tour already active');
       return;
     }
 
+    // Validate step index
+    const safeStep = Math.max(0, Math.min(startStep, this.steps.length - 1));
+
     console.log('🚀 Starting onboarding tour...');
+    this._dismissedThisSession = false;
     this.isActive = true;
-    this.currentStep = 0;
+    this.currentStep = safeStep;
+    this.completed = false;
+
+    // Cancel any pending timeouts and remove stale overlay
+    this._clearActionTimeouts();
+    if (this._endTimeout) {
+      clearTimeout(this._endTimeout);
+      this._endTimeout = null;
+    }
+    if (this.overlay && this.overlay.parentNode) {
+      this.overlay.parentNode.removeChild(this.overlay);
+    }
+
     this.createOverlay();
     this.showStep();
   }
@@ -171,7 +210,7 @@ class OnboardingTour {
             <span class="current-step">1</span>
             <span class="total-steps">/ ${this.steps.length}</span>
           </div>
-          <button class="onboarding-close-btn" title="Skip tour">×</button>
+          <button class="onboarding-close-btn" title="Close">×</button>
         </div>
         <div class="onboarding-tooltip-content">
           <h3 class="onboarding-tooltip-title"></h3>
@@ -195,7 +234,7 @@ class OnboardingTour {
     console.log('✅ Overlay created and appended to body');
 
     // Add event listeners
-    this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end());
+    this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end(false));
     this.overlay.querySelector('#onboarding-next').addEventListener('click', () => this.nextStep());
     this.overlay.querySelector('#onboarding-prev').addEventListener('click', () => this.prevStep());
 
@@ -481,25 +520,35 @@ class OnboardingTour {
         // This step doesn't require specific action
         break;
       case 'select-language':
+        this._clearActionTimeouts();
         // Add event listeners to language radio buttons
         const languageRadios = this.overlay.querySelectorAll('input[name="onboarding-language"]');
         languageRadios.forEach(radio => {
           radio.addEventListener('change', (e) => {
+            if (!this.isActive) return;
             const selectedLanguage = e.target.value;
             localStorage.setItem('language', selectedLanguage);
             if (window.i18n && window.i18n.applyLanguage) {
               window.i18n.applyLanguage(selectedLanguage);
             }
-            // Proceed to next step after a short delay
-            setTimeout(() => this.nextStep(), 500);
+            // Save progress immediately before the delayed advance
+            if (this.currentStep < this.steps.length - 1) {
+              localStorage.setItem('onboardingStep', String(this.currentStep + 1));
+            }
+            // Cancel any pending auto-advance before scheduling a new one
+            this._clearActionTimeouts();
+            const tid = setTimeout(() => this.nextStep(), 500);
+            this._actionTimeouts.push(tid);
           });
         });
         break;
       case 'select-theme':
+        this._clearActionTimeouts();
         // Add event listeners to theme radio buttons
         const themeRadios = this.overlay.querySelectorAll('input[name="onboarding-theme"]');
         themeRadios.forEach(radio => {
           radio.addEventListener('change', (e) => {
+            if (!this.isActive) return;
             const selectedTheme = e.target.value;
             localStorage.setItem('theme', selectedTheme);
             // Apply theme immediately
@@ -509,8 +558,14 @@ class OnboardingTour {
               // Fallback: directly apply theme
               document.body.classList.toggle('light-theme', selectedTheme === 'light');
             }
-            // Proceed to next step after a short delay
-            setTimeout(() => this.nextStep(), 500);
+            // Save progress immediately before the delayed advance
+            if (this.currentStep < this.steps.length - 1) {
+              localStorage.setItem('onboardingStep', String(this.currentStep + 1));
+            }
+            // Cancel any pending auto-advance before scheduling a new one
+            this._clearActionTimeouts();
+            const tid = setTimeout(() => this.nextStep(), 500);
+            this._actionTimeouts.push(tid);
           });
         });
         break;
@@ -519,44 +574,88 @@ class OnboardingTour {
 
   // Navigate to next step
   nextStep() {
+    if (!this.isActive) return;
+    this._clearActionTimeouts();
     if (this.currentStep < this.steps.length - 1) {
       this.currentStep++;
+      localStorage.setItem('onboardingStep', String(this.currentStep));
       this.showStep();
     } else {
-      this.end();
+      this.end(true);
     }
   }
 
   // Navigate to previous step
   prevStep() {
+    if (!this.isActive) return;
+    this._clearActionTimeouts();
     if (this.currentStep > 0) {
       this.currentStep--;
+      localStorage.setItem('onboardingStep', String(this.currentStep));
       this.showStep();
     }
   }
 
   // Go to specific step
   goToStep(stepIndex) {
+    if (!this.isActive) return;
+    this._clearActionTimeouts();
     if (stepIndex >= 0 && stepIndex < this.steps.length) {
       this.currentStep = stepIndex;
+      localStorage.setItem('onboardingStep', String(this.currentStep));
       this.showStep();
     }
   }
 
+  // Resolve saved step from localStorage, returns a valid step index or 0
+  _resolveSavedStep() {
+    const savedStep = localStorage.getItem('onboardingStep');
+    if (savedStep !== null) {
+      const step = parseInt(savedStep, 10);
+      if (!isNaN(step) && step >= 0 && step < this.steps.length) {
+        return step;
+      }
+    }
+    return 0;
+  }
+
+  // Start or resume the tour based on saved progress
+  _tryStart() {
+    const step = this._resolveSavedStep();
+    if (step > 0) {
+      console.log('🎯 Resuming New-Tab onboarding tour from step', step, '...');
+    } else {
+      console.log('🎯 Starting New-Tab onboarding tour...');
+    }
+    this.start(step);
+  }
+
   // End the tour
-  end() {
-    // Always mark as completed once the user has seen the tour (even partially)
-    this.markCompleted();
+  end(completed = false) {
+    if (!this.isActive) return;
+    this._clearActionTimeouts();
+    if (completed) {
+      this.markCompleted();
+    } else {
+      this._dismissedThisSession = true;
+      const existingRaw = localStorage.getItem('onboardingStep');
+      const existingStep = existingRaw !== null ? parseInt(existingRaw, 10) : NaN;
+      const savedStep = (!isNaN(existingStep) && existingStep > this.currentStep)
+        ? existingStep
+        : this.currentStep;
+      localStorage.setItem('onboardingStep', String(savedStep));
+    }
 
     this.isActive = false;
 
     if (this.overlay) {
       this.overlay.style.opacity = '0';
-      setTimeout(() => {
+      this._endTimeout = setTimeout(() => {
         if (this.overlay && this.overlay.parentNode) {
           this.overlay.parentNode.removeChild(this.overlay);
         }
         this.overlay = null;
+        this._endTimeout = null;
       }, 300);
     }
   }
@@ -607,9 +706,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     attempts++;
 
-    if (!onboardingTour.isCompleted() && isTourReady()) {
-      console.log('🎯 Starting New-Tab onboarding tour...');
-      onboardingTour.start();
+    if (!onboardingTour.isCompleted() && !onboardingTour._dismissedThisSession && isTourReady()) {
+      onboardingTour._tryStart();
     } else if (attempts < maxAttempts) {
       checkTimeout = setTimeout(checkAndStart, 100);
     } else {
@@ -635,9 +733,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // Also try on window load as fallback
 window.addEventListener('load', () => {
   setTimeout(() => {
-    if (!onboardingTour.isCompleted() && !onboardingTour.isActive && isTourReady()) {
-      console.log('🎯 Starting New-Tab onboarding tour (fallback)...');
-      onboardingTour.start();
+    if (!onboardingTour.isCompleted() && !onboardingTour._dismissedThisSession && !onboardingTour.isActive && isTourReady()) {
+      onboardingTour._tryStart();
     }
   }, 1000);
 });
