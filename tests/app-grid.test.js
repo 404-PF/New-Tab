@@ -62,7 +62,7 @@ describe('AppGridState', () => {
     const result = AppGridState.addApp(app);
     expect(result).toBe(true);
     expect(AppGridState.getCustomApps()).toHaveLength(1);
-    expect(AppGridState.getOrder()).toContain('app1');
+    expect(AppGridState.getOrder()).toEqual(['app1']);
   });
 
   it('addApp rejects invalid data', () => {
@@ -103,6 +103,38 @@ describe('AppGridState', () => {
       }
     ]);
     expect(staleApps[0].meta.count).toBe(1);
+  });
+
+  it('updateOrder returns null when order is missing and allowMissing is false', () => {
+    expect(AppGridState.updateOrder((order) => order)).toBeNull();
+  });
+
+  it('updateOrder initializes order when missing and allowMissing is true', () => {
+    const updatedOrder = AppGridState.updateOrder((order) => {
+      order.push('app1');
+      return order;
+    }, { allowMissing: true });
+
+    expect(updatedOrder).toEqual(['app1']);
+    expect(AppGridState.getOrder()).toEqual(['app1']);
+  });
+
+  it('updateOrder returns null when updater does not return an array', () => {
+    AppGridStorage.saveOrder(['a']);
+
+    expect(AppGridState.updateOrder(() => null)).toBeNull();
+    expect(AppGridState.getOrder()).toEqual(['a']);
+  });
+
+  it('updateOrder returns null when AppGridStorage is unavailable', () => {
+    const originalStorage = window.AppGridStorage;
+    window.AppGridStorage = null;
+
+    try {
+      expect(AppGridState.updateOrder((order) => order, { allowMissing: true })).toBeNull();
+    } finally {
+      window.AppGridStorage = originalStorage;
+    }
   });
 
   it('renameApp updates name', () => {

@@ -138,10 +138,7 @@ const AppGridState = {
     });
     if (!updatedApps) return false;
 
-    const order = this.getOrder();
-    if (Array.isArray(order)) {
-      this.updateOrder((latestOrder) => latestOrder.filter(oid => oid !== id));
-    }
+    this.updateOrder((latestOrder) => latestOrder.filter(oid => oid !== id));
     return true;
   },
 
