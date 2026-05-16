@@ -116,4 +116,34 @@ describe('search history', () => {
     expect(setItemSpy).not.toHaveBeenCalled();
     expect(JSON.parse(localStorage.getItem('searchHistory'))).toEqual(['beta', 'alpha']);
   });
+
+  it('clears search history and keeps focus on the input', () => {
+    recordSearchHistory('alpha');
+
+    const input = focusSearchInput();
+    expect(document.querySelector('.search-history-panel').hidden).toBe(false);
+
+    document.querySelector('.search-history-clear-btn').click();
+
+    expect(localStorage.getItem('searchHistory')).toBeNull();
+    expect(document.querySelector('.search-history-panel').hidden).toBe(true);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('keeps only the most recent eight entries', () => {
+    Array.from({ length: 9 }, (_, index) => `query-${index + 1}`).forEach((query) => {
+      recordSearchHistory(query);
+    });
+
+    expect(JSON.parse(localStorage.getItem('searchHistory'))).toEqual([
+      'query-9',
+      'query-8',
+      'query-7',
+      'query-6',
+      'query-5',
+      'query-4',
+      'query-3',
+      'query-2'
+    ]);
+  });
 });

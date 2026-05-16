@@ -437,7 +437,6 @@ function renderSearchHistorySuggestions() {
 
   panel.hidden = false;
   searchInputElement.setAttribute("aria-expanded", "true");
-  searchInputElement.setAttribute("aria-controls", "search-history-panel");
 }
 
 function runDefaultSearch(query) {
@@ -487,6 +486,7 @@ function initSearchEngine() {
 
   searchInputElement.setAttribute("aria-autocomplete", "list");
   searchInputElement.setAttribute("aria-expanded", "false");
+  searchInputElement.setAttribute("aria-controls", "search-history-panel");
 
   searchInputElement.addEventListener("focus", function () {
     isSearchInputFocused = true;
