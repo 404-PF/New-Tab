@@ -102,6 +102,33 @@ describe('Locale helpers', () => {
   it('getDisplayLocale returns en-US by default', () => {
     expect(getDisplayLocale()).toBe('en-US');
   });
+
+  it('getDisplayLocale maps supported languages and falls back to en-US', () => {
+    const originalCurrentLanguage = window.i18n.currentLanguage;
+    const cases = [
+      ['en', 'en-US'],
+      ['zh', 'zh-CN'],
+      ['ja', 'ja-JP'],
+      ['ko', 'ko-KR'],
+      ['es', 'es-ES'],
+      ['fr', 'fr-FR'],
+      ['de', 'de-DE'],
+      ['pt', 'pt-BR'],
+      ['ru', 'ru-RU']
+    ];
+
+    try {
+      cases.forEach(([language, expectedLocale]) => {
+        window.i18n.currentLanguage = () => language;
+        expect(getDisplayLocale()).toBe(expectedLocale);
+      });
+
+      window.i18n.currentLanguage = () => 'xx';
+      expect(getDisplayLocale()).toBe('en-US');
+    } finally {
+      window.i18n.currentLanguage = originalCurrentLanguage;
+    }
+  });
 });
 
 describe('Search engine utilities', () => {
