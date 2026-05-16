@@ -1,4 +1,8 @@
 import { beforeEach, describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import { JSDOM } from 'jsdom';
+import vm from 'vm';
 
 beforeEach(() => {
   localStorage.clear();
@@ -39,5 +43,71 @@ describe('storage bridge', () => {
     localStorage.setItem('', 'empty');
 
     expect(localStorage.key(0)).toBe('');
+  });
+
+  it('keeps the captured native snapshot when chrome.storage hydration fails', async () => {
+    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      dom.window.localStorage.setItem('theme', 'light');
+
+      let resolveGet;
+      let getCalled = false;
+
+      dom.window.chrome = {
+        runtime: {
+          lastError: null
+        },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() {
+              return false;
+            }
+          },
+          local: {
+            get(keys, callback) {
+              getCalled = true;
+              resolveGet = () => {
+                dom.window.chrome.runtime.lastError = { message: 'boom' };
+                callback({});
+                dom.window.chrome.runtime.lastError = null;
+              };
+            },
+            set(items, callback) {
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              callback?.();
+              return Promise.resolve();
+            },
+            clear(callback) {
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      const script = new vm.Script(code);
+      script.runInContext(dom.getInternalVMContext());
+
+      expect(getCalled).toBe(true);
+      dom.window.localStorage.setItem('bridge-write', 'kept');
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('theme')).toBe('light');
+      expect(dom.window.localStorage.getItem('bridge-write')).toBe('kept');
+      expect(dom.window.localStorage.length).toBe(2);
+    } finally {
+      dom.window.close();
+    }
   });
 });

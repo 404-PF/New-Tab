@@ -128,6 +128,24 @@ describe('Todo CRUD', () => {
     }
   });
 
+  it('renderTodos falls back to empty text for missing todo text', () => {
+    saveTodos([
+      {
+        id: '1',
+        completed: false,
+        dueDate: null,
+        createdAt: new Date().toISOString(),
+        order: 0
+      }
+    ]);
+
+    initTodo();
+
+    const todoText = document.querySelector('.todo-text');
+    expect(todoText).not.toBeNull();
+    expect(todoText.textContent).toBe('');
+  });
+
   it('addTodo assigns incremental order', () => {
     addTodo('First');
     addTodo('Second');
