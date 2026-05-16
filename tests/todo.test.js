@@ -81,6 +81,32 @@ describe('Todo CRUD', () => {
     expect(loadTodos()).toHaveLength(0);
   });
 
+  it('addTodo rolls back when saving fails', () => {
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      addTodo('Rollback me');
+
+      expect(loadTodos()).toHaveLength(0);
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(0);
+      expect(warnSpy).toHaveBeenCalled();
+      expect(document.querySelector('.toast-notification')?.textContent).toContain('Failed to save todo changes');
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('addTodo renders a todo item in the list', () => {
+    addTodo('Render me');
+    const items = document.querySelectorAll('.todo-item');
+    expect(items).toHaveLength(1);
+    expect(items[0].querySelector('.todo-text')?.textContent).toBe('Render me');
+  });
+
   it('renderTodos displays todo text literally', () => {
     addTodo('<b>test</b>');
     const todoText = document.querySelector('.todo-text');
@@ -141,6 +167,32 @@ describe('Todo CRUD', () => {
     const todo = loadTodos()[0];
     editTodo(todo.id, 'Updated', null, '2025-01-01');
     expect(loadTodos()[0].dueDate).toBe('2025-01-01');
+  });
+
+  it('migrateTodos handles save failures without throwing', () => {
+    localStorage.setItem('todos', JSON.stringify([
+      {
+        id: 'legacy',
+        text: 'Legacy todo',
+        completed: true,
+        createdAt: '2025-01-01T00:00:00.000Z',
+        order: 0
+      }
+    ]));
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      expect(() => initTodo()).not.toThrow();
+      expect(migrateTodos()).toBe(false);
+      expect(loadTodos()[0].completedAt).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalled();
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
   });
 
   it('deleteTodo removes a todo', () => {

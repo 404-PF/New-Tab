@@ -308,6 +308,7 @@ function addTodo(text, dueDate = null) {
 
 // Migrate existing todos to have completedAt property
 function migrateTodos() {
+  const previousTodos = cloneTodos(todos);
   let needsMigration = false;
   
   todos.forEach(todo => {
@@ -320,8 +321,15 @@ function migrateTodos() {
   });
   
   if (needsMigration) {
-    saveTodos(todos);
+    if (!saveTodos(todos)) {
+      todos = previousTodos;
+      applyFilters();
+      showTodoSaveError();
+      return false;
+    }
   }
+
+  return true;
 }
 
 // Edit a todo
@@ -1340,8 +1348,6 @@ function showImportDialog(importedTodos) {
   };
   
   const handleMerge = () => {
-    closeEditModal();
-    const previousTodos = cloneTodos(todos);
     const existingTodos = cloneTodos(todos);
     const existingIds = new Set(existingTodos.map(t => t.id));
     let addedCount = 0;
@@ -1368,14 +1374,13 @@ function showImportDialog(importedTodos) {
     
     closeAllInlineDatePickers();
     if (!saveTodos(existingTodos)) {
-      todos = previousTodos;
-      applyFilters();
       showTodoSaveError();
       return;
     }
 
     todos = existingTodos;
     applyFilters();
+    closeEditModal();
     if (addedCount > 0) {
       const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, addedCount);
       showToast(msg, 'success');
@@ -1386,8 +1391,6 @@ function showImportDialog(importedTodos) {
   };
   
   const handleReplace = () => {
-    closeEditModal();
-    const previousTodos = cloneTodos(todos);
     const newTodos = importedTodos.map((item, index) => {
       const todo = { ...item };
       todo.completed = !!item.completed;
@@ -1400,14 +1403,13 @@ function showImportDialog(importedTodos) {
     
     closeAllInlineDatePickers();
     if (!saveTodos(newTodos)) {
-      todos = previousTodos;
-      applyFilters();
       showTodoSaveError();
       return;
     }
 
     todos = newTodos;
     applyFilters();
+    closeEditModal();
     const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, newTodos.length);
     showToast(msg, 'success');
     hideDialog();
