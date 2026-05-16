@@ -4,6 +4,8 @@ const translations = {
   en: {
     // General UI
     searchPlaceholder: "Search or enter website",
+    recentSearches: "Recent searches",
+    clearSearchHistory: "Clear history",
     newApp: "New",
     feedback: "Feedback",
     settings: "Settings",
@@ -306,6 +308,8 @@ const translations = {
   zh: {
     // General UI
     searchPlaceholder: "搜索或输入网站",
+    recentSearches: "最近搜索",
+    clearSearchHistory: "清除历史",
     newApp: "新建",
     feedback: "反馈",
     settings: "设置",
@@ -607,6 +611,8 @@ const translations = {
 
   ja: {
     searchPlaceholder: "検索またはURLを入力",
+    recentSearches: "最近の検索",
+    clearSearchHistory: "履歴をクリア",
     newApp: "新規",
     feedback: "フィードバック",
     settings: "設定",
@@ -859,6 +865,8 @@ const translations = {
 
   ko: {
     searchPlaceholder: "검색 또는 웹사이트 입력",
+    recentSearches: "최근 검색",
+    clearSearchHistory: "기록 지우기",
     newApp: "새로 만들기",
     feedback: "피드백",
     settings: "설정",
@@ -1111,6 +1119,8 @@ const translations = {
 
   es: {
     searchPlaceholder: "Buscar o ingresar sitio web",
+    recentSearches: "Búsquedas recientes",
+    clearSearchHistory: "Borrar historial",
     newApp: "Nuevo",
     feedback: "Comentarios",
     settings: "Ajustes",
@@ -1363,6 +1373,8 @@ const translations = {
 
   fr: {
     searchPlaceholder: "Rechercher ou saisir un site web",
+    recentSearches: "Recherches récentes",
+    clearSearchHistory: "Effacer l'historique",
     newApp: "Nouveau",
     feedback: "Retour",
     settings: "Paramètres",
@@ -1615,6 +1627,8 @@ const translations = {
 
   de: {
     searchPlaceholder: "Suche oder Website eingeben",
+    recentSearches: "Letzte Suchen",
+    clearSearchHistory: "Verlauf löschen",
     newApp: "Neu",
     feedback: "Feedback",
     settings: "Einstellungen",
@@ -1867,6 +1881,8 @@ const translations = {
 
   pt: {
     searchPlaceholder: "Pesquisar ou digitar site",
+    recentSearches: "Pesquisas recentes",
+    clearSearchHistory: "Limpar histórico",
     newApp: "Novo",
     feedback: "Feedback",
     settings: "Configurações",
@@ -2119,6 +2135,8 @@ const translations = {
 
   ru: {
     searchPlaceholder: "Поиск или ввод сайта",
+    recentSearches: "Недавние поиски",
+    clearSearchHistory: "Очистить историю",
     newApp: "Новое",
     feedback: "Обратная связь",
     settings: "Настройки",

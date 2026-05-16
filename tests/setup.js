@@ -219,6 +219,8 @@ globalThis.window.i18n = {
       addTodoPlaceholder: 'Add a todo...',
       simpleMode: 'Simple',
       searchPlaceholder: 'Search or enter URL...',
+      recentSearches: 'Recent searches',
+      clearSearchHistory: 'Clear history',
       newApp: 'New',
       filterAll: 'All',
       filterPending: 'Pending',
