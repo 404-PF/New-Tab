@@ -21,7 +21,20 @@ window.updateTime = updateTime;
 
 function getDisplayLocale() {
   const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
-  return currentLang === 'zh' ? 'zh-CN' : 'en-US';
+  const displayLocales = {
+    en: 'en-US',
+    zh: 'zh-CN',
+    ja: 'ja-JP',
+    ko: 'ko-KR',
+    es: 'es-ES',
+    fr: 'fr-FR',
+    de: 'de-DE',
+    pt: 'pt-BR',
+    ru: 'ru-RU'
+  };
+
+  // Unsupported languages use the documented default locale.
+  return displayLocales[currentLang] || 'en-US';
 }
 
 function getClockFormat() {
