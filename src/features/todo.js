@@ -3,7 +3,7 @@
 // State management
 let todos = [];
 let filteredTodos = [];
-let currentFilters = {
+const currentFilters = {
   status: 'all'
 };
 
@@ -15,14 +15,14 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 let elements = {};
 
 // Edit modal state
-let editModalState = {
+const editModalState = {
   currentTodoId: null,
   isOpen: false
 };
 const runTodoOnDomReady = window.onDomReady;
 
 // Escape HTML entities to prevent XSS
-const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' };
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/[&<>"']/g, c => HTML_ESCAPE_MAP[c]);
@@ -31,16 +31,16 @@ function escapeHtml(str) {
 // Load todos from localStorage
 function loadTodos() {
   try {
-    const raw = localStorage.getItem("todos");
+    const raw = localStorage.getItem('todos');
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      console.warn("Invalid todos data in localStorage: expected array, resetting to empty list");
+      console.warn('Invalid todos data in localStorage: expected array, resetting to empty list');
       return [];
     }
     return parsed;
   } catch (e) {
-    console.warn("Failed to parse todos from localStorage, resetting to empty list:", e);
+    console.warn('Failed to parse todos from localStorage, resetting to empty list:', e);
     return [];
   }
 }
@@ -48,10 +48,10 @@ function loadTodos() {
 // Save todos to localStorage
 function saveTodos(todos) {
   try {
-    localStorage.setItem("todos", JSON.stringify(todos));
+    localStorage.setItem('todos', JSON.stringify(todos));
     return true;
   } catch (error) {
-    console.warn("Failed to save todos to localStorage:", error);
+    console.warn('Failed to save todos to localStorage:', error);
     return false;
   }
 }
@@ -906,7 +906,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
   const todo = todos.find(t => t.id === todoId);
   if (!todo) return;
 
-  let currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? new Date(todo.dueDate) : new Date());
+  const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? new Date(todo.dueDate) : new Date());
 
   // Navigation buttons
   const prevBtn = pickerContainer.querySelector('.inline-prev-month');

@@ -20,14 +20,12 @@ This is a Chrome/Edge browser extension (manifest v3) that provides a personaliz
 - `src/core/storage.js` bridges `localStorage` onto `chrome.storage.local`; `tests/setup.js` mocks the Chrome APIs so tests exercise the same persistence path.
 
 ### Linting
-- No ESLint or other linter is configured
-- Manual code review required before commits
-
-### Code Quality Tools (Recommended)
-If you want to add linting, consider:
-```bash
-npx eslint src/**/*.js
-```
+- ESLint v10 is configured with flat config (`eslint.config.js`)
+- Run linting: `npm run lint`
+- Auto-fix fixable issues: `npm run lint:fix`
+- Runs automatically via husky pre-commit hook (`npx eslint .`)
+- Config covers source files (`src/`), tests (`tests/`), and background tools (`background/tools/`)
+- See `eslint.config.js` for full rule set and globals configuration
 
 ## Code Style Guidelines
 

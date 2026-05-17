@@ -2,14 +2,14 @@
 
 // Background selection
 function loadBg() {
-  return localStorage.getItem("homepageBg") || "Water Beside Forest";
+  return localStorage.getItem('homepageBg') || 'Water Beside Forest';
 }
 
 let initialBackgroundApplied = false;
 
 function syncBackgroundSelection() {
   const bg = loadBg();
-  document.body.setAttribute("data-bg", bg);
+  document.body.setAttribute('data-bg', bg);
 
   const thumbs = document.querySelectorAll('.bg-thumb');
   for (let i = 0; i < thumbs.length; i++) {
@@ -524,14 +524,14 @@ document.addEventListener('click', function (e) {
 
 // Clock style
 function loadClockStyle() {
-  const size = parseInt(localStorage.getItem("clockSize") || "80", 10);
+  const size = parseInt(localStorage.getItem('clockSize') || '80', 10);
   const normalizedSize = Number.isFinite(size) ? getClosestSize(size, CLOCK_SIZE_OPTIONS) : 80;
   if (normalizedSize !== size) {
-    localStorage.setItem("clockSize", normalizedSize);
+    localStorage.setItem('clockSize', normalizedSize);
   }
   return {
-    color: localStorage.getItem("clockColor") || "#ffffff",
-    font: localStorage.getItem("clockFont") || "'Times New Roman', serif",
+    color: localStorage.getItem('clockColor') || '#ffffff',
+    font: localStorage.getItem('clockFont') || '\'Times New Roman\', serif',
     size: normalizedSize,
   };
 }
@@ -551,37 +551,37 @@ function syncSizeButtons(groupName, size, options) {
   buttons.forEach((button) => {
     const buttonSize = parseInt(button.dataset.size, 10);
     const isActive = buttonSize === activeSize;
-    button.classList.toggle("active", isActive);
-    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
 }
 
 function applyClockStyle() {
   const style = loadClockStyle();
-  const clock = document.querySelector("#clock .clock-time") || document.getElementById("clock");
+  const clock = document.querySelector('#clock .clock-time') || document.getElementById('clock');
   if (clock) {
     clock.style.color = style.color;
     clock.style.fontFamily = style.font;
-    clock.style.fontSize = style.size + "px";
+    clock.style.fontSize = style.size + 'px';
   }
-  const clockColorPicker = document.getElementById("clock-color-picker");
-  const clockFontPicker = document.getElementById("clock-font-picker");
+  const clockColorPicker = document.getElementById('clock-color-picker');
+  const clockFontPicker = document.getElementById('clock-font-picker');
   if (clockColorPicker && clockColorPicker.value !== style.color) clockColorPicker.value = style.color;
   if (clockFontPicker && clockFontPicker.value !== style.font) clockFontPicker.value = style.font;
-  syncSizeButtons("clock", parseInt(style.size, 10), CLOCK_SIZE_OPTIONS);
+  syncSizeButtons('clock', parseInt(style.size, 10), CLOCK_SIZE_OPTIONS);
 }
 
 function loadClockFormatSetting() {
-  const format = localStorage.getItem("clockFormat") || "auto";
-  if (format !== "auto" && format !== "12h" && format !== "24h") {
-    localStorage.setItem("clockFormat", "auto");
-    return "auto";
+  const format = localStorage.getItem('clockFormat') || 'auto';
+  if (format !== 'auto' && format !== '12h' && format !== '24h') {
+    localStorage.setItem('clockFormat', 'auto');
+    return 'auto';
   }
   return format;
 }
 
 function applyClockFormatSetting() {
-  const clockFormatPicker = document.getElementById("clock-format-picker");
+  const clockFormatPicker = document.getElementById('clock-format-picker');
   const format = loadClockFormatSetting();
   if (clockFormatPicker && clockFormatPicker.value !== format) {
     clockFormatPicker.value = format;
@@ -589,92 +589,92 @@ function applyClockFormatSetting() {
 }
 
 // Event listeners for clock
-const clockColorPicker = document.getElementById("clock-color-picker");
-const clockFontPicker = document.getElementById("clock-font-picker");
-const clockStyleReset = document.getElementById("clock-style-reset");
+const clockColorPicker = document.getElementById('clock-color-picker');
+const clockFontPicker = document.getElementById('clock-font-picker');
+const clockStyleReset = document.getElementById('clock-style-reset');
 
 if (clockColorPicker) {
-  clockColorPicker.addEventListener("input", function () {
-    localStorage.setItem("clockColor", this.value);
+  clockColorPicker.addEventListener('input', function () {
+    localStorage.setItem('clockColor', this.value);
     applyClockStyle();
   });
 }
 if (clockFontPicker) {
-  clockFontPicker.addEventListener("change", function () {
-    localStorage.setItem("clockFont", this.value);
+  clockFontPicker.addEventListener('change', function () {
+    localStorage.setItem('clockFont', this.value);
     applyClockStyle();
   });
 }
 const clockSizeGroup = document.querySelector('[data-size-group="clock"]');
 if (clockSizeGroup) {
-  clockSizeGroup.addEventListener("click", function (event) {
-    const button = event.target.closest(".size-choice-button");
+  clockSizeGroup.addEventListener('click', function (event) {
+    const button = event.target.closest('.size-choice-button');
     if (!button) return;
     const size = parseInt(button.dataset.size, 10);
     if (!Number.isFinite(size)) return;
-    localStorage.setItem("clockSize", size);
+    localStorage.setItem('clockSize', size);
     applyClockStyle();
   });
 }
 if (clockStyleReset) {
-  clockStyleReset.addEventListener("click", function () {
-    localStorage.removeItem("clockColor");
-    localStorage.removeItem("clockFont");
-    localStorage.removeItem("clockSize");
-    localStorage.removeItem("clockFormat");
+  clockStyleReset.addEventListener('click', function () {
+    localStorage.removeItem('clockColor');
+    localStorage.removeItem('clockFont');
+    localStorage.removeItem('clockSize');
+    localStorage.removeItem('clockFormat');
     applyClockStyle();
     applyClockFormatSetting();
     if (window.updateTime) updateTime();
   });
 }
 
-const clockFormatPicker = document.getElementById("clock-format-picker");
+const clockFormatPicker = document.getElementById('clock-format-picker');
 if (clockFormatPicker) {
-  clockFormatPicker.addEventListener("change", function () {
-    localStorage.setItem("clockFormat", this.value);
+  clockFormatPicker.addEventListener('change', function () {
+    localStorage.setItem('clockFormat', this.value);
     if (window.updateTime) updateTime();
   });
 }
 
 // Date style
 function loadDateStyle() {
-  const size = parseInt(localStorage.getItem("dateSize") || "24", 10);
+  const size = parseInt(localStorage.getItem('dateSize') || '24', 10);
   const normalizedSize = Number.isFinite(size) ? getClosestSize(size, DATE_SIZE_OPTIONS) : 24;
   if (normalizedSize !== size) {
-    localStorage.setItem("dateSize", normalizedSize);
+    localStorage.setItem('dateSize', normalizedSize);
   }
   return {
-    color: localStorage.getItem("dateColor") || "#ffffff",
-    font: localStorage.getItem("dateFont") || "'Times New Roman', serif",
+    color: localStorage.getItem('dateColor') || '#ffffff',
+    font: localStorage.getItem('dateFont') || '\'Times New Roman\', serif',
     size: normalizedSize,
   };
 }
 function applyDateStyle() {
   const style = loadDateStyle();
-  const date = document.getElementById("date");
+  const date = document.getElementById('date');
   if (date) {
     date.style.color = style.color;
     date.style.fontFamily = style.font;
-    date.style.fontSize = style.size + "px";
+    date.style.fontSize = style.size + 'px';
   }
-  const dateColorPicker = document.getElementById("date-color-picker");
-  const dateFontPicker = document.getElementById("date-font-picker");
+  const dateColorPicker = document.getElementById('date-color-picker');
+  const dateFontPicker = document.getElementById('date-font-picker');
   if (dateColorPicker && dateColorPicker.value !== style.color) dateColorPicker.value = style.color;
   if (dateFontPicker && dateFontPicker.value !== style.font) dateFontPicker.value = style.font;
-  syncSizeButtons("date", parseInt(style.size, 10), DATE_SIZE_OPTIONS);
+  syncSizeButtons('date', parseInt(style.size, 10), DATE_SIZE_OPTIONS);
 }
 
 function loadDateFormatSetting() {
-  const format = localStorage.getItem("dateFormat") || "auto";
-  if (format !== "auto" && format !== "long" && format !== "compact" && format !== "numeric") {
-    localStorage.setItem("dateFormat", "auto");
-    return "auto";
+  const format = localStorage.getItem('dateFormat') || 'auto';
+  if (format !== 'auto' && format !== 'long' && format !== 'compact' && format !== 'numeric') {
+    localStorage.setItem('dateFormat', 'auto');
+    return 'auto';
   }
   return format;
 }
 
 function applyDateFormatSetting() {
-  const dateFormatPicker = document.getElementById("date-format-picker");
+  const dateFormatPicker = document.getElementById('date-format-picker');
   const format = loadDateFormatSetting();
   if (dateFormatPicker && dateFormatPicker.value !== format) {
     dateFormatPicker.value = format;
@@ -682,70 +682,70 @@ function applyDateFormatSetting() {
 }
 
 // Event listeners for date
-const dateColorPicker = document.getElementById("date-color-picker");
-const dateFontPicker = document.getElementById("date-font-picker");
-const dateStyleReset = document.getElementById("date-style-reset");
+const dateColorPicker = document.getElementById('date-color-picker');
+const dateFontPicker = document.getElementById('date-font-picker');
+const dateStyleReset = document.getElementById('date-style-reset');
 
 if (dateColorPicker) {
-  dateColorPicker.addEventListener("input", function () {
-    localStorage.setItem("dateColor", this.value);
+  dateColorPicker.addEventListener('input', function () {
+    localStorage.setItem('dateColor', this.value);
     applyDateStyle();
   });
 }
 if (dateFontPicker) {
-  dateFontPicker.addEventListener("change", function () {
-    localStorage.setItem("dateFont", this.value);
+  dateFontPicker.addEventListener('change', function () {
+    localStorage.setItem('dateFont', this.value);
     applyDateStyle();
   });
 }
 const dateSizeGroup = document.querySelector('[data-size-group="date"]');
 if (dateSizeGroup) {
-  dateSizeGroup.addEventListener("click", function (event) {
-    const button = event.target.closest(".size-choice-button");
+  dateSizeGroup.addEventListener('click', function (event) {
+    const button = event.target.closest('.size-choice-button');
     if (!button) return;
     const size = parseInt(button.dataset.size, 10);
     if (!Number.isFinite(size)) return;
-    localStorage.setItem("dateSize", size);
+    localStorage.setItem('dateSize', size);
     applyDateStyle();
   });
 }
 if (dateStyleReset) {
-  dateStyleReset.addEventListener("click", function () {
-    localStorage.removeItem("dateColor");
-    localStorage.removeItem("dateFont");
-    localStorage.removeItem("dateSize");
-    localStorage.removeItem("dateFormat");
+  dateStyleReset.addEventListener('click', function () {
+    localStorage.removeItem('dateColor');
+    localStorage.removeItem('dateFont');
+    localStorage.removeItem('dateSize');
+    localStorage.removeItem('dateFormat');
     applyDateStyle();
     applyDateFormatSetting();
     if (window.updateTime) updateTime();
   });
 }
 
-const dateFormatPicker = document.getElementById("date-format-picker");
+const dateFormatPicker = document.getElementById('date-format-picker');
 if (dateFormatPicker) {
-  dateFormatPicker.addEventListener("change", function () {
-    localStorage.setItem("dateFormat", this.value);
+  dateFormatPicker.addEventListener('change', function () {
+    localStorage.setItem('dateFormat', this.value);
     if (window.updateTime) updateTime();
   });
 }
 
 // Theme
 function loadTheme() {
-  return localStorage.getItem("theme") || "dark";
+  return localStorage.getItem('theme') || 'dark';
 }
 function applyTheme() {
   const theme = loadTheme();
-  document.body.classList.toggle("light-theme", theme === "light");
+  document.body.classList.toggle('light-theme', theme === 'light');
   // Update radio buttons
   const darkRadio = document.querySelector('input[name="theme"][value="dark"]');
   const lightRadio = document.querySelector('input[name="theme"][value="light"]');
-  if (darkRadio) darkRadio.checked = theme === "dark";
-  if (lightRadio) lightRadio.checked = theme === "light";
+  if (darkRadio) darkRadio.checked = theme === 'dark';
+  if (lightRadio) lightRadio.checked = theme === 'light';
 }
 
 // Language
 function loadLanguageSetting() {
-  return localStorage.getItem("language") || "en";
+  return localStorage.getItem('language') || 'en';
 }
 function renderLanguageOptions() {
   const container = document.getElementById('language-options-container');
@@ -773,23 +773,23 @@ function applyLanguageSetting() {
 }
 
 // Event listeners for theme and language
-document.addEventListener("change", function (e) {
-  if (e.target.name === "theme") {
+document.addEventListener('change', function (e) {
+  if (e.target.name === 'theme') {
     const selectedTheme = e.target.value;
-    localStorage.setItem("theme", selectedTheme);
+    localStorage.setItem('theme', selectedTheme);
     applyTheme();
     // Dispatch custom event for AI chat and other components to respond
     window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
-  } else if (e.target.name === "language") {
+  } else if (e.target.name === 'language') {
     const selectedLanguage = e.target.value;
-    localStorage.setItem("language", selectedLanguage);
+    localStorage.setItem('language', selectedLanguage);
     applyLanguageSetting();
   }
 });
 
 // Todo enabled
 function loadTodoEnabled() {
-  return localStorage.getItem("todoEnabled") !== "false";
+  return localStorage.getItem('todoEnabled') !== 'false';
 }
 function applyTodoEnabled() {
   const enabled = loadTodoEnabled();
@@ -797,15 +797,15 @@ function applyTodoEnabled() {
   if (todoSection) {
     todoSection.style.display = enabled ? 'block' : 'none';
   }
-  const todoEnabledSetting = document.getElementById("todo-enabled-setting");
+  const todoEnabledSetting = document.getElementById('todo-enabled-setting');
   if (todoEnabledSetting) todoEnabledSetting.checked = enabled;
 }
 
 // Event listeners for todo enabled
-const todoEnabledSetting = document.getElementById("todo-enabled-setting");
+const todoEnabledSetting = document.getElementById('todo-enabled-setting');
 if (todoEnabledSetting) {
-  todoEnabledSetting.addEventListener("change", function () {
-    localStorage.setItem("todoEnabled", this.checked);
+  todoEnabledSetting.addEventListener('change', function () {
+    localStorage.setItem('todoEnabled', this.checked);
     applyTodoEnabled();
   });
 }
@@ -813,16 +813,16 @@ if (todoEnabledSetting) {
 
 
 // Settings menu logic
-const settingsMenu = document.querySelector(".settings-menu");
+const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];
-const settingsSections = document.querySelectorAll(".settings-section"); // This will include the About section if present in HTML
+const settingsSections = document.querySelectorAll('.settings-section'); // This will include the About section if present in HTML
 let backgroundsInitialized = false;
 let backgroundsInitializing = false;
 
 if (settingsMenu) {
   // Collect menu items, sort them alphabetically by their visible label,
   // then re-append to the menu so the DOM order matches alphabetical order.
-  settingsMenuItems = Array.from(settingsMenu.querySelectorAll(".settings-menu-item"));
+  settingsMenuItems = Array.from(settingsMenu.querySelectorAll('.settings-menu-item'));
   settingsMenuItems.sort((a, b) =>
     a.textContent.trim().localeCompare(b.textContent.trim(), undefined, { sensitivity: 'base' })
   );
@@ -830,16 +830,16 @@ if (settingsMenu) {
 
   // Attach click handlers to the (now-sorted) items
   settingsMenuItems.forEach((item) => {
-    item.addEventListener("click", function () {
-      const section = this.getAttribute("data-section");
-      settingsMenuItems.forEach((i) => i.classList.remove("selected"));
-      this.classList.add("selected");
+    item.addEventListener('click', function () {
+      const section = this.getAttribute('data-section');
+      settingsMenuItems.forEach((i) => i.classList.remove('selected'));
+      this.classList.add('selected');
       settingsSections.forEach((s) => {
         // Show the section that matches the clicked tab, hide others
-        if (s.getAttribute("data-section") === section) {
-          s.style.display = "block";
+        if (s.getAttribute('data-section') === section) {
+          s.style.display = 'block';
         } else {
-          s.style.display = "none";
+          s.style.display = 'none';
         }
       });
       // Lazy load backgrounds
