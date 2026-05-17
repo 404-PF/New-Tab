@@ -4,50 +4,50 @@
 const OfflineMode = (function() {
   // Random facts for offline mode (English)
   const FACTS_EN = [
-    "The human brain uses about 20% of the body's total energy.",
-    "A day on Venus is longer than a year on Venus.",
-    "Honey never spoils. Archaeologists have found 3000-year-old honey that was still edible.",
-    "Octopuses have three hearts and blue blood.",
-    "The shortest war in history lasted 38-45 minutes between Britain and Zanzibar in 1896.",
-    "Bananas are berries, but strawberries aren't.",
-    "There are more stars in the universe than grains of sand on all of Earth's beaches.",
-    "The Eiffel Tower can be 15 cm taller during hot summer days.",
-    "A jiffy is an actual unit of time: 1/100th of a second.",
-    "The world's oldest known living tree is over 5,000 years old.",
-    "Water can boil and freeze at the same time under the right pressure and temperature.",
-    "The Amazon rainforest produces 20% of the world's oxygen.",
-    "A group of flamingos is called a 'flamboyance'.",
-    "The human eye can distinguish approximately 10 million different colors.",
-    "Lightning strikes the Earth about 8 million times per day.",
-    "The average human body contains enough carbon to make 900 pencils.",
-    "Some metals can explode when they come into contact with water.",
-    "The heart of a blue whale is so large that a small child could crawl through its arteries.",
-    "A teaspoonful of neutron star would weigh 6 billion tons.",
-    "Hawaii moves 7.5cm closer to Alaska every year due to tectonic plates."
+    'The human brain uses about 20% of the body\'s total energy.',
+    'A day on Venus is longer than a year on Venus.',
+    'Honey never spoils. Archaeologists have found 3000-year-old honey that was still edible.',
+    'Octopuses have three hearts and blue blood.',
+    'The shortest war in history lasted 38-45 minutes between Britain and Zanzibar in 1896.',
+    'Bananas are berries, but strawberries aren\'t.',
+    'There are more stars in the universe than grains of sand on all of Earth\'s beaches.',
+    'The Eiffel Tower can be 15 cm taller during hot summer days.',
+    'A jiffy is an actual unit of time: 1/100th of a second.',
+    'The world\'s oldest known living tree is over 5,000 years old.',
+    'Water can boil and freeze at the same time under the right pressure and temperature.',
+    'The Amazon rainforest produces 20% of the world\'s oxygen.',
+    'A group of flamingos is called a \'flamboyance\'.',
+    'The human eye can distinguish approximately 10 million different colors.',
+    'Lightning strikes the Earth about 8 million times per day.',
+    'The average human body contains enough carbon to make 900 pencils.',
+    'Some metals can explode when they come into contact with water.',
+    'The heart of a blue whale is so large that a small child could crawl through its arteries.',
+    'A teaspoonful of neutron star would weigh 6 billion tons.',
+    'Hawaii moves 7.5cm closer to Alaska every year due to tectonic plates.'
   ];
 
   // Random facts for offline mode (Chinese)
   const FACTS_ZH = [
-    "人类的大脑消耗了身体总能量的约20%。",
-    "金星上的一天比金星上的一年还要长。",
-    "蜂蜜永远不会变质。考古学家发现了3000年前仍然可食用的蜂蜜。",
-    "章鱼有三颗心脏和蓝色的血液。",
-    "历史上最短的战争是1896年英国与桑给巴尔之间的战争，持续了38-45分钟。",
-    "香蕉是浆果，但草莓不是。",
-    "宇宙中的星星比地球上所有海滩的沙子还要多。",
-    "埃菲尔铁塔在炎热的夏天可以长高15厘米。",
-    "瞬间（jiffy）是一个实际的时间单位：百分之一秒。",
-    "世界上已知最古老的活树已有5000多年历史。",
-    "水在适当的压力和温度下可以同时沸腾和结冰。",
-    "亚马逊雨林产生了世界氧气的20%。",
-    "一群火烈鸟被称为 'flamboyance'（火烈鸟群）。",
-    "人眼可以分辨大约1000万种不同的颜色。",
-    "地球每天遭受约800万次雷击。",
-    "成人体内的碳足以制作900支铅笔。",
-    "一些金属在接触水时会爆炸。",
-    "蓝鲸的心脏非常大，一个小孩可以从它的动脉中爬过。",
-    "一茶匙中子星的重量为60亿吨。",
-    "由于板块构造，夏威夷每年向阿拉斯加靠近7.5厘米。"
+    '人类的大脑消耗了身体总能量的约20%。',
+    '金星上的一天比金星上的一年还要长。',
+    '蜂蜜永远不会变质。考古学家发现了3000年前仍然可食用的蜂蜜。',
+    '章鱼有三颗心脏和蓝色的血液。',
+    '历史上最短的战争是1896年英国与桑给巴尔之间的战争，持续了38-45分钟。',
+    '香蕉是浆果，但草莓不是。',
+    '宇宙中的星星比地球上所有海滩的沙子还要多。',
+    '埃菲尔铁塔在炎热的夏天可以长高15厘米。',
+    '瞬间（jiffy）是一个实际的时间单位：百分之一秒。',
+    '世界上已知最古老的活树已有5000多年历史。',
+    '水在适当的压力和温度下可以同时沸腾和结冰。',
+    '亚马逊雨林产生了世界氧气的20%。',
+    '一群火烈鸟被称为 \'flamboyance\'（火烈鸟群）。',
+    '人眼可以分辨大约1000万种不同的颜色。',
+    '地球每天遭受约800万次雷击。',
+    '成人体内的碳足以制作900支铅笔。',
+    '一些金属在接触水时会爆炸。',
+    '蓝鲸的心脏非常大，一个小孩可以从它的动脉中爬过。',
+    '一茶匙中子星的重量为60亿吨。',
+    '由于板块构造，夏威夷每年向阿拉斯加靠近7.5厘米。'
   ];
 
   // Unit conversions
@@ -244,8 +244,8 @@ const OfflineMode = (function() {
   function parseMath(input) {
     // Basic math operations
     const mathPatterns = [
-      /^(\d+\.?\d*)\s*[\+\-\*\/]\s*(\d+\.?\d*)$/, // Basic: 5+3, 10*2
-      /^(\d+\.?\d*)\s*[\+\-\*\/]\s*(\d+\.?\d*)\s*[\+\-\*\/]\s*(\d+\.?\d*)$/, // Chain: 5+3*2
+      /^(\d+\.?\d*)\s*[+\-*/]\s*(\d+\.?\d*)$/, // Basic: 5+3, 10*2
+      /^(\d+\.?\d*)\s*[+\-*/]\s*(\d+\.?\d*)\s*[+\-*/]\s*(\d+\.?\d*)$/, // Chain: 5+3*2
       /^sqrt\((\d+\.?\d*)\)$/, // sqrt(16)
       /^(\d+\.?\d*)\s*\^(\d+)$/, // 2^8
       /^(\d+)\s*%\s*(\d+)$/, // 50% of 100
@@ -255,7 +255,7 @@ const OfflineMode = (function() {
     let result = null;
     
     // Basic addition, subtraction, multiplication, division
-    let match = input.match(/^(-?\d+\.?\d*)\s*([\+\-\*\/])\s*(-?\d+\.?\d*)$/);
+    let match = input.match(/^(-?\d+\.?\d*)\s*([+\-*/])\s*(-?\d+\.?\d*)$/);
     if (match) {
       const a = parseFloat(match[1]);
       const op = match[2];
@@ -356,7 +356,7 @@ const OfflineMode = (function() {
     for (const pattern of patterns) {
       const match = input.match(pattern);
       if (match) {
-        let value = parseFloat(match[1]);
+        const value = parseFloat(match[1]);
         let fromUnit = match[2].toLowerCase();
         let toUnit = match[3].toLowerCase();
         
@@ -419,14 +419,14 @@ const OfflineMode = (function() {
     // Default messages based on language
     const defaultMessages = {
       en: {
-        noUnderstand: "I didn't understand that. Try asking for help!",
-        cantProcess: "I'm in offline mode and couldn't process that specific request. Try:\n\n• \"help\" for available commands\n• \"fact\" for a random fact\n• \"5 + 3\" for math\n• \"10 km to miles\" for conversion",
-        offline: "I'm in offline mode right now. The AI assistant will be available when the network connection is restored."
+        noUnderstand: 'I didn\'t understand that. Try asking for help!',
+        cantProcess: 'I\'m in offline mode and couldn\'t process that specific request. Try:\n\n• "help" for available commands\n• "fact" for a random fact\n• "5 + 3" for math\n• "10 km to miles" for conversion',
+        offline: 'I\'m in offline mode right now. The AI assistant will be available when the network connection is restored.'
       },
       zh: {
-        noUnderstand: "我没有理解你的意思。试着请求帮助！",
-        cantProcess: "我在离线模式，无法处理这个特定请求。试试：\n\n• \"帮助\" 查看可用命令\n• \"事实\" 获取随机事实\n• \"5 + 3\" 进行数学计算\n• \"10 公里 to 英里\" 进行换算",
-        offline: "我目前处于离线模式。网络连接恢复后，AI助手将可用。"
+        noUnderstand: '我没有理解你的意思。试着请求帮助！',
+        cantProcess: '我在离线模式，无法处理这个特定请求。试试：\n\n• "帮助" 查看可用命令\n• "事实" 获取随机事实\n• "5 + 3" 进行数学计算\n• "10 公里 to 英里" 进行换算',
+        offline: '我目前处于离线模式。网络连接恢复后，AI助手将可用。'
       }
     };
     
@@ -487,8 +487,8 @@ const OfflineMode = (function() {
   function getAcknowledgment() {
     const lang = getCurrentLanguage();
     const messages = {
-      en: "I'm in offline mode right now. The AI assistant will be available when the network connection is restored.",
-      zh: "我目前处于离线模式。网络连接恢复后，AI助手将可用。"
+      en: 'I\'m in offline mode right now. The AI assistant will be available when the network connection is restored.',
+      zh: '我目前处于离线模式。网络连接恢复后，AI助手将可用。'
     };
     
     return {

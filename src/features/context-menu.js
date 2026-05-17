@@ -6,27 +6,27 @@ let contextMenuInitialized = false;
 const runContextMenuOnDomReady = window.onDomReady;
 
 function createFallbackIconSvg() {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "1.5");
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '1.5');
 
-  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  rect.setAttribute("x", "3");
-  rect.setAttribute("y", "3");
-  rect.setAttribute("width", "18");
-  rect.setAttribute("height", "18");
-  rect.setAttribute("rx", "2");
-  rect.setAttribute("ry", "2");
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', '3');
+  rect.setAttribute('y', '3');
+  rect.setAttribute('width', '18');
+  rect.setAttribute('height', '18');
+  rect.setAttribute('rx', '2');
+  rect.setAttribute('ry', '2');
 
-  const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  circle.setAttribute("cx", "8.5");
-  circle.setAttribute("cy", "8.5");
-  circle.setAttribute("r", "1.5");
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', '8.5');
+  circle.setAttribute('cy', '8.5');
+  circle.setAttribute('r', '1.5');
 
-  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  polyline.setAttribute("points", "21,15 16,10 5,21");
+  const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  polyline.setAttribute('points', '21,15 16,10 5,21');
 
   svg.appendChild(rect);
   svg.appendChild(circle);
@@ -37,19 +37,19 @@ function createFallbackIconSvg() {
 function setPreviewIcon(previewIcon, iconUrl) {
   if (!previewIcon) return;
 
-  previewIcon.textContent = "";
+  previewIcon.textContent = '';
 
-  const normalizedIconUrl = typeof iconUrl === "string" ? iconUrl.trim() : "";
+  const normalizedIconUrl = typeof iconUrl === 'string' ? iconUrl.trim() : '';
   if (!normalizedIconUrl) {
     previewIcon.appendChild(createFallbackIconSvg());
     return;
   }
 
-  const img = document.createElement("img");
-  img.alt = "Icon";
+  const img = document.createElement('img');
+  img.alt = 'Icon';
   img.src = normalizedIconUrl;
-  img.addEventListener("error", () => {
-    previewIcon.textContent = "";
+  img.addEventListener('error', () => {
+    previewIcon.textContent = '';
     previewIcon.appendChild(createFallbackIconSvg());
   }, { once: true });
 
@@ -57,33 +57,33 @@ function setPreviewIcon(previewIcon, iconUrl) {
 }
 
 // Create context menu element
-const contextMenu = document.createElement("div");
-contextMenu.id = "app-context-menu";
-contextMenu.className = "app-context-menu";
+const contextMenu = document.createElement('div');
+contextMenu.id = 'app-context-menu';
+contextMenu.className = 'app-context-menu';
 
 // Menu items
-const renameItem = document.createElement("div");
-renameItem.id = "rename-app";
-renameItem.className = "context-menu-item";
+const renameItem = document.createElement('div');
+renameItem.id = 'rename-app';
+renameItem.className = 'context-menu-item';
 renameItem.setAttribute('data-i18n', 'renameApp');
-renameItem.textContent = "Rename";
+renameItem.textContent = 'Rename';
 
-const changeThumbnailItem = document.createElement("div");
-changeThumbnailItem.id = "change-thumbnail";
-changeThumbnailItem.className = "context-menu-item";
+const changeThumbnailItem = document.createElement('div');
+changeThumbnailItem.id = 'change-thumbnail';
+changeThumbnailItem.className = 'context-menu-item';
 changeThumbnailItem.setAttribute('data-i18n', 'changeThumbnail');
-changeThumbnailItem.textContent = "Change Thumbnail";
+changeThumbnailItem.textContent = 'Change Thumbnail';
 
-const deleteItem = document.createElement("div");
-deleteItem.id = "delete-app";
-deleteItem.className = "context-menu-item delete-item";
+const deleteItem = document.createElement('div');
+deleteItem.id = 'delete-app';
+deleteItem.className = 'context-menu-item delete-item';
 deleteItem.setAttribute('data-i18n', 'deleteApp');
-deleteItem.textContent = "Delete";
+deleteItem.textContent = 'Delete';
 
 // Add hover effects
 [renameItem, changeThumbnailItem, deleteItem].forEach((item) => {
-  item.addEventListener("mouseenter", () => item.classList.add("hover"));
-  item.addEventListener("mouseleave", () => item.classList.remove("hover"));
+  item.addEventListener('mouseenter', () => item.classList.add('hover'));
+  item.addEventListener('mouseleave', () => item.classList.remove('hover'));
 });
 
 contextMenu.appendChild(renameItem);
@@ -92,8 +92,8 @@ contextMenu.appendChild(deleteItem);
 document.body.appendChild(contextMenu);
 
 // Right-click to show context menu
-document.addEventListener("contextmenu", function (e) {
-  const appIcon = e.target.closest(".app-icon.custom-app");
+document.addEventListener('contextmenu', function (e) {
+  const appIcon = e.target.closest('.app-icon.custom-app');
   if (appIcon) {
     e.preventDefault();
 
@@ -112,23 +112,23 @@ document.addEventListener("contextmenu", function (e) {
       top = window.innerHeight - 100 - 10;
     }
 
-    contextMenu.style.left = left + "px";
-    contextMenu.style.top = top + "px";
-    contextMenu.style.display = "block";
-    document.body.classList.add("context-menu-open");
+    contextMenu.style.left = left + 'px';
+    contextMenu.style.top = top + 'px';
+    contextMenu.style.display = 'block';
+    document.body.classList.add('context-menu-open');
   }
 });
 
 // Hide context menu when clicking elsewhere
-document.addEventListener("click", function (e) {
+document.addEventListener('click', function (e) {
   if (!contextMenu.contains(e.target) && e.button !== 2) {
-    contextMenu.style.display = "none";
-    document.body.classList.remove("context-menu-open");
+    contextMenu.style.display = 'none';
+    document.body.classList.remove('context-menu-open');
   }
 });
 
 // Rename functionality
-document.getElementById("rename-app").addEventListener("click", function () {
+document.getElementById('rename-app').addEventListener('click', function () {
   if (!currentAppId) return;
   const apps = AppGridState.getCustomApps();
   const currentApp = apps.find(app => app.id === currentAppId);
@@ -149,8 +149,8 @@ document.getElementById("rename-app").addEventListener("click", function () {
     document.getElementById('rename-app-input').select();
   }, 100);
   
-  contextMenu.style.display = "none";
-  document.body.classList.remove("context-menu-open");
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
 });
 
 function initRenameModalHandlers() {
@@ -206,7 +206,7 @@ function initRenameModalHandlers() {
 }
 
 // Change thumbnail functionality
-document.getElementById("change-thumbnail").addEventListener("click", function () {
+document.getElementById('change-thumbnail').addEventListener('click', function () {
   if (!currentAppId) return;
   // Find by persistent id
   const apps = AppGridState.getCustomApps();
@@ -233,8 +233,8 @@ document.getElementById("change-thumbnail").addEventListener("click", function (
     document.getElementById('thumbnail-app-input').focus();
   }, 100);
   
-  contextMenu.style.display = "none";
-  document.body.classList.remove("context-menu-open");
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
 });
 
 function initThumbnailModalHandlers() {
@@ -275,7 +275,7 @@ function initThumbnailModalHandlers() {
         AppGridState.updateThumbnail(window.thumbnailAppId, newIcon);
         if (window.renderCustomApps) window.renderCustomApps();
       } catch (e) {
-        console.error("Failed to update custom app thumbnail:", e);
+        console.error('Failed to update custom app thumbnail:', e);
       }
     }
     thumbnailModal.style.display = 'none';
@@ -301,7 +301,7 @@ function initThumbnailModalHandlers() {
 }
 
 // Delete functionality
-document.getElementById("delete-app").addEventListener("click", function () {
+document.getElementById('delete-app').addEventListener('click', function () {
   if (!currentAppId) return;
   // Find by persistent id
   const apps = AppGridState.getCustomApps();
@@ -320,8 +320,8 @@ document.getElementById("delete-app").addEventListener("click", function () {
   // Show the delete modal
   document.getElementById('delete-app-modal').style.display = 'flex';
   
-  contextMenu.style.display = "none";
-  document.body.classList.remove("context-menu-open");
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
 });
 
 function initDeleteModalHandlers() {
@@ -390,8 +390,8 @@ window.thumbnailAppId = null;
 window.deleteAppId = null;
 
 // Prevent default context menu on default apps
-document.addEventListener("contextmenu", function (e) {
-  const appIcon = e.target.closest(".app-icon.default-app");
+document.addEventListener('contextmenu', function (e) {
+  const appIcon = e.target.closest('.app-icon.default-app');
   if (appIcon) {
     e.preventDefault();
   }
