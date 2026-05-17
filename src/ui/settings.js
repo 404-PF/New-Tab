@@ -810,7 +810,27 @@ if (todoEnabledSetting) {
   });
 }
 
+// Notes enabled
+function loadNotesEnabled() {
+  return localStorage.getItem("notesEnabled") !== "false";
+}
+function applyNotesEnabled() {
+  const enabled = loadNotesEnabled();
+  const notesSection = document.querySelector('.notes-section');
+  if (notesSection) {
+    notesSection.style.display = enabled ? 'block' : 'none';
+  }
+  const notesEnabledSetting = document.getElementById("notes-enabled-setting");
+  if (notesEnabledSetting) notesEnabledSetting.checked = enabled;
+}
 
+const notesEnabledSetting = document.getElementById("notes-enabled-setting");
+if (notesEnabledSetting) {
+  notesEnabledSetting.addEventListener("change", function () {
+    localStorage.setItem("notesEnabled", this.checked);
+    applyNotesEnabled();
+  });
+}
 
 // Settings menu logic
 const settingsMenu = document.querySelector(".settings-menu");
@@ -1044,6 +1064,7 @@ function initSettings() {
   applyDateFormatSetting();
   applyTheme();
   applyTodoEnabled();
+  applyNotesEnabled();
   applyLanguageSetting();
   initAboutSection();
 
