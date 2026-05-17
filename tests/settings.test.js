@@ -207,6 +207,7 @@ describe('initSettings background startup', () => {
 
       isolatedWindow.document.dispatchEvent(new isolatedWindow.Event('DOMContentLoaded'));
 
+      expect(isolatedWindow.requestIdleCallback).not.toHaveBeenCalled();
       expect(requestedSources).toContain('full.jpg');
       expect(isolatedWindow.document.body.getAttribute('data-bg')).toBe('Mountain View');
     } finally {
