@@ -6,6 +6,10 @@ This is a Chrome/Edge browser extension (manifest v3) that provides a personaliz
 
 ## Build & Development Commands
 
+### Prerequisites
+- **Node.js:** ^20.19.0, ^22.13.0, or >=24
+- **npm:** comes with Node.js — no separate global installs needed
+
 ### Running the Extension
 - Load unpacked: Go to `chrome://extensions`, enable "Developer mode", click "Load unpacked", and select the project root directory
 - No build commands required - this is a vanilla JS project with no bundler
@@ -23,7 +27,7 @@ This is a Chrome/Edge browser extension (manifest v3) that provides a personaliz
 - ESLint v10 is configured with flat config (`eslint.config.js`)
 - Run linting: `npm run lint`
 - Auto-fix fixable issues: `npm run lint:fix`
-- Runs automatically via husky pre-commit hook (`npx eslint .`)
+- Runs automatically via Husky pre-commit hook (`.husky/pre-commit`, auto-installed via `npm run prepare`)
 - Config covers source files (`src/`), tests (`tests/`), and background tools (`background/tools/`)
 - See `eslint.config.js` for full rule set and globals configuration
 
