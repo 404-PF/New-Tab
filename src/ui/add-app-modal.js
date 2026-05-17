@@ -1,6 +1,27 @@
 // src/ui/add-app-modal.js - Add app modal helpers and behavior
 
-const defaultAppsList = [];
+window.defaultAppsList = [
+  {
+    name: "Google",
+    url: "https://www.google.com",
+    icon: "https://www.google.com/s2/favicons?domain=google.com&sz=64",
+  },
+  {
+    name: "YouTube",
+    url: "https://www.youtube.com",
+    icon: "https://www.google.com/s2/favicons?domain=youtube.com&sz=64",
+  },
+  {
+    name: "Gmail",
+    url: "https://mail.google.com",
+    icon: "https://www.google.com/s2/favicons?domain=mail.google.com&sz=64",
+  },
+  {
+    name: "GitHub",
+    url: "https://github.com",
+    icon: "https://www.google.com/s2/favicons?domain=github.com&sz=64",
+  },
+];
 const DEFAULT_PREVIEW_ICON = `
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -175,7 +196,18 @@ function renderDefaultAppsList() {
     return;
   }
 
+  const defaultAppsSection = defaultAppsContainer.closest(".add-app-section");
+  const defaultAppsList = Array.isArray(window.defaultAppsList) ? window.defaultAppsList : [];
+
   defaultAppsContainer.innerHTML = "";
+  if (defaultAppsSection) {
+    defaultAppsSection.hidden = defaultAppsList.length === 0;
+  }
+
+  if (defaultAppsList.length === 0) {
+    return;
+  }
+
   const existingNames = getExistingAppNames();
 
   for (let i = 0; i < defaultAppsList.length; i++) {
