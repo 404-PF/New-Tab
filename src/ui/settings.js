@@ -1033,11 +1033,9 @@ window.addEventListener('languageChanged', function() {
 
 function initSettings() {
   // Apply initial settings
-  scheduleBackgroundInitialization(function () {
-    if (!initialBackgroundApplied) {
-      applyBg();
-    }
-  });
+  if (!initialBackgroundApplied) {
+    applyBg();
+  }
   applyClockStyle();
   applyClockFormatSetting();
   applyDateStyle();
