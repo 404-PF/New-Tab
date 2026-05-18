@@ -4222,3 +4222,218 @@ body.simple-mode .search-bar {
   opacity: 1;
   transform: translateY(0) scale(1);
 }
+
+/* ==================== Notes Section ==================== */
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notes-section {
+  width: var(--todo-list-width, 75%);
+  margin: 20px auto 0;
+  animation: fadeSlideIn 0.4s ease forwards;
+}
+
+.notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.notes-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+.notes-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.notes-add-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.notes-add-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(148, 163, 184, 0.5);
+  color: #e2e8f0;
+  transform: scale(1.05);
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 12px;
+  animation: fadeSlideIn 0.3s ease forwards;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: background 0.2s ease, border-color 0.2s ease;
+  position: relative;
+}
+
+.note-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.note-textarea {
+  flex: 1;
+  min-height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e2e8f0;
+  font-size: 14px;
+  line-height: 1.6;
+  font-family: inherit;
+  resize: none;
+  overflow: hidden;
+}
+
+.note-textarea::placeholder {
+  color: rgba(148, 163, 184, 0.5);
+}
+
+.note-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(148, 163, 184, 0.4);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.note-item:hover .note-delete-btn {
+  opacity: 1;
+}
+
+.note-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.note-delete-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.notes-empty {
+  display: none;
+  text-align: center;
+  padding: 24px 0;
+  color: rgba(148, 163, 184, 0.6);
+}
+
+.notes-empty-icon {
+  margin-bottom: 8px;
+}
+
+.notes-empty-icon svg {
+  width: 40px;
+  height: 40px;
+  opacity: 0.4;
+}
+
+.notes-empty p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Light theme notes */
+body.light-theme .notes-title {
+  color: #1e293b;
+}
+
+body.light-theme .notes-add-btn {
+  border-color: rgba(15, 23, 42, 0.15);
+  background: rgba(15, 23, 42, 0.04);
+  color: #64748b;
+}
+
+body.light-theme .notes-add-btn:hover {
+  background: rgba(15, 23, 42, 0.08);
+  border-color: rgba(15, 23, 42, 0.25);
+  color: #1e293b;
+}
+
+body.light-theme .note-item {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+body.light-theme .note-item:hover {
+  background: rgba(15, 23, 42, 0.07);
+  border-color: rgba(15, 23, 42, 0.15);
+}
+
+body.light-theme .note-textarea {
+  color: #1e293b;
+}
+
+body.light-theme .note-textarea::placeholder {
+  color: rgba(100, 116, 139, 0.5);
+}
+
+body.light-theme .note-delete-btn {
+  color: rgba(100, 116, 139, 0.4);
+}
+
+body.light-theme .note-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+body.light-theme .notes-empty {
+  color: rgba(100, 116, 139, 0.5);
+}
+
+body.simple-mode .notes-section {
+  display: none !important;
+}
+
+body.light-theme .notes-empty-icon svg {
+  opacity: 0.3;
+}

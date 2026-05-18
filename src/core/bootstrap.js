@@ -22,6 +22,7 @@
     'src/core/update-checker.js',
     'src/features/onboarding.js',
     'src/features/todo.js',
+    'src/features/notes.js',
     'src/features/simple-mode.js',
     'src/ai/network-detector.js',
     'src/ai/offline-mode.js',
