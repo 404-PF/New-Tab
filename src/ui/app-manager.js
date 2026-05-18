@@ -20,6 +20,7 @@ const defaultApps = [
   { id: 'feedback-app', nameKey: 'feedback', url: 'https://github.com/404-PF/New-Tab/issues/new', icon: 'images/icons/feedback.svg', className: 'default-app' },
   { id: 'settings-app', nameKey: 'settings', url: '#', icon: 'images/icons/settings.svg', className: 'default-app' },
 ];
+window.defaultApps = defaultApps;
 
 // Get all apps data
 const getAllAppData = () => {
@@ -48,17 +49,29 @@ const addApp = document.getElementById('new-app');
     seenIds.add(app.id);
     return true;
   });
-  const validIds = new Set(dedupedApps.map(app => app.id));
+  const folders = AppGridState.getFolders();
+  const folderIds = new Set(folders.map(f => f.id));
+  const validIds = new Set([...dedupedApps.map(app => app.id), ...folderIds]);
+  const totalExpectedLength = dedupedApps.length + folders.length;
   const isValidOrder = Array.isArray(order)
-    && order.length === dedupedApps.length
+    && order.length === totalExpectedLength
     && order.every(id => validIds.has(id))
     && new Set(order).size === order.length;
   if (!isValidOrder) {
     order = dedupedApps.map(app => app.id);
+    folders.forEach(f => order.push(f.id));
     saveAppOrder(order);
   }
+  const folderMap = Object.fromEntries(folders.map(f => [f.id, f]));
   const appMap = Object.fromEntries(dedupedApps.map(app => [app.id, app]));
   order.forEach(appId => {
+    if (folderMap[appId]) {
+      if (!window.AppFolders) return;
+      const folder = folderMap[appId];
+      const folderEl = window.AppFolders.createFolderIconElement(folder);
+      appGrid.insertBefore(folderEl, addApp);
+      return;
+    }
     const app = appMap[appId];
     if (!app) return;
     const a = document.createElement('a');

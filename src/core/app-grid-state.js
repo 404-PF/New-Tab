@@ -142,6 +142,186 @@ const AppGridState = {
     return true;
   },
 
+  // --- Folder operations ---
+
+  getFolders() {
+    return window.AppGridStorage ? window.AppGridStorage.loadFolders() : [];
+  },
+
+  saveFolders(folders) {
+    if (window.AppGridStorage) {
+      window.AppGridStorage.saveFolders(folders);
+    }
+  },
+
+  updateFolders(updater) {
+    if (!window.AppGridStorage || typeof updater !== 'function') {
+      return null;
+    }
+
+    const latestFolders = this.getFolders().map(f => this.cloneAppRecord(f));
+    const nextFolders = updater(latestFolders);
+
+    if (!Array.isArray(nextFolders)) {
+      return null;
+    }
+
+    this.saveFolders(nextFolders);
+    return nextFolders;
+  },
+
+  createFolder(name, appIds) {
+    if (!name || typeof name !== 'string' || name.trim() === '') return null;
+
+    const id = 'folder-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
+    const folder = { id, name: name.trim(), apps: Array.isArray(appIds) ? appIds : [] };
+
+    const savedFolders = this.updateFolders((folders) => {
+      folders.push(this.cloneAppRecord(folder));
+      return folders;
+    });
+    if (!savedFolders) return null;
+
+    this.updateOrder((order) => {
+      order.push(folder.id);
+      return order;
+    }, { allowMissing: true });
+
+    return folder;
+  },
+
+  deleteFolder(id) {
+    let removedFolder = null;
+
+    const updatedFolders = this.updateFolders((folders) => {
+      const idx = folders.findIndex(f => f.id === id);
+      if (idx === -1) return null;
+      removedFolder = folders[idx];
+      folders.splice(idx, 1);
+      return folders;
+    });
+
+    if (!updatedFolders || !removedFolder) return false;
+
+    this.updateOrder((latestOrder) => {
+      const folderIdx = latestOrder.indexOf(id);
+      const filtered = latestOrder.filter(oid => oid !== id);
+      const appIds = removedFolder.apps.filter(aid => !filtered.includes(aid));
+      let insertAt = folderIdx;
+      if (insertAt > filtered.length) insertAt = filtered.length;
+      if (insertAt < 0) insertAt = filtered.length;
+      filtered.splice(insertAt, 0, ...appIds);
+      return filtered;
+    });
+
+    return true;
+  },
+
+  renameFolder(id, newName) {
+    if (!newName || typeof newName !== 'string' || newName.trim() === '') return false;
+
+    const updatedFolders = this.updateFolders((folders) => {
+      const idx = folders.findIndex(f => f.id === id);
+      if (idx === -1) return null;
+      folders[idx].name = newName.trim();
+      return folders;
+    });
+
+    return !!updatedFolders;
+  },
+
+  addAppToFolder(folderId, appId) {
+    let appAdded = false;
+
+    const updatedFolders = this.updateFolders((folders) => {
+      const folder = folders.find(f => f.id === folderId);
+      if (!folder) return null;
+      if (!folder.apps.includes(appId)) {
+        folder.apps.push(appId);
+        appAdded = true;
+      }
+      return folders;
+    });
+
+    if (!updatedFolders || !appAdded) return false;
+
+    this.updateOrder((latestOrder) => {
+      const filtered = latestOrder.filter(oid => oid !== appId);
+      if (filtered.length === latestOrder.length) return latestOrder;
+      return filtered;
+    });
+
+    return true;
+  },
+
+  // Move app to a folder, removing it from any other folder first
+  moveAppToFolder(targetFolderId, appId) {
+    const folders = this.getFolders();
+    const currentFolder = folders.find(f => f.apps.includes(appId));
+    if (currentFolder) {
+      if (currentFolder.id === targetFolderId) return true;
+      const removed = this.removeAppFromFolder(currentFolder.id, appId);
+      if (!removed) return false;
+    }
+    return this.addAppToFolder(targetFolderId, appId);
+  },
+
+  removeAppFromFolder(folderId, appId) {
+    let appRemoved = false;
+
+    const updatedFolders = this.updateFolders((folders) => {
+      const folder = folders.find(f => f.id === folderId);
+      if (!folder) return null;
+      const idx = folder.apps.indexOf(appId);
+      if (idx === -1) return null;
+      folder.apps.splice(idx, 1);
+      appRemoved = true;
+      return folders;
+    });
+
+    if (!updatedFolders || !appRemoved) return false;
+
+    this.updateOrder((latestOrder) => {
+      const folderIdx = latestOrder.indexOf(folderId);
+      if (folderIdx !== -1) {
+        latestOrder.splice(folderIdx + 1, 0, appId);
+      } else {
+        latestOrder.push(appId);
+      }
+      return latestOrder;
+    });
+
+    return true;
+  },
+
+  reorderFolderApps(folderId, sourceId, toIdx) {
+    const updatedFolders = this.updateFolders((folders) => {
+      const folder = folders.find(f => f.id === folderId);
+      if (!folder) return null;
+
+      const fromIdx = folder.apps.indexOf(sourceId);
+      if (fromIdx === -1) return null;
+
+      let targetIdx = toIdx;
+      if (targetIdx === -1 || targetIdx > folder.apps.length) {
+        targetIdx = folder.apps.length;
+      }
+
+      let adjustedToIdx = targetIdx;
+      if (fromIdx < targetIdx) {
+        adjustedToIdx = targetIdx - 1;
+      }
+
+      const newApps = folder.apps.slice();
+      const [movedItem] = newApps.splice(fromIdx, 1);
+      newApps.splice(adjustedToIdx, 0, movedItem);
+      folder.apps = newApps;
+      return folders;
+    });
+
+    return !!updatedFolders;
+  },
+
   // Move sourceId to the given placeholder drop index within appOrder.
   // toIdx is the desired insertion position in the current order array;
   // pass -1 or a value beyond the array length to append at the end.

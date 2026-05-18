@@ -61,61 +61,165 @@ const contextMenu = document.createElement('div');
 contextMenu.id = 'app-context-menu';
 contextMenu.className = 'app-context-menu';
 
-// Menu items
+// Common helper to add hover
+function addHover(el) {
+  el.addEventListener('mouseenter', () => el.classList.add('hover'));
+  el.addEventListener('mouseleave', () => el.classList.remove('hover'));
+}
+
+// App items (for custom-app)
 const renameItem = document.createElement('div');
 renameItem.id = 'rename-app';
-renameItem.className = 'context-menu-item';
+renameItem.className = 'context-menu-item context-menu-app-item';
 renameItem.setAttribute('data-i18n', 'renameApp');
 renameItem.textContent = 'Rename';
+addHover(renameItem);
+
+const moveToFolderItem = document.createElement('div');
+moveToFolderItem.id = 'move-to-folder';
+moveToFolderItem.className = 'context-menu-item context-menu-app-item';
+moveToFolderItem.setAttribute('data-i18n', 'moveToFolder');
+moveToFolderItem.textContent = 'Move to Folder';
+addHover(moveToFolderItem);
+
+const removeFromFolderItem = document.createElement('div');
+removeFromFolderItem.id = 'remove-from-folder';
+removeFromFolderItem.className = 'context-menu-item context-menu-folder-app-item';
+removeFromFolderItem.setAttribute('data-i18n', 'removeFromFolder');
+removeFromFolderItem.textContent = 'Remove from Folder';
+addHover(removeFromFolderItem);
 
 const changeThumbnailItem = document.createElement('div');
 changeThumbnailItem.id = 'change-thumbnail';
-changeThumbnailItem.className = 'context-menu-item';
+changeThumbnailItem.className = 'context-menu-item context-menu-app-item';
 changeThumbnailItem.setAttribute('data-i18n', 'changeThumbnail');
 changeThumbnailItem.textContent = 'Change Thumbnail';
+addHover(changeThumbnailItem);
 
 const deleteItem = document.createElement('div');
 deleteItem.id = 'delete-app';
-deleteItem.className = 'context-menu-item delete-item';
+deleteItem.className = 'context-menu-item delete-item context-menu-app-item';
 deleteItem.setAttribute('data-i18n', 'deleteApp');
 deleteItem.textContent = 'Delete';
+addHover(deleteItem);
 
-// Add hover effects
-[renameItem, changeThumbnailItem, deleteItem].forEach((item) => {
-  item.addEventListener('mouseenter', () => item.classList.add('hover'));
-  item.addEventListener('mouseleave', () => item.classList.remove('hover'));
-});
+// Folder items (for folder-icon)
+const renameFolderItem = document.createElement('div');
+renameFolderItem.id = 'rename-folder';
+renameFolderItem.className = 'context-menu-item context-menu-folder-item';
+renameFolderItem.setAttribute('data-i18n', 'renameFolder');
+renameFolderItem.textContent = 'Rename Folder';
+addHover(renameFolderItem);
+
+const deleteFolderItem = document.createElement('div');
+deleteFolderItem.id = 'delete-folder';
+deleteFolderItem.className = 'context-menu-item delete-item context-menu-folder-item';
+deleteFolderItem.setAttribute('data-i18n', 'deleteFolder');
+deleteFolderItem.textContent = 'Delete Folder';
+addHover(deleteFolderItem);
+
+// Grid items (for empty grid space)
+const createFolderItem = document.createElement('div');
+createFolderItem.id = 'create-folder';
+createFolderItem.className = 'context-menu-item context-menu-grid-item';
+createFolderItem.setAttribute('data-i18n', 'createFolder');
+createFolderItem.textContent = 'Create Folder';
+addHover(createFolderItem);
 
 contextMenu.appendChild(renameItem);
+contextMenu.appendChild(moveToFolderItem);
+contextMenu.appendChild(removeFromFolderItem);
 contextMenu.appendChild(changeThumbnailItem);
 contextMenu.appendChild(deleteItem);
+contextMenu.appendChild(renameFolderItem);
+contextMenu.appendChild(deleteFolderItem);
+contextMenu.appendChild(createFolderItem);
 document.body.appendChild(contextMenu);
+
+// Track which context triggered the menu
+let contextMenuTrigger = null; // 'custom-app', 'folder-icon', 'grid'
+
+// Helper to show/hide context menu sections
+function setContextMenuItems(trigger) {
+  contextMenuTrigger = trigger;
+  const appItems = contextMenu.querySelectorAll('.context-menu-app-item');
+  const folderAppItems = contextMenu.querySelectorAll('.context-menu-folder-app-item');
+  const folderItems = contextMenu.querySelectorAll('.context-menu-folder-item');
+  const gridItems = contextMenu.querySelectorAll('.context-menu-grid-item');
+
+  appItems.forEach(el => el.style.display = 'none');
+  folderAppItems.forEach(el => el.style.display = 'none');
+  folderItems.forEach(el => el.style.display = 'none');
+  gridItems.forEach(el => el.style.display = 'none');
+
+  if (trigger === 'custom-app') {
+    appItems.forEach(el => el.style.display = 'block');
+  } else if (trigger === 'folder-app') {
+    folderAppItems.forEach(el => el.style.display = 'block');
+  } else if (trigger === 'folder-icon') {
+    folderItems.forEach(el => el.style.display = 'block');
+  } else if (trigger === 'grid') {
+    gridItems.forEach(el => el.style.display = 'block');
+  }
+}
+
+function positionContextMenu(e) {
+  let left = e.pageX;
+  let top = e.pageY;
+
+  if (left + 160 > window.innerWidth) {
+    left = window.innerWidth - 160 - 10;
+  }
+
+  if (top + 120 > window.innerHeight) {
+    top = window.innerHeight - 120 - 10;
+  }
+
+  contextMenu.style.left = left + 'px';
+  contextMenu.style.top = top + 'px';
+  contextMenu.style.display = 'block';
+  document.body.classList.add('context-menu-open');
+}
 
 // Right-click to show context menu
 document.addEventListener('contextmenu', function (e) {
-  const appIcon = e.target.closest('.app-icon.custom-app');
-  if (appIcon) {
+  const customAppIcon = e.target.closest('.app-icon.custom-app');
+  const folderIcon = e.target.closest('.app-icon.folder-icon');
+  const appGrid = e.target.closest('#app-grid');
+  const folderPopup = e.target.closest('#folder-popup-apps');
+
+  // Right-click on custom app inside the folder popup
+  if (folderPopup && customAppIcon) {
     e.preventDefault();
+    const realAppId = customAppIcon.id.replace(/^popup-/, '');
+    currentAppId = realAppId;
+    setContextMenuItems('folder-app');
+    positionContextMenu(e);
+    return;
+  }
 
-    // Store the id of the right-clicked custom app
-    currentAppId = appIcon.id;
+  if (customAppIcon) {
+    e.preventDefault();
+    currentAppId = customAppIcon.id;
+    setContextMenuItems('custom-app');
+    positionContextMenu(e);
+    return;
+  }
 
-    // Position and show context menu
-    let left = e.pageX;
-    let top = e.pageY;
+  if (folderIcon) {
+    e.preventDefault();
+    currentAppId = folderIcon.id;
+    setContextMenuItems('folder-icon');
+    positionContextMenu(e);
+    return;
+  }
 
-    if (left + 160 > window.innerWidth) {
-      left = window.innerWidth - 160 - 10;
-    }
-
-    if (top + 100 > window.innerHeight) {
-      top = window.innerHeight - 100 - 10;
-    }
-
-    contextMenu.style.left = left + 'px';
-    contextMenu.style.top = top + 'px';
-    contextMenu.style.display = 'block';
-    document.body.classList.add('context-menu-open');
+  if (appGrid && !e.target.closest('.app-icon')) {
+    e.preventDefault();
+    currentAppId = null;
+    setContextMenuItems('grid');
+    positionContextMenu(e);
+    return;
   }
 });
 
@@ -129,6 +233,7 @@ document.addEventListener('click', function (e) {
 
 // Rename functionality
 document.getElementById('rename-app').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'custom-app') return;
   if (!currentAppId) return;
   const apps = AppGridState.getCustomApps();
   const currentApp = apps.find(app => app.id === currentAppId);
@@ -149,6 +254,63 @@ document.getElementById('rename-app').addEventListener('click', function () {
     document.getElementById('rename-app-input').select();
   }, 100);
   
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
+});
+
+// Remove from Folder
+document.getElementById('remove-from-folder').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'folder-app') return;
+  if (!currentAppId) return;
+  const folderId = window.AppFolders ? window.AppFolders.currentFolderId : null;
+  if (folderId) {
+    AppGridState.removeAppFromFolder(folderId, currentAppId);
+    if (window.AppFolders) window.AppFolders.renderFolderAppsInPopup();
+    if (typeof window.renderAllApps === 'function') window.renderAllApps();
+  }
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
+});
+
+// Move to Folder
+document.getElementById('move-to-folder').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'custom-app') return;
+  if (!currentAppId) return;
+  if (window.AppFolders) {
+    window.AppFolders.showMoveToFolderSelector(currentAppId);
+  }
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
+});
+
+// Rename Folder
+document.getElementById('rename-folder').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'folder-icon') return;
+  if (!currentAppId) return;
+  if (window.AppFolders) {
+    window.AppFolders.promptRenameFolder(currentAppId);
+  }
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
+});
+
+// Delete Folder
+document.getElementById('delete-folder').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'folder-icon') return;
+  if (!currentAppId) return;
+  if (window.AppFolders) {
+    window.AppFolders.promptDeleteFolder(currentAppId);
+  }
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
+});
+
+// Create Folder
+document.getElementById('create-folder').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'grid') return;
+  if (window.AppFolders) {
+    window.AppFolders.promptCreateFolder();
+  }
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');
 });
@@ -207,6 +369,7 @@ function initRenameModalHandlers() {
 
 // Change thumbnail functionality
 document.getElementById('change-thumbnail').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'custom-app') return;
   if (!currentAppId) return;
   // Find by persistent id
   const apps = AppGridState.getCustomApps();
@@ -302,6 +465,7 @@ function initThumbnailModalHandlers() {
 
 // Delete functionality
 document.getElementById('delete-app').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'custom-app') return;
   if (!currentAppId) return;
   // Find by persistent id
   const apps = AppGridState.getCustomApps();
@@ -389,10 +553,10 @@ window.renameAppId = null;
 window.thumbnailAppId = null;
 window.deleteAppId = null;
 
-// Prevent default context menu on default apps
+// Prevent default context menu on default apps (not custom-app or folder-icon)
 document.addEventListener('contextmenu', function (e) {
-  const appIcon = e.target.closest('.app-icon.default-app');
-  if (appIcon) {
+  const defaultIcon = e.target.closest('.app-icon.default-app');
+  if (defaultIcon && !e.target.closest('.app-icon.custom-app, .app-icon.folder-icon')) {
     e.preventDefault();
   }
 });
