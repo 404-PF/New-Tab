@@ -120,6 +120,8 @@ const testGlobals = {
   deleteNote: 'readonly',
   updateNoteText: 'readonly',
   handleNotesBlur: 'readonly',
+  debouncedSave: 'readonly',
+  flushPendingSaves: 'readonly',
   describe: 'readonly',
   it: 'readonly',
   test: 'readonly',

@@ -97,7 +97,11 @@ function flushPendingSaves() {
     const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
     if (ta) {
       const text = (ta.value || '').trim();
-      if (text) updateNoteText(id, text);
+      if (text) {
+        updateNoteText(id, text);
+      } else {
+        deleteNote(id);
+      }
     }
   });
 }

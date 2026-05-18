@@ -148,3 +148,30 @@ describe('Notes blur cleanup', () => {
     expect(loadNotes()[0].text).toBe('Hello');
   });
 });
+
+describe('Notes flushPendingSaves', () => {
+  it('deletes an empty note on flush', () => {
+    addNote();
+    const id = loadNotes()[0].id;
+    const ta = document.querySelector('.note-textarea');
+    ta.value = '';
+
+    debouncedSave(id, '');
+    flushPendingSaves();
+
+    expect(loadNotes()).toHaveLength(0);
+  });
+
+  it('saves a non-empty note on flush', () => {
+    addNote();
+    const id = loadNotes()[0].id;
+    const ta = document.querySelector('.note-textarea');
+    ta.value = 'Hello world';
+
+    debouncedSave(id, 'Hello world');
+    flushPendingSaves();
+
+    expect(loadNotes()).toHaveLength(1);
+    expect(loadNotes()[0].text).toBe('Hello world');
+  });
+});
