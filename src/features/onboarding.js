@@ -110,7 +110,7 @@ class OnboardingTour {
       {
         id: 'search',
         title: window.i18n ? window.i18n.t('onboardingSearchTitle') : 'Web Search',
-        content: window.i18n ? window.i18n.t('onboardingSearchContent') : "Search the web from your new tab using your browser's default search provider.",
+        content: window.i18n ? window.i18n.t('onboardingSearchContent') : 'Search the web from your new tab using your browser\'s default search provider.',
         target: '.search-bar',
         position: 'bottom',
         action: null,
@@ -493,19 +493,19 @@ class OnboardingTour {
   // Handle special actions for certain steps
   handleAction(action, step) {
     switch (action) {
-      case 'open-settings':
+      case 'open-settings': {
         // Ensure settings modal is visible before positioning
         const settingsModal = document.getElementById('settings-modal');
         if (settingsModal) {
           settingsModal.style.display = 'flex';
-          
+
           // Wait for next animation frame to ensure the modal is rendered
           requestAnimationFrame(() => {
             // Check if element is now visible and re-render if needed
             const tooltip = this.overlay.querySelector('.onboarding-tooltip');
             const spotlight = this.overlay.querySelector('.onboarding-spotlight');
             const targetElement = document.querySelector(step.target);
-            
+
             if (targetElement && this.isElementVisible(targetElement)) {
               // Re-position the tooltip now that modal is visible
               this.positionTooltip(tooltip, targetElement, step.position);
@@ -516,10 +516,11 @@ class OnboardingTour {
           });
         }
         break;
+      }
       case 'add-app':
         // This step doesn't require specific action
         break;
-      case 'select-language':
+      case 'select-language': {
         this._clearActionTimeouts();
         // Add event listeners to language radio buttons
         const languageRadios = this.overlay.querySelectorAll('input[name="onboarding-language"]');
@@ -542,7 +543,8 @@ class OnboardingTour {
           });
         });
         break;
-      case 'select-theme':
+      }
+      case 'select-theme': {
         this._clearActionTimeouts();
         // Add event listeners to theme radio buttons
         const themeRadios = this.overlay.querySelectorAll('input[name="onboarding-theme"]');
@@ -569,6 +571,7 @@ class OnboardingTour {
           });
         });
         break;
+      }
     }
   }
 

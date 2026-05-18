@@ -136,13 +136,14 @@ const OpenRouterAPI = (function() {
           errorCode = 'FORBIDDEN';
           errorMessage = getTranslation('aiForbidden');
           break;
-        case 429:
+        case 429: {
           errorCode = 'RATE_LIMIT';
           const retryAfter = response.headers.get('Retry-After');
-          errorMessage = retryAfter 
-            ? `Rate limited. Try again in ${retryAfter} seconds` 
+          errorMessage = retryAfter
+            ? `Rate limited. Try again in ${retryAfter} seconds`
             : getTranslation('aiRateLimit');
           break;
+        }
         case 500:
         case 502:
         case 503:
@@ -236,7 +237,7 @@ const OpenRouterAPI = (function() {
         buffer += chunk;
         
         // Parse SSE format - handle multiple events in buffer
-        let lines = buffer.split('\n');
+        const lines = buffer.split('\n');
         
         // Keep the last potentially incomplete line in buffer
         buffer = lines.pop() || '';

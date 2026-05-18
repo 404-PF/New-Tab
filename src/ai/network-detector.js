@@ -9,7 +9,7 @@ const NetworkDetector = (function() {
 
   // State
   let isOnline = navigator.onLine;
-  let listeners = [];
+  const listeners = [];
 
   /**
    * Initialize network detection

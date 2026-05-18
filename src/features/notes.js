@@ -2,32 +2,32 @@
 
 let notes = [];
 
-let elements = {};
+const elements = {};
 
-let debounceTimers = {};
+const debounceTimers = {};
 
 function loadNotes() {
   try {
-    const raw = localStorage.getItem("notes");
+    const raw = localStorage.getItem('notes');
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      console.warn("Invalid notes data in localStorage: expected array, resetting to empty list");
+      console.warn('Invalid notes data in localStorage: expected array, resetting to empty list');
       return [];
     }
     return parsed;
   } catch (e) {
-    console.warn("Failed to parse notes from localStorage, resetting to empty list:", e);
+    console.warn('Failed to parse notes from localStorage, resetting to empty list:', e);
     return [];
   }
 }
 
 function saveNotes(data) {
   try {
-    localStorage.setItem("notes", JSON.stringify(data));
+    localStorage.setItem('notes', JSON.stringify(data));
     return true;
   } catch (error) {
-    console.warn("Failed to save notes to localStorage:", error);
+    console.warn('Failed to save notes to localStorage:', error);
     return false;
   }
 }

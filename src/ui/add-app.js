@@ -6,8 +6,8 @@ function bootstrapAddAppModal() {
   }
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", bootstrapAddAppModal);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootstrapAddAppModal);
 } else {
   bootstrapAddAppModal();
 }

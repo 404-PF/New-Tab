@@ -2,8 +2,8 @@
 
 function updateTime() {
   const now = new Date();
-  const timeElement = document.getElementById("clock-time") || document.getElementById("clock");
-  const dateElement = document.getElementById("date");
+  const timeElement = document.getElementById('clock-time') || document.getElementById('clock');
+  const dateElement = document.getElementById('date');
   const locale = getDisplayLocale();
 
   // Update time
@@ -151,27 +151,27 @@ function displayDailyMotto() {
     const currentMottos = mottos[currentLang] || mottos.en;
     // Deterministically pick a motto for the day
     const index = daySeed % currentMottos.length;
-    const mottoText = document.getElementById("motto-text");
+    const mottoText = document.getElementById('motto-text');
     if (mottoText) {
       mottoText.textContent = currentMottos[index];
       // Add fade-in effect
-      mottoText.style.opacity = "0";
+      mottoText.style.opacity = '0';
       setTimeout(() => {
-        mottoText.style.transition = "opacity 0.5s";
-        mottoText.style.opacity = "1";
+        mottoText.style.transition = 'opacity 0.5s';
+        mottoText.style.opacity = '1';
       }, 50);
     }
   } catch (e) {
-    console.error("Error displaying motto:", e);
+    console.error('Error displaying motto:', e);
   }
 }
 
 // Handle refresh motto functionality
 function setupRefreshMotto() {
-  const refreshBtn = document.getElementById("refresh-motto-btn");
+  const refreshBtn = document.getElementById('refresh-motto-btn');
   if (refreshBtn) {
-    refreshBtn.addEventListener("click", () => {
-      const mottoText = document.getElementById("motto-text");
+    refreshBtn.addEventListener('click', () => {
+      const mottoText = document.getElementById('motto-text');
       if (mottoText) {
         // Get current language
         const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
@@ -181,10 +181,10 @@ function setupRefreshMotto() {
         const randomIndex = Math.floor(Math.random() * currentMottos.length);
         mottoText.textContent = currentMottos[randomIndex];
         // Add refresh animation
-        mottoText.style.opacity = "0";
+        mottoText.style.opacity = '0';
         setTimeout(() => {
-          mottoText.style.transition = "opacity 0.3s ease";
-          mottoText.style.opacity = "1";
+          mottoText.style.transition = 'opacity 0.3s ease';
+          mottoText.style.opacity = '1';
           checkFooterOverlap();
         }, 50);
       }
@@ -194,10 +194,10 @@ function setupRefreshMotto() {
 
 // Handle copy motto functionality
 function setupCopyMotto() {
-  const copyBtn = document.getElementById("copy-motto-btn");
+  const copyBtn = document.getElementById('copy-motto-btn');
   if (copyBtn) {
-    copyBtn.addEventListener("click", async () => {
-      const mottoText = document.getElementById("motto-text");
+    copyBtn.addEventListener('click', async () => {
+      const mottoText = document.getElementById('motto-text');
       if (mottoText && mottoText.textContent) {
         const copiedText = window.i18n ? window.i18n.t('copyMottoCopied') : 'Copied';
         // Show copy notification
@@ -218,16 +218,16 @@ function setupCopyMotto() {
         try {
           await navigator.clipboard.writeText(mottoText.textContent);
         } catch (err) {
-          console.error("Failed to copy motto:", err);
+          console.error('Failed to copy motto:', err);
           // Fallback for older browsers
-          const textArea = document.createElement("textarea");
+          const textArea = document.createElement('textarea');
           textArea.value = mottoText.textContent;
           document.body.appendChild(textArea);
           textArea.select();
           try {
             document.execCommand('copy');
           } catch (fallbackErr) {
-            console.error("Fallback copy failed:", fallbackErr);
+            console.error('Fallback copy failed:', fallbackErr);
           }
           document.body.removeChild(textArea);
         }
@@ -238,8 +238,8 @@ function setupCopyMotto() {
 
 let isSearchHandlerBound = false;
 
-const SEARCH_UNAVAILABLE_MESSAGE = "Search is unavailable in this browser.";
-const SEARCH_HISTORY_STORAGE_KEY = "searchHistory";
+const SEARCH_UNAVAILABLE_MESSAGE = 'Search is unavailable in this browser.';
+const SEARCH_HISTORY_STORAGE_KEY = 'searchHistory';
 const SEARCH_HISTORY_LIMIT = 8;
 
 let isSearchInputFocused = false;
@@ -265,7 +265,7 @@ function readSearchHistory() {
     const normalizedHistory = [];
 
     parsedHistory.forEach((item) => {
-      if (typeof item !== "string") {
+      if (typeof item !== 'string') {
         return;
       }
 
@@ -285,7 +285,7 @@ function readSearchHistory() {
 
     return normalizedHistory.slice(0, SEARCH_HISTORY_LIMIT);
   } catch (error) {
-    console.warn("Failed to read search history:", error);
+    console.warn('Failed to read search history:', error);
     return [];
   }
 }
@@ -299,7 +299,7 @@ function writeSearchHistory(history) {
 
     localStorage.setItem(SEARCH_HISTORY_STORAGE_KEY, JSON.stringify(history.slice(0, SEARCH_HISTORY_LIMIT)));
   } catch (error) {
-    console.warn("Failed to persist search history:", error);
+    console.warn('Failed to persist search history:', error);
   }
 }
 
@@ -335,9 +335,9 @@ function ensureSearchHistoryPanel() {
   }
 
   if (!searchHistoryPanel) {
-    searchHistoryPanel = document.createElement("div");
-    searchHistoryPanel.className = "search-history-panel";
-    searchHistoryPanel.id = "search-history-panel";
+    searchHistoryPanel = document.createElement('div');
+    searchHistoryPanel.className = 'search-history-panel';
+    searchHistoryPanel.id = 'search-history-panel';
     searchHistoryPanel.hidden = true;
     searchHistoryPanel.innerHTML = `
       <div class="search-history-header">
@@ -347,14 +347,14 @@ function ensureSearchHistoryPanel() {
       <div class="search-history-list"></div>
     `;
 
-    searchHistoryListEl = searchHistoryPanel.querySelector(".search-history-list");
-    searchHistoryClearBtn = searchHistoryPanel.querySelector(".search-history-clear-btn");
+    searchHistoryListEl = searchHistoryPanel.querySelector('.search-history-list');
+    searchHistoryClearBtn = searchHistoryPanel.querySelector('.search-history-clear-btn');
 
-    searchHistoryClearBtn.addEventListener("mousedown", (event) => {
+    searchHistoryClearBtn.addEventListener('mousedown', (event) => {
       event.preventDefault();
     });
 
-    searchHistoryClearBtn.addEventListener("click", () => {
+    searchHistoryClearBtn.addEventListener('click', () => {
       clearSearchHistory();
       if (searchInputElement) {
         searchInputElement.focus();
@@ -373,19 +373,19 @@ function hideSearchHistorySuggestions() {
   }
 
   if (searchInputElement) {
-    searchInputElement.setAttribute("aria-expanded", "false");
+    searchInputElement.setAttribute('aria-expanded', 'false');
   }
 }
 
 function executeSearch(query) {
   const validation = validateUrl(query);
 
-  if (validation.status === "valid") {
+  if (validation.status === 'valid') {
     window.location.href = validation.url.href;
     return;
   }
 
-  if (validation.status === "malformed") {
+  if (validation.status === 'malformed') {
     showSearchValidationFeedback(translateValidationMessage(validation.message));
     return;
   }
@@ -426,58 +426,58 @@ function renderSearchHistorySuggestions() {
     return;
   }
 
-  const title = panel.querySelector(".search-history-title");
+  const title = panel.querySelector('.search-history-title');
   if (title) {
-    title.textContent = t("recentSearches");
+    title.textContent = t('recentSearches');
   }
 
-  searchHistoryClearBtn.textContent = t("clearSearchHistory");
-  searchHistoryListEl.innerHTML = "";
+  searchHistoryClearBtn.textContent = t('clearSearchHistory');
+  searchHistoryListEl.innerHTML = '';
 
   suggestions.forEach((item) => {
-    const suggestionBtn = document.createElement("button");
-    suggestionBtn.type = "button";
-    suggestionBtn.className = "search-history-item";
+    const suggestionBtn = document.createElement('button');
+    suggestionBtn.type = 'button';
+    suggestionBtn.className = 'search-history-item';
     suggestionBtn.textContent = item;
-    suggestionBtn.addEventListener("mousedown", (event) => {
+    suggestionBtn.addEventListener('mousedown', (event) => {
       event.preventDefault();
     });
-    suggestionBtn.addEventListener("click", () => {
+    suggestionBtn.addEventListener('click', () => {
       selectSearchHistorySuggestion(item);
     });
     searchHistoryListEl.appendChild(suggestionBtn);
   });
 
   panel.hidden = false;
-  searchInputElement.setAttribute("aria-expanded", "true");
+  searchInputElement.setAttribute('aria-expanded', 'true');
 }
 
 function runDefaultSearch(query) {
-  if (typeof chrome !== "undefined" && chrome.search && typeof chrome.search.query === "function") {
+  if (typeof chrome !== 'undefined' && chrome.search && typeof chrome.search.query === 'function') {
     chrome.search.query({
       text: query,
-      disposition: "CURRENT_TAB",
+      disposition: 'CURRENT_TAB',
     }).catch((error) => {
-      console.warn("Failed to run default search:", error);
+      console.warn('Failed to run default search:', error);
       showSearchValidationFeedback(SEARCH_UNAVAILABLE_MESSAGE);
     });
     return;
   }
 
-  console.warn("chrome.search.query is unavailable in this browser.");
+  console.warn('chrome.search.query is unavailable in this browser.');
   showSearchValidationFeedback(SEARCH_UNAVAILABLE_MESSAGE);
 }
 
 function runSearch(query) {
   const validation = validateUrl(query);
 
-  if (validation.status === "valid") {
+  if (validation.status === 'valid') {
     recordSearchHistory(query);
     window.location.href = validation.url.href;
     return;
   }
 
-  if (validation.status === "malformed") {
+  if (validation.status === 'malformed') {
     showSearchValidationFeedback(translateValidationMessage(validation.message));
     return;
   }
@@ -491,22 +491,22 @@ function initSearchEngine() {
     return;
   }
 
-  searchBarElement = document.querySelector(".search-bar");
-  searchInputElement = searchBarElement ? searchBarElement.querySelector("input") : null;
+  searchBarElement = document.querySelector('.search-bar');
+  searchInputElement = searchBarElement ? searchBarElement.querySelector('input') : null;
   if (!searchBarElement || !searchInputElement) {
     return;
   }
 
-  searchInputElement.setAttribute("aria-autocomplete", "list");
-  searchInputElement.setAttribute("aria-expanded", "false");
-  searchInputElement.setAttribute("aria-controls", "search-history-panel");
+  searchInputElement.setAttribute('aria-autocomplete', 'list');
+  searchInputElement.setAttribute('aria-expanded', 'false');
+  searchInputElement.setAttribute('aria-controls', 'search-history-panel');
 
-  searchInputElement.addEventListener("focus", function () {
+  searchInputElement.addEventListener('focus', function () {
     isSearchInputFocused = true;
     renderSearchHistorySuggestions();
   });
 
-  searchBarElement.addEventListener("focusout", function (event) {
+  searchBarElement.addEventListener('focusout', function (event) {
     const nextTarget = event.relatedTarget;
     if (nextTarget && searchBarElement.contains(nextTarget)) {
       return;
@@ -516,14 +516,14 @@ function initSearchEngine() {
     hideSearchHistorySuggestions();
   });
 
-  searchInputElement.addEventListener("keydown", function (event) {
-    if (event.key === "Escape") {
+  searchInputElement.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
       isSearchInputFocused = false;
       hideSearchHistorySuggestions();
       return;
     }
 
-    if (event.key !== "Enter") {
+    if (event.key !== 'Enter') {
       return;
     }
 
@@ -534,7 +534,7 @@ function initSearchEngine() {
     runSearch(query);
   });
 
-  searchInputElement.addEventListener("input", function () {
+  searchInputElement.addEventListener('input', function () {
     clearSearchValidationFeedback();
     if (isSearchInputFocused) {
       renderSearchHistorySuggestions();
@@ -544,24 +544,24 @@ function initSearchEngine() {
 }
 
 function showSearchValidationFeedback(message) {
-  let feedbackEl = document.querySelector(".search-validation-feedback");
+  let feedbackEl = document.querySelector('.search-validation-feedback');
   if (!feedbackEl) {
-    feedbackEl = document.createElement("div");
-    feedbackEl.className = "search-validation-feedback";
-    const searchBar = document.querySelector(".search-bar");
+    feedbackEl = document.createElement('div');
+    feedbackEl.className = 'search-validation-feedback';
+    const searchBar = document.querySelector('.search-bar');
     if (searchBar) {
       searchBar.appendChild(feedbackEl);
     }
   }
 
   feedbackEl.textContent = message;
-  feedbackEl.classList.add("show");
+  feedbackEl.classList.add('show');
 }
 
 function clearSearchValidationFeedback() {
-  const feedbackEl = document.querySelector(".search-validation-feedback");
+  const feedbackEl = document.querySelector('.search-validation-feedback');
   if (feedbackEl) {
-    feedbackEl.classList.remove("show");
+    feedbackEl.classList.remove('show');
   }
 }
 
@@ -576,9 +576,9 @@ window.addEventListener('languageChanged', displayDailyMotto);
 
 // Hide footer-left / footer-right when they overlap with the motto container
 function checkFooterOverlap() {
-  const motto = document.getElementById("motto-container");
-  const footerLeft = document.querySelector(".footer-left");
-  const footerRight = document.querySelector(".footer-right");
+  const motto = document.getElementById('motto-container');
+  const footerLeft = document.querySelector('.footer-left');
+  const footerRight = document.querySelector('.footer-right');
 
   if (!motto || (!footerLeft && !footerRight)) return;
 
@@ -588,14 +588,14 @@ function checkFooterOverlap() {
     const leftRect = footerLeft.getBoundingClientRect();
     // Check if the right edge of footer-left is past the left edge of motto (with 5px buffer)
     const overlaps = leftRect.right + 5 >= mottoRect.left;
-    footerLeft.style.opacity = overlaps ? "0" : "";
+    footerLeft.style.opacity = overlaps ? '0' : '';
   }
 
   if (footerRight) {
     const rightRect = footerRight.getBoundingClientRect();
     // Check if the left edge of footer-right is before the right edge of motto (with 5px buffer)
     const overlaps = rightRect.left - 5 <= mottoRect.right;
-    footerRight.style.opacity = overlaps ? "0" : "";
+    footerRight.style.opacity = overlaps ? '0' : '';
   }
 }
 
@@ -603,10 +603,10 @@ function checkFooterOverlap() {
 window.checkFooterOverlap = checkFooterOverlap;
 
 // Set the motto and button functionality after the page has finished loading
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
   displayDailyMotto();
   setupRefreshMotto();
   setupCopyMotto();
   checkFooterOverlap();
-  window.addEventListener("resize", checkFooterOverlap);
+  window.addEventListener('resize', checkFooterOverlap);
 });
