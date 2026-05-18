@@ -15,9 +15,9 @@
   function openDB() {
     return new Promise(function (resolve, reject) {
       if (db) { resolve(db); return; }
-      var request = indexedDB.open(DB_NAME, DB_VERSION);
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = function (e) {
-        var database = e.target.result;
+        const database = e.target.result;
         if (!database.objectStoreNames.contains(STORE_NAME)) {
           database.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
@@ -35,9 +35,9 @@
   function getAllCustomBackgrounds() {
     return openDB().then(function (database) {
       return new Promise(function (resolve, reject) {
-        var tx = database.transaction(STORE_NAME, 'readonly');
-        var store = tx.objectStore(STORE_NAME);
-        var request = store.getAll();
+        const tx = database.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.getAll();
         request.onsuccess = function () { resolve(request.result); };
         request.onerror = function () { reject(request.error); };
       });
@@ -47,9 +47,9 @@
   function getCustomBackground(id) {
     return openDB().then(function (database) {
       return new Promise(function (resolve, reject) {
-        var tx = database.transaction(STORE_NAME, 'readonly');
-        var store = tx.objectStore(STORE_NAME);
-        var request = store.get(id);
+        const tx = database.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get(id);
         request.onsuccess = function () { resolve(request.result); };
         request.onerror = function () { reject(request.error); };
       });
@@ -59,9 +59,9 @@
   function saveCustomBackground(bg) {
     return openDB().then(function (database) {
       return new Promise(function (resolve, reject) {
-        var tx = database.transaction(STORE_NAME, 'readwrite');
-        var store = tx.objectStore(STORE_NAME);
-        var request = store.put(bg);
+        const tx = database.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.put(bg);
         request.onsuccess = function () { resolve(request.result); };
         request.onerror = function () { reject(request.error); };
       });
@@ -71,9 +71,9 @@
   function deleteCustomBackground(id) {
     return openDB().then(function (database) {
       return new Promise(function (resolve, reject) {
-        var tx = database.transaction(STORE_NAME, 'readwrite');
-        var store = tx.objectStore(STORE_NAME);
-        var request = store.delete(id);
+        const tx = database.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.delete(id);
         request.onsuccess = function () { resolve(); };
         request.onerror = function () { reject(request.error); };
       });
@@ -84,15 +84,15 @@
 
   function generateImageThumbnail(file) {
     return new Promise(function (resolve, reject) {
-      var img = new Image();
+      const img = new Image();
       img.onload = function () {
-        var canvas = document.createElement('canvas');
-        var size = 128;
+        const canvas = document.createElement('canvas');
+        const size = 128;
         canvas.width = size;
         canvas.height = size;
-        var ctx = canvas.getContext('2d');
-        var srcAspect = img.width / img.height;
-        var sx, sy, sw, sh;
+        const ctx = canvas.getContext('2d');
+        const srcAspect = img.width / img.height;
+        let sx, sy, sw, sh;
         if (srcAspect > 1) {
           sh = img.height;
           sw = sh;
@@ -118,24 +118,24 @@
 
   function generateVideoThumbnail(file) {
     return new Promise(function (resolve, reject) {
-      var video = document.createElement('video');
+      const video = document.createElement('video');
       video.preload = 'metadata';
       video.muted = true;
       video.playsInline = true;
 
-      var resolved = false;
+      let resolved = false;
 
       function captureFrame() {
         if (resolved) return;
         resolved = true;
         try {
-          var canvas = document.createElement('canvas');
-          var size = 128;
+          const canvas = document.createElement('canvas');
+          const size = 128;
           canvas.width = size;
           canvas.height = size;
-          var ctx = canvas.getContext('2d');
-          var srcAspect = video.videoWidth / video.videoHeight;
-          var sx, sy, sw, sh;
+          const ctx = canvas.getContext('2d');
+          const srcAspect = video.videoWidth / video.videoHeight;
+          let sx, sy, sw, sh;
           if (srcAspect > 1) {
             sh = video.videoHeight;
             sw = sh;
@@ -185,7 +185,7 @@
     if (blobUrlCache[id]) return Promise.resolve(blobUrlCache[id]);
     return getCustomBackground(id).then(function (bg) {
       if (!bg) return null;
-      var url = URL.createObjectURL(bg.data);
+      const url = URL.createObjectURL(bg.data);
       blobUrlCache[id] = url;
       return url;
     });
@@ -237,7 +237,7 @@
 
     if (!unloadSource) return;
 
-    var sourceEl = videoEl.querySelector('source');
+    const sourceEl = videoEl.querySelector('source');
     if (!sourceEl) return;
 
     sourceEl.removeAttribute('src');
@@ -249,7 +249,7 @@
 
   function handleUpload(type) {
     return new Promise(function (resolve) {
-      var input = document.createElement('input');
+      const input = document.createElement('input');
       input.type = 'file';
       input.accept = type === 'video'
         ? 'video/mp4,video/webm,video/ogg'
@@ -258,12 +258,12 @@
       document.body.appendChild(input);
 
       input.addEventListener('change', function () {
-        var file = input.files && input.files[0];
+        const file = input.files && input.files[0];
         document.body.removeChild(input);
         if (!file) { resolve(null); return; }
 
-        var isVideo = file.type.startsWith('video/');
-        var isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        const isImage = file.type.startsWith('image/');
 
         if (type === 'video' && !isVideo) {
           alert('Please select a video file.');
@@ -276,13 +276,13 @@
           return;
         }
 
-        var id = 'custom_' + type + '_' + Date.now();
-        var title = file.name.replace(/\.[^/.]+$/, '');
+        const id = 'custom_' + type + '_' + Date.now();
+        const title = file.name.replace(/\.[^/.]+$/, '');
 
-        var thumbPromise = isVideo ? generateVideoThumbnail(file) : generateImageThumbnail(file);
+        const thumbPromise = isVideo ? generateVideoThumbnail(file) : generateImageThumbnail(file);
 
         thumbPromise.then(function (thumbDataUrl) {
-          var bg = {
+          const bg = {
             id: id,
             title: title,
             type: isVideo ? 'video' : 'image',
@@ -308,8 +308,8 @@
 
   function renderCustomBackgrounds() {
     return getAllCustomBackgrounds().then(function (customBgs) {
-      var staticContainer = document.getElementById('bg-thumbnails-static');
-      var liveContainer = document.getElementById('bg-thumbnails-live');
+      const staticContainer = document.getElementById('bg-thumbnails-static');
+      const liveContainer = document.getElementById('bg-thumbnails-live');
 
       if (!staticContainer || !liveContainer) return;
 
@@ -317,16 +317,16 @@
       staticContainer.querySelectorAll('.custom-bg-thumb-wrapper').forEach(function (el) { el.remove(); });
       liveContainer.querySelectorAll('.custom-bg-thumb-wrapper').forEach(function (el) { el.remove(); });
 
-      var staticBgs = customBgs.filter(function (bg) { return bg.type !== 'video'; });
-      var liveBgs = customBgs.filter(function (bg) { return bg.type === 'video'; });
+      const staticBgs = customBgs.filter(function (bg) { return bg.type !== 'video'; });
+      const liveBgs = customBgs.filter(function (bg) { return bg.type === 'video'; });
 
       // Insert custom static backgrounds before the upload button
-      var staticUploadBtn = staticContainer.querySelector('.upload-bg-btn');
+      const staticUploadBtn = staticContainer.querySelector('.upload-bg-btn');
       staticBgs.forEach(function (bg) {
-        var wrapper = document.createElement('div');
+        const wrapper = document.createElement('div');
         wrapper.className = 'custom-bg-thumb-wrapper';
 
-        var img = document.createElement('img');
+        const img = document.createElement('img');
         img.className = 'bg-thumb';
         img.setAttribute('data-bg', bg.id);
         img.setAttribute('data-custom', 'true');
@@ -334,7 +334,7 @@
         img.title = bg.title;
         img.alt = bg.title;
 
-        var delBtn = document.createElement('button');
+        const delBtn = document.createElement('button');
         delBtn.className = 'custom-bg-delete-btn';
         delBtn.setAttribute('data-bg-id', bg.id);
         delBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
@@ -351,12 +351,12 @@
       });
 
       // Insert custom live backgrounds before the upload button
-      var liveUploadBtn = liveContainer.querySelector('.upload-bg-btn');
+      const liveUploadBtn = liveContainer.querySelector('.upload-bg-btn');
       liveBgs.forEach(function (bg) {
-        var wrapper = document.createElement('div');
+        const wrapper = document.createElement('div');
         wrapper.className = 'custom-bg-thumb-wrapper';
 
-        var img = document.createElement('img');
+        const img = document.createElement('img');
         img.className = 'bg-thumb bg-thumb-video';
         img.setAttribute('data-bg', bg.id);
         img.setAttribute('data-custom', 'true');
@@ -364,7 +364,7 @@
         img.title = bg.title;
         img.alt = bg.title;
 
-        var delBtn = document.createElement('button');
+        const delBtn = document.createElement('button');
         delBtn.className = 'custom-bg-delete-btn';
         delBtn.setAttribute('data-bg-id', bg.id);
         delBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
@@ -381,9 +381,9 @@
       });
 
       // Update selected state
-      var currentBg = localStorage.getItem('homepageBg');
-      var allThumbs = document.querySelectorAll('.bg-thumb[data-custom]');
-      for (var i = 0; i < allThumbs.length; i++) {
+      const currentBg = localStorage.getItem('homepageBg');
+      const allThumbs = document.querySelectorAll('.bg-thumb[data-custom]');
+      for (let i = 0; i < allThumbs.length; i++) {
         allThumbs[i].classList.toggle('selected', allThumbs[i].getAttribute('data-bg') === currentBg);
       }
     });
@@ -392,15 +392,15 @@
   // --- Apply custom background ---
 
   function applyCustomBackground(id) {
-    var loadVersion = ++customBackgroundLoadVersion;
+    const loadVersion = ++customBackgroundLoadVersion;
 
     return getCustomBackground(id).then(function (bg) {
       if (!bg || !isActiveCustomBackgroundRequest(id, loadVersion)) return false;
 
-      var thumbnailEl = document.getElementById('bg-thumbnail');
-      var fullEl = document.getElementById('bg-full');
-      var videoEl = document.getElementById('bg-video');
-      var containerEl = document.getElementById('background-container');
+      const thumbnailEl = document.getElementById('bg-thumbnail');
+      const fullEl = document.getElementById('bg-full');
+      const videoEl = document.getElementById('bg-video');
+      const containerEl = document.getElementById('background-container');
 
       if (!thumbnailEl || !fullEl) return false;
 
@@ -411,7 +411,7 @@
 
       if (!isActiveCustomBackgroundRequest(id, loadVersion)) return false;
 
-      var blobUrl = URL.createObjectURL(bg.data);
+      const blobUrl = URL.createObjectURL(bg.data);
 
       if (!isActiveCustomBackgroundRequest(id, loadVersion)) {
         URL.revokeObjectURL(blobUrl);
@@ -438,7 +438,7 @@
             containerEl.classList.remove('video-fallback', 'video-error');
           }
 
-          var sourceEl = videoEl.querySelector('source');
+          const sourceEl = videoEl.querySelector('source');
           if (!sourceEl) {
             URL.revokeObjectURL(blobUrl);
             delete blobUrlCache[id];
@@ -449,7 +449,7 @@
           sourceEl.type = bg.data.type || 'video/mp4';
           videoEl.load();
 
-          var crossfadeTriggered = false;
+          let crossfadeTriggered = false;
           function triggerCrossfade() {
             if (crossfadeTriggered || !isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
               return;
@@ -529,7 +529,7 @@
         thumbnailEl.classList.remove('hidden', 'clearing');
         thumbnailEl.src = bg.thumb;
 
-        var fullImg = new Image();
+        const fullImg = new Image();
         fullImg.onload = function () {
           if (!isActiveCustomBackgroundRequest(id, loadVersion)) {
             return;
@@ -573,7 +573,7 @@
 
   function showConfirmDialog(title, message) {
     return new Promise(function (resolve) {
-      var dialog = document.createElement('div');
+      const dialog = document.createElement('div');
       dialog.className = 'bg-confirm-dialog screen-overlay';
       dialog.innerHTML =
         '<div class="bg-confirm-overlay"></div>' +
@@ -611,26 +611,26 @@
   // --- Delete handler ---
 
   document.addEventListener('click', function (e) {
-    var delBtn = e.target.closest && e.target.closest('.custom-bg-delete-btn');
+    const delBtn = e.target.closest && e.target.closest('.custom-bg-delete-btn');
     if (!delBtn) return;
 
     e.stopPropagation();
-    var bgId = delBtn.getAttribute('data-bg-id');
+    const bgId = delBtn.getAttribute('data-bg-id');
     if (!bgId) return;
 
     showConfirmDialog('Delete Background', 'This custom background will be permanently removed.').then(function (confirmed) {
       if (!confirmed) return;
 
-      var currentBg = localStorage.getItem('homepageBg');
+      const currentBg = localStorage.getItem('homepageBg');
 
       deleteCustomBackground(bgId).then(function () {
         revokeBlobUrl(bgId);
 
         // If the deleted background was active, reset to a random built-in background
         if (currentBg === bgId) {
-          var builtInBackgrounds = window._backgrounds || [];
+          const builtInBackgrounds = window._backgrounds || [];
           if (builtInBackgrounds.length > 0) {
-            var randomBg = builtInBackgrounds[Math.floor(Math.random() * builtInBackgrounds.length)];
+            const randomBg = builtInBackgrounds[Math.floor(Math.random() * builtInBackgrounds.length)];
             localStorage.setItem('homepageBg', randomBg.id);
           } else {
             localStorage.setItem('homepageBg', 'Water Beside Forest');
@@ -646,10 +646,10 @@
   // --- Upload button handlers ---
 
   document.addEventListener('click', function (e) {
-    var uploadBtn = e.target.closest && e.target.closest('.upload-bg-btn');
+    const uploadBtn = e.target.closest && e.target.closest('.upload-bg-btn');
     if (!uploadBtn) return;
 
-    var type = uploadBtn.getAttribute('data-upload-type');
+    const type = uploadBtn.getAttribute('data-upload-type');
     if (!type) return;
 
     handleUpload(type).then(function (bg) {

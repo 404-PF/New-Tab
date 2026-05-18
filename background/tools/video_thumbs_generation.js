@@ -2,17 +2,17 @@
 // Generates thumbnails from video files using FFmpeg
 // Run with: node background/tools/video_thumbs_generation.js
 
-const fs = require("fs");
-const path = require("path");
-const { execSync } = require("child_process");
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
 
-const LIVE_BG_DIR = path.join(__dirname, "../live_background");
-const OUT_DIR = path.join(__dirname, "../thumbs");
+const LIVE_BG_DIR = path.join(__dirname, '../live_background');
+const OUT_DIR = path.join(__dirname, '../thumbs');
 
 // Thumbnail settings
 const THUMB_SIZE = 128;
 const JPEG_QUALITY = 72;
-const DEFAULT_TIMESTAMP = "00:00:02"; // Extract frame at 2 seconds
+const DEFAULT_TIMESTAMP = '00:00:02'; // Extract frame at 2 seconds
 
 function isVideo(file) {
   return /\.(mp4|webm|ogg)$/i.test(file);
@@ -20,7 +20,7 @@ function isVideo(file) {
 
 function checkFFmpeg() {
   try {
-    execSync("ffmpeg -version", { stdio: "ignore" });
+    execSync('ffmpeg -version', { stdio: 'ignore' });
     return true;
   } catch (e) {
     return false;
@@ -36,17 +36,17 @@ function generateThumbnail(videoPath, outputPath, timestamp = DEFAULT_TIMESTAMP)
   const filter = `scale=-1:${THUMB_SIZE},crop=${THUMB_SIZE}:${THUMB_SIZE}`;
   
   const args = [
-    "-y", // Overwrite output file
-    "-ss", timestamp, // Seek to timestamp
-    "-i", `"${videoPath}"`, // Input file
-    "-vframes", "1", // Extract single frame
-    "-q:v", JPEG_QUALITY.toString(), // Quality
-    "-vf", filter, // Scale up/down then crop to fill (no padding)
+    '-y', // Overwrite output file
+    '-ss', timestamp, // Seek to timestamp
+    '-i', `"${videoPath}"`, // Input file
+    '-vframes', '1', // Extract single frame
+    '-q:v', JPEG_QUALITY.toString(), // Quality
+    '-vf', filter, // Scale up/down then crop to fill (no padding)
     `"${outputPath}"` // Output file
   ];
 
   try {
-    execSync(`ffmpeg ${args.join(" ")}`, { stdio: "pipe" });
+    execSync(`ffmpeg ${args.join(' ')}`, { stdio: 'pipe' });
     console.log(`✓ Created: ${path.basename(outputPath)}`);
     return true;
   } catch (e) {
@@ -57,17 +57,17 @@ function generateThumbnail(videoPath, outputPath, timestamp = DEFAULT_TIMESTAMP)
 }
 
 async function main() {
-  console.log("Video Thumbnail Generator");
-  console.log("=========================\n");
+  console.log('Video Thumbnail Generator');
+  console.log('=========================\n');
 
   // Check for FFmpeg
   if (!checkFFmpeg()) {
-    console.error("ERROR: FFmpeg is not installed or not in PATH.");
-    console.error("Please install FFmpeg to generate video thumbnails.");
-    console.error("\nInstallation options:");
-    console.error("  - Windows: choco install ffmpeg");
-    console.error("  - macOS: brew install ffmpeg");
-    console.error("  - Linux: sudo apt install ffmpeg");
+    console.error('ERROR: FFmpeg is not installed or not in PATH.');
+    console.error('Please install FFmpeg to generate video thumbnails.');
+    console.error('\nInstallation options:');
+    console.error('  - Windows: choco install ffmpeg');
+    console.error('  - macOS: brew install ffmpeg');
+    console.error('  - Linux: sudo apt install ffmpeg');
     process.exit(1);
   }
 
@@ -79,7 +79,7 @@ async function main() {
 
   // Check if live_background directory exists
   if (!fs.existsSync(LIVE_BG_DIR)) {
-    console.log("No live_background directory found.");
+    console.log('No live_background directory found.');
     return;
   }
 
@@ -87,7 +87,7 @@ async function main() {
   const files = fs.readdirSync(LIVE_BG_DIR).filter(isVideo);
 
   if (files.length === 0) {
-    console.log("No video files found in /live_background");
+    console.log('No video files found in /live_background');
     return;
   }
 
@@ -98,7 +98,7 @@ async function main() {
     const videoPath = path.join(LIVE_BG_DIR, file);
     
     // Generate output filename (replace spaces and video extension)
-    const base = file.replace(/\.(mp4|webm|ogg)$/i, "").replace(/\s+/g, "_");
+    const base = file.replace(/\.(mp4|webm|ogg)$/i, '').replace(/\s+/g, '_');
     const outPath = path.join(OUT_DIR, `${base}.jpeg`);
 
     const success = generateThumbnail(videoPath, outPath);
@@ -107,7 +107,7 @@ async function main() {
     }
   }
 
-  console.log("\nDone!");
+  console.log('\nDone!');
 }
 
 main().catch((e) => {

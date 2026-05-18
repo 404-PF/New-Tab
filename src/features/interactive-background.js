@@ -13,9 +13,9 @@
   let isEnabled = false;
   let currentBackgroundId = '';
   let lastFrameTime = 0;
-  let particles = [];
+  const particles = [];
   let animationListenersBound = false;
-  let pointer = {
+  const pointer = {
     x: 0.5,
     y: 0.45,
     targetX: 0.5,

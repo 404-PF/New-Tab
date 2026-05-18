@@ -4,7 +4,7 @@
   'use strict';
 
   // Drag state (using closure instead of global)
-  let dragState = {
+  const dragState = {
     sourceId: null,
     sourceElement: null,
     sourceOrderIndex: -1,
