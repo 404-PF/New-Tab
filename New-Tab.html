@@ -193,6 +193,31 @@
         </div>
 
       </div>
+
+      <!-- Notes Section -->
+      <div class="notes-section">
+        <div class="notes-header">
+          <h3 class="notes-title" data-i18n="notesTitle">Notes</h3>
+          <button id="add-note-btn" class="notes-add-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="notes-list" id="notes-list"></div>
+        <div class="notes-empty" id="notes-empty">
+          <div class="notes-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14,2 14,8 20,8"></polyline>
+              <line x1="12" y1="12" x2="12" y2="18"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <p data-i18n="notesEmpty">No notes yet. Click + to add one!</p>
+        </div>
+      </div>
     </div>
 
   <!-- Clear Completed Confirmation Dialog (Screen Overlay) -->
@@ -323,6 +348,20 @@
                         <option value="60" data-i18n="reminderLeadTime1hour">1 hour before</option>
                         <option value="1440" data-i18n="reminderLeadTime1day">1 day before</option>
                       </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14,2 14,8 20,8"></polyline>
+                      <line x1="12" y1="12" x2="12" y2="18"></line>
+                      <line x1="9" y1="15" x2="15" y2="15"></line>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="notes-enabled-setting" data-i18n="enableNotes">Enable notes scratchpad</label>
+                      <input type="checkbox" id="notes-enabled-setting" />
                     </div>
                   </div>
                 </div>

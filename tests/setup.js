@@ -264,6 +264,8 @@ globalThis.window.i18n = {
       todoSetDate: 'Set date',
       todoEditTooltip: 'Edit Todo',
       todoDeleteTooltip: 'Delete Todo',
+      notesPlaceholder: 'Type your note here...',
+      notesDeleteTooltip: 'Delete Note',
       clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',
       cancel: 'Cancel',
       save: 'Save',
@@ -488,6 +490,19 @@ document.body.appendChild(createStubElement('select', 'filter-status'));
 const todoFilters = document.createElement('div');
 todoFilters.className = 'todo-filters';
 document.body.appendChild(todoFilters);
+
+// Notes elements required for initNotes to run
+const notesSection = document.createElement('div');
+notesSection.className = 'notes-section';
+notesSection.innerHTML = `
+  <div class="notes-header">
+    <h3 class="notes-title">Notes</h3>
+    <button id="add-note-btn" class="notes-add-btn">+</button>
+  </div>
+  <div class="notes-list" id="notes-list"></div>
+  <div class="notes-empty" id="notes-empty"><p>No notes yet.</p></div>
+`;
+document.body.appendChild(notesSection);
 
 // ------------------------------------------------------------------
 // Reset between test files

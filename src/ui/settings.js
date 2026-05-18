@@ -26,15 +26,6 @@ function setBackgroundSectionLoadingState(isLoading) {
   }
 }
 
-function scheduleBackgroundInitialization(callback) {
-  if (typeof window.requestIdleCallback === 'function') {
-    window.requestIdleCallback(callback, { timeout: 1000 });
-    return;
-  }
-
-  window.setTimeout(callback, 0);
-}
-
 function scheduleBackgroundSectionInitialization(callback) {
   if (typeof window.requestAnimationFrame === 'function') {
     window.requestAnimationFrame(() => {
@@ -857,6 +848,28 @@ if (todoReminderLeadTime) {
   });
 }
 
+// Notes enabled
+function loadNotesEnabled() {
+  return localStorage.getItem('notesEnabled') !== 'false';
+}
+function applyNotesEnabled() {
+  const enabled = loadNotesEnabled();
+  const notesSection = document.querySelector('.notes-section');
+  if (notesSection) {
+    notesSection.style.display = enabled ? 'block' : 'none';
+  }
+  const notesEnabledSetting = document.getElementById('notes-enabled-setting');
+  if (notesEnabledSetting) notesEnabledSetting.checked = enabled;
+}
+
+const notesEnabledSetting = document.getElementById('notes-enabled-setting');
+if (notesEnabledSetting) {
+  notesEnabledSetting.addEventListener('change', function () {
+    localStorage.setItem('notesEnabled', this.checked);
+    applyNotesEnabled();
+  });
+}
+
 // Settings menu logic
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];
@@ -1078,11 +1091,9 @@ window.addEventListener('languageChanged', function() {
 
 function initSettings() {
   // Apply initial settings
-  scheduleBackgroundInitialization(function () {
-    if (!initialBackgroundApplied) {
-      applyBg();
-    }
-  });
+  if (!initialBackgroundApplied) {
+    applyBg();
+  }
   applyClockStyle();
   applyClockFormatSetting();
   applyDateStyle();
@@ -1091,6 +1102,7 @@ function initSettings() {
   applyTodoEnabled();
   applyTodoReminderEnabled();
   applyTodoReminderLeadTime();
+  applyNotesEnabled();
   applyLanguageSetting();
   initAboutSection();
 
