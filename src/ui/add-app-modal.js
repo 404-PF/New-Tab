@@ -79,7 +79,7 @@ function getExistingAppNames() {
     }
   }
 
-  Array.from(document.querySelectorAll('.app-icon .app-name')).forEach((element) => {
+  Array.from(document.querySelectorAll('.app-grid .app-icon .app-name')).forEach((element) => {
     if (element && element.textContent) {
       existingNames.add(element.textContent);
     }

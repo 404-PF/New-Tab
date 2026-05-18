@@ -3,10 +3,9 @@ import { injectScript } from './helpers/inject-script.js';
 
 let originalDefaultAppsList = [];
 
-async function flushAddDefaultAppClick() {
+async function flushMicrotasks() {
+  // addDefaultApp resolves on the next microtask when icon caching is synchronous.
   await Promise.resolve();
-  await Promise.resolve();
-  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 beforeAll(() => {
@@ -70,7 +69,7 @@ describe('Add app modal quick add', () => {
     const buttons = document.querySelectorAll('.quick-add-btn');
     buttons[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 
-    await flushAddDefaultAppClick();
+    await flushMicrotasks();
 
     expect(AppGridState.getCustomApps()).toHaveLength(1);
     expect(AppGridState.getCustomApps()[0]).toMatchObject({
@@ -96,10 +95,12 @@ describe('Add app modal quick add', () => {
     document.body.insertAdjacentHTML(
       'afterbegin',
       `
-        <div class="app-icon"><span class="app-name">Google</span></div>
-        <div class="app-icon"><span class="app-name">YouTube</span></div>
-        <div class="app-icon"><span class="app-name">Gmail</span></div>
-        <div class="app-icon"><span class="app-name">GitHub</span></div>
+        <div class="app-grid">
+          <div class="app-icon"><span class="app-name">Google</span></div>
+          <div class="app-icon"><span class="app-name">YouTube</span></div>
+          <div class="app-icon"><span class="app-name">Gmail</span></div>
+          <div class="app-icon"><span class="app-name">GitHub</span></div>
+        </div>
       `
     );
 
@@ -110,6 +111,25 @@ describe('Add app modal quick add', () => {
 
     expect(section?.hidden).toBe(true);
     expect(buttons).toHaveLength(0);
+  });
+
+  it('ignores matching app names outside the app grid', () => {
+    document.body.insertAdjacentHTML(
+      'afterbegin',
+      `
+        <div class="app-icon"><span class="app-name">Google</span></div>
+        <div class="app-grid">
+          <div class="app-icon"><span class="app-name">YouTube</span></div>
+        </div>
+      `
+    );
+
+    renderDefaultAppsList();
+
+    const buttons = Array.from(document.querySelectorAll('.quick-add-btn'));
+
+    expect(buttons.some((button) => button.textContent?.includes('Google'))).toBe(true);
+    expect(buttons.some((button) => button.textContent?.includes('YouTube'))).toBe(false);
   });
 
   it('keeps the section visible when only some quick-add apps already exist', () => {
