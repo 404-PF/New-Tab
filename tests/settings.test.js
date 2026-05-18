@@ -1,4 +1,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import { JSDOM } from 'jsdom';
+import vm from 'vm';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -140,6 +144,75 @@ describe('applyBg stale background regression', () => {
     delete window._backgrounds;
     applyBg();
     expect(window._interactiveBackground.stop).toHaveBeenCalled();
+  });
+});
+
+describe('initSettings background startup', () => {
+  it('requests the background immediately even if idle never runs', () => {
+    const dom = new JSDOM(`<!doctype html><html><body>
+      <div class="background-container" id="background-container">
+        <video class="background-video" id="bg-video"><source src="" type="video/mp4"></video>
+        <img class="background-thumbnail" id="bg-thumbnail" src="" alt="">
+        <img class="background-full" id="bg-full" src="" alt="">
+        <canvas class="background-interactive" id="bg-interactive"></canvas>
+      </div>
+      <div class="settings-menu"></div>
+      <section class="settings-section" data-section="about"></section>
+    </body></html>`, {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      const { window: isolatedWindow } = dom;
+      const requestedSources = [];
+
+      isolatedWindow.localStorage.setItem('homepageBg', 'Mountain View');
+      isolatedWindow._backgrounds = [
+        { id: 'Mountain View', type: 'image', thumb: 'thumb.jpg', url: 'full.jpg' }
+      ];
+      isolatedWindow._interactiveBackground = { stop() {} };
+      isolatedWindow._customBackgrounds = undefined;
+      isolatedWindow.i18n = {
+        currentLanguage() { return 'en'; },
+        getSupportedLanguages() { return []; },
+        t(key) { return key; }
+      };
+      isolatedWindow.updateChecker = {
+        getUpdateStatus() { return ''; },
+        isEnabled() { return true; }
+      };
+      isolatedWindow.requestIdleCallback = vi.fn();
+      isolatedWindow.requestAnimationFrame = (callback) => callback();
+      isolatedWindow.cancelAnimationFrame = () => {};
+
+      class MockImage {
+        set src(value) {
+          requestedSources.push(value);
+          if (typeof this.onload === 'function') {
+            this.onload();
+          }
+        }
+
+        get src() {
+          return requestedSources[requestedSources.length - 1] || '';
+        }
+      }
+
+      isolatedWindow.Image = MockImage;
+
+      const code = readFileSync(resolve(process.cwd(), 'src/ui/settings.js'), 'utf-8');
+      const script = new vm.Script(code);
+      script.runInContext(dom.getInternalVMContext());
+
+      isolatedWindow.document.dispatchEvent(new isolatedWindow.Event('DOMContentLoaded'));
+
+      expect(isolatedWindow.requestIdleCallback).not.toHaveBeenCalled();
+      expect(requestedSources).toContain('full.jpg');
+      expect(isolatedWindow.document.body.getAttribute('data-bg')).toBe('Mountain View');
+    } finally {
+      dom.window.close();
+    }
   });
 });
 

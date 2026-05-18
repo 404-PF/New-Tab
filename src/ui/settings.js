@@ -26,15 +26,6 @@ function setBackgroundSectionLoadingState(isLoading) {
   }
 }
 
-function scheduleBackgroundInitialization(callback) {
-  if (typeof window.requestIdleCallback === 'function') {
-    window.requestIdleCallback(callback, { timeout: 1000 });
-    return;
-  }
-
-  window.setTimeout(callback, 0);
-}
-
 function scheduleBackgroundSectionInitialization(callback) {
   if (typeof window.requestAnimationFrame === 'function') {
     window.requestAnimationFrame(() => {
@@ -1033,11 +1024,9 @@ window.addEventListener('languageChanged', function() {
 
 function initSettings() {
   // Apply initial settings
-  scheduleBackgroundInitialization(function () {
-    if (!initialBackgroundApplied) {
-      applyBg();
-    }
-  });
+  if (!initialBackgroundApplied) {
+    applyBg();
+  }
   applyClockStyle();
   applyClockFormatSetting();
   applyDateStyle();
