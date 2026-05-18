@@ -56,10 +56,10 @@ function saveTodos(todos) {
   }
 }
 
-function scheduleTodoReminderCheck() {
+function scheduleTodoReminderCheck(todoId) {
   try {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
-      chrome.runtime.sendMessage({ type: 'syncTodos' }).catch(() => {});
+      chrome.runtime.sendMessage({ type: 'syncTodos', todoId: todoId || undefined }).catch(() => {});
     }
   } catch (e) {
     console.warn('Failed to send reminder sync message:', e);
@@ -402,7 +402,7 @@ function addTodo(text, dueDate = null) {
 
   applyFilters();
   clearInputs();
-  scheduleTodoReminderCheck();
+  scheduleTodoReminderCheck(newTodo.id);
 }
 
 // Migrate existing todos to have completedAt property
@@ -447,7 +447,7 @@ function editTodo(id, newText, newPriority, newDueDate) {
     }
 
     applyFilters();
-    scheduleTodoReminderCheck();
+    scheduleTodoReminderCheck(id);
   }
 }
 
@@ -473,7 +473,7 @@ function toggleTodo(id) {
     }
 
     applyFilters();
-    scheduleTodoReminderCheck();
+    scheduleTodoReminderCheck(id);
   }
 }
 
@@ -489,7 +489,7 @@ function deleteTodo(id) {
   }
 
   applyFilters();
-  scheduleTodoReminderCheck();
+  scheduleTodoReminderCheck(id);
 }
 
 // Filter management
@@ -1042,7 +1042,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   // Update filter counts and progress
   updateFilterCounts();
   updateProgressRing();
-  scheduleTodoReminderCheck();
+  scheduleTodoReminderCheck(todoId);
 }
 
 // Update due date display
