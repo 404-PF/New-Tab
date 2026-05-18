@@ -3,6 +3,12 @@ import { injectScript } from './helpers/inject-script.js';
 
 let originalDefaultAppsList = [];
 
+async function flushAddDefaultAppClick() {
+  await Promise.resolve();
+  await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 beforeAll(() => {
   injectScript('src/core/app-grid-storage.js');
   injectScript('src/core/app-grid-state.js');
@@ -38,7 +44,9 @@ beforeEach(() => {
     </div>
   `;
 
-  injectScript('src/ui/add-app-modal.js');
+  if (typeof window.resetAddAppModalState === 'function') {
+    window.resetAddAppModalState();
+  }
   window.defaultAppsList = originalDefaultAppsList.map((app) => ({ ...app }));
   window.iconCache = null;
   window.renderCustomApps = vi.fn();
@@ -62,9 +70,7 @@ describe('Add app modal quick add', () => {
     const buttons = document.querySelectorAll('.quick-add-btn');
     buttons[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 
-    await Promise.resolve();
-    await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushAddDefaultAppClick();
 
     expect(AppGridState.getCustomApps()).toHaveLength(1);
     expect(AppGridState.getCustomApps()[0]).toMatchObject({
@@ -104,5 +110,24 @@ describe('Add app modal quick add', () => {
 
     expect(section?.hidden).toBe(true);
     expect(buttons).toHaveLength(0);
+  });
+
+  it('keeps the section visible when only some quick-add apps already exist', () => {
+    AppGridState.addApp({
+      id: 'custom-app-google',
+      name: 'Google',
+      url: 'https://www.google.com',
+      icon: 'https://www.google.com/s2/favicons?domain=google.com&sz=64'
+    });
+
+    renderDefaultAppsList();
+
+    const section = document.querySelector('.add-app-section');
+    const buttons = Array.from(document.querySelectorAll('.quick-add-btn'));
+
+    expect(section?.hidden).toBe(false);
+    expect(buttons).toHaveLength(originalDefaultAppsList.length - 1);
+    expect(buttons[0].textContent).toContain('YouTube');
+    expect(buttons.some((button) => button.textContent?.includes('Google'))).toBe(false);
   });
 });

@@ -33,6 +33,11 @@ const DEFAULT_PREVIEW_ICON = `
 let addAppElementsCache = null;
 let addAppModalInitialized = false;
 
+function resetAddAppModalState() {
+  addAppElementsCache = null;
+  addAppModalInitialized = false;
+}
+
 function getAddAppElements() {
   if (addAppElementsCache) {
     return addAppElementsCache;
@@ -61,7 +66,26 @@ function normalizeAppUrl(url) {
 }
 
 function getExistingAppNames() {
-  return new Set(Array.from(document.querySelectorAll('.app-icon .app-name')).map((element) => element.textContent));
+  const existingNames = new Set();
+
+  if (window.AppGridState && typeof window.AppGridState.getCustomApps === 'function') {
+    const customApps = window.AppGridState.getCustomApps();
+    if (Array.isArray(customApps)) {
+      customApps.forEach((app) => {
+        if (app && typeof app.name === 'string' && app.name.trim() !== '') {
+          existingNames.add(app.name);
+        }
+      });
+    }
+  }
+
+  Array.from(document.querySelectorAll('.app-icon .app-name')).forEach((element) => {
+    if (element && element.textContent) {
+      existingNames.add(element.textContent);
+    }
+  });
+
+  return existingNames;
 }
 
 function resetPreviewIcon() {
@@ -228,7 +252,7 @@ function renderDefaultAppsList() {
       <span class="quick-add-name">${app.name}</span>
     `;
     button.addEventListener('click', async function () {
-      if (existingNames.has(app.name)) {
+      if (getExistingAppNames().has(app.name)) {
         return;
       }
       await addDefaultApp(app);
@@ -394,3 +418,4 @@ window.renderDefaultAppsList = renderDefaultAppsList;
 window.closeAddAppModal = closeAddAppModal;
 window.updateAddAppPreview = updatePreview;
 window.openAddAppModal = openAddAppModal;
+window.resetAddAppModalState = resetAddAppModalState;
