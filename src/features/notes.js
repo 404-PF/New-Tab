@@ -229,6 +229,7 @@ window.addEventListener('beforeunload', () => {
 });
 
 window.addEventListener('languageChanged', () => {
+  flushPendingSaves();
   renderNotes();
 });
 
