@@ -135,7 +135,7 @@ describe('Notes blur cleanup', () => {
     expect(loadNotes()).toHaveLength(1);
 
     const id = loadNotes()[0].id;
-    handleNotesBlur({ target: { closest: () => ({ dataset: { id }, value: '   ' }) } });
+    handleNotesBlur({ target: { closest: () => ({ dataset: { id }, value: '' }) } });
     expect(loadNotes()).toHaveLength(0);
   });
 

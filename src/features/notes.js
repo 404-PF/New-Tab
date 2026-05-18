@@ -96,7 +96,7 @@ function flushPendingSaves() {
     delete debounceTimers[id];
     const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
     if (ta) {
-      const text = (ta.value || '').trim();
+      const text = ta.value || '';
       if (text) {
         updateNoteText(id, text);
       } else {
@@ -169,9 +169,9 @@ function debouncedSave(id, text) {
   if (debounceTimers[id]) clearTimeout(debounceTimers[id]);
   debounceTimers[id] = setTimeout(() => {
     delete debounceTimers[id];
-    const trimmed = (text || '').trim();
-    if (!trimmed) return;
-    updateNoteText(id, trimmed);
+    const raw = text || '';
+    if (!raw) return;
+    updateNoteText(id, raw);
   }, 500);
 }
 
@@ -190,7 +190,7 @@ function handleNotesBlur(e) {
     clearTimeout(debounceTimers[ta.dataset.id]);
     delete debounceTimers[ta.dataset.id];
   }
-  const text = (ta.value || '').trim();
+  const text = ta.value || '';
   if (!text) {
     deleteNote(ta.dataset.id);
     return;
@@ -228,6 +228,7 @@ function initNotes() {
   if (elements.addNoteBtn) {
     elements.addNoteBtn.removeEventListener('click', addNote);
     elements.addNoteBtn.addEventListener('click', addNote);
+    elements.addNoteBtn.title = window.i18n ? window.i18n.t('addNoteTooltip') : 'Add note';
   }
 
   document.removeEventListener('click', handleNotesClick);
@@ -246,6 +247,9 @@ window.addEventListener('beforeunload', () => {
 
 window.addEventListener('languageChanged', () => {
   flushPendingSaves();
+  if (elements.addNoteBtn) {
+    elements.addNoteBtn.title = window.i18n ? window.i18n.t('addNoteTooltip') : 'Add note';
+  }
   renderNotes();
 });
 
