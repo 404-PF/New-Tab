@@ -1,5 +1,6 @@
 const CHECK_INTERVAL_MINUTES = 1;
 const ALARM_NAME = 'todoReminderCheck';
+let reminderCheckInProgress = false;
 
 async function getFromStorage(keys) {
   return new Promise((resolve) => {
@@ -14,34 +15,58 @@ async function setToStorage(items) {
 }
 
 async function checkReminders() {
-  const data = await getFromStorage(['todos', 'todoReminderEnabled', 'todoReminderLeadTime', 'todoReminderNotified']);
-  if (String(data.todoReminderEnabled) !== 'true') return;
-  let todos;
-  try { todos = JSON.parse(data.todos); } catch { todos = []; }
-  if (!Array.isArray(todos) || todos.length === 0) return;
-  const leadTime = parseInt(data.todoReminderLeadTime, 10) || 30;
-  const notified = data.todoReminderNotified || {};
+  if (reminderCheckInProgress) return;
+  reminderCheckInProgress = true;
+  try {
+    const data = await getFromStorage(['todos', 'todoReminderEnabled', 'todoReminderLeadTime', 'todoReminderNotified']);
+    if (String(data.todoReminderEnabled) !== 'true') return;
+    let todos;
+    try { todos = JSON.parse(data.todos); } catch { todos = []; }
+    const leadTime = parseInt(data.todoReminderLeadTime, 10) || 30;
+    const notified = data.todoReminderNotified || {};
 
-  const now = new Date();
-  let updated = false;
+    if (!Array.isArray(todos)) return;
 
-  for (const todo of todos) {
-    if (todo.completed) continue;
-    if (!todo.dueDate) continue;
-    const dueDate = new Date(todo.dueDate + 'T23:59:59');
-    if (isNaN(dueDate.getTime())) continue;
-    const reminderTime = new Date(dueDate.getTime() - leadTime * 60 * 1000);
-    if (now >= reminderTime && now <= dueDate) {
-      const notifiedKey = todo.id + '_' + todo.dueDate;
-      if (notified[notifiedKey]) continue;
-      const dueDisplay = dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-      await showTodoNotification(todo.text, dueDisplay);
-      notified[notifiedKey] = Date.now();
-      updated = true;
+    const validKeys = new Set(
+      todos
+        .filter(t => !t.completed && t.dueDate)
+        .map(t => t.id + '_' + t.dueDate)
+    );
+    let updated = false;
+    for (const key of Object.keys(notified)) {
+      if (!validKeys.has(key)) {
+        delete notified[key];
+        updated = true;
+      }
     }
-  }
-  if (updated) {
-    await setToStorage({ todoReminderNotified: notified });
+
+    if (todos.length === 0) {
+      if (updated) await setToStorage({ todoReminderNotified: notified });
+      return;
+    }
+
+    const now = new Date();
+
+    for (const todo of todos) {
+      if (todo.completed) continue;
+      if (!todo.dueDate) continue;
+      const dueDate = new Date(todo.dueDate + 'T23:59:59');
+      if (isNaN(dueDate.getTime())) continue;
+      const reminderTime = new Date(dueDate.getTime() - leadTime * 60 * 1000);
+      if (now >= reminderTime && now <= dueDate) {
+        const notifiedKey = todo.id + '_' + todo.dueDate;
+        if (notified[notifiedKey]) continue;
+        const dueDisplay = dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        await showTodoNotification(todo.text, dueDisplay);
+        notified[notifiedKey] = Date.now();
+        updated = true;
+      }
+    }
+    if (updated) {
+      await setToStorage({ todoReminderNotified: notified });
+    }
+  } finally {
+    reminderCheckInProgress = false;
   }
 }
 
@@ -65,25 +90,33 @@ function handleStartup() {
   });
 }
 
-chrome.runtime.onInstalled.addListener(handleStartup);
-chrome.runtime.onStartup.addListener(handleStartup);
+if (chrome?.runtime?.onInstalled) {
+  chrome.runtime.onInstalled.addListener(handleStartup);
+  chrome.runtime.onStartup.addListener(handleStartup);
+}
 
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === ALARM_NAME) {
-    checkReminders();
-  }
-});
+if (chrome?.alarms?.onAlarm) {
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === ALARM_NAME) {
+      checkReminders();
+    }
+  });
+}
 
-chrome.notifications.onClicked.addListener((notificationId) => {
-  if (notificationId.startsWith('todo_reminder_')) {
-    chrome.tabs.create({ url: 'New-Tab.html' });
-    chrome.notifications.clear(notificationId);
-  }
-});
+if (chrome?.notifications?.onClicked) {
+  chrome.notifications.onClicked.addListener((notificationId) => {
+    if (notificationId.startsWith('todo_reminder_')) {
+      chrome.tabs.create({ url: 'New-Tab.html' });
+      chrome.notifications.clear(notificationId);
+    }
+  });
+}
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message && message.type === 'syncTodos') {
-    checkReminders().then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
-    return true;
-  }
-});
+if (chrome?.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message && message.type === 'syncTodos') {
+      checkReminders().then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
+      return true;
+    }
+  });
+}

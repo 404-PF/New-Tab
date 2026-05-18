@@ -114,6 +114,7 @@ const testGlobals = {
   validateTodoData: 'readonly',
   showImportDialog: 'readonly',
   scheduleTodoReminderCheck: 'readonly',
+  checkReminders: 'readonly',
   describe: 'readonly',
   it: 'readonly',
   test: 'readonly',

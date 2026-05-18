@@ -743,3 +743,154 @@ describe('Todo reminders', () => {
     chrome.runtime = origRuntime;
   });
 });
+
+describe('Service worker checkReminders', () => {
+  beforeAll(() => {
+    injectScript('background/service-worker.js');
+  });
+
+  beforeEach(() => {
+    chrome.notifications._notifications = {};
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('creates notification for todo within reminder window', async () => {
+    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
+    const todos = [{ id: 't1', text: 'Buy groceries', completed: false, dueDate: '2026-05-20' }];
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify(todos),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30'
+    }, resolve));
+
+    await checkReminders();
+
+    const notifKeys = Object.keys(chrome.notifications._notifications);
+    expect(notifKeys).toHaveLength(1);
+    const notif = chrome.notifications._notifications[notifKeys[0]];
+    expect(notif.message).toContain('Buy groceries');
+  });
+
+  it('does not re-notify already notified todo', async () => {
+    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
+    const todos = [{ id: 't1', text: 'Buy groceries', completed: false, dueDate: '2026-05-20' }];
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify(todos),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: { 't1_2026-05-20': Date.now() }
+    }, resolve));
+
+    await checkReminders();
+
+    expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+  });
+
+  it('re-notifies after completing and reopening a todo', async () => {
+    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
+    const todos = [{ id: 't1', text: 'Buy groceries', completed: true, dueDate: '2026-05-20' }];
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify(todos),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: { 't1_2026-05-20': Date.now() }
+    }, resolve));
+
+    await checkReminders();
+    expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+
+    todos[0].completed = false;
+    await new Promise(resolve => chrome.storage.local.set({ todos: JSON.stringify(todos) }, resolve));
+
+    await checkReminders();
+    expect(Object.keys(chrome.notifications._notifications)).toHaveLength(1);
+  });
+
+  it('removes stale notified entry when todo is deleted', async () => {
+    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
+    const initialNotified = { 't1_2026-05-20': Date.now() };
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify([]),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: initialNotified
+    }, resolve));
+
+    await checkReminders();
+
+    const data = await new Promise(resolve => chrome.storage.local.get('todoReminderNotified', resolve));
+    expect(data.todoReminderNotified).toEqual({});
+  });
+
+  it('fires notification after due date changes', async () => {
+    vi.setSystemTime(new Date('2026-05-21T23:30:00'));
+    const todos = [{ id: 't1', text: 'Buy groceries', completed: false, dueDate: '2026-05-21' }];
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify(todos),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: { 't1_2026-05-20': Date.now() }
+    }, resolve));
+
+    await checkReminders();
+
+    const notifKeys = Object.keys(chrome.notifications._notifications);
+    expect(notifKeys).toHaveLength(1);
+    const notif = chrome.notifications._notifications[notifKeys[0]];
+    expect(notif.message).toContain('Buy groceries');
+  });
+
+  it('does not notify past-due todo', async () => {
+    vi.setSystemTime(new Date('2026-05-22T00:00:00'));
+    const todos = [{ id: 't1', text: 'Buy groceries', completed: false, dueDate: '2026-05-20' }];
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify(todos),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30'
+    }, resolve));
+
+    await checkReminders();
+
+    expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+  });
+
+  it('skips check when reminders are disabled', async () => {
+    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
+    const todos = [{ id: 't1', text: 'Buy groceries', completed: false, dueDate: '2026-05-20' }];
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify(todos),
+      todoReminderEnabled: 'false',
+      todoReminderLeadTime: '30'
+    }, resolve));
+
+    await checkReminders();
+
+    expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+  });
+
+  it('handles empty todos array gracefully', async () => {
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify([]),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30'
+    }, resolve));
+
+    await expect(checkReminders()).resolves.toBeUndefined();
+    expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+  });
+
+  it('handles invalid todo JSON gracefully', async () => {
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: 'not-json',
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30'
+    }, resolve));
+
+    await expect(checkReminders()).resolves.toBeUndefined();
+    expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+  });
+});
