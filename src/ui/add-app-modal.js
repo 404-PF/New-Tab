@@ -198,20 +198,20 @@ function renderDefaultAppsList() {
 
   const defaultAppsSection = defaultAppsContainer.closest(".add-app-section");
   const defaultAppsList = Array.isArray(window.defaultAppsList) ? window.defaultAppsList : [];
+  const existingNames = getExistingAppNames();
+  const availableApps = defaultAppsList.filter((app) => !existingNames.has(app.name));
 
   defaultAppsContainer.innerHTML = "";
   if (defaultAppsSection) {
-    defaultAppsSection.hidden = defaultAppsList.length === 0;
+    defaultAppsSection.hidden = availableApps.length === 0;
   }
 
-  if (defaultAppsList.length === 0) {
+  if (availableApps.length === 0) {
     return;
   }
 
-  const existingNames = getExistingAppNames();
-
-  for (let i = 0; i < defaultAppsList.length; i++) {
-    const app = defaultAppsList[i];
+  for (let i = 0; i < availableApps.length; i++) {
+    const app = availableApps[i];
     const button = document.createElement("button");
     button.className = "quick-add-btn";
     button.innerHTML = `

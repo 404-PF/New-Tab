@@ -85,4 +85,24 @@ describe('Add app modal quick add', () => {
     expect(section?.hidden).toBe(true);
     expect(buttons).toHaveLength(0);
   });
+
+  it('hides quick-add suggestions that already exist in the grid', () => {
+    document.body.insertAdjacentHTML(
+      'afterbegin',
+      `
+        <div class="app-icon"><span class="app-name">Google</span></div>
+        <div class="app-icon"><span class="app-name">YouTube</span></div>
+        <div class="app-icon"><span class="app-name">Gmail</span></div>
+        <div class="app-icon"><span class="app-name">GitHub</span></div>
+      `
+    );
+
+    renderDefaultAppsList();
+
+    const section = document.querySelector('.add-app-section');
+    const buttons = document.querySelectorAll('.quick-add-btn');
+
+    expect(section?.hidden).toBe(true);
+    expect(buttons).toHaveLength(0);
+  });
 });
