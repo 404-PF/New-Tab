@@ -4211,7 +4211,6 @@ body.simple-mode .search-bar {
 /* Simple mode visible states */
 body.simple-mode #app-grid,
 body.simple-mode .todo-section,
-body.simple-mode .notes-section,
 body.simple-mode .footer-left,
 body.simple-mode .footer-right,
 body.simple-mode #settings-modal,

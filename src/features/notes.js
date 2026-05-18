@@ -22,12 +22,19 @@ function loadNotes() {
   }
 }
 
+function showNotesSaveError() {
+  if (typeof showToast === 'function') {
+    showToast('Failed to save note. Your changes were not saved.', 'error');
+  }
+}
+
 function saveNotes(data) {
   try {
     localStorage.setItem('notes', JSON.stringify(data));
     return true;
   } catch (error) {
     console.warn('Failed to save notes to localStorage:', error);
+    showNotesSaveError();
     return false;
   }
 }
@@ -215,9 +222,14 @@ function initNotes() {
   renderNotes();
 
   if (elements.addNoteBtn) {
+    elements.addNoteBtn.removeEventListener('click', addNote);
     elements.addNoteBtn.addEventListener('click', addNote);
   }
 
+  document.removeEventListener('click', handleNotesClick);
+  document.removeEventListener('input', handleNotesInput);
+  document.removeEventListener('blur', handleNotesBlur, true);
+  document.removeEventListener('keydown', handleNotesKeydown);
   document.addEventListener('click', handleNotesClick);
   document.addEventListener('input', handleNotesInput);
   document.addEventListener('blur', handleNotesBlur, true);

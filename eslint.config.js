@@ -60,6 +60,7 @@ const srcGlobals = {
   applyBg: 'readonly',
   mottos: 'readonly',
   translateValidationMessage: 'readonly',
+  showToast: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };
