@@ -266,11 +266,6 @@ function initModernFontPickers() {
     const picker = new ModernFontPicker({
       element: select,
       defaultFont: select.value || '-apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif',
-      onFontSelect: (font) => {
-        // Trigger any existing handlers
-        const event = new Event('change', { bubbles: true });
-        select.dispatchEvent(event);
-      }
     });
     fontPickers.push(picker);
   });
