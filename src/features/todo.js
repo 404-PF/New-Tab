@@ -56,6 +56,16 @@ function saveTodos(todos) {
   }
 }
 
+function scheduleTodoReminderCheck() {
+  try {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+      chrome.runtime.sendMessage({ type: 'syncTodos' }).catch(() => {});
+    }
+  } catch (e) {
+    console.warn('Failed to send reminder sync message:', e);
+  }
+}
+
 function cloneTodos(sourceTodos) {
   return sourceTodos.map(todo => ({ ...todo }));
 }
@@ -392,6 +402,7 @@ function addTodo(text, dueDate = null) {
 
   applyFilters();
   clearInputs();
+  scheduleTodoReminderCheck();
 }
 
 // Migrate existing todos to have completedAt property
@@ -436,6 +447,7 @@ function editTodo(id, newText, newPriority, newDueDate) {
     }
 
     applyFilters();
+    scheduleTodoReminderCheck();
   }
 }
 
@@ -461,6 +473,7 @@ function toggleTodo(id) {
     }
 
     applyFilters();
+    scheduleTodoReminderCheck();
   }
 }
 
@@ -476,6 +489,7 @@ function deleteTodo(id) {
   }
 
   applyFilters();
+  scheduleTodoReminderCheck();
 }
 
 // Filter management
@@ -581,6 +595,7 @@ function showClearCompletedDialog() {
 
     applyFilters();
     hideClearCompletedDialog();
+    scheduleTodoReminderCheck();
     
     // Remove event listeners
     confirmBtn?.removeEventListener('click', handleConfirm);
@@ -1027,6 +1042,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   // Update filter counts and progress
   updateFilterCounts();
   updateProgressRing();
+  scheduleTodoReminderCheck();
 }
 
 // Update due date display
@@ -1469,6 +1485,7 @@ function showImportDialog(importedTodos) {
     todos = existingTodos;
     applyFilters();
     closeEditModal();
+    scheduleTodoReminderCheck();
     if (addedCount > 0) {
       const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, addedCount);
       showToast(msg, 'success');
@@ -1498,6 +1515,7 @@ function showImportDialog(importedTodos) {
     todos = newTodos;
     applyFilters();
     closeEditModal();
+    scheduleTodoReminderCheck();
     const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, newTodos.length);
     showToast(msg, 'success');
     hideDialog();

@@ -150,6 +150,76 @@ globalThis.chrome = {
   },
   search: {
     query: async () => ({}) // no-op
+  },
+  alarms: {
+    _alarms: {},
+    create(name, opts) {
+      chrome.alarms._alarms[name] = opts;
+    },
+    get(name, callback) {
+      callback(chrome.alarms._alarms[name] || null);
+    },
+    clear(name, callback) {
+      delete chrome.alarms._alarms[name];
+      if (callback) callback(true);
+    },
+    clearAll(callback) {
+      chrome.alarms._alarms = {};
+      if (callback) callback(true);
+    }
+  },
+  notifications: {
+    _notifications: {},
+    create(id, opts, callback) {
+      chrome.notifications._notifications[id] = opts;
+      if (callback) callback(id);
+    },
+    clear(id, callback) {
+      delete chrome.notifications._notifications[id];
+      if (callback) callback(true);
+    },
+    onClicked: {
+      _listeners: [],
+      addListener(fn) { chrome.notifications.onClicked._listeners.push(fn); },
+      removeListener(fn) {
+        chrome.notifications.onClicked._listeners = chrome.notifications.onClicked._listeners.filter(l => l !== fn);
+      }
+    }
+  },
+  runtime: {
+    id: 'test-extension-id',
+    _listeners: {},
+    onInstalled: {
+      addListener() {},
+      removeListener() {}
+    },
+    onStartup: {
+      addListener() {},
+      removeListener() {}
+    },
+    onMessage: {
+      _listeners: [],
+      addListener(fn) { chrome.runtime.onMessage._listeners.push(fn); },
+      removeListener(fn) {
+        chrome.runtime.onMessage._listeners = chrome.runtime.onMessage._listeners.filter(l => l !== fn);
+      }
+    },
+    sendMessage(msg, callback) {
+      const listeners = chrome.runtime.onMessage._listeners;
+      let handled = false;
+      for (const fn of listeners) {
+        const result = fn(msg, { tab: { id: 1 } }, () => {});
+        if (result instanceof Promise) {
+          result.catch(() => {});
+        }
+        handled = true;
+      }
+      if (callback) callback(handled ? { ok: true } : undefined);
+      return Promise.resolve(handled ? { ok: true } : undefined);
+    }
+  },
+  tabs: {
+    create(opts) {}
   }
 };
 
@@ -324,7 +394,15 @@ globalThis.window.i18n = {
       validationIncompleteDomain: 'Invalid URL: incomplete domain name',
       validationIpOutOfRange: 'Invalid URL: IP address out of range',
       validationValid: 'Valid URL',
-      validationMalformed: 'Malformed URL'
+      validationMalformed: 'Malformed URL',
+      enableReminders: 'Enable reminders',
+      reminderLeadTime: 'Remind before due',
+      reminderLeadTimeAtDue: 'At due time',
+      reminderLeadTime5min: '5 minutes before',
+      reminderLeadTime15min: '15 minutes before',
+      reminderLeadTime30min: '30 minutes before',
+      reminderLeadTime1hour: '1 hour before',
+      reminderLeadTime1day: '1 day before'
     };
     return fallbacks[key] || key;
   },
@@ -394,6 +472,10 @@ document.body.appendChild(createStubElement('input', 'date-color-picker'));
 document.body.appendChild(createStubElement('select', 'date-font-picker'));
 document.body.appendChild(createStubElement('select', 'date-format-picker'));
 document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
+const leadTimeSelect = document.createElement('select');
+leadTimeSelect.id = 'todo-reminder-lead-time';
+document.body.appendChild(leadTimeSelect);
 document.body.appendChild(createStubElement('div', 'background-container'));
 document.body.appendChild(createStubElement('img', 'bg-thumbnail'));
 document.body.appendChild(createStubElement('img', 'bg-full'));

@@ -59,6 +59,7 @@ const srcGlobals = {
   _getInteractiveBackgrounds: 'readonly',
   applyBg: 'readonly',
   mottos: 'readonly',
+  scheduleTodoReminderCheck: 'readonly',
   translateValidationMessage: 'readonly',
   module: 'readonly',
   exports: 'readonly',
@@ -112,6 +113,7 @@ const testGlobals = {
   clearCompleted: 'readonly',
   validateTodoData: 'readonly',
   showImportDialog: 'readonly',
+  scheduleTodoReminderCheck: 'readonly',
   describe: 'readonly',
   it: 'readonly',
   test: 'readonly',
@@ -172,6 +174,19 @@ module.exports = [
     rules: {
       ...commonRules,
       'no-redeclare': 'off',
+    },
+  },
+  {
+    files: ['background/service-worker.js', 'background/*.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        chrome: 'readonly',
+      },
+    },
+    rules: {
+      ...commonRules,
     },
   },
 ];

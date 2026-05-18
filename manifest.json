@@ -12,7 +12,12 @@
   "chrome_url_overrides": {
     "newtab": "New-Tab.html"
   },
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
   "permissions": [
+    "alarms",
+    "notifications",
     "search",
     "storage"
   ],

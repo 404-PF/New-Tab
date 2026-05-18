@@ -682,3 +682,64 @@ describe('Todo import', () => {
     expect(sorted[3].id).toBe('d');
   });
 });
+
+describe('Todo reminders', () => {
+  beforeEach(() => {
+    localStorage.removeItem('todoReminderEnabled');
+    localStorage.removeItem('todoReminderLeadTime');
+    if (typeof initTodo === 'function') initTodo();
+  });
+
+  it('scheduleTodoReminderCheck does not throw when chrome.runtime is available', () => {
+    addTodo('Test task', '2026-12-31');
+    expect(() => scheduleTodoReminderCheck()).not.toThrow();
+  });
+
+  it('scheduleTodoReminderCheck sends syncTodos message', () => {
+    const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
+    addTodo('Remind me', '2026-12-25');
+    expect(sendMessageSpy).toHaveBeenCalledWith({ type: 'syncTodos' });
+    sendMessageSpy.mockRestore();
+  });
+
+  it('addTodo triggers scheduleTodoReminderCheck', () => {
+    const spy = vi.spyOn(window, 'scheduleTodoReminderCheck');
+    addTodo('Test', '2026-12-31');
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('editTodo triggers scheduleTodoReminderCheck', () => {
+    addTodo('Original', '2026-12-31');
+    const todos = loadTodos();
+    const spy = vi.spyOn(window, 'scheduleTodoReminderCheck');
+    editTodo(todos[0].id, 'Updated', null, '2026-12-30');
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('toggleTodo triggers scheduleTodoReminderCheck', () => {
+    addTodo('Test', '2026-12-31');
+    const todos = loadTodos();
+    const spy = vi.spyOn(window, 'scheduleTodoReminderCheck');
+    toggleTodo(todos[0].id);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('deleteTodo triggers scheduleTodoReminderCheck', () => {
+    addTodo('Test', '2026-12-31');
+    const todos = loadTodos();
+    const spy = vi.spyOn(window, 'scheduleTodoReminderCheck');
+    deleteTodo(todos[0].id);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('scheduleTodoReminderCheck tolerates missing chrome.runtime', () => {
+    const origRuntime = chrome.runtime;
+    chrome.runtime = undefined;
+    expect(() => scheduleTodoReminderCheck()).not.toThrow();
+    chrome.runtime = origRuntime;
+  });
+});
