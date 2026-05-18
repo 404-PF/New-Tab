@@ -15,7 +15,7 @@ async function setToStorage(items) {
   });
 }
 
-async function checkReminders() {
+async function checkReminders(todosJson) {
   if (reminderCheckInProgress) {
     reminderCheckPending = true;
     return;
@@ -23,28 +23,34 @@ async function checkReminders() {
   reminderCheckInProgress = true;
   reminderCheckPending = false;
   try {
-    await runReminderCheck();
+    await runReminderCheck(todosJson);
   } finally {
     reminderCheckInProgress = false;
   }
   if (reminderCheckPending) {
     reminderCheckPending = false;
-    await checkReminders();
+    await checkReminders(todosJson);
   }
 }
 
-async function runReminderCheck() {
-  const data = await getFromStorage(['todos', 'todoReminderEnabled', 'todoReminderLeadTime', 'todoReminderNotified']);
+async function runReminderCheck(todosJson) {
+  const keys = ['todoReminderEnabled', 'todoReminderLeadTime', 'todoReminderNotified'];
+  if (!todosJson) keys.push('todos');
+  const data = await getFromStorage(keys);
   if (String(data.todoReminderEnabled) !== 'true') return;
   let todos;
-  try { todos = JSON.parse(data.todos); } catch { todos = []; }
+  if (todosJson) {
+    try { todos = JSON.parse(todosJson); } catch { todos = []; }
+  } else {
+    try { todos = JSON.parse(data.todos); } catch { todos = []; }
+  }
   const leadTime = parseInt(data.todoReminderLeadTime, 10) || 30;
   const notified = data.todoReminderNotified || {};
 
   if (!Array.isArray(todos)) return;
 
   // Remove notified entries for todos that are completed, no longer have a due date,
-  // or have a changed due date.
+  // or have a changed due date, and clear the corresponding desktop notification.
   const validKeys = new Set(
     todos
       .filter(t => !t.completed && t.dueDate)
@@ -53,6 +59,8 @@ async function runReminderCheck() {
   let updated = false;
   for (const key of Object.keys(notified)) {
     if (!validKeys.has(key)) {
+      const todoId = key.slice(0, -11);
+      chrome.notifications.clear('todo_reminder_' + todoId);
       delete notified[key];
       updated = true;
     }
@@ -136,6 +144,7 @@ if (chrome?.runtime?.onMessage) {
             let updated = false;
             for (const key of Object.keys(notified)) {
               if (key.startsWith(message.todoId + '_')) {
+                chrome.notifications.clear('todo_reminder_' + message.todoId);
                 delete notified[key];
                 updated = true;
               }
@@ -143,8 +152,8 @@ if (chrome?.runtime?.onMessage) {
             if (updated) {
               return setToStorage({ todoReminderNotified: notified });
             }
-          }).then(() => checkReminders())
-        : checkReminders();
+          }).then(() => checkReminders(message.todos))
+        : checkReminders(message.todos);
       run.then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
       return true;
     }

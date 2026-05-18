@@ -59,7 +59,11 @@ function saveTodos(todos) {
 function scheduleTodoReminderCheck(todoId) {
   try {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
-      chrome.runtime.sendMessage({ type: 'syncTodos', todoId: todoId || undefined }).catch(() => {});
+      chrome.runtime.sendMessage({
+        type: 'syncTodos',
+        todoId: todoId || undefined,
+        todos: JSON.stringify(todos)
+      }).catch(() => {});
     }
   } catch (e) {
     console.warn('Failed to send reminder sync message:', e);
