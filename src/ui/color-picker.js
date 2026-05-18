@@ -208,11 +208,6 @@ function initModernColorPickers() {
     const picker = new ModernColorPicker({
       element: input,
       defaultColor: input.value || '#ffffff',
-      onColorSelect: (color) => {
-        // Trigger any existing handlers
-        const event = new Event('input', { bubbles: true });
-        input.dispatchEvent(event);
-      }
     });
     colorPickers.push(picker);
   });
