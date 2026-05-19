@@ -45,7 +45,8 @@ async function runReminderCheck(todosJson) {
   } else {
     try { todos = JSON.parse(data.todos); } catch { todos = []; }
   }
-  const leadTime = parseInt(data.todoReminderLeadTime, 10) || 30;
+  const parsedLeadTime = parseInt(data.todoReminderLeadTime, 10);
+  const leadTime = isNaN(parsedLeadTime) ? 30 : parsedLeadTime;
   const notified = data.todoReminderNotified || {};
 
   if (!Array.isArray(todos)) return;
@@ -120,6 +121,8 @@ function handleStartup() {
 
 if (chrome?.runtime?.onInstalled) {
   chrome.runtime.onInstalled.addListener(handleStartup);
+}
+if (chrome?.runtime?.onStartup) {
   chrome.runtime.onStartup.addListener(handleStartup);
 }
 

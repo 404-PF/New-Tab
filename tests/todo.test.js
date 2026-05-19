@@ -1148,4 +1148,36 @@ describe('Service worker checkReminders', () => {
     createSpy.mockRestore();
     warnSpy.mockRestore();
   });
+
+  it('fires notification at due date when leadTime is 0 (at due time)', async () => {
+    vi.setSystemTime(new Date('2026-05-20T23:59:59'));
+    const todos = [{ id: 't1', text: 'Last minute task', completed: false, dueDate: '2026-05-20' }];
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify(todos),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '0',
+      todoReminderNotified: {}
+    }, resolve));
+
+    await checkReminders();
+
+    const notifKeys = Object.keys(chrome.notifications._notifications);
+    expect(notifKeys).toHaveLength(1);
+    expect(chrome.notifications._notifications[notifKeys[0]].message).toContain('Last minute task');
+  });
+
+  it('does not fire 30 minutes before due date when leadTime is 0', async () => {
+    vi.setSystemTime(new Date('2026-05-20T23:29:59'));
+    const todos = [{ id: 't1', text: 'Too early', completed: false, dueDate: '2026-05-20' }];
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify(todos),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '0',
+      todoReminderNotified: {}
+    }, resolve));
+
+    await checkReminders();
+
+    expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+  });
 });
