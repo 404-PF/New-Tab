@@ -4,6 +4,8 @@
 (function() {
   'use strict';
 
+  const escapeHtml = window.escapeHtml;
+
   // Configuration
   const CACHE_KEY = 'weatherCache';
   const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -360,12 +362,6 @@
       </div>
     `;
     el.style.display = 'flex';
-  }
-
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 
   function hideWidget() {

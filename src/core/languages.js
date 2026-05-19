@@ -2667,9 +2667,15 @@ function updateDynamicTranslations() {
   }
 }
 
-// Get translated text
-function t(key) {
-  return getTranslation(currentLanguage, key);
+// Get translated text with optional placeholder replacement
+function t(key, replacements) {
+  let message = getTranslation(currentLanguage, key);
+  if (replacements && typeof replacements === 'object') {
+    Object.entries(replacements).forEach(([placeholder, value]) => {
+      message = message.replaceAll(`{${placeholder}}`, value);
+    });
+  }
+  return message;
 }
 
 // Initialize language system

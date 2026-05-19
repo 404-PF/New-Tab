@@ -3,11 +3,7 @@
 
   let currentFolderId = null;
   let moveToFolderAppId = null;
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c));
-  }
+  const escapeHtml = window.escapeHtml;
 
   function getFolders() {
     return AppGridState.getFolders();
@@ -172,7 +168,7 @@
     const folder = getFolder(folderId);
     if (!folder) return;
 
-    const msg = window.i18n ? window.i18n.t('deleteFolderConfirm') : 'Delete folder "' + folder.name + '"? Apps inside will be moved back to the grid.';
+    const msg = window.i18n ? window.i18n.t('deleteFolderConfirm', { name: folder.name }) : 'Delete folder "' + folder.name + '"? Apps inside will be moved back to the grid.';
     if (confirm(msg)) {
       if (currentFolderId === folderId) closeFolderPopup();
       AppGridState.deleteFolder(folderId);

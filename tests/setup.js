@@ -185,7 +185,7 @@ globalThis.window.i18n = {
   getSupportedLanguages() {
     return mockLanguages;
   },
-  t(key) {
+  t(key, replacements) {
     // Provide minimal fallback strings for common keys
     const fallbacks = {
       dueDate: 'Due Date',
@@ -328,7 +328,13 @@ globalThis.window.i18n = {
       validationValid: 'Valid URL',
       validationMalformed: 'Malformed URL'
     };
-    return fallbacks[key] || key;
+    let message = fallbacks[key] || key;
+    if (replacements && typeof replacements === 'object') {
+      Object.entries(replacements).forEach(([placeholder, value]) => {
+        message = message.replaceAll(`{${placeholder}}`, value);
+      });
+    }
+    return message;
   },
   applyLanguage() {}
 };

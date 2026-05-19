@@ -1,10 +1,7 @@
 // src/ui/app-manager.js - App grid management, drag and drop
 
 // Helper functions
-const escapeHtml = (str) => {
-  if (!str) return '';
-  return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c));
-};
+const escapeHtml = window.escapeHtml;
 const getDraggableAppIcons = () => Array.from(document.querySelectorAll('.app-grid .app-icon')).filter(icon => icon.id !== 'new-app');
 const getAppOrder = () => AppGridState.getOrder();
 const saveAppOrder = order => AppGridState.saveOrder(order);
@@ -105,7 +102,7 @@ const addApp = document.getElementById('new-app');
   window.dispatchEvent(new CustomEvent('appGridReady'));
 }
 
-// Initial render after caching
+// Initial icon caching; render is deferred to app-folders init
 document.addEventListener('DOMContentLoaded', async () => {
   if (window.iconCache && window.iconCache.cacheExistingAppIcons) {
     try {
@@ -114,7 +111,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.warn('Failed to cache existing app icons:', error);
     }
   }
-  renderAllApps();
 });
 
 // Re-render function (export for other modules)

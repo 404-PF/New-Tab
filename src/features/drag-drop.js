@@ -228,6 +228,10 @@
       icon.classList.remove('drag-over');
     });
 
+    document.querySelectorAll('.drag-over-folder').forEach(icon => {
+      icon.classList.remove('drag-over-folder');
+    });
+
     removePlaceholder();
     document.removeEventListener('dragover', handleGlobalDragOver);
     window.removeEventListener('blur', handleDragAbort);
