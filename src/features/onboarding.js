@@ -560,6 +560,8 @@ class OnboardingTour {
               // Fallback: directly apply theme
               document.body.classList.toggle('light-theme', selectedTheme === 'light');
             }
+            // Notify other components of theme change
+            window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
             // Save progress immediately before the delayed advance
             if (this.currentStep < this.steps.length - 1) {
               localStorage.setItem('onboardingStep', String(this.currentStep + 1));
