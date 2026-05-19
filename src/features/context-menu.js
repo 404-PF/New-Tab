@@ -167,17 +167,20 @@ function positionContextMenu(e) {
   let left = e.pageX;
   let top = e.pageY;
 
-  if (left + 160 > window.innerWidth) {
-    left = window.innerWidth - 160 - 10;
+  contextMenu.style.display = 'block';
+  const menuWidth = contextMenu.offsetWidth;
+  const menuHeight = contextMenu.offsetHeight;
+
+  if (left + menuWidth > window.innerWidth) {
+    left = window.innerWidth - menuWidth - 10;
   }
 
-  if (top + 120 > window.innerHeight) {
-    top = window.innerHeight - 120 - 10;
+  if (top + menuHeight > window.innerHeight) {
+    top = window.innerHeight - menuHeight - 10;
   }
 
   contextMenu.style.left = left + 'px';
   contextMenu.style.top = top + 'px';
-  contextMenu.style.display = 'block';
   document.body.classList.add('context-menu-open');
 }
 

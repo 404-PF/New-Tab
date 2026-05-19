@@ -217,10 +217,6 @@
     list.appendChild(cancelBtn);
 
     selector.style.display = 'flex';
-
-    selector.addEventListener('click', function (e) {
-      if (e.target === selector) hideMoveToFolderSelector();
-    }, { once: true });
   }
 
   function hideMoveToFolderSelector() {
@@ -257,6 +253,16 @@
     if (popup) {
       popup.addEventListener('click', function (e) {
         if (e.target === popup) closeFolderPopup();
+      });
+    }
+
+    // Backdrop click on move-to-folder selector
+    const selector = document.getElementById('move-to-folder-selector');
+    if (selector) {
+      selector.addEventListener('click', function (e) {
+        if (e.target === selector && selector.style.display === 'flex') {
+          hideMoveToFolderSelector();
+        }
       });
     }
 

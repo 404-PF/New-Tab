@@ -368,7 +368,9 @@
     if (target) {
       // If hovering over a folder icon, show folder highlight feedback
       if (target.classList.contains('folder-icon')) {
-        target.classList.add('drag-over-folder');
+        if (dragState.sourceElement && dragState.sourceElement.classList.contains('custom-app')) {
+          target.classList.add('drag-over-folder');
+        }
         removePlaceholder();
         return;
       }
