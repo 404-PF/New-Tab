@@ -37,6 +37,33 @@ function scheduleBackgroundSectionInitialization(callback) {
   window.setTimeout(callback, 0);
 }
 
+// Video playback settings keys
+const VIDEO_AUTOPLAY_KEY = 'videoAutoplay';
+const VIDEO_MUTED_KEY = 'videoMuted';
+const VIDEO_PAUSE_HIDDEN_KEY = 'videoPauseHidden';
+
+function loadVideoAutoplay() {
+  return localStorage.getItem(VIDEO_AUTOPLAY_KEY) !== 'false';
+}
+
+function loadVideoMuted() {
+  return localStorage.getItem(VIDEO_MUTED_KEY) !== 'false';
+}
+
+function loadVideoPauseHidden() {
+  return localStorage.getItem(VIDEO_PAUSE_HIDDEN_KEY) !== 'false';
+}
+
+function applyVideoPlaybackSettings() {
+  const autoplayCheckbox = document.getElementById('video-autoplay-setting');
+  const mutedCheckbox = document.getElementById('video-muted-setting');
+  const pauseHiddenCheckbox = document.getElementById('video-pause-hidden-setting');
+
+  if (autoplayCheckbox) autoplayCheckbox.checked = loadVideoAutoplay();
+  if (mutedCheckbox) mutedCheckbox.checked = loadVideoMuted();
+  if (pauseHiddenCheckbox) pauseHiddenCheckbox.checked = loadVideoPauseHidden();
+}
+
 // Check if browser supports video
 function supportsVideo() {
   const video = document.createElement('video');
@@ -94,6 +121,7 @@ function resetBackgroundVideo(videoEl, unloadSource) {
 
   delete videoEl.dataset.currentBg;
   delete videoEl.dataset.wasPlaying;
+  delete videoEl.dataset.simpleModePaused;
 
   if (!unloadSource) return;
 
@@ -160,16 +188,18 @@ function initVideoVisibilityHandler() {
     if (!videoEl.currentSrc) return;
 
     if (document.hidden) {
-      // Page is hidden - pause video
-      if (!videoEl.paused) {
+      // Page is hidden - pause video if setting allows
+      if (!videoEl.paused && loadVideoPauseHidden()) {
         videoEl.dataset.wasPlaying = 'true';
         videoEl.pause();
       }
     } else {
-      // Page is visible again - resume video if it was playing
-      if (videoEl.dataset.wasPlaying === 'true' && videoEl.paused) {
-        videoEl.play();
+      // Page is visible again - resume video if it was playing and autoplay is enabled
+      if (videoEl.dataset.wasPlaying === 'true' && videoEl.paused && loadVideoAutoplay()) {
+        videoEl.play().catch(() => {});
         videoEl.dataset.wasPlaying = 'false';
+      } else {
+        delete videoEl.dataset.wasPlaying;
       }
     }
   });
@@ -327,6 +357,11 @@ function applyBg() {
       fullEl.classList.remove('loaded');
       fullEl.src = '';
       
+      // Apply user playback settings
+      const videoMuted = loadVideoMuted();
+      videoEl.muted = videoMuted;
+      videoEl.autoplay = loadVideoAutoplay();
+
       // Set video source
       const sourceEl = videoEl.querySelector('source');
       sourceEl.src = bgData.url;
@@ -343,6 +378,8 @@ function applyBg() {
         if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
           return;
         }
+
+        if (!loadVideoAutoplay()) return;
 
         const playPromise = videoEl.play();
         if (playPromise !== undefined) {
@@ -362,11 +399,14 @@ function applyBg() {
 
         crossfadeTriggered = true;
         
-        // Start video playback immediately
-        startVideoPlayback();
-        
         // Remove loading class - video is now ready to show
         videoEl.classList.remove('loading');
+        
+        // When autoplay is disabled, keep thumbnail visible and video hidden
+        if (!loadVideoAutoplay()) return;
+        
+        // Start video playback immediately
+        startVideoPlayback();
         
         // Add active class to trigger video fade-in (2s ease-in-out)
         videoEl.classList.add('active');
@@ -454,7 +494,7 @@ function applyBg() {
           return;
         }
 
-        if (!document.hidden && videoEl.classList.contains('active')) {
+        if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true') {
           videoEl.play().catch(() => {});
         }
       };
@@ -763,7 +803,7 @@ function applyLanguageSetting() {
   }
 }
 
-// Event listeners for theme and language
+// Event listeners for theme, language, and video playback settings
 document.addEventListener('change', function (e) {
   if (e.target.name === 'theme') {
     const selectedTheme = e.target.value;
@@ -775,6 +815,48 @@ document.addEventListener('change', function (e) {
     const selectedLanguage = e.target.value;
     localStorage.setItem('language', selectedLanguage);
     applyLanguageSetting();
+  }
+
+  if (e.target.id !== 'video-autoplay-setting' && e.target.id !== 'video-muted-setting' && e.target.id !== 'video-pause-hidden-setting') {
+    return;
+  }
+
+  const videoAutoplaySetting = document.getElementById('video-autoplay-setting');
+  const videoMutedSetting = document.getElementById('video-muted-setting');
+  const videoPauseHiddenSetting = document.getElementById('video-pause-hidden-setting');
+
+  if (e.target === videoAutoplaySetting) {
+    localStorage.setItem(VIDEO_AUTOPLAY_KEY, videoAutoplaySetting.checked);
+    const videoEl = document.getElementById('bg-video');
+    const thumbnailEl = document.getElementById('bg-thumbnail');
+    if (videoEl && videoEl.currentSrc) {
+      if (videoAutoplaySetting.checked) {
+        // Show video and hide thumbnail when enabling autoplay
+        videoEl.classList.add('active', 'ready');
+        if (thumbnailEl && !thumbnailEl.classList.contains('hidden')) {
+          thumbnailEl.classList.add('clearing');
+          setTimeout(function () {
+            thumbnailEl.classList.add('hidden');
+            thumbnailEl.classList.remove('clearing');
+          }, VIDEO_THUMBNAIL_HIDE_DELAY_MS);
+        }
+        if (!window.loadSimpleMode || !window.loadSimpleMode()) {
+          videoEl.play().catch(function () {});
+        }
+      } else {
+        videoEl.pause();
+      }
+    }
+  } else if (e.target === videoMutedSetting) {
+    localStorage.setItem(VIDEO_MUTED_KEY, videoMutedSetting.checked);
+    // Apply mute state immediately to active video
+    const videoEl = document.getElementById('bg-video');
+    if (videoEl && videoEl.currentSrc) {
+      videoEl.muted = videoMutedSetting.checked;
+    }
+  } else if (e.target === videoPauseHiddenSetting) {
+    localStorage.setItem(VIDEO_PAUSE_HIDDEN_KEY, videoPauseHiddenSetting.checked);
+    // No immediate action needed — takes effect on next visibility change
   }
 });
 
@@ -1055,6 +1137,7 @@ function initSettings() {
   applyTodoEnabled();
   applyNotesEnabled();
   applyLanguageSetting();
+  applyVideoPlaybackSettings();
   initAboutSection();
 
   // Initialize modern color pickers

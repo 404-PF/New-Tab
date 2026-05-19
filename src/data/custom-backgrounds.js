@@ -234,6 +234,7 @@
 
     delete videoEl.dataset.currentBg;
     delete videoEl.dataset.wasPlaying;
+    delete videoEl.dataset.simpleModePaused;
 
     if (!unloadSource) return;
 
@@ -438,6 +439,11 @@
             containerEl.classList.remove('video-fallback', 'video-error');
           }
 
+          // Apply user playback settings
+          const videoMuted = localStorage.getItem('videoMuted') !== 'false';
+          videoEl.muted = videoMuted;
+          videoEl.autoplay = localStorage.getItem('videoAutoplay') !== 'false';
+
           const sourceEl = videoEl.querySelector('source');
           if (!sourceEl) {
             URL.revokeObjectURL(blobUrl);
@@ -456,8 +462,12 @@
             }
 
             crossfadeTriggered = true;
-            videoEl.play().catch(function () {});
             videoEl.classList.remove('loading');
+
+            // When autoplay is disabled, keep thumbnail visible and video hidden
+            if (localStorage.getItem('videoAutoplay') === 'false') return;
+
+            videoEl.play().catch(function () {});
             videoEl.classList.add('active', 'ready');
             thumbnailEl.classList.add('clearing');
 
@@ -515,7 +525,7 @@
               return;
             }
 
-            if (!document.hidden && videoEl.classList.contains('active')) {
+            if (!document.hidden && videoEl.classList.contains('active') && localStorage.getItem('videoAutoplay') !== 'false' && videoEl.dataset.simpleModePaused !== 'true') {
               videoEl.play().catch(function () {});
             }
           };

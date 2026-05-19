@@ -275,7 +275,7 @@
       enumerable: true,
       writable: true
     });
-  } catch (error) {
+  } catch {
     globalThis.localStorage = storageBridge;
   }
 })();

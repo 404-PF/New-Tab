@@ -5,7 +5,6 @@ const escapeHtml = (str) => {
   if (!str) return '';
   return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c));
 };
-const getDraggableAppIcons = () => Array.from(document.querySelectorAll('.app-grid .app-icon')).filter(icon => icon.id !== 'new-app');
 const getAppOrder = () => AppGridState.getOrder();
 const saveAppOrder = order => AppGridState.saveOrder(order);
 

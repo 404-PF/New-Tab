@@ -195,7 +195,6 @@
   // Animate icons to dodge around the placeholder
   function animateDodging(placeholderIndex) {
     const icons = getDraggableIcons();
-    const placeholder = dragState.placeholder;
     
     icons.forEach((icon, idx) => {
       // Skip the source element - don't change its opacity

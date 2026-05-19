@@ -97,6 +97,8 @@ const testGlobals = {
   applyBg: 'readonly',
   loadLanguageSetting: 'readonly',
   renderLanguageOptions: 'readonly',
+  initModernFontPickers: 'readonly',
+  initModernColorPickers: 'readonly',
   initTodo: 'readonly',
   loadTodos: 'readonly',
   saveTodos: 'readonly',
@@ -182,6 +184,7 @@ module.exports = [
     rules: {
       ...commonRules,
       'no-redeclare': 'off',
+      'no-console': 'off',
     },
   },
 ];

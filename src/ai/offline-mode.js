@@ -242,15 +242,6 @@ const OfflineMode = (function() {
    * @returns {string} Result or null if invalid
    */
   function parseMath(input) {
-    // Basic math operations
-    const mathPatterns = [
-      /^(\d+\.?\d*)\s*[+\-*/]\s*(\d+\.?\d*)$/, // Basic: 5+3, 10*2
-      /^(\d+\.?\d*)\s*[+\-*/]\s*(\d+\.?\d*)\s*[+\-*/]\s*(\d+\.?\d*)$/, // Chain: 5+3*2
-      /^sqrt\((\d+\.?\d*)\)$/, // sqrt(16)
-      /^(\d+\.?\d*)\s*\^(\d+)$/, // 2^8
-      /^(\d+)\s*%\s*(\d+)$/, // 50% of 100
-      /^(.+?)\s*(mod|modulo)\s*(.+)$/ // mod: 10 mod 3
-    ];
     
     let result = null;
     
