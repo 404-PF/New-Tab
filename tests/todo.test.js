@@ -1077,4 +1077,75 @@ describe('Service worker checkReminders', () => {
     expect(notifKeys).toHaveLength(1);
     expect(chrome.notifications._notifications[notifKeys[0]].message).toContain('From storage');
   });
+
+  it('handleStartup creates alarm when none exists', () => {
+    chrome.alarms._alarms = {};
+    handleStartup();
+    expect(chrome.alarms._alarms).toHaveProperty('todoReminderCheck');
+    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ periodInMinutes: 1 });
+  });
+
+  it('handleStartup does not overwrite existing alarm', () => {
+    chrome.alarms._alarms = { todoReminderCheck: { periodInMinutes: 5 } };
+    handleStartup();
+    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ periodInMinutes: 5 });
+  });
+
+  it('uses latest data from pending re-entrant call', async () => {
+    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify([]),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: {}
+    }, resolve));
+
+    let resolveFirstGet;
+    const originalGet = chrome.storage.local.get.bind(chrome.storage.local);
+    const getSpy = vi.spyOn(chrome.storage.local, 'get').mockImplementationOnce((keys, callback) => {
+      return new Promise(resolve => {
+        resolveFirstGet = () => {
+          originalGet(keys, callback).then(resolve);
+        };
+      });
+    });
+
+    const firstPromise = checkReminders(JSON.stringify([{ id: 't1', text: 'First data', completed: false, dueDate: '2026-05-20' }]));
+
+    await checkReminders(JSON.stringify([{ id: 't2', text: 'Second data', completed: false, dueDate: '2026-05-20' }]));
+
+    resolveFirstGet();
+    await firstPromise;
+
+    const notifKeys = Object.keys(chrome.notifications._notifications);
+    expect(notifKeys).toHaveLength(1);
+    expect(chrome.notifications._notifications[notifKeys[0]].message).toContain('Second data');
+    expect(chrome.notifications._notifications[notifKeys[0]].message).not.toContain('First data');
+
+    getSpy.mockRestore();
+  });
+
+  it('handles chrome.notifications.create rejection gracefully', async () => {
+    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
+    const createSpy = vi.spyOn(chrome.notifications, 'create').mockRejectedValue(new Error('Permission denied'));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify([{ id: 't1', text: 'Fail notif', completed: false, dueDate: '2026-05-20' }]),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: {}
+    }, resolve));
+
+    await expect(checkReminders()).resolves.toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith('Failed to create todo reminder notification:', expect.any(Error));
+
+    // No notification was created (rejected), but still marked as notified to prevent retry-spam
+    expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+    const data = await new Promise(resolve => chrome.storage.local.get('todoReminderNotified', resolve));
+    expect(data.todoReminderNotified).toHaveProperty('t1_2026-05-20');
+
+    createSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
 });

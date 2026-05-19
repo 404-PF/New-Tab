@@ -1,7 +1,7 @@
 const CHECK_INTERVAL_MINUTES = 1;
 const ALARM_NAME = 'todoReminderCheck';
 let reminderCheckInProgress = false;
-let reminderCheckPending = false;
+let reminderCheckPendingData = null;
 
 async function getFromStorage(keys) {
   return new Promise((resolve) => {
@@ -17,19 +17,20 @@ async function setToStorage(items) {
 
 async function checkReminders(todosJson) {
   if (reminderCheckInProgress) {
-    reminderCheckPending = true;
+    reminderCheckPendingData = todosJson;
     return;
   }
   reminderCheckInProgress = true;
-  reminderCheckPending = false;
+  reminderCheckPendingData = null;
   try {
     await runReminderCheck(todosJson);
   } finally {
     reminderCheckInProgress = false;
   }
-  if (reminderCheckPending) {
-    reminderCheckPending = false;
-    await checkReminders(todosJson);
+  if (reminderCheckPendingData !== null) {
+    const nextTodos = reminderCheckPendingData;
+    reminderCheckPendingData = null;
+    await checkReminders(nextTodos);
   }
 }
 
@@ -59,7 +60,8 @@ async function runReminderCheck(todosJson) {
   let updated = false;
   for (const key of Object.keys(notified)) {
     if (!validKeys.has(key)) {
-      const todoId = key.slice(0, -11);
+      const underscoreIdx = key.lastIndexOf('_');
+      const todoId = underscoreIdx !== -1 ? key.slice(0, underscoreIdx) : key;
       chrome.notifications.clear('todo_reminder_' + todoId);
       delete notified[key];
       updated = true;
@@ -95,14 +97,17 @@ async function runReminderCheck(todosJson) {
 
 async function showTodoNotification(todo, dueDisplay) {
   const id = 'todo_reminder_' + todo.id;
-  await chrome.notifications.create(id, {
-    type: 'basic',
-    iconUrl: 'icons/icon128.png',
-    title: 'Todo Reminder',
-    message: todo.text + ' — due ' + dueDisplay,
-    contextMessage: 'New Tab Todo List',
-    priority: 1
-  });
+  try {
+    await chrome.notifications.create(id, {
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: chrome.i18n.getMessage('todoReminderTitle'),
+      message: chrome.i18n.getMessage('todoReminderMessage', [todo.text, dueDisplay]),
+      priority: 1
+    });
+  } catch (e) {
+    console.warn('Failed to create todo reminder notification:', e);
+  }
 }
 
 function handleStartup() {

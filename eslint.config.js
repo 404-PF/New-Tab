@@ -116,6 +116,7 @@ const testGlobals = {
   showImportDialog: 'readonly',
   scheduleTodoReminderCheck: 'readonly',
   checkReminders: 'readonly',
+  handleStartup: 'readonly',
   initNotes: 'readonly',
   loadNotes: 'readonly',
   saveNotes: 'readonly',

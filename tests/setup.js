@@ -143,6 +143,21 @@ const createStorageArea = () => {
 };
 
 globalThis.chrome = {
+  i18n: {
+    getMessage(messageName, substitutions) {
+      const messages = {
+        todoReminderTitle: 'Todo Reminder',
+        todoReminderMessage: '$1$ \u2014 due $2$'
+      };
+      let msg = messages[messageName] || messageName;
+      if (substitutions && Array.isArray(substitutions)) {
+        substitutions.forEach((sub, i) => {
+          msg = msg.replace(new RegExp('\\$' + (i + 1) + '\\$', 'g'), sub);
+        });
+      }
+      return msg;
+    }
+  },
   storage: {
     onChanged: createEvent(),
     local: createStorageArea(),
