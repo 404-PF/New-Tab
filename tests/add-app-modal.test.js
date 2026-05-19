@@ -1,3 +1,4 @@
+/* global renderDefaultAppsList */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 

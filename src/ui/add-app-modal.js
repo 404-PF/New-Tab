@@ -2,24 +2,24 @@
 
 window.defaultAppsList = [
   {
-    name: "Google",
-    url: "https://www.google.com",
-    icon: "https://www.google.com/s2/favicons?domain=google.com&sz=64",
+    name: 'Google',
+    url: 'https://www.google.com',
+    icon: 'https://www.google.com/s2/favicons?domain=google.com&sz=64',
   },
   {
-    name: "YouTube",
-    url: "https://www.youtube.com",
-    icon: "https://www.google.com/s2/favicons?domain=youtube.com&sz=64",
+    name: 'YouTube',
+    url: 'https://www.youtube.com',
+    icon: 'https://www.google.com/s2/favicons?domain=youtube.com&sz=64',
   },
   {
-    name: "Gmail",
-    url: "https://mail.google.com",
-    icon: "https://www.google.com/s2/favicons?domain=mail.google.com&sz=64",
+    name: 'Gmail',
+    url: 'https://mail.google.com',
+    icon: 'https://www.google.com/s2/favicons?domain=mail.google.com&sz=64',
   },
   {
-    name: "GitHub",
-    url: "https://github.com",
-    icon: "https://www.google.com/s2/favicons?domain=github.com&sz=64",
+    name: 'GitHub',
+    url: 'https://github.com',
+    icon: 'https://www.google.com/s2/favicons?domain=github.com&sz=64',
   },
 ];
 const DEFAULT_PREVIEW_ICON = `
