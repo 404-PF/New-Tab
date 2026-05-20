@@ -227,6 +227,8 @@
     videoEl.onloadedmetadata = null;
     videoEl.onerror = null;
     videoEl.onpause = null;
+    videoEl.oncontextmenu = null;
+    videoEl.onplay = null;
 
     videoEl.classList.remove('active', 'ready', 'loading');
     videoEl.classList.add('hidden');
@@ -235,6 +237,7 @@
     delete videoEl.dataset.currentBg;
     delete videoEl.dataset.wasPlaying;
     delete videoEl.dataset.simpleModePaused;
+    delete videoEl.dataset.userPaused;
 
     if (!unloadSource) return;
 
@@ -525,9 +528,20 @@
               return;
             }
 
+            if (videoEl.dataset.userPaused === 'true') return;
+
             if (!document.hidden && videoEl.classList.contains('active') && localStorage.getItem('videoAutoplay') !== 'false' && videoEl.dataset.simpleModePaused !== 'true') {
               videoEl.play().catch(function () {});
             }
+          };
+
+          videoEl.oncontextmenu = function () {
+            videoEl.dataset.userPaused = 'true';
+            setTimeout(function () { delete videoEl.dataset.userPaused; }, 3000);
+          };
+
+          videoEl.onplay = function () {
+            delete videoEl.dataset.userPaused;
           };
         }
       } else {

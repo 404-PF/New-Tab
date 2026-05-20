@@ -114,6 +114,8 @@ function resetBackgroundVideo(videoEl, unloadSource) {
   videoEl.onloadedmetadata = null;
   videoEl.onerror = null;
   videoEl.onpause = null;
+  videoEl.oncontextmenu = null;
+  videoEl.onplay = null;
 
   videoEl.classList.remove('active', 'ready', 'loading');
   videoEl.classList.add('hidden');
@@ -122,6 +124,7 @@ function resetBackgroundVideo(videoEl, unloadSource) {
   delete videoEl.dataset.currentBg;
   delete videoEl.dataset.wasPlaying;
   delete videoEl.dataset.simpleModePaused;
+  delete videoEl.dataset.userPaused;
 
   if (!unloadSource) return;
 
@@ -494,9 +497,20 @@ function applyBg() {
           return;
         }
 
+        if (videoEl.dataset.userPaused === 'true') return;
+
         if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true') {
           videoEl.play().catch(() => {});
         }
+      };
+
+      videoEl.oncontextmenu = function() {
+        videoEl.dataset.userPaused = 'true';
+        setTimeout(function() { delete videoEl.dataset.userPaused; }, 3000);
+      };
+
+      videoEl.onplay = function() {
+        delete videoEl.dataset.userPaused;
       };
     }
     return;
@@ -831,19 +845,44 @@ document.addEventListener('change', function (e) {
     const thumbnailEl = document.getElementById('bg-thumbnail');
     if (videoEl && videoEl.currentSrc) {
       if (videoAutoplaySetting.checked) {
-        // Show video and hide thumbnail when enabling autoplay
-        videoEl.classList.add('active', 'ready');
-        if (thumbnailEl && !thumbnailEl.classList.contains('hidden')) {
-          thumbnailEl.classList.add('clearing');
-          setTimeout(function () {
-            thumbnailEl.classList.add('hidden');
-            thumbnailEl.classList.remove('clearing');
-          }, VIDEO_THUMBNAIL_HIDE_DELAY_MS);
-        }
-        if (!window.loadSimpleMode || !window.loadSimpleMode()) {
-          videoEl.play().catch(function () {});
+        delete videoEl.dataset.userPaused;
+
+        if (videoEl.readyState >= 2) {
+          // Video already loaded — show it immediately
+          videoEl.classList.add('active', 'ready');
+          if (thumbnailEl && !thumbnailEl.classList.contains('hidden')) {
+            thumbnailEl.classList.add('clearing');
+            setTimeout(function () {
+              thumbnailEl.classList.add('hidden');
+              thumbnailEl.classList.remove('clearing');
+            }, VIDEO_THUMBNAIL_HIDE_DELAY_MS);
+          }
+          if (!window.loadSimpleMode || !window.loadSimpleMode()) {
+            videoEl.play().catch(function () {});
+          }
+        } else {
+          // Video not ready yet — wait for load then show
+          videoEl.classList.remove('hidden');
+          videoEl.classList.add('loading');
+          videoEl.oncanplaythrough = function() {
+            videoEl.oncanplaythrough = null;
+            videoEl.classList.remove('loading');
+            videoEl.classList.add('active', 'ready');
+            if (thumbnailEl && !thumbnailEl.classList.contains('hidden')) {
+              thumbnailEl.classList.add('clearing');
+              setTimeout(function () {
+                thumbnailEl.classList.add('hidden');
+                thumbnailEl.classList.remove('clearing');
+              }, VIDEO_THUMBNAIL_HIDE_DELAY_MS);
+            }
+            if (!window.loadSimpleMode || !window.loadSimpleMode()) {
+              videoEl.play().catch(function () {});
+            }
+          };
+          videoEl.load();
         }
       } else {
+        videoEl.oncanplaythrough = null;
         videoEl.pause();
       }
     }

@@ -111,7 +111,6 @@ const testGlobals = {
   filterTodos: 'readonly',
   formatDateISO: 'readonly',
   isOverdue: 'readonly',
-  escapeHtml: 'readonly',
   clearCompleted: 'readonly',
   validateTodoData: 'readonly',
   showImportDialog: 'readonly',
