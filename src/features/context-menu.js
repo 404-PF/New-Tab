@@ -2,6 +2,7 @@
 
 
 let contextTargetId = null;
+let contextTargetFolderId = null;
 let contextMenuInitialized = false;
 const runContextMenuOnDomReady = window.onDomReady;
 
@@ -196,6 +197,7 @@ document.addEventListener('contextmenu', function (e) {
     e.preventDefault();
     const realAppId = customAppIcon.id.replace(/^popup-/, '');
     contextTargetId = realAppId;
+    contextTargetFolderId = window.AppFolders ? window.AppFolders.currentFolderId : null;
     setContextMenuItems('folder-app');
     positionContextMenu(e);
     return;
@@ -265,7 +267,7 @@ document.getElementById('rename-app').addEventListener('click', function () {
 document.getElementById('remove-from-folder').addEventListener('click', function () {
   if (contextMenuTrigger !== 'folder-app') return;
   if (!contextTargetId) return;
-  const folderId = window.AppFolders ? window.AppFolders.currentFolderId : null;
+  const folderId = contextTargetFolderId;
   if (folderId) {
     AppGridState.removeAppFromFolder(folderId, contextTargetId);
     if (window.AppFolders) window.AppFolders.renderFolderAppsInPopup();

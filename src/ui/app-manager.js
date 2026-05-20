@@ -55,6 +55,8 @@ const addApp = document.getElementById('new-app');
     && order.every(id => validIds.has(id))
     && new Set(order).size === order.length;
   if (!isValidOrder) {
+    // During recovery, all folders are appended after apps, which may lose
+    // any interleaved positioning users had set between folders and apps.
     order = dedupedApps.map(app => app.id);
     folders.forEach(f => order.push(f.id));
     saveAppOrder(order);
@@ -63,7 +65,10 @@ const addApp = document.getElementById('new-app');
   const appMap = Object.fromEntries(dedupedApps.map(app => [app.id, app]));
   order.forEach(appId => {
     if (folderMap[appId]) {
-      if (!window.AppFolders) return;
+      if (!window.AppFolders) {
+        console.warn('AppFolders not initialized, skipping folder:', appId);
+        return;
+      }
       const folder = folderMap[appId];
       const folderEl = window.AppFolders.createFolderIconElement(folder);
       appGrid.insertBefore(folderEl, addApp);
@@ -86,9 +91,8 @@ const addApp = document.getElementById('new-app');
     // Use cached icon if available, otherwise use original icon
     const iconUrl = app.cachedIcon || app.icon;
     a.title = displayName;
-    // Load icon from external file (use images/icons/feedback.svg) rather than embedding inline SVG in JS.
-    // The SVG file (`images/icons/feedback.svg`) uses `currentColor` where appropriate.
-    const iconHtml = `<div class="icon"><img src="${escapeHtml(iconUrl)}" alt="${escapeHtml(displayName)}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/globe.svg';"></div>`;
+    const safeIconUrl = window.validateIconUrl ? window.validateIconUrl(iconUrl) : iconUrl;
+    const iconHtml = `<div class="icon"><img src="${escapeHtml(safeIconUrl || '')}" alt="${escapeHtml(displayName)}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/globe.svg';"></div>`;
     a.innerHTML = iconHtml + `<span class="app-name">${escapeHtml(displayName)}</span>`;
     appGrid.insertBefore(a, addApp);
   });

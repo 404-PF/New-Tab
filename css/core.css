@@ -1514,6 +1514,21 @@ body.light-theme .app-icon.folder-icon .icon {
   transform: scale(1.08);
 }
 
+/* Drag-over folder rejected (non-custom-app) */
+.app-icon.folder-icon.drag-over-folder-rejected {
+  cursor: not-allowed;
+  transform: scale(1.08);
+}
+
+.app-icon.folder-icon.drag-over-folder-rejected .icon {
+  background: rgba(244, 67, 54, 0.15);
+  box-shadow:
+    0 8px 32px rgba(244, 67, 54, 0.2),
+    0 0 0 2px rgba(244, 67, 54, 0.4),
+    inset 0 0 20px rgba(255, 255, 255, 0.05);
+  border-color: rgba(244, 67, 54, 0.3);
+}
+
 .app-icon.folder-icon.drag-over-folder .icon {
   background: rgba(33, 150, 243, 0.2);
   box-shadow:

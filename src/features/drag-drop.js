@@ -228,8 +228,8 @@
       icon.classList.remove('drag-over');
     });
 
-    document.querySelectorAll('.drag-over-folder').forEach(icon => {
-      icon.classList.remove('drag-over-folder');
+    getAppGrid().querySelectorAll('.drag-over-folder, .drag-over-folder-rejected').forEach(icon => {
+      icon.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
     });
 
     removePlaceholder();
@@ -370,11 +370,13 @@
       if (target.classList.contains('folder-icon')) {
         if (dragState.sourceElement && dragState.sourceElement.classList.contains('custom-app')) {
           target.classList.add('drag-over-folder');
+        } else {
+          target.classList.add('drag-over-folder-rejected');
         }
         removePlaceholder();
         return;
       }
-      target.classList.remove('drag-over-folder');
+      target.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
 
       // Only add class if not dragging the same element
       if (target.id !== dragState.sourceId) {
@@ -395,6 +397,7 @@
     if (target) {
       target.classList.remove('drag-over');
       target.classList.remove('drag-over-folder');
+      target.classList.remove('drag-over-folder-rejected');
     }
   }
 
@@ -412,7 +415,7 @@
 
     // If dropped on a folder icon, add the app to the folder
     if (target && target.classList.contains('folder-icon')) {
-      target.classList.remove('drag-over-folder');
+      target.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
       const sourceEl = dragState.sourceElement;
       if (sourceEl && !sourceEl.classList.contains('custom-app')) {
         removePlaceholder();
