@@ -32,11 +32,12 @@
 
     const previews = apps.slice(0, 3).map((app, i) => {
       const iconUrl = app.cachedIcon || app.icon || '';
+      const safeIconUrl = window.validateIconUrl ? window.validateIconUrl(iconUrl) : iconUrl;
       const offsetX = i * 3;
       const offsetY = i * 3;
       const size = count === 1 ? '100%' : '70%';
       const zIndex = 3 - i;
-      return `<img src="${escapeHtml(iconUrl)}" alt="" class="folder-preview-icon" style="position:absolute;top:${offsetY}px;left:${offsetX}px;width:${size};height:${size};object-fit:contain;border-radius:4px;z-index:${zIndex}" onerror="this.style.display='none'">`;
+      return `<img src="${escapeHtml(safeIconUrl || '')}" alt="" class="folder-preview-icon" style="position:absolute;top:${offsetY}px;left:${offsetX}px;width:${size};height:${size};object-fit:contain;border-radius:4px;z-index:${zIndex}" onerror="this.style.display='none'">`;
     }).join('');
 
     const badge = count > 3 ? `<span class="folder-count-badge">+${count - 3}</span>` : '';
@@ -135,7 +136,8 @@
         a.setAttribute('rel', 'noopener noreferrer');
       }
 
-      a.innerHTML = `<div class="icon"><img src="${escapeHtml(iconUrl)}" alt="${escapeHtml(displayName)}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/globe.svg';"></div><span class="app-name">${escapeHtml(displayName)}</span>`;
+      const safeIconUrl = window.validateIconUrl ? window.validateIconUrl(iconUrl) : iconUrl;
+      a.innerHTML = `<div class="icon"><img src="${escapeHtml(safeIconUrl || '')}" alt="${escapeHtml(displayName)}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/globe.svg';"></div><span class="app-name">${escapeHtml(displayName)}</span>`;
 
       grid.appendChild(a);
     });

@@ -17,7 +17,7 @@ const defaultApps = [
   { id: 'feedback-app', nameKey: 'feedback', url: 'https://github.com/404-PF/New-Tab/issues/new', icon: 'images/icons/feedback.svg', className: 'default-app' },
   { id: 'settings-app', nameKey: 'settings', url: '#', icon: 'images/icons/settings.svg', className: 'default-app' },
 ];
-window.defaultApps = defaultApps;
+window.defaultApps = Object.freeze(defaultApps);
 
 // Get all apps data
 const getAllAppData = () => {
