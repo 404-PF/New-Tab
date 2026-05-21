@@ -6,5 +6,13 @@
   "description": {
     "message": "一个美观、可定制的新标签页，提供时钟、搜索、应用、背景、待办和 AI 助手。",
     "description": "The description of the extension"
+  },
+  "todoReminderTitle": {
+    "message": "待办提醒",
+    "description": "Title for the todo reminder notification"
+  },
+  "todoReminderMessage": {
+    "message": "$1$ — 到期 $2$",
+    "description": "Notification body for todo reminder. $1$ is the task text, $2$ is the due date display."
   }
 }
