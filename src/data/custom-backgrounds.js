@@ -459,6 +459,7 @@
             videoEl.play().catch(function () {});
             videoEl.classList.remove('loading');
             videoEl.classList.add('active', 'ready');
+            if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
             thumbnailEl.classList.add('clearing');
 
             customBackgroundTransitionTimeout = setTimeout(function () {
@@ -508,6 +509,7 @@
               }
 
               fullEl.classList.add('loaded');
+              if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
             });
           };
           videoEl.onpause = function () {
@@ -543,6 +545,7 @@
             }
 
             fullEl.classList.add('loaded');
+            if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
             thumbnailEl.classList.add('clearing');
 
             customBackgroundTransitionTimeout = setTimeout(function () {

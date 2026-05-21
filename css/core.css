@@ -116,6 +116,29 @@
   opacity: 1;
 }
 
+/* Transition overlay - captures current background during crossfade between backgrounds */
+.background-transition-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.4s ease-out;
+  will-change: opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.background-transition-overlay.active {
+  opacity: 1;
+}
+
 /* Hide thumbnail after full image is visible */
 .background-thumbnail.hidden {
   opacity: 0;
@@ -216,6 +239,9 @@
   .background-video {
     transition: none;
     animation: none;
+  }
+  .background-transition-overlay {
+    transition: none;
   }
 }
 
