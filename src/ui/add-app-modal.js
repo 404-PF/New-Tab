@@ -1,6 +1,27 @@
 // src/ui/add-app-modal.js - Add app modal helpers and behavior
 
-const defaultAppsList = [];
+window.defaultAppsList = [
+  {
+    name: 'Google',
+    url: 'https://www.google.com',
+    icon: 'https://www.google.com/s2/favicons?domain=google.com&sz=64',
+  },
+  {
+    name: 'YouTube',
+    url: 'https://www.youtube.com',
+    icon: 'https://www.google.com/s2/favicons?domain=youtube.com&sz=64',
+  },
+  {
+    name: 'Gmail',
+    url: 'https://mail.google.com',
+    icon: 'https://www.google.com/s2/favicons?domain=mail.google.com&sz=64',
+  },
+  {
+    name: 'GitHub',
+    url: 'https://github.com',
+    icon: 'https://www.google.com/s2/favicons?domain=github.com&sz=64',
+  },
+];
 const DEFAULT_PREVIEW_ICON = `
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -11,6 +32,11 @@ const DEFAULT_PREVIEW_ICON = `
 
 let addAppElementsCache = null;
 let addAppModalInitialized = false;
+
+function resetAddAppModalState() {
+  addAppElementsCache = null;
+  addAppModalInitialized = false;
+}
 
 function getAddAppElements() {
   if (addAppElementsCache) {
@@ -40,7 +66,28 @@ function normalizeAppUrl(url) {
 }
 
 function getExistingAppNames() {
-  return new Set(Array.from(document.querySelectorAll('.app-icon .app-name')).map((element) => element.textContent));
+  const existingNames = new Set();
+
+  if (window.AppGridState && typeof window.AppGridState.getCustomApps === 'function') {
+    const customApps = window.AppGridState.getCustomApps();
+    if (Array.isArray(customApps)) {
+      customApps.forEach((app) => {
+        if (app && typeof app.name === 'string' && app.name.trim() !== '') {
+          existingNames.add(app.name);
+        }
+      });
+    }
+  }
+
+  // NOTE: This selector is coupled to the app grid structure in New-Tab.html.
+  // If .app-grid or its child classes change, update this selector accordingly.
+  Array.from(document.querySelectorAll('.app-grid .app-icon .app-name')).forEach((element) => {
+    if (element && element.textContent) {
+      existingNames.add(element.textContent);
+    }
+  });
+
+  return existingNames;
 }
 
 function resetPreviewIcon() {
@@ -175,11 +222,22 @@ function renderDefaultAppsList() {
     return;
   }
 
-  defaultAppsContainer.innerHTML = '';
+  const defaultAppsSection = defaultAppsContainer.closest('.add-app-section');
+  const defaultAppsList = Array.isArray(window.defaultAppsList) ? window.defaultAppsList : [];
   const existingNames = getExistingAppNames();
+  const availableApps = defaultAppsList.filter((app) => !existingNames.has(app.name));
 
-  for (let i = 0; i < defaultAppsList.length; i++) {
-    const app = defaultAppsList[i];
+  defaultAppsContainer.innerHTML = '';
+  if (defaultAppsSection) {
+    defaultAppsSection.hidden = availableApps.length === 0;
+  }
+
+  if (availableApps.length === 0) {
+    return;
+  }
+
+  for (let i = 0; i < availableApps.length; i++) {
+    const app = availableApps[i];
     const button = document.createElement('button');
     button.className = 'quick-add-btn';
     button.innerHTML = `
@@ -196,7 +254,7 @@ function renderDefaultAppsList() {
       <span class="quick-add-name">${app.name}</span>
     `;
     button.addEventListener('click', async function () {
-      if (existingNames.has(app.name)) {
+      if (getExistingAppNames().has(app.name)) {
         return;
       }
       await addDefaultApp(app);
@@ -362,3 +420,4 @@ window.renderDefaultAppsList = renderDefaultAppsList;
 window.closeAddAppModal = closeAddAppModal;
 window.updateAddAppPreview = updatePreview;
 window.openAddAppModal = openAddAppModal;
+window.resetAddAppModalState = resetAddAppModalState;
