@@ -6,6 +6,8 @@ import vm from 'vm';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  injectScript('src/ui/color-picker.js');
+  injectScript('src/ui/font-picker.js');
   injectScript('src/ui/settings.js');
 });
 
@@ -123,6 +125,38 @@ describe('Utility functions', () => {
     expect(getClosestSize(85, [60, 80, 100])).toBe(80);
     expect(getClosestSize(95, [60, 80, 100])).toBe(100);
     expect(getClosestSize(50, [60, 80, 100])).toBe(60);
+  });
+});
+
+describe('Modern picker events', () => {
+  it('emits one change event for font selection', () => {
+    const events = [];
+    const fontSelect = document.getElementById('clock-font-picker');
+
+    fontSelect.addEventListener('change', () => {
+      events.push('change');
+    });
+
+    initModernFontPickers();
+    document.querySelector('.font-option').click();
+
+    expect(events).toHaveLength(1);
+  });
+
+  it('emits one input event for color selection', () => {
+    const events = [];
+    const colorInput = document.getElementById('clock-color-picker');
+    colorInput.type = 'color';
+    colorInput.value = '#000000';
+
+    colorInput.addEventListener('input', () => {
+      events.push('input');
+    });
+
+    initModernColorPickers();
+    document.querySelector('.color-chip').click();
+
+    expect(events).toHaveLength(1);
   });
 });
 
