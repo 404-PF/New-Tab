@@ -167,14 +167,14 @@ class OnboardingTour {
   // Initialize and start the tour (optionally from a saved step)
   start(startStep = 0) {
     if (this.isActive || this.completed) {
-      if (this.isActive) console.warn('⚠️ Onboarding tour already active');
+      if (this.isActive) console.log('⚠️ Onboarding tour already active');
       return;
     }
 
     // Validate step index
     const safeStep = Math.max(0, Math.min(startStep, this.steps.length - 1));
 
-    console.warn('🚀 Starting onboarding tour...');
+    console.log('🚀 Starting onboarding tour...');
     this._dismissedThisSession = false;
     this.isActive = true;
     this.currentStep = safeStep;
@@ -196,7 +196,7 @@ class OnboardingTour {
 
   // Create overlay elements
   createOverlay() {
-    console.warn('🎯 Creating onboarding overlay...');
+    console.log('🎯 Creating onboarding overlay...');
 
     // Main overlay
     this.overlay = document.createElement('div');
@@ -231,7 +231,7 @@ class OnboardingTour {
     this.overlay.style.opacity = '1';
 
     document.body.appendChild(this.overlay);
-    console.warn('✅ Overlay created and appended to body');
+    console.log('✅ Overlay created and appended to body');
 
     // Add event listeners
     this.overlay.querySelector('.onboarding-close-btn').addEventListener('click', () => this.end(false));
@@ -253,7 +253,7 @@ class OnboardingTour {
 
   // Show current step
   showStep() {
-    console.warn('🎯 Showing onboarding step:', this.currentStep + 1, 'of', this.steps.length);
+    console.log('🎯 Showing onboarding step:', this.currentStep + 1, 'of', this.steps.length);
 
     const step = this.steps[this.currentStep];
     const tooltip = this.overlay.querySelector('.onboarding-tooltip');
@@ -368,7 +368,7 @@ class OnboardingTour {
     if (step.target && step.target !== 'body') {
       const targetElement = document.querySelector(step.target);
       if (targetElement) {
-        console.warn('🎯 Positioning tooltip for target:', step.target);
+        console.log('🎯 Positioning tooltip for target:', step.target);
         
         // Check if target element is visible before positioning
         const isVisible = this.isElementVisible(targetElement);
@@ -379,7 +379,7 @@ class OnboardingTour {
           tooltip.style.opacity = '1';
           spotlight.style.opacity = '1';
         } else {
-          console.warn('⚠️ Target element not visible, using center positioning');
+          console.log('⚠️ Target element not visible, using center positioning');
           // Fallback to center positioning when target is not visible
           tooltip.style.position = 'fixed';
           tooltip.style.top = '50%';
@@ -388,11 +388,11 @@ class OnboardingTour {
           spotlight.style.opacity = '0';
         }
       } else {
-        console.warn('⚠️ Target element not found:', step.target);
+        console.log('⚠️ Target element not found:', step.target);
       }
     } else {
       // Center positioned tooltips (including body targets)
-      console.warn('🎯 Centering tooltip (no target or body target)');
+      console.log('🎯 Centering tooltip (no target or body target)');
       tooltip.style.position = 'fixed';
       tooltip.style.top = '50%';
       tooltip.style.left = '50%';
@@ -415,7 +415,7 @@ class OnboardingTour {
     nextBtn.textContent = this.currentStep === this.steps.length - 1 ? finishText : nextText;
     prevBtn.textContent = prevText;
 
-    console.warn('✅ Step display completed');
+    console.log('✅ Step display completed');
   }
 
   // Position tooltip relative to target element
@@ -626,9 +626,9 @@ class OnboardingTour {
   _tryStart() {
     const step = this._resolveSavedStep();
     if (step > 0) {
-      console.warn('🎯 Resuming New-Tab onboarding tour from step', step, '...');
+      console.log('🎯 Resuming New-Tab onboarding tour from step', step, '...');
     } else {
-      console.warn('🎯 Starting New-Tab onboarding tour...');
+      console.log('🎯 Starting New-Tab onboarding tour...');
     }
     this.start(step);
   }
@@ -715,9 +715,9 @@ document.addEventListener('DOMContentLoaded', () => {
       checkTimeout = setTimeout(checkAndStart, 100);
     } else {
       if (onboardingTour.isCompleted()) {
-        console.warn('ℹ️ Onboarding tour skipped - already completed');
+        console.log('ℹ️ Onboarding tour skipped - already completed');
       } else {
-        console.warn('⚠️ Onboarding tour skipped - required elements not visible after 5 seconds');
+        console.log('⚠️ Onboarding tour skipped - required elements not visible after 5 seconds');
       }
     }
   };

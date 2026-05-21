@@ -125,6 +125,7 @@ function resetBackgroundVideo(videoEl, unloadSource) {
   delete videoEl.dataset.wasPlaying;
   delete videoEl.dataset.simpleModePaused;
   delete videoEl.dataset.userPaused;
+  delete videoEl.dataset.crossfadeTriggered;
 
   if (!unloadSource) return;
 
@@ -394,13 +395,12 @@ function applyBg() {
       };
       
       // Helper to trigger crossfade between thumbnail and video
-      let crossfadeTriggered = false;
       const triggerCrossfade = function() {
-        if (crossfadeTriggered || loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
+        if (videoEl.dataset.crossfadeTriggered === 'true' || loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
           return;
         }
 
-        crossfadeTriggered = true;
+        videoEl.dataset.crossfadeTriggered = 'true';
         
         // Remove loading class - video is now ready to show
         videoEl.classList.remove('loading');
@@ -440,7 +440,7 @@ function applyBg() {
       // Fallback: if canplaythrough takes too long, trigger on loadeddata
       videoEl.onloadeddata = function() {
         videoEl.onloadeddata = null;
-        if (!crossfadeTriggered) {
+        if (videoEl.dataset.crossfadeTriggered !== 'true') {
           triggerCrossfade();
         }
       };
@@ -448,7 +448,7 @@ function applyBg() {
       // Additional fallback: ensure crossfade happens after video starts playing
       videoEl.onplaying = function() {
         videoEl.onplaying = null;
-        if (!crossfadeTriggered) {
+        if (videoEl.dataset.crossfadeTriggered !== 'true') {
           triggerCrossfade();
         }
       };
@@ -499,14 +499,13 @@ function applyBg() {
 
         if (videoEl.dataset.userPaused === 'true') return;
 
-        if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true') {
+        if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.readyState >= 3) {
           videoEl.play().catch(() => {});
         }
       };
 
       videoEl.oncontextmenu = function() {
         videoEl.dataset.userPaused = 'true';
-        setTimeout(function() { delete videoEl.dataset.userPaused; }, 3000);
       };
 
       videoEl.onplay = function() {
@@ -861,24 +860,11 @@ document.addEventListener('change', function (e) {
             videoEl.play().catch(function () {});
           }
         } else {
-          // Video not ready yet — wait for load then show
+          // Video not ready yet — reset crossfade guard and reload
+          // The existing oncanplaythrough handler from applyBg() will fire naturally
+          delete videoEl.dataset.crossfadeTriggered;
           videoEl.classList.remove('hidden');
           videoEl.classList.add('loading');
-          videoEl.oncanplaythrough = function() {
-            videoEl.oncanplaythrough = null;
-            videoEl.classList.remove('loading');
-            videoEl.classList.add('active', 'ready');
-            if (thumbnailEl && !thumbnailEl.classList.contains('hidden')) {
-              thumbnailEl.classList.add('clearing');
-              setTimeout(function () {
-                thumbnailEl.classList.add('hidden');
-                thumbnailEl.classList.remove('clearing');
-              }, VIDEO_THUMBNAIL_HIDE_DELAY_MS);
-            }
-            if (!window.loadSimpleMode || !window.loadSimpleMode()) {
-              videoEl.play().catch(function () {});
-            }
-          };
           videoEl.load();
         }
       } else {

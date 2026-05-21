@@ -162,14 +162,14 @@ const AIService = (function() {
     AIStore.loadConversations();
     renderConversationUI();
 
-    console.warn('[AI Debug] openModal called - State:', {
+    console.log('[AI Debug] openModal called - State:', {
       isLoading: AIStore.state.isLoading,
       isStreaming: AIStore.state.isStreaming,
       hasAbortController: AIStore.state.abortController !== null
     });
 
     if (AIStore.state.isLoading || AIStore.state.isStreaming) {
-      console.warn('[AI Debug] openModal - Request in progress, updating UI');
+      console.log('[AI Debug] openModal - Request in progress, updating UI');
       if (elements.loadingIndicator) {
         elements.loadingIndicator.style.display = 'flex';
       }
@@ -198,7 +198,7 @@ const AIService = (function() {
       elements.modal.classList.remove('ai-modal-open');
     }
 
-    console.warn('[AI Debug] closeModal called - State:', {
+    console.log('[AI Debug] closeModal called - State:', {
       isLoading: AIStore.state.isLoading,
       isStreaming: AIStore.state.isStreaming,
       hasAbortController: AIStore.state.abortController !== null
@@ -274,9 +274,9 @@ const AIService = (function() {
       }
 
       if (AIStore.state.isOfflineMode) {
-        console.warn('AI Service: Switched to offline mode');
+        console.log('AI Service: Switched to offline mode');
       } else {
-        console.warn('AI Service: Back to online mode');
+        console.log('AI Service: Back to online mode');
       }
     }
   }
@@ -297,7 +297,7 @@ const AIService = (function() {
   }
 
   async function sendMessage(userMessage) {
-    console.warn('[AI Debug] sendMessage called - State:', {
+    console.log('[AI Debug] sendMessage called - State:', {
       hasMessage: !!userMessage,
       isLoading: AIStore.state.isLoading,
       isStreaming: AIStore.state.isStreaming,
@@ -305,7 +305,7 @@ const AIService = (function() {
     });
 
     if (!userMessage || AIStore.state.isLoading) {
-      console.warn('[AI Debug] sendMessage returning early - isLoading:', AIStore.state.isLoading);
+      console.log('[AI Debug] sendMessage returning early - isLoading:', AIStore.state.isLoading);
       if (AIStore.state.isLoading) {
         showError(getTranslation('aiRequestInProgress') || 'A request is already in progress. Please wait for it to complete.');
       }

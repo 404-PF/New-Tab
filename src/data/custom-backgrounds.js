@@ -238,6 +238,7 @@
     delete videoEl.dataset.wasPlaying;
     delete videoEl.dataset.simpleModePaused;
     delete videoEl.dataset.userPaused;
+    delete videoEl.dataset.crossfadeTriggered;
 
     if (!unloadSource) return;
 
@@ -458,13 +459,12 @@
           sourceEl.type = bg.data.type || 'video/mp4';
           videoEl.load();
 
-          let crossfadeTriggered = false;
           function triggerCrossfade() {
-            if (crossfadeTriggered || !isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
+            if (videoEl.dataset.crossfadeTriggered === 'true' || !isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
               return;
             }
 
-            crossfadeTriggered = true;
+            videoEl.dataset.crossfadeTriggered = 'true';
             videoEl.classList.remove('loading');
 
             // When autoplay is disabled, keep thumbnail visible and video hidden
@@ -530,14 +530,13 @@
 
             if (videoEl.dataset.userPaused === 'true') return;
 
-            if (!document.hidden && videoEl.classList.contains('active') && localStorage.getItem('videoAutoplay') !== 'false' && videoEl.dataset.simpleModePaused !== 'true') {
+            if (!document.hidden && videoEl.classList.contains('active') && localStorage.getItem('videoAutoplay') !== 'false' && videoEl.dataset.simpleModePaused !== 'true' && videoEl.readyState >= 3) {
               videoEl.play().catch(function () {});
             }
           };
 
           videoEl.oncontextmenu = function () {
             videoEl.dataset.userPaused = 'true';
-            setTimeout(function () { delete videoEl.dataset.userPaused; }, 3000);
           };
 
           videoEl.onplay = function () {

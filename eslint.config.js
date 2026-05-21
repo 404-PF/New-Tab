@@ -141,7 +141,7 @@ const commonRules = {
   'no-var': 'error',
   'prefer-const': 'warn',
   camelcase: ['warn', { properties: 'never' }],
-  'no-console': ['warn', { allow: ['warn', 'error'] }],
+  'no-console': ['warn', { allow: ['log', 'warn', 'error'] }],
   'no-unused-vars': ['warn', { args: 'none', varsIgnorePattern: '^_' }],
   'preserve-caught-error': 'off',
 };
