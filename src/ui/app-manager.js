@@ -66,7 +66,15 @@ const addApp = document.getElementById('new-app');
   order.forEach(appId => {
     if (folderMap[appId]) {
       if (!window.AppFolders) {
-        console.warn('AppFolders not initialized, skipping folder:', appId);
+        console.warn('AppFolders not initialized, deferring folder render for:', appId);
+        if (!window._appFoldersDeferred) {
+          window._appFoldersDeferred = true;
+          document.addEventListener('appFoldersReady', function onReady() {
+            document.removeEventListener('appFoldersReady', onReady);
+            if (typeof window.renderAllApps === 'function') window.renderAllApps();
+            window._appFoldersRendered = true;
+          }, { once: true });
+        }
         return;
       }
       const folder = folderMap[appId];

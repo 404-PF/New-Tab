@@ -90,6 +90,7 @@
     if (popup) popup.style.display = 'none';
     document.body.classList.remove('folder-popup-open');
     currentFolderId = null;
+    if (window.clearContextMenuFolderState) window.clearContextMenuFolderState();
   }
 
   function renderFolderAppsInPopup() {
@@ -150,7 +151,34 @@
     const newName = prompt(window.i18n ? window.i18n.t('renameFolderPrompt') : 'Enter new folder name:', folder.name);
     if (newName && newName.trim()) {
       AppGridState.renameFolder(folderId, newName.trim());
-      refreshFolderUI();
+      refreshFolderUI(folderId);
+    }
+  }
+
+  function getAppGrid() {
+    return document.getElementById('app-grid');
+  }
+
+  function getAddAppElement() {
+    return document.getElementById('new-app');
+  }
+
+  function addFolderIconToGrid(folder) {
+    const appGrid = getAppGrid();
+    const addApp = getAddAppElement();
+    if (!appGrid || !addApp) return;
+    const folderEl = createFolderIconElement(folder);
+    appGrid.insertBefore(folderEl, addApp);
+  }
+
+  function updateFolderIconInGrid(folder) {
+    const appGrid = getAppGrid();
+    const addApp = getAddAppElement();
+    if (!appGrid || !addApp) return;
+    const existing = document.getElementById(folder.id);
+    if (existing) {
+      const newEl = createFolderIconElement(folder);
+      appGrid.replaceChild(newEl, existing);
     }
   }
 
@@ -160,9 +188,14 @@
 
     const folder = AppGridState.createFolder(name.trim(), []);
     if (folder) {
-      if (typeof window.renderAllApps === 'function') {
-        window.renderAllApps();
-      }
+      addFolderIconToGrid(folder);
+    }
+  }
+
+  function removeAppIconFromGrid(appId) {
+    const appEl = document.getElementById(appId);
+    if (appEl && appEl.parentNode) {
+      appEl.parentNode.removeChild(appEl);
     }
   }
 
@@ -203,9 +236,8 @@
       btn.addEventListener('click', function () {
         if (moveToFolderAppId) {
           AppGridState.moveAppToFolder(f.id, moveToFolderAppId);
-          if (typeof window.renderAllApps === 'function') {
-            window.renderAllApps();
-          }
+          removeAppIconFromGrid(moveToFolderAppId);
+          updateFolderIconInGrid(getFolder(f.id));
         }
         hideMoveToFolderSelector();
       });
@@ -227,14 +259,16 @@
     moveToFolderAppId = null;
   }
 
-  function refreshFolderUI() {
+  function refreshFolderUI(folderId) {
+    const id = folderId || currentFolderId;
     const title = document.getElementById('folder-popup-title');
-    if (title && currentFolderId) {
-      const folder = getFolder(currentFolderId);
+    if (title && id) {
+      const folder = getFolder(id);
       if (folder) title.textContent = folder.name;
     }
-    if (typeof window.renderAllApps === 'function') {
-      window.renderAllApps();
+    if (id) {
+      const folder = getFolder(id);
+      if (folder) updateFolderIconInGrid(folder);
     }
   }
 
@@ -341,19 +375,6 @@
     });
   }
 
-  function init() {
-    setupFolderPopupListeners();
-    if (typeof window.renderAllApps === 'function') {
-      window.renderAllApps();
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-
   window.AppFolders = {
     createFolderIconElement,
     openFolderPopup,
@@ -370,5 +391,19 @@
     getFolderAppData,
     buildStackedPreviewHtml
   };
+
+  function init() {
+    setupFolderPopupListeners();
+    document.dispatchEvent(new CustomEvent('appFoldersReady'));
+    if (!window._appFoldersRendered && typeof window.renderAllApps === 'function') {
+      window.renderAllApps();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 
 })();

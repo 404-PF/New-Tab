@@ -115,6 +115,8 @@ const testGlobals = {
   AppGridState: 'readonly',
   AppFolders: 'readonly',
   defaultApps: 'readonly',
+  initModernFontPickers: 'readonly',
+  initModernColorPickers: 'readonly',
   clearCompleted: 'readonly',
   validateTodoData: 'readonly',
   showImportDialog: 'readonly',

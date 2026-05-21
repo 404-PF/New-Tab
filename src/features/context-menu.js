@@ -558,6 +558,9 @@ const getMissingElementIds = (elementsById) => {
 window.renameAppId = null;
 window.thumbnailAppId = null;
 window.deleteAppId = null;
+window.clearContextMenuFolderState = function () {
+  contextTargetFolderId = null;
+};
 
 // Prevent default context menu on default apps (not custom-app or folder-icon)
 document.addEventListener('contextmenu', function (e) {
