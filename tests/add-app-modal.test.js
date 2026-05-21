@@ -151,4 +151,16 @@ describe('Add app modal quick add', () => {
     expect(buttons[0].textContent).toContain('YouTube');
     expect(buttons.some((button) => button.textContent?.includes('Google'))).toBe(false);
   });
+
+  it('resetAddAppModalState clears state and allows re-initialization', () => {
+    window.bindAddAppModal();
+
+    window.resetAddAppModalState();
+
+    expect(() => window.bindAddAppModal()).not.toThrow();
+    expect(() => window.openAddAppModal()).not.toThrow();
+
+    const section = document.querySelector('.add-app-section');
+    expect(section).toBeTruthy();
+  });
 });

@@ -79,6 +79,8 @@ function getExistingAppNames() {
     }
   }
 
+  // NOTE: This selector is coupled to the app grid structure in New-Tab.html.
+  // If .app-grid or its child classes change, update this selector accordingly.
   Array.from(document.querySelectorAll('.app-grid .app-icon .app-name')).forEach((element) => {
     if (element && element.textContent) {
       existingNames.add(element.textContent);
