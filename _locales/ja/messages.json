@@ -6,5 +6,13 @@
   "description": {
     "message": "時計、検索、アプリ、ToDoリストを備えた美しい新しいタブページ",
     "description": "The description of the extension"
+  },
+  "todoReminderTitle": {
+    "message": "リマインダー",
+    "description": "Title for the todo reminder notification"
+  },
+  "todoReminderMessage": {
+    "message": "$1$ — 期限 $2$",
+    "description": "Notification body for todo reminder. $1$ is the task text, $2$ is the due date display."
   }
 }
