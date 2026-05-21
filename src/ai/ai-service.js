@@ -617,7 +617,7 @@ const AIService = (function() {
       observer.observe(elements.modal, { attributes: true });
     }
 
-    document.addEventListener('themeChanged', () => AIRenderer.applyThemeToAI());
+    window.addEventListener('themeChanged', () => AIRenderer.applyThemeToAI());
 
     window.addEventListener('storage', event => {
       if (event.key === 'theme') {
