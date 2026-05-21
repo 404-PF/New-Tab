@@ -239,6 +239,7 @@
     delete videoEl.dataset.simpleModePaused;
     delete videoEl.dataset.userPaused;
     delete videoEl.dataset.crossfadeTriggered;
+    delete videoEl.dataset.lastPauseTime;
 
     if (!unloadSource) return;
 
@@ -529,6 +530,12 @@
             }
 
             if (videoEl.dataset.userPaused === 'true') return;
+
+            // Debounce: prevent tight pause/resume loops from buffering or rapid system pauses
+            const now = Date.now();
+            const lastPause = parseInt(videoEl.dataset.lastPauseTime || '0', 10);
+            if (now - lastPause < 2000) return;
+            videoEl.dataset.lastPauseTime = now;
 
             if (!document.hidden && videoEl.classList.contains('active') && localStorage.getItem('videoAutoplay') !== 'false' && videoEl.dataset.simpleModePaused !== 'true' && videoEl.readyState >= 3) {
               videoEl.play().catch(function () {});

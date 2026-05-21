@@ -126,6 +126,7 @@ function resetBackgroundVideo(videoEl, unloadSource) {
   delete videoEl.dataset.simpleModePaused;
   delete videoEl.dataset.userPaused;
   delete videoEl.dataset.crossfadeTriggered;
+  delete videoEl.dataset.lastPauseTime;
 
   if (!unloadSource) return;
 
@@ -499,6 +500,12 @@ function applyBg() {
 
         if (videoEl.dataset.userPaused === 'true') return;
 
+        // Debounce: prevent tight pause/resume loops from buffering or rapid system pauses
+        const now = Date.now();
+        const lastPause = parseInt(videoEl.dataset.lastPauseTime || '0', 10);
+        if (now - lastPause < 2000) return;
+        videoEl.dataset.lastPauseTime = now;
+
         if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.readyState >= 3) {
           videoEl.play().catch(() => {});
         }
@@ -816,7 +823,7 @@ function applyLanguageSetting() {
   }
 }
 
-// Event listeners for theme, language, and video playback settings
+// Event listeners for theme and language
 document.addEventListener('change', function (e) {
   if (e.target.name === 'theme') {
     const selectedTheme = e.target.value;
@@ -829,7 +836,10 @@ document.addEventListener('change', function (e) {
     localStorage.setItem('language', selectedLanguage);
     applyLanguageSetting();
   }
+});
 
+// Event listener for video playback settings
+document.addEventListener('change', function (e) {
   if (e.target.id !== 'video-autoplay-setting' && e.target.id !== 'video-muted-setting' && e.target.id !== 'video-pause-hidden-setting') {
     return;
   }
@@ -868,7 +878,9 @@ document.addEventListener('change', function (e) {
           videoEl.load();
         }
       } else {
-        videoEl.oncanplaythrough = null;
+        // Don't null oncanplaythrough — triggerCrossfade already checks
+        // loadVideoAutoplay() and returns early when autoplay is disabled.
+        // Keeping the handler allows it to fire naturally if autoplay is re-enabled.
         videoEl.pause();
       }
     }
