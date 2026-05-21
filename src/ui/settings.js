@@ -801,6 +801,55 @@ if (todoEnabledSetting) {
   });
 }
 
+// Todo reminders
+function loadTodoReminderEnabled() {
+  return localStorage.getItem('todoReminderEnabled') === 'true';
+}
+function applyTodoReminderEnabled() {
+  const enabled = loadTodoReminderEnabled();
+  const setting = document.getElementById('todo-reminder-enabled-setting');
+  if (setting) setting.checked = enabled;
+  const leadTimeOption = document.getElementById('todo-reminder-lead-time-option');
+  if (leadTimeOption) {
+    leadTimeOption.style.display = enabled ? '' : 'none';
+  }
+}
+
+function loadTodoReminderLeadTime() {
+  const val = localStorage.getItem('todoReminderLeadTime');
+  if (val === null) return 30;
+  const num = parseInt(val, 10);
+  return isNaN(num) ? 30 : num;
+}
+function applyTodoReminderLeadTime() {
+  const leadTime = loadTodoReminderLeadTime();
+  const select = document.getElementById('todo-reminder-lead-time');
+  if (select) select.value = String(leadTime);
+}
+
+const todoReminderEnabledSetting = document.getElementById('todo-reminder-enabled-setting');
+if (todoReminderEnabledSetting) {
+  todoReminderEnabledSetting.addEventListener('change', function () {
+    const wasEnabled = localStorage.getItem('todoReminderEnabled') === 'true';
+    localStorage.setItem('todoReminderEnabled', this.checked);
+    applyTodoReminderEnabled();
+    if (typeof scheduleTodoReminderCheck === 'function') {
+      const reEnabled = this.checked && !wasEnabled;
+      scheduleTodoReminderCheck(null, reEnabled);
+    }
+  });
+}
+
+const todoReminderLeadTime = document.getElementById('todo-reminder-lead-time');
+if (todoReminderLeadTime) {
+  todoReminderLeadTime.addEventListener('change', function () {
+    localStorage.setItem('todoReminderLeadTime', this.value);
+    if (typeof scheduleTodoReminderCheck === 'function') {
+      scheduleTodoReminderCheck();
+    }
+  });
+}
+
 // Notes enabled
 function loadNotesEnabled() {
   return localStorage.getItem('notesEnabled') !== 'false';
@@ -1053,6 +1102,8 @@ function initSettings() {
   applyDateFormatSetting();
   applyTheme();
   applyTodoEnabled();
+  applyTodoReminderEnabled();
+  applyTodoReminderLeadTime();
   applyNotesEnabled();
   applyLanguageSetting();
   initAboutSection();
