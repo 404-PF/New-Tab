@@ -274,6 +274,22 @@ describe('Immediate progress saving on language/theme selection', () => {
     tour.end(true);
   });
 
+  it('theme radio selection dispatches themeChanged event', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    tour.start(1);
+    const handler = vi.fn();
+    window.addEventListener('themeChanged', handler);
+    const radio = document.querySelector('input[name="onboarding-theme"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change'));
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({ detail: { theme: 'dark' } })
+    );
+    window.removeEventListener('themeChanged', handler);
+    tour.end(true);
+  });
+
   it('end(false) after language selection preserves optimistically saved next step', () => {
     const tour = window.onboardingTour;
     tour.completed = false;
