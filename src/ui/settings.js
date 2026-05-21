@@ -830,10 +830,12 @@ function applyTodoReminderLeadTime() {
 const todoReminderEnabledSetting = document.getElementById('todo-reminder-enabled-setting');
 if (todoReminderEnabledSetting) {
   todoReminderEnabledSetting.addEventListener('change', function () {
+    const wasEnabled = localStorage.getItem('todoReminderEnabled') === 'true';
     localStorage.setItem('todoReminderEnabled', this.checked);
     applyTodoReminderEnabled();
     if (typeof scheduleTodoReminderCheck === 'function') {
-      scheduleTodoReminderCheck();
+      const reEnabled = this.checked && !wasEnabled;
+      scheduleTodoReminderCheck(null, reEnabled);
     }
   });
 }

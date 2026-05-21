@@ -103,8 +103,7 @@ async function showTodoNotification(todo, dueDisplay) {
       type: 'basic',
       iconUrl: 'icons/icon128.png',
       title: chrome.i18n.getMessage('todoReminderTitle'),
-      message: chrome.i18n.getMessage('todoReminderMessage', [todo.text, dueDisplay]),
-      priority: 1
+      message: chrome.i18n.getMessage('todoReminderMessage', [todo.text, dueDisplay])
     });
   } catch (e) {
     console.warn('Failed to create todo reminder notification:', e);
@@ -146,22 +145,44 @@ if (chrome?.notifications?.onClicked) {
 if (chrome?.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message && message.type === 'syncTodos') {
-      const run = message.todoId
-        ? getFromStorage('todoReminderNotified').then(data => {
+      // Relies on message.todos being a valid JSON string from the caller's in-memory state.
+      // If absent/malformed, falls back to chrome.storage.local which may lag behind
+      // due to the async localStorage bridge.
+      const run = (message.resetNotified
+        ? (async () => {
+            const data = await getFromStorage('todoReminderNotified');
             const notified = data.todoReminderNotified || {};
-            let updated = false;
+            const ids = new Set();
             for (const key of Object.keys(notified)) {
-              if (key.startsWith(message.todoId + '_')) {
-                chrome.notifications.clear('todo_reminder_' + message.todoId);
-                delete notified[key];
-                updated = true;
+              const idx = key.lastIndexOf('_');
+              const todoId = idx !== -1 ? key.slice(0, idx) : key;
+              ids.add(todoId);
+            }
+            for (const id of ids) {
+              chrome.notifications.clear('todo_reminder_' + id);
+            }
+            await setToStorage({ todoReminderNotified: {} });
+          })()
+        : Promise.resolve())
+        .then(() => {
+          if (message.todoId) {
+            return getFromStorage('todoReminderNotified').then(data => {
+              const notified = data.todoReminderNotified || {};
+              let updated = false;
+              for (const key of Object.keys(notified)) {
+                if (key.startsWith(message.todoId + '_')) {
+                  chrome.notifications.clear('todo_reminder_' + message.todoId);
+                  delete notified[key];
+                  updated = true;
+                }
               }
-            }
-            if (updated) {
-              return setToStorage({ todoReminderNotified: notified });
-            }
-          }).then(() => checkReminders(message.todos))
-        : checkReminders(message.todos);
+              if (updated) {
+                return setToStorage({ todoReminderNotified: notified });
+              }
+            });
+          }
+        })
+        .then(() => checkReminders(message.todos));
       run.then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
       return true;
     }

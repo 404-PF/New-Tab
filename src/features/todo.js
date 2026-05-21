@@ -56,13 +56,17 @@ function saveTodos(todos) {
   }
 }
 
-function scheduleTodoReminderCheck(todoId) {
+function scheduleTodoReminderCheck(todoId, resetNotified) {
   try {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+      // Sends in-memory todos as JSON string to the service worker.
+      // The service worker uses this payload over stale chrome.storage.local data.
+      // If the payload is ever malformed/absent, the fallback reads from storage.
       chrome.runtime.sendMessage({
         type: 'syncTodos',
         todoId: todoId || undefined,
-        todos: JSON.stringify(todos)
+        todos: JSON.stringify(todos),
+        resetNotified: resetNotified || undefined
       }).catch(() => {});
     }
   } catch (e) {
