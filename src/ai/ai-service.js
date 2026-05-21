@@ -274,9 +274,9 @@ const AIService = (function() {
       }
 
       if (AIStore.state.isOfflineMode) {
-        console.info('AI Service: Switched to offline mode');
+        console.log('AI Service: Switched to offline mode');
       } else {
-        console.info('AI Service: Back to online mode');
+        console.log('AI Service: Back to online mode');
       }
     }
   }

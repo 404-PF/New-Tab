@@ -227,6 +227,8 @@
     videoEl.onloadedmetadata = null;
     videoEl.onerror = null;
     videoEl.onpause = null;
+    videoEl.oncontextmenu = null;
+    videoEl.onplay = null;
 
     videoEl.classList.remove('active', 'ready', 'loading');
     videoEl.classList.add('hidden');
@@ -234,6 +236,10 @@
 
     delete videoEl.dataset.currentBg;
     delete videoEl.dataset.wasPlaying;
+    delete videoEl.dataset.simpleModePaused;
+    delete videoEl.dataset.userPaused;
+    delete videoEl.dataset.crossfadeTriggered;
+    delete videoEl.dataset.lastPauseTime;
 
     if (!unloadSource) return;
 
@@ -438,6 +444,11 @@
             containerEl.classList.remove('video-fallback', 'video-error');
           }
 
+          // Apply user playback settings
+          const videoMuted = localStorage.getItem('videoMuted') !== 'false';
+          videoEl.muted = videoMuted;
+          videoEl.autoplay = localStorage.getItem('videoAutoplay') !== 'false';
+
           const sourceEl = videoEl.querySelector('source');
           if (!sourceEl) {
             URL.revokeObjectURL(blobUrl);
@@ -449,15 +460,18 @@
           sourceEl.type = bg.data.type || 'video/mp4';
           videoEl.load();
 
-          let crossfadeTriggered = false;
           function triggerCrossfade() {
-            if (crossfadeTriggered || !isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
+            if (videoEl.dataset.crossfadeTriggered === 'true' || !isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
               return;
             }
 
-            crossfadeTriggered = true;
-            videoEl.play().catch(function () {});
+            videoEl.dataset.crossfadeTriggered = 'true';
             videoEl.classList.remove('loading');
+
+            // When autoplay is disabled, keep thumbnail visible and video hidden
+            if (localStorage.getItem('videoAutoplay') === 'false') return;
+
+            videoEl.play().catch(function () {});
             videoEl.classList.add('active', 'ready');
             thumbnailEl.classList.add('clearing');
 
@@ -515,9 +529,25 @@
               return;
             }
 
-            if (!document.hidden && videoEl.classList.contains('active')) {
+            if (videoEl.dataset.userPaused === 'true') return;
+
+            // Debounce: prevent tight pause/resume loops from buffering or rapid system pauses
+            const now = Date.now();
+            const lastPause = parseInt(videoEl.dataset.lastPauseTime || '0', 10);
+            if (now - lastPause < 2000) return;
+            videoEl.dataset.lastPauseTime = now;
+
+            if (!document.hidden && videoEl.classList.contains('active') && localStorage.getItem('videoAutoplay') !== 'false' && videoEl.dataset.simpleModePaused !== 'true' && videoEl.readyState >= 3) {
               videoEl.play().catch(function () {});
             }
+          };
+
+          videoEl.oncontextmenu = function () {
+            videoEl.dataset.userPaused = 'true';
+          };
+
+          videoEl.onplay = function () {
+            delete videoEl.dataset.userPaused;
           };
         }
       } else {

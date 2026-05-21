@@ -98,6 +98,8 @@ const testGlobals = {
   applyBg: 'readonly',
   loadLanguageSetting: 'readonly',
   renderLanguageOptions: 'readonly',
+  initModernFontPickers: 'readonly',
+  initModernColorPickers: 'readonly',
   initTodo: 'readonly',
   loadTodos: 'readonly',
   saveTodos: 'readonly',
@@ -110,7 +112,6 @@ const testGlobals = {
   filterTodos: 'readonly',
   formatDateISO: 'readonly',
   isOverdue: 'readonly',
-  escapeHtml: 'readonly',
   clearCompleted: 'readonly',
   validateTodoData: 'readonly',
   showImportDialog: 'readonly',
@@ -144,7 +145,7 @@ const commonRules = {
   'no-var': 'error',
   'prefer-const': 'warn',
   camelcase: ['warn', { properties: 'never' }],
-  'no-console': ['warn', { allow: ['warn', 'error'] }],
+  'no-console': ['warn', { allow: ['log', 'warn', 'error'] }],
   'no-unused-vars': ['warn', { args: 'none', varsIgnorePattern: '^_' }],
   'preserve-caught-error': 'off',
 };
@@ -186,6 +187,7 @@ module.exports = [
     rules: {
       ...commonRules,
       'no-redeclare': 'off',
+      'no-console': 'off',
     },
   },
   {

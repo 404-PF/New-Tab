@@ -890,6 +890,42 @@ body.light-theme .bg-loading-spinner {
   pointer-events: none;
 }
 
+/* Video playback controls */
+.bg-playback-controls {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bg-playback-controls .setting-card {
+  padding: 12px 14px;
+}
+
+.bg-playback-controls .setting-card .setting-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bg-playback-controls .setting-card .setting-content label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+  cursor: pointer;
+  color: var(--settings-text-color);
+}
+
+.bg-playback-controls .setting-card .setting-content input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* Custom background upload button */
 .upload-bg-btn {
   width: 64px;
