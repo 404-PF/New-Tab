@@ -520,7 +520,7 @@ body {
   transform: scale(1.08);
 }
 
-.app-icon.drag-over:hover .icon {
+.app-icon.drag-over .icon {
   background: rgba(255, 255, 255, 0.08);
   box-shadow:
     0 8px 32px rgba(33, 150, 243, 0.25),
@@ -533,7 +533,7 @@ body {
 }
 
 /* Light theme drag-over glass effect */
-body.light-theme .app-icon.drag-over:hover .icon {
+body.light-theme .app-icon.drag-over .icon {
   background: rgba(33, 150, 243, 0.06);
   box-shadow:
     0 8px 32px rgba(33, 150, 243, 0.15),
