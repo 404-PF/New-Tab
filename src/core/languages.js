@@ -51,6 +51,17 @@ const translations = {
     renameApp: 'Rename',
     changeThumbnail: 'Change Thumbnail',
     deleteApp: 'Delete',
+    createFolder: 'Create Folder',
+    renameFolder: 'Rename Folder',
+    deleteFolder: 'Delete Folder',
+    moveToFolder: 'Move to Folder',
+    removeFromFolder: 'Remove from Folder',
+    renameFolderPrompt: 'Enter new folder name:',
+    createFolderPrompt: 'Enter folder name:',
+    newFolder: 'New Folder',
+    deleteFolderConfirm: 'Delete folder "{name}"? Apps inside will be moved back to the grid.',
+    noFoldersCreate: 'No folders yet. Create one now?',
+    folderEmpty: 'This folder is empty',
 
     // Settings
     general: 'General',
@@ -369,6 +380,17 @@ const translations = {
     renameApp: '重命名',
     changeThumbnail: '更改缩略图',
     deleteApp: '删除',
+    createFolder: '创建文件夹',
+    renameFolder: '重命名文件夹',
+    deleteFolder: '删除文件夹',
+    moveToFolder: '移动到文件夹',
+    removeFromFolder: '从文件夹中移除',
+    renameFolderPrompt: '输入新文件夹名称：',
+    createFolderPrompt: '输入文件夹名称：',
+    newFolder: '新建文件夹',
+    deleteFolderConfirm: '删除文件夹"{name}"？里面的应用将移回网格。',
+    noFoldersCreate: '还没有文件夹。立即创建一个？',
+    folderEmpty: '此文件夹为空',
 
     // Settings
     general: '通用',
@@ -683,6 +705,17 @@ const translations = {
     renameApp: '名前を変更',
     changeThumbnail: 'サムネイルを変更',
     deleteApp: '削除',
+    createFolder: 'フォルダを作成',
+    renameFolder: 'フォルダ名を変更',
+    deleteFolder: 'フォルダを削除',
+    moveToFolder: 'フォルダに移動',
+    removeFromFolder: 'フォルダから削除',
+    renameFolderPrompt: '新しいフォルダ名を入力：',
+    createFolderPrompt: 'フォルダ名を入力：',
+    newFolder: '新しいフォルダ',
+    deleteFolderConfirm: 'フォルダ「{name}」を削除しますか？内部のアプリはグリッドに戻ります。',
+    noFoldersCreate: 'フォルダがありません。今作成しますか？',
+    folderEmpty: 'このフォルダは空です',
     general: '一般',
     background: '背景',
     apps: 'アプリ',
@@ -951,6 +984,17 @@ const translations = {
     renameApp: '이름 바꾸기',
     changeThumbnail: '썸네일 변경',
     deleteApp: '삭제',
+    createFolder: '폴더 만들기',
+    renameFolder: '폴더 이름 바꾸기',
+    deleteFolder: '폴더 삭제',
+    moveToFolder: '폴더로 이동',
+    removeFromFolder: '폴더에서 제거',
+    renameFolderPrompt: '새 폴더 이름을 입력하세요：',
+    createFolderPrompt: '폴더 이름을 입력하세요：',
+    newFolder: '새 폴더',
+    deleteFolderConfirm: '폴더 「{name}」을(를) 삭제하시겠습니까? 안의 앱은 그리드로 돌아갑니다.',
+    noFoldersCreate: '폴더가 없습니다. 지금 만드시겠습니까?',
+    folderEmpty: '이 폴더가 비어 있습니다',
     general: '일반',
     background: '배경',
     apps: '앱',
@@ -2695,9 +2739,15 @@ function updateDynamicTranslations() {
   }
 }
 
-// Get translated text
-function t(key) {
-  return getTranslation(currentLanguage, key);
+// Get translated text with optional placeholder replacement
+function t(key, replacements) {
+  let message = getTranslation(currentLanguage, key);
+  if (replacements && typeof replacements === 'object') {
+    Object.entries(replacements).forEach(([placeholder, value]) => {
+      message = message.replaceAll(`{${placeholder}}`, value);
+    });
+  }
+  return message;
 }
 
 // Initialize language system

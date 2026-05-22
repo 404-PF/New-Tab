@@ -402,6 +402,22 @@ class VisibilityInterval {
 // Initialize visibility manager
 visibilityManager.init();
 
+// Validate icon URLs to reject javascript: and other unsafe schemes
+function validateIconUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed) || /^data:image\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return null;
+}
+
+// Escape HTML entities to prevent XSS
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c));
+}
+
 // Make utilities available globally
 window.visibilityManager = visibilityManager;
 window.VisibilityInterval = VisibilityInterval;
@@ -411,3 +427,5 @@ window.isMalformedUrl = isMalformedUrl;
 window.isSearchQuery = isSearchQuery;
 window.normalizeUrl = normalizeUrl;
 window.iconCache = iconCache;
+window.validateIconUrl = validateIconUrl;
+window.escapeHtml = escapeHtml;
