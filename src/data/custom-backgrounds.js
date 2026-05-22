@@ -529,8 +529,6 @@
               return;
             }
 
-            if (videoEl.dataset.userPaused === 'true') return;
-
             // Debounce: prevent tight pause/resume loops from buffering or rapid system pauses
             const now = Date.now();
             const lastPause = parseInt(videoEl.dataset.lastPauseTime || '0', 10);
@@ -542,13 +540,6 @@
             }
           };
 
-          videoEl.oncontextmenu = function () {
-            videoEl.dataset.userPaused = 'true';
-          };
-
-          videoEl.onplay = function () {
-            delete videoEl.dataset.userPaused;
-          };
         }
       } else {
         // Image background

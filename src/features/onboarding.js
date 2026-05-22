@@ -388,7 +388,7 @@ class OnboardingTour {
           spotlight.style.opacity = '0';
         }
       } else {
-        console.log('⚠️ Target element not found:', step.target);
+        console.warn('⚠️ Target element not found:', step.target);
       }
     } else {
       // Center positioned tooltips (including body targets)
