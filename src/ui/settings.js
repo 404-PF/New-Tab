@@ -315,6 +315,7 @@ function applyBg() {
     captureBackgroundSnapshot();
     backgroundLoadVersion += 1;
     stopBackground();
+    hideBackgroundOverlay();
     return;
   }
 
