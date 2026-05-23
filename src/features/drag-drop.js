@@ -20,7 +20,7 @@
     return document.getElementById('app-grid');
   }
 
-  // Get all draggable app icons (excluding add-app button)
+  // Get all draggable app icons (excluding add-app button and folder icons)
   function getDraggableIcons(options = {}) {
     const { includeSource = false } = options;
     const grid = getAppGrid();
@@ -29,6 +29,7 @@
       icon =>
         icon.id !== 'new-app' &&
         icon.id !== 'add-app' &&
+        !icon.classList.contains('folder-icon') &&
         (includeSource || icon.id !== dragState.sourceId)
     );
   }
@@ -226,6 +227,10 @@
       icon.classList.remove('drag-over');
     });
 
+    getAppGrid().querySelectorAll('.drag-over-folder, .drag-over-folder-rejected').forEach(icon => {
+      icon.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
+    });
+
     removePlaceholder();
     document.removeEventListener('dragover', handleGlobalDragOver);
     window.removeEventListener('blur', handleDragAbort);
@@ -324,6 +329,8 @@
 
   // Handle global drag over for placeholder positioning
   function handleGlobalDragOver(e) {
+    // Skip placeholder math when hovering a folder icon (handled by handleDragOver)
+    if (e.target.closest && e.target.closest('.app-icon.folder-icon')) return;
     const newIndex = calculateDropIndex(e);
 
     // If layout isn't ready, remove placeholder and allow default handling.
@@ -358,6 +365,18 @@
     e.dataTransfer.dropEffect = 'move';
 
     if (target) {
+      // If hovering over a folder icon, show folder highlight feedback
+      if (target.classList.contains('folder-icon')) {
+        if (dragState.sourceElement && dragState.sourceElement.classList.contains('custom-app')) {
+          target.classList.add('drag-over-folder');
+        } else {
+          target.classList.add('drag-over-folder-rejected');
+        }
+        removePlaceholder();
+        return;
+      }
+      target.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
+
       // Only add class if not dragging the same element
       if (target.id !== dragState.sourceId) {
         target.classList.add('drag-over');
@@ -376,6 +395,8 @@
   function handleDragLeave(e, target) {
     if (target) {
       target.classList.remove('drag-over');
+      target.classList.remove('drag-over-folder');
+      target.classList.remove('drag-over-folder-rejected');
     }
   }
 
@@ -390,6 +411,27 @@
 
     const sourceId = dragState.sourceId;
     if (!sourceId) return;
+
+    // If dropped on a folder icon, add the app to the folder
+    if (target && target.classList.contains('folder-icon')) {
+      target.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
+      const sourceEl = dragState.sourceElement;
+      if (sourceEl && !sourceEl.classList.contains('custom-app')) {
+        removePlaceholder();
+        dragState.dropIndex = -1;
+        return;
+      }
+      const folderId = target.id;
+      if (window.AppFolders && AppGridState.getFolders().some(f => f.id === folderId)) {
+        AppGridState.moveAppToFolder(folderId, sourceId);
+        if (typeof window.renderAllApps === 'function') {
+          window.renderAllApps();
+        }
+      }
+      removePlaceholder();
+      dragState.dropIndex = -1;
+      return;
+    }
 
     // Compute where we want to move the source; prefer the placeholder index
     let toIdx = dragState.dropIndex;

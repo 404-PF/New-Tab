@@ -1485,7 +1485,7 @@ function showImportDialog(importedTodos) {
     closeEditModal();
     scheduleTodoReminderCheck();
     if (addedCount > 0) {
-      const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, addedCount);
+      const msg = window.i18n ? window.i18n.t('importSuccess', { count: addedCount }) : 'Imported ' + addedCount + ' todos successfully.';
       showToast(msg, 'success');
     } else {
       showToast(window.i18n ? window.i18n.t('importNoNewTodos') : 'No new todos to import.', 'info');
@@ -1514,7 +1514,7 @@ function showImportDialog(importedTodos) {
     applyFilters();
     closeEditModal();
     scheduleTodoReminderCheck();
-    const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, newTodos.length);
+    const msg = window.i18n ? window.i18n.t('importSuccess', { count: newTodos.length }) : 'Imported ' + newTodos.length + ' todos successfully.';
     showToast(msg, 'success');
     hideDialog();
   };

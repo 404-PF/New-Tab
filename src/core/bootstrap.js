@@ -19,6 +19,7 @@
     'src/core/languages.js',
     'src/ui/settings.js',
     'src/features/context-menu.js',
+    'src/features/app-folders.js',
     'src/core/update-checker.js',
     'src/features/onboarding.js',
     'src/features/todo.js',
