@@ -181,6 +181,97 @@ describe('applyBg stale background regression', () => {
   });
 });
 
+describe('captureBackgroundSnapshot interactive canvas capture', () => {
+  let canvasEl;
+
+  beforeEach(() => {
+    canvasEl = document.getElementById('bg-interactive');
+    if (!canvasEl) {
+      canvasEl = document.createElement('canvas');
+      canvasEl.id = 'bg-interactive';
+      canvasEl.className = 'background-interactive';
+      canvasEl.hidden = false;
+      document.body.appendChild(canvasEl);
+    } else {
+      canvasEl.hidden = false;
+    }
+
+    // Ensure overlay is fresh (use setAttribute to avoid jsdom URL resolution)
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    overlayEl.removeAttribute('src');
+    overlayEl.classList.remove('active');
+
+    // Ensure fullEl won't match (no loaded class, naturalWidth 0 in jsdom)
+    const fullEl = document.getElementById('bg-full');
+    fullEl.classList.remove('loaded');
+
+    // Ensure videoEl won't match (no active class)
+    const videoEl = document.getElementById('bg-video');
+    videoEl.classList.remove('active');
+
+    // Setup interactive background mock with an active background
+    window._interactiveBackground = {
+      stop: vi.fn(),
+      currentBackgroundId: () => 'particles',
+    };
+  });
+
+  afterEach(() => {
+    delete window._interactiveBackground;
+  });
+
+  it('captures from canvas when interactive background is active', () => {
+    // jsdom does not implement toDataURL without the canvas package, so mock it
+    const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,mocked';
+
+    try {
+      captureBackgroundSnapshot();
+      const overlayEl = document.getElementById('bg-transition-overlay');
+      expect(overlayEl.getAttribute('src')).toContain('data:image/jpeg');
+      expect(overlayEl.classList.contains('active')).toBe(true);
+    } finally {
+      HTMLCanvasElement.prototype.toDataURL = origToDataURL;
+    }
+  });
+
+  it('skips canvas capture when interactive background has no active ID', () => {
+    window._interactiveBackground.currentBackgroundId = () => '';
+
+    captureBackgroundSnapshot();
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    expect(overlayEl.getAttribute('src')).toBeNull();
+    expect(overlayEl.classList.contains('active')).toBe(false);
+  });
+
+  it('skips canvas capture when currentBackgroundId is missing', () => {
+    delete window._interactiveBackground.currentBackgroundId;
+
+    captureBackgroundSnapshot();
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    expect(overlayEl.getAttribute('src')).toBeNull();
+    expect(overlayEl.classList.contains('active')).toBe(false);
+  });
+
+  it('skips canvas capture when canvas is hidden', () => {
+    canvasEl.hidden = true;
+
+    captureBackgroundSnapshot();
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    expect(overlayEl.getAttribute('src')).toBeNull();
+    expect(overlayEl.classList.contains('active')).toBe(false);
+  });
+
+  it('skips canvas capture when _interactiveBackground is undefined', () => {
+    delete window._interactiveBackground;
+
+    captureBackgroundSnapshot();
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    expect(overlayEl.getAttribute('src')).toBeNull();
+    expect(overlayEl.classList.contains('active')).toBe(false);
+  });
+});
+
 describe('initSettings background startup', () => {
   it('requests the background immediately even if idle never runs', () => {
     const dom = new JSDOM(`<!doctype html><html><body>
@@ -188,6 +279,7 @@ describe('initSettings background startup', () => {
         <video class="background-video" id="bg-video"><source src="" type="video/mp4"></video>
         <img class="background-thumbnail" id="bg-thumbnail" src="" alt="">
         <img class="background-full" id="bg-full" src="" alt="">
+        <img class="background-transition-overlay" id="bg-transition-overlay" src="" alt="">
         <canvas class="background-interactive" id="bg-interactive"></canvas>
       </div>
       <div class="settings-menu"></div>

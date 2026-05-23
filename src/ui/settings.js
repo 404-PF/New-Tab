@@ -195,6 +195,7 @@ function captureBackgroundSnapshot() {
   const fullEl = document.getElementById('bg-full');
   const videoEl = document.getElementById('bg-video');
   const thumbnailEl = document.getElementById('bg-thumbnail');
+  const canvasEl = document.getElementById('bg-interactive');
 
   let src = null;
 
@@ -212,6 +213,18 @@ function captureBackgroundSnapshot() {
       }
     } catch (e) {
       // Canvas capture failed, fall through to thumbnail check below
+    }
+  }
+
+  if (!src) {
+    if (canvasEl && !canvasEl.hidden && window._interactiveBackground &&
+        typeof window._interactiveBackground.currentBackgroundId === 'function' &&
+        window._interactiveBackground.currentBackgroundId()) {
+      try {
+        src = canvasEl.toDataURL('image/jpeg', 0.6);
+      } catch (e) {
+        // Canvas capture failed, fall through to thumbnail check below
+      }
     }
   }
 
