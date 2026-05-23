@@ -60,6 +60,8 @@ const srcGlobals = {
   _getVideoBackgrounds: 'readonly',
   _getInteractiveBackgrounds: 'readonly',
   applyBg: 'readonly',
+  loadVideoAutoplay: 'readonly',
+  loadVideoMuted: 'readonly',
   mottos: 'readonly',
   scheduleTodoReminderCheck: 'readonly',
   translateValidationMessage: 'readonly',

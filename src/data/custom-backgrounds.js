@@ -235,9 +235,11 @@
     delete videoEl.dataset.currentBg;
     delete videoEl.dataset.wasPlaying;
     delete videoEl.dataset.simpleModePaused;
-    delete videoEl.dataset.userPaused;
     delete videoEl.dataset.crossfadeTriggered;
     delete videoEl.dataset.lastPauseTime;
+
+    videoEl.autoplay = false;
+    videoEl.muted = true;
 
     if (!unloadSource) return;
 
@@ -443,9 +445,8 @@
           }
 
           // Apply user playback settings
-          const videoMuted = localStorage.getItem('videoMuted') !== 'false';
-          videoEl.muted = videoMuted;
-          videoEl.autoplay = localStorage.getItem('videoAutoplay') !== 'false';
+          videoEl.muted = loadVideoMuted();
+          videoEl.autoplay = loadVideoAutoplay();
 
           const sourceEl = videoEl.querySelector('source');
           if (!sourceEl) {
@@ -467,7 +468,7 @@
             videoEl.classList.remove('loading');
 
             // When autoplay is disabled, keep thumbnail visible and video hidden
-            if (localStorage.getItem('videoAutoplay') === 'false') return;
+            if (!loadVideoAutoplay()) return;
 
             videoEl.play().catch(function () {});
             videoEl.classList.add('active', 'ready');
@@ -533,7 +534,7 @@
             if (now - lastPause < 2000) return;
             videoEl.dataset.lastPauseTime = now;
 
-            if (!document.hidden && videoEl.classList.contains('active') && localStorage.getItem('videoAutoplay') !== 'false' && videoEl.dataset.simpleModePaused !== 'true' && videoEl.readyState >= 3) {
+            if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.readyState >= 3) {
               videoEl.play().catch(function () {});
             }
           };

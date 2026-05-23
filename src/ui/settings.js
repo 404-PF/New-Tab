@@ -122,9 +122,11 @@ function resetBackgroundVideo(videoEl, unloadSource) {
   delete videoEl.dataset.currentBg;
   delete videoEl.dataset.wasPlaying;
   delete videoEl.dataset.simpleModePaused;
-  delete videoEl.dataset.userPaused;
   delete videoEl.dataset.crossfadeTriggered;
   delete videoEl.dataset.lastPauseTime;
+
+  videoEl.autoplay = false;
+  videoEl.muted = true;
 
   if (!unloadSource) return;
 
@@ -843,10 +845,9 @@ document.addEventListener('change', function (e) {
     const thumbnailEl = document.getElementById('bg-thumbnail');
     if (videoEl && videoEl.currentSrc) {
       if (videoAutoplaySetting.checked) {
-        delete videoEl.dataset.userPaused;
-
         if (videoEl.readyState >= 2) {
           // Video already loaded — show it immediately
+          videoEl.dataset.crossfadeTriggered = 'true';
           videoEl.classList.add('active', 'ready');
           if (thumbnailEl && !thumbnailEl.classList.contains('hidden')) {
             thumbnailEl.classList.add('clearing');

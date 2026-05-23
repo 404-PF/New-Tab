@@ -164,6 +164,82 @@ describe('Video playback settings', () => {
     expect(mutedCheckbox.checked).toBe(true);
     expect(pauseCheckbox.checked).toBe(true);
   });
+
+  it('muted change event updates video.muted and localStorage', () => {
+    const videoEl = document.getElementById('bg-video');
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+
+    const mutedCheckbox = document.createElement('input');
+    mutedCheckbox.type = 'checkbox';
+    mutedCheckbox.id = 'video-muted-setting';
+    document.body.appendChild(mutedCheckbox);
+
+    mutedCheckbox.checked = false;
+    mutedCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(videoEl.muted).toBe(false);
+    expect(localStorage.getItem('videoMuted')).toBe('false');
+
+    mutedCheckbox.checked = true;
+    mutedCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(videoEl.muted).toBe(true);
+    expect(localStorage.getItem('videoMuted')).toBe('true');
+
+    delete videoEl.currentSrc;
+    document.body.removeChild(mutedCheckbox);
+  });
+
+  it('autoplay change event adds active/ready classes on loaded video', () => {
+    const videoEl = document.getElementById('bg-video');
+    Object.defineProperty(videoEl, 'readyState', { value: 2, configurable: true });
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+    videoEl.play = vi.fn().mockReturnValue(Promise.resolve());
+
+    const autoCheckbox = document.createElement('input');
+    autoCheckbox.type = 'checkbox';
+    autoCheckbox.id = 'video-autoplay-setting';
+    autoCheckbox.checked = true;
+    document.body.appendChild(autoCheckbox);
+
+    autoCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(videoEl.dataset.crossfadeTriggered).toBe('true');
+    expect(videoEl.classList.contains('active')).toBe(true);
+    expect(videoEl.classList.contains('ready')).toBe(true);
+    expect(localStorage.getItem('videoAutoplay')).toBe('true');
+
+    autoCheckbox.checked = false;
+    autoCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('videoAutoplay')).toBe('false');
+
+    delete videoEl.readyState;
+    delete videoEl.currentSrc;
+    delete videoEl.dataset.crossfadeTriggered;
+    videoEl.classList.remove('active', 'ready');
+    document.body.removeChild(autoCheckbox);
+  });
+
+  it('autoplay change event adds loading class on unloaded video', () => {
+    const videoEl = document.getElementById('bg-video');
+    Object.defineProperty(videoEl, 'readyState', { value: 0, configurable: true });
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+    videoEl.classList.add('hidden');
+
+    const autoCheckbox = document.createElement('input');
+    autoCheckbox.type = 'checkbox';
+    autoCheckbox.id = 'video-autoplay-setting';
+    autoCheckbox.checked = true;
+    document.body.appendChild(autoCheckbox);
+
+    autoCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(videoEl.dataset.crossfadeTriggered).toBeUndefined();
+    expect(videoEl.classList.contains('hidden')).toBe(false);
+    expect(videoEl.classList.contains('loading')).toBe(true);
+    expect(localStorage.getItem('videoAutoplay')).toBe('true');
+
+    delete videoEl.readyState;
+    delete videoEl.currentSrc;
+    videoEl.classList.remove('loading');
+    document.body.removeChild(autoCheckbox);
+  });
 });
 
 describe('Clock format settings', () => {
