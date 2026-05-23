@@ -312,6 +312,7 @@ function applyBg() {
   // Get background data from the map
   const bgData = window._backgrounds ? window._backgrounds.find(b => b.id === bg) : null;
   if (!bgData) {
+    captureBackgroundSnapshot();
     backgroundLoadVersion += 1;
     stopBackground();
     return;
@@ -529,6 +530,13 @@ function applyBg() {
             hideBackgroundOverlay();
           });
         };
+        fullImg.onerror = function() {
+          if (loadVersion !== backgroundLoadVersion) {
+            return;
+          }
+
+          hideBackgroundOverlay();
+        };
         fullImg.src = bgData.thumb;
       };
       
@@ -585,6 +593,15 @@ function applyBg() {
         backgroundTransitionTimeout = null;
       }, IMAGE_THUMBNAIL_HIDE_DELAY_MS); // Match CSS clearing transition duration
     });
+  };
+  fullImg.onerror = function() {
+    if (loadVersion !== backgroundLoadVersion) {
+      return;
+    }
+
+    console.warn('Background image failed to load:', bgData.url);
+    clearBackgroundTransitionTimeout();
+    hideBackgroundOverlay();
   };
   fullImg.src = bgData.url;
 }

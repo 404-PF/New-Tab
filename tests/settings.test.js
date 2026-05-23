@@ -534,3 +534,57 @@ describe('clearBackgroundTransitionTimeout', () => {
     vi.useRealTimers();
   });
 });
+
+describe('background image load failure recovery', () => {
+  beforeEach(() => {
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.removeAttribute('src');
+    overlay.classList.remove('active');
+    clearBackgroundTransitionTimeout();
+  });
+
+  it('calls hideBackgroundOverlay when applyBg static image onerror fires', () => {
+    localStorage.setItem('homepageBg', 'Mountain View');
+    window._backgrounds = [
+      { id: 'Mountain View', type: 'image', thumb: 'thumb.jpg', url: 'bad-url.jpg' }
+    ];
+    window._interactiveBackground = { stop: vi.fn() };
+
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    overlay.setAttribute('src', 'old-snapshot');
+
+    // Intercept Image constructor to trigger onerror on the full-resolution load
+    const origImage = window.Image;
+    window.Image = function() {
+      const img = new origImage(0, 0);
+      const origSrcDescriptor = Object.getOwnPropertyDescriptor(
+        Object.getPrototypeOf(img), 'src'
+      );
+      Object.defineProperty(img, 'src', {
+        set(value) {
+          // Only trigger onerror for the full-resolution URL (not the thumbnail preload)
+          if (value === 'bad-url.jpg' && typeof img.onerror === 'function') {
+            img.onerror();
+          }
+          if (origSrcDescriptor && origSrcDescriptor.set) {
+            origSrcDescriptor.set.call(img, value);
+          }
+        },
+        configurable: true
+      });
+      img.onload = null;
+      img.onerror = null;
+      return img;
+    };
+    window.Image.prototype = origImage.prototype;
+
+    try {
+      applyBg();
+
+      expect(overlay.classList.contains('active')).toBe(false);
+    } finally {
+      window.Image = origImage;
+    }
+  });
+});
