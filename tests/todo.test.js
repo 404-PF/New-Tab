@@ -684,6 +684,99 @@ describe('Todo import', () => {
   });
 });
 
+describe('Todo drag-and-drop with filter', () => {
+  function simulateDrop(draggedId, dropTargetId) {
+    const draggedEl = document.createElement('li');
+    draggedEl.className = 'todo-item';
+    draggedEl.dataset.id = draggedId;
+
+    const dropTarget = document.createElement('li');
+    dropTarget.className = 'todo-item';
+    dropTarget.dataset.id = dropTargetId;
+
+    // Simulate the dragstart handler behavior
+    handleDragStart({ target: draggedEl, preventDefault: () => {} });
+
+    handleDrop({
+      preventDefault: () => {},
+      target: dropTarget
+    });
+
+    handleDragEnd({ target: draggedEl, preventDefault: () => {} });
+  }
+
+  it('preserves hidden todo order when reordering under a filter', () => {
+    // Create 5 todos: A, B, C, D, E
+    addTodo('A');
+    addTodo('B');
+    addTodo('C');
+    addTodo('D');
+    addTodo('E');
+
+    // Mark C and E as completed (they will be hidden under 'pending' filter)
+    const list = loadTodos();
+    const c = list.find(t => t.text === 'C');
+    const e = list.find(t => t.text === 'E');
+    toggleTodo(c.id);
+    toggleTodo(e.id);
+
+    // Switch to pending filter (shows A, B, D)
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill';
+    pill.dataset.filter = 'pending';
+    handleFilterPillClick({ target: pill });
+
+    // Drag D before B in the filtered view
+    const pending = filterTodos();
+    const d = pending.find(t => t.text === 'D');
+    const b = pending.find(t => t.text === 'B');
+    simulateDrop(d.id, b.id);
+
+    // Clear filter and check order
+    const allPill = document.createElement('button');
+    allPill.className = 'filter-pill';
+    allPill.dataset.filter = 'all';
+    handleFilterPillClick({ target: allPill });
+
+    const all = filterTodos();
+    // Expected order: A, D, B, C, E (C and E maintain their relative positions)
+    expect(all).toHaveLength(5);
+    expect(all[0].text).toBe('A');
+    expect(all[1].text).toBe('D');
+    expect(all[2].text).toBe('B');
+    expect(all[3].text).toBe('C');
+    expect(all[4].text).toBe('E');
+  });
+
+  it('maintains unique order values after filtered drag-and-drop', () => {
+    addTodo('A');
+    addTodo('B');
+    addTodo('C');
+
+    const list = loadTodos();
+    const b = list.find(t => t.text === 'B');
+    toggleTodo(b.id);
+
+    // Filter to pending (shows A, C)
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill';
+    pill.dataset.filter = 'pending';
+    handleFilterPillClick({ target: pill });
+
+    // Drag C before A
+    const pending = filterTodos();
+    const c = pending.find(t => t.text === 'C');
+    const a = pending.find(t => t.text === 'A');
+    simulateDrop(c.id, a.id);
+
+    // All order values should be unique
+    const allTodos = loadTodos();
+    const orders = allTodos.map(t => t.order);
+    const uniqueOrders = new Set(orders);
+    expect(uniqueOrders.size).toBe(orders.length);
+  });
+});
+
 describe('Todo reminders', () => {
   beforeEach(() => {
     localStorage.removeItem('todoReminderEnabled');

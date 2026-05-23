@@ -13,6 +13,16 @@
   },
   "todoReminderMessage": {
     "message": "$1$ — fällig $2$",
-    "description": "Notification body for todo reminder. $1$ is the task text, $2$ is the due date display."
+    "description": "Notification body for todo reminder. $1$ is the task text, $2$ is the due date display.",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "Buy groceries"
+      },
+      "2": {
+        "content": "$2",
+        "example": "2024-06-01"
+      }
+    }
   }
 }

@@ -708,7 +708,6 @@ function handleDrop(event) {
   });
 
   todos = reorderedTodos;
-
   if (!saveTodos(todos)) {
     todos = previousTodos;
     applyFilters();
