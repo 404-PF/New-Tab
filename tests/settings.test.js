@@ -137,7 +137,7 @@ describe('Modern picker events', () => {
       events.push('change');
     });
 
-    window.initModernFontPickers();
+    initModernFontPickers();
     document.querySelector('.font-option').click();
 
     expect(events).toHaveLength(1);
@@ -153,7 +153,7 @@ describe('Modern picker events', () => {
       events.push('input');
     });
 
-    window.initModernColorPickers();
+    initModernColorPickers();
     document.querySelector('.color-chip').click();
 
     expect(events).toHaveLength(1);

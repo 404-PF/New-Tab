@@ -506,6 +506,10 @@ body {
   outline: 2px solid rgba(33, 150, 243, 0.6);
   outline-offset: 4px;
 }
+body.light-theme .app-icon:focus-visible {
+  outline: 2px solid #2196f3;
+  outline-offset: 4px;
+}
 
 /* Drag and Drop Visual Feedback */
 .app-icon.dragging {
