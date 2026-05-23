@@ -6,5 +6,13 @@
   "description": {
     "message": "Eine schöne neue Tab-Seite mit Uhr, Suche, Apps und Aufgabenliste",
     "description": "The description of the extension"
+  },
+  "todoReminderTitle": {
+    "message": "Aufgabenerinnerung",
+    "description": "Title for the todo reminder notification"
+  },
+  "todoReminderMessage": {
+    "message": "$1$ — fällig $2$",
+    "description": "Notification body for todo reminder. $1$ is the task text, $2$ is the due date display."
   }
 }

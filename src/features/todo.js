@@ -49,6 +49,24 @@ function saveTodos(todos) {
   }
 }
 
+function scheduleTodoReminderCheck(todoId, resetNotified) {
+  try {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+      // Sends in-memory todos as JSON string to the service worker.
+      // The service worker uses this payload over stale chrome.storage.local data.
+      // If the payload is ever malformed/absent, the fallback reads from storage.
+      chrome.runtime.sendMessage({
+        type: 'syncTodos',
+        todoId: todoId || undefined,
+        todos: JSON.stringify(todos),
+        resetNotified: resetNotified || undefined
+      }).catch(() => {});
+    }
+  } catch (e) {
+    console.warn('Failed to send reminder sync message:', e);
+  }
+}
+
 function cloneTodos(sourceTodos) {
   return sourceTodos.map(todo => ({ ...todo }));
 }
@@ -385,6 +403,7 @@ function addTodo(text, dueDate = null) {
 
   applyFilters();
   clearInputs();
+  scheduleTodoReminderCheck(newTodo.id);
 }
 
 // Migrate existing todos to have completedAt property
@@ -429,6 +448,7 @@ function editTodo(id, newText, newPriority, newDueDate) {
     }
 
     applyFilters();
+    scheduleTodoReminderCheck(id);
   }
 }
 
@@ -454,6 +474,7 @@ function toggleTodo(id) {
     }
 
     applyFilters();
+    scheduleTodoReminderCheck(id);
   }
 }
 
@@ -469,6 +490,7 @@ function deleteTodo(id) {
   }
 
   applyFilters();
+  scheduleTodoReminderCheck(id);
 }
 
 // Filter management
@@ -572,6 +594,7 @@ function showClearCompletedDialog() {
 
     applyFilters();
     hideClearCompletedDialog();
+    scheduleTodoReminderCheck();
     
     // Remove event listeners
     confirmBtn?.removeEventListener('click', handleConfirm);
@@ -1017,6 +1040,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   // Update filter counts and progress
   updateFilterCounts();
   updateProgressRing();
+  scheduleTodoReminderCheck(todoId);
 }
 
 // Update due date display
@@ -1459,6 +1483,7 @@ function showImportDialog(importedTodos) {
     todos = existingTodos;
     applyFilters();
     closeEditModal();
+    scheduleTodoReminderCheck();
     if (addedCount > 0) {
       const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, addedCount);
       showToast(msg, 'success');
@@ -1488,6 +1513,7 @@ function showImportDialog(importedTodos) {
     todos = newTodos;
     applyFilters();
     closeEditModal();
+    scheduleTodoReminderCheck();
     const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, newTodos.length);
     showToast(msg, 'success');
     hideDialog();

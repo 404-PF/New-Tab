@@ -322,6 +322,37 @@
                 </div>
                 <div class="general-option">
                   <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="todo-reminder-enabled-setting" data-i18n="enableReminders">Enable reminders</label>
+                      <input type="checkbox" id="todo-reminder-enabled-setting" />
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option" id="todo-reminder-lead-time-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="todo-reminder-lead-time" data-i18n="reminderLeadTime">Remind before due</label>
+                      <select id="todo-reminder-lead-time">
+                        <option value="0" data-i18n="reminderLeadTimeAtDue">At due time</option>
+                        <option value="5" data-i18n="reminderLeadTime5min">5 minutes before</option>
+                        <option value="15" data-i18n="reminderLeadTime15min">15 minutes before</option>
+                        <option value="30" selected data-i18n="reminderLeadTime30min">30 minutes before</option>
+                        <option value="60" data-i18n="reminderLeadTime1hour">1 hour before</option>
+                        <option value="1440" data-i18n="reminderLeadTime1day">1 day before</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
                     <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                       <polyline points="14,2 14,8 20,8"></polyline>
