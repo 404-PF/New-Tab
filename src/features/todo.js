@@ -684,15 +684,26 @@ function handleDrop(event) {
   const [removed] = filteredTodos.splice(draggedIndex, 1);
   filteredTodos.splice(dropIndex, 0, removed);
 
-  // Update the order property for all todos to match the new order
-  filteredTodos.forEach((todo, index) => {
+  // Rebuild the full todos array preserving hidden todo positions
+  const previousTodos = cloneTodos(todos);
+  const filteredIds = new Set(filteredTodos.map(t => t.id));
+  const newTodos = [];
+  let filteredIndex = 0;
+
+  for (const todo of todos) {
+    if (filteredIds.has(todo.id)) {
+      newTodos.push(filteredTodos[filteredIndex++]);
+    } else {
+      newTodos.push(todo);
+    }
+  }
+
+  todos = newTodos;
+
+  // Update the order property for ALL todos
+  todos.forEach((todo, index) => {
     todo.order = index;
   });
-
-  // Update the main todos array to match the new order
-  const previousTodos = cloneTodos(todos);
-  const newOrder = filteredTodos.map(todo => todo.id);
-  todos.sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
 
   if (!saveTodos(todos)) {
     todos = previousTodos;
