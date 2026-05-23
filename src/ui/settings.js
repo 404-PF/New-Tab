@@ -409,6 +409,12 @@ function applyBg() {
         // When autoplay is disabled, keep thumbnail visible and video hidden
         if (!loadVideoAutoplay()) return;
         
+        // When simple mode is active, mark paused and keep video hidden
+        if (window.loadSimpleMode && window.loadSimpleMode()) {
+          videoEl.dataset.simpleModePaused = 'true';
+          return;
+        }
+        
         // Start video playback immediately
         startVideoPlayback();
         

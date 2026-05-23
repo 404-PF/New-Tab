@@ -470,6 +470,12 @@
             // When autoplay is disabled, keep thumbnail visible and video hidden
             if (!loadVideoAutoplay()) return;
 
+            // When simple mode is active, mark paused and keep video hidden
+            if (window.loadSimpleMode && window.loadSimpleMode()) {
+              videoEl.dataset.simpleModePaused = 'true';
+              return;
+            }
+
             videoEl.play().catch(function () {});
             videoEl.classList.add('active', 'ready');
             thumbnailEl.classList.add('clearing');

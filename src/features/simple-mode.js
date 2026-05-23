@@ -24,7 +24,7 @@ function applySimpleMode() {
       }
     } else {
       if (videoEl.dataset.simpleModePaused === 'true' && videoEl.paused) {
-        const autoplay = localStorage.getItem('videoAutoplay') !== 'false';
+        const autoplay = window.loadVideoAutoplay ? window.loadVideoAutoplay() : localStorage.getItem('videoAutoplay') !== 'false';
         if (autoplay) {
           videoEl.play().catch(function () {});
         }

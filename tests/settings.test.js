@@ -240,6 +240,51 @@ describe('Video playback settings', () => {
     videoEl.classList.remove('loading');
     document.body.removeChild(autoCheckbox);
   });
+
+  it('pauseHidden change event updates localStorage', () => {
+    const pauseCheckbox = document.createElement('input');
+    pauseCheckbox.type = 'checkbox';
+    pauseCheckbox.id = 'video-pause-hidden-setting';
+    document.body.appendChild(pauseCheckbox);
+
+    pauseCheckbox.checked = false;
+    pauseCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('videoPauseHidden')).toBe('false');
+
+    pauseCheckbox.checked = true;
+    pauseCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('videoPauseHidden')).toBe('true');
+
+    document.body.removeChild(pauseCheckbox);
+  });
+
+  it('autoplay change event respects simple mode', () => {
+    const videoEl = document.getElementById('bg-video');
+    Object.defineProperty(videoEl, 'readyState', { value: 2, configurable: true });
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+    videoEl.play = vi.fn().mockReturnValue(Promise.resolve());
+
+    delete videoEl.dataset.simpleModePaused;
+
+    const autoCheckbox = document.createElement('input');
+    autoCheckbox.type = 'checkbox';
+    autoCheckbox.id = 'video-autoplay-setting';
+    autoCheckbox.checked = true;
+    document.body.appendChild(autoCheckbox);
+
+    autoCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(videoEl.classList.contains('active')).toBe(true);
+
+    autoCheckbox.checked = false;
+    autoCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('videoAutoplay')).toBe('false');
+
+    delete videoEl.readyState;
+    delete videoEl.currentSrc;
+    delete videoEl.dataset.crossfadeTriggered;
+    videoEl.classList.remove('active', 'ready');
+    document.body.removeChild(autoCheckbox);
+  });
 });
 
 describe('Clock format settings', () => {
