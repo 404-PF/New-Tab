@@ -32,10 +32,15 @@ const DEFAULT_PREVIEW_ICON = `
 
 let addAppElementsCache = null;
 let addAppModalInitialized = false;
+let addAppAbortController = null;
 
 function resetAddAppModalState() {
   addAppElementsCache = null;
   addAppModalInitialized = false;
+  if (addAppAbortController) {
+    addAppAbortController.abort();
+    addAppAbortController = null;
+  }
 }
 
 function getAddAppElements() {
@@ -348,6 +353,9 @@ function bindAddAppModal() {
     return;
   }
 
+  addAppAbortController = new AbortController();
+  const signal = addAppAbortController.signal;
+
   const {
     addAppBtn,
     addAppModal,
@@ -363,21 +371,21 @@ function bindAddAppModal() {
   addAppBtn.addEventListener('click', function (event) {
     event.preventDefault();
     openAddAppModal();
-  });
+  }, { signal });
 
   addAppModal.addEventListener('click', function (event) {
     if (event.target === addAppModal) {
       closeAddAppModal();
     }
-  });
+  }, { signal });
 
   if (addAppCancel) {
     addAppCancel.addEventListener('click', function () {
       closeAddAppModal();
-    });
+    }, { signal });
   }
 
-  addAppUrlInput.addEventListener('input', updatePreview);
+  addAppUrlInput.addEventListener('input', updatePreview, { signal });
   addAppUrlInput.addEventListener('keypress', async function (event) {
     if (event.key !== 'Enter') {
       return;
@@ -389,7 +397,7 @@ function bindAddAppModal() {
       return;
     }
     await addAppFromInput(url);
-  });
+  }, { signal });
 
   if (addAppConfirm) {
     addAppConfirm.addEventListener('click', async function () {
@@ -398,7 +406,7 @@ function bindAddAppModal() {
         return;
       }
       await addAppFromInput(url);
-    });
+    }, { signal });
   }
 
   window.addEventListener('languageChanged', function () {
@@ -406,7 +414,7 @@ function bindAddAppModal() {
     if (addAppModal && addAppModal.style.display !== 'none') {
       updatePreview();
     }
-  });
+  }, { signal });
 
   addAppModalInitialized = true;
 }

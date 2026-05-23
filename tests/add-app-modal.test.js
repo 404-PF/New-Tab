@@ -1,4 +1,4 @@
-/* global renderDefaultAppsList */
+/* global renderDefaultAppsList closeAddAppModal */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
@@ -153,14 +153,20 @@ describe('Add app modal quick add', () => {
   });
 
   it('resetAddAppModalState clears state and allows re-initialization', () => {
+    const newAppBtn = document.getElementById('new-app');
+    const modal = document.getElementById('add-app-modal');
+
     window.bindAddAppModal();
+    newAppBtn.click();
+    expect(modal.style.display).toBe('flex');
+
+    closeAddAppModal();
+    expect(modal.style.display).toBe('none');
 
     window.resetAddAppModalState();
-
     expect(() => window.bindAddAppModal()).not.toThrow();
-    expect(() => window.openAddAppModal()).not.toThrow();
 
-    const section = document.querySelector('.add-app-section');
-    expect(section).toBeTruthy();
+    newAppBtn.click();
+    expect(modal.style.display).toBe('flex');
   });
 });
