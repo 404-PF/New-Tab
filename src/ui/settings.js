@@ -198,7 +198,7 @@ function captureBackgroundSnapshot() {
 
   let src = null;
 
-  if (fullEl && fullEl.classList.contains('loaded') && fullEl.src) {
+  if (fullEl && fullEl.classList.contains('loaded') && fullEl.src && fullEl.naturalWidth > 0) {
     src = fullEl.src;
   } else if (videoEl && videoEl.classList.contains('active') && videoEl.currentSrc && videoEl.readyState >= 2) {
     try {
@@ -215,7 +215,7 @@ function captureBackgroundSnapshot() {
     }
   }
 
-  if (!src && thumbnailEl && thumbnailEl.src && !thumbnailEl.classList.contains('hidden')) {
+  if (!src && thumbnailEl && thumbnailEl.src && !thumbnailEl.classList.contains('hidden') && thumbnailEl.naturalWidth > 0) {
     src = thumbnailEl.src;
   }
 
