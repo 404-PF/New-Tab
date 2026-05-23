@@ -193,30 +193,33 @@ function setupRefreshMotto() {
 }
 
 // Handle copy motto functionality
+function showCopyNotification(success) {
+  const successText = window.i18n ? window.i18n.t('copyMottoCopied') : 'Copied';
+  const failureText = window.i18n ? window.i18n.t('copyMottoFailed') : 'Failed to copy';
+
+  let notification = document.querySelector('.copy-notification');
+  if (!notification) {
+    notification = document.createElement('div');
+    notification.className = 'copy-notification';
+    document.body.appendChild(notification);
+  }
+
+  notification.textContent = success ? successText : failureText;
+  notification.classList.add('show');
+  setTimeout(() => {
+    notification.classList.remove('show');
+  }, 3000);
+}
+
 function setupCopyMotto() {
   const copyBtn = document.getElementById('copy-motto-btn');
   if (copyBtn) {
     copyBtn.addEventListener('click', async () => {
       const mottoText = document.getElementById('motto-text');
       if (mottoText && mottoText.textContent) {
-        const copiedText = window.i18n ? window.i18n.t('copyMottoCopied') : 'Copied';
-        // Show copy notification
-        let notification = document.querySelector('.copy-notification');
-        if (!notification) {
-          notification = document.createElement('div');
-          notification.className = 'copy-notification';
-          document.body.appendChild(notification);
-        }
-
-        notification.textContent = copiedText;
-
-        notification.classList.add('show');
-        setTimeout(() => {
-          notification.classList.remove('show');
-        }, 3000);
-
         try {
           await navigator.clipboard.writeText(mottoText.textContent);
+          showCopyNotification(true);
         } catch (err) {
           console.error('Failed to copy motto:', err);
           // Fallback for older browsers
@@ -226,8 +229,10 @@ function setupCopyMotto() {
           textArea.select();
           try {
             document.execCommand('copy');
+            showCopyNotification(true);
           } catch (fallbackErr) {
             console.error('Fallback copy failed:', fallbackErr);
+            showCopyNotification(false);
           }
           document.body.removeChild(textArea);
         }
