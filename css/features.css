@@ -2162,7 +2162,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 #rename-app-modal.modal-open {
   opacity: 1;
@@ -2295,7 +2295,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 #thumbnail-app-modal.modal-open {
   opacity: 1;
@@ -2512,7 +2512,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 #delete-app-modal.modal-open {
   opacity: 1;

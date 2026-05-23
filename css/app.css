@@ -2083,7 +2083,7 @@ body.light-theme .progress-dot.active {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 #todo-edit-modal.modal-open {
   opacity: 1;

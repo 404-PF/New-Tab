@@ -731,7 +731,7 @@ body.light-theme .drag-placeholder {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 #settings-modal.modal-open {
   opacity: 1;
@@ -1023,7 +1023,7 @@ body.light-theme .bg-loading-spinner {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 #add-app-modal.modal-open {
   opacity: 1;
