@@ -1482,7 +1482,18 @@ const translations = {
     aiMessageEmpty: 'El mensaje no puede estar vacío',
     aiMessageTooLong: 'Mensaje demasiado largo (máx. 2000 caracteres)',
     aiStopStreaming: 'Detener',
-    aiScrollToBottom: 'Desplazar al fondo'
+    aiScrollToBottom: 'Desplazar al fondo',
+    createFolder: 'Crear carpeta',
+    renameFolder: 'Renombrar carpeta',
+    deleteFolder: 'Eliminar carpeta',
+    moveToFolder: 'Mover a carpeta',
+    removeFromFolder: 'Eliminar de carpeta',
+    renameFolderPrompt: 'Ingrese el nuevo nombre de la carpeta:',
+    createFolderPrompt: 'Ingrese el nombre de la carpeta:',
+    newFolder: 'Nueva carpeta',
+    deleteFolderConfirm: '¿Eliminar la carpeta "{name}"? Las aplicaciones dentro se moverán de vuelta a la cuadrícula.',
+    noFoldersCreate: 'Aún no hay carpetas. ¿Crear una ahora?',
+    folderEmpty: 'Esta carpeta está vacía'
   },
 
   fr: {
@@ -1750,7 +1761,18 @@ const translations = {
     aiMessageEmpty: 'Le message ne peut pas être vide',
     aiMessageTooLong: 'Message trop long (max 2000 caractères)',
     aiStopStreaming: 'Arrêter',
-    aiScrollToBottom: 'Descendre en bas'
+    aiScrollToBottom: 'Descendre en bas',
+    createFolder: 'Créer un dossier',
+    renameFolder: 'Renommer le dossier',
+    deleteFolder: 'Supprimer le dossier',
+    moveToFolder: 'Déplacer vers le dossier',
+    removeFromFolder: 'Retirer du dossier',
+    renameFolderPrompt: 'Entrez le nouveau nom du dossier :',
+    createFolderPrompt: 'Entrez le nom du dossier :',
+    newFolder: 'Nouveau dossier',
+    deleteFolderConfirm: 'Supprimer le dossier "{name}" ? Les applications à l\'intérieur seront remises dans la grille.',
+    noFoldersCreate: 'Pas encore de dossiers. En créer un maintenant ?',
+    folderEmpty: 'Ce dossier est vide'
   },
 
   de: {
@@ -2018,7 +2040,18 @@ const translations = {
     aiMessageEmpty: 'Nachricht darf nicht leer sein',
     aiMessageTooLong: 'Nachricht zu lang (max. 2000 Zeichen)',
     aiStopStreaming: 'Stopp',
-    aiScrollToBottom: 'Nach unten scrollen'
+    aiScrollToBottom: 'Nach unten scrollen',
+    createFolder: 'Ordner erstellen',
+    renameFolder: 'Ordner umbenennen',
+    deleteFolder: 'Ordner löschen',
+    moveToFolder: 'In Ordner verschieben',
+    removeFromFolder: 'Aus Ordner entfernen',
+    renameFolderPrompt: 'Neuen Ordnernamen eingeben:',
+    createFolderPrompt: 'Ordnernamen eingeben:',
+    newFolder: 'Neuer Ordner',
+    deleteFolderConfirm: 'Ordner "{name}" löschen? Die darin enthaltenen Apps werden zurück in das Raster verschoben.',
+    noFoldersCreate: 'Noch keine Ordner. Jetzt einen erstellen?',
+    folderEmpty: 'Dieser Ordner ist leer'
   },
 
   pt: {
@@ -2286,7 +2319,18 @@ const translations = {
     aiMessageEmpty: 'Mensagem não pode estar vazia',
     aiMessageTooLong: 'Mensagem muito longa (máx. 2000 caracteres)',
     aiStopStreaming: 'Parar',
-    aiScrollToBottom: 'Rolar para o final'
+    aiScrollToBottom: 'Rolar para o final',
+    createFolder: 'Criar pasta',
+    renameFolder: 'Renomear pasta',
+    deleteFolder: 'Excluir pasta',
+    moveToFolder: 'Mover para pasta',
+    removeFromFolder: 'Remover da pasta',
+    renameFolderPrompt: 'Digite o novo nome da pasta:',
+    createFolderPrompt: 'Digite o nome da pasta:',
+    newFolder: 'Nova pasta',
+    deleteFolderConfirm: 'Excluir pasta "{name}"? Os aplicativos dentro serão movidos de volta para a grade.',
+    noFoldersCreate: 'Nenhuma pasta ainda. Criar uma agora?',
+    folderEmpty: 'Esta pasta está vazia'
   },
 
   ru: {
@@ -2554,7 +2598,18 @@ const translations = {
     aiMessageEmpty: 'Сообщение не может быть пустым',
     aiMessageTooLong: 'Слишком длинное сообщение (макс. 2000 символов)',
     aiStopStreaming: 'Стоп',
-    aiScrollToBottom: 'Прокрутить вниз'
+    aiScrollToBottom: 'Прокрутить вниз',
+    createFolder: 'Создать папку',
+    renameFolder: 'Переименовать папку',
+    deleteFolder: 'Удалить папку',
+    moveToFolder: 'Переместить в папку',
+    removeFromFolder: 'Убрать из папки',
+    renameFolderPrompt: 'Введите новое имя папки:',
+    createFolderPrompt: 'Введите имя папки:',
+    newFolder: 'Новая папка',
+    deleteFolderConfirm: 'Удалить папку "{name}"? Приложения внутри будут перемещены обратно в сетку.',
+    noFoldersCreate: 'Папок пока нет. Создать сейчас?',
+    folderEmpty: 'Эта папка пуста'
   }
 };
 

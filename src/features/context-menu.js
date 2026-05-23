@@ -233,6 +233,7 @@ document.addEventListener('click', function (e) {
   if (!contextMenu.contains(e.target) && e.button !== 2) {
     contextMenu.style.display = 'none';
     document.body.classList.remove('context-menu-open');
+    contextTargetId = null;
     contextTargetFolderId = null;
   }
 });

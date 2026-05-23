@@ -110,6 +110,7 @@ const addApp = document.getElementById('new-app');
 
   // Re-apply the open-in-new-tab preference after rebuilding links.
   applyOpenNewTabSetting();
+  window._gridRendered = true;
   window.appGridReady = true;
   window.dispatchEvent(new CustomEvent('appGridReady'));
 }
@@ -122,6 +123,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       console.warn('Failed to cache existing app icons:', error);
     }
+  }
+  // Fallback: render grid even if app-folders.js fails to load (network error,
+  // CSP issue, uncaught exception). If AppFolders is absent, folders are
+  // skipped and can be picked up later when app-folders.js dispatches
+  // 'appFoldersReady'. Guard against double-render when app-folders.js
+  // already called renderAllApps before DOMContentLoaded fires.
+  if (!window._gridRendered && typeof window.renderAllApps === 'function') {
+    window.renderAllApps();
   }
 });
 
