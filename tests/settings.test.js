@@ -386,3 +386,151 @@ describe('Language settings', () => {
     expect(result).toBe('nonexistentKey');
   });
 });
+
+describe('hideBackgroundOverlay', () => {
+  beforeEach(() => {
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.removeAttribute('src');
+    overlay.classList.remove('active');
+    clearBackgroundTransitionTimeout();
+  });
+
+  it('returns early when overlay is not active', () => {
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.setAttribute('src', 'some-src');
+    hideBackgroundOverlay();
+    expect(overlay.getAttribute('src')).toBe('some-src');
+    expect(overlay.classList.contains('active')).toBe(false);
+  });
+
+  it('removes active class immediately', () => {
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    hideBackgroundOverlay();
+    expect(overlay.classList.contains('active')).toBe(false);
+  });
+
+  it('clears overlay src after transition duration', () => {
+    vi.useFakeTimers();
+    const overlay = document.getElementById('bg-transition-overlay');
+    const originalSrc = 'some-src';
+    overlay.setAttribute('src', originalSrc);
+    overlay.classList.add('active');
+
+    hideBackgroundOverlay();
+    vi.advanceTimersByTime(400);
+
+    expect(overlay.getAttribute('src')).toBe('');
+    vi.useRealTimers();
+  });
+
+  it('preserves src if overlay becomes active again during fade', () => {
+    vi.useFakeTimers();
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.setAttribute('src', 'some-src');
+    overlay.classList.add('active');
+
+    hideBackgroundOverlay();
+    overlay.classList.add('active');
+    vi.advanceTimersByTime(400);
+
+    expect(overlay.getAttribute('src')).toBe('some-src');
+    vi.useRealTimers();
+  });
+});
+
+describe('captureBackgroundSnapshot non-interactive sources', () => {
+  beforeEach(() => {
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.removeAttribute('src');
+    overlay.classList.remove('active');
+
+    const fullEl = document.getElementById('bg-full');
+    fullEl.classList.remove('loaded');
+    fullEl.removeAttribute('src');
+
+    const videoEl = document.getElementById('bg-video');
+    videoEl.classList.remove('active');
+
+    const thumbnailEl = document.getElementById('bg-thumbnail');
+    thumbnailEl.classList.add('hidden');
+    thumbnailEl.removeAttribute('src');
+
+    delete window._interactiveBackground;
+  });
+
+  it('captures from full image when loaded with naturalWidth > 0', () => {
+    const fullEl = document.getElementById('bg-full');
+    fullEl.classList.add('loaded');
+    Object.defineProperty(fullEl, 'naturalWidth', { value: 100, configurable: true });
+    fullEl.setAttribute('src', 'https://example.com/full.jpg');
+
+    captureBackgroundSnapshot();
+    const overlay = document.getElementById('bg-transition-overlay');
+    expect(overlay.getAttribute('src')).toBe('https://example.com/full.jpg');
+    expect(overlay.classList.contains('active')).toBe(true);
+  });
+
+  it('captures from video frame when active and ready', () => {
+    const videoEl = document.getElementById('bg-video');
+    videoEl.classList.add('active');
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'video.mp4', configurable: true });
+    Object.defineProperty(videoEl, 'readyState', { value: 2, configurable: true });
+    Object.defineProperty(videoEl, 'videoWidth', { value: 1920, configurable: true });
+    Object.defineProperty(videoEl, 'videoHeight', { value: 1080, configurable: true });
+
+    const origGetContext = HTMLCanvasElement.prototype.getContext;
+    const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.getContext = () => ({ drawImage: () => {} });
+    HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,video-mock';
+
+    try {
+      captureBackgroundSnapshot();
+      const overlay = document.getElementById('bg-transition-overlay');
+      expect(overlay.getAttribute('src')).toContain('data:image/jpeg');
+      expect(overlay.classList.contains('active')).toBe(true);
+    } finally {
+      HTMLCanvasElement.prototype.getContext = origGetContext;
+      HTMLCanvasElement.prototype.toDataURL = origToDataURL;
+    }
+  });
+
+  it('captures from thumbnail when full and video sources unavailable', () => {
+    const thumbnailEl = document.getElementById('bg-thumbnail');
+    thumbnailEl.classList.remove('hidden');
+    Object.defineProperty(thumbnailEl, 'naturalWidth', { value: 100, configurable: true });
+    thumbnailEl.setAttribute('src', 'https://example.com/thumb.jpg');
+
+    captureBackgroundSnapshot();
+    const overlay = document.getElementById('bg-transition-overlay');
+    expect(overlay.getAttribute('src')).toBe('https://example.com/thumb.jpg');
+    expect(overlay.classList.contains('active')).toBe(true);
+  });
+
+  it('does nothing when no source is available', () => {
+    captureBackgroundSnapshot();
+    const overlay = document.getElementById('bg-transition-overlay');
+    expect(overlay.getAttribute('src')).toBeNull();
+    expect(overlay.classList.contains('active')).toBe(false);
+  });
+});
+
+describe('clearBackgroundTransitionTimeout', () => {
+  beforeEach(() => {
+    clearBackgroundTransitionTimeout();
+  });
+
+  it('cancels overlay src clear timeout set by hideBackgroundOverlay', () => {
+    vi.useFakeTimers();
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.setAttribute('src', 'some-src');
+    overlay.classList.add('active');
+
+    hideBackgroundOverlay();
+    clearBackgroundTransitionTimeout();
+    vi.advanceTimersByTime(400);
+
+    expect(overlay.getAttribute('src')).toBe('some-src');
+    vi.useRealTimers();
+  });
+});

@@ -99,6 +99,8 @@ const testGlobals = {
   getClosestSize: 'readonly',
   applyBg: 'readonly',
   captureBackgroundSnapshot: 'readonly',
+  hideBackgroundOverlay: 'readonly',
+  clearBackgroundTransitionTimeout: 'readonly',
   loadLanguageSetting: 'readonly',
   renderLanguageOptions: 'readonly',
   initModernFontPickers: 'readonly',
