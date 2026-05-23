@@ -1,10 +1,7 @@
 // src/ui/app-manager.js - App grid management, drag and drop
 
 // Helper functions
-const escapeHtml = (str) => {
-  if (!str) return '';
-  return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c));
-};
+const escapeHtml = window.escapeHtml;
 const getDraggableAppIcons = () => Array.from(document.querySelectorAll('.app-grid .app-icon')).filter(icon => icon.id !== 'new-app');
 const getAppOrder = () => AppGridState.getOrder();
 const saveAppOrder = order => AppGridState.saveOrder(order);
@@ -20,6 +17,7 @@ const defaultApps = [
   { id: 'feedback-app', nameKey: 'feedback', url: 'https://github.com/404-PF/New-Tab/issues/new', icon: 'images/icons/feedback.svg', className: 'default-app' },
   { id: 'settings-app', nameKey: 'settings', url: '#', icon: 'images/icons/settings.svg', className: 'default-app' },
 ];
+window.defaultApps = Object.freeze(defaultApps);
 
 // Get all apps data
 const getAllAppData = () => {
@@ -48,17 +46,42 @@ const addApp = document.getElementById('new-app');
     seenIds.add(app.id);
     return true;
   });
-  const validIds = new Set(dedupedApps.map(app => app.id));
+  const folders = AppGridState.getFolders();
+  const folderIds = new Set(folders.map(f => f.id));
+  const validIds = new Set([...dedupedApps.map(app => app.id), ...folderIds]);
+  const totalExpectedLength = dedupedApps.length + folders.length;
   const isValidOrder = Array.isArray(order)
-    && order.length === dedupedApps.length
+    && order.length === totalExpectedLength
     && order.every(id => validIds.has(id))
     && new Set(order).size === order.length;
   if (!isValidOrder) {
+    // During recovery, all folders are appended after apps, which may lose
+    // any interleaved positioning users had set between folders and apps.
     order = dedupedApps.map(app => app.id);
+    folders.forEach(f => order.push(f.id));
     saveAppOrder(order);
   }
+  const folderMap = Object.fromEntries(folders.map(f => [f.id, f]));
   const appMap = Object.fromEntries(dedupedApps.map(app => [app.id, app]));
   order.forEach(appId => {
+    if (folderMap[appId]) {
+      if (!window.AppFolders) {
+        console.warn('AppFolders not initialized, deferring folder render for:', appId);
+        if (!window._appFoldersDeferred) {
+          window._appFoldersDeferred = true;
+          document.addEventListener('appFoldersReady', function onReady() {
+            document.removeEventListener('appFoldersReady', onReady);
+            if (typeof window.renderAllApps === 'function') window.renderAllApps();
+            window._appFoldersRendered = true;
+          }, { once: true });
+        }
+        return;
+      }
+      const folder = folderMap[appId];
+      const folderEl = window.AppFolders.createFolderIconElement(folder);
+      appGrid.insertBefore(folderEl, addApp);
+      return;
+    }
     const app = appMap[appId];
     if (!app) return;
     const a = document.createElement('a');
@@ -76,9 +99,8 @@ const addApp = document.getElementById('new-app');
     // Use cached icon if available, otherwise use original icon
     const iconUrl = app.cachedIcon || app.icon;
     a.title = displayName;
-    // Load icon from external file (use images/icons/feedback.svg) rather than embedding inline SVG in JS.
-    // The SVG file (`images/icons/feedback.svg`) uses `currentColor` where appropriate.
-    const iconHtml = `<div class="icon"><img src="${escapeHtml(iconUrl)}" alt="${escapeHtml(displayName)}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/globe.svg';"></div>`;
+    const safeIconUrl = window.validateIconUrl ? window.validateIconUrl(iconUrl) : iconUrl;
+    const iconHtml = `<div class="icon"><img src="${escapeHtml(safeIconUrl || '')}" alt="${escapeHtml(displayName)}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/globe.svg';"></div>`;
     a.innerHTML = iconHtml + `<span class="app-name">${escapeHtml(displayName)}</span>`;
     appGrid.insertBefore(a, addApp);
   });
@@ -88,11 +110,12 @@ const addApp = document.getElementById('new-app');
 
   // Re-apply the open-in-new-tab preference after rebuilding links.
   applyOpenNewTabSetting();
+  window._gridRendered = true;
   window.appGridReady = true;
   window.dispatchEvent(new CustomEvent('appGridReady'));
 }
 
-// Initial render after caching
+// Initial icon caching; render is deferred to app-folders init
 document.addEventListener('DOMContentLoaded', async () => {
   if (window.iconCache && window.iconCache.cacheExistingAppIcons) {
     try {
@@ -101,7 +124,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.warn('Failed to cache existing app icons:', error);
     }
   }
-  renderAllApps();
+  // Fallback: render grid even if app-folders.js fails to load (network error,
+  // CSP issue, uncaught exception). If AppFolders is absent, folders are
+  // skipped and can be picked up later when app-folders.js dispatches
+  // 'appFoldersReady'. Guard against double-render when app-folders.js
+  // already called renderAllApps before DOMContentLoaded fires.
+  if (!window._gridRendered && typeof window.renderAllApps === 'function') {
+    window.renderAllApps();
+  }
 });
 
 // Re-render function (export for other modules)

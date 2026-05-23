@@ -1211,5 +1211,30 @@
   <div class="footer-right">
       <span id="version-display"></span>
     </div>
+
+  <!-- Folder Popup -->
+  <div id="folder-popup" class="folder-popup" style="display:none;">
+    <div class="folder-popup-content">
+      <div class="folder-popup-header">
+        <h2 class="folder-popup-title" id="folder-popup-title"></h2>
+        <button id="folder-popup-rename-btn" class="folder-popup-rename-btn" data-i18n="renameFolder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+          </svg>
+        </button>
+        <button id="folder-popup-close-btn" class="folder-popup-close-btn">&times;</button>
+      </div>
+      <div class="folder-popup-apps" id="folder-popup-apps"></div>
+    </div>
+  </div>
+
+  <!-- Move to Folder Selector -->
+  <div id="move-to-folder-selector" class="move-to-folder-selector" style="display:none;">
+    <div class="move-to-folder-selector-content">
+      <h3 class="move-to-folder-selector-title" data-i18n="moveToFolder">Move to Folder</h3>
+      <div class="move-to-folder-selector-list" id="move-to-folder-list"></div>
+    </div>
+  </div>
+
   </body>
 </html>

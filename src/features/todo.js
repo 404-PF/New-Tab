@@ -21,12 +21,7 @@ const editModalState = {
 };
 const runTodoOnDomReady = window.onDomReady;
 
-// Escape HTML entities to prevent XSS
-const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' };
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/[&<>"']/g, c => HTML_ESCAPE_MAP[c]);
-}
+// Use global escapeHtml from utils.js
 
 // Load todos from localStorage
 function loadTodos() {
@@ -1495,7 +1490,7 @@ function showImportDialog(importedTodos) {
     closeEditModal();
     scheduleTodoReminderCheck();
     if (addedCount > 0) {
-      const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, addedCount);
+      const msg = window.i18n ? window.i18n.t('importSuccess', { count: addedCount }) : 'Imported ' + addedCount + ' todos successfully.';
       showToast(msg, 'success');
     } else {
       showToast(window.i18n ? window.i18n.t('importNoNewTodos') : 'No new todos to import.', 'info');
@@ -1524,7 +1519,7 @@ function showImportDialog(importedTodos) {
     applyFilters();
     closeEditModal();
     scheduleTodoReminderCheck();
-    const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, newTodos.length);
+    const msg = window.i18n ? window.i18n.t('importSuccess', { count: newTodos.length }) : 'Imported ' + newTodos.length + ' todos successfully.';
     showToast(msg, 'success');
     hideDialog();
   };
