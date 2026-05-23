@@ -114,8 +114,6 @@ function resetBackgroundVideo(videoEl, unloadSource) {
   videoEl.onloadedmetadata = null;
   videoEl.onerror = null;
   videoEl.onpause = null;
-  videoEl.oncontextmenu = null;
-  videoEl.onplay = null;
 
   videoEl.classList.remove('active', 'ready', 'loading');
   videoEl.classList.add('hidden');
@@ -861,12 +859,11 @@ document.addEventListener('change', function (e) {
             videoEl.play().catch(function () {});
           }
         } else {
-          // Video not ready yet — reset crossfade guard and reload
-          // The existing oncanplaythrough handler from applyBg() will fire naturally
+          // Video not ready yet — reset crossfade guard and let the
+          // oncanplaythrough handler from applyBg() fire naturally
           delete videoEl.dataset.crossfadeTriggered;
           videoEl.classList.remove('hidden');
           videoEl.classList.add('loading');
-          videoEl.load();
         }
       } else {
         // Don't null oncanplaythrough — triggerCrossfade already checks

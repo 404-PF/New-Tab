@@ -227,8 +227,6 @@
     videoEl.onloadedmetadata = null;
     videoEl.onerror = null;
     videoEl.onpause = null;
-    videoEl.oncontextmenu = null;
-    videoEl.onplay = null;
 
     videoEl.classList.remove('active', 'ready', 'loading');
     videoEl.classList.add('hidden');

@@ -88,6 +88,84 @@ describe('Todo enabled settings', () => {
   });
 });
 
+describe('Video playback settings', () => {
+  beforeEach(() => {
+    localStorage.removeItem('videoAutoplay');
+    localStorage.removeItem('videoMuted');
+    localStorage.removeItem('videoPauseHidden');
+    const existingAuto = document.getElementById('video-autoplay-setting');
+    const existingMuted = document.getElementById('video-muted-setting');
+    const existingPause = document.getElementById('video-pause-hidden-setting');
+    if (existingAuto) existingAuto.remove();
+    if (existingMuted) existingMuted.remove();
+    if (existingPause) existingPause.remove();
+  });
+
+  it('loadVideoAutoplay returns true by default', () => {
+    expect(loadVideoAutoplay()).toBe(true);
+  });
+
+  it('loadVideoAutoplay reads localStorage', () => {
+    localStorage.setItem('videoAutoplay', 'false');
+    expect(loadVideoAutoplay()).toBe(false);
+  });
+
+  it('loadVideoMuted returns true by default', () => {
+    expect(loadVideoMuted()).toBe(true);
+  });
+
+  it('loadVideoMuted reads localStorage', () => {
+    localStorage.setItem('videoMuted', 'false');
+    expect(loadVideoMuted()).toBe(false);
+  });
+
+  it('loadVideoPauseHidden returns true by default', () => {
+    expect(loadVideoPauseHidden()).toBe(true);
+  });
+
+  it('loadVideoPauseHidden reads localStorage', () => {
+    localStorage.setItem('videoPauseHidden', 'false');
+    expect(loadVideoPauseHidden()).toBe(false);
+  });
+
+  it('applyVideoPlaybackSettings sets checkboxes from localStorage', () => {
+    const autoCheckbox = document.createElement('input');
+    autoCheckbox.type = 'checkbox';
+    autoCheckbox.id = 'video-autoplay-setting';
+    document.body.appendChild(autoCheckbox);
+
+    const mutedCheckbox = document.createElement('input');
+    mutedCheckbox.type = 'checkbox';
+    mutedCheckbox.id = 'video-muted-setting';
+    document.body.appendChild(mutedCheckbox);
+
+    const pauseCheckbox = document.createElement('input');
+    pauseCheckbox.type = 'checkbox';
+    pauseCheckbox.id = 'video-pause-hidden-setting';
+    document.body.appendChild(pauseCheckbox);
+
+    localStorage.setItem('videoAutoplay', 'false');
+    localStorage.setItem('videoMuted', 'false');
+    localStorage.setItem('videoPauseHidden', 'false');
+
+    applyVideoPlaybackSettings();
+
+    expect(autoCheckbox.checked).toBe(false);
+    expect(mutedCheckbox.checked).toBe(false);
+    expect(pauseCheckbox.checked).toBe(false);
+
+    localStorage.setItem('videoAutoplay', 'true');
+    localStorage.setItem('videoMuted', 'true');
+    localStorage.setItem('videoPauseHidden', 'true');
+
+    applyVideoPlaybackSettings();
+
+    expect(autoCheckbox.checked).toBe(true);
+    expect(mutedCheckbox.checked).toBe(true);
+    expect(pauseCheckbox.checked).toBe(true);
+  });
+});
+
 describe('Clock format settings', () => {
   it('loadClockFormatSetting returns auto by default', () => {
     expect(loadClockFormatSetting()).toBe('auto');
