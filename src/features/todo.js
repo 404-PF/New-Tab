@@ -1164,7 +1164,7 @@ function openEditModal(id) {
 
   // Show modal
   if (modal) {
-    modal.style.display = 'flex';
+    modal.classList.add('modal-open');
     // Focus on text input
     setTimeout(() => {
       if (textInput) textInput.focus();
@@ -1178,7 +1178,7 @@ function closeEditModal() {
 
   const modal = document.getElementById('todo-edit-modal');
 
-  if (modal) modal.style.display = 'none';
+  if (modal) modal.classList.remove('modal-open');
 }
 
 function saveEdit() {

@@ -96,7 +96,7 @@ function closeAddAppModal() {
   const { addAppModal, addAppUrlInput, addAppConfirm } = getAddAppElements();
 
   if (addAppModal) {
-    addAppModal.style.display = 'none';
+    addAppModal.classList.remove('modal-open');
   }
   if (addAppUrlInput) {
     addAppUrlInput.value = '';
@@ -271,7 +271,7 @@ function openAddAppModal() {
   const { addAppModal, addAppUrlInput, addAppConfirm } = getAddAppElements();
 
   if (addAppModal) {
-    addAppModal.style.display = 'flex';
+    addAppModal.classList.add('modal-open');
   }
   if (addAppUrlInput) {
     addAppUrlInput.value = '';
@@ -345,7 +345,7 @@ function bindAddAppModal() {
 
   window.addEventListener('languageChanged', function () {
     const { addAppModal } = getAddAppElements();
-    if (addAppModal && addAppModal.style.display !== 'none') {
+    if (addAppModal && addAppModal.classList.contains('modal-open')) {
       updatePreview();
     }
   });

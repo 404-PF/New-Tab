@@ -283,7 +283,7 @@ function attachSettingsAppHandler() {
       e.preventDefault();
       const settingsModal = document.getElementById('settings-modal');
       if (settingsModal) {
-        settingsModal.style.display = 'flex';
+        settingsModal.classList.add('modal-open');
       }
     };
     settingsApp.addEventListener('click', settingsApp._clickHandler);
@@ -309,7 +309,7 @@ function attachSettingsAppHandler() {
   if (settingsModal && !settingsModal._closeHandlerAttached) {
     settingsModal._closeHandlerAttached = true;
     settingsModal.addEventListener('click', function (e) {
-      if (e.target === settingsModal) settingsModal.style.display = 'none';
+      if (e.target === settingsModal) settingsModal.classList.remove('modal-open');
     });
   }
 }

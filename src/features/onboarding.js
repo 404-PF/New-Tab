@@ -497,7 +497,7 @@ class OnboardingTour {
         // Ensure settings modal is visible before positioning
         const settingsModal = document.getElementById('settings-modal');
         if (settingsModal) {
-          settingsModal.style.display = 'flex';
+          settingsModal.classList.add('modal-open');
 
           // Wait for next animation frame to ensure the modal is rendered
           requestAnimationFrame(() => {
