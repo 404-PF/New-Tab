@@ -137,9 +137,8 @@ function initVideoResizeHandler() {
     setTimeout(handleResize, 200);
   });
 
-  // Also handle resize when video is loaded (for better mobile support)
+  // Handle resize when video metadata loads (triggers on source changes)
   videoEl.addEventListener('loadedmetadata', handleResize);
-  videoEl.addEventListener('resize', handleResize);
 }
 
 // Initialize video resize handler when DOM is ready
