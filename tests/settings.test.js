@@ -587,4 +587,94 @@ describe('background image load failure recovery', () => {
       window.Image = origImage;
     }
   });
+
+  it('calls hideBackgroundOverlay when custom background fullImg onerror fires', async () => {
+    const bgData = {
+      id: 'custom_test_1',
+      type: 'image',
+      data: new Blob(['fake'], { type: 'image/jpeg' }),
+      thumb: 'data:image/jpeg;base64,thumb'
+    };
+
+    const mockDB = {
+      transaction: () => ({
+        objectStore: () => ({
+          get: () => {
+            const req = { result: null };
+            setTimeout(() => {
+              req.result = bgData;
+              if (req.onsuccess) req.onsuccess();
+            }, 0);
+            return req;
+          }
+        })
+      }),
+      objectStoreNames: { contains: () => false }
+    };
+
+    const mockRequest = {
+      onupgradeneeded: null,
+      onerror: null,
+      set onsuccess(fn) {
+        fn({ target: { result: mockDB } });
+      }
+    };
+
+    const origIndexedDB = globalThis.indexedDB;
+    globalThis.indexedDB = { open: () => mockRequest };
+
+    localStorage.setItem('homepageBg', 'custom_test_1');
+
+    const origCreateObjectURL = URL.createObjectURL;
+    const origRevokeObjectURL = URL.revokeObjectURL;
+    URL.createObjectURL = () => 'blob:mock-url';
+    URL.revokeObjectURL = () => {};
+
+    injectScript('src/data/custom-backgrounds.js');
+
+    expect(window._customBackgrounds).toBeDefined();
+
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    overlay.setAttribute('src', 'old-snapshot');
+
+    let hideOverlayCalled = false;
+    const origHideOverlay = window.hideBackgroundOverlay;
+    window.hideBackgroundOverlay = () => { hideOverlayCalled = true; };
+
+    const origImage = window.Image;
+    window.Image = function() {
+      const img = new origImage();
+      const origSrcDescriptor = Object.getOwnPropertyDescriptor(
+        Object.getPrototypeOf(img), 'src'
+      );
+      Object.defineProperty(img, 'src', {
+        set(value) {
+          if (typeof img.onerror === 'function') {
+            img.onerror();
+          }
+          if (origSrcDescriptor && origSrcDescriptor.set) {
+            origSrcDescriptor.set.call(img, value);
+          }
+        },
+        configurable: true
+      });
+      img.onload = null;
+      img.onerror = null;
+      return img;
+    };
+    window.Image.prototype = origImage.prototype;
+
+    try {
+      const promise = window._customBackgrounds.apply('custom_test_1');
+      await promise;
+      expect(hideOverlayCalled).toBe(true);
+    } finally {
+      window.Image = origImage;
+      window.hideBackgroundOverlay = origHideOverlay;
+      globalThis.indexedDB = origIndexedDB;
+      URL.createObjectURL = origCreateObjectURL;
+      URL.revokeObjectURL = origRevokeObjectURL;
+    }
+  });
 });

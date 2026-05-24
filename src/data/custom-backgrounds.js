@@ -559,6 +559,13 @@
             }, 2500);
           });
         };
+        fullImg.onerror = function () {
+          if (!isActiveCustomBackgroundRequest(id, loadVersion)) {
+            return;
+          }
+
+          if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
+        };
         fullImg.src = blobUrl;
       }
 
