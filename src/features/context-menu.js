@@ -253,7 +253,7 @@ document.getElementById('rename-app').addEventListener('click', function () {
   document.getElementById('rename-app-input').value = currentApp.name;
   
   // Show the rename modal
-  document.getElementById('rename-app-modal').style.display = 'flex';
+  document.getElementById('rename-app-modal').classList.add('modal-open');
   
   // Focus the input
   setTimeout(() => {
@@ -341,7 +341,7 @@ function initRenameModalHandlers() {
 
   // Close modal on cancel button
   renameCancel.addEventListener('click', function() {
-    renameModal.style.display = 'none';
+    renameModal.classList.remove('modal-open');
     window.renameAppId = null;
   });
   
@@ -352,7 +352,7 @@ function initRenameModalHandlers() {
       AppGridState.renameApp(window.renameAppId, newName);
       if (window.renderCustomApps) window.renderCustomApps();
     }
-    renameModal.style.display = 'none';
+    renameModal.classList.remove('modal-open');
     window.renameAppId = null;
   });
   
@@ -366,7 +366,7 @@ function initRenameModalHandlers() {
   // Close modal on backdrop click
   renameModal.addEventListener('click', function(e) {
     if (e.target === renameModal) {
-      renameModal.style.display = 'none';
+      renameModal.classList.remove('modal-open');
       window.renameAppId = null;
     }
   });
@@ -396,7 +396,7 @@ document.getElementById('change-thumbnail').addEventListener('click', function (
   previewName.textContent = currentApp.name;
   
   // Show the thumbnail modal
-  document.getElementById('thumbnail-app-modal').style.display = 'flex';
+  document.getElementById('thumbnail-app-modal').classList.add('modal-open');
   
   // Focus the input
   setTimeout(() => {
@@ -426,7 +426,7 @@ function initThumbnailModalHandlers() {
 
   // Close modal on cancel button
   thumbnailCancel.addEventListener('click', function() {
-    thumbnailModal.style.display = 'none';
+    thumbnailModal.classList.remove('modal-open');
     window.thumbnailAppId = null;
   });
   
@@ -448,7 +448,7 @@ function initThumbnailModalHandlers() {
         console.error('Failed to update custom app thumbnail:', e);
       }
     }
-    thumbnailModal.style.display = 'none';
+    thumbnailModal.classList.remove('modal-open');
     window.thumbnailAppId = null;
   });
   
@@ -462,7 +462,7 @@ function initThumbnailModalHandlers() {
   // Close modal on backdrop click
   thumbnailModal.addEventListener('click', function(e) {
     if (e.target === thumbnailModal) {
-      thumbnailModal.style.display = 'none';
+      thumbnailModal.classList.remove('modal-open');
       window.thumbnailAppId = null;
     }
   });
@@ -489,7 +489,7 @@ document.getElementById('delete-app').addEventListener('click', function () {
   previewName.textContent = currentApp.name;
   
   // Show the delete modal
-  document.getElementById('delete-app-modal').style.display = 'flex';
+  document.getElementById('delete-app-modal').classList.add('modal-open');
   
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');
@@ -512,7 +512,7 @@ function initDeleteModalHandlers() {
 
   // Close modal on cancel button
   deleteCancel.addEventListener('click', function() {
-    deleteModal.style.display = 'none';
+    deleteModal.classList.remove('modal-open');
     window.deleteAppId = null;
   });
   
@@ -522,14 +522,14 @@ function initDeleteModalHandlers() {
       AppGridState.deleteApp(window.deleteAppId);
       if (window.renderCustomApps) window.renderCustomApps();
     }
-    deleteModal.style.display = 'none';
+    deleteModal.classList.remove('modal-open');
     window.deleteAppId = null;
   });
   
   // Close modal on backdrop click
   deleteModal.addEventListener('click', function(e) {
     if (e.target === deleteModal) {
-      deleteModal.style.display = 'none';
+      deleteModal.classList.remove('modal-open');
       window.deleteAppId = null;
     }
   });

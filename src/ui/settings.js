@@ -1188,7 +1188,7 @@ function initAboutSection() {
         // Close settings modal first
         const settingsModal = document.getElementById('settings-modal');
         if (settingsModal) {
-          settingsModal.style.display = 'none';
+          settingsModal.classList.remove('modal-open');
         }
         // Reset and start onboarding tour
         window.onboardingTour.reset();
