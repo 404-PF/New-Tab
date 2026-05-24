@@ -89,7 +89,7 @@ const addApp = document.getElementById('new-app');
     a.id = app.id;
     a.draggable = true;
     const openInNewTab = loadOpenNewTabSetting();
-    if (openInNewTab) {
+    if (openInNewTab && app.url && app.url !== '#') {
       a.setAttribute('target', '_blank');
       a.setAttribute('rel', 'noopener noreferrer');
     }
@@ -148,7 +148,7 @@ function applyOpenNewTabSetting() {
   const openInNewTab = loadOpenNewTabSetting();
   const appLinks = document.querySelectorAll('.app-grid .app-icon');
   appLinks.forEach((link) => {
-    if (link.id === 'settings-app') return;
+    if (link.getAttribute('href') === '#') return;
     if (openInNewTab) {
       link.setAttribute('target', '_blank');
       link.setAttribute('rel', 'noopener noreferrer');
