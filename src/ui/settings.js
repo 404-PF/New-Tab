@@ -238,7 +238,7 @@ function captureBackgroundSnapshot() {
       window._interactiveBackground.currentBackgroundId()) {
     try {
       src = canvasEl.toDataURL('image/jpeg', 0.6);
-    } catch (e) {
+    } catch {
       // Canvas capture failed, fall through to full image check below
     }
   }
@@ -257,7 +257,7 @@ function captureBackgroundSnapshot() {
         ctx.drawImage(videoEl, 0, 0);
         src = canvas.toDataURL('image/jpeg', 0.6);
       }
-    } catch (e) {
+    } catch {
       // Canvas capture failed, fall through to thumbnail check below
     }
   }
