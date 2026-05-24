@@ -158,16 +158,16 @@ describe('Add app modal quick add', () => {
 
     window.bindAddAppModal();
     newAppBtn.click();
-    expect(modal.style.display).toBe('flex');
+    expect(modal.classList.contains('modal-open')).toBe(true);
 
     closeAddAppModal();
-    expect(modal.style.display).toBe('none');
+    expect(modal.classList.contains('modal-open')).toBe(false);
 
     window.resetAddAppModalState();
     expect(() => window.bindAddAppModal()).not.toThrow();
 
     newAppBtn.click();
-    expect(modal.style.display).toBe('flex');
+    expect(modal.classList.contains('modal-open')).toBe(true);
   });
 
   it('rebinds without duplicating modal listeners', async () => {
