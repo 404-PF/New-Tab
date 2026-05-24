@@ -233,9 +233,21 @@ function captureBackgroundSnapshot() {
 
   let src = null;
 
-  if (fullEl && fullEl.classList.contains('loaded') && fullEl.src && fullEl.naturalWidth > 0) {
+  if (canvasEl && !canvasEl.hidden && window._interactiveBackground &&
+      typeof window._interactiveBackground.currentBackgroundId === 'function' &&
+      window._interactiveBackground.currentBackgroundId()) {
+    try {
+      src = canvasEl.toDataURL('image/jpeg', 0.6);
+    } catch (e) {
+      // Canvas capture failed, fall through to full image check below
+    }
+  }
+
+  if (!src && fullEl && fullEl.classList.contains('loaded') && fullEl.src && fullEl.naturalWidth > 0) {
     src = fullEl.src;
-  } else if (videoEl && videoEl.classList.contains('active') && videoEl.currentSrc && videoEl.readyState >= 2) {
+  }
+
+  if (!src && videoEl && videoEl.classList.contains('active') && videoEl.currentSrc && videoEl.readyState >= 2) {
     try {
       const canvas = document.createElement('canvas');
       canvas.width = videoEl.videoWidth || 1920;
@@ -247,18 +259,6 @@ function captureBackgroundSnapshot() {
       }
     } catch (e) {
       // Canvas capture failed, fall through to thumbnail check below
-    }
-  }
-
-  if (!src) {
-    if (canvasEl && !canvasEl.hidden && window._interactiveBackground &&
-        typeof window._interactiveBackground.currentBackgroundId === 'function' &&
-        window._interactiveBackground.currentBackgroundId()) {
-      try {
-        src = canvasEl.toDataURL('image/jpeg', 0.6);
-      } catch (e) {
-        // Canvas capture failed, fall through to thumbnail check below
-      }
     }
   }
 
@@ -467,7 +467,10 @@ function applyBg() {
           return;
         }
 
-        if (!loadVideoAutoplay()) return;
+        if (!loadVideoAutoplay()) {
+          hideBackgroundOverlay();
+          return;
+        }
 
         const playPromise = videoEl.play();
         if (playPromise !== undefined) {
@@ -490,11 +493,15 @@ function applyBg() {
         videoEl.classList.remove('loading');
         
         // When autoplay is disabled, keep thumbnail visible and video hidden
-        if (!loadVideoAutoplay()) return;
+        if (!loadVideoAutoplay()) {
+          hideBackgroundOverlay();
+          return;
+        }
         
         // When simple mode is active, mark paused and keep video hidden
         if (window.loadSimpleMode && window.loadSimpleMode()) {
           videoEl.dataset.simpleModePaused = 'true';
+          hideBackgroundOverlay();
           return;
         }
         

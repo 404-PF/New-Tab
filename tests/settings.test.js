@@ -469,6 +469,34 @@ describe('captureBackgroundSnapshot interactive canvas capture', () => {
     expect(overlayEl.getAttribute('src')).toBeNull();
     expect(overlayEl.classList.contains('active')).toBe(false);
   });
+
+  it('prioritizes canvas capture over full image when both are available', () => {
+    const fullEl = document.getElementById('bg-full');
+    fullEl.classList.add('loaded');
+    Object.defineProperty(fullEl, 'naturalWidth', { value: 100, configurable: true });
+    fullEl.setAttribute('src', 'https://example.com/full.jpg');
+
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    overlayEl.removeAttribute('src');
+    overlayEl.classList.remove('active');
+
+    // Ensure videoEl won't match (no active class)
+    const videoEl = document.getElementById('bg-video');
+    videoEl.classList.remove('active');
+
+    const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,mocked-canvas';
+
+    try {
+      captureBackgroundSnapshot();
+      expect(overlayEl.getAttribute('src')).toBe('data:image/jpeg;base64,mocked-canvas');
+      expect(overlayEl.classList.contains('active')).toBe(true);
+    } finally {
+      HTMLCanvasElement.prototype.toDataURL = origToDataURL;
+      fullEl.classList.remove('loaded');
+      fullEl.removeAttribute('src');
+    }
+  });
 });
 
 describe('initSettings background startup', () => {
@@ -874,6 +902,92 @@ describe('background image load failure recovery', () => {
       globalThis.indexedDB = origIndexedDB;
       URL.createObjectURL = origCreateObjectURL;
       URL.revokeObjectURL = origRevokeObjectURL;
+    }
+  });
+});
+
+describe('video background transition overlay', () => {
+  let origCanPlayType;
+
+  function setupVideoBg() {
+    localStorage.setItem('homepageBg', 'Mountain View');
+    window._backgrounds = [
+      { id: 'Mountain View', type: 'video', thumb: 'thumb.jpg', url: 'video.mp4' }
+    ];
+    window._interactiveBackground = { stop: vi.fn() };
+
+    // Prevent stopBackground from calling URL.revokeObjectURL (not in jsdom)
+    delete window._customBackgrounds;
+
+    // Ensure video element has a <source> child for applyBg video path
+    const videoEl = document.getElementById('bg-video');
+    if (!videoEl.querySelector('source')) {
+      const source = document.createElement('source');
+      source.setAttribute('src', '');
+      source.setAttribute('type', 'video/mp4');
+      videoEl.appendChild(source);
+    }
+
+    // jsdom canPlayType returns empty string; mock it so supportsVideo() === true
+    origCanPlayType = HTMLVideoElement.prototype.canPlayType;
+    HTMLVideoElement.prototype.canPlayType = () => 'probably';
+  }
+
+  function tearDownBg() {
+    if (origCanPlayType) {
+      HTMLVideoElement.prototype.canPlayType = origCanPlayType;
+      origCanPlayType = null;
+    }
+  }
+
+  it('calls hideBackgroundOverlay when video autoplay is disabled', () => {
+    setupVideoBg();
+
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    overlay.setAttribute('src', 'old-snapshot');
+
+    const origLoadVideoAutoplay = window.loadVideoAutoplay;
+    window.loadVideoAutoplay = () => false;
+
+    try {
+      applyBg();
+      const videoEl = document.getElementById('bg-video');
+      // triggerCrossfade is set as the oncanplaythrough handler;
+      // calling it directly invokes the closure
+      if (typeof videoEl.oncanplaythrough === 'function') {
+        videoEl.oncanplaythrough();
+      }
+      // If triggerCrossfade ran, it would set crossfadeTriggered
+      expect(videoEl.dataset.crossfadeTriggered).toBe('true');
+      expect(overlay.classList.contains('active')).toBe(false);
+    } finally {
+      window.loadVideoAutoplay = origLoadVideoAutoplay;
+      tearDownBg();
+    }
+  });
+
+  it('calls hideBackgroundOverlay when simple mode is active', () => {
+    setupVideoBg();
+
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    overlay.setAttribute('src', 'old-snapshot');
+
+    const origLoadSimpleMode = window.loadSimpleMode;
+    window.loadSimpleMode = () => true;
+
+    try {
+      applyBg();
+      const videoEl = document.getElementById('bg-video');
+      if (typeof videoEl.oncanplaythrough === 'function') {
+        videoEl.oncanplaythrough();
+      }
+      expect(videoEl.dataset.crossfadeTriggered).toBe('true');
+      expect(overlay.classList.contains('active')).toBe(false);
+    } finally {
+      window.loadSimpleMode = origLoadSimpleMode;
+      tearDownBg();
     }
   });
 });
