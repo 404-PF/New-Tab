@@ -169,4 +169,24 @@ describe('Add app modal quick add', () => {
     newAppBtn.click();
     expect(modal.style.display).toBe('flex');
   });
+
+  it('rebinds without duplicating modal listeners', async () => {
+    const newAppBtn = document.getElementById('new-app');
+    const addAppUrlInput = document.getElementById('add-app-url');
+    const addAppConfirm = document.getElementById('add-app-confirm');
+
+    window.bindAddAppModal();
+    window.resetAddAppModalState();
+    window.bindAddAppModal();
+
+    newAppBtn.click();
+    addAppUrlInput.value = 'example.com';
+    addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+    addAppConfirm.click();
+
+    await flushMicrotasks();
+
+    expect(AppGridState.getCustomApps()).toHaveLength(1);
+    expect(window.renderCustomApps).toHaveBeenCalledTimes(1);
+  });
 });
