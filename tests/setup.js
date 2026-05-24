@@ -401,6 +401,7 @@ globalThis.window.i18n = {
       checking: 'Checking...',
       updateDesc: 'Check for updates manually or enable automatic checks',
       copyMottoCopied: 'Copied',
+      copyMottoFailed: 'Failed to copy',
       todoList: 'Todo List',
       clearCompletedConfirmTitle: 'Clear Completed Todos?',
       validationPleaseEnter: 'Please enter a URL or search query',
