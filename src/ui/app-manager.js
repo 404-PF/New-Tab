@@ -2,7 +2,6 @@
 
 // Helper functions
 const escapeHtml = window.escapeHtml;
-const getDraggableAppIcons = () => Array.from(document.querySelectorAll('.app-grid .app-icon')).filter(icon => icon.id !== 'new-app');
 const getAppOrder = () => AppGridState.getOrder();
 const saveAppOrder = order => AppGridState.saveOrder(order);
 

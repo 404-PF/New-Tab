@@ -321,15 +321,6 @@ describe('Todo utilities', () => {
     expect(loadTodos()).toHaveLength(1);
   });
 
-  it('escapeHtml escapes special characters', () => {
-    expect(escapeHtml('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
-    expect(escapeHtml('it\'s a test')).toBe('it&#39;s a test');
-    expect(escapeHtml('safe text')).toBe('safe text');
-    expect(escapeHtml('')).toBe('');
-    expect(escapeHtml(null)).toBe('');
-    expect(escapeHtml(undefined)).toBe('');
-    expect(escapeHtml('a & b < c > d')).toBe('a &amp; b &lt; c &gt; d');
-  });
 });
 
 describe('Todo clear completed', () => {

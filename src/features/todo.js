@@ -21,8 +21,6 @@ const editModalState = {
 };
 const runTodoOnDomReady = window.onDomReady;
 
-// Use global escapeHtml from utils.js
-
 // Load todos from localStorage
 function loadTodos() {
   try {
@@ -576,8 +574,6 @@ function showClearCompletedDialog() {
   // Show the dialog
   dialog.classList.add('ai-confirm-open');
   
-  // Update message with count
-  const completedCount = todos.filter(t => t.completed).length;
   const messageEl = dialog.querySelector('.ai-confirm-message');
   if (messageEl && window.i18n) {
     const message = window.i18n.t('clearCompletedConfirmMessage');
@@ -845,7 +841,6 @@ function createCalendarHtml(currentDate, selectedDateString) {
   const selectedDate = selectedDateString ? new Date(selectedDateString) : null;
   
   const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
   const startDate = new Date(firstDay);
   startDate.setDate(startDate.getDate() - firstDay.getDay());
   
@@ -1710,7 +1705,6 @@ class CustomDatePicker {
     const month = this.currentDate.getMonth();
 
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
 

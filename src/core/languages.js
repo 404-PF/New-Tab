@@ -98,6 +98,12 @@ const translations = {
     liveBackgroundSettingsDesc: 'Choose an animated background video',
     uploadBackground: 'Upload Background',
     uploadLiveBackground: 'Upload Live Background',
+    videoAutoplay: 'Autoplay live background',
+    videoAutoplayDesc: 'Automatically play video backgrounds when selected',
+    videoMuted: 'Mute live background',
+    videoMutedDesc: 'Keep video backgrounds silent by default',
+    videoPauseHidden: 'Pause when tab is hidden',
+    videoPauseHiddenDesc: 'Save resources by pausing video when you switch tabs',
 
     // Apps settings
     appsSettings: 'Apps',
@@ -427,6 +433,12 @@ const translations = {
     liveBackgroundSettingsDesc: '选择动态背景视频',
     uploadBackground: '上传背景图片',
     uploadLiveBackground: '上传动态背景',
+    videoAutoplay: '自动播放动态背景',
+    videoAutoplayDesc: '切换背景时自动播放视频背景',
+    videoMuted: '静音动态背景',
+    videoMutedDesc: '默认保持动态背景静音',
+    videoPauseHidden: '标签页隐藏时暂停',
+    videoPauseHiddenDesc: '切换标签页时暂停视频以节省资源',
 
     // Apps settings
     appsSettings: '应用',
@@ -2652,11 +2664,6 @@ function getTranslation(lang, key) {
   return key;
 }
 
-// Load language from localStorage
-function loadLanguage() {
-  return localStorage.getItem('language') || 'en';
-}
-
 // Save language to localStorage
 function saveLanguage(lang) {
   localStorage.setItem('language', lang);
@@ -2803,12 +2810,6 @@ function t(key, replacements) {
     });
   }
   return message;
-}
-
-// Initialize language system
-function initLanguage() {
-  const lang = loadLanguage();
-  applyLanguage(lang);
 }
 
 // Export functions for global use
