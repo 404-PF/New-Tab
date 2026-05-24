@@ -39,8 +39,10 @@ function normalizeAppUrl(url) {
   return url.startsWith('http') ? url : 'https://' + url;
 }
 
-function getExistingAppNames() {
-  return new Set(Array.from(document.querySelectorAll('.app-icon .app-name')).map((element) => element.textContent));
+function getExistingAppUrls() {
+  if (!window.AppGridState) return new Set();
+  const apps = window.AppGridState.getCustomApps();
+  return new Set(apps.filter(app => app.url).map(app => window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url))));
 }
 
 function resetPreviewIcon() {
@@ -151,8 +153,13 @@ async function cacheAppIcon(appData) {
 }
 
 async function saveCustomApp(appData) {
+  if (window.AppGridState && window.AppGridState.hasAppWithUrl(appData.url)) {
+    return;
+  }
   const appToSave = await cacheAppIcon(appData);
-  AppGridState.addApp(appToSave);
+  if (!AppGridState.addApp(appToSave)) {
+    return;
+  }
   if (window.renderCustomApps) {
     window.renderCustomApps();
   }
@@ -176,7 +183,7 @@ function renderDefaultAppsList() {
   }
 
   defaultAppsContainer.innerHTML = '';
-  const existingNames = getExistingAppNames();
+  const existingUrls = getExistingAppUrls();
 
   for (let i = 0; i < defaultAppsList.length; i++) {
     const app = defaultAppsList[i];
@@ -195,8 +202,12 @@ function renderDefaultAppsList() {
       </div>
       <span class="quick-add-name">${app.name}</span>
     `;
+    if (app.url && existingUrls.has(window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url)))) {
+      button.classList.add('duplicate');
+      button.title = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
+    }
     button.addEventListener('click', async function () {
-      if (existingNames.has(app.name)) {
+      if (this.classList.contains('duplicate')) {
         return;
       }
       await addDefaultApp(app);
@@ -262,8 +273,16 @@ function updatePreview() {
     validationMessage.classList.toggle('undetectable', validation.status === 'undetectable');
   }
 
+  const isDuplicate = isValid && window.AppGridState && window.AppGridState.hasAppWithUrl(fullUrl);
+
+  if (validationMessage && isDuplicate) {
+    validationMessage.textContent = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
+    validationMessage.classList.add('show');
+    validationMessage.classList.remove('malformed', 'undetectable');
+  }
+
   if (addAppConfirm) {
-    addAppConfirm.disabled = false;
+    addAppConfirm.disabled = !isValid || isDuplicate;
   }
 }
 
@@ -328,6 +347,9 @@ function bindAddAppModal() {
     event.preventDefault();
     const url = this.value.trim();
     if (!url) {
+      return;
+    }
+    if (addAppConfirm && addAppConfirm.disabled) {
       return;
     }
     await addAppFromInput(url);
