@@ -676,31 +676,34 @@ function handleDrop(event) {
 
   if (draggedIndex === -1 || dropIndex === -1) return;
 
+  // Save state for rollback before any mutation
+  const previousTodos = cloneTodos(todos);
+
   // Reorder the filtered todos array
   const [removed] = filteredTodos.splice(draggedIndex, 1);
   filteredTodos.splice(dropIndex, 0, removed);
 
-  // Rebuild the full todos array preserving hidden todo positions
-  const previousTodos = cloneTodos(todos);
+  // Rebuild the full todos array, preserving original interleaving
+  // between filtered and non-filtered items, but placing filtered
+  // items in their new internal order.
   const filteredIds = new Set(filteredTodos.map(t => t.id));
-  const newTodos = [];
-  let filteredIndex = 0;
+  const reorderedTodos = [];
+  let filteredIdx = 0;
 
   for (const todo of todos) {
     if (filteredIds.has(todo.id)) {
-      newTodos.push(filteredTodos[filteredIndex++]);
+      reorderedTodos.push(filteredTodos[filteredIdx++]);
     } else {
-      newTodos.push(todo);
+      reorderedTodos.push(todo);
     }
   }
 
-  todos = newTodos;
-
-  // Update the order property for ALL todos
-  todos.forEach((todo, index) => {
+  // Assign sequential order to ALL todos, not just the filtered subset
+  reorderedTodos.forEach((todo, index) => {
     todo.order = index;
   });
 
+  todos = reorderedTodos;
   if (!saveTodos(todos)) {
     todos = previousTodos;
     applyFilters();
