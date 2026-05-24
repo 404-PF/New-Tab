@@ -88,6 +88,205 @@ describe('Todo enabled settings', () => {
   });
 });
 
+describe('Video playback settings', () => {
+  beforeEach(() => {
+    localStorage.removeItem('videoAutoplay');
+    localStorage.removeItem('videoMuted');
+    localStorage.removeItem('videoPauseHidden');
+    const existingAuto = document.getElementById('video-autoplay-setting');
+    const existingMuted = document.getElementById('video-muted-setting');
+    const existingPause = document.getElementById('video-pause-hidden-setting');
+    if (existingAuto) existingAuto.remove();
+    if (existingMuted) existingMuted.remove();
+    if (existingPause) existingPause.remove();
+  });
+
+  it('loadVideoAutoplay returns true by default', () => {
+    expect(loadVideoAutoplay()).toBe(true);
+  });
+
+  it('loadVideoAutoplay reads localStorage', () => {
+    localStorage.setItem('videoAutoplay', 'false');
+    expect(loadVideoAutoplay()).toBe(false);
+  });
+
+  it('loadVideoMuted returns true by default', () => {
+    expect(loadVideoMuted()).toBe(true);
+  });
+
+  it('loadVideoMuted reads localStorage', () => {
+    localStorage.setItem('videoMuted', 'false');
+    expect(loadVideoMuted()).toBe(false);
+  });
+
+  it('loadVideoPauseHidden returns true by default', () => {
+    expect(loadVideoPauseHidden()).toBe(true);
+  });
+
+  it('loadVideoPauseHidden reads localStorage', () => {
+    localStorage.setItem('videoPauseHidden', 'false');
+    expect(loadVideoPauseHidden()).toBe(false);
+  });
+
+  it('applyVideoPlaybackSettings sets checkboxes from localStorage', () => {
+    const autoCheckbox = document.createElement('input');
+    autoCheckbox.type = 'checkbox';
+    autoCheckbox.id = 'video-autoplay-setting';
+    document.body.appendChild(autoCheckbox);
+
+    const mutedCheckbox = document.createElement('input');
+    mutedCheckbox.type = 'checkbox';
+    mutedCheckbox.id = 'video-muted-setting';
+    document.body.appendChild(mutedCheckbox);
+
+    const pauseCheckbox = document.createElement('input');
+    pauseCheckbox.type = 'checkbox';
+    pauseCheckbox.id = 'video-pause-hidden-setting';
+    document.body.appendChild(pauseCheckbox);
+
+    localStorage.setItem('videoAutoplay', 'false');
+    localStorage.setItem('videoMuted', 'false');
+    localStorage.setItem('videoPauseHidden', 'false');
+
+    applyVideoPlaybackSettings();
+
+    expect(autoCheckbox.checked).toBe(false);
+    expect(mutedCheckbox.checked).toBe(false);
+    expect(pauseCheckbox.checked).toBe(false);
+
+    localStorage.setItem('videoAutoplay', 'true');
+    localStorage.setItem('videoMuted', 'true');
+    localStorage.setItem('videoPauseHidden', 'true');
+
+    applyVideoPlaybackSettings();
+
+    expect(autoCheckbox.checked).toBe(true);
+    expect(mutedCheckbox.checked).toBe(true);
+    expect(pauseCheckbox.checked).toBe(true);
+  });
+
+  it('muted change event updates video.muted and localStorage', () => {
+    const videoEl = document.getElementById('bg-video');
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+
+    const mutedCheckbox = document.createElement('input');
+    mutedCheckbox.type = 'checkbox';
+    mutedCheckbox.id = 'video-muted-setting';
+    document.body.appendChild(mutedCheckbox);
+
+    mutedCheckbox.checked = false;
+    mutedCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(videoEl.muted).toBe(false);
+    expect(localStorage.getItem('videoMuted')).toBe('false');
+
+    mutedCheckbox.checked = true;
+    mutedCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(videoEl.muted).toBe(true);
+    expect(localStorage.getItem('videoMuted')).toBe('true');
+
+    delete videoEl.currentSrc;
+    document.body.removeChild(mutedCheckbox);
+  });
+
+  it('autoplay change event adds active/ready classes on loaded video', () => {
+    const videoEl = document.getElementById('bg-video');
+    Object.defineProperty(videoEl, 'readyState', { value: 2, configurable: true });
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+    videoEl.play = vi.fn().mockReturnValue(Promise.resolve());
+
+    const autoCheckbox = document.createElement('input');
+    autoCheckbox.type = 'checkbox';
+    autoCheckbox.id = 'video-autoplay-setting';
+    autoCheckbox.checked = true;
+    document.body.appendChild(autoCheckbox);
+
+    autoCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(videoEl.dataset.crossfadeTriggered).toBe('true');
+    expect(videoEl.classList.contains('active')).toBe(true);
+    expect(videoEl.classList.contains('ready')).toBe(true);
+    expect(localStorage.getItem('videoAutoplay')).toBe('true');
+
+    autoCheckbox.checked = false;
+    autoCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('videoAutoplay')).toBe('false');
+
+    delete videoEl.readyState;
+    delete videoEl.currentSrc;
+    delete videoEl.dataset.crossfadeTriggered;
+    videoEl.classList.remove('active', 'ready');
+    document.body.removeChild(autoCheckbox);
+  });
+
+  it('autoplay change event adds loading class on unloaded video', () => {
+    const videoEl = document.getElementById('bg-video');
+    Object.defineProperty(videoEl, 'readyState', { value: 0, configurable: true });
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+    videoEl.classList.add('hidden');
+
+    const autoCheckbox = document.createElement('input');
+    autoCheckbox.type = 'checkbox';
+    autoCheckbox.id = 'video-autoplay-setting';
+    autoCheckbox.checked = true;
+    document.body.appendChild(autoCheckbox);
+
+    autoCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(videoEl.dataset.crossfadeTriggered).toBeUndefined();
+    expect(videoEl.classList.contains('hidden')).toBe(false);
+    expect(videoEl.classList.contains('loading')).toBe(true);
+    expect(localStorage.getItem('videoAutoplay')).toBe('true');
+
+    delete videoEl.readyState;
+    delete videoEl.currentSrc;
+    videoEl.classList.remove('loading');
+    document.body.removeChild(autoCheckbox);
+  });
+
+  it('pauseHidden change event updates localStorage', () => {
+    const pauseCheckbox = document.createElement('input');
+    pauseCheckbox.type = 'checkbox';
+    pauseCheckbox.id = 'video-pause-hidden-setting';
+    document.body.appendChild(pauseCheckbox);
+
+    pauseCheckbox.checked = false;
+    pauseCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('videoPauseHidden')).toBe('false');
+
+    pauseCheckbox.checked = true;
+    pauseCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('videoPauseHidden')).toBe('true');
+
+    document.body.removeChild(pauseCheckbox);
+  });
+
+  it('autoplay change event respects simple mode', () => {
+    const videoEl = document.getElementById('bg-video');
+    Object.defineProperty(videoEl, 'readyState', { value: 2, configurable: true });
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+    videoEl.play = vi.fn().mockReturnValue(Promise.resolve());
+
+    delete videoEl.dataset.simpleModePaused;
+
+    const autoCheckbox = document.createElement('input');
+    autoCheckbox.type = 'checkbox';
+    autoCheckbox.id = 'video-autoplay-setting';
+    autoCheckbox.checked = true;
+    document.body.appendChild(autoCheckbox);
+
+    autoCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(videoEl.classList.contains('active')).toBe(true);
+
+    autoCheckbox.checked = false;
+    autoCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('videoAutoplay')).toBe('false');
+
+    delete videoEl.readyState;
+    delete videoEl.currentSrc;
+    delete videoEl.dataset.crossfadeTriggered;
+    videoEl.classList.remove('active', 'ready');
+    document.body.removeChild(autoCheckbox);
+  });
+});
+
 describe('Clock format settings', () => {
   it('loadClockFormatSetting returns auto by default', () => {
     expect(loadClockFormatSetting()).toBe('auto');

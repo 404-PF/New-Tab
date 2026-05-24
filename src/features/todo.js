@@ -21,13 +21,6 @@ const editModalState = {
 };
 const runTodoOnDomReady = window.onDomReady;
 
-// Escape HTML entities to prevent XSS
-const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' };
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/[&<>"']/g, c => HTML_ESCAPE_MAP[c]);
-}
-
 // Load todos from localStorage
 function loadTodos() {
   try {
@@ -581,8 +574,6 @@ function showClearCompletedDialog() {
   // Show the dialog
   dialog.classList.add('ai-confirm-open');
   
-  // Update message with count
-  const completedCount = todos.filter(t => t.completed).length;
   const messageEl = dialog.querySelector('.ai-confirm-message');
   if (messageEl && window.i18n) {
     const message = window.i18n.t('clearCompletedConfirmMessage');
@@ -685,20 +676,34 @@ function handleDrop(event) {
 
   if (draggedIndex === -1 || dropIndex === -1) return;
 
+  // Save state for rollback before any mutation
+  const previousTodos = cloneTodos(todos);
+
   // Reorder the filtered todos array
   const [removed] = filteredTodos.splice(draggedIndex, 1);
   filteredTodos.splice(dropIndex, 0, removed);
 
-  // Update the order property for all todos to match the new order
-  filteredTodos.forEach((todo, index) => {
+  // Rebuild the full todos array, preserving original interleaving
+  // between filtered and non-filtered items, but placing filtered
+  // items in their new internal order.
+  const filteredIds = new Set(filteredTodos.map(t => t.id));
+  const reorderedTodos = [];
+  let filteredIdx = 0;
+
+  for (const todo of todos) {
+    if (filteredIds.has(todo.id)) {
+      reorderedTodos.push(filteredTodos[filteredIdx++]);
+    } else {
+      reorderedTodos.push(todo);
+    }
+  }
+
+  // Assign sequential order to ALL todos, not just the filtered subset
+  reorderedTodos.forEach((todo, index) => {
     todo.order = index;
   });
 
-  // Update the main todos array to match the new order
-  const previousTodos = cloneTodos(todos);
-  const newOrder = filteredTodos.map(todo => todo.id);
-  todos.sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
-
+  todos = reorderedTodos;
   if (!saveTodos(todos)) {
     todos = previousTodos;
     applyFilters();
@@ -839,7 +844,6 @@ function createCalendarHtml(currentDate, selectedDateString) {
   const selectedDate = selectedDateString ? new Date(selectedDateString) : null;
   
   const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
   const startDate = new Date(firstDay);
   startDate.setDate(startDate.getDate() - firstDay.getDay());
   
@@ -1495,7 +1499,7 @@ function showImportDialog(importedTodos) {
     closeEditModal();
     scheduleTodoReminderCheck();
     if (addedCount > 0) {
-      const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, addedCount);
+      const msg = window.i18n ? window.i18n.t('importSuccess', { count: addedCount }) : 'Imported ' + addedCount + ' todos successfully.';
       showToast(msg, 'success');
     } else {
       showToast(window.i18n ? window.i18n.t('importNoNewTodos') : 'No new todos to import.', 'info');
@@ -1524,7 +1528,7 @@ function showImportDialog(importedTodos) {
     applyFilters();
     closeEditModal();
     scheduleTodoReminderCheck();
-    const msg = (window.i18n ? window.i18n.t('importSuccess') : 'Imported {count} todos successfully.').replace(/\{count\}/g, newTodos.length);
+    const msg = window.i18n ? window.i18n.t('importSuccess', { count: newTodos.length }) : 'Imported ' + newTodos.length + ' todos successfully.';
     showToast(msg, 'success');
     hideDialog();
   };
@@ -1704,7 +1708,6 @@ class CustomDatePicker {
     const month = this.currentDate.getMonth();
 
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
 

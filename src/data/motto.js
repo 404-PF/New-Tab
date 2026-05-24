@@ -1,4 +1,5 @@
 // motto.js - Multilingual mottos
+// eslint-disable-next-line no-unused-vars
 const mottos = {
   en: [
     'When one is young and eager to learn, he is like the sun at sunrise; when one is strong and eager to learn, he is like the sun at noon; when one is old and eager to learn, he is like the light of a bright candle ———— Liu Xiang',
@@ -139,4 +140,3 @@ const mottos = {
 };
 
 // Backward compatibility - return English mottos as default
-const motto = mottos.en;

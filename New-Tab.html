@@ -23,7 +23,7 @@
   
   <!-- Background Container -->
   <div class="background-container" id="background-container">
-    <video class="background-video" id="bg-video" autoplay muted loop playsinline preload="metadata" poster="">
+    <video class="background-video" id="bg-video" muted loop playsinline preload="metadata" poster="">
       <source src="" type="video/mp4">
     </video>
     <img class="background-thumbnail" id="bg-thumbnail" src="" alt="">
@@ -396,6 +396,40 @@
                 <button class="upload-bg-btn" data-upload-type="video" title="Upload Live Background">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </button>
+              </div>
+              <div class="bg-playback-controls">
+                <div class="setting-card">
+                  <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                  <div class="setting-content">
+                    <label for="video-autoplay-setting" data-i18n="videoAutoplay">Autoplay live background</label>
+                    <input type="checkbox" id="video-autoplay-setting" />
+                  </div>
+                </div>
+                <div class="setting-card">
+                  <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <line x1="23" y1="9" x2="17" y2="15"></line>
+                    <line x1="17" y1="9" x2="23" y2="15"></line>
+                  </svg>
+                  <div class="setting-content">
+                    <label for="video-muted-setting" data-i18n="videoMuted">Mute live background</label>
+                    <input type="checkbox" id="video-muted-setting" />
+                  </div>
+                </div>
+                <div class="setting-card">
+                  <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                    <line x1="7" y1="2" x2="7" y2="22"></line>
+                    <line x1="17" y1="2" x2="17" y2="22"></line>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                  </svg>
+                  <div class="setting-content">
+                    <label for="video-pause-hidden-setting" data-i18n="videoPauseHidden">Pause when tab is hidden</label>
+                    <input type="checkbox" id="video-pause-hidden-setting" />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1212,5 +1246,30 @@
   <div class="footer-right">
       <span id="version-display"></span>
     </div>
+
+  <!-- Folder Popup -->
+  <div id="folder-popup" class="folder-popup" style="display:none;">
+    <div class="folder-popup-content">
+      <div class="folder-popup-header">
+        <h2 class="folder-popup-title" id="folder-popup-title"></h2>
+        <button id="folder-popup-rename-btn" class="folder-popup-rename-btn" data-i18n="renameFolder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+          </svg>
+        </button>
+        <button id="folder-popup-close-btn" class="folder-popup-close-btn">&times;</button>
+      </div>
+      <div class="folder-popup-apps" id="folder-popup-apps"></div>
+    </div>
+  </div>
+
+  <!-- Move to Folder Selector -->
+  <div id="move-to-folder-selector" class="move-to-folder-selector" style="display:none;">
+    <div class="move-to-folder-selector-content">
+      <h3 class="move-to-folder-selector-title" data-i18n="moveToFolder">Move to Folder</h3>
+      <div class="move-to-folder-selector-list" id="move-to-folder-list"></div>
+    </div>
+  </div>
+
   </body>
 </html>

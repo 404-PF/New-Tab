@@ -51,6 +51,17 @@ const translations = {
     renameApp: 'Rename',
     changeThumbnail: 'Change Thumbnail',
     deleteApp: 'Delete',
+    createFolder: 'Create Folder',
+    renameFolder: 'Rename Folder',
+    deleteFolder: 'Delete Folder',
+    moveToFolder: 'Move to Folder',
+    removeFromFolder: 'Remove from Folder',
+    renameFolderPrompt: 'Enter new folder name:',
+    createFolderPrompt: 'Enter folder name:',
+    newFolder: 'New Folder',
+    deleteFolderConfirm: 'Delete folder "{name}"? Apps inside will be moved back to the grid.',
+    noFoldersCreate: 'No folders yet. Create one now?',
+    folderEmpty: 'This folder is empty',
 
     // Settings
     general: 'General',
@@ -87,6 +98,12 @@ const translations = {
     liveBackgroundSettingsDesc: 'Choose an animated background video',
     uploadBackground: 'Upload Background',
     uploadLiveBackground: 'Upload Live Background',
+    videoAutoplay: 'Autoplay live background',
+    videoAutoplayDesc: 'Automatically play video backgrounds when selected',
+    videoMuted: 'Mute live background',
+    videoMutedDesc: 'Keep video backgrounds silent by default',
+    videoPauseHidden: 'Pause when tab is hidden',
+    videoPauseHiddenDesc: 'Save resources by pausing video when you switch tabs',
 
     // Apps settings
     appsSettings: 'Apps',
@@ -369,6 +386,17 @@ const translations = {
     renameApp: '重命名',
     changeThumbnail: '更改缩略图',
     deleteApp: '删除',
+    createFolder: '创建文件夹',
+    renameFolder: '重命名文件夹',
+    deleteFolder: '删除文件夹',
+    moveToFolder: '移动到文件夹',
+    removeFromFolder: '从文件夹中移除',
+    renameFolderPrompt: '输入新文件夹名称：',
+    createFolderPrompt: '输入文件夹名称：',
+    newFolder: '新建文件夹',
+    deleteFolderConfirm: '删除文件夹"{name}"？里面的应用将移回网格。',
+    noFoldersCreate: '还没有文件夹。立即创建一个？',
+    folderEmpty: '此文件夹为空',
 
     // Settings
     general: '通用',
@@ -405,6 +433,12 @@ const translations = {
     liveBackgroundSettingsDesc: '选择动态背景视频',
     uploadBackground: '上传背景图片',
     uploadLiveBackground: '上传动态背景',
+    videoAutoplay: '自动播放动态背景',
+    videoAutoplayDesc: '切换背景时自动播放视频背景',
+    videoMuted: '静音动态背景',
+    videoMutedDesc: '默认保持动态背景静音',
+    videoPauseHidden: '标签页隐藏时暂停',
+    videoPauseHiddenDesc: '切换标签页时暂停视频以节省资源',
 
     // Apps settings
     appsSettings: '应用',
@@ -683,6 +717,17 @@ const translations = {
     renameApp: '名前を変更',
     changeThumbnail: 'サムネイルを変更',
     deleteApp: '削除',
+    createFolder: 'フォルダを作成',
+    renameFolder: 'フォルダ名を変更',
+    deleteFolder: 'フォルダを削除',
+    moveToFolder: 'フォルダに移動',
+    removeFromFolder: 'フォルダから削除',
+    renameFolderPrompt: '新しいフォルダ名を入力：',
+    createFolderPrompt: 'フォルダ名を入力：',
+    newFolder: '新しいフォルダ',
+    deleteFolderConfirm: 'フォルダ「{name}」を削除しますか？内部のアプリはグリッドに戻ります。',
+    noFoldersCreate: 'フォルダがありません。今作成しますか？',
+    folderEmpty: 'このフォルダは空です',
     general: '一般',
     background: '背景',
     apps: 'アプリ',
@@ -951,6 +996,17 @@ const translations = {
     renameApp: '이름 바꾸기',
     changeThumbnail: '썸네일 변경',
     deleteApp: '삭제',
+    createFolder: '폴더 만들기',
+    renameFolder: '폴더 이름 바꾸기',
+    deleteFolder: '폴더 삭제',
+    moveToFolder: '폴더로 이동',
+    removeFromFolder: '폴더에서 제거',
+    renameFolderPrompt: '새 폴더 이름을 입력하세요：',
+    createFolderPrompt: '폴더 이름을 입력하세요：',
+    newFolder: '새 폴더',
+    deleteFolderConfirm: '폴더 「{name}」을(를) 삭제하시겠습니까? 안의 앱은 그리드로 돌아갑니다.',
+    noFoldersCreate: '폴더가 없습니다. 지금 만드시겠습니까?',
+    folderEmpty: '이 폴더가 비어 있습니다',
     general: '일반',
     background: '배경',
     apps: '앱',
@@ -1438,7 +1494,18 @@ const translations = {
     aiMessageEmpty: 'El mensaje no puede estar vacío',
     aiMessageTooLong: 'Mensaje demasiado largo (máx. 2000 caracteres)',
     aiStopStreaming: 'Detener',
-    aiScrollToBottom: 'Desplazar al fondo'
+    aiScrollToBottom: 'Desplazar al fondo',
+    createFolder: 'Crear carpeta',
+    renameFolder: 'Renombrar carpeta',
+    deleteFolder: 'Eliminar carpeta',
+    moveToFolder: 'Mover a carpeta',
+    removeFromFolder: 'Eliminar de carpeta',
+    renameFolderPrompt: 'Ingrese el nuevo nombre de la carpeta:',
+    createFolderPrompt: 'Ingrese el nombre de la carpeta:',
+    newFolder: 'Nueva carpeta',
+    deleteFolderConfirm: '¿Eliminar la carpeta "{name}"? Las aplicaciones dentro se moverán de vuelta a la cuadrícula.',
+    noFoldersCreate: 'Aún no hay carpetas. ¿Crear una ahora?',
+    folderEmpty: 'Esta carpeta está vacía'
   },
 
   fr: {
@@ -1706,7 +1773,18 @@ const translations = {
     aiMessageEmpty: 'Le message ne peut pas être vide',
     aiMessageTooLong: 'Message trop long (max 2000 caractères)',
     aiStopStreaming: 'Arrêter',
-    aiScrollToBottom: 'Descendre en bas'
+    aiScrollToBottom: 'Descendre en bas',
+    createFolder: 'Créer un dossier',
+    renameFolder: 'Renommer le dossier',
+    deleteFolder: 'Supprimer le dossier',
+    moveToFolder: 'Déplacer vers le dossier',
+    removeFromFolder: 'Retirer du dossier',
+    renameFolderPrompt: 'Entrez le nouveau nom du dossier :',
+    createFolderPrompt: 'Entrez le nom du dossier :',
+    newFolder: 'Nouveau dossier',
+    deleteFolderConfirm: 'Supprimer le dossier "{name}" ? Les applications à l\'intérieur seront remises dans la grille.',
+    noFoldersCreate: 'Pas encore de dossiers. En créer un maintenant ?',
+    folderEmpty: 'Ce dossier est vide'
   },
 
   de: {
@@ -1974,7 +2052,18 @@ const translations = {
     aiMessageEmpty: 'Nachricht darf nicht leer sein',
     aiMessageTooLong: 'Nachricht zu lang (max. 2000 Zeichen)',
     aiStopStreaming: 'Stopp',
-    aiScrollToBottom: 'Nach unten scrollen'
+    aiScrollToBottom: 'Nach unten scrollen',
+    createFolder: 'Ordner erstellen',
+    renameFolder: 'Ordner umbenennen',
+    deleteFolder: 'Ordner löschen',
+    moveToFolder: 'In Ordner verschieben',
+    removeFromFolder: 'Aus Ordner entfernen',
+    renameFolderPrompt: 'Neuen Ordnernamen eingeben:',
+    createFolderPrompt: 'Ordnernamen eingeben:',
+    newFolder: 'Neuer Ordner',
+    deleteFolderConfirm: 'Ordner "{name}" löschen? Die darin enthaltenen Apps werden zurück in das Raster verschoben.',
+    noFoldersCreate: 'Noch keine Ordner. Jetzt einen erstellen?',
+    folderEmpty: 'Dieser Ordner ist leer'
   },
 
   pt: {
@@ -2242,7 +2331,18 @@ const translations = {
     aiMessageEmpty: 'Mensagem não pode estar vazia',
     aiMessageTooLong: 'Mensagem muito longa (máx. 2000 caracteres)',
     aiStopStreaming: 'Parar',
-    aiScrollToBottom: 'Rolar para o final'
+    aiScrollToBottom: 'Rolar para o final',
+    createFolder: 'Criar pasta',
+    renameFolder: 'Renomear pasta',
+    deleteFolder: 'Excluir pasta',
+    moveToFolder: 'Mover para pasta',
+    removeFromFolder: 'Remover da pasta',
+    renameFolderPrompt: 'Digite o novo nome da pasta:',
+    createFolderPrompt: 'Digite o nome da pasta:',
+    newFolder: 'Nova pasta',
+    deleteFolderConfirm: 'Excluir pasta "{name}"? Os aplicativos dentro serão movidos de volta para a grade.',
+    noFoldersCreate: 'Nenhuma pasta ainda. Criar uma agora?',
+    folderEmpty: 'Esta pasta está vazia'
   },
 
   ru: {
@@ -2510,7 +2610,18 @@ const translations = {
     aiMessageEmpty: 'Сообщение не может быть пустым',
     aiMessageTooLong: 'Слишком длинное сообщение (макс. 2000 символов)',
     aiStopStreaming: 'Стоп',
-    aiScrollToBottom: 'Прокрутить вниз'
+    aiScrollToBottom: 'Прокрутить вниз',
+    createFolder: 'Создать папку',
+    renameFolder: 'Переименовать папку',
+    deleteFolder: 'Удалить папку',
+    moveToFolder: 'Переместить в папку',
+    removeFromFolder: 'Убрать из папки',
+    renameFolderPrompt: 'Введите новое имя папки:',
+    createFolderPrompt: 'Введите имя папки:',
+    newFolder: 'Новая папка',
+    deleteFolderConfirm: 'Удалить папку "{name}"? Приложения внутри будут перемещены обратно в сетку.',
+    noFoldersCreate: 'Папок пока нет. Создать сейчас?',
+    folderEmpty: 'Эта папка пуста'
   }
 };
 
@@ -2551,11 +2662,6 @@ function getTranslation(lang, key) {
   }
 
   return key;
-}
-
-// Load language from localStorage
-function loadLanguage() {
-  return localStorage.getItem('language') || 'en';
 }
 
 // Save language to localStorage
@@ -2695,15 +2801,15 @@ function updateDynamicTranslations() {
   }
 }
 
-// Get translated text
-function t(key) {
-  return getTranslation(currentLanguage, key);
-}
-
-// Initialize language system
-function initLanguage() {
-  const lang = loadLanguage();
-  applyLanguage(lang);
+// Get translated text with optional placeholder replacement
+function t(key, replacements) {
+  let message = getTranslation(currentLanguage, key);
+  if (replacements && typeof replacements === 'object') {
+    Object.entries(replacements).forEach(([placeholder, value]) => {
+      message = message.replaceAll(`{${placeholder}}`, value);
+    });
+  }
+  return message;
 }
 
 // Export functions for global use

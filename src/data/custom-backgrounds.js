@@ -234,6 +234,12 @@
 
     delete videoEl.dataset.currentBg;
     delete videoEl.dataset.wasPlaying;
+    delete videoEl.dataset.simpleModePaused;
+    delete videoEl.dataset.crossfadeTriggered;
+    delete videoEl.dataset.lastPauseTime;
+
+    videoEl.autoplay = false;
+    videoEl.muted = true;
 
     if (!unloadSource) return;
 
@@ -438,6 +444,10 @@
             containerEl.classList.remove('video-fallback', 'video-error');
           }
 
+          // Apply user playback settings
+          videoEl.muted = loadVideoMuted();
+          videoEl.autoplay = loadVideoAutoplay();
+
           const sourceEl = videoEl.querySelector('source');
           if (!sourceEl) {
             URL.revokeObjectURL(blobUrl);
@@ -449,15 +459,24 @@
           sourceEl.type = bg.data.type || 'video/mp4';
           videoEl.load();
 
-          let crossfadeTriggered = false;
           function triggerCrossfade() {
-            if (crossfadeTriggered || !isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
+            if (videoEl.dataset.crossfadeTriggered === 'true' || !isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
               return;
             }
 
-            crossfadeTriggered = true;
-            videoEl.play().catch(function () {});
+            videoEl.dataset.crossfadeTriggered = 'true';
             videoEl.classList.remove('loading');
+
+            // When autoplay is disabled, keep thumbnail visible and video hidden
+            if (!loadVideoAutoplay()) return;
+
+            // When simple mode is active, mark paused and keep video hidden
+            if (window.loadSimpleMode && window.loadSimpleMode()) {
+              videoEl.dataset.simpleModePaused = 'true';
+              return;
+            }
+
+            videoEl.play().catch(function () {});
             videoEl.classList.add('active', 'ready');
             if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
             thumbnailEl.classList.add('clearing');
@@ -517,10 +536,17 @@
               return;
             }
 
-            if (!document.hidden && videoEl.classList.contains('active')) {
+            // Debounce: prevent tight pause/resume loops from buffering or rapid system pauses
+            const now = Date.now();
+            const lastPause = parseInt(videoEl.dataset.lastPauseTime || '0', 10);
+            if (now - lastPause < 2000) return;
+            videoEl.dataset.lastPauseTime = now;
+
+            if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.readyState >= 3) {
               videoEl.play().catch(function () {});
             }
           };
+
         }
       } else {
         // Image background

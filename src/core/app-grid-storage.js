@@ -42,6 +42,14 @@ const AppGridStorage = {
 
   saveCustomApps(apps) {
     writeJson('customApps', apps);
+  },
+
+  loadFolders() {
+    return readJsonArray('appFolders', [], 'appFolders', '[]');
+  },
+
+  saveFolders(folders) {
+    writeJson('appFolders', folders);
   }
 };
 

@@ -4,41 +4,44 @@
 (function() {
   'use strict';
 
+  const escapeHtml = window.escapeHtml;
+
   // Configuration
   const CACHE_KEY = 'weatherCache';
   const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
   const GEO_TIMEOUT_MS = 10000; // 10 seconds
 
   // WMO weather codes to icon/type mapping
+  // Each code has labels for all supported languages: en, zh, ja, ko, es, fr, de, pt, ru
   const WEATHER_CODES = {
-    0: { type: 'clear', labelEn: 'Clear sky', labelZh: '晴朗' },
-    1: { type: 'partly-cloudy', labelEn: 'Mainly clear', labelZh: '大部晴朗' },
-    2: { type: 'partly-cloudy', labelEn: 'Partly cloudy', labelZh: '多云' },
-    3: { type: 'cloudy', labelEn: 'Overcast', labelZh: '阴天' },
-    45: { type: 'fog', labelEn: 'Fog', labelZh: '雾' },
-    48: { type: 'fog', labelEn: 'Depositing rime fog', labelZh: '雾凇' },
-    51: { type: 'drizzle', labelEn: 'Light drizzle', labelZh: '小雨' },
-    53: { type: 'drizzle', labelEn: 'Moderate drizzle', labelZh: '中雨' },
-    55: { type: 'drizzle', labelEn: 'Dense drizzle', labelZh: '大雨' },
-    56: { type: 'drizzle', labelEn: 'Light freezing drizzle', labelZh: '冻雨' },
-    57: { type: 'drizzle', labelEn: 'Dense freezing drizzle', labelZh: '强冻雨' },
-    61: { type: 'rain', labelEn: 'Slight rain', labelZh: '小雨' },
-    63: { type: 'rain', labelEn: 'Moderate rain', labelZh: '中雨' },
-    65: { type: 'rain', labelEn: 'Heavy rain', labelZh: '大雨' },
-    66: { type: 'rain', labelEn: 'Light freezing rain', labelZh: '冻雨' },
-    67: { type: 'rain', labelEn: 'Heavy freezing rain', labelZh: '强冻雨' },
-    71: { type: 'snow', labelEn: 'Slight snow', labelZh: '小雪' },
-    73: { type: 'snow', labelEn: 'Moderate snow', labelZh: '中雪' },
-    75: { type: 'snow', labelEn: 'Heavy snow', labelZh: '大雪' },
-    77: { type: 'snow', labelEn: 'Snow grains', labelZh: '雪粒' },
-    80: { type: 'rain', labelEn: 'Slight rain showers', labelZh: '阵雨' },
-    81: { type: 'rain', labelEn: 'Moderate rain showers', labelZh: '中阵雨' },
-    82: { type: 'rain', labelEn: 'Violent rain showers', labelZh: '强阵雨' },
-    85: { type: 'snow', labelEn: 'Slight snow showers', labelZh: '阵雪' },
-    86: { type: 'snow', labelEn: 'Heavy snow showers', labelZh: '强阵雪' },
-    95: { type: 'thunderstorm', labelEn: 'Thunderstorm', labelZh: '雷雨' },
-    96: { type: 'thunderstorm', labelEn: 'Thunderstorm with hail', labelZh: '雷暴伴冰雹' },
-    99: { type: 'thunderstorm', labelEn: 'Thunderstorm with heavy hail', labelZh: '强雷暴伴冰雹' }
+    0: { type: 'clear', labelEn: 'Clear sky', labelZh: '晴朗', labelJa: '晴れ', labelKo: '맑음', labelEs: 'Despejado', labelFr: 'Ciel dégagé', labelDe: 'Klarer Himmel', labelPt: 'Céu limpo', labelRu: 'Ясно' },
+    1: { type: 'partly-cloudy', labelEn: 'Mainly clear', labelZh: '大部晴朗', labelJa: 'ほぼ晴れ', labelKo: '주로 맑음', labelEs: 'Principalmente despejado', labelFr: 'Peu nuageux', labelDe: 'Überwiegend klar', labelPt: 'Predominantemente limpo', labelRu: 'Преимущественно ясно' },
+    2: { type: 'partly-cloudy', labelEn: 'Partly cloudy', labelZh: '多云', labelJa: '曇り時々晴れ', labelKo: '일부 흐림', labelEs: 'Parcialmente nublado', labelFr: 'Partiellement nuageux', labelDe: 'Teilweise bewölkt', labelPt: 'Parcialmente nublado', labelRu: 'Переменная облачность' },
+    3: { type: 'cloudy', labelEn: 'Overcast', labelZh: '阴天', labelJa: '曇り', labelKo: '흐림', labelEs: 'Nublado', labelFr: 'Couvert', labelDe: 'Bedeckt', labelPt: 'Encoberto', labelRu: 'Пасмурно' },
+    45: { type: 'fog', labelEn: 'Fog', labelZh: '雾', labelJa: '霧', labelKo: '안개', labelEs: 'Niebla', labelFr: 'Brouillard', labelDe: 'Nebel', labelPt: 'Nevoeiro', labelRu: 'Туман' },
+    48: { type: 'fog', labelEn: 'Depositing rime fog', labelZh: '雾凇', labelJa: '着氷性の霧', labelKo: '상안개', labelEs: 'Niebla helada', labelFr: 'Brouillard givrant', labelDe: 'Eisnebel', labelPt: 'Nevoeiro gelado', labelRu: 'Изморозь' },
+    51: { type: 'drizzle', labelEn: 'Light drizzle', labelZh: '小雨', labelJa: '霧雨（弱い）', labelKo: '가랑비 (약함)', labelEs: 'Llovizna ligera', labelFr: 'Bruine légère', labelDe: 'Leichter Sprühregen', labelPt: 'Garoa fraca', labelRu: 'Слабая морось' },
+    53: { type: 'drizzle', labelEn: 'Moderate drizzle', labelZh: '中雨', labelJa: '霧雨（中程度）', labelKo: '가랑비 (보통)', labelEs: 'Llovizna moderada', labelFr: 'Bruine modérée', labelDe: 'Mäßiger Sprühregen', labelPt: 'Garoa moderada', labelRu: 'Умеренная морось' },
+    55: { type: 'drizzle', labelEn: 'Dense drizzle', labelZh: '大雨', labelJa: '霧雨（強い）', labelKo: '가랑비 (강함)', labelEs: 'Llovizna densa', labelFr: 'Bruine dense', labelDe: 'Dichter Sprühregen', labelPt: 'Garoa densa', labelRu: 'Сильная морось' },
+    56: { type: 'drizzle', labelEn: 'Light freezing drizzle', labelZh: '冻雨', labelJa: '着氷性の霧雨（弱い）', labelKo: '동결 가랑비 (약함)', labelEs: 'Llovizna helada ligera', labelFr: 'Bruine verglaçante légère', labelDe: 'Leichter Sprühfrostregen', labelPt: 'Garoa gelada fraca', labelRu: 'Слабая замерзающая морось' },
+    57: { type: 'drizzle', labelEn: 'Dense freezing drizzle', labelZh: '强冻雨', labelJa: '着氷性の霧雨（強い）', labelKo: '동결 가랑비 (강함)', labelEs: 'Llovizna helada densa', labelFr: 'Bruine verglaçante dense', labelDe: 'Dichter Sprühfrostregen', labelPt: 'Garoa gelada densa', labelRu: 'Сильная замерзающая морось' },
+    61: { type: 'rain', labelEn: 'Slight rain', labelZh: '小雨', labelJa: '弱い雨', labelKo: '약한 비', labelEs: 'Lluvia ligera', labelFr: 'Pluie légère', labelDe: 'Leichter Regen', labelPt: 'Chuva fraca', labelRu: 'Небольшой дождь' },
+    63: { type: 'rain', labelEn: 'Moderate rain', labelZh: '中雨', labelJa: '雨', labelKo: '보통 비', labelEs: 'Lluvia moderada', labelFr: 'Pluie modérée', labelDe: 'Mäßiger Regen', labelPt: 'Chuva moderada', labelRu: 'Умеренный дождь' },
+    65: { type: 'rain', labelEn: 'Heavy rain', labelZh: '大雨', labelJa: '強い雨', labelKo: '강한 비', labelEs: 'Lluvia intensa', labelFr: 'Pluie forte', labelDe: 'Starker Regen', labelPt: 'Chuva forte', labelRu: 'Сильный дождь' },
+    66: { type: 'rain', labelEn: 'Light freezing rain', labelZh: '冻雨', labelJa: '着氷性の雨（弱い）', labelKo: '동결 비 (약함)', labelEs: 'Lluvia helada ligera', labelFr: 'Pluie verglaçante légère', labelDe: 'Leichter Eisregen', labelPt: 'Chuva gelada fraca', labelRu: 'Небольшой замерзающий дождь' },
+    67: { type: 'rain', labelEn: 'Heavy freezing rain', labelZh: '强冻雨', labelJa: '着氷性の雨（強い）', labelKo: '동결 비 (강함)', labelEs: 'Lluvia helada intensa', labelFr: 'Pluie verglaçante forte', labelDe: 'Starker Eisregen', labelPt: 'Chuva gelada forte', labelRu: 'Сильный замерзающий дождь' },
+    71: { type: 'snow', labelEn: 'Slight snow', labelZh: '小雪', labelJa: '弱い雪', labelKo: '약한 눈', labelEs: 'Nieve ligera', labelFr: 'Neige légère', labelDe: 'Leichter Schneefall', labelPt: 'Neve fraca', labelRu: 'Небольшой снег' },
+    73: { type: 'snow', labelEn: 'Moderate snow', labelZh: '中雪', labelJa: '雪', labelKo: '보통 눈', labelEs: 'Nieve moderada', labelFr: 'Neige modérée', labelDe: 'Mäßiger Schneefall', labelPt: 'Neve moderada', labelRu: 'Умеренный снег' },
+    75: { type: 'snow', labelEn: 'Heavy snow', labelZh: '大雪', labelJa: '強い雪', labelKo: '강한 눈', labelEs: 'Nieve intensa', labelFr: 'Neige forte', labelDe: 'Starker Schneefall', labelPt: 'Neve forte', labelRu: 'Сильный снег' },
+    77: { type: 'snow', labelEn: 'Snow grains', labelZh: '雪粒', labelJa: '小雪片', labelKo: '싸락눈', labelEs: 'Granos de nieve', labelFr: 'Grains de neige', labelDe: 'Schneegriesel', labelPt: 'Grãos de neve', labelRu: 'Снежная крупа' },
+    80: { type: 'rain', labelEn: 'Slight rain showers', labelZh: '阵雨', labelJa: '弱いにわか雨', labelKo: '약한 소나기', labelEs: 'Lluvias ligeras', labelFr: 'Averses légères', labelDe: 'Leichte Regenschauer', labelPt: 'Pancadas de chuva fracas', labelRu: 'Небольшой ливневый дождь' },
+    81: { type: 'rain', labelEn: 'Moderate rain showers', labelZh: '中阵雨', labelJa: 'にわか雨', labelKo: '보통 소나기', labelEs: 'Lluvias moderadas', labelFr: 'Averses modérées', labelDe: 'Mäßige Regenschauer', labelPt: 'Pancadas de chuva moderadas', labelRu: 'Умеренный ливневый дождь' },
+    82: { type: 'rain', labelEn: 'Violent rain showers', labelZh: '强阵雨', labelJa: '強いにわか雨', labelKo: '강한 소나기', labelEs: 'Lluvias intensas', labelFr: 'Averses fortes', labelDe: 'Starke Regenschauer', labelPt: 'Pancadas de chuva fortes', labelRu: 'Сильный ливневый дождь' },
+    85: { type: 'snow', labelEn: 'Slight snow showers', labelZh: '阵雪', labelJa: '弱い雪のにわか雨', labelKo: '약한 눈 소나기', labelEs: 'Chubascos de nieve ligeros', labelFr: 'Averses de neige légères', labelDe: 'Leichte Schneeschauer', labelPt: 'Pancadas de neve fracas', labelRu: 'Небольшой ливневый снег' },
+    86: { type: 'snow', labelEn: 'Heavy snow showers', labelZh: '强阵雪', labelJa: '強い雪のにわか雨', labelKo: '강한 눈 소나기', labelEs: 'Chubascos de nieve intensos', labelFr: 'Averses de neige fortes', labelDe: 'Starke Schneeschauer', labelPt: 'Pancadas de neve fortes', labelRu: 'Сильный ливневый снег' },
+    95: { type: 'thunderstorm', labelEn: 'Thunderstorm', labelZh: '雷雨', labelJa: '雷雨', labelKo: '뇌우', labelEs: 'Tormenta', labelFr: 'Orage', labelDe: 'Gewitter', labelPt: 'Trovoada', labelRu: 'Гроза' },
+    96: { type: 'thunderstorm', labelEn: 'Thunderstorm with hail', labelZh: '雷暴伴冰雹', labelJa: '雷雨（ひょう）', labelKo: '뇌우 (우박)', labelEs: 'Tormenta con granizo', labelFr: 'Orage avec grêle', labelDe: 'Gewitter mit Hagel', labelPt: 'Trovoada com granizo', labelRu: 'Гроза с градом' },
+    99: { type: 'thunderstorm', labelEn: 'Thunderstorm with heavy hail', labelZh: '强雷暴伴冰雹', labelJa: '雷雨（強いひょう）', labelKo: '뇌우 (강한 우박)', labelEs: 'Tormenta con granizo intenso', labelFr: 'Orage avec forte grêle', labelDe: 'Gewitter mit starkem Hagel', labelPt: 'Trovoada com granizo forte', labelRu: 'Гроза с сильным градом' }
   };
 
   // SVG icons for weather conditions
@@ -59,6 +62,15 @@
   let currentCache = null;
 
   // ===================== Utility Functions =====================
+
+  // Map app language codes to Open-Meteo API language codes.
+  // Falls back to 'en' for unsupported languages.
+  const OPEN_METEO_LANGS = new Set(['en', 'zh', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru']);
+
+  function getOpenMeteoLang() {
+    const lang = getLang();
+    return OPEN_METEO_LANGS.has(lang) ? lang : 'en';
+  }
 
   function getLang() {
     return window.i18n ? window.i18n.currentLanguage() : 'en';
@@ -86,13 +98,15 @@
   function getWeatherInfo(code) {
     const info = WEATHER_CODES[code];
     if (!info) {
-      return { type: 'clear', labelEn: 'Unknown', labelZh: '未知' };
+      return { type: 'clear', labelEn: 'Unknown', labelZh: '未知', labelJa: '不明', labelKo: '알 수 없음', labelEs: 'Desconocido', labelFr: 'Inconnu', labelDe: 'Unbekannt', labelPt: 'Desconhecido', labelRu: 'Неизвестно' };
     }
     return info;
   }
 
   function getWeatherLabel(info) {
-    return getLang() === 'zh' ? info.labelZh : info.labelEn;
+    const lang = getLang();
+    const labelKey = `label${lang.charAt(0).toUpperCase() + lang.slice(1)}`;
+    return info[labelKey] || info.labelEn;
   }
 
   function getWeatherIcon(type) {
@@ -208,7 +222,7 @@
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), GEO_TIMEOUT_MS);
     try {
-      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=${getLang() === 'zh' ? 'zh' : 'en'}&format=json`;
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=${getOpenMeteoLang()}&format=json`;
       response = await fetch(url, { signal: controller.signal });
     } catch (e) {
       if (e.name === 'AbortError') {
@@ -222,7 +236,7 @@
     let data;
     try {
       data = await response.json();
-    } catch (e) {
+    } catch {
       throw createWeatherError('Geocoding response invalid', 'GEOCODING_INVALID');
     }
     if (!data.results || data.results.length === 0) throw createWeatherError('City not found', 'CITY_NOT_FOUND');
@@ -362,12 +376,6 @@
     el.style.display = 'flex';
   }
 
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
   function hideWidget() {
     const el = getWidgetElement();
     if (el) el.style.display = 'none';
@@ -440,7 +448,7 @@
       } else {
         try {
           location = await getLocation();
-        } catch (e) {
+        } catch {
           // Try to use stale cache as fallback only if it matches current mode
           if (cache && cache.data && isCacheMatchingSettings(cache)) {
             renderWeather(cache.data, cache.locationName, unit);

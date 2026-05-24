@@ -89,33 +89,6 @@ const OpenRouterAPI = (function() {
   }
 
   /**
-   * Parse OpenRouter API response
-   * @param {Object} data - Response data
-   * @returns {Object} Parsed result
-   */
-  function parseResponse(data) {
-    try {
-      if (!data || !data.choices || !data.choices[0]) {
-        return { success: false, error: getTranslation('aiInvalidResponse') };
-      }
-      
-      const choice = data.choices[0];
-      if (!choice.message || !choice.message.content) {
-        return { success: false, error: getTranslation('aiNoContent') };
-      }
-
-      return {
-        success: true,
-        content: choice.message.content,
-        usage: data.usage || null,
-        model: data.model || CONFIG.model
-      };
-    } catch (e) {
-      return { success: false, error: getTranslation('aiInvalidResponse') };
-    }
-  }
-
-  /**
    * Handle API errors
    * @param {Response} response - Fetch response
    * @returns {Object} Error information
@@ -154,7 +127,7 @@ const OpenRouterAPI = (function() {
           errorCode = errorData.error?.code || 'API_ERROR';
           errorMessage = errorData.error?.message || errorMessage;
       }
-    } catch (e) {
+    } catch {
       errorMessage = response.statusText || errorMessage;
     }
 
@@ -265,7 +238,7 @@ const OpenRouterAPI = (function() {
                     }
                   }
                 }
-              } catch (e) {
+              } catch {
                 // Skip invalid JSON
               }
             }
@@ -290,7 +263,7 @@ const OpenRouterAPI = (function() {
                 }
               }
             }
-          } catch (e) {
+          } catch {
             // Skip invalid JSON
           }
         }

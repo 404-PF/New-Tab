@@ -215,7 +215,7 @@ const MarkdownParser = (function() {
 
       try {
         return new URL(trimmed).href;
-      } catch (error) {
+      } catch {
         return encodeURI(trimmed);
       }
     }
@@ -659,7 +659,6 @@ const MarkdownParser = (function() {
     const itemsHtml = items.map((item, index) => {
       const nestedHtml = item.nested || '';
       const contentHtml = parseInline(item.content);
-      const startAttr = type === 'ol' && item.number ? ` start="${item.number}"` : '';
       return `<li class="md-list-item">${contentHtml}${nestedHtml}</li>`;
     }).join('');
     
