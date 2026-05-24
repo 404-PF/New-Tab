@@ -41,8 +41,13 @@ function normalizeAppUrl(url) {
 
 function getExistingAppUrls() {
   if (!window.AppGridState) return new Set();
-  const apps = window.AppGridState.getCustomApps();
-  return new Set(apps.filter(app => app.url).map(app => window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url))));
+  const customApps = window.AppGridState.getCustomApps();
+  const defaults = window.defaultApps || [];
+  return new Set(
+    [...customApps, ...defaults]
+      .filter(app => app.url)
+      .map(app => window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url)))
+  );
 }
 
 function resetPreviewIcon() {

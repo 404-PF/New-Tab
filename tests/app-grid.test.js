@@ -237,6 +237,16 @@ describe('AppGridState', () => {
   });
 
   describe('hasAppWithUrl', () => {
+    beforeAll(() => {
+      window.defaultApps = [
+        { id: 'feedback-app', url: 'https://github.com/404-PF/New-Tab/issues/new', nameKey: 'feedback', className: 'default-app' },
+      ];
+    });
+
+    afterAll(() => {
+      delete window.defaultApps;
+    });
+
     beforeEach(() => {
       AppGridState.addApp({ id: 'existing', url: 'https://example.com', name: 'Existing' });
     });
@@ -263,6 +273,16 @@ describe('AppGridState', () => {
 
     it('returns false for null', () => {
       expect(AppGridState.hasAppWithUrl(null)).toBe(false);
+    });
+
+    it('returns true when URL matches a default app', () => {
+      expect(AppGridState.hasAppWithUrl('https://github.com/404-PF/New-Tab/issues/new')).toBe(true);
+    });
+
+    it('addApp rejects a URL matching a default app', () => {
+      const result = AppGridState.addApp({ id: 'dup', url: 'https://github.com/404-PF/New-Tab/issues/new', name: 'Dup' });
+      expect(result).toBe(false);
+      expect(AppGridState.getCustomApps()).toHaveLength(1);
     });
   });
 

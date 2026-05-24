@@ -86,14 +86,15 @@ const AppGridState = {
     }
   },
 
-  // Returns true if an existing custom app has the same canonical URL.
+  // Returns true if an existing app (custom or default) has the same canonical URL.
   hasAppWithUrl(url) {
     if (!url || typeof url !== 'string') return false;
 
     const canonicalInput = this.getCanonicalUrl(url);
     const apps = this.getCustomApps();
+    const defaults = window.defaultApps || [];
 
-    return apps.some(app => {
+    return [...apps, ...defaults].some(app => {
       if (!app.url) return false;
       return this.getCanonicalUrl(app.url) === canonicalInput;
     });
