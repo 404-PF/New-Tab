@@ -468,16 +468,21 @@
             videoEl.classList.remove('loading');
 
             // When autoplay is disabled, keep thumbnail visible and video hidden
-            if (!loadVideoAutoplay()) return;
+            if (!loadVideoAutoplay()) {
+              if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
+              return;
+            }
 
             // When simple mode is active, mark paused and keep video hidden
             if (window.loadSimpleMode && window.loadSimpleMode()) {
               videoEl.dataset.simpleModePaused = 'true';
+              if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
               return;
             }
 
             videoEl.play().catch(function () {});
             videoEl.classList.add('active', 'ready');
+            if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
             thumbnailEl.classList.add('clearing');
 
             customBackgroundTransitionTimeout = setTimeout(function () {
@@ -527,6 +532,7 @@
               }
 
               fullEl.classList.add('loaded');
+              if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
             });
           };
           videoEl.onpause = function () {
@@ -569,6 +575,7 @@
             }
 
             fullEl.classList.add('loaded');
+            if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
             thumbnailEl.classList.add('clearing');
 
             customBackgroundTransitionTimeout = setTimeout(function () {
@@ -581,6 +588,13 @@
               customBackgroundTransitionTimeout = null;
             }, 2500);
           });
+        };
+        fullImg.onerror = function () {
+          if (!isActiveCustomBackgroundRequest(id, loadVersion)) {
+            return;
+          }
+
+          if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
         };
         fullImg.src = blobUrl;
       }

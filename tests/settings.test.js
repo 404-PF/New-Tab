@@ -380,6 +380,125 @@ describe('applyBg stale background regression', () => {
   });
 });
 
+describe('captureBackgroundSnapshot interactive canvas capture', () => {
+  let canvasEl;
+
+  beforeEach(() => {
+    canvasEl = document.getElementById('bg-interactive');
+    if (!canvasEl) {
+      canvasEl = document.createElement('canvas');
+      canvasEl.id = 'bg-interactive';
+      canvasEl.className = 'background-interactive';
+      canvasEl.hidden = false;
+      document.body.appendChild(canvasEl);
+    } else {
+      canvasEl.hidden = false;
+    }
+
+    // Ensure overlay is fresh (use setAttribute to avoid jsdom URL resolution)
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    overlayEl.removeAttribute('src');
+    overlayEl.classList.remove('active');
+
+    // Ensure fullEl won't match (no loaded class, naturalWidth 0 in jsdom)
+    const fullEl = document.getElementById('bg-full');
+    fullEl.classList.remove('loaded');
+
+    // Ensure videoEl won't match (no active class)
+    const videoEl = document.getElementById('bg-video');
+    videoEl.classList.remove('active');
+
+    // Setup interactive background mock with an active background
+    window._interactiveBackground = {
+      stop: vi.fn(),
+      currentBackgroundId: () => 'particles',
+    };
+  });
+
+  afterEach(() => {
+    delete window._interactiveBackground;
+  });
+
+  it('captures from canvas when interactive background is active', () => {
+    // jsdom does not implement toDataURL without the canvas package, so mock it
+    const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,mocked';
+
+    try {
+      captureBackgroundSnapshot();
+      const overlayEl = document.getElementById('bg-transition-overlay');
+      expect(overlayEl.getAttribute('src')).toContain('data:image/jpeg');
+      expect(overlayEl.classList.contains('active')).toBe(true);
+    } finally {
+      HTMLCanvasElement.prototype.toDataURL = origToDataURL;
+    }
+  });
+
+  it('skips canvas capture when interactive background has no active ID', () => {
+    window._interactiveBackground.currentBackgroundId = () => '';
+
+    captureBackgroundSnapshot();
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    expect(overlayEl.getAttribute('src')).toBeNull();
+    expect(overlayEl.classList.contains('active')).toBe(false);
+  });
+
+  it('skips canvas capture when currentBackgroundId is missing', () => {
+    delete window._interactiveBackground.currentBackgroundId;
+
+    captureBackgroundSnapshot();
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    expect(overlayEl.getAttribute('src')).toBeNull();
+    expect(overlayEl.classList.contains('active')).toBe(false);
+  });
+
+  it('skips canvas capture when canvas is hidden', () => {
+    canvasEl.hidden = true;
+
+    captureBackgroundSnapshot();
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    expect(overlayEl.getAttribute('src')).toBeNull();
+    expect(overlayEl.classList.contains('active')).toBe(false);
+  });
+
+  it('skips canvas capture when _interactiveBackground is undefined', () => {
+    delete window._interactiveBackground;
+
+    captureBackgroundSnapshot();
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    expect(overlayEl.getAttribute('src')).toBeNull();
+    expect(overlayEl.classList.contains('active')).toBe(false);
+  });
+
+  it('prioritizes canvas capture over full image when both are available', () => {
+    const fullEl = document.getElementById('bg-full');
+    fullEl.classList.add('loaded');
+    Object.defineProperty(fullEl, 'naturalWidth', { value: 100, configurable: true });
+    fullEl.setAttribute('src', 'https://example.com/full.jpg');
+
+    const overlayEl = document.getElementById('bg-transition-overlay');
+    overlayEl.removeAttribute('src');
+    overlayEl.classList.remove('active');
+
+    // Ensure videoEl won't match (no active class)
+    const videoEl = document.getElementById('bg-video');
+    videoEl.classList.remove('active');
+
+    const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,mocked-canvas';
+
+    try {
+      captureBackgroundSnapshot();
+      expect(overlayEl.getAttribute('src')).toBe('data:image/jpeg;base64,mocked-canvas');
+      expect(overlayEl.classList.contains('active')).toBe(true);
+    } finally {
+      HTMLCanvasElement.prototype.toDataURL = origToDataURL;
+      fullEl.classList.remove('loaded');
+      fullEl.removeAttribute('src');
+    }
+  });
+});
+
 describe('initSettings background startup', () => {
   it('requests the background immediately even if idle never runs', () => {
     const dom = new JSDOM(`<!doctype html><html><body>
@@ -387,6 +506,7 @@ describe('initSettings background startup', () => {
         <video class="background-video" id="bg-video"><source src="" type="video/mp4"></video>
         <img class="background-thumbnail" id="bg-thumbnail" src="" alt="">
         <img class="background-full" id="bg-full" src="" alt="">
+        <img class="background-transition-overlay" id="bg-transition-overlay" src="" alt="">
         <canvas class="background-interactive" id="bg-interactive"></canvas>
       </div>
       <div class="settings-menu"></div>
@@ -491,5 +611,383 @@ describe('Language settings', () => {
     localStorage.setItem('language', 'ja');
     const result = window.i18n.t('nonexistentKey');
     expect(result).toBe('nonexistentKey');
+  });
+});
+
+describe('hideBackgroundOverlay', () => {
+  beforeEach(() => {
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.removeAttribute('src');
+    overlay.classList.remove('active');
+    clearBackgroundTransitionTimeout();
+  });
+
+  it('returns early when overlay is not active', () => {
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.setAttribute('src', 'some-src');
+    hideBackgroundOverlay();
+    expect(overlay.getAttribute('src')).toBe('some-src');
+    expect(overlay.classList.contains('active')).toBe(false);
+  });
+
+  it('removes active class immediately', () => {
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    hideBackgroundOverlay();
+    expect(overlay.classList.contains('active')).toBe(false);
+  });
+
+  it('clears overlay src after transition duration', () => {
+    vi.useFakeTimers();
+    const overlay = document.getElementById('bg-transition-overlay');
+    const originalSrc = 'some-src';
+    overlay.setAttribute('src', originalSrc);
+    overlay.classList.add('active');
+
+    hideBackgroundOverlay();
+    vi.advanceTimersByTime(400);
+
+    expect(overlay.getAttribute('src')).toBe('');
+    vi.useRealTimers();
+  });
+
+  it('preserves src if overlay becomes active again during fade', () => {
+    vi.useFakeTimers();
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.setAttribute('src', 'some-src');
+    overlay.classList.add('active');
+
+    hideBackgroundOverlay();
+    overlay.classList.add('active');
+    vi.advanceTimersByTime(400);
+
+    expect(overlay.getAttribute('src')).toBe('some-src');
+    vi.useRealTimers();
+  });
+});
+
+describe('captureBackgroundSnapshot non-interactive sources', () => {
+  beforeEach(() => {
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.removeAttribute('src');
+    overlay.classList.remove('active');
+
+    const fullEl = document.getElementById('bg-full');
+    fullEl.classList.remove('loaded');
+    fullEl.removeAttribute('src');
+
+    const videoEl = document.getElementById('bg-video');
+    videoEl.classList.remove('active');
+
+    const thumbnailEl = document.getElementById('bg-thumbnail');
+    thumbnailEl.classList.add('hidden');
+    thumbnailEl.removeAttribute('src');
+
+    delete window._interactiveBackground;
+  });
+
+  it('captures from full image when loaded with naturalWidth > 0', () => {
+    const fullEl = document.getElementById('bg-full');
+    fullEl.classList.add('loaded');
+    Object.defineProperty(fullEl, 'naturalWidth', { value: 100, configurable: true });
+    fullEl.setAttribute('src', 'https://example.com/full.jpg');
+
+    captureBackgroundSnapshot();
+    const overlay = document.getElementById('bg-transition-overlay');
+    expect(overlay.getAttribute('src')).toBe('https://example.com/full.jpg');
+    expect(overlay.classList.contains('active')).toBe(true);
+  });
+
+  it('captures from video frame when active and ready', () => {
+    const videoEl = document.getElementById('bg-video');
+    videoEl.classList.add('active');
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'video.mp4', configurable: true });
+    Object.defineProperty(videoEl, 'readyState', { value: 2, configurable: true });
+    Object.defineProperty(videoEl, 'videoWidth', { value: 1920, configurable: true });
+    Object.defineProperty(videoEl, 'videoHeight', { value: 1080, configurable: true });
+
+    const origGetContext = HTMLCanvasElement.prototype.getContext;
+    const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.getContext = () => ({ drawImage: () => {} });
+    HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,video-mock';
+
+    try {
+      captureBackgroundSnapshot();
+      const overlay = document.getElementById('bg-transition-overlay');
+      expect(overlay.getAttribute('src')).toContain('data:image/jpeg');
+      expect(overlay.classList.contains('active')).toBe(true);
+    } finally {
+      HTMLCanvasElement.prototype.getContext = origGetContext;
+      HTMLCanvasElement.prototype.toDataURL = origToDataURL;
+    }
+  });
+
+  it('captures from thumbnail when full and video sources unavailable', () => {
+    const thumbnailEl = document.getElementById('bg-thumbnail');
+    thumbnailEl.classList.remove('hidden');
+    Object.defineProperty(thumbnailEl, 'naturalWidth', { value: 100, configurable: true });
+    thumbnailEl.setAttribute('src', 'https://example.com/thumb.jpg');
+
+    captureBackgroundSnapshot();
+    const overlay = document.getElementById('bg-transition-overlay');
+    expect(overlay.getAttribute('src')).toBe('https://example.com/thumb.jpg');
+    expect(overlay.classList.contains('active')).toBe(true);
+  });
+
+  it('does nothing when no source is available', () => {
+    captureBackgroundSnapshot();
+    const overlay = document.getElementById('bg-transition-overlay');
+    expect(overlay.getAttribute('src')).toBeNull();
+    expect(overlay.classList.contains('active')).toBe(false);
+  });
+});
+
+describe('clearBackgroundTransitionTimeout', () => {
+  beforeEach(() => {
+    clearBackgroundTransitionTimeout();
+  });
+
+  it('cancels overlay src clear timeout set by hideBackgroundOverlay', () => {
+    vi.useFakeTimers();
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.setAttribute('src', 'some-src');
+    overlay.classList.add('active');
+
+    hideBackgroundOverlay();
+    clearBackgroundTransitionTimeout();
+    vi.advanceTimersByTime(400);
+
+    expect(overlay.getAttribute('src')).toBe('some-src');
+    vi.useRealTimers();
+  });
+});
+
+describe('background image load failure recovery', () => {
+  beforeEach(() => {
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.removeAttribute('src');
+    overlay.classList.remove('active');
+    clearBackgroundTransitionTimeout();
+  });
+
+  it('calls hideBackgroundOverlay when applyBg static image onerror fires', () => {
+    localStorage.setItem('homepageBg', 'Mountain View');
+    window._backgrounds = [
+      { id: 'Mountain View', type: 'image', thumb: 'thumb.jpg', url: 'bad-url.jpg' }
+    ];
+    window._interactiveBackground = { stop: vi.fn() };
+
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    overlay.setAttribute('src', 'old-snapshot');
+
+    // Intercept Image constructor to trigger onerror on the full-resolution load
+    const origImage = window.Image;
+    window.Image = function() {
+      const img = new origImage(0, 0);
+      const origSrcDescriptor = Object.getOwnPropertyDescriptor(
+        Object.getPrototypeOf(img), 'src'
+      );
+      Object.defineProperty(img, 'src', {
+        set(value) {
+          // Only trigger onerror for the full-resolution URL (not the thumbnail preload)
+          if (value === 'bad-url.jpg' && typeof img.onerror === 'function') {
+            img.onerror();
+          }
+          if (origSrcDescriptor && origSrcDescriptor.set) {
+            origSrcDescriptor.set.call(img, value);
+          }
+        },
+        configurable: true
+      });
+      img.onload = null;
+      img.onerror = null;
+      return img;
+    };
+    window.Image.prototype = origImage.prototype;
+
+    try {
+      applyBg();
+
+      expect(overlay.classList.contains('active')).toBe(false);
+    } finally {
+      window.Image = origImage;
+    }
+  });
+
+  it('calls hideBackgroundOverlay when custom background fullImg onerror fires', async () => {
+    const bgData = {
+      id: 'custom_test_1',
+      type: 'image',
+      data: new Blob(['fake'], { type: 'image/jpeg' }),
+      thumb: 'data:image/jpeg;base64,thumb'
+    };
+
+    const mockDB = {
+      transaction: () => ({
+        objectStore: () => ({
+          get: () => {
+            const req = { result: null };
+            setTimeout(() => {
+              req.result = bgData;
+              if (req.onsuccess) req.onsuccess();
+            }, 0);
+            return req;
+          }
+        })
+      }),
+      objectStoreNames: { contains: () => false }
+    };
+
+    const mockRequest = {
+      onupgradeneeded: null,
+      onerror: null,
+      set onsuccess(fn) {
+        fn({ target: { result: mockDB } });
+      }
+    };
+
+    const origIndexedDB = globalThis.indexedDB;
+    globalThis.indexedDB = { open: () => mockRequest };
+
+    localStorage.setItem('homepageBg', 'custom_test_1');
+
+    const origCreateObjectURL = URL.createObjectURL;
+    const origRevokeObjectURL = URL.revokeObjectURL;
+    URL.createObjectURL = () => 'blob:mock-url';
+    URL.revokeObjectURL = () => {};
+
+    injectScript('src/data/custom-backgrounds.js');
+
+    expect(window._customBackgrounds).toBeDefined();
+
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    overlay.setAttribute('src', 'old-snapshot');
+
+    let hideOverlayCalled = false;
+    const origHideOverlay = window.hideBackgroundOverlay;
+    window.hideBackgroundOverlay = () => { hideOverlayCalled = true; };
+
+    const origImage = window.Image;
+    window.Image = function() {
+      const img = new origImage();
+      const origSrcDescriptor = Object.getOwnPropertyDescriptor(
+        Object.getPrototypeOf(img), 'src'
+      );
+      Object.defineProperty(img, 'src', {
+        set(value) {
+          if (typeof img.onerror === 'function') {
+            img.onerror();
+          }
+          if (origSrcDescriptor && origSrcDescriptor.set) {
+            origSrcDescriptor.set.call(img, value);
+          }
+        },
+        configurable: true
+      });
+      img.onload = null;
+      img.onerror = null;
+      return img;
+    };
+    window.Image.prototype = origImage.prototype;
+
+    try {
+      const promise = window._customBackgrounds.apply('custom_test_1');
+      await promise;
+      expect(hideOverlayCalled).toBe(true);
+    } finally {
+      window.Image = origImage;
+      window.hideBackgroundOverlay = origHideOverlay;
+      globalThis.indexedDB = origIndexedDB;
+      URL.createObjectURL = origCreateObjectURL;
+      URL.revokeObjectURL = origRevokeObjectURL;
+    }
+  });
+});
+
+describe('video background transition overlay', () => {
+  let origCanPlayType;
+
+  function setupVideoBg() {
+    localStorage.setItem('homepageBg', 'Mountain View');
+    window._backgrounds = [
+      { id: 'Mountain View', type: 'video', thumb: 'thumb.jpg', url: 'video.mp4' }
+    ];
+    window._interactiveBackground = { stop: vi.fn() };
+
+    // Prevent stopBackground from calling URL.revokeObjectURL (not in jsdom)
+    delete window._customBackgrounds;
+
+    // Ensure video element has a <source> child for applyBg video path
+    const videoEl = document.getElementById('bg-video');
+    if (!videoEl.querySelector('source')) {
+      const source = document.createElement('source');
+      source.setAttribute('src', '');
+      source.setAttribute('type', 'video/mp4');
+      videoEl.appendChild(source);
+    }
+
+    // jsdom canPlayType returns empty string; mock it so supportsVideo() === true
+    origCanPlayType = HTMLVideoElement.prototype.canPlayType;
+    HTMLVideoElement.prototype.canPlayType = () => 'probably';
+  }
+
+  function tearDownBg() {
+    if (origCanPlayType) {
+      HTMLVideoElement.prototype.canPlayType = origCanPlayType;
+      origCanPlayType = null;
+    }
+  }
+
+  it('calls hideBackgroundOverlay when video autoplay is disabled', () => {
+    setupVideoBg();
+
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    overlay.setAttribute('src', 'old-snapshot');
+
+    const origLoadVideoAutoplay = window.loadVideoAutoplay;
+    window.loadVideoAutoplay = () => false;
+
+    try {
+      applyBg();
+      const videoEl = document.getElementById('bg-video');
+      // triggerCrossfade is set as the oncanplaythrough handler;
+      // calling it directly invokes the closure
+      if (typeof videoEl.oncanplaythrough === 'function') {
+        videoEl.oncanplaythrough();
+      }
+      // If triggerCrossfade ran, it would set crossfadeTriggered
+      expect(videoEl.dataset.crossfadeTriggered).toBe('true');
+      expect(overlay.classList.contains('active')).toBe(false);
+    } finally {
+      window.loadVideoAutoplay = origLoadVideoAutoplay;
+      tearDownBg();
+    }
+  });
+
+  it('calls hideBackgroundOverlay when simple mode is active', () => {
+    setupVideoBg();
+
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    overlay.setAttribute('src', 'old-snapshot');
+
+    const origLoadSimpleMode = window.loadSimpleMode;
+    window.loadSimpleMode = () => true;
+
+    try {
+      applyBg();
+      const videoEl = document.getElementById('bg-video');
+      if (typeof videoEl.oncanplaythrough === 'function') {
+        videoEl.oncanplaythrough();
+      }
+      expect(videoEl.dataset.crossfadeTriggered).toBe('true');
+      expect(overlay.classList.contains('active')).toBe(false);
+    } finally {
+      window.loadSimpleMode = origLoadSimpleMode;
+      tearDownBg();
+    }
   });
 });
