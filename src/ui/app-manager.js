@@ -49,10 +49,12 @@ const addApp = document.getElementById('new-app');
   const folderIds = new Set(folders.map(f => f.id));
   const validIds = new Set([...dedupedApps.map(app => app.id), ...folderIds]);
   const totalExpectedLength = dedupedApps.length + folders.length;
+  const allDefaultIdsPresent = defaultApps.every(app => order.includes(app.id));
   const isValidOrder = Array.isArray(order)
     && order.length === totalExpectedLength
     && order.every(id => validIds.has(id))
-    && new Set(order).size === order.length;
+    && new Set(order).size === order.length
+    && allDefaultIdsPresent;
   if (!isValidOrder) {
     // During recovery, all folders are appended after apps, which may lose
     // any interleaved positioning users had set between folders and apps.
