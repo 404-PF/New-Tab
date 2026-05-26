@@ -78,7 +78,7 @@ function getExistingAppNames() {
     if (Array.isArray(customApps)) {
       customApps.forEach((app) => {
         if (app && typeof app.name === 'string' && app.name.trim() !== '') {
-          existingNames.add(app.name);
+          existingNames.add(app.name.toLowerCase());
         }
       });
     }
@@ -88,7 +88,7 @@ function getExistingAppNames() {
   // If .app-grid or its child classes change, update this selector accordingly.
   Array.from(document.querySelectorAll('.app-grid .app-icon .app-name')).forEach((element) => {
     if (element && element.textContent) {
-      existingNames.add(element.textContent);
+      existingNames.add(element.textContent.toLowerCase());
     }
   });
 
@@ -165,7 +165,7 @@ function extractAppName(url) {
     const urlObj = new URL(normalizeAppUrl(url));
     const name = urlObj.hostname.replace(/^www\./, '').split('.')[0];
     return name.charAt(0).toUpperCase() + name.slice(1);
-  } catch (_) {
+  } catch {
     return 'App Name';
   }
 }
@@ -174,7 +174,7 @@ function getFaviconUrl(url) {
   try {
     const urlObj = new URL(normalizeAppUrl(url));
     return `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -228,9 +228,9 @@ function renderDefaultAppsList() {
   }
 
   const defaultAppsSection = defaultAppsContainer.closest('.add-app-section');
-  const defaultAppsList = Array.isArray(window.defaultAppsList) ? window.defaultAppsList : [];
+  const suggestedApps = Array.isArray(window.defaultAppsList) ? window.defaultAppsList : [];
   const existingNames = getExistingAppNames();
-  const availableApps = defaultAppsList.filter((app) => !existingNames.has(app.name));
+  const availableApps = suggestedApps.filter((app) => !existingNames.has(app.name.toLowerCase()));
 
   defaultAppsContainer.innerHTML = '';
   if (defaultAppsSection) {
@@ -259,7 +259,7 @@ function renderDefaultAppsList() {
       <span class="quick-add-name">${app.name}</span>
     `;
     button.addEventListener('click', async function () {
-      if (getExistingAppNames().has(app.name)) {
+      if (getExistingAppNames().has(app.name.toLowerCase())) {
         return;
       }
       await addDefaultApp(app);
