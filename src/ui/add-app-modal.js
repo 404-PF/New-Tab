@@ -95,7 +95,7 @@ function resetPreviewState() {
   }
   if (validationMessage) {
     validationMessage.textContent = '';
-    validationMessage.classList.remove('show', 'malformed', 'undetectable');
+    validationMessage.classList.remove('show', 'malformed', 'undetectable', 'duplicate');
   }
 }
 
@@ -274,6 +274,7 @@ function updatePreview() {
   if (validationMessage) {
     validationMessage.textContent = translateValidationMessage(validation.message);
     validationMessage.classList.add('show');
+    validationMessage.classList.remove('duplicate');
     validationMessage.classList.toggle('malformed', validation.status === 'malformed');
     validationMessage.classList.toggle('undetectable', validation.status === 'undetectable');
   }
@@ -282,7 +283,7 @@ function updatePreview() {
 
   if (validationMessage && isDuplicate) {
     validationMessage.textContent = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
-    validationMessage.classList.add('show');
+    validationMessage.classList.add('show', 'duplicate');
     validationMessage.classList.remove('malformed', 'undetectable');
   }
 
