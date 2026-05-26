@@ -96,7 +96,8 @@ const AppGridState = {
 
     return [...apps, ...defaults].some(app => {
       if (!app.url) return false;
-      return this.getCanonicalUrl(app.url) === canonicalInput;
+      const storedUrl = app.url.startsWith('http') ? app.url : 'https://' + app.url;
+      return this.getCanonicalUrl(storedUrl) === canonicalInput;
     });
   },
 

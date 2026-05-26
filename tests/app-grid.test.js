@@ -279,6 +279,11 @@ describe('AppGridState', () => {
       expect(AppGridState.hasAppWithUrl('https://github.com/404-PF/New-Tab/issues/new')).toBe(true);
     });
 
+    it('returns true when stored URL lacks protocol prefix', () => {
+      AppGridState.addApp({ id: 'bare', url: 'example.org', name: 'Bare' });
+      expect(AppGridState.hasAppWithUrl('https://example.org')).toBe(true);
+    });
+
     it('addApp rejects a URL matching a default app', () => {
       const result = AppGridState.addApp({ id: 'dup', url: 'https://github.com/404-PF/New-Tab/issues/new', name: 'Dup' });
       expect(result).toBe(false);

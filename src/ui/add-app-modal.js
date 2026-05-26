@@ -212,7 +212,7 @@ function renderDefaultAppsList() {
       button.title = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
     }
     button.addEventListener('click', async function () {
-      if (this.classList.contains('duplicate')) {
+      if (window.AppGridState && window.AppGridState.hasAppWithUrl(normalizeAppUrl(app.url))) {
         return;
       }
       await addDefaultApp(app);
