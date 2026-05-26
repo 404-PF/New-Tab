@@ -189,4 +189,21 @@ describe('Add app modal quick add', () => {
     expect(AppGridState.getCustomApps()).toHaveLength(1);
     expect(window.renderCustomApps).toHaveBeenCalledTimes(1);
   });
+
+  it('prevents adding the same quick-add app twice on rapid double-click', async () => {
+    renderDefaultAppsList();
+
+    const buttons = document.querySelectorAll('.quick-add-btn');
+
+    // Dispatch two clicks on the same button without awaiting between them
+    buttons[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    buttons[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+    await flushMicrotasks();
+
+    // Only one instance of the app should have been added
+    const apps = AppGridState.getCustomApps();
+    const googleApps = apps.filter((app) => app.name === 'Google');
+    expect(googleApps).toHaveLength(1);
+  });
 });

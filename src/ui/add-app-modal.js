@@ -33,10 +33,12 @@ const DEFAULT_PREVIEW_ICON = `
 let addAppElementsCache = null;
 let addAppModalInitialized = false;
 let addAppAbortController = null;
+let isQuickAddInProgress = false;
 
 function resetAddAppModalState() {
   addAppElementsCache = null;
   addAppModalInitialized = false;
+  isQuickAddInProgress = false;
   if (addAppAbortController) {
     addAppAbortController.abort();
     addAppAbortController = null;
@@ -55,6 +57,7 @@ function getAddAppElements() {
     addAppCancel: document.getElementById('add-app-cancel'),
     addAppConfirm: document.getElementById('add-app-confirm'),
     defaultAppsContainer: document.getElementById('default-apps-list'),
+    addAppSection: document.querySelector('.add-app-section'),
     previewSection: document.getElementById('add-app-preview'),
     previewIcon: document.getElementById('preview-icon'),
     previewName: document.getElementById('preview-name'),
@@ -222,19 +225,20 @@ async function addDefaultApp(app) {
 }
 
 function renderDefaultAppsList() {
-  const { defaultAppsContainer } = getAddAppElements();
+  const { defaultAppsContainer, addAppSection } = getAddAppElements();
   if (!defaultAppsContainer) {
     return;
   }
 
-  const defaultAppsSection = defaultAppsContainer.closest('.add-app-section');
   const suggestedApps = Array.isArray(window.defaultAppsList) ? window.defaultAppsList : [];
   const existingNames = getExistingAppNames();
-  const availableApps = suggestedApps.filter((app) => !existingNames.has(app.name.toLowerCase()));
+  const availableApps = suggestedApps.filter(
+    (app) => app && typeof app.name === 'string' && !existingNames.has(app.name.toLowerCase())
+  );
 
   defaultAppsContainer.innerHTML = '';
-  if (defaultAppsSection) {
-    defaultAppsSection.hidden = availableApps.length === 0;
+  if (addAppSection) {
+    addAppSection.hidden = availableApps.length === 0;
   }
 
   if (availableApps.length === 0) {
@@ -259,10 +263,18 @@ function renderDefaultAppsList() {
       <span class="quick-add-name">${app.name}</span>
     `;
     button.addEventListener('click', async function () {
+      if (isQuickAddInProgress) {
+        return;
+      }
       if (getExistingAppNames().has(app.name.toLowerCase())) {
         return;
       }
-      await addDefaultApp(app);
+      isQuickAddInProgress = true;
+      try {
+        await addDefaultApp(app);
+      } finally {
+        isQuickAddInProgress = false;
+      }
     });
     defaultAppsContainer.appendChild(button);
   }
