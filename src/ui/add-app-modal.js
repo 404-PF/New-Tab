@@ -57,7 +57,7 @@ function getAddAppElements() {
     addAppCancel: document.getElementById('add-app-cancel'),
     addAppConfirm: document.getElementById('add-app-confirm'),
     defaultAppsContainer: document.getElementById('default-apps-list'),
-    addAppSection: document.querySelector('.add-app-section'),
+    addAppSection: document.getElementById('add-app-section'),
     previewSection: document.getElementById('add-app-preview'),
     previewIcon: document.getElementById('preview-icon'),
     previewName: document.getElementById('preview-name'),
@@ -160,6 +160,7 @@ function closeAddAppModal() {
     addAppConfirm.disabled = true;
   }
 
+  isQuickAddInProgress = false;
   resetPreviewState();
 }
 

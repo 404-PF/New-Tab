@@ -27,7 +27,7 @@ beforeEach(() => {
     <div id="add-app-modal" style="display: none;">
       <div class="add-app-modal-content">
         <div id="add-app-preview"></div>
-        <div class="add-app-section">
+        <div id="add-app-section" class="add-app-section">
           <h4>Quick Add</h4>
           <p>Popular apps to get you started</p>
           <div id="default-apps-list"></div>
@@ -56,7 +56,7 @@ describe('Add app modal quick add', () => {
   it('renders the built-in quick-add suggestions', () => {
     renderDefaultAppsList();
 
-    const section = document.querySelector('.add-app-section');
+    const section = document.getElementById('add-app-section');
     const buttons = document.querySelectorAll('.quick-add-btn');
 
     expect(section?.hidden).toBe(false);
@@ -85,7 +85,7 @@ describe('Add app modal quick add', () => {
 
     renderDefaultAppsList();
 
-    const section = document.querySelector('.add-app-section');
+    const section = document.getElementById('add-app-section');
     const buttons = document.querySelectorAll('.quick-add-btn');
 
     expect(section?.hidden).toBe(true);
@@ -107,7 +107,7 @@ describe('Add app modal quick add', () => {
 
     renderDefaultAppsList();
 
-    const section = document.querySelector('.add-app-section');
+    const section = document.getElementById('add-app-section');
     const buttons = document.querySelectorAll('.quick-add-btn');
 
     expect(section?.hidden).toBe(true);
@@ -143,7 +143,7 @@ describe('Add app modal quick add', () => {
 
     renderDefaultAppsList();
 
-    const section = document.querySelector('.add-app-section');
+    const section = document.getElementById('add-app-section');
     const buttons = Array.from(document.querySelectorAll('.quick-add-btn'));
 
     expect(section?.hidden).toBe(false);
