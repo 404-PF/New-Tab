@@ -1,6 +1,7 @@
 ![New Tab icon](../icons/icon.svg)
 
 # New Tab v0.4.4
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/bgjillpeijfmdopfbmoinfogfhaadina?utm_source=item-share-cb)
 [![Microsoft Edge Add-ons](https://img.shields.io/badge/Microsoft%20Edge-Add--ons-0A7CFF?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/new-tab/mcbemnamenhelofgaclcanfcdjnjnhmi)
 [![Download CRX](https://img.shields.io/badge/Download-CRX-111827?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/404-PF/New-Tab/releases/latest/download/New-Tab.crx)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
@@ -22,8 +23,9 @@ A personalized new tab extension for Chromium-based browsers. It replaces the de
 
 ## 🚀 Installation
 Recommended install methods:
-1. Microsoft Edge users: install from [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/new-tab/mcbemnamenhelofgaclcanfcdjnjnhmi).
-2. Other Chromium browser users: follow the manual installation instructions below. The latest package is also available as [New-Tab.crx](https://github.com/404-PF/New-Tab/releases/latest/download/New-Tab.crx) from [Releases](https://github.com/404-PF/New-Tab/releases/latest).
+1. Chrome users: install from [Chrome Web Store](https://chromewebstore.google.com/detail/bgjillpeijfmdopfbmoinfogfhaadina?utm_source=item-share-cb).
+2. Microsoft Edge users: install from [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/new-tab/mcbemnamenhelofgaclcanfcdjnjnhmi).
+3. Other Chromium browser users: follow the manual installation instructions below. The latest package is also available as [New-Tab.crx](https://github.com/404-PF/New-Tab/releases/latest/download/New-Tab.crx) from [Releases](https://github.com/404-PF/New-Tab/releases/latest).
 
 Manual or development install:
 1. Download or clone this repository.
