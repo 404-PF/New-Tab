@@ -118,6 +118,7 @@ function addNote() {
   notes.unshift(note);
   if (!saveNotes(notes)) {
     notes = previousNotes;
+    renderNotes();
     return;
   }
   renderNotes();
@@ -140,6 +141,7 @@ function deleteNote(id) {
   notes = notes.filter(n => n.id !== id);
   if (!saveNotes(notes)) {
     notes = previousNotes;
+    renderNotes();
     return;
   }
   renderNotes();

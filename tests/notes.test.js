@@ -175,3 +175,192 @@ describe('Notes flushPendingSaves', () => {
     expect(loadNotes()[0].text).toBe('Hello world');
   });
 });
+
+describe('Notes rollback on save failure', () => {
+  it('updateNoteText rolls back and re-renders on save failure', () => {
+    addNote();
+    const id = loadNotes()[0].id;
+    const originalText = loadNotes()[0].text;
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      updateNoteText(id, 'New text that should not persist');
+
+      expect(loadNotes()).toHaveLength(1);
+      expect(loadNotes()[0].text).toBe(originalText);
+
+      const textarea = document.querySelector('.note-textarea');
+      expect(textarea.value).toBe(originalText);
+      expect(warnSpy).toHaveBeenCalled();
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('handleNotesBlur with empty note rolls back deleteNote on save failure and keeps DOM in sync', () => {
+    addNote();
+    expect(loadNotes()).toHaveLength(1);
+    const id = loadNotes()[0].id;
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      handleNotesBlur({ target: { closest: () => ({ dataset: { id }, value: '' }) } });
+
+      expect(loadNotes()).toHaveLength(1);
+      expect(document.querySelectorAll('.note-item')).toHaveLength(1);
+      expect(warnSpy).toHaveBeenCalled();
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('handleNotesBlur with non-empty note rolls back updateNoteText on save failure and re-renders original text', () => {
+    addNote();
+    const id = loadNotes()[0].id;
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      handleNotesBlur({ target: { closest: () => ({ dataset: { id }, value: 'Typed on blur' }) } });
+
+      expect(loadNotes()).toHaveLength(1);
+      expect(loadNotes()[0].text).toBe('');
+      const textarea = document.querySelector('.note-textarea');
+      expect(textarea.value).toBe('');
+      expect(warnSpy).toHaveBeenCalled();
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('addNote rolls back and re-renders correctly when saveNotes fails after flushPendingSaves', () => {
+    saveNotes([{ id: 'existing-1', text: 'Existing note', createdAt: '2026-01-01', updatedAt: '2026-01-01' }]);
+    initNotes();
+    expect(loadNotes()).toHaveLength(1);
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      addNote();
+      expect(loadNotes()).toHaveLength(1);
+      expect(loadNotes()[0].text).toBe('Existing note');
+      expect(document.querySelectorAll('.note-item')).toHaveLength(1);
+      expect(warnSpy).toHaveBeenCalled();
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+});
+
+describe('Notes event handlers', () => {
+  it('handleNotesInput triggers debouncedSave and updates text after debounce delay', () => {
+    vi.useFakeTimers();
+    addNote();
+    const ta = document.querySelector('.note-textarea');
+    ta.value = 'Typed text';
+
+    handleNotesInput({ target: ta });
+    expect(loadNotes()[0].text).toBe('');
+
+    vi.advanceTimersByTime(500);
+    expect(loadNotes()[0].text).toBe('Typed text');
+    vi.useRealTimers();
+  });
+
+  it('debouncedSave with empty text does not update note', () => {
+    vi.useFakeTimers();
+    addNote();
+    const ta = document.querySelector('.note-textarea');
+    ta.value = '';
+
+    handleNotesInput({ target: ta });
+    vi.advanceTimersByTime(500);
+    expect(loadNotes()[0].text).toBe('');
+    vi.useRealTimers();
+  });
+
+  it('handleNotesClick deletes a note via delete button click', () => {
+    addNote();
+    expect(loadNotes()).toHaveLength(1);
+    const id = loadNotes()[0].id;
+
+    handleNotesClick({ target: { closest: (sel) => sel === '.note-delete-btn' ? { dataset: { id } } : null } });
+    expect(loadNotes()).toHaveLength(0);
+    expect(document.querySelectorAll('.note-item')).toHaveLength(0);
+  });
+
+  it('handleNotesKeydown blurs textarea on Escape', () => {
+    addNote();
+    const ta = document.querySelector('.note-textarea');
+    const blurSpy = vi.spyOn(ta, 'blur');
+
+    handleNotesKeydown({ target: { closest: () => ta }, key: 'Escape' });
+    expect(blurSpy).toHaveBeenCalled();
+    blurSpy.mockRestore();
+  });
+
+  it('handleNotesKeydown does nothing for other keys', () => {
+    addNote();
+    const ta = document.querySelector('.note-textarea');
+    const blurSpy = vi.spyOn(ta, 'blur').mockImplementation(() => {});
+
+    handleNotesKeydown({ target: { closest: () => ta }, key: 'Enter' });
+    expect(blurSpy).not.toHaveBeenCalled();
+    blurSpy.mockRestore();
+  });
+});
+
+describe('Notes multiple operations', () => {
+  it('adds multiple notes and preserves order', () => {
+    addNote();
+    addNote();
+    addNote();
+
+    expect(loadNotes()).toHaveLength(3);
+    const items = document.querySelectorAll('.note-item');
+    expect(items).toHaveLength(3);
+  });
+
+  it('deletes the correct note when multiple exist', () => {
+    addNote();
+    addNote();
+    addNote();
+    const notes = loadNotes();
+    const middleId = notes[1].id;
+
+    deleteNote(middleId);
+    expect(loadNotes()).toHaveLength(2);
+    expect(loadNotes().find(n => n.id === middleId)).toBeUndefined();
+  });
+
+  it('flushPendingSaves processes all pending timers before addNote', () => {
+    addNote();
+    const firstId = loadNotes()[0].id;
+    const ta = document.querySelector('.note-textarea');
+    ta.value = 'Updated before add';
+
+    debouncedSave(firstId, 'Updated before add');
+
+    addNote();
+    expect(loadNotes()).toHaveLength(2);
+    expect(loadNotes().find(n => n.id === firstId).text).toBe('Updated before add');
+  });
+});
