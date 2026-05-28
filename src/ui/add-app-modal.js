@@ -158,10 +158,11 @@ async function cacheAppIcon(appData) {
 }
 
 async function saveCustomApp(appData) {
-  if (window.AppGridState && window.AppGridState.hasAppWithUrl(appData.url)) {
+  const appToSave = await cacheAppIcon(appData);
+  if (window.AppGridState && window.AppGridState.hasAppWithUrl(appToSave.url)) {
+    closeAddAppModal();
     return;
   }
-  const appToSave = await cacheAppIcon(appData);
   if (!AppGridState.addApp(appToSave)) {
     return;
   }
@@ -212,7 +213,7 @@ function renderDefaultAppsList() {
       button.title = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
     }
     button.addEventListener('click', async function () {
-      if (window.AppGridState && window.AppGridState.hasAppWithUrl(normalizeAppUrl(app.url))) {
+      if (app.url && window.AppGridState && window.AppGridState.hasAppWithUrl(normalizeAppUrl(app.url))) {
         return;
       }
       await addDefaultApp(app);
@@ -271,20 +272,20 @@ function updatePreview() {
     validationIcon.classList.toggle('invalid', !isValid);
   }
 
-  if (validationMessage) {
-    validationMessage.textContent = translateValidationMessage(validation.message);
-    validationMessage.classList.add('show');
-    validationMessage.classList.remove('duplicate');
-    validationMessage.classList.toggle('malformed', validation.status === 'malformed');
-    validationMessage.classList.toggle('undetectable', validation.status === 'undetectable');
-  }
-
   const isDuplicate = isValid && window.AppGridState && window.AppGridState.hasAppWithUrl(fullUrl);
 
-  if (validationMessage && isDuplicate) {
-    validationMessage.textContent = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
-    validationMessage.classList.add('show', 'duplicate');
-    validationMessage.classList.remove('malformed', 'undetectable');
+  if (validationMessage) {
+    if (isDuplicate) {
+      validationMessage.textContent = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
+      validationMessage.classList.add('show', 'duplicate');
+      validationMessage.classList.remove('malformed', 'undetectable');
+    } else {
+      validationMessage.textContent = translateValidationMessage(validation.message);
+      validationMessage.classList.add('show');
+      validationMessage.classList.remove('duplicate');
+      validationMessage.classList.toggle('malformed', validation.status === 'malformed');
+      validationMessage.classList.toggle('undetectable', validation.status === 'undetectable');
+    }
   }
 
   if (addAppConfirm) {

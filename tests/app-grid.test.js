@@ -228,6 +228,21 @@ describe('AppGridState', () => {
         .toBe('http://example.com/Path');
     });
 
+    it('strips default port 443 for https', () => {
+      expect(AppGridState.getCanonicalUrl('https://example.com:443/path'))
+        .toBe('https://example.com/path');
+    });
+
+    it('strips default port 80 for http', () => {
+      expect(AppGridState.getCanonicalUrl('http://example.com:80/path'))
+        .toBe('http://example.com/path');
+    });
+
+    it('preserves non-default port', () => {
+      expect(AppGridState.getCanonicalUrl('https://example.com:8080/path'))
+        .toBe('https://example.com:8080/path');
+    });
+
     it('returns input unchanged for invalid URL', () => {
       // The exact behavior for invalid URLs depends on URL constructor
       // but it should not throw
@@ -288,6 +303,15 @@ describe('AppGridState', () => {
       const result = AppGridState.addApp({ id: 'dup', url: 'https://github.com/404-PF/New-Tab/issues/new', name: 'Dup' });
       expect(result).toBe(false);
       expect(AppGridState.getCustomApps()).toHaveLength(1);
+    });
+
+    it('returns true for URL with explicit default port', () => {
+      expect(AppGridState.hasAppWithUrl('https://example.com:443')).toBe(true);
+    });
+
+    it('returns true when stored URL has explicit default port', () => {
+      AppGridState.addApp({ id: 'porty', url: 'https://example.org:443/path', name: 'Porty' });
+      expect(AppGridState.hasAppWithUrl('https://example.org/path')).toBe(true);
     });
   });
 

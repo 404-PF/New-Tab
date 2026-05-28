@@ -80,6 +80,10 @@ const AppGridState = {
       if (urlObj.pathname.length > 1 && urlObj.pathname.endsWith('/')) {
         urlObj.pathname = urlObj.pathname.replace(/\/+$/, '');
       }
+      if ((urlObj.protocol === 'http:' && urlObj.port === '80') ||
+          (urlObj.protocol === 'https:' && urlObj.port === '443')) {
+        urlObj.port = '';
+      }
       return urlObj.href;
     } catch {
       return url;

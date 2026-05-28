@@ -439,14 +439,14 @@ body.light-theme .search-validation-feedback {
 .quick-add-btn.duplicate {
   opacity: 0.5;
   cursor: default;
-  border-color: rgba(76, 175, 80, 0.3);
-  background: rgba(76, 175, 80, 0.08);
+  border-color: rgba(255, 152, 0, 0.3);
+  background: rgba(255, 152, 0, 0.08);
 }
 
 .quick-add-btn.duplicate:hover {
   transform: none;
-  background: rgba(76, 175, 80, 0.08);
-  border-color: rgba(76, 175, 80, 0.3);
+  background: rgba(255, 152, 0, 0.08);
+  border-color: rgba(255, 152, 0, 0.3);
 }
 
 .quick-add-icon {
@@ -597,14 +597,14 @@ body.light-theme .quick-add-btn:hover {
 body.light-theme .quick-add-btn.duplicate {
   opacity: 0.5;
   cursor: default;
-  border-color: rgba(76, 175, 80, 0.4);
-  background: rgba(76, 175, 80, 0.1);
+  border-color: rgba(255, 152, 0, 0.4);
+  background: rgba(255, 152, 0, 0.1);
 }
 
 body.light-theme .quick-add-btn.duplicate:hover {
   transform: none;
-  background: rgba(76, 175, 80, 0.1);
-  border-color: rgba(76, 175, 80, 0.4);
+  background: rgba(255, 152, 0, 0.1);
+  border-color: rgba(255, 152, 0, 0.4);
 }
 
 body.light-theme .quick-add-icon svg {
