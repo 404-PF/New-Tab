@@ -71,6 +71,40 @@ const AppGridState = {
     return nextOrder;
   },
 
+  // Returns a canonical form of the given URL for duplicate comparison:
+  // strips www., lowercases the hostname, removes trailing slash.
+  getCanonicalUrl(url) {
+    try {
+      const urlObj = new URL(url);
+      urlObj.hostname = urlObj.hostname.replace(/^www\./, '');
+      if (urlObj.pathname.length > 1 && urlObj.pathname.endsWith('/')) {
+        urlObj.pathname = urlObj.pathname.replace(/\/+$/, '');
+      }
+      if ((urlObj.protocol === 'http:' && urlObj.port === '80') ||
+          (urlObj.protocol === 'https:' && urlObj.port === '443')) {
+        urlObj.port = '';
+      }
+      return urlObj.href;
+    } catch {
+      return url;
+    }
+  },
+
+  // Returns true if an existing app (custom or default) has the same canonical URL.
+  hasAppWithUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+
+    const canonicalInput = this.getCanonicalUrl(url);
+    const apps = this.getCustomApps();
+    const defaults = window.defaultApps || [];
+
+    return [...apps, ...defaults].some(app => {
+      if (!app.url) return false;
+      const storedUrl = app.url.startsWith('http') ? app.url : 'https://' + app.url;
+      return this.getCanonicalUrl(storedUrl) === canonicalInput;
+    });
+  },
+
   // --- Id helpers ---
 
   // --- Higher-level operations ---
@@ -87,8 +121,10 @@ const AppGridState = {
   },
 
   // Add a new custom app. appData must include valid id, url, and name fields.
+  // Returns false if a duplicate URL already exists.
   addApp(appData) {
     if (!this.isValidAppData(appData)) return false;
+    if (this.hasAppWithUrl(appData.url)) return false;
 
     const savedApps = this.updateCustomApps((apps) => {
       apps.push(this.cloneAppRecord(appData));

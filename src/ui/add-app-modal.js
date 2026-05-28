@@ -73,29 +73,15 @@ function normalizeAppUrl(url) {
   return url.startsWith('http') ? url : 'https://' + url;
 }
 
-function getExistingAppNames() {
-  const existingNames = new Set();
-
-  if (window.AppGridState && typeof window.AppGridState.getCustomApps === 'function') {
-    const customApps = window.AppGridState.getCustomApps();
-    if (Array.isArray(customApps)) {
-      customApps.forEach((app) => {
-        if (app && typeof app.name === 'string' && app.name.trim() !== '') {
-          existingNames.add(app.name.toLowerCase());
-        }
-      });
-    }
-  }
-
-  // NOTE: This selector is coupled to the app grid structure in New-Tab.html.
-  // If .app-grid or its child classes change, update this selector accordingly.
-  Array.from(document.querySelectorAll('.app-grid .app-icon .app-name')).forEach((element) => {
-    if (element && element.textContent) {
-      existingNames.add(element.textContent.toLowerCase());
-    }
-  });
-
-  return existingNames;
+function getExistingAppUrls() {
+  if (!window.AppGridState) return new Set();
+  const customApps = window.AppGridState.getCustomApps();
+  const defaults = window.defaultApps || [];
+  return new Set(
+    [...customApps, ...defaults]
+      .filter(app => app.url)
+      .map(app => window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url)))
+  );
 }
 
 function resetPreviewIcon() {
@@ -143,7 +129,7 @@ function resetPreviewState() {
   }
   if (validationMessage) {
     validationMessage.textContent = '';
-    validationMessage.classList.remove('show', 'malformed', 'undetectable');
+    validationMessage.classList.remove('show', 'malformed', 'undetectable', 'duplicate');
   }
 }
 
@@ -208,7 +194,13 @@ async function cacheAppIcon(appData) {
 
 async function saveCustomApp(appData) {
   const appToSave = await cacheAppIcon(appData);
-  AppGridState.addApp(appToSave);
+  if (window.AppGridState && window.AppGridState.hasAppWithUrl(appToSave.url)) {
+    closeAddAppModal();
+    return;
+  }
+  if (!AppGridState.addApp(appToSave)) {
+    return;
+  }
   if (window.renderCustomApps) {
     window.renderCustomApps();
   }
@@ -232,22 +224,19 @@ function renderDefaultAppsList() {
   }
 
   const suggestedApps = Array.isArray(window.defaultAppsList) ? window.defaultAppsList : [];
-  const existingNames = getExistingAppNames();
-  const availableApps = suggestedApps.filter(
-    (app) => app && typeof app.name === 'string' && !existingNames.has(app.name.toLowerCase())
-  );
+  const existingUrls = getExistingAppUrls();
 
   defaultAppsContainer.innerHTML = '';
   if (addAppSection) {
-    addAppSection.hidden = availableApps.length === 0;
+    addAppSection.hidden = suggestedApps.length === 0;
   }
 
-  if (availableApps.length === 0) {
+  if (suggestedApps.length === 0) {
     return;
   }
 
-  for (let i = 0; i < availableApps.length; i++) {
-    const app = availableApps[i];
+  for (let i = 0; i < suggestedApps.length; i++) {
+    const app = suggestedApps[i];
     const button = document.createElement('button');
     button.className = 'quick-add-btn';
     button.innerHTML = `
@@ -263,11 +252,15 @@ function renderDefaultAppsList() {
       </div>
       <span class="quick-add-name">${app.name}</span>
     `;
+    if (app.url && existingUrls.has(window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url)))) {
+      button.classList.add('duplicate');
+      button.title = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
+    }
     button.addEventListener('click', async function () {
       if (isQuickAddInProgress) {
         return;
       }
-      if (getExistingAppNames().has(app.name.toLowerCase())) {
+      if (app.url && window.AppGridState && window.AppGridState.hasAppWithUrl(normalizeAppUrl(app.url))) {
         return;
       }
       isQuickAddInProgress = true;
@@ -331,15 +324,24 @@ function updatePreview() {
     validationIcon.classList.toggle('invalid', !isValid);
   }
 
+  const isDuplicate = isValid && window.AppGridState && window.AppGridState.hasAppWithUrl(fullUrl);
+
   if (validationMessage) {
-    validationMessage.textContent = translateValidationMessage(validation.message);
-    validationMessage.classList.add('show');
-    validationMessage.classList.toggle('malformed', validation.status === 'malformed');
-    validationMessage.classList.toggle('undetectable', validation.status === 'undetectable');
+    if (isDuplicate) {
+      validationMessage.textContent = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
+      validationMessage.classList.add('show', 'duplicate');
+      validationMessage.classList.remove('malformed', 'undetectable');
+    } else {
+      validationMessage.textContent = translateValidationMessage(validation.message);
+      validationMessage.classList.add('show');
+      validationMessage.classList.remove('duplicate');
+      validationMessage.classList.toggle('malformed', validation.status === 'malformed');
+      validationMessage.classList.toggle('undetectable', validation.status === 'undetectable');
+    }
   }
 
   if (addAppConfirm) {
-    addAppConfirm.disabled = false;
+    addAppConfirm.disabled = !isValid || isDuplicate;
   }
 }
 
@@ -407,6 +409,9 @@ function bindAddAppModal() {
     event.preventDefault();
     const url = this.value.trim();
     if (!url) {
+      return;
+    }
+    if (addAppConfirm && addAppConfirm.disabled) {
       return;
     }
     await addAppFromInput(url);

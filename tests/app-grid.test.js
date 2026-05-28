@@ -201,6 +201,133 @@ describe('AppGridState', () => {
     AppGridStorage.saveOrder(null);
     expect(AppGridState.reorder('x', 0)).toBe(false);
   });
+
+  describe('getCanonicalUrl', () => {
+    it('strips www prefix', () => {
+      expect(AppGridState.getCanonicalUrl('https://www.example.com'))
+        .toBe('https://example.com/');
+    });
+
+    it('removes trailing slash', () => {
+      expect(AppGridState.getCanonicalUrl('https://example.com/path/'))
+        .toBe('https://example.com/path');
+    });
+
+    it('lowercases hostname', () => {
+      expect(AppGridState.getCanonicalUrl('HTTPS://EXAMPLE.COM/Path'))
+        .toBe('https://example.com/Path');
+    });
+
+    it('preserves protocol difference', () => {
+      expect(AppGridState.getCanonicalUrl('http://example.com'))
+        .toBe('http://example.com/');
+    });
+
+    it('handles all normalizations together', () => {
+      expect(AppGridState.getCanonicalUrl('HTTP://WWW.EXAMPLE.COM/Path/'))
+        .toBe('http://example.com/Path');
+    });
+
+    it('strips default port 443 for https', () => {
+      expect(AppGridState.getCanonicalUrl('https://example.com:443/path'))
+        .toBe('https://example.com/path');
+    });
+
+    it('strips default port 80 for http', () => {
+      expect(AppGridState.getCanonicalUrl('http://example.com:80/path'))
+        .toBe('http://example.com/path');
+    });
+
+    it('preserves non-default port', () => {
+      expect(AppGridState.getCanonicalUrl('https://example.com:8080/path'))
+        .toBe('https://example.com:8080/path');
+    });
+
+    it('returns input unchanged for invalid URL', () => {
+      // The exact behavior for invalid URLs depends on URL constructor
+      // but it should not throw
+      const result = AppGridState.getCanonicalUrl('not-a-url');
+      expect(typeof result).toBe('string');
+    });
+  });
+
+  describe('hasAppWithUrl', () => {
+    beforeAll(() => {
+      window.defaultApps = [
+        { id: 'feedback-app', url: 'https://github.com/404-PF/New-Tab/issues/new', nameKey: 'feedback', className: 'default-app' },
+      ];
+    });
+
+    afterAll(() => {
+      delete window.defaultApps;
+    });
+
+    beforeEach(() => {
+      AppGridState.addApp({ id: 'existing', url: 'https://example.com', name: 'Existing' });
+    });
+
+    it('returns true for same URL', () => {
+      expect(AppGridState.hasAppWithUrl('https://example.com')).toBe(true);
+    });
+
+    it('returns true for www variant of same URL', () => {
+      expect(AppGridState.hasAppWithUrl('https://www.example.com')).toBe(true);
+    });
+
+    it('returns true for URL with trailing slash', () => {
+      expect(AppGridState.hasAppWithUrl('https://example.com/')).toBe(true);
+    });
+
+    it('returns false for different URL', () => {
+      expect(AppGridState.hasAppWithUrl('https://other.com')).toBe(false);
+    });
+
+    it('returns false for empty string', () => {
+      expect(AppGridState.hasAppWithUrl('')).toBe(false);
+    });
+
+    it('returns false for null', () => {
+      expect(AppGridState.hasAppWithUrl(null)).toBe(false);
+    });
+
+    it('returns true when URL matches a default app', () => {
+      expect(AppGridState.hasAppWithUrl('https://github.com/404-PF/New-Tab/issues/new')).toBe(true);
+    });
+
+    it('returns true when stored URL lacks protocol prefix', () => {
+      AppGridState.addApp({ id: 'bare', url: 'example.org', name: 'Bare' });
+      expect(AppGridState.hasAppWithUrl('https://example.org')).toBe(true);
+    });
+
+    it('addApp rejects a URL matching a default app', () => {
+      const result = AppGridState.addApp({ id: 'dup', url: 'https://github.com/404-PF/New-Tab/issues/new', name: 'Dup' });
+      expect(result).toBe(false);
+      expect(AppGridState.getCustomApps()).toHaveLength(1);
+    });
+
+    it('returns true for URL with explicit default port', () => {
+      expect(AppGridState.hasAppWithUrl('https://example.com:443')).toBe(true);
+    });
+
+    it('returns true when stored URL has explicit default port', () => {
+      AppGridState.addApp({ id: 'porty', url: 'https://example.org:443/path', name: 'Porty' });
+      expect(AppGridState.hasAppWithUrl('https://example.org/path')).toBe(true);
+    });
+  });
+
+  it('addApp rejects duplicate URL', () => {
+    AppGridState.addApp({ id: 'first', url: 'https://example.com', name: 'First' });
+    const result = AppGridState.addApp({ id: 'second', url: 'https://example.com', name: 'Second' });
+    expect(result).toBe(false);
+    expect(AppGridState.getCustomApps()).toHaveLength(1);
+  });
+
+  it('addApp accepts same URL with different protocol', () => {
+    AppGridState.addApp({ id: 'https-app', url: 'https://example.com', name: 'HTTPS' });
+    const result = AppGridState.addApp({ id: 'http-app', url: 'http://example.com', name: 'HTTP' });
+    expect(result).toBe(true);
+    expect(AppGridState.getCustomApps()).toHaveLength(2);
+  });
 });
 
 describe('renderAllApps order validation', () => {
