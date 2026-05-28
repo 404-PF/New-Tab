@@ -1,6 +1,27 @@
 // src/ui/add-app-modal.js - Add app modal helpers and behavior
 
-const defaultAppsList = [];
+window.defaultAppsList = [
+  {
+    name: 'Google',
+    url: 'https://www.google.com',
+    icon: 'https://www.google.com/s2/favicons?domain=google.com&sz=64',
+  },
+  {
+    name: 'YouTube',
+    url: 'https://www.youtube.com',
+    icon: 'https://www.google.com/s2/favicons?domain=youtube.com&sz=64',
+  },
+  {
+    name: 'Gmail',
+    url: 'https://mail.google.com',
+    icon: 'https://www.google.com/s2/favicons?domain=mail.google.com&sz=64',
+  },
+  {
+    name: 'GitHub',
+    url: 'https://github.com',
+    icon: 'https://www.google.com/s2/favicons?domain=github.com&sz=64',
+  },
+];
 const DEFAULT_PREVIEW_ICON = `
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -11,6 +32,18 @@ const DEFAULT_PREVIEW_ICON = `
 
 let addAppElementsCache = null;
 let addAppModalInitialized = false;
+let addAppAbortController = null;
+let isQuickAddInProgress = false;
+
+function resetAddAppModalState() {
+  addAppElementsCache = null;
+  addAppModalInitialized = false;
+  isQuickAddInProgress = false;
+  if (addAppAbortController) {
+    addAppAbortController.abort();
+    addAppAbortController = null;
+  }
+}
 
 function getAddAppElements() {
   if (addAppElementsCache) {
@@ -24,6 +57,7 @@ function getAddAppElements() {
     addAppCancel: document.getElementById('add-app-cancel'),
     addAppConfirm: document.getElementById('add-app-confirm'),
     defaultAppsContainer: document.getElementById('default-apps-list'),
+    addAppSection: document.getElementById('add-app-section'),
     previewSection: document.getElementById('add-app-preview'),
     previewIcon: document.getElementById('preview-icon'),
     previewName: document.getElementById('preview-name'),
@@ -112,6 +146,7 @@ function closeAddAppModal() {
     addAppConfirm.disabled = true;
   }
 
+  isQuickAddInProgress = false;
   resetPreviewState();
 }
 
@@ -183,16 +218,25 @@ async function addDefaultApp(app) {
 }
 
 function renderDefaultAppsList() {
-  const { defaultAppsContainer } = getAddAppElements();
+  const { defaultAppsContainer, addAppSection } = getAddAppElements();
   if (!defaultAppsContainer) {
     return;
   }
 
-  defaultAppsContainer.innerHTML = '';
+  const suggestedApps = Array.isArray(window.defaultAppsList) ? window.defaultAppsList : [];
   const existingUrls = getExistingAppUrls();
 
-  for (let i = 0; i < defaultAppsList.length; i++) {
-    const app = defaultAppsList[i];
+  defaultAppsContainer.innerHTML = '';
+  if (addAppSection) {
+    addAppSection.hidden = suggestedApps.length === 0;
+  }
+
+  if (suggestedApps.length === 0) {
+    return;
+  }
+
+  for (let i = 0; i < suggestedApps.length; i++) {
+    const app = suggestedApps[i];
     const button = document.createElement('button');
     button.className = 'quick-add-btn';
     button.innerHTML = `
@@ -213,10 +257,18 @@ function renderDefaultAppsList() {
       button.title = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
     }
     button.addEventListener('click', async function () {
+      if (isQuickAddInProgress) {
+        return;
+      }
       if (app.url && window.AppGridState && window.AppGridState.hasAppWithUrl(normalizeAppUrl(app.url))) {
         return;
       }
-      await addDefaultApp(app);
+      isQuickAddInProgress = true;
+      try {
+        await addDefaultApp(app);
+      } finally {
+        isQuickAddInProgress = false;
+      }
     });
     defaultAppsContainer.appendChild(button);
   }
@@ -316,6 +368,9 @@ function bindAddAppModal() {
     return;
   }
 
+  addAppAbortController = new AbortController();
+  const signal = addAppAbortController.signal;
+
   const {
     addAppBtn,
     addAppModal,
@@ -331,21 +386,21 @@ function bindAddAppModal() {
   addAppBtn.addEventListener('click', function (event) {
     event.preventDefault();
     openAddAppModal();
-  });
+  }, { signal });
 
   addAppModal.addEventListener('click', function (event) {
     if (event.target === addAppModal) {
       closeAddAppModal();
     }
-  });
+  }, { signal });
 
   if (addAppCancel) {
     addAppCancel.addEventListener('click', function () {
       closeAddAppModal();
-    });
+    }, { signal });
   }
 
-  addAppUrlInput.addEventListener('input', updatePreview);
+  addAppUrlInput.addEventListener('input', updatePreview, { signal });
   addAppUrlInput.addEventListener('keypress', async function (event) {
     if (event.key !== 'Enter') {
       return;
@@ -360,7 +415,7 @@ function bindAddAppModal() {
       return;
     }
     await addAppFromInput(url);
-  });
+  }, { signal });
 
   if (addAppConfirm) {
     addAppConfirm.addEventListener('click', async function () {
@@ -369,7 +424,7 @@ function bindAddAppModal() {
         return;
       }
       await addAppFromInput(url);
-    });
+    }, { signal });
   }
 
   window.addEventListener('languageChanged', function () {
@@ -377,7 +432,7 @@ function bindAddAppModal() {
     if (addAppModal && addAppModal.classList.contains('modal-open')) {
       updatePreview();
     }
-  });
+  }, { signal });
 
   addAppModalInitialized = true;
 }
@@ -391,3 +446,4 @@ window.renderDefaultAppsList = renderDefaultAppsList;
 window.closeAddAppModal = closeAddAppModal;
 window.updateAddAppPreview = updatePreview;
 window.openAddAppModal = openAddAppModal;
+window.resetAddAppModalState = resetAddAppModalState;

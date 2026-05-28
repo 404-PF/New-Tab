@@ -329,3 +329,75 @@ describe('AppGridState', () => {
     expect(AppGridState.getCustomApps()).toHaveLength(2);
   });
 });
+
+describe('renderAllApps order validation', () => {
+  beforeAll(() => {
+    // Set up minimal DOM needed by renderAllApps
+    const grid = document.createElement('div');
+    grid.id = 'app-grid';
+    const newApp = document.createElement('a');
+    newApp.id = 'new-app';
+    grid.appendChild(newApp);
+    document.body.appendChild(grid);
+
+    // Inject dependencies that app-manager.js expects
+    injectScript('src/core/utils.js');
+    injectScript('src/ui/app-manager.js');
+  });
+
+  beforeEach(() => {
+    localStorage.clear();
+    window._gridRendered = false;
+  });
+
+  it('rebuilds order when a default app ID is missing', () => {
+    // Persist an order that is structurally valid (correct length, all valid
+    // IDs, no duplicates) but is missing one built-in default app ID.
+    const incompleteOrder = ['ai-app', 'feedback-app'];
+    AppGridStorage.saveOrder(incompleteOrder);
+
+    // Add a custom app so that totalExpectedLength matches the incomplete order
+    const customApp = { id: 'custom-1', url: 'https://example.com', name: 'Custom' };
+    AppGridState.addApp(customApp);
+
+    // Call renderAllApps – it should detect the missing default and rebuild
+    window.renderAllApps();
+
+    const rebuiltOrder = AppGridState.getOrder();
+    expect(rebuiltOrder).toContain('ai-app');
+    expect(rebuiltOrder).toContain('feedback-app');
+    expect(rebuiltOrder).toContain('settings-app');
+    expect(rebuiltOrder).toContain('custom-1');
+  });
+
+  it('accepts a valid order containing all default apps', () => {
+    // Set up a complete valid order
+    const customApp = { id: 'custom-2', url: 'https://example.com', name: 'Custom 2' };
+    AppGridState.addApp(customApp);
+    const completeOrder = ['ai-app', 'feedback-app', 'settings-app', 'custom-2'];
+    AppGridStorage.saveOrder(completeOrder);
+
+    window.renderAllApps();
+
+    // Order should be preserved (not rebuilt)
+    const order = AppGridState.getOrder();
+    expect(order).toEqual(completeOrder);
+  });
+
+  it('rebuilds order when order is null (first load)', () => {
+    // No order persisted - simulate fresh start
+    AppGridStorage.saveOrder(null);
+
+    // Add a custom app that should be included in the rebuilt order
+    const customApp = { id: 'custom-3', url: 'https://example.com', name: 'Custom 3' };
+    AppGridState.addApp(customApp);
+
+    window.renderAllApps();
+
+    const order = AppGridState.getOrder();
+    expect(order).toContain('ai-app');
+    expect(order).toContain('feedback-app');
+    expect(order).toContain('settings-app');
+    expect(order).toContain('custom-3');
+  });
+});

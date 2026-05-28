@@ -49,10 +49,12 @@ const addApp = document.getElementById('new-app');
   const folderIds = new Set(folders.map(f => f.id));
   const validIds = new Set([...dedupedApps.map(app => app.id), ...folderIds]);
   const totalExpectedLength = dedupedApps.length + folders.length;
+  const allDefaultIdsPresent = defaultApps.every(app => order.includes(app.id));
   const isValidOrder = Array.isArray(order)
     && order.length === totalExpectedLength
     && order.every(id => validIds.has(id))
-    && new Set(order).size === order.length;
+    && new Set(order).size === order.length
+    && allDefaultIdsPresent;
   if (!isValidOrder) {
     // During recovery, all folders are appended after apps, which may lose
     // any interleaved positioning users had set between folders and apps.
@@ -89,7 +91,7 @@ const addApp = document.getElementById('new-app');
     a.id = app.id;
     a.draggable = true;
     const openInNewTab = loadOpenNewTabSetting();
-    if (openInNewTab) {
+    if (openInNewTab && app.url && app.url !== '#') {
       a.setAttribute('target', '_blank');
       a.setAttribute('rel', 'noopener noreferrer');
     }
@@ -148,7 +150,7 @@ function applyOpenNewTabSetting() {
   const openInNewTab = loadOpenNewTabSetting();
   const appLinks = document.querySelectorAll('.app-grid .app-icon');
   appLinks.forEach((link) => {
-    if (link.id === 'settings-app') return;
+    if (link.getAttribute('href') === '#') return;
     if (openInNewTab) {
       link.setAttribute('target', '_blank');
       link.setAttribute('rel', 'noopener noreferrer');

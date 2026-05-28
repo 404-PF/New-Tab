@@ -503,6 +503,7 @@ document.body.appendChild(leadTimeSelect);
 document.body.appendChild(createStubElement('div', 'background-container'));
 document.body.appendChild(createStubElement('img', 'bg-thumbnail'));
 document.body.appendChild(createStubElement('img', 'bg-full'));
+document.body.appendChild(createStubElement('img', 'bg-transition-overlay'));
 document.body.appendChild(createStubElement('video', 'bg-video'));
 
 // Todo elements required for initTodo to run

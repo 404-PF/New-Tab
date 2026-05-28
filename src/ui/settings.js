@@ -77,15 +77,21 @@ function supportsVideoElement() {
 
 const VIDEO_THUMBNAIL_HIDE_DELAY_MS = 3000;
 const IMAGE_THUMBNAIL_HIDE_DELAY_MS = 2500;
+const BACKGROUND_TRANSITION_DURATION_MS = 400;
 
 let backgroundTransitionTimeout = null;
+let overlayClearTimeout = null;
 let backgroundLoadVersion = 0;
 
 function clearBackgroundTransitionTimeout() {
-  if (!backgroundTransitionTimeout) return;
-
-  clearTimeout(backgroundTransitionTimeout);
-  backgroundTransitionTimeout = null;
+  if (backgroundTransitionTimeout) {
+    clearTimeout(backgroundTransitionTimeout);
+    backgroundTransitionTimeout = null;
+  }
+  if (overlayClearTimeout) {
+    clearTimeout(overlayClearTimeout);
+    overlayClearTimeout = null;
+  }
 }
 
 function canReuseCurrentVideo(videoEl, backgroundId) {
@@ -216,6 +222,76 @@ if (document.readyState === 'loading') {
   initVideoVisibilityHandler();
 }
 
+function captureBackgroundSnapshot() {
+  const overlayEl = document.getElementById('bg-transition-overlay');
+  if (!overlayEl) return;
+
+  const fullEl = document.getElementById('bg-full');
+  const videoEl = document.getElementById('bg-video');
+  const thumbnailEl = document.getElementById('bg-thumbnail');
+  const canvasEl = document.getElementById('bg-interactive');
+
+  let src = null;
+
+  if (canvasEl && !canvasEl.hidden && window._interactiveBackground &&
+      typeof window._interactiveBackground.currentBackgroundId === 'function' &&
+      window._interactiveBackground.currentBackgroundId()) {
+    try {
+      src = canvasEl.toDataURL('image/jpeg', 0.6);
+    } catch {
+      // Canvas capture failed, fall through to full image check below
+    }
+  }
+
+  if (!src && fullEl && fullEl.classList.contains('loaded') && fullEl.src && fullEl.naturalWidth > 0) {
+    src = fullEl.src;
+  }
+
+  if (!src && videoEl && videoEl.classList.contains('active') && videoEl.currentSrc && videoEl.readyState >= 2) {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoEl.videoWidth || 1920;
+      canvas.height = videoEl.videoHeight || 1080;
+      if (canvas.width > 0 && canvas.height > 0) {
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoEl, 0, 0);
+        src = canvas.toDataURL('image/jpeg', 0.6);
+      }
+    } catch {
+      // Canvas capture failed, fall through to thumbnail check below
+    }
+  }
+
+  if (!src && thumbnailEl && thumbnailEl.src && !thumbnailEl.classList.contains('hidden') && thumbnailEl.naturalWidth > 0) {
+    src = thumbnailEl.src;
+  }
+
+  if (src) {
+    overlayEl.src = src;
+    overlayEl.style.transition = 'none';
+    overlayEl.classList.add('active');
+    void overlayEl.offsetHeight;
+    overlayEl.style.transition = '';
+  }
+}
+
+function hideBackgroundOverlay() {
+  const overlayEl = document.getElementById('bg-transition-overlay');
+  if (!overlayEl || !overlayEl.classList.contains('active')) return;
+
+  if (overlayClearTimeout) {
+    clearTimeout(overlayClearTimeout);
+    overlayClearTimeout = null;
+  }
+  overlayEl.classList.remove('active');
+  overlayClearTimeout = setTimeout(function () {
+    if (!overlayEl.classList.contains('active')) {
+      overlayEl.src = '';
+    }
+    overlayClearTimeout = null;
+  }, BACKGROUND_TRANSITION_DURATION_MS);
+}
+
 function stopBackground() {
   clearBackgroundTransitionTimeout();
 
@@ -260,6 +336,7 @@ function applyBg() {
 
   // Handle custom backgrounds (stored in IndexedDB)
   if (window._customBackgrounds && window._customBackgrounds.isCustom(bg)) {
+    captureBackgroundSnapshot();
     backgroundLoadVersion += 1;
     stopBackground();
     window._customBackgrounds.apply(bg);
@@ -269,8 +346,10 @@ function applyBg() {
   // Get background data from the map
   const bgData = window._backgrounds ? window._backgrounds.find(b => b.id === bg) : null;
   if (!bgData) {
+    captureBackgroundSnapshot();
     backgroundLoadVersion += 1;
     stopBackground();
+    hideBackgroundOverlay();
     return;
   }
 
@@ -278,6 +357,9 @@ function applyBg() {
   if (bgData.type === 'video' && canReuseCurrentVideo(videoEl, bgData.id)) {
     return;
   }
+
+  // Capture current background before clearing for smooth crossfade
+  captureBackgroundSnapshot();
 
   // Guaranteed shutdown of any previous live/animated background activity
   stopBackground();
@@ -300,6 +382,7 @@ function applyBg() {
       }
 
       fullEl.classList.add('loaded');
+      hideBackgroundOverlay();
       thumbnailEl.classList.add('clearing');
 
       backgroundTransitionTimeout = setTimeout(() => {
@@ -337,6 +420,7 @@ function applyBg() {
         fullEl.src = bgData.thumb;
         requestAnimationFrame(() => {
           fullEl.classList.add('loaded');
+          hideBackgroundOverlay();
           setTimeout(() => {
             thumbnailEl.classList.add('hidden');
           }, 1200);
@@ -383,7 +467,10 @@ function applyBg() {
           return;
         }
 
-        if (!loadVideoAutoplay()) return;
+        if (!loadVideoAutoplay()) {
+          hideBackgroundOverlay();
+          return;
+        }
 
         const playPromise = videoEl.play();
         if (playPromise !== undefined) {
@@ -406,11 +493,15 @@ function applyBg() {
         videoEl.classList.remove('loading');
         
         // When autoplay is disabled, keep thumbnail visible and video hidden
-        if (!loadVideoAutoplay()) return;
+        if (!loadVideoAutoplay()) {
+          hideBackgroundOverlay();
+          return;
+        }
         
         // When simple mode is active, mark paused and keep video hidden
         if (window.loadSimpleMode && window.loadSimpleMode()) {
           videoEl.dataset.simpleModePaused = 'true';
+          hideBackgroundOverlay();
           return;
         }
         
@@ -420,6 +511,7 @@ function applyBg() {
         // Add active class to trigger video fade-in (2s ease-in-out)
         videoEl.classList.add('active');
         videoEl.classList.add('ready');
+        hideBackgroundOverlay();
         
         // Start thumbnail blur-to-clear animation at the same time as video fade-in
         // This creates a smooth blur-to-clear effect while video fades in
@@ -492,7 +584,15 @@ function applyBg() {
           fullEl.src = bgData.thumb;
           requestAnimationFrame(() => {
             fullEl.classList.add('loaded');
+            hideBackgroundOverlay();
           });
+        };
+        fullImg.onerror = function() {
+          if (loadVersion !== backgroundLoadVersion) {
+            return;
+          }
+
+          hideBackgroundOverlay();
         };
         fullImg.src = bgData.thumb;
       };
@@ -539,6 +639,7 @@ function applyBg() {
       }
 
       fullEl.classList.add('loaded');
+      hideBackgroundOverlay();
       
       // Add clearing class to animate blur-to-clear while fading out
       // This creates a smooth blur-to-clear effect while full image fades in
@@ -556,6 +657,15 @@ function applyBg() {
         backgroundTransitionTimeout = null;
       }, IMAGE_THUMBNAIL_HIDE_DELAY_MS); // Match CSS clearing transition duration
     });
+  };
+  fullImg.onerror = function() {
+    if (loadVersion !== backgroundLoadVersion) {
+      return;
+    }
+
+    console.warn('Background image failed to load:', bgData.url);
+    clearBackgroundTransitionTimeout();
+    hideBackgroundOverlay();
   };
   fullImg.src = bgData.url;
 }
