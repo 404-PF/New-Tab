@@ -407,9 +407,26 @@ visibilityManager.init();
 function validateIconUrl(url) {
   if (!url || typeof url !== 'string') return null;
   const trimmed = url.trim();
-  if (/^https?:\/\//i.test(trimmed) || /^data:image\//i.test(trimmed)) {
+
+  // If the value contains a scheme (eg. "http:", "javascript:") only
+  // allow the safe schemes we explicitly permit. This rejects dangerous
+  // pseudo-schemes like "javascript:" while allowing http(s) and data images.
+  const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed);
+  if (hasScheme) {
+    if (/^https?:\/\//i.test(trimmed) || /^data:image\//i.test(trimmed)) {
+      return trimmed;
+    }
+    return null;
+  }
+
+  // No scheme -> treat as a relative or root-relative path. Allow it if it
+  // doesn't contain suspicious characters (whitespace or markup characters).
+  // This permits values like "images/icon.svg", "./icons/app.png" and
+  // "/images/icons/foo.svg" which are common for bundled extension assets.
+  if (/^[^\s<>"']+$/.test(trimmed)) {
     return trimmed;
   }
+
   return null;
 }
 

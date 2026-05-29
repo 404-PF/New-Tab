@@ -1,3 +1,4 @@
+/* global validateIconUrl */
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
@@ -272,5 +273,17 @@ describe('VisibilityInterval', () => {
 describe('visibilityManager', () => {
   it('is globally available', () => {
     expect(typeof visibilityManager).toBe('object');
+  });
+});
+
+describe('icon URL validation', () => {
+  it('accepts relative and root-relative image paths and rejects unsafe schemes', () => {
+    expect(validateIconUrl('images/icons/ai.svg')).toBe('images/icons/ai.svg');
+    expect(validateIconUrl('/images/icons/ai.svg')).toBe('/images/icons/ai.svg');
+    expect(validateIconUrl('./icons/app.png')).toBe('./icons/app.png');
+    expect(validateIconUrl('https://example.com/icon.png')).toBe('https://example.com/icon.png');
+    expect(validateIconUrl('data:image/png;base64,AAA')).toBe('data:image/png;base64,AAA');
+    expect(validateIconUrl('javascript:alert(1)')).toBeNull();
+    expect(validateIconUrl('data:text/html,alert(1)')).toBeNull();
   });
 });
