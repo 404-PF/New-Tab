@@ -150,8 +150,7 @@ function resetBackgroundVideo(videoEl, unloadSource) {
 
   videoEl.classList.remove('active', 'ready', 'loading');
   videoEl.classList.add('hidden');
-  // Avoid calling media APIs during headless tests (jsdom may not implement them)
-  // Intentionally do not call `pause()` here to prevent Not implemented errors.
+  safePause(videoEl);
 
   delete videoEl.dataset.currentBg;
   delete videoEl.dataset.wasPlaying;
@@ -169,8 +168,7 @@ function resetBackgroundVideo(videoEl, unloadSource) {
 
   sourceEl.removeAttribute('src');
   sourceEl.type = 'video/mp4';
-  // Avoid calling `load()` in test environments where HTMLMediaElement.load
-  // may be unimplemented; removing the src is sufficient for cleanup here.
+  safeLoad(videoEl);
 }
 
 // Video background resize handler - ensures video scales properly on window resize

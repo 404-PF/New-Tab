@@ -68,6 +68,8 @@ const srcGlobals = {
   scheduleTodoReminderCheck: 'readonly',
   translateValidationMessage: 'readonly',
   showToast: 'readonly',
+  safePause: 'readonly',
+  safeLoad: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };

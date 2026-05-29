@@ -1836,6 +1836,7 @@ try {
   window.scheduleTodoReminderCheck = scheduleTodoReminderCheck;
   window.formatDateISO = formatDateISO;
   window.isOverdue = isOverdue;
+  window.showToast = showToast;
   // Drag/drop handlers used in tests
   window.handleDragStart = handleDragStart;
   window.handleDragEnd = handleDragEnd;
