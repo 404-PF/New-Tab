@@ -47,7 +47,16 @@
   }
 
   const ready = window.__storageBridgeReady || Promise.resolve();
-  ready.then(() => Promise.all(scriptSources.map(loadScript))).catch((error) => {
+  ready.then(async () => {
+    for (const src of scriptSources) {
+      try {
+        await loadScript(src);
+      } catch (e) {
+        console.error('Failed to load script:', src, e);
+        throw e;
+      }
+    }
+  }).catch((error) => {
     console.error('Failed to bootstrap New-Tab scripts:', error);
   });
 })();

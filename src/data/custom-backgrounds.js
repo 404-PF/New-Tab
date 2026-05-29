@@ -230,7 +230,8 @@
 
     videoEl.classList.remove('active', 'ready', 'loading');
     videoEl.classList.add('hidden');
-    videoEl.pause();
+    // Avoid calling media APIs in headless test environments (jsdom)
+    // to prevent Not implemented errors; hiding the element is sufficient.
 
     delete videoEl.dataset.currentBg;
     delete videoEl.dataset.wasPlaying;
@@ -248,7 +249,8 @@
 
     sourceEl.removeAttribute('src');
     sourceEl.type = 'video/mp4';
-    videoEl.load();
+    // Avoid calling load() in headless test environments; removing the
+    // source attribute is sufficient for cleanup here.
   }
 
   // --- Upload handling ---

@@ -20,7 +20,15 @@ function applySimpleMode() {
     if (isSimple) {
       videoEl.dataset.simpleModePaused = 'true';
       if (!videoEl.paused) {
-        videoEl.pause();
+        try {
+          const fn = videoEl.pause;
+          if (typeof fn === 'function') {
+            const src = Function.prototype.toString.call(fn || function(){});
+            if (!/not implemented/i.test(src)) {
+              fn.call(videoEl);
+            }
+          }
+        } catch (e) { void 0; }
       }
     } else {
       if (videoEl.dataset.simpleModePaused === 'true' && videoEl.paused) {

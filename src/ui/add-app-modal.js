@@ -76,12 +76,25 @@ function normalizeAppUrl(url) {
 function getExistingAppUrls() {
   if (!window.AppGridState) return new Set();
   const customApps = window.AppGridState.getCustomApps();
-  const defaults = window.defaultApps || [];
-  return new Set(
-    [...customApps, ...defaults]
-      .filter(app => app.url)
-      .map(app => window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url)))
-  );
+  const urls = new Set();
+  // Add programmatically saved custom apps
+  try {
+    customApps.forEach((app) => {
+      if (app && app.url) {
+        urls.add(window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url)));
+      }
+    });
+  } catch (e) { void 0; }
+
+  // Also inspect the DOM for apps inside .app-grid (match by visible name)
+  try {
+    const names = Array.from(document.querySelectorAll('.app-grid .app-name')).map(n => (n.textContent || '').trim());
+    names.forEach(n => {
+      if (n) urls.add(n.toLowerCase());
+    });
+  } catch (e) { void 0; }
+
+  return urls;
 }
 
 function resetPreviewIcon() {
@@ -224,19 +237,41 @@ function renderDefaultAppsList() {
   }
 
   const suggestedApps = Array.isArray(window.defaultAppsList) ? window.defaultAppsList : [];
-  const existingUrls = getExistingAppUrls();
+  const existingSet = getExistingAppUrls();
 
   defaultAppsContainer.innerHTML = '';
   if (addAppSection) {
-    addAppSection.hidden = suggestedApps.length === 0;
+    addAppSection.hidden = false; // default to visible, hide below if nothing to show
   }
 
   if (suggestedApps.length === 0) {
+    if (addAppSection) addAppSection.hidden = true;
     return;
   }
 
-  for (let i = 0; i < suggestedApps.length; i++) {
-    const app = suggestedApps[i];
+  // Render only apps that are not present (by url or by name in the app grid)
+  const toRender = suggestedApps.filter(app => {
+    if (!app) return false;
+    // Check by canonical URL when possible
+    try {
+      if (app.url && window.AppGridState && window.AppGridState.getCanonicalUrl) {
+        const canonical = window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url));
+        if (existingSet.has(canonical)) return false;
+      }
+    } catch (e) { void 0; }
+
+    // Check by visible name inside the app grid
+    if (existingSet.has((app.name || '').toLowerCase())) return false;
+
+    return true;
+  });
+
+  if (addAppSection) {
+    addAppSection.hidden = toRender.length === 0;
+  }
+
+  for (let i = 0; i < toRender.length; i++) {
+    const app = toRender[i];
     const button = document.createElement('button');
     button.className = 'quick-add-btn';
     button.innerHTML = `
@@ -252,10 +287,17 @@ function renderDefaultAppsList() {
       </div>
       <span class="quick-add-name">${app.name}</span>
     `;
-    if (app.url && existingUrls.has(window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url)))) {
-      button.classList.add('duplicate');
-      button.title = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
-    }
+    // Mark duplicates defensively (shouldn't appear since we filtered),
+    // but keep the attribute in case canonicalization differs.
+    try {
+      if (app.url && window.AppGridState && window.AppGridState.getCanonicalUrl) {
+        const canonical = window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url));
+        if (existingSet.has(canonical) || existingSet.has((app.name || '').toLowerCase())) {
+          button.classList.add('duplicate');
+          button.title = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
+        }
+      }
+    } catch (e) { void 0; }
     button.addEventListener('click', async function () {
       if (isQuickAddInProgress) {
         return;
