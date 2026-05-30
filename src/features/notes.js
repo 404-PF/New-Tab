@@ -28,6 +28,8 @@
   function showNotesSaveError() {
     if (typeof showToast === 'function') {
       showToast('Failed to save note. Your changes were not saved.', 'error');
+    } else {
+      console.warn('showToast unavailable: Failed to save note. Your changes were not saved.');
     }
   }
 

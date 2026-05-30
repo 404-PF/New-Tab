@@ -113,26 +113,14 @@ function canReuseCurrentVideo(videoEl, backgroundId) {
 function safePause(videoEl) {
   if (!videoEl) return;
   try {
-    const fn = videoEl.pause;
-    if (typeof fn === 'function') {
-      const src = Function.prototype.toString.call(fn || function(){});
-      if (!/not implemented/i.test(src)) {
-        fn.call(videoEl);
-      }
-    }
+    videoEl.pause();
   } catch (e) { void 0; }
 }
 
 function safeLoad(videoEl) {
   if (!videoEl) return;
   try {
-    const fn = videoEl.load;
-    if (typeof fn === 'function') {
-      const src = Function.prototype.toString.call(fn || function(){});
-      if (!/not implemented/i.test(src)) {
-        fn.call(videoEl);
-      }
-    }
+    videoEl.load();
   } catch (e) { void 0; }
 }
 

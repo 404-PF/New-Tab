@@ -403,11 +403,7 @@
 
     applyFilters();
     clearInputs();
-    if (typeof window.scheduleTodoReminderCheck === 'function') {
-      window.scheduleTodoReminderCheck(newTodo.id);
-    } else {
-      scheduleTodoReminderCheck(newTodo.id);
-    }
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(newTodo.id);
   }
 
   // Migrate existing todos to have completedAt property
@@ -452,11 +448,7 @@
       }
 
       applyFilters();
-      if (typeof window.scheduleTodoReminderCheck === 'function') {
-        window.scheduleTodoReminderCheck(id);
-      } else {
-        scheduleTodoReminderCheck(id);
-      }
+      (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
     }
   }
 
@@ -482,11 +474,7 @@
       }
 
       applyFilters();
-      if (typeof window.scheduleTodoReminderCheck === 'function') {
-        window.scheduleTodoReminderCheck(id);
-      } else {
-        scheduleTodoReminderCheck(id);
-      }
+      (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
     }
   }
 
@@ -503,21 +491,13 @@ function deleteTodo(id) {
   }
 
   applyFilters();
-  if (typeof window.scheduleTodoReminderCheck === 'function') {
-    window.scheduleTodoReminderCheck(id);
-  } else {
-    scheduleTodoReminderCheck(id);
-  }
+  (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
 }
 
 // Filter management
 function applyFilters() {
   filterTodos();
-  if (typeof window.renderTodos === 'function') {
-    window.renderTodos();
-  } else {
-    renderTodos();
-  }
+  (window.renderTodos || renderTodos)();
   updateFilterUI();
   updateProgressRing();
   updateFilterCounts();
@@ -615,11 +595,7 @@ function showClearCompletedDialog() {
 
     applyFilters();
     hideClearCompletedDialog();
-    if (typeof window.scheduleTodoReminderCheck === 'function') {
-      window.scheduleTodoReminderCheck();
-    } else {
-      scheduleTodoReminderCheck();
-    }
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     
     // Remove event listeners
     confirmBtn?.removeEventListener('click', handleConfirm);
@@ -736,11 +712,7 @@ function handleDrop(event) {
     return;
   }
 
-  if (typeof window.renderTodos === 'function') {
-    window.renderTodos();
-  } else {
-    renderTodos();
-  }
+  (window.renderTodos || renderTodos)();
 }
 
 // Event handlers
@@ -1083,11 +1055,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   // Update filter counts and progress
   updateFilterCounts();
   updateProgressRing();
-  if (typeof window.scheduleTodoReminderCheck === 'function') {
-    window.scheduleTodoReminderCheck(todoId);
-  } else {
-    scheduleTodoReminderCheck(todoId);
-  }
+  (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(todoId);
 }
 
 // Update due date display
@@ -1530,11 +1498,7 @@ function showImportDialog(importedTodos) {
     todos = existingTodos;
     applyFilters();
     closeEditModal();
-    if (typeof window.scheduleTodoReminderCheck === 'function') {
-      window.scheduleTodoReminderCheck();
-    } else {
-      scheduleTodoReminderCheck();
-    }
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     if (addedCount > 0) {
       const msg = window.i18n ? window.i18n.t('importSuccess', { count: addedCount }) : 'Imported ' + addedCount + ' todos successfully.';
       showToast(msg, 'success');
@@ -1564,11 +1528,7 @@ function showImportDialog(importedTodos) {
     todos = newTodos;
     applyFilters();
     closeEditModal();
-    if (typeof window.scheduleTodoReminderCheck === 'function') {
-      window.scheduleTodoReminderCheck();
-    } else {
-      scheduleTodoReminderCheck();
-    }
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     const msg = window.i18n ? window.i18n.t('importSuccess', { count: newTodos.length }) : 'Imported ' + newTodos.length + ' todos successfully.';
     showToast(msg, 'success');
     hideDialog();
@@ -1799,11 +1759,7 @@ function initCustomDatePicker() {
 
 // Re-render todo items and calendar when language changes
 window.addEventListener('languageChanged', () => {
-  if (typeof window.renderTodos === 'function') {
-    window.renderTodos();
-  } else {
-    renderTodos();
-  }
+  (window.renderTodos || renderTodos)();
   refreshInlineDatePickers();
   if (customDatePicker) customDatePicker.renderCalendar();
 });
