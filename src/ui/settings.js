@@ -1164,7 +1164,12 @@ if (settingsMenu) {
           }
         });
       }
-      // No special logic needed for 'about' tab, just show the section
+      // Apply weather settings when weather tab is shown
+      if (section === 'weather') {
+        if (window.WeatherWidget && window.WeatherWidget.applySettings) {
+          window.WeatherWidget.applySettings();
+        }
+      }
     });
   });
 
@@ -1345,6 +1350,9 @@ function initSettings() {
   applyNotesEnabled();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
+  if (window.WeatherWidget && window.WeatherWidget.applySettings) {
+    window.WeatherWidget.applySettings();
+  }
   initAboutSection();
 
   // Initialize modern color pickers
