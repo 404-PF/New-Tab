@@ -3063,31 +3063,6 @@ body.light-theme .weather-spinner {
 }
 
 /* Weather settings */
-.weather-setting-group {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(107, 114, 128, 0.2);
-}
-
-.weather-setting-group:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-.weather-setting-group h4 {
-  margin: 0 0 4px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--settings-text-color);
-}
-
-.weather-setting-group p {
-  margin: 0 0 16px 0;
-  font-size: 12px;
-  color: rgba(107, 114, 128, 0.8);
-  line-height: 1.4;
-}
-
 .weather-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
