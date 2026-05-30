@@ -4250,7 +4250,6 @@ body.simple-mode .search-bar {
 .notes-section {
   width: var(--todo-list-width, 75%);
   margin: 20px auto 0;
-  animation: fadeSlideIn 0.4s ease forwards;
 }
 
 .notes-header {

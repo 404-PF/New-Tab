@@ -246,9 +246,10 @@
   }
   /* Disable entrance animations for reduced motion */
   .clock,
-  .search-bar,
+  .search-bar-wrapper,
   .app-grid,
   .todo-section,
+  .notes-section,
   #motto-container,
   .weather-widget {
     animation: none !important;
@@ -280,6 +281,12 @@ body {
   padding-top: 20px;
 }
 
+.search-bar-wrapper {
+  width: var(--search-bar-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .search-bar {
   align-items: center;
   background: #f0f0f0;
@@ -289,10 +296,7 @@ body {
   border-radius: 25px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   margin-bottom: 15px;
-  width: var(--search-bar-width);
   height: 50px;
-  margin-left: auto;
-  margin-right: auto;
   overflow: visible;
   position: relative;
   transition: transform 0.25s ease-out;
@@ -1915,9 +1919,10 @@ body.light-theme .context-menu-separator {
 }
 
 .clock,
-.search-bar,
+.search-bar-wrapper,
 .app-grid,
 .todo-section,
+.notes-section,
 .weather-widget {
   animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   opacity: 0; /* hidden until animation starts */
@@ -1945,7 +1950,7 @@ body.light-theme .context-menu-separator {
   animation-delay: 0s;
 }
 
-.search-bar {
+.search-bar-wrapper {
   animation-delay: 0.08s;
 }
 
@@ -1955,6 +1960,10 @@ body.light-theme .context-menu-separator {
 
 .todo-section {
   animation-delay: 0.25s;
+}
+
+.notes-section {
+  animation-delay: 0.35s;
 }
 
 #motto-container {
