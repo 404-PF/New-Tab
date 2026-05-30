@@ -2892,7 +2892,7 @@ body.light-theme .delete-preview-name {
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   z-index: 998;
-  transition: all 0.3s ease;
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   min-width: 140px;
   max-width: 260px;
   cursor: default;
