@@ -109,6 +109,21 @@ function canReuseCurrentVideo(videoEl, backgroundId) {
   );
 }
 
+// Safe wrappers for video operations (jsdom may not implement some methods)
+function safePause(videoEl) {
+  if (!videoEl) return;
+  try {
+    videoEl.pause();
+  } catch (e) { void 0; }
+}
+
+function safeLoad(videoEl) {
+  if (!videoEl) return;
+  try {
+    videoEl.load();
+  } catch (e) { void 0; }
+}
+
 function resetBackgroundVideo(videoEl, unloadSource) {
   if (!videoEl) return;
 
@@ -123,7 +138,7 @@ function resetBackgroundVideo(videoEl, unloadSource) {
 
   videoEl.classList.remove('active', 'ready', 'loading');
   videoEl.classList.add('hidden');
-  videoEl.pause();
+  safePause(videoEl);
 
   delete videoEl.dataset.currentBg;
   delete videoEl.dataset.wasPlaying;
@@ -141,7 +156,7 @@ function resetBackgroundVideo(videoEl, unloadSource) {
 
   sourceEl.removeAttribute('src');
   sourceEl.type = 'video/mp4';
-  videoEl.load();
+  safeLoad(videoEl);
 }
 
 // Video background resize handler - ensures video scales properly on window resize
@@ -201,7 +216,7 @@ function initVideoVisibilityHandler() {
       // Page is hidden - pause video if setting allows
       if (!videoEl.paused && loadVideoPauseHidden()) {
         videoEl.dataset.wasPlaying = 'true';
-        videoEl.pause();
+        safePause(videoEl);
       }
     } else {
       // Page is visible again - resume video if it was playing and autoplay is enabled
@@ -454,7 +469,7 @@ function applyBg() {
       const sourceEl = videoEl.querySelector('source');
       sourceEl.src = bgData.url;
       sourceEl.type = 'video/mp4';
-      videoEl.load();
+      safeLoad(videoEl);
       
       // Set initial state - video starts hidden (opacity: 0)
       videoEl.classList.add('loading');
@@ -985,7 +1000,7 @@ document.addEventListener('change', function (e) {
         // Don't null oncanplaythrough — triggerCrossfade already checks
         // loadVideoAutoplay() and returns early when autoplay is disabled.
         // Keeping the handler allows it to fire naturally if autoplay is re-enabled.
-        videoEl.pause();
+        safePause(videoEl);
       }
     }
   } else if (e.target === videoMutedSetting) {
@@ -1056,9 +1071,9 @@ if (todoReminderEnabledSetting) {
     const wasEnabled = localStorage.getItem('todoReminderEnabled') === 'true';
     localStorage.setItem('todoReminderEnabled', this.checked);
     applyTodoReminderEnabled();
-    if (typeof scheduleTodoReminderCheck === 'function') {
+    if (typeof window.scheduleTodoReminderCheck === 'function') {
       const reEnabled = this.checked && !wasEnabled;
-      scheduleTodoReminderCheck(null, reEnabled);
+      window.scheduleTodoReminderCheck(null, reEnabled);
     }
   });
 }
@@ -1067,8 +1082,8 @@ const todoReminderLeadTime = document.getElementById('todo-reminder-lead-time');
 if (todoReminderLeadTime) {
   todoReminderLeadTime.addEventListener('change', function () {
     localStorage.setItem('todoReminderLeadTime', this.value);
-    if (typeof scheduleTodoReminderCheck === 'function') {
-      scheduleTodoReminderCheck();
+    if (typeof window.scheduleTodoReminderCheck === 'function') {
+      window.scheduleTodoReminderCheck();
     }
   });
 }

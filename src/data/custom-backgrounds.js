@@ -230,7 +230,7 @@
 
     videoEl.classList.remove('active', 'ready', 'loading');
     videoEl.classList.add('hidden');
-    videoEl.pause();
+    if (typeof safePause === 'function') safePause(videoEl);
 
     delete videoEl.dataset.currentBg;
     delete videoEl.dataset.wasPlaying;
@@ -248,7 +248,7 @@
 
     sourceEl.removeAttribute('src');
     sourceEl.type = 'video/mp4';
-    videoEl.load();
+    if (typeof safeLoad === 'function') safeLoad(videoEl);
   }
 
   // --- Upload handling ---
