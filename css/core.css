@@ -1922,10 +1922,17 @@ body.light-theme .context-menu-separator {
 .search-bar-wrapper,
 .app-grid,
 .todo-section,
-.notes-section,
-.weather-widget {
+.notes-section {
   animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   opacity: 0; /* hidden until animation starts */
+}
+
+/* .weather-widget uses a class toggle so the entrance animation
+   also works when the widget is dynamically shown (from display:none).
+   JS adds .animate-entrance when making the widget visible. */
+.weather-widget.animate-entrance {
+  animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
 }
 
 /* #motto-container uses a custom keyframe to preserve
@@ -1970,7 +1977,7 @@ body.light-theme .context-menu-separator {
   animation-delay: 0.45s;
 }
 
-.weather-widget {
+.weather-widget.animate-entrance {
   animation-delay: 0.05s;
 }
 

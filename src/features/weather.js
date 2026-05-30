@@ -300,6 +300,15 @@
     return document.getElementById('weather-widget');
   }
 
+  function showWidgetWithAnimation(el) {
+    el.style.display = 'flex';
+    // Trigger the CSS entrance animation by toggling the class.
+    // Force a reflow so the animation starts from the beginning.
+    el.classList.remove('animate-entrance');
+    void el.offsetWidth;
+    el.classList.add('animate-entrance');
+  }
+
   function renderLoading() {
     if (!WeatherStorage.loadEnabled()) {
       hideWidget();
@@ -312,7 +321,7 @@
       <div class="weather-spinner"></div>
       <span class="weather-loading-text">${t('weatherLoading')}</span>
     `;
-    el.style.display = 'flex';
+    showWidgetWithAnimation(el);
   }
 
   function renderError(message) {
@@ -333,7 +342,7 @@
       </div>
       <span class="weather-error-text">${message}</span>
     `;
-    el.style.display = 'flex';
+    showWidgetWithAnimation(el);
   }
 
   function renderWeather(data, locationName, unit) {
@@ -373,7 +382,13 @@
         </div>
       </div>
     `;
-    el.style.display = 'flex';
+    // Only animate entrance if the widget was hidden (e.g., cache hit on first load).
+    // When already visible (refresh/update), just update content without re-animating.
+    if (el.style.display === 'none' || !el.style.display) {
+      showWidgetWithAnimation(el);
+    } else {
+      el.style.display = 'flex';
+    }
   }
 
   function hideWidget() {

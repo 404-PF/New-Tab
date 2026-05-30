@@ -4246,6 +4246,7 @@ body.simple-mode .search-bar {
     transform: translateY(0);
   }
 }
+/* Used by .note-item (individual notes animate in on add). */
 
 .notes-section {
   width: var(--todo-list-width, 75%);
