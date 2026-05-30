@@ -244,6 +244,17 @@
   .background-transition-overlay {
     transition: none;
   }
+  /* Disable entrance animations for reduced motion */
+  .clock,
+  .search-bar,
+  .app-grid,
+  .todo-section,
+  .notes-section,
+  #motto-container,
+  .weather-widget {
+    animation: none !important;
+    opacity: 1 !important;
+  }
 }
 
 /* Ensure video doesn't interfere with interactions */
@@ -1885,5 +1896,61 @@ body.light-theme .move-to-folder-option.cancel:hover {
 
 body.light-theme .context-menu-separator {
   background: rgba(0, 0, 0, 0.1);
+}
+
+/* ===========================================================
+   Page-Load Entrance Animations
+   Subtle staggered fade+slide for key dashboard widgets.
+   Runs once on initial load; does not re-trigger on updates.
+   =========================================================== */
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.clock,
+.search-bar,
+.app-grid,
+.todo-section,
+.notes-section,
+#motto-container,
+.weather-widget {
+  animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0; /* hidden until animation starts */
+}
+
+.clock {
+  animation-delay: 0s;
+}
+
+.search-bar {
+  animation-delay: 0.08s;
+}
+
+.app-grid {
+  animation-delay: 0.15s;
+}
+
+.todo-section {
+  animation-delay: 0.25s;
+}
+
+.notes-section {
+  animation-delay: 0.35s;
+}
+
+#motto-container {
+  animation-delay: 0.45s;
+}
+
+.weather-widget {
+  animation-delay: 0.05s;
 }
 
