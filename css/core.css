@@ -1932,6 +1932,7 @@ body.light-theme .context-menu-separator {
      (opacity: 0, translateY(16px)) during the delay, but if the animation
      never fires (e.g. CSS fail), elements remain at their natural opacity: 1. */
   animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  animation-delay: var(--entrance-delay);
 }
 
 /* .weather-widget uses a class toggle so the entrance animation
@@ -1939,6 +1940,7 @@ body.light-theme .context-menu-separator {
    JS adds .animate-entrance when making the widget visible. */
 .weather-widget.animate-entrance {
   animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  animation-delay: var(--entrance-delay);
 }
 
 /* #motto-container uses a custom keyframe to preserve
@@ -1956,33 +1958,15 @@ body.light-theme .context-menu-separator {
 
 #motto-container {
   animation: fadeSlideUpCentered 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  animation-delay: var(--entrance-delay);
 }
 
-.clock {
-  animation-delay: 0s;
-}
-
-.search-bar-wrapper {
-  animation-delay: 0.08s;
-}
-
-.app-grid {
-  animation-delay: 0.15s;
-}
-
-.todo-section {
-  animation-delay: 0.25s;
-}
-
-.notes-section {
-  animation-delay: 0.35s;
-}
-
-#motto-container {
-  animation-delay: 0.45s;
-}
-
-.weather-widget.animate-entrance {
-  animation-delay: 0.05s;
-}
+/* Stagger delays defined as CSS custom properties for DRY, tunable timing. */
+.clock { --entrance-delay: 0s; }
+.search-bar-wrapper { --entrance-delay: 0.08s; }
+.app-grid { --entrance-delay: 0.15s; }
+.todo-section { --entrance-delay: 0.25s; }
+.notes-section { --entrance-delay: 0.35s; }
+#motto-container { --entrance-delay: 0.45s; }
+.weather-widget.animate-entrance { --entrance-delay: 0.05s; }
 
