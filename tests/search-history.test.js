@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
+
+// Regression guard for #326 — search history panel (z-index: 60) must be
+// scoped within .search-bar so it cannot intercept app-grid clicks.
+const CORE_CSS_PATH = resolve(process.cwd(), 'css/core.css');
 
 const SEARCH_BAR_HTML = `
   <div class="search-bar">
@@ -51,6 +57,37 @@ function focusSearchInput() {
   input.dispatchEvent(new Event('focus'));
   return input;
 }
+
+// ------------------------------------------------------------------
+// Regression: #326 — stacking context isolation guard
+// ------------------------------------------------------------------
+describe('search bar stacking context (#326)', () => {
+  it('declares isolation: isolate in core.css for .search-bar', () => {
+    const css = readFileSync(CORE_CSS_PATH, 'utf-8');
+    // Check that isolation: isolate appears within a .search-bar rule block.
+    // Using [^}]* (instead of [^}]+) tolerates empty blocks, and the overall
+    // pattern avoids assuming the rule is a single contiguous block (e.g. if
+    // responsive overrides or nested at-rules are added later).
+    expect(css).toMatch(/\.search-bar[^{]*\{[^}]*isolation:\s*isolate/);
+  });
+
+  it('scopes search-history-panel z-index within .search-bar via computed isolation', () => {
+    // Inject the real .search-bar CSS rule from core.css into the test DOM
+    // so getComputedStyle reflects the actual production styles.
+    const css = readFileSync(CORE_CSS_PATH, 'utf-8');
+    const ruleBlock = css.match(/\.search-bar[^{]*\{[^}]*isolation:\s*isolate[^}]*\}/);
+    expect(ruleBlock).not.toBeNull();
+
+    const style = document.createElement('style');
+    style.textContent = ruleBlock[0];
+    document.head.appendChild(style);
+
+    const searchBar = document.querySelector('.search-bar');
+    expect(getComputedStyle(searchBar).isolation).toBe('isolate');
+
+    document.head.removeChild(style);
+  });
+});
 
 describe('search history', () => {
   it('stores recent searches newest-first without duplicates', () => {

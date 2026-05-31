@@ -285,6 +285,7 @@ body {
   margin-right: auto;
   overflow: visible;
   position: relative;
+  isolation: isolate; /* Scope .search-history-panel z-index within this element */
   transition: transform 0.25s ease-out;
 }
 .search-bar:focus-within {
