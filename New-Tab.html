@@ -37,12 +37,14 @@
         <span id="clock-time" class="clock-time"></span>
         <span id="date" class="date"></span>
       </div>
-      <div class="search-bar">
-        <svg class="search-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="11" cy="11" r="7"></circle>
-          <path d="m20 20-3.5-3.5"></path>
-        </svg>
-        <input type="text" placeholder="{{searchPlaceholder}}" data-i18n="searchPlaceholder" autofocus />
+      <div class="search-bar-wrapper" role="search">
+        <div class="search-bar">
+          <svg class="search-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-3.5-3.5"></path>
+          </svg>
+          <input type="text" placeholder="{{searchPlaceholder}}" data-i18n="searchPlaceholder" autofocus />
+        </div>
       </div>
 
       <div class="app-grid" id="app-grid">

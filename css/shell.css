@@ -14,6 +14,9 @@
   bottom: 10px;
 
   left: 50%;
+  /* ⚠️ WARNING: The entrance animation in core.css (fadeSlideUpCentered)
+     hardcodes translateX(-50%) in its keyframes. If you change this centering
+     method, you MUST also update the @keyframes rule. */
   transform: translateX(-50%);
 
   width: fit-content;

@@ -244,6 +244,23 @@
   .background-transition-overlay {
     transition: none;
   }
+  /* Disable entrance animations for reduced motion */
+  .clock,
+  .search-bar-wrapper,
+  .app-grid,
+  .todo-section,
+  .notes-section,
+  #motto-container,
+  .weather-widget {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  /* Also suppress pre-existing animations on clock elements */
+  .date,
+  .clock-time {
+    animation: none !important;
+    opacity: 1 !important;
+  }
 }
 
 /* Ensure video doesn't interfere with interactions */
@@ -270,6 +287,12 @@ body {
   padding-top: 20px;
 }
 
+.search-bar-wrapper {
+  width: var(--search-bar-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .search-bar {
   align-items: center;
   background: #f0f0f0;
@@ -279,10 +302,7 @@ body {
   border-radius: 25px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   margin-bottom: 15px;
-  width: var(--search-bar-width);
   height: 50px;
-  margin-left: auto;
-  margin-right: auto;
   overflow: visible;
   position: relative;
   transition: transform 0.25s ease-out;
@@ -740,9 +760,7 @@ body.light-theme .drag-placeholder {
   font-weight: 400;
   letter-spacing: 2px;
   text-transform: uppercase;
-  opacity: 0;
-  animation: fadeInUp 0.8s ease-out forwards;
-  animation-delay: 0.3s;
+  /* Entrance handled by parent .clock animation; no separate animation needed. */
 }
 #settings-modal {
   display: flex;
@@ -1891,4 +1909,70 @@ body.light-theme .move-to-folder-option.cancel:hover {
 body.light-theme .context-menu-separator {
   background: rgba(0, 0, 0, 0.1);
 }
+
+/* ===========================================================
+   Page-Load Entrance Animations
+   Subtle staggered fade+slide for key dashboard widgets.
+   Runs once on initial load; does not re-trigger on updates.
+   =========================================================== */
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.clock,
+.search-bar-wrapper,
+.app-grid,
+.todo-section,
+.notes-section {
+  /* Use backwards fill so the initial state comes from the `from` keyframe
+     (opacity: 0, translateY(16px)) during the delay, but if the animation
+     never fires (e.g. CSS fail), elements remain at their natural opacity: 1. */
+  animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  animation-delay: var(--entrance-delay);
+}
+
+/* .weather-widget uses a class toggle so the entrance animation
+   also works when the widget is dynamically shown (from display:none).
+   JS adds .animate-entrance when making the widget visible. */
+.weather-widget.animate-entrance {
+  animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  animation-delay: var(--entrance-delay);
+}
+
+/* #motto-container uses a custom keyframe to preserve
+   its translateX(-50%) centering transform (shell.css). */
+@keyframes fadeSlideUpCentered {
+  from {
+    opacity: 0;
+    transform: translateY(16px) translateX(-50%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(-50%);
+  }
+}
+
+#motto-container {
+  animation: fadeSlideUpCentered 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  animation-delay: var(--entrance-delay);
+}
+
+/* Stagger delays defined as CSS custom properties for DRY, tunable timing. */
+/* --entrance-delay is per-element for entrance stagger.             */
+/* Do NOT reference in child elements — custom properties inherit.   */
+.clock { --entrance-delay: 0s; }
+.search-bar-wrapper { --entrance-delay: 0s; }
+.app-grid { --entrance-delay: 0.15s; }
+.todo-section { --entrance-delay: 0.25s; }
+.notes-section { --entrance-delay: 0.35s; }
+#motto-container { --entrance-delay: 0.45s; }
+.weather-widget.animate-entrance { --entrance-delay: 0.05s; }
 
