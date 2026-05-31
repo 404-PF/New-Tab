@@ -1487,18 +1487,6 @@ body.light-theme .toast-notification.toast-info {
   }
 }
 
-/* Fade in up animation for date */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* Light theme adjustments */
 body.light-theme .todo-section {
   background: rgba(255, 255, 255, 0.85);

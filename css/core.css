@@ -255,6 +255,12 @@
     animation: none !important;
     opacity: 1 !important;
   }
+  /* Also suppress pre-existing animations on clock elements */
+  .date,
+  .clock-time {
+    animation: none !important;
+    opacity: 1 !important;
+  }
 }
 
 /* Ensure video doesn't interfere with interactions */
@@ -754,9 +760,7 @@ body.light-theme .drag-placeholder {
   font-weight: 400;
   letter-spacing: 2px;
   text-transform: uppercase;
-  opacity: 0;
-  animation: fadeInUp 0.8s ease-out forwards;
-  animation-delay: 0.3s;
+  /* Entrance handled by parent .clock animation; no separate animation needed. */
 }
 #settings-modal {
   display: flex;
@@ -1962,8 +1966,10 @@ body.light-theme .context-menu-separator {
 }
 
 /* Stagger delays defined as CSS custom properties for DRY, tunable timing. */
+/* --entrance-delay is per-element for entrance stagger.             */
+/* Do NOT reference in child elements — custom properties inherit.   */
 .clock { --entrance-delay: 0s; }
-.search-bar-wrapper { --entrance-delay: 0.08s; }
+.search-bar-wrapper { --entrance-delay: 0s; }
 .app-grid { --entrance-delay: 0.15s; }
 .todo-section { --entrance-delay: 0.25s; }
 .notes-section { --entrance-delay: 0.35s; }
