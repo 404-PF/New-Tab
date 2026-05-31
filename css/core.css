@@ -1923,16 +1923,17 @@ body.light-theme .context-menu-separator {
 .app-grid,
 .todo-section,
 .notes-section {
-  animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  opacity: 0; /* hidden until animation starts */
+  /* Use backwards fill so the initial state comes from the `from` keyframe
+     (opacity: 0, translateY(16px)) during the delay, but if the animation
+     never fires (e.g. CSS fail), elements remain at their natural opacity: 1. */
+  animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
 /* .weather-widget uses a class toggle so the entrance animation
    also works when the widget is dynamically shown (from display:none).
    JS adds .animate-entrance when making the widget visible. */
 .weather-widget.animate-entrance {
-  animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  opacity: 0;
+  animation: fadeSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
 /* #motto-container uses a custom keyframe to preserve
@@ -1949,8 +1950,7 @@ body.light-theme .context-menu-separator {
 }
 
 #motto-container {
-  animation: fadeSlideUpCentered 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  opacity: 0; /* hidden until animation starts */
+  animation: fadeSlideUpCentered 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
 .clock {

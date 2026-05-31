@@ -58,6 +58,7 @@
 
   // State
   let isRefreshing = false;
+  let widgetHasBeenShown = false;
   let pendingRefresh = false;
   let currentCache = null;
 
@@ -302,11 +303,14 @@
 
   function showWidgetWithAnimation(el) {
     el.style.display = 'flex';
+    // Only animate entrance on first show; subsequent updates skip re-animation.
+    if (widgetHasBeenShown) return;
     // Trigger the CSS entrance animation by toggling the class.
     // Force a reflow so the animation starts from the beginning.
     el.classList.remove('animate-entrance');
     void el.offsetWidth;
     el.classList.add('animate-entrance');
+    widgetHasBeenShown = true;
   }
 
   function renderLoading() {
@@ -382,13 +386,8 @@
         </div>
       </div>
     `;
-    // Only animate entrance if the widget was hidden (e.g., cache hit on first load).
-    // When already visible (refresh/update), just update content without re-animating.
-    if (el.style.display === 'none' || !el.style.display) {
-      showWidgetWithAnimation(el);
-    } else {
-      el.style.display = 'flex';
-    }
+    // Show the widget with entrance animation on first reveal, or just update content on refresh.
+    showWidgetWithAnimation(el);
   }
 
   function hideWidget() {
