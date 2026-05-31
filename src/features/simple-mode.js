@@ -20,7 +20,7 @@ function applySimpleMode() {
     if (isSimple) {
       videoEl.dataset.simpleModePaused = 'true';
       if (!videoEl.paused) {
-        videoEl.pause();
+        safePause(videoEl);
       }
     } else {
       if (videoEl.dataset.simpleModePaused === 'true' && videoEl.paused) {

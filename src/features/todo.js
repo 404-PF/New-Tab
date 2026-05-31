@@ -1,280 +1,130 @@
 // src/features/todo.js - Modern Todo List Functionality
 
-// State management
-let todos = [];
-let filteredTodos = [];
-const currentFilters = {
-  status: 'all'
-};
+(function () {
+  'use strict';
 
-// Animation config
-const STAGGER_DELAY = 0.05; // seconds between each item
-const SVG_NS = 'http://www.w3.org/2000/svg';
+  // State management
+  let todos = [];
+  let filteredTodos = [];
+  const currentFilters = {
+    status: 'all'
+  };
 
-// DOM elements
-let elements = {};
+  // Animation config
+  const STAGGER_DELAY = 0.05; // seconds between each item
+  const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// Edit modal state
-const editModalState = {
-  currentTodoId: null,
-  isOpen: false
-};
-const runTodoOnDomReady = window.onDomReady;
+  // DOM elements
+  let elements = {};
 
-// Load todos from localStorage
-function loadTodos() {
-  try {
-    const raw = localStorage.getItem('todos');
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      console.warn('Invalid todos data in localStorage: expected array, resetting to empty list');
+  // Edit modal state
+  const editModalState = {
+    currentTodoId: null,
+    isOpen: false
+  };
+  const runTodoOnDomReady = window.onDomReady;
+
+  // Load todos from localStorage
+  function loadTodos() {
+    try {
+      const raw = localStorage.getItem('todos');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        console.warn('Invalid todos data in localStorage: expected array, resetting to empty list');
+        return [];
+      }
+      return parsed;
+    } catch (e) {
+      console.warn('Failed to parse todos from localStorage, resetting to empty list:', e);
       return [];
     }
-    return parsed;
-  } catch (e) {
-    console.warn('Failed to parse todos from localStorage, resetting to empty list:', e);
-    return [];
   }
-}
 
-// Save todos to localStorage
-function saveTodos(todos) {
-  try {
-    localStorage.setItem('todos', JSON.stringify(todos));
-    return true;
-  } catch (error) {
-    console.warn('Failed to save todos to localStorage:', error);
-    return false;
-  }
-}
-
-function scheduleTodoReminderCheck(todoId, resetNotified) {
-  try {
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
-      // Sends in-memory todos as JSON string to the service worker.
-      // The service worker uses this payload over stale chrome.storage.local data.
-      // If the payload is ever malformed/absent, the fallback reads from storage.
-      chrome.runtime.sendMessage({
-        type: 'syncTodos',
-        todoId: todoId || undefined,
-        todos: JSON.stringify(todos),
-        resetNotified: resetNotified || undefined
-      }).catch(() => {});
+  // Save todos to localStorage
+  function saveTodos(todos) {
+    try {
+      localStorage.setItem('todos', JSON.stringify(todos));
+      return true;
+    } catch (error) {
+      console.warn('Failed to save todos to localStorage:', error);
+      return false;
     }
-  } catch (e) {
-    console.warn('Failed to send reminder sync message:', e);
-  }
-}
-
-function cloneTodos(sourceTodos) {
-  return sourceTodos.map(todo => ({ ...todo }));
-}
-
-function showTodoSaveError() {
-  showToast('Failed to save todo changes. Your last action was not saved.', 'error');
-}
-
-// Format date as local ISO string (YYYY-MM-DD)
-function formatDateISO(date) {
-  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-}
-
-// Generate unique ID for todos
-function generateTodoId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
-
-// Date utilities
-
-// Date utilities
-function formatDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
-  const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
-  return date.toLocaleDateString(locale, {
-    month: 'short',
-    day: 'numeric',
-    year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-  });
-}
-
-function isOverdue(dateString) {
-  if (!dateString) return false;
-  const dueDate = new Date(dateString);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  dueDate.setHours(0, 0, 0, 0);
-  return dueDate < today;
-}
-
-function createSvgElement(tagName, attributes = {}) {
-  const element = document.createElementNS(SVG_NS, tagName);
-  Object.entries(attributes).forEach(([name, value]) => {
-    element.setAttribute(name, value);
-  });
-  return element;
-}
-
-function createTodoIconButton(className, title, todoId, iconChildren) {
-  const button = document.createElement('button');
-  button.className = className;
-  button.dataset.id = todoId;
-  button.title = title;
-
-  const svg = createSvgElement('svg', {
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    'stroke-width': '2',
-    'stroke-linecap': 'round',
-    'stroke-linejoin': 'round'
-  });
-
-  iconChildren.forEach(child => {
-    svg.appendChild(createSvgElement(child.tagName, child.attributes));
-  });
-
-  button.appendChild(svg);
-  return button;
-}
-
-function createTodoBullet(completed) {
-  const svg = createSvgElement('svg', {
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    class: completed ? 'bullet-checked' : 'bullet-unchecked'
-  });
-
-  if (completed) {
-    svg.appendChild(createSvgElement('circle', {
-      cx: '12',
-      cy: '12',
-      r: '10',
-      fill: 'currentColor'
-    }));
-    svg.appendChild(createSvgElement('path', {
-      d: 'M9 12l2 2 4-4',
-      stroke: 'white',
-      'stroke-width': '2',
-      'stroke-linecap': 'round',
-      'stroke-linejoin': 'round',
-      fill: 'none'
-    }));
-    return svg;
   }
 
-  svg.appendChild(createSvgElement('circle', {
-    cx: '12',
-    cy: '12',
-    r: '9',
-    stroke: 'currentColor',
-    'stroke-width': '2',
-    fill: 'none'
-  }));
-  return svg;
-}
-
-
-// Filtering and sorting
-function filterTodos() {
-  let filtered = [...todos];
-
-  // Status filter
-  if (currentFilters.status !== 'all') {
-    filtered = filtered.filter(todo => {
-      switch (currentFilters.status) {
-        case 'pending':
-          return !todo.completed;
-        case 'completed':
-          return todo.completed;
-        case 'overdue':
-          return !todo.completed && todo.dueDate && isOverdue(todo.dueDate);
-        default:
-          return true;
+  function scheduleTodoReminderCheck(todoId, resetNotified) {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+        // Sends in-memory todos as JSON string to the service worker.
+        // The service worker uses this payload over stale chrome.storage.local data.
+        // If the payload is ever malformed/absent, the fallback reads from storage.
+        chrome.runtime.sendMessage({
+          type: 'syncTodos',
+          todoId: todoId || undefined,
+          todos: JSON.stringify(todos),
+          resetNotified: resetNotified || undefined
+        }).catch(() => {});
       }
+    } catch (e) {
+      console.warn('Failed to send reminder sync message:', e);
+    }
+  }
+
+  function cloneTodos(sourceTodos) {
+    return sourceTodos.map(todo => ({ ...todo }));
+  }
+
+  function showTodoSaveError() {
+    showToast('Failed to save todo changes. Your last action was not saved.', 'error');
+  }
+
+  // Format date as local ISO string (YYYY-MM-DD)
+  function formatDateISO(date) {
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  }
+
+  // Generate unique ID for todos
+  function generateTodoId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  }
+
+  // Date utilities
+  function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
+    const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
+    return date.toLocaleDateString(locale, {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
     });
   }
 
-  // Sort: incomplete items first (by order), then completed items (by completion time)
-  filtered.sort((a, b) => {
-    // If both are incomplete, sort by order (original position)
-    if (!a.completed && !b.completed) {
-      const orderA = a.order !== undefined ? a.order : new Date(a.createdAt).getTime();
-      const orderB = b.order !== undefined ? b.order : new Date(b.createdAt).getTime();
-      return orderA - orderB;
-    }
-    
-    // If both are completed, sort by completion time (chronological)
-    if (a.completed && b.completed) {
-      const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-      const timeB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
-      return timeA - timeB;
-    }
-    
-    // Incomplete items come first
-    if (!a.completed && b.completed) return -1;
-    if (a.completed && !b.completed) return 1;
-    
-    return 0;
-  });
-
-  filteredTodos = filtered;
-  return filtered;
-}
-
-// Render the todo list with FLIP animation for smooth reordering
-function renderTodos() {
-  const todoList = elements.todoList;
-  const emptyState = elements.emptyState;
-
-  if (!todoList || !emptyState) return;
-
-  // Get existing element positions (First step of FLIP)
-  const existingItems = {};
-  todoList.querySelectorAll('.todo-item').forEach(item => {
-    const rect = item.getBoundingClientRect();
-    existingItems[item.dataset.id] = {
-      top: rect.top,
-      left: rect.left
-    };
-  });
-
-  // Clear existing list
-  todoList.innerHTML = '';
-
-  // Show/hide empty state
-  if (filteredTodos.length === 0) {
-    emptyState.style.display = 'flex';
-    return;
+  function isOverdue(dateString) {
+    if (!dateString) return false;
+    const dueDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate < today;
   }
 
-  emptyState.style.display = 'none';
+  function createSvgElement(tagName, attributes = {}) {
+    const element = document.createElementNS(SVG_NS, tagName);
+    Object.entries(attributes).forEach(([name, value]) => {
+      element.setAttribute(name, value);
+    });
+    return element;
+  }
 
-  // Render each todo with staggered animation
-  filteredTodos.forEach((todo, index) => {
-    const li = document.createElement('li');
-    li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate) ? 'overdue' : ''}`;
-    li.dataset.id = todo.id;
-    li.draggable = true;
+  function createTodoIconButton(className, title, todoId, iconChildren) {
+    const button = document.createElement('button');
+    button.className = className;
+    button.dataset.id = todoId;
+    button.title = title;
 
-    const bullet = document.createElement('div');
-    bullet.className = 'todo-bullet';
-    bullet.dataset.id = todo.id;
-    bullet.appendChild(createTodoBullet(todo.completed));
-    const todoContent = document.createElement('div');
-    todoContent.className = 'todo-content';
-    const todoText = document.createElement('p');
-    todoText.className = 'todo-text';
-    todoText.textContent = todo.text ?? '';
-    todoContent.appendChild(todoText);
-
-    const dueDate = document.createElement('div');
-    dueDate.className = `todo-due-date clickable ${todo.dueDate ? (isOverdue(todo.dueDate) ? 'overdue' : '') : 'empty'}`;
-    dueDate.dataset.todoId = todo.id;
-
-    const dueDateSvg = createSvgElement('svg', {
+    const svg = createSvgElement('svg', {
       viewBox: '0 0 24 24',
       fill: 'none',
       stroke: 'currentColor',
@@ -282,201 +132,352 @@ function renderTodos() {
       'stroke-linecap': 'round',
       'stroke-linejoin': 'round'
     });
-    dueDateSvg.appendChild(createSvgElement('rect', {
-      x: '3',
-      y: '4',
-      width: '18',
-      height: '18',
-      rx: '2',
-      ry: '2'
+
+    iconChildren.forEach(child => {
+      svg.appendChild(createSvgElement(child.tagName, child.attributes));
+    });
+
+    button.appendChild(svg);
+    return button;
+  }
+
+  function createTodoBullet(completed) {
+    const svg = createSvgElement('svg', {
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      class: completed ? 'bullet-checked' : 'bullet-unchecked'
+    });
+
+    if (completed) {
+      svg.appendChild(createSvgElement('circle', {
+        cx: '12',
+        cy: '12',
+        r: '10',
+        fill: 'currentColor'
+      }));
+      svg.appendChild(createSvgElement('path', {
+        d: 'M9 12l2 2 4-4',
+        stroke: 'white',
+        'stroke-width': '2',
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        fill: 'none'
+      }));
+      return svg;
+    }
+
+    svg.appendChild(createSvgElement('circle', {
+      cx: '12',
+      cy: '12',
+      r: '9',
+      stroke: 'currentColor',
+      'stroke-width': '2',
+      fill: 'none'
     }));
-    dueDateSvg.appendChild(createSvgElement('line', {
-      x1: '16',
-      y1: '2',
-      x2: '16',
-      y2: '6'
-    }));
-    dueDateSvg.appendChild(createSvgElement('line', {
-      x1: '8',
-      y1: '2',
-      x2: '8',
-      y2: '6'
-    }));
-    dueDateSvg.appendChild(createSvgElement('line', {
-      x1: '3',
-      y1: '10',
-      x2: '21',
-      y2: '10'
-    }));
-    dueDate.appendChild(dueDateSvg);
+    return svg;
+  }
 
-    const dueDateText = document.createElement('span');
-    dueDateText.className = 'due-date-text';
-    dueDateText.textContent = todo.dueDate ? formatDate(todo.dueDate) : (window.i18n ? window.i18n.t('todoSetDate') : 'Set date');
-    dueDate.appendChild(dueDateText);
+  // Filtering and sorting
+  function filterTodos() {
+    let filtered = [...todos];
 
-    const todoActions = document.createElement('div');
-    todoActions.className = 'todo-actions';
-    todoActions.appendChild(createTodoIconButton('todo-edit-btn', window.i18n ? window.i18n.t('todoEditTooltip') : 'Edit Todo', todo.id, [
-      { tagName: 'path', attributes: { d: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' } },
-      { tagName: 'path', attributes: { d: 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' } }
-    ]));
-    todoActions.appendChild(createTodoIconButton('todo-delete-btn', window.i18n ? window.i18n.t('todoDeleteTooltip') : 'Delete Todo', todo.id, [
-      { tagName: 'polyline', attributes: { points: '3,6 5,6 21,6' } },
-      { tagName: 'path', attributes: { d: 'M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2' } },
-      { tagName: 'line', attributes: { x1: '10', y1: '11', x2: '10', y2: '17' } },
-      { tagName: 'line', attributes: { x1: '14', y1: '11', x2: '14', y2: '17' } }
-    ]));
-
-    li.appendChild(bullet);
-    li.appendChild(todoContent);
-    li.appendChild(dueDate);
-    li.appendChild(todoActions);
-
-    // Add staggered animation delay
-    li.style.animationDelay = `${index * STAGGER_DELAY}s`;
-    li.setAttribute('data-animation', 'enter');
-
-    todoList.appendChild(li);
-  });
-
-  // Apply FLIP animation for reordering
-  requestAnimationFrame(() => {
-    todoList.querySelectorAll('.todo-item').forEach(item => {
-      const id = item.dataset.id;
-      if (existingItems[id]) {
-        const newRect = item.getBoundingClientRect();
-        const oldPos = existingItems[id];
-        const deltaY = oldPos.top - newRect.top;
-        const deltaX = oldPos.left - newRect.left;
-
-        // If position changed, apply flip animation
-        if (deltaY !== 0 || deltaX !== 0) {
-          // Invert: move item back to original position
-          item.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-          item.style.transition = 'none';
-
-          // Play: animate to new position
-          requestAnimationFrame(() => {
-            item.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            item.style.transform = '';
-          });
+    // Status filter
+    if (currentFilters.status !== 'all') {
+      filtered = filtered.filter(todo => {
+        switch (currentFilters.status) {
+          case 'pending':
+            return !todo.completed;
+          case 'completed':
+            return todo.completed;
+          case 'overdue':
+            return !todo.completed && todo.dueDate && isOverdue(todo.dueDate);
+          default:
+            return true;
         }
+      });
+    }
+
+    // Sort: incomplete items first (by order), then completed items (by completion time)
+    filtered.sort((a, b) => {
+      // If both are incomplete, sort by order (original position)
+      if (!a.completed && !b.completed) {
+        const orderA = a.order !== undefined ? a.order : new Date(a.createdAt).getTime();
+        const orderB = b.order !== undefined ? b.order : new Date(b.createdAt).getTime();
+        return orderA - orderB;
+      }
+      
+      // If both are completed, sort by completion time (chronological)
+      if (a.completed && b.completed) {
+        const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+        const timeB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+        return timeA - timeB;
+      }
+      
+      // Incomplete items come first
+      if (!a.completed && b.completed) return -1;
+      if (a.completed && !b.completed) return 1;
+      
+      return 0;
+    });
+
+    filteredTodos = filtered;
+    return filtered;
+  }
+
+  // Render the todo list with FLIP animation for smooth reordering
+  function renderTodos() {
+    const todoList = elements.todoList;
+    const emptyState = elements.emptyState;
+
+    if (!todoList || !emptyState) return;
+
+    // Get existing element positions (First step of FLIP)
+    const existingItems = {};
+    todoList.querySelectorAll('.todo-item').forEach(item => {
+      const rect = item.getBoundingClientRect();
+      existingItems[item.dataset.id] = {
+        top: rect.top,
+        left: rect.left
+      };
+    });
+
+    // Clear existing list
+    todoList.innerHTML = '';
+
+    // Show/hide empty state
+    if (filteredTodos.length === 0) {
+      emptyState.style.display = 'flex';
+      return;
+    }
+
+    emptyState.style.display = 'none';
+
+    // Render each todo with staggered animation
+    filteredTodos.forEach((todo, index) => {
+      const li = document.createElement('li');
+      li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate) ? 'overdue' : ''}`;
+      li.dataset.id = todo.id;
+      li.draggable = true;
+
+      const bullet = document.createElement('div');
+      bullet.className = 'todo-bullet';
+      bullet.dataset.id = todo.id;
+      bullet.appendChild(createTodoBullet(todo.completed));
+      const todoContent = document.createElement('div');
+      todoContent.className = 'todo-content';
+      const todoText = document.createElement('p');
+      todoText.className = 'todo-text';
+      todoText.textContent = todo.text ?? '';
+      todoContent.appendChild(todoText);
+
+      const dueDate = document.createElement('div');
+      dueDate.className = `todo-due-date clickable ${todo.dueDate ? (isOverdue(todo.dueDate) ? 'overdue' : '') : 'empty'}`;
+      dueDate.dataset.todoId = todo.id;
+
+      const dueDateSvg = createSvgElement('svg', {
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': '2',
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round'
+      });
+      dueDateSvg.appendChild(createSvgElement('rect', {
+        x: '3',
+        y: '4',
+        width: '18',
+        height: '18',
+        rx: '2',
+        ry: '2'
+      }));
+      dueDateSvg.appendChild(createSvgElement('line', {
+        x1: '16',
+        y1: '2',
+        x2: '16',
+        y2: '6'
+      }));
+      dueDateSvg.appendChild(createSvgElement('line', {
+        x1: '8',
+        y1: '2',
+        x2: '8',
+        y2: '6'
+      }));
+      dueDateSvg.appendChild(createSvgElement('line', {
+        x1: '3',
+        y1: '10',
+        x2: '21',
+        y2: '10'
+      }));
+      dueDate.appendChild(dueDateSvg);
+
+      const dueDateText = document.createElement('span');
+      dueDateText.className = 'due-date-text';
+      dueDateText.textContent = todo.dueDate ? formatDate(todo.dueDate) : (window.i18n ? window.i18n.t('todoSetDate') : 'Set date');
+      dueDate.appendChild(dueDateText);
+
+      const todoActions = document.createElement('div');
+      todoActions.className = 'todo-actions';
+      todoActions.appendChild(createTodoIconButton('todo-edit-btn', window.i18n ? window.i18n.t('todoEditTooltip') : 'Edit Todo', todo.id, [
+        { tagName: 'path', attributes: { d: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' } },
+        { tagName: 'path', attributes: { d: 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' } }
+      ]));
+      todoActions.appendChild(createTodoIconButton('todo-delete-btn', window.i18n ? window.i18n.t('todoDeleteTooltip') : 'Delete Todo', todo.id, [
+        { tagName: 'polyline', attributes: { points: '3,6 5,6 21,6' } },
+        { tagName: 'path', attributes: { d: 'M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2' } },
+        { tagName: 'line', attributes: { x1: '10', y1: '11', x2: '10', y2: '17' } },
+        { tagName: 'line', attributes: { x1: '14', y1: '11', x2: '14', y2: '17' } }
+      ]));
+
+      li.appendChild(bullet);
+      li.appendChild(todoContent);
+      li.appendChild(dueDate);
+      li.appendChild(todoActions);
+
+      // Add staggered animation delay
+      li.style.animationDelay = `${index * STAGGER_DELAY}s`;
+      li.setAttribute('data-animation', 'enter');
+
+      todoList.appendChild(li);
+    });
+
+    // Apply FLIP animation for reordering
+    requestAnimationFrame(() => {
+      todoList.querySelectorAll('.todo-item').forEach(item => {
+        const id = item.dataset.id;
+        if (existingItems[id]) {
+          const newRect = item.getBoundingClientRect();
+          const oldPos = existingItems[id];
+          const deltaY = oldPos.top - newRect.top;
+          const deltaX = oldPos.left - newRect.left;
+
+          // If position changed, apply flip animation
+          if (deltaY !== 0 || deltaX !== 0) {
+            // Invert: move item back to original position
+            item.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            item.style.transition = 'none';
+
+            // Play: animate to new position
+            requestAnimationFrame(() => {
+              item.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+              item.style.transform = '';
+            });
+          }
+        }
+      });
+    });
+  }
+
+  function getInlineMonthLabel(monthIndex) {
+    const monthKeys = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+    const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthKey = monthKeys[monthIndex];
+    return window.i18n ? window.i18n.t(monthKey) : monthLabels[monthIndex];
+  }
+
+  // Add a new todo
+  function addTodo(text, dueDate = null) {
+    if (!text.trim()) return;
+
+    // Find the maximum order value among existing todos
+    const maxOrder = todos.reduce((max, todo) => {
+      return todo.order !== undefined ? Math.max(max, todo.order) : max;
+    }, -1);
+
+    const newTodo = {
+      id: generateTodoId(),
+      text: text.trim(),
+      completed: false,
+      completedAt: null, // Track when todo was completed
+      dueDate: dueDate,
+      createdAt: new Date().toISOString(),
+      order: maxOrder + 1 // Add order property to track position (always at the end)
+    };
+
+    todos.push(newTodo);
+    if (!saveTodos(todos)) {
+      todos = todos.filter(todo => todo.id !== newTodo.id);
+      applyFilters();
+      showTodoSaveError();
+      return;
+    }
+
+    applyFilters();
+    clearInputs();
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(newTodo.id);
+  }
+
+  // Migrate existing todos to have completedAt property
+  function migrateTodos() {
+    const previousTodos = cloneTodos(todos);
+    let needsMigration = false;
+    
+    todos.forEach(todo => {
+      if (todo.completedAt === undefined) {
+        // For existing completed todos without completedAt,
+        // use createdAt as a fallback (they were completed before this feature)
+        todo.completedAt = todo.completed ? todo.createdAt : null;
+        needsMigration = true;
       }
     });
-  });
-}
-
-function getInlineMonthLabel(monthIndex) {
-  const monthKeys = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-  const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const monthKey = monthKeys[monthIndex];
-  return window.i18n ? window.i18n.t(monthKey) : monthLabels[monthIndex];
-}
-
-// Add a new todo
-function addTodo(text, dueDate = null) {
-  if (!text.trim()) return;
-
-  // Find the maximum order value among existing todos
-  const maxOrder = todos.reduce((max, todo) => {
-    return todo.order !== undefined ? Math.max(max, todo.order) : max;
-  }, -1);
-
-  const newTodo = {
-    id: generateTodoId(),
-    text: text.trim(),
-    completed: false,
-    completedAt: null, // Track when todo was completed
-    dueDate: dueDate,
-    createdAt: new Date().toISOString(),
-    order: maxOrder + 1 // Add order property to track position (always at the end)
-  };
-
-  todos.push(newTodo);
-  if (!saveTodos(todos)) {
-    todos = todos.filter(todo => todo.id !== newTodo.id);
-    applyFilters();
-    showTodoSaveError();
-    return;
-  }
-
-  applyFilters();
-  clearInputs();
-  scheduleTodoReminderCheck(newTodo.id);
-}
-
-// Migrate existing todos to have completedAt property
-function migrateTodos() {
-  const previousTodos = cloneTodos(todos);
-  let needsMigration = false;
-  
-  todos.forEach(todo => {
-    if (todo.completedAt === undefined) {
-      // For existing completed todos without completedAt,
-      // use createdAt as a fallback (they were completed before this feature)
-      todo.completedAt = todo.completed ? todo.createdAt : null;
-      needsMigration = true;
-    }
-  });
-  
-  if (needsMigration) {
-    if (!saveTodos(todos)) {
-      todos = previousTodos;
-      applyFilters();
-      showTodoSaveError();
-      return false;
-    }
-  }
-
-  return true;
-}
-
-// Edit a todo
-function editTodo(id, newText, newPriority, newDueDate) {
-  const todo = todos.find(t => t.id === id);
-  if (todo) {
-    const previousTodo = { ...todo };
-    todo.text = newText.trim();
-    todo.priority = newPriority;
-    todo.dueDate = newDueDate;
-    if (!saveTodos(todos)) {
-      Object.assign(todo, previousTodo);
-      applyFilters();
-      showTodoSaveError();
-      return;
-    }
-
-    applyFilters();
-    scheduleTodoReminderCheck(id);
-  }
-}
-
-// Toggle todo completion
-function toggleTodo(id) {
-  const todo = todos.find(t => t.id === id);
-  if (todo) {
-    const previousTodo = { ...todo };
-    todo.completed = !todo.completed;
     
-    // Track completion time for sorting
-    if (todo.completed) {
-      todo.completedAt = new Date().toISOString();
-    } else {
-      todo.completedAt = null;
-    }
-    
-    if (!saveTodos(todos)) {
-      Object.assign(todo, previousTodo);
-      applyFilters();
-      showTodoSaveError();
-      return;
+    if (needsMigration) {
+      if (!saveTodos(todos)) {
+        todos = previousTodos;
+        applyFilters();
+        showTodoSaveError();
+        return false;
+      }
     }
 
-    applyFilters();
-    scheduleTodoReminderCheck(id);
+    return true;
   }
-}
+
+  // Edit a todo
+  function editTodo(id, newText, newPriority, newDueDate) {
+    const todo = todos.find(t => t.id === id);
+    if (todo) {
+      const previousTodo = { ...todo };
+      todo.text = newText.trim();
+      todo.priority = newPriority;
+      todo.dueDate = newDueDate;
+      if (!saveTodos(todos)) {
+        Object.assign(todo, previousTodo);
+        applyFilters();
+        showTodoSaveError();
+        return;
+      }
+
+      applyFilters();
+      (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
+    }
+  }
+
+  // Toggle todo completion
+  function toggleTodo(id) {
+    const todo = todos.find(t => t.id === id);
+    if (todo) {
+      const previousTodo = { ...todo };
+      todo.completed = !todo.completed;
+      
+      // Track completion time for sorting
+      if (todo.completed) {
+        todo.completedAt = new Date().toISOString();
+      } else {
+        todo.completedAt = null;
+      }
+      
+      if (!saveTodos(todos)) {
+        Object.assign(todo, previousTodo);
+        applyFilters();
+        showTodoSaveError();
+        return;
+      }
+
+      applyFilters();
+      (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
+    }
+  }
+
 
 // Delete a todo
 function deleteTodo(id) {
@@ -490,13 +491,13 @@ function deleteTodo(id) {
   }
 
   applyFilters();
-  scheduleTodoReminderCheck(id);
+  (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
 }
 
 // Filter management
 function applyFilters() {
   filterTodos();
-  renderTodos();
+  (window.renderTodos || renderTodos)();
   updateFilterUI();
   updateProgressRing();
   updateFilterCounts();
@@ -594,7 +595,7 @@ function showClearCompletedDialog() {
 
     applyFilters();
     hideClearCompletedDialog();
-    scheduleTodoReminderCheck();
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     
     // Remove event listeners
     confirmBtn?.removeEventListener('click', handleConfirm);
@@ -711,7 +712,7 @@ function handleDrop(event) {
     return;
   }
 
-  renderTodos();
+  (window.renderTodos || renderTodos)();
 }
 
 // Event handlers
@@ -1054,7 +1055,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   // Update filter counts and progress
   updateFilterCounts();
   updateProgressRing();
-  scheduleTodoReminderCheck(todoId);
+  (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(todoId);
 }
 
 // Update due date display
@@ -1497,7 +1498,7 @@ function showImportDialog(importedTodos) {
     todos = existingTodos;
     applyFilters();
     closeEditModal();
-    scheduleTodoReminderCheck();
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     if (addedCount > 0) {
       const msg = window.i18n ? window.i18n.t('importSuccess', { count: addedCount }) : 'Imported ' + addedCount + ' todos successfully.';
       showToast(msg, 'success');
@@ -1527,7 +1528,7 @@ function showImportDialog(importedTodos) {
     todos = newTodos;
     applyFilters();
     closeEditModal();
-    scheduleTodoReminderCheck();
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     const msg = window.i18n ? window.i18n.t('importSuccess', { count: newTodos.length }) : 'Imported ' + newTodos.length + ' todos successfully.';
     showToast(msg, 'success');
     hideDialog();
@@ -1758,7 +1759,7 @@ function initCustomDatePicker() {
 
 // Re-render todo items and calendar when language changes
 window.addEventListener('languageChanged', () => {
-  renderTodos();
+  (window.renderTodos || renderTodos)();
   refreshInlineDatePickers();
   if (customDatePicker) customDatePicker.renderCalendar();
 });
@@ -1770,3 +1771,35 @@ function initTodoModule() {
 
 // Initialize when DOM is ready
 runTodoOnDomReady(initTodoModule);
+
+// Expose public API for tests and other modules (avoid leaking internals like `elements`)
+try {
+  window.loadTodos = loadTodos;
+  window.saveTodos = saveTodos;
+  window.addTodo = addTodo;
+  window.editTodo = editTodo;
+  window.toggleTodo = toggleTodo;
+  window.deleteTodo = deleteTodo;
+  window.migrateTodos = migrateTodos;
+  window.initTodo = initTodo;
+  window.initCustomDatePicker = initCustomDatePicker;
+  window.renderTodos = renderTodos;
+  window.filterTodos = filterTodos;
+  window.handleFilterPillClick = handleFilterPillClick;
+  window.validateTodoData = validateTodoData;
+  window.showImportDialog = showImportDialog;
+  window.clearCompleted = clearCompleted;
+  window.scheduleTodoReminderCheck = scheduleTodoReminderCheck;
+  window.formatDateISO = formatDateISO;
+  window.isOverdue = isOverdue;
+  window.showToast = showToast;
+  // Drag/drop handlers used in tests
+  window.handleDragStart = handleDragStart;
+  window.handleDragEnd = handleDragEnd;
+  window.handleDragOver = handleDragOver;
+  window.handleDrop = handleDrop;
+} catch (e) {
+  // If window isn't writable in some test harnesses, ignore silently
+}
+
+})();

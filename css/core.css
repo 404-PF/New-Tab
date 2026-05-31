@@ -302,6 +302,7 @@ body {
   transition: transform 0.25s ease-out;
 }
 .search-bar:focus-within {
+  z-index: 1;
   transform: scale(1.04);
   box-shadow: 0 6px 24px rgba(33, 150, 243, 0.13);
 }
@@ -1247,7 +1248,8 @@ body.light-theme .bg-loading-spinner {
 .theme-setting-group,
 .clock-setting-group,
 .date-setting-group,
-.about-setting-group {
+.about-setting-group,
+.weather-setting-group {
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(107, 114, 128, 0.2);
@@ -1258,7 +1260,8 @@ body.light-theme .bg-loading-spinner {
 .theme-setting-group:last-child,
 .clock-setting-group:last-child,
 .date-setting-group:last-child,
-.about-setting-group:last-child {
+.about-setting-group:last-child,
+.weather-setting-group:last-child {
   border-bottom: none;
   margin-bottom: 0;
 }
@@ -1267,7 +1270,8 @@ body.light-theme .bg-loading-spinner {
 .general-setting-group h4,
 .theme-setting-group h4,
 .clock-setting-group h4,
-.date-setting-group h4 {
+.date-setting-group h4,
+.weather-setting-group h4 {
   margin: 0 0 4px 0;
   font-size: 14px;
   font-weight: 600;
@@ -1278,7 +1282,8 @@ body.light-theme .bg-loading-spinner {
 .general-setting-group p,
 .theme-setting-group p,
 .clock-setting-group p,
-.date-setting-group p {
+.date-setting-group p,
+.weather-setting-group p {
   margin: 0 0 16px 0;
   font-size: 12px;
   color: rgba(107, 114, 128, 0.8);
