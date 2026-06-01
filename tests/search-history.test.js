@@ -17,6 +17,12 @@ const SEARCH_BAR_HTML = `
   </div>
 `;
 
+const APP_GRID_HTML = `
+  <div class="app-grid">
+    <a id="test-app-link" class="app-icon custom-app" href="https://example.com">Example app</a>
+  </div>
+`;
+
 beforeAll(() => {
   vi.useFakeTimers();
   window.VisibilityInterval = class {
@@ -24,6 +30,7 @@ beforeAll(() => {
     destroy() {}
   };
   document.body.insertAdjacentHTML('beforeend', SEARCH_BAR_HTML);
+  document.body.insertAdjacentHTML('beforeend', APP_GRID_HTML);
   injectScript('src/core/utils.js');
   injectScript('src/core/main.js');
 });
@@ -121,6 +128,22 @@ describe('search history', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
     expect(document.querySelector('.search-history-panel').hidden).toBe(true);
+  });
+
+  it('keeps app grid links clickable while suggestions are open', () => {
+    const appLink = document.getElementById('test-app-link');
+    const clickSpy = vi.fn();
+
+    appLink.addEventListener('click', clickSpy);
+
+    recordSearchHistory('alpha');
+    const input = focusSearchInput();
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    appLink.click();
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
   it('does not record whitespace or malformed url input', () => {
