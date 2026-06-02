@@ -21,31 +21,6 @@ jobs:
           # Use a high client version to avoid pinning this workflow to an aging Chrome build number.
           PROD_VERSION="9999.0.0.0"
 
-          curl -fL --get "https://clients2.google.com/service/update2/crx" \
-            --data-urlencode "response=redirect" \
-            --data-urlencode "prodversion=${PROD_VERSION}" \
-            --data-urlencode "acceptformat=crx2,crx3" \
-            --data-urlencode "x=id=${EXTENSION_ID}&uc" \
-            -D crx-headers.txt \
-            -o New-Tab.crx
-
-          if [ ! -s New-Tab.crx ]; then
-            echo "Downloaded CRX is empty"
-            exit 1
-          fi
-
-          LOCATION_URL="$(grep -i '^location:' crx-headers.txt | head -n1 | cut -d' ' -f2- | tr -d '\r')"
-          if [ -z "${LOCATION_URL}" ]; then
-            echo "Failed to read CRX redirect location"
-            exit 1
-          fi
-
-          CRX_VERSION="$(basename "${LOCATION_URL}" | sed -n 's/.*_\([0-9_][0-9_]*\)\.crx$/\1/p' | tr '_' '.')"
-          if [ -z "${CRX_VERSION}" ]; then
-            echo "Failed to parse CRX version from redirect URL: ${LOCATION_URL}"
-            exit 1
-          fi
-
           RELEASE_VERSION="${RELEASE_TAG#v}"
           # Allow semver suffixes like -rc.1 or +build.5 in release tags.
           RELEASE_VERSION="${RELEASE_VERSION%%[-+]*}"
@@ -62,10 +37,45 @@ jobs:
               ;;
           esac
 
-          if [ "${CRX_VERSION}" != "${EXPECTED_CRX_VERSION}" ]; then
-            echo "CRX version (${CRX_VERSION}) does not match release tag (${RELEASE_TAG} -> ${EXPECTED_CRX_VERSION})"
-            exit 1
-          fi
+          # CWS publishes can lag behind release publishing. Retry a few times before failing.
+          MAX_ATTEMPTS=6
+          SLEEP_SECONDS=30
+          for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
+            EFFECTIVE_URL="$(curl -fLsS --get "https://clients2.google.com/service/update2/crx" \
+              --data-urlencode "response=redirect" \
+              --data-urlencode "prodversion=${PROD_VERSION}" \
+              --data-urlencode "acceptformat=crx2,crx3" \
+              --data-urlencode "x=id=${EXTENSION_ID}&uc" \
+              -o New-Tab.crx \
+              -w '%{url_effective}')"
+
+            if [ ! -s New-Tab.crx ]; then
+              echo "Downloaded CRX is empty"
+              exit 1
+            fi
+
+            CRX_VERSION="$(basename "${EFFECTIVE_URL}" | sed -n 's/.*_\([0-9_][0-9_]*\)\.crx$/\1/p' | tr '_' '.')"
+            if [ -z "${CRX_VERSION}" ]; then
+              CRX_VERSION="$(basename "${EFFECTIVE_URL}" | sed -n 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)\.crx$/\1/p')"
+            fi
+            if [ -z "${CRX_VERSION}" ]; then
+              echo "Failed to parse CRX version from final URL: ${EFFECTIVE_URL}"
+              exit 1
+            fi
+
+            if [ "${CRX_VERSION}" = "${EXPECTED_CRX_VERSION}" ]; then
+              echo "Downloaded CRX version ${CRX_VERSION} matches release tag ${RELEASE_TAG}."
+              break
+            fi
+
+            if [ "${attempt}" -lt "${MAX_ATTEMPTS}" ]; then
+              echo "CRX version ${CRX_VERSION} does not match expected ${EXPECTED_CRX_VERSION}; retrying in ${SLEEP_SECONDS}s (${attempt}/${MAX_ATTEMPTS})"
+              sleep "${SLEEP_SECONDS}"
+            else
+              echo "CRX version (${CRX_VERSION}) does not match release tag (${RELEASE_TAG} -> ${EXPECTED_CRX_VERSION}) after ${MAX_ATTEMPTS} attempts"
+              exit 1
+            fi
+          done
 
       - name: Upload CRX to release
         # v2 tag pinned to immutable commit for supply-chain safety.
