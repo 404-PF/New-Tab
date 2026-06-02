@@ -11,9 +11,18 @@ jobs:
   attach-crx:
     runs-on: ubuntu-latest
     steps:
+      # Downloads the official CRX binary from the Chrome Web Store update endpoint.
+      #
+      # The update endpoint (clients2.google.com/service/update2/crx) is part of
+      # Chrome's extension update protocol. It redirects to the actual CRX download
+      # URL based on the extension ID and requested prodversion.
+      #
+      # Reference: https://developer.chrome.com/docs/extensions/how-to/distribute/update/
+      # Stack Overflow: https://stackoverflow.com/questions/10242115/
       - name: Download CRX from Chrome Web Store
         env:
-          EXTENSION_ID: bgjillpeijfmdopfbmoinfogfhaadina
+          # Allow overriding via repository variable for fork/test portability.
+          EXTENSION_ID: ${{ vars.EXTENSION_ID || 'bgjillpeijfmdopfbmoinfogfhaadina' }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
@@ -59,6 +68,14 @@ jobs:
               exit 1
             fi
 
+            # CRX files are ZIP archives with a specific magic header.  Verify the
+            # downloaded file is not an HTML error page (404/500) which is technically
+            # non-empty but would fail silently downstream.
+            if ! file New-Tab.crx | grep -qi "zip"; then
+              echo "Downloaded file is not a valid CRX/ZIP archive: $(file New-Tab.crx)"
+              exit 1
+            fi
+
             CRX_FILE_NAME="$(basename "${EFFECTIVE_URL%%\?*}")"
             CRX_VERSION=""
             if [[ "${CRX_FILE_NAME}" =~ _([0-9]+(_[0-9]+){3})\.crx$ ]]; then
@@ -73,6 +90,16 @@ jobs:
 
             if [ "${CRX_VERSION}" = "${EXPECTED_CRX_VERSION}" ]; then
               echo "Downloaded CRX version ${CRX_VERSION} matches release tag ${RELEASE_TAG}."
+
+              # Double-check the version inside the CRX manifest to guard against
+              # attaching a stale CRX whose filename happened to match an old tag.
+              MANIFEST_VERSION="$(unzip -p New-Tab.crx manifest.json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])" 2>/dev/null || true)"
+              if [ -n "${MANIFEST_VERSION}" ] && [ "${MANIFEST_VERSION}" != "${CRX_VERSION}" ]; then
+                echo "CRX manifest.json version (${MANIFEST_VERSION}) does not match URL-derived version (${CRX_VERSION}); retrying."
+                sleep "${SLEEP_SECONDS}"
+                continue
+              fi
+              echo "Manifest version ${MANIFEST_VERSION} — confirmed."
               break
             fi
 
