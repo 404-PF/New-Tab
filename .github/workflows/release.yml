@@ -16,11 +16,11 @@ jobs:
   package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies
@@ -44,7 +44,10 @@ jobs:
           echo "BUILD_DIR=$BUILD_DIR" >> "$GITHUB_ENV"
 
       - name: Strip development-only files
+        shell: bash
         run: |
+          set -euo pipefail
+          : "${BUILD_DIR:?BUILD_DIR is not set or empty — aborting}"
           cd "$BUILD_DIR"
           rm -rf .github .husky .agents tests ISSUES screenshots
           rm -f .gitignore .nvmrc vitest.config.js eslint.config.js
@@ -84,8 +87,24 @@ jobs:
             exit 1
           fi
 
+      - name: Verify built package
+        run: |
+          set -euo pipefail
+          for f in new-tab.crx new-tab.zip; do
+            if [ ! -f "${{ github.workspace }}/$f" ]; then
+              echo "::error::$f was not built — aborting"
+              exit 1
+            fi
+            size=$(stat -c%s "${{ github.workspace }}/$f")
+            if [ "$size" -eq 0 ]; then
+              echo "::error::$f is empty — aborting"
+              exit 1
+            fi
+            echo "  ✓ $f ($size bytes)"
+          done
+
       - name: Upload build artifacts (always)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: extension-package
           path: |
@@ -94,7 +113,7 @@ jobs:
 
       - name: Upload Release Assets
         if: github.event_name == 'release'
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           files: |
             new-tab.crx
