@@ -58,14 +58,23 @@ jobs:
           CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
           ALLOW_EPHEMERAL_KEY: ${{ vars.ALLOW_EPHEMERAL_KEY }}
         run: |
+          CRX3="${{ github.workspace }}/node_modules/.bin/crx3"
           cd "$BUILD_DIR"
           if [ -n "$CRX_PRIVATE_KEY" ]; then
             # Write key to a temp file so it never lands in the workspace,
             # and clean up with a trap even if the step fails mid-way.
             KEY_FILE="$(mktemp)"
             trap 'rm -f "$KEY_FILE"' EXIT
-            printf '%s\n' "$CRX_PRIVATE_KEY" > "$KEY_FILE"
-            npx crx3 . \
+            # Support both base64-encoded and raw PEM secrets.  Base64 is
+            # preferred because GitHub's Secrets UI can mangle the newlines
+            # in a multi-line PEM value.  Encode with:
+            #   base64 -w0 key.pem | clip   (or pbcopy / xclip)
+            if echo "$CRX_PRIVATE_KEY" | base64 --decode 2>/dev/null | head -1 | grep -q 'BEGIN.*PRIVATE KEY'; then
+              echo "$CRX_PRIVATE_KEY" | base64 --decode > "$KEY_FILE"
+            else
+              printf '%s\n' "$CRX_PRIVATE_KEY" > "$KEY_FILE"
+            fi
+            "$CRX3" . \
               --crx "${{ github.workspace }}/new-tab.crx" \
               --zip "${{ github.workspace }}/new-tab.zip" \
               --private-key "$KEY_FILE"
@@ -73,7 +82,7 @@ jobs:
             echo "::warning::No CRX_PRIVATE_KEY secret — generating ephemeral key."
             echo "::warning::The extension ID will change with every release."
             echo "::warning::Set ALLOW_EPHEMERAL_KEY=false once CRX_PRIVATE_KEY is configured."
-            npx crx3 . \
+            "$CRX3" . \
               --crx "${{ github.workspace }}/new-tab.crx" \
               --zip "${{ github.workspace }}/new-tab.zip"
           else
