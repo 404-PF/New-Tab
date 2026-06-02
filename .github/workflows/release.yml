@@ -1,0 +1,73 @@
+name: Package Extension
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build CRX package
+        env:
+          CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
+        run: |
+          # Export only git-tracked files to a clean build directory
+          # (excludes node_modules/, .git/, and other untracked cruft)
+          BUILD_DIR="/tmp/extension-build"
+          mkdir -p "$BUILD_DIR"
+          git archive --format=tar HEAD | tar x -C "$BUILD_DIR"
+
+          cd "$BUILD_DIR"
+
+          # Remove development-only files not needed in the extension package
+          rm -rf .github .husky .agents tests ISSUES screenshots
+          rm -f .gitignore .nvmrc vitest.config.js eslint.config.js
+          rm -f package.json package-lock.json
+
+          # Pack and sign the extension
+          if [ -n "$CRX_PRIVATE_KEY" ]; then
+            echo "Signing with private key from repository secret."
+            printf '%s\n' "$CRX_PRIVATE_KEY" > key.pem
+            npx crx3 . \
+              --crx "${{ github.workspace }}/new-tab.crx" \
+              --zip "${{ github.workspace }}/new-tab.zip" \
+              --private-key key.pem
+            rm key.pem
+          else
+            echo "No CRX_PRIVATE_KEY secret found — generating an ephemeral key."
+            echo "The extension ID will change with every release."
+            echo ""
+            echo "To fix this:"
+            echo "  1. Run this workflow once and grab the generated key.pem"
+            echo "  2. Add it as a repository secret named CRX_PRIVATE_KEY"
+            echo ""
+            npx crx3 . \
+              --crx "${{ github.workspace }}/new-tab.crx" \
+              --zip "${{ github.workspace }}/new-tab.zip"
+          fi
+
+      - name: Upload Release Assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            new-tab.crx
+            new-tab.zip
