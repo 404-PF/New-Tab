@@ -72,8 +72,8 @@ describe('Add app modal quick add', () => {
 
     await flushMicrotasks();
 
-    expect(AppGridState.getCustomApps()).toHaveLength(1);
-    expect(AppGridState.getCustomApps()[0]).toMatchObject({
+    expect(window.AppGridState.getCustomApps()).toHaveLength(1);
+    expect(window.AppGridState.getCustomApps()[0]).toMatchObject({
       name: 'Google',
       url: 'https://www.google.com'
     });
@@ -134,7 +134,7 @@ describe('Add app modal quick add', () => {
   });
 
   it('keeps the section visible when only some quick-add apps already exist', () => {
-    AppGridState.addApp({
+    window.AppGridState.addApp({
       id: 'custom-app-google',
       name: 'Google',
       url: 'https://www.google.com',
@@ -186,7 +186,7 @@ describe('Add app modal quick add', () => {
 
     await flushMicrotasks();
 
-    expect(AppGridState.getCustomApps()).toHaveLength(1);
+    expect(window.AppGridState.getCustomApps()).toHaveLength(1);
     expect(window.renderCustomApps).toHaveBeenCalledTimes(1);
   });
 
@@ -202,7 +202,7 @@ describe('Add app modal quick add', () => {
     await flushMicrotasks();
 
     // Only one instance of the app should have been added
-    const apps = AppGridState.getCustomApps();
+    const apps = window.AppGridState.getCustomApps();
     const googleApps = apps.filter((app) => app.name === 'Google');
     expect(googleApps).toHaveLength(1);
   });

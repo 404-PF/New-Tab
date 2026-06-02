@@ -37,7 +37,7 @@ function createFallbackIconSvg() {
   return svg;
 }
 
-function setPreviewIcon(previewIcon, iconUrl) {
+function setContextMenuPreviewIcon(previewIcon, iconUrl) {
   if (!previewIcon) return;
 
   previewIcon.textContent = '';
@@ -394,7 +394,7 @@ document.getElementById('change-thumbnail').addEventListener('click', function (
   // Update the preview
   const previewIcon = document.getElementById('thumbnail-preview-icon');
   const previewName = document.getElementById('thumbnail-preview-name');
-  setPreviewIcon(previewIcon, currentApp.icon);
+  setContextMenuPreviewIcon(previewIcon, currentApp.icon);
   previewName.textContent = currentApp.name;
   
   // Show the thumbnail modal
@@ -436,7 +436,7 @@ function initThumbnailModalHandlers() {
   thumbnailInput.addEventListener('input', function() {
     const iconUrl = this.value.trim();
     const previewIcon = document.getElementById('thumbnail-preview-icon');
-    setPreviewIcon(previewIcon, iconUrl);
+    setContextMenuPreviewIcon(previewIcon, iconUrl);
   });
   
   // Close modal on confirm
@@ -487,7 +487,7 @@ document.getElementById('delete-app').addEventListener('click', function () {
   // Update the delete preview
   const previewIcon = document.getElementById('delete-preview-icon');
   const previewName = document.getElementById('delete-preview-name');
-  setPreviewIcon(previewIcon, currentApp.icon);
+  setContextMenuPreviewIcon(previewIcon, currentApp.icon);
   previewName.textContent = currentApp.name;
   
   // Show the delete modal

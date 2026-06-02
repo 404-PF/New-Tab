@@ -1,13 +1,16 @@
 // src/ui/app-manager.js - App grid management, drag and drop
 
+(function () {
+  'use strict';
+
 // Helper functions
 const escapeHtml = window.escapeHtml;
-const getAppOrder = () => AppGridState.getOrder();
-const saveAppOrder = order => AppGridState.saveOrder(order);
+const getAppOrder = () => window.AppGridState.getOrder();
+const saveAppOrder = order => window.AppGridState.saveOrder(order);
 
 // Load custom apps from localStorage
 function loadCustomApps() {
-  return AppGridState.getCustomApps();
+  return window.AppGridState.getCustomApps();
 }
 
 // Default apps
@@ -45,7 +48,7 @@ const addApp = document.getElementById('new-app');
     seenIds.add(app.id);
     return true;
   });
-  const folders = AppGridState.getFolders();
+  const folders = window.AppGridState.getFolders();
   const folderIds = new Set(folders.map(f => f.id));
   const validIds = new Set([...dedupedApps.map(app => app.id), ...folderIds]);
   const totalExpectedLength = dedupedApps.length + folders.length;
@@ -317,3 +320,5 @@ function attachSettingsAppHandler() {
 
 // Initial attachment
 attachSettingsAppHandler();
+
+})();

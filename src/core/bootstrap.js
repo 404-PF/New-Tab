@@ -9,6 +9,10 @@
     'src/core/app-grid-storage.js',
     'src/core/main.js',
     'src/core/app-grid-state.js',
+    // app-manager.js must load before add-app-modal.js, context-menu.js,
+    // and app-folders.js — those scripts reference window globals
+    // (window.renderAllApps, window.defaultApps, etc.) that app-manager.js
+    // sets up during its IIFE execution.
     'src/ui/app-manager.js',
     'src/features/drag-drop.js',
     'src/ui/add-app-modal.js',

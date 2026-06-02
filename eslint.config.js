@@ -192,6 +192,23 @@ module.exports = [
       'no-redeclare': 'off',
     },
   },
+  // Files wrapped in strict-mode IIFEs must reference globals via window.*
+  // to avoid ReferenceErrors from bare identifiers.
+  {
+    files: ['src/ui/add-app-modal.js', 'src/features/context-menu.js', 'src/ui/app-manager.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: srcGlobals,
+    },
+    rules: {
+      ...commonRules,
+      'no-redeclare': 'off',
+      'no-restricted-globals': ['error', {
+        name: 'AppGridState',
+        message: 'Use window.AppGridState instead to avoid ReferenceErrors in strict-mode IIFEs.',
+      }],
+    },
+  },
   {
     files: ['tests/**/*.js'],
     languageOptions: {
