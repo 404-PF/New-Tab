@@ -47,6 +47,8 @@ jobs:
           fi
 
           RELEASE_VERSION="${RELEASE_TAG#v}"
+          # Allow semver suffixes like -rc.1 or +build.5 in release tags.
+          RELEASE_VERSION="${RELEASE_VERSION%%[-+]*}"
           case "${RELEASE_VERSION}" in
             *.*.*.*)
               EXPECTED_CRX_VERSION="${RELEASE_VERSION}"
@@ -66,7 +68,8 @@ jobs:
           fi
 
       - name: Upload CRX to release
-        uses: softprops/action-gh-release@v2
+        # v2 tag pinned to immutable commit for supply-chain safety.
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: New-Tab.crx
