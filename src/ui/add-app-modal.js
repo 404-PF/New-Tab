@@ -1,5 +1,8 @@
 // src/ui/add-app-modal.js - Add app modal helpers and behavior
 
+(function () {
+  'use strict';
+
 window.defaultAppsList = [
   {
     name: 'Google',
@@ -503,3 +506,5 @@ window.closeAddAppModal = closeAddAppModal;
 window.updateAddAppPreview = updatePreview;
 window.openAddAppModal = openAddAppModal;
 window.resetAddAppModalState = resetAddAppModalState;
+
+})();

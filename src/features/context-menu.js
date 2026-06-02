@@ -1,5 +1,7 @@
 // src/features/context-menu.js - Right-click context menu for custom apps
 
+(function () {
+  'use strict';
 
 let contextTargetId = null;
 let contextTargetFolderId = null;
@@ -578,3 +580,5 @@ runContextMenuOnDomReady(() => {
 
   initContextMenu();
 });
+
+})();

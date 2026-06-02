@@ -156,7 +156,7 @@ describe('Add app modal quick add', () => {
     const newAppBtn = document.getElementById('new-app');
     const modal = document.getElementById('add-app-modal');
 
-    window.bindAddAppModal();
+    window.initAddAppModal();
     newAppBtn.click();
     expect(modal.classList.contains('modal-open')).toBe(true);
 
@@ -164,7 +164,7 @@ describe('Add app modal quick add', () => {
     expect(modal.classList.contains('modal-open')).toBe(false);
 
     window.resetAddAppModalState();
-    expect(() => window.bindAddAppModal()).not.toThrow();
+    expect(() => window.initAddAppModal()).not.toThrow();
 
     newAppBtn.click();
     expect(modal.classList.contains('modal-open')).toBe(true);
@@ -175,9 +175,9 @@ describe('Add app modal quick add', () => {
     const addAppUrlInput = document.getElementById('add-app-url');
     const addAppConfirm = document.getElementById('add-app-confirm');
 
-    window.bindAddAppModal();
+    window.initAddAppModal();
     window.resetAddAppModalState();
-    window.bindAddAppModal();
+    window.initAddAppModal();
 
     newAppBtn.click();
     addAppUrlInput.value = 'example.com';
