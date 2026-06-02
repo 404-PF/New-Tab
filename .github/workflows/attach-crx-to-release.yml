@@ -24,39 +24,47 @@ jobs:
           RELEASE_VERSION="${RELEASE_TAG#v}"
           # Allow semver suffixes like -rc.1 or +build.5 in release tags.
           RELEASE_VERSION="${RELEASE_VERSION%%[-+]*}"
-          case "${RELEASE_VERSION}" in
-            *.*.*.*)
-              EXPECTED_CRX_VERSION="${RELEASE_VERSION}"
-              ;;
-            *.*.*)
-              EXPECTED_CRX_VERSION="${RELEASE_VERSION}.0"
-              ;;
-            *)
-              echo "Unsupported release tag format for CRX version validation: ${RELEASE_TAG}"
-              exit 1
-              ;;
-          esac
+          if [[ "${RELEASE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            EXPECTED_CRX_VERSION="${RELEASE_VERSION}"
+          elif [[ "${RELEASE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            EXPECTED_CRX_VERSION="${RELEASE_VERSION}.0"
+          else
+            echo "Unsupported release tag format for CRX version validation: ${RELEASE_TAG}"
+            exit 1
+          fi
 
           # CWS publishes can lag behind release publishing. Retry a few times before failing.
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=30
           for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
-            EFFECTIVE_URL="$(curl -fLsS --get "https://clients2.google.com/service/update2/crx" \
+            if ! EFFECTIVE_URL="$(curl -fLsS --get "https://clients2.google.com/service/update2/crx" \
               --data-urlencode "response=redirect" \
               --data-urlencode "prodversion=${PROD_VERSION}" \
               --data-urlencode "acceptformat=crx2,crx3" \
               --data-urlencode "x=id=${EXTENSION_ID}&uc" \
               -o New-Tab.crx \
-              -w '%{url_effective}')"
+              -w '%{url_effective}')"; then
+              if [ "${attempt}" -lt "${MAX_ATTEMPTS}" ]; then
+                echo "CRX download failed; retrying in ${SLEEP_SECONDS}s (${attempt}/${MAX_ATTEMPTS})"
+                sleep "${SLEEP_SECONDS}"
+                continue
+              else
+                echo "CRX download failed after ${MAX_ATTEMPTS} attempts"
+                exit 1
+              fi
+            fi
 
             if [ ! -s New-Tab.crx ]; then
               echo "Downloaded CRX is empty"
               exit 1
             fi
 
-            CRX_VERSION="$(basename "${EFFECTIVE_URL}" | sed -n 's/.*_\([0-9_][0-9_]*\)\.crx$/\1/p' | tr '_' '.')"
-            if [ -z "${CRX_VERSION}" ]; then
-              CRX_VERSION="$(basename "${EFFECTIVE_URL}" | sed -n 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)\.crx$/\1/p')"
+            CRX_FILE_NAME="$(basename "${EFFECTIVE_URL%%\?*}")"
+            CRX_VERSION=""
+            if [[ "${CRX_FILE_NAME}" =~ _([0-9]+(_[0-9]+){3})\.crx$ ]]; then
+              CRX_VERSION="${BASH_REMATCH[1]//_/.}"
+            elif [[ "${CRX_FILE_NAME}" =~ ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\.crx$ ]]; then
+              CRX_VERSION="${BASH_REMATCH[1]}"
             fi
             if [ -z "${CRX_VERSION}" ]; then
               echo "Failed to parse CRX version from final URL: ${EFFECTIVE_URL}"
