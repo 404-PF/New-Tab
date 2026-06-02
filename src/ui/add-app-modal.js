@@ -107,7 +107,7 @@ function resetPreviewIcon() {
   }
 }
 
-function setPreviewIcon(faviconUrl, appName) {
+function setAddAppPreviewIcon(faviconUrl, appName) {
   const { previewIcon } = getAddAppElements();
   if (!previewIcon) {
     return;
@@ -366,7 +366,7 @@ function updatePreview() {
     previewUrl.textContent = fullUrl;
   }
 
-  setPreviewIcon(getFaviconUrl(url), appName);
+  setAddAppPreviewIcon(getFaviconUrl(url), appName);
 
   if (previewSection) {
     previewSection.classList.add('visible');
