@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   package:
     runs-on: ubuntu-latest
@@ -22,51 +26,75 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Run tests
         run: npm test
 
-      - name: Build CRX package
-        env:
-          CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
+      # The extension is entirely static (vanilla HTML/CSS/JS with no
+      # transpilation step).  If a build step is ever added, replace the
+      # git archive below with the build output directory so the workflow
+      # packages the compiled result rather than the raw source.
+      - name: Export clean build directory
         run: |
-          # Export only git-tracked files to a clean build directory
-          # (excludes node_modules/, .git/, and other untracked cruft)
           BUILD_DIR="/tmp/extension-build"
           mkdir -p "$BUILD_DIR"
           git archive --format=tar HEAD | tar x -C "$BUILD_DIR"
+          echo "BUILD_DIR=$BUILD_DIR" >> "$GITHUB_ENV"
 
+      - name: Strip development-only files
+        run: |
           cd "$BUILD_DIR"
-
-          # Remove development-only files not needed in the extension package
           rm -rf .github .husky .agents tests ISSUES screenshots
           rm -f .gitignore .nvmrc vitest.config.js eslint.config.js
           rm -f package.json package-lock.json
 
-          # Pack and sign the extension
+      - name: Build CRX package
+        env:
+          CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
+          ALLOW_EPHEMERAL_KEY: ${{ vars.ALLOW_EPHEMERAL_KEY }}
+        run: |
+          cd "$BUILD_DIR"
           if [ -n "$CRX_PRIVATE_KEY" ]; then
-            echo "Signing with private key from repository secret."
-            printf '%s\n' "$CRX_PRIVATE_KEY" > key.pem
+            # Write key to a temp file so it never lands in the workspace,
+            # and clean up with a trap even if the step fails mid-way.
+            KEY_FILE="$(mktemp)"
+            trap 'rm -f "$KEY_FILE"' EXIT
+            printf '%s\n' "$CRX_PRIVATE_KEY" > "$KEY_FILE"
             npx crx3 . \
               --crx "${{ github.workspace }}/new-tab.crx" \
               --zip "${{ github.workspace }}/new-tab.zip" \
-              --private-key key.pem
-            rm key.pem
-          else
-            echo "No CRX_PRIVATE_KEY secret found — generating an ephemeral key."
-            echo "The extension ID will change with every release."
-            echo ""
-            echo "To fix this:"
-            echo "  1. Run this workflow once and grab the generated key.pem"
-            echo "  2. Add it as a repository secret named CRX_PRIVATE_KEY"
-            echo ""
+              --private-key "$KEY_FILE"
+          elif [ "${ALLOW_EPHEMERAL_KEY:-false}" = "true" ]; then
+            echo "::warning::No CRX_PRIVATE_KEY secret — generating ephemeral key."
+            echo "::warning::The extension ID will change with every release."
+            echo "::warning::Set ALLOW_EPHEMERAL_KEY=false once CRX_PRIVATE_KEY is configured."
             npx crx3 . \
               --crx "${{ github.workspace }}/new-tab.crx" \
               --zip "${{ github.workspace }}/new-tab.zip"
+          else
+            echo "::error::CRX_PRIVATE_KEY secret is not set."
+            echo ""
+            echo "  To sign releases consistently, add the secret at:"
+            echo "    https://github.com/404-PF/New-Tab/settings/secrets/actions"
+            echo ""
+            echo "  To allow ephemeral (unsigned) builds, set the repository"
+            echo "  variable ALLOW_EPHEMERAL_KEY=true at the same URL."
+            exit 1
           fi
+
+      - name: Upload build artifacts (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-package
+          path: |
+            new-tab.crx
+            new-tab.zip
 
       - name: Upload Release Assets
         if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
         with:
           files: |
             new-tab.crx
