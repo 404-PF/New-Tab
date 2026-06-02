@@ -217,7 +217,7 @@ async function saveCustomApp(appData) {
     closeAddAppModal();
     return;
   }
-  if (!AppGridState.addApp(appToSave)) {
+  if (!window.AppGridState.addApp(appToSave)) {
     return;
   }
   if (window.renderCustomApps) {
