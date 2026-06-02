@@ -1,0 +1,40 @@
+name: Attach CRX To Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  attach-crx:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download CRX from Chrome Web Store
+        env:
+          EXTENSION_ID: bgjillpeijfmdopfbmoinfogfhaadina
+        run: |
+          set -euo pipefail
+
+          curl -fL --get "https://clients2.google.com/service/update2/crx" \
+            --data-urlencode "response=redirect" \
+            --data-urlencode "prodversion=130.0.6723.70" \
+            --data-urlencode "acceptformat=crx2,crx3" \
+            --data-urlencode "x=id=${EXTENSION_ID}&uc" \
+            -o New-Tab.crx
+
+          if [ ! -s New-Tab.crx ]; then
+            echo "Downloaded CRX is empty"
+            exit 1
+          fi
+
+      - name: Upload CRX to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: New-Tab.crx
+          fail_on_unmatched_files: true
+          overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
