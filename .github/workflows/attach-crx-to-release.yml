@@ -14,18 +14,54 @@ jobs:
       - name: Download CRX from Chrome Web Store
         env:
           EXTENSION_ID: bgjillpeijfmdopfbmoinfogfhaadina
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
 
+          # Use a high client version to avoid pinning this workflow to an aging Chrome build number.
+          PROD_VERSION="9999.0.0.0"
+
           curl -fL --get "https://clients2.google.com/service/update2/crx" \
             --data-urlencode "response=redirect" \
-            --data-urlencode "prodversion=130.0.6723.70" \
+            --data-urlencode "prodversion=${PROD_VERSION}" \
             --data-urlencode "acceptformat=crx2,crx3" \
             --data-urlencode "x=id=${EXTENSION_ID}&uc" \
+            -D crx-headers.txt \
             -o New-Tab.crx
 
           if [ ! -s New-Tab.crx ]; then
             echo "Downloaded CRX is empty"
+            exit 1
+          fi
+
+          LOCATION_URL="$(grep -i '^location:' crx-headers.txt | head -n1 | cut -d' ' -f2- | tr -d '\r')"
+          if [ -z "${LOCATION_URL}" ]; then
+            echo "Failed to read CRX redirect location"
+            exit 1
+          fi
+
+          CRX_VERSION="$(basename "${LOCATION_URL}" | sed -n 's/.*_\([0-9_][0-9_]*\)\.crx$/\1/p' | tr '_' '.')"
+          if [ -z "${CRX_VERSION}" ]; then
+            echo "Failed to parse CRX version from redirect URL: ${LOCATION_URL}"
+            exit 1
+          fi
+
+          RELEASE_VERSION="${RELEASE_TAG#v}"
+          case "${RELEASE_VERSION}" in
+            *.*.*.*)
+              EXPECTED_CRX_VERSION="${RELEASE_VERSION}"
+              ;;
+            *.*.*)
+              EXPECTED_CRX_VERSION="${RELEASE_VERSION}.0"
+              ;;
+            *)
+              echo "Unsupported release tag format for CRX version validation: ${RELEASE_TAG}"
+              exit 1
+              ;;
+          esac
+
+          if [ "${CRX_VERSION}" != "${EXPECTED_CRX_VERSION}" ]; then
+            echo "CRX version (${CRX_VERSION}) does not match release tag (${RELEASE_TAG} -> ${EXPECTED_CRX_VERSION})"
             exit 1
           fi
 
