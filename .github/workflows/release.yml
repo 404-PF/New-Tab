@@ -24,7 +24,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Lint
         run: npm run lint
@@ -69,8 +69,8 @@ jobs:
             # preferred because GitHub's Secrets UI can mangle the newlines
             # in a multi-line PEM value.  Encode with:
             #   base64 -w0 key.pem | clip   (or pbcopy / xclip)
-            if echo "$CRX_PRIVATE_KEY" | base64 --decode 2>/dev/null | head -1 | grep -q 'BEGIN.*PRIVATE KEY'; then
-              echo "$CRX_PRIVATE_KEY" | base64 --decode > "$KEY_FILE"
+            if printf '%s' "$CRX_PRIVATE_KEY" | base64 --decode 2>/dev/null | grep -qm1 'BEGIN.*PRIVATE KEY'; then
+              printf '%s' "$CRX_PRIVATE_KEY" | base64 --decode > "$KEY_FILE"
             else
               printf '%s\n' "$CRX_PRIVATE_KEY" > "$KEY_FILE"
             fi
