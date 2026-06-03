@@ -102,7 +102,7 @@ const testGlobals = {
   loadTodoEnabled: 'readonly',
   loadClockFormatSetting: 'readonly',
   loadDateFormatSetting: 'readonly',
-  getClosestSize: 'readonly',
+  getClosestSettingSize: 'readonly',
   applyBg: 'readonly',
   captureBackgroundSnapshot: 'readonly',
   hideBackgroundOverlay: 'readonly',

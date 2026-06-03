@@ -320,10 +320,10 @@ describe('Date format settings', () => {
 });
 
 describe('Utility functions', () => {
-  it('getClosestSize picks nearest option', () => {
-    expect(getClosestSize(85, [60, 80, 100])).toBe(80);
-    expect(getClosestSize(95, [60, 80, 100])).toBe(100);
-    expect(getClosestSize(50, [60, 80, 100])).toBe(60);
+  it('getClosestSettingSize picks nearest option', () => {
+    expect(getClosestSettingSize(85, [60, 80, 100])).toBe(80);
+    expect(getClosestSettingSize(95, [60, 80, 100])).toBe(100);
+    expect(getClosestSettingSize(50, [60, 80, 100])).toBe(60);
   });
 });
 

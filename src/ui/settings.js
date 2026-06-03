@@ -114,14 +114,14 @@ function safePause(videoEl) {
   if (!videoEl) return;
   try {
     videoEl.pause();
-  } catch (e) { void 0; }
+  } catch { void 0; }
 }
 
 function safeLoad(videoEl) {
   if (!videoEl) return;
   try {
     videoEl.load();
-  } catch (e) { void 0; }
+  } catch { void 0; }
 }
 
 function resetBackgroundVideo(videoEl, unloadSource) {
@@ -697,7 +697,7 @@ document.addEventListener('click', function (e) {
 // Clock style
 function loadClockStyle() {
   const size = parseInt(localStorage.getItem('clockSize') || '80', 10);
-  const normalizedSize = Number.isFinite(size) ? getClosestSize(size, CLOCK_SIZE_OPTIONS) : 80;
+  const normalizedSize = Number.isFinite(size) ? getClosestSettingSize(size, CLOCK_SIZE_OPTIONS) : 80;
   if (normalizedSize !== size) {
     localStorage.setItem('clockSize', normalizedSize);
   }
@@ -711,14 +711,14 @@ function loadClockStyle() {
 const CLOCK_SIZE_OPTIONS = [60, 80, 100];
 const DATE_SIZE_OPTIONS = [20, 24, 30];
 
-function getClosestSize(size, options) {
+function getClosestSettingSize(size, options) {
   return options.reduce((closest, option) => {
     return Math.abs(option - size) < Math.abs(closest - size) ? option : closest;
   }, options[0]);
 }
 
-function syncSizeButtons(groupName, size, options) {
-  const activeSize = getClosestSize(size, options);
+function syncSettingSizeButtons(groupName, size, options) {
+  const activeSize = getClosestSettingSize(size, options);
   const buttons = document.querySelectorAll(`[data-size-group="${groupName}"] .size-choice-button`);
   buttons.forEach((button) => {
     const buttonSize = parseInt(button.dataset.size, 10);
@@ -740,7 +740,7 @@ function applyClockStyle() {
   const clockFontPicker = document.getElementById('clock-font-picker');
   if (clockColorPicker && clockColorPicker.value !== style.color) clockColorPicker.value = style.color;
   if (clockFontPicker && clockFontPicker.value !== style.font) clockFontPicker.value = style.font;
-  syncSizeButtons('clock', parseInt(style.size, 10), CLOCK_SIZE_OPTIONS);
+  syncSettingSizeButtons('clock', parseInt(style.size, 10), CLOCK_SIZE_OPTIONS);
 }
 
 function loadClockFormatSetting() {
@@ -811,7 +811,7 @@ if (clockFormatPicker) {
 // Date style
 function loadDateStyle() {
   const size = parseInt(localStorage.getItem('dateSize') || '24', 10);
-  const normalizedSize = Number.isFinite(size) ? getClosestSize(size, DATE_SIZE_OPTIONS) : 24;
+  const normalizedSize = Number.isFinite(size) ? getClosestSettingSize(size, DATE_SIZE_OPTIONS) : 24;
   if (normalizedSize !== size) {
     localStorage.setItem('dateSize', normalizedSize);
   }
@@ -833,7 +833,7 @@ function applyDateStyle() {
   const dateFontPicker = document.getElementById('date-font-picker');
   if (dateColorPicker && dateColorPicker.value !== style.color) dateColorPicker.value = style.color;
   if (dateFontPicker && dateFontPicker.value !== style.font) dateFontPicker.value = style.font;
-  syncSizeButtons('date', parseInt(style.size, 10), DATE_SIZE_OPTIONS);
+  syncSettingSizeButtons('date', parseInt(style.size, 10), DATE_SIZE_OPTIONS);
 }
 
 function loadDateFormatSetting() {
