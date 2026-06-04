@@ -1,0 +1,129 @@
+name: Package Extension
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      # The extension is entirely static (vanilla HTML/CSS/JS with no
+      # transpilation step).  If a build step is ever added, replace the
+      # git archive below with the build output directory so the workflow
+      # packages the compiled result rather than the raw source.
+      - name: Export clean build directory
+        run: |
+          BUILD_DIR="/tmp/extension-build"
+          mkdir -p "$BUILD_DIR"
+          git archive --format=tar HEAD | tar x -C "$BUILD_DIR"
+          echo "BUILD_DIR=$BUILD_DIR" >> "$GITHUB_ENV"
+
+      - name: Strip development-only files
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${BUILD_DIR:?BUILD_DIR is not set or empty — aborting}"
+          cd "$BUILD_DIR"
+          rm -rf .github .husky .agents tests ISSUES screenshots
+          rm -f .gitignore .nvmrc vitest.config.js eslint.config.js
+          rm -f package.json package-lock.json
+
+      - name: Build CRX package
+        env:
+          CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
+          ALLOW_EPHEMERAL_KEY: ${{ vars.ALLOW_EPHEMERAL_KEY }}
+        run: |
+          CRX3="${{ github.workspace }}/node_modules/.bin/crx3"
+          cd "$BUILD_DIR"
+          if [ -n "$CRX_PRIVATE_KEY" ]; then
+            # Write key to a temp file so it never lands in the workspace,
+            # and clean up with a trap even if the step fails mid-way.
+            KEY_FILE="$(mktemp)"
+            trap 'rm -f "$KEY_FILE"' EXIT
+            # Support both base64-encoded and raw PEM secrets.  Base64 is
+            # preferred because GitHub's Secrets UI can mangle the newlines
+            # in a multi-line PEM value.  Encode with:
+            #   base64 -w0 key.pem | clip   (or pbcopy / xclip)
+            if printf '%s' "$CRX_PRIVATE_KEY" | base64 --decode 2>/dev/null | grep -qm1 'BEGIN.*PRIVATE KEY'; then
+              printf '%s' "$CRX_PRIVATE_KEY" | base64 --decode > "$KEY_FILE"
+            else
+              printf '%s\n' "$CRX_PRIVATE_KEY" > "$KEY_FILE"
+            fi
+            "$CRX3" . \
+              --crx "${{ github.workspace }}/new-tab.crx" \
+              --zip "${{ github.workspace }}/new-tab.zip" \
+              --private-key "$KEY_FILE"
+          elif [ "${ALLOW_EPHEMERAL_KEY:-false}" = "true" ]; then
+            echo "::warning::No CRX_PRIVATE_KEY secret — generating ephemeral key."
+            echo "::warning::The extension ID will change with every release."
+            echo "::warning::Set ALLOW_EPHEMERAL_KEY=false once CRX_PRIVATE_KEY is configured."
+            "$CRX3" . \
+              --crx "${{ github.workspace }}/new-tab.crx" \
+              --zip "${{ github.workspace }}/new-tab.zip"
+          else
+            echo "::error::CRX_PRIVATE_KEY secret is not set."
+            echo ""
+            echo "  To sign releases consistently, add the secret at:"
+            echo "    https://github.com/404-PF/New-Tab/settings/secrets/actions"
+            echo ""
+            echo "  To allow ephemeral (unsigned) builds, set the repository"
+            echo "  variable ALLOW_EPHEMERAL_KEY=true at the same URL."
+            exit 1
+          fi
+
+      - name: Verify built package
+        run: |
+          set -euo pipefail
+          for f in new-tab.crx new-tab.zip; do
+            if [ ! -f "${{ github.workspace }}/$f" ]; then
+              echo "::error::$f was not built — aborting"
+              exit 1
+            fi
+            size=$(stat -c%s "${{ github.workspace }}/$f")
+            if [ "$size" -eq 0 ]; then
+              echo "::error::$f is empty — aborting"
+              exit 1
+            fi
+            echo "  ✓ $f ($size bytes)"
+          done
+
+      - name: Upload build artifacts (always)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: extension-package
+          path: |
+            new-tab.crx
+            new-tab.zip
+
+      - name: Upload Release Assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          files: |
+            new-tab.crx
+            new-tab.zip
