@@ -10,6 +10,9 @@
   let customBackgroundLoadVersion = 0;
   let customBackgroundTransitionTimeout = null;
 
+  const VIDEO_THUMBNAIL_HIDE_DELAY_MS = 3000;
+  const IMAGE_THUMBNAIL_HIDE_DELAY_MS = 2500;
+
   // --- IndexedDB helpers ---
 
   function openDB() {
@@ -235,6 +238,7 @@
     delete videoEl.dataset.currentBg;
     delete videoEl.dataset.wasPlaying;
     delete videoEl.dataset.simpleModePaused;
+    delete videoEl.dataset.reducedMotionPaused;
     delete videoEl.dataset.crossfadeTriggered;
     delete videoEl.dataset.lastPauseTime;
 
@@ -480,6 +484,16 @@
               return;
             }
 
+            // When reduced motion is preferred, treat the looping video as
+            // non-essential motion: keep the static thumbnail visible and
+            // skip autoplay. The end state (a full-bleed background) is
+            // unchanged, only the path there is.
+            if (window.prefersReducedMotion && window.prefersReducedMotion()) {
+              videoEl.dataset.reducedMotionPaused = 'true';
+              if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
+              return;
+            }
+
             videoEl.play().catch(function () {});
             videoEl.classList.add('active', 'ready');
             if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
@@ -493,7 +507,7 @@
               thumbnailEl.classList.add('hidden');
               thumbnailEl.classList.remove('clearing');
               customBackgroundTransitionTimeout = null;
-            }, 3000);
+            }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS));
           }
 
           videoEl.oncanplaythrough = triggerCrossfade;
@@ -546,7 +560,7 @@
             if (now - lastPause < 2000) return;
             videoEl.dataset.lastPauseTime = now;
 
-            if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.readyState >= 3) {
+            if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
               videoEl.play().catch(function () {});
             }
           };
@@ -586,7 +600,7 @@
               thumbnailEl.classList.add('hidden');
               thumbnailEl.classList.remove('clearing');
               customBackgroundTransitionTimeout = null;
-            }, 2500);
+            }, crossfadeDelayMs(IMAGE_THUMBNAIL_HIDE_DELAY_MS));
           });
         };
         fullImg.onerror = function () {
@@ -701,6 +715,37 @@
       }
     });
   });
+
+  // --- Motion preference subscription ---
+  //
+  // Mirror the live `prefers-reduced-motion` toggle so a custom video
+  // background pauses/resumes without a page reload. Only acts when the
+  // active custom background is a video.
+  //
+  // References `window.loadBg`, `window.safePause`, `window.loadVideoAutoplay`,
+  // and `window.loadSimpleMode` at call time (not at module evaluation). This
+  // module loads before settings.js in production, so the references must be
+  // resolved lazily — the OS-level motion change can only fire after the
+  // user interacts with the page, by which time settings.js has loaded.
+  function syncCustomVideoToMotionPreference(reduced) {
+    if (!isCustomBackground(window.loadBg())) return;
+    const videoEl = document.getElementById('bg-video');
+    if (!videoEl || !videoEl.currentSrc || !videoEl.classList.contains('active')) return;
+    if (reduced) {
+      if (!videoEl.paused) window.safePause(videoEl);
+      videoEl.dataset.reducedMotionPaused = 'true';
+    } else {
+      const wasReducedPaused = videoEl.dataset.reducedMotionPaused === 'true';
+      delete videoEl.dataset.reducedMotionPaused;
+      if (wasReducedPaused && window.loadVideoAutoplay() && !document.hidden && (!window.loadSimpleMode || !window.loadSimpleMode()) && videoEl.readyState >= 3) {
+        videoEl.play().catch(function () {});
+      }
+    }
+  }
+
+  if (window.onReducedMotionChange) {
+    window.onReducedMotionChange(syncCustomVideoToMotionPreference);
+  }
 
   // --- Public API ---
 

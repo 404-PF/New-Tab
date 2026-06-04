@@ -342,6 +342,7 @@
 
     // Apply FLIP animation for reordering
     requestAnimationFrame(() => {
+      const reducedMotion = window.prefersReducedMotion && window.prefersReducedMotion();
       todoList.querySelectorAll('.todo-item').forEach(item => {
         const id = item.dataset.id;
         if (existingItems[id]) {
@@ -352,15 +353,20 @@
 
           // If position changed, apply flip animation
           if (deltaY !== 0 || deltaX !== 0) {
-            // Invert: move item back to original position
-            item.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-            item.style.transition = 'none';
-
-            // Play: animate to new position
-            requestAnimationFrame(() => {
-              item.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            if (reducedMotion) {
+              item.style.transition = 'none';
               item.style.transform = '';
-            });
+            } else {
+              // Invert: move item back to original position
+              item.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+              item.style.transition = 'none';
+
+              // Play: animate to new position
+              requestAnimationFrame(() => {
+                item.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                item.style.transform = '';
+              });
+            }
           }
         }
       });
@@ -1077,15 +1083,23 @@ function updateDueDateDisplay(dueDateElement, dueDate) {
 // Show visual feedback for date update
 function showDateUpdateFeedback(dueDateElement, oldDate, newDate) {
   // Add a brief highlight animation
-  dueDateElement.style.transition = 'background-color 0.3s ease, transform 0.2s ease';
-  dueDateElement.style.backgroundColor = 'rgba(33, 150, 243, 0.3)';
-  dueDateElement.style.transform = 'scale(1.05)';
-  
-  setTimeout(() => {
-    dueDateElement.style.backgroundColor = '';
-    dueDateElement.style.transform = '';
-  }, 300);
-  
+  if (window.prefersReducedMotion && window.prefersReducedMotion()) {
+    dueDateElement.style.transition = 'none';
+    dueDateElement.style.backgroundColor = 'rgba(33, 150, 243, 0.3)';
+    setTimeout(() => {
+      dueDateElement.style.backgroundColor = '';
+    }, 150);
+  } else {
+    dueDateElement.style.transition = 'background-color 0.3s ease, transform 0.2s ease';
+    dueDateElement.style.backgroundColor = 'rgba(33, 150, 243, 0.3)';
+    dueDateElement.style.transform = 'scale(1.05)';
+
+    setTimeout(() => {
+      dueDateElement.style.backgroundColor = '';
+      dueDateElement.style.transform = '';
+    }, 300);
+  }
+
   // Show a toast notification
   const message = newDate
     ? `Due date updated to ${formatDate(newDate)}`
@@ -1798,6 +1812,7 @@ try {
   window.handleDragEnd = handleDragEnd;
   window.handleDragOver = handleDragOver;
   window.handleDrop = handleDrop;
+  window.showDateUpdateFeedback = showDateUpdateFeedback;
 } catch (e) {
   // If window isn't writable in some test harnesses, ignore silently
 }

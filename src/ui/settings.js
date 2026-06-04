@@ -146,6 +146,7 @@ function resetBackgroundVideo(videoEl, unloadSource) {
   delete videoEl.dataset.currentBg;
   delete videoEl.dataset.wasPlaying;
   delete videoEl.dataset.simpleModePaused;
+  delete videoEl.dataset.reducedMotionPaused;
   delete videoEl.dataset.crossfadeTriggered;
   delete videoEl.dataset.lastPauseTime;
 
@@ -307,7 +308,7 @@ function hideBackgroundOverlay() {
       overlayEl.src = '';
     }
     overlayClearTimeout = null;
-  }, BACKGROUND_TRANSITION_DURATION_MS);
+  }, crossfadeDelayMs(BACKGROUND_TRANSITION_DURATION_MS));
 }
 
 function stopBackground() {
@@ -411,7 +412,7 @@ function applyBg() {
         thumbnailEl.classList.add('hidden');
         thumbnailEl.classList.remove('clearing');
         backgroundTransitionTimeout = null;
-      }, IMAGE_THUMBNAIL_HIDE_DELAY_MS);
+      }, crossfadeDelayMs(IMAGE_THUMBNAIL_HIDE_DELAY_MS));
 
       if (window._interactiveBackground) {
         window._interactiveBackground.apply(bgData.id);
@@ -506,36 +507,46 @@ function applyBg() {
         }
 
         videoEl.dataset.crossfadeTriggered = 'true';
-        
+
         // Remove loading class - video is now ready to show
         videoEl.classList.remove('loading');
-        
+
         // When autoplay is disabled, keep thumbnail visible and video hidden
         if (!loadVideoAutoplay()) {
           hideBackgroundOverlay();
           return;
         }
-        
+
         // When simple mode is active, mark paused and keep video hidden
         if (window.loadSimpleMode && window.loadSimpleMode()) {
           videoEl.dataset.simpleModePaused = 'true';
           hideBackgroundOverlay();
           return;
         }
-        
+
+        // When reduced motion is preferred, treat the looping video as
+        // non-essential motion: keep the static thumbnail visible and skip
+        // the crossfade + autoplay. The user still gets the same end state
+        // (a full-bleed background) without any movement.
+        if (window.prefersReducedMotion && window.prefersReducedMotion()) {
+          videoEl.dataset.reducedMotionPaused = 'true';
+          hideBackgroundOverlay();
+          return;
+        }
+
         // Start video playback immediately
         startVideoPlayback();
-        
+
         // Add active class to trigger video fade-in (2s ease-in-out)
         videoEl.classList.add('active');
         videoEl.classList.add('ready');
         hideBackgroundOverlay();
-        
+
         // Start thumbnail blur-to-clear animation at the same time as video fade-in
         // This creates a smooth blur-to-clear effect while video fades in
         // The thumbnail will fade out (opacity 0) while clearing blur (blur 0px)
         thumbnailEl.classList.add('clearing');
-        
+
         // After crossfade completes, fully hide the thumbnail
         // Use 3000ms to ensure video is fully visible before hiding thumbnail
         // This matches the 2.5s opacity transition in CSS
@@ -547,7 +558,7 @@ function applyBg() {
           thumbnailEl.classList.add('hidden');
           thumbnailEl.classList.remove('clearing');
           backgroundTransitionTimeout = null;
-        }, VIDEO_THUMBNAIL_HIDE_DELAY_MS); // Match CSS opacity transition duration
+        }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS)); // Match CSS opacity transition duration
       };
       
       // Video can play through - trigger crossfade
@@ -627,7 +638,7 @@ function applyBg() {
         if (now - lastPause < 2000) return;
         videoEl.dataset.lastPauseTime = now;
 
-        if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.readyState >= 3) {
+        if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
           videoEl.play().catch(() => {});
         }
       };
@@ -673,7 +684,7 @@ function applyBg() {
         thumbnailEl.classList.add('hidden');
         thumbnailEl.classList.remove('clearing');
         backgroundTransitionTimeout = null;
-      }, IMAGE_THUMBNAIL_HIDE_DELAY_MS); // Match CSS clearing transition duration
+      }, crossfadeDelayMs(IMAGE_THUMBNAIL_HIDE_DELAY_MS)); // Match CSS clearing transition duration
     });
   };
   fullImg.onerror = function() {
@@ -987,10 +998,15 @@ document.addEventListener('change', function (e) {
             setTimeout(function () {
               thumbnailEl.classList.add('hidden');
               thumbnailEl.classList.remove('clearing');
-            }, VIDEO_THUMBNAIL_HIDE_DELAY_MS);
+            }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS));
           }
-          if (!window.loadSimpleMode || !window.loadSimpleMode()) {
-            videoEl.play().catch(function () {});
+          if (window.prefersReducedMotion && window.prefersReducedMotion()) {
+            videoEl.dataset.reducedMotionPaused = 'true';
+          } else {
+            delete videoEl.dataset.reducedMotionPaused;
+            if (!window.loadSimpleMode || !window.loadSimpleMode()) {
+              videoEl.play().catch(function () {});
+            }
           }
         } else {
           // Video not ready yet — reset crossfade guard and let the
@@ -1337,6 +1353,27 @@ window.addEventListener('languageChanged', function() {
   renderLanguageOptions();
 });
 
+// When the OS-level motion preference changes while a video background is
+// active, pause or resume the video accordingly. This is what makes the
+// `prefers-reduced-motion` setting respond to the live system toggle instead
+// of only being read at page load. Custom video backgrounds are handled by
+// their own subscriber in custom-backgrounds.js to avoid double play() calls.
+function syncVideoToMotionPreference(reduced) {
+  const videoEl = document.getElementById('bg-video');
+  if (!videoEl || !videoEl.currentSrc || !videoEl.classList.contains('active')) return;
+  if (window._customBackgrounds && typeof window._customBackgrounds.isCustom === 'function' && window._customBackgrounds.isCustom(loadBg())) return;
+  if (reduced) {
+    if (!videoEl.paused) safePause(videoEl);
+    videoEl.dataset.reducedMotionPaused = 'true';
+  } else {
+    const wasReducedPaused = videoEl.dataset.reducedMotionPaused === 'true';
+    delete videoEl.dataset.reducedMotionPaused;
+    if (wasReducedPaused && loadVideoAutoplay() && !document.hidden && (!window.loadSimpleMode || !window.loadSimpleMode()) && videoEl.readyState >= 3) {
+      videoEl.play().catch(() => {});
+    }
+  }
+}
+
 function initSettings() {
   // Apply initial settings
   if (!initialBackgroundApplied) {
@@ -1361,6 +1398,12 @@ function initSettings() {
   // Initialize modern color pickers
   if (window.initModernColorPickers) {
     window.initModernColorPickers();
+  }
+
+  // Subscribe to OS-level motion-preference changes so an active background
+  // video pauses/resumes without needing a page reload.
+  if (window.onReducedMotionChange) {
+    window.onReducedMotionChange(syncVideoToMotionPreference);
   }
   
   // Initialize modern font pickers

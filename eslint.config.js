@@ -70,6 +70,7 @@ const srcGlobals = {
   showToast: 'readonly',
   safePause: 'readonly',
   safeLoad: 'readonly',
+  crossfadeDelayMs: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };

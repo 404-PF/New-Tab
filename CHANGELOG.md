@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.4.6 (unreleased)
+
+### Accessibility
+- A11y(motion): respect `prefers-reduced-motion` across the new tab UI (#196)
+  - New `src/core/motion.js` helper exposes `prefersReducedMotion()` /
+    `onReducedMotionChange()` and toggles a `reduce-motion` class on
+    `<html>` so future CSS can opt out with simple selectors.
+  - JS-driven animation paths (motto fade, todo FLIP reorder, todo date
+    highlight, background crossfade timers) now resolve instantly when
+    the user prefers reduced motion.
+  - Autoplaying background video is paused; the static thumbnail
+    remains visible.
+  - The existing CSS `*` override gains `scroll-behavior: auto` for
+    completeness, and the targeted override adds defensive rules for
+    `.app-icon.drag-drop-landed` and `.note-item`.
+
 ## v0.4.5 (2026-06-04)
 
 ### Features

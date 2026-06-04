@@ -156,11 +156,16 @@ function displayDailyMotto() {
     if (mottoText) {
       mottoText.textContent = currentMottos[index];
       // Add fade-in effect
-      mottoText.style.opacity = '0';
-      setTimeout(() => {
-        mottoText.style.transition = 'opacity 0.5s';
+      if (window.prefersReducedMotion && window.prefersReducedMotion()) {
+        mottoText.style.transition = 'none';
         mottoText.style.opacity = '1';
-      }, 50);
+      } else {
+        mottoText.style.opacity = '0';
+        setTimeout(() => {
+          mottoText.style.transition = 'opacity 0.5s';
+          mottoText.style.opacity = '1';
+        }, 50);
+      }
     }
   } catch (e) {
     console.error('Error displaying motto:', e);
@@ -182,12 +187,18 @@ function setupRefreshMotto() {
         const randomIndex = Math.floor(Math.random() * currentMottos.length);
         mottoText.textContent = currentMottos[randomIndex];
         // Add refresh animation
-        mottoText.style.opacity = '0';
-        setTimeout(() => {
-          mottoText.style.transition = 'opacity 0.3s ease';
+        if (window.prefersReducedMotion && window.prefersReducedMotion()) {
+          mottoText.style.transition = 'none';
           mottoText.style.opacity = '1';
           checkFooterOverlap();
-        }, 50);
+        } else {
+          mottoText.style.opacity = '0';
+          setTimeout(() => {
+            mottoText.style.transition = 'opacity 0.3s ease';
+            mottoText.style.opacity = '1';
+            checkFooterOverlap();
+          }, 50);
+        }
       }
     });
   }

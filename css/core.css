@@ -261,6 +261,14 @@
     animation: none !important;
     opacity: 1 !important;
   }
+  /* Defensive: JS-added bounce / stagger should resolve to the final state
+     even if the global * rule is ever loosened. */
+  .app-icon.drag-drop-landed,
+  .note-item {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
 }
 
 /* Ensure video doesn't interfere with interactions */
