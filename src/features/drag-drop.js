@@ -422,8 +422,8 @@
         return;
       }
       const folderId = target.id;
-      if (window.AppFolders && AppGridState.getFolders().some(f => f.id === folderId)) {
-        AppGridState.moveAppToFolder(folderId, sourceId);
+      if (window.AppFolders && window.AppGridState.getFolders().some(f => f.id === folderId)) {
+        window.AppGridState.moveAppToFolder(folderId, sourceId);
         if (typeof window.renderAllApps === 'function') {
           window.renderAllApps();
         }
@@ -438,12 +438,12 @@
 
     if (toIdx === -1 && target) {
       // fallback when we dropped directly on another icon
-      const order = AppGridState.getOrder();
+      const order = window.AppGridState.getOrder();
       if (order) toIdx = order.indexOf(target.id);
     }
 
     // Reorder via the shared state helper and refresh
-    if (!AppGridState.reorder(sourceId, toIdx)) {
+    if (!window.AppGridState.reorder(sourceId, toIdx)) {
       return;
     }
     if (typeof window.renderAllApps === 'function') {

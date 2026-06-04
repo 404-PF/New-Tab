@@ -1,5 +1,7 @@
 // src/features/context-menu.js - Right-click context menu for custom apps
 
+(function () {
+  'use strict';
 
 let contextTargetId = null;
 let contextTargetFolderId = null;
@@ -35,7 +37,7 @@ function createFallbackIconSvg() {
   return svg;
 }
 
-function setPreviewIcon(previewIcon, iconUrl) {
+function setContextMenuPreviewIcon(previewIcon, iconUrl) {
   if (!previewIcon) return;
 
   previewIcon.textContent = '';
@@ -242,10 +244,10 @@ document.addEventListener('click', function (e) {
 document.getElementById('rename-app').addEventListener('click', function () {
   if (contextMenuTrigger !== 'custom-app') return;
   if (!contextTargetId) return;
-  const apps = AppGridState.getCustomApps();
+  const apps = window.AppGridState.getCustomApps();
   const currentApp = apps.find(app => app.id === contextTargetId);
   if (!currentApp) return;
-  
+
   // Store the app id for the modal handler
   window.renameAppId = contextTargetId;
   
@@ -271,7 +273,7 @@ document.getElementById('remove-from-folder').addEventListener('click', function
   if (!contextTargetId) return;
   const folderId = contextTargetFolderId;
   if (folderId) {
-    AppGridState.removeAppFromFolder(folderId, contextTargetId);
+    window.AppGridState.removeAppFromFolder(folderId, contextTargetId);
     if (window.AppFolders) window.AppFolders.renderFolderAppsInPopup();
     if (typeof window.renderAllApps === 'function') window.renderAllApps();
   }
@@ -349,7 +351,7 @@ function initRenameModalHandlers() {
   renameConfirm.addEventListener('click', function() {
     const newName = renameInput.value.trim();
     if (newName && window.renameAppId) {
-      AppGridState.renameApp(window.renameAppId, newName);
+      window.AppGridState.renameApp(window.renameAppId, newName);
       if (window.renderCustomApps) window.renderCustomApps();
     }
     renameModal.classList.remove('modal-open');
@@ -379,10 +381,10 @@ document.getElementById('change-thumbnail').addEventListener('click', function (
   if (contextMenuTrigger !== 'custom-app') return;
   if (!contextTargetId) return;
   // Find by persistent id
-  const apps = AppGridState.getCustomApps();
+  const apps = window.AppGridState.getCustomApps();
   const currentApp = apps.find(app => app.id === contextTargetId);
   if (!currentApp) return;
-  
+
   // Store the app id for the modal handler
   window.thumbnailAppId = contextTargetId;
   
@@ -392,7 +394,7 @@ document.getElementById('change-thumbnail').addEventListener('click', function (
   // Update the preview
   const previewIcon = document.getElementById('thumbnail-preview-icon');
   const previewName = document.getElementById('thumbnail-preview-name');
-  setPreviewIcon(previewIcon, currentApp.icon);
+  setContextMenuPreviewIcon(previewIcon, currentApp.icon);
   previewName.textContent = currentApp.name;
   
   // Show the thumbnail modal
@@ -434,7 +436,7 @@ function initThumbnailModalHandlers() {
   thumbnailInput.addEventListener('input', function() {
     const iconUrl = this.value.trim();
     const previewIcon = document.getElementById('thumbnail-preview-icon');
-    setPreviewIcon(previewIcon, iconUrl);
+    setContextMenuPreviewIcon(previewIcon, iconUrl);
   });
   
   // Close modal on confirm
@@ -442,7 +444,7 @@ function initThumbnailModalHandlers() {
     const newIcon = thumbnailInput.value.trim();
     if (newIcon && window.thumbnailAppId) {
       try {
-        AppGridState.updateThumbnail(window.thumbnailAppId, newIcon);
+        window.AppGridState.updateThumbnail(window.thumbnailAppId, newIcon);
         if (window.renderCustomApps) window.renderCustomApps();
       } catch (e) {
         console.error('Failed to update custom app thumbnail:', e);
@@ -475,17 +477,17 @@ document.getElementById('delete-app').addEventListener('click', function () {
   if (contextMenuTrigger !== 'custom-app') return;
   if (!contextTargetId) return;
   // Find by persistent id
-  const apps = AppGridState.getCustomApps();
+  const apps = window.AppGridState.getCustomApps();
   const currentApp = apps.find(app => app.id === contextTargetId);
   if (!currentApp) return;
-  
+
   // Store the app id for the modal handler
   window.deleteAppId = contextTargetId;
   
   // Update the delete preview
   const previewIcon = document.getElementById('delete-preview-icon');
   const previewName = document.getElementById('delete-preview-name');
-  setPreviewIcon(previewIcon, currentApp.icon);
+  setContextMenuPreviewIcon(previewIcon, currentApp.icon);
   previewName.textContent = currentApp.name;
   
   // Show the delete modal
@@ -519,7 +521,7 @@ function initDeleteModalHandlers() {
   // Delete on confirm
   deleteConfirm.addEventListener('click', function() {
     if (window.deleteAppId) {
-      AppGridState.deleteApp(window.deleteAppId);
+      window.AppGridState.deleteApp(window.deleteAppId);
       if (window.renderCustomApps) window.renderCustomApps();
     }
     deleteModal.classList.remove('modal-open');
@@ -578,3 +580,5 @@ runContextMenuOnDomReady(() => {
 
   initContextMenu();
 });
+
+})();

@@ -102,7 +102,7 @@ const testGlobals = {
   loadTodoEnabled: 'readonly',
   loadClockFormatSetting: 'readonly',
   loadDateFormatSetting: 'readonly',
-  getClosestSize: 'readonly',
+  getClosestSettingSize: 'readonly',
   applyBg: 'readonly',
   captureBackgroundSnapshot: 'readonly',
   hideBackgroundOverlay: 'readonly',
@@ -190,6 +190,35 @@ module.exports = [
     rules: {
       ...commonRules,
       'no-redeclare': 'off',
+    },
+  },
+  // Files wrapped in strict-mode IIFEs must reference globals via window.*
+  // to avoid ReferenceErrors from bare identifiers. This list includes all
+  // IIFE-wrapped source files: add-app-modal, context-menu, app-manager,
+  // app-folders, drag-drop, and utils.
+  {
+    files: [
+      'src/ui/add-app-modal.js',
+      'src/features/context-menu.js',
+      'src/ui/app-manager.js',
+      'src/features/app-folders.js',
+      'src/features/drag-drop.js',
+      'src/core/utils.js'
+    ],
+    languageOptions: {
+      sourceType: 'script',
+      globals: srcGlobals,
+    },
+    rules: {
+      ...commonRules,
+      'no-redeclare': 'off',
+      'no-restricted-globals': ['error', {
+        name: 'AppGridState',
+        message: 'Use window.AppGridState instead to avoid ReferenceErrors in strict-mode IIFEs.',
+      }, {
+        name: 'escapeHtml',
+        message: 'Capture as `const escapeHtml = window.escapeHtml;` at the top of the IIFE to avoid ReferenceErrors.',
+      }],
     },
   },
   {

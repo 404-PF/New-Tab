@@ -1,13 +1,16 @@
 // src/ui/app-manager.js - App grid management, drag and drop
 
+(function () {
+  'use strict';
+
 // Helper functions
 const escapeHtml = window.escapeHtml;
-const getAppOrder = () => AppGridState.getOrder();
-const saveAppOrder = order => AppGridState.saveOrder(order);
+const getAppOrder = () => window.AppGridState.getOrder();
+const saveAppOrder = order => window.AppGridState.saveOrder(order);
 
 // Load custom apps from localStorage
 function loadCustomApps() {
-  return AppGridState.getCustomApps();
+  return window.AppGridState.getCustomApps();
 }
 
 // Default apps
@@ -45,7 +48,7 @@ const addApp = document.getElementById('new-app');
     seenIds.add(app.id);
     return true;
   });
-  const folders = AppGridState.getFolders();
+  const folders = window.AppGridState.getFolders();
   const folderIds = new Set(folders.map(f => f.id));
   const validIds = new Set([...dedupedApps.map(app => app.id), ...folderIds]);
   const totalExpectedLength = dedupedApps.length + folders.length;
@@ -178,14 +181,14 @@ window.addEventListener('themeChanged', applyOpenNewTabSetting);
 // Load and apply icon size
 const ICON_SIZE_OPTIONS = [48, 60, 72];
 
-function getClosestSize(size, options) {
+function getClosestIconSize(size, options) {
   return options.reduce((closest, option) => {
     return Math.abs(option - size) < Math.abs(closest - size) ? option : closest;
   }, options[0]);
 }
 
-function syncSizeButtons(groupName, size, options) {
-  const activeSize = getClosestSize(size, options);
+function syncIconSizeButtons(groupName, size, options) {
+  const activeSize = getClosestIconSize(size, options);
   const buttons = document.querySelectorAll(`[data-size-group="${groupName}"] .size-choice-button`);
   buttons.forEach((button) => {
     const buttonSize = parseInt(button.dataset.size, 10);
@@ -197,7 +200,7 @@ function syncSizeButtons(groupName, size, options) {
 
 function loadIconSize() {
   const size = parseInt(localStorage.getItem('iconSize') || '60', 10);
-  const normalizedSize = Number.isFinite(size) ? getClosestSize(size, ICON_SIZE_OPTIONS) : 60;
+  const normalizedSize = Number.isFinite(size) ? getClosestIconSize(size, ICON_SIZE_OPTIONS) : 60;
   if (normalizedSize !== size) {
     localStorage.setItem('iconSize', normalizedSize);
   }
@@ -207,7 +210,7 @@ function applyIconSize() {
   const size = loadIconSize();
   document.documentElement.style.setProperty('--app-icon-size', size + 'px');
   applyCurvature();
-  syncSizeButtons('icon', size, ICON_SIZE_OPTIONS);
+  syncIconSizeButtons('icon', size, ICON_SIZE_OPTIONS);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -269,9 +272,15 @@ curvatureRadios.forEach((radio) => {
 });
 applyCurvature();
 
-
-
-
+// Export public helpers so other modules can call them via window.*.
+// Currently only used internally, but exposed defensively in case
+// future code references them cross-module.
+window.loadOpenNewTabSetting = loadOpenNewTabSetting;
+window.applyOpenNewTabSetting = applyOpenNewTabSetting;
+window.loadCurvature = loadCurvature;
+window.applyCurvature = applyCurvature;
+window.loadIconSize = loadIconSize;
+window.applyIconSize = applyIconSize;
 
 // Attach settings app click handler
 function attachSettingsAppHandler() {
@@ -317,3 +326,5 @@ function attachSettingsAppHandler() {
 
 // Initial attachment
 attachSettingsAppHandler();
+
+})();

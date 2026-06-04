@@ -1,5 +1,8 @@
 // src/ui/add-app-modal.js - Add app modal helpers and behavior
 
+(function () {
+  'use strict';
+
 window.defaultAppsList = [
   {
     name: 'Google',
@@ -107,7 +110,7 @@ function resetPreviewIcon() {
   }
 }
 
-function setPreviewIcon(faviconUrl, appName) {
+function setAddAppPreviewIcon(faviconUrl, appName) {
   const { previewIcon } = getAddAppElements();
   if (!previewIcon) {
     return;
@@ -214,7 +217,7 @@ async function saveCustomApp(appData) {
     closeAddAppModal();
     return;
   }
-  if (!AppGridState.addApp(appToSave)) {
+  if (!window.AppGridState.addApp(appToSave)) {
     return;
   }
   if (window.renderCustomApps) {
@@ -366,7 +369,7 @@ function updatePreview() {
     previewUrl.textContent = fullUrl;
   }
 
-  setPreviewIcon(getFaviconUrl(url), appName);
+  setAddAppPreviewIcon(getFaviconUrl(url), appName);
 
   if (previewSection) {
     previewSection.classList.add('visible');
@@ -503,3 +506,5 @@ window.closeAddAppModal = closeAddAppModal;
 window.updateAddAppPreview = updatePreview;
 window.openAddAppModal = openAddAppModal;
 window.resetAddAppModalState = resetAddAppModalState;
+
+})();

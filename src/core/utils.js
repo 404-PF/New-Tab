@@ -267,7 +267,7 @@
     // Cache icons for existing apps
     async cacheExistingAppIcons() {
       try {
-        const apps = AppGridState.getCustomApps();
+        const apps = window.AppGridState.getCustomApps();
         const appSnapshotsById = new Map(
           apps.map((app) => [app.id, {
             url: app.url,
@@ -295,7 +295,7 @@
             .map((app) => [app.id, app.cachedIcon])
         );
 
-        AppGridState.updateCustomApps((latestApps) => {
+        window.AppGridState.updateCustomApps((latestApps) => {
           return latestApps.map((app) => {
             const cachedIcon = cachedIconsById.get(app.id);
             const snapshot = appSnapshotsById.get(app.id);

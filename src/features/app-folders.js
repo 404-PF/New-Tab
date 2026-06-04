@@ -6,7 +6,7 @@
   const escapeHtml = window.escapeHtml;
 
   function getFolders() {
-    return AppGridState.getFolders();
+    return window.AppGridState.getFolders();
   }
 
   function getFolder(id) {
@@ -15,7 +15,7 @@
 
   function getFolderAppData(folder) {
     if (!folder || !folder.apps) return [];
-    const customApps = AppGridState.getCustomApps();
+    const customApps = window.AppGridState.getCustomApps();
     const defaultApps = window.defaultApps || [];
     const allApps = [...defaultApps, ...customApps];
     const appMap = Object.fromEntries(allApps.map(a => [a.id, a]));
@@ -150,7 +150,7 @@
 
     const newName = prompt(window.i18n ? window.i18n.t('renameFolderPrompt') : 'Enter new folder name:', folder.name);
     if (newName && newName.trim()) {
-      AppGridState.renameFolder(folderId, newName.trim());
+      window.AppGridState.renameFolder(folderId, newName.trim());
       refreshFolderUI(folderId);
     }
   }
@@ -186,7 +186,7 @@
     const name = prompt(window.i18n ? window.i18n.t('createFolderPrompt') : 'Enter folder name:', window.i18n ? window.i18n.t('newFolder') : 'New Folder');
     if (!name || !name.trim()) return;
 
-    const folder = AppGridState.createFolder(name.trim(), []);
+    const folder = window.AppGridState.createFolder(name.trim(), []);
     if (folder) {
       addFolderIconToGrid(folder);
     }
@@ -206,7 +206,7 @@
     const msg = window.i18n ? window.i18n.t('deleteFolderConfirm', { name: folder.name }) : 'Delete folder "' + folder.name + '"? Apps inside will be moved back to the grid.';
     if (confirm(msg)) {
       if (currentFolderId === folderId) closeFolderPopup();
-      AppGridState.deleteFolder(folderId);
+      window.AppGridState.deleteFolder(folderId);
       if (typeof window.renderAllApps === 'function') {
         window.renderAllApps();
       }
@@ -235,7 +235,7 @@
       btn.textContent = f.name;
       btn.addEventListener('click', function () {
         if (moveToFolderAppId) {
-          AppGridState.moveAppToFolder(f.id, moveToFolderAppId);
+          window.AppGridState.moveAppToFolder(f.id, moveToFolderAppId);
           removeAppIconFromGrid(moveToFolderAppId);
           updateFolderIconInGrid(getFolder(f.id));
         }
@@ -346,7 +346,7 @@
         const toIdx = folder.apps.indexOf(targetId);
         if (toIdx === -1) return;
 
-        AppGridState.reorderFolderApps(currentFolderId, dragSrcId, toIdx);
+        window.AppGridState.reorderFolderApps(currentFolderId, dragSrcId, toIdx);
         renderFolderAppsInPopup();
       });
 
