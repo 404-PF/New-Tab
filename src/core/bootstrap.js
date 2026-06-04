@@ -9,10 +9,10 @@
     'src/core/app-grid-storage.js',
     'src/core/main.js',
     'src/core/app-grid-state.js',
-    // app-manager.js must load before add-app-modal.js, context-menu.js,
-    // and app-folders.js — those scripts reference window globals
-    // (window.renderAllApps, window.defaultApps, etc.) that app-manager.js
-    // sets up during its IIFE execution.
+    // app-manager.js must execute before add-app-modal.js, context-menu.js,
+    // and app-folders.js. This ordering currently relies on script.async = false
+    // in loadScript(), which preserves insertion/execution order even though
+    // Promise.all starts all downloads in parallel.
     'src/ui/app-manager.js',
     'src/features/drag-drop.js',
     'src/ui/add-app-modal.js',
@@ -52,9 +52,9 @@
 
   const ready = window.__storageBridgeReady || Promise.resolve();
   ready.then(() => {
-    // Kick off all script downloads in parallel (async=false ensures execution
-    // order is preserved), wrapping each in try-catch so one failure doesn't
-    // block subsequent scripts from loading.
+    // Kick off all script downloads in parallel. Execution order is preserved
+    // because loadScript() sets script.async = false; changing that would break
+    // ordering assumptions in scriptSources.
     return Promise.all(scriptSources.map(src =>
       loadScript(src).catch(e => {
         console.error('Failed to load script:', src, e);

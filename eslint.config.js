@@ -195,7 +195,14 @@ module.exports = [
   // Files wrapped in strict-mode IIFEs must reference globals via window.*
   // to avoid ReferenceErrors from bare identifiers.
   {
-    files: ['src/ui/add-app-modal.js', 'src/features/context-menu.js', 'src/ui/app-manager.js'],
+    files: [
+      'src/ui/add-app-modal.js',
+      'src/features/context-menu.js',
+      'src/ui/app-manager.js',
+      'src/features/app-folders.js',
+      'src/features/drag-drop.js',
+      'src/core/utils.js'
+    ],
     languageOptions: {
       sourceType: 'script',
       globals: srcGlobals,

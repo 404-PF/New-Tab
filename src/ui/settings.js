@@ -1,5 +1,8 @@
 // src/ui/settings.js - Background, clock/date style settings
 
+(function () {
+  'use strict';
+
 // Background selection
 function loadBg() {
   return localStorage.getItem('homepageBg') || 'Water Beside Forest';
@@ -1372,3 +1375,29 @@ if (document.readyState === 'loading') {
 } else {
   initSettings();
 }
+
+window.loadBg = loadBg;
+window.loadVideoAutoplay = loadVideoAutoplay;
+window.loadVideoMuted = loadVideoMuted;
+window.loadVideoPauseHidden = loadVideoPauseHidden;
+window.applyVideoPlaybackSettings = applyVideoPlaybackSettings;
+window.clearBackgroundTransitionTimeout = clearBackgroundTransitionTimeout;
+window.safePause = safePause;
+window.safeLoad = safeLoad;
+window.captureBackgroundSnapshot = captureBackgroundSnapshot;
+window.hideBackgroundOverlay = hideBackgroundOverlay;
+window.stopBackground = stopBackground;
+window.applyBg = applyBg;
+window.loadClockStyle = loadClockStyle;
+window.getClosestSettingSize = getClosestSettingSize;
+window.loadClockFormatSetting = loadClockFormatSetting;
+window.loadDateStyle = loadDateStyle;
+window.loadDateFormatSetting = loadDateFormatSetting;
+window.loadTheme = loadTheme;
+window.applyTheme = applyTheme;
+window.loadLanguageSetting = loadLanguageSetting;
+window.renderLanguageOptions = renderLanguageOptions;
+window.loadTodoEnabled = loadTodoEnabled;
+window.initSettings = initSettings;
+
+})();
