@@ -193,7 +193,9 @@ module.exports = [
     },
   },
   // Files wrapped in strict-mode IIFEs must reference globals via window.*
-  // to avoid ReferenceErrors from bare identifiers.
+  // to avoid ReferenceErrors from bare identifiers. This list includes all
+  // IIFE-wrapped source files: add-app-modal, context-menu, app-manager,
+  // app-folders, drag-drop, and utils.
   {
     files: [
       'src/ui/add-app-modal.js',
@@ -213,6 +215,9 @@ module.exports = [
       'no-restricted-globals': ['error', {
         name: 'AppGridState',
         message: 'Use window.AppGridState instead to avoid ReferenceErrors in strict-mode IIFEs.',
+      }, {
+        name: 'escapeHtml',
+        message: 'Capture as `const escapeHtml = window.escapeHtml;` at the top of the IIFE to avoid ReferenceErrors.',
       }],
     },
   },
