@@ -412,6 +412,10 @@ function applyBg() {
         thumbnailEl.classList.add('hidden');
         thumbnailEl.classList.remove('clearing');
         backgroundTransitionTimeout = null;
+        // Belt-and-suspenders: the reduced-motion early return above
+        // normally prevents this timer from being created, but the
+        // wrapper still collapses the duration if the preference
+        // flips between scheduling and firing.
       }, crossfadeDelayMs(IMAGE_THUMBNAIL_HIDE_DELAY_MS));
 
       if (window._interactiveBackground) {
@@ -558,6 +562,10 @@ function applyBg() {
           thumbnailEl.classList.add('hidden');
           thumbnailEl.classList.remove('clearing');
           backgroundTransitionTimeout = null;
+          // Belt-and-suspenders: the reduced-motion early return above
+          // normally prevents this timer from being created, but the
+          // wrapper still collapses the duration if the preference
+          // flips between scheduling and firing.
         }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS)); // Match CSS opacity transition duration
       };
       
@@ -684,6 +692,10 @@ function applyBg() {
         thumbnailEl.classList.add('hidden');
         thumbnailEl.classList.remove('clearing');
         backgroundTransitionTimeout = null;
+        // Belt-and-suspenders: the reduced-motion early return above
+        // normally prevents this timer from being created, but the
+        // wrapper still collapses the duration if the preference
+        // flips between scheduling and firing.
       }, crossfadeDelayMs(IMAGE_THUMBNAIL_HIDE_DELAY_MS)); // Match CSS clearing transition duration
     });
   };

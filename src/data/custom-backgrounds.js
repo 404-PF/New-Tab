@@ -507,6 +507,10 @@
               thumbnailEl.classList.add('hidden');
               thumbnailEl.classList.remove('clearing');
               customBackgroundTransitionTimeout = null;
+              // Belt-and-suspenders: the reduced-motion early return above
+              // normally prevents this timer from being created, but the
+              // wrapper still collapses the duration if the preference
+              // flips between scheduling and firing.
             }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS));
           }
 
@@ -751,8 +755,11 @@
 
   if (unsubscribeCustomVideoMotion) unsubscribeCustomVideoMotion();
   if (window.onReducedMotionChange) {
-    // The assignment is read on the next module-injection (tests, HMR) when
-    // the previous handler is detached before a new one is registered.
+    // The captured return value is consumed by the *next* module injection
+    // (test harness, HMR) via the detach call above. ESLint flags the
+    // assignment as a no-op because the value is read on a future pass
+    // rather than the current one, so suppress the rule here. See
+    // `unsubscribeCustomVideoMotion` for the full teardown rationale.
     // eslint-disable-next-line no-useless-assignment
     unsubscribeCustomVideoMotion = window.onReducedMotionChange(syncCustomVideoToMotionPreference);
   }
