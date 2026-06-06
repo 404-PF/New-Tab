@@ -2,12 +2,43 @@
   const nativeLocalStorage = globalThis.localStorage;
   const cache = new Map();
   let hydrationStarted = false;
-  let resolveStorageReady;
+  let resolveStorageBridge;
+  let storageBridgeResolved = false;
+  let storageBridgeTimeoutId = null;
   const storageReady = new Promise((resolve) => {
-    resolveStorageReady = resolve;
+    resolveStorageBridge = resolve;
   });
 
   globalThis.__storageBridgeReady = storageReady;
+
+  // Safety timeout: if chrome.storage.local.get() never calls back (e.g. extension
+  // reload, context invalidation, transient API failure), resolve the bridge after
+  // 3 seconds so bootstrap proceeds and the page renders. Without this the New Tab
+  // stalls permanently — all scripts wait on __storageBridgeReady.
+  storageBridgeTimeoutId = setTimeout(function () {
+    if (!storageBridgeResolved) {
+      console.warn(
+        '[storage] chrome.storage.local.get() did not respond within 3 s. ' +
+        'Proceeding with native localStorage snapshot. Settings saved this session ' +
+        'will still be written to chrome.storage when the API becomes available.'
+      );
+      storageBridgeResolved = true;
+      clearTimeout(storageBridgeTimeoutId);
+      storageBridgeTimeoutId = null;
+      resolveStorageBridge();
+    }
+  }, 3000);
+
+  // Wrap resolveStorageBridge so it clears the timeout and is idempotent
+  function resolveStorageReady() {
+    if (storageBridgeResolved) return;
+    storageBridgeResolved = true;
+    if (storageBridgeTimeoutId) {
+      clearTimeout(storageBridgeTimeoutId);
+      storageBridgeTimeoutId = null;
+    }
+    resolveStorageBridge();
+  }
 
   function getStorageArea() {
     if (!globalThis.chrome || !chrome.storage || !chrome.storage.local) {
