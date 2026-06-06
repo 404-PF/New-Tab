@@ -401,3 +401,70 @@ describe('custom-backgrounds.js respects dynamic reduced motion changes', () => 
     delete videoEl.readyState;
   });
 });
+
+describe('video visibility-resume respects reduced motion', () => {
+  // Regression test: when the tab is hidden while a video background is
+  // playing, settings.js records `wasPlaying = 'true'` and pauses the video.
+  // If the user flips reduced motion on while the tab is hidden, the motion
+  // subscriber sets `reducedMotionPaused = 'true'`. The visibility-resume
+  // path in `initVideoVisibilityHandler` must NOT replay the video when the
+  // tab becomes visible, or the reduced-motion preference is silently
+  // ignored on tab return.
+
+  afterEach(() => {
+    delete document.hidden;
+    const videoEl = document.getElementById('bg-video');
+    delete videoEl.dataset.wasPlaying;
+    delete videoEl.dataset.simpleModePaused;
+    delete videoEl.dataset.reducedMotionPaused;
+    delete videoEl.currentSrc;
+  });
+
+  it('does not replay the video on visibilitychange when reducedMotionPaused is set', () => {
+    const videoEl = document.getElementById('bg-video');
+    videoEl.dataset.wasPlaying = 'true';
+    videoEl.dataset.reducedMotionPaused = 'true';
+    Object.defineProperty(videoEl, 'paused', { value: true, configurable: true });
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+    const playSpy = vi.fn().mockReturnValue(Promise.resolve());
+    videoEl.play = playSpy;
+
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(playSpy).not.toHaveBeenCalled();
+    // The handler should drop wasPlaying because the resume was skipped.
+    expect(videoEl.dataset.wasPlaying).toBeUndefined();
+  });
+
+  it('does not replay the video on visibilitychange when simpleModePaused is set', () => {
+    const videoEl = document.getElementById('bg-video');
+    videoEl.dataset.wasPlaying = 'true';
+    videoEl.dataset.simpleModePaused = 'true';
+    Object.defineProperty(videoEl, 'paused', { value: true, configurable: true });
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+    const playSpy = vi.fn().mockReturnValue(Promise.resolve());
+    videoEl.play = playSpy;
+
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(videoEl.dataset.wasPlaying).toBeUndefined();
+  });
+
+  it('replays the video on visibilitychange when no pause flag is set', () => {
+    const videoEl = document.getElementById('bg-video');
+    videoEl.dataset.wasPlaying = 'true';
+    Object.defineProperty(videoEl, 'paused', { value: true, configurable: true });
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'test.mp4', configurable: true });
+    const playSpy = vi.fn().mockReturnValue(Promise.resolve());
+    videoEl.play = playSpy;
+
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(playSpy).toHaveBeenCalledTimes(1);
+    expect(videoEl.dataset.wasPlaying).toBe('false');
+  });
+});

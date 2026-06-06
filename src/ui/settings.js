@@ -224,7 +224,13 @@ function initVideoVisibilityHandler() {
       }
     } else {
       // Page is visible again - resume video if it was playing and autoplay is enabled
-      if (videoEl.dataset.wasPlaying === 'true' && videoEl.paused && loadVideoAutoplay()) {
+      if (
+        videoEl.dataset.wasPlaying === 'true' &&
+        videoEl.paused &&
+        loadVideoAutoplay() &&
+        videoEl.dataset.simpleModePaused !== 'true' &&
+        videoEl.dataset.reducedMotionPaused !== 'true'
+      ) {
         videoEl.play().catch(() => {});
         videoEl.dataset.wasPlaying = 'false';
       } else {

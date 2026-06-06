@@ -13,8 +13,17 @@
   - Autoplaying background video is paused; the static thumbnail
     remains visible.
   - The existing CSS `*` override gains `scroll-behavior: auto` for
-    completeness, and the targeted override adds defensive rules for
-    `.app-icon.drag-drop-landed` and `.note-item`.
+    completeness. The reduced-motion work is split across two media-query
+    blocks: `features.css` keeps the global near-zero-duration override
+    (which handles `forwards`/`both` fill-mode animations like
+    `.app-icon.drag-drop-landed` and `.note-item` via the
+    `animation-fill-mode: forwards` final-keyframe state), and
+    `core.css` keeps the targeted `animation: none; opacity: 1` block
+    for entrance/glow animations that use `backwards`/no-fill-mode plus
+    `animation-delay`. No defensive overrides were added for the
+    `forwards`-fill selectors — the global override already collapses
+    them and adding redundant rules risked shadowing future
+    opacity-based hiding of those elements.
 
 ## v0.4.5 (2026-06-04)
 
