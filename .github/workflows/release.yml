@@ -57,13 +57,17 @@ jobs:
         env:
           CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
         run: |
+          set -euo pipefail
           CRX3="${{ github.workspace }}/node_modules/.bin/crx3"
           cd "$BUILD_DIR"
+          # Trim leading/trailing whitespace so a misconfigured secret
+          # (e.g. trailing newline or accidental spaces) is caught as empty.
+          CRX_PRIVATE_KEY="$(printf '%s' "$CRX_PRIVATE_KEY" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
           if [ -z "$CRX_PRIVATE_KEY" ]; then
             echo "::error::CRX_PRIVATE_KEY secret is not set."
             echo ""
             echo "  To sign releases consistently, add the secret at:"
-            echo "    https://github.com/404-PF/New-Tab/settings/secrets/actions"
+            echo "    ${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions"
             echo ""
             echo "  The key should be base64-encoded to avoid newline issues:"
             echo "    base64 -w0 key.pem"
