@@ -1805,7 +1805,12 @@ try {
   window.formatDateISO = formatDateISO;
   window.isOverdue = isOverdue;
   window.showToast = showToast;
-  // Drag/drop handlers used in tests
+  // Test-only handles. The `tests/helpers/inject-script.js` harness loads
+  // this file via `globalThis.eval(code)`, which scopes the IIFE's
+  // `function` and `var` declarations to the eval scope and hides them
+  // from the test. Re-exporting on `window` is the only way the test
+  // can reach these helpers. None of them are consumed at runtime by
+  // the rest of the app, so the global leak is purely a test affordance.
   window.handleDragStart = handleDragStart;
   window.handleDragEnd = handleDragEnd;
   window.handleDragOver = handleDragOver;
