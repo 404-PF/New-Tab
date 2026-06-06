@@ -235,7 +235,15 @@
   }
 }
 
-/* Reduced motion preference - disable animations */
+/* Reduced motion preference - disable animations.
+   This block targets entrance/glow animations that use `backwards`/no-fill-mode
+   plus `animation-delay`. The global near-zero-duration override in
+   features.css would still let those elements flash invisibly during the delay
+   before snapping to the final state, so we explicitly null out the animation
+   and pin opacity: 1 instead. Animations that use `forwards` fill mode
+   (e.g. .note-item, .app-icon.drag-drop-landed) are handled correctly by the
+   features.css override alone — no defensive override is needed and adding one
+   risks shadowing future opacity-based hiding. */
 @media (prefers-reduced-motion: reduce) {
   .background-video {
     transition: none;
@@ -259,14 +267,6 @@
   .date,
   .clock-time {
     animation: none !important;
-    opacity: 1 !important;
-  }
-  /* Defensive: JS-added bounce / stagger should resolve to the final state
-     even if the global * rule is ever loosened. */
-  .app-icon.drag-drop-landed,
-  .note-item {
-    animation: none !important;
-    transform: none !important;
     opacity: 1 !important;
   }
 }
