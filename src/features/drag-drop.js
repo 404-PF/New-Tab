@@ -450,15 +450,27 @@
       window.renderAllApps();
     }
 
-    // Apply bounce landing animation to the moved icon
+    // Apply bounce landing animation to the moved icon. The
+    // `animationend` listener is the primary cleanup. The setTimeout
+    // fallback covers edge cases where `animationend` never fires (e.g.
+    // the element is removed from the DOM mid-animation, or a browser
+    // quirk swallows the event). The timer handle is tracked so
+    // `animationend` can cancel it; without this both paths run and a
+    // stale timer accumulates per drop during heavy drag sessions.
     requestAnimationFrame(() => {
       const movedEl = document.getElementById(sourceId);
-      if (movedEl) {
-        movedEl.classList.add('drag-drop-landed');
-        movedEl.addEventListener('animationend', () => {
-          movedEl.classList.remove('drag-drop-landed');
-        }, { once: true });
-      }
+      if (!movedEl) return;
+      movedEl.classList.add('drag-drop-landed');
+      let cleanupTimer = null;
+      const cleanup = () => {
+        if (cleanupTimer !== null) {
+          clearTimeout(cleanupTimer);
+          cleanupTimer = null;
+        }
+        movedEl.classList.remove('drag-drop-landed');
+      };
+      movedEl.addEventListener('animationend', cleanup, { once: true });
+      cleanupTimer = setTimeout(cleanup, 500);
     });
 
     // Clear placeholder & state (dragend will also run, but be safe)
