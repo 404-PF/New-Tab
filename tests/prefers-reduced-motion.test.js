@@ -178,7 +178,7 @@ describe('motto fade respects reduced motion', () => {
 });
 
 describe('todo date highlight respects reduced motion', () => {
-  it('shows a brief non-animated highlight that clears after 150ms when reduced motion is on', () => {
+  it('skips the in-place highlight when reduced motion is on (toast still fires)', () => {
     setReduced(true);
     const el = document.createElement('div');
     el.className = 'todo-due-date clickable';
@@ -186,14 +186,14 @@ describe('todo date highlight respects reduced motion', () => {
     document.body.appendChild(el);
     const showToastRef = globalThis.showToast;
     globalThis.showToast = () => {};
-    vi.useFakeTimers();
     try {
       window.showDateUpdateFeedback(el, null, '2026-06-05');
-      expect(el.style.transition).toBe('none');
-      expect(el.style.transform).not.toContain('scale');
-      expect(el.style.backgroundColor).toBe('rgba(33, 150, 243, 0.3)');
-      vi.advanceTimersByTime(160);
+      // No backgroundColor, no transform, no transition under reduced motion.
+      // The 150ms clearing flash the previous version scheduled would have
+      // left backgroundColor set then cleared it; here nothing is set at all.
       expect(el.style.backgroundColor).toBe('');
+      expect(el.style.transform).toBe('');
+      expect(el.style.transition).toBe('');
     } finally {
       globalThis.showToast = showToastRef;
       el.remove();

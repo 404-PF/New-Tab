@@ -1082,14 +1082,12 @@ function updateDueDateDisplay(dueDateElement, dueDate) {
 
 // Show visual feedback for date update
 function showDateUpdateFeedback(dueDateElement, oldDate, newDate) {
-  // Add a brief highlight animation
-  if (window.prefersReducedMotion && window.prefersReducedMotion()) {
-    dueDateElement.style.transition = 'none';
-    dueDateElement.style.backgroundColor = 'rgba(33, 150, 243, 0.3)';
-    setTimeout(() => {
-      dueDateElement.style.backgroundColor = '';
-    }, 150);
-  } else {
+  // Under reduced motion we skip the backgroundColor highlight entirely.
+  // A 150ms color flash is itself a sudden visual change, which conflicts
+  // with the spirit of prefers-reduced-motion (WCAG 2.3.3). The toast
+  // notification below already communicates the update, so no extra
+  // in-place feedback is needed.
+  if (!(window.prefersReducedMotion && window.prefersReducedMotion())) {
     dueDateElement.style.transition = 'background-color 0.3s ease, transform 0.2s ease';
     dueDateElement.style.backgroundColor = 'rgba(33, 150, 243, 0.3)';
     dueDateElement.style.transform = 'scale(1.05)';
