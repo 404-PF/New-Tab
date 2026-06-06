@@ -56,45 +56,40 @@ jobs:
       - name: Build CRX package
         env:
           CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
-          ALLOW_EPHEMERAL_KEY: ${{ vars.ALLOW_EPHEMERAL_KEY }}
         run: |
+          set -euo pipefail
           CRX3="${{ github.workspace }}/node_modules/.bin/crx3"
           cd "$BUILD_DIR"
-          if [ -n "$CRX_PRIVATE_KEY" ]; then
-            # Write key to a temp file so it never lands in the workspace,
-            # and clean up with a trap even if the step fails mid-way.
-            KEY_FILE="$(mktemp)"
-            trap 'rm -f "$KEY_FILE"' EXIT
-            # Support both base64-encoded and raw PEM secrets.  Base64 is
-            # preferred because GitHub's Secrets UI can mangle the newlines
-            # in a multi-line PEM value.  Encode with:
-            #   base64 -w0 key.pem | clip   (or pbcopy / xclip)
-            if printf '%s' "$CRX_PRIVATE_KEY" | base64 --decode 2>/dev/null | grep -qm1 'BEGIN.*PRIVATE KEY'; then
-              printf '%s' "$CRX_PRIVATE_KEY" | base64 --decode > "$KEY_FILE"
-            else
-              printf '%s\n' "$CRX_PRIVATE_KEY" > "$KEY_FILE"
-            fi
-            "$CRX3" . \
-              --crx "${{ github.workspace }}/new-tab.crx" \
-              --zip "${{ github.workspace }}/new-tab.zip" \
-              --private-key "$KEY_FILE"
-          elif [ "${ALLOW_EPHEMERAL_KEY:-false}" = "true" ]; then
-            echo "::warning::No CRX_PRIVATE_KEY secret — generating ephemeral key."
-            echo "::warning::The extension ID will change with every release."
-            echo "::warning::Set ALLOW_EPHEMERAL_KEY=false once CRX_PRIVATE_KEY is configured."
-            "$CRX3" . \
-              --crx "${{ github.workspace }}/new-tab.crx" \
-              --zip "${{ github.workspace }}/new-tab.zip"
-          else
+          # Trim leading/trailing whitespace so a misconfigured secret
+          # (e.g. trailing newline or accidental spaces) is caught as empty.
+          CRX_PRIVATE_KEY="$(printf '%s' "$CRX_PRIVATE_KEY" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          if [ -z "$CRX_PRIVATE_KEY" ]; then
             echo "::error::CRX_PRIVATE_KEY secret is not set."
             echo ""
             echo "  To sign releases consistently, add the secret at:"
-            echo "    https://github.com/404-PF/New-Tab/settings/secrets/actions"
+            echo "    ${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions"
             echo ""
-            echo "  To allow ephemeral (unsigned) builds, set the repository"
-            echo "  variable ALLOW_EPHEMERAL_KEY=true at the same URL."
+            echo "  The key should be base64-encoded to avoid newline issues:"
+            echo "    base64 -w0 key.pem"
             exit 1
           fi
+          # Write key to a temp file so it never lands in the workspace,
+          # and clean up with a trap even if the step fails mid-way.
+          KEY_FILE="$(mktemp)"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          # Support both base64-encoded and raw PEM secrets.  Base64 is
+          # preferred because GitHub's Secrets UI can mangle the newlines
+          # in a multi-line PEM value.  Encode with:
+          #   base64 -w0 key.pem | clip   (or pbcopy / xclip)
+          if printf '%s' "$CRX_PRIVATE_KEY" | base64 --decode 2>/dev/null | grep -qm1 'BEGIN.*PRIVATE KEY'; then
+            printf '%s' "$CRX_PRIVATE_KEY" | base64 --decode > "$KEY_FILE"
+          else
+            printf '%s\n' "$CRX_PRIVATE_KEY" > "$KEY_FILE"
+          fi
+          "$CRX3" . \
+            --crx "${{ github.workspace }}/new-tab.crx" \
+            --zip "${{ github.workspace }}/new-tab.zip" \
+            --private-key "$KEY_FILE"
 
       - name: Verify built package
         run: |
