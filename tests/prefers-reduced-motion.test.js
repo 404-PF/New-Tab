@@ -21,11 +21,14 @@ beforeAll(() => {
   injectScript('src/features/todo.js');
   injectScript('src/core/main.js');
   injectScript('src/ui/settings.js');
-  // Production order (New-Tab.html) loads custom-backgrounds.js BEFORE
-  // settings.js, but the test loads it after so that window._customBackgrounds
-  // is available before the settings.js test setup runs. Both orders are
-  // safe: custom-backgrounds.js only references the settings.js helpers it
-  // needs at call time, not at module-evaluation time.
+  // Production order (in src/core/bootstrap.js) loads custom-backgrounds.js
+  // BEFORE settings.js. The test loads them in the opposite order so the
+  // public window._customBackgrounds API is registered AFTER settings.js has
+  // finished module evaluation; this lets the settings.js change-handler
+  // tests run first against a clean module state. Both orders are safe
+  // because each module only references the other (window.loadBg,
+  // window._customBackgrounds, etc.) at call time, never at module-evaluation
+  // time.
   injectScript('src/data/custom-backgrounds.js');
 });
 
