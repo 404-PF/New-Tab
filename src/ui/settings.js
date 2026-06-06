@@ -1353,6 +1353,12 @@ window.addEventListener('languageChanged', function() {
   renderLanguageOptions();
 });
 
+// Module-level handle for the motion-preference subscriber. Captured so a
+// second initSettings() call (test harness, HMR) can detach the previous
+// handler before registering a new one, avoiding duplicate play/pause cycles
+// per change.
+let unsubscribeVideoMotion = null;
+
 // When the OS-level motion preference changes while a video background is
 // active, pause or resume the video accordingly. This is what makes the
 // `prefers-reduced-motion` setting respond to the live system toggle instead
@@ -1401,11 +1407,15 @@ function initSettings() {
   }
 
   // Subscribe to OS-level motion-preference changes so an active background
-  // video pauses/resumes without needing a page reload.
+  // video pauses/resumes without needing a page reload. The unsubscribe
+  // handle is captured so a second initSettings() call (test harness, HMR)
+  // replaces the previous handler instead of registering a duplicate that
+  // would fire play/pause cycles twice per change.
+  if (unsubscribeVideoMotion) unsubscribeVideoMotion();
   if (window.onReducedMotionChange) {
-    window.onReducedMotionChange(syncVideoToMotionPreference);
+    unsubscribeVideoMotion = window.onReducedMotionChange(syncVideoToMotionPreference);
   }
-  
+
   // Initialize modern font pickers
   if (window.initModernFontPickers) {
     window.initModernFontPickers();

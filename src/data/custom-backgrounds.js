@@ -727,6 +727,12 @@
   // module loads before settings.js in production, so the references must be
   // resolved lazily — the OS-level motion change can only fire after the
   // user interacts with the page, by which time settings.js has loaded.
+  //
+  // `unsubscribeCustomVideoMotion` is captured so a re-injection of this
+  // module (test harness) can detach the previous handler before
+  // registering a new one, avoiding duplicate play/pause cycles.
+  let unsubscribeCustomVideoMotion = null;
+
   function syncCustomVideoToMotionPreference(reduced) {
     if (!isCustomBackground(window.loadBg())) return;
     const videoEl = document.getElementById('bg-video');
@@ -743,8 +749,12 @@
     }
   }
 
+  if (unsubscribeCustomVideoMotion) unsubscribeCustomVideoMotion();
   if (window.onReducedMotionChange) {
-    window.onReducedMotionChange(syncCustomVideoToMotionPreference);
+    // The assignment is read on the next module-injection (tests, HMR) when
+    // the previous handler is detached before a new one is registered.
+    // eslint-disable-next-line no-useless-assignment
+    unsubscribeCustomVideoMotion = window.onReducedMotionChange(syncCustomVideoToMotionPreference);
   }
 
   // --- Public API ---
