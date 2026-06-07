@@ -11,7 +11,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { JSDOM } from 'jsdom';
-import vm from 'vm';
+import { injectScript } from './helpers/inject-script.js';
 
 const STORAGE_JS_PATH = resolve(process.cwd(), 'src/core/storage.js');
 const STORAGE_CODE = readFileSync(STORAGE_JS_PATH, 'utf-8');
@@ -48,9 +48,8 @@ describe('bootstrap with stalled chrome.storage', () => {
           },
         };
 
-        // Inject storage.js using vm.Script to avoid unsafe eval
-        const script = new vm.Script(STORAGE_CODE);
-        script.runInContext(dom.getInternalVMContext());
+        // Inject storage.js using the shared injectScript helper
+        injectScript(STORAGE_CODE, dom.getInternalVMContext());
 
         // __storageBridgeReady should be a Promise
         expect(dom.window.__storageBridgeReady).toBeDefined();
