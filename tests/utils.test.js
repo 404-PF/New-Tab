@@ -344,6 +344,43 @@ describe('VisibilityInterval', () => {
       vi.useRealTimers();
     }
   });
+
+  it('also resumes on pageshow after returning to a hidden tab', () => {
+    vi.useFakeTimers();
+
+    const originalHidden = document.hidden;
+    const callback = vi.fn();
+    let interval;
+
+    try {
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      interval = new VisibilityInterval(callback, 1000);
+
+      vi.advanceTimersByTime(1000);
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      vi.advanceTimersByTime(2000);
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      window.dispatchEvent(new Event('pageshow'));
+
+      expect(callback).toHaveBeenCalledTimes(2);
+
+      vi.advanceTimersByTime(1000);
+      expect(callback).toHaveBeenCalledTimes(3);
+    } finally {
+      if (interval && typeof interval.destroy === 'function') {
+        interval.destroy();
+      }
+
+      Object.defineProperty(document, 'hidden', { value: originalHidden, configurable: true });
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('visibilityManager', () => {
