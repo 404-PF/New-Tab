@@ -1816,7 +1816,7 @@ try {
   window.handleDragOver = handleDragOver;
   window.handleDrop = handleDrop;
   window.showDateUpdateFeedback = showDateUpdateFeedback;
-} catch (e) {
+} catch (_e) {
   // If window isn't writable in some test harnesses, ignore silently
 }
 

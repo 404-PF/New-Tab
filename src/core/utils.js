@@ -115,7 +115,7 @@
     }
   }
 
-  // eslint-disable-next-line no-unused-vars
+   
   function translateValidationMessage(message) {
     if (!message) return '';
 

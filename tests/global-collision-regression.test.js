@@ -18,7 +18,7 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
-async function flushMicrotasks() {
+async function _flushMicrotasks() {
   await Promise.resolve();
 }
 
