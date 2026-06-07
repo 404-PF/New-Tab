@@ -11,6 +11,8 @@ class OnboardingTour {
     this._endTimeout = null;
     this._actionTimeouts = [];
     this._dismissedThisSession = false;
+    this._languageChangeHandler = null;
+    this._themeChangeHandler = null;
   }
 
   // Check if an element is visible (not hidden by CSS)
@@ -55,6 +57,8 @@ class OnboardingTour {
       clearTimeout(this._endTimeout);
       this._endTimeout = null;
     }
+    this._languageChangeHandler = null;
+    this._themeChangeHandler = null;
 
     if (this.overlay && this.overlay.parentNode) {
       this.overlay.parentNode.removeChild(this.overlay);
@@ -522,56 +526,74 @@ class OnboardingTour {
         break;
       case 'select-language': {
         this._clearActionTimeouts();
+        // Remove previous listener if it exists
+        if (this._languageChangeHandler) {
+          this._languageChangeHandler.targets.forEach(radio => {
+            radio.removeEventListener('change', this._languageChangeHandler.fn);
+          });
+          this._languageChangeHandler = null;
+        }
         // Add event listeners to language radio buttons
         const languageRadios = this.overlay.querySelectorAll('input[name="onboarding-language"]');
+        const langHandler = (e) => {
+          if (!this.isActive) return;
+          const selectedLanguage = e.target.value;
+          localStorage.setItem('language', selectedLanguage);
+          if (window.i18n && window.i18n.applyLanguage) {
+            window.i18n.applyLanguage(selectedLanguage);
+          }
+          // Save progress immediately before the delayed advance
+          if (this.currentStep < this.steps.length - 1) {
+            localStorage.setItem('onboardingStep', String(this.currentStep + 1));
+          }
+          // Cancel any pending auto-advance before scheduling a new one
+          this._clearActionTimeouts();
+          const tid = setTimeout(() => this.nextStep(), 500);
+          this._actionTimeouts.push(tid);
+        };
         languageRadios.forEach(radio => {
-          radio.addEventListener('change', (e) => {
-            if (!this.isActive) return;
-            const selectedLanguage = e.target.value;
-            localStorage.setItem('language', selectedLanguage);
-            if (window.i18n && window.i18n.applyLanguage) {
-              window.i18n.applyLanguage(selectedLanguage);
-            }
-            // Save progress immediately before the delayed advance
-            if (this.currentStep < this.steps.length - 1) {
-              localStorage.setItem('onboardingStep', String(this.currentStep + 1));
-            }
-            // Cancel any pending auto-advance before scheduling a new one
-            this._clearActionTimeouts();
-            const tid = setTimeout(() => this.nextStep(), 500);
-            this._actionTimeouts.push(tid);
-          });
+          radio.addEventListener('change', langHandler);
         });
+        this._languageChangeHandler = { fn: langHandler, targets: Array.from(languageRadios) };
         break;
       }
       case 'select-theme': {
         this._clearActionTimeouts();
+        // Remove previous listener if it exists
+        if (this._themeChangeHandler) {
+          this._themeChangeHandler.targets.forEach(radio => {
+            radio.removeEventListener('change', this._themeChangeHandler.fn);
+          });
+          this._themeChangeHandler = null;
+        }
         // Add event listeners to theme radio buttons
         const themeRadios = this.overlay.querySelectorAll('input[name="onboarding-theme"]');
+        const themeHandler = (e) => {
+          if (!this.isActive) return;
+          const selectedTheme = e.target.value;
+          localStorage.setItem('theme', selectedTheme);
+          // Apply theme immediately
+          if (window.applyTheme) {
+            window.applyTheme();
+          } else {
+            // Fallback: directly apply theme
+            document.body.classList.toggle('light-theme', selectedTheme === 'light');
+          }
+          // Notify other components of theme change
+          window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
+          // Save progress immediately before the delayed advance
+          if (this.currentStep < this.steps.length - 1) {
+            localStorage.setItem('onboardingStep', String(this.currentStep + 1));
+          }
+          // Cancel any pending auto-advance before scheduling a new one
+          this._clearActionTimeouts();
+          const tid = setTimeout(() => this.nextStep(), 500);
+          this._actionTimeouts.push(tid);
+        };
         themeRadios.forEach(radio => {
-          radio.addEventListener('change', (e) => {
-            if (!this.isActive) return;
-            const selectedTheme = e.target.value;
-            localStorage.setItem('theme', selectedTheme);
-            // Apply theme immediately
-            if (window.applyTheme) {
-              window.applyTheme();
-            } else {
-              // Fallback: directly apply theme
-              document.body.classList.toggle('light-theme', selectedTheme === 'light');
-            }
-            // Notify other components of theme change
-            window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
-            // Save progress immediately before the delayed advance
-            if (this.currentStep < this.steps.length - 1) {
-              localStorage.setItem('onboardingStep', String(this.currentStep + 1));
-            }
-            // Cancel any pending auto-advance before scheduling a new one
-            this._clearActionTimeouts();
-            const tid = setTimeout(() => this.nextStep(), 500);
-            this._actionTimeouts.push(tid);
-          });
+          radio.addEventListener('change', themeHandler);
         });
+        this._themeChangeHandler = { fn: themeHandler, targets: Array.from(themeRadios) };
         break;
       }
     }
@@ -639,6 +661,8 @@ class OnboardingTour {
   end(completed = false) {
     if (!this.isActive) return;
     this._clearActionTimeouts();
+    this._languageChangeHandler = null;
+    this._themeChangeHandler = null;
     if (completed) {
       this.markCompleted();
     } else {
