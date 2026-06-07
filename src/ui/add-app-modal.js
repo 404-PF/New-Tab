@@ -76,6 +76,10 @@ function normalizeAppUrl(url) {
   return url.startsWith('http') ? url : 'https://' + url;
 }
 
+function normalizeAppName(name) {
+  return (name || '').trim().toLowerCase();
+}
+
 function getExistingAppUrls() {
   const urlSet = new Set();
   const nameSet = new Set();
@@ -88,6 +92,10 @@ function getExistingAppUrls() {
         if (app && app.url) {
           urlSet.add(window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url)));
         }
+        if (app && app.name) {
+          const normalized = normalizeAppName(app.name);
+          if (normalized) nameSet.add(normalized);
+        }
       });
     } catch { void 0; }
 
@@ -95,7 +103,8 @@ function getExistingAppUrls() {
     try {
       const names = Array.from(document.querySelectorAll('.app-grid .app-name')).map(n => (n.textContent || '').trim());
       names.forEach(n => {
-        if (n) nameSet.add(n.toLowerCase());
+        const normalized = normalizeAppName(n);
+        if (normalized) nameSet.add(normalized);
       });
     } catch { void 0; }
   }
@@ -267,7 +276,7 @@ function renderDefaultAppsList() {
     } catch { void 0; }
 
     // Check by visible name inside the app grid
-    if (existingNames.has((app.name || '').toLowerCase())) return false;
+    if (existingNames.has(normalizeAppName(app.name))) return false;
 
     return true;
   });
@@ -309,7 +318,7 @@ function renderDefaultAppsList() {
     try {
       if (app.url && window.AppGridState && window.AppGridState.getCanonicalUrl) {
         const canonical = window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url));
-        if (existingUrls.has(canonical) || existingNames.has((app.name || '').toLowerCase())) {
+        if (existingUrls.has(canonical) || existingNames.has(normalizeAppName(app.name))) {
           button.classList.add('duplicate');
           button.title = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
         }
