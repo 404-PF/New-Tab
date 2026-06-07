@@ -22,7 +22,7 @@ describe('Todo persistence', () => {
   it('saveTodos persists to localStorage', () => {
     const data = [{ id: '1', text: 'Test', completed: false }];
     saveTodos(data);
-    expect(loadTodos()).toEqual(data);
+    expect(loadTodos()).toEqual([{ id: '1', text: 'Test', completed: false }]);
   });
 
   it('saveTodos failures roll back todo mutations', () => {
@@ -64,6 +64,50 @@ describe('Todo persistence', () => {
   it('loadTodos resets non-array data', () => {
     localStorage.setItem('todos', '{"foo":"bar"}');
     expect(loadTodos()).toEqual([]);
+  });
+
+  it('loadTodos migrates wrapped legacy todo payloads', () => {
+    localStorage.setItem('todos', JSON.stringify({
+      count: 2,
+      todos: [
+        {
+          id: 'legacy-1',
+          text: 'Legacy one',
+          completed: false,
+          createdAt: '2026-01-01T00:00:00.000Z'
+        },
+        {
+          id: 'legacy-2',
+          text: 'Legacy two',
+          completed: true,
+          createdAt: '2026-01-02T00:00:00.000Z'
+        }
+      ]
+    }));
+
+    const todos = loadTodos();
+
+    expect(todos).toHaveLength(2);
+    expect(todos.map(todo => todo.text)).toEqual(['Legacy one', 'Legacy two']);
+    expect(todos[0].createdAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(todos[1].completed).toBe(true);
+  });
+
+  it('loadTodos migrates double-encoded todo payloads', () => {
+    const legacyTodos = [
+      {
+        id: 'legacy-1',
+        text: 'Double encoded',
+        completed: false
+      }
+    ];
+    localStorage.setItem('todos', JSON.stringify(JSON.stringify(legacyTodos)));
+
+    const todos = loadTodos();
+
+    expect(todos).toHaveLength(1);
+    expect(todos[0].text).toBe('Double encoded');
+    expect(todos[0].completed).toBe(false);
   });
 });
 
