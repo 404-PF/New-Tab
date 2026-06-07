@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -6,8 +6,13 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  vi.useFakeTimers();
   localStorage.clear();
   window.onboardingTour.reset();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('OnboardingTour class', () => {
@@ -390,6 +395,48 @@ describe('Immediate progress saving on language/theme selection', () => {
     const secondHandler = tour._themeChangeHandler;
     expect(secondHandler).not.toBeNull();
     expect(secondHandler.fn).not.toBe(firstHandler.fn);
+  });
+
+  it('language radio change after revisiting step only advances once', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    tour.start(0);
+    // Navigate away and back to language step
+    tour.currentStep = 1;
+    tour.showStep();
+    tour.currentStep = 0;
+    tour.showStep();
+    // Spy on nextStep
+    const spy = vi.spyOn(tour, 'nextStep');
+    // Trigger language selection
+    const radio = document.querySelector('input[name="onboarding-language"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change'));
+    // Advance past the 500ms auto-advance timeout
+    vi.advanceTimersByTime(600);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it('theme radio change after revisiting step only advances once', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    tour.start(1);
+    // Navigate away and back to theme step
+    tour.currentStep = 0;
+    tour.showStep();
+    tour.currentStep = 1;
+    tour.showStep();
+    // Spy on nextStep
+    const spy = vi.spyOn(tour, 'nextStep');
+    // Trigger theme selection
+    const radio = document.querySelector('input[name="onboarding-theme"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change'));
+    // Advance past the 500ms auto-advance timeout
+    vi.advanceTimersByTime(600);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
   });
 });
 
