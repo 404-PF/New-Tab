@@ -5,6 +5,7 @@
   let resolveStorageBridge;
   let storageBridgeResolved = false;
   let storageBridgeTimeoutId = null;
+  const STORAGE_BRIDGE_TIMEOUT_MS = 3000;
   const storageReady = new Promise((resolve) => {
     resolveStorageBridge = resolve;
   });
@@ -17,12 +18,12 @@
   // stalls permanently — all scripts wait on __storageBridgeReady.
   storageBridgeTimeoutId = setTimeout(function () {
     console.warn(
-      '[storage] chrome.storage.local.get() did not respond within 3 s. ' +
+      `[storage] chrome.storage.local.get() did not respond within ${STORAGE_BRIDGE_TIMEOUT_MS / 1000} s. ` +
       'Proceeding with native localStorage snapshot. Settings saved this session ' +
       'will still be written to chrome.storage when the API becomes available.'
     );
     resolveStorageReady();
-  }, 3000);
+  }, STORAGE_BRIDGE_TIMEOUT_MS);
 
   // Wrap resolveStorageBridge so it clears the timeout and is idempotent
   function resolveStorageReady() {

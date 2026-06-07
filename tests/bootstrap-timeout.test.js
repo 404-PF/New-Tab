@@ -7,7 +7,7 @@
 // chrome.storage.local with a version whose get() never invokes its callback,
 // then re-inject storage.js and verify the timeout path.
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { JSDOM } from 'jsdom';

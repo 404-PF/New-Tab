@@ -1798,7 +1798,7 @@ try {
   window.handleDragEnd = handleDragEnd;
   window.handleDragOver = handleDragOver;
   window.handleDrop = handleDrop;
-} catch (e) {
+} catch (_e) {
   // If window isn't writable in some test harnesses, ignore silently
 }
 

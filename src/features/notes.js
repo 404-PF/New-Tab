@@ -279,7 +279,7 @@ try {
   window.handleNotesKeydown = handleNotesKeydown;
   window.autoResizeTextareas = autoResizeTextareas;
   window.focusNewNote = focusNewNote;
-} catch (e) {
+} catch (_e) {
   // ignore
 }
 
