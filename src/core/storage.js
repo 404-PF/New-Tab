@@ -16,16 +16,12 @@
   // 3 seconds so bootstrap proceeds and the page renders. Without this the New Tab
   // stalls permanently — all scripts wait on __storageBridgeReady.
   storageBridgeTimeoutId = setTimeout(function () {
-    if (!storageBridgeResolved) {
-      console.warn(
-        '[storage] chrome.storage.local.get() did not respond within 3 s. ' +
-        'Proceeding with native localStorage snapshot. Settings saved this session ' +
-        'will still be written to chrome.storage when the API becomes available.'
-      );
-      storageBridgeResolved = true;
-      storageBridgeTimeoutId = null;
-      resolveStorageBridge();
-    }
+    console.warn(
+      '[storage] chrome.storage.local.get() did not respond within 3 s. ' +
+      'Proceeding with native localStorage snapshot. Settings saved this session ' +
+      'will still be written to chrome.storage when the API becomes available.'
+    );
+    resolveStorageReady();
   }, 3000);
 
   // Wrap resolveStorageBridge so it clears the timeout and is idempotent
