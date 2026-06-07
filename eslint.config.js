@@ -65,6 +65,7 @@ const srcGlobals = {
   loadVideoAutoplay: 'readonly',
   loadVideoMuted: 'readonly',
   mottos: 'readonly',
+  parseLocalDate: 'readonly',
   scheduleTodoReminderCheck: 'readonly',
   translateValidationMessage: 'readonly',
   showToast: 'readonly',
