@@ -3,6 +3,7 @@
 ## v0.4.6 (unreleased)
 
 ### Bug Fixes
+
 - Fix(storage): add 3-second timeout fallback in `src/core/storage.js` so the New Tab
   renders even when `chrome.storage.local.get()` stalls — the bridge resolves using a
   captured native `localStorage` snapshot and logs a warning.
