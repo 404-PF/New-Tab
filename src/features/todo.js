@@ -29,7 +29,27 @@
     try {
       const raw = localStorage.getItem('todos');
       if (!raw) return [];
-      const parsed = JSON.parse(raw);
+
+      const parseCandidate = (value) => {
+        if (typeof value !== 'string') {
+          return value;
+        }
+
+        try {
+          return JSON.parse(value);
+        } catch {
+          return value;
+        }
+      };
+
+      let parsed = JSON.parse(raw);
+
+      parsed = parseCandidate(parsed);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Array.isArray(parsed.todos)) {
+        parsed = parsed.todos;
+      }
+
+      parsed = parseCandidate(parsed);
       if (!Array.isArray(parsed)) {
         console.warn('Invalid todos data in localStorage: expected array, resetting to empty list');
         return [];
