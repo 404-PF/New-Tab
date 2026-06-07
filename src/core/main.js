@@ -395,6 +395,7 @@ function hideSearchHistorySuggestions() {
 }
 
 function executeSearch(query) {
+  clearSearchValidationFeedback();
   const validation = validateUrl(query);
 
   if (validation.status === 'valid') {
@@ -486,6 +487,7 @@ function runDefaultSearch(query) {
 }
 
 function runSearch(query) {
+  clearSearchValidationFeedback();
   const validation = validateUrl(query);
 
   if (validation.status === 'valid') {
