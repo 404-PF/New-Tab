@@ -83,6 +83,8 @@ const testGlobals = {
   AppGridState: 'readonly',
   MarkdownParser: 'readonly',
   iconCache: 'readonly',
+  VisibilityInterval: 'readonly',
+  visibilityManager: 'readonly',
   validateUrl: 'readonly',
   isValidUrl: 'readonly',
   isMalformedUrl: 'readonly',
