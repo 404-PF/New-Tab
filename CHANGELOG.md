@@ -2,6 +2,14 @@
 
 ## v0.4.6 (unreleased)
 
+### Bug Fixes
+- Fix(storage): add 3-second timeout fallback in `src/core/storage.js` so the New Tab
+  renders even when `chrome.storage.local.get()` stalls — the bridge resolves using a
+  captured native `localStorage` snapshot and logs a warning.
+- Fix(bootstrap): add 8-second `Promise.race` safeguard around `__storageBridgeReady` in
+  `src/core/bootstrap.js` so script loading proceeds if the storage bridge hangs; a
+  warning is logged when the fallback path is taken.
+
 ### Accessibility
 
 - A11y(motion): respect `prefers-reduced-motion` across the new tab UI (#196)

@@ -753,6 +753,18 @@
         videoEl.classList.add('active', 'ready');
         if (window.loadVideoAutoplay() && !document.hidden && (!window.loadSimpleMode || !window.loadSimpleMode()) && videoEl.readyState >= 3) {
           videoEl.play().catch(function () {});
+          // Schedule thumbnail cleanup matching triggerCrossfade()'s
+          // post-crossfade state so the static thumbnail is hidden
+          // after the reduced-motion → normal resume.
+          const thumbEl = document.getElementById('bg-thumbnail');
+          if (thumbEl && !thumbEl.classList.contains('hidden')) {
+            thumbEl.classList.add('clearing');
+            customBackgroundTransitionTimeout = setTimeout(function () {
+              thumbEl.classList.add('hidden');
+              thumbEl.classList.remove('clearing');
+              customBackgroundTransitionTimeout = null;
+            }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS));
+          }
         }
       }
     }
