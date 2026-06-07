@@ -564,6 +564,83 @@ describe('initSettings background startup', () => {
       dom.window.close();
     }
   });
+
+  it('replaces the reduced-motion subscriber when settings.js is re-evaluated', () => {
+    const dom = new JSDOM(`<!doctype html><html><body>
+      <div class="background-container" id="background-container">
+        <video class="background-video" id="bg-video"><source src="" type="video/mp4"></video>
+        <img class="background-thumbnail" id="bg-thumbnail" src="" alt="">
+        <img class="background-full" id="bg-full" src="" alt="">
+        <img class="background-transition-overlay" id="bg-transition-overlay" src="" alt="">
+      </div>
+      <div class="settings-menu"></div>
+      <section class="settings-section" data-section="about"></section>
+    </body></html>`, {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      const { window: isolatedWindow } = dom;
+      const videoEl = isolatedWindow.document.getElementById('bg-video');
+      const pauseSpy = vi.fn();
+
+      isolatedWindow.localStorage.setItem('homepageBg', 'test-video');
+      isolatedWindow._backgrounds = [
+        { id: 'test-video', type: 'video', thumb: 'thumb.jpg', url: 'video.mp4' }
+      ];
+      isolatedWindow._interactiveBackground = { stop() {} };
+      isolatedWindow._customBackgrounds = {
+        isCustom: () => false,
+        revokeAll() {}
+      };
+      isolatedWindow.loadSimpleMode = () => false;
+      isolatedWindow.i18n = {
+        currentLanguage() { return 'en'; },
+        getSupportedLanguages() { return []; },
+        t(key) { return key; }
+      };
+      isolatedWindow.updateChecker = {
+        getUpdateStatus() { return ''; },
+        isEnabled() { return true; }
+      };
+      isolatedWindow.WeatherWidget = { applySettings() {} };
+      isolatedWindow.initModernColorPickers = () => {};
+      isolatedWindow.initModernFontPickers = () => {};
+      isolatedWindow.requestAnimationFrame = (callback) => callback();
+      isolatedWindow.cancelAnimationFrame = () => {};
+      videoEl.pause = () => {};
+      videoEl.load = () => {};
+      videoEl.play = () => Promise.resolve();
+
+      injectScript('src/core/motion.js', dom.getInternalVMContext());
+      injectScript('src/ui/settings.js', dom.getInternalVMContext());
+      if (!isolatedWindow.__unsubscribeVideoMotion) {
+        isolatedWindow.initSettings();
+      }
+
+      Object.defineProperty(videoEl, 'currentSrc', { value: 'video.mp4', configurable: true });
+      Object.defineProperty(videoEl, 'readyState', { value: 3, configurable: true });
+      Object.defineProperty(videoEl, 'paused', { value: false, configurable: true });
+      videoEl.classList.add('active');
+      videoEl.pause = pauseSpy;
+
+      isolatedWindow._setReducedForTests(true);
+      expect(pauseSpy).toHaveBeenCalledTimes(1);
+
+      videoEl.pause = () => {};
+      injectScript('src/ui/settings.js', dom.getInternalVMContext());
+      if (!isolatedWindow.__unsubscribeVideoMotion) {
+        isolatedWindow.initSettings();
+      }
+      videoEl.pause = pauseSpy;
+
+      isolatedWindow._setReducedForTests(true);
+      expect(pauseSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      dom.window.close();
+    }
+  });
 });
 
 describe('Language settings', () => {

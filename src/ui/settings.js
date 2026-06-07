@@ -1012,6 +1012,12 @@ document.addEventListener('change', function (e) {
           // Video already loaded — show it immediately
           videoEl.dataset.crossfadeTriggered = 'true';
           videoEl.classList.add('active', 'ready');
+          if (window.prefersReducedMotion && window.prefersReducedMotion()) {
+            videoEl.dataset.reducedMotionPaused = 'true';
+            return;
+          }
+
+          delete videoEl.dataset.reducedMotionPaused;
           if (thumbnailEl && !thumbnailEl.classList.contains('hidden')) {
             thumbnailEl.classList.add('clearing');
             setTimeout(function () {
@@ -1019,13 +1025,8 @@ document.addEventListener('change', function (e) {
               thumbnailEl.classList.remove('clearing');
             }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS));
           }
-          if (window.prefersReducedMotion && window.prefersReducedMotion()) {
-            videoEl.dataset.reducedMotionPaused = 'true';
-          } else {
-            delete videoEl.dataset.reducedMotionPaused;
-            if (!window.loadSimpleMode || !window.loadSimpleMode()) {
-              videoEl.play().catch(function () {});
-            }
+          if (!window.loadSimpleMode || !window.loadSimpleMode()) {
+            videoEl.play().catch(function () {});
           }
         } else {
           // Video not ready yet — reset crossfade guard and let the
@@ -1372,12 +1373,6 @@ window.addEventListener('languageChanged', function() {
   renderLanguageOptions();
 });
 
-// Module-level handle for the motion-preference subscriber. Captured so a
-// second initSettings() call (test harness, HMR) can detach the previous
-// handler before registering a new one, avoiding duplicate play/pause cycles
-// per change.
-let unsubscribeVideoMotion = null;
-
 // When the OS-level motion preference changes while a video background is
 // active, pause or resume the video accordingly. This is what makes the
 // `prefers-reduced-motion` setting respond to the live system toggle instead
@@ -1430,9 +1425,12 @@ function initSettings() {
   // handle is captured so a second initSettings() call (test harness, HMR)
   // replaces the previous handler instead of registering a duplicate that
   // would fire play/pause cycles twice per change.
-  if (unsubscribeVideoMotion) unsubscribeVideoMotion();
+  if (window.__unsubscribeVideoMotion) {
+    window.__unsubscribeVideoMotion();
+    window.__unsubscribeVideoMotion = null;
+  }
   if (window.onReducedMotionChange) {
-    unsubscribeVideoMotion = window.onReducedMotionChange(syncVideoToMotionPreference);
+    window.__unsubscribeVideoMotion = window.onReducedMotionChange(syncVideoToMotionPreference);
   }
 
   // Initialize modern font pickers

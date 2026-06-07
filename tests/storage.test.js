@@ -110,4 +110,78 @@ describe('storage bridge', () => {
       dom.window.close();
     }
   });
+
+  it('merges local mutations made while chrome.storage hydration is pending', async () => {
+    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      dom.window.localStorage.setItem('theme', 'dark');
+      dom.window.localStorage.setItem('stale', 'keep-me');
+
+      let resolveGet;
+      let getCalled = false;
+
+      dom.window.chrome = {
+        runtime: {
+          lastError: null
+        },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() {
+              return false;
+            }
+          },
+          local: {
+            get(keys, callback) {
+              getCalled = true;
+              resolveGet = () => {
+                callback({
+                  theme: 'server-theme',
+                  stale: 'server-stale',
+                  hydrated: 'from-storage'
+                });
+              };
+            },
+            set(items, callback) {
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              callback?.();
+              return Promise.resolve();
+            },
+            clear(callback) {
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      const script = new vm.Script(code);
+      script.runInContext(dom.getInternalVMContext());
+
+      expect(getCalled).toBe(true);
+
+      dom.window.localStorage.setItem('theme', 'light');
+      dom.window.localStorage.removeItem('stale');
+      dom.window.localStorage.setItem('bridge-write', 'kept');
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('theme')).toBe('light');
+      expect(dom.window.localStorage.getItem('stale')).toBeNull();
+      expect(dom.window.localStorage.getItem('bridge-write')).toBe('kept');
+      expect(dom.window.localStorage.getItem('hydrated')).toBe('from-storage');
+      expect(dom.window.localStorage.length).toBe(3);
+    } finally {
+      dom.window.close();
+    }
+  });
 });
