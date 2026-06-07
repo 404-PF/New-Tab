@@ -463,13 +463,15 @@
       movedEl.classList.add('drag-drop-landed');
       let cleanupTimer = null;
       const cleanup = () => {
+        movedEl.removeEventListener('animationend', onAnimationEnd);
         if (cleanupTimer !== null) {
           clearTimeout(cleanupTimer);
           cleanupTimer = null;
         }
         movedEl.classList.remove('drag-drop-landed');
       };
-      movedEl.addEventListener('animationend', cleanup, { once: true });
+      const onAnimationEnd = cleanup;
+      movedEl.addEventListener('animationend', onAnimationEnd, { once: true });
       cleanupTimer = setTimeout(cleanup, 500);
     });
 

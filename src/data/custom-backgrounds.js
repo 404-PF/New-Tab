@@ -756,12 +756,18 @@
           // Schedule thumbnail cleanup matching triggerCrossfade()'s
           // post-crossfade state so the static thumbnail is hidden
           // after the reduced-motion → normal resume.
+          if (customBackgroundTransitionTimeout) {
+            clearTimeout(customBackgroundTransitionTimeout);
+            customBackgroundTransitionTimeout = null;
+          }
           const thumbEl = document.getElementById('bg-thumbnail');
           if (thumbEl && !thumbEl.classList.contains('hidden')) {
             thumbEl.classList.add('clearing');
             customBackgroundTransitionTimeout = setTimeout(function () {
-              thumbEl.classList.add('hidden');
-              thumbEl.classList.remove('clearing');
+              if (thumbEl && !thumbEl.classList.contains('hidden')) {
+                thumbEl.classList.add('hidden');
+                thumbEl.classList.remove('clearing');
+              }
               customBackgroundTransitionTimeout = null;
             }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS));
           }
