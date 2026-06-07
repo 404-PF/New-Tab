@@ -346,6 +346,22 @@ describe('Todo utilities', () => {
     expect(formatDateISO(d)).toBe('2025-01-05');
   });
 
+  it('parseLocalDate returns a Date with local time components', () => {
+    const d = parseLocalDate('2025-06-15');
+    expect(d.getFullYear()).toBe(2025);
+    expect(d.getMonth()).toBe(5); // June = 5
+    expect(d.getDate()).toBe(15);
+    expect(d.getHours()).toBe(0);
+    expect(d.getMinutes()).toBe(0);
+  });
+
+  it('parseLocalDate pads single-digit month and day', () => {
+    const d = parseLocalDate('2025-01-05');
+    expect(d.getFullYear()).toBe(2025);
+    expect(d.getMonth()).toBe(0);
+    expect(d.getDate()).toBe(5);
+  });
+
   it('isOverdue returns false for today', () => {
     const today = formatDateISO(new Date());
     expect(isOverdue(today)).toBe(false);
