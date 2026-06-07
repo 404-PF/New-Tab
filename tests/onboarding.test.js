@@ -353,6 +353,44 @@ describe('Immediate progress saving on language/theme selection', () => {
     expect(localStorage.getItem('onboardingStep')).toBe('1');
     expect(localStorage.getItem('onboardingCompleted')).toBeNull();
   });
+
+  it('revisiting language step does not accumulate duplicate listeners', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    tour.start(0);
+    // First visit: attach handler
+    tour.handleAction('select-language', tour.steps[0]);
+    const firstHandler = tour._languageChangeHandler;
+    expect(firstHandler).not.toBeNull();
+    // Simulate step navigation (showStep replaces innerHTML, destroying old radios)
+    tour.currentStep = 1;
+    tour.showStep();
+    // Revisit language step: old handler should be removed, new one attached
+    tour.currentStep = 0;
+    tour.showStep();
+    const secondHandler = tour._languageChangeHandler;
+    expect(secondHandler).not.toBeNull();
+    expect(secondHandler.fn).not.toBe(firstHandler.fn);
+  });
+
+  it('revisiting theme step does not accumulate duplicate listeners', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    tour.start(1);
+    // First visit: attach handler
+    tour.handleAction('select-theme', tour.steps[1]);
+    const firstHandler = tour._themeChangeHandler;
+    expect(firstHandler).not.toBeNull();
+    // Simulate step navigation
+    tour.currentStep = 0;
+    tour.showStep();
+    // Revisit theme step
+    tour.currentStep = 1;
+    tour.showStep();
+    const secondHandler = tour._themeChangeHandler;
+    expect(secondHandler).not.toBeNull();
+    expect(secondHandler.fn).not.toBe(firstHandler.fn);
+  });
 });
 
 describe('Timeout cleanup', () => {

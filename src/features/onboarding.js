@@ -661,8 +661,18 @@ class OnboardingTour {
   end(completed = false) {
     if (!this.isActive) return;
     this._clearActionTimeouts();
-    this._languageChangeHandler = null;
-    this._themeChangeHandler = null;
+    if (this._languageChangeHandler) {
+      this._languageChangeHandler.targets.forEach(radio => {
+        radio.removeEventListener('change', this._languageChangeHandler.fn);
+      });
+      this._languageChangeHandler = null;
+    }
+    if (this._themeChangeHandler) {
+      this._themeChangeHandler.targets.forEach(radio => {
+        radio.removeEventListener('change', this._themeChangeHandler.fn);
+      });
+      this._themeChangeHandler = null;
+    }
     if (completed) {
       this.markCompleted();
     } else {
