@@ -288,7 +288,7 @@ describe('VisibilityInterval', () => {
     it(`pauses while hidden and resumes on ${name}`, () => {
       vi.useFakeTimers();
 
-      const originalHidden = document.hidden;
+      const originalHiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
       const callback = vi.fn();
       let interval;
 
@@ -319,7 +319,11 @@ describe('VisibilityInterval', () => {
           interval.destroy();
         }
 
-        Object.defineProperty(document, 'hidden', { value: originalHidden, configurable: true });
+        if (originalHiddenDescriptor) {
+          Object.defineProperty(document, 'hidden', originalHiddenDescriptor);
+        } else {
+          delete document.hidden;
+        }
         vi.useRealTimers();
       }
     });
