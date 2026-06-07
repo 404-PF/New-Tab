@@ -526,13 +526,6 @@ class OnboardingTour {
         break;
       case 'select-language': {
         this._clearActionTimeouts();
-        // Remove previous listener if it exists
-        if (this._languageChangeHandler) {
-          this._languageChangeHandler.targets.forEach(radio => {
-            radio.removeEventListener('change', this._languageChangeHandler.fn);
-          });
-          this._languageChangeHandler = null;
-        }
         // Add event listeners to language radio buttons
         const languageRadios = this.overlay.querySelectorAll('input[name="onboarding-language"]');
         const langHandler = (e) => {
@@ -559,13 +552,6 @@ class OnboardingTour {
       }
       case 'select-theme': {
         this._clearActionTimeouts();
-        // Remove previous listener if it exists
-        if (this._themeChangeHandler) {
-          this._themeChangeHandler.targets.forEach(radio => {
-            radio.removeEventListener('change', this._themeChangeHandler.fn);
-          });
-          this._themeChangeHandler = null;
-        }
         // Add event listeners to theme radio buttons
         const themeRadios = this.overlay.querySelectorAll('input[name="onboarding-theme"]');
         const themeHandler = (e) => {
