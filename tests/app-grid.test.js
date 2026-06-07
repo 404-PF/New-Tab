@@ -400,4 +400,104 @@ describe('renderAllApps order validation', () => {
     expect(order).toContain('settings-app');
     expect(order).toContain('custom-3');
   });
+
+  it('preserves user reorder after deleting a custom app (#257)', () => {
+    // Reproduces issue #257: add two custom apps, reorder them, delete one,
+    // then render. The remaining custom app's position must be preserved
+    // (it should NOT be rewritten back to default insertion order).
+    AppGridState.addApp({ id: 'c1', url: 'https://a.com', name: 'C1' });
+    AppGridState.addApp({ id: 'c2', url: 'https://b.com', name: 'C2' });
+    window.renderAllApps();
+
+    // Move c1 to the end so c2 sits before c1.
+    // order was [defaults..., c1, c2]; reorder('c1', 5) gives [defaults..., c2, c1].
+    AppGridState.reorder('c1', 5);
+
+    AppGridState.deleteApp('c1');
+    window.renderAllApps();
+
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'feedback-app', 'settings-app', 'c2']);
+  });
+
+  it('preserves relative order of remaining customs across a delete', () => {
+    // Three customs in a non-canonical order; deleting the middle one must
+    // keep the other two in their user-defined relative positions.
+    AppGridState.addApp({ id: 'c1', url: 'https://a.com', name: 'C1' });
+    AppGridState.addApp({ id: 'c2', url: 'https://b.com', name: 'C2' });
+    AppGridState.addApp({ id: 'c3', url: 'https://c.com', name: 'C3' });
+    window.renderAllApps();
+
+    // Hand-craft a reordered order and persist it (reorder math is exercised
+    // elsewhere; this test focuses on delete-preserves-order).
+    AppGridStorage.saveOrder(['ai-app', 'feedback-app', 'settings-app', 'c3', 'c1', 'c2']);
+
+    AppGridState.deleteApp('c2');
+    window.renderAllApps();
+
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'feedback-app', 'settings-app', 'c3', 'c1']);
+  });
+
+  it('does not rewrite order when a custom app lives inside a folder', () => {
+    // Regression: totalExpectedLength previously counted every custom app
+    // even those in folders, so any folder move made the next render
+    // trigger the recovery branch and wipe the user's reorder.
+    AppGridState.addApp({ id: 'c1', url: 'https://a.com', name: 'C1' });
+    AppGridState.addApp({ id: 'c2', url: 'https://b.com', name: 'C2' });
+    window.renderAllApps();
+
+    const folder = AppGridState.createFolder('Group', []);
+    // Manually craft the post-folder-create state via the public API path.
+    AppGridState.addAppToFolder(folder.id, 'c1');
+
+    // After moving c1 into the folder, the expected order is
+    // [defaults..., c2, folder.id] (c1 removed because it now lives in folder).
+    const expectedOrder = ['ai-app', 'feedback-app', 'settings-app', 'c2', folder.id];
+    expect(AppGridState.getOrder()).toEqual(expectedOrder);
+
+    // Re-render and confirm the order is unchanged (no spurious recovery).
+    window.renderAllApps();
+    expect(AppGridState.getOrder()).toEqual(expectedOrder);
+    expect(AppGridState.getFolders()[0].apps).toContain('c1');
+  });
+
+  it('repairs corrupted order while preserving the user-defined portion', () => {
+    // Seed an order that is mostly valid but contains a foreign ID; the
+    // repair pass should drop the foreign ID and keep the rest of the
+    // user's order (including non-canonical positioning of defaults).
+    AppGridState.addApp({ id: 'custom-known', url: 'https://a.com', name: 'Custom' });
+    const corrupted = ['feedback-app', 'ai-app', 'settings-app', 'custom-known', 'foreign-id'];
+    AppGridStorage.saveOrder(corrupted);
+
+    window.renderAllApps();
+
+    const order = AppGridState.getOrder();
+    expect(order).toEqual(['feedback-app', 'ai-app', 'settings-app', 'custom-known']);
+    expect(order).not.toContain('foreign-id');
+  });
+
+  it('recovers cleanly when order is null without throwing (#257 regression)', () => {
+    // Previous validator called defaultApps.every(app => order.includes(...))
+    // which throws TypeError when order is null. The new ID-set check
+    // must handle a null order gracefully and rebuild it from defaults.
+    AppGridStorage.saveOrder(null);
+    expect(() => window.renderAllApps()).not.toThrow();
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'feedback-app', 'settings-app']);
+  });
+
+  it('prepends only the missing defaults when some are already in user order', () => {
+    // Locks in the documented repair behavior: when the order is invalid
+    // because some default IDs are absent, the missing ones are unshifted
+    // to the front in canonical order. Defaults that the user already had
+    // in their order stay in place (preserves user reorders).
+    AppGridState.addApp({ id: 'c1', url: 'https://a.com', name: 'C1' });
+    // User placed ai-app and c1, but feedback-app and settings-app are missing.
+    AppGridStorage.saveOrder(['ai-app', 'c1']);
+
+    window.renderAllApps();
+
+    // Missing defaults are prepended in canonical order; existing user
+    // entries (ai-app, c1) keep their relative positions after the
+    // prepended defaults.
+    expect(AppGridState.getOrder()).toEqual(['feedback-app', 'settings-app', 'ai-app', 'c1']);
+  });
 });
