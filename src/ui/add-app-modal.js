@@ -89,7 +89,7 @@ function getExistingAppUrls() {
           urlSet.add(window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url)));
         }
       });
-    } catch (_e) { void 0; }
+    } catch { void 0; }
 
     // Also inspect the DOM for apps inside .app-grid (match by visible name)
     try {
@@ -97,7 +97,7 @@ function getExistingAppUrls() {
       names.forEach(n => {
         if (n) nameSet.add(n.toLowerCase());
       });
-    } catch (_e) { void 0; }
+    } catch { void 0; }
   }
 
   return { urls: urlSet, names: nameSet };
@@ -264,7 +264,7 @@ function renderDefaultAppsList() {
         const canonical = window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url));
         if (existingUrls.has(canonical)) return false;
       }
-    } catch (_e) { void 0; }
+    } catch { void 0; }
 
     // Check by visible name inside the app grid
     if (existingNames.has((app.name || '').toLowerCase())) return false;
@@ -314,7 +314,7 @@ function renderDefaultAppsList() {
           button.title = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
         }
       }
-    } catch (_e) { void 0; }
+    } catch { void 0; }
     button.addEventListener('click', async function () {
       if (isQuickAddInProgress) {
         return;

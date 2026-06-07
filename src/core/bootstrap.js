@@ -7,6 +7,7 @@
     'src/data/custom-backgrounds.js',
     'src/core/version.js',
     'src/core/utils.js',
+    'src/core/motion.js',
     'src/core/dom-ready.js',
     'src/core/app-grid-storage.js',
     'src/core/main.js',
