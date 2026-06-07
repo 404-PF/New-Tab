@@ -1,6 +1,19 @@
 (function () {
   const SCRIPT_BOOTSTRAP_TIMEOUT_MS = 8000;
 
+  // Safe fallbacks for motion helpers. `src/core/motion.js` overwrites these
+  // with the real implementation once it loads, but keeping no-ops here lets
+  // the rest of the bootstrap pipeline tolerate a motion.js load failure.
+  window.crossfadeDelayMs = window.crossfadeDelayMs || function (duration) {
+    return duration;
+  };
+  window.prefersReducedMotion = window.prefersReducedMotion || function () {
+    return false;
+  };
+  window.onReducedMotionChange = window.onReducedMotionChange || function () {
+    return function () {};
+  };
+
   const scriptSources = [
     'src/data/motto.js',
     'src/data/backgrounds.js',

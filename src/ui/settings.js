@@ -540,6 +540,7 @@ function applyBg() {
         // (a full-bleed background) without any movement.
         if (window.prefersReducedMotion && window.prefersReducedMotion()) {
           videoEl.dataset.reducedMotionPaused = 'true';
+          videoEl.classList.add('active', 'ready');
           hideBackgroundOverlay();
           return;
         }

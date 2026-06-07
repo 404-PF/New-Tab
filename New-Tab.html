@@ -7,16 +7,6 @@
   <title>New-Tab</title>
   <link rel="stylesheet" href="style.css" />
   <script src="src/core/storage.js"></script>
-  <script>
-    // Safety stubs for the motion helper. The real implementations in
-    // src/core/motion.js overwrite these on load. If motion.js is ever
-    // blocked (CSP, network error) we still want consumers of
-    // crossfadeDelayMs / prefersReducedMotion / onReducedMotionChange to get
-    // sensible no-op values instead of ReferenceError.
-    window.crossfadeDelayMs = window.crossfadeDelayMs || function (d) { return d; };
-    window.prefersReducedMotion = window.prefersReducedMotion || function () { return false; };
-    window.onReducedMotionChange = window.onReducedMotionChange || function () { return function () {}; };
-  </script>
   </head>
 <body>
   <!-- Weather Widget -->

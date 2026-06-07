@@ -987,4 +987,30 @@ describe('video background transition overlay', () => {
       tearDownBg();
     }
   });
+
+  it('keeps the video active when reduced motion skips autoplay so resume can work later', () => {
+    setupVideoBg();
+    window._setReducedForTests(true);
+
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    overlay.setAttribute('src', 'old-snapshot');
+
+    try {
+      applyBg();
+      const videoEl = document.getElementById('bg-video');
+      if (typeof videoEl.oncanplaythrough === 'function') {
+        videoEl.oncanplaythrough();
+      }
+
+      expect(videoEl.dataset.crossfadeTriggered).toBe('true');
+      expect(videoEl.dataset.reducedMotionPaused).toBe('true');
+      expect(videoEl.classList.contains('active')).toBe(true);
+      expect(videoEl.classList.contains('ready')).toBe(true);
+      expect(overlay.classList.contains('active')).toBe(false);
+    } finally {
+      window._setReducedForTests(false);
+      tearDownBg();
+    }
+  });
 });
