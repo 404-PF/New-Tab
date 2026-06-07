@@ -269,117 +269,60 @@ describe('VisibilityInterval', () => {
     expect(typeof VisibilityInterval).toBe('function');
   });
 
-  it('pauses while hidden and resumes immediately when visible again', () => {
-    vi.useFakeTimers();
+  const visibilityResumeCases = [
+    {
+      name: 'visibilitychange',
+      target: document,
+    },
+    {
+      name: 'focus',
+      target: window,
+    },
+    {
+      name: 'pageshow',
+      target: window,
+    },
+  ];
 
-    const originalHidden = document.hidden;
-    const callback = vi.fn();
-    let interval;
+  visibilityResumeCases.forEach(({ name, target }) => {
+    it(`pauses while hidden and resumes on ${name}`, () => {
+      vi.useFakeTimers();
 
-    try {
-      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
-      interval = new VisibilityInterval(callback, 1000);
+      const originalHidden = document.hidden;
+      const callback = vi.fn();
+      let interval;
 
-      expect(callback).not.toHaveBeenCalled();
+      try {
+        Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+        interval = new VisibilityInterval(callback, 1000);
 
-      vi.advanceTimersByTime(1000);
-      expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).not.toHaveBeenCalled();
 
-      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
-      document.dispatchEvent(new Event('visibilitychange'));
+        vi.advanceTimersByTime(1000);
+        expect(callback).toHaveBeenCalledTimes(1);
 
-      vi.advanceTimersByTime(2000);
-      expect(callback).toHaveBeenCalledTimes(1);
+        Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+        document.dispatchEvent(new Event('visibilitychange'));
 
-      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
-      document.dispatchEvent(new Event('visibilitychange'));
+        vi.advanceTimersByTime(2000);
+        expect(callback).toHaveBeenCalledTimes(1);
 
-      expect(callback).toHaveBeenCalledTimes(2);
+        Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+        target.dispatchEvent(new Event(name));
 
-      vi.advanceTimersByTime(1000);
-      expect(callback).toHaveBeenCalledTimes(3);
-    } finally {
-      if (interval && typeof interval.destroy === 'function') {
-        interval.destroy();
+        expect(callback).toHaveBeenCalledTimes(2);
+
+        vi.advanceTimersByTime(1000);
+        expect(callback).toHaveBeenCalledTimes(3);
+      } finally {
+        if (interval && typeof interval.destroy === 'function') {
+          interval.destroy();
+        }
+
+        Object.defineProperty(document, 'hidden', { value: originalHidden, configurable: true });
+        vi.useRealTimers();
       }
-
-      Object.defineProperty(document, 'hidden', { value: originalHidden, configurable: true });
-      vi.useRealTimers();
-    }
-  });
-
-  it('also resumes when the tab regains focus', () => {
-    vi.useFakeTimers();
-
-    const originalHidden = document.hidden;
-    const callback = vi.fn();
-    let interval;
-
-    try {
-      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
-      interval = new VisibilityInterval(callback, 1000);
-
-      vi.advanceTimersByTime(1000);
-      expect(callback).toHaveBeenCalledTimes(1);
-
-      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
-      document.dispatchEvent(new Event('visibilitychange'));
-
-      vi.advanceTimersByTime(2000);
-      expect(callback).toHaveBeenCalledTimes(1);
-
-      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
-      window.dispatchEvent(new Event('focus'));
-
-      expect(callback).toHaveBeenCalledTimes(2);
-
-      vi.advanceTimersByTime(1000);
-      expect(callback).toHaveBeenCalledTimes(3);
-    } finally {
-      if (interval && typeof interval.destroy === 'function') {
-        interval.destroy();
-      }
-
-      Object.defineProperty(document, 'hidden', { value: originalHidden, configurable: true });
-      vi.useRealTimers();
-    }
-  });
-
-  it('also resumes on pageshow after returning to a hidden tab', () => {
-    vi.useFakeTimers();
-
-    const originalHidden = document.hidden;
-    const callback = vi.fn();
-    let interval;
-
-    try {
-      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
-      interval = new VisibilityInterval(callback, 1000);
-
-      vi.advanceTimersByTime(1000);
-      expect(callback).toHaveBeenCalledTimes(1);
-
-      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
-      document.dispatchEvent(new Event('visibilitychange'));
-
-      vi.advanceTimersByTime(2000);
-      expect(callback).toHaveBeenCalledTimes(1);
-
-      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
-      window.dispatchEvent(new Event('pageshow'));
-
-      expect(callback).toHaveBeenCalledTimes(2);
-
-      vi.advanceTimersByTime(1000);
-      expect(callback).toHaveBeenCalledTimes(3);
-    } finally {
-      if (interval && typeof interval.destroy === 'function') {
-        interval.destroy();
-      }
-
-      Object.defineProperty(document, 'hidden', { value: originalHidden, configurable: true });
-      vi.useRealTimers();
-    }
+    });
   });
 });
 
