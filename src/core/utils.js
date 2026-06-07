@@ -115,7 +115,6 @@
     }
   }
 
-   
   function translateValidationMessage(message) {
     if (!message) return '';
 
@@ -328,14 +327,23 @@
     isVisible: !document.hidden,
     callbacks: [],
 
+    syncVisibility() {
+      const wasVisible = this.isVisible;
+      this.isVisible = !document.hidden;
+
+      if (wasVisible !== this.isVisible) {
+        // Snapshot the callback list so unsubscribe/remove logic during one
+        // handler does not skip the next subscriber.
+        this.callbacks.slice().forEach(cb => cb(this.isVisible));
+      }
+    },
+
     init() {
-      document.addEventListener('visibilitychange', () => {
-        const wasVisible = this.isVisible;
-        this.isVisible = !document.hidden;
-        if (wasVisible !== this.isVisible) {
-          this.callbacks.forEach(cb => cb(this.isVisible));
-        }
-      });
+      const handleVisibilityChange = () => this.syncVisibility();
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('focus', handleVisibilityChange);
+      window.addEventListener('pageshow', handleVisibilityChange);
     },
 
     onChange(callback) {

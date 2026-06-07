@@ -268,6 +268,66 @@ describe('VisibilityInterval', () => {
   it('is globally available', () => {
     expect(typeof VisibilityInterval).toBe('function');
   });
+
+  const visibilityResumeCases = [
+    {
+      name: 'visibilitychange',
+      target: document,
+    },
+    {
+      name: 'focus',
+      target: window,
+    },
+    {
+      name: 'pageshow',
+      target: window,
+    },
+  ];
+
+  visibilityResumeCases.forEach(({ name, target }) => {
+    it(`pauses while hidden and resumes on ${name}`, () => {
+      vi.useFakeTimers();
+
+      const originalHiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
+      const callback = vi.fn();
+      let interval;
+
+      try {
+        Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+        interval = new VisibilityInterval(callback, 1000);
+
+        expect(callback).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(1000);
+        expect(callback).toHaveBeenCalledTimes(1);
+
+        Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        vi.advanceTimersByTime(2000);
+        expect(callback).toHaveBeenCalledTimes(1);
+
+        Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+        target.dispatchEvent(new Event(name));
+
+        expect(callback).toHaveBeenCalledTimes(2);
+
+        vi.advanceTimersByTime(1000);
+        expect(callback).toHaveBeenCalledTimes(3);
+      } finally {
+        if (interval && typeof interval.destroy === 'function') {
+          interval.destroy();
+        }
+
+        if (originalHiddenDescriptor) {
+          Object.defineProperty(document, 'hidden', originalHiddenDescriptor);
+        } else {
+          delete document.hidden;
+        }
+        vi.useRealTimers();
+      }
+    });
+  });
 });
 
 describe('visibilityManager', () => {
