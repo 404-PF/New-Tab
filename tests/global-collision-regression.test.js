@@ -18,10 +18,6 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
-async function flushMicrotasks() {
-  await Promise.resolve();
-}
-
 describe('cross-file global collision prevention', () => {
   beforeAll(() => {
     // Provide the DOM elements that context-menu.js needs on load

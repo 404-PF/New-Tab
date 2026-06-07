@@ -2,12 +2,42 @@
   const nativeLocalStorage = globalThis.localStorage;
   const cache = new Map();
   let hydrationStarted = false;
-  let resolveStorageReady;
+  let hydrationFinished = false;
+  let hydrationClearRequested = false;
+  const hydrationMutations = new Map();
+  let resolveStorageBridge;
+  let storageBridgeResolved = false;
+  let storageBridgeTimeoutId = null;
+  const STORAGE_BRIDGE_TIMEOUT_MS = 3000;
   const storageReady = new Promise((resolve) => {
-    resolveStorageReady = resolve;
+    resolveStorageBridge = resolve;
   });
 
   globalThis.__storageBridgeReady = storageReady;
+
+  // Safety timeout: if chrome.storage.local.get() never calls back (e.g. extension
+  // reload, context invalidation, transient API failure), resolve the bridge after
+  // 3 seconds so bootstrap proceeds and the page renders. Without this the New Tab
+  // stalls permanently — all scripts wait on __storageBridgeReady.
+  storageBridgeTimeoutId = setTimeout(function () {
+    console.warn(
+      `[storage] chrome.storage.local.get() did not respond within ${STORAGE_BRIDGE_TIMEOUT_MS / 1000} s. ` +
+      'Proceeding with native localStorage snapshot. Settings saved this session ' +
+      'will still be written to chrome.storage when the API becomes available.'
+    );
+    resolveStorageReady();
+  }, STORAGE_BRIDGE_TIMEOUT_MS);
+
+  // Wrap resolveStorageBridge so it clears the timeout and is idempotent
+  function resolveStorageReady() {
+    if (storageBridgeResolved) return;
+    storageBridgeResolved = true;
+    if (storageBridgeTimeoutId) {
+      clearTimeout(storageBridgeTimeoutId);
+      storageBridgeTimeoutId = null;
+    }
+    resolveStorageBridge();
+  }
 
   function getStorageArea() {
     if (!globalThis.chrome || !chrome.storage || !chrome.storage.local) {
@@ -60,6 +90,35 @@
     });
   }
 
+  function beginHydrationMutationTracking() {
+    hydrationFinished = false;
+    hydrationClearRequested = false;
+    hydrationMutations.clear();
+  }
+
+  function trackHydrationMutation(key, value) {
+    if (!hydrationStarted || hydrationFinished) {
+      return;
+    }
+
+    hydrationMutations.set(key, value === null ? null : String(value));
+  }
+
+  function mergeHydrationSnapshot(nativeSnapshot, storageSnapshot) {
+    const mergedSnapshot = hydrationClearRequested ? {} : { ...nativeSnapshot, ...storageSnapshot };
+
+    hydrationMutations.forEach((value, key) => {
+      if (value === null) {
+        delete mergedSnapshot[key];
+        return;
+      }
+
+      mergedSnapshot[key] = value;
+    });
+
+    return mergedSnapshot;
+  }
+
   function snapshotToObject() {
     const snapshot = {};
     cache.forEach((value, key) => {
@@ -74,9 +133,11 @@
     }
 
     hydrationStarted = true;
+    beginHydrationMutationTracking();
 
     const storageArea = getStorageArea();
     if (!storageArea) {
+      hydrationFinished = true;
       resolveStorageReady();
       return;
     }
@@ -85,39 +146,47 @@
 
     try {
       storageArea.get(null, (items) => {
+        if (hydrationFinished) {
+          return;
+        }
+
         if (chrome.runtime && chrome.runtime.lastError) {
           console.warn('Failed to read chrome.storage during initialization:', chrome.runtime.lastError.message);
+          hydrationFinished = true;
           resolveStorageReady();
           return;
         }
 
         const storageSnapshot = items || {};
+        const mergedSnapshot = mergeHydrationSnapshot(nativeSnapshot, storageSnapshot);
 
         if (Object.keys(storageSnapshot).length === 0 && Object.keys(nativeSnapshot).length > 0) {
-          const migratedSnapshot = { ...nativeSnapshot };
-          applySnapshot(migratedSnapshot);
+          applySnapshot(mergedSnapshot);
 
           try {
-            storageArea.set(migratedSnapshot, () => {
+            storageArea.set(mergedSnapshot, () => {
               if (chrome.runtime && chrome.runtime.lastError) {
                 console.warn('Failed to migrate localStorage data to chrome.storage:', chrome.runtime.lastError.message);
               }
+              hydrationFinished = true;
               resolveStorageReady();
             });
           } catch (error) {
             console.warn('Failed to migrate localStorage data to chrome.storage:', error);
+            hydrationFinished = true;
             resolveStorageReady();
           }
 
           return;
         }
 
-        const mergedSnapshot = { ...nativeSnapshot, ...storageSnapshot };
         applySnapshot(mergedSnapshot);
+        hydrationFinished = true;
         resolveStorageReady();
       });
     } catch (error) {
       console.warn('Failed to initialize chrome.storage bridge:', error);
+      hydrationFinished = true;
       resolveStorageReady();
     }
   }
@@ -220,6 +289,7 @@
     setItem(key, value) {
       const stringValue = String(value);
       cache.set(key, stringValue);
+      trackHydrationMutation(key, stringValue);
 
       if (!getStorageArea()) {
         writeNativeSnapshot(snapshotToObject());
@@ -231,6 +301,7 @@
 
     removeItem(key) {
       cache.delete(key);
+      trackHydrationMutation(key, null);
 
       if (!getStorageArea()) {
         writeNativeSnapshot(snapshotToObject());
@@ -242,6 +313,10 @@
 
     clear() {
       cache.clear();
+      if (hydrationStarted && !hydrationFinished) {
+        hydrationClearRequested = true;
+        hydrationMutations.clear();
+      }
 
       if (!getStorageArea()) {
         writeNativeSnapshot({});

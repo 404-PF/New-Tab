@@ -1,10 +1,26 @@
 (function () {
+  const SCRIPT_BOOTSTRAP_TIMEOUT_MS = 8000;
+
+  // Safe fallbacks for motion helpers. `src/core/motion.js` overwrites these
+  // with the real implementation once it loads, but keeping no-ops here lets
+  // the rest of the bootstrap pipeline tolerate a motion.js load failure.
+  window.crossfadeDelayMs = window.crossfadeDelayMs || function (duration) {
+    return duration;
+  };
+  window.prefersReducedMotion = window.prefersReducedMotion || function () {
+    return false;
+  };
+  window.onReducedMotionChange = window.onReducedMotionChange || function () {
+    return function () {};
+  };
+
   const scriptSources = [
     'src/data/motto.js',
     'src/data/backgrounds.js',
     'src/data/custom-backgrounds.js',
     'src/core/version.js',
     'src/core/utils.js',
+    'src/core/motion.js',
     'src/core/dom-ready.js',
     'src/core/app-grid-storage.js',
     'src/core/main.js',
@@ -51,7 +67,34 @@
   }
 
   const ready = window.__storageBridgeReady || Promise.resolve();
-  ready.then(() => {
+
+  // Safety timeout: if the storage bridge never resolves (chrome.storage stall)
+  // this race ensures scripts are loaded after a reasonable delay. Without this
+  // the New Tab stays permanently blank if __storageBridgeReady hangs.
+  let fallbackTimerId;
+  const fallbackPromise = new Promise(function (resolve) {
+    fallbackTimerId = setTimeout(function () {
+      console.warn(
+        '[bootstrap] __storageBridgeReady did not resolve within ' +
+        (SCRIPT_BOOTSTRAP_TIMEOUT_MS / 1000) + ' s. Forcing script load. ' +
+        'Settings may use stale or default values until chrome.storage responds.'
+      );
+      resolve();
+    }, SCRIPT_BOOTSTRAP_TIMEOUT_MS);
+  });
+
+  // Clear the fallback timeout when ready resolves or rejects to prevent
+  // spurious warnings if ready wins the race
+  ready.finally(function () {
+    clearTimeout(fallbackTimerId);
+  });
+
+  const readyWithFallback = Promise.race([
+    ready,
+    fallbackPromise
+  ]);
+
+  readyWithFallback.then(() => {
     // Kick off all script downloads in parallel. Execution order is preserved
     // because loadScript() sets script.async = false; changing that would break
     // ordering assumptions in scriptSources.

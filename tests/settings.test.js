@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import { JSDOM } from 'jsdom';
-import vm from 'vm';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -555,18 +552,91 @@ describe('initSettings background startup', () => {
 
       isolatedWindow.Image = MockImage;
 
-      const code = readFileSync(resolve(process.cwd(), 'src/ui/settings.js'), 'utf-8');
-      const motionCode = readFileSync(resolve(process.cwd(), 'src/core/motion.js'), 'utf-8');
-      const motionScript = new vm.Script(motionCode);
-      motionScript.runInContext(dom.getInternalVMContext());
-      const script = new vm.Script(code);
-      script.runInContext(dom.getInternalVMContext());
+      injectScript('src/core/motion.js', dom.getInternalVMContext());
+      injectScript('src/ui/settings.js', dom.getInternalVMContext());
 
       isolatedWindow.document.dispatchEvent(new isolatedWindow.Event('DOMContentLoaded'));
 
       expect(isolatedWindow.requestIdleCallback).not.toHaveBeenCalled();
       expect(requestedSources).toContain('full.jpg');
       expect(isolatedWindow.document.body.getAttribute('data-bg')).toBe('Mountain View');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('replaces the reduced-motion subscriber when settings.js is re-evaluated', () => {
+    const dom = new JSDOM(`<!doctype html><html><body>
+      <div class="background-container" id="background-container">
+        <video class="background-video" id="bg-video"><source src="" type="video/mp4"></video>
+        <img class="background-thumbnail" id="bg-thumbnail" src="" alt="">
+        <img class="background-full" id="bg-full" src="" alt="">
+        <img class="background-transition-overlay" id="bg-transition-overlay" src="" alt="">
+      </div>
+      <div class="settings-menu"></div>
+      <section class="settings-section" data-section="about"></section>
+    </body></html>`, {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      const { window: isolatedWindow } = dom;
+      const videoEl = isolatedWindow.document.getElementById('bg-video');
+      const pauseSpy = vi.fn();
+
+      isolatedWindow.localStorage.setItem('homepageBg', 'test-video');
+      isolatedWindow._backgrounds = [
+        { id: 'test-video', type: 'video', thumb: 'thumb.jpg', url: 'video.mp4' }
+      ];
+      isolatedWindow._interactiveBackground = { stop() {} };
+      isolatedWindow._customBackgrounds = {
+        isCustom: () => false,
+        revokeAll() {}
+      };
+      isolatedWindow.loadSimpleMode = () => false;
+      isolatedWindow.i18n = {
+        currentLanguage() { return 'en'; },
+        getSupportedLanguages() { return []; },
+        t(key) { return key; }
+      };
+      isolatedWindow.updateChecker = {
+        getUpdateStatus() { return ''; },
+        isEnabled() { return true; }
+      };
+      isolatedWindow.WeatherWidget = { applySettings() {} };
+      isolatedWindow.initModernColorPickers = () => {};
+      isolatedWindow.initModernFontPickers = () => {};
+      isolatedWindow.requestAnimationFrame = (callback) => callback();
+      isolatedWindow.cancelAnimationFrame = () => {};
+      videoEl.pause = () => {};
+      videoEl.load = () => {};
+      videoEl.play = () => Promise.resolve();
+
+      injectScript('src/core/motion.js', dom.getInternalVMContext());
+      injectScript('src/ui/settings.js', dom.getInternalVMContext());
+      if (!isolatedWindow.__unsubscribeVideoMotion) {
+        isolatedWindow.initSettings();
+      }
+
+      Object.defineProperty(videoEl, 'currentSrc', { value: 'video.mp4', configurable: true });
+      Object.defineProperty(videoEl, 'readyState', { value: 3, configurable: true });
+      Object.defineProperty(videoEl, 'paused', { value: false, configurable: true });
+      videoEl.classList.add('active');
+      videoEl.pause = pauseSpy;
+
+      isolatedWindow._setReducedForTests(true);
+      expect(pauseSpy).toHaveBeenCalledTimes(1);
+
+      videoEl.pause = () => {};
+      injectScript('src/ui/settings.js', dom.getInternalVMContext());
+      if (!isolatedWindow.__unsubscribeVideoMotion) {
+        isolatedWindow.initSettings();
+      }
+      videoEl.pause = pauseSpy;
+
+      isolatedWindow._setReducedForTests(true);
+      expect(pauseSpy).toHaveBeenCalledTimes(2);
     } finally {
       dom.window.close();
     }
@@ -991,6 +1061,32 @@ describe('video background transition overlay', () => {
       expect(overlay.classList.contains('active')).toBe(false);
     } finally {
       window.loadSimpleMode = origLoadSimpleMode;
+      tearDownBg();
+    }
+  });
+
+  it('keeps the video active when reduced motion skips autoplay so resume can work later', () => {
+    setupVideoBg();
+    window._setReducedForTests(true);
+
+    const overlay = document.getElementById('bg-transition-overlay');
+    overlay.classList.add('active');
+    overlay.setAttribute('src', 'old-snapshot');
+
+    try {
+      applyBg();
+      const videoEl = document.getElementById('bg-video');
+      if (typeof videoEl.oncanplaythrough === 'function') {
+        videoEl.oncanplaythrough();
+      }
+
+      expect(videoEl.dataset.crossfadeTriggered).toBe('true');
+      expect(videoEl.dataset.reducedMotionPaused).toBe('true');
+      expect(videoEl.classList.contains('active')).toBe(true);
+      expect(videoEl.classList.contains('ready')).toBe(true);
+      expect(overlay.classList.contains('active')).toBe(false);
+    } finally {
+      window._setReducedForTests(false);
       tearDownBg();
     }
   });

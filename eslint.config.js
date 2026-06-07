@@ -116,6 +116,7 @@ const testGlobals = {
   initModernColorPickers: 'readonly',
   loadVideoAutoplay: 'readonly',
   loadVideoMuted: 'readonly',
+  crossfadeDelayMs: 'readonly',
   loadVideoPauseHidden: 'readonly',
   applyVideoPlaybackSettings: 'readonly',
   initTodo: 'readonly',
