@@ -207,3 +207,30 @@ describe('search history', () => {
     ]);
   });
 });
+
+// ------------------------------------------------------------------
+// Regression: #249 — stale validation feedback cleared on re-submit
+// ------------------------------------------------------------------
+describe('search validation feedback clearing (#249)', () => {
+  it('clears stale feedback when runSearch is called', () => {
+    showSearchValidationFeedback('stale error');
+    const feedbackEl = document.querySelector('.search-validation-feedback');
+    expect(feedbackEl).not.toBeNull();
+    expect(feedbackEl.classList.contains('show')).toBe(true);
+
+    runSearch('hello world');
+
+    expect(feedbackEl.classList.contains('show')).toBe(false);
+  });
+
+  it('clears stale feedback when selectSearchHistorySuggestion is called', () => {
+    showSearchValidationFeedback('stale error');
+    const feedbackEl = document.querySelector('.search-validation-feedback');
+    expect(feedbackEl).not.toBeNull();
+    expect(feedbackEl.classList.contains('show')).toBe(true);
+
+    selectSearchHistorySuggestion('hello world');
+
+    expect(feedbackEl.classList.contains('show')).toBe(false);
+  });
+});

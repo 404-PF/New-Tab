@@ -98,6 +98,8 @@ const testGlobals = {
   getDisplayLocale: 'readonly',
   recordSearchHistory: 'readonly',
   runSearch: 'readonly',
+  selectSearchHistorySuggestion: 'readonly',
+  showSearchValidationFeedback: 'readonly',
   loadBg: 'readonly',
   loadClockStyle: 'readonly',
   loadDateStyle: 'readonly',
