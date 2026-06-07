@@ -50,19 +50,55 @@ const addApp = document.getElementById('new-app');
   });
   const folders = window.AppGridState.getFolders();
   const folderIds = new Set(folders.map(f => f.id));
-  const validIds = new Set([...dedupedApps.map(app => app.id), ...folderIds]);
-  const totalExpectedLength = dedupedApps.length + folders.length;
-  const allDefaultIdsPresent = defaultApps.every(app => order.includes(app.id));
+  const folderAppIds = new Set(folders.flatMap(f => f.apps || []));
+  const expectedOrderIds = new Set();
+  dedupedApps.forEach(app => { if (!folderAppIds.has(app.id)) expectedOrderIds.add(app.id); });
+  folderIds.forEach(id => expectedOrderIds.add(id));
   const isValidOrder = Array.isArray(order)
-    && order.length === totalExpectedLength
-    && order.every(id => validIds.has(id))
+    && order.length === expectedOrderIds.size
     && new Set(order).size === order.length
-    && allDefaultIdsPresent;
+    && order.every(id => expectedOrderIds.has(id));
   if (!isValidOrder) {
-    // During recovery, all folders are appended after apps, which may lose
-    // any interleaved positioning users had set between folders and apps.
-    order = dedupedApps.map(app => app.id);
-    folders.forEach(f => order.push(f.id));
+    // Repair the order instead of rebuilding from scratch:
+    //   1. Keep the user's valid existing entries in their original order
+    //      (preserves user reorders, including interleaved app/folder
+    //      positions, and drops foreign/duplicate IDs).
+    //   2. Prepend any default IDs that are entirely missing from the user's
+    //      order, in canonical order. Defaults already present in the user's
+    //      order are left in place, so the previous repair that swapped
+    //      the user's order for canonical defaults no longer happens.
+    //   3. Append any custom apps that are missing from the user's order, in
+    //      customApps insertion order.
+    //   4. Append any folders that are missing from the user's order, in
+    //      folders insertion order.
+    const seen = new Set();
+    const repaired = [];
+    (Array.isArray(order) ? order : []).forEach(id => {
+      if (expectedOrderIds.has(id) && !seen.has(id)) {
+        repaired.push(id);
+        seen.add(id);
+      }
+    });
+    const missingDefaults = defaultApps
+      .filter(app => expectedOrderIds.has(app.id) && !seen.has(app.id))
+      .map(app => app.id);
+    if (missingDefaults.length) {
+      repaired.unshift(...missingDefaults);
+      missingDefaults.forEach(id => seen.add(id));
+    }
+    dedupedApps.forEach(app => {
+      if (expectedOrderIds.has(app.id) && !seen.has(app.id)) {
+        repaired.push(app.id);
+        seen.add(app.id);
+      }
+    });
+    folders.forEach(f => {
+      if (expectedOrderIds.has(f.id) && !seen.has(f.id)) {
+        repaired.push(f.id);
+        seen.add(f.id);
+      }
+    });
+    order = repaired;
     saveAppOrder(order);
   }
   const folderMap = Object.fromEntries(folders.map(f => [f.id, f]));
