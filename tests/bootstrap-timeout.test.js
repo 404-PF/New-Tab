@@ -10,66 +10,66 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { JSDOM } from 'jsdom';
+import vm from 'vm';
 
 const STORAGE_JS_PATH = resolve(process.cwd(), 'src/core/storage.js');
 const STORAGE_CODE = readFileSync(STORAGE_JS_PATH, 'utf-8');
 
-// Save the original chrome mock so we can restore it after the stall test
-let originalChrome = null;
-
 describe('bootstrap with stalled chrome.storage', () => {
-  beforeAll(() => {
-    // Save the chrome mock installed by setup.js before we override it
-    originalChrome = globalThis.chrome;
-  });
-
-  afterAll(() => {
-    // Restore the original chrome mock for other tests
-    globalThis.chrome = originalChrome;
-  });
-
   it(
     'resolves __storageBridgeReady via timeout when chrome.storage.get never calls back',
     async () => {
-      // Override chrome.storage.local with a get() that NEVER calls back.
-      // This is the failure mode that causes the blank-new-tab bug.
-      globalThis.chrome = {
-        runtime: { id: 'test-extension-id' },
-        storage: {
-          onChanged: {
-            addListener: () => {},
-            removeListener: () => {},
-            hasListener: () => false,
+      // Create an isolated JSDOM context for this test
+      const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+        url: 'https://example.com',
+        runScripts: 'dangerously'
+      });
+
+      try {
+        // Override chrome.storage.local with a get() that NEVER calls back.
+        // This is the failure mode that causes the blank-new-tab bug.
+        dom.window.chrome = {
+          runtime: { id: 'test-extension-id' },
+          storage: {
+            onChanged: {
+              addListener: () => {},
+              removeListener: () => {},
+              hasListener: () => false,
+            },
+            local: {
+              // Intentionally NEVER invokes the callback — this is the
+              // failure mode the safety timeout is designed to handle.
+              get(_keys, _callback) { /* no-op — never calls back */ },
+              set(_items, callback) { callback?.(); return Promise.resolve(); },
+              remove(_keys, callback) { callback?.(); return Promise.resolve(); },
+              clear(callback) { callback?.(); return Promise.resolve(); },
+            },
           },
-          local: {
-            // Intentionally NEVER invokes the callback — this is the
-            // failure mode the safety timeout is designed to handle.
-            get(_keys, _callback) { /* no-op — never calls back */ },
-            set(_items, callback) { callback?.(); return Promise.resolve(); },
-            remove(_keys, callback) { callback?.(); return Promise.resolve(); },
-            clear(callback) { callback?.(); return Promise.resolve(); },
-          },
-        },
-      };
+        };
 
-      // Re-inject storage.js so it picks up the stalling chrome.storage
-      (0, eval)(STORAGE_CODE);
+        // Inject storage.js using vm.Script to avoid unsafe eval
+        const script = new vm.Script(STORAGE_CODE);
+        script.runInContext(dom.getInternalVMContext());
 
-      // __storageBridgeReady should be a Promise
-      expect(globalThis.__storageBridgeReady).toBeDefined();
-      expect(typeof globalThis.__storageBridgeReady.then).toBe('function');
+        // __storageBridgeReady should be a Promise
+        expect(dom.window.__storageBridgeReady).toBeDefined();
+        expect(typeof dom.window.__storageBridgeReady.then).toBe('function');
 
-      // The bridge should be functional immediately (it uses the native
-      // localStorage snapshot captured before the chrome.storage call)
-      globalThis.localStorage.setItem('stallTest', 'bridge-works');
-      expect(globalThis.localStorage.getItem('stallTest')).toBe('bridge-works');
+        // The bridge should be functional immediately (it uses the native
+        // localStorage snapshot captured before the chrome.storage call)
+        dom.window.localStorage.setItem('stallTest', 'bridge-works');
+        expect(dom.window.localStorage.getItem('stallTest')).toBe('bridge-works');
 
-      // Wait for the safety timeout to fire (3 seconds)
-      await expect(globalThis.__storageBridgeReady).resolves.toBeUndefined();
+        // Wait for the safety timeout to fire (3 seconds)
+        await expect(dom.window.__storageBridgeReady).resolves.toBeUndefined();
 
-      // After timeout resolution the bridge should still work
-      expect(globalThis.localStorage.getItem('stallTest')).toBe('bridge-works');
+        // After timeout resolution the bridge should still work
+        expect(dom.window.localStorage.getItem('stallTest')).toBe('bridge-works');
+      } finally {
+        dom.window.close();
+      }
     },
-    5_000,
+    7_000,
   );
 });

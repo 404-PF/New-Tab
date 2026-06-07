@@ -23,7 +23,6 @@
         'will still be written to chrome.storage when the API becomes available.'
       );
       storageBridgeResolved = true;
-      clearTimeout(storageBridgeTimeoutId);
       storageBridgeTimeoutId = null;
       resolveStorageBridge();
     }
