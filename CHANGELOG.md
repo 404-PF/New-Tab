@@ -3,6 +3,7 @@
 ## v0.4.6 (unreleased)
 
 ### Accessibility
+
 - A11y(motion): respect `prefers-reduced-motion` across the new tab UI (#196)
   - New `src/core/motion.js` helper exposes `prefersReducedMotion()` /
     `onReducedMotionChange()` and toggles a `reduce-motion` class on

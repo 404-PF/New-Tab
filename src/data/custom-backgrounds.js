@@ -732,36 +732,38 @@
   // resolved lazily — the OS-level motion change can only fire after the
   // user interacts with the page, by which time settings.js has loaded.
   //
-  // `unsubscribeCustomVideoMotion` is captured so a re-injection of this
-  // module (test harness) can detach the previous handler before
-  // registering a new one, avoiding duplicate play/pause cycles.
-  let unsubscribeCustomVideoMotion = null;
-
   function syncCustomVideoToMotionPreference(reduced) {
     if (!isCustomBackground(window.loadBg())) return;
     const videoEl = document.getElementById('bg-video');
-    if (!videoEl || !videoEl.currentSrc || !videoEl.classList.contains('active')) return;
+    if (!videoEl || !videoEl.currentSrc) return;
+    // Allow resuming even when the video lacks the 'active' class —
+    // videos loaded while reduced-motion was on never receive 'active'
+    // from triggerCrossfade, but may still carry the
+    // reducedMotionPaused flag that signals a pending resume.
+    if (!videoEl.classList.contains('active') && videoEl.dataset.reducedMotionPaused !== 'true') return;
     if (reduced) {
       if (!videoEl.paused) window.safePause(videoEl);
       videoEl.dataset.reducedMotionPaused = 'true';
     } else {
       const wasReducedPaused = videoEl.dataset.reducedMotionPaused === 'true';
       delete videoEl.dataset.reducedMotionPaused;
-      if (wasReducedPaused && window.loadVideoAutoplay() && !document.hidden && (!window.loadSimpleMode || !window.loadSimpleMode()) && videoEl.readyState >= 3) {
-        videoEl.play().catch(function () {});
+      if (wasReducedPaused) {
+        // Restore the 'active' + 'ready' state that applyCustomBackground
+        // would have set via triggerCrossfade, then start playback.
+        videoEl.classList.add('active', 'ready');
+        if (window.loadVideoAutoplay() && !document.hidden && (!window.loadSimpleMode || !window.loadSimpleMode()) && videoEl.readyState >= 3) {
+          videoEl.play().catch(function () {});
+        }
       }
     }
   }
 
-  if (unsubscribeCustomVideoMotion) unsubscribeCustomVideoMotion();
+  // Store the unsubscribe handle on window so it survives module
+  // re-injections (test harness, HMR).  The previous handle is
+  // detached before registering a new one.
+  if (window.__unsubscribeCustomVideoMotion) window.__unsubscribeCustomVideoMotion();
   if (window.onReducedMotionChange) {
-    // The captured return value is consumed by the *next* module injection
-    // (test harness, HMR) via the detach call above. ESLint flags the
-    // assignment as a no-op because the value is read on a future pass
-    // rather than the current one, so suppress the rule here. See
-    // `unsubscribeCustomVideoMotion` for the full teardown rationale.
-    // eslint-disable-next-line no-useless-assignment
-    unsubscribeCustomVideoMotion = window.onReducedMotionChange(syncCustomVideoToMotionPreference);
+    window.__unsubscribeCustomVideoMotion = window.onReducedMotionChange(syncCustomVideoToMotionPreference);
   }
 
   // --- Public API ---

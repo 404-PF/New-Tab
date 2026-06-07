@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import { JSDOM } from 'jsdom';
-import vm from 'vm';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -555,12 +552,8 @@ describe('initSettings background startup', () => {
 
       isolatedWindow.Image = MockImage;
 
-      const code = readFileSync(resolve(process.cwd(), 'src/ui/settings.js'), 'utf-8');
-      const motionCode = readFileSync(resolve(process.cwd(), 'src/core/motion.js'), 'utf-8');
-      const motionScript = new vm.Script(motionCode);
-      motionScript.runInContext(dom.getInternalVMContext());
-      const script = new vm.Script(code);
-      script.runInContext(dom.getInternalVMContext());
+      injectScript('src/core/motion.js', dom.getInternalVMContext());
+      injectScript('src/ui/settings.js', dom.getInternalVMContext());
 
       isolatedWindow.document.dispatchEvent(new isolatedWindow.Event('DOMContentLoaded'));
 
