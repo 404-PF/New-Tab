@@ -24,31 +24,35 @@
   };
   const runTodoOnDomReady = window.onDomReady;
 
+  // Attempt to parse a JSON string; returns the original value on failure.
+  function parseCandidate(value) {
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+
   // Load todos from localStorage
   function loadTodos() {
     try {
       const raw = localStorage.getItem('todos');
       if (!raw) return [];
 
-      const parseCandidate = (value) => {
-        if (typeof value !== 'string') {
-          return value;
-        }
-
-        try {
-          return JSON.parse(value);
-        } catch {
-          return value;
-        }
-      };
-
       let parsed = JSON.parse(raw);
 
+      // Handle possible double-encoded / serialised payloads
       parsed = parseCandidate(parsed);
+      // Unwrap legacy {count, todos} format where the real list lives under .todos
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Array.isArray(parsed.todos)) {
         parsed = parsed.todos;
       }
 
+      // Final normalisation pass to ensure we hold a plain array
       parsed = parseCandidate(parsed);
       if (!Array.isArray(parsed)) {
         console.warn('Invalid todos data in localStorage: expected array, resetting to empty list');
