@@ -2011,7 +2011,13 @@ body.light-theme .update-settings-group .setting-btn:hover {
   }
 }
 
-/* Reduced Motion for Accessibility */
+/* Reduced Motion for Accessibility.
+   Global near-zero-duration override for every animation and transition. With
+   `forwards` (or `both`) fill mode the final keyframe state is preserved, so
+   entrance animations collapse to their final state instantly. Entrance /
+   glow animations that use `backwards`/no-fill-mode plus `animation-delay`
+   (clock, search bar, app grid, etc.) need a separate `animation: none;
+   opacity: 1` override; that lives in core.css. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2019,6 +2025,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

@@ -342,6 +342,7 @@
 
     // Apply FLIP animation for reordering
     requestAnimationFrame(() => {
+      const reducedMotion = window.prefersReducedMotion && window.prefersReducedMotion();
       todoList.querySelectorAll('.todo-item').forEach(item => {
         const id = item.dataset.id;
         if (existingItems[id]) {
@@ -352,15 +353,20 @@
 
           // If position changed, apply flip animation
           if (deltaY !== 0 || deltaX !== 0) {
-            // Invert: move item back to original position
-            item.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-            item.style.transition = 'none';
-
-            // Play: animate to new position
-            requestAnimationFrame(() => {
-              item.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            if (reducedMotion) {
+              item.style.transition = 'none';
               item.style.transform = '';
-            });
+            } else {
+              // Invert: move item back to original position
+              item.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+              item.style.transition = 'none';
+
+              // Play: animate to new position
+              requestAnimationFrame(() => {
+                item.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                item.style.transform = '';
+              });
+            }
           }
         }
       });
@@ -1076,16 +1082,22 @@ function updateDueDateDisplay(dueDateElement, dueDate) {
 
 // Show visual feedback for date update
 function showDateUpdateFeedback(dueDateElement, oldDate, newDate) {
-  // Add a brief highlight animation
-  dueDateElement.style.transition = 'background-color 0.3s ease, transform 0.2s ease';
-  dueDateElement.style.backgroundColor = 'rgba(33, 150, 243, 0.3)';
-  dueDateElement.style.transform = 'scale(1.05)';
-  
-  setTimeout(() => {
-    dueDateElement.style.backgroundColor = '';
-    dueDateElement.style.transform = '';
-  }, 300);
-  
+  // Under reduced motion we skip the backgroundColor highlight entirely.
+  // A 150ms color flash is itself a sudden visual change, which conflicts
+  // with the spirit of prefers-reduced-motion (WCAG 2.3.3). The toast
+  // notification below already communicates the update, so no extra
+  // in-place feedback is needed.
+  if (!(window.prefersReducedMotion && window.prefersReducedMotion())) {
+    dueDateElement.style.transition = 'background-color 0.3s ease, transform 0.2s ease';
+    dueDateElement.style.backgroundColor = 'rgba(33, 150, 243, 0.3)';
+    dueDateElement.style.transform = 'scale(1.05)';
+
+    setTimeout(() => {
+      dueDateElement.style.backgroundColor = '';
+      dueDateElement.style.transform = '';
+    }, 300);
+  }
+
   // Show a toast notification
   const message = newDate
     ? `Due date updated to ${formatDate(newDate)}`
@@ -1793,11 +1805,17 @@ try {
   window.formatDateISO = formatDateISO;
   window.isOverdue = isOverdue;
   window.showToast = showToast;
-  // Drag/drop handlers used in tests
+  // Test-only handles. The `tests/helpers/inject-script.js` harness loads
+  // this file via `globalThis.eval(code)`, which scopes the IIFE's
+  // `function` and `var` declarations to the eval scope and hides them
+  // from the test. Re-exporting on `window` is the only way the test
+  // can reach these helpers. None of them are consumed at runtime by
+  // the rest of the app, so the global leak is purely a test affordance.
   window.handleDragStart = handleDragStart;
   window.handleDragEnd = handleDragEnd;
   window.handleDragOver = handleDragOver;
   window.handleDrop = handleDrop;
+  window.showDateUpdateFeedback = showDateUpdateFeedback;
 } catch (e) {
   // If window isn't writable in some test harnesses, ignore silently
 }

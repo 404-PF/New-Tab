@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.4.6 (unreleased)
+
+### Accessibility
+- A11y(motion): respect `prefers-reduced-motion` across the new tab UI (#196)
+  - New `src/core/motion.js` helper exposes `prefersReducedMotion()` /
+    `onReducedMotionChange()` and toggles a `reduce-motion` class on
+    `<html>` so future CSS can opt out with simple selectors.
+  - JS-driven animation paths (motto fade, todo FLIP reorder, todo date
+    highlight, background crossfade timers) now resolve instantly when
+    the user prefers reduced motion.
+  - Autoplaying background video is paused; the static thumbnail
+    remains visible.
+  - The existing CSS `*` override gains `scroll-behavior: auto` for
+    completeness. The reduced-motion work is split across two media-query
+    blocks: `features.css` keeps the global near-zero-duration override
+    (which handles `forwards`/`both` fill-mode animations like
+    `.app-icon.drag-drop-landed` and `.note-item` via the
+    `animation-fill-mode: forwards` final-keyframe state), and
+    `core.css` keeps the targeted `animation: none; opacity: 1` block
+    for entrance/glow animations that use `backwards`/no-fill-mode plus
+    `animation-delay`. No defensive overrides were added for the
+    `forwards`-fill selectors — the global override already collapses
+    them and adding redundant rules risked shadowing future
+    opacity-based hiding of those elements.
+
 ## v0.4.5 (2026-06-04)
 
 ### Features
