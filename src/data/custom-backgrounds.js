@@ -241,6 +241,7 @@
     delete videoEl.dataset.reducedMotionPaused;
     delete videoEl.dataset.crossfadeTriggered;
     delete videoEl.dataset.lastPauseTime;
+    delete videoEl.dataset.resumeAttempts;
 
     videoEl.autoplay = false;
     videoEl.muted = true;
@@ -521,6 +522,10 @@
           };
           videoEl.onplaying = function () {
             videoEl.onplaying = null;
+            // Reset resume attempt counter when video is actively playing
+            if (videoEl.dataset.currentBg === id) {
+              videoEl.dataset.resumeAttempts = '0';
+            }
             if (!videoEl.classList.contains('active')) triggerCrossfade();
           };
           videoEl.onloadedmetadata = function () {
@@ -564,7 +569,13 @@
             if (now - lastPause < 2000) return;
             videoEl.dataset.lastPauseTime = now;
 
+            // Track consecutive auto-resume attempts to prevent infinite play/pause cycles
+            // that cause high CPU usage when the video cannot sustain playback
+            const resumeAttempts = parseInt(videoEl.dataset.resumeAttempts || '0', 10);
+
             if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
+              if (resumeAttempts >= 3) return;
+              videoEl.dataset.resumeAttempts = String(resumeAttempts + 1);
               videoEl.play().catch(function () {});
             }
           };
