@@ -184,4 +184,178 @@ describe('storage bridge', () => {
       dom.window.close();
     }
   });
+
+  it('syncs native localStorage with chrome.storage after hydration', async () => {
+    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => {
+                callback({ theme: 'light', language: 'zh' });
+              };
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      const script = new vm.Script(code);
+      script.runInContext(dom.getInternalVMContext());
+
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('theme')).toBe('light');
+      expect(dom.window.localStorage.getItem('language')).toBe('zh');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('persists settings across simulated restart via native localStorage', async () => {
+    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
+    const storageData = { theme: 'light', simpleMode: 'true' };
+
+    const createDom = () => new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    let dom = createDom();
+    try {
+      let resolveGet;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ ...storageData });
+            },
+            set(items, callback) {
+              Object.assign(storageData, items);
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      const script = new vm.Script(code);
+      script.runInContext(dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('theme')).toBe('light');
+      expect(dom.window.localStorage.getItem('simpleMode')).toBe('true');
+    } finally {
+      dom.window.close();
+    }
+
+    dom = createDom();
+    try {
+      let resolveGet;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ ...storageData });
+            },
+            set(items, callback) {
+              Object.assign(storageData, items);
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      const script = new vm.Script(code);
+      script.runInContext(dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('theme')).toBe('light');
+      expect(dom.window.localStorage.getItem('simpleMode')).toBe('true');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('preserves mutations made while hydration callback is delayed', async () => {
+    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => {
+                callback({ theme: 'dark' });
+              };
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      const script = new vm.Script(code);
+      script.runInContext(dom.getInternalVMContext());
+
+      dom.window.localStorage.setItem('theme', 'light');
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('theme')).toBe('light');
+    } finally {
+      dom.window.close();
+    }
+  });
 });
