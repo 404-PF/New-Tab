@@ -1,11 +1,11 @@
 ![New Tab icon](../icons/icon.svg)
 
-# New Tab v0.4.5
+# New Tab v0.4.6
 [![Chrome 网上应用店](https://img.shields.io/badge/Chrome%20Web%20Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/bgjillpeijfmdopfbmoinfogfhaadina?utm_source=item-share-cb)
 [![Edge 插件商店](https://img.shields.io/badge/Edge-插件商店-0A7CFF?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/new-tab/mcbemnamenhelofgaclcanfcdjnjnhmi)
 [![下载 CRX](https://img.shields.io/badge/下载-CRX-111827?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/404-PF/New-Tab/releases/latest/download/New-Tab.crx)
 [![许可证: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
-[![版本](https://img.shields.io/badge/version-0.4.5-blue)](../CHANGELOG.md)
+[![版本](https://img.shields.io/badge/version-0.4.6-blue)](../CHANGELOG.md)
 
 Chrome Web Store 文案：[en-US](CHROME-WEB-STORE.en-US.md) | [zh-CN](CHROME-WEB-STORE.zh-CN.md)
 
