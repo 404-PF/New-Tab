@@ -480,12 +480,13 @@
         Object.assign(todo, previousTodo);
         applyFilters();
         showTodoSaveError();
-        return;
+        return false;
       }
 
       applyFilters();
       (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
     }
+    return true;
   }
 
   // Toggle todo completion
@@ -1250,8 +1251,9 @@ function saveEdit() {
   const existingTodo = todos.find(t => t.id === editModalState.currentTodoId);
   const preservedDueDate = existingTodo ? existingTodo.dueDate : null;
 
-  editTodo(editModalState.currentTodoId, newText, null, preservedDueDate);
-  closeEditModal();
+  if (editTodo(editModalState.currentTodoId, newText, null, preservedDueDate)) {
+    closeEditModal();
+  }
 }
 
 // Initialize todo functionality
