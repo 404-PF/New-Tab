@@ -30,7 +30,9 @@ async function checkReminders(todosJson) {
   if (reminderCheckPendingData !== null) {
     const nextTodos = reminderCheckPendingData;
     reminderCheckPendingData = null;
-    await checkReminders(nextTodos);
+    await checkReminders(nextTodos).catch((e) => {
+      console.warn('Recursive reminder check failed:', e);
+    });
   }
 }
 
@@ -111,11 +113,15 @@ async function showTodoNotification(todo, dueDisplay) {
 }
 
 function handleStartup() {
-  chrome.alarms.get(ALARM_NAME, (alarm) => {
-    if (!alarm) {
-      chrome.alarms.create(ALARM_NAME, { periodInMinutes: CHECK_INTERVAL_MINUTES });
-    }
-  });
+  try {
+    chrome.alarms.get(ALARM_NAME, (alarm) => {
+      if (!alarm) {
+        chrome.alarms.create(ALARM_NAME, { periodInMinutes: CHECK_INTERVAL_MINUTES });
+      }
+    });
+  } catch (e) {
+    console.warn('Failed to initialize alarm:', e);
+  }
 }
 
 if (chrome?.runtime?.onInstalled) {
@@ -128,7 +134,9 @@ if (chrome?.runtime?.onStartup) {
 if (chrome?.alarms?.onAlarm) {
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === ALARM_NAME) {
-      checkReminders();
+      checkReminders().catch((e) => {
+        console.warn('Reminder check failed:', e);
+      });
     }
   });
 }
