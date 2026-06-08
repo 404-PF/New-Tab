@@ -733,6 +733,112 @@ describe('Todo import', () => {
     expect(sorted[2].id).toBe('c');
     expect(sorted[3].id).toBe('d');
   });
+
+  it('merge closes dialog when save fails', () => {
+    addTodo('Original');
+
+    const imported = [
+      { id: 'new1', text: 'New 1', completed: false }
+    ];
+
+    showImportDialog(imported);
+    const dialog = document.getElementById('import-todos-dialog');
+    expect(dialog.classList.contains('ai-confirm-open')).toBe(true);
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage full');
+    });
+
+    try {
+      document.getElementById('import-merge-btn').click();
+
+      expect(dialog.classList.contains('ai-confirm-open')).toBe(false);
+      const all = loadTodos();
+      expect(all).toHaveLength(1);
+      expect(all[0].text).toBe('Original');
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
+
+  it('replace closes dialog when save fails', () => {
+    addTodo('Original');
+
+    const imported = [
+      { id: 'replaced', text: 'Replaced', completed: false }
+    ];
+
+    showImportDialog(imported);
+    const dialog = document.getElementById('import-todos-dialog');
+    expect(dialog.classList.contains('ai-confirm-open')).toBe(true);
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage full');
+    });
+
+    try {
+      document.getElementById('import-replace-btn').click();
+
+      expect(dialog.classList.contains('ai-confirm-open')).toBe(false);
+      const all = loadTodos();
+      expect(all).toHaveLength(1);
+      expect(all[0].text).toBe('Original');
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
+
+  it('merge dialog can be re-opened cleanly after save failure', () => {
+    addTodo('Original');
+
+    const imported = [
+      { id: 'new1', text: 'New 1', completed: false }
+    ];
+
+    showImportDialog(imported);
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage full');
+    });
+
+    try {
+      document.getElementById('import-merge-btn').click();
+      const dialog = document.getElementById('import-todos-dialog');
+      expect(dialog.classList.contains('ai-confirm-open')).toBe(false);
+
+      setItemSpy.mockRestore();
+      showImportDialog(imported);
+      expect(dialog.classList.contains('ai-confirm-open')).toBe(true);
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
+
+  it('replace dialog can be re-opened cleanly after save failure', () => {
+    addTodo('Original');
+
+    const imported = [
+      { id: 'replaced', text: 'Replaced', completed: false }
+    ];
+
+    showImportDialog(imported);
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage full');
+    });
+
+    try {
+      document.getElementById('import-replace-btn').click();
+      const dialog = document.getElementById('import-todos-dialog');
+      expect(dialog.classList.contains('ai-confirm-open')).toBe(false);
+
+      setItemSpy.mockRestore();
+      showImportDialog(imported);
+      expect(dialog.classList.contains('ai-confirm-open')).toBe(true);
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
 });
 
 describe('Todo drag-and-drop with filter', () => {

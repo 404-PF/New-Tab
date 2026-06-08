@@ -1534,6 +1534,7 @@ function showImportDialog(importedTodos) {
     closeAllInlineDatePickers();
     if (!saveTodos(existingTodos)) {
       showTodoSaveError();
+      hideDialog();
       return;
     }
 
@@ -1564,6 +1565,7 @@ function showImportDialog(importedTodos) {
     closeAllInlineDatePickers();
     if (!saveTodos(newTodos)) {
       showTodoSaveError();
+      hideDialog();
       return;
     }
 
