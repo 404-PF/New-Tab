@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.4.6 (unreleased)
+## v0.4.6 (2026-06-08)
 
 ### Bug Fixes
 
