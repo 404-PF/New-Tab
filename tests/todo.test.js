@@ -267,19 +267,24 @@ describe('Todo CRUD', () => {
     // Simulate openEditModal: set modal state and populate field
     modal.classList.add('modal-open');
     textInput.value = 'Updated text';
+    window.editModalState.currentTodoId = todo.id;
+    window.editModalState.isOpen = true;
 
+    const closeEditModalSpy = vi.spyOn(window, 'closeEditModal');
     const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
       throw new Error('Storage unavailable');
     });
     try {
-      // editTodo is the core of saveEdit; it should return false on failure
-      const saved = editTodo(todo.id, 'Updated text', null, null);
-      expect(saved).toBe(false);
-      // In saveEdit, closeEditModal is only called when saved === true,
-      // so the modal should remain open (we never called closeEditModal)
+      // Call saveEdit which should fail and not close the modal
+      window.saveEdit();
+      // closeEditModal should not have been called on save failure
+      expect(closeEditModalSpy).not.toHaveBeenCalled();
+      // The modal should remain open
       expect(modal.classList.contains('modal-open')).toBe(true);
+      // The todo text should remain unchanged
       expect(loadTodos()[0].text).toBe('Original');
     } finally {
+      closeEditModalSpy.mockRestore();
       setItemSpy.mockRestore();
       modal.remove();
       textInput.remove();

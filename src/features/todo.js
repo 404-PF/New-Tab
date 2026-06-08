@@ -1850,6 +1850,9 @@ try {
   window.handleDragOver = handleDragOver;
   window.handleDrop = handleDrop;
   window.showDateUpdateFeedback = showDateUpdateFeedback;
+  window.saveEdit = saveEdit;
+  window.closeEditModal = closeEditModal;
+  window.editModalState = editModalState;
 } catch {
   // If window isn't writable in some test harnesses, ignore silently
 }
