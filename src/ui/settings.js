@@ -1073,7 +1073,7 @@ function applyTodoEnabled() {
   const enabled = loadTodoEnabled();
   const todoSection = document.querySelector('.todo-section');
   if (todoSection) {
-    todoSection.style.display = enabled ? 'block' : 'none';
+    todoSection.style.display = enabled ? '' : 'none';
   }
   const todoEnabledSetting = document.getElementById('todo-enabled-setting');
   if (todoEnabledSetting) todoEnabledSetting.checked = enabled;
@@ -1145,7 +1145,7 @@ function applyNotesEnabled() {
   const enabled = loadNotesEnabled();
   const notesSection = document.querySelector('.notes-section');
   if (notesSection) {
-    notesSection.style.display = enabled ? 'block' : 'none';
+    notesSection.style.display = enabled ? '' : 'none';
   }
   const notesEnabledSetting = document.getElementById('notes-enabled-setting');
   if (notesEnabledSetting) notesEnabledSetting.checked = enabled;
