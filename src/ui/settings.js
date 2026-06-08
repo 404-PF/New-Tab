@@ -590,7 +590,6 @@ function applyBg() {
       
       // Additional fallback: ensure crossfade happens after video starts playing
       videoEl.onplaying = function() {
-        videoEl.onplaying = null;
         // Reset resume attempt counter when video is actively playing
         if (videoEl.dataset.currentBg === bgData.id) {
           videoEl.dataset.resumeAttempts = '0';

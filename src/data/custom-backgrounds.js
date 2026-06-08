@@ -521,7 +521,6 @@
             if (!videoEl.classList.contains('active')) triggerCrossfade();
           };
           videoEl.onplaying = function () {
-            videoEl.onplaying = null;
             // Reset resume attempt counter when video is actively playing
             if (videoEl.dataset.currentBg === id) {
               videoEl.dataset.resumeAttempts = '0';
