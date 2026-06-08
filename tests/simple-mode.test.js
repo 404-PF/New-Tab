@@ -3,7 +3,6 @@
 
 /* global applySimpleMode, loadSimpleMode */
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 let origCanPlayType;
@@ -122,14 +121,15 @@ describe('simple-mode', () => {
 
   it('simpleModeChanged event is a CustomEvent', () => {
     let receivedEvent = null;
-    window.addEventListener('simpleModeChanged', (e) => { receivedEvent = e; });
+    const handler = (e) => { receivedEvent = e; };
+    window.addEventListener('simpleModeChanged', handler);
 
     localStorage.setItem('simpleMode', 'true');
     applySimpleMode();
     expect(receivedEvent).toBeInstanceOf(CustomEvent);
     expect(receivedEvent.type).toBe('simpleModeChanged');
 
-    window.removeEventListener('simpleModeChanged', () => {});
+    window.removeEventListener('simpleModeChanged', handler);
   });
 
   it('pauses video when simple mode is enabled', () => {
