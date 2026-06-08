@@ -1368,6 +1368,8 @@ function initAboutSection() {
         const settingsModal = document.getElementById('settings-modal');
         if (settingsModal) {
           settingsModal.classList.remove('modal-open');
+          const opener = document.getElementById('settings-app');
+          if (opener) opener.focus();
         }
         // Reset and start onboarding tour
         window.onboardingTour.reset();
