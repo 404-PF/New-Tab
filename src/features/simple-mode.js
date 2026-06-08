@@ -7,12 +7,17 @@ function loadSimpleMode() {
 function applySimpleMode() {
   const isSimple = loadSimpleMode();
   const checkbox = document.getElementById('simple-mode-checkbox');
+  const searchBar = document.querySelector('.search-bar');
   
   if (checkbox) {
     checkbox.checked = isSimple;
   }
   
   document.body.classList.toggle('simple-mode', isSimple);
+
+  if (searchBar) {
+    searchBar.classList.toggle('visible', isSimple);
+  }
 
   // Pause or resume video background based on simple mode
   const videoEl = document.getElementById('bg-video');
