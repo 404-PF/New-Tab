@@ -107,6 +107,12 @@
     return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
   }
 
+  // Parse a YYYY-MM-DD date string as a local-time Date (avoids UTC shift).
+  function parseLocalDate(dateString) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
   // Generate unique ID for todos
   function generateTodoId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -115,7 +121,7 @@
   // Date utilities
   function formatDate(dateString) {
     if (!dateString) return '';
-    const date = new Date(dateString);
+    const date = parseLocalDate(dateString);
     const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
     const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
     return date.toLocaleDateString(locale, {
@@ -127,7 +133,7 @@
 
   function isOverdue(dateString) {
     if (!dateString) return false;
-    const dueDate = new Date(dateString);
+    const dueDate = parseLocalDate(dateString);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
@@ -816,7 +822,7 @@ function showInlineDatePicker(todoId, dueDateElement) {
   pickerContainer.dataset.todoId = todoId;
 
   // Create calendar HTML
-  const currentDate = todo.dueDate ? new Date(todo.dueDate) : new Date();
+  const currentDate = todo.dueDate ? parseLocalDate(todo.dueDate) : new Date();
   pickerContainer._currentDate = currentDate;
   const calendarHtml = createCalendarHtml(currentDate, todo.dueDate);
 
@@ -872,7 +878,7 @@ function positionPickerRelativeToElement(picker, targetElement) {
 function createCalendarHtml(currentDate, selectedDateString) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const selectedDate = selectedDateString ? new Date(selectedDateString) : null;
+  const selectedDate = selectedDateString ? parseLocalDate(selectedDateString) : null;
   
   const firstDay = new Date(year, month, 1);
   const startDate = new Date(firstDay);
@@ -964,7 +970,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
   const todo = todos.find(t => t.id === todoId);
   if (!todo) return;
 
-  const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? new Date(todo.dueDate) : new Date());
+  const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? parseLocalDate(todo.dueDate) : new Date());
 
   // Navigation buttons
   const prevBtn = pickerContainer.querySelector('.inline-prev-month');
@@ -996,7 +1002,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
       if (!dayElement || dayElement.classList.contains('other-month')) return;
 
       e.stopPropagation();
-      const selectedDate = new Date(dayElement.dataset.date + 'T00:00:00');
+      const selectedDate = parseLocalDate(dayElement.dataset.date);
       updateTodoDueDate(todoId, selectedDate, dueDateElement);
       closeInlineDatePicker(pickerContainer);
     });
@@ -1048,7 +1054,7 @@ function refreshInlineDatePickers() {
       return;
     }
 
-    const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? new Date(todo.dueDate) : new Date());
+    const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? parseLocalDate(todo.dueDate) : new Date());
     pickerContainer._currentDate = currentDate;
     pickerContainer._dueDateElement = dueDateElement;
     positionPickerRelativeToElement(pickerContainer, dueDateElement);
@@ -1828,6 +1834,7 @@ try {
   window.scheduleTodoReminderCheck = scheduleTodoReminderCheck;
   window.formatDateISO = formatDateISO;
   window.isOverdue = isOverdue;
+  window.parseLocalDate = parseLocalDate;
   window.showToast = showToast;
   // Test-only handles. The `tests/helpers/inject-script.js` harness loads
   // this file via `globalThis.eval(code)`, which scopes the IIFE's
