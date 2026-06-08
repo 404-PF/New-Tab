@@ -268,6 +268,11 @@
       input.style.display = 'none';
       document.body.appendChild(input);
 
+      input.addEventListener('cancel', function () {
+        document.body.removeChild(input);
+        resolve(null);
+      });
+
       input.addEventListener('change', function () {
         const file = input.files && input.files[0];
         document.body.removeChild(input);
