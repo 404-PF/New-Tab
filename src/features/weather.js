@@ -6,6 +6,11 @@
 
   const escapeHtml = window.escapeHtml;
 
+  // Extract the base language from locale variants (e.g. "zh_CN" → "zh")
+  function normalizeLang(lang) {
+    return String(lang || 'en').split(/[-_]/)[0].toLowerCase();
+  }
+
   // Configuration
   const CACHE_KEY = 'weatherCache';
   const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -69,7 +74,7 @@
   const OPEN_METEO_LANGS = new Set(['en', 'zh', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru']);
 
   function getOpenMeteoLang() {
-    const lang = getLang();
+    const lang = normalizeLang(getLang());
     return OPEN_METEO_LANGS.has(lang) ? lang : 'en';
   }
 
@@ -105,7 +110,7 @@
   }
 
   function getWeatherLabel(info) {
-    const lang = getLang();
+    const lang = normalizeLang(getLang());
     const labelKey = `label${lang.charAt(0).toUpperCase() + lang.slice(1)}`;
     return info[labelKey] || info.labelEn;
   }
