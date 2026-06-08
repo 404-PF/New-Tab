@@ -355,7 +355,11 @@ function attachSettingsAppHandler() {
   if (settingsModal && !settingsModal._closeHandlerAttached) {
     settingsModal._closeHandlerAttached = true;
     settingsModal.addEventListener('click', function (e) {
-      if (e.target === settingsModal) settingsModal.classList.remove('modal-open');
+      if (e.target === settingsModal) {
+        settingsModal.classList.remove('modal-open');
+        const opener = document.getElementById('settings-app');
+        if (opener) opener.focus();
+      }
     });
   }
 }
