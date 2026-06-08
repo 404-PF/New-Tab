@@ -162,6 +162,7 @@
 
         if (Object.keys(storageSnapshot).length === 0 && Object.keys(nativeSnapshot).length > 0) {
           applySnapshot(mergedSnapshot);
+          writeNativeSnapshot(snapshotToObject());
 
           try {
             storageArea.set(mergedSnapshot, () => {
@@ -181,6 +182,7 @@
         }
 
         applySnapshot(mergedSnapshot);
+        writeNativeSnapshot(snapshotToObject());
         hydrationFinished = true;
         resolveStorageReady();
       });
@@ -208,11 +210,13 @@
 
         if (!change || typeof change.newValue === 'undefined') {
           cache.delete(key);
+          trackHydrationMutation(key, null);
           changed = true;
           return;
         }
 
         cache.set(key, String(change.newValue));
+        trackHydrationMutation(key, change.newValue);
         changed = true;
       });
 
