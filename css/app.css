@@ -4221,10 +4221,10 @@ body.simple-mode .date {
 }
 body.simple-mode .search-bar.visible {
   opacity: 1;
-  transform: translate(-50%, 0) scale(1) !important;
+  transform: translate(-50%, -50%) scale(1) !important;
 }
 body.simple-mode .search-bar.visible:focus-within {
-  transform: translate(-50%, 0) scale(1.04) !important;
+  transform: translate(-50%, -50%) scale(1.04) !important;
 }
 
 /* ==================== Notes Section ==================== */
