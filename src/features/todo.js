@@ -471,21 +471,23 @@
   // Edit a todo
   function editTodo(id, newText, newPriority, newDueDate) {
     const todo = todos.find(t => t.id === id);
-    if (todo) {
-      const previousTodo = { ...todo };
-      todo.text = newText.trim();
-      todo.priority = newPriority;
-      todo.dueDate = newDueDate;
-      if (!saveTodos(todos)) {
-        Object.assign(todo, previousTodo);
-        applyFilters();
-        showTodoSaveError();
-        return false;
-      }
-
-      applyFilters();
-      (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
+    if (!todo) {
+      return false;
     }
+
+    const previousTodo = { ...todo };
+    todo.text = newText.trim();
+    todo.priority = newPriority;
+    todo.dueDate = newDueDate;
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return false;
+    }
+
+    applyFilters();
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
     return true;
   }
 
