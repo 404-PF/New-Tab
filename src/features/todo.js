@@ -1091,9 +1091,8 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   // Show visual feedback
   showDateUpdateFeedback(dueDateElement, oldDate, todo.dueDate);
   
-  // Update filter counts and progress
-  updateFilterCounts();
-  updateProgressRing();
+  // Re-run filters so overdue view refreshes immediately
+  applyFilters();
   (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(todoId);
 }
 
