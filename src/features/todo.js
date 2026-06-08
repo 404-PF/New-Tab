@@ -471,21 +471,22 @@
   // Edit a todo
   function editTodo(id, newText, newPriority, newDueDate) {
     const todo = todos.find(t => t.id === id);
-    if (todo) {
-      const previousTodo = { ...todo };
-      todo.text = newText.trim();
-      todo.priority = newPriority;
-      todo.dueDate = newDueDate;
-      if (!saveTodos(todos)) {
-        Object.assign(todo, previousTodo);
-        applyFilters();
-        showTodoSaveError();
-        return;
-      }
+    if (!todo) return false;
 
+    const previousTodo = { ...todo };
+    todo.text = newText.trim();
+    todo.priority = newPriority;
+    todo.dueDate = newDueDate;
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
       applyFilters();
-      (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
+      showTodoSaveError();
+      return false;
     }
+
+    applyFilters();
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
+    return true;
   }
 
   // Toggle todo completion
@@ -1250,8 +1251,10 @@ function saveEdit() {
   const existingTodo = todos.find(t => t.id === editModalState.currentTodoId);
   const preservedDueDate = existingTodo ? existingTodo.dueDate : null;
 
-  editTodo(editModalState.currentTodoId, newText, null, preservedDueDate);
-  closeEditModal();
+  const saved = editTodo(editModalState.currentTodoId, newText, null, preservedDueDate);
+  if (saved) {
+    closeEditModal();
+  }
 }
 
 // Initialize todo functionality

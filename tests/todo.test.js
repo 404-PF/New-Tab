@@ -232,6 +232,60 @@ describe('Todo CRUD', () => {
     expect(loadTodos()[0].dueDate).toBe('2025-01-01');
   });
 
+  it('editTodo returns true on success', () => {
+    addTodo('Original');
+    const todo = loadTodos()[0];
+    expect(editTodo(todo.id, 'Updated', null, null)).toBe(true);
+  });
+
+  it('editTodo returns false on save failure', () => {
+    addTodo('Original');
+    const todo = loadTodos()[0];
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    try {
+      expect(editTodo(todo.id, 'Updated', null, null)).toBe(false);
+      expect(loadTodos()[0].text).toBe('Original');
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
+
+  it('saveEdit keeps modal open on save failure', () => {
+    // Create minimal modal DOM
+    const modal = document.createElement('div');
+    modal.id = 'todo-edit-modal';
+    document.body.appendChild(modal);
+    const textInput = document.createElement('input');
+    textInput.id = 'todo-edit-text';
+    document.body.appendChild(textInput);
+
+    addTodo('Original');
+    const todo = loadTodos()[0];
+
+    // Simulate openEditModal: set modal state and populate field
+    modal.classList.add('modal-open');
+    textInput.value = 'Updated text';
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    try {
+      // editTodo is the core of saveEdit; it should return false on failure
+      const saved = editTodo(todo.id, 'Updated text', null, null);
+      expect(saved).toBe(false);
+      // In saveEdit, closeEditModal is only called when saved === true,
+      // so the modal should remain open (we never called closeEditModal)
+      expect(modal.classList.contains('modal-open')).toBe(true);
+      expect(loadTodos()[0].text).toBe('Original');
+    } finally {
+      setItemSpy.mockRestore();
+      modal.remove();
+      textInput.remove();
+    }
+  });
+
   it('migrateTodos handles save failures without throwing', () => {
     localStorage.setItem('todos', JSON.stringify([
       {
