@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { JSDOM } from 'jsdom';
 import vm from 'vm';
+import { injectScript } from './helpers/inject-script.js';
 
 beforeEach(() => {
   localStorage.clear();
@@ -216,8 +217,7 @@ describe('storage bridge', () => {
         }
       };
 
-      const script = new vm.Script(code);
-      script.runInContext(dom.getInternalVMContext());
+      injectScript(code, dom.getInternalVMContext());
 
       resolveGet();
       await dom.window.__storageBridgeReady;
