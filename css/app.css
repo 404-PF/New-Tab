@@ -4200,9 +4200,8 @@ body.simple-mode .date {
 body.simple-mode .search-bar {
   position: absolute;
   top: 30%;
-  transform: translateY(-50%);
-  margin-left: auto;
-  margin-right: auto;
+  left: 50%;
+  transform: translate(-50%, -50%) !important;
   opacity: 0;
   transition: opacity 0.3s ease 0.1s;
 }
@@ -4216,10 +4215,16 @@ body.simple-mode #settings-modal,
 body.simple-mode #ai-chat-modal,
 body.simple-mode .container,
 body.simple-mode #clock,
-body.simple-mode .date,
-body.simple-mode .search-bar {
+body.simple-mode .date {
   opacity: 1;
   transform: translateY(0) scale(1);
+}
+body.simple-mode .search-bar.visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1) !important;
+}
+body.simple-mode .search-bar.visible:focus-within {
+  transform: translate(-50%, -50%) scale(1.04) !important;
 }
 
 /* ==================== Notes Section ==================== */
