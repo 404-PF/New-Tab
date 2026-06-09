@@ -232,6 +232,19 @@ describe('Todo CRUD', () => {
     expect(loadTodos()[0].dueDate).toBe('2025-01-01');
   });
 
+  it('editTodo preserves existing priority when null is passed', () => {
+    addTodo('With priority');
+    const stored = JSON.parse(localStorage.getItem('todos'));
+    stored[0].priority = 'high';
+    localStorage.setItem('todos', JSON.stringify(stored));
+    initTodo();
+
+    editTodo(loadTodos()[0].id, 'Updated text', null, null);
+
+    expect(loadTodos()[0].priority).toBe('high');
+    expect(loadTodos()[0].text).toBe('Updated text');
+  });
+
   it('migrateTodos handles save failures without throwing', () => {
     localStorage.setItem('todos', JSON.stringify([
       {
