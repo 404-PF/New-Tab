@@ -178,6 +178,15 @@
         }
       }, 5000);
 
+      // Hard deadline: reject if nothing else settled the promise
+      setTimeout(function () {
+        if (!resolved) {
+          resolved = true;
+          URL.revokeObjectURL(video.src);
+          reject(new Error('Video thumbnail generation timed out'));
+        }
+      }, 8000);
+
       video.src = URL.createObjectURL(file);
     });
   }
