@@ -932,6 +932,45 @@ describe('Todo drag-and-drop with filter', () => {
     const uniqueOrders = new Set(orders);
     expect(uniqueOrders.size).toBe(orders.length);
   });
+
+  it('does not corrupt the underlying todos order for hidden items', () => {
+    addTodo('A');
+    addTodo('B');
+    addTodo('C');
+    addTodo('D');
+    addTodo('E');
+
+    const list = loadTodos();
+    const c = list.find(t => t.text === 'C');
+    const e = list.find(t => t.text === 'E');
+    toggleTodo(c.id);
+    toggleTodo(e.id);
+
+    // Switch to pending filter (shows A, B, D)
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill';
+    pill.dataset.filter = 'pending';
+    handleFilterPillClick({ target: pill });
+
+    // Drag D before B
+    const pending = filterTodos();
+    const d = pending.find(t => t.text === 'D');
+    const b = pending.find(t => t.text === 'B');
+    simulateDrop(d.id, b.id);
+
+    // Verify the underlying todos array order directly
+    const saved = loadTodos();
+    const savedTexts = saved.map(t => t.text);
+
+    // Visible items should be reordered: A, D, B
+    expect(savedTexts[0]).toBe('A');
+    expect(savedTexts[1]).toBe('D');
+    expect(savedTexts[2]).toBe('B');
+
+    // Hidden items should maintain their relative order at the end
+    expect(savedTexts[3]).toBe('C');
+    expect(savedTexts[4]).toBe('E');
+  });
 });
 
 describe('Todo reminders', () => {
