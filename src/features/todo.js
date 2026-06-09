@@ -480,7 +480,7 @@
     if (newPriority !== null) {
       todo.priority = newPriority;
     }
-    if (newDueDate !== null) {
+    if (newDueDate !== null && newDueDate !== undefined) {
       todo.dueDate = newDueDate;
     }
     if (!saveTodos(todos)) {
