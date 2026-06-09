@@ -76,6 +76,11 @@ const AIStore = (function() {
     try {
       if (state.conversations.length > MAX_CONVERSATIONS) {
         state.conversations = state.conversations.slice(0, MAX_CONVERSATIONS);
+
+        const activeExists = state.conversations.some(conversation => conversation.id === state.currentConversationId);
+        if (!activeExists) {
+          state.currentConversationId = state.conversations[0] ? state.conversations[0].id : null;
+        }
       }
 
       localStorage.setItem(STORAGE_KEYS.conversations, JSON.stringify(state.conversations));
