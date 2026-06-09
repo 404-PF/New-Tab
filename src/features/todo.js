@@ -477,7 +477,7 @@
 
     const previousTodo = { ...todo };
     todo.text = newText.trim();
-    if (newPriority !== null) {
+    if (newPriority !== null && newPriority !== undefined) {
       todo.priority = newPriority;
     }
     if (newDueDate !== null && newDueDate !== undefined) {
