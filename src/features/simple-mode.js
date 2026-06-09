@@ -37,6 +37,11 @@ function applySimpleMode() {
       }
     }
   }
+
+  // Notify dependent modules that simple mode has changed
+  window.dispatchEvent(new CustomEvent('simpleModeChanged', {
+    detail: { enabled: isSimple }
+  }));
 }
 
 function initSimpleMode() {
