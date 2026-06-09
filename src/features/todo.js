@@ -629,13 +629,13 @@ function showClearCompletedDialog() {
       todos = previousTodos;
       applyFilters();
       showTodoSaveError();
-      return;
+    } else {
+      applyFilters();
+      (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     }
 
-    applyFilters();
     hideClearCompletedDialog();
-    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
-    
+
     // Remove event listeners
     confirmBtn?.removeEventListener('click', handleConfirm);
     cancelBtn?.removeEventListener('click', handleCancel);
