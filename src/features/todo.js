@@ -477,7 +477,9 @@
 
     const previousTodo = { ...todo };
     todo.text = newText.trim();
-    todo.priority = newPriority;
+    if (newPriority !== null) {
+      todo.priority = newPriority;
+    }
     todo.dueDate = newDueDate;
     if (!saveTodos(todos)) {
       Object.assign(todo, previousTodo);
