@@ -122,6 +122,11 @@ updateTime();
 let _clockInterval = null;
 
 function initClock() {
+  // Clear any existing interval to prevent duplicates
+  if (_clockInterval) {
+    if (_clockInterval.destroy) _clockInterval.destroy();
+    else clearInterval(_clockInterval);
+  }
   // Use VisibilityInterval if available, fallback to regular setInterval
   if (window.VisibilityInterval) {
     _clockInterval = new VisibilityInterval(updateTime, 1000);
