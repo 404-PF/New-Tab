@@ -132,6 +132,8 @@ const testGlobals = {
   migrateTodos: 'readonly',
   handleFilterPillClick: 'readonly',
   filterTodos: 'readonly',
+  currentFilters: 'readonly',
+  getSelectedPriority: 'readonly',
   formatDateISO: 'readonly',
   isOverdue: 'readonly',
   parseLocalDate: 'readonly',

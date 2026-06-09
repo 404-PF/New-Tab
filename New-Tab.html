@@ -78,6 +78,17 @@
         <div class="todo-controls">
           <div class="todo-input-container">
             <input type="text" id="todo-input" placeholder="{{addTodoPlaceholder}}" data-i18n="addTodoPlaceholder" maxlength="200" />
+            <div class="priority-selector">
+              <button type="button" class="priority-selector-btn" data-priority="low" title="Low Priority">
+                <span class="priority-dot priority-low"></span>
+              </button>
+              <button type="button" class="priority-selector-btn active" data-priority="medium" title="Medium Priority">
+                <span class="priority-dot priority-medium"></span>
+              </button>
+              <button type="button" class="priority-selector-btn" data-priority="high" title="High Priority">
+                <span class="priority-dot priority-high"></span>
+              </button>
+            </div>
             <div class="custom-date-picker">
               <button type="button" id="date-picker-trigger" class="date-picker-trigger">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -147,6 +158,15 @@
               <button class="filter-pill" data-filter="overdue" data-i18n="filterOverdue">
                 Overdue
                 <span class="filter-badge" id="badge-overdue">0</span>
+              </button>
+              <span class="filter-divider"></span>
+              <button class="filter-pill" data-filter="high" data-filter-type="priority">
+                High
+                <span class="filter-badge" id="badge-high">0</span>
+              </button>
+              <button class="filter-pill" data-filter="low" data-filter-type="priority">
+                Low
+                <span class="filter-badge" id="badge-low">0</span>
               </button>
             </div>
             <div class="quick-actions">
@@ -261,6 +281,36 @@
         <button class="ai-confirm-cancel" data-i18n="cancel">Cancel</button>
         <button class="ai-confirm-primary" id="import-merge-btn" data-i18n="importMerge">Merge</button>
         <button class="ai-confirm-delete" id="import-replace-btn" data-i18n="importReplace">Replace</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Todo Edit Modal -->
+  <div id="todo-edit-modal" class="todo-edit-modal">
+    <div class="todo-edit-overlay"></div>
+    <div class="todo-edit-content">
+      <div class="todo-edit-header">
+        <h3 data-i18n="todoEditTitle">Edit Todo</h3>
+        <button id="todo-edit-close" class="todo-edit-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="todo-edit-body">
+        <label for="todo-edit-text" data-i18n="todoEditText">Text</label>
+        <input type="text" id="todo-edit-text" maxlength="200" />
+        <label for="todo-edit-priority" data-i18n="todoEditPriority">Priority</label>
+        <select id="todo-edit-priority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="todo-edit-actions">
+        <button id="todo-edit-cancel" class="ai-confirm-cancel" data-i18n="cancel">Cancel</button>
+        <button id="todo-edit-save" class="ai-confirm-primary" data-i18n="save">Save</button>
       </div>
     </div>
   </div>
