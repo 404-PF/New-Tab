@@ -53,7 +53,8 @@
     'src/ai/ai-renderer.js',
     'src/ai/ai-service.js',
     'src/features/weather.js',
-    'src/features/background-rotation.js'
+    'src/features/background-rotation.js',
+    'src/features/shortcuts.js'
   ];
 
   function loadScript(source) {

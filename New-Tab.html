@@ -339,6 +339,7 @@
           <button class="settings-menu-item" data-section="language" data-i18n="language">
             Language
           </button>
+          <button type="button" class="settings-menu-item" data-section="shortcuts" data-i18n="shortcuts">Shortcuts</button>
           <button class="settings-menu-item" data-section="about" data-i18n="about">About</button>
         </nav>
         <div class="settings-content">
@@ -954,6 +955,27 @@
                     <div class="setting-content">
                       <button id="weather-refresh-btn" data-i18n="weatherRefresh">Refresh Weather</button>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="settings-section" data-section="shortcuts" style="display: none">
+            <div class="general-setting-group">
+              <h4 data-i18n="keyboardShortcuts">Keyboard Shortcuts</h4>
+              <p data-i18n="keyboardShortcutsDesc">Customize keyboard shortcuts for quick actions</p>
+              <div class="general-options" id="shortcuts-options">
+                <!-- Populated by shortcuts.js -->
+              </div>
+              <div class="general-option">
+                <div class="setting-card reset-card">
+                  <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                    <path d="M3 3v5h5"></path>
+                  </svg>
+                  <div class="setting-content">
+                    <label data-i18n="resetToDefaults">Reset to Defaults</label>
+                    <button type="button" id="shortcuts-reset-btn" data-i18n="resetShortcuts">Reset Shortcuts</button>
                   </div>
                 </div>
               </div>

@@ -974,6 +974,60 @@ body.light-theme .copy-notification {
   stroke: #ff0000;
 }
 
+.setting-card .shortcut-combo-btn {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 12px;
+  font-family: monospace;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.setting-card .shortcut-combo-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(33, 150, 243, 0.5);
+  box-shadow: none;
+}
+
+.setting-card .shortcut-combo-btn.rebinding {
+  background: rgba(33, 150, 243, 0.2);
+  border-color: rgba(33, 150, 243, 0.6);
+  color: #64b5f6;
+  animation: shortcut-pulse 1s ease-in-out infinite;
+  box-shadow: none;
+}
+
+@keyframes shortcut-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+body.light-theme .setting-card .shortcut-combo-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: none;
+}
+
+body.light-theme .setting-card .shortcut-combo-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(33, 150, 243, 0.5);
+  box-shadow: none;
+}
+
+body.light-theme .setting-card .shortcut-combo-btn.rebinding {
+  background: rgba(33, 150, 243, 0.15);
+  border-color: rgba(33, 150, 243, 0.5);
+  color: #1976d2;
+  box-shadow: none;
+}
+
 body.light-theme .setting-card {
   background: rgba(0, 0, 0, 0.02);
   border-color: rgba(0, 0, 0, 0.1);

@@ -565,6 +565,11 @@ window.clearContextMenuFolderState = function () {
   contextTargetFolderId = null;
 };
 
+window.addEventListener('contextMenuClose', function () {
+  contextTargetId = null;
+  contextTargetFolderId = null;
+});
+
 // Prevent default context menu on default apps (not custom-app or folder-icon)
 document.addEventListener('contextmenu', function (e) {
   const defaultIcon = e.target.closest('.app-icon.default-app');

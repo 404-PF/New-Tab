@@ -84,5 +84,53 @@
   "priorityHigh": {
     "message": "High",
     "description": "High priority label"
+  },
+  "shortcuts": {
+    "message": "Shortcuts",
+    "description": "Label for the shortcuts settings tab"
+  },
+  "keyboardShortcuts": {
+    "message": "Keyboard Shortcuts",
+    "description": "Heading for the keyboard shortcuts settings section"
+  },
+  "keyboardShortcutsDesc": {
+    "message": "Customize keyboard shortcuts for quick actions",
+    "description": "Description text for the keyboard shortcuts section"
+  },
+  "resetToDefaults": {
+    "message": "Reset to Defaults",
+    "description": "Label for the reset shortcuts button"
+  },
+  "resetShortcuts": {
+    "message": "Reset Shortcuts",
+    "description": "Button text to reset shortcuts to defaults"
+  },
+  "shortcutFocusSearch": {
+    "message": "Focus Search",
+    "description": "Label for the focus search shortcut action"
+  },
+  "shortcutOpenSettings": {
+    "message": "Open Settings",
+    "description": "Label for the open settings shortcut action"
+  },
+  "shortcutToggleSimpleMode": {
+    "message": "Toggle Simple Mode",
+    "description": "Label for the toggle simple mode shortcut action"
+  },
+  "shortcutToggleTodo": {
+    "message": "Toggle Todo List",
+    "description": "Label for the toggle todo list shortcut action"
+  },
+  "shortcutToggleNotes": {
+    "message": "Toggle Notes",
+    "description": "Label for the toggle notes shortcut action"
+  },
+  "shortcutCloseModal": {
+    "message": "Close Modal / Dialog",
+    "description": "Label for the close modal shortcut action"
+  },
+  "shortcutPressAKey": {
+    "message": "Press a key...",
+    "description": "Prompt shown when rebinding a keyboard shortcut"
   }
 }

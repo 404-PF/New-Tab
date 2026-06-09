@@ -425,7 +425,19 @@ globalThis.window.i18n = {
       reminderLeadTime1day: '1 day before',
       priorityLow: 'Low',
       priorityMedium: 'Medium',
-      priorityHigh: 'High'
+      priorityHigh: 'High',
+      shortcutFocusSearch: 'Focus Search',
+      shortcutOpenSettings: 'Open Settings',
+      shortcutToggleSimpleMode: 'Toggle Simple Mode',
+      shortcutToggleTodo: 'Toggle Todo List',
+      shortcutToggleNotes: 'Toggle Notes',
+      shortcutCloseModal: 'Close Modal / Dialog',
+      shortcutPressAKey: 'Press a key...',
+      shortcuts: 'Shortcuts',
+      keyboardShortcuts: 'Keyboard Shortcuts',
+      keyboardShortcutsDesc: 'Customize keyboard shortcuts for quick actions',
+      resetToDefaults: 'Reset to Defaults',
+      resetShortcuts: 'Reset Shortcuts'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
