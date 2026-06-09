@@ -72,6 +72,8 @@ const srcGlobals = {
   safePause: 'readonly',
   safeLoad: 'readonly',
   crossfadeDelayMs: 'readonly',
+  currentFilters: 'readonly',
+  getSelectedPriority: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };

@@ -422,7 +422,10 @@ globalThis.window.i18n = {
       reminderLeadTime15min: '15 minutes before',
       reminderLeadTime30min: '30 minutes before',
       reminderLeadTime1hour: '1 hour before',
-      reminderLeadTime1day: '1 day before'
+      reminderLeadTime1day: '1 day before',
+      priorityLow: 'Low',
+      priorityMedium: 'Medium',
+      priorityHigh: 'High'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {

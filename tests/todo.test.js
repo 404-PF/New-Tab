@@ -1132,26 +1132,35 @@ describe('Todo priority', () => {
     expect(loadTodos()[0].priority).toBe('high');
   });
 
+  // Helper function to simulate priority filter pill click
+  function setPriorityFilter(priority) {
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill';
+    pill.dataset.filter = priority;
+    pill.dataset.filterType = 'priority';
+    handleFilterPillClick({ target: pill });
+  }
+
   it('filterTodos filters by high priority', () => {
     addTodo('High', null, 'high');
     addTodo('Medium', null, 'medium');
     addTodo('Low', null, 'low');
-    currentFilters.priority = 'high';
+    setPriorityFilter('high');
     const filtered = filterTodos();
     expect(filtered).toHaveLength(1);
     expect(filtered[0].text).toBe('High');
-    currentFilters.priority = 'all';
+    setPriorityFilter('all');
   });
 
   it('filterTodos filters by low priority', () => {
     addTodo('High', null, 'high');
     addTodo('Medium', null, 'medium');
     addTodo('Low', null, 'low');
-    currentFilters.priority = 'low';
+    setPriorityFilter('low');
     const filtered = filterTodos();
     expect(filtered).toHaveLength(1);
     expect(filtered[0].text).toBe('Low');
-    currentFilters.priority = 'all';
+    setPriorityFilter('all');
   });
 
   it('filterTodos returns all when priority filter is all', () => {
@@ -1262,7 +1271,7 @@ describe('Todo priority', () => {
     expect(badge.classList.contains('priority-low')).toBe(true);
   });
 
-  it('renderTodos shows priority badge for todos without explicit priority (treated as medium)', () => {
+  it('renderTodos does not show priority badge for todos without explicit priority (treated as medium)', () => {
     addTodo('Legacy todo');
     const badge = document.querySelector('.todo-priority-badge');
     expect(badge).toBeNull();
