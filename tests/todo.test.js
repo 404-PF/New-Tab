@@ -225,11 +225,17 @@ describe('Todo CRUD', () => {
     expect(loadTodos()[0].text).toBe('New text');
   });
 
-  it('editTodo updates dueDate and allows null priority', () => {
+  it('editTodo updates dueDate', () => {
     addTodo('Text');
     const todo = loadTodos()[0];
     editTodo(todo.id, 'Updated', null, '2025-01-01');
     expect(loadTodos()[0].dueDate).toBe('2025-01-01');
+  });
+
+  it('editTodo updates priority when a value is passed', () => {
+    addTodo('With priority');
+    editTodo(loadTodos()[0].id, 'Updated', 'low', null);
+    expect(loadTodos()[0].priority).toBe('low');
   });
 
   it('editTodo preserves existing priority when null is passed', () => {
@@ -242,6 +248,15 @@ describe('Todo CRUD', () => {
     editTodo(loadTodos()[0].id, 'Updated text', null, null);
 
     expect(loadTodos()[0].priority).toBe('high');
+    expect(loadTodos()[0].text).toBe('Updated text');
+  });
+
+  it('editTodo preserves existing dueDate when null is passed', () => {
+    addTodo('With date', '2025-06-15');
+
+    editTodo(loadTodos()[0].id, 'Updated text', null, null);
+
+    expect(loadTodos()[0].dueDate).toBe('2025-06-15');
     expect(loadTodos()[0].text).toBe('Updated text');
   });
 

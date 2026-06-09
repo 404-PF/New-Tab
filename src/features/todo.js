@@ -480,7 +480,9 @@
     if (newPriority !== null) {
       todo.priority = newPriority;
     }
-    todo.dueDate = newDueDate;
+    if (newDueDate !== null) {
+      todo.dueDate = newDueDate;
+    }
     if (!saveTodos(todos)) {
       Object.assign(todo, previousTodo);
       applyFilters();
