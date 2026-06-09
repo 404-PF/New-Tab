@@ -723,17 +723,14 @@ function handleDrop(event) {
   const [removed] = filteredTodos.splice(draggedIndex, 1);
   filteredTodos.splice(dropIndex, 0, removed);
 
-  // Rebuild the full todos array, preserving original interleaving
-  // between filtered and non-filtered items, but placing filtered
-  // items in their new internal order.
+  // Rebuild the full todos array: filtered items keep their new
+  // order, hidden (non-filtered) items are appended in their
+  // original relative order so they are never shuffled.
   const filteredIds = new Set(filteredTodos.map(t => t.id));
-  const reorderedTodos = [];
-  let filteredIdx = 0;
+  const reorderedTodos = [...filteredTodos];
 
   for (const todo of todos) {
-    if (filteredIds.has(todo.id)) {
-      reorderedTodos.push(filteredTodos[filteredIdx++]);
-    } else {
+    if (!filteredIds.has(todo.id)) {
       reorderedTodos.push(todo);
     }
   }
