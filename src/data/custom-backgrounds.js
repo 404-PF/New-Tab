@@ -292,7 +292,7 @@
           return;
         }
 
-        const id = 'custom_' + type + '_' + Date.now();
+        const id = 'custom_' + type + '_' + crypto.randomUUID();
         const title = file.name.replace(/\.[^/.]+$/, '');
 
         const thumbPromise = isVideo ? generateVideoThumbnail(file) : generateImageThumbnail(file);
