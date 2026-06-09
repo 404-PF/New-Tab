@@ -477,8 +477,12 @@
 
     const previousTodo = { ...todo };
     todo.text = newText.trim();
-    todo.priority = newPriority;
-    todo.dueDate = newDueDate;
+    if (newPriority !== null && newPriority !== undefined) {
+      todo.priority = newPriority;
+    }
+    if (newDueDate !== null && newDueDate !== undefined) {
+      todo.dueDate = newDueDate;
+    }
     if (!saveTodos(todos)) {
       Object.assign(todo, previousTodo);
       applyFilters();
