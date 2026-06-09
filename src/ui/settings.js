@@ -442,7 +442,9 @@ function applyBg() {
     // Check video support - both canPlayType and HTML5 video element support
     if (!supportsVideo() || !supportsVideoElement()) {
       // Fallback: use thumbnail as background for unsupported browsers
-      containerEl.classList.add('video-fallback');
+      if (containerEl) {
+        containerEl.classList.add('video-fallback');
+      }
       thumbnailEl.src = bgData.thumb;
       // Still load the full image as fallback
       const fullImg = new Image();
@@ -618,7 +620,9 @@ function applyBg() {
         }
 
         console.warn('Video background failed to load, falling back to image');
-        containerEl.classList.add('video-error');
+        if (containerEl) {
+          containerEl.classList.add('video-error');
+        }
         resetBackgroundVideo(videoEl, true);
         thumbnailEl.classList.remove('hidden');
         thumbnailEl.classList.remove('clearing');
