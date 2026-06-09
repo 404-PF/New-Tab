@@ -72,6 +72,7 @@ const srcGlobals = {
   safePause: 'readonly',
   safeLoad: 'readonly',
   crossfadeDelayMs: 'readonly',
+  BackgroundRotation: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };
@@ -122,6 +123,7 @@ const testGlobals = {
   crossfadeDelayMs: 'readonly',
   loadVideoPauseHidden: 'readonly',
   applyVideoPlaybackSettings: 'readonly',
+  BackgroundRotation: 'readonly',
   initTodo: 'readonly',
   loadTodos: 'readonly',
   saveTodos: 'readonly',
