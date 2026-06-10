@@ -485,6 +485,62 @@
               </div>
             </div>
 
+            <!-- Background Rotation -->
+            <div class="bg-subsection" id="bg-rotation-section">
+              <h4 class="bg-subsection-header" data-i18n="bgRotation">Rotation</h4>
+              <p class="bg-subsection-desc" data-i18n="bgRotationDesc">Automatically cycle through backgrounds</p>
+              <div class="bg-playback-controls">
+                <div class="setting-card">
+                  <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                  </svg>
+                  <div class="setting-content">
+                    <label for="bg-rotation-toggle" data-i18n="bgRotationToggle">Enable background rotation</label>
+                    <input type="checkbox" id="bg-rotation-toggle" />
+                  </div>
+                </div>
+                <div class="setting-card" id="bg-rotation-options" hidden>
+                  <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  <div class="setting-content">
+                    <label for="bg-rotation-interval" data-i18n="bgRotationInterval">Change every</label>
+                    <select id="bg-rotation-interval">
+                      <option value="5min" data-i18n="bgRotation5min">5 minutes</option>
+                      <option value="15min" data-i18n="bgRotation15min">15 minutes</option>
+                      <option value="30min" data-i18n="bgRotation30min">30 minutes</option>
+                      <option value="1hour" data-i18n="bgRotation1hour">1 hour</option>
+                      <option value="hourly" data-i18n="bgRotationHourly">Every hour on the hour</option>
+                      <option value="daily" data-i18n="bgRotationDaily">Daily</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-card" id="bg-rotation-picker-wrap" hidden>
+                  <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                  <div class="setting-content">
+                    <label data-i18n="bgRotationPicker">Select backgrounds to rotate</label>
+                    <div class="bg-rotation-picker" id="bg-rotation-picker"></div>
+                  </div>
+                </div>
+                <div class="setting-card">
+                  <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                  <div class="setting-content">
+                    <button type="button" id="bg-rotation-next" class="bg-rotation-next-btn" data-i18n="bgRotationNext">Next Background</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="bg-loading-state" id="bg-loading-state" hidden aria-hidden="true">
               <span class="bg-loading-spinner"></span>
             </div>

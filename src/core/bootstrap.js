@@ -52,7 +52,8 @@
     'src/ai/ai-store.js',
     'src/ai/ai-renderer.js',
     'src/ai/ai-service.js',
-    'src/features/weather.js'
+    'src/features/weather.js',
+    'src/features/background-rotation.js'
   ];
 
   function loadScript(source) {
