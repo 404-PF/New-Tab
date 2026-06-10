@@ -256,7 +256,7 @@ describe('Todo CRUD', () => {
 
     editTodo(loadTodos()[0].id, 'Updated text', null, null);
 
-    expect(loadTodos()[0].priority).toBeUndefined();
+    expect(loadTodos()[0].priority).toBe('medium');
     expect(loadTodos()[0].text).toBe('Updated text');
   });
 
@@ -1090,6 +1090,191 @@ describe('Todo reminders', () => {
     chrome.runtime = undefined;
     expect(() => scheduleTodoReminderCheck()).not.toThrow();
     chrome.runtime = origRuntime;
+  });
+});
+
+describe('Todo priority', () => {
+  beforeEach(() => {
+    if (typeof initTodo === 'function') {
+      initTodo();
+    }
+  });
+
+  it('addTodo assigns medium priority by default', () => {
+    addTodo('Default priority');
+    expect(loadTodos()[0].priority).toBe('medium');
+  });
+
+  it('addTodo assigns specified priority', () => {
+    addTodo('High priority', null, 'high');
+    expect(loadTodos()[0].priority).toBe('high');
+  });
+
+  it('addTodo assigns low priority', () => {
+    addTodo('Low priority', null, 'low');
+    expect(loadTodos()[0].priority).toBe('low');
+  });
+
+  it('addTodo defaults to medium when null priority is passed', () => {
+    addTodo('Null priority', null, null);
+    expect(loadTodos()[0].priority).toBe('medium');
+  });
+
+  it('addTodo defaults to medium when empty string is passed', () => {
+    addTodo('Empty priority', null, '');
+    expect(loadTodos()[0].priority).toBe('medium');
+  });
+
+  it('editTodo updates priority', () => {
+    addTodo('Test');
+    const todo = loadTodos()[0];
+    editTodo(todo.id, 'Updated', 'high', null);
+    expect(loadTodos()[0].priority).toBe('high');
+  });
+
+  // Helper function to simulate priority filter pill click
+  function setPriorityFilter(priority) {
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill';
+    pill.dataset.filter = priority;
+    pill.dataset.filterType = 'priority';
+    handleFilterPillClick({ target: pill });
+  }
+
+  it('filterTodos filters by high priority', () => {
+    addTodo('High', null, 'high');
+    addTodo('Medium', null, 'medium');
+    addTodo('Low', null, 'low');
+    setPriorityFilter('high');
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('High');
+    setPriorityFilter('all');
+  });
+
+  it('filterTodos filters by low priority', () => {
+    addTodo('High', null, 'high');
+    addTodo('Medium', null, 'medium');
+    addTodo('Low', null, 'low');
+    setPriorityFilter('low');
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('Low');
+    setPriorityFilter('all');
+  });
+
+  it('filterTodos returns all when priority filter is all', () => {
+    addTodo('High', null, 'high');
+    addTodo('Medium', null, 'medium');
+    currentFilters.priority = 'all';
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(2);
+  });
+
+  it('filterTodos combines status and priority filters', () => {
+    addTodo('High pending', null, 'high');
+    addTodo('High completed', null, 'high');
+    addTodo('Low pending', null, 'low');
+    const highTodo = loadTodos().find(t => t.text === 'High completed');
+    toggleTodo(highTodo.id);
+    currentFilters.status = 'pending';
+    currentFilters.priority = 'high';
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('High pending');
+    currentFilters.status = 'all';
+    currentFilters.priority = 'all';
+  });
+
+  it('todos without priority are treated as medium for filtering', () => {
+    addTodo('No priority set');
+    const stored = JSON.parse(localStorage.getItem('todos'));
+    delete stored[0].priority;
+    localStorage.setItem('todos', JSON.stringify(stored));
+    initTodo();
+    currentFilters.priority = 'medium';
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('No priority set');
+    currentFilters.priority = 'all';
+  });
+
+  it('priority persists across save/load', () => {
+    addTodo('Persistent', null, 'high');
+    const reloaded = loadTodos();
+    expect(reloaded[0].priority).toBe('high');
+  });
+
+  it('handleFilterPillClick handles priority filter type', () => {
+    addTodo('A', null, 'high');
+    addTodo('B', null, 'low');
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill';
+    pill.dataset.filter = 'high';
+    pill.dataset.filterType = 'priority';
+    handleFilterPillClick({ target: pill });
+    expect(currentFilters.priority).toBe('high');
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('A');
+    currentFilters.priority = 'all';
+  });
+
+  it('handleFilterPillClick defaults to status filter type', () => {
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill';
+    pill.dataset.filter = 'pending';
+    handleFilterPillClick({ target: pill });
+    expect(currentFilters.status).toBe('pending');
+    currentFilters.status = 'all';
+  });
+
+  it('getSelectedPriority returns active button priority', () => {
+    const container = document.createElement('div');
+    container.className = 'priority-selector';
+    const lowBtn = document.createElement('button');
+    lowBtn.className = 'priority-selector-btn';
+    lowBtn.dataset.priority = 'low';
+    const medBtn = document.createElement('button');
+    medBtn.className = 'priority-selector-btn active';
+    medBtn.dataset.priority = 'medium';
+    container.appendChild(lowBtn);
+    container.appendChild(medBtn);
+    document.body.appendChild(container);
+    expect(getSelectedPriority()).toBe('medium');
+    container.remove();
+  });
+
+  it('getSelectedPriority returns medium when no button is active', () => {
+    expect(getSelectedPriority()).toBe('medium');
+  });
+
+  it('renderTodos shows priority badge for non-medium todos', () => {
+    addTodo('High task', null, 'high');
+    const badge = document.querySelector('.todo-priority-badge');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe('High');
+    expect(badge.classList.contains('priority-high')).toBe(true);
+  });
+
+  it('renderTodos does not show priority badge for medium todos', () => {
+    addTodo('Medium task', null, 'medium');
+    const badge = document.querySelector('.todo-priority-badge');
+    expect(badge).toBeNull();
+  });
+
+  it('renderTodos shows low priority badge', () => {
+    addTodo('Low task', null, 'low');
+    const badge = document.querySelector('.todo-priority-badge');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe('Low');
+    expect(badge.classList.contains('priority-low')).toBe(true);
+  });
+
+  it('renderTodos does not show priority badge for todos without explicit priority (treated as medium)', () => {
+    addTodo('Legacy todo');
+    const badge = document.querySelector('.todo-priority-badge');
+    expect(badge).toBeNull();
   });
 });
 

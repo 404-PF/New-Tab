@@ -72,5 +72,17 @@
   "bgRotationNext": {
     "message": "Next Background",
     "description": "Button to manually advance to next background"
+  },
+  "priorityLow": {
+    "message": "Low",
+    "description": "Low priority label"
+  },
+  "priorityMedium": {
+    "message": "Medium",
+    "description": "Medium priority label"
+  },
+  "priorityHigh": {
+    "message": "High",
+    "description": "High priority label"
   }
 }

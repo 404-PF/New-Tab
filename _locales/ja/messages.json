@@ -24,5 +24,17 @@
         "example": "2024-06-01"
       }
     }
+  },
+  "priorityLow": {
+    "message": "低",
+    "description": "Low priority label"
+  },
+  "priorityMedium": {
+    "message": "中",
+    "description": "Medium priority label"
+  },
+  "priorityHigh": {
+    "message": "高",
+    "description": "High priority label"
   }
 }

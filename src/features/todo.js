@@ -7,7 +7,8 @@
   let todos = [];
   let filteredTodos = [];
   const currentFilters = {
-    status: 'all'
+    status: 'all',
+    priority: 'all'
   };
 
   // Animation config
@@ -227,6 +228,14 @@
       });
     }
 
+    // Priority filter
+    if (currentFilters.priority !== 'all') {
+      filtered = filtered.filter(todo => {
+        const todoPriority = todo.priority || 'medium';
+        return todoPriority === currentFilters.priority;
+      });
+    }
+
     // Sort: incomplete items first (by order), then completed items (by completion time)
     filtered.sort((a, b) => {
       // If both are incomplete, sort by order (original position)
@@ -299,6 +308,15 @@
       todoText.className = 'todo-text';
       todoText.textContent = todo.text ?? '';
       todoContent.appendChild(todoText);
+
+      // Priority badge
+      const todoPriority = todo.priority || 'medium';
+      if (todoPriority !== 'medium') {
+        const priorityBadge = document.createElement('span');
+        priorityBadge.className = `todo-priority-badge priority-${todoPriority}`;
+        priorityBadge.textContent = todoPriority.charAt(0).toUpperCase() + todoPriority.slice(1);
+        todoContent.appendChild(priorityBadge);
+      }
 
       const dueDate = document.createElement('div');
       dueDate.className = `todo-due-date clickable ${todo.dueDate ? (isOverdue(todo.dueDate) ? 'overdue' : '') : 'empty'}`;
@@ -411,7 +429,7 @@
   }
 
   // Add a new todo
-  function addTodo(text, dueDate = null) {
+  function addTodo(text, dueDate = null, priority = 'medium') {
     if (!text.trim()) return;
 
     // Find the maximum order value among existing todos
@@ -425,6 +443,7 @@
       completed: false,
       completedAt: null, // Track when todo was completed
       dueDate: dueDate,
+      priority: priority || 'medium',
       createdAt: new Date().toISOString(),
       order: maxOrder + 1 // Add order property to track position (always at the end)
     };
@@ -556,7 +575,9 @@ function updateFilterUI() {
   const pills = document.querySelectorAll('.filter-pill');
   pills.forEach(pill => {
     const filter = pill.dataset.filter;
-    pill.classList.toggle('active', filter === currentFilters.status);
+    const filterType = pill.dataset.filterType || 'status';
+    const currentFilter = filterType === 'priority' ? currentFilters.priority : currentFilters.status;
+    pill.classList.toggle('active', filter === currentFilter);
   });
 }
 
@@ -583,17 +604,23 @@ function updateFilterCounts() {
   const pending = todos.filter(t => !t.completed).length;
   const completed = todos.filter(t => t.completed).length;
   const overdue = todos.filter(t => !t.completed && t.dueDate && isOverdue(t.dueDate)).length;
+  const high = todos.filter(t => (t.priority || 'medium') === 'high').length;
+  const low = todos.filter(t => (t.priority || 'medium') === 'low').length;
   
   const badgeAll = document.getElementById('badge-all');
   const badgePending = document.getElementById('badge-pending');
   const badgeCompleted = document.getElementById('badge-completed');
   const badgeOverdue = document.getElementById('badge-overdue');
+  const badgeHigh = document.getElementById('badge-high');
+  const badgeLow = document.getElementById('badge-low');
   const todoCount = document.getElementById('todo-count');
   
   if (badgeAll) badgeAll.textContent = all;
   if (badgePending) badgePending.textContent = pending;
   if (badgeCompleted) badgeCompleted.textContent = completed;
   if (badgeOverdue) badgeOverdue.textContent = overdue;
+  if (badgeHigh) badgeHigh.textContent = high;
+  if (badgeLow) badgeLow.textContent = low;
   if (todoCount) todoCount.textContent = `${completed}/${all}`;
 }
 
@@ -675,7 +702,12 @@ function handleFilterPillClick(event) {
   const pill = event.target.closest('.filter-pill');
   if (!pill) return;
   
-  currentFilters.status = pill.dataset.filter;
+  const filterType = pill.dataset.filterType || 'status';
+  if (filterType === 'priority') {
+    currentFilters.priority = pill.dataset.filter;
+  } else {
+    currentFilters.status = pill.dataset.filter;
+  }
   applyFilters();
 }
 
@@ -687,6 +719,11 @@ function clearInputs() {
   if (customDatePicker) {
     customDatePicker.clearDate();
   }
+  // Reset priority selector to medium
+  const priorityBtns = document.querySelectorAll('.priority-selector-btn');
+  priorityBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.priority === 'medium');
+  });
 }
 
 // Drag and drop functionality
@@ -760,14 +797,21 @@ function handleKeyPress(event) {
   if (event.key === 'Enter') {
     const input = elements.todoInput;
     const dueDate = elements.todoDueDate?.value || null;
-    addTodo(input.value, dueDate);
+    const priority = getSelectedPriority();
+    addTodo(input.value, dueDate, priority);
   }
 }
 
 function handleAddTodo() {
   const input = elements.todoInput;
   const dueDate = elements.todoDueDate?.value || null;
-  addTodo(input.value, dueDate);
+  const priority = getSelectedPriority();
+  addTodo(input.value, dueDate, priority);
+}
+
+function getSelectedPriority() {
+  const activeBtn = document.querySelector('.priority-selector-btn.active');
+  return activeBtn ? activeBtn.dataset.priority : 'medium';
 }
 
 function handleTodoListClick(event) {
@@ -1213,9 +1257,11 @@ function openEditModal(id) {
 
   // Populate modal fields
   const textInput = document.getElementById('todo-edit-text');
+  const prioritySelect = document.getElementById('todo-edit-priority');
   const modal = document.getElementById('todo-edit-modal');
 
   if (textInput) textInput.value = todo.text;
+  if (prioritySelect) prioritySelect.value = todo.priority || 'medium';
 
   // Show modal
   if (modal) {
@@ -1240,8 +1286,10 @@ function saveEdit() {
   if (!editModalState.currentTodoId) return;
 
   const textInput = document.getElementById('todo-edit-text');
+  const prioritySelect = document.getElementById('todo-edit-priority');
 
   const newText = textInput ? textInput.value.trim() : '';
+  const newPriority = prioritySelect ? prioritySelect.value : null;
 
   if (!newText) {
     // Show error or focus on text input
@@ -1253,7 +1301,7 @@ function saveEdit() {
   const existingTodo = todos.find(t => t.id === editModalState.currentTodoId);
   const preservedDueDate = existingTodo ? existingTodo.dueDate : null;
 
-  if (editTodo(editModalState.currentTodoId, newText, null, preservedDueDate)) {
+  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
     closeEditModal();
   }
 }
@@ -1292,6 +1340,15 @@ function initTodo() {
   const filterPills = document.querySelectorAll('.filter-pill');
   filterPills.forEach(pill => {
     pill.addEventListener('click', handleFilterPillClick);
+  });
+
+  // Priority selector buttons
+  const priorityBtns = document.querySelectorAll('.priority-selector-btn');
+  priorityBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      priorityBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
   });
   
   // Keep legacy dropdown support
@@ -1842,6 +1899,8 @@ try {
   window.isOverdue = isOverdue;
   window.parseLocalDate = parseLocalDate;
   window.showToast = showToast;
+  window.currentFilters = currentFilters;
+  window.getSelectedPriority = getSelectedPriority;
   // Test-only handles. The `tests/helpers/inject-script.js` harness loads
   // this file via `globalThis.eval(code)`, which scopes the IIFE's
   // `function` and `var` declarations to the eval scope and hides them

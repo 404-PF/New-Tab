@@ -326,6 +326,8 @@ globalThis.window.i18n = {
       aiCancel: 'Cancel',
       aiDelete: 'Delete',
       editTodo: 'Edit Todo',
+      todoEditTitle: 'Edit Todo',
+      todoEditPriority: 'Priority',
       newAppTitle: 'Add New App',
       newAppDescription: 'Enter a website URL to add it to your apps',
       renameAppTitle: 'Rename App',
@@ -420,7 +422,10 @@ globalThis.window.i18n = {
       reminderLeadTime15min: '15 minutes before',
       reminderLeadTime30min: '30 minutes before',
       reminderLeadTime1hour: '1 hour before',
-      reminderLeadTime1day: '1 day before'
+      reminderLeadTime1day: '1 day before',
+      priorityLow: 'Low',
+      priorityMedium: 'Medium',
+      priorityHigh: 'High'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
@@ -487,6 +492,18 @@ importDialog.innerHTML = `
   </div>
 `;
 document.body.appendChild(importDialog);
+
+// Edit modal stubs
+document.body.appendChild(createStubElement('div', 'todo-edit-modal'));
+document.body.appendChild(createStubElement('input', 'todo-edit-text'));
+document.body.appendChild(createStubElement('select', 'todo-edit-priority'));
+document.body.appendChild(createStubElement('button', 'todo-edit-close'));
+document.body.appendChild(createStubElement('button', 'todo-edit-cancel'));
+document.body.appendChild(createStubElement('button', 'todo-edit-save'));
+
+// Priority filter badge stubs
+document.body.appendChild(createStubElement('span', 'badge-high'));
+document.body.appendChild(createStubElement('span', 'badge-low'));
 
 document.body.appendChild(createStubElement('div', 'settings-modal'));
 document.body.appendChild(createStubElement('input', 'clock-color-picker'));
