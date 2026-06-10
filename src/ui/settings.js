@@ -1203,9 +1203,8 @@ if (settingsMenu) {
             if (window._initInteractiveBackgrounds) window._initInteractiveBackgrounds();
             if (window._initLiveBackgrounds) window._initLiveBackgrounds();
             if (window._customBackgrounds) window._customBackgrounds.render();
-            if (window.BackgroundRotation) {
-              if (window.BackgroundRotation.initUI) window.BackgroundRotation.initUI();
-              if (window.BackgroundRotation.renderPicker) window.BackgroundRotation.renderPicker();
+            if (window.BackgroundRotation && window.BackgroundRotation.renderPicker) {
+              window.BackgroundRotation.renderPicker();
             }
 
             if (initialBackgroundApplied) {

@@ -13,6 +13,7 @@ beforeEach(() => {
   localStorage.setItem('bgRotationEnabled', 'false');
   localStorage.setItem('bgRotationInterval', '30min');
   localStorage.removeItem('bgRotationSelection');
+  window._backgrounds = undefined;
 });
 
 describe('Background rotation storage', () => {

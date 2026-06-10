@@ -12,29 +12,42 @@
     '15min': 15 * 60 * 1000,
     '30min': 30 * 60 * 1000,
     '1hour': 60 * 60 * 1000,
-    'hourly': 60 * 60 * 1000,
     'daily': 24 * 60 * 60 * 1000,
   };
 
   let rotationTimer = null;
 
   function loadEnabled() {
-    return localStorage.getItem(ROTATION_ENABLED_KEY) === 'true';
+    try {
+      return localStorage.getItem(ROTATION_ENABLED_KEY) === 'true';
+    } catch (err) {
+      console.warn('loadEnabled localStorage error:', err);
+      return false;
+    }
   }
 
   function loadInterval() {
-    return localStorage.getItem(ROTATION_INTERVAL_KEY) || '30min';
+    try {
+      return localStorage.getItem(ROTATION_INTERVAL_KEY) || '30min';
+    } catch (err) {
+      console.warn('loadInterval localStorage error:', err);
+      return '30min';
+    }
   }
 
   function loadSelection() {
     try {
       const raw = localStorage.getItem(ROTATION_SELECTION_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.length > 0 ? parsed : null;
       }
-    } catch (_err) { /* ignore parse errors */ }
-    return null;
+      return null;
+    } catch (err) {
+      console.warn('loadSelection parse error:', err);
+      return null;
+    }
   }
 
   function saveEnabled(value) {
@@ -93,8 +106,9 @@
 
   function poolChanged(currentPool) {
     if (shuffledPool.length !== currentPool.length) return true;
-    for (let i = 0; i < currentPool.length; i++) {
-      if (currentPool[i].id !== shuffledPool[i].id) return true;
+    const currentIds = new Set(currentPool.map(function (p) { return p.id; }));
+    for (let i = 0; i < shuffledPool.length; i++) {
+      if (!currentIds.has(shuffledPool[i].id)) return true;
     }
     return false;
   }
@@ -116,11 +130,34 @@
     if (pool.length <= 1) return;
 
     const intervalKey = loadInterval();
-    const ms = INTERVAL_OPTIONS[intervalKey] || INTERVAL_OPTIONS['30min'];
 
-    rotationTimer = new window.VisibilityInterval(function () {
-      advanceBackground();
-    }, ms, false);
+    if (intervalKey === 'hourly') {
+      // Special case: align to top of the hour
+      const now = new Date();
+      const nextHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1, 0, 0, 0);
+      const initialDelay = nextHour.getTime() - now.getTime();
+      const hourMs = 60 * 60 * 1000;
+
+      // Use setTimeout for initial delay, then setInterval for subsequent runs
+      rotationTimer = setTimeout(function () {
+        advanceBackground();
+        rotationTimer = window.VisibilityInterval
+          ? new window.VisibilityInterval(function () { advanceBackground(); }, hourMs, false)
+          : setInterval(function () { advanceBackground(); }, hourMs);
+      }, initialDelay);
+    } else {
+      const ms = INTERVAL_OPTIONS[intervalKey] || INTERVAL_OPTIONS['30min'];
+
+      if (window.VisibilityInterval) {
+        rotationTimer = new window.VisibilityInterval(function () {
+          advanceBackground();
+        }, ms, false);
+      } else {
+        rotationTimer = setInterval(function () {
+          advanceBackground();
+        }, ms);
+      }
+    }
 
     shuffledPool = shuffleArray(pool);
     poolIndex = 0;
@@ -128,7 +165,12 @@
 
   function stopRotation() {
     if (rotationTimer) {
-      rotationTimer.destroy();
+      if (typeof rotationTimer.destroy === 'function') {
+        rotationTimer.destroy();
+      } else {
+        clearTimeout(rotationTimer);
+        clearInterval(rotationTimer);
+      }
       rotationTimer = null;
     }
     shuffledPool = [];
