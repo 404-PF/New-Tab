@@ -1487,6 +1487,8 @@ window.applyTheme = applyTheme;
 window.loadLanguageSetting = loadLanguageSetting;
 window.renderLanguageOptions = renderLanguageOptions;
 window.loadTodoEnabled = loadTodoEnabled;
+window.applyTodoEnabled = applyTodoEnabled;
+window.applyNotesEnabled = applyNotesEnabled;
 window.initSettings = initSettings;
 
 })();
