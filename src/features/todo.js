@@ -291,10 +291,13 @@
 
     emptyState.style.display = 'none';
 
+    const pomodoroEnabled = window.PomodoroTimer && window.PomodoroTimer.loadPomodoroEnabled && window.PomodoroTimer.loadPomodoroEnabled();
+    const focusedTodoId = window.PomodoroTimer && window.PomodoroTimer.session && window.PomodoroTimer.session.active && window.PomodoroTimer.session.todoId;
+
     // Render each todo with staggered animation
     filteredTodos.forEach((todo, index) => {
       const li = document.createElement('li');
-      li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate) ? 'overdue' : ''}`;
+      li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate) ? 'overdue' : ''} ${focusedTodoId === todo.id ? 'pomodoro-focused' : ''}`;
       li.dataset.id = todo.id;
       li.draggable = true;
 
@@ -375,6 +378,13 @@
         { tagName: 'line', attributes: { x1: '10', y1: '11', x2: '10', y2: '17' } },
         { tagName: 'line', attributes: { x1: '14', y1: '11', x2: '14', y2: '17' } }
       ]));
+
+      const focusBtn = createTodoIconButton('todo-focus-btn', window.i18n ? window.i18n.t('pomodoroStartFocus') : 'Start Focus', todo.id, [
+        { tagName: 'circle', attributes: { cx: '12', cy: '12', r: '10' } },
+        { tagName: 'polygon', attributes: { points: '10,8 16,12 10,16' } }
+      ]);
+      focusBtn.style.display = pomodoroEnabled ? '' : 'none';
+      todoActions.appendChild(focusBtn);
 
       li.appendChild(bullet);
       li.appendChild(todoContent);
@@ -839,6 +849,16 @@ function handleTodoListClick(event) {
     event.stopPropagation();
     const id = target.closest('.todo-edit-btn').dataset.id;
     openEditModal(id);
+    return;
+  }
+
+  // Handle focus button (pomodoro)
+  if (target.closest('.todo-focus-btn')) {
+    event.stopPropagation();
+    const id = target.closest('.todo-focus-btn').dataset.id;
+    if (window.PomodoroTimer && window.PomodoroTimer.startFocus) {
+      window.PomodoroTimer.startFocus(id);
+    }
     return;
   }
 }

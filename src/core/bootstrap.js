@@ -37,6 +37,9 @@
     'src/ui/font-picker.js',
     'src/features/interactive-background.js',
     'src/core/languages.js',
+    // pomodoro.js must load before settings.js and todo.js so that
+    // window.PomodoroTimer is available when they initialize.
+    'src/features/pomodoro.js',
     'src/ui/settings.js',
     'src/features/context-menu.js',
     'src/features/app-folders.js',

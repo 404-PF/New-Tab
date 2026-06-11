@@ -78,6 +78,7 @@ const srcGlobals = {
   Shortcuts: 'readonly',
   applyTodoEnabled: 'readonly',
   applyNotesEnabled: 'readonly',
+  PomodoroTimer: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };
@@ -156,6 +157,7 @@ const testGlobals = {
   scheduleTodoReminderCheck: 'readonly',
   checkReminders: 'readonly',
   handleStartup: 'readonly',
+  PomodoroTimer: 'readonly',
   initNotes: 'readonly',
   loadNotes: 'readonly',
   saveNotes: 'readonly',

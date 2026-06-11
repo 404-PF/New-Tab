@@ -1141,6 +1141,100 @@ if (todoReminderLeadTime) {
   });
 }
 
+// Pomodoro settings
+const pomodoroEnabled = document.getElementById('pomodoro-enabled');
+if (pomodoroEnabled) {
+  pomodoroEnabled.addEventListener('change', function () {
+    if (
+      window.PomodoroTimer &&
+      typeof window.PomodoroTimer.loadSettings === 'function' &&
+      typeof window.PomodoroTimer.saveSettings === 'function' &&
+      typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
+    ) {
+      const s = window.PomodoroTimer.loadSettings();
+      s.enabled = this.checked;
+      window.PomodoroTimer.saveSettings(s);
+      window.PomodoroTimer.applyPomodoroSettings();
+    }
+  });
+}
+
+const pomodoroWorkDuration = document.getElementById('pomodoro-work-duration');
+if (pomodoroWorkDuration) {
+  pomodoroWorkDuration.addEventListener('change', function () {
+    if (
+      window.PomodoroTimer &&
+      typeof window.PomodoroTimer.loadSettings === 'function' &&
+      typeof window.PomodoroTimer.saveSettings === 'function' &&
+      typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
+    ) {
+      const s = window.PomodoroTimer.loadSettings();
+      const nextWork = parseInt(this.value, 10);
+      s.work = Number.isFinite(nextWork) ? Math.min(120, Math.max(1, nextWork)) : s.work;
+      this.value = s.work;
+      window.PomodoroTimer.saveSettings(s);
+      window.PomodoroTimer.applyPomodoroSettings();
+    }
+  });
+}
+
+const pomodoroShortDuration = document.getElementById('pomodoro-short-duration');
+if (pomodoroShortDuration) {
+  pomodoroShortDuration.addEventListener('change', function () {
+    if (
+      window.PomodoroTimer &&
+      typeof window.PomodoroTimer.loadSettings === 'function' &&
+      typeof window.PomodoroTimer.saveSettings === 'function' &&
+      typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
+    ) {
+      const s = window.PomodoroTimer.loadSettings();
+      const nextShortBreak = parseInt(this.value, 10);
+      s.shortBreak = Number.isFinite(nextShortBreak) ? Math.min(60, Math.max(1, nextShortBreak)) : s.shortBreak;
+      this.value = s.shortBreak;
+      window.PomodoroTimer.saveSettings(s);
+      window.PomodoroTimer.applyPomodoroSettings();
+    }
+  });
+}
+
+const pomodoroLongDuration = document.getElementById('pomodoro-long-duration');
+if (pomodoroLongDuration) {
+  pomodoroLongDuration.addEventListener('change', function () {
+    if (
+      window.PomodoroTimer &&
+      typeof window.PomodoroTimer.loadSettings === 'function' &&
+      typeof window.PomodoroTimer.saveSettings === 'function' &&
+      typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
+    ) {
+      const s = window.PomodoroTimer.loadSettings();
+      const nextLongBreak = parseInt(this.value, 10);
+      s.longBreak = Number.isFinite(nextLongBreak) ? Math.min(60, Math.max(1, nextLongBreak)) : s.longBreak;
+      this.value = s.longBreak;
+      window.PomodoroTimer.saveSettings(s);
+      window.PomodoroTimer.applyPomodoroSettings();
+    }
+  });
+}
+
+const pomodoroSessionsBeforeLong = document.getElementById('pomodoro-sessions-before-long');
+if (pomodoroSessionsBeforeLong) {
+  pomodoroSessionsBeforeLong.addEventListener('change', function () {
+    if (
+      window.PomodoroTimer &&
+      typeof window.PomodoroTimer.loadSettings === 'function' &&
+      typeof window.PomodoroTimer.saveSettings === 'function' &&
+      typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
+    ) {
+      const s = window.PomodoroTimer.loadSettings();
+      const nextSessions = parseInt(this.value, 10);
+      s.sessionsBeforeLong = Number.isFinite(nextSessions) ? Math.min(10, Math.max(1, nextSessions)) : s.sessionsBeforeLong;
+      this.value = s.sessionsBeforeLong;
+      window.PomodoroTimer.saveSettings(s);
+      window.PomodoroTimer.applyPomodoroSettings();
+    }
+  });
+}
+
 // Notes enabled
 function loadNotesEnabled() {
   return localStorage.getItem('notesEnabled') !== 'false';
@@ -1426,6 +1520,9 @@ function initSettings() {
   applyTodoEnabled();
   applyTodoReminderEnabled();
   applyTodoReminderLeadTime();
+  if (window.PomodoroTimer && typeof window.PomodoroTimer.applyPomodoroSettings === 'function') {
+    window.PomodoroTimer.applyPomodoroSettings();
+  }
   applyNotesEnabled();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
