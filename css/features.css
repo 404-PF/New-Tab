@@ -3840,3 +3840,186 @@ body.light-theme .weather-app-forecast-day-high {
 body.light-theme .weather-app-forecast-day-low {
   color: rgba(107, 114, 128, 0.55);
 }
+
+/* ==================== Pomodoro Timer Styles ==================== */
+.pomodoro-widget {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px;
+  background: rgba(33, 150, 243, 0.1);
+  border: 1px solid rgba(33, 150, 243, 0.3);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+}
+
+.pomodoro-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pomodoro-phase-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pomodoro-time {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+
+.pomodoro-sessions {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+
+.pomodoro-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.pomodoro-btn {
+  background: none;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.pomodoro-btn:focus-visible {
+  outline: 2px solid #2196f3;
+  outline-offset: 2px;
+}
+
+.pomodoro-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pomodoro-play-pause {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.pomodoro-play-pause:hover {
+  background: rgba(33, 150, 243, 0.3);
+  color: #fff;
+}
+
+.pomodoro-skip {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pomodoro-skip:hover {
+  background: rgba(33, 150, 243, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.pomodoro-reset {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pomodoro-reset:hover {
+  background: rgba(255, 82, 82, 0.2);
+  color: #ff5252;
+}
+
+.todo-focus-btn {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.todo-focus-btn:hover {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+.todo-focus-btn:focus-visible {
+  outline: 2px solid #2196f3;
+  outline-offset: 2px;
+}
+
+.todo-item.pomodoro-focused {
+  background: rgba(33, 150, 243, 0.08);
+  box-shadow: inset 3px 0 0 #2196f3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pomodoro-time,
+  .pomodoro-phase-label {
+    animation: none !important;
+  }
+}
+
+body.light-theme .pomodoro-widget {
+  background: rgba(33, 150, 243, 0.08);
+  border-color: rgba(33, 150, 243, 0.2);
+}
+
+body.light-theme .pomodoro-phase-label {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+body.light-theme .pomodoro-time {
+  color: #1a1a1a;
+}
+
+body.light-theme .pomodoro-sessions {
+  color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .pomodoro-play-pause {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+body.light-theme .pomodoro-play-pause:hover {
+  background: rgba(33, 150, 243, 0.15);
+  color: #2196f3;
+}
+
+body.light-theme .pomodoro-skip {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+body.light-theme .pomodoro-skip:hover {
+  background: rgba(33, 150, 243, 0.1);
+  color: rgba(0, 0, 0, 0.8);
+}
+
+body.light-theme .pomodoro-reset {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+body.light-theme .pomodoro-reset:hover {
+  background: rgba(255, 82, 82, 0.1);
+  color: #ff5252;
+}
+
+body.light-theme .todo-focus-btn {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+body.light-theme .todo-focus-btn:hover {
+  background: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+body.light-theme .todo-item.pomodoro-focused {
+  background: rgba(33, 150, 243, 0.05);
+  box-shadow: inset 3px 0 0 #2196f3;
+}

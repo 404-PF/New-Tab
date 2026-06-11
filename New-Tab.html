@@ -77,6 +77,7 @@
             <h3 class="todo-title" data-i18n="todoList">Todo List</h3>
             <span class="todo-count" id="todo-count"></span>
           </div>
+          <div class="pomodoro-widget" id="pomodoro-widget" style="display: none"></div>
           <div class="todo-progress-ring" id="todo-progress-ring">
             <svg viewBox="0 0 36 36">
               <path class="progress-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -375,6 +376,9 @@
           </button>
           <button type="button" class="settings-menu-item" data-section="themes" data-i18n="themes">
             Themes
+          </button>
+          <button type="button" class="settings-menu-item" data-section="pomodoro" data-i18n="pomodoro">
+            Pomodoro
           </button>
           <button type="button" class="settings-menu-item" data-section="language" data-i18n="language">
             Language
@@ -1080,6 +1084,74 @@
                   <div class="setting-content">
                     <label data-i18n="resetToDefaults">Reset to Defaults</label>
                     <button type="button" id="shortcuts-reset-btn" data-i18n="resetShortcuts">Reset Shortcuts</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="settings-section" data-section="pomodoro" style="display: none">
+            <div class="general-setting-group">
+              <h4 data-i18n="pomodoro">Pomodoro</h4>
+              <p data-i18n="pomodoroSettingsDesc">Configure the Pomodoro focus timer</p>
+              <div class="general-options">
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="pomodoro-enabled" data-i18n="pomodoroEnabled">Enable Pomodoro timer</label>
+                      <input type="checkbox" id="pomodoro-enabled" />
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="pomodoro-work-duration" data-i18n="pomodoroWorkDuration">Work duration (min)</label>
+                      <input type="number" id="pomodoro-work-duration" min="1" max="120" value="25" />
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="pomodoro-short-duration" data-i18n="pomodoroShortBreakDuration">Short break (min)</label>
+                      <input type="number" id="pomodoro-short-duration" min="1" max="60" value="5" />
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="pomodoro-long-duration" data-i18n="pomodoroLongBreakDuration">Long break (min)</label>
+                      <input type="number" id="pomodoro-long-duration" min="1" max="60" value="15" />
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="pomodoro-sessions-before-long" data-i18n="pomodoroSessionsBeforeLong">Sessions before long break</label>
+                      <input type="number" id="pomodoro-sessions-before-long" min="1" max="10" value="4" />
+                    </div>
                   </div>
                 </div>
               </div>

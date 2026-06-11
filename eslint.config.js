@@ -97,6 +97,7 @@ const srcGlobals = {
   openEditModal: 'readonly',
   saveEdit: 'readonly',
   closeEditModal: 'readonly',
+  PomodoroTimer: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };
@@ -201,6 +202,7 @@ const testGlobals = {
   closeEditModal: 'readonly',
   checkReminders: 'readonly',
   handleStartup: 'readonly',
+  PomodoroTimer: 'readonly',
   initNotes: 'readonly',
   addNote: 'readonly',
   deleteNote: 'readonly',

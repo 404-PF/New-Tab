@@ -144,7 +144,7 @@ if (chrome?.alarms?.onAlarm) {
 
 if (chrome?.notifications?.onClicked) {
   chrome.notifications.onClicked.addListener((notificationId) => {
-    if (notificationId.startsWith('todo_reminder_')) {
+    if (notificationId.startsWith('todo_reminder_') || notificationId.startsWith('pomodoro_')) {
       chrome.tabs.create({ url: 'New-Tab.html' });
       chrome.notifications.clear(notificationId);
     }
@@ -153,6 +153,21 @@ if (chrome?.notifications?.onClicked) {
 
 if (chrome?.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message && message.type === 'pomodoroComplete') {
+      const id = 'pomodoro_' + message.phase + '_' + Date.now();
+      chrome.notifications.create(id, {
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: message.title || 'Focus Session',
+        message: message.message || 'Session complete'
+      }).then(() => {
+        sendResponse({ ok: true });
+      }).catch((err) => {
+        console.warn('Failed to create Pomodoro notification:', err);
+        sendResponse({ ok: false });
+      });
+      return true;
+    }
     if (message && message.type === 'syncTodos') {
       // Relies on message.todos being a valid JSON string from the caller's in-memory state.
       // If absent/malformed, falls back to chrome.storage.local which may lag behind

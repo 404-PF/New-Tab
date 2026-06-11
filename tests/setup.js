@@ -16,6 +16,54 @@ if (typeof globalThis.cancelAnimationFrame === 'undefined') {
 }
 
 // ------------------------------------------------------------------
+// CSS.escape polyfill for jsdom (used by pomodoro highlightFocusedTodo)
+// ------------------------------------------------------------------
+if (typeof globalThis.CSS === 'undefined') {
+  globalThis.CSS = {};
+}
+if (typeof globalThis.CSS.escape !== 'function') {
+  globalThis.CSS.escape = function (value) {
+    const str = String(value);
+    let result = '';
+    for (let i = 0; i < str.length; i++) {
+      const ch = str[i];
+      const code = ch.charCodeAt(0);
+      if (code === 0x0000) {
+        result += '\uFFFD';
+      } else if (
+        (code >= 0x0001 && code <= 0x001F) ||
+        code === 0x007F
+      ) {
+        result += '\\' + code.toString(16) + ' ';
+      } else if (i === 0 && code >= 0x0030 && code <= 0x0039) {
+        result += '\\' + code.toString(16) + ' ';
+      } else if (i === 0 && code === 0x002D && str.length === 1) {
+        result += '\\' + ch;
+      } else if (i === 0 && code === 0x002D && str.length > 1 && str.charCodeAt(1) >= 0x0030 && str.charCodeAt(1) <= 0x0039) {
+        result += '\\' + code.toString(16) + ' ';
+      } else if (
+        code === 0x002D ||
+        code === 0x005F ||
+        (code >= 0x0030 && code <= 0x0039) ||
+        (code >= 0x0041 && code <= 0x005A) ||
+        (code >= 0x0061 && code <= 0x007A) ||
+        (code >= 0x0080 && code <= 0xD7FF) ||
+        (code >= 0xE000 && code <= 0xFDCF) ||
+        (code >= 0xFDF0 && code <= 0xFFFD) ||
+        (code >= 0x10000 && code <= 0x1FFFD) ||
+        (code >= 0x20000 && code <= 0x2FFFD) ||
+        (code >= 0x30000 && code <= 0x3FFFD)
+      ) {
+        result += ch;
+      } else {
+        result += '\\' + ch;
+      }
+    }
+    return result;
+  };
+}
+
+// ------------------------------------------------------------------
 // chrome API mock
 // ------------------------------------------------------------------
 const createEvent = () => {
@@ -506,7 +554,28 @@ globalThis.window.i18n = {
       bootstrapErrorTitle: 'Extension failed to load',
       bootstrapErrorDesc: 'The following module(s) could not be loaded:',
       bootstrapErrorHint: 'If the problem persists, reinstall the extension.',
-      bootstrapErrorReload: 'Reload'
+      bootstrapErrorReload: 'Reload',
+      pomodoro: 'Pomodoro',
+      pomodoroSettingsDesc: 'Configure the Pomodoro focus timer',
+      pomodoroEnabled: 'Enable Pomodoro timer',
+      pomodoroWorkDuration: 'Work duration (min)',
+      pomodoroShortBreakDuration: 'Short break (min)',
+      pomodoroLongBreakDuration: 'Long break (min)',
+      pomodoroSessionsBeforeLong: 'Sessions before long break',
+      pomodoroStartFocus: 'Start Focus',
+      pomodoroPause: 'Pause',
+      pomodoroResume: 'Resume',
+      pomodoroSkip: 'Skip',
+      pomodoroEnd: 'End Session',
+      pomodoroWork: 'Focus',
+      pomodoroShortBreak: 'Short Break',
+      pomodoroLongBreak: 'Long Break',
+      pomodoroWorkCompleteTitle: 'Focus Session Complete',
+      pomodoroWorkCompleteMessage: 'Time for a break! {1} sessions completed.',
+      pomodoroShortBreakCompleteTitle: 'Break Over',
+      pomodoroShortBreakCompleteMessage: 'Ready to focus again?',
+      pomodoroLongBreakCompleteTitle: 'Long Break Over',
+      pomodoroLongBreakCompleteMessage: 'Great work! {1} sessions completed.'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
@@ -542,6 +611,16 @@ document.body.appendChild(createStubElement('span', 'badge-pending'));
 document.body.appendChild(createStubElement('span', 'badge-completed'));
 document.body.appendChild(createStubElement('span', 'badge-overdue'));
 document.body.appendChild(createStubElement('span', 'todo-count'));
+
+// Pomodoro widget stub
+document.body.appendChild(createStubElement('div', 'pomodoro-widget'));
+
+// Pomodoro settings stubs
+document.body.appendChild(createStubElement('input', 'pomodoro-enabled'));
+document.body.appendChild(createStubElement('input', 'pomodoro-work-duration'));
+document.body.appendChild(createStubElement('input', 'pomodoro-short-duration'));
+document.body.appendChild(createStubElement('input', 'pomodoro-long-duration'));
+document.body.appendChild(createStubElement('input', 'pomodoro-sessions-before-long'));
 
 // Clear-completed dialog with required children
 const clearDialog = document.createElement('div');
