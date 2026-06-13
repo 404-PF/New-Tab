@@ -98,7 +98,8 @@
         return parseJsonSafe(raw, {});
       }
       return raw;
-    } catch {
+    } catch (err) {
+      console.warn('[data-manager] Failed to read key "' + key + '":', err);
       return null;
     }
   }
@@ -225,7 +226,8 @@
           return;
         }
         showImportDialog(parsed.data);
-      } catch {
+      } catch (err) {
+        console.warn('[data-manager] JSON parse error during import:', err);
         showToast(t('dataImportParseError', 'Invalid JSON file.'), 'error');
       }
     };
