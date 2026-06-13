@@ -174,11 +174,7 @@ async function cacheIconsAndRenderFallback() {
   }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', cacheIconsAndRenderFallback);
-} else {
-  cacheIconsAndRenderFallback();
-}
+window.onDomReady(cacheIconsAndRenderFallback);
 
 // Re-render function (export for other modules)
 window.renderCustomApps = renderAllApps;

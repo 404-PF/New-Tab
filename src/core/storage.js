@@ -111,7 +111,7 @@
     // during this hydration cycle.  Session-written values (e.g. appOrder
     // repaired by renderAllApps) are authoritative over the persisted snapshot.
     Object.keys(storageSnapshot).forEach((key) => {
-      if (!hydrationMutations.has(key)) {
+      if (!hydrationClearRequested && !hydrationMutations.has(key)) {
         mergedSnapshot[key] = storageSnapshot[key];
       }
     });
