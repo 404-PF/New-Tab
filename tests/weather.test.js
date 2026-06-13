@@ -97,7 +97,7 @@ describe('Weather forecast', () => {
       const hasValidParams =
         urlObj.searchParams.get('daily') === 'temperature_2m_max,temperature_2m_min,weather_code' &&
         urlObj.searchParams.get('forecast_days') === '7';
-      if (!urlObj.hostname.includes('api.open-meteo.com') ||
+      if (urlObj.hostname !== 'api.open-meteo.com' ||
           urlObj.pathname !== '/v1/forecast' ||
           !hasValidParams) {
         return {
@@ -144,7 +144,7 @@ describe('Weather forecast', () => {
       const hasValidParams =
         urlObj.searchParams.get('daily') === 'temperature_2m_max,temperature_2m_min,weather_code' &&
         urlObj.searchParams.get('forecast_days') === '7';
-      if (!urlObj.hostname.includes('api.open-meteo.com') ||
+      if (urlObj.hostname !== 'api.open-meteo.com' ||
           urlObj.pathname !== '/v1/forecast' ||
           !hasValidParams) {
         return {
@@ -194,7 +194,7 @@ describe('Weather forecast', () => {
       const hasValidParams =
         urlObj.searchParams.get('daily') === 'temperature_2m_max,temperature_2m_min,weather_code' &&
         urlObj.searchParams.get('forecast_days') === '7';
-      if (!urlObj.hostname.includes('api.open-meteo.com') ||
+      if (urlObj.hostname !== 'api.open-meteo.com' ||
           urlObj.pathname !== '/v1/forecast' ||
           !hasValidParams) {
         return {
