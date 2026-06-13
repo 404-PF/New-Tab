@@ -98,7 +98,7 @@
         return parseJsonSafe(raw, {});
       }
       return raw;
-    } catch (_e) {
+    } catch {
       return null;
     }
   }
@@ -225,7 +225,7 @@
           return;
         }
         showImportDialog(parsed.data);
-      } catch (_err) {
+      } catch {
         showToast(t('dataImportParseError', 'Invalid JSON file.'), 'error');
       }
     };
@@ -300,6 +300,7 @@
               incoming.forEach(function (item) {
                 if (item && item.id && !existingIds[item.id]) {
                   existing.push(item);
+                  existingIds[item.id] = true;
                   added++;
                 }
               });
@@ -316,6 +317,7 @@
               incoming.forEach(function (id) {
                 if (!orderSet[id]) {
                   currentOrder.push(id);
+                  orderSet[id] = true;
                   addedOrder++;
                 }
               });
@@ -334,6 +336,7 @@
               incoming.forEach(function (app) {
                 if (app && app.id && !appIds[app.id]) {
                   currentApps.push(app);
+                  appIds[app.id] = true;
                   addedApps++;
                 }
               });
@@ -352,6 +355,7 @@
               incoming.forEach(function (f) {
                 if (f && f.id && !folderIds[f.id]) {
                   currentFolders.push(f);
+                  folderIds[f.id] = true;
                   addedFolders++;
                 }
               });
@@ -376,6 +380,7 @@
               incoming.forEach(function (c) {
                 if (c && c.id && !convIds[c.id]) {
                   currentConvs.push(c);
+                  convIds[c.id] = true;
                   addedConvs++;
                 }
               });
