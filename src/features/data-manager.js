@@ -80,7 +80,8 @@
   function parseJsonSafe(str, fallback) {
     try {
       return JSON.parse(str);
-    } catch (_e) {
+    } catch (e) {
+      console.warn('[data-manager] JSON parse error:', e);
       return fallback;
     }
   }
@@ -90,8 +91,11 @@
       const raw = localStorage.getItem(key);
       if (raw === null || raw === undefined) return null;
       // Detect JSON-encoded values (arrays, objects, booleans stored as JSON)
-      if (typeof raw === 'string' && (raw.charAt(0) === '[' || raw.charAt(0) === '{')) {
-        return parseJsonSafe(raw, raw);
+      if (typeof raw === 'string' && raw.charAt(0) === '[') {
+        return parseJsonSafe(raw, []);
+      }
+      if (typeof raw === 'string' && raw.charAt(0) === '{') {
+        return parseJsonSafe(raw, {});
       }
       return raw;
     } catch (_e) {
@@ -180,8 +184,18 @@
 
   function validateImportData(data) {
     if (!data || typeof data !== 'object') return { valid: false, error: t('dataImportInvalidFile', 'Invalid file format.') };
-    if (!data.data || typeof data.data !== 'object') return { valid: false, error: t('dataImportInvalidStructure', 'Missing data section.') };
+    if (!data.data || typeof data.data !== 'object' || data.data === null || Array.isArray(data.data)) {
+      return { valid: false, error: t('dataImportInvalidStructure', 'Missing data section.') };
+    }
     if (data.version !== 1) return { valid: false, error: t('dataImportUnsupportedVersion', 'Unsupported backup version.') };
+    // Verify every key in data.data is present in EXPORT_KEYS allowlist
+    const importKeys = Object.keys(data.data);
+    const disallowedKeys = importKeys.filter(function (key) {
+      return key.charAt(0) !== '_' && EXPORT_KEYS.indexOf(key) === -1;
+    });
+    if (disallowedKeys.length > 0) {
+      return { valid: false, error: t('dataImportInvalidStructure', 'Missing data section.') };
+    }
     return { valid: true };
   }
 
@@ -259,6 +273,14 @@
     const applyData = function (mode) {
       const keys = Object.keys(importedData);
       let count = 0;
+
+      // In replace mode, clear any EXPORT_KEYS not present in importedData
+      if (mode === 'replace') {
+        const keysToRemove = EXPORT_KEYS.filter(function (k) { return !(k in importedData); });
+        keysToRemove.forEach(function (key) {
+          writeStorage(key, null);
+        });
+      }
 
       keys.forEach(function (key) {
         if (key.charAt(0) === '_') return; // Skip metadata keys
