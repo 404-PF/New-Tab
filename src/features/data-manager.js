@@ -86,6 +86,8 @@
     }
   }
 
+  const READ_ERROR = Object.freeze({ __readError: true });
+
   function readStorage(key) {
     try {
       const raw = localStorage.getItem(key);
@@ -100,7 +102,7 @@
       return raw;
     } catch (err) {
       console.warn('[data-manager] Failed to read key "' + key + '":', err);
-      return null;
+      return READ_ERROR;
     }
   }
 
@@ -115,6 +117,7 @@
       }
     } catch (err) {
       console.warn('[data-manager] Failed to write key "' + key + '":', err);
+      throw err;
     }
   }
 
@@ -145,12 +148,22 @@
 
   function exportAllData() {
     const data = {};
+    let hasReadError = false;
     EXPORT_KEYS.forEach(function (key) {
       const val = readStorage(key);
+      if (val === READ_ERROR) {
+        hasReadError = true;
+        return;
+      }
       if (val !== null) {
         data[key] = val;
       }
     });
+
+    if (hasReadError) {
+      showToast(t('dataExportReadError', 'Export failed: could not read all settings.'), 'error');
+      return;
+    }
 
     // Mark custom backgrounds metadata (actual media in IndexedDB, not in JSON)
     getCustomBackgroundsMetadata().then(function (customBgs) {
@@ -183,6 +196,49 @@
 
   // --- Validation ---
 
+  const EXPECTED_SHAPES = {
+    theme: function (v) { return typeof v === 'string'; },
+    language: function (v) { return typeof v === 'string'; },
+    simpleMode: function (v) { return typeof v === 'boolean'; },
+    homepageBg: function (v) { return typeof v === 'string'; },
+    clockColor: function (v) { return typeof v === 'string'; },
+    clockFont: function (v) { return typeof v === 'string'; },
+    clockSize: function (v) { return typeof v === 'string' || typeof v === 'number'; },
+    clockFormat: function (v) { return typeof v === 'string'; },
+    dateColor: function (v) { return typeof v === 'string'; },
+    dateFont: function (v) { return typeof v === 'string'; },
+    dateSize: function (v) { return typeof v === 'string' || typeof v === 'number'; },
+    dateFormat: function (v) { return typeof v === 'string'; },
+    videoAutoplay: function (v) { return typeof v === 'boolean'; },
+    videoMuted: function (v) { return typeof v === 'boolean'; },
+    videoPauseHidden: function (v) { return typeof v === 'boolean'; },
+    bgRotationEnabled: function (v) { return typeof v === 'boolean'; },
+    bgRotationInterval: function (v) { return typeof v === 'string' || typeof v === 'number'; },
+    bgRotationSelection: function (v) { return Array.isArray(v); },
+    todos: function (v) { return Array.isArray(v); },
+    todoEnabled: function (v) { return typeof v === 'boolean'; },
+    todoReminderEnabled: function (v) { return typeof v === 'boolean'; },
+    todoReminderLeadTime: function (v) { return typeof v === 'string' || typeof v === 'number'; },
+    notes: function (v) { return Array.isArray(v); },
+    notesEnabled: function (v) { return typeof v === 'boolean'; },
+    appOrder: function (v) { return Array.isArray(v); },
+    customApps: function (v) { return Array.isArray(v); },
+    appFolders: function (v) { return Array.isArray(v); },
+    openAppsInNewTab: function (v) { return typeof v === 'boolean'; },
+    iconSize: function (v) { return typeof v === 'string' || typeof v === 'number'; },
+    appsButtonCurvature: function (v) { return typeof v === 'string' || typeof v === 'number'; },
+    customShortcuts: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
+    onboardingCompleted: function (v) { return typeof v === 'boolean'; },
+    onboardingStep: function (v) { return typeof v === 'string' || typeof v === 'number'; },
+    weatherEnabled: function (v) { return typeof v === 'boolean'; },
+    weatherUnit: function (v) { return typeof v === 'string'; },
+    weatherLocationMode: function (v) { return typeof v === 'string'; },
+    weatherManualCity: function (v) { return typeof v === 'string'; },
+    ai_conversations: function (v) { return Array.isArray(v); },
+    ai_current_conversation_id: function (v) { return typeof v === 'string'; },
+    updateCheckEnabled: function (v) { return typeof v === 'boolean'; }
+  };
+
   function validateImportData(data) {
     if (!data || typeof data !== 'object') return { valid: false, error: t('dataImportInvalidFile', 'Invalid file format.') };
     if (!data.data || typeof data.data !== 'object' || data.data === null || Array.isArray(data.data)) {
@@ -196,6 +252,18 @@
     });
     if (disallowedKeys.length > 0) {
       return { valid: false, error: t('dataImportInvalidStructure', 'Missing data section.') };
+    }
+    // Per-key shape validation
+    const invalidKeys = [];
+    importKeys.forEach(function (key) {
+      if (key.charAt(0) === '_') return;
+      const validator = EXPECTED_SHAPES[key];
+      if (validator && !validator(data.data[key])) {
+        invalidKeys.push(key);
+      }
+    });
+    if (invalidKeys.length > 0) {
+      return { valid: false, error: t('dataImportInvalidStructure', 'Invalid value for key: ' + invalidKeys.join(', ')) };
     }
     return { valid: true };
   }
@@ -280,149 +348,161 @@
       if (mode === 'replace') {
         const keysToRemove = EXPORT_KEYS.filter(function (k) { return !(k in importedData); });
         keysToRemove.forEach(function (key) {
-          writeStorage(key, null);
+          try {
+            writeStorage(key, null);
+          } catch (err) {
+            console.warn('[data-manager] Failed to remove key "' + key + '" during replace:', err);
+          }
         });
       }
 
       keys.forEach(function (key) {
         if (key.charAt(0) === '_') return; // Skip metadata keys
-        if (mode === 'merge') {
-          // For arrays, merge by ID where possible; for objects, shallow merge
-          const current = readStorage(key);
-          const incoming = importedData[key];
-          if (Array.isArray(incoming)) {
-            if (key === 'todos' || key === 'notes') {
-              // Merge by id
-              const existing = Array.isArray(current) ? current.slice() : [];
-              const existingIds = {};
-              existing.forEach(function (item) {
-                if (item && item.id) existingIds[item.id] = true;
-              });
-              let added = 0;
-              incoming.forEach(function (item) {
-                if (item && item.id && !existingIds[item.id]) {
-                  existing.push(item);
-                  existingIds[item.id] = true;
-                  added++;
+        try {
+          if (mode === 'merge') {
+            // For arrays, merge by ID where possible; for objects, shallow merge
+            const current = readStorage(key);
+            if (current === READ_ERROR) {
+              console.warn('[data-manager] Skipping merge for key "' + key + '": read failed');
+              return;
+            }
+            const incoming = importedData[key];
+            if (Array.isArray(incoming)) {
+              if (key === 'todos' || key === 'notes') {
+                // Merge by id
+                const existing = Array.isArray(current) ? current.slice() : [];
+                const existingIds = {};
+                existing.forEach(function (item) {
+                  if (item && item.id) existingIds[item.id] = true;
+                });
+                let added = 0;
+                incoming.forEach(function (item) {
+                  if (item && item.id && !existingIds[item.id]) {
+                    existing.push(item);
+                    existingIds[item.id] = true;
+                    added++;
+                  }
+                });
+                if (added > 0) {
+                  writeStorage(key, existing);
+                  count++;
                 }
-              });
-              if (added > 0) {
-                writeStorage(key, existing);
-                count++;
-              }
-            } else if (key === 'appOrder') {
-              // Merge appOrder: add new items not already present
-              const currentOrder = Array.isArray(current) ? current.slice() : [];
-              const orderSet = {};
-              currentOrder.forEach(function (id) { orderSet[id] = true; });
-              let addedOrder = 0;
-              incoming.forEach(function (id) {
-                if (!orderSet[id]) {
-                  currentOrder.push(id);
-                  orderSet[id] = true;
-                  addedOrder++;
+              } else if (key === 'appOrder') {
+                // Merge appOrder: add new items not already present
+                const currentOrder = Array.isArray(current) ? current.slice() : [];
+                const orderSet = {};
+                currentOrder.forEach(function (id) { orderSet[id] = true; });
+                let addedOrder = 0;
+                incoming.forEach(function (id) {
+                  if (!orderSet[id]) {
+                    currentOrder.push(id);
+                    orderSet[id] = true;
+                    addedOrder++;
+                  }
+                });
+                if (addedOrder > 0) {
+                  writeStorage(key, currentOrder);
+                  count++;
                 }
-              });
-              if (addedOrder > 0) {
-                writeStorage(key, currentOrder);
-                count++;
-              }
-            } else if (key === 'customApps') {
-              // Merge customApps by id
-              const currentApps = Array.isArray(current) ? current.slice() : [];
-              const appIds = {};
-              currentApps.forEach(function (app) {
-                if (app && app.id) appIds[app.id] = true;
-              });
-              let addedApps = 0;
-              incoming.forEach(function (app) {
-                if (app && app.id && !appIds[app.id]) {
-                  currentApps.push(app);
-                  appIds[app.id] = true;
-                  addedApps++;
+              } else if (key === 'customApps') {
+                // Merge customApps by id
+                const currentApps = Array.isArray(current) ? current.slice() : [];
+                const appIds = {};
+                currentApps.forEach(function (app) {
+                  if (app && app.id) appIds[app.id] = true;
+                });
+                let addedApps = 0;
+                incoming.forEach(function (app) {
+                  if (app && app.id && !appIds[app.id]) {
+                    currentApps.push(app);
+                    appIds[app.id] = true;
+                    addedApps++;
+                  }
+                });
+                if (addedApps > 0) {
+                  writeStorage(key, currentApps);
+                  count++;
                 }
-              });
-              if (addedApps > 0) {
-                writeStorage(key, currentApps);
-                count++;
-              }
-            } else if (key === 'appFolders') {
-              // Merge folders by id
-              const currentFolders = Array.isArray(current) ? current.slice() : [];
-              const folderIds = {};
-              currentFolders.forEach(function (f) {
-                if (f && f.id) folderIds[f.id] = true;
-              });
-              let addedFolders = 0;
-              incoming.forEach(function (f) {
-                if (f && f.id && !folderIds[f.id]) {
-                  currentFolders.push(f);
-                  folderIds[f.id] = true;
-                  addedFolders++;
+              } else if (key === 'appFolders') {
+                // Merge folders by id
+                const currentFolders = Array.isArray(current) ? current.slice() : [];
+                const folderIds = {};
+                currentFolders.forEach(function (f) {
+                  if (f && f.id) folderIds[f.id] = true;
+                });
+                let addedFolders = 0;
+                incoming.forEach(function (f) {
+                  if (f && f.id && !folderIds[f.id]) {
+                    currentFolders.push(f);
+                    folderIds[f.id] = true;
+                    addedFolders++;
+                  }
+                });
+                if (addedFolders > 0) {
+                  writeStorage(key, currentFolders);
+                  count++;
                 }
-              });
-              if (addedFolders > 0) {
-                writeStorage(key, currentFolders);
+              } else if (key === 'customShortcuts') {
+                // Merge shortcuts by key
+                const currentShortcuts = (typeof current === 'object' && current !== null) ? Object.assign({}, current) : {};
+                const mergedShortcuts = Object.assign({}, currentShortcuts, incoming);
+                writeStorage(key, mergedShortcuts);
                 count++;
-              }
-            } else if (key === 'customShortcuts') {
-              // Merge shortcuts by key
-              const currentShortcuts = (typeof current === 'object' && current !== null) ? Object.assign({}, current) : {};
-              const mergedShortcuts = Object.assign({}, currentShortcuts, incoming);
-              writeStorage(key, mergedShortcuts);
-              count++;
-            } else if (key === 'ai_conversations') {
-              // Merge conversations by id
-              const currentConvs = Array.isArray(current) ? current.slice() : [];
-              const convIds = {};
-              currentConvs.forEach(function (c) {
-                if (c && c.id) convIds[c.id] = true;
-              });
-              let addedConvs = 0;
-              incoming.forEach(function (c) {
-                if (c && c.id && !convIds[c.id]) {
-                  currentConvs.push(c);
-                  convIds[c.id] = true;
-                  addedConvs++;
+              } else if (key === 'ai_conversations') {
+                // Merge conversations by id
+                const currentConvs = Array.isArray(current) ? current.slice() : [];
+                const convIds = {};
+                currentConvs.forEach(function (c) {
+                  if (c && c.id) convIds[c.id] = true;
+                });
+                let addedConvs = 0;
+                incoming.forEach(function (c) {
+                  if (c && c.id && !convIds[c.id]) {
+                    currentConvs.push(c);
+                    convIds[c.id] = true;
+                    addedConvs++;
+                  }
+                });
+                if (addedConvs > 0) {
+                  writeStorage(key, currentConvs);
+                  count++;
                 }
-              });
-              if (addedConvs > 0) {
-                writeStorage(key, currentConvs);
-                count++;
-              }
-            } else {
-              // Generic array merge (concatenate unique)
-              const existingArr = Array.isArray(current) ? current.slice() : [];
-              const seen = {};
-              existingArr.forEach(function (item) {
-                const id = item && item.id ? item.id : JSON.stringify(item);
-                seen[id] = true;
-              });
-              const merged = existingArr.slice();
-              incoming.forEach(function (item) {
-                const id = item && item.id ? item.id : JSON.stringify(item);
-                if (!seen[id]) {
-                  merged.push(item);
+              } else {
+                // Generic array merge (concatenate unique)
+                const existingArr = Array.isArray(current) ? current.slice() : [];
+                const seen = {};
+                existingArr.forEach(function (item) {
+                  const id = item && item.id ? item.id : JSON.stringify(item);
                   seen[id] = true;
-                }
-              });
-              writeStorage(key, merged);
+                });
+                const merged = existingArr.slice();
+                incoming.forEach(function (item) {
+                  const id = item && item.id ? item.id : JSON.stringify(item);
+                  if (!seen[id]) {
+                    merged.push(item);
+                    seen[id] = true;
+                  }
+                });
+                writeStorage(key, merged);
+                count++;
+              }
+            } else if (typeof incoming === 'object' && incoming !== null && !Array.isArray(incoming)) {
+              // Object: shallow merge
+              const currentObj = (typeof current === 'object' && current !== null && !Array.isArray(current)) ? Object.assign({}, current) : {};
+              writeStorage(key, Object.assign(currentObj, incoming));
+              count++;
+            } else {
+              // Scalar: overwrite
+              writeStorage(key, incoming);
               count++;
             }
-          } else if (typeof incoming === 'object' && incoming !== null && !Array.isArray(incoming)) {
-            // Object: shallow merge
-            const currentObj = (typeof current === 'object' && current !== null && !Array.isArray(current)) ? Object.assign({}, current) : {};
-            writeStorage(key, Object.assign(currentObj, incoming));
-            count++;
           } else {
-            // Scalar: overwrite
-            writeStorage(key, incoming);
+            // Replace: overwrite directly
+            writeStorage(key, importedData[key]);
             count++;
           }
-        } else {
-          // Replace: overwrite directly
-          writeStorage(key, importedData[key]);
-          count++;
+        } catch (err) {
+          console.warn('[data-manager] Failed to apply key "' + key + '":', err);
         }
       });
 
