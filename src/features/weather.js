@@ -427,13 +427,36 @@
     }
 
     const lang = getLang();
-    const forecastHtml = daily.time.slice(0, 7).map((dateStr, i) => {
+    // Compute bounded length to prevent array misalignment
+    const boundedLength = Math.min(
+      daily.time.length,
+      (daily.temperature_2m_max || []).length,
+      (daily.temperature_2m_min || []).length,
+      (daily.weather_code || []).length,
+      7
+    );
+
+    const forecastHtml = [];
+    for (let i = 0; i < boundedLength; i++) {
+      const dateStr = daily.time[i];
       const dayName = getAbbreviatedDayName(dateStr, lang);
-      const high = getTemp(daily.temperature_2m_max[i], unit);
-      const low = getTemp(daily.temperature_2m_min[i], unit);
-      const info = getWeatherInfo(daily.weather_code[i]);
+
+      // Add numeric guards to prevent NaN° output
+      const highVal = Number(daily.temperature_2m_max[i]);
+      const lowVal = Number(daily.temperature_2m_min[i]);
+      const weatherCode = Number(daily.weather_code[i]);
+
+      // Skip this card if values are not valid numbers
+      if (!Number.isFinite(highVal) || !Number.isFinite(lowVal) || !Number.isFinite(weatherCode)) {
+        continue;
+      }
+
+      const high = getTemp(highVal, unit);
+      const low = getTemp(lowVal, unit);
+      const info = getWeatherInfo(weatherCode);
       const icon = getWeatherIcon(info.type);
-      return `
+
+      forecastHtml.push(`
         <div class="weather-forecast-card">
           <div class="weather-forecast-day">${dayName}</div>
           <div class="weather-forecast-icon">${icon}</div>
@@ -442,8 +465,8 @@
             <span class="weather-forecast-low">${low}°</span>
           </div>
         </div>
-      `;
-    }).join('');
+      `);
+    }
 
     let forecastContainer = containerEl.querySelector('.weather-forecast');
     if (!forecastContainer) {
@@ -451,7 +474,7 @@
       forecastContainer.className = 'weather-forecast';
       containerEl.appendChild(forecastContainer);
     }
-    forecastContainer.innerHTML = forecastHtml;
+    forecastContainer.innerHTML = forecastHtml.join('');
   }
 
   function hideWidget() {

@@ -52,89 +52,100 @@ describe('Weather forecast', () => {
     expect(window.WeatherWidget.loadManualCity).toBeDefined();
   });
 
-  it('forecast renders when daily data is present', () => {
+  it('forecast renders when daily data is present', async () => {
     localStorage.setItem('weatherEnabled', 'true');
     localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
 
     const widget = document.getElementById('weather-widget');
     expect(widget).not.toBeNull();
 
-    // Manually trigger render by calling the internal renderWeather
-    // Since renderWeather is inside IIFE, we test via the widget's HTML structure
-    // after the forecast is rendered
-    widget.innerHTML = `
-      <div class="weather-current">
-        <div class="weather-main">
-          <div class="weather-icon"><svg></svg></div>
-          <div class="weather-temp">22°C</div>
-        </div>
-        <div class="weather-details">
-          <div class="weather-condition">Clear sky</div>
-          <div class="weather-location"><span>Test Location</span></div>
-        </div>
-      </div>
-    `;
+    // Stub navigator.geolocation.getCurrentPosition
+    const originalGeolocation = navigator.geolocation;
+    navigator.geolocation = {
+      getCurrentPosition: (success) => {
+        success({
+          coords: {
+            latitude: 37.7749,
+            longitude: -122.4194
+          }
+        });
+      }
+    };
 
-    // Simulate forecast rendering
-    const forecastContainer = document.createElement('div');
-    forecastContainer.className = 'weather-forecast';
-    forecastContainer.innerHTML = mockWeatherData.daily.time.slice(0, 7).map((dateStr, i) => {
-      return `
-        <div class="weather-forecast-card">
-          <div class="weather-forecast-day">Day${i}</div>
-          <div class="weather-forecast-icon"><svg></svg></div>
-          <div class="weather-forecast-temps">
-            <span class="weather-forecast-high">${mockWeatherData.daily.temperature_2m_max[i]}°</span>
-            <span class="weather-forecast-low">${mockWeatherData.daily.temperature_2m_min[i]}°</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-    widget.appendChild(forecastContainer);
+    // Stub global fetch
+    const originalFetch = global.fetch;
+    global.fetch = async (url) => {
+      return {
+        ok: true,
+        json: async () => mockWeatherData
+      };
+    };
 
-    const cards = widget.querySelectorAll('.weather-forecast-card');
-    expect(cards.length).toBe(7);
+    try {
+      // Call the actual refresh method
+      await window.WeatherWidget.refresh(true);
+
+      // Wait for any promises to flush
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const cards = widget.querySelectorAll('.weather-forecast-card');
+      expect(cards.length).toBe(7);
+    } finally {
+      // Restore original functions
+      navigator.geolocation = originalGeolocation;
+      global.fetch = originalFetch;
+    }
   });
 
-  it('forecast cards display correct temperatures', () => {
+  it('forecast cards display correct temperatures', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
+
     const widget = document.getElementById('weather-widget');
-    widget.className = 'weather-widget weather-data';
-    widget.innerHTML = `
-      <div class="weather-current">
-        <div class="weather-main">
-          <div class="weather-icon"><svg></svg></div>
-          <div class="weather-temp">22°C</div>
-        </div>
-        <div class="weather-details">
-          <div class="weather-condition">Clear sky</div>
-          <div class="weather-location"><span>Test Location</span></div>
-        </div>
-      </div>
-    `;
 
-    const forecastContainer = document.createElement('div');
-    forecastContainer.className = 'weather-forecast';
-    forecastContainer.innerHTML = mockWeatherData.daily.time.slice(0, 7).map((dateStr, i) => {
-      return `
-        <div class="weather-forecast-card">
-          <div class="weather-forecast-day">Day${i}</div>
-          <div class="weather-forecast-icon"><svg></svg></div>
-          <div class="weather-forecast-temps">
-            <span class="weather-forecast-high">${mockWeatherData.daily.temperature_2m_max[i]}°</span>
-            <span class="weather-forecast-low">${mockWeatherData.daily.temperature_2m_min[i]}°</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-    widget.appendChild(forecastContainer);
+    // Stub navigator.geolocation.getCurrentPosition
+    const originalGeolocation = navigator.geolocation;
+    navigator.geolocation = {
+      getCurrentPosition: (success) => {
+        success({
+          coords: {
+            latitude: 37.7749,
+            longitude: -122.4194
+          }
+        });
+      }
+    };
 
-    const highTemps = widget.querySelectorAll('.weather-forecast-high');
-    const lowTemps = widget.querySelectorAll('.weather-forecast-low');
+    // Stub global fetch
+    const originalFetch = global.fetch;
+    global.fetch = async (url) => {
+      return {
+        ok: true,
+        json: async () => mockWeatherData
+      };
+    };
 
-    expect(highTemps[0].textContent).toBe('22°');
-    expect(lowTemps[0].textContent).toBe('12°');
-    expect(highTemps[6].textContent).toBe('25°');
-    expect(lowTemps[6].textContent).toBe('15°');
+    try {
+      // Call the actual refresh method
+      await window.WeatherWidget.refresh(true);
+
+      // Wait for any promises to flush
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const highTemps = widget.querySelectorAll('.weather-forecast-high');
+      const lowTemps = widget.querySelectorAll('.weather-forecast-low');
+
+      expect(highTemps[0].textContent).toBe('22°');
+      expect(lowTemps[0].textContent).toBe('12°');
+      expect(highTemps[6].textContent).toBe('25°');
+      expect(lowTemps[6].textContent).toBe('15°');
+    } finally {
+      // Restore original functions
+      navigator.geolocation = originalGeolocation;
+      global.fetch = originalFetch;
+    }
   });
 
   it('forecast is hidden when widget is collapsed', () => {
@@ -145,23 +156,57 @@ describe('Weather forecast', () => {
     expect(forecast).toBeNull();
   });
 
-  it('forecast degrades gracefully when daily data is missing', () => {
-    const widget = document.getElementById('weather-widget');
-    widget.className = 'weather-widget weather-data';
-    widget.innerHTML = `
-      <div class="weather-current">
-        <div class="weather-main">
-          <div class="weather-icon"><svg></svg></div>
-          <div class="weather-temp">22°C</div>
-        </div>
-        <div class="weather-details">
-          <div class="weather-condition">Clear sky</div>
-          <div class="weather-location"><span>Test Location</span></div>
-        </div>
-      </div>
-    `;
+  it('forecast degrades gracefully when daily data is missing', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
 
-    const forecast = widget.querySelector('.weather-forecast');
-    expect(forecast).toBeNull();
+    const widget = document.getElementById('weather-widget');
+
+    // Stub navigator.geolocation.getCurrentPosition
+    const originalGeolocation = navigator.geolocation;
+    navigator.geolocation = {
+      getCurrentPosition: (success) => {
+        success({
+          coords: {
+            latitude: 37.7749,
+            longitude: -122.4194
+          }
+        });
+      }
+    };
+
+    // Stub global fetch to return data without daily field
+    const originalFetch = global.fetch;
+    global.fetch = async (url) => {
+      return {
+        ok: true,
+        json: async () => ({
+          current_weather: {
+            temperature: 22,
+            weathercode: 0,
+            windspeed: 10,
+            winddirection: 180,
+            time: '2025-01-15T12:00'
+          }
+          // No daily field
+        })
+      };
+    };
+
+    try {
+      // Call the actual refresh method
+      await window.WeatherWidget.refresh(true);
+
+      // Wait for any promises to flush
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const forecast = widget.querySelector('.weather-forecast');
+      expect(forecast).toBeNull();
+    } finally {
+      // Restore original functions
+      navigator.geolocation = originalGeolocation;
+      global.fetch = originalFetch;
+    }
   });
 });
