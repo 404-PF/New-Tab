@@ -119,6 +119,23 @@
     return WEATHER_ICONS[type] || WEATHER_ICONS['clear'];
   }
 
+  function getAbbreviatedDayName(dateString, lang) {
+    const date = new Date(dateString + 'T00:00:00');
+    const dayNames = {
+      en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      zh: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+      ja: ['日', '月', '火', '水', '木', '金', '土'],
+      ko: ['일', '월', '화', '수', '목', '금', '토'],
+      es: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+      fr: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'],
+      de: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+      pt: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+      ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+    };
+    const names = dayNames[normalizeLang(lang)] || dayNames.en;
+    return names[date.getDay()];
+  }
+
   // ===================== Storage =====================
 
   // Safe localStorage accessors — degrade gracefully when storage is unavailable
@@ -263,7 +280,7 @@
     const timeoutId = setTimeout(() => controller.abort(), GEO_TIMEOUT_MS);
     let response;
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7`;
       response = await fetch(url, { signal: controller.signal });
     } catch (e) {
       if (e.name === 'AbortError') {
@@ -376,23 +393,65 @@
 
     el.className = 'weather-widget weather-data';
     el.innerHTML = `
-      <div class="weather-main">
-        <div class="weather-icon">${icon}</div>
-        <div class="weather-temp">${temp}${tempUnit}</div>
-      </div>
-      <div class="weather-details">
-        <div class="weather-condition">${label}</div>
-        <div class="weather-location">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
-          <span>${escapeHtml(displayLocation)}</span>
+      <div class="weather-current">
+        <div class="weather-main">
+          <div class="weather-icon">${icon}</div>
+          <div class="weather-temp">${temp}${tempUnit}</div>
+        </div>
+        <div class="weather-details">
+          <div class="weather-condition">${label}</div>
+          <div class="weather-location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span>${escapeHtml(displayLocation)}</span>
+          </div>
         </div>
       </div>
     `;
+
+    // Render forecast if data is available
+    if (data.daily) {
+      renderForecast(data, unit, el);
+    }
+
     // Show the widget with entrance animation on first reveal, or just update content on refresh.
     showWidgetWithAnimation(el);
+  }
+
+  function renderForecast(data, unit, containerEl) {
+    const daily = data.daily;
+    if (!daily || !daily.time || !daily.temperature_2m_max || !daily.temperature_2m_min || !daily.weather_code) {
+      return;
+    }
+
+    const lang = getLang();
+    const forecastHtml = daily.time.slice(0, 7).map((dateStr, i) => {
+      const dayName = getAbbreviatedDayName(dateStr, lang);
+      const high = getTemp(daily.temperature_2m_max[i], unit);
+      const low = getTemp(daily.temperature_2m_min[i], unit);
+      const info = getWeatherInfo(daily.weather_code[i]);
+      const icon = getWeatherIcon(info.type);
+      return `
+        <div class="weather-forecast-card">
+          <div class="weather-forecast-day">${dayName}</div>
+          <div class="weather-forecast-icon">${icon}</div>
+          <div class="weather-forecast-temps">
+            <span class="weather-forecast-high">${high}°</span>
+            <span class="weather-forecast-low">${low}°</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    let forecastContainer = containerEl.querySelector('.weather-forecast');
+    if (!forecastContainer) {
+      forecastContainer = document.createElement('div');
+      forecastContainer.className = 'weather-forecast';
+      containerEl.appendChild(forecastContainer);
+    }
+    forecastContainer.innerHTML = forecastHtml;
   }
 
   function hideWidget() {

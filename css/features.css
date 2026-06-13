@@ -3015,7 +3015,17 @@ body.light-theme .delete-preview-name {
 }
 
 .weather-data {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  max-width: 320px;
+}
+
+.weather-current {
+  display: flex;
+  align-items: center;
   gap: 10px;
+  width: 100%;
 }
 
 .weather-main {
@@ -3076,6 +3086,66 @@ body.light-theme .delete-preview-name {
   opacity: 0.7;
 }
 
+/* Weather forecast */
+.weather-forecast {
+  display: flex;
+  gap: 6px;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.weather-forecast::-webkit-scrollbar {
+  display: none;
+}
+
+.weather-forecast-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  min-width: 52px;
+}
+
+.weather-forecast-day {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+}
+
+.weather-forecast-icon {
+  width: 20px;
+  height: 20px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.weather-forecast-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.weather-forecast-temps {
+  display: flex;
+  gap: 4px;
+  font-size: 10px;
+}
+
+.weather-forecast-high {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.weather-forecast-low {
+  color: rgba(255, 255, 255, 0.5);
+}
+
 /* Simple mode hide */
 body.simple-mode #weather-widget {
   display: none !important;
@@ -3121,6 +3191,30 @@ body.light-theme .weather-location {
 body.light-theme .weather-spinner {
   border-color: rgba(0, 0, 0, 0.15);
   border-top-color: #2196f3;
+}
+
+body.light-theme .weather-forecast {
+  border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .weather-forecast-card {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .weather-forecast-day {
+  color: rgba(55, 65, 81, 0.7);
+}
+
+body.light-theme .weather-forecast-icon {
+  color: rgba(55, 65, 81, 0.85);
+}
+
+body.light-theme .weather-forecast-high {
+  color: rgba(31, 41, 55, 0.9);
+}
+
+body.light-theme .weather-forecast-low {
+  color: rgba(107, 114, 128, 0.7);
 }
 
 /* Weather settings */
