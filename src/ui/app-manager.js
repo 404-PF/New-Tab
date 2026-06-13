@@ -156,7 +156,7 @@ const addApp = document.getElementById('new-app');
 }
 
 // Initial icon caching; render is deferred to app-folders init
-document.addEventListener('DOMContentLoaded', async () => {
+async function cacheIconsAndRenderFallback() {
   if (window.iconCache && window.iconCache.cacheExistingAppIcons) {
     try {
       await window.iconCache.cacheExistingAppIcons();
@@ -172,7 +172,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!window._gridRendered && typeof window.renderAllApps === 'function') {
     window.renderAllApps();
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', cacheIconsAndRenderFallback);
+} else {
+  cacheIconsAndRenderFallback();
+}
 
 // Re-render function (export for other modules)
 window.renderCustomApps = renderAllApps;

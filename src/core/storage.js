@@ -105,7 +105,16 @@
   }
 
   function mergeHydrationSnapshot(nativeSnapshot, storageSnapshot) {
-    const mergedSnapshot = hydrationClearRequested ? {} : { ...nativeSnapshot, ...storageSnapshot };
+    const mergedSnapshot = hydrationClearRequested ? {} : { ...nativeSnapshot };
+
+    // Apply chrome.storage values, but skip any keys that were already mutated
+    // during this hydration cycle.  Session-written values (e.g. appOrder
+    // repaired by renderAllApps) are authoritative over the persisted snapshot.
+    Object.keys(storageSnapshot).forEach((key) => {
+      if (!hydrationMutations.has(key)) {
+        mergedSnapshot[key] = storageSnapshot[key];
+      }
+    });
 
     hydrationMutations.forEach((value, key) => {
       if (value === null) {
