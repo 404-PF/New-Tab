@@ -168,6 +168,8 @@ const testGlobals = {
   handleNotesKeydown: 'readonly',
   debouncedSave: 'readonly',
   flushPendingSaves: 'readonly',
+  renderNotePreview: 'readonly',
+  handleNotePreviewToggle: 'readonly',
   Shortcuts: 'readonly',
   applyTodoEnabled: 'readonly',
   applyNotesEnabled: 'readonly',

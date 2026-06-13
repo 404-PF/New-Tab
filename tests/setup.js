@@ -281,6 +281,8 @@ globalThis.window.i18n = {
       todoDeleteTooltip: 'Delete Todo',
       notesPlaceholder: 'Type your note here...',
       notesDeleteTooltip: 'Delete Note',
+      notesPreviewTooltip: 'Preview',
+      notesEditTooltip: 'Edit',
       clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',
       cancel: 'Cancel',
       save: 'Save',

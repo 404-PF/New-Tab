@@ -4673,6 +4673,87 @@ body.light-theme .notes-empty {
   color: rgba(100, 116, 139, 0.5);
 }
 
+.note-preview-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(148, 163, 184, 0.4);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.note-item:hover .note-preview-btn {
+  opacity: 1;
+}
+
+.note-preview-btn:hover {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+.note-preview-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.note-preview {
+  flex: 1;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  overflow: hidden;
+}
+
+.note-preview:empty {
+  display: none;
+}
+
+.note-preview .md-paragraph {
+  margin: 0 0 8px 0;
+}
+
+.note-preview .md-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.note-preview .md-header {
+  margin: 0 0 8px 0;
+}
+
+.note-preview .md-list {
+  margin: 0 0 8px 0;
+}
+
+.note-preview .md-blockquote {
+  margin: 0 0 8px 0;
+}
+
+.note-preview .md-code-block {
+  margin: 0 0 8px 0;
+}
+
+body.light-theme .note-preview {
+  color: #1e293b;
+}
+
+body.light-theme .note-preview-btn {
+  color: rgba(100, 116, 139, 0.4);
+}
+
+body.light-theme .note-preview-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
+
 body.simple-mode .notes-section {
   display: none !important;
 }
