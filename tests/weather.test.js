@@ -93,10 +93,13 @@ describe('Weather forecast', () => {
     // Stub global fetch
     const originalFetch = global.fetch;
     global.fetch = async (url) => {
-      // Validate URL contains Open-Meteo path and required query params
-      if (!url.includes('api.open-meteo.com') ||
-          !url.includes('daily=temperature_2m_max,temperature_2m_min,weather_code') ||
-          !url.includes('forecast_days=7')) {
+      const urlObj = new URL(url);
+      const hasValidParams =
+        urlObj.searchParams.get('daily') === 'temperature_2m_max,temperature_2m_min,weather_code' &&
+        urlObj.searchParams.get('forecast_days') === '7';
+      if (!urlObj.hostname.includes('api.open-meteo.com') ||
+          urlObj.pathname !== '/v1/forecast' ||
+          !hasValidParams) {
         return {
           ok: false,
           status: 400,
@@ -137,10 +140,13 @@ describe('Weather forecast', () => {
     // Stub global fetch
     const originalFetch = global.fetch;
     global.fetch = async (url) => {
-      // Validate URL contains Open-Meteo path and required query params
-      if (!url.includes('api.open-meteo.com') ||
-          !url.includes('daily=temperature_2m_max,temperature_2m_min,weather_code') ||
-          !url.includes('forecast_days=7')) {
+      const urlObj = new URL(url);
+      const hasValidParams =
+        urlObj.searchParams.get('daily') === 'temperature_2m_max,temperature_2m_min,weather_code' &&
+        urlObj.searchParams.get('forecast_days') === '7';
+      if (!urlObj.hostname.includes('api.open-meteo.com') ||
+          urlObj.pathname !== '/v1/forecast' ||
+          !hasValidParams) {
         return {
           ok: false,
           status: 400,
@@ -184,10 +190,13 @@ describe('Weather forecast', () => {
 
     const originalFetch = global.fetch;
     global.fetch = async (url) => {
-      // Validate URL contains Open-Meteo path and required query params
-      if (!url.includes('api.open-meteo.com') ||
-          !url.includes('daily=temperature_2m_max,temperature_2m_min,weather_code') ||
-          !url.includes('forecast_days=7')) {
+      const urlObj = new URL(url);
+      const hasValidParams =
+        urlObj.searchParams.get('daily') === 'temperature_2m_max,temperature_2m_min,weather_code' &&
+        urlObj.searchParams.get('forecast_days') === '7';
+      if (!urlObj.hostname.includes('api.open-meteo.com') ||
+          urlObj.pathname !== '/v1/forecast' ||
+          !hasValidParams) {
         return {
           ok: false,
           status: 400,
