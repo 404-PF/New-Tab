@@ -285,6 +285,27 @@
     </div>
   </div>
 
+  <!-- Import Data Confirmation Dialog -->
+  <div id="data-import-dialog" class="ai-confirm-dialog screen-overlay">
+    <div class="ai-confirm-overlay"></div>
+    <div class="ai-confirm-content">
+      <div class="ai-confirm-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="3,15 12,15 21,15"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+      </div>
+      <h3 class="ai-confirm-title" data-i18n="dataImportConfirmTitle">Import Data</h3>
+      <p class="ai-confirm-message" data-i18n="dataImportConfirmMessage">How would you like to import?</p>
+      <div class="ai-confirm-actions">
+        <button type="button" class="ai-confirm-cancel" data-i18n="cancel">Cancel</button>
+        <button type="button" class="ai-confirm-primary" id="data-import-merge-btn" data-i18n="importMerge">Merge</button>
+        <button type="button" class="ai-confirm-delete" id="data-import-replace-btn" data-i18n="importReplace">Replace</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Todo Edit Modal -->
   <div id="todo-edit-modal" class="todo-edit-modal">
     <div class="todo-edit-overlay"></div>
@@ -340,6 +361,7 @@
             Language
           </button>
           <button type="button" class="settings-menu-item" data-section="shortcuts" data-i18n="shortcuts">Shortcuts</button>
+          <button class="settings-menu-item" data-section="data" data-i18n="data">Data</button>
           <button class="settings-menu-item" data-section="about" data-i18n="about">About</button>
         </nav>
         <div class="settings-content">
@@ -976,6 +998,56 @@
                   <div class="setting-content">
                     <label data-i18n="resetToDefaults">Reset to Defaults</label>
                     <button type="button" id="shortcuts-reset-btn" data-i18n="resetShortcuts">Reset Shortcuts</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="settings-section" data-section="data" style="display: none">
+            <div class="general-setting-group">
+              <h4 data-i18n="dataBackupTitle">Backup & Restore</h4>
+              <p data-i18n="dataBackupDesc">Export your settings or import from a backup file</p>
+              <div class="general-options">
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7,10 12,15 17,10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <div class="setting-content">
+                      <label data-i18n="exportData">Export Data</label>
+                      <div style="font-size: 13px; color: rgba(107, 114, 128, 0.8); margin-bottom: 8px;" data-i18n="exportDataDesc">Download a JSON file with all your settings, todos, notes, and apps</div>
+                      <button id="data-export-btn" class="setting-btn" style="font-size: 13px; padding: 6px 12px;" data-i18n="exportDataBtn">Export Data</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="3,15 12,15 21,15"></polyline>
+                      <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <div class="setting-content">
+                      <label data-i18n="importData">Import Data</label>
+                      <div style="font-size: 13px; color: rgba(107, 114, 128, 0.8); margin-bottom: 8px;" data-i18n="importDataDesc">Restore settings from a previously exported backup file</div>
+                      <button id="data-import-btn" class="setting-btn secondary" style="font-size: 13px; padding: 6px 12px;" data-i18n="importDataBtn">Import Data</button>
+                      <input type="file" id="data-import-file" accept=".json" style="display:none">
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="16" x2="12" y2="12"></line>
+                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <div class="setting-content">
+                      <label data-i18n="dataLimitations">Limitations</label>
+                      <div style="font-size: 13px; color: rgba(107, 114, 128, 0.8);" data-i18n="dataLimitationsDesc">Custom background images/videos are stored locally and cannot be included in the export file.</div>
+                    </div>
                   </div>
                 </div>
               </div>
