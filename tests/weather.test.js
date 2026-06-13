@@ -177,7 +177,6 @@ describe('Weather forecast', () => {
 
       widget.style.display = 'none';
 
-      expect(widget.style.display).toBe('none');
       expect(widget.querySelector('.weather-forecast')).not.toBeNull();
     } finally {
       global.fetch = originalFetch;
