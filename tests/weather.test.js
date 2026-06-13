@@ -153,12 +153,35 @@ describe('Weather forecast', () => {
     }
   });
 
-  it('forecast is hidden when widget is collapsed', () => {
-    const widget = document.getElementById('weather-widget');
-    widget.style.display = 'none';
+  it('forecast is hidden when widget is collapsed', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
 
-    const forecast = widget.querySelector('.weather-forecast');
-    expect(forecast).toBeNull();
+    const widget = document.getElementById('weather-widget');
+
+    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
+
+    const originalFetch = global.fetch;
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => mockWeatherData
+    });
+
+    try {
+      await window.WeatherWidget.refresh(true);
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const forecast = widget.querySelector('.weather-forecast');
+      expect(forecast).not.toBeNull();
+
+      widget.style.display = 'none';
+
+      expect(widget.style.display).toBe('none');
+      expect(widget.querySelector('.weather-forecast')).not.toBeNull();
+    } finally {
+      global.fetch = originalFetch;
+    }
   });
 
   it('forecast degrades gracefully when daily data is missing', async () => {
