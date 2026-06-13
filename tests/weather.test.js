@@ -93,6 +93,16 @@ describe('Weather forecast', () => {
     // Stub global fetch
     const originalFetch = global.fetch;
     global.fetch = async (url) => {
+      // Validate URL contains Open-Meteo path and required query params
+      if (!url.includes('api.open-meteo.com') ||
+          !url.includes('daily=temperature_2m_max,temperature_2m_min,weather_code') ||
+          !url.includes('forecast_days=7')) {
+        return {
+          ok: false,
+          status: 400,
+          json: async () => ({ error: 'Invalid URL or missing required query params' })
+        };
+      }
       return {
         ok: true,
         json: async () => mockWeatherData
@@ -127,6 +137,16 @@ describe('Weather forecast', () => {
     // Stub global fetch
     const originalFetch = global.fetch;
     global.fetch = async (url) => {
+      // Validate URL contains Open-Meteo path and required query params
+      if (!url.includes('api.open-meteo.com') ||
+          !url.includes('daily=temperature_2m_max,temperature_2m_min,weather_code') ||
+          !url.includes('forecast_days=7')) {
+        return {
+          ok: false,
+          status: 400,
+          json: async () => ({ error: 'Invalid URL or missing required query params' })
+        };
+      }
       return {
         ok: true,
         json: async () => mockWeatherData
@@ -163,10 +183,22 @@ describe('Weather forecast', () => {
     mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
 
     const originalFetch = global.fetch;
-    global.fetch = async () => ({
-      ok: true,
-      json: async () => mockWeatherData
-    });
+    global.fetch = async (url) => {
+      // Validate URL contains Open-Meteo path and required query params
+      if (!url.includes('api.open-meteo.com') ||
+          !url.includes('daily=temperature_2m_max,temperature_2m_min,weather_code') ||
+          !url.includes('forecast_days=7')) {
+        return {
+          ok: false,
+          status: 400,
+          json: async () => ({ error: 'Invalid URL or missing required query params' })
+        };
+      }
+      return {
+        ok: true,
+        json: async () => mockWeatherData
+      };
+    };
 
     try {
       await window.WeatherWidget.refresh(true);
@@ -177,6 +209,8 @@ describe('Weather forecast', () => {
 
       widget.style.display = 'none';
 
+      // Assert the forecast is visually hidden (widget collapsed)
+      expect(getComputedStyle(widget).display).toBe('none');
       expect(widget.querySelector('.weather-forecast')).not.toBeNull();
     } finally {
       global.fetch = originalFetch;
