@@ -161,7 +161,7 @@
     });
 
     if (hasReadError) {
-      showToast(t('dataExportReadError', 'Export failed: could not read all settings.'), 'error');
+      showToast(t('dataExportReadError'), 'error');
       return;
     }
 
@@ -263,7 +263,7 @@
       }
     });
     if (invalidKeys.length > 0) {
-      return { valid: false, error: t('dataImportInvalidStructure', 'Invalid value for key: ' + invalidKeys.join(', ')) };
+      return { valid: false, error: t('dataImportInvalidShape') + ' ' + invalidKeys.join(', ') };
     }
     return { valid: true };
   }
