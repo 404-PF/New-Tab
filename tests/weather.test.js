@@ -1,5 +1,22 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
+
+// Helper to mock geolocation
+let originalGeolocation;
+
+function mockGeolocation({ latitude, longitude }) {
+  originalGeolocation = navigator.geolocation;
+  navigator.geolocation = {
+    getCurrentPosition: (success) => {
+      success({
+        coords: {
+          latitude,
+          longitude
+        }
+      });
+    }
+  };
+}
 
 beforeAll(() => {
   // Create weather widget element
@@ -9,6 +26,8 @@ beforeAll(() => {
   widget.style.display = 'none';
   document.body.appendChild(widget);
 
+  // Inject utils.js first to provide escapeHtml
+  injectScript('src/core/utils.js');
   injectScript('src/features/weather.js');
 });
 
@@ -19,6 +38,14 @@ beforeEach(() => {
     widget.innerHTML = '';
     widget.style.display = 'none';
     widget.className = 'weather-widget';
+  }
+});
+
+afterEach(() => {
+  // Restore original geolocation if it was mocked
+  if (originalGeolocation !== undefined) {
+    navigator.geolocation = originalGeolocation;
+    originalGeolocation = undefined;
   }
 });
 
@@ -60,18 +87,8 @@ describe('Weather forecast', () => {
     const widget = document.getElementById('weather-widget');
     expect(widget).not.toBeNull();
 
-    // Stub navigator.geolocation.getCurrentPosition
-    const originalGeolocation = navigator.geolocation;
-    navigator.geolocation = {
-      getCurrentPosition: (success) => {
-        success({
-          coords: {
-            latitude: 37.7749,
-            longitude: -122.4194
-          }
-        });
-      }
-    };
+    // Mock geolocation
+    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
 
     // Stub global fetch
     const originalFetch = global.fetch;
@@ -93,7 +110,6 @@ describe('Weather forecast', () => {
       expect(cards.length).toBe(7);
     } finally {
       // Restore original functions
-      navigator.geolocation = originalGeolocation;
       global.fetch = originalFetch;
     }
   });
@@ -105,18 +121,8 @@ describe('Weather forecast', () => {
 
     const widget = document.getElementById('weather-widget');
 
-    // Stub navigator.geolocation.getCurrentPosition
-    const originalGeolocation = navigator.geolocation;
-    navigator.geolocation = {
-      getCurrentPosition: (success) => {
-        success({
-          coords: {
-            latitude: 37.7749,
-            longitude: -122.4194
-          }
-        });
-      }
-    };
+    // Mock geolocation
+    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
 
     // Stub global fetch
     const originalFetch = global.fetch;
@@ -143,7 +149,6 @@ describe('Weather forecast', () => {
       expect(lowTemps[6].textContent).toBe('15°');
     } finally {
       // Restore original functions
-      navigator.geolocation = originalGeolocation;
       global.fetch = originalFetch;
     }
   });
@@ -163,18 +168,8 @@ describe('Weather forecast', () => {
 
     const widget = document.getElementById('weather-widget');
 
-    // Stub navigator.geolocation.getCurrentPosition
-    const originalGeolocation = navigator.geolocation;
-    navigator.geolocation = {
-      getCurrentPosition: (success) => {
-        success({
-          coords: {
-            latitude: 37.7749,
-            longitude: -122.4194
-          }
-        });
-      }
-    };
+    // Mock geolocation
+    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
 
     // Stub global fetch to return data without daily field
     const originalFetch = global.fetch;
@@ -205,7 +200,6 @@ describe('Weather forecast', () => {
       expect(forecast).toBeNull();
     } finally {
       // Restore original functions
-      navigator.geolocation = originalGeolocation;
       global.fetch = originalFetch;
     }
   });
