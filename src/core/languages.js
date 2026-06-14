@@ -335,7 +335,30 @@ const translations = {
     aiMessageEmpty: 'Message cannot be empty',
     aiMessageTooLong: 'Message too long (max 2000 characters)',
     aiStopStreaming: 'Stop',
-    aiScrollToBottom: 'Scroll to bottom'
+    aiScrollToBottom: 'Scroll to bottom',
+
+    // Pomodoro
+    pomodoro: 'Pomodoro',
+    pomodoroSettingsDesc: 'Configure the Pomodoro focus timer',
+    pomodoroEnabled: 'Enable Pomodoro timer',
+    pomodoroWorkDuration: 'Work duration (min)',
+    pomodoroShortBreakDuration: 'Short break (min)',
+    pomodoroLongBreakDuration: 'Long break (min)',
+    pomodoroSessionsBeforeLong: 'Sessions before long break',
+    pomodoroStartFocus: 'Start Focus',
+    pomodoroPause: 'Pause',
+    pomodoroResume: 'Resume',
+    pomodoroSkip: 'Skip',
+    pomodoroEnd: 'End Session',
+    pomodoroWork: 'Focus',
+    pomodoroShortBreak: 'Short Break',
+    pomodoroLongBreak: 'Long Break',
+    pomodoroWorkCompleteTitle: 'Focus Session Complete',
+    pomodoroWorkCompleteMessage: 'Time for a break! {1} sessions completed.',
+    pomodoroShortBreakCompleteTitle: 'Break Over',
+    pomodoroShortBreakCompleteMessage: 'Ready to focus again?',
+    pomodoroLongBreakCompleteTitle: 'Long Break Over',
+    pomodoroLongBreakCompleteMessage: 'Great work! {1} sessions completed.'
   },
 
   zh: {
