@@ -179,6 +179,60 @@ describe('Weather forecast', () => {
     }
   });
 
+  it('forecast cards display correct temperatures in Fahrenheit', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'fahrenheit');
+    localStorage.setItem('weatherLocationMode', 'auto');
+
+    const widget = document.getElementById('weather-widget');
+
+    // Mock geolocation
+    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
+
+    // Stub global fetch
+    const originalFetch = global.fetch;
+    global.fetch = async (url) => {
+      const urlObj = new URL(url);
+      const hasValidParams =
+        urlObj.searchParams.get('daily') === 'temperature_2m_max,temperature_2m_min,weather_code' &&
+        urlObj.searchParams.get('forecast_days') === '7';
+      if (urlObj.hostname !== 'api.open-meteo.com' ||
+          urlObj.pathname !== '/v1/forecast' ||
+          !hasValidParams) {
+        return {
+          ok: false,
+          status: 400,
+          json: async () => ({ error: 'Invalid URL or missing required query params' })
+        };
+      }
+      return {
+        ok: true,
+        json: async () => mockWeatherData
+      };
+    };
+
+    try {
+      // Call the actual refresh method
+      await window.WeatherWidget.refresh(true);
+
+      // Wait for any promises to flush
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const highTemps = widget.querySelectorAll('.weather-forecast-high');
+      const lowTemps = widget.querySelectorAll('.weather-forecast-low');
+
+      // 22°C → 72°F, 12°C → 54°F
+      expect(highTemps[0].textContent).toBe('72°');
+      expect(lowTemps[0].textContent).toBe('54°');
+      // 25°C → 77°F, 15°C → 59°F
+      expect(highTemps[6].textContent).toBe('77°');
+      expect(lowTemps[6].textContent).toBe('59°');
+    } finally {
+      // Restore original functions
+      global.fetch = originalFetch;
+    }
+  });
+
   it('forecast is hidden when widget is collapsed', async () => {
     localStorage.setItem('weatherEnabled', 'true');
     localStorage.setItem('weatherUnit', 'celsius');
