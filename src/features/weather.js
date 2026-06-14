@@ -469,6 +469,13 @@
     }
 
     let forecastContainer = containerEl.querySelector('.weather-forecast');
+    if (forecastHtml.length === 0) {
+      // Remove the container if it exists when there are no valid forecast cards
+      if (forecastContainer) {
+        forecastContainer.remove();
+      }
+      return;
+    }
     if (!forecastContainer) {
       forecastContainer = document.createElement('div');
       forecastContainer.className = 'weather-forecast';
