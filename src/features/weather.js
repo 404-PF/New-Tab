@@ -458,8 +458,8 @@
       const lowVal = Number(daily.temperature_2m_min[i]);
       const weatherCode = Number(daily.weather_code[i]);
 
-      // Skip this card if values are not valid numbers
-      if (!Number.isFinite(highVal) || !Number.isFinite(lowVal) || !Number.isFinite(weatherCode)) {
+      // Skip this card if values are not valid numbers or dayName is empty
+      if (!Number.isFinite(highVal) || !Number.isFinite(lowVal) || !Number.isFinite(weatherCode) || !dayName) {
         continue;
       }
 

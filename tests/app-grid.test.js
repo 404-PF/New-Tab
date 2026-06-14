@@ -341,6 +341,7 @@ describe('renderAllApps order validation', () => {
     document.body.appendChild(grid);
 
     // Inject dependencies that app-manager.js expects
+    injectScript('src/core/dom-ready.js');
     injectScript('src/core/utils.js');
     injectScript('src/ui/app-manager.js');
   });
