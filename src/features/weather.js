@@ -120,7 +120,19 @@
   }
 
   function getAbbreviatedDayName(dateString, lang) {
+    // Validate date format (YYYY-MM-DD)
+    if (!dateString || typeof dateString !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return '';
+    }
+
     const date = new Date(dateString + 'T00:00:00');
+    const dayIndex = date.getDay();
+
+    // Validate that date parsing was successful
+    if (!Number.isFinite(dayIndex) || dayIndex < 0 || dayIndex > 6 || isNaN(date.getTime())) {
+      return '';
+    }
+
     const dayNames = {
       en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       zh: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
@@ -133,7 +145,7 @@
       ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
     };
     const names = dayNames[normalizeLang(lang)] || dayNames.en;
-    return names[date.getDay()];
+    return names[dayIndex];
   }
 
   // ===================== Storage =====================
