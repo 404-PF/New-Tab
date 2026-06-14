@@ -251,7 +251,7 @@
       return key.charAt(0) !== '_' && EXPORT_KEYS.indexOf(key) === -1;
     });
     if (disallowedKeys.length > 0) {
-      return { valid: false, error: t('dataImportInvalidStructure', 'Missing data section.') };
+      return { valid: false, error: t('dataImportInvalidKeys', 'Invalid keys.') + ' ' + disallowedKeys.join(', ') };
     }
     // Per-key shape validation
     const invalidKeys = [];
