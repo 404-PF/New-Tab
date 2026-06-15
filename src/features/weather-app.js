@@ -139,7 +139,8 @@
       const raw = localStorage.getItem(CACHE_KEY);
       if (!raw) return null;
       return JSON.parse(raw);
-    } catch {
+    } catch (e) {
+      console.warn('Failed to parse weather cache:', e);
       return null;
     }
   }
@@ -399,18 +400,26 @@
     });
 
     // Re-render when the widget finishes a refresh (listen for cache updates)
-    document.addEventListener('DOMContentLoaded', function () {
-      // Use a mutation observer or periodic check isn't ideal;
-      // instead, listen for storage events which fire when weather.js writes to localStorage
-      window.addEventListener('storage', function (e) {
-        if (e.key === CACHE_KEY && modal && modal.classList.contains('modal-open')) {
-          const cache = loadCache();
-          if (cache && cache.data) {
-            const unit = loadUnit();
-            renderExpandedWeather(cache.data, cache.locationName, unit);
-          }
+    // Storage events only fire in other tabs, so also listen for custom events
+    window.addEventListener('storage', function (e) {
+      if (e.key === CACHE_KEY && modal && modal.classList.contains('modal-open')) {
+        const cache = loadCache();
+        if (cache && cache.data) {
+          const unit = loadUnit();
+          renderExpandedWeather(cache.data, cache.locationName, unit);
         }
-      });
+      }
+    });
+
+    // Listen for custom event for same-tab updates
+    window.addEventListener('weatherCacheUpdated', function () {
+      if (modal && modal.classList.contains('modal-open')) {
+        const cache = loadCache();
+        if (cache && cache.data) {
+          const unit = loadUnit();
+          renderExpandedWeather(cache.data, cache.locationName, unit);
+        }
+      }
     });
   }
 

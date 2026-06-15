@@ -196,6 +196,8 @@
     saveCache(cacheData) {
       currentCache = cacheData;
       _safeSet(CACHE_KEY, JSON.stringify(cacheData));
+      // Dispatch custom event for same-tab listeners (storage events only fire in other tabs)
+      window.dispatchEvent(new CustomEvent('weatherCacheUpdated'));
     }
   };
 

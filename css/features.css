@@ -3321,7 +3321,7 @@ body.light-theme #weather-manual-city:focus {
   border-radius: 16px;
   min-width: 320px;
   max-width: 520px;
-  width: 520px;
+  width: 90%;
   max-height: var(--overlay-max-height);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   position: relative;
@@ -3337,6 +3337,12 @@ body.light-theme #weather-manual-city:focus {
 .weather-app-modal.modal-open .weather-app-modal-content {
   opacity: 1;
   transform: translateY(0);
+}
+
+@media (min-width: 576px) {
+  .weather-app-modal-content {
+    width: 520px;
+  }
 }
 
 .weather-app-header {
