@@ -201,6 +201,11 @@
           return true;
         }
       } else if (def.cssClass && el.classList.contains(def.cssClass)) {
+        // Route weather modal closing through WeatherApp.close() when available
+        if (def.selector === '#weather-app-modal' && typeof window.WeatherApp === 'object' && typeof window.WeatherApp.close === 'function') {
+          window.WeatherApp.close();
+          return true;
+        }
         el.classList.remove(def.cssClass);
         return true;
       }
