@@ -518,6 +518,9 @@ document.body.appendChild(createStubElement('span', 'badge-high'));
 document.body.appendChild(createStubElement('span', 'badge-low'));
 
 document.body.appendChild(createStubElement('div', 'settings-modal'));
+document.body.appendChild(createStubElement('div', 'weather-app-modal'));
+document.body.appendChild(createStubElement('div', 'weather-app-body'));
+document.body.appendChild(createStubElement('button', 'weather-app-close-btn'));
 document.body.appendChild(createStubElement('input', 'clock-color-picker'));
 document.body.appendChild(createStubElement('select', 'clock-font-picker'));
 document.body.appendChild(createStubElement('select', 'clock-format-picker'));

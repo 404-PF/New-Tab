@@ -119,35 +119,6 @@
     return WEATHER_ICONS[type] || WEATHER_ICONS['clear'];
   }
 
-  function getAbbreviatedDayName(dateString, lang) {
-    // Validate date format (YYYY-MM-DD)
-    if (!dateString || typeof dateString !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-      return '';
-    }
-
-    const date = new Date(dateString + 'T00:00:00');
-    const dayIndex = date.getDay();
-
-    // Validate that date parsing was successful
-    if (!Number.isFinite(dayIndex) || dayIndex < 0 || dayIndex > 6 || isNaN(date.getTime())) {
-      return '';
-    }
-
-    const dayNames = {
-      en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-      zh: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
-      ja: ['日', '月', '火', '水', '木', '金', '土'],
-      ko: ['일', '월', '화', '수', '목', '금', '토'],
-      es: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
-      fr: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'],
-      de: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
-      pt: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
-      ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
-    };
-    const names = dayNames[normalizeLang(lang)] || dayNames.en;
-    return names[dayIndex];
-  }
-
   // ===================== Storage =====================
 
   // Safe localStorage accessors — degrade gracefully when storage is unavailable
@@ -292,7 +263,7 @@
     const timeoutId = setTimeout(() => controller.abort(), GEO_TIMEOUT_MS);
     let response;
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7`;
       response = await fetch(url, { signal: controller.signal });
     } catch (e) {
       if (e.name === 'AbortError') {
@@ -423,77 +394,8 @@
       </div>
     `;
 
-    // Render forecast if data is available
-    if (data.daily) {
-      renderForecast(data, unit, el);
-    }
-
     // Show the widget with entrance animation on first reveal, or just update content on refresh.
     showWidgetWithAnimation(el);
-  }
-
-  function renderForecast(data, unit, containerEl) {
-    const daily = data.daily;
-    if (!daily || !daily.time || !daily.temperature_2m_max || !daily.temperature_2m_min || !daily.weather_code) {
-      return;
-    }
-
-    const lang = getLang();
-    // Compute bounded length to prevent array misalignment
-    const boundedLength = Math.min(
-      daily.time.length,
-      (daily.temperature_2m_max || []).length,
-      (daily.temperature_2m_min || []).length,
-      (daily.weather_code || []).length,
-      7
-    );
-
-    const forecastHtml = [];
-    for (let i = 0; i < boundedLength; i++) {
-      const dateStr = daily.time[i];
-      const dayName = getAbbreviatedDayName(dateStr, lang);
-
-      // Add numeric guards to prevent NaN° output
-      const highVal = Number(daily.temperature_2m_max[i]);
-      const lowVal = Number(daily.temperature_2m_min[i]);
-      const weatherCode = Number(daily.weather_code[i]);
-
-      // Skip this card if values are not valid numbers or dayName is empty
-      if (!Number.isFinite(highVal) || !Number.isFinite(lowVal) || !Number.isFinite(weatherCode) || !dayName) {
-        continue;
-      }
-
-      const high = getTemp(highVal, unit);
-      const low = getTemp(lowVal, unit);
-      const info = getWeatherInfo(weatherCode);
-      const icon = getWeatherIcon(info.type);
-
-      forecastHtml.push(`
-        <div class="weather-forecast-card">
-          <div class="weather-forecast-day">${dayName}</div>
-          <div class="weather-forecast-icon">${icon}</div>
-          <div class="weather-forecast-temps">
-            <span class="weather-forecast-high">${high}°</span>
-            <span class="weather-forecast-low">${low}°</span>
-          </div>
-        </div>
-      `);
-    }
-
-    let forecastContainer = containerEl.querySelector('.weather-forecast');
-    if (forecastHtml.length === 0) {
-      // Remove the container if it exists when there are no valid forecast cards
-      if (forecastContainer) {
-        forecastContainer.remove();
-      }
-      return;
-    }
-    if (!forecastContainer) {
-      forecastContainer = document.createElement('div');
-      forecastContainer.className = 'weather-forecast';
-      containerEl.appendChild(forecastContainer);
-    }
-    forecastContainer.innerHTML = forecastHtml.join('');
   }
 
   function hideWidget() {

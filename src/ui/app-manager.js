@@ -16,6 +16,7 @@ function loadCustomApps() {
 // Default apps
 const defaultApps = [
   { id: 'ai-app', nameKey: 'ai', url: '#', icon: 'images/icons/ai.svg', className: 'default-app', isInternal: true },
+  { id: 'weather-app', nameKey: 'weather', url: '#', icon: 'images/icons/weather.svg', className: 'default-app', isInternal: true },
   { id: 'feedback-app', nameKey: 'feedback', url: 'https://github.com/404-PF/New-Tab/issues/new', icon: 'images/icons/feedback.svg', className: 'default-app' },
   { id: 'settings-app', nameKey: 'settings', url: '#', icon: 'images/icons/settings.svg', className: 'default-app' },
 ];
@@ -350,6 +351,19 @@ function attachSettingsAppHandler() {
       }
     };
     aiApp.addEventListener('click', aiApp._clickHandler);
+  }
+
+  // Attach Weather app click handler
+  const weatherApp = document.getElementById('weather-app');
+  if (weatherApp) {
+    weatherApp.removeEventListener('click', weatherApp._clickHandler);
+    weatherApp._clickHandler = function (e) {
+      e.preventDefault();
+      if (window.WeatherApp && window.WeatherApp.open) {
+        window.WeatherApp.open();
+      }
+    };
+    weatherApp.addEventListener('click', weatherApp._clickHandler);
   }
 
   // Attach modal close handler (only once)

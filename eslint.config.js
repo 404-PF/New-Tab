@@ -78,6 +78,7 @@ const srcGlobals = {
   Shortcuts: 'readonly',
   applyTodoEnabled: 'readonly',
   applyNotesEnabled: 'readonly',
+  WeatherApp: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };
@@ -171,6 +172,7 @@ const testGlobals = {
   Shortcuts: 'readonly',
   applyTodoEnabled: 'readonly',
   applyNotesEnabled: 'readonly',
+  WeatherApp: 'readonly',
   describe: 'readonly',
   it: 'readonly',
   test: 'readonly',

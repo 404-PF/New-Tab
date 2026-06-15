@@ -38,6 +38,7 @@
     { selector: '#import-todos-dialog', cssClass: 'ai-confirm-open' },
     { selector: '#ai-chat-modal', cssClass: 'ai-modal-open' },
     { selector: '#settings-modal', cssClass: 'modal-open' },
+    { selector: '#weather-app-modal', cssClass: 'modal-open' },
     { selector: '#folder-popup', cssClass: 'folder-popup-open', bodyClass: true },
     { selector: '#move-to-folder-selector', useDisplay: true },
     { selector: '#app-context-menu', cssClass: 'context-menu-open', bodyClass: true }
