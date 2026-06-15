@@ -117,8 +117,8 @@ describe('Weather app', () => {
     localStorage.setItem('weatherUnit', 'fahrenheit');
     localStorage.setItem('weatherCache', JSON.stringify({
       data: {
-        current_weather: { temperature: 72, weathercode: 0 },
-        current: { apparent_temperature: 70, wind_speed_10m: 8, relative_humidity_2m: 50 }
+        current_weather: { temperature: 20, weathercode: 0 },
+        current: { apparent_temperature: 18, wind_speed_10m: 8, relative_humidity_2m: 50 }
       },
       locationName: 'New York, US'
     }));
@@ -128,5 +128,7 @@ describe('Weather app', () => {
     const body = document.getElementById('weather-app-body');
     const tempEl = body.querySelector('.weather-app-current-temp');
     expect(tempEl.textContent).toContain('\u00B0F');
+    // Verify conversion: 20°C should be converted to 68°F
+    expect(tempEl.textContent).toContain('68');
   });
 });
