@@ -122,7 +122,9 @@
   function getDayName(dateString) {
     try {
       const date = new Date(dateString + 'T00:00:00');
-      return date.toLocaleDateString(getLang(), { weekday: 'short' });
+      if (Number.isNaN(date.getTime())) return '';
+      const locale = getLang().replace(/_/g, '-');
+      return date.toLocaleDateString(locale, { weekday: 'short' });
     } catch {
       return '';
     }

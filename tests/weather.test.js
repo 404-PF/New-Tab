@@ -95,6 +95,11 @@ describe('Weather forecast', () => {
       if (urlObj.hostname !== 'api.open-meteo.com' || urlObj.pathname !== '/v1/forecast') {
         return { ok: false, status: 400, json: async () => ({ error: 'Invalid URL' }) };
       }
+      const params = new URLSearchParams(urlObj.search);
+      if (params.get('daily') !== 'temperature_2m_max,temperature_2m_min,weather_code' ||
+          params.get('forecast_days') !== '7') {
+        return { ok: false, status: 400, json: async () => ({ error: 'Invalid query parameters' }) };
+      }
       return { ok: true, json: async () => mockWeatherData };
     };
 
