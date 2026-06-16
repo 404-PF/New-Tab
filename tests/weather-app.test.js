@@ -30,8 +30,7 @@ describe('Weather app', () => {
     localStorage.setItem('weatherEnabled', 'true');
     localStorage.setItem('weatherCache', JSON.stringify({
       data: {
-        current_weather: { temperature: 20, weathercode: 0 },
-        current: { apparent_temperature: 18, wind_speed_10m: 5, relative_humidity_2m: 65 }
+        current: { temperature_2m: 20, weather_code: 0, apparent_temperature: 18, wind_speed_10m: 5, relative_humidity_2m: 65 }
       },
       locationName: 'Test City'
     }));
@@ -56,8 +55,7 @@ describe('Weather app', () => {
     localStorage.setItem('weatherUnit', 'celsius');
     localStorage.setItem('weatherCache', JSON.stringify({
       data: {
-        current_weather: { temperature: 22, weathercode: 0 },
-        current: { apparent_temperature: 20, wind_speed_10m: 12, relative_humidity_2m: 55 },
+        current: { temperature_2m: 22, weather_code: 0, apparent_temperature: 20, wind_speed_10m: 12, relative_humidity_2m: 55 },
         daily: {
           time: ['2025-01-15', '2025-01-16'],
           temperature_2m_max: [22, 24],
@@ -93,8 +91,7 @@ describe('Weather app', () => {
     localStorage.setItem('weatherUnit', 'celsius');
     localStorage.setItem('weatherCache', JSON.stringify({
       data: {
-        current_weather: { temperature: 20, weathercode: 0 },
-        current: { apparent_temperature: 18, wind_speed_10m: 5, relative_humidity_2m: 65 },
+        current: { temperature_2m: 20, weather_code: 0, apparent_temperature: 18, wind_speed_10m: 5, relative_humidity_2m: 65 },
         daily: {
           time: ['2025-01-15', '2025-01-16', '2025-01-17'],
           temperature_2m_max: [20, 22, 18],
@@ -117,8 +114,7 @@ describe('Weather app', () => {
     localStorage.setItem('weatherUnit', 'fahrenheit');
     localStorage.setItem('weatherCache', JSON.stringify({
       data: {
-        current_weather: { temperature: 20, weathercode: 0 },
-        current: { apparent_temperature: 18, wind_speed_10m: 8, relative_humidity_2m: 50 }
+        current: { temperature_2m: 20, weather_code: 0, apparent_temperature: 18, wind_speed_10m: 8, relative_humidity_2m: 50 }
       },
       locationName: 'New York, US'
     }));

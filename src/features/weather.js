@@ -119,6 +119,15 @@
     return WEATHER_ICONS[type] || WEATHER_ICONS['clear'];
   }
 
+  function getDayName(dateString) {
+    try {
+      const date = new Date(dateString + 'T00:00:00');
+      return date.toLocaleDateString(getLang(), { weekday: 'short' });
+    } catch {
+      return '';
+    }
+  }
+
   // ===================== Storage =====================
 
   // Safe localStorage accessors — degrade gracefully when storage is unavailable
@@ -265,7 +274,7 @@
     const timeoutId = setTimeout(() => controller.abort(), GEO_TIMEOUT_MS);
     let response;
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7`;
       response = await fetch(url, { signal: controller.signal });
     } catch (e) {
       if (e.name === 'AbortError') {
@@ -364,19 +373,51 @@
     const el = getWidgetElement();
     if (!el) return;
 
-    const current = data.current_weather;
-    if (!current || typeof current.temperature !== 'number' || typeof current.weathercode !== 'number') {
+    const current = data.current;
+    if (!current || typeof current.temperature_2m !== 'number' || typeof current.weather_code !== 'number') {
       renderError(t('weatherError'));
       return;
     }
-    const info = getWeatherInfo(current.weathercode);
-    const temp = getTemp(current.temperature, unit);
+    const info = getWeatherInfo(current.weather_code);
+    const temp = getTemp(current.temperature_2m, unit);
     const tempUnit = getTempUnit(unit);
     const label = getWeatherLabel(info);
     const icon = getWeatherIcon(info.type);
     const displayLocation = locationName || t('weatherUnknownLocation');
 
     el.className = 'weather-widget weather-data';
+
+    let forecastHtml = '';
+    if (data.daily && data.daily.time && data.daily.temperature_2m_max && data.daily.temperature_2m_min && data.daily.weather_code) {
+      const days = data.daily.time;
+      const maxTemps = data.daily.temperature_2m_max;
+      const minTemps = data.daily.temperature_2m_min;
+      const codes = data.daily.weather_code;
+      const count = Math.min(days.length, maxTemps.length, minTemps.length, codes.length, 7);
+
+      let cards = '';
+      for (let i = 0; i < count; i++) {
+        const dayName = getDayName(days[i]);
+        const high = getTemp(maxTemps[i], unit);
+        const low = getTemp(minTemps[i], unit);
+        const dayInfo = getWeatherInfo(codes[i]);
+        const dayIcon = getWeatherIcon(dayInfo.type);
+
+        cards += '<div class="weather-forecast-card">' +
+          '<div class="weather-forecast-day">' + dayName + '</div>' +
+          '<div class="weather-forecast-icon">' + dayIcon + '</div>' +
+          '<div class="weather-forecast-temps">' +
+          '<span class="weather-forecast-high">' + high + tempUnit + '</span>' +
+          '<span class="weather-forecast-low">' + low + tempUnit + '</span>' +
+          '</div>' +
+          '</div>';
+      }
+
+      if (cards) {
+        forecastHtml = '<div class="weather-forecast">' + cards + '</div>';
+      }
+    }
+
     el.innerHTML = `
       <div class="weather-current">
         <div class="weather-main">
@@ -394,6 +435,7 @@
           </div>
         </div>
       </div>
+      ${forecastHtml}
     `;
 
     // Show the widget with entrance animation on first reveal, or just update content on refresh.

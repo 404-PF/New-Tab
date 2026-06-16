@@ -51,12 +51,12 @@ afterEach(() => {
 
 describe('Weather forecast', () => {
   const mockWeatherData = {
-    current_weather: {
-      temperature: 22,
-      weathercode: 0,
-      windspeed: 10,
-      winddirection: 180,
-      time: '2025-01-15T12:00'
+    current: {
+      temperature_2m: 22,
+      weather_code: 0,
+      wind_speed_10m: 10,
+      relative_humidity_2m: 50,
+      apparent_temperature: 24
     },
     daily: {
       time: ['2025-01-15', '2025-01-16', '2025-01-17', '2025-01-18', '2025-01-19', '2025-01-20', '2025-01-21'],
@@ -79,7 +79,7 @@ describe('Weather forecast', () => {
     expect(window.WeatherWidget.loadManualCity).toBeDefined();
   });
 
-  it('widget does not render forecast cards', async () => {
+  it('widget renders forecast cards when data is present', async () => {
     localStorage.setItem('weatherEnabled', 'true');
     localStorage.setItem('weatherUnit', 'celsius');
     localStorage.setItem('weatherLocationMode', 'auto');
@@ -103,9 +103,9 @@ describe('Weather forecast', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
 
       const cards = widget.querySelectorAll('.weather-forecast-card');
-      expect(cards.length).toBe(0);
+      expect(cards.length).toBeGreaterThan(0);
       const forecast = widget.querySelector('.weather-forecast');
-      expect(forecast).toBeNull();
+      expect(forecast).not.toBeNull();
     } finally {
       global.fetch = originalFetch;
     }
@@ -127,12 +127,12 @@ describe('Weather forecast', () => {
       return {
         ok: true,
         json: async () => ({
-          current_weather: {
-            temperature: 22,
-            weathercode: 0,
-            windspeed: 10,
-            winddirection: 180,
-            time: '2025-01-15T12:00'
+          current: {
+            temperature_2m: 22,
+            weather_code: 0,
+            wind_speed_10m: 10,
+            relative_humidity_2m: 50,
+            apparent_temperature: 24
           }
           // No daily field
         })

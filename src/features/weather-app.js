@@ -141,7 +141,7 @@
       return JSON.parse(raw);
     } catch (e) {
       console.warn('Failed to parse weather cache:', e);
-      return null;
+      return {};
     }
   }
 
@@ -207,14 +207,14 @@
     const body = getBodyElement();
     if (!body) return;
 
-    const current = data.current_weather;
-    if (!current || typeof current.temperature !== 'number' || typeof current.weathercode !== 'number') {
+    const current = data.current;
+    if (!current || typeof current.temperature_2m !== 'number' || typeof current.weather_code !== 'number') {
       renderAppError(t('weatherError'));
       return;
     }
 
-    const info = getWeatherInfo(current.weathercode);
-    const temp = getTemp(current.temperature, unit);
+    const info = getWeatherInfo(current.weather_code);
+    const temp = getTemp(current.temperature_2m, unit);
     const tempUnit = getTempUnit(unit);
     const label = getWeatherLabel(info);
     const icon = getWeatherIcon(info.type);
