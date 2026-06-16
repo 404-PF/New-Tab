@@ -99,6 +99,20 @@
       if (typeof raw === 'string' && raw.charAt(0) === '{') {
         return parseJsonSafe(raw, {});
       }
+      // Handle JSON scalar values (booleans, null, numbers)
+      if (raw === 'true') {
+        return parseJsonSafe(raw, true);
+      }
+      if (raw === 'false') {
+        return parseJsonSafe(raw, false);
+      }
+      if (raw === 'null') {
+        return parseJsonSafe(raw, null);
+      }
+      // Check if it's a numeric value
+      if (typeof raw === 'string' && /^-?\d+(\.\d+)?$/.test(raw)) {
+        return parseJsonSafe(raw, raw);
+      }
       return raw;
     } catch (err) {
       console.warn('[data-manager] Failed to read key "' + key + '":', err);
@@ -251,7 +265,7 @@
       return key.charAt(0) !== '_' && EXPORT_KEYS.indexOf(key) === -1;
     });
     if (disallowedKeys.length > 0) {
-      return { valid: false, error: t('dataImportInvalidKeys', 'Invalid keys.') + ' ' + disallowedKeys.join(', ') };
+      return { valid: false, error: t('dataImportInvalidShape', 'Invalid value for key.') + ' ' + disallowedKeys.join(', ') };
     }
     // Per-key shape validation
     const invalidKeys = [];
