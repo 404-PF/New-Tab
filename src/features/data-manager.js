@@ -442,12 +442,6 @@
                   writeStorage(key, currentFolders);
                   count++;
                 }
-              } else if (key === 'customShortcuts') {
-                // Merge shortcuts by key
-                const currentShortcuts = (typeof current === 'object' && current !== null) ? Object.assign({}, current) : {};
-                const mergedShortcuts = Object.assign({}, currentShortcuts, incoming);
-                writeStorage(key, mergedShortcuts);
-                count++;
               } else if (key === 'ai_conversations') {
                 // Merge conversations by id
                 const currentConvs = Array.isArray(current) ? current.slice() : [];
