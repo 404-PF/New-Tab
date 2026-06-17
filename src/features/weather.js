@@ -400,9 +400,9 @@
       let cards = '';
       for (let i = 0; i < count; i++) {
         const dayName = getDayName(days[i]);
+        if (!dayName || !Number.isFinite(maxTemps[i]) || !Number.isFinite(minTemps[i])) continue;
         const high = getTemp(maxTemps[i], unit);
         const low = getTemp(minTemps[i], unit);
-        if (!dayName || !Number.isFinite(high) || !Number.isFinite(low)) continue;
         const dayInfo = getWeatherInfo(codes[i]);
         const dayIcon = getWeatherIcon(dayInfo.type);
 

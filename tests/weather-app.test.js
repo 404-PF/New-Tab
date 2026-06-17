@@ -127,4 +127,31 @@ describe('Weather app', () => {
     // Verify conversion: 20°C should be converted to 68°F
     expect(tempEl.textContent).toContain('68');
   });
+
+  it('re-renders when weatherCacheUpdated event is dispatched', () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherCache', JSON.stringify({
+      data: {
+        current: { temperature_2m: 15, weather_code: 0, apparent_temperature: 13, wind_speed_10m: 5, relative_humidity_2m: 60 }
+      },
+      locationName: 'Initial City'
+    }));
+
+    window.WeatherApp.open();
+
+    const body = document.getElementById('weather-app-body');
+    expect(body.querySelector('.weather-app-current-temp').textContent).toContain('15');
+
+    localStorage.setItem('weatherCache', JSON.stringify({
+      data: {
+        current: { temperature_2m: 30, weather_code: 1, apparent_temperature: 28, wind_speed_10m: 10, relative_humidity_2m: 40 }
+      },
+      locationName: 'Updated City'
+    }));
+
+    window.dispatchEvent(new CustomEvent('weatherCacheUpdated'));
+
+    expect(body.querySelector('.weather-app-current-temp').textContent).toContain('30');
+  });
 });

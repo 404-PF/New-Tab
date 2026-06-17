@@ -42,11 +42,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // Restore original geolocation if it was mocked
-  if (originalGeolocation !== undefined) {
-    navigator.geolocation = originalGeolocation;
-    originalGeolocation = undefined;
-  }
+  navigator.geolocation = originalGeolocation;
+  originalGeolocation = undefined;
 });
 
 describe('Weather forecast', () => {

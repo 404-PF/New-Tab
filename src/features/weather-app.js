@@ -425,7 +425,10 @@
 
   // ===================== Initialization =====================
 
+  let _initialized = false;
   function init() {
+    if (_initialized) return;
+    _initialized = true;
     setupListeners();
   }
 
