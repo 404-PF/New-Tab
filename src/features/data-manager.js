@@ -273,7 +273,7 @@
       return key.charAt(0) !== '_' && EXPORT_KEYS.indexOf(key) === -1;
     });
     if (disallowedKeys.length > 0) {
-      return { valid: false, error: t('dataImportInvalidKeys', 'Invalid value for key.') + ' ' + disallowedKeys.join(', ') };
+      return { valid: false, error: t('dataImportInvalidKeys', 'Disallowed keys found.') + ' ' + disallowedKeys.join(', ') };
     }
     // Per-key shape validation
     const invalidKeys = [];
@@ -285,7 +285,7 @@
       }
     });
     if (invalidKeys.length > 0) {
-      return { valid: false, error: t('dataImportInvalidShape') + ' ' + invalidKeys.join(', ') };
+      return { valid: false, error: t('dataImportInvalidShape', 'Invalid data structure for key(s).') + ' ' + invalidKeys.join(', ') };
     }
     return { valid: true };
   }
