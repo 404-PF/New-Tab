@@ -545,7 +545,6 @@ document.body.appendChild(createStubElement('span', 'badge-low'));
 document.body.appendChild(createStubElement('div', 'settings-modal'));
 document.body.appendChild(createStubElement('div', 'weather-app-modal'));
 document.body.appendChild(createStubElement('div', 'weather-app-body'));
-document.body.appendChild(createStubElement('button', 'weather-app-close-btn'));
 document.body.appendChild(createStubElement('div', 'weather-widget'));
 document.body.appendChild(createStubElement('input', 'weather-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'weather-unit-celsius'));

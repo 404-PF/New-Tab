@@ -376,12 +376,6 @@
   // ===================== Event Listeners =====================
 
   function setupListeners() {
-    // Close button
-    const closeBtn = document.getElementById('weather-app-close-btn');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', close);
-    }
-
     // Overlay click
     const modal = getModalElement();
     if (modal) {

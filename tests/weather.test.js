@@ -50,7 +50,7 @@ afterEach(() => {
   originalGeolocation = undefined;
 });
 
-describe('Weather forecast', () => {
+describe('Weather widget', () => {
   const mockWeatherData = {
     current: {
       temperature_2m: 22,
@@ -80,7 +80,35 @@ describe('Weather forecast', () => {
     expect(window.WeatherWidget.loadManualCity).toBeDefined();
   });
 
-  it('widget renders forecast cards when data is present', async () => {
+  it('fetches daily data for the weather app cache', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
+
+    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
+
+    const originalFetch = global.fetch;
+    let capturedUrl;
+    global.fetch = async (url) => {
+      capturedUrl = url;
+      return { ok: true, json: async () => mockWeatherData };
+    };
+
+    try {
+      await window.WeatherWidget.refresh(true);
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const urlObj = new URL(capturedUrl);
+      const params = new URLSearchParams(urlObj.search);
+      expect(params.get('current')).toBe('temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code');
+      expect(params.get('daily')).toBe('temperature_2m_max,temperature_2m_min,weather_code');
+      expect(params.get('forecast_days')).toBe('7');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('widget renders current conditions without forecast', async () => {
     localStorage.setItem('weatherEnabled', 'true');
     localStorage.setItem('weatherUnit', 'celsius');
     localStorage.setItem('weatherLocationMode', 'auto');
@@ -96,12 +124,6 @@ describe('Weather forecast', () => {
       if (urlObj.hostname !== 'api.open-meteo.com' || urlObj.pathname !== '/v1/forecast') {
         return { ok: false, status: 400, json: async () => ({ error: 'Invalid URL' }) };
       }
-      const params = new URLSearchParams(urlObj.search);
-      if (params.get('current') !== 'temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code' ||
-          params.get('daily') !== 'temperature_2m_max,temperature_2m_min,weather_code' ||
-          params.get('forecast_days') !== '7') {
-        return { ok: false, status: 400, json: async () => ({ error: 'Invalid query parameters' }) };
-      }
       return { ok: true, json: async () => mockWeatherData };
     };
 
@@ -110,53 +132,12 @@ describe('Weather forecast', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
 
       const cards = widget.querySelectorAll('.weather-forecast-card');
-      expect(cards.length).toBeGreaterThan(0);
-      const forecast = widget.querySelector('.weather-forecast');
-      expect(forecast).not.toBeNull();
-    } finally {
-      global.fetch = originalFetch;
-    }
-  });
-
-  it('forecast degrades gracefully when daily data is missing', async () => {
-    localStorage.setItem('weatherEnabled', 'true');
-    localStorage.setItem('weatherUnit', 'celsius');
-    localStorage.setItem('weatherLocationMode', 'auto');
-
-    const widget = document.getElementById('weather-widget');
-
-    // Mock geolocation
-    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
-
-    // Stub global fetch to return data without daily field
-    const originalFetch = global.fetch;
-    global.fetch = async (url) => {
-      return {
-        ok: true,
-        json: async () => ({
-          current: {
-            temperature_2m: 22,
-            weather_code: 0,
-            wind_speed_10m: 10,
-            relative_humidity_2m: 50,
-            apparent_temperature: 24
-          }
-          // No daily field
-        })
-      };
-    };
-
-    try {
-      // Call the actual refresh method
-      await window.WeatherWidget.refresh(true);
-
-      // Wait for any promises to flush
-      await new Promise(resolve => setTimeout(resolve, 0));
-
+      expect(cards.length).toBe(0);
       const forecast = widget.querySelector('.weather-forecast');
       expect(forecast).toBeNull();
+      const temp = widget.querySelector('.weather-temp');
+      expect(temp).not.toBeNull();
     } finally {
-      // Restore original functions
       global.fetch = originalFetch;
     }
   });
