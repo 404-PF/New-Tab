@@ -132,5 +132,9 @@
   "shortcutPressAKey": {
     "message": "Press a key...",
     "description": "Prompt shown when rebinding a keyboard shortcut"
+  },
+  "weatherWidgetCloseLabel": {
+    "message": "Close weather widget",
+    "description": "Accessible label for the weather app close button"
   }
 }

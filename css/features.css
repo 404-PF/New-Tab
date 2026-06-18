@@ -3015,7 +3015,17 @@ body.light-theme .delete-preview-name {
 }
 
 .weather-data {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  max-width: 320px;
+}
+
+.weather-current {
+  display: flex;
+  align-items: center;
   gap: 10px;
+  width: 100%;
 }
 
 .weather-main {
@@ -3193,4 +3203,411 @@ body.light-theme #weather-manual-city:focus {
   border-color: #2196f3;
   background: rgba(255, 255, 255, 1);
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+/* ==================== Weather App Modal ==================== */
+
+.weather-app-modal {
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.weather-app-modal.modal-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.weather-app-modal-content {
+  background: var(--settings-modal-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  min-width: 320px;
+  max-width: 520px;
+  width: 90%;
+  max-height: var(--overlay-max-height);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.weather-app-modal.modal-open .weather-app-modal-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (min-width: 576px) {
+  .weather-app-modal-content {
+    width: 520px;
+  }
+}
+
+.weather-app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+
+.weather-app-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+}
+
+.weather-app-body {
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+}
+
+/* Weather app - loading state */
+.weather-app-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 0;
+}
+
+.weather-app-loading .weather-spinner {
+  width: 28px;
+  height: 28px;
+}
+
+.weather-app-loading-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+/* Weather app - error state */
+.weather-app-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 0;
+}
+
+.weather-app-error-icon {
+  width: 28px;
+  height: 28px;
+  color: #f44336;
+}
+
+.weather-app-error-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.weather-app-error-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+/* Weather app - disabled state */
+.weather-app-disabled {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 0;
+  text-align: center;
+}
+
+.weather-app-disabled-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+/* Weather app - current conditions */
+.weather-app-current {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.weather-app-current-icon {
+  width: 64px;
+  height: 64px;
+  color: rgba(255, 255, 255, 0.9);
+  flex-shrink: 0;
+}
+
+.weather-app-current-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.weather-app-current-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.weather-app-current-temp {
+  font-size: 42px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.weather-app-current-condition {
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.weather-app-current-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.weather-app-current-location svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* Weather app - detail cards */
+.weather-app-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.weather-app-detail-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.weather-app-detail-icon {
+  width: 20px;
+  height: 20px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.weather-app-detail-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.weather-app-detail-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.weather-app-detail-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Weather app - forecast */
+.weather-app-forecast {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 16px;
+}
+
+.weather-app-forecast-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px;
+}
+
+.weather-app-forecast-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weather-app-forecast-day {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.weather-app-forecast-day-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.weather-app-forecast-day-icon {
+  width: 24px;
+  height: 24px;
+  color: rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.weather-app-forecast-day-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.weather-app-forecast-day-condition {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weather-app-forecast-day-temps {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.weather-app-forecast-day-high {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.weather-app-forecast-day-low {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* Simple mode hide */
+body.simple-mode #weather-app-modal {
+  display: none !important;
+}
+
+/* Light theme */
+body.light-theme .weather-app-modal-content {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+body.light-theme .weather-app-title {
+  color: rgba(31, 41, 55, 0.95);
+}
+
+body.light-theme .weather-app-loading-text {
+  color: rgba(55, 65, 81, 0.8);
+}
+
+body.light-theme .weather-app-error-text {
+  color: rgba(55, 65, 81, 0.7);
+}
+
+body.light-theme .weather-app-disabled-text {
+  color: rgba(107, 114, 128, 0.8);
+}
+
+body.light-theme .weather-app-current-icon {
+  color: rgba(55, 65, 81, 0.85);
+}
+
+body.light-theme .weather-app-current-temp {
+  color: rgba(31, 41, 55, 0.95);
+}
+
+body.light-theme .weather-app-current-condition {
+  color: rgba(55, 65, 81, 0.85);
+}
+
+body.light-theme .weather-app-current-location {
+  color: rgba(107, 114, 128, 0.7);
+}
+
+body.light-theme .weather-app-detail-card {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .weather-app-detail-icon {
+  color: rgba(107, 114, 128, 0.7);
+}
+
+body.light-theme .weather-app-detail-value {
+  color: rgba(31, 41, 55, 0.9);
+}
+
+body.light-theme .weather-app-detail-label {
+  color: rgba(107, 114, 128, 0.6);
+}
+
+body.light-theme .weather-app-forecast {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .weather-app-forecast-title {
+  color: rgba(107, 114, 128, 0.7);
+}
+
+body.light-theme .weather-app-forecast-day {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .weather-app-forecast-day-name {
+  color: rgba(31, 41, 55, 0.8);
+}
+
+body.light-theme .weather-app-forecast-day-icon {
+  color: rgba(55, 65, 81, 0.85);
+}
+
+body.light-theme .weather-app-forecast-day-condition {
+  color: rgba(107, 114, 128, 0.65);
+}
+
+body.light-theme .weather-app-forecast-day-high {
+  color: rgba(31, 41, 55, 0.9);
+}
+
+body.light-theme .weather-app-forecast-day-low {
+  color: rgba(107, 114, 128, 0.55);
 }

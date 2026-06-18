@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Weather icon - Rounded cloud -->
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Cloud body: three overlapping circles merged with a flat base -->
+  <path d="M6 19a4 4 0 0 1-.5-7.96A5.5 5.5 0 0 1 16.5 9 4.5 4.5 0 0 1 19 17.78L6 19z"/>
+</svg>

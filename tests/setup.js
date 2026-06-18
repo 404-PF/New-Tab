@@ -437,7 +437,32 @@ globalThis.window.i18n = {
       keyboardShortcuts: 'Keyboard Shortcuts',
       keyboardShortcutsDesc: 'Customize keyboard shortcuts for quick actions',
       resetToDefaults: 'Reset to Defaults',
-      resetShortcuts: 'Reset Shortcuts'
+      resetShortcuts: 'Reset Shortcuts',
+      weather: 'Weather',
+      weatherSettings: 'Weather',
+      weatherSettingsDesc: 'Configure weather widget display',
+      enableWeatherWidget: 'Enable weather widget',
+      weatherUnit: 'Temperature Unit',
+      weatherCelsius: 'Celsius',
+      weatherFahrenheit: 'Fahrenheit',
+      weatherLocation: 'Location',
+      weatherAutoDetect: 'Auto-detect',
+      weatherManual: 'Manual',
+      weatherCityPlaceholder: 'City name',
+      weatherRefresh: 'Refresh Weather',
+      weatherLoading: 'Loading...',
+      weatherError: 'Unable to load weather',
+      weatherEnterCity: 'Enter a city name',
+      weatherUnknownLocation: 'Unknown location',
+      weatherLocationUnavailable: 'Location unavailable',
+      weatherLocationNotFound: 'City not found',
+      weatherApp: 'Weather',
+      weatherForecast: '7-Day Forecast',
+      weatherFeelsLike: 'Feels like',
+      weatherWind: 'Wind',
+      weatherHumidity: 'Humidity',
+      weatherEnablePrompt: 'Enable the weather widget in settings to view weather data.',
+      weatherWidgetCloseLabel: 'Close weather widget'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
@@ -518,6 +543,17 @@ document.body.appendChild(createStubElement('span', 'badge-high'));
 document.body.appendChild(createStubElement('span', 'badge-low'));
 
 document.body.appendChild(createStubElement('div', 'settings-modal'));
+document.body.appendChild(createStubElement('div', 'weather-app-modal'));
+document.body.appendChild(createStubElement('div', 'weather-app-body'));
+document.body.appendChild(createStubElement('div', 'weather-widget'));
+document.body.appendChild(createStubElement('input', 'weather-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'weather-unit-celsius'));
+document.body.appendChild(createStubElement('input', 'weather-unit-fahrenheit'));
+document.body.appendChild(createStubElement('input', 'weather-mode-auto'));
+document.body.appendChild(createStubElement('input', 'weather-mode-manual'));
+document.body.appendChild(createStubElement('input', 'weather-manual-city'));
+document.body.appendChild(createStubElement('div', 'weather-manual-group'));
+document.body.appendChild(createStubElement('button', 'weather-refresh-btn'));
 document.body.appendChild(createStubElement('input', 'clock-color-picker'));
 document.body.appendChild(createStubElement('select', 'clock-font-picker'));
 document.body.appendChild(createStubElement('select', 'clock-format-picker'));
