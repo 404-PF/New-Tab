@@ -461,7 +461,8 @@ globalThis.window.i18n = {
       weatherFeelsLike: 'Feels like',
       weatherWind: 'Wind',
       weatherHumidity: 'Humidity',
-      weatherEnablePrompt: 'Enable the weather widget in settings to view weather data.'
+      weatherEnablePrompt: 'Enable the weather widget in settings to view weather data.',
+      weatherWidgetCloseLabel: 'Close weather widget'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {

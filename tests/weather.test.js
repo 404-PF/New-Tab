@@ -42,8 +42,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  navigator.geolocation = originalGeolocation;
-  originalGeolocation = undefined;
+  if (originalGeolocation !== undefined) {
+    navigator.geolocation = originalGeolocation;
+    originalGeolocation = undefined;
+  }
 });
 
 describe('Weather forecast', () => {

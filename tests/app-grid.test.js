@@ -398,6 +398,7 @@ describe('renderAllApps order validation', () => {
 
     const order = AppGridState.getOrder();
     expect(order).toContain('ai-app');
+    expect(order).toContain('weather-app');
     expect(order).toContain('feedback-app');
     expect(order).toContain('settings-app');
     expect(order).toContain('custom-3');

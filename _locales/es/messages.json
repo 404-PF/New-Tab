@@ -36,5 +36,9 @@
   "priorityHigh": {
     "message": "Alta",
     "description": "High priority label"
+  },
+  "weatherWidgetCloseLabel": {
+    "message": "Cerrar widget del clima",
+    "description": "Accessible label for the weather app close button"
   }
 }
