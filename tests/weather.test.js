@@ -19,12 +19,14 @@ function mockGeolocation({ latitude, longitude }) {
 }
 
 beforeAll(() => {
-  // Create weather widget element
-  const widget = document.createElement('div');
-  widget.id = 'weather-widget';
-  widget.className = 'weather-widget';
-  widget.style.display = 'none';
-  document.body.appendChild(widget);
+  // Create weather widget element if not already present (setup.js may have created it)
+  if (!document.getElementById('weather-widget')) {
+    const widget = document.createElement('div');
+    widget.id = 'weather-widget';
+    widget.className = 'weather-widget';
+    widget.style.display = 'none';
+    document.body.appendChild(widget);
+  }
 
   // Inject utils.js first to provide escapeHtml
   injectScript('src/core/utils.js');
