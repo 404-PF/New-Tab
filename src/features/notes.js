@@ -11,6 +11,9 @@
 
   const notePreviewModes = {};
 
+  const SVG_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+  const SVG_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+
   function loadNotes() {
     try {
       const raw = localStorage.getItem('notes');
@@ -94,9 +97,7 @@
       previewBtn.className = 'note-preview-btn';
       previewBtn.dataset.id = note.id;
       previewBtn.title = isPreview ? (window.i18n ? window.i18n.t('notesEditTooltip') : 'Edit') : (window.i18n ? window.i18n.t('notesPreviewTooltip') : 'Preview');
-      previewBtn.innerHTML = isPreview
-        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>'
-        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+      previewBtn.innerHTML = isPreview ? SVG_PENCIL : SVG_EYE;
 
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'note-delete-btn';
@@ -222,7 +223,7 @@
       }
       if (previewBtn) {
         previewBtn.title = window.i18n ? window.i18n.t('notesEditTooltip') : 'Edit';
-        previewBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+        previewBtn.innerHTML = SVG_PENCIL;
       }
     } else {
       if (previewDiv) {
@@ -235,7 +236,7 @@
       }
       if (previewBtn) {
         previewBtn.title = window.i18n ? window.i18n.t('notesPreviewTooltip') : 'Preview';
-        previewBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+        previewBtn.innerHTML = SVG_EYE;
       }
     }
   }
