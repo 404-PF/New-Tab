@@ -243,9 +243,9 @@
     todoReminderLeadTime: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     notes: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     notesEnabled: function (v) { return typeof v === 'boolean'; },
-    appOrder: function (v) { return Array.isArray(v); },
-    customApps: function (v) { return Array.isArray(v); },
-    appFolders: function (v) { return Array.isArray(v); },
+    appOrder: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
+    customApps: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
+    appFolders: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     openAppsInNewTab: function (v) { return typeof v === 'boolean'; },
     iconSize: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     appsButtonCurvature: function (v) { return typeof v === 'string' || typeof v === 'number'; },
@@ -367,14 +367,14 @@
       let count = 0;
 
       // In replace mode, clear any EXPORT_KEYS not present in importedData
-      let replaceRemoveErrors = false;
+      let hasWriteErrors = false;
       if (mode === 'replace') {
         const keysToRemove = EXPORT_KEYS.filter(function (k) { return !(k in importedData); });
         keysToRemove.forEach(function (key) {
           try {
             writeStorage(key, null);
           } catch (err) {
-            replaceRemoveErrors = true;
+            hasWriteErrors = true;
             console.warn('[data-manager] Failed to remove key "' + key + '" during replace:', err);
           }
         });
@@ -520,6 +520,7 @@
             count++;
           }
         } catch (err) {
+          hasWriteErrors = true;
           console.warn('[data-manager] Failed to apply key "' + key + '":', err);
         }
       });
@@ -534,8 +535,8 @@
         window.initSettings();
       }
 
-      if (replaceRemoveErrors) {
-        showToast(t('dataImportPartialSuccess', 'Import completed with some errors. Some old data could not be removed.'), 'warning');
+      if (hasWriteErrors) {
+        showToast(t('dataImportPartialSuccess', 'Import completed with some errors.'), 'warning');
       } else {
         const msg = mode === 'merge'
           ? t('dataImportMergeSuccess', 'Merged {count} settings successfully.').replace('{count}', count)
