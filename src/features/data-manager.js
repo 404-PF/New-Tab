@@ -387,6 +387,7 @@
             // For arrays, merge by ID where possible; for objects, shallow merge
             const current = readStorage(key);
             if (current === READ_ERROR) {
+              hasWriteErrors = true;
               console.warn('[data-manager] Skipping merge for key "' + key + '": read failed');
               return;
             }
