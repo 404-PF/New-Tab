@@ -2014,4 +2014,36 @@ describe('Todo subtasks', () => {
     cloned[0].subtasks[0].text = 'Mutated';
     expect(loadTodos()[0].subtasks[0].text).toBe('Clone me');
   });
+
+  it('addSubtask clears input-like value after success', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    const result = addSubtask(todo.id, '  New subtask  ');
+    expect(result).toBe(true);
+    const updated = loadTodos()[0];
+    expect(updated.subtasks).toHaveLength(1);
+    expect(updated.subtasks[0].text).toBe('New subtask');
+  });
+
+  it('addSubtask on todo with existing subtasks appends to the end', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'First');
+    addSubtask(todo.id, 'Second');
+    addSubtask(todo.id, 'Third');
+    const updated = loadTodos()[0];
+    expect(updated.subtasks.map(st => st.text)).toEqual(['First', 'Second', 'Third']);
+  });
+
+  it('deleteSubtask on todo without subtasks returns false', () => {
+    addTodo('No subs');
+    const todo = loadTodos()[0];
+    expect(deleteSubtask(todo.id, 'fake-id')).toBe(false);
+  });
+
+  it('toggleSubtask on todo without subtasks returns false', () => {
+    addTodo('No subs');
+    const todo = loadTodos()[0];
+    expect(toggleSubtask(todo.id, 'fake-id')).toBe(false);
+  });
 });

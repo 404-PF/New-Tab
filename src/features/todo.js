@@ -580,7 +580,7 @@
       return false;
     }
 
-    const previousTodo = { ...todo };
+    const previousTodo = { ...todo, subtasks: todo.subtasks ? todo.subtasks.map(st => ({ ...st })) : undefined };
     todo.text = newText.trim();
     if (newPriority !== null && newPriority !== undefined) {
       todo.priority = newPriority;
@@ -1459,12 +1459,6 @@ function renderEditModalSubtasks(todo) {
   if (!container || !section) return;
 
   const subtasks = todo.subtasks || [];
-  if (subtasks.length === 0 && !todo.id) {
-    section.style.display = 'none';
-    return;
-  }
-
-  section.style.display = '';
   container.innerHTML = '';
 
   subtasks.forEach(subtask => {
@@ -1616,9 +1610,11 @@ function saveEdit() {
   const preservedDueDate = existingTodo ? existingTodo.dueDate : null;
 
   if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
-    // Add any pending subtask from the input
+    // Add any pending subtask from the input before closing
     if (subtaskInput && subtaskInput.value.trim()) {
-      if (!addSubtask(editModalState.currentTodoId, subtaskInput.value.trim())) {
+      if (addSubtask(editModalState.currentTodoId, subtaskInput.value.trim())) {
+        subtaskInput.value = '';
+      } else {
         showTodoSaveError();
         return;
       }
