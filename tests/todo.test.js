@@ -1838,6 +1838,9 @@ describe('Todo subtasks', () => {
     const todo = loadTodos()[0];
     addSubtask(todo.id, 'Real subtask');
     expect(deleteSubtask(todo.id, 'fake')).toBe(false);
+    const updated = loadTodos()[0];
+    expect(updated.subtasks).toHaveLength(1);
+    expect(updated.subtasks[0].text).toBe('Real subtask');
   });
 
   it('toggleSubtask toggles checked state', () => {
@@ -1856,6 +1859,10 @@ describe('Todo subtasks', () => {
     const todo = loadTodos()[0];
     addSubtask(todo.id, 'Real subtask');
     expect(toggleSubtask(todo.id, 'fake')).toBe(false);
+    const updated = loadTodos()[0];
+    expect(updated.subtasks).toHaveLength(1);
+    expect(updated.subtasks[0].text).toBe('Real subtask');
+    expect(updated.subtasks[0].checked).toBe(false);
   });
 
   it('updateSubtaskText changes text', () => {

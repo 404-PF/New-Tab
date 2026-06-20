@@ -1180,7 +1180,8 @@ body.light-theme .todo-subtask-text {
   transition: all 0.15s ease;
 }
 
-.todo-subtask-item:hover .todo-subtask-delete {
+.todo-subtask-item:hover .todo-subtask-delete,
+.todo-subtask-delete:focus-visible {
   opacity: 1;
 }
 

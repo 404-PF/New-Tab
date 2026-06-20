@@ -1816,10 +1816,13 @@ function validateTodoData(data) {
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
     if (item.subtasks !== undefined && item.subtasks !== null) {
       if (!Array.isArray(item.subtasks)) return false;
+      const subtaskIds = new Set();
       for (const st of item.subtasks) {
         if (!st || typeof st !== 'object') return false;
         if (typeof st.id !== 'string' || !st.id) return false;
-        if (typeof st.text !== 'string') return false;
+        if (subtaskIds.has(st.id)) return false;
+        subtaskIds.add(st.id);
+        if (typeof st.text !== 'string' || !st.text.trim()) return false;
         if (typeof st.checked !== 'boolean') return false;
       }
     }
