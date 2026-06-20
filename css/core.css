@@ -800,8 +800,8 @@ body.light-theme .drag-placeholder {
   border-radius: 16px;
   padding: 0;
   min-width: 280px;
-  max-width: 620px;
-  width: 620px;
+  max-width: 720px;
+  width: 720px;
   min-height: auto;
   max-height: var(--overlay-max-height);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);

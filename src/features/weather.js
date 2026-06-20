@@ -547,18 +547,26 @@
 
     // Update UI controls if they exist
     const enabledCheckbox = document.getElementById('weather-enabled-setting');
-    const unitCelsius = document.getElementById('weather-unit-celsius');
-    const unitFahrenheit = document.getElementById('weather-unit-fahrenheit');
-    const modeAuto = document.getElementById('weather-mode-auto');
-    const modeManual = document.getElementById('weather-mode-manual');
     const manualInput = document.getElementById('weather-manual-city');
 
     if (enabledCheckbox) enabledCheckbox.checked = enabled;
-    if (unitCelsius) unitCelsius.checked = unit === 'celsius';
-    if (unitFahrenheit) unitFahrenheit.checked = unit === 'fahrenheit';
-    if (modeAuto) modeAuto.checked = locationMode === 'auto';
-    if (modeManual) modeManual.checked = locationMode === 'manual';
     if (manualInput) manualInput.value = manualCity;
+
+    // Sync unit toggle buttons
+    const unitButtons = document.querySelectorAll('[data-weather-choice="unit"] .weather-choice-button');
+    unitButtons.forEach(function(btn) {
+      const isActive = btn.dataset.value === unit;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+
+    // Sync location mode toggle buttons
+    const modeButtons = document.querySelectorAll('[data-weather-choice="mode"] .weather-choice-button');
+    modeButtons.forEach(function(btn) {
+      const isActive = btn.dataset.value === locationMode;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
 
     // Show/hide manual input based on mode
     const manualGroup = document.getElementById('weather-manual-group');
@@ -576,10 +584,6 @@
 
   function setupSettingsListeners() {
     const enabledCheckbox = document.getElementById('weather-enabled-setting');
-    const unitCelsius = document.getElementById('weather-unit-celsius');
-    const unitFahrenheit = document.getElementById('weather-unit-fahrenheit');
-    const modeAuto = document.getElementById('weather-mode-auto');
-    const modeManual = document.getElementById('weather-mode-manual');
     const manualInput = document.getElementById('weather-manual-city');
     const refreshBtn = document.getElementById('weather-refresh-btn');
 
@@ -590,53 +594,46 @@
       });
     }
 
-    if (unitCelsius) {
-      unitCelsius.addEventListener('change', function() {
-        if (this.checked) {
-          WeatherStorage.saveUnit('celsius');
-          const cache = WeatherStorage.loadCache();
-          if (cache && cache.data && isCacheMatchingSettings(cache)) {
-            renderWeather(cache.data, cache.locationName, 'celsius');
-          } else {
-            refreshWeather(true);
-          }
-        }
-      });
-    }
-
-    if (unitFahrenheit) {
-      unitFahrenheit.addEventListener('change', function() {
-        if (this.checked) {
-          WeatherStorage.saveUnit('fahrenheit');
-          const cache = WeatherStorage.loadCache();
-          if (cache && cache.data && isCacheMatchingSettings(cache)) {
-            renderWeather(cache.data, cache.locationName, 'fahrenheit');
-          } else {
-            refreshWeather(true);
-          }
-        }
-      });
-    }
-
-    if (modeAuto) {
-      modeAuto.addEventListener('change', function() {
-        if (this.checked) {
-          WeatherStorage.saveLocationMode('auto');
-          const manualGroup = document.getElementById('weather-manual-group');
-          if (manualGroup) manualGroup.style.display = 'none';
+    // Unit toggle buttons
+    const unitGroup = document.querySelector('[data-weather-choice="unit"]');
+    if (unitGroup) {
+      unitGroup.addEventListener('click', function(e) {
+        const btn = e.target.closest('.weather-choice-button');
+        if (!btn || btn.classList.contains('active')) return;
+        const value = btn.dataset.value;
+        WeatherStorage.saveUnit(value);
+        // Sync active state within group
+        unitGroup.querySelectorAll('.weather-choice-button').forEach(function(b) {
+          const isActive = b === btn;
+          b.classList.toggle('active', isActive);
+          b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+        const cache = WeatherStorage.loadCache();
+        if (cache && cache.data && isCacheMatchingSettings(cache)) {
+          renderWeather(cache.data, cache.locationName, value);
+        } else {
           refreshWeather(true);
         }
       });
     }
 
-    if (modeManual) {
-      modeManual.addEventListener('change', function() {
-        if (this.checked) {
-          WeatherStorage.saveLocationMode('manual');
-          const manualGroup = document.getElementById('weather-manual-group');
-          if (manualGroup) manualGroup.style.display = 'block';
-          refreshWeather(true);
-        }
+    // Location mode toggle buttons
+    const modeGroup = document.querySelector('[data-weather-choice="mode"]');
+    if (modeGroup) {
+      modeGroup.addEventListener('click', function(e) {
+        const btn = e.target.closest('.weather-choice-button');
+        if (!btn || btn.classList.contains('active')) return;
+        const value = btn.dataset.value;
+        WeatherStorage.saveLocationMode(value);
+        // Sync active state within group
+        modeGroup.querySelectorAll('.weather-choice-button').forEach(function(b) {
+          const isActive = b === btn;
+          b.classList.toggle('active', isActive);
+          b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+        const manualGroup = document.getElementById('weather-manual-group');
+        if (manualGroup) manualGroup.style.display = value === 'manual' ? 'block' : 'none';
+        refreshWeather(true);
       });
     }
 

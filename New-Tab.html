@@ -892,7 +892,7 @@
               <h4 data-i18n="weatherSettings">Weather</h4>
               <p data-i18n="weatherSettingsDesc">Configure weather widget display</p>
               <div class="weather-options">
-                <div class="weather-option">
+                <div class="weather-option weather-option-full">
                   <div class="setting-card">
                     <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -920,15 +920,9 @@
                     </svg>
                     <div class="setting-content">
                       <label data-i18n="weatherUnit">Temperature Unit</label>
-                      <div class="unit-choice-group" data-unit-group="weather">
-                        <label class="unit-choice-label">
-                          <input type="radio" name="weather-unit" id="weather-unit-celsius" value="celsius" checked />
-                          <span data-i18n="weatherCelsius">Celsius</span>
-                        </label>
-                        <label class="unit-choice-label">
-                          <input type="radio" name="weather-unit" id="weather-unit-fahrenheit" value="fahrenheit" />
-                          <span data-i18n="weatherFahrenheit">Fahrenheit</span>
-                        </label>
+                      <div class="weather-choice-group" data-weather-choice="unit">
+                        <button type="button" class="weather-choice-button active" data-value="celsius" aria-pressed="true" data-i18n="weatherCelsius">Celsius</button>
+                        <button type="button" class="weather-choice-button" data-value="fahrenheit" aria-pressed="false" data-i18n="weatherFahrenheit">Fahrenheit</button>
                       </div>
                     </div>
                   </div>
@@ -941,33 +935,18 @@
                     </svg>
                     <div class="setting-content">
                       <label data-i18n="weatherLocation">Location</label>
-                      <div class="location-choice-group" data-location-group="weather">
-                        <label class="location-choice-label">
-                          <input type="radio" name="weather-mode" id="weather-mode-auto" value="auto" checked />
-                          <span data-i18n="weatherAutoDetect">Auto-detect</span>
-                        </label>
-                        <label class="location-choice-label">
-                          <input type="radio" name="weather-mode" id="weather-mode-manual" value="manual" />
-                          <span data-i18n="weatherManual">Manual</span>
-                        </label>
+                      <div class="weather-choice-group" data-weather-choice="mode">
+                        <button type="button" class="weather-choice-button active" data-value="auto" aria-pressed="true" data-i18n="weatherAutoDetect">Auto-detect</button>
+                        <button type="button" class="weather-choice-button" data-value="manual" aria-pressed="false" data-i18n="weatherManual">Manual</button>
+                      </div>
+                      <div class="weather-city-inline" id="weather-manual-group">
+                        <input type="text" id="weather-manual-city" data-i18n-placeholder="weatherCityPlaceholder" placeholder="Enter city name" />
                       </div>
                     </div>
                   </div>
                 </div>
-                <div class="weather-option" id="weather-manual-group">
-                  <div class="setting-card">
-                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="11" cy="11" r="8"></circle>
-                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                    <div class="setting-content">
-                      <label for="weather-manual-city" data-i18n="weatherCityPlaceholder">City name</label>
-                      <input type="text" id="weather-manual-city" data-i18n-placeholder="weatherCityPlaceholder" placeholder="Enter city name" />
-                    </div>
-                  </div>
-                </div>
-                <div class="weather-option">
-                  <div class="setting-card reset-card">
+                <div class="weather-option weather-option-full">
+                  <div class="setting-card weather-refresh-card">
                     <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
                       <path d="M21 3v5h-5"></path>
