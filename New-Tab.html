@@ -879,6 +879,30 @@
                 </label>
               </div>
             </div>
+            <div class="theme-setting-group">
+              <h4 data-i18n="autoTheme">Auto Theme</h4>
+              <p data-i18n="autoThemeDesc">Switch theme automatically by time of day</p>
+              <div class="setting-card">
+                <div class="setting-content">
+                  <label for="auto-theme-toggle" data-i18n="autoThemeToggle">Enable auto theme scheduling</label>
+                  <input type="checkbox" id="auto-theme-toggle" />
+                </div>
+              </div>
+              <div id="auto-theme-times" style="display:none">
+                <div class="setting-card">
+                  <div class="setting-content">
+                    <label for="auto-theme-light-time" data-i18n="autoThemeLightAt">Light theme at</label>
+                    <input type="time" id="auto-theme-light-time" value="07:00" />
+                  </div>
+                </div>
+                <div class="setting-card">
+                  <div class="setting-content">
+                    <label for="auto-theme-dark-time" data-i18n="autoThemeDarkAt">Dark theme at</label>
+                    <input type="time" id="auto-theme-dark-time" value="19:00" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
           <section class="settings-section" data-section="language" style="display: none">
             <div class="language-setting-group">

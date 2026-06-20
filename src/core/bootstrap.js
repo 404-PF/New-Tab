@@ -56,7 +56,8 @@
     'src/features/weather.js',
     'src/features/weather-app.js',
     'src/features/background-rotation.js',
-    'src/features/shortcuts.js'
+    'src/features/shortcuts.js',
+    'src/features/auto-theme.js'
   ];
 
   function loadScript(source) {
