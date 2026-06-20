@@ -494,6 +494,20 @@ describe('Notes markdown preview', () => {
       const card = document.querySelector(`.note-item[data-id="${id}"]`);
       expect(card.querySelector('.note-preview').innerHTML).toBe('');
     });
+
+    it('saves pending debounced content before entering preview mode', () => {
+      vi.useFakeTimers();
+      addNote();
+      const id = loadNotes()[0].id;
+      const ta = document.querySelector('.note-textarea');
+      ta.value = 'Unsaved typed text';
+
+      debouncedSave(id, 'Unsaved typed text');
+      handleNotePreviewToggle(id);
+
+      expect(loadNotes()[0].text).toBe('Unsaved typed text');
+      vi.useRealTimers();
+    });
   });
 
   describe('Notes preview click delegation', () => {

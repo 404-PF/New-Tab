@@ -90,7 +90,7 @@
       }
 
       const previewDiv = document.createElement('div');
-      previewDiv.className = 'note-preview markdown-body';
+      previewDiv.className = 'note-preview';
       previewDiv.dataset.id = note.id;
       if (isPreview) {
         previewDiv.innerHTML = renderNotePreview(note.text || '');
@@ -212,6 +212,17 @@
 
   function handleNotePreviewToggle(id) {
     const isCurrentlyPreview = notePreviewModes[id] === true;
+    if (!isCurrentlyPreview && debounceTimers[id]) {
+      clearTimeout(debounceTimers[id]);
+      delete debounceTimers[id];
+      const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
+      if (ta) {
+        const text = ta.value || '';
+        if (text) {
+          updateNoteText(id, text);
+        }
+      }
+    }
     notePreviewModes[id] = !isCurrentlyPreview;
     const isPreview = notePreviewModes[id];
 
