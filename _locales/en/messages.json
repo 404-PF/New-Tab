@@ -133,6 +133,26 @@
     "message": "Press a key...",
     "description": "Prompt shown when rebinding a keyboard shortcut"
   },
+  "notesPlaceholder": {
+    "message": "Type your note here...",
+    "description": "Placeholder text for empty notes"
+  },
+  "notesDeleteTooltip": {
+    "message": "Delete Note",
+    "description": "Tooltip for the note delete button"
+  },
+  "notesPreviewTooltip": {
+    "message": "Preview",
+    "description": "Tooltip for the note markdown preview toggle button"
+  },
+  "notesEditTooltip": {
+    "message": "Edit",
+    "description": "Tooltip to switch back from preview to edit mode"
+  },
+  "addNoteTooltip": {
+    "message": "Add note",
+    "description": "Tooltip for the add note button"
+  },
   "weatherWidgetCloseLabel": {
     "message": "Close weather widget",
     "description": "Accessible label for the weather app close button"

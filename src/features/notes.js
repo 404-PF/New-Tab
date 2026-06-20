@@ -9,6 +9,17 @@
 
   const debounceTimers = {};
 
+  const notePreviewModes = {};
+
+  let _previewMouseDown = false;
+
+  function handlePreviewMouseDown(e) {
+    _previewMouseDown = !!e.target.closest('.note-preview-btn');
+  }
+
+  const SVG_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+  const SVG_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+
   function loadNotes() {
     try {
       const raw = localStorage.getItem('notes');
@@ -54,6 +65,11 @@
 
     notesList.innerHTML = '';
 
+    const activeIds = new Set(notes.map(n => n.id));
+    for (const key of Object.keys(notePreviewModes)) {
+      if (!activeIds.has(key)) delete notePreviewModes[key];
+    }
+
     if (notes.length === 0) {
       notesEmpty.style.display = 'block';
       return;
@@ -67,12 +83,32 @@
       card.dataset.id = note.id;
       card.style.animationDelay = (index * 0.05) + 's';
 
+      const isPreview = notePreviewModes[note.id] === true;
+
       const textarea = document.createElement('textarea');
       textarea.className = 'note-textarea';
       textarea.placeholder = window.i18n ? window.i18n.t('notesPlaceholder') : 'Type your note here...';
       textarea.value = note.text || '';
       textarea.dataset.id = note.id;
       textarea.rows = 2;
+      if (isPreview) {
+        textarea.style.display = 'none';
+      }
+
+      const previewDiv = document.createElement('div');
+      previewDiv.className = 'note-preview';
+      previewDiv.dataset.id = note.id;
+      if (isPreview) {
+        previewDiv.innerHTML = renderNotePreview(note.text || '');
+      } else {
+        previewDiv.style.display = 'none';
+      }
+
+      const previewBtn = document.createElement('button');
+      previewBtn.className = 'note-preview-btn';
+      previewBtn.dataset.id = note.id;
+      previewBtn.title = isPreview ? (window.i18n ? window.i18n.t('notesEditTooltip') : 'Edit') : (window.i18n ? window.i18n.t('notesPreviewTooltip') : 'Preview');
+      previewBtn.innerHTML = isPreview ? SVG_PENCIL : SVG_EYE;
 
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'note-delete-btn';
@@ -81,6 +117,8 @@
       deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,6 5,6 21,6"></polyline><path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path></svg>';
 
       card.appendChild(textarea);
+      card.appendChild(previewDiv);
+      card.appendChild(previewBtn);
       card.appendChild(deleteBtn);
       notesList.appendChild(card);
     });
@@ -99,6 +137,7 @@
     Object.keys(debounceTimers).forEach(id => {
       clearTimeout(debounceTimers[id]);
       delete debounceTimers[id];
+      if (notePreviewModes[id] === true) return;
       const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
       if (ta) {
         const text = ta.value || '';
@@ -142,6 +181,7 @@
       clearTimeout(debounceTimers[id]);
       delete debounceTimers[id];
     }
+    delete notePreviewModes[id];
     const previousNotes = notes.map(n => ({ ...n }));
     notes = notes.filter(n => n.id !== id);
     if (!saveNotes(notes)) {
@@ -164,7 +204,78 @@
     }
   }
 
+  function renderNotePreview(text) {
+    if (!text) return '';
+    if (window.MarkdownParser && typeof window.MarkdownParser.parse === 'function') {
+      try {
+        return window.MarkdownParser.parse(text);
+      } catch (e) {
+        console.warn('MarkdownParser.parse failed, using fallback:', e);
+      }
+    }
+    return '<p class="md-paragraph">' + text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br />') + '</p>';
+  }
+
+  function handleNotePreviewToggle(id) {
+    _previewMouseDown = false;
+    const isCurrentlyPreview = notePreviewModes[id] === true;
+    if (!isCurrentlyPreview && debounceTimers[id]) {
+      clearTimeout(debounceTimers[id]);
+      delete debounceTimers[id];
+      const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
+      if (ta) {
+        const text = ta.value || '';
+        if (text) {
+          updateNoteText(id, text);
+        }
+      }
+    }
+    notePreviewModes[id] = !isCurrentlyPreview;
+    const isPreview = notePreviewModes[id];
+
+    const card = document.querySelector(`.note-item[data-id="${id}"]`);
+    if (!card) return;
+
+    const textarea = card.querySelector('.note-textarea');
+    const previewDiv = card.querySelector('.note-preview');
+    const previewBtn = card.querySelector('.note-preview-btn');
+
+    if (isPreview) {
+      const text = textarea ? textarea.value || '' : '';
+      if (previewDiv) {
+        previewDiv.innerHTML = renderNotePreview(text);
+        previewDiv.style.display = '';
+      }
+      if (textarea) {
+        textarea.style.display = 'none';
+      }
+      if (previewBtn) {
+        previewBtn.title = window.i18n ? window.i18n.t('notesEditTooltip') : 'Edit';
+        previewBtn.innerHTML = SVG_PENCIL;
+      }
+    } else {
+      if (previewDiv) {
+        previewDiv.style.display = 'none';
+      }
+      if (textarea) {
+        textarea.style.display = '';
+        textarea.focus();
+        autoResizeTextareas();
+      }
+      if (previewBtn) {
+        previewBtn.title = window.i18n ? window.i18n.t('notesPreviewTooltip') : 'Preview';
+        previewBtn.innerHTML = SVG_EYE;
+      }
+    }
+  }
+
   function handleNotesClick(e) {
+    const previewBtn = e.target.closest('.note-preview-btn');
+    if (previewBtn) {
+      handleNotePreviewToggle(previewBtn.dataset.id);
+      return;
+    }
+
     const deleteBtn = e.target.closest('.note-delete-btn');
     if (deleteBtn) {
       deleteNote(deleteBtn.dataset.id);
@@ -196,6 +307,11 @@
     if (debounceTimers[ta.dataset.id]) {
       clearTimeout(debounceTimers[ta.dataset.id]);
       delete debounceTimers[ta.dataset.id];
+    }
+    if (notePreviewModes[ta.dataset.id] === true) return;
+    if (_previewMouseDown) {
+      _previewMouseDown = false;
+      return;
     }
     const text = ta.value || '';
     if (!text) {
@@ -242,10 +358,12 @@
     document.removeEventListener('input', handleNotesInput);
     document.removeEventListener('blur', handleNotesBlur, true);
     document.removeEventListener('keydown', handleNotesKeydown);
+    document.removeEventListener('mousedown', handlePreviewMouseDown, true);
     document.addEventListener('click', handleNotesClick);
     document.addEventListener('input', handleNotesInput);
     document.addEventListener('blur', handleNotesBlur, true);
     document.addEventListener('keydown', handleNotesKeydown);
+    document.addEventListener('mousedown', handlePreviewMouseDown, true);
   }
 
   window.addEventListener('beforeunload', () => {
@@ -279,6 +397,8 @@ try {
   window.handleNotesKeydown = handleNotesKeydown;
   window.autoResizeTextareas = autoResizeTextareas;
   window.focusNewNote = focusNewNote;
+  window.renderNotePreview = renderNotePreview;
+  window.handleNotePreviewToggle = handleNotePreviewToggle;
 } catch {
   // ignore
 }
