@@ -834,6 +834,7 @@ body.light-theme .drag-placeholder {
   flex-direction: column;
   gap: 6px;
   box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.05);
+  overflow-y: auto;
 }
 .settings-menu-item {
   background: none;
