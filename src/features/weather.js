@@ -610,7 +610,9 @@
         });
         const cache = WeatherStorage.loadCache();
         if (cache && cache.data && isCacheMatchingSettings(cache)) {
-          renderWeather(cache.data, cache.locationName, value);
+          if (WeatherStorage.loadEnabled()) {
+            renderWeather(cache.data, cache.locationName, value);
+          }
         } else {
           refreshWeather(true);
         }
