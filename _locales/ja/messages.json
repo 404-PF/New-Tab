@@ -36,5 +36,9 @@
   "priorityHigh": {
     "message": "高",
     "description": "High priority label"
+  },
+  "weatherWidgetCloseLabel": {
+    "message": "天気ウィジェットを閉じる",
+    "description": "Accessible label for the weather app close button"
   }
 }

@@ -152,5 +152,9 @@
   "addNoteTooltip": {
     "message": "Add note",
     "description": "Tooltip for the add note button"
+  },
+  "weatherWidgetCloseLabel": {
+    "message": "Close weather widget",
+    "description": "Accessible label for the weather app close button"
   }
 }

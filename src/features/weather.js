@@ -196,6 +196,8 @@
     saveCache(cacheData) {
       currentCache = cacheData;
       _safeSet(CACHE_KEY, JSON.stringify(cacheData));
+      // Dispatch custom event for same-tab listeners (storage events only fire in other tabs)
+      window.dispatchEvent(new CustomEvent('weatherCacheUpdated'));
     }
   };
 
@@ -263,7 +265,7 @@
     const timeoutId = setTimeout(() => controller.abort(), GEO_TIMEOUT_MS);
     let response;
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7`;
       response = await fetch(url, { signal: controller.signal });
     } catch (e) {
       if (e.name === 'AbortError') {
@@ -362,35 +364,39 @@
     const el = getWidgetElement();
     if (!el) return;
 
-    const current = data.current_weather;
-    if (!current || typeof current.temperature !== 'number' || typeof current.weathercode !== 'number') {
+    const current = data.current;
+    if (!current || typeof current.temperature_2m !== 'number' || typeof current.weather_code !== 'number') {
       renderError(t('weatherError'));
       return;
     }
-    const info = getWeatherInfo(current.weathercode);
-    const temp = getTemp(current.temperature, unit);
+    const info = getWeatherInfo(current.weather_code);
+    const temp = getTemp(current.temperature_2m, unit);
     const tempUnit = getTempUnit(unit);
     const label = getWeatherLabel(info);
     const icon = getWeatherIcon(info.type);
     const displayLocation = locationName || t('weatherUnknownLocation');
 
     el.className = 'weather-widget weather-data';
+
     el.innerHTML = `
-      <div class="weather-main">
-        <div class="weather-icon">${icon}</div>
-        <div class="weather-temp">${temp}${tempUnit}</div>
-      </div>
-      <div class="weather-details">
-        <div class="weather-condition">${label}</div>
-        <div class="weather-location">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
-          <span>${escapeHtml(displayLocation)}</span>
+      <div class="weather-current">
+        <div class="weather-main">
+          <div class="weather-icon">${icon}</div>
+          <div class="weather-temp">${temp}${tempUnit}</div>
+        </div>
+        <div class="weather-details">
+          <div class="weather-condition">${label}</div>
+          <div class="weather-location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span>${escapeHtml(displayLocation)}</span>
+          </div>
         </div>
       </div>
     `;
+
     // Show the widget with entrance animation on first reveal, or just update content on refresh.
     showWidgetWithAnimation(el);
   }

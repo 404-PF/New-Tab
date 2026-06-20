@@ -341,6 +341,7 @@ describe('renderAllApps order validation', () => {
     document.body.appendChild(grid);
 
     // Inject dependencies that app-manager.js expects
+    injectScript('src/core/dom-ready.js');
     injectScript('src/core/utils.js');
     injectScript('src/ui/app-manager.js');
   });
@@ -365,6 +366,7 @@ describe('renderAllApps order validation', () => {
 
     const rebuiltOrder = AppGridState.getOrder();
     expect(rebuiltOrder).toContain('ai-app');
+    expect(rebuiltOrder).toContain('weather-app');
     expect(rebuiltOrder).toContain('feedback-app');
     expect(rebuiltOrder).toContain('settings-app');
     expect(rebuiltOrder).toContain('custom-1');
@@ -374,7 +376,7 @@ describe('renderAllApps order validation', () => {
     // Set up a complete valid order
     const customApp = { id: 'custom-2', url: 'https://example.com', name: 'Custom 2' };
     AppGridState.addApp(customApp);
-    const completeOrder = ['ai-app', 'feedback-app', 'settings-app', 'custom-2'];
+    const completeOrder = ['ai-app', 'weather-app', 'feedback-app', 'settings-app', 'custom-2'];
     AppGridStorage.saveOrder(completeOrder);
 
     window.renderAllApps();
@@ -396,6 +398,7 @@ describe('renderAllApps order validation', () => {
 
     const order = AppGridState.getOrder();
     expect(order).toContain('ai-app');
+    expect(order).toContain('weather-app');
     expect(order).toContain('feedback-app');
     expect(order).toContain('settings-app');
     expect(order).toContain('custom-3');
@@ -416,7 +419,7 @@ describe('renderAllApps order validation', () => {
     AppGridState.deleteApp('c1');
     window.renderAllApps();
 
-    expect(AppGridState.getOrder()).toEqual(['ai-app', 'feedback-app', 'settings-app', 'c2']);
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app', 'feedback-app', 'settings-app', 'c2']);
   });
 
   it('preserves relative order of remaining customs across a delete', () => {
@@ -429,12 +432,12 @@ describe('renderAllApps order validation', () => {
 
     // Hand-craft a reordered order and persist it (reorder math is exercised
     // elsewhere; this test focuses on delete-preserves-order).
-    AppGridStorage.saveOrder(['ai-app', 'feedback-app', 'settings-app', 'c3', 'c1', 'c2']);
+    AppGridStorage.saveOrder(['ai-app', 'weather-app', 'feedback-app', 'settings-app', 'c3', 'c1', 'c2']);
 
     AppGridState.deleteApp('c2');
     window.renderAllApps();
 
-    expect(AppGridState.getOrder()).toEqual(['ai-app', 'feedback-app', 'settings-app', 'c3', 'c1']);
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app', 'feedback-app', 'settings-app', 'c3', 'c1']);
   });
 
   it('does not rewrite order when a custom app lives inside a folder', () => {
@@ -451,7 +454,7 @@ describe('renderAllApps order validation', () => {
 
     // After moving c1 into the folder, the expected order is
     // [defaults..., c2, folder.id] (c1 removed because it now lives in folder).
-    const expectedOrder = ['ai-app', 'feedback-app', 'settings-app', 'c2', folder.id];
+    const expectedOrder = ['ai-app', 'weather-app', 'feedback-app', 'settings-app', 'c2', folder.id];
     expect(AppGridState.getOrder()).toEqual(expectedOrder);
 
     // Re-render and confirm the order is unchanged (no spurious recovery).
@@ -465,13 +468,13 @@ describe('renderAllApps order validation', () => {
     // repair pass should drop the foreign ID and keep the rest of the
     // user's order (including non-canonical positioning of defaults).
     AppGridState.addApp({ id: 'custom-known', url: 'https://a.com', name: 'Custom' });
-    const corrupted = ['feedback-app', 'ai-app', 'settings-app', 'custom-known', 'foreign-id'];
+    const corrupted = ['feedback-app', 'weather-app', 'ai-app', 'settings-app', 'custom-known', 'foreign-id'];
     AppGridStorage.saveOrder(corrupted);
 
     window.renderAllApps();
 
     const order = AppGridState.getOrder();
-    expect(order).toEqual(['feedback-app', 'ai-app', 'settings-app', 'custom-known']);
+    expect(order).toEqual(['feedback-app', 'weather-app', 'ai-app', 'settings-app', 'custom-known']);
     expect(order).not.toContain('foreign-id');
   });
 
@@ -481,7 +484,7 @@ describe('renderAllApps order validation', () => {
     // must handle a null order gracefully and rebuild it from defaults.
     AppGridStorage.saveOrder(null);
     expect(() => window.renderAllApps()).not.toThrow();
-    expect(AppGridState.getOrder()).toEqual(['ai-app', 'feedback-app', 'settings-app']);
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app', 'feedback-app', 'settings-app']);
   });
 
   it('prepends only the missing defaults when some are already in user order', () => {
@@ -498,6 +501,6 @@ describe('renderAllApps order validation', () => {
     // Missing defaults are prepended in canonical order; existing user
     // entries (ai-app, c1) keep their relative positions after the
     // prepended defaults.
-    expect(AppGridState.getOrder()).toEqual(['feedback-app', 'settings-app', 'ai-app', 'c1']);
+    expect(AppGridState.getOrder()).toEqual(['weather-app', 'feedback-app', 'settings-app', 'ai-app', 'c1']);
   });
 });
