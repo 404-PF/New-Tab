@@ -405,6 +405,7 @@
           stCheckbox.type = 'button';
           stCheckbox.setAttribute('role', 'checkbox');
           stCheckbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
+          stCheckbox.setAttribute('aria-label', `Toggle subtask: ${subtask.text}`);
           stCheckbox.dataset.todoId = todo.id;
           stCheckbox.dataset.subtaskId = subtask.id;
 
