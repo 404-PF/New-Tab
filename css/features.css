@@ -1469,7 +1469,8 @@ body.light-theme .font-option-name {
 }
 
 /* Custom Scrollbars for Modals and Popups */
-#settings-modal > div::-webkit-scrollbar,
+.settings-content::-webkit-scrollbar,
+.settings-menu::-webkit-scrollbar,
 #add-app-modal > div::-webkit-scrollbar,
 .color-picker-popup::-webkit-scrollbar,
 .font-picker-popup::-webkit-scrollbar,
@@ -1477,7 +1478,8 @@ body.light-theme .font-option-name {
   width: 6px;
 }
 
-#settings-modal > div::-webkit-scrollbar-track,
+.settings-content::-webkit-scrollbar-track,
+.settings-menu::-webkit-scrollbar-track,
 #add-app-modal > div::-webkit-scrollbar-track,
 .color-picker-popup::-webkit-scrollbar-track,
 .font-picker-popup::-webkit-scrollbar-track,
@@ -1486,7 +1488,8 @@ body.light-theme .font-option-name {
   border-radius: 3px;
 }
 
-#settings-modal > div::-webkit-scrollbar-thumb,
+.settings-content::-webkit-scrollbar-thumb,
+.settings-menu::-webkit-scrollbar-thumb,
 #add-app-modal > div::-webkit-scrollbar-thumb,
 .color-picker-popup::-webkit-scrollbar-thumb,
 .font-picker-popup::-webkit-scrollbar-thumb,
@@ -1496,7 +1499,8 @@ body.light-theme .font-option-name {
   transition: background 0.2s ease;
 }
 
-#settings-modal > div::-webkit-scrollbar-thumb:hover,
+.settings-content::-webkit-scrollbar-thumb:hover,
+.settings-menu::-webkit-scrollbar-thumb:hover,
 #add-app-modal > div::-webkit-scrollbar-thumb:hover,
 .color-picker-popup::-webkit-scrollbar-thumb:hover,
 .font-picker-popup::-webkit-scrollbar-thumb:hover,
@@ -1505,7 +1509,8 @@ body.light-theme .font-option-name {
 }
 
 /* Firefox scrollbar */
-#settings-modal > div,
+.settings-content,
+.settings-menu,
 #add-app-modal > div,
 .color-picker-popup,
 .font-picker-popup,
@@ -1515,7 +1520,8 @@ body.light-theme .font-option-name {
 }
 
 /* Light theme scrollbars */
-body.light-theme #settings-modal > div::-webkit-scrollbar-thumb,
+body.light-theme .settings-content::-webkit-scrollbar-thumb,
+body.light-theme .settings-menu::-webkit-scrollbar-thumb,
 body.light-theme #add-app-modal > div::-webkit-scrollbar-thumb,
 body.light-theme .color-picker-popup::-webkit-scrollbar-thumb,
 body.light-theme .font-picker-popup::-webkit-scrollbar-thumb,
@@ -1523,7 +1529,8 @@ body.light-theme .app-context-menu::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.3);
 }
 
-body.light-theme #settings-modal > div::-webkit-scrollbar-thumb:hover,
+body.light-theme .settings-content::-webkit-scrollbar-thumb:hover,
+body.light-theme .settings-menu::-webkit-scrollbar-thumb:hover,
 body.light-theme #add-app-modal > div::-webkit-scrollbar-thumb:hover,
 body.light-theme .color-picker-popup::-webkit-scrollbar-thumb:hover,
 body.light-theme .font-picker-popup::-webkit-scrollbar-thumb:hover,
@@ -1531,7 +1538,8 @@ body.light-theme .app-context-menu::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.5);
 }
 
-body.light-theme #settings-modal > div,
+body.light-theme .settings-content,
+body.light-theme .settings-menu,
 body.light-theme #add-app-modal > div,
 body.light-theme .color-picker-popup,
 body.light-theme .font-picker-popup,
@@ -2135,11 +2143,14 @@ body.light-theme .update-settings-group .setting-btn:hover {
   .settings-menu {
     width: 100%;
     flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
     padding: 12px 0;
     gap: 4px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   .settings-menu-item {
@@ -2148,6 +2159,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
     margin: 2px;
     border-radius: 8px;
     text-align: center;
+    white-space: nowrap;
   }
 
   .settings-menu-item.selected::before {
