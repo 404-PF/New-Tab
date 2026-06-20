@@ -1836,6 +1836,7 @@ describe('Todo subtasks', () => {
   it('deleteSubtask returns false for non-existent subtask', () => {
     addTodo('Parent');
     const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Real subtask');
     expect(deleteSubtask(todo.id, 'fake')).toBe(false);
   });
 
@@ -1853,6 +1854,7 @@ describe('Todo subtasks', () => {
   it('toggleSubtask returns false for non-existent subtask', () => {
     addTodo('Parent');
     const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Real subtask');
     expect(toggleSubtask(todo.id, 'fake')).toBe(false);
   });
 

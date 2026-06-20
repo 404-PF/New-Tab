@@ -79,6 +79,12 @@ const srcGlobals = {
   applyTodoEnabled: 'readonly',
   applyNotesEnabled: 'readonly',
   WeatherApp: 'readonly',
+  addSubtask: 'readonly',
+  deleteSubtask: 'readonly',
+  toggleSubtask: 'readonly',
+  updateSubtaskText: 'readonly',
+  getSubtaskProgress: 'readonly',
+  cloneTodos: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };

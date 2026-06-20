@@ -1028,7 +1028,7 @@ body.light-theme .edit-subtask-text {
   padding: 2px;
   border-radius: 4px;
   display: flex;
-  opacity: 0;
+  opacity: 1;
   transition: all 0.15s ease;
 }
 

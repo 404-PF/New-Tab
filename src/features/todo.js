@@ -669,7 +669,13 @@ function deleteSubtask(todoId, subtaskId) {
   if (!todo || !todo.subtasks) return false;
 
   const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
+  const originalLength = todo.subtasks.length;
   todo.subtasks = todo.subtasks.filter(st => st.id !== subtaskId);
+
+  // If no subtask was removed, return false
+  if (todo.subtasks.length === originalLength) {
+    return false;
+  }
 
   if (!saveTodos(todos)) {
     Object.assign(todo, previousTodo);
@@ -1516,29 +1522,32 @@ function renderEditModalSubtasks(todo) {
   setupEditModalSubtaskHandlers(todo.id);
 }
 
+function handleEditModalSubtaskClick(e) {
+  const checkbox = e.target.closest('.edit-subtask-checkbox');
+  if (checkbox) {
+    e.stopPropagation();
+    toggleSubtask(checkbox.dataset.todoId, checkbox.dataset.subtaskId);
+    const todo = todos.find(t => t.id === checkbox.dataset.todoId);
+    if (todo) renderEditModalSubtasks(todo);
+    return;
+  }
+
+  const deleteBtn = e.target.closest('.edit-subtask-delete');
+  if (deleteBtn) {
+    e.stopPropagation();
+    deleteSubtask(deleteBtn.dataset.todoId, deleteBtn.dataset.subtaskId);
+    const todo = todos.find(t => t.id === deleteBtn.dataset.todoId);
+    if (todo) renderEditModalSubtasks(todo);
+    return;
+  }
+}
+
 function setupEditModalSubtaskHandlers(todoId) {
   const container = document.getElementById('todo-edit-subtasks-list');
   if (!container) return;
 
-  container.addEventListener('click', (e) => {
-    const checkbox = e.target.closest('.edit-subtask-checkbox');
-    if (checkbox) {
-      e.stopPropagation();
-      toggleSubtask(checkbox.dataset.todoId, checkbox.dataset.subtaskId);
-      const todo = todos.find(t => t.id === checkbox.dataset.todoId);
-      if (todo) renderEditModalSubtasks(todo);
-      return;
-    }
-
-    const deleteBtn = e.target.closest('.edit-subtask-delete');
-    if (deleteBtn) {
-      e.stopPropagation();
-      deleteSubtask(deleteBtn.dataset.todoId, deleteBtn.dataset.subtaskId);
-      const todo = todos.find(t => t.id === deleteBtn.dataset.todoId);
-      if (todo) renderEditModalSubtasks(todo);
-      return;
-    }
-  });
+  container.removeEventListener('click', handleEditModalSubtaskClick);
+  container.addEventListener('click', handleEditModalSubtaskClick);
 }
 
 // Edit Modal Functions
