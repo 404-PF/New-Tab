@@ -2162,7 +2162,8 @@ body.light-theme .update-settings-group .setting-btn:hover {
   .clock-options,
   .date-options,
   .icon-size-options,
-  .general-options {
+  .general-options,
+  .weather-options {
     grid-template-columns: 1fr;
   }
 
@@ -3139,6 +3140,7 @@ body.light-theme .weather-spinner {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 16px;
   margin-top: 12px;
+  align-items: start;
 }
 
 .weather-option {
