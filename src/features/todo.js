@@ -152,6 +152,31 @@
     return element;
   }
 
+  function createSubtaskCheckboxSvg(checked) {
+    const svg = createSvgElement('svg', {
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      class: checked ? 'subtask-checked' : 'subtask-unchecked'
+    });
+    if (checked) {
+      svg.appendChild(createSvgElement('rect', {
+        x: '3', y: '3', width: '18', height: '18', rx: '3',
+        fill: 'currentColor'
+      }));
+      svg.appendChild(createSvgElement('path', {
+        d: 'M9 12l2 2 4-4',
+        stroke: 'white', 'stroke-width': '2',
+        'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none'
+      }));
+    } else {
+      svg.appendChild(createSvgElement('rect', {
+        x: '3', y: '3', width: '18', height: '18', rx: '3',
+        stroke: 'currentColor', 'stroke-width': '2', fill: 'none'
+      }));
+    }
+    return svg;
+  }
+
   function createTodoIconButton(className, title, todoId, iconChildren) {
     const button = document.createElement('button');
     button.className = className;
@@ -409,28 +434,7 @@
           stCheckbox.dataset.todoId = todo.id;
           stCheckbox.dataset.subtaskId = subtask.id;
 
-          const stSvg = createSvgElement('svg', {
-            viewBox: '0 0 24 24',
-            fill: 'none',
-            class: subtask.checked ? 'subtask-checked' : 'subtask-unchecked'
-          });
-          if (subtask.checked) {
-            stSvg.appendChild(createSvgElement('rect', {
-              x: '3', y: '3', width: '18', height: '18', rx: '3',
-              fill: 'currentColor'
-            }));
-            stSvg.appendChild(createSvgElement('path', {
-              d: 'M9 12l2 2 4-4',
-              stroke: 'white', 'stroke-width': '2',
-              'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none'
-            }));
-          } else {
-            stSvg.appendChild(createSvgElement('rect', {
-              x: '3', y: '3', width: '18', height: '18', rx: '3',
-              stroke: 'currentColor', 'stroke-width': '2', fill: 'none'
-            }));
-          }
-          stCheckbox.appendChild(stSvg);
+          stCheckbox.appendChild(createSubtaskCheckboxSvg(subtask.checked));
 
           const stText = document.createElement('span');
           stText.className = 'todo-subtask-text';
@@ -1474,27 +1478,7 @@ function renderEditModalSubtasks(todo) {
     checkbox.dataset.todoId = todo.id;
     checkbox.dataset.subtaskId = subtask.id;
 
-    const svg = createSvgElement('svg', {
-      viewBox: '0 0 24 24', fill: 'none',
-      class: subtask.checked ? 'subtask-checked' : 'subtask-unchecked'
-    });
-    if (subtask.checked) {
-      svg.appendChild(createSvgElement('rect', {
-        x: '3', y: '3', width: '18', height: '18', rx: '3',
-        fill: 'currentColor'
-      }));
-      svg.appendChild(createSvgElement('path', {
-        d: 'M9 12l2 2 4-4',
-        stroke: 'white', 'stroke-width': '2',
-        'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none'
-      }));
-    } else {
-      svg.appendChild(createSvgElement('rect', {
-        x: '3', y: '3', width: '18', height: '18', rx: '3',
-        stroke: 'currentColor', 'stroke-width': '2', fill: 'none'
-      }));
-    }
-    checkbox.appendChild(svg);
+    checkbox.appendChild(createSubtaskCheckboxSvg(subtask.checked));
 
     const text = document.createElement('span');
     text.className = 'edit-subtask-text';
@@ -1612,12 +1596,7 @@ function saveEdit() {
   if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
     // Add any pending subtask from the input before closing
     if (subtaskInput && subtaskInput.value.trim()) {
-      if (addSubtask(editModalState.currentTodoId, subtaskInput.value.trim())) {
-        subtaskInput.value = '';
-      } else {
-        showTodoSaveError();
-        return;
-      }
+      addSubtask(editModalState.currentTodoId, subtaskInput.value.trim());
     }
     closeEditModal();
   }

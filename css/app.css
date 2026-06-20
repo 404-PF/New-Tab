@@ -1098,7 +1098,6 @@ body.light-theme .todo-edit-subtask-input::placeholder {
 
 /* Inline subtasks in main todo list */
 .todo-subtasks {
-  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 2px;
