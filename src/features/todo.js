@@ -22,7 +22,8 @@
   // Edit modal state
   const editModalState = {
     currentTodoId: null,
-    isOpen: false
+    isOpen: false,
+    pendingSubtaskAdded: false
   };
   const runTodoOnDomReady = window.onDomReady;
 
@@ -611,7 +612,7 @@
   function toggleTodo(id) {
     const todo = todos.find(t => t.id === id);
     if (todo) {
-      const previousTodo = { ...todo };
+      const previousTodo = { ...todo, subtasks: todo.subtasks ? todo.subtasks.map(st => ({ ...st })) : undefined };
       todo.completed = !todo.completed;
       
       // Track completion time for sorting
@@ -1334,7 +1335,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   if (!todo) return;
   
   const oldDate = todo.dueDate;
-  const previousTodo = { ...todo };
+  const previousTodo = { ...todo, subtasks: todo.subtasks ? todo.subtasks.map(st => ({ ...st })) : undefined };
   todo.dueDate = newDate ? formatDateISO(newDate) : null;
   
   // Save to localStorage
@@ -1583,8 +1584,24 @@ function openEditModal(id) {
 }
 
 function closeEditModal() {
+  // Roll back any in-memory subtask that wasn't persisted
+  if (editModalState.pendingSubtaskAdded && editModalState.currentTodoId) {
+    const todo = todos.find(t => t.id === editModalState.currentTodoId);
+    if (todo && todo.subtasks && todo.subtasks.length > 0) {
+      todo.subtasks.pop();
+    }
+  }
+
   editModalState.currentTodoId = null;
   editModalState.isOpen = false;
+  editModalState.pendingSubtaskAdded = false;
+
+  // Clear subtask input
+  const subtaskInput = document.getElementById('todo-edit-subtask-input');
+  if (subtaskInput) {
+    subtaskInput.value = '';
+    subtaskInput.disabled = false;
+  }
 
   const modal = document.getElementById('todo-edit-modal');
 
@@ -1611,7 +1628,7 @@ function saveEdit() {
   const existingTodo = todos.find(t => t.id === editModalState.currentTodoId);
   const preservedDueDate = existingTodo ? existingTodo.dueDate : null;
 
-  // Add any pending subtask before editTodo saves (single save instead of two)
+  // If the user typed but didn't press Enter, add the pending subtask now
   const pendingSubtask = subtaskInput ? subtaskInput.value.trim() : '';
   if (pendingSubtask && existingTodo) {
     if (!existingTodo.subtasks) existingTodo.subtasks = [];
@@ -1620,15 +1637,18 @@ function saveEdit() {
       text: pendingSubtask,
       checked: false
     });
+    editModalState.pendingSubtaskAdded = true;
     subtaskInput.value = '';
   }
 
   if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
     closeEditModal();
-  } else if (pendingSubtask && existingTodo) {
-    // Roll back the subtask if save failed
+  } else if (editModalState.pendingSubtaskAdded && existingTodo && existingTodo.subtasks && existingTodo.subtasks.length > 0) {
+    // Roll back the in-memory subtask if save failed
     existingTodo.subtasks.pop();
   }
+
+  editModalState.pendingSubtaskAdded = false;
 }
 
 // Initialize todo functionality
@@ -1745,19 +1765,24 @@ function initTodo() {
     });
   }
 
-  // Subtask input handler in edit modal
+  // Subtask input handler in edit modal — push in-memory only; saveEdit persists
   const subtaskInput = document.getElementById('todo-edit-subtask-input');
   if (subtaskInput) {
     subtaskInput.addEventListener('keydown', function(event) {
       if (event.key === 'Enter') {
         event.preventDefault();
         if (editModalState.currentTodoId && subtaskInput.value.trim()) {
-          if (addSubtask(editModalState.currentTodoId, subtaskInput.value.trim())) {
+          const todo = todos.find(t => t.id === editModalState.currentTodoId);
+          if (todo) {
+            if (!todo.subtasks) todo.subtasks = [];
+            todo.subtasks.push({
+              id: generateTodoId(),
+              text: subtaskInput.value.trim(),
+              checked: false
+            });
+            editModalState.pendingSubtaskAdded = true;
             subtaskInput.value = '';
-            const todo = todos.find(t => t.id === editModalState.currentTodoId);
-            if (todo) renderEditModalSubtasks(todo);
-          } else {
-            showTodoSaveError();
+            renderEditModalSubtasks(todo);
           }
         }
       }
@@ -2274,6 +2299,10 @@ try {
   window.handleDragOver = handleDragOver;
   window.handleDrop = handleDrop;
   window.showDateUpdateFeedback = showDateUpdateFeedback;
+  window.editModalState = editModalState;
+  window.openEditModal = openEditModal;
+  window.saveEdit = saveEdit;
+  window.closeEditModal = closeEditModal;
 } catch {
   // If window isn't writable in some test harnesses, ignore silently
 }

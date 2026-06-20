@@ -85,6 +85,7 @@ const srcGlobals = {
   updateSubtaskText: 'readonly',
   getSubtaskProgress: 'readonly',
   cloneTodos: 'readonly',
+  editModalState: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };
@@ -167,6 +168,10 @@ const testGlobals = {
   updateSubtaskText: 'readonly',
   getSubtaskProgress: 'readonly',
   cloneTodos: 'readonly',
+  editModalState: 'readonly',
+  openEditModal: 'readonly',
+  saveEdit: 'readonly',
+  closeEditModal: 'readonly',
   checkReminders: 'readonly',
   handleStartup: 'readonly',
   initNotes: 'readonly',

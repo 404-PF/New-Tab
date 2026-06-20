@@ -2046,4 +2046,71 @@ describe('Todo subtasks', () => {
     const todo = loadTodos()[0];
     expect(toggleSubtask(todo.id, 'fake-id')).toBe(false);
   });
+
+  it('addSubtask respects MAX_SUBTASKS limit', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    for (let i = 0; i < 50; i++) {
+      addSubtask(todo.id, `Sub ${i}`);
+    }
+    expect(loadTodos()[0].subtasks).toHaveLength(50);
+    expect(addSubtask(todo.id, 'One too many')).toBe(false);
+    expect(loadTodos()[0].subtasks).toHaveLength(50);
+  });
+
+  it('saveEdit with pending subtask rolls back on save failure', () => {
+    addTodo('Parent');
+    const todoId = loadTodos()[0].id;
+
+    // Open the modal so editModalState.currentTodoId is set
+    openEditModal(todoId);
+
+    // Mock localStorage to fail on save
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage full');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      // Set the text input so saveEdit doesn't bail out early
+      const textInput = document.getElementById('todo-edit-text');
+      if (textInput) textInput.value = 'Updated text';
+
+      // Set the subtask input with pending text
+      const subtaskInput = document.getElementById('todo-edit-subtask-input');
+      if (subtaskInput) subtaskInput.value = 'Pending sub';
+
+      saveEdit();
+
+      // The pending subtask should be rolled back — subtasks should remain empty
+      const after = loadTodos()[0];
+      expect(after.subtasks).toBeUndefined();
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('closeEditModal clears pending state and subtask input', () => {
+    addTodo('Parent');
+    const todoId = loadTodos()[0].id;
+
+    openEditModal(todoId);
+
+    // Simulate pending state
+    editModalState.pendingSubtaskAdded = true;
+
+    // Set subtask input value
+    const subtaskInput = document.getElementById('todo-edit-subtask-input');
+    if (subtaskInput) subtaskInput.value = 'Some text';
+
+    closeEditModal();
+
+    expect(editModalState.pendingSubtaskAdded).toBe(false);
+    expect(editModalState.currentTodoId).toBeNull();
+    if (subtaskInput) {
+      expect(subtaskInput.value).toBe('');
+      expect(subtaskInput.disabled).toBe(false);
+    }
+  });
 });
