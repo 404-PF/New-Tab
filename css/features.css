@@ -2174,7 +2174,8 @@ body.light-theme .update-settings-group .setting-btn:hover {
   .clock-options,
   .date-options,
   .icon-size-options,
-  .general-options {
+  .general-options,
+  .weather-options {
     grid-template-columns: 1fr;
   }
 
@@ -3148,9 +3149,10 @@ body.light-theme .weather-spinner {
 /* Weather settings */
 .weather-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin-top: 12px;
+  align-items: start;
 }
 
 .weather-option {
@@ -3159,35 +3161,58 @@ body.light-theme .weather-spinner {
   gap: 8px;
 }
 
-.unit-choice-group,
-.location-choice-group {
-  display: flex;
-  flex-direction: column;
+.weather-option-full {
+  grid-column: 1 / -1;
+}
+
+.weather-choice-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   margin-top: 4px;
 }
 
-.unit-choice-label,
-.location-choice-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+.weather-choice-button {
+  width: 100%;
+  padding: 10px 0;
+  border-radius: 10px;
+  background: rgba(31, 41, 55, 0.55);
   color: var(--settings-text-color);
+  border: 1px solid rgba(107, 114, 128, 0.5);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  padding: 4px 0;
+  transition: all 0.2s ease;
 }
 
-.unit-choice-label span,
-.location-choice-label span {
-  font-weight: 500;
+.weather-choice-button:hover {
+  background: rgba(33, 150, 243, 0.12);
+  border-color: rgba(33, 150, 243, 0.5);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.12);
 }
 
-#weather-manual-group {
+.weather-choice-button.active {
+  background: rgba(33, 150, 243, 0.2);
+  border-color: rgba(33, 150, 243, 0.85);
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.12);
+}
+
+.weather-choice-button:focus-visible {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2);
+}
+
+.weather-city-inline {
   display: none;
+  margin-top: 8px;
 }
 
-#weather-manual-city {
+.weather-city-inline input {
   width: 100%;
   padding: 8px 12px;
   border: 2px solid rgba(107, 114, 128, 0.6);
@@ -3197,24 +3222,55 @@ body.light-theme .weather-spinner {
   font-size: 14px;
   transition: all 0.2s ease;
   outline: none;
+  box-sizing: border-box;
 }
 
-#weather-manual-city:focus {
+.weather-city-inline input:focus {
   border-color: #2196f3;
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
   background: rgba(31, 41, 55, 0.7);
 }
 
-body.light-theme #weather-manual-city {
+body.light-theme .weather-choice-button {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: rgba(55, 65, 81, 0.9);
+}
+
+body.light-theme .weather-choice-button:hover {
+  background: rgba(33, 150, 243, 0.08);
+  border-color: rgba(33, 150, 243, 0.4);
+  color: #1976d2;
+}
+
+body.light-theme .weather-choice-button.active {
+  background: rgba(33, 150, 243, 0.12);
+  border-color: rgba(33, 150, 243, 0.7);
+  color: #1565c0;
+}
+
+body.light-theme .weather-city-inline input {
   background: rgba(255, 255, 255, 0.9);
   border-color: rgba(0, 0, 0, 0.15);
   color: #1f2937;
 }
 
-body.light-theme #weather-manual-city:focus {
+body.light-theme .weather-city-inline input:focus {
   border-color: #2196f3;
   background: rgba(255, 255, 255, 1);
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.weather-refresh-card button {
+  background: rgba(33, 150, 243, 0.8);
+  color: white;
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.2);
+}
+
+.weather-refresh-card button:hover {
+  background: rgba(33, 150, 243, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
 }
 
 /* ==================== Weather App Modal ==================== */
