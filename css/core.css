@@ -782,7 +782,7 @@ body.light-theme .drag-placeholder {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  z-index: 1000;
+  z-index: 1005;
   align-items: center;
   justify-content: center;
   opacity: 0;
@@ -814,7 +814,7 @@ body.light-theme .drag-placeholder {
   transform: translateY(-20px);
   transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
+  overflow: visible;
 }
 #settings-modal.modal-open > div {
   opacity: 1;
