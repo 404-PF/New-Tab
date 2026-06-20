@@ -593,4 +593,36 @@ describe('Notes markdown preview', () => {
       expect(loadNotes()).toHaveLength(0);
     });
   });
+
+  describe('Notes blur before preview click race condition', () => {
+    it('does not delete empty note when preview button mousedown precedes blur', () => {
+      addNote();
+      const id = loadNotes()[0].id;
+      const card = document.querySelector(`.note-item[data-id="${id}"]`);
+      const ta = card.querySelector('.note-textarea');
+
+      const previewBtn = card.querySelector('.note-preview-btn');
+      previewBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+      handleNotesBlur({ target: ta });
+
+      expect(loadNotes()).toHaveLength(1);
+
+      handleNotePreviewToggle(id);
+      expect(card.querySelector('.note-textarea').style.display).toBe('none');
+      expect(card.querySelector('.note-preview').style.display).not.toBe('none');
+    });
+
+    it('still deletes empty note on normal blur (no preview mousedown)', () => {
+      addNote();
+      expect(loadNotes()).toHaveLength(1);
+      const id = loadNotes()[0].id;
+      const card = document.querySelector(`.note-item[data-id="${id}"]`);
+      const ta = card.querySelector('.note-textarea');
+
+      handleNotesBlur({ target: ta });
+
+      expect(loadNotes()).toHaveLength(0);
+    });
+  });
 });

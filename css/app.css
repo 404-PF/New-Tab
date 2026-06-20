@@ -4710,7 +4710,6 @@ body.light-theme .notes-empty {
   font-size: 14px;
   line-height: 1.6;
   color: #e2e8f0;
-  overflow: hidden;
 }
 
 .note-preview:empty {
