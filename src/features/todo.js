@@ -14,6 +14,7 @@
   // Animation config
   const STAGGER_DELAY = 0.05; // seconds between each item
   const SVG_NS = 'http://www.w3.org/2000/svg';
+  const MAX_SUBTASKS = 50;
 
   // DOM elements
   let elements = {};
@@ -431,6 +432,7 @@
           stCheckbox.setAttribute('role', 'checkbox');
           stCheckbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
           stCheckbox.setAttribute('aria-label', `Toggle subtask: ${subtask.text}`);
+          stCheckbox.setAttribute('draggable', 'false');
           stCheckbox.dataset.todoId = todo.id;
           stCheckbox.dataset.subtaskId = subtask.id;
 
@@ -442,6 +444,7 @@
 
           const stDelete = document.createElement('button');
           stDelete.className = 'todo-subtask-delete';
+          stDelete.setAttribute('draggable', 'false');
           stDelete.dataset.todoId = todo.id;
           stDelete.dataset.subtaskId = subtask.id;
           stDelete.title = window.i18n ? window.i18n.t('todoSubtaskDelete') : 'Delete subtask';
@@ -651,6 +654,7 @@ function addSubtask(todoId, text) {
   if (!text || !text.trim()) return false;
   const todo = todos.find(t => t.id === todoId);
   if (!todo) return false;
+  if (todo.subtasks && todo.subtasks.length >= MAX_SUBTASKS) return false;
 
   const previousTodo = { ...todo, subtasks: todo.subtasks ? [...todo.subtasks.map(st => ({ ...st }))] : undefined };
   if (!todo.subtasks) todo.subtasks = [];
@@ -919,6 +923,10 @@ function clearInputs() {
 let draggedElement = null;
 
 function handleDragStart(event) {
+  if (event.target.closest('button')) {
+    event.preventDefault();
+    return;
+  }
   draggedElement = event.target;
   event.target.style.opacity = '0.5';
 }
@@ -1505,6 +1513,16 @@ function renderEditModalSubtasks(todo) {
 
   // Bind events for subtask interactions in the edit modal
   setupEditModalSubtaskHandlers(todo.id);
+
+  // Disable input when at limit
+  const subtaskInput = document.getElementById('todo-edit-subtask-input');
+  if (subtaskInput) {
+    const atLimit = subtasks.length >= MAX_SUBTASKS;
+    subtaskInput.disabled = atLimit;
+    if (atLimit) {
+      subtaskInput.value = '';
+    }
+  }
 }
 
 function handleEditModalSubtaskClick(e) {
@@ -1593,12 +1611,23 @@ function saveEdit() {
   const existingTodo = todos.find(t => t.id === editModalState.currentTodoId);
   const preservedDueDate = existingTodo ? existingTodo.dueDate : null;
 
+  // Add any pending subtask before editTodo saves (single save instead of two)
+  const pendingSubtask = subtaskInput ? subtaskInput.value.trim() : '';
+  if (pendingSubtask && existingTodo) {
+    if (!existingTodo.subtasks) existingTodo.subtasks = [];
+    existingTodo.subtasks.push({
+      id: generateTodoId(),
+      text: pendingSubtask,
+      checked: false
+    });
+    subtaskInput.value = '';
+  }
+
   if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
-    // Add any pending subtask from the input before closing
-    if (subtaskInput && subtaskInput.value.trim()) {
-      addSubtask(editModalState.currentTodoId, subtaskInput.value.trim());
-    }
     closeEditModal();
+  } else if (pendingSubtask && existingTodo) {
+    // Roll back the subtask if save failed
+    existingTodo.subtasks.pop();
   }
 }
 
