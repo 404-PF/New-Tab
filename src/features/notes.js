@@ -59,6 +59,11 @@
 
     notesList.innerHTML = '';
 
+    const activeIds = new Set(notes.map(n => n.id));
+    for (const key of Object.keys(notePreviewModes)) {
+      if (!activeIds.has(key)) delete notePreviewModes[key];
+    }
+
     if (notes.length === 0) {
       notesEmpty.style.display = 'block';
       return;
@@ -195,7 +200,11 @@
   function renderNotePreview(text) {
     if (!text) return '';
     if (window.MarkdownParser && typeof window.MarkdownParser.parse === 'function') {
-      return window.MarkdownParser.parse(text);
+      try {
+        return window.MarkdownParser.parse(text);
+      } catch (e) {
+        console.warn('MarkdownParser.parse failed, using fallback:', e);
+      }
     }
     return '<p class="md-paragraph">' + text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br />') + '</p>';
   }
