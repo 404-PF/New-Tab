@@ -13,6 +13,7 @@
 
   let checkTimer = null;
   let lastAppliedTheme = null;
+  let lastScheduledTheme = null; // Track last scheduled theme to detect boundary crossings
 
   function loadEnabled() {
     try {
@@ -105,7 +106,10 @@
   function checkAndApply() {
     if (!loadEnabled()) return;
     const theme = getScheduledTheme();
-    if (theme !== lastAppliedTheme) {
+    // Only apply if the scheduled theme has changed (boundary crossing)
+    // This preserves manual overrides until the next scheduled switch
+    if (theme !== lastScheduledTheme) {
+      lastScheduledTheme = theme;
       lastAppliedTheme = theme;
       setTheme(theme);
       syncRadioButtons();
@@ -130,12 +134,20 @@
 
   function startInterval() {
     stopInterval();
-    checkTimer = new window.VisibilityInterval(checkAndApply, CHECK_INTERVAL_MS);
+    if (window.VisibilityInterval) {
+      checkTimer = new window.VisibilityInterval(checkAndApply, CHECK_INTERVAL_MS);
+    } else {
+      checkTimer = setInterval(checkAndApply, CHECK_INTERVAL_MS);
+    }
   }
 
   function stopInterval() {
     if (checkTimer) {
-      checkTimer.destroy();
+      if (checkTimer.destroy) {
+        checkTimer.destroy();
+      } else {
+        clearInterval(checkTimer);
+      }
       checkTimer = null;
     }
   }
@@ -143,6 +155,7 @@
   function enableAutoTheme() {
     saveEnabled(true);
     lastAppliedTheme = null; // force re-evaluation
+    lastScheduledTheme = null;
     checkAndApply();
     startInterval();
     updateTimesVisibility();
@@ -153,24 +166,17 @@
     saveEnabled(false);
     stopInterval();
     lastAppliedTheme = null;
+    lastScheduledTheme = null;
     updateTimesVisibility();
     enableManualRadios();
   }
 
   function disableManualRadios() {
-    const darkRadio = document.querySelector('input[name="theme"][value="dark"]');
-    const lightRadio = document.querySelector('input[name="theme"][value="light"]');
-    if (darkRadio) darkRadio.disabled = true;
-    if (lightRadio) lightRadio.disabled = true;
     const labels = document.querySelectorAll('.theme-option');
     labels.forEach(function (label) { label.classList.add('auto-active'); });
   }
 
   function enableManualRadios() {
-    const darkRadio = document.querySelector('input[name="theme"][value="dark"]');
-    const lightRadio = document.querySelector('input[name="theme"][value="light"]');
-    if (darkRadio) darkRadio.disabled = false;
-    if (lightRadio) lightRadio.disabled = false;
     const labels = document.querySelectorAll('.theme-option');
     labels.forEach(function (label) { label.classList.remove('auto-active'); });
   }
@@ -211,6 +217,7 @@
     if (loadEnabled()) {
       disableManualRadios();
       lastAppliedTheme = null;
+      lastScheduledTheme = null;
       checkAndApply();
       startInterval();
     }
@@ -228,6 +235,7 @@
         saveLightTime(lightInput.value);
         if (loadEnabled()) {
           lastAppliedTheme = null;
+          lastScheduledTheme = null;
           checkAndApply();
         }
       });
@@ -238,6 +246,7 @@
         saveDarkTime(darkInput.value);
         if (loadEnabled()) {
           lastAppliedTheme = null;
+          lastScheduledTheme = null;
           checkAndApply();
         }
       });
