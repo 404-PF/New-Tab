@@ -1036,6 +1036,11 @@ body.light-theme .edit-subtask-text {
   opacity: 1;
 }
 
+.edit-subtask-item:focus-within .edit-subtask-delete,
+.edit-subtask-delete:focus-visible {
+  opacity: 1;
+}
+
 .edit-subtask-delete:hover {
   color: #ef5350;
   background: rgba(239, 83, 80, 0.1);
@@ -1181,6 +1186,7 @@ body.light-theme .todo-subtask-text {
 }
 
 .todo-subtask-item:hover .todo-subtask-delete,
+.todo-subtask-item:focus-within .todo-subtask-delete,
 .todo-subtask-delete:focus-visible {
   opacity: 1;
 }
@@ -5052,4 +5058,11 @@ body.simple-mode .notes-section {
 
 body.light-theme .notes-empty-icon svg {
   opacity: 0.3;
+}
+
+@media (hover: none) {
+  .edit-subtask-delete,
+  .todo-subtask-delete {
+    opacity: 1;
+  }
 }
