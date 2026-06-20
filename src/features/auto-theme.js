@@ -134,7 +134,7 @@
 
   function startInterval() {
     stopInterval();
-    if (window.VisibilityInterval) {
+    if (typeof window.VisibilityInterval === 'function') {
       checkTimer = new window.VisibilityInterval(checkAndApply, CHECK_INTERVAL_MS);
     } else {
       checkTimer = setInterval(checkAndApply, CHECK_INTERVAL_MS);
