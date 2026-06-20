@@ -40,5 +40,17 @@
   "weatherWidgetCloseLabel": {
     "message": "Cerrar widget del clima",
     "description": "Accessible label for the weather app close button"
+  },
+  "todoSubtasks": {
+    "message": "Subtareas",
+    "description": "Label for the subtasks section in the todo edit modal"
+  },
+  "todoAddSubtask": {
+    "message": "Agregar subtarea...",
+    "description": "Placeholder text for the subtask input field"
+  },
+  "todoSubtaskDelete": {
+    "message": "Eliminar subtarea",
+    "description": "Tooltip for the subtask delete button"
   }
 }

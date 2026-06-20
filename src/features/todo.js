@@ -400,8 +400,11 @@
           stItem.dataset.subtaskId = subtask.id;
           stItem.dataset.todoId = todo.id;
 
-          const stCheckbox = document.createElement('div');
+          const stCheckbox = document.createElement('button');
           stCheckbox.className = 'todo-subtask-checkbox';
+          stCheckbox.type = 'button';
+          stCheckbox.setAttribute('role', 'checkbox');
+          stCheckbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
           stCheckbox.dataset.todoId = todo.id;
           stCheckbox.dataset.subtaskId = subtask.id;
 
@@ -1468,8 +1471,11 @@ function renderEditModalSubtasks(todo) {
     item.className = 'edit-subtask-item';
     item.dataset.subtaskId = subtask.id;
 
-    const checkbox = document.createElement('div');
+    const checkbox = document.createElement('button');
     checkbox.className = 'edit-subtask-checkbox';
+    checkbox.type = 'button';
+    checkbox.setAttribute('role', 'checkbox');
+    checkbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
     checkbox.dataset.todoId = todo.id;
     checkbox.dataset.subtaskId = subtask.id;
 
@@ -1611,7 +1617,10 @@ function saveEdit() {
   if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
     // Add any pending subtask from the input
     if (subtaskInput && subtaskInput.value.trim()) {
-      addSubtask(editModalState.currentTodoId, subtaskInput.value.trim());
+      if (!addSubtask(editModalState.currentTodoId, subtaskInput.value.trim())) {
+        showTodoSaveError();
+        return;
+      }
     }
     closeEditModal();
   }
@@ -1738,10 +1747,13 @@ function initTodo() {
       if (event.key === 'Enter') {
         event.preventDefault();
         if (editModalState.currentTodoId && subtaskInput.value.trim()) {
-          addSubtask(editModalState.currentTodoId, subtaskInput.value.trim());
-          subtaskInput.value = '';
-          const todo = todos.find(t => t.id === editModalState.currentTodoId);
-          if (todo) renderEditModalSubtasks(todo);
+          if (addSubtask(editModalState.currentTodoId, subtaskInput.value.trim())) {
+            subtaskInput.value = '';
+            const todo = todos.find(t => t.id === editModalState.currentTodoId);
+            if (todo) renderEditModalSubtasks(todo);
+          } else {
+            showTodoSaveError();
+          }
         }
       }
     });

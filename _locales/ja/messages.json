@@ -40,5 +40,17 @@
   "weatherWidgetCloseLabel": {
     "message": "天気ウィジェットを閉じる",
     "description": "Accessible label for the weather app close button"
+  },
+  "todoSubtasks": {
+    "message": "サブタスク",
+    "description": "Label for the subtasks section in the todo edit modal"
+  },
+  "todoAddSubtask": {
+    "message": "サブタスクを追加...",
+    "description": "Placeholder text for the subtask input field"
+  },
+  "todoSubtaskDelete": {
+    "message": "サブタスクを削除",
+    "description": "Tooltip for the subtask delete button"
   }
 }
