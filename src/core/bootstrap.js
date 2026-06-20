@@ -38,6 +38,7 @@
     'src/features/interactive-background.js',
     'src/core/languages.js',
     'src/ui/settings.js',
+    'src/features/data-manager.js',
     'src/features/context-menu.js',
     'src/features/app-folders.js',
     'src/core/update-checker.js',

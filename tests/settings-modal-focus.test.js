@@ -6,6 +6,7 @@ beforeAll(() => {
   injectScript('src/core/app-grid-storage.js');
   injectScript('src/core/app-grid-state.js');
   injectScript('src/core/utils.js');
+  injectScript('src/core/dom-ready.js');
   injectScript('src/ui/app-manager.js');
 });
 
