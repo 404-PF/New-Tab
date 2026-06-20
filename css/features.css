@@ -2149,6 +2149,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
     gap: 4px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
   }
 
