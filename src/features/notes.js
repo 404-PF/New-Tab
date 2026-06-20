@@ -131,6 +131,7 @@
     Object.keys(debounceTimers).forEach(id => {
       clearTimeout(debounceTimers[id]);
       delete debounceTimers[id];
+      if (notePreviewModes[id] === true) return;
       const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
       if (ta) {
         const text = ta.value || '';
@@ -289,8 +290,9 @@
       clearTimeout(debounceTimers[ta.dataset.id]);
       delete debounceTimers[ta.dataset.id];
     }
+    if (notePreviewModes[ta.dataset.id] === true) return;
     const text = ta.value || '';
-    if (!text && notePreviewModes[ta.dataset.id] !== true) {
+    if (!text) {
       deleteNote(ta.dataset.id);
       return;
     }

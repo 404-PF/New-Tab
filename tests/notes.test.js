@@ -527,15 +527,15 @@ describe('Notes markdown preview', () => {
       expect(loadNotes()).toHaveLength(1);
     });
 
-    it('saves non-empty note on blur even in preview mode', () => {
+    it('skips save on blur when in preview mode (textarea is hidden and stale)', () => {
       addNote();
       const id = loadNotes()[0].id;
 
       handleNotePreviewToggle(id);
-      handleNotesBlur({ target: { closest: () => ({ dataset: { id }, value: 'Updated' }) } });
+      handleNotesBlur({ target: { closest: () => ({ dataset: { id }, value: 'Should not save' }) } });
 
       expect(loadNotes()).toHaveLength(1);
-      expect(loadNotes()[0].text).toBe('Updated');
+      expect(loadNotes()[0].text).toBe('');
     });
   });
 
