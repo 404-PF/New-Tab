@@ -1974,14 +1974,34 @@ describe('Todo subtasks', () => {
   });
 
   it('subtasks included in import/export round-trip', () => {
+    // Create a todo with subtasks
     addTodo('Parent');
     const todo = loadTodos()[0];
     addSubtask(todo.id, 'Export me');
+    addSubtask(todo.id, 'Another subtask');
+
+    // Export the data (simulate the export format)
     const exported = loadTodos();
     const data = { version: 1, count: exported.length, todos: exported };
     expect(validateTodoData(data)).toBe(true);
-    expect(data.todos[0].subtasks).toHaveLength(1);
-    expect(data.todos[0].subtasks[0].text).toBe('Export me');
+    expect(data.todos[0].subtasks).toHaveLength(2);
+
+    // Clear todos and reimport to test true round-trip
+    localStorage.removeItem('todos');
+    initTodo();
+    expect(loadTodos()).toHaveLength(0);
+
+    // Import the exported data
+    showImportDialog(data.todos);
+    document.getElementById('import-replace-btn').click();
+
+    // Verify subtasks survived the round-trip
+    const reimported = loadTodos();
+    expect(reimported).toHaveLength(1);
+    expect(reimported[0].text).toBe('Parent');
+    expect(reimported[0].subtasks).toHaveLength(2);
+    expect(reimported[0].subtasks[0].text).toBe('Export me');
+    expect(reimported[0].subtasks[1].text).toBe('Another subtask');
   });
 
   it('subtasks survive cloneTodos deep copy', () => {
