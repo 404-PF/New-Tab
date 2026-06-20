@@ -96,7 +96,10 @@
   }
 
   function cloneTodos(sourceTodos) {
-    return sourceTodos.map(todo => ({ ...todo }));
+    return sourceTodos.map(todo => ({
+      ...todo,
+      subtasks: todo.subtasks ? todo.subtasks.map(st => ({ ...st })) : undefined
+    }));
   }
 
   function showTodoSaveError() {
@@ -298,6 +301,9 @@
       li.dataset.id = todo.id;
       li.draggable = true;
 
+      const todoItemRow = document.createElement('div');
+      todoItemRow.className = 'todo-item-row';
+
       const bullet = document.createElement('div');
       bullet.className = 'todo-bullet';
       bullet.dataset.id = todo.id;
@@ -376,10 +382,86 @@
         { tagName: 'line', attributes: { x1: '14', y1: '11', x2: '14', y2: '17' } }
       ]));
 
-      li.appendChild(bullet);
-      li.appendChild(todoContent);
-      li.appendChild(dueDate);
-      li.appendChild(todoActions);
+      todoItemRow.appendChild(bullet);
+      todoItemRow.appendChild(todoContent);
+      todoItemRow.appendChild(dueDate);
+      todoItemRow.appendChild(todoActions);
+
+      li.appendChild(todoItemRow);
+
+      // Subtasks
+      if (todo.subtasks && todo.subtasks.length > 0) {
+        const subtasksContainer = document.createElement('div');
+        subtasksContainer.className = 'todo-subtasks';
+
+        todo.subtasks.forEach(subtask => {
+          const stItem = document.createElement('div');
+          stItem.className = `todo-subtask-item ${subtask.checked ? 'checked' : ''}`;
+          stItem.dataset.subtaskId = subtask.id;
+          stItem.dataset.todoId = todo.id;
+
+          const stCheckbox = document.createElement('div');
+          stCheckbox.className = 'todo-subtask-checkbox';
+          stCheckbox.dataset.todoId = todo.id;
+          stCheckbox.dataset.subtaskId = subtask.id;
+
+          const stSvg = createSvgElement('svg', {
+            viewBox: '0 0 24 24',
+            fill: 'none',
+            class: subtask.checked ? 'subtask-checked' : 'subtask-unchecked'
+          });
+          if (subtask.checked) {
+            stSvg.appendChild(createSvgElement('rect', {
+              x: '3', y: '3', width: '18', height: '18', rx: '3',
+              fill: 'currentColor'
+            }));
+            stSvg.appendChild(createSvgElement('path', {
+              d: 'M9 12l2 2 4-4',
+              stroke: 'white', 'stroke-width': '2',
+              'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none'
+            }));
+          } else {
+            stSvg.appendChild(createSvgElement('rect', {
+              x: '3', y: '3', width: '18', height: '18', rx: '3',
+              stroke: 'currentColor', 'stroke-width': '2', fill: 'none'
+            }));
+          }
+          stCheckbox.appendChild(stSvg);
+
+          const stText = document.createElement('span');
+          stText.className = 'todo-subtask-text';
+          stText.textContent = subtask.text;
+
+          const stDelete = document.createElement('button');
+          stDelete.className = 'todo-subtask-delete';
+          stDelete.dataset.todoId = todo.id;
+          stDelete.dataset.subtaskId = subtask.id;
+          stDelete.title = window.i18n ? window.i18n.t('todoSubtaskDelete') : 'Delete subtask';
+          const delSvg = createSvgElement('svg', {
+            viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+            'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+          });
+          delSvg.appendChild(createSvgElement('line', { x1: '18', y1: '6', x2: '6', y2: '18' }));
+          delSvg.appendChild(createSvgElement('line', { x1: '6', y1: '6', x2: '18', y2: '18' }));
+          stDelete.appendChild(delSvg);
+
+          stItem.appendChild(stCheckbox);
+          stItem.appendChild(stText);
+          stItem.appendChild(stDelete);
+          subtasksContainer.appendChild(stItem);
+        });
+
+        // Progress badge
+        const progress = getSubtaskProgress(todo);
+        if (progress) {
+          const badge = document.createElement('span');
+          badge.className = 'todo-subtask-progress';
+          badge.textContent = `${progress.done}/${progress.total}`;
+          todoContent.appendChild(badge);
+        }
+
+        li.appendChild(subtasksContainer);
+      }
 
       // Add staggered animation delay
       li.style.animationDelay = `${index * STAGGER_DELAY}s`;
@@ -554,6 +636,99 @@ function deleteTodo(id) {
 
   applyFilters();
   (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
+}
+
+// Subtask management
+function addSubtask(todoId, text) {
+  if (!text || !text.trim()) return false;
+  const todo = todos.find(t => t.id === todoId);
+  if (!todo) return false;
+
+  const previousTodo = { ...todo, subtasks: todo.subtasks ? [...todo.subtasks.map(st => ({ ...st }))] : undefined };
+  if (!todo.subtasks) todo.subtasks = [];
+
+  todo.subtasks.push({
+    id: generateTodoId(),
+    text: text.trim(),
+    checked: false
+  });
+
+  if (!saveTodos(todos)) {
+    Object.assign(todo, previousTodo);
+    applyFilters();
+    showTodoSaveError();
+    return false;
+  }
+
+  applyFilters();
+  return true;
+}
+
+function deleteSubtask(todoId, subtaskId) {
+  const todo = todos.find(t => t.id === todoId);
+  if (!todo || !todo.subtasks) return false;
+
+  const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
+  todo.subtasks = todo.subtasks.filter(st => st.id !== subtaskId);
+
+  if (!saveTodos(todos)) {
+    Object.assign(todo, previousTodo);
+    applyFilters();
+    showTodoSaveError();
+    return false;
+  }
+
+  applyFilters();
+  return true;
+}
+
+function toggleSubtask(todoId, subtaskId) {
+  const todo = todos.find(t => t.id === todoId);
+  if (!todo || !todo.subtasks) return false;
+
+  const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
+  const subtask = todo.subtasks.find(st => st.id === subtaskId);
+  if (!subtask) return false;
+
+  subtask.checked = !subtask.checked;
+
+  if (!saveTodos(todos)) {
+    Object.assign(todo, previousTodo);
+    applyFilters();
+    showTodoSaveError();
+    return false;
+  }
+
+  applyFilters();
+  return true;
+}
+
+function updateSubtaskText(todoId, subtaskId, newText) {
+  const todo = todos.find(t => t.id === todoId);
+  if (!todo || !todo.subtasks) return false;
+  if (!newText || !newText.trim()) return false;
+
+  const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
+  const subtask = todo.subtasks.find(st => st.id === subtaskId);
+  if (!subtask) return false;
+
+  subtask.text = newText.trim();
+
+  if (!saveTodos(todos)) {
+    Object.assign(todo, previousTodo);
+    applyFilters();
+    showTodoSaveError();
+    return false;
+  }
+
+  applyFilters();
+  return true;
+}
+
+function getSubtaskProgress(todo) {
+  if (!todo.subtasks || todo.subtasks.length === 0) return null;
+  const done = todo.subtasks.filter(st => st.checked).length;
+  return { done, total: todo.subtasks.length };
 }
 
 // Filter management
@@ -839,6 +1014,26 @@ function handleTodoListClick(event) {
     event.stopPropagation();
     const id = target.closest('.todo-edit-btn').dataset.id;
     openEditModal(id);
+    return;
+  }
+
+  // Handle subtask checkbox click
+  const subtaskCheckbox = target.closest('.todo-subtask-checkbox');
+  if (subtaskCheckbox) {
+    event.stopPropagation();
+    const todoId = subtaskCheckbox.dataset.todoId;
+    const subtaskId = subtaskCheckbox.dataset.subtaskId;
+    toggleSubtask(todoId, subtaskId);
+    return;
+  }
+
+  // Handle subtask delete button
+  const subtaskDelete = target.closest('.todo-subtask-delete');
+  if (subtaskDelete) {
+    event.stopPropagation();
+    const todoId = subtaskDelete.dataset.todoId;
+    const subtaskId = subtaskDelete.dataset.subtaskId;
+    deleteSubtask(todoId, subtaskId);
     return;
   }
 }
@@ -1247,6 +1442,105 @@ function closeAllInlineDatePickers() {
   pickers.forEach(picker => closeInlineDatePicker(picker));
 }
 
+// Render subtasks in the edit modal
+function renderEditModalSubtasks(todo) {
+  const container = document.getElementById('todo-edit-subtasks-list');
+  const section = document.getElementById('todo-edit-subtasks-section');
+  if (!container || !section) return;
+
+  const subtasks = todo.subtasks || [];
+  if (subtasks.length === 0 && !todo.id) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = '';
+  container.innerHTML = '';
+
+  subtasks.forEach(subtask => {
+    const item = document.createElement('div');
+    item.className = 'edit-subtask-item';
+    item.dataset.subtaskId = subtask.id;
+
+    const checkbox = document.createElement('div');
+    checkbox.className = 'edit-subtask-checkbox';
+    checkbox.dataset.todoId = todo.id;
+    checkbox.dataset.subtaskId = subtask.id;
+
+    const svg = createSvgElement('svg', {
+      viewBox: '0 0 24 24', fill: 'none',
+      class: subtask.checked ? 'subtask-checked' : 'subtask-unchecked'
+    });
+    if (subtask.checked) {
+      svg.appendChild(createSvgElement('rect', {
+        x: '3', y: '3', width: '18', height: '18', rx: '3',
+        fill: 'currentColor'
+      }));
+      svg.appendChild(createSvgElement('path', {
+        d: 'M9 12l2 2 4-4',
+        stroke: 'white', 'stroke-width': '2',
+        'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none'
+      }));
+    } else {
+      svg.appendChild(createSvgElement('rect', {
+        x: '3', y: '3', width: '18', height: '18', rx: '3',
+        stroke: 'currentColor', 'stroke-width': '2', fill: 'none'
+      }));
+    }
+    checkbox.appendChild(svg);
+
+    const text = document.createElement('span');
+    text.className = 'edit-subtask-text';
+    text.textContent = subtask.text;
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'edit-subtask-delete';
+    deleteBtn.dataset.todoId = todo.id;
+    deleteBtn.dataset.subtaskId = subtask.id;
+    deleteBtn.title = window.i18n ? window.i18n.t('todoSubtaskDelete') : 'Delete subtask';
+    const delSvg = createSvgElement('svg', {
+      viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+      'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+    });
+    delSvg.appendChild(createSvgElement('line', { x1: '18', y1: '6', x2: '6', y2: '18' }));
+    delSvg.appendChild(createSvgElement('line', { x1: '6', y1: '6', x2: '18', y2: '18' }));
+    deleteBtn.appendChild(delSvg);
+
+    item.appendChild(checkbox);
+    item.appendChild(text);
+    item.appendChild(deleteBtn);
+    container.appendChild(item);
+  });
+
+  // Bind events for subtask interactions in the edit modal
+  setupEditModalSubtaskHandlers(todo.id);
+}
+
+function setupEditModalSubtaskHandlers(todoId) {
+  const container = document.getElementById('todo-edit-subtasks-list');
+  if (!container) return;
+
+  container.addEventListener('click', (e) => {
+    const checkbox = e.target.closest('.edit-subtask-checkbox');
+    if (checkbox) {
+      e.stopPropagation();
+      toggleSubtask(checkbox.dataset.todoId, checkbox.dataset.subtaskId);
+      const todo = todos.find(t => t.id === checkbox.dataset.todoId);
+      if (todo) renderEditModalSubtasks(todo);
+      return;
+    }
+
+    const deleteBtn = e.target.closest('.edit-subtask-delete');
+    if (deleteBtn) {
+      e.stopPropagation();
+      deleteSubtask(deleteBtn.dataset.todoId, deleteBtn.dataset.subtaskId);
+      const todo = todos.find(t => t.id === deleteBtn.dataset.todoId);
+      if (todo) renderEditModalSubtasks(todo);
+      return;
+    }
+  });
+}
+
 // Edit Modal Functions
 function openEditModal(id) {
   const todo = todos.find(t => t.id === id);
@@ -1262,6 +1556,9 @@ function openEditModal(id) {
 
   if (textInput) textInput.value = todo.text;
   if (prioritySelect) prioritySelect.value = todo.priority || 'medium';
+
+  // Render subtasks in edit modal
+  renderEditModalSubtasks(todo);
 
   // Show modal
   if (modal) {
@@ -1287,6 +1584,7 @@ function saveEdit() {
 
   const textInput = document.getElementById('todo-edit-text');
   const prioritySelect = document.getElementById('todo-edit-priority');
+  const subtaskInput = document.getElementById('todo-edit-subtask-input');
 
   const newText = textInput ? textInput.value.trim() : '';
   const newPriority = prioritySelect ? prioritySelect.value : null;
@@ -1302,6 +1600,10 @@ function saveEdit() {
   const preservedDueDate = existingTodo ? existingTodo.dueDate : null;
 
   if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
+    // Add any pending subtask from the input
+    if (subtaskInput && subtaskInput.value.trim()) {
+      addSubtask(editModalState.currentTodoId, subtaskInput.value.trim());
+    }
     closeEditModal();
   }
 }
@@ -1420,6 +1722,22 @@ function initTodo() {
     });
   }
 
+  // Subtask input handler in edit modal
+  const subtaskInput = document.getElementById('todo-edit-subtask-input');
+  if (subtaskInput) {
+    subtaskInput.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (editModalState.currentTodoId && subtaskInput.value.trim()) {
+          addSubtask(editModalState.currentTodoId, subtaskInput.value.trim());
+          subtaskInput.value = '';
+          const todo = todos.find(t => t.id === editModalState.currentTodoId);
+          if (todo) renderEditModalSubtasks(todo);
+        }
+      }
+    });
+  }
+
   // Close modal when clicking outside
   if (editModal) {
     editModal.addEventListener('click', (e) => {
@@ -1487,6 +1805,15 @@ function validateTodoData(data) {
     if (item.createdAt !== undefined && item.createdAt !== null && typeof item.createdAt !== 'string') return false;
     if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
+    if (item.subtasks !== undefined && item.subtasks !== null) {
+      if (!Array.isArray(item.subtasks)) return false;
+      for (const st of item.subtasks) {
+        if (!st || typeof st !== 'object') return false;
+        if (typeof st.id !== 'string' || !st.id) return false;
+        if (typeof st.text !== 'string') return false;
+        if (typeof st.checked !== 'boolean') return false;
+      }
+    }
   }
   
   return true;
@@ -1901,6 +2228,12 @@ try {
   window.showToast = showToast;
   window.currentFilters = currentFilters;
   window.getSelectedPriority = getSelectedPriority;
+  window.addSubtask = addSubtask;
+  window.deleteSubtask = deleteSubtask;
+  window.toggleSubtask = toggleSubtask;
+  window.updateSubtaskText = updateSubtaskText;
+  window.getSubtaskProgress = getSubtaskProgress;
+  window.cloneTodos = cloneTodos;
   // Test-only handles. The `tests/helpers/inject-script.js` harness loads
   // this file via `globalThis.eval(code)`, which scopes the IIFE's
   // `function` and `var` declarations to the eval scope and hides them

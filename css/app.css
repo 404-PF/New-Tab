@@ -933,6 +933,293 @@ body.light-theme .todo-edit-body select {
   margin-top: 20px;
 }
 
+/* Subtask styles in edit modal */
+.todo-edit-subtasks-section {
+  margin-top: 8px;
+}
+
+.todo-edit-subtasks-section label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+body.light-theme .todo-edit-subtasks-section label {
+  color: rgba(31, 41, 55, 0.7);
+}
+
+.todo-edit-subtasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.edit-subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.light-theme .edit-subtask-item {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.edit-subtask-checkbox {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.edit-subtask-checkbox svg {
+  width: 16px;
+  height: 16px;
+}
+
+.edit-subtask-checkbox .subtask-unchecked {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.edit-subtask-checkbox .subtask-checked {
+  color: #4caf50;
+}
+
+body.light-theme .edit-subtask-checkbox .subtask-unchecked {
+  color: rgba(31, 41, 55, 0.35);
+}
+
+body.light-theme .edit-subtask-checkbox .subtask-checked {
+  color: #16a34a;
+}
+
+.edit-subtask-text {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-subtask-item.checked .edit-subtask-text {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+body.light-theme .edit-subtask-text {
+  color: rgba(31, 41, 55, 0.85);
+}
+
+.edit-subtask-delete {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.edit-subtask-item:hover .edit-subtask-delete {
+  opacity: 1;
+}
+
+.edit-subtask-delete:hover {
+  color: #ef5350;
+  background: rgba(239, 83, 80, 0.1);
+}
+
+.edit-subtask-delete svg {
+  width: 14px;
+  height: 14px;
+}
+
+body.light-theme .edit-subtask-delete {
+  color: rgba(31, 41, 55, 0.3);
+}
+
+body.light-theme .edit-subtask-delete:hover {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.todo-edit-subtask-input-row {
+  margin-top: 6px;
+}
+
+.todo-edit-subtask-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.todo-edit-subtask-input:focus {
+  border-color: rgba(33, 150, 243, 0.5);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+.todo-edit-subtask-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+body.light-theme .todo-edit-subtask-input {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #1f2937;
+}
+
+body.light-theme .todo-edit-subtask-input::placeholder {
+  color: rgba(31, 41, 55, 0.35);
+}
+
+/* Inline subtasks in main todo list */
+.todo-subtasks {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 32px;
+  margin-top: 4px;
+}
+
+.todo-subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.todo-subtask-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.light-theme .todo-subtask-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.todo-subtask-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.todo-subtask-checkbox svg {
+  width: 14px;
+  height: 14px;
+}
+
+.todo-subtask-checkbox .subtask-unchecked {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.todo-subtask-checkbox .subtask-checked {
+  color: #4caf50;
+}
+
+body.light-theme .todo-subtask-checkbox .subtask-unchecked {
+  color: rgba(31, 41, 55, 0.3);
+}
+
+body.light-theme .todo-subtask-checkbox .subtask-checked {
+  color: #16a34a;
+}
+
+.todo-subtask-text {
+  flex: 1;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-subtask-item.checked .todo-subtask-text {
+  text-decoration: line-through;
+  opacity: 0.45;
+}
+
+body.light-theme .todo-subtask-text {
+  color: rgba(31, 41, 55, 0.7);
+}
+
+.todo-subtask-delete {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.todo-subtask-item:hover .todo-subtask-delete {
+  opacity: 1;
+}
+
+.todo-subtask-delete:hover {
+  color: #ef5350;
+  background: rgba(239, 83, 80, 0.1);
+}
+
+.todo-subtask-delete svg {
+  width: 12px;
+  height: 12px;
+}
+
+body.light-theme .todo-subtask-delete {
+  color: rgba(31, 41, 55, 0.2);
+}
+
+body.light-theme .todo-subtask-delete:hover {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+/* Subtask progress badge */
+.todo-subtask-progress {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+body.light-theme .todo-subtask-progress {
+  color: rgba(31, 41, 55, 0.5);
+  background: rgba(0, 0, 0, 0.06);
+}
+
 #todo-search {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -995,8 +1282,7 @@ body.light-theme .todo-edit-body select {
 
 .todo-item {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
   padding: 10px 14px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 12px;
@@ -1008,6 +1294,12 @@ body.light-theme .todo-edit-body select {
   cursor: grab;
   position: relative;
   overflow: hidden;
+}
+
+.todo-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 /* Due date positioned between content and actions */
