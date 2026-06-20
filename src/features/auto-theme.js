@@ -12,13 +12,14 @@
   const DEFAULT_DARK_TIME = '19:00';
 
   let checkTimer = null;
-  let lastAppliedTheme = null;
   let lastScheduledTheme = null; // Track last scheduled theme to detect boundary crossings
+  let isInitialized = false;
 
   function loadEnabled() {
     try {
       return localStorage.getItem(STORAGE_KEY_ENABLED) === 'true';
-    } catch (_) {
+    } catch (e) {
+      console.warn('Failed to read auto-theme enabled state from localStorage:', e);
       return false;
     }
   }
@@ -26,7 +27,7 @@
   function saveEnabled(enabled) {
     try {
       localStorage.setItem(STORAGE_KEY_ENABLED, String(enabled));
-    } catch (_) {
+    } catch {
       // localStorage unavailable
     }
   }
@@ -34,7 +35,8 @@
   function loadLightTime() {
     try {
       return localStorage.getItem(STORAGE_KEY_LIGHT_TIME) || DEFAULT_LIGHT_TIME;
-    } catch (_) {
+    } catch (e) {
+      console.warn('Failed to read auto-theme light time from localStorage:', e);
       return DEFAULT_LIGHT_TIME;
     }
   }
@@ -42,7 +44,7 @@
   function saveLightTime(time) {
     try {
       localStorage.setItem(STORAGE_KEY_LIGHT_TIME, time);
-    } catch (_) {
+    } catch {
       // localStorage unavailable
     }
   }
@@ -50,7 +52,8 @@
   function loadDarkTime() {
     try {
       return localStorage.getItem(STORAGE_KEY_DARK_TIME) || DEFAULT_DARK_TIME;
-    } catch (_) {
+    } catch (e) {
+      console.warn('Failed to read auto-theme dark time from localStorage:', e);
       return DEFAULT_DARK_TIME;
     }
   }
@@ -58,7 +61,7 @@
   function saveDarkTime(time) {
     try {
       localStorage.setItem(STORAGE_KEY_DARK_TIME, time);
-    } catch (_) {
+    } catch {
       // localStorage unavailable
     }
   }
@@ -96,7 +99,7 @@
     if (window.loadTheme && window.loadTheme() === theme) return;
     try {
       localStorage.setItem('theme', theme);
-    } catch (_) {
+    } catch {
       // localStorage unavailable
     }
     if (window.applyTheme) window.applyTheme();
@@ -110,7 +113,6 @@
     // This preserves manual overrides until the next scheduled switch
     if (theme !== lastScheduledTheme) {
       lastScheduledTheme = theme;
-      lastAppliedTheme = theme;
       setTheme(theme);
       syncRadioButtons();
     }
@@ -154,7 +156,6 @@
 
   function enableAutoTheme() {
     saveEnabled(true);
-    lastAppliedTheme = null; // force re-evaluation
     lastScheduledTheme = null;
     checkAndApply();
     startInterval();
@@ -165,7 +166,6 @@
   function disableAutoTheme() {
     saveEnabled(false);
     stopInterval();
-    lastAppliedTheme = null;
     lastScheduledTheme = null;
     updateTimesVisibility();
     enableManualRadios();
@@ -190,17 +190,19 @@
     const selectedTheme = e.target.value;
     try {
       localStorage.setItem('theme', selectedTheme);
-    } catch (_) {
+    } catch {
       // localStorage unavailable
     }
     if (window.applyTheme) window.applyTheme();
-    lastAppliedTheme = selectedTheme;
     window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
     // Prevent the settings.js change handler from double-applying
     e.stopImmediatePropagation();
   }
 
   function init() {
+    if (isInitialized) return;
+    isInitialized = true;
+
     const toggle = document.getElementById('auto-theme-toggle');
     const lightInput = document.getElementById('auto-theme-light-time');
     const darkInput = document.getElementById('auto-theme-dark-time');
@@ -216,7 +218,6 @@
 
     if (loadEnabled()) {
       disableManualRadios();
-      lastAppliedTheme = null;
       lastScheduledTheme = null;
       checkAndApply();
       startInterval();
@@ -234,7 +235,6 @@
       lightInput.addEventListener('change', function () {
         saveLightTime(lightInput.value);
         if (loadEnabled()) {
-          lastAppliedTheme = null;
           lastScheduledTheme = null;
           checkAndApply();
         }
@@ -245,7 +245,6 @@
       darkInput.addEventListener('change', function () {
         saveDarkTime(darkInput.value);
         if (loadEnabled()) {
-          lastAppliedTheme = null;
           lastScheduledTheme = null;
           checkAndApply();
         }
