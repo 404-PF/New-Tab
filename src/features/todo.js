@@ -635,120 +635,120 @@
   }
 
 
-// Delete a todo
-function deleteTodo(id) {
-  const previousTodos = cloneTodos(todos);
-  todos = todos.filter(t => t.id !== id);
-  if (!saveTodos(todos)) {
-    todos = previousTodos;
+  // Delete a todo
+  function deleteTodo(id) {
+    const previousTodos = cloneTodos(todos);
+    todos = todos.filter(t => t.id !== id);
+    if (!saveTodos(todos)) {
+      todos = previousTodos;
+      applyFilters();
+      showTodoSaveError();
+      return;
+    }
+
     applyFilters();
-    showTodoSaveError();
-    return;
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
   }
 
-  applyFilters();
-  (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
-}
+  // Subtask management
+  function addSubtask(todoId, text) {
+    if (!text || !text.trim()) return false;
+    const todo = todos.find(t => t.id === todoId);
+    if (!todo) return false;
+    if (todo.subtasks && todo.subtasks.length >= MAX_SUBTASKS) return false;
 
-// Subtask management
-function addSubtask(todoId, text) {
-  if (!text || !text.trim()) return false;
-  const todo = todos.find(t => t.id === todoId);
-  if (!todo) return false;
-  if (todo.subtasks && todo.subtasks.length >= MAX_SUBTASKS) return false;
+    const previousTodo = { ...todo, subtasks: todo.subtasks ? [...todo.subtasks.map(st => ({ ...st }))] : undefined };
+    if (!todo.subtasks) todo.subtasks = [];
 
-  const previousTodo = { ...todo, subtasks: todo.subtasks ? [...todo.subtasks.map(st => ({ ...st }))] : undefined };
-  if (!todo.subtasks) todo.subtasks = [];
+    todo.subtasks.push({
+      id: generateTodoId(),
+      text: text.trim(),
+      checked: false
+    });
 
-  todo.subtasks.push({
-    id: generateTodoId(),
-    text: text.trim(),
-    checked: false
-  });
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return false;
+    }
 
-  if (!saveTodos(todos)) {
-    Object.assign(todo, previousTodo);
     applyFilters();
-    showTodoSaveError();
-    return false;
+    return true;
   }
 
-  applyFilters();
-  return true;
-}
+  function deleteSubtask(todoId, subtaskId) {
+    const todo = todos.find(t => t.id === todoId);
+    if (!todo || !todo.subtasks) return false;
 
-function deleteSubtask(todoId, subtaskId) {
-  const todo = todos.find(t => t.id === todoId);
-  if (!todo || !todo.subtasks) return false;
+    const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
+    const originalLength = todo.subtasks.length;
+    todo.subtasks = todo.subtasks.filter(st => st.id !== subtaskId);
 
-  const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
-  const originalLength = todo.subtasks.length;
-  todo.subtasks = todo.subtasks.filter(st => st.id !== subtaskId);
+    // If no subtask was removed, return false
+    if (todo.subtasks.length === originalLength) {
+      return false;
+    }
 
-  // If no subtask was removed, return false
-  if (todo.subtasks.length === originalLength) {
-    return false;
-  }
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return false;
+    }
 
-  if (!saveTodos(todos)) {
-    Object.assign(todo, previousTodo);
     applyFilters();
-    showTodoSaveError();
-    return false;
+    return true;
   }
 
-  applyFilters();
-  return true;
-}
+  function toggleSubtask(todoId, subtaskId) {
+    const todo = todos.find(t => t.id === todoId);
+    if (!todo || !todo.subtasks) return false;
 
-function toggleSubtask(todoId, subtaskId) {
-  const todo = todos.find(t => t.id === todoId);
-  if (!todo || !todo.subtasks) return false;
+    const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
+    const subtask = todo.subtasks.find(st => st.id === subtaskId);
+    if (!subtask) return false;
 
-  const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
-  const subtask = todo.subtasks.find(st => st.id === subtaskId);
-  if (!subtask) return false;
+    subtask.checked = !subtask.checked;
 
-  subtask.checked = !subtask.checked;
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return false;
+    }
 
-  if (!saveTodos(todos)) {
-    Object.assign(todo, previousTodo);
     applyFilters();
-    showTodoSaveError();
-    return false;
+    return true;
   }
 
-  applyFilters();
-  return true;
-}
+  function updateSubtaskText(todoId, subtaskId, newText) {
+    const todo = todos.find(t => t.id === todoId);
+    if (!todo || !todo.subtasks) return false;
+    if (!newText || !newText.trim()) return false;
 
-function updateSubtaskText(todoId, subtaskId, newText) {
-  const todo = todos.find(t => t.id === todoId);
-  if (!todo || !todo.subtasks) return false;
-  if (!newText || !newText.trim()) return false;
+    const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
+    const subtask = todo.subtasks.find(st => st.id === subtaskId);
+    if (!subtask) return false;
 
-  const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
-  const subtask = todo.subtasks.find(st => st.id === subtaskId);
-  if (!subtask) return false;
+    subtask.text = newText.trim();
 
-  subtask.text = newText.trim();
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return false;
+    }
 
-  if (!saveTodos(todos)) {
-    Object.assign(todo, previousTodo);
     applyFilters();
-    showTodoSaveError();
-    return false;
+    return true;
   }
 
-  applyFilters();
-  return true;
-}
-
-function getSubtaskProgress(todo) {
-  if (!todo.subtasks || todo.subtasks.length === 0) return null;
-  const done = todo.subtasks.filter(st => st.checked).length;
-  return { done, total: todo.subtasks.length };
-}
+  function getSubtaskProgress(todo) {
+    if (!todo.subtasks || todo.subtasks.length === 0) return null;
+    const done = todo.subtasks.filter(st => st.checked).length;
+    return { done, total: todo.subtasks.length };
+  }
 
 // Filter management
 function applyFilters() {
