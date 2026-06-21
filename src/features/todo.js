@@ -23,7 +23,7 @@
   const editModalState = {
     currentTodoId: null,
     isOpen: false,
-    pendingSubtaskAdded: false
+    pendingSubtaskAdded: 0
   };
   const runTodoOnDomReady = window.onDomReady;
 
@@ -1585,17 +1585,19 @@ function openEditModal(id) {
 }
 
 function closeEditModal() {
-  // Roll back any in-memory subtask that wasn't persisted
-  if (editModalState.pendingSubtaskAdded && editModalState.currentTodoId) {
+  // Roll back all in-memory subtasks that weren't persisted
+  if (editModalState.pendingSubtaskAdded > 0 && editModalState.currentTodoId) {
     const todo = todos.find(t => t.id === editModalState.currentTodoId);
-    if (todo && todo.subtasks && todo.subtasks.length > 0) {
-      todo.subtasks.pop();
+    if (todo && todo.subtasks) {
+      for (let i = 0; i < editModalState.pendingSubtaskAdded; i++) {
+        if (todo.subtasks.length > 0) todo.subtasks.pop();
+      }
     }
   }
 
   editModalState.currentTodoId = null;
   editModalState.isOpen = false;
-  editModalState.pendingSubtaskAdded = false;
+  editModalState.pendingSubtaskAdded = 0;
 
   // Clear subtask input
   const subtaskInput = document.getElementById('todo-edit-subtask-input');
@@ -1639,19 +1641,23 @@ function saveEdit() {
         text: pendingSubtask,
         checked: false
       });
-      editModalState.pendingSubtaskAdded = true;
+      editModalState.pendingSubtaskAdded += 1;
       subtaskInput.value = '';
     }
   }
 
   if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
+    // Reset count before closing so closeEditModal doesn't roll back persisted subtasks
+    editModalState.pendingSubtaskAdded = 0;
     closeEditModal();
-  } else if (editModalState.pendingSubtaskAdded && existingTodo && existingTodo.subtasks && existingTodo.subtasks.length > 0) {
-    // Roll back the in-memory subtask if save failed
-    existingTodo.subtasks.pop();
+  } else if (editModalState.pendingSubtaskAdded > 0 && existingTodo && existingTodo.subtasks) {
+    // Roll back all in-memory subtasks if save failed
+    for (let i = 0; i < editModalState.pendingSubtaskAdded; i++) {
+      if (existingTodo.subtasks.length > 0) existingTodo.subtasks.pop();
+    }
   }
 
-  editModalState.pendingSubtaskAdded = false;
+  editModalState.pendingSubtaskAdded = 0;
 }
 
 // Initialize todo functionality
@@ -1784,7 +1790,7 @@ function initTodo() {
               text: subtaskInput.value.trim(),
               checked: false
             });
-            editModalState.pendingSubtaskAdded = true;
+            editModalState.pendingSubtaskAdded += 1;
             subtaskInput.value = '';
             renderEditModalSubtasks(todo);
           }
