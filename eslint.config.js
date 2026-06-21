@@ -86,6 +86,9 @@ const srcGlobals = {
   getSubtaskProgress: 'readonly',
   cloneTodos: 'readonly',
   editModalState: 'readonly',
+  openEditModal: 'readonly',
+  saveEdit: 'readonly',
+  closeEditModal: 'readonly',
   module: 'readonly',
   exports: 'readonly',
 };

@@ -1484,6 +1484,7 @@ function renderEditModalSubtasks(todo) {
     checkbox.type = 'button';
     checkbox.setAttribute('role', 'checkbox');
     checkbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
+    checkbox.setAttribute('aria-label', `Subtask: ${subtask.text || 'Untitled'}`);
     checkbox.dataset.todoId = todo.id;
     checkbox.dataset.subtaskId = subtask.id;
 
@@ -1632,13 +1633,15 @@ function saveEdit() {
   const pendingSubtask = subtaskInput ? subtaskInput.value.trim() : '';
   if (pendingSubtask && existingTodo) {
     if (!existingTodo.subtasks) existingTodo.subtasks = [];
-    existingTodo.subtasks.push({
-      id: generateTodoId(),
-      text: pendingSubtask,
-      checked: false
-    });
-    editModalState.pendingSubtaskAdded = true;
-    subtaskInput.value = '';
+    if (existingTodo.subtasks.length < MAX_SUBTASKS) {
+      existingTodo.subtasks.push({
+        id: generateTodoId(),
+        text: pendingSubtask,
+        checked: false
+      });
+      editModalState.pendingSubtaskAdded = true;
+      subtaskInput.value = '';
+    }
   }
 
   if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
@@ -1775,6 +1778,7 @@ function initTodo() {
           const todo = todos.find(t => t.id === editModalState.currentTodoId);
           if (todo) {
             if (!todo.subtasks) todo.subtasks = [];
+            if (todo.subtasks.length >= MAX_SUBTASKS) return;
             todo.subtasks.push({
               id: generateTodoId(),
               text: subtaskInput.value.trim(),

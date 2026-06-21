@@ -2085,6 +2085,8 @@ describe('Todo subtasks', () => {
       // The pending subtask should be rolled back — subtasks should remain empty
       const after = loadTodos()[0];
       expect(after.subtasks).toBeUndefined();
+      // The todo text should also remain unchanged
+      expect(after.text).toBe('Parent');
     } finally {
       setItemSpy.mockRestore();
       warnSpy.mockRestore();
