@@ -23,7 +23,7 @@
   const editModalState = {
     currentTodoId: null,
     isOpen: false,
-    pendingSubtaskAdded: 0
+    pendingSubtaskIds: new Set()
   };
   const runTodoOnDomReady = window.onDomReady;
 
@@ -689,6 +689,9 @@
     if (todo.subtasks.length === originalLength) {
       return false;
     }
+
+    // Remove from pending set if it was a pending subtask
+    editModalState.pendingSubtaskIds.delete(subtaskId);
 
     if (!saveTodos(todos)) {
       Object.assign(todo, previousTodo);
@@ -1586,18 +1589,16 @@ function openEditModal(id) {
 
 function closeEditModal() {
   // Roll back all in-memory subtasks that weren't persisted
-  if (editModalState.pendingSubtaskAdded > 0 && editModalState.currentTodoId) {
+  if (editModalState.pendingSubtaskIds.size > 0 && editModalState.currentTodoId) {
     const todo = todos.find(t => t.id === editModalState.currentTodoId);
     if (todo && todo.subtasks) {
-      for (let i = 0; i < editModalState.pendingSubtaskAdded; i++) {
-        if (todo.subtasks.length > 0) todo.subtasks.pop();
-      }
+      todo.subtasks = todo.subtasks.filter(st => !editModalState.pendingSubtaskIds.has(st.id));
     }
   }
 
   editModalState.currentTodoId = null;
   editModalState.isOpen = false;
-  editModalState.pendingSubtaskAdded = 0;
+  editModalState.pendingSubtaskIds.clear();
 
   // Clear subtask input
   const subtaskInput = document.getElementById('todo-edit-subtask-input');
@@ -1636,28 +1637,27 @@ function saveEdit() {
   if (pendingSubtask && existingTodo) {
     if (!existingTodo.subtasks) existingTodo.subtasks = [];
     if (existingTodo.subtasks.length < MAX_SUBTASKS) {
+      const newSubtaskId = generateTodoId();
       existingTodo.subtasks.push({
-        id: generateTodoId(),
+        id: newSubtaskId,
         text: pendingSubtask,
         checked: false
       });
-      editModalState.pendingSubtaskAdded += 1;
+      editModalState.pendingSubtaskIds.add(newSubtaskId);
       subtaskInput.value = '';
     }
   }
 
   if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
-    // Reset count before closing so closeEditModal doesn't roll back persisted subtasks
-    editModalState.pendingSubtaskAdded = 0;
+    // Clear pending IDs before closing so closeEditModal doesn't roll back persisted subtasks
+    editModalState.pendingSubtaskIds.clear();
     closeEditModal();
-  } else if (editModalState.pendingSubtaskAdded > 0 && existingTodo && existingTodo.subtasks) {
+  } else if (editModalState.pendingSubtaskIds.size > 0 && existingTodo && existingTodo.subtasks) {
     // Roll back all in-memory subtasks if save failed
-    for (let i = 0; i < editModalState.pendingSubtaskAdded; i++) {
-      if (existingTodo.subtasks.length > 0) existingTodo.subtasks.pop();
-    }
+    existingTodo.subtasks = existingTodo.subtasks.filter(st => !editModalState.pendingSubtaskIds.has(st.id));
   }
 
-  editModalState.pendingSubtaskAdded = 0;
+  editModalState.pendingSubtaskIds.clear();
 }
 
 // Initialize todo functionality
@@ -1785,12 +1785,13 @@ function initTodo() {
           if (todo) {
             if (!todo.subtasks) todo.subtasks = [];
             if (todo.subtasks.length >= MAX_SUBTASKS) return;
+            const newSubtaskId = generateTodoId();
             todo.subtasks.push({
-              id: generateTodoId(),
+              id: newSubtaskId,
               text: subtaskInput.value.trim(),
               checked: false
             });
-            editModalState.pendingSubtaskAdded += 1;
+            editModalState.pendingSubtaskIds.add(newSubtaskId);
             subtaskInput.value = '';
             renderEditModalSubtasks(todo);
           }

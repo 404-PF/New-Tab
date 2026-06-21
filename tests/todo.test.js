@@ -2100,7 +2100,7 @@ describe('Todo subtasks', () => {
     openEditModal(todoId);
 
     // Simulate pending state
-    editModalState.pendingSubtaskAdded = 1;
+    editModalState.pendingSubtaskIds.add('test-subtask-id');
 
     // Set subtask input value
     const subtaskInput = document.getElementById('todo-edit-subtask-input');
@@ -2108,7 +2108,7 @@ describe('Todo subtasks', () => {
 
     closeEditModal();
 
-    expect(editModalState.pendingSubtaskAdded).toBe(0);
+    expect(editModalState.pendingSubtaskIds.size).toBe(0);
     expect(editModalState.currentTodoId).toBeNull();
     if (subtaskInput) {
       expect(subtaskInput.value).toBe('');
