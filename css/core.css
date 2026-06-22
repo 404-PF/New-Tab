@@ -931,23 +931,42 @@ body.light-theme .bg-loading-spinner {
   border: 2px solid #2196f3;
 }
 
+/* Subsection card containers */
+.bg-subsection {
+  padding: 16px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 /* Subsection headers */
+.bg-subsection-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .bg-subsection-header {
   font-size: 16px;
   font-weight: 600;
   color: var(--settings-text-color);
   margin-bottom: 4px;
-  margin-top: 24px;
+  margin-top: 0;
 }
 
-.bg-subsection-header:first-child {
-  margin-top: 0;
+.bg-subsection-subheader {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--settings-text-color);
+  margin: 12px 0 6px;
+  opacity: 0.75;
 }
 
 .bg-subsection-desc {
   font-size: 13px;
   color: rgba(107, 114, 128, 0.8);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   margin-top: 0;
 }
 
@@ -1096,8 +1115,8 @@ body.light-theme .bg-rotation-next-btn:hover {
 
 /* Custom background upload button */
 .upload-bg-btn {
-  width: 64px;
-  height: 64px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
   border: 2px dashed rgba(33, 150, 243, 0.4) !important;
   background: rgba(33, 150, 243, 0.08) !important;
@@ -1124,8 +1143,8 @@ body.light-theme .bg-rotation-next-btn:hover {
 }
 
 .upload-bg-btn svg {
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   stroke-width: 1.8;
 }
 
