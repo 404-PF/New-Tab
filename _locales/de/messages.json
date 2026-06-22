@@ -52,5 +52,13 @@
   "todoSubtaskDelete": {
     "message": "Unteraufgabe löschen",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "Wiedergabe",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "Optionen",
+    "description": "Sub-header for rotation controls in the Rotation section"
   }
 }

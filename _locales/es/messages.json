@@ -52,5 +52,13 @@
   "todoSubtaskDelete": {
     "message": "Eliminar subtarea",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "Reproducción",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "Opciones",
+    "description": "Sub-header for rotation controls in the Rotation section"
   }
 }

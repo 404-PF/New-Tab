@@ -52,5 +52,13 @@
   "todoSubtaskDelete": {
     "message": "하위 작업 삭제",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "재생",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "옵션",
+    "description": "Sub-header for rotation controls in the Rotation section"
   }
 }

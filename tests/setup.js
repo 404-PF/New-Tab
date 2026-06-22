@@ -350,6 +350,8 @@ globalThis.window.i18n = {
       backgroundSettingsDesc: 'Choose your background image',
       liveBackground: 'Live Background',
       liveBackgroundSettingsDesc: 'Choose an animated background video',
+      playbackControls: 'Playback',
+      rotationOptions: 'Options',
       iconStyle: 'Icon Style',
       iconStyleDesc: 'Choose the shape and appearance of your app icons',
       iconSize: 'Icon Size',

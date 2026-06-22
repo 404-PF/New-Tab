@@ -52,5 +52,13 @@
   "todoSubtaskDelete": {
     "message": "Supprimer la sous-tâche",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "Lecture",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "Options",
+    "description": "Sub-header for rotation controls in the Rotation section"
   }
 }

@@ -52,5 +52,13 @@
   "todoSubtaskDelete": {
     "message": "删除子任务",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "播放",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "选项",
+    "description": "Sub-header for rotation controls in the Rotation section"
   }
 }

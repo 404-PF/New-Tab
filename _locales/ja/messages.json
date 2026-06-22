@@ -52,5 +52,13 @@
   "todoSubtaskDelete": {
     "message": "サブタスクを削除",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "再生",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "オプション",
+    "description": "Sub-header for rotation controls in the Rotation section"
   }
 }
