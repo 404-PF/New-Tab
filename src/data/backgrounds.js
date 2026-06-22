@@ -1,8 +1,8 @@
 /*
   backgrounds.js
-  Exports a `backgrounds` array and an `initBackgrounds()` helper that
-  generates thumbnail elements inside #bg-thumbnails and exposes a lookup
-  used by the page script to apply backgrounds.
+  Exports a `backgrounds` array and helpers that generate thumbnail elements
+  inside section-specific containers and expose a lookup used by the page
+  script to apply backgrounds.
 */
 function createInteractiveBackgroundDataUri() {
   const svg = `
@@ -203,28 +203,10 @@ function getInteractiveBackgrounds() {
   return interactiveBackgrounds;
 }
 
-function initBackgrounds() {
-  const container = document.getElementById('bg-thumbnails');
-  if (!container) return;
-  container.innerHTML = '';
-  backgrounds.forEach((bg) => {
-    const img = document.createElement('img');
-    img.className = 'bg-thumb' + (bg.type === 'video' ? ' bg-thumb-video' : '');
-    img.setAttribute('data-bg', bg.id);
-    img.src = bg.thumb;
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    img.title = bg.title;
-    img.alt = bg.title;
-    container.appendChild(img);
-  });
-}
-
 // Initialize static backgrounds section
 function initStaticBackgrounds() {
   const container = document.getElementById('bg-thumbnails-static');
   if (!container) return;
-  // Remove existing thumbnails but preserve upload button
   container.querySelectorAll('.bg-thumb').forEach(el => el.remove());
   staticBackgrounds.forEach((bg) => {
     const img = document.createElement('img');
@@ -249,7 +231,6 @@ function initStaticBackgrounds() {
 function initLiveBackgrounds() {
   const container = document.getElementById('bg-thumbnails-live');
   if (!container) return;
-  // Remove existing thumbnails but preserve upload button
   container.querySelectorAll('.bg-thumb').forEach(el => el.remove());
   videoBackgrounds.forEach((bg) => {
     const img = document.createElement('img');
@@ -300,7 +281,6 @@ function findBackgroundUrlById(id) {
 
 // Expose for other scripts (non-module global)
 window._backgrounds = backgrounds;
-window._initBackgrounds = initBackgrounds;
 window._initStaticBackgrounds = initStaticBackgrounds;
 window._initLiveBackgrounds = initLiveBackgrounds;
 window._initInteractiveBackgrounds = initInteractiveBackgrounds;

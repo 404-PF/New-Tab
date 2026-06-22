@@ -345,7 +345,7 @@
       const staticBgs = customBgs.filter(function (bg) { return bg.type !== 'video'; });
       const liveBgs = customBgs.filter(function (bg) { return bg.type === 'video'; });
 
-      // Insert custom static backgrounds before the upload button
+      // Insert custom static backgrounds into the thumbnail grid
       const staticUploadBtn = staticContainer.querySelector('.upload-bg-btn');
       staticBgs.forEach(function (bg) {
         const wrapper = document.createElement('div');
@@ -375,7 +375,7 @@
         }
       });
 
-      // Insert custom live backgrounds before the upload button
+      // Insert custom live backgrounds into the thumbnail grid
       const liveUploadBtn = liveContainer.querySelector('.upload-bg-btn');
       liveBgs.forEach(function (bg) {
         const wrapper = document.createElement('div');
