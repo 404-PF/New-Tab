@@ -690,15 +690,15 @@
       return false;
     }
 
-    // Remove from pending set if it was a pending subtask
-    editModalState.pendingSubtaskIds.delete(subtaskId);
-
     if (!saveTodos(todos)) {
       Object.assign(todo, previousTodo);
       applyFilters();
       showTodoSaveError();
       return false;
     }
+
+    // Remove from pending set only after successful save
+    editModalState.pendingSubtaskIds.delete(subtaskId);
 
     applyFilters();
     return true;
@@ -1530,11 +1530,30 @@ function renderEditModalSubtasks(todo) {
   }
 }
 
+function toggleEditModalSubtask(todoId, subtaskId) {
+  const todo = todos.find(t => t.id === todoId);
+  if (!todo || !todo.subtasks) return false;
+  const subtask = todo.subtasks.find(st => st.id === subtaskId);
+  if (!subtask) return false;
+  subtask.checked = !subtask.checked;
+  return true;
+}
+
+function deleteEditModalSubtask(todoId, subtaskId) {
+  const todo = todos.find(t => t.id === todoId);
+  if (!todo || !todo.subtasks) return false;
+  const originalLength = todo.subtasks.length;
+  todo.subtasks = todo.subtasks.filter(st => st.id !== subtaskId);
+  if (todo.subtasks.length === originalLength) return false;
+  editModalState.pendingSubtaskIds.delete(subtaskId);
+  return true;
+}
+
 function handleEditModalSubtaskClick(e) {
   const checkbox = e.target.closest('.edit-subtask-checkbox');
   if (checkbox) {
     e.stopPropagation();
-    toggleSubtask(checkbox.dataset.todoId, checkbox.dataset.subtaskId);
+    toggleEditModalSubtask(checkbox.dataset.todoId, checkbox.dataset.subtaskId);
     const todo = todos.find(t => t.id === checkbox.dataset.todoId);
     if (todo) renderEditModalSubtasks(todo);
     return;
@@ -1543,7 +1562,7 @@ function handleEditModalSubtaskClick(e) {
   const deleteBtn = e.target.closest('.edit-subtask-delete');
   if (deleteBtn) {
     e.stopPropagation();
-    deleteSubtask(deleteBtn.dataset.todoId, deleteBtn.dataset.subtaskId);
+    deleteEditModalSubtask(deleteBtn.dataset.todoId, deleteBtn.dataset.subtaskId);
     const todo = todos.find(t => t.id === deleteBtn.dataset.todoId);
     if (todo) renderEditModalSubtasks(todo);
     return;
