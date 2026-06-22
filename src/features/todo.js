@@ -98,10 +98,14 @@
     }
   }
 
+  function cloneSubtasks(subtasks) {
+    return subtasks ? subtasks.map(st => ({ ...st })) : undefined;
+  }
+
   function cloneTodos(sourceTodos) {
     return sourceTodos.map(todo => ({
       ...todo,
-      subtasks: todo.subtasks ? todo.subtasks.map(st => ({ ...st })) : undefined
+      subtasks: cloneSubtasks(todo.subtasks)
     }));
   }
 
@@ -589,7 +593,7 @@
       return false;
     }
 
-    const previousTodo = { ...todo, subtasks: todo.subtasks ? todo.subtasks.map(st => ({ ...st })) : undefined };
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
     todo.text = newText.trim();
     if (newPriority !== null && newPriority !== undefined) {
       todo.priority = newPriority;
@@ -613,7 +617,7 @@
   function toggleTodo(id) {
     const todo = todos.find(t => t.id === id);
     if (todo) {
-      const previousTodo = { ...todo, subtasks: todo.subtasks ? todo.subtasks.map(st => ({ ...st })) : undefined };
+      const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
       todo.completed = !todo.completed;
       
       // Track completion time for sorting
@@ -658,7 +662,7 @@
     if (!todo) return false;
     if (todo.subtasks && todo.subtasks.length >= MAX_SUBTASKS) return false;
 
-    const previousTodo = { ...todo, subtasks: todo.subtasks ? [...todo.subtasks.map(st => ({ ...st }))] : undefined };
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
     if (!todo.subtasks) todo.subtasks = [];
 
     todo.subtasks.push({
@@ -682,7 +686,7 @@
     const todo = todos.find(t => t.id === todoId);
     if (!todo || !todo.subtasks) return false;
 
-    const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
     const originalLength = todo.subtasks.length;
     todo.subtasks = todo.subtasks.filter(st => st.id !== subtaskId);
 
@@ -709,7 +713,7 @@
     const todo = todos.find(t => t.id === todoId);
     if (!todo || !todo.subtasks) return false;
 
-    const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
     const subtask = todo.subtasks.find(st => st.id === subtaskId);
     if (!subtask) return false;
 
@@ -731,7 +735,7 @@
     if (!todo || !todo.subtasks) return false;
     if (!newText || !newText.trim()) return false;
 
-    const previousTodo = { ...todo, subtasks: todo.subtasks.map(st => ({ ...st })) };
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
     const subtask = todo.subtasks.find(st => st.id === subtaskId);
     if (!subtask) return false;
 
@@ -1339,7 +1343,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   if (!todo) return;
   
   const oldDate = todo.dueDate;
-  const previousTodo = { ...todo, subtasks: todo.subtasks ? todo.subtasks.map(st => ({ ...st })) : undefined };
+  const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
   todo.dueDate = newDate ? formatDateISO(newDate) : null;
   
   // Save to localStorage
@@ -1586,7 +1590,7 @@ function openEditModal(id) {
   editModalState.currentTodoId = id;
   editModalState.isOpen = true;
   // Capture snapshot of the todo (including subtasks) before any modifications
-  editModalState.todoSnapshot = { ...todo, subtasks: todo.subtasks ? todo.subtasks.map(st => ({ ...st })) : undefined };
+  editModalState.todoSnapshot = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
 
   // Populate modal fields
   const textInput = document.getElementById('todo-edit-text');
@@ -1614,7 +1618,7 @@ function closeEditModal(shouldRollback = true) {
   if (shouldRollback && editModalState.currentTodoId && editModalState.todoSnapshot) {
     const todo = todos.find(t => t.id === editModalState.currentTodoId);
     if (todo) {
-      todo.subtasks = editModalState.todoSnapshot.subtasks ? editModalState.todoSnapshot.subtasks.map(st => ({ ...st })) : undefined;
+      todo.subtasks = cloneSubtasks(editModalState.todoSnapshot.subtasks);
     }
   }
 
@@ -1774,10 +1778,10 @@ function initTodo() {
   const editModal = document.getElementById('todo-edit-modal');
 
   if (editModalClose) {
-    editModalClose.addEventListener('click', closeEditModal);
+    editModalClose.addEventListener('click', () => closeEditModal());
   }
   if (editModalCancel) {
-    editModalCancel.addEventListener('click', closeEditModal);
+    editModalCancel.addEventListener('click', () => closeEditModal());
   }
   if (editModalSave) {
     editModalSave.addEventListener('click', saveEdit);
