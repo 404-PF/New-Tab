@@ -1609,9 +1609,9 @@ function openEditModal(id) {
   }
 }
 
-function closeEditModal() {
-  // Restore subtasks from snapshot to roll back all modifications
-  if (editModalState.currentTodoId && editModalState.todoSnapshot) {
+function closeEditModal(shouldRollback = true) {
+  // Only restore subtasks from snapshot if rolling back (e.g., on cancel)
+  if (shouldRollback && editModalState.currentTodoId && editModalState.todoSnapshot) {
     const todo = todos.find(t => t.id === editModalState.currentTodoId);
     if (todo) {
       todo.subtasks = editModalState.todoSnapshot.subtasks ? editModalState.todoSnapshot.subtasks.map(st => ({ ...st })) : undefined;
@@ -1674,7 +1674,7 @@ function saveEdit() {
   if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
     // Clear pending IDs before closing so closeEditModal doesn't roll back persisted subtasks
     editModalState.pendingSubtaskIds.clear();
-    closeEditModal();
+    closeEditModal(false);
   } else if (editModalState.pendingSubtaskIds.size > 0 && existingTodo && existingTodo.subtasks) {
     // Roll back all in-memory subtasks if save failed
     existingTodo.subtasks = existingTodo.subtasks.filter(st => !editModalState.pendingSubtaskIds.has(st.id));
@@ -2016,7 +2016,7 @@ function showImportDialog(importedTodos) {
 
     todos = existingTodos;
     applyFilters();
-    closeEditModal();
+    closeEditModal(false);
     (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     if (addedCount > 0) {
       const msg = window.i18n ? window.i18n.t('importSuccess', { count: addedCount }) : 'Imported ' + addedCount + ' todos successfully.';
@@ -2047,7 +2047,7 @@ function showImportDialog(importedTodos) {
 
     todos = newTodos;
     applyFilters();
-    closeEditModal();
+    closeEditModal(false);
     (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     const msg = window.i18n ? window.i18n.t('importSuccess', { count: newTodos.length }) : 'Imported ' + newTodos.length + ' todos successfully.';
     showToast(msg, 'success');
