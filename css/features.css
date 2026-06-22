@@ -145,10 +145,6 @@ body.light-theme .icon {
   border: 1px solid #f0f0f0;
 }
 
-body.light-theme .icon:hover {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
 body.light-theme .engine-dropdown {
   background: rgba(255, 255, 255, 0.98);
   border-color: #ddd;
@@ -2911,10 +2907,6 @@ body.light-theme .delete-preview-name {
 
 /* Touch Device Optimizations */
 @media (hover: none) and (pointer: coarse) {
-  .app-icon:hover {
-    transform: none;
-  }
-
   .app-icon:active {
     transform: scale(0.96);
   }
