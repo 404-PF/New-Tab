@@ -14,6 +14,7 @@
   // Animation config
   const STAGGER_DELAY = 0.05; // seconds between each item
   const SVG_NS = 'http://www.w3.org/2000/svg';
+  const MAX_SUBTASKS = 50;
 
   // DOM elements
   let elements = {};
@@ -21,7 +22,9 @@
   // Edit modal state
   const editModalState = {
     currentTodoId: null,
-    isOpen: false
+    isOpen: false,
+    pendingSubtaskIds: new Set(),
+    todoSnapshot: null
   };
   const runTodoOnDomReady = window.onDomReady;
 
@@ -95,8 +98,15 @@
     }
   }
 
+  function cloneSubtasks(subtasks) {
+    return subtasks ? subtasks.map(st => ({ ...st })) : undefined;
+  }
+
   function cloneTodos(sourceTodos) {
-    return sourceTodos.map(todo => ({ ...todo }));
+    return sourceTodos.map(todo => ({
+      ...todo,
+      subtasks: cloneSubtasks(todo.subtasks)
+    }));
   }
 
   function showTodoSaveError() {
@@ -147,6 +157,31 @@
       element.setAttribute(name, value);
     });
     return element;
+  }
+
+  function createSubtaskCheckboxSvg(checked) {
+    const svg = createSvgElement('svg', {
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      class: checked ? 'subtask-checked' : 'subtask-unchecked'
+    });
+    if (checked) {
+      svg.appendChild(createSvgElement('rect', {
+        x: '3', y: '3', width: '18', height: '18', rx: '3',
+        fill: 'currentColor'
+      }));
+      svg.appendChild(createSvgElement('path', {
+        d: 'M9 12l2 2 4-4',
+        stroke: 'white', 'stroke-width': '2',
+        'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none'
+      }));
+    } else {
+      svg.appendChild(createSvgElement('rect', {
+        x: '3', y: '3', width: '18', height: '18', rx: '3',
+        stroke: 'currentColor', 'stroke-width': '2', fill: 'none'
+      }));
+    }
+    return svg;
   }
 
   function createTodoIconButton(className, title, todoId, iconChildren) {
@@ -298,6 +333,9 @@
       li.dataset.id = todo.id;
       li.draggable = true;
 
+      const todoItemRow = document.createElement('div');
+      todoItemRow.className = 'todo-item-row';
+
       const bullet = document.createElement('div');
       bullet.className = 'todo-bullet';
       bullet.dataset.id = todo.id;
@@ -376,10 +414,71 @@
         { tagName: 'line', attributes: { x1: '14', y1: '11', x2: '14', y2: '17' } }
       ]));
 
-      li.appendChild(bullet);
-      li.appendChild(todoContent);
-      li.appendChild(dueDate);
-      li.appendChild(todoActions);
+      todoItemRow.appendChild(bullet);
+      todoItemRow.appendChild(todoContent);
+      todoItemRow.appendChild(dueDate);
+      todoItemRow.appendChild(todoActions);
+
+      li.appendChild(todoItemRow);
+
+      // Subtasks
+      if (todo.subtasks && todo.subtasks.length > 0) {
+        const subtasksContainer = document.createElement('div');
+        subtasksContainer.className = 'todo-subtasks';
+
+        todo.subtasks.forEach(subtask => {
+          const stItem = document.createElement('div');
+          stItem.className = `todo-subtask-item ${subtask.checked ? 'checked' : ''}`;
+          stItem.dataset.subtaskId = subtask.id;
+          stItem.dataset.todoId = todo.id;
+
+          const stCheckbox = document.createElement('button');
+          stCheckbox.className = 'todo-subtask-checkbox';
+          stCheckbox.type = 'button';
+          stCheckbox.setAttribute('role', 'checkbox');
+          stCheckbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
+          stCheckbox.setAttribute('aria-label', `Toggle subtask: ${subtask.text}`);
+          stCheckbox.setAttribute('draggable', 'false');
+          stCheckbox.dataset.todoId = todo.id;
+          stCheckbox.dataset.subtaskId = subtask.id;
+
+          stCheckbox.appendChild(createSubtaskCheckboxSvg(subtask.checked));
+
+          const stText = document.createElement('span');
+          stText.className = 'todo-subtask-text';
+          stText.textContent = subtask.text;
+
+          const stDelete = document.createElement('button');
+          stDelete.className = 'todo-subtask-delete';
+          stDelete.setAttribute('draggable', 'false');
+          stDelete.dataset.todoId = todo.id;
+          stDelete.dataset.subtaskId = subtask.id;
+          stDelete.title = window.i18n ? window.i18n.t('todoSubtaskDelete') : 'Delete subtask';
+          const delSvg = createSvgElement('svg', {
+            viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+            'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+          });
+          delSvg.appendChild(createSvgElement('line', { x1: '18', y1: '6', x2: '6', y2: '18' }));
+          delSvg.appendChild(createSvgElement('line', { x1: '6', y1: '6', x2: '18', y2: '18' }));
+          stDelete.appendChild(delSvg);
+
+          stItem.appendChild(stCheckbox);
+          stItem.appendChild(stText);
+          stItem.appendChild(stDelete);
+          subtasksContainer.appendChild(stItem);
+        });
+
+        // Progress badge
+        const progress = getSubtaskProgress(todo);
+        if (progress) {
+          const badge = document.createElement('span');
+          badge.className = 'todo-subtask-progress';
+          badge.textContent = `${progress.done}/${progress.total}`;
+          todoContent.appendChild(badge);
+        }
+
+        li.appendChild(subtasksContainer);
+      }
 
       // Add staggered animation delay
       li.style.animationDelay = `${index * STAGGER_DELAY}s`;
@@ -494,7 +593,7 @@
       return false;
     }
 
-    const previousTodo = { ...todo };
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
     todo.text = newText.trim();
     if (newPriority !== null && newPriority !== undefined) {
       todo.priority = newPriority;
@@ -518,7 +617,7 @@
   function toggleTodo(id) {
     const todo = todos.find(t => t.id === id);
     if (todo) {
-      const previousTodo = { ...todo };
+      const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
       todo.completed = !todo.completed;
       
       // Track completion time for sorting
@@ -541,20 +640,123 @@
   }
 
 
-// Delete a todo
-function deleteTodo(id) {
-  const previousTodos = cloneTodos(todos);
-  todos = todos.filter(t => t.id !== id);
-  if (!saveTodos(todos)) {
-    todos = previousTodos;
+  // Delete a todo
+  function deleteTodo(id) {
+    const previousTodos = cloneTodos(todos);
+    todos = todos.filter(t => t.id !== id);
+    if (!saveTodos(todos)) {
+      todos = previousTodos;
+      applyFilters();
+      showTodoSaveError();
+      return;
+    }
+
     applyFilters();
-    showTodoSaveError();
-    return;
+    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
   }
 
-  applyFilters();
-  (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
-}
+  // Subtask management
+  function addSubtask(todoId, text) {
+    if (!text || !text.trim()) return false;
+    const todo = todos.find(t => t.id === todoId);
+    if (!todo) return false;
+    if (todo.subtasks && todo.subtasks.length >= MAX_SUBTASKS) return false;
+
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
+    if (!todo.subtasks) todo.subtasks = [];
+
+    todo.subtasks.push({
+      id: generateTodoId(),
+      text: text.trim(),
+      checked: false
+    });
+
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return false;
+    }
+
+    applyFilters();
+    return true;
+  }
+
+  function deleteSubtask(todoId, subtaskId) {
+    const todo = todos.find(t => t.id === todoId);
+    if (!todo || !todo.subtasks) return false;
+
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
+    const originalLength = todo.subtasks.length;
+    todo.subtasks = todo.subtasks.filter(st => st.id !== subtaskId);
+
+    // If no subtask was removed, return false
+    if (todo.subtasks.length === originalLength) {
+      return false;
+    }
+
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return false;
+    }
+
+    // Remove from pending set only after successful save
+    editModalState.pendingSubtaskIds.delete(subtaskId);
+
+    applyFilters();
+    return true;
+  }
+
+  function toggleSubtask(todoId, subtaskId) {
+    const todo = todos.find(t => t.id === todoId);
+    if (!todo || !todo.subtasks) return false;
+
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
+    const subtask = todo.subtasks.find(st => st.id === subtaskId);
+    if (!subtask) return false;
+
+    subtask.checked = !subtask.checked;
+
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return false;
+    }
+
+    applyFilters();
+    return true;
+  }
+
+  function updateSubtaskText(todoId, subtaskId, newText) {
+    const todo = todos.find(t => t.id === todoId);
+    if (!todo || !todo.subtasks) return false;
+    if (!newText || !newText.trim()) return false;
+
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
+    const subtask = todo.subtasks.find(st => st.id === subtaskId);
+    if (!subtask) return false;
+
+    subtask.text = newText.trim();
+
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return false;
+    }
+
+    applyFilters();
+    return true;
+  }
+
+  function getSubtaskProgress(todo) {
+    if (!todo.subtasks || todo.subtasks.length === 0) return null;
+    const done = todo.subtasks.filter(st => st.checked).length;
+    return { done, total: todo.subtasks.length };
+  }
 
 // Filter management
 function applyFilters() {
@@ -730,6 +932,10 @@ function clearInputs() {
 let draggedElement = null;
 
 function handleDragStart(event) {
+  if (event.target.closest('button')) {
+    event.preventDefault();
+    return;
+  }
   draggedElement = event.target;
   event.target.style.opacity = '0.5';
 }
@@ -839,6 +1045,26 @@ function handleTodoListClick(event) {
     event.stopPropagation();
     const id = target.closest('.todo-edit-btn').dataset.id;
     openEditModal(id);
+    return;
+  }
+
+  // Handle subtask checkbox click
+  const subtaskCheckbox = target.closest('.todo-subtask-checkbox');
+  if (subtaskCheckbox) {
+    event.stopPropagation();
+    const todoId = subtaskCheckbox.dataset.todoId;
+    const subtaskId = subtaskCheckbox.dataset.subtaskId;
+    toggleSubtask(todoId, subtaskId);
+    return;
+  }
+
+  // Handle subtask delete button
+  const subtaskDelete = target.closest('.todo-subtask-delete');
+  if (subtaskDelete) {
+    event.stopPropagation();
+    const todoId = subtaskDelete.dataset.todoId;
+    const subtaskId = subtaskDelete.dataset.subtaskId;
+    deleteSubtask(todoId, subtaskId);
     return;
   }
 }
@@ -1117,7 +1343,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   if (!todo) return;
   
   const oldDate = todo.dueDate;
-  const previousTodo = { ...todo };
+  const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
   todo.dueDate = newDate ? formatDateISO(newDate) : null;
   
   // Save to localStorage
@@ -1247,6 +1473,115 @@ function closeAllInlineDatePickers() {
   pickers.forEach(picker => closeInlineDatePicker(picker));
 }
 
+// Render subtasks in the edit modal
+function renderEditModalSubtasks(todo) {
+  const container = document.getElementById('todo-edit-subtasks-list');
+  const section = document.getElementById('todo-edit-subtasks-section');
+  if (!container || !section) return;
+
+  const subtasks = todo.subtasks || [];
+  container.innerHTML = '';
+
+  subtasks.forEach(subtask => {
+    const item = document.createElement('div');
+    item.className = 'edit-subtask-item';
+    item.dataset.subtaskId = subtask.id;
+
+    const checkbox = document.createElement('button');
+    checkbox.className = 'edit-subtask-checkbox';
+    checkbox.type = 'button';
+    checkbox.setAttribute('role', 'checkbox');
+    checkbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
+    checkbox.setAttribute('aria-label', `Subtask: ${subtask.text || 'Untitled'}`);
+    checkbox.dataset.todoId = todo.id;
+    checkbox.dataset.subtaskId = subtask.id;
+
+    checkbox.appendChild(createSubtaskCheckboxSvg(subtask.checked));
+
+    const text = document.createElement('span');
+    text.className = 'edit-subtask-text';
+    text.textContent = subtask.text;
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'edit-subtask-delete';
+    deleteBtn.dataset.todoId = todo.id;
+    deleteBtn.dataset.subtaskId = subtask.id;
+    deleteBtn.title = window.i18n ? window.i18n.t('todoSubtaskDelete') : 'Delete subtask';
+    const delSvg = createSvgElement('svg', {
+      viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+      'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+    });
+    delSvg.appendChild(createSvgElement('line', { x1: '18', y1: '6', x2: '6', y2: '18' }));
+    delSvg.appendChild(createSvgElement('line', { x1: '6', y1: '6', x2: '18', y2: '18' }));
+    deleteBtn.appendChild(delSvg);
+
+    item.appendChild(checkbox);
+    item.appendChild(text);
+    item.appendChild(deleteBtn);
+    container.appendChild(item);
+  });
+
+  // Bind events for subtask interactions in the edit modal
+  setupEditModalSubtaskHandlers(todo.id);
+
+  // Disable input when at limit
+  const subtaskInput = document.getElementById('todo-edit-subtask-input');
+  if (subtaskInput) {
+    const atLimit = subtasks.length >= MAX_SUBTASKS;
+    subtaskInput.disabled = atLimit;
+    if (atLimit) {
+      subtaskInput.value = '';
+    }
+  }
+}
+
+function toggleEditModalSubtask(todoId, subtaskId) {
+  const todo = todos.find(t => t.id === todoId);
+  if (!todo || !todo.subtasks) return false;
+  const subtask = todo.subtasks.find(st => st.id === subtaskId);
+  if (!subtask) return false;
+  subtask.checked = !subtask.checked;
+  return true;
+}
+
+function deleteEditModalSubtask(todoId, subtaskId) {
+  const todo = todos.find(t => t.id === todoId);
+  if (!todo || !todo.subtasks) return false;
+  const originalLength = todo.subtasks.length;
+  todo.subtasks = todo.subtasks.filter(st => st.id !== subtaskId);
+  if (todo.subtasks.length === originalLength) return false;
+  editModalState.pendingSubtaskIds.delete(subtaskId);
+  return true;
+}
+
+function handleEditModalSubtaskClick(e) {
+  const checkbox = e.target.closest('.edit-subtask-checkbox');
+  if (checkbox) {
+    e.stopPropagation();
+    toggleEditModalSubtask(checkbox.dataset.todoId, checkbox.dataset.subtaskId);
+    const todo = todos.find(t => t.id === checkbox.dataset.todoId);
+    if (todo) renderEditModalSubtasks(todo);
+    return;
+  }
+
+  const deleteBtn = e.target.closest('.edit-subtask-delete');
+  if (deleteBtn) {
+    e.stopPropagation();
+    deleteEditModalSubtask(deleteBtn.dataset.todoId, deleteBtn.dataset.subtaskId);
+    const todo = todos.find(t => t.id === deleteBtn.dataset.todoId);
+    if (todo) renderEditModalSubtasks(todo);
+    return;
+  }
+}
+
+function setupEditModalSubtaskHandlers(todoId) {
+  const container = document.getElementById('todo-edit-subtasks-list');
+  if (!container) return;
+
+  container.removeEventListener('click', handleEditModalSubtaskClick);
+  container.addEventListener('click', handleEditModalSubtaskClick);
+}
+
 // Edit Modal Functions
 function openEditModal(id) {
   const todo = todos.find(t => t.id === id);
@@ -1254,6 +1589,8 @@ function openEditModal(id) {
 
   editModalState.currentTodoId = id;
   editModalState.isOpen = true;
+  // Capture snapshot of the todo (including subtasks) before any modifications
+  editModalState.todoSnapshot = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
 
   // Populate modal fields
   const textInput = document.getElementById('todo-edit-text');
@@ -1262,6 +1599,9 @@ function openEditModal(id) {
 
   if (textInput) textInput.value = todo.text;
   if (prioritySelect) prioritySelect.value = todo.priority || 'medium';
+
+  // Render subtasks in edit modal
+  renderEditModalSubtasks(todo);
 
   // Show modal
   if (modal) {
@@ -1273,9 +1613,26 @@ function openEditModal(id) {
   }
 }
 
-function closeEditModal() {
+function closeEditModal(shouldRollback = true) {
+  // Only restore subtasks from snapshot if rolling back (e.g., on cancel)
+  if (shouldRollback && editModalState.currentTodoId && editModalState.todoSnapshot) {
+    const todo = todos.find(t => t.id === editModalState.currentTodoId);
+    if (todo) {
+      todo.subtasks = cloneSubtasks(editModalState.todoSnapshot.subtasks);
+    }
+  }
+
   editModalState.currentTodoId = null;
   editModalState.isOpen = false;
+  editModalState.pendingSubtaskIds.clear();
+  editModalState.todoSnapshot = null;
+
+  // Clear subtask input
+  const subtaskInput = document.getElementById('todo-edit-subtask-input');
+  if (subtaskInput) {
+    subtaskInput.value = '';
+    subtaskInput.disabled = false;
+  }
 
   const modal = document.getElementById('todo-edit-modal');
 
@@ -1287,6 +1644,7 @@ function saveEdit() {
 
   const textInput = document.getElementById('todo-edit-text');
   const prioritySelect = document.getElementById('todo-edit-priority');
+  const subtaskInput = document.getElementById('todo-edit-subtask-input');
 
   const newText = textInput ? textInput.value.trim() : '';
   const newPriority = prioritySelect ? prioritySelect.value : null;
@@ -1301,9 +1659,32 @@ function saveEdit() {
   const existingTodo = todos.find(t => t.id === editModalState.currentTodoId);
   const preservedDueDate = existingTodo ? existingTodo.dueDate : null;
 
-  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
-    closeEditModal();
+  // If the user typed but didn't press Enter, add the pending subtask now
+  const pendingSubtask = subtaskInput ? subtaskInput.value.trim() : '';
+  if (pendingSubtask && existingTodo) {
+    if (!existingTodo.subtasks) existingTodo.subtasks = [];
+    if (existingTodo.subtasks.length < MAX_SUBTASKS) {
+      const newSubtaskId = generateTodoId();
+      existingTodo.subtasks.push({
+        id: newSubtaskId,
+        text: pendingSubtask,
+        checked: false
+      });
+      editModalState.pendingSubtaskIds.add(newSubtaskId);
+      subtaskInput.value = '';
+    }
   }
+
+  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
+    // Clear pending IDs before closing so closeEditModal doesn't roll back persisted subtasks
+    editModalState.pendingSubtaskIds.clear();
+    closeEditModal(false);
+  } else if (editModalState.pendingSubtaskIds.size > 0 && existingTodo && existingTodo.subtasks) {
+    // Roll back all in-memory subtasks if save failed
+    existingTodo.subtasks = existingTodo.subtasks.filter(st => !editModalState.pendingSubtaskIds.has(st.id));
+  }
+
+  editModalState.pendingSubtaskIds.clear();
 }
 
 // Initialize todo functionality
@@ -1397,10 +1778,10 @@ function initTodo() {
   const editModal = document.getElementById('todo-edit-modal');
 
   if (editModalClose) {
-    editModalClose.addEventListener('click', closeEditModal);
+    editModalClose.addEventListener('click', () => closeEditModal());
   }
   if (editModalCancel) {
-    editModalCancel.addEventListener('click', closeEditModal);
+    editModalCancel.addEventListener('click', () => closeEditModal());
   }
   if (editModalSave) {
     editModalSave.addEventListener('click', saveEdit);
@@ -1416,6 +1797,32 @@ function initTodo() {
       } else if (event.key === 'Escape') {
         event.preventDefault();
         closeEditModal();
+      }
+    });
+  }
+
+  // Subtask input handler in edit modal — push in-memory only; saveEdit persists
+  const subtaskInput = document.getElementById('todo-edit-subtask-input');
+  if (subtaskInput) {
+    subtaskInput.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (editModalState.currentTodoId && subtaskInput.value.trim()) {
+          const todo = todos.find(t => t.id === editModalState.currentTodoId);
+          if (todo) {
+            if (!todo.subtasks) todo.subtasks = [];
+            if (todo.subtasks.length >= MAX_SUBTASKS) return;
+            const newSubtaskId = generateTodoId();
+            todo.subtasks.push({
+              id: newSubtaskId,
+              text: subtaskInput.value.trim(),
+              checked: false
+            });
+            editModalState.pendingSubtaskIds.add(newSubtaskId);
+            subtaskInput.value = '';
+            renderEditModalSubtasks(todo);
+          }
+        }
       }
     });
   }
@@ -1487,6 +1894,18 @@ function validateTodoData(data) {
     if (item.createdAt !== undefined && item.createdAt !== null && typeof item.createdAt !== 'string') return false;
     if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
+    if (item.subtasks !== undefined && item.subtasks !== null) {
+      if (!Array.isArray(item.subtasks)) return false;
+      const subtaskIds = new Set();
+      for (const st of item.subtasks) {
+        if (!st || typeof st !== 'object') return false;
+        if (typeof st.id !== 'string' || !st.id) return false;
+        if (subtaskIds.has(st.id)) return false;
+        subtaskIds.add(st.id);
+        if (typeof st.text !== 'string' || !st.text.trim()) return false;
+        if (typeof st.checked !== 'boolean') return false;
+      }
+    }
   }
   
   return true;
@@ -1601,7 +2020,7 @@ function showImportDialog(importedTodos) {
 
     todos = existingTodos;
     applyFilters();
-    closeEditModal();
+    closeEditModal(false);
     (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     if (addedCount > 0) {
       const msg = window.i18n ? window.i18n.t('importSuccess', { count: addedCount }) : 'Imported ' + addedCount + ' todos successfully.';
@@ -1632,7 +2051,7 @@ function showImportDialog(importedTodos) {
 
     todos = newTodos;
     applyFilters();
-    closeEditModal();
+    closeEditModal(false);
     (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
     const msg = window.i18n ? window.i18n.t('importSuccess', { count: newTodos.length }) : 'Imported ' + newTodos.length + ' todos successfully.';
     showToast(msg, 'success');
@@ -1901,6 +2320,12 @@ try {
   window.showToast = showToast;
   window.currentFilters = currentFilters;
   window.getSelectedPriority = getSelectedPriority;
+  window.addSubtask = addSubtask;
+  window.deleteSubtask = deleteSubtask;
+  window.toggleSubtask = toggleSubtask;
+  window.updateSubtaskText = updateSubtaskText;
+  window.getSubtaskProgress = getSubtaskProgress;
+  window.cloneTodos = cloneTodos;
   // Test-only handles. The `tests/helpers/inject-script.js` harness loads
   // this file via `globalThis.eval(code)`, which scopes the IIFE's
   // `function` and `var` declarations to the eval scope and hides them
@@ -1912,6 +2337,10 @@ try {
   window.handleDragOver = handleDragOver;
   window.handleDrop = handleDrop;
   window.showDateUpdateFeedback = showDateUpdateFeedback;
+  window.editModalState = editModalState;
+  window.openEditModal = openEditModal;
+  window.saveEdit = saveEdit;
+  window.closeEditModal = closeEditModal;
 } catch {
   // If window isn't writable in some test harnesses, ignore silently
 }

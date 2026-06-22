@@ -1771,3 +1771,348 @@ describe('Service worker checkReminders', () => {
   });
 
 });
+
+describe('Todo subtasks', () => {
+  it('addSubtask creates a subtask on a todo', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Subtask 1');
+    const updated = loadTodos()[0];
+    expect(updated.subtasks).toHaveLength(1);
+    expect(updated.subtasks[0].text).toBe('Subtask 1');
+    expect(updated.subtasks[0].checked).toBe(false);
+  });
+
+  it('addSubtask ignores empty text', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, '  ');
+    expect(loadTodos()[0].subtasks).toBeUndefined();
+  });
+
+  it('addSubtask returns false for non-existent todo', () => {
+    expect(addSubtask('nonexistent', 'text')).toBe(false);
+  });
+
+  it('addSubtask creates subtasks array if missing', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    expect(todo.subtasks).toBeUndefined();
+    addSubtask(todo.id, 'First');
+    expect(loadTodos()[0].subtasks).toHaveLength(1);
+  });
+
+  it('addSubtask rolls back on save failure', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage full');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      addSubtask(todo.id, 'Should fail');
+      const after = loadTodos()[0];
+      expect(after.subtasks).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalled();
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('deleteSubtask removes a subtask', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Sub 1');
+    addSubtask(todo.id, 'Sub 2');
+    const subtasks = loadTodos()[0].subtasks;
+    deleteSubtask(todo.id, subtasks[0].id);
+    const updated = loadTodos()[0];
+    expect(updated.subtasks).toHaveLength(1);
+    expect(updated.subtasks[0].text).toBe('Sub 2');
+  });
+
+  it('deleteSubtask returns false for non-existent subtask', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Real subtask');
+    expect(deleteSubtask(todo.id, 'fake')).toBe(false);
+    const updated = loadTodos()[0];
+    expect(updated.subtasks).toHaveLength(1);
+    expect(updated.subtasks[0].text).toBe('Real subtask');
+  });
+
+  it('toggleSubtask toggles checked state', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Check me');
+    const subId = loadTodos()[0].subtasks[0].id;
+    toggleSubtask(todo.id, subId);
+    expect(loadTodos()[0].subtasks[0].checked).toBe(true);
+    toggleSubtask(todo.id, subId);
+    expect(loadTodos()[0].subtasks[0].checked).toBe(false);
+  });
+
+  it('toggleSubtask returns false for non-existent subtask', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Real subtask');
+    expect(toggleSubtask(todo.id, 'fake')).toBe(false);
+    const updated = loadTodos()[0];
+    expect(updated.subtasks).toHaveLength(1);
+    expect(updated.subtasks[0].text).toBe('Real subtask');
+    expect(updated.subtasks[0].checked).toBe(false);
+  });
+
+  it('updateSubtaskText changes text', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Old text');
+    const subId = loadTodos()[0].subtasks[0].id;
+    updateSubtaskText(todo.id, subId, 'New text');
+    expect(loadTodos()[0].subtasks[0].text).toBe('New text');
+  });
+
+  it('updateSubtaskText ignores empty text', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Original');
+    const subId = loadTodos()[0].subtasks[0].id;
+    updateSubtaskText(todo.id, subId, '  ');
+    expect(loadTodos()[0].subtasks[0].text).toBe('Original');
+  });
+
+  it('getSubtaskProgress returns null for todos without subtasks', () => {
+    addTodo('No subs');
+    const todo = loadTodos()[0];
+    expect(getSubtaskProgress(todo)).toBeNull();
+  });
+
+  it('getSubtaskProgress returns correct counts', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'A');
+    addSubtask(todo.id, 'B');
+    addSubtask(todo.id, 'C');
+    const subs = loadTodos()[0].subtasks;
+    toggleSubtask(todo.id, subs[0].id);
+    const progress = getSubtaskProgress(loadTodos()[0]);
+    expect(progress).toEqual({ done: 1, total: 3 });
+  });
+
+  it('subtasks persist in localStorage', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Persistent');
+    const stored = JSON.parse(localStorage.getItem('todos'));
+    expect(stored[0].subtasks).toHaveLength(1);
+    expect(stored[0].subtasks[0].text).toBe('Persistent');
+  });
+
+  it('backward compatibility: todos without subtasks render fine', () => {
+    addTodo('Legacy todo');
+    const items = document.querySelectorAll('.todo-item');
+    expect(items).toHaveLength(1);
+    expect(items[0].querySelector('.todo-subtasks')).toBeNull();
+  });
+
+  it('subtasks render in the main todo list', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Sub A');
+    addSubtask(todo.id, 'Sub B');
+    const items = document.querySelectorAll('.todo-item');
+    expect(items).toHaveLength(1);
+    const subtasks = items[0].querySelectorAll('.todo-subtask-item');
+    expect(subtasks).toHaveLength(2);
+  });
+
+  it('progress badge renders for todos with subtasks', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'A');
+    addSubtask(todo.id, 'B');
+    const badge = document.querySelector('.todo-subtask-progress');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe('0/2');
+  });
+
+  it('no progress badge for todos without subtasks', () => {
+    addTodo('No subs');
+    expect(document.querySelector('.todo-subtask-progress')).toBeNull();
+  });
+
+  it('subtasks included in validateTodoData', () => {
+    const data = {
+      todos: [{
+        id: '1', text: 'Test', completed: false,
+        subtasks: [{ id: 's1', text: 'Sub', checked: false }]
+      }]
+    };
+    expect(validateTodoData(data)).toBe(true);
+  });
+
+  it('validateTodoData rejects invalid subtask structure', () => {
+    const data = {
+      todos: [{
+        id: '1', text: 'Test', completed: false,
+        subtasks: [{ id: 's1', text: 'Sub', checked: 'yes' }]
+      }]
+    };
+    expect(validateTodoData(data)).toBe(false);
+  });
+
+  it('validateTodoData rejects non-array subtasks', () => {
+    const data = {
+      todos: [{
+        id: '1', text: 'Test', completed: false,
+        subtasks: 'not-array'
+      }]
+    };
+    expect(validateTodoData(data)).toBe(false);
+  });
+
+  it('subtasks included in import/export round-trip', () => {
+    // Create a todo with subtasks
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Export me');
+    addSubtask(todo.id, 'Another subtask');
+
+    // Export the data (simulate the export format)
+    const exported = loadTodos();
+    const data = { version: 1, count: exported.length, todos: exported };
+    expect(validateTodoData(data)).toBe(true);
+    expect(data.todos[0].subtasks).toHaveLength(2);
+
+    // Clear todos and reimport to test true round-trip
+    localStorage.removeItem('todos');
+    initTodo();
+    expect(loadTodos()).toHaveLength(0);
+
+    // Import the exported data
+    showImportDialog(data.todos);
+    document.getElementById('import-replace-btn').click();
+
+    // Verify subtasks survived the round-trip
+    const reimported = loadTodos();
+    expect(reimported).toHaveLength(1);
+    expect(reimported[0].text).toBe('Parent');
+    expect(reimported[0].subtasks).toHaveLength(2);
+    expect(reimported[0].subtasks[0].text).toBe('Export me');
+    expect(reimported[0].subtasks[1].text).toBe('Another subtask');
+  });
+
+  it('subtasks survive cloneTodos deep copy', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'Clone me');
+    const cloned = cloneTodos(loadTodos());
+    expect(cloned[0].subtasks).toHaveLength(1);
+    // Mutating clone should not affect original
+    cloned[0].subtasks[0].text = 'Mutated';
+    expect(loadTodos()[0].subtasks[0].text).toBe('Clone me');
+  });
+
+  it('addSubtask clears input-like value after success', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    const result = addSubtask(todo.id, '  New subtask  ');
+    expect(result).toBe(true);
+    const updated = loadTodos()[0];
+    expect(updated.subtasks).toHaveLength(1);
+    expect(updated.subtasks[0].text).toBe('New subtask');
+  });
+
+  it('addSubtask on todo with existing subtasks appends to the end', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    addSubtask(todo.id, 'First');
+    addSubtask(todo.id, 'Second');
+    addSubtask(todo.id, 'Third');
+    const updated = loadTodos()[0];
+    expect(updated.subtasks.map(st => st.text)).toEqual(['First', 'Second', 'Third']);
+  });
+
+  it('deleteSubtask on todo without subtasks returns false', () => {
+    addTodo('No subs');
+    const todo = loadTodos()[0];
+    expect(deleteSubtask(todo.id, 'fake-id')).toBe(false);
+  });
+
+  it('toggleSubtask on todo without subtasks returns false', () => {
+    addTodo('No subs');
+    const todo = loadTodos()[0];
+    expect(toggleSubtask(todo.id, 'fake-id')).toBe(false);
+  });
+
+  it('addSubtask respects MAX_SUBTASKS limit', () => {
+    addTodo('Parent');
+    const todo = loadTodos()[0];
+    for (let i = 0; i < 50; i++) {
+      addSubtask(todo.id, `Sub ${i}`);
+    }
+    expect(loadTodos()[0].subtasks).toHaveLength(50);
+    expect(addSubtask(todo.id, 'One too many')).toBe(false);
+    expect(loadTodos()[0].subtasks).toHaveLength(50);
+  });
+
+  it('saveEdit with pending subtask rolls back on save failure', () => {
+    addTodo('Parent');
+    const todoId = loadTodos()[0].id;
+
+    // Open the modal so editModalState.currentTodoId is set
+    openEditModal(todoId);
+
+    // Mock localStorage to fail on save
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage full');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      // Set the text input so saveEdit doesn't bail out early
+      const textInput = document.getElementById('todo-edit-text');
+      if (textInput) textInput.value = 'Updated text';
+
+      // Set the subtask input with pending text
+      const subtaskInput = document.getElementById('todo-edit-subtask-input');
+      if (subtaskInput) subtaskInput.value = 'Pending sub';
+
+      saveEdit();
+
+      // The pending subtask should be rolled back — subtasks should remain empty
+      const after = loadTodos()[0];
+      expect(after.subtasks).toBeUndefined();
+      // The todo text should also remain unchanged
+      expect(after.text).toBe('Parent');
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('closeEditModal clears pending state and subtask input', () => {
+    addTodo('Parent');
+    const todoId = loadTodos()[0].id;
+
+    openEditModal(todoId);
+
+    // Simulate pending state
+    editModalState.pendingSubtaskIds.add('test-subtask-id');
+
+    // Set subtask input value
+    const subtaskInput = document.getElementById('todo-edit-subtask-input');
+    if (subtaskInput) subtaskInput.value = 'Some text';
+
+    closeEditModal();
+
+    expect(editModalState.pendingSubtaskIds.size).toBe(0);
+    expect(editModalState.currentTodoId).toBeNull();
+    if (subtaskInput) {
+      expect(subtaskInput.value).toBe('');
+      expect(subtaskInput.disabled).toBe(false);
+    }
+  });
+});

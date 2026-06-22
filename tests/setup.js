@@ -464,7 +464,10 @@ globalThis.window.i18n = {
       weatherWind: 'Wind',
       weatherHumidity: 'Humidity',
       weatherEnablePrompt: 'Enable the weather widget in settings to view weather data.',
-      weatherWidgetCloseLabel: 'Close weather widget'
+      weatherWidgetCloseLabel: 'Close weather widget',
+      todoSubtasks: 'Subtasks',
+      todoAddSubtask: 'Add subtask...',
+      todoSubtaskDelete: 'Delete subtask'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
@@ -539,6 +542,12 @@ document.body.appendChild(createStubElement('select', 'todo-edit-priority'));
 document.body.appendChild(createStubElement('button', 'todo-edit-close'));
 document.body.appendChild(createStubElement('button', 'todo-edit-cancel'));
 document.body.appendChild(createStubElement('button', 'todo-edit-save'));
+const subtasksSection = createStubElement('div', 'todo-edit-subtasks-section');
+document.body.appendChild(subtasksSection);
+const subtasksList = createStubElement('div', 'todo-edit-subtasks-list');
+document.body.appendChild(subtasksList);
+const subtaskInput = createStubElement('input', 'todo-edit-subtask-input');
+document.body.appendChild(subtaskInput);
 
 // Priority filter badge stubs
 document.body.appendChild(createStubElement('span', 'badge-high'));

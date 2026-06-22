@@ -40,5 +40,17 @@
   "weatherWidgetCloseLabel": {
     "message": "Закрыть виджет погоды",
     "description": "Accessible label for the weather app close button"
+  },
+  "todoSubtasks": {
+    "message": "Подзадачи",
+    "description": "Label for the subtasks section in the todo edit modal"
+  },
+  "todoAddSubtask": {
+    "message": "Добавить подзадачу...",
+    "description": "Placeholder text for the subtask input field"
+  },
+  "todoSubtaskDelete": {
+    "message": "Удалить подзадачу",
+    "description": "Tooltip for the subtask delete button"
   }
 }
