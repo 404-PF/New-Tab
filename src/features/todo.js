@@ -23,7 +23,8 @@
   const editModalState = {
     currentTodoId: null,
     isOpen: false,
-    pendingSubtaskIds: new Set()
+    pendingSubtaskIds: new Set(),
+    todoSnapshot: null
   };
   const runTodoOnDomReady = window.onDomReady;
 
@@ -1584,6 +1585,8 @@ function openEditModal(id) {
 
   editModalState.currentTodoId = id;
   editModalState.isOpen = true;
+  // Capture snapshot of the todo (including subtasks) before any modifications
+  editModalState.todoSnapshot = { ...todo, subtasks: todo.subtasks ? todo.subtasks.map(st => ({ ...st })) : undefined };
 
   // Populate modal fields
   const textInput = document.getElementById('todo-edit-text');
@@ -1607,17 +1610,18 @@ function openEditModal(id) {
 }
 
 function closeEditModal() {
-  // Roll back all in-memory subtasks that weren't persisted
-  if (editModalState.pendingSubtaskIds.size > 0 && editModalState.currentTodoId) {
+  // Restore subtasks from snapshot to roll back all modifications
+  if (editModalState.currentTodoId && editModalState.todoSnapshot) {
     const todo = todos.find(t => t.id === editModalState.currentTodoId);
-    if (todo && todo.subtasks) {
-      todo.subtasks = todo.subtasks.filter(st => !editModalState.pendingSubtaskIds.has(st.id));
+    if (todo) {
+      todo.subtasks = editModalState.todoSnapshot.subtasks ? editModalState.todoSnapshot.subtasks.map(st => ({ ...st })) : undefined;
     }
   }
 
   editModalState.currentTodoId = null;
   editModalState.isOpen = false;
   editModalState.pendingSubtaskIds.clear();
+  editModalState.todoSnapshot = null;
 
   // Clear subtask input
   const subtaskInput = document.getElementById('todo-edit-subtask-input');
