@@ -61,6 +61,54 @@
     "message": "옵션",
     "description": "Sub-header for rotation controls in the Rotation section"
   },
+  "bgRotation": {
+    "message": "회전",
+    "description": "Section header for background rotation settings"
+  },
+  "bgRotationDesc": {
+    "message": "배경을 자동으로 전환",
+    "description": "Description for background rotation section"
+  },
+  "bgRotationToggle": {
+    "message": "배경 회전 활성화",
+    "description": "Label for the background rotation toggle"
+  },
+  "bgRotationInterval": {
+    "message": "변경 주기",
+    "description": "Label for the rotation interval selector"
+  },
+  "bgRotation5min": {
+    "message": "5분",
+    "description": "Rotation interval option"
+  },
+  "bgRotation15min": {
+    "message": "15분",
+    "description": "Rotation interval option"
+  },
+  "bgRotation30min": {
+    "message": "30분",
+    "description": "Rotation interval option"
+  },
+  "bgRotation1hour": {
+    "message": "1시간",
+    "description": "Rotation interval option"
+  },
+  "bgRotationHourly": {
+    "message": "매시",
+    "description": "Rotation interval option"
+  },
+  "bgRotationDaily": {
+    "message": "매일",
+    "description": "Rotation interval option"
+  },
+  "bgRotationPicker": {
+    "message": "회전할 배경 선택",
+    "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationNext": {
+    "message": "다음 배경",
+    "description": "Button to manually advance to next background"
+  },
   "uploadBackground": {
     "message": "배경 업로드",
     "description": "Tooltip for the upload background image button"

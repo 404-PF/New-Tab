@@ -61,6 +61,54 @@
     "message": "Options",
     "description": "Sub-header for rotation controls in the Rotation section"
   },
+  "bgRotation": {
+    "message": "Rotation",
+    "description": "Section header for background rotation settings"
+  },
+  "bgRotationDesc": {
+    "message": "Automatically cycle through backgrounds",
+    "description": "Description for background rotation section"
+  },
+  "bgRotationToggle": {
+    "message": "Enable background rotation",
+    "description": "Label for the background rotation toggle"
+  },
+  "bgRotationInterval": {
+    "message": "Change every",
+    "description": "Label for the rotation interval selector"
+  },
+  "bgRotation5min": {
+    "message": "5 minutes",
+    "description": "Rotation interval option"
+  },
+  "bgRotation15min": {
+    "message": "15 minutes",
+    "description": "Rotation interval option"
+  },
+  "bgRotation30min": {
+    "message": "30 minutes",
+    "description": "Rotation interval option"
+  },
+  "bgRotation1hour": {
+    "message": "1 hour",
+    "description": "Rotation interval option"
+  },
+  "bgRotationHourly": {
+    "message": "Every hour on the hour",
+    "description": "Rotation interval option"
+  },
+  "bgRotationDaily": {
+    "message": "Daily",
+    "description": "Rotation interval option"
+  },
+  "bgRotationPicker": {
+    "message": "Select backgrounds to rotate",
+    "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationNext": {
+    "message": "Next Background",
+    "description": "Button to manually advance to next background"
+  },
   "uploadBackground": {
     "message": "Upload Background",
     "description": "Tooltip for the upload background image button"
