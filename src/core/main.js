@@ -475,11 +475,15 @@ function renderSearchHistorySuggestions() {
   searchInputElement.setAttribute('aria-expanded', 'true');
 }
 
-function runDefaultSearch(query) {
+function runDefaultSearch(query, onSuccess) {
   if (typeof chrome !== 'undefined' && chrome.search && typeof chrome.search.query === 'function') {
     chrome.search.query({
       text: query,
       disposition: 'CURRENT_TAB',
+    }).then(() => {
+      if (onSuccess) {
+        onSuccess();
+      }
     }).catch((error) => {
       console.warn('Failed to run default search:', error);
       showSearchValidationFeedback(SEARCH_UNAVAILABLE_MESSAGE);
@@ -506,8 +510,7 @@ function runSearch(query) {
     return;
   }
 
-  recordSearchHistory(query);
-  runDefaultSearch(query);
+  runDefaultSearch(query, () => recordSearchHistory(query));
 }
 
 function initSearchEngine() {

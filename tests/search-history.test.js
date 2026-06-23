@@ -177,6 +177,34 @@ describe('search history', () => {
     expect(JSON.parse(localStorage.getItem('searchHistory'))).toEqual(['beta', 'alpha']);
   });
 
+  it('records history only after chrome.search.query resolves (#280)', async () => {
+    let resolveQuery;
+    const queryPromise = new Promise((resolve) => { resolveQuery = resolve; });
+    vi.spyOn(chrome.search, 'query').mockReturnValue(queryPromise);
+
+    runSearch('new query');
+
+    expect(localStorage.getItem('searchHistory')).toBeNull();
+
+    resolveQuery({});
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(JSON.parse(localStorage.getItem('searchHistory'))).toEqual(['new query']);
+  });
+
+  it('does not record history when chrome.search.query rejects (#280)', async () => {
+    const searchQuerySpy = vi.spyOn(chrome.search, 'query').mockRejectedValue(new Error('fail'));
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+
+    runSearch('failed query');
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(searchQuerySpy).toHaveBeenCalledTimes(1);
+    expect(setItemSpy).not.toHaveBeenCalled();
+    expect(localStorage.getItem('searchHistory')).toBeNull();
+  });
+
   it('clears search history and keeps focus on the input', () => {
     recordSearchHistory('alpha');
 
