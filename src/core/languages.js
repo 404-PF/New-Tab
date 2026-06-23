@@ -3164,6 +3164,9 @@ function applyLanguage(lang) {
       element.textContent = translation;
     } else if (element.hasAttribute('title')) {
       element.title = translation;
+      if (element.hasAttribute('aria-label')) {
+        element.setAttribute('aria-label', translation);
+      }
     } else {
       element.textContent = translation;
     }
