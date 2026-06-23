@@ -332,6 +332,8 @@ globalThis.window.i18n = {
       todoEditPriority: 'Priority',
       newAppTitle: 'Add New App',
       newAppDescription: 'Enter a website URL to add it to your apps',
+      uploadBackground: 'Upload Background',
+      uploadLiveBackground: 'Upload Live Background',
       renameAppTitle: 'Rename App',
       renameAppDescription: 'Enter a new name for this app',
       changeThumbnailTitle: 'Change Thumbnail',

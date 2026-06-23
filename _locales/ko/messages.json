@@ -60,5 +60,13 @@
   "rotationOptions": {
     "message": "옵션",
     "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "uploadBackground": {
+    "message": "배경 업로드",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "라이브 배경 업로드",
+    "description": "Tooltip for the upload live background video button"
   }
 }

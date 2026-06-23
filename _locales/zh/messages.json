@@ -60,5 +60,13 @@
   "rotationOptions": {
     "message": "选项",
     "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "uploadBackground": {
+    "message": "上传背景",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "上传动态背景",
+    "description": "Tooltip for the upload live background video button"
   }
 }

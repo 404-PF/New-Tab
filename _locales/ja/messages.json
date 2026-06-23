@@ -60,5 +60,13 @@
   "rotationOptions": {
     "message": "オプション",
     "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "uploadBackground": {
+    "message": "背景をアップロード",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "ライブ背景をアップロード",
+    "description": "Tooltip for the upload live background video button"
   }
 }

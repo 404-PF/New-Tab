@@ -60,5 +60,13 @@
   "rotationOptions": {
     "message": "Параметры",
     "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "uploadBackground": {
+    "message": "Загрузить фон",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "Загрузить интерактивный фон",
+    "description": "Tooltip for the upload live background video button"
   }
 }

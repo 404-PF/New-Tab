@@ -60,5 +60,13 @@
   "rotationOptions": {
     "message": "Options",
     "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "uploadBackground": {
+    "message": "Importer un arrière-plan",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "Importer un arrière-plan en direct",
+    "description": "Tooltip for the upload live background video button"
   }
 }
