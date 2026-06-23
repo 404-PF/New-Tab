@@ -1853,7 +1853,7 @@ const translations = {
     uploadBackground: 'Importer un arrière-plan',
     uploadLiveBackground: 'Importer un arrière-plan animé',
     bgRotation: 'Rotation',
-    bgRotationDesc: 'Foner automatiquement les arrière-plans',
+    bgRotationDesc: 'Faire tourner automatiquement les arrière-plans',
     bgRotationToggle: 'Activer la rotation des arrière-plans',
     bgRotationInterval: 'Changer toutes les',
     bgRotation5min: '5 minutes',
