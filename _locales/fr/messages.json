@@ -66,7 +66,7 @@
     "description": "Section header for background rotation settings"
   },
   "bgRotationDesc": {
-    "message": "Foner automatiquement les arrière-plans",
+    "message": "Faire défiler automatiquement les arrière-plans",
     "description": "Description for background rotation section"
   },
   "bgRotationToggle": {
