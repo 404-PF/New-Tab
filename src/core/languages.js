@@ -3143,15 +3143,6 @@ function updateDynamicTranslations() {
     bgLiveDesc.textContent = getTranslation(currentLanguage, 'liveBackgroundSettingsDesc');
   }
 
-  // Update upload button titles
-  const uploadBgBtn = document.querySelector('.upload-bg-btn[data-upload-type="image"]');
-  const uploadLiveBtn = document.querySelector('.upload-bg-btn[data-upload-type="video"]');
-  if (uploadBgBtn) {
-    uploadBgBtn.title = getTranslation(currentLanguage, 'uploadBackground');
-  }
-  if (uploadLiveBtn) {
-    uploadLiveBtn.title = getTranslation(currentLanguage, 'uploadLiveBackground');
-  }
 }
 
 // Get translated text with optional placeholder replacement

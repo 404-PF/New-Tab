@@ -346,7 +346,6 @@
       const liveBgs = customBgs.filter(function (bg) { return bg.type === 'video'; });
 
       // Insert custom static backgrounds into the thumbnail grid
-      const staticUploadBtn = staticContainer.querySelector('.upload-bg-btn');
       staticBgs.forEach(function (bg) {
         const wrapper = document.createElement('div');
         wrapper.className = 'custom-bg-thumb-wrapper';
@@ -368,15 +367,10 @@
         wrapper.appendChild(img);
         wrapper.appendChild(delBtn);
 
-        if (staticUploadBtn) {
-          staticContainer.insertBefore(wrapper, staticUploadBtn);
-        } else {
-          staticContainer.appendChild(wrapper);
-        }
+        staticContainer.appendChild(wrapper);
       });
 
       // Insert custom live backgrounds into the thumbnail grid
-      const liveUploadBtn = liveContainer.querySelector('.upload-bg-btn');
       liveBgs.forEach(function (bg) {
         const wrapper = document.createElement('div');
         wrapper.className = 'custom-bg-thumb-wrapper';
@@ -398,11 +392,7 @@
         wrapper.appendChild(img);
         wrapper.appendChild(delBtn);
 
-        if (liveUploadBtn) {
-          liveContainer.insertBefore(wrapper, liveUploadBtn);
-        } else {
-          liveContainer.appendChild(wrapper);
-        }
+        liveContainer.appendChild(wrapper);
       });
 
       // Update selected state

@@ -217,13 +217,7 @@ function initStaticBackgrounds() {
     img.decoding = 'async';
     img.title = bg.title;
     img.alt = bg.title;
-    // Insert before upload button if it exists
-    const uploadBtn = container.querySelector('.upload-bg-btn');
-    if (uploadBtn) {
-      container.insertBefore(img, uploadBtn);
-    } else {
-      container.appendChild(img);
-    }
+    container.appendChild(img);
   });
 }
 
@@ -241,13 +235,7 @@ function initLiveBackgrounds() {
     img.decoding = 'async';
     img.title = bg.title;
     img.alt = bg.title;
-    // Insert before upload button if it exists
-    const uploadBtn = container.querySelector('.upload-bg-btn');
-    if (uploadBtn) {
-      container.insertBefore(img, uploadBtn);
-    } else {
-      container.appendChild(img);
-    }
+    container.appendChild(img);
   });
 }
 
@@ -264,12 +252,7 @@ function initInteractiveBackgrounds() {
     img.decoding = 'async';
     img.title = bg.title;
     img.alt = bg.title;
-    const uploadBtn = container.querySelector('.upload-bg-btn');
-    if (uploadBtn) {
-      container.insertBefore(img, uploadBtn);
-    } else {
-      container.appendChild(img);
-    }
+    container.appendChild(img);
   });
 }
 
