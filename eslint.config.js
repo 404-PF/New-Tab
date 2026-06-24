@@ -50,7 +50,6 @@ const srcGlobals = {
   CURRENT_VERSION: 'readonly',
   VERSION_DISPLAY_UNAVAILABLE_TEXT: 'readonly',
   _backgrounds: 'readonly',
-  _initBackgrounds: 'readonly',
   _initStaticBackgrounds: 'readonly',
   _initLiveBackgrounds: 'readonly',
   _initInteractiveBackgrounds: 'readonly',

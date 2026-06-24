@@ -52,5 +52,69 @@
   "todoSubtaskDelete": {
     "message": "サブタスクを削除",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "再生",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "オプション",
+    "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "bgRotation": {
+    "message": "ローテーション",
+    "description": "Section header for background rotation settings"
+  },
+  "bgRotationDesc": {
+    "message": "背景を自動切り替え",
+    "description": "Description for background rotation section"
+  },
+  "bgRotationToggle": {
+    "message": "背景ローテーションを有効にする",
+    "description": "Label for the background rotation toggle"
+  },
+  "bgRotationInterval": {
+    "message": "変更間隔",
+    "description": "Label for the rotation interval selector"
+  },
+  "bgRotation5min": {
+    "message": "5分",
+    "description": "Rotation interval option"
+  },
+  "bgRotation15min": {
+    "message": "15分",
+    "description": "Rotation interval option"
+  },
+  "bgRotation30min": {
+    "message": "30分",
+    "description": "Rotation interval option"
+  },
+  "bgRotation1hour": {
+    "message": "1時間",
+    "description": "Rotation interval option"
+  },
+  "bgRotationHourly": {
+    "message": "毎時",
+    "description": "Rotation interval option"
+  },
+  "bgRotationDaily": {
+    "message": "毎日",
+    "description": "Rotation interval option"
+  },
+  "bgRotationPicker": {
+    "message": "ローテーションする背景を選択",
+    "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationNext": {
+    "message": "次の背景",
+    "description": "Button to manually advance to next background"
+  },
+  "uploadBackground": {
+    "message": "背景をアップロード",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "ライブ背景をアップロード",
+    "description": "Tooltip for the upload live background video button"
   }
 }

@@ -52,5 +52,69 @@
   "todoSubtaskDelete": {
     "message": "Supprimer la sous-tâche",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "Lecture",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "Options",
+    "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "bgRotation": {
+    "message": "Rotation",
+    "description": "Section header for background rotation settings"
+  },
+  "bgRotationDesc": {
+    "message": "Faire défiler automatiquement les arrière-plans",
+    "description": "Description for background rotation section"
+  },
+  "bgRotationToggle": {
+    "message": "Activer la rotation des arrière-plans",
+    "description": "Label for the background rotation toggle"
+  },
+  "bgRotationInterval": {
+    "message": "Changer toutes les",
+    "description": "Label for the rotation interval selector"
+  },
+  "bgRotation5min": {
+    "message": "5 minutes",
+    "description": "Rotation interval option"
+  },
+  "bgRotation15min": {
+    "message": "15 minutes",
+    "description": "Rotation interval option"
+  },
+  "bgRotation30min": {
+    "message": "30 minutes",
+    "description": "Rotation interval option"
+  },
+  "bgRotation1hour": {
+    "message": "1 heure",
+    "description": "Rotation interval option"
+  },
+  "bgRotationHourly": {
+    "message": "Toute heure",
+    "description": "Rotation interval option"
+  },
+  "bgRotationDaily": {
+    "message": "Quotidien",
+    "description": "Rotation interval option"
+  },
+  "bgRotationPicker": {
+    "message": "Sélectionner les arrière-plans à tourner",
+    "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationNext": {
+    "message": "Arrière-plan suivant",
+    "description": "Button to manually advance to next background"
+  },
+  "uploadBackground": {
+    "message": "Importer un arrière-plan",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "Importer un arrière-plan en direct",
+    "description": "Tooltip for the upload live background video button"
   }
 }

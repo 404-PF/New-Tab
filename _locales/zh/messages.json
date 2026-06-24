@@ -52,5 +52,69 @@
   "todoSubtaskDelete": {
     "message": "删除子任务",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "播放",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "选项",
+    "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "bgRotation": {
+    "message": "轮播",
+    "description": "Section header for background rotation settings"
+  },
+  "bgRotationDesc": {
+    "message": "自动轮换背景",
+    "description": "Description for background rotation section"
+  },
+  "bgRotationToggle": {
+    "message": "启用背景轮播",
+    "description": "Label for the background rotation toggle"
+  },
+  "bgRotationInterval": {
+    "message": "每隔",
+    "description": "Label for the rotation interval selector"
+  },
+  "bgRotation5min": {
+    "message": "5 分钟",
+    "description": "Rotation interval option"
+  },
+  "bgRotation15min": {
+    "message": "15 分钟",
+    "description": "Rotation interval option"
+  },
+  "bgRotation30min": {
+    "message": "30 分钟",
+    "description": "Rotation interval option"
+  },
+  "bgRotation1hour": {
+    "message": "1 小时",
+    "description": "Rotation interval option"
+  },
+  "bgRotationHourly": {
+    "message": "每小时整点",
+    "description": "Rotation interval option"
+  },
+  "bgRotationDaily": {
+    "message": "每日",
+    "description": "Rotation interval option"
+  },
+  "bgRotationPicker": {
+    "message": "选择要轮播的背景",
+    "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationNext": {
+    "message": "下一个背景",
+    "description": "Button to manually advance to next background"
+  },
+  "uploadBackground": {
+    "message": "上传背景",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "上传动态背景",
+    "description": "Tooltip for the upload live background video button"
   }
 }

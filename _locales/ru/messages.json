@@ -52,5 +52,69 @@
   "todoSubtaskDelete": {
     "message": "Удалить подзадачу",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "Воспроизведение",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "Параметры",
+    "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "bgRotation": {
+    "message": "Вращение",
+    "description": "Section header for background rotation settings"
+  },
+  "bgRotationDesc": {
+    "message": "Автоматическая смена фонов",
+    "description": "Description for background rotation section"
+  },
+  "bgRotationToggle": {
+    "message": "Включить смену фона",
+    "description": "Label for the background rotation toggle"
+  },
+  "bgRotationInterval": {
+    "message": "Менять каждые",
+    "description": "Label for the rotation interval selector"
+  },
+  "bgRotation5min": {
+    "message": "5 минут",
+    "description": "Rotation interval option"
+  },
+  "bgRotation15min": {
+    "message": "15 минут",
+    "description": "Rotation interval option"
+  },
+  "bgRotation30min": {
+    "message": "30 минут",
+    "description": "Rotation interval option"
+  },
+  "bgRotation1hour": {
+    "message": "1 час",
+    "description": "Rotation interval option"
+  },
+  "bgRotationHourly": {
+    "message": "Каждый час",
+    "description": "Rotation interval option"
+  },
+  "bgRotationDaily": {
+    "message": "Ежедневно",
+    "description": "Rotation interval option"
+  },
+  "bgRotationPicker": {
+    "message": "Выберите фоны для смены",
+    "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationNext": {
+    "message": "Следующий фон",
+    "description": "Button to manually advance to next background"
+  },
+  "uploadBackground": {
+    "message": "Загрузить фон",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "Загрузить видео-фон",
+    "description": "Tooltip for the upload live background video button"
   }
 }

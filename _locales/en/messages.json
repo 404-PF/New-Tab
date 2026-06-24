@@ -168,5 +168,21 @@
   "todoSubtaskDelete": {
     "message": "Delete subtask",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "Playback",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "Options",
+    "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "uploadBackground": {
+    "message": "Upload Background",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "Upload Live Background",
+    "description": "Tooltip for the upload live background video button"
   }
 }

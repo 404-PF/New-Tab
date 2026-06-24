@@ -455,13 +455,14 @@
           <section class="settings-section" data-section="background" style="display: none">
             <!-- Static Backgrounds -->
             <div class="bg-subsection" id="bg-static-section">
-              <h4 class="bg-subsection-header" data-i18n="background">Background</h4>
-              <p class="bg-subsection-desc" data-i18n="backgroundSettingsDesc">Choose your background image</p>
-              <div class="bg-thumbnails" id="bg-thumbnails-static">
-                <button class="upload-bg-btn" data-upload-type="image" title="Upload Background">
+              <div class="bg-subsection-header-row">
+                <h4 class="bg-subsection-header" data-i18n="background">Background</h4>
+                <button type="button" class="upload-bg-btn" data-upload-type="image" title="" data-i18n="uploadBackground" aria-label="uploadBackground">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </button>
               </div>
+              <p class="bg-subsection-desc" data-i18n="backgroundSettingsDesc">Choose your background image</p>
+              <div class="bg-thumbnails" id="bg-thumbnails-static"></div>
             </div>
 
             <!-- Interactive Backgrounds -->
@@ -473,13 +474,15 @@
 
             <!-- Live Backgrounds -->
             <div class="bg-subsection" id="bg-live-section">
-              <h4 class="bg-subsection-header" data-i18n="liveBackground">Live Background</h4>
-              <p class="bg-subsection-desc" data-i18n="liveBackgroundSettingsDesc">Choose an animated background video</p>
-              <div class="bg-thumbnails" id="bg-thumbnails-live">
-                <button class="upload-bg-btn" data-upload-type="video" title="Upload Live Background">
+              <div class="bg-subsection-header-row">
+                <h4 class="bg-subsection-header" data-i18n="liveBackground">Live Background</h4>
+                <button type="button" class="upload-bg-btn" data-upload-type="video" title="" data-i18n="uploadLiveBackground" aria-label="uploadLiveBackground">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </button>
               </div>
+              <p class="bg-subsection-desc" data-i18n="liveBackgroundSettingsDesc">Choose an animated background video</p>
+              <div class="bg-thumbnails" id="bg-thumbnails-live"></div>
+              <h5 class="bg-subsection-subheader" data-i18n="playbackControls">Playback</h5>
               <div class="bg-playback-controls">
                 <div class="setting-card">
                   <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -520,6 +523,7 @@
             <div class="bg-subsection" id="bg-rotation-section">
               <h4 class="bg-subsection-header" data-i18n="bgRotation">Rotation</h4>
               <p class="bg-subsection-desc" data-i18n="bgRotationDesc">Automatically cycle through backgrounds</p>
+              <h5 class="bg-subsection-subheader" data-i18n="rotationOptions">Options</h5>
               <div class="bg-playback-controls">
                 <div class="setting-card">
                   <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -575,9 +579,6 @@
             <div class="bg-loading-state" id="bg-loading-state" hidden aria-hidden="true">
               <span class="bg-loading-spinner"></span>
             </div>
-
-            <!-- Legacy container for backward compatibility -->
-            <div class="bg-thumbnails hidden" id="bg-thumbnails"></div>
           </section>
           <section class="settings-section" data-section="apps" style="display: none">
             <div class="apps-setting-group">

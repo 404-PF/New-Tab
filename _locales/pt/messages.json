@@ -52,5 +52,69 @@
   "todoSubtaskDelete": {
     "message": "Excluir subtarefa",
     "description": "Tooltip for the subtask delete button"
+  },
+  "playbackControls": {
+    "message": "Reprodução",
+    "description": "Sub-header for video playback controls in the Live Background section"
+  },
+  "rotationOptions": {
+    "message": "Opções",
+    "description": "Sub-header for rotation controls in the Rotation section"
+  },
+  "bgRotation": {
+    "message": "Rotação",
+    "description": "Section header for background rotation settings"
+  },
+  "bgRotationDesc": {
+    "message": "Alternar planos de fundo automaticamente",
+    "description": "Description for background rotation section"
+  },
+  "bgRotationToggle": {
+    "message": "Ativar rotação de fundo",
+    "description": "Label for the background rotation toggle"
+  },
+  "bgRotationInterval": {
+    "message": "Alterar a cada",
+    "description": "Label for the rotation interval selector"
+  },
+  "bgRotation5min": {
+    "message": "5 minutos",
+    "description": "Rotation interval option"
+  },
+  "bgRotation15min": {
+    "message": "15 minutos",
+    "description": "Rotation interval option"
+  },
+  "bgRotation30min": {
+    "message": "30 minutos",
+    "description": "Rotation interval option"
+  },
+  "bgRotation1hour": {
+    "message": "1 hora",
+    "description": "Rotation interval option"
+  },
+  "bgRotationHourly": {
+    "message": "A cada hora",
+    "description": "Rotation interval option"
+  },
+  "bgRotationDaily": {
+    "message": "Diariamente",
+    "description": "Rotation interval option"
+  },
+  "bgRotationPicker": {
+    "message": "Selecionar fundos para rotacionar",
+    "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationNext": {
+    "message": "Próximo fundo",
+    "description": "Button to manually advance to next background"
+  },
+  "uploadBackground": {
+    "message": "Carregar plano de fundo",
+    "description": "Tooltip for the upload background image button"
+  },
+  "uploadLiveBackground": {
+    "message": "Carregar plano de fundo ao vivo",
+    "description": "Tooltip for the upload live background video button"
   }
 }
