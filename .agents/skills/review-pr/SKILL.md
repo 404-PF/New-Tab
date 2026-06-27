@@ -1,76 +1,83 @@
 ---
 name: review-pr
-description: 'Review pull requests for bugs, regressions, missing tests, unclear behavior, and maintainability risks. Use when the task is to inspect a branch or diff, prioritize findings by severity, and report concrete review comments.'
-argument-hint: 'pull request, branch, or diff to review'
+description: 'Review a pull request for quality, issues, and improvements. Use when the user asks to review a PR, check a pull request, do a code review, or assess PR quality. Triggers: review pr, pull request review, code review, check pr.'
 user-invocable: true
-disable-model-invocation: false
+argument-hint: '<owner/repo#number> or leave blank to detect from context'
 ---
 
-# Review Pull Request
+# Pull Request Review
 
-## When to Use
-- Review a pull request, branch, or change set before merge.
-- Find correctness issues, regressions, test gaps, and risky behavior changes.
-- Use when the user wants a code review, not implementation or a summary only.
+Comprehensive PR review that summarizes changes, identifies potential issues, and suggests improvements.
 
-## Workflow
-1. Anchor on the change under review.
-   - Identify the PR, branch, or diff scope.
-   - Read the changed files first, then step into nearby code only when needed to verify behavior.
-   - Prefer the owning code path, tests, and call sites over broad repository exploration.
+## Procedure
 
-2. Build a local review hypothesis.
-   - Ask what could break, what assumptions changed, and what behavior is now newly possible.
-   - Check the cheapest nearby evidence that could disprove the concern.
-   - Keep the review narrow until the issue is either confirmed or ruled out.
+### 1. Identify the PR
 
-3. Review for concrete risk categories.
-   - Correctness: logic errors, missing branches, invalid edge cases.
-   - Regression risk: behavior changes, compatibility breaks, hidden side effects.
-   - Test coverage: missing or weak tests for the changed path.
-   - Maintainability: unclear naming, duplicated logic, fragile structure, unnecessary complexity.
-   - Security or data integrity: trust boundaries, unsafe parsing, persistence issues, accidental exposure.
+- If the user provided a reference like `owner/repo#123`, parse it.
+- Otherwise, check for an active branch or recent PR in the workspace.
+- Use `mcp_github_mcp_se_search_pull_requests` to find the PR if needed.
 
-4. Triage findings by severity.
-   - Start with issues that can break behavior, lose data, or block users.
-   - Follow with medium-risk issues that are likely to cause maintenance or edge-case problems.
-   - Keep cosmetic comments separate unless they materially affect readability or correctness.
+### 2. Gather PR Details
 
-5. Write review output in findings-first order.
-   - Lead with the most important findings.
-   - Reference exact files and lines when possible.
-   - Explain why the issue matters and what scenario triggers it.
-   - State open questions only when they are needed to judge the change.
-   - If no issues are found, say that explicitly and mention any residual risks or untested areas.
+Fetch the PR metadata and content:
+- Use `mcp_github_mcp_se_search_pull_requests` with the PR query to get title, description, author, state, and labels.
+- Use `mcp_github_mcp_se_list_branches` if branch info is needed.
+- Note the base and head branches to understand the diff scope.
 
-## Review Checklist
-- The change does what it claims without breaking existing behavior.
-- Edge cases and empty states are handled deliberately.
-- Tests cover the new or altered behavior.
-- Error handling is appropriate for the code path.
-- Data flow, permissions, and persistence remain safe.
-- The change is not larger or more coupled than necessary.
+### 3. Analyze Changes
 
-## Output Format
+Examine the PR systematically:
 
-```markdown
-## Findings
+**a. Understand the intent**
+- Read the PR title and description for what problem it solves.
+- Check linked issues if any.
 
-1. Severity: short summary
-   - File: path/to/file.ts:line
-   - Why it matters: explanation of the risk or bug.
+**b. Review changed files**
+- Look at the diff for each changed file.
+- Focus on logic changes, not just formatting.
 
-## Open Questions
+**c. Evaluate quality across these dimensions:**
 
-- Any points that need clarification before approval.
+| Dimension | What to check |
+|-----------|---------------|
+| **Correctness** | Logic errors, off-by-one, null handling, race conditions |
+| **Security** | Injection risks, secret leaks, auth bypasses, input validation |
+| **Performance** | N+1 queries, unnecessary re-renders, memory leaks, missing indexes |
+| **Maintainability** | Naming, duplication, complexity, missing documentation |
+| **Testing** | Adequate coverage, edge cases, test quality |
+| **API Design** | Consistency, backward compatibility, clear interfaces |
 
-## Summary
+### 4. Compile the Review
 
-Brief statement of overall review outcome.
-```
+Present findings in this structure:
 
-## Completion Checks
-- The review names the most important issues first.
-- Each finding is tied to a concrete code location or behavior.
-- The review distinguishes true bugs from style preferences.
-- The final response makes approval, caution, or rejection clear.
+#### Summary
+One paragraph explaining what the PR does and whether it achieves its goal.
+
+#### Strengths
+What the PR does well (call out good patterns, thorough tests, clear docs).
+
+#### Issues Found
+Categorized by severity:
+
+**🔴 Critical** — Must be fixed before merge (bugs, security, data loss)
+**🟡 Suggestions** — Should be considered (performance, maintainability)
+**🟢 Nitpicks** — Optional improvements (style, naming)
+
+For each issue:
+- **File and location** — Where the issue is
+- **Description** — What the problem is
+- **Suggestion** — How to fix it (with code example if helpful)
+
+#### Testing Assessment
+Whether the test coverage is adequate and what additional tests might be needed.
+
+#### Verdict
+One of:
+- **Approve** — Good to merge
+- **Approve with suggestions** — Mergeable but consider the suggestions
+- **Request changes** — Critical issues must be resolved first
+
+### 5. Optional: Submit the Review
+
+If the user wants, use `mcp_github_mcp_se_pull_request_review_write` to submit the review directly on GitHub with the appropriate event (`APPROVE`, `REQUEST_CHANGES`, or `COMMENT`).
