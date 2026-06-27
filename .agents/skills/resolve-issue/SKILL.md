@@ -1,73 +1,117 @@
 ---
 name: resolve-issue
-description: 'Resolve bugs, failures, regressions, and other code issues using a narrow evidence-first fix loop. Use when the task is to inspect a failing behavior, form a local hypothesis, make the smallest safe change, validate it immediately, and report the result.'
-argument-hint: 'issue description, failing command, or broken behavior'
+description: "**WORKFLOW SKILL** — Systematically resolve GitHub issues from assignment through PR creation. USE FOR: working on assigned issues; following structured debugging workflows; implementing feature requests; fixing bugs reported in issues; creating focused PRs linked to issues. DO NOT USE FOR: creating new issues (use create-issue); reviewing PRs (use review-pr); general coding tasks without an issue context."
 user-invocable: true
-disable-model-invocation: false
+argument-hint: '[issue-number]'
 ---
 
-# Resolve Issue
+# Resolve Issue Workflow
 
-## When to Use
-- Fix a bug, regression, crash, test failure, or incorrect behavior.
-- Investigate a problem in the codebase and turn it into a concrete repair.
-- Use when the request is about making something work, not writing a proposal or filing a ticket.
+## Overview
 
-## Workflow
-1. Anchor on the clearest failure.
-   - Start from the reported symptom, failing test, error message, or user-visible breakage.
-   - Prefer the owning file, nearby call site, or a matching test over broad exploration.
+This skill provides a structured approach to resolving GitHub issues: from understanding the problem through implementation to creating a linked pull request.
 
-2. Gather only the minimum local evidence.
-   - Read the code path that directly controls the behavior.
-   - Check the nearest test, log, or call site that could confirm or disprove the suspected cause.
-   - Keep the search narrow until one falsifiable hypothesis is available.
+## Core Workflow
 
-3. Form one local hypothesis.
-   - State the most likely reason the issue exists.
-   - Identify the cheapest check that could prove the hypothesis wrong.
-   - If the issue is underspecified, ask for the expected behavior, repro steps, or affected scope before editing.
+### 1. Understand the Issue
 
-4. Make the smallest meaningful fix.
-   - Change the code that actually decides the behavior.
-   - Prefer a reversible, targeted edit over a broad refactor.
-   - Preserve existing conventions and avoid unrelated cleanup.
+- **Auto-fetch issue details**: Use `issue_read` to get the issue title, body, labels, assignees, and linked PRs
+- **Analyze labels**: Identify issue type from labels (e.g., `bug`, `enhancement`, `feature`) to determine approach and branch naming
+- **Clarify scope**: Identify what's requested vs. what's needed
+- **Identify constraints**: Check for performance, compatibility, or design requirements
+- **Review related discussions**: Use `issue_read` with `get_comments` to gather additional context or decisions
 
-5. Validate immediately.
-   - Run the narrowest relevant test, command, or typecheck.
-   - If the first check fails, repair the same slice and rerun the same check before widening scope.
-   - If the hypothesis is wrong, move one step closer to the real control point and repeat.
+### 2. Plan the Solution
 
-6. Finish with a clear outcome.
-   - Summarize what was broken, what changed, and how it was verified.
-   - Note any remaining risks, follow-up work, or unverified behavior.
+- **Break down into tasks**: Identify specific code changes needed
+- **Assess complexity**: Determine if this is a simple fix or requires architectural changes
+- **Consider edge cases**: Think about error handling and boundary conditions
+- **Choose approach**: Decide between multiple possible solutions if applicable
 
-## Issue Resolution Template
+### 3. Implement Changes
 
-```markdown
-## Symptom
+- **Create a branch**: Auto-detect naming convention from issue labels:
+  - `bug` labels → `fix/<issue-number>-<short-description>`
+  - `enhancement`/`feature` labels → `feat/<issue-number>-<short-description>`
+  - Default → `fix/<issue-number>-<short-description>`
+- **Make focused changes**: Keep changes minimal and related to the issue
+- **Follow project conventions**: Use existing patterns, coding standards, and architecture
+- **Write tests**: Add or update tests to cover the changes
 
-What is broken or failing.
+### 4. Validate and Test
 
-## Hypothesis
+- **Run existing tests**: Ensure no regressions
+- **Test new functionality**: Verify the fix or feature works as expected
+- **Check edge cases**: Test boundary conditions and error scenarios
+- **Review your changes**: Self-review for quality and completeness
 
-What appears to be causing the issue and why.
+### 5. Document and Reference
 
-## Fix
+- **Update documentation**: If behavior changed, update relevant docs
+- **Reference the issue**: Use `Closes #123` or `Fixes #123` in commit messages
+- **Write clear commit messages**: Follow conventional commit standards
 
-What changed in the code.
+### 6. Create Pull Request
 
-## Validation
+Suggest creating a PR when implementation is complete. If the user wants to proceed, reference the **create-pr** skill for best practices.
 
-- command or test run
-- observed result
+- **Confirm with user**: Ask if they want to create the PR now
+- **Link to the issue**: Ensure the PR references the issue it resolves (e.g., "Closes #123")
+- **Write descriptive PR title and description**: Explain what changed and why
+- **Request review**: Assign appropriate reviewers
+- **Respond to feedback**: Address review comments promptly
 
-## Notes
+## Deep-Dive Sections
 
-Risks, follow-ups, or anything still unverified.
-```
+### Debugging Complex Issues
 
-## Completion Checks
-- The issue is resolved at the actual control point, not just masked.
-- The fix was validated with the narrowest useful check.
-- The final summary explains the change and any remaining caveats.
+For issues requiring investigation:
+
+1. **Reproduce the problem**: Create a minimal reproduction case
+2. **Add debugging instrumentation**: Log relevant state and parameters
+3. **Isolate the cause**: Use binary search or divide-and-conquer approaches
+4. **Verify the fix**: Ensure the fix addresses root cause, not just symptoms
+
+### Feature Implementation
+
+For feature requests:
+
+1. **Design the API**: Consider how users will interact with the feature
+2. **Plan backward compatibility**: Ensure existing functionality isn't broken
+3. **Consider performance**: Evaluate impact on performance and resource usage
+4. **Write comprehensive tests**: Cover happy path and error scenarios
+
+### Refactoring for Issues
+
+When the issue reveals code quality problems:
+
+1. **Separate refactoring from fixes**: Keep refactoring changes separate
+2. **Ensure behavior preservation**: Refactoring shouldn't change functionality
+3. **Update tests if needed**: Tests should still pass after refactoring
+
+## Quality Checklist
+
+Before submitting a PR, verify:
+
+- [ ] Issue is clearly understood and scoped
+- [ ] Solution addresses the root cause
+- [ ] Changes are minimal and focused
+- [ ] Tests cover new or changed functionality
+- [ ] No regressions introduced
+- [ ] Code follows project conventions
+- [ ] Documentation updated if needed
+- [ ] Commit messages are clear and reference the issue
+
+## Example Prompts
+
+- "Resolve issue #123 by implementing the requested feature"
+- "Fix the bug described in issue #456"
+- "Work on issue #789 following the resolve-issue workflow"
+- "Help me understand and fix issue #101"
+
+## Related Skills
+
+- **create-issue**: For creating new issues
+- **commit**: For writing proper commit messages
+- **create-pr**: For creating pull requests
+- **review-pr**: For reviewing pull requests

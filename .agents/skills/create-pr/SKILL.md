@@ -1,77 +1,94 @@
 ---
 name: create-pr
-description: 'Create well-scoped GitHub pull requests from completed work. Use when preparing a branch for review, summarizing changes, writing the PR title/body, listing tests, or deciding whether the work is ready to merge.'
-argument-hint: 'branch or change summary'
+description: 'Create a GitHub pull request from the current branch. Use when the user asks to create a PR, open a pull request, or submit a PR for review. Assumes branch is pushed. Auto-generates title and description from commit history.'
 user-invocable: true
-disable-model-invocation: false
+argument-hint: 'Optional: base branch name (defaults to main)'
 ---
 
 # Create Pull Request
 
 ## When to Use
-- Turn completed work into a clear GitHub pull request.
-- Summarize the change, the reason for it, and how to verify it.
-- Use when the code is ready for review or close to ready and needs a reviewable package.
+- User asks to "create a PR", "open a pull request", or "submit for review"
+- User wants to submit changes for team review
+- After completing work on a feature branch
 
-## Workflow
-1. Identify the pull request shape.
-   - Feature: new behavior or capability.
-   - Fix: bug repair or regression fix.
-   - Refactor: internal cleanup without intended behavior change.
-   - Docs: documentation, examples, or wording updates.
+## Prerequisites
+- Current branch must have at least one commit ahead of the base branch
+- Branch will be auto-pushed to remote if not already pushed
 
-2. Gather the minimum useful facts.
-   - What changed.
-   - Why it changed.
-   - Which branch contains the work.
-   - Whether the change is draft-only or review-ready.
-   - What tests or checks were run.
-   - Any risks, follow-ups, or known gaps.
+## Procedure
 
-3. Turn the work into a reviewable PR.
-   - Write a specific title that matches the user-visible outcome.
-   - Summarize the change in one short paragraph.
-   - Call out the main implementation points.
-   - List verification steps and commands.
-   - Note any behavior changes, migration needs, or follow-up work.
+### 1. Determine Branch Context
+- Identify the current branch name
+- Identify the base branch (default: `main`, or use the argument if provided)
+- Verify there are commits ahead of the base branch
+- If branch has no upstream or has unpushed commits, push automatically (`git push -u origin <branch>`)
 
-4. Choose metadata deliberately.
-   - Target the correct base branch.
-   - Mark the PR as draft if the work is incomplete.
-   - Add labels only when they help triage or release tracking.
-   - Link the related issue, task, or bug if one exists.
+### 2. Analyze Commits
+- Run `git log --oneline base..current` to get all commits on the feature branch
+- Group commits by type (feat, fix, refactor, docs, test, chore, etc.)
+- Identify the primary change/feature being introduced
 
-5. Check before publishing.
-   - The title should tell a reviewer what to expect.
-   - The body should explain both the change and the verification.
-   - The PR should make review easy without requiring extra context.
-   - The PR should not promise tests or behavior that were not actually checked.
+### 3. Generate PR Metadata
 
-## PR Draft Template
+**Title** (max 72 characters):
+- Use the first line of the most significant commit, or synthesize from commit grouping
+- Follow Conventional Commits format when commits use it: `type(scope): description`
 
+**Description body** (Markdown):
 ```markdown
 ## Summary
+[1-2 sentence description of what this PR accomplishes]
 
-What changed and why.
+## Changes
+- **feat**: [list of feature commits]
+- **fix**: [list of bug fix commits]
+- **refactor**: [list of refactors]
+- [other categories as needed]
 
-## What Changed
+## Testing
+[How to test these changes, if evident from commits or code]
 
-- Main change one
-- Main change two
-- Main change three
-
-## Verification
-
-- `command or test`
-- `command or test`
-
-## Notes
-
-Add risks, follow-ups, rollout notes, or related links here.
+## Related
+[Closes #123, Fixes #456 if commit messages reference issues]
 ```
 
-## Completion Checks
-- The PR title is specific and search-friendly.
-- The PR body explains the change in plain language.
-- The verification section lists what was actually run.
-- The PR is ready to open, or it is clearly marked draft if not.
+### 4. Ask User for Confirmation
+Before creating the PR, present:
+- The generated title
+- The generated description
+- Ask: **Draft or Ready for review?**
+
+### 5. Create the Pull Request
+
+Prefer **GitHub MCP tools** (`mcp_github_mcp_se_create_pull_request`) to create the PR. If MCP tools are unavailable or fail, fall back to **`gh` CLI** in the terminal:
+```bash
+gh pr create --base <base> --head <head> --title "<title>" --body "<body>"
+```
+
+Set the following:
+- `title` → generated title
+- `body` → generated description
+- `head` → current branch
+- `base` → target branch
+- `draft` → based on user preference
+
+### 6. Report Result
+- Display the created PR URL
+- Suggest next steps (e.g., request reviewers, add labels)
+
+## Example Usage
+
+User: "create a PR"
+→ Skill detects current branch `feat/user-auth`, base `main`
+→ Analyzes 5 commits, generates title and description
+→ Presents to user for review
+→ Creates PR when confirmed
+
+User: "create a PR targeting develop"
+→ Uses `develop` as the base branch instead of `main`
+
+## Notes
+- If commits are not conventional format, synthesize description from commit diffs
+- For single-commit PRs, use the commit message directly
+- Always verify remote tracking branch exists or offer to push
