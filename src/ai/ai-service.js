@@ -457,9 +457,11 @@ const AIService = (function() {
       } else {
         showError(result.error);
         const conversation = AIStore.getCurrentConversation();
-        conversation.messages.pop();
-        conversation.messages.pop();
-        AIRenderer.renderMessages();
+        if (conversation.messages.length >= 2) {
+          conversation.messages.pop();
+          conversation.messages.pop();
+          AIRenderer.renderMessages();
+        }
       }
     } catch (error) {
       if (error.name === 'AbortError' || AIStore.state.abortController === null) {
