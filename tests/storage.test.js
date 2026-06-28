@@ -358,4 +358,50 @@ describe('storage bridge', () => {
       dom.window.close();
     }
   });
+
+  it('deletes key from cache when chrome.storage removes an item (newValue is null)', async () => {
+    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let changeListener;
+      let resolveGet;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener(fn) { changeListener = fn; },
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ testKey: 'hello' });
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      const script = new vm.Script(code);
+      script.runInContext(dom.getInternalVMContext());
+
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('testKey')).toBe('hello');
+
+      changeListener({ testKey: { oldValue: 'hello', newValue: null } }, 'local');
+
+      expect(dom.window.localStorage.getItem('testKey')).toBeNull();
+    } finally {
+      dom.window.close();
+    }
+  });
 });

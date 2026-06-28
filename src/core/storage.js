@@ -217,7 +217,7 @@
       Object.keys(changes || {}).forEach((key) => {
         const change = changes[key];
 
-        if (!change || typeof change.newValue === 'undefined') {
+        if (!change || change.newValue === null || typeof change.newValue === 'undefined') {
           cache.delete(key);
           trackHydrationMutation(key, null);
           changed = true;
