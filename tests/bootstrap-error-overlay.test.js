@@ -65,6 +65,10 @@ describe('bootstrap error overlay', () => {
       const items = overlay.querySelectorAll('li');
       const failedNames = Array.from(items).map(li => li.textContent);
       expect(failedNames).toContain('src/core/utils.js');
+
+      const reloadBtn = overlay.querySelector('button');
+      expect(reloadBtn).not.toBeNull();
+      expect(reloadBtn.textContent).toBe('Reload');
     } finally {
       dom.window.close();
     }

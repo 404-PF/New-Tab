@@ -130,13 +130,22 @@
     });
 
     const hint = document.createElement('p');
-    hint.textContent = 'Try reloading the page. If the problem persists, reinstall the extension.';
+    hint.textContent = 'If the problem persists, reinstall the extension.';
     hint.setAttribute('style', 'margin:0;opacity:0.6;font-size:0.9rem;');
+
+    const reloadBtn = document.createElement('button');
+    reloadBtn.textContent = 'Reload';
+    reloadBtn.setAttribute('style',
+      'margin-top:1rem;padding:0.5rem 1.5rem;border:none;border-radius:6px;' +
+      'background:#ff6b6b;color:#fff;font-size:1rem;cursor:pointer;'
+    );
+    reloadBtn.addEventListener('click', function () { location.reload(); });
 
     overlay.appendChild(heading);
     overlay.appendChild(description);
     overlay.appendChild(list);
     overlay.appendChild(hint);
+    overlay.appendChild(reloadBtn);
     document.body.appendChild(overlay);
   }
 
