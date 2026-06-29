@@ -1,8 +1,5 @@
 import { beforeEach, describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import { JSDOM } from 'jsdom';
-import vm from 'vm';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeEach(() => {
@@ -47,7 +44,6 @@ describe('storage bridge', () => {
   });
 
   it('keeps the captured native snapshot when chrome.storage hydration fails', async () => {
-    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
       url: 'https://example.com',
       runScripts: 'dangerously'
@@ -96,8 +92,7 @@ describe('storage bridge', () => {
         }
       };
 
-      const script = new vm.Script(code);
-      script.runInContext(dom.getInternalVMContext());
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
 
       expect(getCalled).toBe(true);
       dom.window.localStorage.setItem('bridge-write', 'kept');
@@ -113,7 +108,6 @@ describe('storage bridge', () => {
   });
 
   it('merges local mutations made while chrome.storage hydration is pending', async () => {
-    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
       url: 'https://example.com',
       runScripts: 'dangerously'
@@ -165,8 +159,7 @@ describe('storage bridge', () => {
         }
       };
 
-      const script = new vm.Script(code);
-      script.runInContext(dom.getInternalVMContext());
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
 
       expect(getCalled).toBe(true);
 
@@ -187,7 +180,6 @@ describe('storage bridge', () => {
   });
 
   it('syncs native localStorage with chrome.storage after hydration', async () => {
-    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
       url: 'https://example.com',
       runScripts: 'dangerously'
@@ -217,7 +209,7 @@ describe('storage bridge', () => {
         }
       };
 
-      injectScript(code, dom.getInternalVMContext());
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
 
       resolveGet();
       await dom.window.__storageBridgeReady;
@@ -230,7 +222,6 @@ describe('storage bridge', () => {
   });
 
   it('persists settings across simulated restart via native localStorage', async () => {
-    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
     const storageData = { theme: 'light', simpleMode: 'true' };
 
     const createDom = () => new JSDOM('<!doctype html><html><body></body></html>', {
@@ -265,8 +256,7 @@ describe('storage bridge', () => {
         }
       };
 
-      const script = new vm.Script(code);
-      script.runInContext(dom.getInternalVMContext());
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
       resolveGet();
       await dom.window.__storageBridgeReady;
 
@@ -303,8 +293,7 @@ describe('storage bridge', () => {
         }
       };
 
-      const script = new vm.Script(code);
-      script.runInContext(dom.getInternalVMContext());
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
       resolveGet();
       await dom.window.__storageBridgeReady;
 
@@ -316,7 +305,6 @@ describe('storage bridge', () => {
   });
 
   it('preserves mutations made while hydration callback is delayed', async () => {
-    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
       url: 'https://example.com',
       runScripts: 'dangerously'
@@ -346,14 +334,57 @@ describe('storage bridge', () => {
         }
       };
 
-      const script = new vm.Script(code);
-      script.runInContext(dom.getInternalVMContext());
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
 
       dom.window.localStorage.setItem('theme', 'light');
       resolveGet();
       await dom.window.__storageBridgeReady;
 
       expect(dom.window.localStorage.getItem('theme')).toBe('light');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('deletes key from cache when chrome.storage removes an item (newValue is null)', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let changeListener;
+      let resolveGet;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener(fn) { changeListener = fn; },
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ testKey: 'hello' });
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('testKey')).toBe('hello');
+
+      changeListener({ testKey: { oldValue: 'hello', newValue: null } }, 'local');
+
+      expect(dom.window.localStorage.getItem('testKey')).toBeNull();
     } finally {
       dom.window.close();
     }
