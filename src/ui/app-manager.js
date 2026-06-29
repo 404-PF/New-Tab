@@ -32,11 +32,6 @@ window.appGridReady = false;
 
 // Render the app grid
 function renderAllApps() {
-  // Invalidate drag-drop icon cache when the grid is rebuilt mid-drag
-  if (window.DnD && window.DnD.invalidateIconCache) {
-    window.DnD.invalidateIconCache();
-  }
-
   const appGrid = document.getElementById('app-grid');
 const addApp = document.getElementById('new-app');
   if (!appGrid || !addApp) {
@@ -150,6 +145,11 @@ const addApp = document.getElementById('new-app');
     a.innerHTML = iconHtml + `<span class="app-name">${escapeHtml(displayName)}</span>`;
     appGrid.insertBefore(a, addApp);
   });
+
+  // Invalidate drag-drop icon cache after the grid is rebuilt
+  if (window.DnD && window.DnD.invalidateIconCache) {
+    window.DnD.invalidateIconCache();
+  }
 
   // Re-attach settings app click handler after render
   attachSettingsAppHandler();
