@@ -146,6 +146,11 @@ const addApp = document.getElementById('new-app');
     appGrid.insertBefore(a, addApp);
   });
 
+  // Invalidate drag-drop icon cache after the grid is rebuilt
+  if (window.DnD && window.DnD.invalidateIconCache) {
+    window.DnD.invalidateIconCache();
+  }
+
   // Re-attach settings app click handler after render
   attachSettingsAppHandler();
 
