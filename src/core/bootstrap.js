@@ -100,6 +100,8 @@
   ]);
 
   function showErrorOverlay(failedSources) {
+    const t = window.i18n && window.i18n.t ? window.i18n.t.bind(window.i18n) : function (_k, fb) { return fb; };
+
     const overlay = document.createElement('div');
     overlay.id = 'bootstrap-error-overlay';
     overlay.setAttribute('style',
@@ -110,11 +112,11 @@
     );
 
     const heading = document.createElement('h2');
-    heading.textContent = 'Extension failed to load';
+    heading.textContent = t('bootstrapErrorTitle', 'Extension failed to load');
     heading.setAttribute('style', 'margin:0 0 1rem;font-size:1.4rem;color:#ff6b6b;');
 
     const description = document.createElement('p');
-    description.textContent = 'The following module(s) could not be loaded:';
+    description.textContent = t('bootstrapErrorDesc', 'The following module(s) could not be loaded:');
     description.setAttribute('style', 'margin:0 0 0.75rem;opacity:0.8;');
 
     const list = document.createElement('ul');
@@ -130,11 +132,11 @@
     });
 
     const hint = document.createElement('p');
-    hint.textContent = 'If the problem persists, reinstall the extension.';
+    hint.textContent = t('bootstrapErrorHint', 'If the problem persists, reinstall the extension.');
     hint.setAttribute('style', 'margin:0;opacity:0.6;font-size:0.9rem;');
 
     const reloadBtn = document.createElement('button');
-    reloadBtn.textContent = 'Reload';
+    reloadBtn.textContent = t('bootstrapErrorReload', 'Reload');
     reloadBtn.setAttribute('style',
       'margin-top:1rem;padding:0.5rem 1.5rem;border:none;border-radius:6px;' +
       'background:#ff6b6b;color:#fff;font-size:1rem;cursor:pointer;'

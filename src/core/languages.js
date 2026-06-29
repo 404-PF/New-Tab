@@ -388,7 +388,13 @@ const translations = {
     aiMessageEmpty: 'Message cannot be empty',
     aiMessageTooLong: 'Message too long (max 2000 characters)',
     aiStopStreaming: 'Stop',
-    aiScrollToBottom: 'Scroll to bottom'
+    aiScrollToBottom: 'Scroll to bottom',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: 'Extension failed to load',
+    bootstrapErrorDesc: 'The following module(s) could not be loaded:',
+    bootstrapErrorHint: 'If the problem persists, reinstall the extension.',
+    bootstrapErrorReload: 'Reload'
   },
 
   zh: {
