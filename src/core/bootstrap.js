@@ -99,16 +99,84 @@
     fallbackPromise
   ]);
 
+  function showErrorOverlay(failedSources) {
+    const t = window.i18n && window.i18n.t
+      ? function (key, fallback) {
+          const result = window.i18n.t(key);
+          // If translation is missing (returns the key itself or empty), use fallback
+          return (result && result !== key) ? result : fallback;
+        }
+      : function (_k, fb) { return fb; };
+
+    const overlay = document.createElement('div');
+    overlay.id = 'bootstrap-error-overlay';
+    overlay.setAttribute('style',
+      'position:fixed;inset:0;z-index:99999;pointer-events:all;' +
+      'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+      'background:#1a1a2e;color:#e0e0e0;font-family:system-ui,-apple-system,sans-serif;' +
+      'padding:2rem;text-align:center;'
+    );
+
+    const heading = document.createElement('h2');
+    heading.textContent = t('bootstrapErrorTitle', 'Extension failed to load');
+    heading.setAttribute('style', 'margin:0 0 1rem;font-size:1.4rem;color:#ff6b6b;');
+
+    const description = document.createElement('p');
+    description.textContent = t('bootstrapErrorDesc', 'The following module(s) could not be loaded:');
+    description.setAttribute('style', 'margin:0 0 0.75rem;opacity:0.8;');
+
+    const list = document.createElement('ul');
+    list.setAttribute('style', 'list-style:none;padding:0;margin:0 0 1.5rem;');
+    failedSources.forEach(function (src) {
+      const item = document.createElement('li');
+      item.textContent = src;
+      item.setAttribute('style',
+        'font-family:monospace;background:#2d2d44;padding:0.4rem 0.8rem;' +
+        'margin:0.3rem 0;border-radius:4px;'
+      );
+      list.appendChild(item);
+    });
+
+    const hint = document.createElement('p');
+    hint.textContent = t('bootstrapErrorHint', 'If the problem persists, reinstall the extension.');
+    hint.setAttribute('style', 'margin:0;opacity:0.6;font-size:0.9rem;');
+
+    const reloadBtn = document.createElement('button');
+    reloadBtn.textContent = t('bootstrapErrorReload', 'Reload');
+    reloadBtn.setAttribute('style',
+      'margin-top:1rem;padding:0.5rem 1.5rem;border:none;border-radius:6px;' +
+      'background:#ff6b6b;color:#fff;font-size:1rem;cursor:pointer;'
+    );
+    reloadBtn.addEventListener('click', function () { location.reload(); });
+    reloadBtn.addEventListener('mouseover', function () { reloadBtn.style.background = '#e05555'; });
+    reloadBtn.addEventListener('mouseout', function () { reloadBtn.style.background = '#ff6b6b'; });
+
+    overlay.appendChild(heading);
+    overlay.appendChild(description);
+    overlay.appendChild(list);
+    overlay.appendChild(hint);
+    overlay.appendChild(reloadBtn);
+    const container = document.body || document.documentElement;
+    container.appendChild(overlay);
+  }
+
   readyWithFallback.then(() => {
     // Kick off all script downloads in parallel. Execution order is preserved
     // because loadScript() sets script.async = false; changing that would break
     // ordering assumptions in scriptSources.
-    return Promise.all(scriptSources.map(src =>
-      loadScript(src).catch(e => {
-        console.error('Failed to load script:', src, e);
-        // Swallow the error so other scripts continue loading.
-      })
-    ));
+    return Promise.allSettled(scriptSources.map(function (src) { return loadScript(src); }));
+  }).then((results) => {
+    const failedSources = [];
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        failedSources.push(scriptSources[index]);
+        console.error('Failed to load script:', scriptSources[index], result.reason);
+      }
+    });
+
+    if (failedSources.length > 0) {
+      showErrorOverlay(failedSources);
+    }
   }).catch((error) => {
     console.error('Failed to bootstrap New-Tab scripts:', error);
   });

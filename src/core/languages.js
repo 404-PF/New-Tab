@@ -388,7 +388,13 @@ const translations = {
     aiMessageEmpty: 'Message cannot be empty',
     aiMessageTooLong: 'Message too long (max 2000 characters)',
     aiStopStreaming: 'Stop',
-    aiScrollToBottom: 'Scroll to bottom'
+    aiScrollToBottom: 'Scroll to bottom',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: 'Extension failed to load',
+    bootstrapErrorDesc: 'The following module(s) could not be loaded:',
+    bootstrapErrorHint: 'If the problem persists, reinstall the extension.',
+    bootstrapErrorReload: 'Reload'
   },
 
   zh: {
@@ -778,7 +784,13 @@ const translations = {
     aiMessageEmpty: '消息不能为空',
     aiMessageTooLong: '消息太长（最多2000个字符）',
     aiStopStreaming: '停止',
-    aiScrollToBottom: '滚动到底部'
+    aiScrollToBottom: '滚动到底部',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: '扩展加载失败',
+    bootstrapErrorDesc: '以下模块无法加载：',
+    bootstrapErrorHint: '如果问题持续存在，请重新安装扩展。',
+    bootstrapErrorReload: '重新加载'
   },
 
   ja: {
@@ -1109,7 +1121,13 @@ const translations = {
     aiMessageEmpty: 'メッセージは空にできません',
     aiMessageTooLong: 'メッセージが長すぎます（最大2000文字）',
     aiStopStreaming: '停止',
-    aiScrollToBottom: '一番下にスクロール'
+    aiScrollToBottom: '一番下にスクロール',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: '拡張機能の読み込みに失敗しました',
+    bootstrapErrorDesc: '以下のモジュールを読み込めませんでした:',
+    bootstrapErrorHint: '問題が解決しない場合は、拡張機能を再インストールしてください。',
+    bootstrapErrorReload: '再読み込み'
   },
 
   ko: {
@@ -1440,7 +1458,13 @@ const translations = {
     aiMessageEmpty: '메시지는 비울 수 없습니다',
     aiMessageTooLong: '메시지가 너무 깁니다(최대 2000자)',
     aiStopStreaming: '중지',
-    aiScrollToBottom: '맨 아래로 스크롤'
+    aiScrollToBottom: '맨 아래로 스크롤',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: '확장 프로그램을 로드하지 못했습니다',
+    bootstrapErrorDesc: '다음 모듈을 로드할 수 없습니다:',
+    bootstrapErrorHint: '문제가 계속되면 확장 프로그램을 다시 설치하세요.',
+    bootstrapErrorReload: '새로고침'
   },
 
   es: {
@@ -1771,7 +1795,13 @@ const translations = {
     newFolder: 'Nueva carpeta',
     deleteFolderConfirm: '¿Eliminar la carpeta "{name}"? Las aplicaciones dentro se moverán de vuelta a la cuadrícula.',
     noFoldersCreate: 'Aún no hay carpetas. ¿Crear una ahora?',
-    folderEmpty: 'Esta carpeta está vacía'
+    folderEmpty: 'Esta carpeta está vacía',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: 'Error al cargar la extensión',
+    bootstrapErrorDesc: 'No se pudieron cargar los siguientes módulos:',
+    bootstrapErrorHint: 'Si el problema persiste, reinstale la extensión.',
+    bootstrapErrorReload: 'Recargar'
   },
 
   fr: {
@@ -2102,7 +2132,13 @@ const translations = {
     newFolder: 'Nouveau dossier',
     deleteFolderConfirm: 'Supprimer le dossier "{name}" ? Les applications à l\'intérieur seront remises dans la grille.',
     noFoldersCreate: 'Pas encore de dossiers. En créer un maintenant ?',
-    folderEmpty: 'Ce dossier est vide'
+    folderEmpty: 'Ce dossier est vide',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: 'Échec du chargement de l\'extension',
+    bootstrapErrorDesc: 'Les modules suivants n\'ont pas pu être chargés :',
+    bootstrapErrorHint: 'Si le problème persiste, réinstallez l\'extension.',
+    bootstrapErrorReload: 'Recharger'
   },
 
   de: {
@@ -2433,7 +2469,13 @@ const translations = {
     newFolder: 'Neuer Ordner',
     deleteFolderConfirm: 'Ordner "{name}" löschen? Die darin enthaltenen Apps werden zurück in das Raster verschoben.',
     noFoldersCreate: 'Noch keine Ordner. Jetzt einen erstellen?',
-    folderEmpty: 'Dieser Ordner ist leer'
+    folderEmpty: 'Dieser Ordner ist leer',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: 'Erweiterung konnte nicht geladen werden',
+    bootstrapErrorDesc: 'Die folgenden Module konnten nicht geladen werden:',
+    bootstrapErrorHint: 'Wenn das Problem weiterhin besteht, installieren Sie die Erweiterung neu.',
+    bootstrapErrorReload: 'Neu laden'
   },
 
   pt: {
@@ -2764,7 +2806,13 @@ const translations = {
     newFolder: 'Nova pasta',
     deleteFolderConfirm: 'Excluir pasta "{name}"? Os aplicativos dentro serão movidos de volta para a grade.',
     noFoldersCreate: 'Nenhuma pasta ainda. Criar uma agora?',
-    folderEmpty: 'Esta pasta está vazia'
+    folderEmpty: 'Esta pasta está vazia',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: 'Falha ao carregar a extensão',
+    bootstrapErrorDesc: 'Os seguintes módulos não puderam ser carregados:',
+    bootstrapErrorHint: 'Se o problema persistir, reinstale a extensão.',
+    bootstrapErrorReload: 'Recarregar'
   },
 
   ru: {
@@ -3095,7 +3143,13 @@ const translations = {
     newFolder: 'Новая папка',
     deleteFolderConfirm: 'Удалить папку "{name}"? Приложения внутри будут перемещены обратно в сетку.',
     noFoldersCreate: 'Папок пока нет. Создать сейчас?',
-    folderEmpty: 'Эта папка пуста'
+    folderEmpty: 'Эта папка пуста',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: 'Не удалось загрузить расширение',
+    bootstrapErrorDesc: 'Не удалось загрузить следующие модули:',
+    bootstrapErrorHint: 'Если проблема сохраняется, переустановите расширение.',
+    bootstrapErrorReload: 'Перезагрузить'
   }
 };
 

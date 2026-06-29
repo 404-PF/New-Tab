@@ -483,7 +483,11 @@ globalThis.window.i18n = {
       weatherWidgetCloseLabel: 'Close weather widget',
       todoSubtasks: 'Subtasks',
       todoAddSubtask: 'Add subtask...',
-      todoSubtaskDelete: 'Delete subtask'
+      todoSubtaskDelete: 'Delete subtask',
+      bootstrapErrorTitle: 'Extension failed to load',
+      bootstrapErrorDesc: 'The following module(s) could not be loaded:',
+      bootstrapErrorHint: 'If the problem persists, reinstall the extension.',
+      bootstrapErrorReload: 'Reload'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
