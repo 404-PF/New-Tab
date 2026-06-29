@@ -2,12 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { JSDOM } from 'jsdom';
+import { injectScript } from './helpers/inject-script.js';
 
 const BOOTSTRAP_JS_PATH = resolve(process.cwd(), 'src/core/bootstrap.js');
 const BOOTSTRAP_CODE = readFileSync(BOOTSTRAP_JS_PATH, 'utf-8');
 
 describe('bootstrap error overlay', () => {
-  function createDomWithScriptOverrides(scriptOverrides) {
+  function createDomWithScriptOverrides(scriptOverrides, includeI18n = false) {
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
       url: 'https://example.com',
       runScripts: 'dangerously',
@@ -15,6 +16,22 @@ describe('bootstrap error overlay', () => {
     });
 
     dom.window.__storageBridgeReady = Promise.resolve();
+
+    // Set up i18n mock if requested
+    if (includeI18n) {
+      dom.window.i18n = {
+        t(key) {
+          // Simulate i18n with translations for the bootstrap error keys
+          const translations = {
+            bootstrapErrorTitle: 'Extension failed to load',
+            bootstrapErrorDesc: 'The following module(s) could not be loaded:',
+            bootstrapErrorHint: 'If the problem persists, reinstall the extension.',
+            bootstrapErrorReload: 'Reload'
+          };
+          return translations[key] || key;
+        }
+      };
+    }
 
     const originalCreateElement = dom.window.document.createElement.bind(dom.window.document);
     dom.window.document.createElement = function (tag) {
@@ -52,7 +69,7 @@ describe('bootstrap error overlay', () => {
     });
 
     try {
-      dom.window.eval(BOOTSTRAP_CODE);
+      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
 
       await new Promise(resolve => setTimeout(resolve, 200));
       await dom.window.__storageBridgeReady;
@@ -81,7 +98,7 @@ describe('bootstrap error overlay', () => {
     });
 
     try {
-      dom.window.eval(BOOTSTRAP_CODE);
+      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
 
       await new Promise(resolve => setTimeout(resolve, 200));
       await dom.window.__storageBridgeReady;
@@ -104,7 +121,7 @@ describe('bootstrap error overlay', () => {
     const dom = createDomWithScriptOverrides({});
 
     try {
-      dom.window.eval(BOOTSTRAP_CODE);
+      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
 
       await new Promise(resolve => setTimeout(resolve, 200));
       await dom.window.__storageBridgeReady;
@@ -113,6 +130,116 @@ describe('bootstrap error overlay', () => {
 
       const overlay = dom.window.document.getElementById('bootstrap-error-overlay');
       expect(overlay).toBeNull();
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('uses English fallback strings when window.i18n is not available', async () => {
+    const dom = createDomWithScriptOverrides({
+      'src/core/utils.js': 'error',
+    }, false); // explicitly no i18n
+
+    try {
+      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await dom.window.__storageBridgeReady;
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const overlay = dom.window.document.getElementById('bootstrap-error-overlay');
+      expect(overlay).not.toBeNull();
+
+      // Verify English fallback text is used
+      const heading = overlay.querySelector('h2');
+      expect(heading?.textContent).toBe('Extension failed to load');
+
+      const description = overlay.querySelector('p');
+      expect(description?.textContent).toBe('The following module(s) could not be loaded:');
+
+      const paragraphs = overlay.querySelectorAll('p');
+      const hint = paragraphs[paragraphs.length - 1];
+      expect(hint?.textContent).toBe('If the problem persists, reinstall the extension.');
+
+      const reloadBtn = overlay.querySelector('button');
+      expect(reloadBtn?.textContent).toBe('Reload');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('uses window.i18n translations when available', async () => {
+    const dom = createDomWithScriptOverrides({
+      'src/core/utils.js': 'error',
+    }, true); // include i18n mock
+
+    try {
+      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await dom.window.__storageBridgeReady;
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const overlay = dom.window.document.getElementById('bootstrap-error-overlay');
+      expect(overlay).not.toBeNull();
+
+      // Verify i18n-backed text is used (same as English in this mock)
+      const heading = overlay.querySelector('h2');
+      expect(heading?.textContent).toBe('Extension failed to load');
+
+      const description = overlay.querySelector('p');
+      expect(description?.textContent).toBe('The following module(s) could not be loaded:');
+
+      const paragraphs = overlay.querySelectorAll('p');
+      const hint = paragraphs[paragraphs.length - 1];
+      expect(hint?.textContent).toBe('If the problem persists, reinstall the extension.');
+
+      const reloadBtn = overlay.querySelector('button');
+      expect(reloadBtn?.textContent).toBe('Reload');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('falls back to English when i18n returns the key itself (missing translation)', async () => {
+    const dom = createDomWithScriptOverrides({
+      'src/core/utils.js': 'error',
+    });
+
+    try {
+      // Set up i18n that returns the key itself (simulating missing translation)
+      dom.window.i18n = {
+        t(key) {
+          // Return the key itself to simulate missing translation
+          return key;
+        }
+      };
+
+      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await dom.window.__storageBridgeReady;
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const overlay = dom.window.document.getElementById('bootstrap-error-overlay');
+      expect(overlay).not.toBeNull();
+
+      // Verify English fallback is used when i18n returns the key
+      const heading = overlay.querySelector('h2');
+      expect(heading?.textContent).toBe('Extension failed to load');
+
+      const description = overlay.querySelector('p');
+      expect(description?.textContent).toBe('The following module(s) could not be loaded:');
+
+      const paragraphs = overlay.querySelectorAll('p');
+      const hint = paragraphs[paragraphs.length - 1];
+      expect(hint?.textContent).toBe('If the problem persists, reinstall the extension.');
+
+      const reloadBtn = overlay.querySelector('button');
+      expect(reloadBtn?.textContent).toBe('Reload');
     } finally {
       dom.window.close();
     }

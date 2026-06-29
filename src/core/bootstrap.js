@@ -100,7 +100,13 @@
   ]);
 
   function showErrorOverlay(failedSources) {
-    const t = window.i18n && window.i18n.t ? window.i18n.t.bind(window.i18n) : function (_k, fb) { return fb; };
+    const t = window.i18n && window.i18n.t
+      ? function (key, fallback) {
+          const result = window.i18n.t(key);
+          // If translation is missing (returns the key itself or empty), use fallback
+          return (result && result !== key) ? result : fallback;
+        }
+      : function (_k, fb) { return fb; };
 
     const overlay = document.createElement('div');
     overlay.id = 'bootstrap-error-overlay';
