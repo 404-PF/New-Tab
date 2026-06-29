@@ -12,7 +12,10 @@
     placeholderIndex: -1,
     dropIndex: -1,
     // Cached layout measured at drag start to avoid repeated reflows
-    cachedLayout: null
+    cachedLayout: null,
+    // Cached draggable icon lists measured at drag start to avoid per-frame DOM queries
+    cachedIcons: null,
+    cachedIconsWithSource: null
   };
 
   // Get container element
@@ -20,18 +23,55 @@
     return document.getElementById('app-grid');
   }
 
-  // Get all draggable app icons (excluding add-app button and folder icons)
+  // Get all draggable app icons (excluding add-app button and folder icons).
+  // When a drag session is active the result is served from a snapshot taken
+  // at `dragstart`, avoiding a full DOM query on every `dragover` frame.
   function getDraggableIcons(options = {}) {
     const { includeSource = false } = options;
+
+    // Return cached lists when a drag session is active
+    if (dragState.sourceId) {
+      return includeSource
+        ? (dragState.cachedIconsWithSource || [])
+        : (dragState.cachedIcons || []);
+    }
+
+    // Outside of a drag session, query the DOM directly
     const grid = getAppGrid();
     if (!grid) return [];
     return Array.from(grid.querySelectorAll('.app-icon')).filter(
       icon =>
         icon.id !== 'new-app' &&
         icon.id !== 'add-app' &&
-        !icon.classList.contains('folder-icon') &&
-        (includeSource || icon.id !== dragState.sourceId)
+        !icon.classList.contains('folder-icon')
     );
+  }
+
+  // Snapshot the current draggable icon list into dragState.cachedIcons /
+  // dragState.cachedIconsWithSource.  Called once at dragstart.
+  function cacheDraggableIcons() {
+    const grid = getAppGrid();
+    if (!grid) {
+      dragState.cachedIcons = [];
+      dragState.cachedIconsWithSource = [];
+      return;
+    }
+    const all = Array.from(grid.querySelectorAll('.app-icon')).filter(
+      icon =>
+        icon.id !== 'new-app' &&
+        icon.id !== 'add-app' &&
+        !icon.classList.contains('folder-icon')
+    );
+    dragState.cachedIconsWithSource = all;
+    dragState.cachedIcons = all.filter(icon => icon.id !== dragState.sourceId);
+  }
+
+  // Invalidate the cached icon list (e.g. after renderAllApps rebuilds the
+  // grid during an active drag).  Re-captures immediately so subsequent
+  // dragover frames see the fresh list.
+  function invalidateIconCache() {
+    if (!dragState.sourceId) return;
+    cacheDraggableIcons();
   }
 
   // Get the grid's layout info for calculating positions
@@ -245,6 +285,8 @@
     dragState.placeholderIndex = -1;
     dragState.dropIndex = -1;
     dragState.cachedLayout = null;
+    dragState.cachedIcons = null;
+    dragState.cachedIconsWithSource = null;
   }
 
   function handleDragAbort(e) {
@@ -297,7 +339,10 @@
   function handleDragStart(e, target) {
     dragState.sourceId = target.id;
     dragState.sourceElement = target;
-    dragState.sourceOrderIndex = getDraggableIcons({ includeSource: true }).indexOf(target);
+
+    // Cache icon list and layout at drag start to avoid per-frame DOM queries
+    cacheDraggableIcons();
+    dragState.sourceOrderIndex = dragState.cachedIconsWithSource.indexOf(target);
     dragState.placeholderIndex = dragState.sourceOrderIndex;
     dragState.dropIndex = getOrderIndexFromPlaceholderIndex(dragState.placeholderIndex);
 
@@ -510,7 +555,8 @@
 
   // Export for external use if needed
   window.DnD = {
-    refresh: attachDnDEvents
+    refresh: attachDnDEvents,
+    invalidateIconCache: invalidateIconCache
   };
 
 })();

@@ -32,6 +32,11 @@ window.appGridReady = false;
 
 // Render the app grid
 function renderAllApps() {
+  // Invalidate drag-drop icon cache when the grid is rebuilt mid-drag
+  if (window.DnD && window.DnD.invalidateIconCache) {
+    window.DnD.invalidateIconCache();
+  }
+
   const appGrid = document.getElementById('app-grid');
 const addApp = document.getElementById('new-app');
   if (!appGrid || !addApp) {
