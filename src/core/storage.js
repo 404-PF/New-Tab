@@ -32,6 +32,7 @@
   function resolveStorageReady() {
     if (storageBridgeResolved) return;
     storageBridgeResolved = true;
+    hydrationFinished = true;
     if (storageBridgeTimeoutId) {
       clearTimeout(storageBridgeTimeoutId);
       storageBridgeTimeoutId = null;
