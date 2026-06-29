@@ -348,7 +348,7 @@ describe('renderAllApps order validation', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    window._gridRendered = false;
+    window.__appGridState.phase = 'idle';
   });
 
   it('rebuilds order when a default app ID is missing', () => {

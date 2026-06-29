@@ -395,7 +395,7 @@
   function init() {
     setupFolderPopupListeners();
     document.dispatchEvent(new CustomEvent('appFoldersReady'));
-    if (!window._appFoldersRendered && typeof window.renderAllApps === 'function') {
+    if (window.__appGridState.phase !== 'rendered' && typeof window.renderAllApps === 'function') {
       window.renderAllApps();
     }
   }
