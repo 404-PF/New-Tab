@@ -1,5 +1,7 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import { JSDOM } from 'jsdom';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeEach(() => {
@@ -389,4 +391,61 @@ describe('storage bridge', () => {
       dom.window.close();
     }
   });
+
+  it('script writes survive when chrome.storage.get responds after bridge timeout', async () => {
+    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let lateCallback;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(_keys, callback) {
+              lateCallback = () => {
+                callback({ serverSetting: 'from-server' });
+              };
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      injectScript(code, dom.getInternalVMContext());
+
+      expect(dom.window.__storageBridgeReady).toBeDefined();
+
+      // Wait for the 3 s bridge timeout to fire
+      await dom.window.__storageBridgeReady;
+
+      // Simulate scripts writing values after the timeout
+      dom.window.localStorage.setItem('appOrder', '["app1","app2"]');
+      dom.window.localStorage.setItem('theme', 'dark');
+      expect(dom.window.localStorage.getItem('appOrder')).toBe('["app1","app2"]');
+      expect(dom.window.localStorage.getItem('theme')).toBe('dark');
+
+      // Now chrome.storage.local.get finally responds (late callback).
+      // Before the fix this would call applySnapshot() and clobber the
+      // script-persisted values. After the fix the callback exits early
+      // because hydrationFinished was set when the timeout fired.
+      lateCallback();
+
+      expect(dom.window.localStorage.getItem('appOrder')).toBe('["app1","app2"]');
+      expect(dom.window.localStorage.getItem('theme')).toBe('dark');
+    } finally {
+      dom.window.close();
+    }
+  }, 10_000);
 });
