@@ -34,10 +34,10 @@ describe('bootstrap error overlay', () => {
       dom.window.i18n = {
         t(key) {
           const translations = {
-            bootstrapErrorTitle: 'Extension failed to load',
-            bootstrapErrorDesc: 'The following module(s) could not be loaded:',
-            bootstrapErrorHint: 'If the problem persists, reinstall the extension.',
-            bootstrapErrorReload: 'Reload'
+            bootstrapErrorTitle: 'i18n_TITLE',
+            bootstrapErrorDesc: 'i18n_DESC',
+            bootstrapErrorHint: 'i18n_HINT',
+            bootstrapErrorReload: 'i18n_RELOAD'
           };
           return translations[key] || key;
         }
@@ -163,15 +163,11 @@ describe('bootstrap error overlay', () => {
       );
       expect(overlay).not.toBeNull();
 
-      expect(overlay.querySelector('h2')?.textContent).toBe('Extension failed to load');
-      expect(overlay.querySelector('p')?.textContent).toBe(
-        'The following module(s) could not be loaded:'
-      );
+      expect(overlay.querySelector('h2')?.textContent).toBe('i18n_TITLE');
+      expect(overlay.querySelector('p')?.textContent).toBe('i18n_DESC');
       const paragraphs = overlay.querySelectorAll('p');
-      expect(paragraphs[paragraphs.length - 1]?.textContent).toBe(
-        'If the problem persists, reinstall the extension.'
-      );
-      expect(overlay.querySelector('button')?.textContent).toBe('Reload');
+      expect(paragraphs[paragraphs.length - 1]?.textContent).toBe('i18n_HINT');
+      expect(overlay.querySelector('button')?.textContent).toBe('i18n_RELOAD');
     } finally {
       dom.window.close();
     }

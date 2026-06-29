@@ -164,7 +164,7 @@
     // Kick off all script downloads in parallel. Execution order is preserved
     // because loadScript() sets script.async = false; changing that would break
     // ordering assumptions in scriptSources.
-    return Promise.allSettled(scriptSources.map(src => loadScript(src)));
+    return Promise.allSettled(scriptSources.map(function (src) { return loadScript(src); }));
   }).then((results) => {
     const failedSources = [];
     results.forEach((result, index) => {
