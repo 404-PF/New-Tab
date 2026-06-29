@@ -784,7 +784,13 @@ const translations = {
     aiMessageEmpty: '消息不能为空',
     aiMessageTooLong: '消息太长（最多2000个字符）',
     aiStopStreaming: '停止',
-    aiScrollToBottom: '滚动到底部'
+    aiScrollToBottom: '滚动到底部',
+
+    // Bootstrap error overlay
+    bootstrapErrorTitle: '扩展加载失败',
+    bootstrapErrorDesc: '以下模块无法加载：',
+    bootstrapErrorHint: '如果问题持续存在，请重新安装扩展。',
+    bootstrapErrorReload: '重新加载'
   },
 
   ja: {

@@ -71,10 +71,10 @@ describe('bootstrap error overlay', () => {
     try {
       injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const overlay = dom.window.document.getElementById('bootstrap-error-overlay');
       expect(overlay).not.toBeNull();
@@ -100,10 +100,10 @@ describe('bootstrap error overlay', () => {
     try {
       injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const overlay = dom.window.document.getElementById('bootstrap-error-overlay');
       expect(overlay).not.toBeNull();
@@ -123,10 +123,10 @@ describe('bootstrap error overlay', () => {
     try {
       injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const overlay = dom.window.document.getElementById('bootstrap-error-overlay');
       expect(overlay).toBeNull();
@@ -143,10 +143,10 @@ describe('bootstrap error overlay', () => {
     try {
       injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const overlay = dom.window.document.getElementById('bootstrap-error-overlay');
       expect(overlay).not.toBeNull();
@@ -177,10 +177,10 @@ describe('bootstrap error overlay', () => {
     try {
       injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const overlay = dom.window.document.getElementById('bootstrap-error-overlay');
       expect(overlay).not.toBeNull();
@@ -219,10 +219,10 @@ describe('bootstrap error overlay', () => {
 
       injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const overlay = dom.window.document.getElementById('bootstrap-error-overlay');
       expect(overlay).not.toBeNull();

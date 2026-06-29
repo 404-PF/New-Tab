@@ -111,7 +111,7 @@
     const overlay = document.createElement('div');
     overlay.id = 'bootstrap-error-overlay';
     overlay.setAttribute('style',
-      'position:fixed;inset:0;z-index:99999;' +
+      'position:fixed;inset:0;z-index:99999;pointer-events:all;' +
       'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
       'background:#1a1a2e;color:#e0e0e0;font-family:system-ui,-apple-system,sans-serif;' +
       'padding:2rem;text-align:center;'
