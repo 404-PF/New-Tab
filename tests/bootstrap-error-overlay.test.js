@@ -4,8 +4,9 @@ import { resolve } from 'path';
 import { JSDOM } from 'jsdom';
 import { injectScript } from './helpers/inject-script.js';
 
-const BOOTSTRAP_JS_PATH = resolve(process.cwd(), 'src/core/bootstrap.js');
-const BOOTSTRAP_CODE = readFileSync(BOOTSTRAP_JS_PATH, 'utf-8');
+function readBootstrapCode() {
+  return readFileSync(resolve(process.cwd(), 'src/core/bootstrap.js'), 'utf-8');
+}
 
 describe('bootstrap error overlay', () => {
   function createDomWithScriptOverrides(scriptOverrides, includeI18n = false) {
@@ -69,7 +70,7 @@ describe('bootstrap error overlay', () => {
     });
 
     try {
-      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
+      injectScript(readBootstrapCode(), dom.getInternalVMContext());
 
       await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
@@ -98,7 +99,7 @@ describe('bootstrap error overlay', () => {
     });
 
     try {
-      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
+      injectScript(readBootstrapCode(), dom.getInternalVMContext());
 
       await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
@@ -121,7 +122,7 @@ describe('bootstrap error overlay', () => {
     const dom = createDomWithScriptOverrides({});
 
     try {
-      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
+      injectScript(readBootstrapCode(), dom.getInternalVMContext());
 
       await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
@@ -141,7 +142,7 @@ describe('bootstrap error overlay', () => {
     }, false); // explicitly no i18n
 
     try {
-      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
+      injectScript(readBootstrapCode(), dom.getInternalVMContext());
 
       await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
@@ -175,7 +176,7 @@ describe('bootstrap error overlay', () => {
     }, true); // include i18n mock
 
     try {
-      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
+      injectScript(readBootstrapCode(), dom.getInternalVMContext());
 
       await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;
@@ -217,7 +218,7 @@ describe('bootstrap error overlay', () => {
         }
       };
 
-      injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
+      injectScript(readBootstrapCode(), dom.getInternalVMContext());
 
       await new Promise(resolve => setTimeout(resolve, 50));
       await dom.window.__storageBridgeReady;

@@ -148,13 +148,16 @@
       'background:#ff6b6b;color:#fff;font-size:1rem;cursor:pointer;'
     );
     reloadBtn.addEventListener('click', function () { location.reload(); });
+    reloadBtn.addEventListener('mouseover', function () { reloadBtn.style.background = '#e05555'; });
+    reloadBtn.addEventListener('mouseout', function () { reloadBtn.style.background = '#ff6b6b'; });
 
     overlay.appendChild(heading);
     overlay.appendChild(description);
     overlay.appendChild(list);
     overlay.appendChild(hint);
     overlay.appendChild(reloadBtn);
-    document.body.appendChild(overlay);
+    const container = document.body || document.documentElement;
+    container.appendChild(overlay);
   }
 
   readyWithFallback.then(() => {
