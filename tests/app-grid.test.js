@@ -348,7 +348,7 @@ describe('renderAllApps order validation', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    window.__appGridState.phase = 'idle';
+    window.__appGridState.reset();
   });
 
   it('rebuilds order when a default app ID is missing', () => {
@@ -507,7 +507,7 @@ describe('renderAllApps order validation', () => {
 
 describe('__appGridState', () => {
   beforeEach(() => {
-    window.__appGridState.phase = 'idle';
+    window.__appGridState.reset();
   });
 
   it('starts in idle phase', () => {
@@ -569,5 +569,17 @@ describe('__appGridState', () => {
   it('appGridReady getter returns true when rendered', () => {
     window.__appGridState.setPhase('rendered');
     expect(window.appGridReady).toBe(true);
+  });
+
+  it('reset() returns phase to idle', () => {
+    window.__appGridState.setPhase('rendered');
+    window.__appGridState.reset();
+    expect(window.__appGridState.phase).toBe('idle');
+  });
+
+  it('ignores invalid phase argument', () => {
+    window.__appGridState.setPhase('deferred');
+    window.__appGridState.setPhase('bogus');
+    expect(window.__appGridState.phase).toBe('deferred');
   });
 });

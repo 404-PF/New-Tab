@@ -394,20 +394,25 @@ window.AppGridState = AppGridState;
 // Consolidated app-grid coordination state machine.
 // Replaces the ad-hoc _appFoldersDeferred, _appFoldersRendered, _gridRendered,
 // and appGridReady flags with a single phase-based object.
-window.__appGridState = {
-  phase: 'idle', // 'idle' | 'deferred' | 'rendered'
-
-  setPhase(next) {
-    const prev = this.phase;
-    if (prev === next) return;
-    if (prev === 'rendered') return;
-    if (prev === 'deferred' && next === 'idle') return;
-    this.phase = next;
-    if (next === 'rendered') {
-      window.dispatchEvent(new CustomEvent('appGridReady'));
-    }
-  }
-};
+window.__appGridState = (() => {
+  let _phase = 'idle'; // 'idle' | 'deferred' | 'rendered'
+  const valid = new Set(['idle', 'deferred', 'rendered']);
+  return {
+    get phase() { return _phase; },
+    setPhase(next) {
+      if (!valid.has(next)) return;
+      const prev = _phase;
+      if (prev === next) return;
+      if (prev === 'rendered') return;
+      if (prev === 'deferred' && next === 'idle') return;
+      _phase = next;
+      if (next === 'rendered') {
+        window.dispatchEvent(new CustomEvent('appGridReady'));
+      }
+    },
+    reset() { _phase = 'idle'; }
+  };
+})();
 
 Object.defineProperty(window, 'appGridReady', {
   get() { return window.__appGridState.phase === 'rendered'; },

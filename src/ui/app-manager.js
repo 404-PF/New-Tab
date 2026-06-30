@@ -31,7 +31,7 @@ const getAllAppData = () => {
 // Render the app grid
 function renderAllApps() {
   const appGrid = document.getElementById('app-grid');
-const addApp = document.getElementById('new-app');
+  const addApp = document.getElementById('new-app');
   if (!appGrid || !addApp) {
     return;
   }
