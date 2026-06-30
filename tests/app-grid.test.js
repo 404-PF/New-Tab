@@ -571,10 +571,25 @@ describe('__appGridState', () => {
     expect(window.appGridReady).toBe(true);
   });
 
-  it('reset() returns phase to idle', () => {
+  it('reset() returns phase to idle from rendered', () => {
     window.__appGridState.setPhase('rendered');
     window.__appGridState.reset();
     expect(window.__appGridState.phase).toBe('idle');
+  });
+
+  it('reset() returns phase to idle from deferred', () => {
+    window.__appGridState.setPhase('deferred');
+    window.__appGridState.reset();
+    expect(window.__appGridState.phase).toBe('idle');
+  });
+
+  it('reset() does not leave force flag stuck', () => {
+    window.__appGridState.setPhase('deferred');
+    window.__appGridState.reset();
+    expect(window.__appGridState.phase).toBe('idle');
+    window.__appGridState.setPhase('deferred');
+    window.__appGridState.setPhase('idle');
+    expect(window.__appGridState.phase).toBe('deferred');
   });
 
   it('ignores invalid phase argument', () => {

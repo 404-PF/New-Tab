@@ -396,6 +396,7 @@ window.AppGridState = AppGridState;
 // and appGridReady flags with a single phase-based object.
 window.__appGridState = (() => {
   let _phase = 'idle'; // 'idle' | 'deferred' | 'rendered'
+  let _forced = false;
   const valid = new Set(['idle', 'deferred', 'rendered']);
   return {
     get phase() { return _phase; },
@@ -403,14 +404,16 @@ window.__appGridState = (() => {
       if (!valid.has(next)) return;
       const prev = _phase;
       if (prev === next) return;
-      if (prev === 'rendered') return;
-      if (prev === 'deferred' && next === 'idle') return;
+      if (!_forced) {
+        if (prev === 'rendered') return;
+        if (prev === 'deferred' && next === 'idle') return;
+      }
       _phase = next;
       if (next === 'rendered') {
         window.dispatchEvent(new CustomEvent('appGridReady'));
       }
     },
-    reset() { _phase = 'idle'; }
+    reset() { _forced = true; this.setPhase('idle'); _forced = false; }
   };
 })();
 
