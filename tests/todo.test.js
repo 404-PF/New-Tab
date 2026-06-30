@@ -160,7 +160,7 @@ describe('Todo CRUD', () => {
     expect(todoText.querySelector('b')).toBeNull();
   });
 
-  it('addTodo triggers renderTodos after adding a todo', () => {
+  it('addTodo renders the new item in the DOM', () => {
     addTodo('Render me');
     const items = document.querySelectorAll('.todo-item');
     expect(items).toHaveLength(1);
@@ -1047,37 +1047,49 @@ describe('Todo reminders', () => {
 
   it('addTodo triggers scheduleTodoReminderCheck', () => {
     const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
-    addTodo('Test', '2026-12-31');
-    const todos = loadTodos();
-    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[todos.length - 1].id }));
-    sendMessageSpy.mockRestore();
+    try {
+      addTodo('Test', '2026-12-31');
+      const todos = loadTodos();
+      expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[todos.length - 1].id }));
+    } finally {
+      sendMessageSpy.mockRestore();
+    }
   });
 
   it('editTodo triggers scheduleTodoReminderCheck', () => {
     addTodo('Original', '2026-12-31');
     const todos = loadTodos();
     const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
-    editTodo(todos[0].id, 'Updated', null, '2026-12-30');
-    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[0].id }));
-    sendMessageSpy.mockRestore();
+    try {
+      editTodo(todos[0].id, 'Updated', null, '2026-12-30');
+      expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[0].id }));
+    } finally {
+      sendMessageSpy.mockRestore();
+    }
   });
 
   it('toggleTodo triggers scheduleTodoReminderCheck', () => {
     addTodo('Test', '2026-12-31');
     const todos = loadTodos();
     const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
-    toggleTodo(todos[0].id);
-    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[0].id }));
-    sendMessageSpy.mockRestore();
+    try {
+      toggleTodo(todos[0].id);
+      expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[0].id }));
+    } finally {
+      sendMessageSpy.mockRestore();
+    }
   });
 
   it('deleteTodo triggers scheduleTodoReminderCheck', () => {
     addTodo('Test', '2026-12-31');
     const todos = loadTodos();
     const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
-    deleteTodo(todos[0].id);
-    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[0].id }));
-    sendMessageSpy.mockRestore();
+    try {
+      deleteTodo(todos[0].id);
+      expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[0].id }));
+    } finally {
+      sendMessageSpy.mockRestore();
+    }
   });
 
   it('scheduleTodoReminderCheck tolerates missing chrome.runtime', () => {
