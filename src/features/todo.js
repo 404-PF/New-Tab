@@ -557,7 +557,7 @@
 
     applyFilters();
     clearInputs();
-    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(newTodo.id);
+    scheduleTodoReminderCheck(newTodo.id);
   }
 
   // Migrate existing todos to have completedAt property
@@ -609,7 +609,7 @@
     }
 
     applyFilters();
-    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
+    scheduleTodoReminderCheck(id);
     return true;
   }
 
@@ -635,7 +635,7 @@
       }
 
       applyFilters();
-      (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
+      scheduleTodoReminderCheck(id);
     }
   }
 
@@ -652,7 +652,7 @@
     }
 
     applyFilters();
-    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(id);
+    scheduleTodoReminderCheck(id);
   }
 
   // Subtask management
@@ -761,7 +761,7 @@
 // Filter management
 function applyFilters() {
   filterTodos();
-  (window.renderTodos || renderTodos)();
+  renderTodos();
   updateFilterUI();
   updateProgressRing();
   updateFilterCounts();
@@ -864,7 +864,7 @@ function showClearCompletedDialog() {
       showTodoSaveError();
     } else {
       applyFilters();
-      (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
+      scheduleTodoReminderCheck();
     }
 
     hideClearCompletedDialog();
@@ -995,7 +995,7 @@ function handleDrop(event) {
     return;
   }
 
-  (window.renderTodos || renderTodos)();
+  renderTodos();
 }
 
 // Event handlers
@@ -1364,7 +1364,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement) {
   
   // Re-run filters so overdue view refreshes immediately
   applyFilters();
-  (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)(todoId);
+  scheduleTodoReminderCheck(todoId);
 }
 
 // Update due date display
@@ -2021,7 +2021,7 @@ function showImportDialog(importedTodos) {
     todos = existingTodos;
     applyFilters();
     closeEditModal(false);
-    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
+    scheduleTodoReminderCheck();
     if (addedCount > 0) {
       const msg = window.i18n ? window.i18n.t('importSuccess', { count: addedCount }) : 'Imported ' + addedCount + ' todos successfully.';
       showToast(msg, 'success');
@@ -2052,7 +2052,7 @@ function showImportDialog(importedTodos) {
     todos = newTodos;
     applyFilters();
     closeEditModal(false);
-    (window.scheduleTodoReminderCheck || scheduleTodoReminderCheck)();
+    scheduleTodoReminderCheck();
     const msg = window.i18n ? window.i18n.t('importSuccess', { count: newTodos.length }) : 'Imported ' + newTodos.length + ' todos successfully.';
     showToast(msg, 'success');
     hideDialog();
@@ -2283,7 +2283,7 @@ function initCustomDatePicker() {
 
 // Re-render todo items and calendar when language changes
 window.addEventListener('languageChanged', () => {
-  (window.renderTodos || renderTodos)();
+  renderTodos();
   refreshInlineDatePickers();
   if (customDatePicker) customDatePicker.renderCalendar();
 });
