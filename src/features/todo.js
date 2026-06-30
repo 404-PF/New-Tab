@@ -761,7 +761,7 @@
 // Filter management
 function applyFilters() {
   filterTodos();
-  (window.renderTodos || renderTodos)();
+  renderTodos();
   updateFilterUI();
   updateProgressRing();
   updateFilterCounts();
@@ -995,7 +995,7 @@ function handleDrop(event) {
     return;
   }
 
-  (window.renderTodos || renderTodos)();
+  renderTodos();
 }
 
 // Event handlers
@@ -2283,7 +2283,7 @@ function initCustomDatePicker() {
 
 // Re-render todo items and calendar when language changes
 window.addEventListener('languageChanged', () => {
-  (window.renderTodos || renderTodos)();
+  renderTodos();
   refreshInlineDatePickers();
   if (customDatePicker) customDatePicker.renderCalendar();
 });

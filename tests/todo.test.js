@@ -161,16 +161,10 @@ describe('Todo CRUD', () => {
   });
 
   it('addTodo triggers renderTodos after adding a todo', () => {
-    const originalRenderTodos = globalThis.renderTodos;
-    const renderSpy = vi.fn((...args) => originalRenderTodos(...args));
-    globalThis.renderTodos = renderSpy;
-
-    try {
-      addTodo('Render me');
-      expect(renderSpy).toHaveBeenCalled();
-    } finally {
-      globalThis.renderTodos = originalRenderTodos;
-    }
+    addTodo('Render me');
+    const items = document.querySelectorAll('.todo-item');
+    expect(items).toHaveLength(1);
+    expect(items[0].querySelector('.todo-text')?.textContent).toBe('Render me');
   });
 
   it('renderTodos falls back to empty text for missing todo text', () => {
