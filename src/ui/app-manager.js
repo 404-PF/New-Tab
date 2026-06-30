@@ -33,6 +33,7 @@ function renderAllApps() {
   const appGrid = document.getElementById('app-grid');
   const addApp = document.getElementById('new-app');
   if (!appGrid || !addApp) {
+    console.warn('renderAllApps: missing #app-grid or #new-app element');
     return;
   }
   // Remove all except New

@@ -413,6 +413,9 @@ window.__appGridState = (() => {
         window.dispatchEvent(new CustomEvent('appGridReady'));
       }
     },
+    // reset() is intended for test teardown only. Calling it in production
+    // code would break the state machine invariant (e.g., allow appGridReady
+    // to fire twice on the next render cycle).
     reset() { _forced = true; try { this.setPhase('idle'); } finally { _forced = false; } }
   };
 })();
