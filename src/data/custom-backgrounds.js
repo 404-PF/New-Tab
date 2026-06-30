@@ -647,23 +647,49 @@
     return new Promise(function (resolve) {
       const dialog = document.createElement('div');
       dialog.className = 'bg-confirm-dialog screen-overlay';
-      dialog.innerHTML =
-        '<div class="bg-confirm-overlay"></div>' +
-        '<div class="bg-confirm-content">' +
-          '<div class="bg-confirm-icon">' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
-              '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"></path>' +
-              '<line x1="10" y1="11" x2="10" y2="17"></line>' +
-              '<line x1="14" y1="11" x2="14" y2="17"></line>' +
-            '</svg>' +
-          '</div>' +
-          '<h3 class="bg-confirm-title">' + title + '</h3>' +
-          '<p class="bg-confirm-message">' + message + '</p>' +
-          '<div class="bg-confirm-actions">' +
-            '<button class="bg-confirm-cancel">Cancel</button>' +
-            '<button class="bg-confirm-delete">Delete</button>' +
-          '</div>' +
-        '</div>';
+
+      const overlay = document.createElement('div');
+      overlay.className = 'bg-confirm-overlay';
+
+      const content = document.createElement('div');
+      content.className = 'bg-confirm-content';
+
+      const icon = document.createElement('div');
+      icon.className = 'bg-confirm-icon';
+      icon.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+          '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"></path>' +
+          '<line x1="10" y1="11" x2="10" y2="17"></line>' +
+          '<line x1="14" y1="11" x2="14" y2="17"></line>' +
+        '</svg>';
+
+      const titleEl = document.createElement('h3');
+      titleEl.className = 'bg-confirm-title';
+      titleEl.textContent = title;
+
+      const messageEl = document.createElement('p');
+      messageEl.className = 'bg-confirm-message';
+      messageEl.textContent = message;
+
+      const actions = document.createElement('div');
+      actions.className = 'bg-confirm-actions';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'bg-confirm-cancel';
+      cancelBtn.textContent = 'Cancel';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'bg-confirm-delete';
+      deleteBtn.textContent = 'Delete';
+
+      actions.appendChild(cancelBtn);
+      actions.appendChild(deleteBtn);
+      content.appendChild(icon);
+      content.appendChild(titleEl);
+      content.appendChild(messageEl);
+      content.appendChild(actions);
+      dialog.appendChild(overlay);
+      dialog.appendChild(content);
 
       document.body.appendChild(dialog);
       requestAnimationFrame(function () { dialog.classList.add('bg-confirm-open'); });
@@ -674,9 +700,9 @@
         resolve(result);
       }
 
-      dialog.querySelector('.bg-confirm-overlay').addEventListener('click', function () { close(false); });
-      dialog.querySelector('.bg-confirm-cancel').addEventListener('click', function () { close(false); });
-      dialog.querySelector('.bg-confirm-delete').addEventListener('click', function () { close(true); });
+      overlay.addEventListener('click', function () { close(false); });
+      cancelBtn.addEventListener('click', function () { close(false); });
+      deleteBtn.addEventListener('click', function () { close(true); });
     });
   }
 
