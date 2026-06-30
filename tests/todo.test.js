@@ -1054,7 +1054,8 @@ describe('Todo reminders', () => {
   it('addTodo triggers scheduleTodoReminderCheck', () => {
     const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
     addTodo('Test', '2026-12-31');
-    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos' }));
+    const todos = loadTodos();
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[todos.length - 1].id }));
     sendMessageSpy.mockRestore();
   });
 
@@ -1063,7 +1064,7 @@ describe('Todo reminders', () => {
     const todos = loadTodos();
     const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
     editTodo(todos[0].id, 'Updated', null, '2026-12-30');
-    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos' }));
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[0].id }));
     sendMessageSpy.mockRestore();
   });
 
@@ -1072,7 +1073,7 @@ describe('Todo reminders', () => {
     const todos = loadTodos();
     const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
     toggleTodo(todos[0].id);
-    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos' }));
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[0].id }));
     sendMessageSpy.mockRestore();
   });
 
@@ -1081,7 +1082,7 @@ describe('Todo reminders', () => {
     const todos = loadTodos();
     const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
     deleteTodo(todos[0].id);
-    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos' }));
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos', todoId: todos[0].id }));
     sendMessageSpy.mockRestore();
   });
 
