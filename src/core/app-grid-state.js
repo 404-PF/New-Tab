@@ -413,7 +413,7 @@ window.__appGridState = (() => {
         window.dispatchEvent(new CustomEvent('appGridReady'));
       }
     },
-    reset() { _forced = true; this.setPhase('idle'); _forced = false; }
+    reset() { _forced = true; try { this.setPhase('idle'); } finally { _forced = false; } }
   };
 })();
 
