@@ -1052,37 +1052,37 @@ describe('Todo reminders', () => {
   });
 
   it('addTodo triggers scheduleTodoReminderCheck', () => {
-    const spy = vi.spyOn(window, 'scheduleTodoReminderCheck');
+    const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
     addTodo('Test', '2026-12-31');
-    expect(spy).toHaveBeenCalled();
-    spy.mockRestore();
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos' }));
+    sendMessageSpy.mockRestore();
   });
 
   it('editTodo triggers scheduleTodoReminderCheck', () => {
     addTodo('Original', '2026-12-31');
     const todos = loadTodos();
-    const spy = vi.spyOn(window, 'scheduleTodoReminderCheck');
+    const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
     editTodo(todos[0].id, 'Updated', null, '2026-12-30');
-    expect(spy).toHaveBeenCalled();
-    spy.mockRestore();
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos' }));
+    sendMessageSpy.mockRestore();
   });
 
   it('toggleTodo triggers scheduleTodoReminderCheck', () => {
     addTodo('Test', '2026-12-31');
     const todos = loadTodos();
-    const spy = vi.spyOn(window, 'scheduleTodoReminderCheck');
+    const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
     toggleTodo(todos[0].id);
-    expect(spy).toHaveBeenCalled();
-    spy.mockRestore();
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos' }));
+    sendMessageSpy.mockRestore();
   });
 
   it('deleteTodo triggers scheduleTodoReminderCheck', () => {
     addTodo('Test', '2026-12-31');
     const todos = loadTodos();
-    const spy = vi.spyOn(window, 'scheduleTodoReminderCheck');
+    const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
     deleteTodo(todos[0].id);
-    expect(spy).toHaveBeenCalled();
-    spy.mockRestore();
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'syncTodos' }));
+    sendMessageSpy.mockRestore();
   });
 
   it('scheduleTodoReminderCheck tolerates missing chrome.runtime', () => {
