@@ -398,7 +398,7 @@ window.__appGridState = (() => {
   let _phase = 'idle'; // 'idle' | 'deferred' | 'rendered'
   let _forced = false;
   const valid = new Set(['idle', 'deferred', 'rendered']);
-  return {
+  const api = {
     get phase() { return _phase; },
     setPhase(next) {
       if (!valid.has(next)) return;
@@ -416,8 +416,9 @@ window.__appGridState = (() => {
     // reset() is intended for test teardown only. Calling it in production
     // code would break the state machine invariant (e.g., allow appGridReady
     // to fire twice on the next render cycle).
-    reset() { _forced = true; try { this.setPhase('idle'); } finally { _forced = false; } }
+    reset() { _forced = true; try { api.setPhase('idle'); } finally { _forced = false; } }
   };
+  return api;
 })();
 
 Object.defineProperty(window, 'appGridReady', {
