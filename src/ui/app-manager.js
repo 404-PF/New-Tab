@@ -28,14 +28,12 @@ const getAllAppData = () => {
   return [...defaultApps, ...customApps];
 };
 
-window.appGridReady = false;
-
 // Render the app grid
 function renderAllApps() {
   const appGrid = document.getElementById('app-grid');
-const addApp = document.getElementById('new-app');
+  const addApp = document.getElementById('new-app');
   if (!appGrid || !addApp) {
-    window.appGridReady = false;
+    console.warn('renderAllApps: missing #app-grid or #new-app element');
     return;
   }
   // Remove all except New
@@ -108,12 +106,11 @@ const addApp = document.getElementById('new-app');
     if (folderMap[appId]) {
       if (!window.AppFolders) {
         console.warn('AppFolders not initialized, deferring folder render for:', appId);
-        if (!window._appFoldersDeferred) {
-          window._appFoldersDeferred = true;
+        if (window.__appGridState.phase === 'idle') {
+          window.__appGridState.setPhase('deferred');
           document.addEventListener('appFoldersReady', function onReady() {
             document.removeEventListener('appFoldersReady', onReady);
             if (typeof window.renderAllApps === 'function') window.renderAllApps();
-            window._appFoldersRendered = true;
           }, { once: true });
         }
         return;
@@ -156,9 +153,7 @@ const addApp = document.getElementById('new-app');
 
   // Re-apply the open-in-new-tab preference after rebuilding links.
   applyOpenNewTabSetting();
-  window._gridRendered = true;
-  window.appGridReady = true;
-  window.dispatchEvent(new CustomEvent('appGridReady'));
+  window.__appGridState.setPhase('rendered');
 }
 
 // Initial icon caching; render is deferred to app-folders init
@@ -175,7 +170,7 @@ async function cacheIconsAndRenderFallback() {
   // skipped and can be picked up later when app-folders.js dispatches
   // 'appFoldersReady'. Guard against double-render when app-folders.js
   // already called renderAllApps before DOMContentLoaded fires.
-  if (!window._gridRendered && typeof window.renderAllApps === 'function') {
+  if (window.__appGridState.phase !== 'rendered' && typeof window.renderAllApps === 'function') {
     window.renderAllApps();
   }
 }
