@@ -504,3 +504,70 @@ describe('renderAllApps order validation', () => {
     expect(AppGridState.getOrder()).toEqual(['weather-app', 'feedback-app', 'settings-app', 'ai-app', 'c1']);
   });
 });
+
+describe('__appGridState', () => {
+  beforeEach(() => {
+    window.__appGridState.phase = 'idle';
+  });
+
+  it('starts in idle phase', () => {
+    expect(window.__appGridState.phase).toBe('idle');
+  });
+
+  it('transitions from idle to deferred', () => {
+    window.__appGridState.setPhase('deferred');
+    expect(window.__appGridState.phase).toBe('deferred');
+  });
+
+  it('transitions from idle to rendered', () => {
+    window.__appGridState.setPhase('rendered');
+    expect(window.__appGridState.phase).toBe('rendered');
+  });
+
+  it('transitions from deferred to rendered', () => {
+    window.__appGridState.setPhase('deferred');
+    window.__appGridState.setPhase('rendered');
+    expect(window.__appGridState.phase).toBe('rendered');
+  });
+
+  it('dispatches appGridReady event on transition to rendered', () => {
+    let fired = false;
+    window.addEventListener('appGridReady', () => { fired = true; }, { once: true });
+    window.__appGridState.setPhase('rendered');
+    expect(fired).toBe(true);
+  });
+
+  it('does not dispatch appGridReady on non-rendered transitions', () => {
+    let fired = false;
+    window.addEventListener('appGridReady', () => { fired = true; }, { once: true });
+    window.__appGridState.setPhase('deferred');
+    expect(fired).toBe(false);
+  });
+
+  it('ignores same-phase transition', () => {
+    window.__appGridState.setPhase('deferred');
+    window.__appGridState.setPhase('deferred');
+    expect(window.__appGridState.phase).toBe('deferred');
+  });
+
+  it('prevents backward transition from rendered', () => {
+    window.__appGridState.setPhase('rendered');
+    window.__appGridState.setPhase('idle');
+    expect(window.__appGridState.phase).toBe('rendered');
+  });
+
+  it('prevents backward transition from deferred to idle', () => {
+    window.__appGridState.setPhase('deferred');
+    window.__appGridState.setPhase('idle');
+    expect(window.__appGridState.phase).toBe('deferred');
+  });
+
+  it('appGridReady getter returns false when not rendered', () => {
+    expect(window.appGridReady).toBe(false);
+  });
+
+  it('appGridReady getter returns true when rendered', () => {
+    window.__appGridState.setPhase('rendered');
+    expect(window.appGridReady).toBe(true);
+  });
+});

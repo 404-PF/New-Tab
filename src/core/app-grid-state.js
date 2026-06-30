@@ -401,6 +401,7 @@ window.__appGridState = {
     const prev = this.phase;
     if (prev === next) return;
     if (prev === 'rendered') return;
+    if (prev === 'deferred' && next === 'idle') return;
     this.phase = next;
     if (next === 'rendered') {
       window.dispatchEvent(new CustomEvent('appGridReady'));
