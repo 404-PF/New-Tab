@@ -833,6 +833,7 @@
     get: getCustomBackground,
     render: renderCustomBackgrounds,
     getBlobUrl: getBlobUrl,
-    revokeAll: revokeAllBlobUrls
+    revokeAll: revokeAllBlobUrls,
+    showConfirmDialog: showConfirmDialog
   };
 })();
