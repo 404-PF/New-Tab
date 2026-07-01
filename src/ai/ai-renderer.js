@@ -206,8 +206,6 @@ const AIRenderer = (function() {
       ? escapeHTML(content)
       : window.MarkdownParser ? window.MarkdownParser.parse(content) : escapeHTML(content);
 
-    const plainTextContent = (content || '').replace(/<[^>]*>/g, '').trim();
-
     return `
       <div class="ai-message ${isUser ? 'ai-message-user' : 'ai-message-assistant'}">
         <div class="ai-message-avatar">
@@ -219,7 +217,7 @@ const AIRenderer = (function() {
           <div class="ai-message-text ${isStreaming ? 'ai-message-streaming' : ''}">${renderedContent}</div>
           <div class="ai-message-meta">
             <div class="ai-message-time">${time}</div>
-            <button class="ai-message-copy" data-content="${escapeHTML(plainTextContent)}" aria-label="Copy message" tabindex="0">
+            <button class="ai-message-copy" aria-label="Copy message" tabindex="0">
               <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -305,7 +303,8 @@ const AIRenderer = (function() {
   }
 
   async function handleCopyClick(button) {
-    const content = button.dataset.content;
+    const messageText = button.closest('.ai-message-content')?.querySelector('.ai-message-text');
+    const content = messageText?.textContent?.trim();
     if (!content) return;
 
     const copyIcon = button.querySelector('.copy-icon');
