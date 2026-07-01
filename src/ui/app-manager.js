@@ -311,16 +311,6 @@ curvatureRadios.forEach((radio) => {
 });
 applyCurvature();
 
-// Export public helpers so other modules can call them via window.*.
-// Currently only used internally, but exposed defensively in case
-// future code references them cross-module.
-window.loadOpenNewTabSetting = loadOpenNewTabSetting;
-window.applyOpenNewTabSetting = applyOpenNewTabSetting;
-window.loadCurvature = loadCurvature;
-window.applyCurvature = applyCurvature;
-window.loadIconSize = loadIconSize;
-window.applyIconSize = applyIconSize;
-
 // Attach settings app click handler
 function attachSettingsAppHandler() {
   const settingsApp = document.getElementById('settings-app');
