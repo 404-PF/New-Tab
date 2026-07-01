@@ -304,7 +304,7 @@ const AIRenderer = (function() {
 
   async function handleCopyClick(button) {
     const messageText = button.closest('.ai-message-content')?.querySelector('.ai-message-text');
-    const content = messageText?.textContent?.trim();
+    const content = messageText?.innerText?.trim();
     if (!content) return;
 
     const copyIcon = button.querySelector('.copy-icon');
