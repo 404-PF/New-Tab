@@ -12,6 +12,8 @@
   const notePreviewModes = {};
 
   let _previewMouseDown = false;
+  const _resizeSet = new Set();
+  let _resizeRaf = 0;
 
   function handlePreviewMouseDown(e) {
     _previewMouseDown = !!e.target.closest('.note-preview-btn');
@@ -121,16 +123,32 @@
       card.appendChild(previewBtn);
       card.appendChild(deleteBtn);
       notesList.appendChild(card);
+      scheduleResize(textarea);
     });
-
-    autoResizeTextareas();
   }
 
-  function autoResizeTextareas() {
-    document.querySelectorAll('.note-textarea').forEach(ta => {
+  function flushResizeBatch() {
+    _resizeRaf = 0;
+    _resizeSet.forEach(ta => {
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
     });
+    _resizeSet.clear();
+  }
+
+  function scheduleResize(ta) {
+    _resizeSet.add(ta);
+    if (!_resizeRaf) {
+      _resizeRaf = requestAnimationFrame(flushResizeBatch);
+    }
+  }
+
+  function autoResizeTextareas(textareas) {
+    if (textareas) {
+      textareas.forEach(ta => scheduleResize(ta));
+    } else {
+      document.querySelectorAll('.note-textarea').forEach(ta => scheduleResize(ta));
+    }
   }
 
   function flushPendingSaves() {
@@ -260,7 +278,7 @@
       if (textarea) {
         textarea.style.display = '';
         textarea.focus();
-        autoResizeTextareas();
+        scheduleResize(textarea);
       }
       if (previewBtn) {
         previewBtn.title = window.i18n ? window.i18n.t('notesPreviewTooltip') : 'Preview';
@@ -296,8 +314,7 @@
   function handleNotesInput(e) {
     const ta = e.target.closest('.note-textarea');
     if (!ta) return;
-    ta.style.height = 'auto';
-    ta.style.height = ta.scrollHeight + 'px';
+    scheduleResize(ta);
     debouncedSave(ta.dataset.id, ta.value);
   }
 
@@ -396,6 +413,8 @@ try {
   window.handleNotesClick = handleNotesClick;
   window.handleNotesKeydown = handleNotesKeydown;
   window.autoResizeTextareas = autoResizeTextareas;
+  window.scheduleResize = scheduleResize;
+  window.flushResizeBatch = flushResizeBatch;
   window.focusNewNote = focusNewNote;
   window.renderNotePreview = renderNotePreview;
   window.handleNotePreviewToggle = handleNotePreviewToggle;
