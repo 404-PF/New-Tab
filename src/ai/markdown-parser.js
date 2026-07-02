@@ -802,6 +802,10 @@ const MarkdownParser = (function() {
    * Strict allowlist sanitizer using DOMParser.
    * Parses the HTML, walks the DOM tree, and removes any elements
    * or attributes not in the allowlist.
+   *
+   * Note: Designed for markdown-parsed output where raw HTML has already
+   * been escaped by escapeHTML(). For standalone use on untrusted input,
+   * escape HTML entities first to prevent tag injection.
    * @param {string} html - HTML string to sanitize
    * @returns {string} Sanitized HTML string
    */
@@ -899,6 +903,10 @@ const MarkdownParser = (function() {
       return false;
     }
     // Relative URLs and fragment-only URLs are safe
+    // Block protocol-relative URLs (//host) which resolve using the page protocol
+    if (trimmed.startsWith('//')) {
+      return false;
+    }
     if (trimmed.startsWith('#') || trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../')) {
       return true;
     }

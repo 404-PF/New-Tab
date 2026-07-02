@@ -214,6 +214,13 @@ describe('MarkdownParser HTML sanitization', () => {
     expect(html).toContain('click');
   });
 
+  it('sanitizeHTML blocks protocol-relative URLs', () => {
+    const html = MarkdownParser.sanitizeHTML('<a href="//evil.com">click</a>');
+    expect(html).not.toContain('//evil.com');
+    expect(html).not.toContain('href');
+    expect(html).toContain('click');
+  });
+
   it('sanitizeHTML adds rel="noopener noreferrer" to target="_blank" links missing rel', () => {
     const html = MarkdownParser.sanitizeHTML('<a href="https://example.com" target="_blank">link</a>');
     expect(html).toContain('target="_blank"');
