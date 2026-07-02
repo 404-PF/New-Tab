@@ -169,6 +169,30 @@ describe('MarkdownParser HTML sanitization', () => {
     expect(html).toContain('text');
   });
 
+  it('sanitizeHTML strips javascript: protocol URLs', () => {
+    const html = MarkdownParser.sanitizeHTML('<a href="javascript:alert(1)">click me</a>');
+
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('href');
+    expect(html).toContain('click me');
+  });
+
+  it('sanitizeHTML restricts input type to checkbox', () => {
+    const html = MarkdownParser.sanitizeHTML('<input type="hidden" name="evil" value="payload">');
+
+    expect(html).not.toContain('type=');
+    expect(html).not.toContain('name=');
+    expect(html).not.toContain('value=');
+  });
+
+  it('sanitizeHTML preserves checkbox input', () => {
+    const html = MarkdownParser.sanitizeHTML('<input type="checkbox" checked disabled>');
+
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain('checked');
+    expect(html).toContain('disabled');
+  });
+
   it('sanitizeHTML handles empty input', () => {
     expect(MarkdownParser.sanitizeHTML('')).toBe('');
     expect(MarkdownParser.sanitizeHTML(null)).toBe('');

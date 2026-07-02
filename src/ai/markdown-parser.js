@@ -865,6 +865,8 @@ const MarkdownParser = (function() {
             child.removeAttribute(attr.name);
           } else if (attr.name === 'src' && !isSafeUrl(attr.value, tagName === 'img' ? ALLOWED_IMG_PROTOCOLS : ALLOWED_URL_PROTOCOLS)) {
             child.removeAttribute(attr.name);
+          } else if (tagName === 'input' && attr.name === 'type' && attr.value !== 'checkbox') {
+            child.removeAttribute(attr.name);
           }
         }
 
