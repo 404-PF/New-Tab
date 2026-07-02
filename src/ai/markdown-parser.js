@@ -768,6 +768,155 @@ const MarkdownParser = (function() {
     }).join('\n\n');
   }
 
+  // ============== HTML Sanitizer ==============
+
+  /**
+   * Allowed HTML tags for markdown output.
+   * Only these tags will pass through the sanitizer.
+   */
+  const ALLOWED_TAGS = new Set([
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'p', 'br', 'hr',
+    'strong', 'em', 'del', 's', 'u',
+    'code', 'pre',
+    'blockquote',
+    'ul', 'ol', 'li',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td',
+    'a', 'img',
+    'div', 'span',
+    'input'
+  ]);
+
+  /**
+   * Allowed attributes per tag.
+   * Tags not listed here allow only the global set.
+   */
+  const ALLOWED_ATTRS = {
+    a: ['href', 'target', 'rel', 'class'],
+    img: ['src', 'alt', 'class'],
+    input: ['type', 'checked', 'disabled', 'class'],
+    '*': ['class']
+  };
+
+  /**
+   * Strict allowlist sanitizer using DOMParser.
+   * Parses the HTML, walks the DOM tree, and removes any elements
+   * or attributes not in the allowlist.
+   * @param {string} html - HTML string to sanitize
+   * @returns {string} Sanitized HTML string
+   */
+  function sanitizeHTML(html) {
+    if (!html || typeof html !== 'string') {
+      return '';
+    }
+
+    // Use DOMParser to parse the HTML safely
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+    const root = doc.body.firstChild;
+
+    if (!root) {
+      return '';
+    }
+
+    // Walk the DOM tree and remove disallowed elements/attributes
+    sanitizeNode(root);
+
+    return root.innerHTML;
+  }
+
+  /**
+   * Allowed URL protocols for href attributes.
+   */
+  const ALLOWED_URL_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:'];
+
+  /**
+   * Allowed URL protocols for img src attributes (includes data: and blob: for inline images).
+   */
+  const ALLOWED_IMG_PROTOCOLS = ['http:', 'https:', 'data:', 'blob:'];
+
+  /**
+   * Recursively sanitize a DOM node and its children.
+   * @param {Node} node - DOM node to sanitize
+   */
+  function sanitizeNode(node) {
+    const childNodes = Array.from(node.childNodes);
+
+    for (const child of childNodes) {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        const tagName = child.tagName.toLowerCase();
+
+        // Remove disallowed tags entirely (including their children)
+        if (!ALLOWED_TAGS.has(tagName)) {
+          node.removeChild(child);
+          continue;
+        }
+
+        // Remove disallowed attributes and validate URLs
+        const allowedForTag = [
+          ...(ALLOWED_ATTRS[tagName] || []),
+          ...(ALLOWED_ATTRS['*'] || [])
+        ];
+        const attrs = Array.from(child.attributes);
+        for (const attr of attrs) {
+          if (!allowedForTag.includes(attr.name)) {
+            child.removeAttribute(attr.name);
+          } else if (attr.name === 'href' && !isSafeUrl(attr.value, ALLOWED_URL_PROTOCOLS)) {
+            child.removeAttribute(attr.name);
+          } else if (attr.name === 'src' && !isSafeUrl(attr.value, tagName === 'img' ? ALLOWED_IMG_PROTOCOLS : ALLOWED_URL_PROTOCOLS)) {
+            child.removeAttribute(attr.name);
+          }
+        }
+
+        // Recursively sanitize children
+        sanitizeNode(child);
+      }
+    }
+  }
+
+  /**
+   * Check if a URL uses a safe protocol.
+   * @param {string} url - URL to validate
+   * @param {string[]} allowedProtocols - List of allowed protocol strings (e.g. ['http:', 'https:'])
+   * @returns {boolean} True if the URL is safe
+   */
+  function isSafeUrl(url, allowedProtocols) {
+    if (!url || typeof url !== 'string') {
+      return false;
+    }
+    const trimmed = url.trim();
+    if (!trimmed) {
+      return false;
+    }
+    // Relative URLs and fragment-only URLs are safe
+    if (trimmed.startsWith('#') || trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../')) {
+      return true;
+    }
+    // Check protocol
+    try {
+      const parsed = new URL(trimmed);
+      if (!allowedProtocols.includes(parsed.protocol)) {
+        return false;
+      }
+      // For data: URLs, only allow data:image/ (matching sanitizeMarkdownUrl)
+      if (parsed.protocol === 'data:' && !trimmed.startsWith('data:image/')) {
+        return false;
+      }
+      return true;
+    } catch {
+      // If URL parsing fails, check if it looks like a protocol-relative URL
+      // URLs like "guide/intro.md" or "hello world" are relative and safe
+      // URLs like "javascript:alert(1)" contain a colon before any slash
+      const colonIndex = trimmed.indexOf(':');
+      const slashIndex = trimmed.indexOf('/');
+      // If there's no colon, or the colon comes after a slash, it's a relative URL
+      if (colonIndex === -1 || (slashIndex !== -1 && colonIndex > slashIndex)) {
+        return true;
+      }
+      return false;
+    }
+  }
+
   // ============== Main Parse Function ==============
 
   /**
@@ -799,6 +948,9 @@ const MarkdownParser = (function() {
     html = parseHorizontalRules(html); // Horizontal rules
     html = parseParagraphs(html);      // Paragraphs last
 
+    // Sanitize the final HTML through a strict allowlist
+    html = sanitizeHTML(html);
+
     // Cache the result
     cache.set(cacheKey, html);
 
@@ -828,7 +980,8 @@ const MarkdownParser = (function() {
     parse: parse,
     clearCache: clearCache,
     getCacheStats: getCacheStats,
-    escapeHTML: escapeHTML
+    escapeHTML: escapeHTML,
+    sanitizeHTML: sanitizeHTML
   };
 })();
 

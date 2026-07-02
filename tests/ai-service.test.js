@@ -71,6 +71,58 @@ beforeEach(() => {
   };
 });
 
+describe('OpenRouterAPI.validateInput control character rejection (#422)', () => {
+  it('rejects messages containing control characters', () => {
+    const result = OpenRouterAPI.validateInput('hello\x00world');
+    expect(result.valid).toBe(false);
+  });
+
+  it('rejects messages with null bytes', () => {
+    const result = OpenRouterAPI.validateInput('test\x00message');
+    expect(result.valid).toBe(false);
+  });
+
+  it('rejects messages with backspace characters', () => {
+    const result = OpenRouterAPI.validateInput('test\x08message');
+    expect(result.valid).toBe(false);
+  });
+
+  it('accepts messages with newlines', () => {
+    const result = OpenRouterAPI.validateInput('hello\nworld');
+    expect(result.valid).toBe(true);
+    expect(result.message).toBe('hello\nworld');
+  });
+
+  it('accepts messages with carriage returns', () => {
+    const result = OpenRouterAPI.validateInput('hello\rworld');
+    expect(result.valid).toBe(true);
+    expect(result.message).toBe('hello\rworld');
+  });
+
+  it('accepts messages with tabs', () => {
+    const result = OpenRouterAPI.validateInput('hello\tworld');
+    expect(result.valid).toBe(true);
+    expect(result.message).toBe('hello\tworld');
+  });
+
+  it('accepts normal messages', () => {
+    const result = OpenRouterAPI.validateInput('Hello, how are you?');
+    expect(result.valid).toBe(true);
+    expect(result.message).toBe('Hello, how are you?');
+  });
+
+  it('rejects empty messages', () => {
+    const result = OpenRouterAPI.validateInput('');
+    expect(result.valid).toBe(false);
+  });
+
+  it('rejects messages over 2000 characters', () => {
+    const longMessage = 'a'.repeat(2001);
+    const result = OpenRouterAPI.validateInput(longMessage);
+    expect(result.valid).toBe(false);
+  });
+});
+
 describe('AIService error path length guard (#282)', () => {
   it('does not pop messages when the API returns a non-success result on a 0-message conversation', async () => {
     // Seed an empty conversation
