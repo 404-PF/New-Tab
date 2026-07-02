@@ -39,6 +39,13 @@ describe('MarkdownParser URL sanitization', () => {
     expect(html).toContain('data:image/png;base64');
   });
 
+  it('rejects data URI images without base64 encoding', () => {
+    const html = MarkdownParser.parse('![png](data:image/png;charset=utf8,evil)');
+
+    expect(html).not.toContain('data:image/png');
+    expect(html).not.toContain('<img');
+  });
+
   it('preserves normal non-absolute markdown URLs', () => {
     const html = MarkdownParser.parse('Read [docs](guide/intro.md)');
 
@@ -244,6 +251,12 @@ describe('MarkdownParser HTML sanitization', () => {
     const html = MarkdownParser.sanitizeHTML('<img src="data:image/png;base64,iVBORw0KGgo=" alt="png">');
     expect(html).toContain('data:image/png;base64');
     expect(html).toContain('src=');
+  });
+
+  it('sanitizeHTML rejects data URI images without base64 encoding', () => {
+    const html = MarkdownParser.sanitizeHTML('<img src="data:image/png;charset=utf8,evil" alt="png">');
+    expect(html).not.toContain('data:image/png');
+    expect(html).not.toContain('src=');
   });
 
   it('sanitizeHTML adds rel="noopener noreferrer" to target="_blank" links missing rel', () => {
