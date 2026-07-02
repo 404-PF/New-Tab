@@ -198,4 +198,37 @@ describe('MarkdownParser HTML sanitization', () => {
     expect(MarkdownParser.sanitizeHTML(null)).toBe('');
     expect(MarkdownParser.sanitizeHTML(undefined)).toBe('');
   });
+
+  it('sanitizeHTML blocks javascript: URLs that bypass URL parsing', () => {
+    // Use malformed URLs that cause new URL() to throw
+    const html = MarkdownParser.sanitizeHTML('<a href="javascript:alert(1)">xss</a>');
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('href');
+    expect(html).toContain('xss');
+  });
+
+  it('sanitizeHTML blocks vbscript: URLs', () => {
+    const html = MarkdownParser.sanitizeHTML('<a href="vbscript:MsgBox(1)">click</a>');
+    expect(html).not.toContain('vbscript:');
+    expect(html).not.toContain('href');
+    expect(html).toContain('click');
+  });
+
+  it('sanitizeHTML adds rel="noopener noreferrer" to target="_blank" links missing rel', () => {
+    const html = MarkdownParser.sanitizeHTML('<a href="https://example.com" target="_blank">link</a>');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
+
+  it('sanitizeHTML preserves existing rel with noopener on target="_blank" links', () => {
+    const html = MarkdownParser.sanitizeHTML('<a href="https://example.com" target="_blank" rel="noopener noreferrer">link</a>');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
+
+  it('sanitizeHTML does not add rel to links without target="_blank"', () => {
+    const html = MarkdownParser.sanitizeHTML('<a href="https://example.com">link</a>');
+    expect(html).toContain('href="https://example.com"');
+    expect(html).not.toContain('rel=');
+  });
 });

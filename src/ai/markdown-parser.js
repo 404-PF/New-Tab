@@ -870,6 +870,14 @@ const MarkdownParser = (function() {
           }
         }
 
+        // Ensure target="_blank" links have rel="noopener noreferrer"
+        if (tagName === 'a' && child.getAttribute('target') === '_blank') {
+          const rel = child.getAttribute('rel') || '';
+          if (!rel.includes('noopener')) {
+            child.setAttribute('rel', 'noopener noreferrer');
+          }
+        }
+
         // Recursively sanitize children
         sanitizeNode(child);
       }
@@ -914,6 +922,11 @@ const MarkdownParser = (function() {
       // If there's no colon, or the colon comes after a slash, it's a relative URL
       if (colonIndex === -1 || (slashIndex !== -1 && colonIndex > slashIndex)) {
         return true;
+      }
+      // Explicitly block known dangerous schemes as a safety net
+      const scheme = trimmed.substring(0, colonIndex).toLowerCase();
+      if (['javascript', 'vbscript', 'data'].includes(scheme)) {
+        return false;
       }
       return false;
     }
