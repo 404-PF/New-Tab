@@ -85,6 +85,11 @@ const OpenRouterAPI = (function() {
     if (trimmed.length > 2000) {
       return { valid: false, error: getTranslation('aiMessageTooLong') };
     }
+    // Reject control characters except newline, carriage return, and tab
+    // eslint-disable-next-line no-control-regex
+    if (/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(trimmed)) {
+      return { valid: false, error: getTranslation('aiMessageInvalidChars') };
+    }
     return { valid: true, message: trimmed };
   }
 
@@ -306,6 +311,9 @@ const OpenRouterAPI = (function() {
   return {
     // Configuration
     config: CONFIG,
+    
+    // Validation
+    validateInput,
     
     // API
     sendMessageStreaming,
