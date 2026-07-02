@@ -209,7 +209,7 @@ const MarkdownParser = (function() {
         return null;
       }
 
-      if (isImage && protocol === 'data' && !/^data:image\//i.test(trimmed)) {
+      if (isImage && protocol === 'data' && !/^data:image\/(png|jpeg|jpg|gif|webp|avif|bmp|tiff);/i.test(trimmed)) {
         return null;
       }
 
@@ -916,8 +916,9 @@ const MarkdownParser = (function() {
       if (!allowedProtocols.includes(parsed.protocol)) {
         return false;
       }
-      // For data: URLs, only allow data:image/ (matching sanitizeMarkdownUrl)
-      if (parsed.protocol === 'data:' && !trimmed.startsWith('data:image/')) {
+      // For data: URLs, only allow safe raster image MIME types
+      // (SVG can contain embedded scripts; other image types are safe in <img>)
+      if (parsed.protocol === 'data:' && !/^data:image\/(png|jpeg|jpg|gif|webp|avif|bmp|tiff);/i.test(trimmed)) {
         return false;
       }
       return true;

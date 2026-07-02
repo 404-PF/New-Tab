@@ -26,6 +26,19 @@ describe('MarkdownParser URL sanitization', () => {
     expect(html).not.toContain('<img src="javascript:');
   });
 
+  it('rejects SVG data URI images (can contain embedded scripts)', () => {
+    const html = MarkdownParser.parse('![svg](data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9ImFsZXJ0KDEpIi8+)');
+
+    expect(html).not.toContain('data:image/svg+xml');
+    expect(html).not.toContain('<img');
+  });
+
+  it('allows safe raster data URI images', () => {
+    const html = MarkdownParser.parse('![png](data:image/png;base64,iVBORw0KGgo=)');
+
+    expect(html).toContain('data:image/png;base64');
+  });
+
   it('preserves normal non-absolute markdown URLs', () => {
     const html = MarkdownParser.parse('Read [docs](guide/intro.md)');
 
@@ -219,6 +232,18 @@ describe('MarkdownParser HTML sanitization', () => {
     expect(html).not.toContain('//evil.com');
     expect(html).not.toContain('href');
     expect(html).toContain('click');
+  });
+
+  it('sanitizeHTML blocks SVG data URI images', () => {
+    const html = MarkdownParser.sanitizeHTML('<img src="data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9ImFsZXJ0KDEpIi8+" alt="svg">');
+    expect(html).not.toContain('data:image/svg+xml');
+    expect(html).not.toContain('src=');
+  });
+
+  it('sanitizeHTML allows safe raster data URI images', () => {
+    const html = MarkdownParser.sanitizeHTML('<img src="data:image/png;base64,iVBORw0KGgo=" alt="png">');
+    expect(html).toContain('data:image/png;base64');
+    expect(html).toContain('src=');
   });
 
   it('sanitizeHTML adds rel="noopener noreferrer" to target="_blank" links missing rel', () => {
