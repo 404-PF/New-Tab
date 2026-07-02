@@ -931,11 +931,7 @@ const MarkdownParser = (function() {
       if (colonIndex === -1 || (slashIndex !== -1 && colonIndex > slashIndex)) {
         return true;
       }
-      // Explicitly block known dangerous schemes as a safety net
-      const scheme = trimmed.substring(0, colonIndex).toLowerCase();
-      if (['javascript', 'vbscript', 'data'].includes(scheme)) {
-        return false;
-      }
+      // Has a colon before any slash — reject as potentially dangerous scheme
       return false;
     }
   }
