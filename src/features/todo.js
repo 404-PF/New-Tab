@@ -91,7 +91,16 @@
           todoId: todoId || undefined,
           todos: JSON.stringify(todos),
           resetNotified: resetNotified || undefined
-        }).catch(() => {});
+        }).catch((err) => {
+          console.warn('Reminder sync message failed, falling back to alarm:', err);
+          try {
+            if (chrome.alarms) {
+              chrome.alarms.create('todoReminderCheck', { periodInMinutes: 1 });
+            }
+          } catch (alarmErr) {
+            console.warn('Alarm fallback also failed:', alarmErr);
+          }
+        });
       }
     } catch (e) {
       console.warn('Failed to send reminder sync message:', e);
