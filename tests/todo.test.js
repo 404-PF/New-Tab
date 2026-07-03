@@ -1338,6 +1338,23 @@ describe('Todo priority', () => {
     const badge = document.querySelector('.todo-priority-badge');
     expect(badge).toBeNull();
   });
+
+  it('renderTodos batches DOM inserts via DocumentFragment', () => {
+    addTodo('First');
+    addTodo('Second');
+    addTodo('Third');
+
+    const todoList = document.getElementById('todo-list');
+    const spy = vi.spyOn(todoList, 'appendChild');
+
+    renderTodos();
+
+    const fragmentCalls = spy.mock.calls.filter(
+      call => call[0] instanceof DocumentFragment
+    );
+    expect(fragmentCalls).toHaveLength(1);
+    spy.mockRestore();
+  });
 });
 
 describe('Service worker checkReminders', () => {

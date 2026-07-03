@@ -3,7 +3,7 @@
 // animation paths in main.js, todo.js, and the background modules all
 // honor the user's motion preference.
 
-/* global displayDailyMotto, setupRefreshMotto, renderTodos */
+/* global displayDailyMotto, setupRefreshMotto */
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
