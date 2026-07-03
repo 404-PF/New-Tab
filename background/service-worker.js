@@ -1,5 +1,5 @@
 const CHECK_INTERVAL_MINUTES = 1;
-// SYNC: This alarm name must match the hardcoded string in src/features/todo.js fallback (line 98)
+// SYNC: This alarm name must match the hardcoded string in src/features/todo.js fallback
 const ALARM_NAME = 'todoReminderCheck';
 let reminderCheckInProgress = false;
 let reminderCheckPendingData = null;
