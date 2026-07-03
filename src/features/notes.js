@@ -13,7 +13,7 @@
 
   let _previewMouseDown = false;
   const _resizeSet = new Set();
-  let _resizeRaf = 0;
+  let _resizeRaf = null;
 
   function handlePreviewMouseDown(e) {
     _previewMouseDown = !!e.target.closest('.note-preview-btn');
@@ -128,9 +128,10 @@
   }
 
   function flushResizeBatch() {
-    _resizeRaf = 0;
+    _resizeRaf = null;
     const tas = [..._resizeSet];
     _resizeSet.clear();
+    // Batch all resets, then read all scrollHeights, then apply — one forced layout
     tas.forEach(ta => { ta.style.height = 'auto'; });
     const heights = tas.map(ta => ta.scrollHeight);
     tas.forEach((ta, i) => { ta.style.height = heights[i] + 'px'; });
