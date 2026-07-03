@@ -26,31 +26,31 @@ beforeEach(() => {
 });
 
 describe('Notes persistence', () => {
-  it('loadNotes returns empty array when localStorage is empty', () => {
+  it('returns empty array when localStorage is empty', () => {
     expect(getNotes()).toEqual([]);
   });
 
-  it('saveNotes persists to localStorage', () => {
+  it('persists data to localStorage', () => {
     const data = [{ id: '1', text: 'Hello', createdAt: '2026-01-01', updatedAt: '2026-01-01' }];
     setNotes(data);
     expect(getNotes()).toEqual(data);
   });
 
-  it('loadNotes handles corrupted localStorage gracefully', () => {
+  it('handles corrupted localStorage gracefully', () => {
     localStorage.setItem('notes', 'not-json');
     initNotes();
     expect(getNotes()).toEqual([]);
     expect(document.getElementById('notes-empty').style.display).toBe('block');
   });
 
-  it('loadNotes resets non-array data', () => {
+  it('resets non-array data on init', () => {
     localStorage.setItem('notes', '{"foo":"bar"}');
     initNotes();
     expect(document.getElementById('notes-empty').style.display).toBe('block');
     expect(document.querySelectorAll('.note-item')).toHaveLength(0);
   });
 
-  it('saveNotes failures roll back note mutations', () => {
+  it('rolls back note mutations on save failure', () => {
     const note = { id: '1', text: 'Keep me', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
     setNotes([note]);
     initNotes();
@@ -267,7 +267,7 @@ describe('Notes rollback on save failure', () => {
     }
   });
 
-  it('addNote rolls back and re-renders correctly when saveNotes fails after flushPendingSaves', () => {
+  it('addNote rolls back and re-renders correctly when save fails after flushPendingSaves', () => {
     setNotes([{ id: 'existing-1', text: 'Existing note', createdAt: '2026-01-01', updatedAt: '2026-01-01' }]);
     initNotes();
     expect(getNotes()).toHaveLength(1);

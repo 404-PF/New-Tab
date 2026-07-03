@@ -145,14 +145,6 @@
     }
   }
 
-  function _autoResizeTextareas(textareas) {
-    if (Array.isArray(textareas)) {
-      textareas.forEach(ta => scheduleResize(ta));
-    } else {
-      document.querySelectorAll('.note-textarea').forEach(ta => scheduleResize(ta));
-    }
-  }
-
   function flushPendingSaves() {
     Object.keys(debounceTimers).forEach(id => {
       clearTimeout(debounceTimers[id]);
