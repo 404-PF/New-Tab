@@ -145,7 +145,7 @@
     }
   }
 
-  function autoResizeTextareas(textareas) {
+  function _autoResizeTextareas(textareas) {
     if (Array.isArray(textareas)) {
       textareas.forEach(ta => scheduleResize(ta));
     } else {
@@ -400,26 +400,12 @@
   const runNotesOnDomReady = window.onDomReady;
   runNotesOnDomReady(initNotes);
 
-// Export public API for tests
+// Export public API
 try {
   window.initNotes = initNotes;
-  window.loadNotes = loadNotes;
-  window.saveNotes = saveNotes;
   window.addNote = addNote;
   window.deleteNote = deleteNote;
   window.updateNoteText = updateNoteText;
-  window.flushPendingSaves = flushPendingSaves;
-  window.debouncedSave = debouncedSave;
-  window.handleNotesInput = handleNotesInput;
-  window.handleNotesBlur = handleNotesBlur;
-  window.handleNotesClick = handleNotesClick;
-  window.handleNotesKeydown = handleNotesKeydown;
-  window.autoResizeTextareas = autoResizeTextareas;
-  window.scheduleResize = scheduleResize;
-  window.flushResizeBatch = flushResizeBatch;
-  window.focusNewNote = focusNewNote;
-  window.renderNotePreview = renderNotePreview;
-  window.handleNotePreviewToggle = handleNotePreviewToggle;
 } catch {
   // ignore
 }
