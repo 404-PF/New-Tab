@@ -132,7 +132,8 @@
     const tas = [..._resizeSet];
     _resizeSet.clear();
     tas.forEach(ta => { ta.style.height = 'auto'; });
-    tas.forEach(ta => { ta.style.height = ta.scrollHeight + 'px'; });
+    const heights = tas.map(ta => ta.scrollHeight);
+    tas.forEach((ta, i) => { ta.style.height = heights[i] + 'px'; });
   }
 
   function scheduleResize(ta) {
