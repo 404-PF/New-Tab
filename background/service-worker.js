@@ -134,7 +134,6 @@ if (chrome?.runtime?.onStartup) {
 
 if (chrome?.alarms?.onAlarm) {
   chrome.alarms.onAlarm.addListener((alarm) => {
-    // SYNC: ALARM_NAME must match the hardcoded string in src/features/todo.js fallback
     if (alarm.name === ALARM_NAME) {
       checkReminders().catch((e) => {
         console.warn('Reminder check failed:', e);
