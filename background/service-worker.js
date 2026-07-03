@@ -30,9 +30,9 @@ async function checkReminders(todosJson) {
   while (reminderCheckPendingQueue.length > 0) {
     const nextTodos = reminderCheckPendingQueue.shift();
     try {
-      await checkReminders(nextTodos);
+      await runReminderCheck(nextTodos);
     } catch (e) {
-      console.warn('Recursive reminder check failed:', e);
+      console.warn('Queued reminder check failed:', e);
     }
   }
 }
