@@ -131,6 +131,7 @@
     _resizeRaf = null;
     const tas = [..._resizeSet].filter(ta => ta.isConnected);
     _resizeSet.clear();
+    if (tas.length === 0) return;
     // Batch all resets, then read all scrollHeights, then apply — one forced layout
     tas.forEach(ta => { ta.style.height = 'auto'; });
     const heights = tas.map(ta => ta.scrollHeight);
