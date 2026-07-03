@@ -95,6 +95,7 @@
           console.warn('Reminder sync message failed, falling back to alarm:', err);
           try {
             if (chrome.alarms) {
+              // SYNC: This alarm name must match ALARM_NAME in background/service-worker.js
               chrome.alarms.create('todoReminderCheck', { periodInMinutes: 1 });
             }
           } catch (alarmErr) {
