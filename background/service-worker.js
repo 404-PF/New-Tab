@@ -2,7 +2,7 @@ const CHECK_INTERVAL_MINUTES = 1;
 // SYNC: This alarm name must match the hardcoded string in src/features/todo.js fallback
 const ALARM_NAME = 'todoReminderCheck';
 let reminderCheckInProgress = false;
-let reminderCheckPendingData = null;
+const reminderCheckPendingQueue = [];
 
 async function getFromStorage(keys) {
   return new Promise((resolve) => {
@@ -18,22 +18,22 @@ async function setToStorage(items) {
 
 async function checkReminders(todosJson) {
   if (reminderCheckInProgress) {
-    reminderCheckPendingData = todosJson;
+    reminderCheckPendingQueue.push(todosJson);
     return;
   }
   reminderCheckInProgress = true;
-  reminderCheckPendingData = null;
   try {
     await runReminderCheck(todosJson);
   } finally {
     reminderCheckInProgress = false;
   }
-  if (reminderCheckPendingData !== null) {
-    const nextTodos = reminderCheckPendingData;
-    reminderCheckPendingData = null;
-    await checkReminders(nextTodos).catch((e) => {
+  while (reminderCheckPendingQueue.length > 0) {
+    const nextTodos = reminderCheckPendingQueue.shift();
+    try {
+      await checkReminders(nextTodos);
+    } catch (e) {
       console.warn('Recursive reminder check failed:', e);
-    });
+    }
   }
 }
 
