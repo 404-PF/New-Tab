@@ -344,6 +344,8 @@
 
     emptyState.style.display = 'none';
 
+    const listFragment = document.createDocumentFragment();
+
     // Render each todo with staggered animation
     filteredTodos.forEach((todo, index) => {
       const li = document.createElement('li');
@@ -443,6 +445,7 @@
       if (todo.subtasks && todo.subtasks.length > 0) {
         const subtasksContainer = document.createElement('div');
         subtasksContainer.className = 'todo-subtasks';
+        const subtaskFragment = document.createDocumentFragment();
 
         todo.subtasks.forEach(subtask => {
           const stItem = document.createElement('div');
@@ -483,8 +486,10 @@
           stItem.appendChild(stCheckbox);
           stItem.appendChild(stText);
           stItem.appendChild(stDelete);
-          subtasksContainer.appendChild(stItem);
+          subtaskFragment.appendChild(stItem);
         });
+
+        subtasksContainer.appendChild(subtaskFragment);
 
         // Progress badge
         const progress = getSubtaskProgress(todo);
@@ -502,8 +507,10 @@
       li.style.animationDelay = `${index * STAGGER_DELAY}s`;
       li.setAttribute('data-animation', 'enter');
 
-      todoList.appendChild(li);
+      listFragment.appendChild(li);
     });
+
+    todoList.appendChild(listFragment);
 
     // Apply FLIP animation for reordering
     requestAnimationFrame(() => {
