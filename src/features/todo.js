@@ -80,6 +80,20 @@
     }
   }
 
+  function createReminderAlarmFallback() {
+    try {
+      if (chrome.alarms) {
+        // SYNC: This alarm name must match ALARM_NAME in background/service-worker.js
+        // Matches CHECK_INTERVAL_MINUTES in service-worker.js
+        chrome.alarms.create('todoReminderCheck', { delayInMinutes: 1 });
+      } else {
+        console.warn('Reminder alarm fallback skipped: chrome.alarms is unavailable');
+      }
+    } catch (alarmErr) {
+      console.warn('Alarm fallback also failed:', alarmErr);
+    }
+  }
+
   function scheduleTodoReminderCheck(todoId, resetNotified) {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
@@ -91,10 +105,14 @@
           todoId: todoId || undefined,
           todos: JSON.stringify(todos),
           resetNotified: resetNotified || undefined
-        }).catch(() => {});
+        }).catch((err) => {
+          console.warn('Reminder sync message failed, falling back to alarm:', err);
+          createReminderAlarmFallback();
+        });
       }
     } catch (e) {
       console.warn('Failed to send reminder sync message:', e);
+      createReminderAlarmFallback();
     }
   }
 

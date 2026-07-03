@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -1097,6 +1099,59 @@ describe('Todo reminders', () => {
     chrome.runtime = undefined;
     expect(() => scheduleTodoReminderCheck()).not.toThrow();
     chrome.runtime = origRuntime;
+  });
+
+  it('scheduleTodoReminderCheck logs warning and falls back to alarm on sendMessage rejection', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(chrome.runtime, 'sendMessage').mockRejectedValue(new Error('no worker'));
+    chrome.alarms._alarms = {};
+
+    scheduleTodoReminderCheck('todo-1');
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
+
+    expect(warnSpy.mock.calls[0][0]).toContain('Reminder sync message failed');
+    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ delayInMinutes: 1 });
+    warnSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  it('scheduleTodoReminderCheck does not throw when sendMessage rejects and chrome.alarms is undefined', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(chrome.runtime, 'sendMessage').mockRejectedValue(new Error('no worker'));
+    const origAlarms = chrome.alarms;
+    chrome.alarms = undefined;
+
+    expect(() => scheduleTodoReminderCheck('todo-1')).not.toThrow();
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
+
+    expect(warnSpy.mock.calls.some(args => String(args[0]).includes('chrome.alarms is unavailable'))).toBe(true);
+    warnSpy.mockRestore();
+    chrome.alarms = origAlarms;
+    vi.restoreAllMocks();
+  });
+
+  it('scheduleTodoReminderCheck falls back to alarm on synchronous sendMessage error', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(() => { throw new Error('context invalidated'); });
+    chrome.alarms._alarms = {};
+
+    scheduleTodoReminderCheck('todo-1');
+
+    expect(warnSpy).toHaveBeenCalledWith('Failed to send reminder sync message:', expect.any(Error));
+    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ delayInMinutes: 1 });
+    warnSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  it('alarm name in fallback matches ALARM_NAME in service-worker.js', () => {
+    const todoCode = readFileSync(resolve(process.cwd(), 'src/features/todo.js'), 'utf-8');
+    const swCode = readFileSync(resolve(process.cwd(), 'background/service-worker.js'), 'utf-8');
+
+    const swMatch = swCode.match(/ALARM_NAME\s*=\s*'([^']+)'/);
+    expect(swMatch).not.toBeNull();
+    const alarmName = swMatch[1];
+
+    expect(todoCode).toContain(`'${alarmName}'`);
   });
 });
 
