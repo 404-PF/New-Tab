@@ -732,4 +732,27 @@ describe('Notes resize batching', () => {
     expect(ta.style.height).toBe('50px');
     expect(items[1].style.height).toBe('');
   });
+
+  it('autoResizeTextareas with empty array does nothing', () => {
+    addNote();
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame');
+
+    autoResizeTextareas([]);
+    flushResizeBatch();
+
+    expect(rafSpy).not.toHaveBeenCalled();
+    rafSpy.mockRestore();
+  });
+
+  it('scheduleResize deduplicates the same textarea', () => {
+    addNote();
+    const ta = document.querySelector('.note-textarea');
+    Object.defineProperty(ta, 'scrollHeight', { value: 77, configurable: true });
+
+    scheduleResize(ta);
+    scheduleResize(ta);
+    flushResizeBatch();
+
+    expect(ta.style.height).toBe('77px');
+  });
 });

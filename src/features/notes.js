@@ -146,7 +146,7 @@
   }
 
   function autoResizeTextareas(textareas) {
-    if (textareas) {
+    if (Array.isArray(textareas)) {
       textareas.forEach(ta => scheduleResize(ta));
     } else {
       document.querySelectorAll('.note-textarea').forEach(ta => scheduleResize(ta));
