@@ -129,11 +129,10 @@
 
   function flushResizeBatch() {
     _resizeRaf = 0;
-    _resizeSet.forEach(ta => {
-      ta.style.height = 'auto';
-      ta.style.height = ta.scrollHeight + 'px';
-    });
+    const tas = [..._resizeSet];
     _resizeSet.clear();
+    tas.forEach(ta => { ta.style.height = 'auto'; });
+    tas.forEach(ta => { ta.style.height = ta.scrollHeight + 'px'; });
   }
 
   function scheduleResize(ta) {
