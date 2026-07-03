@@ -695,6 +695,25 @@ describe('Notes resize batching', () => {
     expect(items[1].style.height).toBe('20px');
   });
 
+  it('flushResizeBatch skips textareas removed from the DOM', () => {
+    addNote();
+    addNote();
+    const items = document.querySelectorAll('.note-textarea');
+    const ta1 = items[0];
+    const ta2 = items[1];
+    Object.defineProperty(ta1, 'scrollHeight', { value: 30, configurable: true });
+    Object.defineProperty(ta2, 'scrollHeight', { value: 60, configurable: true });
+
+    scheduleResize(ta1);
+    scheduleResize(ta2);
+
+    ta1.remove();
+
+    flushResizeBatch();
+
+    expect(ta2.style.height).toBe('60px');
+  });
+
   it('autoResizeTextareas with array schedules only those textareas', () => {
     addNote();
     addNote();

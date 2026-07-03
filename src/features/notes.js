@@ -129,7 +129,7 @@
 
   function flushResizeBatch() {
     _resizeRaf = null;
-    const tas = [..._resizeSet];
+    const tas = [..._resizeSet].filter(ta => ta.isConnected);
     _resizeSet.clear();
     // Batch all resets, then read all scrollHeights, then apply — one forced layout
     tas.forEach(ta => { ta.style.height = 'auto'; });
