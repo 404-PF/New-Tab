@@ -218,19 +218,17 @@
       Object.keys(changes || {}).forEach((key) => {
         const change = changes[key];
 
+        if (hydrationMutations.has(key)) {
+          return;
+        }
+
         if (!change || change.newValue === null || typeof change.newValue === 'undefined') {
-          if (hydrationMutations.has(key)) {
-            return;
-          }
           cache.delete(key);
           trackHydrationMutation(key, null);
           changed = true;
           return;
         }
 
-        if (hydrationMutations.has(key)) {
-          return;
-        }
         cache.set(key, String(change.newValue));
         trackHydrationMutation(key, change.newValue);
         changed = true;
