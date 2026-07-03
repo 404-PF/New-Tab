@@ -1098,6 +1098,45 @@ describe('Todo reminders', () => {
     expect(() => scheduleTodoReminderCheck()).not.toThrow();
     chrome.runtime = origRuntime;
   });
+
+  it('scheduleTodoReminderCheck logs warning and falls back to alarm on sendMessage rejection', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(chrome.runtime, 'sendMessage').mockRejectedValue(new Error('no worker'));
+    chrome.alarms._alarms = {};
+
+    scheduleTodoReminderCheck('todo-1');
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
+
+    expect(warnSpy.mock.calls[0][0]).toContain('Reminder sync message failed');
+    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ delayInMinutes: 1 });
+    warnSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  it('scheduleTodoReminderCheck does not throw when sendMessage rejects and chrome.alarms is undefined', async () => {
+    vi.spyOn(chrome.runtime, 'sendMessage').mockRejectedValue(new Error('no worker'));
+    const origAlarms = chrome.alarms;
+    chrome.alarms = undefined;
+
+    expect(() => scheduleTodoReminderCheck('todo-1')).not.toThrow();
+    await vi.waitFor(() => {}, { timeout: 50 }).catch(() => {});
+
+    chrome.alarms = origAlarms;
+    vi.restoreAllMocks();
+  });
+
+  it('scheduleTodoReminderCheck falls back to alarm on synchronous sendMessage error', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(() => { throw new Error('context invalidated'); });
+    chrome.alarms._alarms = {};
+
+    scheduleTodoReminderCheck('todo-1');
+
+    expect(warnSpy).toHaveBeenCalledWith('Failed to send reminder sync message:', expect.any(Error));
+    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ delayInMinutes: 1 });
+    warnSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
 });
 
 describe('Todo priority', () => {
