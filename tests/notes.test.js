@@ -626,3 +626,133 @@ describe('Notes markdown preview', () => {
     });
   });
 });
+
+describe('Notes resize batching', () => {
+  it('scheduleResize queues a textarea and flushResizeBatch sets its height', () => {
+    addNote();
+    const ta = document.querySelector('.note-textarea');
+    Object.defineProperty(ta, 'scrollHeight', { value: 42, configurable: true });
+
+    scheduleResize(ta);
+    flushResizeBatch();
+
+    expect(ta.style.height).toBe('42px');
+  });
+
+  it('scheduleResize does not schedule a second rAF when one is pending', () => {
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame');
+
+    addNote();
+    const ta = document.querySelector('.note-textarea');
+
+    scheduleResize(ta);
+
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+    rafSpy.mockRestore();
+  });
+
+  it('scheduleResize schedules a new rAF after flush clears the pending one', () => {
+    addNote();
+    const ta = document.querySelector('.note-textarea');
+
+    flushResizeBatch();
+
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame');
+    scheduleResize(ta);
+
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+    rafSpy.mockRestore();
+  });
+
+  it('flushResizeBatch resizes all queued textareas', () => {
+    addNote();
+    addNote();
+    const items = document.querySelectorAll('.note-textarea');
+    const ta1 = items[0];
+    const ta2 = items[1];
+    Object.defineProperty(ta1, 'scrollHeight', { value: 30, configurable: true });
+    Object.defineProperty(ta2, 'scrollHeight', { value: 60, configurable: true });
+
+    scheduleResize(ta1);
+    scheduleResize(ta2);
+    flushResizeBatch();
+
+    expect(ta1.style.height).toBe('30px');
+    expect(ta2.style.height).toBe('60px');
+  });
+
+  it('autoResizeTextareas with no args schedules all textareas', () => {
+    addNote();
+    addNote();
+    const items = document.querySelectorAll('.note-textarea');
+    Object.defineProperty(items[0], 'scrollHeight', { value: 10, configurable: true });
+    Object.defineProperty(items[1], 'scrollHeight', { value: 20, configurable: true });
+
+    autoResizeTextareas();
+    flushResizeBatch();
+
+    expect(items[0].style.height).toBe('10px');
+    expect(items[1].style.height).toBe('20px');
+  });
+
+  it('flushResizeBatch skips textareas removed from the DOM', () => {
+    addNote();
+    addNote();
+    const items = document.querySelectorAll('.note-textarea');
+    const ta1 = items[0];
+    const ta2 = items[1];
+    Object.defineProperty(ta1, 'scrollHeight', { value: 30, configurable: true });
+    Object.defineProperty(ta2, 'scrollHeight', { value: 60, configurable: true });
+
+    scheduleResize(ta1);
+    scheduleResize(ta2);
+
+    ta1.remove();
+
+    flushResizeBatch();
+
+    expect(ta2.style.height).toBe('60px');
+  });
+
+  it('autoResizeTextareas with array schedules only those textareas', () => {
+    addNote();
+    addNote();
+    const items = document.querySelectorAll('.note-textarea');
+    const ta = items[0];
+    Object.defineProperty(ta, 'scrollHeight', { value: 50, configurable: true });
+
+    flushResizeBatch();
+
+    ta.style.height = '';
+    items[1].style.height = '';
+
+    autoResizeTextareas([ta]);
+    flushResizeBatch();
+
+    expect(ta.style.height).toBe('50px');
+    expect(items[1].style.height).toBe('');
+  });
+
+  it('autoResizeTextareas with empty array does nothing', () => {
+    addNote();
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame');
+
+    autoResizeTextareas([]);
+    flushResizeBatch();
+
+    expect(rafSpy).not.toHaveBeenCalled();
+    rafSpy.mockRestore();
+  });
+
+  it('scheduleResize deduplicates the same textarea', () => {
+    addNote();
+    const ta = document.querySelector('.note-textarea');
+    Object.defineProperty(ta, 'scrollHeight', { value: 77, configurable: true });
+
+    scheduleResize(ta);
+    scheduleResize(ta);
+    flushResizeBatch();
+
+    expect(ta.style.height).toBe('77px');
+  });
+});
