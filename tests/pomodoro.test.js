@@ -190,6 +190,37 @@ describe('PomodoroTimer', () => {
     });
   });
 
+  describe('endSession', () => {
+    it('clears an active session', () => {
+      localStorage.setItem('pomodoroSettings', JSON.stringify({ enabled: true, work: 25 }));
+      PomodoroTimer.startFocus('todo1');
+      expect(PomodoroTimer.session).not.toBeNull();
+      PomodoroTimer.endSession();
+      expect(PomodoroTimer.session).toBeNull();
+    });
+
+    it('removes session from localStorage', () => {
+      localStorage.setItem('pomodoroSettings', JSON.stringify({ enabled: true, work: 25 }));
+      PomodoroTimer.startFocus('todo1');
+      PomodoroTimer.endSession();
+      expect(localStorage.getItem('pomodoroSession')).toBeNull();
+    });
+
+    it('hides the widget', () => {
+      localStorage.setItem('pomodoroSettings', JSON.stringify({ enabled: true, work: 25 }));
+      PomodoroTimer.startFocus('todo1');
+      const widget = document.getElementById('pomodoro-widget');
+      expect(widget.style.display).not.toBe('none');
+      PomodoroTimer.endSession();
+      expect(widget.style.display).toBe('none');
+    });
+
+    it('is safe to call with no active session', () => {
+      PomodoroTimer.endSession();
+      expect(PomodoroTimer.session).toBeNull();
+    });
+  });
+
   describe('session persistence', () => {
     it('persists session to localStorage', () => {
       localStorage.setItem('pomodoroSettings', JSON.stringify({ enabled: true, work: 25 }));

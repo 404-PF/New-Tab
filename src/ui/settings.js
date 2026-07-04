@@ -1276,9 +1276,10 @@ if (pomodoroEnabled) {
   });
 }
 
-const pomodoroWorkDuration = document.getElementById('pomodoro-work-duration');
-if (pomodoroWorkDuration) {
-  pomodoroWorkDuration.addEventListener('change', function () {
+function bindPomodoroNumberSetting(elementId, settingKey, min, max) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.addEventListener('change', function () {
     if (
       window.PomodoroTimer &&
       typeof window.PomodoroTimer.loadSettings === 'function' &&
@@ -1286,71 +1287,19 @@ if (pomodoroWorkDuration) {
       typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
     ) {
       const s = window.PomodoroTimer.loadSettings();
-      const nextWork = parseInt(this.value, 10);
-      s.work = Number.isFinite(nextWork) ? Math.min(120, Math.max(1, nextWork)) : s.work;
-      this.value = s.work;
+      const next = parseInt(this.value, 10);
+      s[settingKey] = Number.isFinite(next) ? Math.min(max, Math.max(min, next)) : s[settingKey];
+      this.value = s[settingKey];
       window.PomodoroTimer.saveSettings(s);
       window.PomodoroTimer.applyPomodoroSettings();
     }
   });
 }
 
-const pomodoroShortDuration = document.getElementById('pomodoro-short-duration');
-if (pomodoroShortDuration) {
-  pomodoroShortDuration.addEventListener('change', function () {
-    if (
-      window.PomodoroTimer &&
-      typeof window.PomodoroTimer.loadSettings === 'function' &&
-      typeof window.PomodoroTimer.saveSettings === 'function' &&
-      typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
-    ) {
-      const s = window.PomodoroTimer.loadSettings();
-      const nextShortBreak = parseInt(this.value, 10);
-      s.shortBreak = Number.isFinite(nextShortBreak) ? Math.min(60, Math.max(1, nextShortBreak)) : s.shortBreak;
-      this.value = s.shortBreak;
-      window.PomodoroTimer.saveSettings(s);
-      window.PomodoroTimer.applyPomodoroSettings();
-    }
-  });
-}
-
-const pomodoroLongDuration = document.getElementById('pomodoro-long-duration');
-if (pomodoroLongDuration) {
-  pomodoroLongDuration.addEventListener('change', function () {
-    if (
-      window.PomodoroTimer &&
-      typeof window.PomodoroTimer.loadSettings === 'function' &&
-      typeof window.PomodoroTimer.saveSettings === 'function' &&
-      typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
-    ) {
-      const s = window.PomodoroTimer.loadSettings();
-      const nextLongBreak = parseInt(this.value, 10);
-      s.longBreak = Number.isFinite(nextLongBreak) ? Math.min(60, Math.max(1, nextLongBreak)) : s.longBreak;
-      this.value = s.longBreak;
-      window.PomodoroTimer.saveSettings(s);
-      window.PomodoroTimer.applyPomodoroSettings();
-    }
-  });
-}
-
-const pomodoroSessionsBeforeLong = document.getElementById('pomodoro-sessions-before-long');
-if (pomodoroSessionsBeforeLong) {
-  pomodoroSessionsBeforeLong.addEventListener('change', function () {
-    if (
-      window.PomodoroTimer &&
-      typeof window.PomodoroTimer.loadSettings === 'function' &&
-      typeof window.PomodoroTimer.saveSettings === 'function' &&
-      typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
-    ) {
-      const s = window.PomodoroTimer.loadSettings();
-      const nextSessions = parseInt(this.value, 10);
-      s.sessionsBeforeLong = Number.isFinite(nextSessions) ? Math.min(10, Math.max(1, nextSessions)) : s.sessionsBeforeLong;
-      this.value = s.sessionsBeforeLong;
-      window.PomodoroTimer.saveSettings(s);
-      window.PomodoroTimer.applyPomodoroSettings();
-    }
-  });
-}
+bindPomodoroNumberSetting('pomodoro-work-duration', 'work', 1, 120);
+bindPomodoroNumberSetting('pomodoro-short-duration', 'shortBreak', 1, 60);
+bindPomodoroNumberSetting('pomodoro-long-duration', 'longBreak', 1, 60);
+bindPomodoroNumberSetting('pomodoro-sessions-before-long', 'sessionsBeforeLong', 1, 10);
 
 // Notes enabled
 function loadNotesEnabled() {
