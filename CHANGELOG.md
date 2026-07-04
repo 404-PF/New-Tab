@@ -1,5 +1,53 @@
 # Changelog
 
+## v0.4.7 (2026-07-04)
+
+### Features
+
+- Feat(settings): redesign the Background tab with a card-based layout (#411, #413)
+- Feat(todo): add subtasks and checklists to todo items (#367, #407)
+- Feat(theme): add automatic theme scheduling by time of day (#408)
+- Feat(notes): add a markdown preview toggle for notes (#402)
+- Feat(data): add full settings import and export support (#362, #401)
+- Feat(weather): add a multi-day forecast display (#400)
+- Feat(shortcuts): add customizable keyboard shortcuts for common actions (#392)
+- Feat(background): add background rotation and scheduling (#394)
+- Feat(todo): add configurable priority levels to todo items (#393)
+
+### Bug Fixes
+
+- Fix(storage): prevent late hydration and `chrome.storage` updates from clobbering in-session writes (#434, #436, #451)
+- Fix(service-worker): process pending reminder checks in FIFO order (#449)
+- Fix(todo): improve reminder fallback handling, preserve priority on edits, close the clear-completed dialog on save failure, and protect hidden-item ordering while filters are active (#448, #391, #390, #387)
+- Fix(ai): sanitize markdown output, reject control characters, remove unsafe copy-button content attributes, and guard conversation trimming edge cases (#422, #433, #445, #446)
+- Fix(custom-backgrounds): eliminate XSS sinks in confirmation UI and harden thumbnail/upload flows against collisions and timeouts (#384, #386, #443)
+- Fix(bootstrap): show an error overlay when script loading fails (#435)
+- Fix(search): only record search history after a successful search (#409)
+- Fix(ui): remove app icon hover animation and keep weather/settings layouts aligned and scrollable across responsive states (#403, #404, #405, #406, #412)
+- Fix(app): restore missing default app icons on fresh installs (#398, #399)
+- Fix(core): clear the existing clock interval before reinitializing (#389)
+- Fix(simple-mode): emit `simpleModeChanged` when simple mode toggles (#382)
+- Fix(background): guard video fallbacks when the background container is missing (#388)
+
+### Performance
+
+- Perf(ai): optimize topics list rendering (#453)
+- Perf(todo): batch todo DOM updates with `DocumentFragment` (#450)
+- Perf(notes): coalesce textarea resizing into a single `requestAnimationFrame` batch (#447)
+- Perf(drag-drop): cache draggable icons at drag start (#439)
+
+### Refactoring
+
+- Refactor(notes): reduce exported `window.*` surface area (#452)
+- Refactor(app-manager): remove dead `window.*` exports (#444)
+- Refactor(todo): remove an unused reminder scheduling fallback (#442)
+- Refactor(app-grid): consolidate ad-hoc readiness flags into a shared state machine (#441)
+
+### Documentation
+
+- Docs(screenshots): update product screenshots (#456)
+- Docs(skills): reorganize and expand the agent skills collection (#414)
+
 ## v0.4.6 (2026-06-08)
 
 ### Bug Fixes
