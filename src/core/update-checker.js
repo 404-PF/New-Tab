@@ -8,6 +8,8 @@ class UpdateChecker {
     this.checkInterval = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     this._autoHideTimeoutId = null; // Track auto-hide timeout for cleanup
     this._autoHideUnsubscribe = null; // Track visibility unsubscribe for cleanup
+    this._manualCheckResultTimeoutId = null; // Track manual-check-result auto-hide timeout
+    this._manualCheckResultUnsubscribe = null; // Track manual-check-result visibility unsubscribe
   }
 
   hasCurrentVersion() {
@@ -516,7 +518,58 @@ class UpdateChecker {
     const aboutSection = document.querySelector('.settings-section[data-section="about"]');
     if (aboutSection) {
       aboutSection.appendChild(result);
-      this._scheduleAutoHide(() => result.remove(), 5000);
+      this._scheduleManualCheckResultAutoHide(() => result.remove(), 5000);
+    }
+  }
+
+  // Schedule auto-hide for manual check result (separate timer tracking)
+  _scheduleManualCheckResultAutoHide(callback, delay) {
+    // Clear any existing manual check result timer
+    if (this._manualCheckResultTimeoutId) {
+      clearTimeout(this._manualCheckResultTimeoutId);
+    }
+    if (this._manualCheckResultUnsubscribe) {
+      this._manualCheckResultUnsubscribe();
+    }
+
+    if (window.visibilityManager) {
+      let remaining = delay;
+      let startTime = Date.now();
+
+      const hide = () => {
+        if (this._manualCheckResultUnsubscribe) {
+          this._manualCheckResultUnsubscribe();
+          this._manualCheckResultUnsubscribe = null;
+        }
+        callback();
+      };
+
+      const onVisibilityChange = (visible) => {
+        if (visible) {
+          startTime = Date.now();
+          this._manualCheckResultTimeoutId = setTimeout(hide, remaining);
+        } else {
+          if (this._manualCheckResultTimeoutId) {
+            remaining -= Date.now() - startTime;
+            clearTimeout(this._manualCheckResultTimeoutId);
+            this._manualCheckResultTimeoutId = null;
+          }
+        }
+      };
+
+      this._manualCheckResultUnsubscribe = window.visibilityManager.onChange(onVisibilityChange);
+
+      if (window.visibilityManager.isVisible) {
+        this._manualCheckResultTimeoutId = setTimeout(hide, remaining);
+      }
+    } else {
+      this._manualCheckResultTimeoutId = setTimeout(() => {
+        if (this._manualCheckResultUnsubscribe) {
+          this._manualCheckResultUnsubscribe();
+          this._manualCheckResultUnsubscribe = null;
+        }
+        callback();
+      }, delay);
     }
   }
 
