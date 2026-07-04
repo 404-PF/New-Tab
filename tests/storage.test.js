@@ -535,9 +535,13 @@ describe('storage bridge', () => {
 
       expect(dom.window.localStorage.getItem('shared')).toBe('user-shared');
 
-      changeListener({ shared: { oldValue: 'server-shared', newValue: 'changed-shared' } }, 'local');
+      changeListener({ shared: { oldValue: 'server-shared', newValue: 'user-shared' } }, 'local');
 
       expect(dom.window.localStorage.getItem('shared')).toBe('user-shared');
+
+      changeListener({ shared: { oldValue: 'user-shared', newValue: 'changed-shared' } }, 'local');
+
+      expect(dom.window.localStorage.getItem('shared')).toBe('changed-shared');
     } finally {
       dom.window.close();
     }
