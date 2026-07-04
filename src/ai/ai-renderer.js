@@ -2,6 +2,19 @@
 
 const AIRenderer = (function() {
   const elements = {};
+  const topicsListRenderState = {
+    listEl: null,
+    signature: '',
+    handlersAttached: false,
+    callbacks: {
+      onSelectConversation: () => {},
+      onDeleteConversation: () => {},
+      onRequestDeleteConfirm: callback => callback()
+    },
+    hoveredDeleteBtn: null,
+    tooltip: null,
+    tooltipTimeout: null
+  };
 
   function getTranslation(key) {
     if (window.i18n && window.i18n.t) {
@@ -60,14 +73,219 @@ const AIRenderer = (function() {
     return new Date(timestamp).toLocaleDateString();
   }
 
+  function getTopicsListSignature(filteredConversations, state) {
+    const itemSignature = filteredConversations
+      .map((conversation, index) => [
+        conversation.id,
+        conversation.title,
+        conversation.updatedAt,
+        conversation.id === state.currentConversationId ? '1' : '0',
+        index === state.keyboardSelectedIndex ? '1' : '0'
+      ].join('\u001f'))
+      .join('\u001e');
+
+    return [
+      state.searchQuery.trim() ? 'search' : 'all',
+      state.keyboardSelectedIndex,
+      state.currentConversationId,
+      itemSignature
+    ].join('\u001d');
+  }
+
+  function createTopicIcon() {
+    const icon = document.createElement('div');
+    icon.className = 'ai-topic-icon';
+    icon.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    `;
+    return icon;
+  }
+
+  function createTopicDeleteButton(conversationId) {
+    const button = document.createElement('button');
+    button.className = 'ai-topic-delete';
+    button.dataset.id = conversationId;
+    button.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3,6 5,6 21,6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    `;
+    return button;
+  }
+
+  function createTopicElement(conversation, index, state) {
+    const item = document.createElement('div');
+    item.className = 'ai-topic-item';
+    if (conversation.id === state.currentConversationId) {
+      item.classList.add('active');
+    }
+    if (index === state.keyboardSelectedIndex) {
+      item.classList.add('keyboard-selected');
+    }
+    item.dataset.id = conversation.id;
+    item.dataset.index = index;
+
+    const info = document.createElement('div');
+    info.className = 'ai-topic-info';
+
+    const title = document.createElement('div');
+    title.className = 'ai-topic-title';
+    title.textContent = conversation.title || '';
+
+    const time = document.createElement('div');
+    time.className = 'ai-topic-time';
+    time.textContent = formatTopicTime(conversation.updatedAt);
+
+    info.append(title, time);
+    item.append(createTopicIcon(), info, createTopicDeleteButton(conversation.id));
+    return item;
+  }
+
+  function createEmptyTopicsElement(className, text, isSearchResult) {
+    const container = document.createElement('div');
+    container.className = className;
+    container.innerHTML = isSearchResult
+      ? `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          <line x1="8" y1="11" x2="14" y2="11"></line>
+        </svg>
+      `
+      : `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      `;
+
+    const message = document.createElement('p');
+    message.textContent = text;
+    container.appendChild(message);
+    return container;
+  }
+
+  function getTopicsTooltip() {
+    if (!topicsListRenderState.tooltip || !document.body.contains(topicsListRenderState.tooltip)) {
+      topicsListRenderState.tooltip = document.createElement('div');
+      topicsListRenderState.tooltip.className = 'ai-topic-tooltip';
+      document.body.appendChild(topicsListRenderState.tooltip);
+    }
+    return topicsListRenderState.tooltip;
+  }
+
+  function positionTopicsTooltip(button, tooltip) {
+    const rect = button.getBoundingClientRect();
+    tooltip.style.left = `${rect.left + rect.width / 2}px`;
+    tooltip.style.top = `${rect.top - 8}px`;
+    tooltip.style.transform = 'translateX(-50%) translateY(-100%)';
+  }
+
+  function clearTopicsTooltipTimeout() {
+    if (topicsListRenderState.tooltipTimeout) {
+      clearTimeout(topicsListRenderState.tooltipTimeout);
+      topicsListRenderState.tooltipTimeout = null;
+    }
+  }
+
+  function hideTopicsTooltip(button = topicsListRenderState.hoveredDeleteBtn) {
+    clearTopicsTooltipTimeout();
+    if (button) {
+      AIStore.clearHoveredDeleteTarget(button);
+      button.classList.remove('ctrl-ready');
+    }
+    if (topicsListRenderState.tooltip) {
+      topicsListRenderState.tooltip.classList.remove('visible');
+    }
+    topicsListRenderState.hoveredDeleteBtn = null;
+  }
+
+  function handleTopicsClick(event) {
+    const deleteButton = event.target.closest('.ai-topic-delete');
+    if (deleteButton) {
+      event.stopPropagation();
+      const conversationId = deleteButton.dataset.id;
+
+      if (event.ctrlKey) {
+        topicsListRenderState.callbacks.onDeleteConversation(conversationId);
+      } else {
+        topicsListRenderState.callbacks.onRequestDeleteConfirm(() => {
+          topicsListRenderState.callbacks.onDeleteConversation(conversationId);
+        });
+      }
+      return;
+    }
+
+    const item = event.target.closest('.ai-topic-item');
+    if (item && elements.topicsList?.contains(item)) {
+      topicsListRenderState.callbacks.onSelectConversation(item.dataset.id);
+    }
+  }
+
+  function handleTopicsMouseOver(event) {
+    const button = event.target.closest('.ai-topic-delete');
+    if (!button || button === topicsListRenderState.hoveredDeleteBtn) return;
+
+    hideTopicsTooltip();
+    topicsListRenderState.hoveredDeleteBtn = button;
+
+    const tooltip = getTopicsTooltip();
+    tooltip.textContent = getTranslation('aiDeleteConversation');
+    positionTopicsTooltip(button, tooltip);
+    AIStore.setHoveredDeleteTarget(button, tooltip);
+
+    topicsListRenderState.tooltipTimeout = setTimeout(() => {
+      tooltip.classList.add('visible');
+      updateDeleteButtonFeedback();
+    }, 2000);
+  }
+
+  function handleTopicsMouseOut(event) {
+    const button = event.target.closest('.ai-topic-delete');
+    if (!button || button.contains(event.relatedTarget)) return;
+    hideTopicsTooltip(button);
+  }
+
+  function handleTopicsMouseMove(event) {
+    const button = event.target.closest('.ai-topic-delete');
+    if (!button || button !== topicsListRenderState.hoveredDeleteBtn || !topicsListRenderState.tooltip) return;
+    positionTopicsTooltip(button, topicsListRenderState.tooltip);
+  }
+
+  function attachTopicsDelegatedHandlers() {
+    if (topicsListRenderState.listEl === elements.topicsList && topicsListRenderState.handlersAttached) return;
+
+    if (topicsListRenderState.listEl && topicsListRenderState.handlersAttached) {
+      topicsListRenderState.listEl.removeEventListener('click', handleTopicsClick);
+      topicsListRenderState.listEl.removeEventListener('mouseover', handleTopicsMouseOver);
+      topicsListRenderState.listEl.removeEventListener('mouseout', handleTopicsMouseOut);
+      topicsListRenderState.listEl.removeEventListener('mousemove', handleTopicsMouseMove);
+    }
+
+    topicsListRenderState.listEl = elements.topicsList;
+    topicsListRenderState.handlersAttached = true;
+    elements.topicsList.addEventListener('click', handleTopicsClick);
+    elements.topicsList.addEventListener('mouseover', handleTopicsMouseOver);
+    elements.topicsList.addEventListener('mouseout', handleTopicsMouseOut);
+    elements.topicsList.addEventListener('mousemove', handleTopicsMouseMove);
+  }
+
   function renderTopicsList(options = {}) {
     if (!elements.topicsList) {
       cacheElements();
     }
     if (!elements.topicsList) return;
 
+    attachTopicsDelegatedHandlers();
+    topicsListRenderState.callbacks.onSelectConversation = options.onSelectConversation || (() => {});
+    topicsListRenderState.callbacks.onDeleteConversation = options.onDeleteConversation || (() => {});
+    topicsListRenderState.callbacks.onRequestDeleteConfirm = options.onRequestDeleteConfirm || ((callback) => callback());
+
     const state = AIStore.state;
     const filteredConversations = AIStore.getFilteredConversations();
+    const renderSignature = getTopicsListSignature(filteredConversations, state);
 
     if (elements.topicsCount) {
       const total = state.conversations.length;
@@ -75,118 +293,41 @@ const AIRenderer = (function() {
       elements.topicsCount.textContent = shown === total ? total : `${shown}/${total}`;
     }
 
+    if (topicsListRenderState.signature === renderSignature && elements.topicsList.childElementCount > 0) {
+      return;
+    }
+    topicsListRenderState.signature = renderSignature;
+    hideTopicsTooltip();
+    document.querySelectorAll('.ai-topic-tooltip').forEach(tooltip => {
+      if (tooltip !== topicsListRenderState.tooltip) {
+        tooltip.remove();
+      }
+    });
+
+    const fragment = document.createDocumentFragment();
+
     if (filteredConversations.length === 0) {
       if (state.searchQuery.trim()) {
-        elements.topicsList.innerHTML = `
-          <div class="ai-topics-no-results">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              <line x1="8" y1="11" x2="14" y2="11"></line>
-            </svg>
-            <p>${getTranslation('aiNoSearchResults')}</p>
-          </div>
-        `;
+        fragment.appendChild(createEmptyTopicsElement(
+          'ai-topics-no-results',
+          getTranslation('aiNoSearchResults'),
+          true
+        ));
       } else {
-        elements.topicsList.innerHTML = `
-          <div class="ai-topics-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            <p>${getTranslation('aiNoConversations')}</p>
-          </div>
-        `;
+        fragment.appendChild(createEmptyTopicsElement(
+          'ai-topics-empty',
+          getTranslation('aiNoConversations'),
+          false
+        ));
       }
+      elements.topicsList.replaceChildren(fragment);
       return;
     }
 
-    elements.topicsList.innerHTML = filteredConversations.map((conversation, index) => {
-      const isActive = conversation.id === state.currentConversationId;
-      const isKeyboardSelected = index === state.keyboardSelectedIndex;
-      return `
-        <div class="ai-topic-item ${isActive ? 'active' : ''} ${isKeyboardSelected ? 'keyboard-selected' : ''}" data-id="${conversation.id}" data-index="${index}">
-          <div class="ai-topic-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-          </div>
-          <div class="ai-topic-info">
-            <div class="ai-topic-title">${escapeHTML(conversation.title)}</div>
-            <div class="ai-topic-time">${formatTopicTime(conversation.updatedAt)}</div>
-          </div>
-          <button class="ai-topic-delete" data-id="${conversation.id}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3,6 5,6 21,6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
-        </div>
-      `;
-    }).join('');
-
-    const onSelectConversation = options.onSelectConversation || (() => {});
-    const onDeleteConversation = options.onDeleteConversation || (() => {});
-    const onRequestDeleteConfirm = options.onRequestDeleteConfirm || ((callback) => callback());
-
-    elements.topicsList.querySelectorAll('.ai-topic-item').forEach(item => {
-      item.addEventListener('click', event => {
-        if (event.target.closest('.ai-topic-delete')) return;
-        onSelectConversation(item.dataset.id);
-      });
+    filteredConversations.forEach((conversation, index) => {
+      fragment.appendChild(createTopicElement(conversation, index, state));
     });
-
-    document.querySelectorAll('.ai-topic-tooltip').forEach(tooltip => tooltip.remove());
-
-    elements.topicsList.querySelectorAll('.ai-topic-delete').forEach(button => {
-      button.addEventListener('click', event => {
-        event.stopPropagation();
-        const conversationId = button.dataset.id;
-
-        if (event.ctrlKey) {
-          onDeleteConversation(conversationId);
-        } else {
-          onRequestDeleteConfirm(() => onDeleteConversation(conversationId));
-        }
-      });
-
-      const tooltip = document.createElement('div');
-      tooltip.className = 'ai-topic-tooltip';
-      document.body.appendChild(tooltip);
-
-      let tooltipTimeout = null;
-
-      button.addEventListener('mouseenter', () => {
-        AIStore.setHoveredDeleteTarget(button, tooltip);
-        tooltip.textContent = getTranslation('aiDeleteConversation');
-
-        const rect = button.getBoundingClientRect();
-        tooltip.style.left = `${rect.left + rect.width / 2}px`;
-        tooltip.style.top = `${rect.top - 8}px`;
-        tooltip.style.transform = 'translateX(-50%) translateY(-100%)';
-
-        tooltipTimeout = setTimeout(() => {
-          tooltip.classList.add('visible');
-          updateDeleteButtonFeedback();
-        }, 2000);
-      });
-
-      button.addEventListener('mouseleave', () => {
-        if (tooltipTimeout) {
-          clearTimeout(tooltipTimeout);
-          tooltipTimeout = null;
-        }
-
-        AIStore.clearHoveredDeleteTarget(button);
-        tooltip.classList.remove('visible');
-        button.classList.remove('ctrl-ready');
-      });
-
-      button.addEventListener('mousemove', () => {
-        const rect = button.getBoundingClientRect();
-        tooltip.style.left = `${rect.left + rect.width / 2}px`;
-        tooltip.style.top = `${rect.top - 8}px`;
-      });
-    });
+    elements.topicsList.replaceChildren(fragment);
 
     if (AIStore.state.keyboardSelectedIndex >= 0) {
       const selectedItem = elements.topicsList.querySelector('.keyboard-selected');
