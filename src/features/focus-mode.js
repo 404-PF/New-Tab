@@ -3,7 +3,12 @@
 let focusModeInitialized = false;
 
 function loadFocusMode() {
-  return localStorage.getItem('focusMode') === 'true';
+  try {
+    return localStorage.getItem('focusMode') === 'true';
+  } catch (e) {
+    console.warn('Failed to read focusMode:', e);
+    return false;
+  }
 }
 
 function syncFocusModeLabel(indicator, enabled) {
@@ -50,7 +55,11 @@ function applyFocusMode() {
 }
 
 function setFocusMode(enabled) {
-  localStorage.setItem('focusMode', enabled ? 'true' : 'false');
+  try {
+    localStorage.setItem('focusMode', enabled ? 'true' : 'false');
+  } catch (e) {
+    console.warn('Failed to save focusMode:', e);
+  }
   applyFocusMode();
 }
 

@@ -196,5 +196,9 @@
   "uploadLiveBackground": {
     "message": "Upload Live Background",
     "description": "Tooltip for the upload live background video button"
+  },
+  "focusModeExit": {
+    "message": "Exit Focus Mode",
+    "description": "Label for exiting focus mode"
   }
 }

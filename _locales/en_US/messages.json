@@ -128,5 +128,9 @@
   "shortcutToggleFocusMode": {
     "message": "Toggle Focus Mode",
     "description": "Label for the toggle focus mode shortcut action"
+  },
+  "focusModeExit": {
+    "message": "Exit Focus Mode",
+    "description": "Label for exiting focus mode"
   }
 }

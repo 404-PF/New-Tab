@@ -4725,6 +4725,7 @@ body[data-focus-mode="true"] .simple-mode-toggle {
   opacity: 0;
   pointer-events: none;
   transform: translateY(-8px);
+  visibility: hidden;
 }
 
 body[data-focus-mode="true"] #weather-widget,

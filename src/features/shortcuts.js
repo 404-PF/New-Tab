@@ -150,8 +150,17 @@
       return;
     }
 
-    const current = localStorage.getItem('focusMode') === 'true';
-    localStorage.setItem('focusMode', current ? 'false' : 'true');
+    let current = false;
+    try {
+      current = localStorage.getItem('focusMode') === 'true';
+    } catch (e) {
+      console.warn('Failed to read focusMode:', e);
+    }
+    try {
+      localStorage.setItem('focusMode', current ? 'false' : 'true');
+    } catch (e) {
+      console.warn('Failed to save focusMode:', e);
+    }
 
     if (typeof window.applyFocusMode === 'function') {
       window.applyFocusMode();
