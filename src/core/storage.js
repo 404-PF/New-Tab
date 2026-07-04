@@ -137,6 +137,14 @@
     return snapshot;
   }
 
+  function isMatchingHydrationMutation(change, mutationValue) {
+    const changeValue = !change || change.newValue === null || typeof change.newValue === 'undefined'
+      ? null
+      : String(change.newValue);
+
+    return changeValue === mutationValue;
+  }
+
   function hydrateFromChromeStorage() {
     if (hydrationStarted) {
       return;
@@ -217,6 +225,19 @@
 
       Object.keys(changes || {}).forEach((key) => {
         const change = changes[key];
+
+        if (hydrationMutations.has(key)) {
+          if (!hydrationFinished) {
+            return;
+          }
+
+          const mutationValue = hydrationMutations.get(key);
+          hydrationMutations.delete(key);
+
+          if (isMatchingHydrationMutation(change, mutationValue)) {
+            return;
+          }
+        }
 
         if (!change || change.newValue === null || typeof change.newValue === 'undefined') {
           cache.delete(key);

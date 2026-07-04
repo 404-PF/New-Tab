@@ -448,4 +448,151 @@ describe('storage bridge', () => {
       dom.window.close();
     }
   }, 10_000);
+
+  it('preserves writes that land between get callback and applySnapshot', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let getCalled = false;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              getCalled = true;
+              resolveGet = () => {
+                callback({ serverKey: 'server-val' });
+              };
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      expect(getCalled).toBe(true);
+
+      dom.window.localStorage.setItem('userKey', 'user-val');
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('userKey')).toBe('user-val');
+      expect(dom.window.localStorage.getItem('serverKey')).toBe('server-val');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('preserves hydration-tracked writes when onChanged fires after applySnapshot', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let changeListener;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener(fn) { changeListener = fn; },
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => {
+                callback({ shared: 'server-shared' });
+              };
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      dom.window.localStorage.setItem('shared', 'user-shared');
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('shared')).toBe('user-shared');
+
+      changeListener({ shared: { oldValue: 'server-shared', newValue: 'user-shared' } }, 'local');
+
+      expect(dom.window.localStorage.getItem('shared')).toBe('user-shared');
+
+      changeListener({ shared: { oldValue: 'user-shared', newValue: 'changed-shared' } }, 'local');
+
+      expect(dom.window.localStorage.getItem('shared')).toBe('changed-shared');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('preserves writes for a key present in both native and server snapshots', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let getCalled = false;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              getCalled = true;
+              resolveGet = () => {
+                callback({ theme: 'server-theme', extra: 'server-extra' });
+              };
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      dom.window.localStorage.setItem('theme', 'native-theme');
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      expect(getCalled).toBe(true);
+
+      dom.window.localStorage.setItem('theme', 'user-theme');
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      expect(dom.window.localStorage.getItem('theme')).toBe('user-theme');
+      expect(dom.window.localStorage.getItem('extra')).toBe('server-extra');
+    } finally {
+      dom.window.close();
+    }
+  });
 });
