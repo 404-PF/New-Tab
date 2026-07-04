@@ -8,6 +8,7 @@
   const DEFAULT_SHORTCUTS = {
     focusSearch: '/',
     openSettings: 'Ctrl+,',
+    toggleFocusMode: 'Ctrl+Shift+F',
     toggleSimpleMode: 'Ctrl+Shift+S',
     toggleTodo: 'Ctrl+Shift+T',
     toggleNotes: 'Ctrl+Shift+N',
@@ -17,6 +18,7 @@
   const ACTION_LABEL_KEYS = {
     focusSearch: 'shortcutFocusSearch',
     openSettings: 'shortcutOpenSettings',
+    toggleFocusMode: 'shortcutToggleFocusMode',
     toggleSimpleMode: 'shortcutToggleSimpleMode',
     toggleTodo: 'shortcutToggleTodo',
     toggleNotes: 'shortcutToggleNotes',
@@ -142,6 +144,20 @@
     }
   }
 
+  function toggleFocusMode() {
+    if (typeof window.toggleFocusMode === 'function') {
+      window.toggleFocusMode();
+      return;
+    }
+
+    const current = localStorage.getItem('focusMode') === 'true';
+    localStorage.setItem('focusMode', current ? 'false' : 'true');
+
+    if (typeof window.applyFocusMode === 'function') {
+      window.applyFocusMode();
+    }
+  }
+
   function toggleTodo() {
     let current = true;
     try {
@@ -223,6 +239,9 @@
         break;
       case 'toggleSimpleMode':
         toggleSimpleMode();
+        break;
+      case 'toggleFocusMode':
+        toggleFocusMode();
         break;
       case 'toggleTodo':
         toggleTodo();

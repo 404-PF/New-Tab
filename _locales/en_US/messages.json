@@ -116,5 +116,17 @@
   "uploadLiveBackground": {
     "message": "Upload Live Background",
     "description": "Tooltip for the upload live background video button"
+  },
+  "focusMode": {
+    "message": "Focus",
+    "description": "Label for focus mode"
+  },
+  "enableFocusMode": {
+    "message": "Enable focus mode",
+    "description": "Label for the focus mode setting"
+  },
+  "shortcutToggleFocusMode": {
+    "message": "Toggle Focus Mode",
+    "description": "Label for the toggle focus mode shortcut action"
   }
 }

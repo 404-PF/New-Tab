@@ -21,6 +21,7 @@ describe('Shortcuts - defaults', () => {
     const shortcuts = Shortcuts.load();
     expect(shortcuts.focusSearch).toBe('/');
     expect(shortcuts.openSettings).toBe('Ctrl+,');
+    expect(shortcuts.toggleFocusMode).toBe('Ctrl+Shift+F');
     expect(shortcuts.toggleSimpleMode).toBe('Ctrl+Shift+S');
     expect(shortcuts.toggleTodo).toBe('Ctrl+Shift+T');
     expect(shortcuts.toggleNotes).toBe('Ctrl+Shift+N');
@@ -32,6 +33,7 @@ describe('Shortcuts - defaults', () => {
     const shortcuts = Shortcuts.load();
     expect(shortcuts.focusSearch).toBe('Ctrl+K');
     expect(shortcuts.openSettings).toBe('Ctrl+,');
+    expect(shortcuts.toggleFocusMode).toBe('Ctrl+Shift+F');
     expect(shortcuts.toggleSimpleMode).toBe('Ctrl+Shift+S');
   });
 
@@ -285,6 +287,18 @@ describe('Shortcuts - executeAction', () => {
     expect(localStorage.getItem('simpleMode')).toBe('true');
 
     delete window.applySimpleMode;
+  });
+
+  it('toggleFocusMode toggles localStorage and calls applyFocusMode', () => {
+    let applyCalled = false;
+    window.applyFocusMode = () => { applyCalled = true; };
+    localStorage.setItem('focusMode', 'false');
+
+    Shortcuts.executeAction('toggleFocusMode');
+    expect(localStorage.getItem('focusMode')).toBe('true');
+    expect(applyCalled).toBe(true);
+
+    delete window.applyFocusMode;
   });
 
   it('toggleTodo toggles localStorage and calls applyTodoEnabled', () => {

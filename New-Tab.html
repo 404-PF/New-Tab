@@ -20,6 +20,17 @@
       <label for="simple-mode-checkbox"></label>
     </div>
   </div>
+
+  <button type="button" id="focus-mode-indicator" class="focus-mode-indicator" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 7V4h3"></path>
+      <path d="M20 7V4h-3"></path>
+      <path d="M4 17v3h3"></path>
+      <path d="M20 17v3h-3"></path>
+      <path d="M9 12h6"></path>
+    </svg>
+    <span data-i18n="focusMode">Focus</span>
+  </button>
   
   <!-- Background Container -->
   <div class="background-container" id="background-container">
@@ -446,6 +457,21 @@
                     <div class="setting-content">
                       <label for="notes-enabled-setting" data-i18n="enableNotes">Enable notes scratchpad</label>
                       <input type="checkbox" id="notes-enabled-setting" />
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 7V4h3"></path>
+                      <path d="M20 7V4h-3"></path>
+                      <path d="M4 17v3h3"></path>
+                      <path d="M20 17v3h-3"></path>
+                      <path d="M9 12h6"></path>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="focus-mode-setting" data-i18n="enableFocusMode">Enable focus mode</label>
+                      <input type="checkbox" id="focus-mode-setting" />
                     </div>
                   </div>
                 </div>

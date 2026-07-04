@@ -307,6 +307,8 @@ globalThis.window.i18n = {
       saturday: 'Sa',
       addTodoPlaceholder: 'Add a todo...',
       simpleMode: 'Simple',
+      focusMode: 'Focus',
+      focusModeExit: 'Exit Focus Mode',
       searchPlaceholder: 'Search or enter URL...',
       recentSearches: 'Recent searches',
       clearSearchHistory: 'Clear history',
@@ -446,6 +448,7 @@ globalThis.window.i18n = {
       priorityHigh: 'High',
       shortcutFocusSearch: 'Focus Search',
       shortcutOpenSettings: 'Open Settings',
+      shortcutToggleFocusMode: 'Toggle Focus Mode',
       shortcutToggleSimpleMode: 'Toggle Simple Mode',
       shortcutToggleTodo: 'Toggle Todo List',
       shortcutToggleNotes: 'Toggle Notes',
@@ -481,6 +484,7 @@ globalThis.window.i18n = {
       weatherHumidity: 'Humidity',
       weatherEnablePrompt: 'Enable the weather widget in settings to view weather data.',
       weatherWidgetCloseLabel: 'Close weather widget',
+      enableFocusMode: 'Enable focus mode',
       todoSubtasks: 'Subtasks',
       todoAddSubtask: 'Add subtask...',
       todoSubtaskDelete: 'Delete subtask',
@@ -593,6 +597,7 @@ document.body.appendChild(createStubElement('select', 'date-font-picker'));
 document.body.appendChild(createStubElement('select', 'date-format-picker'));
 document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'focus-mode-setting'));
 const leadTimeSelect = document.createElement('select');
 leadTimeSelect.id = 'todo-reminder-lead-time';
 document.body.appendChild(leadTimeSelect);
@@ -601,6 +606,7 @@ document.body.appendChild(createStubElement('img', 'bg-thumbnail'));
 document.body.appendChild(createStubElement('img', 'bg-full'));
 document.body.appendChild(createStubElement('img', 'bg-transition-overlay'));
 document.body.appendChild(createStubElement('video', 'bg-video'));
+document.body.appendChild(createStubElement('button', 'focus-mode-indicator'));
 
 // Todo elements required for initTodo to run
 document.body.appendChild(createStubElement('input', 'todo-input'));
