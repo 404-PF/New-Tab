@@ -3,8 +3,16 @@ import { injectScript } from './helpers/inject-script.js';
 
 function getNotes() {
   try {
-    return JSON.parse(localStorage.getItem('notes') || '[]');
-  } catch {
+    const raw = localStorage.getItem('notes');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      console.warn('Invalid notes data in localStorage: expected array, resetting to empty list');
+      return [];
+    }
+    return parsed;
+  } catch (e) {
+    console.warn('Failed to parse notes from localStorage, resetting to empty list:', e);
     return [];
   }
 }
