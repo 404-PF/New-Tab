@@ -46,6 +46,7 @@
     'src/features/todo.js',
     'src/features/notes.js',
     'src/features/simple-mode.js',
+    'src/features/focus-mode.js',
     'src/ai/network-detector.js',
     'src/ai/offline-mode.js',
     'src/ai/openrouter.js',

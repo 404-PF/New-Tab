@@ -113,6 +113,10 @@
     "message": "Open Settings",
     "description": "Label for the open settings shortcut action"
   },
+  "shortcutToggleFocusMode": {
+    "message": "Toggle Focus Mode",
+    "description": "Label for the toggle focus mode shortcut action"
+  },
   "shortcutToggleSimpleMode": {
     "message": "Toggle Simple Mode",
     "description": "Label for the toggle simple mode shortcut action"
@@ -132,6 +136,14 @@
   "shortcutPressAKey": {
     "message": "Press a key...",
     "description": "Prompt shown when rebinding a keyboard shortcut"
+  },
+  "focusMode": {
+    "message": "Focus",
+    "description": "Label for focus mode"
+  },
+  "enableFocusMode": {
+    "message": "Enable focus mode",
+    "description": "Label for the focus mode setting"
   },
   "notesPlaceholder": {
     "message": "Type your note here...",
@@ -184,5 +196,9 @@
   "uploadLiveBackground": {
     "message": "Upload Live Background",
     "description": "Tooltip for the upload live background video button"
+  },
+  "focusModeExit": {
+    "message": "Exit Focus Mode",
+    "description": "Label for exiting focus mode"
   }
 }

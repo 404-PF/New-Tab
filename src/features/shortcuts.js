@@ -8,6 +8,7 @@
   const DEFAULT_SHORTCUTS = {
     focusSearch: '/',
     openSettings: 'Ctrl+,',
+    toggleFocusMode: 'Ctrl+Shift+F',
     toggleSimpleMode: 'Ctrl+Shift+S',
     toggleTodo: 'Ctrl+Shift+T',
     toggleNotes: 'Ctrl+Shift+N',
@@ -17,6 +18,7 @@
   const ACTION_LABEL_KEYS = {
     focusSearch: 'shortcutFocusSearch',
     openSettings: 'shortcutOpenSettings',
+    toggleFocusMode: 'shortcutToggleFocusMode',
     toggleSimpleMode: 'shortcutToggleSimpleMode',
     toggleTodo: 'shortcutToggleTodo',
     toggleNotes: 'shortcutToggleNotes',
@@ -142,6 +144,29 @@
     }
   }
 
+  function toggleFocusMode() {
+    if (typeof window.toggleFocusMode === 'function') {
+      window.toggleFocusMode();
+      return;
+    }
+
+    let current = false;
+    try {
+      current = localStorage.getItem('focusMode') === 'true';
+    } catch (e) {
+      console.warn('Failed to read focusMode:', e);
+    }
+    try {
+      localStorage.setItem('focusMode', current ? 'false' : 'true');
+    } catch (e) {
+      console.warn('Failed to save focusMode:', e);
+    }
+
+    if (typeof window.applyFocusMode === 'function') {
+      window.applyFocusMode();
+    }
+  }
+
   function toggleTodo() {
     let current = true;
     try {
@@ -224,6 +249,9 @@
       case 'toggleSimpleMode':
         toggleSimpleMode();
         break;
+      case 'toggleFocusMode':
+        toggleFocusMode();
+        break;
       case 'toggleTodo':
         toggleTodo();
         break;
@@ -246,9 +274,10 @@
       return;
     }
 
-    if (isTextInputFocused()) return;
-
     const combo = formatCombo(e);
+
+    if (isTextInputFocused() && combo !== activeShortcuts.toggleFocusMode) return;
+
     for (const action in activeShortcuts) {
       if (activeShortcuts[action] === combo) {
         e.preventDefault();
