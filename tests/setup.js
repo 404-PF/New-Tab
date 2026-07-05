@@ -307,6 +307,8 @@ globalThis.window.i18n = {
       saturday: 'Sa',
       addTodoPlaceholder: 'Add a todo...',
       simpleMode: 'Simple',
+      focusMode: 'Focus',
+      focusModeExit: 'Exit Focus Mode',
       searchPlaceholder: 'Search or enter URL...',
       recentSearches: 'Recent searches',
       clearSearchHistory: 'Clear history',
@@ -461,6 +463,7 @@ globalThis.window.i18n = {
       priorityHigh: 'High',
       shortcutFocusSearch: 'Focus Search',
       shortcutOpenSettings: 'Open Settings',
+      shortcutToggleFocusMode: 'Toggle Focus Mode',
       shortcutToggleSimpleMode: 'Toggle Simple Mode',
       shortcutToggleTodo: 'Toggle Todo List',
       shortcutToggleNotes: 'Toggle Notes',
@@ -496,6 +499,7 @@ globalThis.window.i18n = {
       weatherHumidity: 'Humidity',
       weatherEnablePrompt: 'Enable the weather widget in settings to view weather data.',
       weatherWidgetCloseLabel: 'Close weather widget',
+      enableFocusMode: 'Enable focus mode',
       todoSubtasks: 'Subtasks',
       todoAddSubtask: 'Add subtask...',
       todoSubtaskDelete: 'Delete subtask',
@@ -609,6 +613,7 @@ document.body.appendChild(createStubElement('select', 'date-format-picker'));
 document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'bookmarks-bar-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'focus-mode-setting'));
 const leadTimeSelect = document.createElement('select');
 leadTimeSelect.id = 'todo-reminder-lead-time';
 document.body.appendChild(leadTimeSelect);
@@ -632,9 +637,10 @@ document.body.appendChild(createStubElement('input', 'bookmark-url-input'));
 document.body.appendChild(createStubElement('input', 'bookmark-favicon-input'));
 document.body.appendChild(createStubElement('input', 'bookmark-folder-input'));
 document.body.appendChild(createStubElement('datalist', 'bookmark-folder-list'));
-  document.body.appendChild(createStubElement('button', 'bookmark-modal-cancel'));
-  document.body.appendChild(createStubElement('button', 'bookmark-modal-save'));
-  document.body.appendChild(createStubElement('div', 'bookmark-validation-message'));
+document.body.appendChild(createStubElement('button', 'bookmark-modal-cancel'));
+document.body.appendChild(createStubElement('button', 'bookmark-modal-save'));
+document.body.appendChild(createStubElement('div', 'bookmark-validation-message'));
+document.body.appendChild(createStubElement('button', 'focus-mode-indicator'));
 
 // Todo elements required for initTodo to run
 document.body.appendChild(createStubElement('input', 'todo-input'));

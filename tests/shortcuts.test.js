@@ -21,6 +21,7 @@ describe('Shortcuts - defaults', () => {
     const shortcuts = Shortcuts.load();
     expect(shortcuts.focusSearch).toBe('/');
     expect(shortcuts.openSettings).toBe('Ctrl+,');
+    expect(shortcuts.toggleFocusMode).toBe('Ctrl+Shift+F');
     expect(shortcuts.toggleSimpleMode).toBe('Ctrl+Shift+S');
     expect(shortcuts.toggleTodo).toBe('Ctrl+Shift+T');
     expect(shortcuts.toggleNotes).toBe('Ctrl+Shift+N');
@@ -32,6 +33,7 @@ describe('Shortcuts - defaults', () => {
     const shortcuts = Shortcuts.load();
     expect(shortcuts.focusSearch).toBe('Ctrl+K');
     expect(shortcuts.openSettings).toBe('Ctrl+,');
+    expect(shortcuts.toggleFocusMode).toBe('Ctrl+Shift+F');
     expect(shortcuts.toggleSimpleMode).toBe('Ctrl+Shift+S');
   });
 
@@ -287,6 +289,18 @@ describe('Shortcuts - executeAction', () => {
     delete window.applySimpleMode;
   });
 
+  it('toggleFocusMode toggles localStorage and calls applyFocusMode', () => {
+    let applyCalled = false;
+    window.applyFocusMode = () => { applyCalled = true; };
+    localStorage.setItem('focusMode', 'false');
+
+    Shortcuts.executeAction('toggleFocusMode');
+    expect(localStorage.getItem('focusMode')).toBe('true');
+    expect(applyCalled).toBe(true);
+
+    delete window.applyFocusMode;
+  });
+
   it('toggleTodo toggles localStorage and calls applyTodoEnabled', () => {
     let applyCalled = false;
     window.applyTodoEnabled = () => { applyCalled = true; };
@@ -358,6 +372,27 @@ describe('Shortcuts - handleKeydown', () => {
     document.dispatchEvent(event);
 
     expect(modal.classList.contains('modal-open')).toBe(true);
+  });
+
+  it('toggleFocusMode still works when the search input is focused', () => {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'F',
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+
+    expect(localStorage.getItem('focusMode')).toBe('true');
+
+    input.remove();
   });
 });
 

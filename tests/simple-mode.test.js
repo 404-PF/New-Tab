@@ -119,6 +119,22 @@ describe('simple-mode', () => {
     window.removeEventListener('simpleModeChanged', spy);
   });
 
+  it('simpleModeChanged reports the effective rendered state when focus mode is active', () => {
+    const spy = vi.fn();
+    window.loadFocusMode = () => true;
+    window.addEventListener('simpleModeChanged', spy);
+
+    localStorage.setItem('simpleMode', 'true');
+    applySimpleMode();
+
+    expect(document.body.classList.contains('simple-mode')).toBe(false);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][0].detail).toEqual({ enabled: false });
+
+    window.removeEventListener('simpleModeChanged', spy);
+    delete window.loadFocusMode;
+  });
+
   it('simpleModeChanged event is a CustomEvent', () => {
     let receivedEvent = null;
     const handler = (e) => { receivedEvent = e; };
