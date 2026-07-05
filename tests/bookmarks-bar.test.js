@@ -4,12 +4,44 @@ beforeAll(() => {
   injectScript('src/features/bookmarks-bar.js');
 });
 
+function ensureBookmarksDomStructure() {
+  const bar = document.getElementById('bookmarks-bar');
+  const content = document.getElementById('bookmarks-bar-content');
+  const emptyState = document.getElementById('bookmarks-empty-state');
+  const folderMenu = document.getElementById('bookmarks-folder-menu');
+  const addButton = document.getElementById('bookmarks-add-button');
+
+  if (bar && content && content.parentElement !== bar) bar.appendChild(content);
+  if (bar && addButton && addButton.parentElement !== bar) bar.appendChild(addButton);
+  if (bar && emptyState && emptyState.parentElement !== bar) bar.appendChild(emptyState);
+  if (bar && folderMenu && folderMenu.parentElement !== bar) bar.appendChild(folderMenu);
+}
+
 beforeEach(() => {
+  ensureBookmarksDomStructure();
   localStorage.removeItem('bookmarks');
   localStorage.removeItem('bookmarksBarEnabled');
   localStorage.removeItem('openAppsInNewTab');
   window.BookmarksBar.render();
 });
+
+function openContextMenuForBookmark(selector = '.bookmark-pill') {
+  const bookmark = document.querySelector(selector);
+  bookmark.dispatchEvent(new MouseEvent('contextmenu', {
+    bubbles: true,
+    cancelable: true,
+    pageX: 20,
+    pageY: 30
+  }));
+  return document.getElementById('bookmarks-context-menu');
+}
+
+function clickContextMenuAction(menu, action) {
+  menu.querySelector(`[data-action="${action}"]`).dispatchEvent(new MouseEvent('click', {
+    bubbles: true,
+    cancelable: true
+  }));
+}
 
 describe('BookmarksBar', () => {
   it('loads empty data by default', () => {
@@ -209,16 +241,64 @@ describe('BookmarksBar', () => {
 
     document.querySelector('.bookmark-folder-pill').click();
 
-    const folderBookmark = document.querySelector('#bookmarks-folder-menu .bookmark-pill');
-    folderBookmark.dispatchEvent(new MouseEvent('contextmenu', {
-      bubbles: true,
-      cancelable: true,
-      pageX: 20,
-      pageY: 30
-    }));
-
-    const menu = document.getElementById('bookmarks-context-menu');
+    const menu = openContextMenuForBookmark('#bookmarks-folder-menu .bookmark-pill');
     expect(menu).not.toBeNull();
     expect(menu.style.display).toBe('block');
+  });
+
+  it('opens edit modal from the bookmark context menu', () => {
+    localStorage.setItem('bookmarksBarEnabled', 'true');
+    localStorage.setItem('bookmarks', JSON.stringify({
+      items: [
+        { id: 'bookmark-1', name: 'Docs', url: 'https://example.com/docs', faviconUrl: '', folderId: null }
+      ],
+      folders: []
+    }));
+
+    window.BookmarksBar.applyEnabled();
+
+    const menu = openContextMenuForBookmark();
+    clickContextMenuAction(menu, 'edit');
+
+    expect(document.getElementById('bookmark-modal').classList.contains('modal-open')).toBe(true);
+    expect(document.getElementById('bookmark-name-input').value).toBe('Docs');
+  });
+
+  it('deletes a bookmark from the context menu', () => {
+    localStorage.setItem('bookmarksBarEnabled', 'true');
+    localStorage.setItem('bookmarks', JSON.stringify({
+      items: [
+        { id: 'bookmark-1', name: 'Docs', url: 'https://example.com/docs', faviconUrl: '', folderId: null }
+      ],
+      folders: []
+    }));
+
+    window.BookmarksBar.applyEnabled();
+
+    const menu = openContextMenuForBookmark();
+    clickContextMenuAction(menu, 'delete');
+
+    expect(window.BookmarksBar.loadData()).toEqual({ items: [], folders: [] });
+  });
+
+  it('reorders bookmarks from the context menu move actions', () => {
+    localStorage.setItem('bookmarksBarEnabled', 'true');
+    localStorage.setItem('bookmarks', JSON.stringify({
+      items: [
+        { id: 'bookmark-1', name: 'One', url: 'https://example.com/1', faviconUrl: '', folderId: null },
+        { id: 'bookmark-2', name: 'Two', url: 'https://example.com/2', faviconUrl: '', folderId: null }
+      ],
+      folders: []
+    }));
+
+    window.BookmarksBar.applyEnabled();
+
+    let menu = openContextMenuForBookmark('.bookmark-pill[data-bookmark-id="bookmark-1"]');
+    clickContextMenuAction(menu, 'move-down');
+    expect(window.BookmarksBar.loadData().items.map(item => item.id)).toEqual(['bookmark-2', 'bookmark-1']);
+
+    menu = openContextMenuForBookmark('.bookmark-pill[data-bookmark-id="bookmark-1"]');
+    clickContextMenuAction(menu, 'move-up');
+    expect(window.BookmarksBar.loadData().items.map(item => item.id)).toEqual(['bookmark-1', 'bookmark-2']);
   });
 });

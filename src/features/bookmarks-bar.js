@@ -229,9 +229,9 @@
       if (action === 'delete') item.classList.add('delete-item');
       item.dataset.action = action;
       item.textContent = label;
-      item.addEventListener('click', onContextMenuAction);
       contextMenuEl.appendChild(item);
     });
+    contextMenuEl.addEventListener('click', onContextMenuAction);
     document.body.appendChild(contextMenuEl);
     return contextMenuEl;
   }
@@ -252,7 +252,9 @@
 
   function onContextMenuAction(event) {
     if (!contextMenuState) return;
-    const action = event.currentTarget.dataset.action;
+    const actionEl = event.target.closest('.context-menu-item');
+    if (!actionEl || !contextMenuEl || !contextMenuEl.contains(actionEl)) return;
+    const action = actionEl.dataset.action;
     const bookmarkId = contextMenuState.bookmarkId;
     if (action === 'edit') {
       openBookmarkModal(bookmarkId);
