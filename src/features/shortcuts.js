@@ -274,9 +274,10 @@
       return;
     }
 
-    if (isTextInputFocused()) return;
-
     const combo = formatCombo(e);
+
+    if (isTextInputFocused() && combo !== activeShortcuts.toggleFocusMode) return;
+
     for (const action in activeShortcuts) {
       if (activeShortcuts[action] === combo) {
         e.preventDefault();

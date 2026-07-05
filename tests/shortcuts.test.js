@@ -373,6 +373,27 @@ describe('Shortcuts - handleKeydown', () => {
 
     expect(modal.classList.contains('modal-open')).toBe(true);
   });
+
+  it('toggleFocusMode still works when the search input is focused', () => {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'F',
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+
+    expect(localStorage.getItem('focusMode')).toBe('true');
+
+    input.remove();
+  });
 });
 
 describe('Shortcuts - modal closing priority', () => {
