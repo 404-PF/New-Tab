@@ -57,7 +57,7 @@
             </svg>
           </button>
         </div>
-        <div id="bookmarks-empty-state" class="bookmarks-empty-state">Click + to add your first bookmark</div>
+        <div id="bookmarks-empty-state" class="bookmarks-empty-state" data-i18n="bookmarksEmptyState">Click + to add your first bookmark</div>
         <div id="bookmarks-folder-menu" class="bookmarks-folder-menu" hidden></div>
       </section>
 
@@ -361,7 +361,7 @@
   <div id="bookmark-modal" class="bookmark-modal">
     <div class="bookmark-modal-panel">
       <div class="bookmark-modal-header">
-        <h3 id="bookmark-modal-title">Add Bookmark</h3>
+        <h3 id="bookmark-modal-title" data-i18n="bookmarkAddTitle">Add Bookmark</h3>
         <button type="button" id="bookmark-modal-close" class="bookmark-modal-close" aria-label="Close">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -370,19 +370,20 @@
         </button>
       </div>
       <div class="bookmark-modal-body">
-        <label for="bookmark-name-input">Name</label>
+        <label for="bookmark-name-input" data-i18n="bookmarkName">Name</label>
         <input type="text" id="bookmark-name-input" maxlength="60" />
-        <label for="bookmark-url-input">URL</label>
+        <label for="bookmark-url-input" data-i18n="bookmarkUrl">URL</label>
         <input type="url" id="bookmark-url-input" placeholder="https://example.com" />
-        <label for="bookmark-favicon-input">Favicon URL</label>
+        <label for="bookmark-favicon-input" data-i18n="bookmarkFavicon">Favicon URL</label>
         <input type="url" id="bookmark-favicon-input" placeholder="Optional" />
-        <label for="bookmark-folder-input">Folder</label>
+        <label for="bookmark-folder-input" data-i18n="bookmarkFolder">Folder</label>
         <input list="bookmark-folder-list" id="bookmark-folder-input" placeholder="Optional" />
         <datalist id="bookmark-folder-list"></datalist>
+        <div id="bookmark-validation-message" class="bookmark-validation-message"></div>
       </div>
       <div class="bookmark-modal-actions">
-        <button type="button" id="bookmark-modal-cancel" class="ai-confirm-cancel">Cancel</button>
-        <button type="button" id="bookmark-modal-save" class="ai-confirm-primary">Save</button>
+        <button type="button" id="bookmark-modal-cancel" class="ai-confirm-cancel" data-i18n="cancel">Cancel</button>
+        <button type="button" id="bookmark-modal-save" class="ai-confirm-primary" data-i18n="save">Save</button>
       </div>
     </div>
   </div>
@@ -444,7 +445,7 @@
                       <path d="M16 17h4"></path>
                     </svg>
                     <div class="setting-content">
-                      <label for="bookmarks-bar-enabled-setting">Bookmarks bar</label>
+                      <label for="bookmarks-bar-enabled-setting" data-i18n="bookmarksBar">Bookmarks bar</label>
                       <input type="checkbox" id="bookmarks-bar-enabled-setting" />
                     </div>
                   </div>

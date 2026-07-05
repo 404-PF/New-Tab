@@ -38,6 +38,7 @@
   --modal-min-height: 500px;
   --overlay-max-height: calc(100vh - 225px);
   /* Shared overlay layers keep drag feedback below context menus. */
+  --z-modal: 1003;
   --z-drag-overlay: 3000;
   --z-context-menu: 10003;
   --icon-radius: 35%;

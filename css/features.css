@@ -834,7 +834,7 @@ body.light-theme .upload-bg-btn:hover {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
-  z-index: 1003;
+  z-index: var(--z-modal);
 }
 
 .bookmark-modal.modal-open {
@@ -880,6 +880,24 @@ body.light-theme .upload-bg-btn:hover {
   border: 0;
   color: rgba(255, 255, 255, 0.78);
   cursor: pointer;
+}
+
+.bookmark-validation-message {
+  font-size: 12px;
+  padding: 8px 12px;
+  margin-top: -4px;
+  border-radius: 6px;
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.2);
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.2s ease;
+}
+
+.bookmark-validation-message.show {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 body.light-theme .bookmarks-empty-state {
@@ -2407,7 +2425,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  z-index: 1003;
+  z-index: var(--z-modal);
   align-items: center;
   justify-content: center;
   opacity: 0;
@@ -2540,7 +2558,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  z-index: 1003;
+  z-index: var(--z-modal);
   align-items: center;
   justify-content: center;
   opacity: 0;
@@ -2757,7 +2775,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  z-index: 1003;
+  z-index: var(--z-modal);
   align-items: center;
   justify-content: center;
   opacity: 0;

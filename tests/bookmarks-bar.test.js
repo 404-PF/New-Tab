@@ -1,4 +1,3 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -91,5 +90,107 @@ describe('BookmarksBar', () => {
     window.BookmarksBar.deleteBookmark('bookmark-1');
 
     expect(window.BookmarksBar.loadData()).toEqual({ items: [], folders: [] });
+  });
+
+  it('creates a bookmark through the modal flow', () => {
+    localStorage.setItem('bookmarksBarEnabled', 'true');
+    window.BookmarksBar.applyEnabled();
+
+    window.BookmarksBar.openModal(null);
+
+    const modal = document.getElementById('bookmark-modal');
+    expect(modal.classList.contains('modal-open')).toBe(true);
+
+    document.getElementById('bookmark-name-input').value = 'Test Site';
+    document.getElementById('bookmark-url-input').value = 'https://test.example.com';
+    document.getElementById('bookmark-favicon-input').value = '';
+    document.getElementById('bookmark-folder-input').value = '';
+
+    document.getElementById('bookmark-modal-save').click();
+
+    const data = window.BookmarksBar.loadData();
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].name).toBe('Test Site');
+    expect(data.items[0].url).toBe('https://test.example.com/');
+    expect(modal.classList.contains('modal-open')).toBe(false);
+  });
+
+  it('updates an existing bookmark through the modal flow', () => {
+    localStorage.setItem('bookmarks', JSON.stringify({
+      items: [
+        { id: 'bookmark-1', name: 'Old Name', url: 'https://old.example.com', faviconUrl: '', folderId: null }
+      ],
+      folders: []
+    }));
+
+    window.BookmarksBar.openModal('bookmark-1');
+
+    document.getElementById('bookmark-name-input').value = 'New Name';
+    document.getElementById('bookmark-url-input').value = 'https://new.example.com';
+    document.getElementById('bookmark-favicon-input').value = '';
+    document.getElementById('bookmark-folder-input').value = '';
+
+    document.getElementById('bookmark-modal-save').click();
+
+    const data = window.BookmarksBar.loadData();
+    expect(data.items[0].name).toBe('New Name');
+    expect(data.items[0].url).toBe('https://new.example.com/');
+  });
+
+  it('shows validation when bookmark name is empty', () => {
+    window.BookmarksBar.openModal(null);
+
+    document.getElementById('bookmark-name-input').value = '';
+    document.getElementById('bookmark-url-input').value = 'https://example.com';
+    document.getElementById('bookmark-favicon-input').value = '';
+    document.getElementById('bookmark-folder-input').value = '';
+
+    document.getElementById('bookmark-modal-save').click();
+
+    const msg = document.getElementById('bookmark-validation-message');
+    expect(msg.classList.contains('show')).toBe(true);
+    expect(msg.textContent).toBeTruthy();
+
+    const data = window.BookmarksBar.loadData();
+    expect(data.items).toHaveLength(0);
+  });
+
+  it('shows validation when bookmark URL is empty', () => {
+    window.BookmarksBar.openModal(null);
+
+    document.getElementById('bookmark-name-input').value = 'Test';
+    document.getElementById('bookmark-url-input').value = '';
+    document.getElementById('bookmark-favicon-input').value = '';
+    document.getElementById('bookmark-folder-input').value = '';
+
+    document.getElementById('bookmark-modal-save').click();
+
+    const msg = document.getElementById('bookmark-validation-message');
+    expect(msg.classList.contains('show')).toBe(true);
+  });
+
+  it('rejects non-http URLs', () => {
+    localStorage.setItem('bookmarksBarEnabled', 'true');
+    localStorage.setItem('bookmarks', JSON.stringify({
+      items: [
+        { id: 'bookmark-1', name: 'Bad', url: 'javascript:alert(1)', faviconUrl: '', folderId: null }
+      ],
+      folders: []
+    }));
+
+    window.BookmarksBar.applyEnabled();
+
+    expect(document.querySelectorAll('.bookmark-pill')).toHaveLength(0);
+  });
+
+  it('closes modal on Escape key', () => {
+    window.BookmarksBar.openModal(null);
+
+    const modal = document.getElementById('bookmark-modal');
+    expect(modal.classList.contains('modal-open')).toBe(true);
+
+    modal.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(modal.classList.contains('modal-open')).toBe(false);
   });
 });

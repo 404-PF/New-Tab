@@ -184,5 +184,61 @@
   "uploadLiveBackground": {
     "message": "Upload Live Background",
     "description": "Tooltip for the upload live background video button"
+  },
+  "bookmarksEmptyState": {
+    "message": "Click + to add your first bookmark",
+    "description": "Empty state text for the bookmarks bar"
+  },
+  "bookmarkAddTitle": {
+    "message": "Add Bookmark",
+    "description": "Title for the add bookmark modal"
+  },
+  "bookmarkEditTitle": {
+    "message": "Edit Bookmark",
+    "description": "Title for the edit bookmark modal"
+  },
+  "bookmarkName": {
+    "message": "Name",
+    "description": "Label for bookmark name input"
+  },
+  "bookmarkUrl": {
+    "message": "URL",
+    "description": "Label for bookmark URL input"
+  },
+  "bookmarkFavicon": {
+    "message": "Favicon URL",
+    "description": "Label for bookmark favicon URL input"
+  },
+  "bookmarkFolder": {
+    "message": "Folder",
+    "description": "Label for bookmark folder input"
+  },
+  "bookmarkEdit": {
+    "message": "Edit",
+    "description": "Context menu action to edit a bookmark"
+  },
+  "bookmarkDelete": {
+    "message": "Delete",
+    "description": "Context menu action to delete a bookmark"
+  },
+  "bookmarkMoveUp": {
+    "message": "Move Up",
+    "description": "Context menu action to move a bookmark up"
+  },
+  "bookmarkMoveDown": {
+    "message": "Move Down",
+    "description": "Context menu action to move a bookmark down"
+  },
+  "bookmarkNameRequired": {
+    "message": "Please enter a name for the bookmark",
+    "description": "Validation message when bookmark name is empty"
+  },
+  "bookmarkUrlRequired": {
+    "message": "Please enter a valid URL (https://...)",
+    "description": "Validation message when bookmark URL is empty or invalid"
+  },
+  "bookmarkLimitReached": {
+    "message": "Maximum number of bookmarks reached",
+    "description": "Validation message when bookmark limit is reached"
   }
 }

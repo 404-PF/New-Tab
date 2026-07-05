@@ -5,7 +5,6 @@
   const ENABLED_KEY = 'bookmarksBarEnabled';
   const EMPTY_DATA = Object.freeze({ items: [], folders: [] });
   const MAX_BOOKMARKS = 20;
-  const GOOGLE_FAVICON_PREFIX = 'https://www.google.com/s2/favicons?domain=';
 
   const modalState = {
     editingId: null
@@ -57,7 +56,18 @@
   }
 
   function isBookmarkRecord(item) {
-    return item && typeof item === 'object' && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.url === 'string';
+    if (!item || typeof item !== 'object' || typeof item.id !== 'string' || typeof item.name !== 'string' || typeof item.url !== 'string') {
+      return false;
+    }
+    try {
+      const parsed = new URL(item.url);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+    return true;
   }
 
   function isFolderRecord(folder) {
@@ -71,12 +81,7 @@
   function faviconForBookmark(bookmark) {
     const explicit = safeTrim(bookmark.faviconUrl);
     if (explicit) return explicit;
-    try {
-      const parsed = new URL(bookmark.url);
-      return GOOGLE_FAVICON_PREFIX + encodeURIComponent(parsed.hostname) + '&sz=16';
-    } catch {
-      return '';
-    }
+    return '';
   }
 
   function getRootItems(data) {
@@ -211,11 +216,12 @@
     contextMenuEl = document.createElement('div');
     contextMenuEl.id = 'bookmarks-context-menu';
     contextMenuEl.className = 'app-context-menu bookmarks-context-menu';
+    const t = (key, fallback) => window.i18n ? window.i18n.t(key) : fallback;
     const actions = [
-      ['edit', 'Edit'],
-      ['delete', 'Delete'],
-      ['move-up', 'Move Up'],
-      ['move-down', 'Move Down']
+      ['edit', t('bookmarkEdit', 'Edit')],
+      ['delete', t('bookmarkDelete', 'Delete')],
+      ['move-up', t('bookmarkMoveUp', 'Move Up')],
+      ['move-down', t('bookmarkMoveDown', 'Move Down')]
     ];
     actions.forEach(([action, label]) => {
       const item = document.createElement('div');
@@ -293,6 +299,31 @@
     data.folders = data.folders.filter(folder => usedFolderIds.has(folder.id));
   }
 
+  function handleModalKeydown(event) {
+    if (event.key === 'Escape') {
+      closeBookmarkModal();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const modal = document.getElementById('bookmark-modal');
+    if (!modal) return;
+    const focusable = modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey) {
+      if (document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
   function openBookmarkModal(bookmarkId) {
     const modal = document.getElementById('bookmark-modal');
     const title = document.getElementById('bookmark-modal-title');
@@ -306,7 +337,9 @@
     const data = loadBookmarksData();
     const current = bookmarkId ? data.items.find(item => item.id === bookmarkId) : null;
     modalState.editingId = bookmarkId || null;
-    title.textContent = current ? 'Edit Bookmark' : 'Add Bookmark';
+    title.textContent = current
+      ? (window.i18n ? window.i18n.t('bookmarkEditTitle') : 'Edit Bookmark')
+      : (window.i18n ? window.i18n.t('bookmarkAddTitle') : 'Add Bookmark');
     nameInput.value = current ? current.name : '';
     urlInput.value = current ? current.url : '';
     faviconInput.value = current ? (current.faviconUrl || '') : '';
@@ -320,14 +353,25 @@
       folderList.appendChild(option);
     });
     modal.classList.add('modal-open');
+    showBookmarkValidation('');
     nameInput.focus();
+    modal.addEventListener('keydown', handleModalKeydown);
   }
 
   function closeBookmarkModal() {
     const modal = document.getElementById('bookmark-modal');
     if (!modal) return;
+    modal.removeEventListener('keydown', handleModalKeydown);
     modal.classList.remove('modal-open');
     modalState.editingId = null;
+  }
+
+  function showBookmarkValidation(message) {
+    const el = document.getElementById('bookmark-validation-message');
+    if (!el) return;
+    const t = (key, fallback) => window.i18n ? window.i18n.t(key) : fallback;
+    el.textContent = message ? t(message, message) : '';
+    el.classList.toggle('show', !!message);
   }
 
   function saveBookmarkFromModal() {
@@ -340,13 +384,25 @@
     const name = safeTrim(nameInput.value);
     const url = normalizeUrl(urlInput.value);
     const faviconUrl = safeTrim(faviconInput.value);
-    if (!name || !url) return;
 
-    const data = loadBookmarksData();
-    if (!modalState.editingId && data.items.length >= MAX_BOOKMARKS) {
+    if (!name) {
+      showBookmarkValidation('bookmarkNameRequired');
+      nameInput.focus();
+      return;
+    }
+    if (!url) {
+      showBookmarkValidation('bookmarkUrlRequired');
+      urlInput.focus();
       return;
     }
 
+    const data = loadBookmarksData();
+    if (!modalState.editingId && data.items.length >= MAX_BOOKMARKS) {
+      showBookmarkValidation('bookmarkLimitReached');
+      return;
+    }
+
+    showBookmarkValidation('');
     const folderId = upsertFolder(data, folderInput.value);
     if (modalState.editingId) {
       const existing = data.items.find(item => item.id === modalState.editingId);
@@ -415,7 +471,6 @@
     const cancelButton = document.getElementById('bookmark-modal-cancel');
     const closeButton = document.getElementById('bookmark-modal-close');
     const modal = document.getElementById('bookmark-modal');
-    const enableCheckbox = document.getElementById('bookmarks-bar-enabled-setting');
     const bar = document.getElementById('bookmarks-bar');
     const folderMenu = document.getElementById('bookmarks-folder-menu');
 
@@ -430,12 +485,6 @@
     if (modal) {
       modal.addEventListener('click', function (event) {
         if (event.target === modal) closeBookmarkModal();
-      });
-    }
-    if (enableCheckbox) {
-      enableCheckbox.addEventListener('change', function () {
-        localStorage.setItem(ENABLED_KEY, this.checked ? 'true' : 'false');
-        applyBookmarksBarEnabled();
       });
     }
     if (bar) {

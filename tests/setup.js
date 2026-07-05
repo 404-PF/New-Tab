@@ -349,6 +349,20 @@ globalThis.window.i18n = {
       generalSettingsDesc: 'Configure basic app behavior',
       openNewTab: 'Open apps in a new tab',
       bookmarksBar: 'Bookmarks bar',
+      bookmarksEmptyState: 'Click + to add your first bookmark',
+      bookmarkAddTitle: 'Add Bookmark',
+      bookmarkEditTitle: 'Edit Bookmark',
+      bookmarkName: 'Name',
+      bookmarkUrl: 'URL',
+      bookmarkFavicon: 'Favicon URL',
+      bookmarkFolder: 'Folder',
+      bookmarkEdit: 'Edit',
+      bookmarkDelete: 'Delete',
+      bookmarkMoveUp: 'Move Up',
+      bookmarkMoveDown: 'Move Down',
+      bookmarkNameRequired: 'Please enter a name for the bookmark',
+      bookmarkUrlRequired: 'Please enter a valid URL (https://...)',
+      bookmarkLimitReached: 'Maximum number of bookmarks reached',
       enableTodoList: 'Enable todo list',
       backgroundSettingsDesc: 'Choose your background image',
       liveBackground: 'Live Background',
@@ -618,8 +632,9 @@ document.body.appendChild(createStubElement('input', 'bookmark-url-input'));
 document.body.appendChild(createStubElement('input', 'bookmark-favicon-input'));
 document.body.appendChild(createStubElement('input', 'bookmark-folder-input'));
 document.body.appendChild(createStubElement('datalist', 'bookmark-folder-list'));
-document.body.appendChild(createStubElement('button', 'bookmark-modal-cancel'));
-document.body.appendChild(createStubElement('button', 'bookmark-modal-save'));
+  document.body.appendChild(createStubElement('button', 'bookmark-modal-cancel'));
+  document.body.appendChild(createStubElement('button', 'bookmark-modal-save'));
+  document.body.appendChild(createStubElement('div', 'bookmark-validation-message'));
 
 // Todo elements required for initTodo to run
 document.body.appendChild(createStubElement('input', 'todo-input'));
