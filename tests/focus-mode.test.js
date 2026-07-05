@@ -1,6 +1,7 @@
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  injectScript('src/features/simple-mode.js');
   injectScript('src/features/focus-mode.js');
 });
 
@@ -32,8 +33,26 @@ beforeEach(() => {
   indicator.removeAttribute('aria-label');
   indicator.removeAttribute('aria-pressed');
 
+  let searchBar = document.querySelector('.search-bar');
+  if (!searchBar) {
+    searchBar = document.createElement('div');
+    searchBar.className = 'search-bar';
+    document.body.appendChild(searchBar);
+  }
+
+  let simpleCheckbox = document.getElementById('simple-mode-checkbox');
+  if (!simpleCheckbox) {
+    simpleCheckbox = document.createElement('input');
+    simpleCheckbox.type = 'checkbox';
+    simpleCheckbox.id = 'simple-mode-checkbox';
+    document.body.appendChild(simpleCheckbox);
+  }
+
   document.body.classList.remove('focus-mode');
+  document.body.classList.remove('simple-mode');
   document.body.removeAttribute('data-focus-mode');
+  searchBar.classList.remove('visible');
+  localStorage.removeItem('simpleMode');
 });
 
 describe('focus-mode', () => {
@@ -93,6 +112,27 @@ describe('focus-mode', () => {
 
     toggleFocusMode();
     expect(localStorage.getItem('focusMode')).toBe('false');
+  });
+
+  it('suspends simple mode visuals while focus mode is enabled', () => {
+    const searchBar = document.querySelector('.search-bar');
+
+    localStorage.setItem('simpleMode', 'true');
+    window.applySimpleMode();
+    expect(document.body.classList.contains('simple-mode')).toBe(true);
+    expect(searchBar.classList.contains('visible')).toBe(true);
+
+    localStorage.setItem('focusMode', 'true');
+    applyFocusMode();
+    expect(document.body.classList.contains('focus-mode')).toBe(true);
+    expect(document.body.classList.contains('simple-mode')).toBe(false);
+    expect(searchBar.classList.contains('visible')).toBe(false);
+
+    localStorage.setItem('focusMode', 'false');
+    applyFocusMode();
+    expect(document.body.classList.contains('focus-mode')).toBe(false);
+    expect(document.body.classList.contains('simple-mode')).toBe(true);
+    expect(searchBar.classList.contains('visible')).toBe(true);
   });
 
   it('applyFocusMode emits focusModeChanged event', () => {

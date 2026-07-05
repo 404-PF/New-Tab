@@ -49,6 +49,10 @@ function applyFocusMode() {
     syncFocusModeLabel(indicator, enabled);
   }
 
+  if (typeof window.applySimpleMode === 'function') {
+    window.applySimpleMode();
+  }
+
   window.dispatchEvent(new CustomEvent('focusModeChanged', {
     detail: { enabled }
   }));

@@ -6,6 +6,10 @@ function loadSimpleMode() {
 
 function applySimpleMode() {
   const isSimple = loadSimpleMode();
+  const focusModeActive = typeof window.loadFocusMode === 'function'
+    ? window.loadFocusMode()
+    : document.body.getAttribute('data-focus-mode') === 'true';
+  const effectiveSimpleMode = isSimple && !focusModeActive;
   const checkbox = document.getElementById('simple-mode-checkbox');
   const searchBar = document.querySelector('.search-bar');
   
@@ -13,16 +17,16 @@ function applySimpleMode() {
     checkbox.checked = isSimple;
   }
   
-  document.body.classList.toggle('simple-mode', isSimple);
+  document.body.classList.toggle('simple-mode', effectiveSimpleMode);
 
   if (searchBar) {
-    searchBar.classList.toggle('visible', isSimple);
+    searchBar.classList.toggle('visible', effectiveSimpleMode);
   }
 
   // Pause or resume video background based on simple mode
   const videoEl = document.getElementById('bg-video');
   if (videoEl && videoEl.currentSrc) {
-    if (isSimple) {
+    if (effectiveSimpleMode) {
       videoEl.dataset.simpleModePaused = 'true';
       if (!videoEl.paused) {
         safePause(videoEl);
