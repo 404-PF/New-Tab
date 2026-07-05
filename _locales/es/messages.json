@@ -25,6 +25,86 @@
       }
     }
   },
+  "bookmarksBarRegionLabel": {
+    "message": "Marcadores rápidos",
+    "description": "Accessible label for the bookmarks bar region"
+  },
+  "bookmarkAddLabel": {
+    "message": "Agregar marcador",
+    "description": "Accessible label for the add bookmark button"
+  },
+  "bookmarkModalCloseLabel": {
+    "message": "Cerrar",
+    "description": "Accessible label for the bookmark modal close button"
+  },
+  "bookmarkUrlPlaceholder": {
+    "message": "https://example.com",
+    "description": "Placeholder for bookmark URL input"
+  },
+  "optionalField": {
+    "message": "Opcional",
+    "description": "Generic placeholder for optional fields"
+  },
+  "bookmarksBar": {
+    "message": "Barra de marcadores",
+    "description": "Label for the bookmarks bar toggle setting"
+  },
+  "bookmarksEmptyState": {
+    "message": "Haz clic en + para agregar tu primer marcador",
+    "description": "Empty state text for the bookmarks bar"
+  },
+  "bookmarkAddTitle": {
+    "message": "Agregar marcador",
+    "description": "Title for the add bookmark modal"
+  },
+  "bookmarkEditTitle": {
+    "message": "Editar marcador",
+    "description": "Title for the edit bookmark modal"
+  },
+  "bookmarkName": {
+    "message": "Nombre",
+    "description": "Label for bookmark name input"
+  },
+  "bookmarkUrl": {
+    "message": "URL",
+    "description": "Label for bookmark URL input"
+  },
+  "bookmarkFavicon": {
+    "message": "URL del favicon",
+    "description": "Label for bookmark favicon URL input"
+  },
+  "bookmarkFolder": {
+    "message": "Carpeta",
+    "description": "Label for bookmark folder input"
+  },
+  "bookmarkEdit": {
+    "message": "Editar",
+    "description": "Context menu action to edit a bookmark"
+  },
+  "bookmarkDelete": {
+    "message": "Eliminar",
+    "description": "Context menu action to delete a bookmark"
+  },
+  "bookmarkMoveUp": {
+    "message": "Mover arriba",
+    "description": "Context menu action to move a bookmark up"
+  },
+  "bookmarkMoveDown": {
+    "message": "Mover abajo",
+    "description": "Context menu action to move a bookmark down"
+  },
+  "bookmarkNameRequired": {
+    "message": "Ingresa un nombre para el marcador",
+    "description": "Validation message when bookmark name is empty"
+  },
+  "bookmarkUrlRequired": {
+    "message": "Ingresa una URL válida (https://...)",
+    "description": "Validation message when bookmark URL is empty or invalid"
+  },
+  "bookmarkLimitReached": {
+    "message": "Se alcanzó el número máximo de marcadores",
+    "description": "Validation message when bookmark limit is reached"
+  },
   "priorityLow": {
     "message": "Baja",
     "description": "Low priority label"

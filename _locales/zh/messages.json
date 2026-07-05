@@ -25,6 +25,86 @@
       }
     }
   },
+  "bookmarksBarRegionLabel": {
+    "message": "快速书签",
+    "description": "Accessible label for the bookmarks bar region"
+  },
+  "bookmarkAddLabel": {
+    "message": "添加书签",
+    "description": "Accessible label for the add bookmark button"
+  },
+  "bookmarkModalCloseLabel": {
+    "message": "关闭",
+    "description": "Accessible label for the bookmark modal close button"
+  },
+  "bookmarkUrlPlaceholder": {
+    "message": "https://example.com",
+    "description": "Placeholder for bookmark URL input"
+  },
+  "optionalField": {
+    "message": "选填",
+    "description": "Generic placeholder for optional fields"
+  },
+  "bookmarksBar": {
+    "message": "书签栏",
+    "description": "Label for the bookmarks bar toggle setting"
+  },
+  "bookmarksEmptyState": {
+    "message": "点击 + 添加你的第一个书签",
+    "description": "Empty state text for the bookmarks bar"
+  },
+  "bookmarkAddTitle": {
+    "message": "添加书签",
+    "description": "Title for the add bookmark modal"
+  },
+  "bookmarkEditTitle": {
+    "message": "编辑书签",
+    "description": "Title for the edit bookmark modal"
+  },
+  "bookmarkName": {
+    "message": "名称",
+    "description": "Label for bookmark name input"
+  },
+  "bookmarkUrl": {
+    "message": "URL",
+    "description": "Label for bookmark URL input"
+  },
+  "bookmarkFavicon": {
+    "message": "网站图标 URL",
+    "description": "Label for bookmark favicon URL input"
+  },
+  "bookmarkFolder": {
+    "message": "文件夹",
+    "description": "Label for bookmark folder input"
+  },
+  "bookmarkEdit": {
+    "message": "编辑",
+    "description": "Context menu action to edit a bookmark"
+  },
+  "bookmarkDelete": {
+    "message": "删除",
+    "description": "Context menu action to delete a bookmark"
+  },
+  "bookmarkMoveUp": {
+    "message": "上移",
+    "description": "Context menu action to move a bookmark up"
+  },
+  "bookmarkMoveDown": {
+    "message": "下移",
+    "description": "Context menu action to move a bookmark down"
+  },
+  "bookmarkNameRequired": {
+    "message": "请输入书签名称",
+    "description": "Validation message when bookmark name is empty"
+  },
+  "bookmarkUrlRequired": {
+    "message": "请输入有效的 URL（https://...）",
+    "description": "Validation message when bookmark URL is empty or invalid"
+  },
+  "bookmarkLimitReached": {
+    "message": "已达到书签数量上限",
+    "description": "Validation message when bookmark limit is reached"
+  },
   "priorityLow": {
     "message": "低",
     "description": "Low priority label"

@@ -25,6 +25,86 @@
       }
     }
   },
+  "bookmarksBarRegionLabel": {
+    "message": "Schnelllesezeichen",
+    "description": "Accessible label for the bookmarks bar region"
+  },
+  "bookmarkAddLabel": {
+    "message": "Lesezeichen hinzufügen",
+    "description": "Accessible label for the add bookmark button"
+  },
+  "bookmarkModalCloseLabel": {
+    "message": "Schließen",
+    "description": "Accessible label for the bookmark modal close button"
+  },
+  "bookmarkUrlPlaceholder": {
+    "message": "https://example.com",
+    "description": "Placeholder for bookmark URL input"
+  },
+  "optionalField": {
+    "message": "Optional",
+    "description": "Generic placeholder for optional fields"
+  },
+  "bookmarksBar": {
+    "message": "Lesezeichenleiste",
+    "description": "Label for the bookmarks bar toggle setting"
+  },
+  "bookmarksEmptyState": {
+    "message": "Klicke auf +, um dein erstes Lesezeichen hinzuzufügen",
+    "description": "Empty state text for the bookmarks bar"
+  },
+  "bookmarkAddTitle": {
+    "message": "Lesezeichen hinzufügen",
+    "description": "Title for the add bookmark modal"
+  },
+  "bookmarkEditTitle": {
+    "message": "Lesezeichen bearbeiten",
+    "description": "Title for the edit bookmark modal"
+  },
+  "bookmarkName": {
+    "message": "Name",
+    "description": "Label for bookmark name input"
+  },
+  "bookmarkUrl": {
+    "message": "URL",
+    "description": "Label for bookmark URL input"
+  },
+  "bookmarkFavicon": {
+    "message": "Favicon-URL",
+    "description": "Label for bookmark favicon URL input"
+  },
+  "bookmarkFolder": {
+    "message": "Ordner",
+    "description": "Label for bookmark folder input"
+  },
+  "bookmarkEdit": {
+    "message": "Bearbeiten",
+    "description": "Context menu action to edit a bookmark"
+  },
+  "bookmarkDelete": {
+    "message": "Löschen",
+    "description": "Context menu action to delete a bookmark"
+  },
+  "bookmarkMoveUp": {
+    "message": "Nach oben",
+    "description": "Context menu action to move a bookmark up"
+  },
+  "bookmarkMoveDown": {
+    "message": "Nach unten",
+    "description": "Context menu action to move a bookmark down"
+  },
+  "bookmarkNameRequired": {
+    "message": "Bitte gib einen Namen für das Lesezeichen ein",
+    "description": "Validation message when bookmark name is empty"
+  },
+  "bookmarkUrlRequired": {
+    "message": "Bitte gib eine gültige URL ein (https://...)",
+    "description": "Validation message when bookmark URL is empty or invalid"
+  },
+  "bookmarkLimitReached": {
+    "message": "Maximale Anzahl an Lesezeichen erreicht",
+    "description": "Validation message when bookmark limit is reached"
+  },
   "priorityLow": {
     "message": "Niedrig",
     "description": "Low priority label"

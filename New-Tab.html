@@ -58,10 +58,10 @@
         </div>
       </div>
 
-      <section id="bookmarks-bar" class="bookmarks-bar" aria-label="Quick bookmarks" hidden>
+      <section id="bookmarks-bar" class="bookmarks-bar" aria-label="Quick bookmarks" title="Quick bookmarks" data-i18n="bookmarksBarRegionLabel" hidden>
         <div class="bookmarks-bar-row">
           <div id="bookmarks-bar-content" class="bookmarks-bar-content"></div>
-          <button type="button" id="bookmarks-add-button" class="bookmarks-add-button" aria-label="Add bookmark">
+          <button type="button" id="bookmarks-add-button" class="bookmarks-add-button" aria-label="Add bookmark" title="Add bookmark" data-i18n="bookmarkAddLabel">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -373,7 +373,7 @@
     <div class="bookmark-modal-panel">
       <div class="bookmark-modal-header">
         <h3 id="bookmark-modal-title" data-i18n="bookmarkAddTitle">Add Bookmark</h3>
-        <button type="button" id="bookmark-modal-close" class="bookmark-modal-close" aria-label="Close">
+        <button type="button" id="bookmark-modal-close" class="bookmark-modal-close" aria-label="Close" title="Close" data-i18n="bookmarkModalCloseLabel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -384,11 +384,11 @@
         <label for="bookmark-name-input" data-i18n="bookmarkName">Name</label>
         <input type="text" id="bookmark-name-input" maxlength="60" />
         <label for="bookmark-url-input" data-i18n="bookmarkUrl">URL</label>
-        <input type="url" id="bookmark-url-input" placeholder="https://example.com" />
+        <input type="url" id="bookmark-url-input" data-i18n-placeholder="bookmarkUrlPlaceholder" placeholder="https://example.com" />
         <label for="bookmark-favicon-input" data-i18n="bookmarkFavicon">Favicon URL</label>
-        <input type="url" id="bookmark-favicon-input" placeholder="Optional" />
+        <input type="url" id="bookmark-favicon-input" data-i18n-placeholder="optionalField" placeholder="Optional" />
         <label for="bookmark-folder-input" data-i18n="bookmarkFolder">Folder</label>
-        <input list="bookmark-folder-list" id="bookmark-folder-input" placeholder="Optional" />
+        <input list="bookmark-folder-list" id="bookmark-folder-input" data-i18n-placeholder="optionalField" placeholder="Optional" />
         <datalist id="bookmark-folder-list"></datalist>
         <div id="bookmark-validation-message" class="bookmark-validation-message"></div>
       </div>

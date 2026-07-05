@@ -25,6 +25,86 @@
       }
     }
   },
+  "bookmarksBarRegionLabel": {
+    "message": "빠른 북마크",
+    "description": "Accessible label for the bookmarks bar region"
+  },
+  "bookmarkAddLabel": {
+    "message": "북마크 추가",
+    "description": "Accessible label for the add bookmark button"
+  },
+  "bookmarkModalCloseLabel": {
+    "message": "닫기",
+    "description": "Accessible label for the bookmark modal close button"
+  },
+  "bookmarkUrlPlaceholder": {
+    "message": "https://example.com",
+    "description": "Placeholder for bookmark URL input"
+  },
+  "optionalField": {
+    "message": "선택 사항",
+    "description": "Generic placeholder for optional fields"
+  },
+  "bookmarksBar": {
+    "message": "북마크 바",
+    "description": "Label for the bookmarks bar toggle setting"
+  },
+  "bookmarksEmptyState": {
+    "message": "+를 클릭해 첫 번째 북마크를 추가하세요",
+    "description": "Empty state text for the bookmarks bar"
+  },
+  "bookmarkAddTitle": {
+    "message": "북마크 추가",
+    "description": "Title for the add bookmark modal"
+  },
+  "bookmarkEditTitle": {
+    "message": "북마크 수정",
+    "description": "Title for the edit bookmark modal"
+  },
+  "bookmarkName": {
+    "message": "이름",
+    "description": "Label for bookmark name input"
+  },
+  "bookmarkUrl": {
+    "message": "URL",
+    "description": "Label for bookmark URL input"
+  },
+  "bookmarkFavicon": {
+    "message": "파비콘 URL",
+    "description": "Label for bookmark favicon URL input"
+  },
+  "bookmarkFolder": {
+    "message": "폴더",
+    "description": "Label for bookmark folder input"
+  },
+  "bookmarkEdit": {
+    "message": "수정",
+    "description": "Context menu action to edit a bookmark"
+  },
+  "bookmarkDelete": {
+    "message": "삭제",
+    "description": "Context menu action to delete a bookmark"
+  },
+  "bookmarkMoveUp": {
+    "message": "위로 이동",
+    "description": "Context menu action to move a bookmark up"
+  },
+  "bookmarkMoveDown": {
+    "message": "아래로 이동",
+    "description": "Context menu action to move a bookmark down"
+  },
+  "bookmarkNameRequired": {
+    "message": "북마크 이름을 입력하세요",
+    "description": "Validation message when bookmark name is empty"
+  },
+  "bookmarkUrlRequired": {
+    "message": "유효한 URL을 입력하세요 (https://...)",
+    "description": "Validation message when bookmark URL is empty or invalid"
+  },
+  "bookmarkLimitReached": {
+    "message": "북마크 최대 개수에 도달했습니다",
+    "description": "Validation message when bookmark limit is reached"
+  },
   "priorityLow": {
     "message": "낮음",
     "description": "Low priority label"

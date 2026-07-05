@@ -25,6 +25,86 @@
       }
     }
   },
+  "bookmarksBarRegionLabel": {
+    "message": "Favoris rapides",
+    "description": "Accessible label for the bookmarks bar region"
+  },
+  "bookmarkAddLabel": {
+    "message": "Ajouter un favori",
+    "description": "Accessible label for the add bookmark button"
+  },
+  "bookmarkModalCloseLabel": {
+    "message": "Fermer",
+    "description": "Accessible label for the bookmark modal close button"
+  },
+  "bookmarkUrlPlaceholder": {
+    "message": "https://example.com",
+    "description": "Placeholder for bookmark URL input"
+  },
+  "optionalField": {
+    "message": "Facultatif",
+    "description": "Generic placeholder for optional fields"
+  },
+  "bookmarksBar": {
+    "message": "Barre de favoris",
+    "description": "Label for the bookmarks bar toggle setting"
+  },
+  "bookmarksEmptyState": {
+    "message": "Cliquez sur + pour ajouter votre premier favori",
+    "description": "Empty state text for the bookmarks bar"
+  },
+  "bookmarkAddTitle": {
+    "message": "Ajouter un favori",
+    "description": "Title for the add bookmark modal"
+  },
+  "bookmarkEditTitle": {
+    "message": "Modifier le favori",
+    "description": "Title for the edit bookmark modal"
+  },
+  "bookmarkName": {
+    "message": "Nom",
+    "description": "Label for bookmark name input"
+  },
+  "bookmarkUrl": {
+    "message": "URL",
+    "description": "Label for bookmark URL input"
+  },
+  "bookmarkFavicon": {
+    "message": "URL du favicon",
+    "description": "Label for bookmark favicon URL input"
+  },
+  "bookmarkFolder": {
+    "message": "Dossier",
+    "description": "Label for bookmark folder input"
+  },
+  "bookmarkEdit": {
+    "message": "Modifier",
+    "description": "Context menu action to edit a bookmark"
+  },
+  "bookmarkDelete": {
+    "message": "Supprimer",
+    "description": "Context menu action to delete a bookmark"
+  },
+  "bookmarkMoveUp": {
+    "message": "Monter",
+    "description": "Context menu action to move a bookmark up"
+  },
+  "bookmarkMoveDown": {
+    "message": "Descendre",
+    "description": "Context menu action to move a bookmark down"
+  },
+  "bookmarkNameRequired": {
+    "message": "Veuillez saisir un nom pour le favori",
+    "description": "Validation message when bookmark name is empty"
+  },
+  "bookmarkUrlRequired": {
+    "message": "Veuillez saisir une URL valide (https://...)",
+    "description": "Validation message when bookmark URL is empty or invalid"
+  },
+  "bookmarkLimitReached": {
+    "message": "Nombre maximal de favoris atteint",
+    "description": "Validation message when bookmark limit is reached"
+  },
   "priorityLow": {
     "message": "Basse",
     "description": "Low priority label"

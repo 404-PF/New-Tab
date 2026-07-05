@@ -201,9 +201,21 @@
     "message": "Click + to add your first bookmark",
     "description": "Empty state text for the bookmarks bar"
   },
+  "bookmarksBarRegionLabel": {
+    "message": "Quick bookmarks",
+    "description": "Accessible label for the bookmarks bar region"
+  },
+  "bookmarkAddLabel": {
+    "message": "Add bookmark",
+    "description": "Accessible label for the add bookmark button"
+  },
   "bookmarkAddTitle": {
     "message": "Add Bookmark",
     "description": "Title for the add bookmark modal"
+  },
+  "bookmarkModalCloseLabel": {
+    "message": "Close",
+    "description": "Accessible label for the bookmark modal close button"
   },
   "bookmarkEditTitle": {
     "message": "Edit Bookmark",
@@ -217,6 +229,10 @@
     "message": "URL",
     "description": "Label for bookmark URL input"
   },
+  "bookmarkUrlPlaceholder": {
+    "message": "https://example.com",
+    "description": "Placeholder for bookmark URL input"
+  },
   "bookmarkFavicon": {
     "message": "Favicon URL",
     "description": "Label for bookmark favicon URL input"
@@ -224,6 +240,10 @@
   "bookmarkFolder": {
     "message": "Folder",
     "description": "Label for bookmark folder input"
+  },
+  "optionalField": {
+    "message": "Optional",
+    "description": "Generic placeholder for optional fields"
   },
   "bookmarkEdit": {
     "message": "Edit",
