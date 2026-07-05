@@ -490,6 +490,9 @@
     if (bar) {
       bar.addEventListener('contextmenu', onBookmarksContextMenu);
     }
+    if (folderMenu) {
+      folderMenu.addEventListener('contextmenu', onBookmarksContextMenu);
+    }
     document.addEventListener('click', function (event) {
       if (contextMenuEl && !contextMenuEl.contains(event.target)) {
         hideContextMenu();

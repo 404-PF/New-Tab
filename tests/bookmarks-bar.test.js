@@ -193,4 +193,32 @@ describe('BookmarksBar', () => {
 
     expect(modal.classList.contains('modal-open')).toBe(false);
   });
+
+  it('opens the context menu for bookmarks inside folder menus', () => {
+    localStorage.setItem('bookmarksBarEnabled', 'true');
+    localStorage.setItem('bookmarks', JSON.stringify({
+      items: [
+        { id: 'bookmark-1', name: 'Docs', url: 'https://example.com/docs', faviconUrl: '', folderId: 'folder-1' }
+      ],
+      folders: [
+        { id: 'folder-1', name: 'Work' }
+      ]
+    }));
+
+    window.BookmarksBar.applyEnabled();
+
+    document.querySelector('.bookmark-folder-pill').click();
+
+    const folderBookmark = document.querySelector('#bookmarks-folder-menu .bookmark-pill');
+    folderBookmark.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      pageX: 20,
+      pageY: 30
+    }));
+
+    const menu = document.getElementById('bookmarks-context-menu');
+    expect(menu).not.toBeNull();
+    expect(menu.style.display).toBe('block');
+  });
 });
