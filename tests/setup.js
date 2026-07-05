@@ -348,6 +348,7 @@ globalThis.window.i18n = {
       generalSettings: 'General',
       generalSettingsDesc: 'Configure basic app behavior',
       openNewTab: 'Open apps in a new tab',
+      bookmarksBar: 'Bookmarks bar',
       enableTodoList: 'Enable todo list',
       backgroundSettingsDesc: 'Choose your background image',
       liveBackground: 'Live Background',
@@ -592,6 +593,7 @@ document.body.appendChild(createStubElement('input', 'date-color-picker'));
 document.body.appendChild(createStubElement('select', 'date-font-picker'));
 document.body.appendChild(createStubElement('select', 'date-format-picker'));
 document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'bookmarks-bar-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
 const leadTimeSelect = document.createElement('select');
 leadTimeSelect.id = 'todo-reminder-lead-time';
@@ -601,6 +603,23 @@ document.body.appendChild(createStubElement('img', 'bg-thumbnail'));
 document.body.appendChild(createStubElement('img', 'bg-full'));
 document.body.appendChild(createStubElement('img', 'bg-transition-overlay'));
 document.body.appendChild(createStubElement('video', 'bg-video'));
+const bookmarksBar = createStubElement('section', 'bookmarks-bar');
+document.body.appendChild(bookmarksBar);
+document.body.appendChild(createStubElement('div', 'bookmarks-bar-content'));
+document.body.appendChild(createStubElement('div', 'bookmarks-empty-state'));
+document.body.appendChild(createStubElement('div', 'bookmarks-folder-menu'));
+document.body.appendChild(createStubElement('button', 'bookmarks-add-button'));
+const bookmarkModal = createStubElement('div', 'bookmark-modal');
+document.body.appendChild(bookmarkModal);
+document.body.appendChild(createStubElement('h3', 'bookmark-modal-title'));
+document.body.appendChild(createStubElement('button', 'bookmark-modal-close'));
+document.body.appendChild(createStubElement('input', 'bookmark-name-input'));
+document.body.appendChild(createStubElement('input', 'bookmark-url-input'));
+document.body.appendChild(createStubElement('input', 'bookmark-favicon-input'));
+document.body.appendChild(createStubElement('input', 'bookmark-folder-input'));
+document.body.appendChild(createStubElement('datalist', 'bookmark-folder-list'));
+document.body.appendChild(createStubElement('button', 'bookmark-modal-cancel'));
+document.body.appendChild(createStubElement('button', 'bookmark-modal-save'));
 
 // Todo elements required for initTodo to run
 document.body.appendChild(createStubElement('input', 'todo-input'));

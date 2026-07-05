@@ -201,6 +201,9 @@ function applyOpenNewTabSetting() {
       link.removeAttribute('rel');
     }
   });
+  if (window.BookmarksBar && typeof window.BookmarksBar.applyTargets === 'function') {
+    window.BookmarksBar.applyTargets();
+  }
   const openNewTabSetting = document.getElementById('open-new-tab-setting');
   if (openNewTabSetting) openNewTabSetting.checked = openInNewTab;
 }

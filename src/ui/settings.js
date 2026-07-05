@@ -1073,6 +1073,19 @@ document.addEventListener('change', function (e) {
 function loadTodoEnabled() {
   return localStorage.getItem('todoEnabled') !== 'false';
 }
+
+function loadBookmarksBarEnabled() {
+  return localStorage.getItem('bookmarksBarEnabled') === 'true';
+}
+
+function applyBookmarksBarEnabled() {
+  const enabled = loadBookmarksBarEnabled();
+  const setting = document.getElementById('bookmarks-bar-enabled-setting');
+  if (setting) setting.checked = enabled;
+  if (window.BookmarksBar && typeof window.BookmarksBar.applyEnabled === 'function') {
+    window.BookmarksBar.applyEnabled();
+  }
+}
 function applyTodoEnabled() {
   const enabled = loadTodoEnabled();
   const todoSection = document.querySelector('.todo-section');
@@ -1160,6 +1173,14 @@ if (notesEnabledSetting) {
   notesEnabledSetting.addEventListener('change', function () {
     localStorage.setItem('notesEnabled', this.checked);
     applyNotesEnabled();
+  });
+}
+
+const bookmarksBarEnabledSetting = document.getElementById('bookmarks-bar-enabled-setting');
+if (bookmarksBarEnabledSetting) {
+  bookmarksBarEnabledSetting.addEventListener('change', function () {
+    localStorage.setItem('bookmarksBarEnabled', this.checked ? 'true' : 'false');
+    applyBookmarksBarEnabled();
   });
 }
 
@@ -1427,6 +1448,7 @@ function initSettings() {
   applyTodoReminderEnabled();
   applyTodoReminderLeadTime();
   applyNotesEnabled();
+  applyBookmarksBarEnabled();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
   if (window.WeatherWidget && window.WeatherWidget.applySettings) {
@@ -1487,6 +1509,8 @@ window.applyTheme = applyTheme;
 window.loadLanguageSetting = loadLanguageSetting;
 window.renderLanguageOptions = renderLanguageOptions;
 window.loadTodoEnabled = loadTodoEnabled;
+window.loadBookmarksBarEnabled = loadBookmarksBarEnabled;
+window.applyBookmarksBarEnabled = applyBookmarksBarEnabled;
 window.applyTodoEnabled = applyTodoEnabled;
 window.applyNotesEnabled = applyNotesEnabled;
 window.initSettings = initSettings;

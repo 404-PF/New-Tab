@@ -6,6 +6,7 @@ beforeAll(() => {
   injectScript('src/core/motion.js');
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');
+  injectScript('src/features/bookmarks-bar.js');
   injectScript('src/ui/settings.js');
 });
 
@@ -83,6 +84,17 @@ describe('Todo enabled settings', () => {
   it('loadTodoEnabled reads localStorage', () => {
     localStorage.setItem('todoEnabled', 'false');
     expect(loadTodoEnabled()).toBe(false);
+  });
+});
+
+describe('Bookmarks bar settings', () => {
+  it('loadBookmarksBarEnabled returns false by default', () => {
+    expect(loadBookmarksBarEnabled()).toBe(false);
+  });
+
+  it('loadBookmarksBarEnabled reads localStorage', () => {
+    localStorage.setItem('bookmarksBarEnabled', 'true');
+    expect(loadBookmarksBarEnabled()).toBe(true);
   });
 });
 

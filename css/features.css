@@ -727,6 +727,181 @@ body.light-theme .upload-bg-btn:hover {
   animation: menuFadeIn 0.2s ease-out;
 }
 
+.bookmarks-bar {
+  width: min(920px, calc(100vw - 48px));
+  margin: 0 auto 22px;
+  position: relative;
+}
+
+.bookmarks-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bookmarks-bar-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  overflow-x: auto;
+  padding: 6px 2px;
+  scrollbar-width: thin;
+}
+
+.bookmarks-empty-state {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  padding: 6px 2px 0;
+}
+
+.bookmarks-add-button,
+.bookmark-folder-pill,
+.bookmark-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 15, 26, 0.42);
+  color: #f8fafc;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.bookmark-pill,
+.bookmark-folder-pill {
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+.bookmarks-add-button {
+  width: 38px;
+  height: 38px;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.bookmarks-add-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.bookmark-pill-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.bookmarks-add-button:hover,
+.bookmark-folder-pill:hover,
+.bookmark-pill:hover {
+  transform: translateY(-1px);
+  background: rgba(33, 150, 243, 0.18);
+  border-color: rgba(33, 150, 243, 0.35);
+}
+
+.bookmarks-folder-menu {
+  position: absolute;
+  min-width: 190px;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(5, 10, 20, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+  display: grid;
+  gap: 8px;
+  z-index: var(--z-context-menu);
+}
+
+.bookmarks-context-menu {
+  min-width: 150px;
+}
+
+.bookmark-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1003;
+}
+
+.bookmark-modal.modal-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.bookmark-modal-panel {
+  width: min(440px, calc(100vw - 32px));
+  background: rgba(7, 12, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.35);
+}
+
+.bookmark-modal-header,
+.bookmark-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bookmark-modal-body {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.bookmark-modal-body input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.bookmark-modal-close {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+}
+
+body.light-theme .bookmarks-empty-state {
+  color: rgba(31, 41, 55, 0.7);
+}
+
+body.light-theme .bookmarks-add-button,
+body.light-theme .bookmark-folder-pill,
+body.light-theme .bookmark-pill,
+body.light-theme .bookmarks-folder-menu,
+body.light-theme .bookmark-modal-panel {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f2937;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .bookmark-modal-body input {
+  background: rgba(0, 0, 0, 0.03);
+  color: #111827;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
 @keyframes menuFadeIn {
   from {
     opacity: 0;

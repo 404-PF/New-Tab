@@ -47,6 +47,20 @@
         </div>
       </div>
 
+      <section id="bookmarks-bar" class="bookmarks-bar" aria-label="Quick bookmarks" hidden>
+        <div class="bookmarks-bar-row">
+          <div id="bookmarks-bar-content" class="bookmarks-bar-content"></div>
+          <button type="button" id="bookmarks-add-button" class="bookmarks-add-button" aria-label="Add bookmark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+        <div id="bookmarks-empty-state" class="bookmarks-empty-state">Click + to add your first bookmark</div>
+        <div id="bookmarks-folder-menu" class="bookmarks-folder-menu" hidden></div>
+      </section>
+
       <div class="app-grid" id="app-grid">
         <a href="#" class="app-icon default-app" id="new-app" draggable="false">
           <div class="icon">
@@ -344,6 +358,35 @@
     </div>
   </div>
 
+  <div id="bookmark-modal" class="bookmark-modal">
+    <div class="bookmark-modal-panel">
+      <div class="bookmark-modal-header">
+        <h3 id="bookmark-modal-title">Add Bookmark</h3>
+        <button type="button" id="bookmark-modal-close" class="bookmark-modal-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="bookmark-modal-body">
+        <label for="bookmark-name-input">Name</label>
+        <input type="text" id="bookmark-name-input" maxlength="60" />
+        <label for="bookmark-url-input">URL</label>
+        <input type="url" id="bookmark-url-input" placeholder="https://example.com" />
+        <label for="bookmark-favicon-input">Favicon URL</label>
+        <input type="url" id="bookmark-favicon-input" placeholder="Optional" />
+        <label for="bookmark-folder-input">Folder</label>
+        <input list="bookmark-folder-list" id="bookmark-folder-input" placeholder="Optional" />
+        <datalist id="bookmark-folder-list"></datalist>
+      </div>
+      <div class="bookmark-modal-actions">
+        <button type="button" id="bookmark-modal-cancel" class="ai-confirm-cancel">Cancel</button>
+        <button type="button" id="bookmark-modal-save" class="ai-confirm-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings Modal -->
   <div id="settings-modal">
     <div>
@@ -388,6 +431,21 @@
                     <div class="setting-content">
                       <label for="open-new-tab-setting" data-i18n="openNewTab">Open apps in a new tab</label>
                       <input type="checkbox" id="open-new-tab-setting" />
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 7h16"></path>
+                      <path d="M4 12h10"></path>
+                      <path d="M4 17h13"></path>
+                      <path d="M18 15v4"></path>
+                      <path d="M16 17h4"></path>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="bookmarks-bar-enabled-setting">Bookmarks bar</label>
+                      <input type="checkbox" id="bookmarks-bar-enabled-setting" />
                     </div>
                   </div>
                 </div>
