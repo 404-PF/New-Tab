@@ -86,6 +86,34 @@ describe('Todo enabled settings', () => {
   });
 });
 
+describe('Eye-care reminder settings', () => {
+  it('loads defaults when storage is empty', () => {
+    expect(loadEyeCareReminderState()).toEqual({
+      enabled: false,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: null
+    });
+  });
+
+  it('applies saved eye-care settings to controls', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 45,
+      browserNotification: true,
+      lastReminder: 123
+    }));
+
+    applyEyeCareReminderSettings();
+
+    expect(document.getElementById('eye-care-enabled-setting').checked).toBe(true);
+    expect(document.getElementById('eye-care-interval-setting').value).toBe('45');
+    expect(document.getElementById('eye-care-browser-notification-setting').checked).toBe(true);
+    expect(document.getElementById('eye-care-interval-option').style.display).toBe('');
+    expect(document.getElementById('eye-care-browser-notification-option').style.display).toBe('');
+  });
+});
+
 describe('Video playback settings', () => {
   beforeEach(() => {
     localStorage.removeItem('videoAutoplay');

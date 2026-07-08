@@ -448,6 +448,49 @@
                 </div>
                 <div class="general-option">
                   <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="eye-care-enabled-setting" data-i18n="eyeCareReminderEnabled">Enable eye-care reminder</label>
+                      <input type="checkbox" id="eye-care-enabled-setting" />
+                      <div class="setting-description" data-i18n="eyeCareReminderDescription">Follow the 20-20-20 rule with a gentle break prompt while this tab is visible.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option" id="eye-care-interval-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="eye-care-interval-setting" data-i18n="eyeCareReminderInterval">Break interval</label>
+                      <select id="eye-care-interval-setting">
+                        <option value="15" data-i18n="eyeCareReminderInterval15">15 minutes</option>
+                        <option value="20" selected data-i18n="eyeCareReminderInterval20">20 minutes</option>
+                        <option value="30" data-i18n="eyeCareReminderInterval30">30 minutes</option>
+                        <option value="45" data-i18n="eyeCareReminderInterval45">45 minutes</option>
+                        <option value="60" data-i18n="eyeCareReminderInterval60">60 minutes</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option" id="eye-care-browser-notification-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5"></path>
+                      <path d="M9 17a3 3 0 0 0 6 0"></path>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="eye-care-browser-notification-setting" data-i18n="eyeCareReminderBrowserNotification">Browser notification</label>
+                      <input type="checkbox" id="eye-care-browser-notification-setting" />
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
                     <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                       <polyline points="14,2 14,8 20,8"></polyline>

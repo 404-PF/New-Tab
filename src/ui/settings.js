@@ -1131,6 +1131,101 @@ if (todoReminderEnabledSetting) {
   });
 }
 
+function loadEyeCareReminderState() {
+  const defaults = {
+    enabled: false,
+    intervalMinutes: 20,
+    browserNotification: false,
+    lastReminder: null
+  };
+
+  try {
+    const raw = localStorage.getItem('eyeCareReminder');
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return defaults;
+
+    const interval = parseInt(parsed.intervalMinutes, 10);
+    const validIntervals = [15, 20, 30, 45, 60];
+
+    return {
+      enabled: parsed.enabled === true,
+      intervalMinutes: validIntervals.includes(interval) ? interval : defaults.intervalMinutes,
+      browserNotification: parsed.browserNotification === true,
+      lastReminder: typeof parsed.lastReminder === 'number' ? parsed.lastReminder : null
+    };
+  } catch (error) {
+    console.warn('Failed to parse eye-care reminder settings:', error);
+    return defaults;
+  }
+}
+
+function saveEyeCareReminderState(updates) {
+  const current = loadEyeCareReminderState();
+  const next = {
+    ...current,
+    ...updates
+  };
+  localStorage.setItem('eyeCareReminder', JSON.stringify(next));
+  return next;
+}
+
+function applyEyeCareReminderSettings() {
+  const state = loadEyeCareReminderState();
+  const enabledSetting = document.getElementById('eye-care-enabled-setting');
+  const intervalSetting = document.getElementById('eye-care-interval-setting');
+  const browserNotificationSetting = document.getElementById('eye-care-browser-notification-setting');
+  const intervalOption = document.getElementById('eye-care-interval-option');
+  const browserNotificationOption = document.getElementById('eye-care-browser-notification-option');
+
+  if (enabledSetting) enabledSetting.checked = state.enabled;
+  if (intervalSetting) intervalSetting.value = String(state.intervalMinutes);
+  if (browserNotificationSetting) browserNotificationSetting.checked = state.browserNotification;
+  if (intervalOption) intervalOption.style.display = state.enabled ? '' : 'none';
+  if (browserNotificationOption) browserNotificationOption.style.display = state.enabled ? '' : 'none';
+}
+
+const eyeCareEnabledSetting = document.getElementById('eye-care-enabled-setting');
+if (eyeCareEnabledSetting) {
+  eyeCareEnabledSetting.addEventListener('change', function () {
+    const updates = {
+      enabled: this.checked
+    };
+    if (this.checked && loadEyeCareReminderState().lastReminder === null) {
+      updates.lastReminder = Date.now();
+    }
+    saveEyeCareReminderState(updates);
+    applyEyeCareReminderSettings();
+    if (typeof window.refreshEyeCareReminder === 'function') {
+      window.refreshEyeCareReminder();
+    }
+  });
+}
+
+const eyeCareIntervalSetting = document.getElementById('eye-care-interval-setting');
+if (eyeCareIntervalSetting) {
+  eyeCareIntervalSetting.addEventListener('change', function () {
+    saveEyeCareReminderState({
+      intervalMinutes: parseInt(this.value, 10) || 20
+    });
+    if (typeof window.refreshEyeCareReminder === 'function') {
+      window.refreshEyeCareReminder();
+    }
+  });
+}
+
+const eyeCareBrowserNotificationSetting = document.getElementById('eye-care-browser-notification-setting');
+if (eyeCareBrowserNotificationSetting) {
+  eyeCareBrowserNotificationSetting.addEventListener('change', function () {
+    saveEyeCareReminderState({
+      browserNotification: this.checked
+    });
+    if (typeof window.refreshEyeCareReminder === 'function') {
+      window.refreshEyeCareReminder();
+    }
+  });
+}
+
 const todoReminderLeadTime = document.getElementById('todo-reminder-lead-time');
 if (todoReminderLeadTime) {
   todoReminderLeadTime.addEventListener('change', function () {
@@ -1426,6 +1521,7 @@ function initSettings() {
   applyTodoEnabled();
   applyTodoReminderEnabled();
   applyTodoReminderLeadTime();
+  applyEyeCareReminderSettings();
   applyNotesEnabled();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
@@ -1488,6 +1584,9 @@ window.loadLanguageSetting = loadLanguageSetting;
 window.renderLanguageOptions = renderLanguageOptions;
 window.loadTodoEnabled = loadTodoEnabled;
 window.applyTodoEnabled = applyTodoEnabled;
+window.loadEyeCareReminderState = loadEyeCareReminderState;
+window.saveEyeCareReminderState = saveEyeCareReminderState;
+window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;
 window.applyNotesEnabled = applyNotesEnabled;
 window.initSettings = initSettings;
 
