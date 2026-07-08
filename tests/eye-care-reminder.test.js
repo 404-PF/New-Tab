@@ -64,4 +64,22 @@ describe('eye-care reminder', () => {
       title: 'Eye-care break'
     });
   });
+
+  it('marks the banner as a polite status region and wires static labels for i18n', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: Date.now() - (20 * 60 * 1000)
+    }));
+
+    window.refreshEyeCareReminder();
+
+    const banner = document.querySelector('.eye-care-reminder');
+    expect(banner.getAttribute('role')).toBe('status');
+    expect(banner.getAttribute('aria-live')).toBe('polite');
+    expect(banner.querySelector('.eye-care-reminder-title')?.getAttribute('data-i18n')).toBe('eyeCareReminderTitle');
+    expect(banner.querySelector('.eye-care-reminder-btn-secondary')?.getAttribute('data-i18n')).toBe('eyeCareReminderSkip');
+    expect(banner.querySelector('.eye-care-reminder-btn-primary')?.getAttribute('data-i18n')).toBe('eyeCareReminderDone');
+  });
 });

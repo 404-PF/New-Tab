@@ -1764,7 +1764,7 @@ body.light-theme .about-cards .setting-card a:hover {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   box-shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
-  animation: eyeCareReminderSlideUp 0.35s ease;
+  animation: eye-care-reminder-slide-up 0.35s ease;
 }
 
 .eye-care-reminder-content {
@@ -1835,6 +1835,11 @@ body.light-theme .about-cards .setting-card a:hover {
   transform: translateY(-1px);
 }
 
+.eye-care-reminder-btn:focus-visible {
+  outline: 2px solid #7dd3fc;
+  outline-offset: 2px;
+}
+
 .eye-care-reminder-btn-primary {
   background: #7dd3fc;
   color: #082032;
@@ -1845,7 +1850,7 @@ body.light-theme .about-cards .setting-card a:hover {
   color: #fff;
 }
 
-@keyframes eyeCareReminderSlideUp {
+@keyframes eye-care-reminder-slide-up {
   from {
     opacity: 0;
     transform: translate(-50%, 16px);

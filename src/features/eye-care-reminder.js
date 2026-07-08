@@ -107,6 +107,8 @@
 
     bannerEl = document.createElement('section');
     bannerEl.className = 'eye-care-reminder';
+    bannerEl.setAttribute('role', 'status');
+    bannerEl.setAttribute('aria-live', 'polite');
     bannerEl.hidden = true;
 
     const content = document.createElement('div');
@@ -120,6 +122,7 @@
 
     const title = document.createElement('h3');
     title.className = 'eye-care-reminder-title';
+    title.setAttribute('data-i18n', 'eyeCareReminderTitle');
     title.textContent = t('eyeCareReminderTitle', 'Eye-care break');
 
     statusEl = document.createElement('p');
@@ -131,12 +134,14 @@
     skipButtonEl = document.createElement('button');
     skipButtonEl.type = 'button';
     skipButtonEl.className = 'eye-care-reminder-btn eye-care-reminder-btn-secondary';
+    skipButtonEl.setAttribute('data-i18n', 'eyeCareReminderSkip');
     skipButtonEl.textContent = t('eyeCareReminderSkip', 'Skip');
     skipButtonEl.addEventListener('click', dismissReminder);
 
     doneButtonEl = document.createElement('button');
     doneButtonEl.type = 'button';
     doneButtonEl.className = 'eye-care-reminder-btn eye-care-reminder-btn-primary';
+    doneButtonEl.setAttribute('data-i18n', 'eyeCareReminderDone');
     doneButtonEl.textContent = t('eyeCareReminderDone', 'Done');
     doneButtonEl.hidden = true;
     doneButtonEl.addEventListener('click', dismissReminder);
