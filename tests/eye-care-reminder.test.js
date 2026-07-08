@@ -82,4 +82,23 @@ describe('eye-care reminder', () => {
     expect(banner.querySelector('.eye-care-reminder-btn-secondary')?.getAttribute('data-i18n')).toBe('eyeCareReminderSkip');
     expect(banner.querySelector('.eye-care-reminder-btn-primary')?.getAttribute('data-i18n')).toBe('eyeCareReminderDone');
   });
+
+  it('restarts the timer when the reminder is re-enabled', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: false,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: Date.now() - (20 * 60 * 1000)
+    }));
+
+    const enabledToggle = document.getElementById('eye-care-enabled-setting');
+    enabledToggle.checked = true;
+    enabledToggle.dispatchEvent(new Event('change'));
+
+    const banner = document.querySelector('.eye-care-reminder');
+    const state = JSON.parse(localStorage.getItem('eyeCareReminder'));
+
+    expect(banner.hidden).toBe(true);
+    expect(Date.now() - state.lastReminder).toBeLessThan(1000);
+  });
 });

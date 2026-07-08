@@ -1189,11 +1189,9 @@ const eyeCareEnabledSetting = document.getElementById('eye-care-enabled-setting'
 if (eyeCareEnabledSetting) {
   eyeCareEnabledSetting.addEventListener('change', function () {
     const updates = {
-      enabled: this.checked
+      enabled: this.checked,
+      lastReminder: this.checked ? Date.now() : null
     };
-    if (this.checked && loadEyeCareReminderState().lastReminder === null) {
-      updates.lastReminder = Date.now();
-    }
     saveEyeCareReminderState(updates);
     applyEyeCareReminderSettings();
     if (typeof window.refreshEyeCareReminder === 'function') {
