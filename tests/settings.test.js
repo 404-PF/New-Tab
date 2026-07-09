@@ -92,7 +92,10 @@ describe('Eye-care reminder settings', () => {
       enabled: false,
       intervalMinutes: 20,
       browserNotification: false,
-      lastReminder: null
+      lastReminder: null,
+      elapsedVisibleMs: 0,
+      lastVisibleAt: null,
+      activeReminderAt: null
     });
   });
 

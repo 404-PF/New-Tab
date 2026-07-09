@@ -22,7 +22,10 @@ describe('eye-care reminder', () => {
       enabled: true,
       intervalMinutes: 20,
       browserNotification: false,
-      lastReminder: Date.now() - (20 * 60 * 1000)
+      lastReminder: Date.now() - (20 * 60 * 1000),
+      elapsedVisibleMs: 20 * 60 * 1000,
+      lastVisibleAt: Date.now(),
+      activeReminderAt: null
     }));
 
     window.refreshEyeCareReminder();
@@ -38,7 +41,10 @@ describe('eye-care reminder', () => {
       enabled: true,
       intervalMinutes: 20,
       browserNotification: false,
-      lastReminder: Date.now() - (20 * 60 * 1000)
+      lastReminder: Date.now() - (20 * 60 * 1000),
+      elapsedVisibleMs: 20 * 60 * 1000,
+      lastVisibleAt: Date.now(),
+      activeReminderAt: null
     }));
 
     window.refreshEyeCareReminder();
@@ -54,7 +60,10 @@ describe('eye-care reminder', () => {
       enabled: true,
       intervalMinutes: 20,
       browserNotification: true,
-      lastReminder: Date.now() - (20 * 60 * 1000)
+      lastReminder: Date.now() - (20 * 60 * 1000),
+      elapsedVisibleMs: 20 * 60 * 1000,
+      lastVisibleAt: Date.now(),
+      activeReminderAt: null
     }));
 
     window.refreshEyeCareReminder();
@@ -71,7 +80,10 @@ describe('eye-care reminder', () => {
       enabled: true,
       intervalMinutes: 20,
       browserNotification: false,
-      lastReminder: Date.now() - (20 * 60 * 1000)
+      lastReminder: Date.now() - (20 * 60 * 1000),
+      elapsedVisibleMs: 20 * 60 * 1000,
+      lastVisibleAt: Date.now(),
+      activeReminderAt: null
     }));
 
     window.refreshEyeCareReminder();
@@ -101,6 +113,8 @@ describe('eye-care reminder', () => {
 
     expect(banner.hidden).toBe(true);
     expect(Date.now() - state.lastReminder).toBeLessThan(1000);
+    expect(state.elapsedVisibleMs).toBe(0);
+    expect(state.activeReminderAt).toBeNull();
   });
 
   it('persists completion when the countdown finishes so refresh does not re-open it immediately', () => {
@@ -108,7 +122,10 @@ describe('eye-care reminder', () => {
       enabled: true,
       intervalMinutes: 20,
       browserNotification: false,
-      lastReminder: Date.now() - (20 * 60 * 1000)
+      lastReminder: Date.now() - (20 * 60 * 1000),
+      elapsedVisibleMs: 20 * 60 * 1000,
+      lastVisibleAt: Date.now(),
+      activeReminderAt: null
     }));
 
     window.refreshEyeCareReminder();
@@ -121,6 +138,23 @@ describe('eye-care reminder', () => {
     window.refreshEyeCareReminder = undefined;
     window.initEyeCareReminder = undefined;
     injectScript('src/features/eye-care-reminder.js');
+
+    const banner = document.querySelector('.eye-care-reminder');
+    expect(banner.hidden).toBe(true);
+  });
+
+  it('does not show a second reminder when another page already marked one active', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: Date.now(),
+      elapsedVisibleMs: 20 * 60 * 1000,
+      lastVisibleAt: Date.now(),
+      activeReminderAt: Date.now()
+    }));
+
+    window.refreshEyeCareReminder();
 
     const banner = document.querySelector('.eye-care-reminder');
     expect(banner.hidden).toBe(true);

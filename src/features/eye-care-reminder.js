@@ -34,7 +34,10 @@
       enabled: false,
       intervalMinutes: 20,
       browserNotification: false,
-      lastReminder: null
+      lastReminder: null,
+      elapsedVisibleMs: 0,
+      lastVisibleAt: null,
+      activeReminderAt: null
     };
   }
 
@@ -196,7 +199,12 @@
     reminderActive = false;
     remainingSeconds = REMINDER_DURATION_SECONDS;
     if (bannerEl) bannerEl.hidden = true;
-    saveState({ lastReminder: Date.now() });
+    saveState({
+      lastReminder: Date.now(),
+      elapsedVisibleMs: 0,
+      lastVisibleAt: Date.now(),
+      activeReminderAt: null
+    });
   }
 
   function showBrowserNotification() {
@@ -223,6 +231,14 @@
   function showReminder() {
     if (reminderActive) return;
 
+    const now = Date.now();
+    saveState({
+      activeReminderAt: now,
+      lastReminder: now,
+      elapsedVisibleMs: 0,
+      lastVisibleAt: null
+    });
+
     ensureBanner();
     reminderActive = true;
     remainingSeconds = REMINDER_DURATION_SECONDS;
@@ -239,7 +255,12 @@
     if (remainingSeconds > 0) {
       remainingSeconds -= 1;
       if (remainingSeconds === 0) {
-        saveState({ lastReminder: Date.now() });
+        saveState({
+          lastReminder: Date.now(),
+          elapsedVisibleMs: 0,
+          lastVisibleAt: Date.now(),
+          activeReminderAt: null
+        });
       }
       updateCountdownUi();
       return;
@@ -251,21 +272,70 @@
 
   function shouldShowReminder(state, now) {
     if (!state.enabled || reminderActive) return false;
-    if (typeof state.lastReminder !== 'number') return false;
-    return now - state.lastReminder >= state.intervalMinutes * 60 * 1000;
+    if (typeof state.activeReminderAt === 'number') return false;
+    return state.elapsedVisibleMs >= state.intervalMinutes * 60 * 1000;
+  }
+
+  function syncVisibleElapsed(state, now) {
+    if (!state.enabled || reminderActive) {
+      return state;
+    }
+
+    if (typeof state.activeReminderAt === 'number') {
+      return {
+        ...state,
+        elapsedVisibleMs: 0,
+        lastVisibleAt: null
+      };
+    }
+
+    if (typeof state.lastVisibleAt !== 'number') {
+      const initialized = {
+        ...state,
+        lastVisibleAt: now
+      };
+      saveState({ lastVisibleAt: now });
+      return initialized;
+    }
+
+    const elapsed = Math.max(0, now - state.lastVisibleAt);
+    if (elapsed === 0) {
+      return state;
+    }
+
+    const nextState = {
+      ...state,
+      elapsedVisibleMs: state.elapsedVisibleMs + elapsed,
+      lastVisibleAt: now
+    };
+
+    saveState({
+      elapsedVisibleMs: nextState.elapsedVisibleMs,
+      lastVisibleAt: now
+    });
+
+    return nextState;
   }
 
   function evaluateReminder() {
-    const state = loadState();
+    let state = loadState();
     if (!state.enabled) {
       dismissActiveWithoutPersist();
       return;
     }
 
     if (state.lastReminder === null) {
-      saveState({ lastReminder: Date.now() });
+      const now = Date.now();
+      saveState({
+        lastReminder: now,
+        lastVisibleAt: now,
+        elapsedVisibleMs: 0,
+        activeReminderAt: null
+      });
       return;
     }
+
+    state = syncVisibleElapsed(state, Date.now());
 
     if (shouldShowReminder(state, Date.now())) {
       showReminder();
@@ -277,6 +347,10 @@
     reminderActive = false;
     remainingSeconds = REMINDER_DURATION_SECONDS;
     if (bannerEl) bannerEl.hidden = true;
+    saveState({
+      lastVisibleAt: null,
+      activeReminderAt: null
+    });
   }
 
   function refreshEyeCareReminder() {
@@ -285,7 +359,12 @@
     if (!state.enabled) {
       dismissActiveWithoutPersist();
     } else if (state.lastReminder === null) {
-      saveState({ lastReminder: Date.now() });
+      saveState({
+        lastReminder: Date.now(),
+        lastVisibleAt: Date.now(),
+        elapsedVisibleMs: 0,
+        activeReminderAt: null
+      });
     }
 
     if (typeof window.applyEyeCareReminderSettings === 'function') {
@@ -307,6 +386,12 @@
   } else {
     initEyeCareReminder();
   }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      saveState({ lastVisibleAt: null });
+    }
+  });
 
   window.initEyeCareReminder = initEyeCareReminder;
   window.refreshEyeCareReminder = refreshEyeCareReminder;
