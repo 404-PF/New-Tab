@@ -115,6 +115,29 @@ describe('Eye-care reminder settings', () => {
     expect(document.getElementById('eye-care-interval-option').style.display).toBe('');
     expect(document.getElementById('eye-care-browser-notification-option').style.display).toBe('');
   });
+
+  it('resets elapsed progress when re-enabling the reminder', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: false,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: 123,
+      elapsedVisibleMs: 19 * 60 * 1000,
+      lastVisibleAt: 456,
+      activeReminderAt: 789
+    }));
+
+    const enabledSetting = document.getElementById('eye-care-enabled-setting');
+    enabledSetting.checked = true;
+    enabledSetting.dispatchEvent(new Event('change'));
+
+    const state = JSON.parse(localStorage.getItem('eyeCareReminder'));
+    expect(state.enabled).toBe(true);
+    expect(state.elapsedVisibleMs).toBe(0);
+    expect(state.activeReminderAt).toBeNull();
+    expect(Date.now() - state.lastReminder).toBeLessThan(1000);
+    expect(Date.now() - state.lastVisibleAt).toBeLessThan(1000);
+  });
 });
 
 describe('Video playback settings', () => {

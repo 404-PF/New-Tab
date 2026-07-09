@@ -101,7 +101,10 @@ describe('eye-care reminder', () => {
       enabled: false,
       intervalMinutes: 20,
       browserNotification: false,
-      lastReminder: Date.now() - (20 * 60 * 1000)
+      lastReminder: Date.now() - (20 * 60 * 1000),
+      elapsedVisibleMs: (19 * 60 * 1000) + 30_000,
+      lastVisibleAt: Date.now() - 30_000,
+      activeReminderAt: Date.now() - 5_000
     }));
 
     const enabledToggle = document.getElementById('eye-care-enabled-setting');
@@ -115,6 +118,57 @@ describe('eye-care reminder', () => {
     expect(Date.now() - state.lastReminder).toBeLessThan(1000);
     expect(state.elapsedVisibleMs).toBe(0);
     expect(state.activeReminderAt).toBeNull();
+  });
+
+  it('recovers from an expired active reminder left behind by a previous page', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: Date.now() - (25 * 60 * 1000),
+      elapsedVisibleMs: 20 * 60 * 1000,
+      lastVisibleAt: null,
+      activeReminderAt: Date.now() - 25_000
+    }));
+
+    window.refreshEyeCareReminder();
+
+    const state = JSON.parse(localStorage.getItem('eyeCareReminder'));
+    expect(state.activeReminderAt).toBeNull();
+    expect(state.elapsedVisibleMs).toBe(0);
+    expect(Date.now() - state.lastReminder).toBeLessThan(1000);
+
+    vi.advanceTimersByTime(1000);
+    const banner = document.querySelector('.eye-care-reminder');
+    expect(banner.hidden).toBe(true);
+  });
+
+  it('re-renders the finished status when the language changes', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: Date.now() - (20 * 60 * 1000),
+      elapsedVisibleMs: 20 * 60 * 1000,
+      lastVisibleAt: Date.now(),
+      activeReminderAt: null
+    }));
+
+    window.refreshEyeCareReminder();
+    vi.advanceTimersByTime(20_000);
+
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => {
+      if (key === 'eyeCareReminderFinished') return 'Pause translated.';
+      return originalT(key);
+    };
+
+    window.dispatchEvent(new Event('languageChanged'));
+
+    const banner = document.querySelector('.eye-care-reminder');
+    expect(banner.textContent).toContain('Pause translated.');
+
+    window.i18n.t = originalT;
   });
 
   it('persists completion when the countdown finishes so refresh does not re-open it immediately', () => {

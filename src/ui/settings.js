@@ -1198,7 +1198,10 @@ if (eyeCareEnabledSetting) {
   eyeCareEnabledSetting.addEventListener('change', function () {
     const updates = {
       enabled: this.checked,
-      lastReminder: this.checked ? Date.now() : null
+      lastReminder: this.checked ? Date.now() : null,
+      elapsedVisibleMs: 0,
+      lastVisibleAt: this.checked ? Date.now() : null,
+      activeReminderAt: null
     };
     saveEyeCareReminderState(updates);
     applyEyeCareReminderSettings();

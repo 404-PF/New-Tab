@@ -180,6 +180,27 @@
     progressEl.style.strokeDashoffset = String(progress * RING_CIRCUMFERENCE);
   }
 
+  function clearExpiredActiveReminder(state, now) {
+    if (typeof state.activeReminderAt !== 'number') {
+      return state;
+    }
+
+    if (now - state.activeReminderAt < REMINDER_DURATION_SECONDS * 1000) {
+      return state;
+    }
+
+    const recoveredState = {
+      ...state,
+      activeReminderAt: null,
+      elapsedVisibleMs: 0,
+      lastReminder: now,
+      lastVisibleAt: now
+    };
+
+    saveState(recoveredState);
+    return recoveredState;
+  }
+
   function stopCountdown() {
     if (countdownTimer && typeof countdownTimer.destroy === 'function') {
       countdownTimer.destroy();
@@ -318,14 +339,14 @@
   }
 
   function evaluateReminder() {
-    let state = loadState();
+    const now = Date.now();
+    let state = clearExpiredActiveReminder(loadState(), now);
     if (!state.enabled) {
       dismissActiveWithoutPersist();
       return;
     }
 
     if (state.lastReminder === null) {
-      const now = Date.now();
       saveState({
         lastReminder: now,
         lastVisibleAt: now,
@@ -335,9 +356,9 @@
       return;
     }
 
-    state = syncVisibleElapsed(state, Date.now());
+    state = syncVisibleElapsed(state, now);
 
-    if (shouldShowReminder(state, Date.now())) {
+    if (shouldShowReminder(state, now)) {
       showReminder();
     }
   }
@@ -391,6 +412,11 @@
     if (document.hidden) {
       saveState({ lastVisibleAt: null });
     }
+  });
+
+  window.addEventListener('languageChanged', function () {
+    if (!bannerEl || bannerEl.hidden) return;
+    updateCountdownUi();
   });
 
   window.initEyeCareReminder = initEyeCareReminder;
