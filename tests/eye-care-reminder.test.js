@@ -61,7 +61,8 @@ describe('eye-care reminder', () => {
     await Promise.resolve();
 
     expect(chrome.notifications._notifications['eye-care-reminder']).toMatchObject({
-      title: 'Eye-care break'
+      title: 'Eye-care break',
+      iconUrl: 'icons/icon128.png'
     });
   });
 
@@ -100,5 +101,28 @@ describe('eye-care reminder', () => {
 
     expect(banner.hidden).toBe(true);
     expect(Date.now() - state.lastReminder).toBeLessThan(1000);
+  });
+
+  it('persists completion when the countdown finishes so refresh does not re-open it immediately', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: Date.now() - (20 * 60 * 1000)
+    }));
+
+    window.refreshEyeCareReminder();
+    vi.advanceTimersByTime(20_000);
+
+    const finishedAt = JSON.parse(localStorage.getItem('eyeCareReminder')).lastReminder;
+    expect(Date.now() - finishedAt).toBeLessThan(1000);
+
+    document.querySelector('.eye-care-reminder')?.remove();
+    window.refreshEyeCareReminder = undefined;
+    window.initEyeCareReminder = undefined;
+    injectScript('src/features/eye-care-reminder.js');
+
+    const banner = document.querySelector('.eye-care-reminder');
+    expect(banner.hidden).toBe(true);
   });
 });

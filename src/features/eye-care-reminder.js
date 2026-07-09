@@ -212,7 +212,7 @@
 
     Promise.resolve(chrome.notifications.create('eye-care-reminder', {
       type: 'basic',
-      iconUrl: 'assets/logo.png',
+      iconUrl: 'icons/icon128.png',
       title: t('eyeCareReminderTitle', 'Eye-care break'),
       message: t('eyeCareReminderNotificationBody', 'Look at something 20 feet away for 20 seconds.')
     })).catch(function (error) {
@@ -238,6 +238,9 @@
     if (!reminderActive) return;
     if (remainingSeconds > 0) {
       remainingSeconds -= 1;
+      if (remainingSeconds === 0) {
+        saveState({ lastReminder: Date.now() });
+      }
       updateCountdownUi();
       return;
     }
