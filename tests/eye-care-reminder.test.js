@@ -197,7 +197,7 @@ describe('eye-care reminder', () => {
     expect(banner.hidden).toBe(true);
   });
 
-  it('does not show a second reminder when another page already marked one active', () => {
+  it('restores the in-progress reminder when another page already marked one active', () => {
     localStorage.setItem('eyeCareReminder', JSON.stringify({
       enabled: true,
       intervalMinutes: 20,
@@ -211,6 +211,34 @@ describe('eye-care reminder', () => {
     window.refreshEyeCareReminder();
 
     const banner = document.querySelector('.eye-care-reminder');
-    expect(banner.hidden).toBe(true);
+    expect(banner.hidden).toBe(false);
+    expect(banner.textContent).toContain('20 seconds');
+  });
+
+  it('restores an active reminder after the page reloads', () => {
+    const activeReminderAt = Date.now() - 5_000;
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: activeReminderAt,
+      elapsedVisibleMs: 0,
+      lastVisibleAt: null,
+      activeReminderAt
+    }));
+
+    window.refreshEyeCareReminder();
+
+    document.querySelector('.eye-care-reminder')?.remove();
+    window.refreshEyeCareReminder = undefined;
+    window.initEyeCareReminder = undefined;
+    injectScript('src/features/eye-care-reminder.js');
+
+    const banner = document.querySelector('.eye-care-reminder');
+    expect(banner.hidden).toBe(false);
+    expect(banner.textContent).toContain('(15s)');
+
+    vi.advanceTimersByTime(15_000);
+    expect(banner.textContent).toContain('Break complete');
   });
 });

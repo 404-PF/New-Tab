@@ -271,6 +271,30 @@
     countdownTimer = createTimer(handleCountdownTick, CHECK_INTERVAL_MS);
   }
 
+  function restoreActiveReminder(state, now) {
+    if (typeof state.activeReminderAt !== 'number') {
+      return false;
+    }
+
+    const elapsedMs = Math.max(0, now - state.activeReminderAt);
+    if (elapsedMs >= REMINDER_DURATION_SECONDS * 1000) {
+      return false;
+    }
+
+    ensureBanner();
+    reminderActive = true;
+    remainingSeconds = Math.max(
+      0,
+      REMINDER_DURATION_SECONDS - Math.floor(elapsedMs / 1000)
+    );
+    bannerEl.hidden = false;
+    updateCountdownUi();
+
+    stopCountdown();
+    countdownTimer = createTimer(handleCountdownTick, CHECK_INTERVAL_MS);
+    return true;
+  }
+
   function handleCountdownTick() {
     if (!reminderActive) return;
     if (remainingSeconds > 0) {
@@ -375,17 +399,21 @@
   }
 
   function refreshEyeCareReminder() {
-    const state = loadState();
+    const now = Date.now();
+    const state = clearExpiredActiveReminder(loadState(), now);
 
     if (!state.enabled) {
       dismissActiveWithoutPersist();
     } else if (state.lastReminder === null) {
       saveState({
-        lastReminder: Date.now(),
-        lastVisibleAt: Date.now(),
+        lastReminder: now,
+        lastVisibleAt: now,
         elapsedVisibleMs: 0,
         activeReminderAt: null
       });
+    } else if (!restoreActiveReminder(state, now)) {
+      reminderActive = false;
+      remainingSeconds = REMINDER_DURATION_SECONDS;
     }
 
     if (typeof window.applyEyeCareReminderSettings === 'function') {
