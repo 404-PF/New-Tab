@@ -315,9 +315,16 @@
     if (typeof state.lastVisibleAt !== 'number') {
       const initialized = {
         ...state,
+        elapsedVisibleMs: Math.max(
+          state.elapsedVisibleMs,
+          Math.max(0, now - state.lastReminder)
+        ),
         lastVisibleAt: now
       };
-      saveState({ lastVisibleAt: now });
+      saveState({
+        elapsedVisibleMs: initialized.elapsedVisibleMs,
+        lastVisibleAt: now
+      });
       return initialized;
     }
 

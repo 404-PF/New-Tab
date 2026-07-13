@@ -36,6 +36,24 @@ describe('eye-care reminder', () => {
     expect(banner.textContent).toContain('20 seconds');
   });
 
+  it('uses the saved reminder timestamp when visible progress is unavailable', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: Date.now() - (20 * 60 * 1000),
+      elapsedVisibleMs: 0,
+      lastVisibleAt: null,
+      activeReminderAt: null
+    }));
+
+    window.refreshEyeCareReminder();
+
+    const banner = document.querySelector('.eye-care-reminder');
+    expect(banner.hidden).toBe(false);
+    expect(banner.textContent).toContain('20 seconds');
+  });
+
   it('counts down and swaps Skip for Done at the end', () => {
     localStorage.setItem('eyeCareReminder', JSON.stringify({
       enabled: true,
