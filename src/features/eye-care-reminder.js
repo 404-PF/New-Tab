@@ -30,18 +30,6 @@
     };
   }
 
-  function getDefaultState() {
-    return {
-      enabled: false,
-      intervalMinutes: 20,
-      browserNotification: false,
-      lastReminder: null,
-      elapsedVisibleMs: 0,
-      lastVisibleAt: null,
-      activeReminderAt: null
-    };
-  }
-
   function loadState() {
     if (typeof window.loadEyeCareReminderState === 'function') {
       return window.loadEyeCareReminderState();
@@ -49,14 +37,11 @@
 
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return getDefaultState();
-      return {
-        ...getDefaultState(),
-        ...JSON.parse(raw)
-      };
+      if (!raw) return { enabled: false };
+      return { enabled: false, ...JSON.parse(raw) };
     } catch (error) {
       console.warn('Failed to parse eye-care reminder state:', error);
-      return getDefaultState();
+      return { enabled: false };
     }
   }
 
@@ -300,14 +285,6 @@
     if (!reminderActive) return;
     if (remainingSeconds > 0) {
       remainingSeconds -= 1;
-      if (remainingSeconds === 0) {
-        saveState({
-          lastReminder: Date.now(),
-          elapsedVisibleMs: 0,
-          lastVisibleAt: Date.now(),
-          activeReminderAt: null
-        });
-      }
       updateCountdownUi();
       return;
     }
@@ -367,7 +344,7 @@
     const now = Date.now();
     let state = clearExpiredActiveReminder(loadState(), now);
     if (!state.enabled) {
-      dismissActiveWithoutPersist();
+      clearActiveReminderState();
       return;
     }
 
@@ -388,7 +365,7 @@
     }
   }
 
-  function dismissActiveWithoutPersist() {
+  function clearActiveReminderState() {
     stopCountdown();
     reminderActive = false;
     remainingSeconds = REMINDER_DURATION_SECONDS;
@@ -404,7 +381,7 @@
     const state = clearExpiredActiveReminder(loadState(), now);
 
     if (!state.enabled) {
-      dismissActiveWithoutPersist();
+      clearActiveReminderState();
     } else if (state.lastReminder === null) {
       saveState({
         lastReminder: now,

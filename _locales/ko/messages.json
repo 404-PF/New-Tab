@@ -116,8 +116,8 @@
   "uploadLiveBackground": {
     "message": "라이브 배경 업로드",
     "description": "Tooltip for the upload live background video button"
-  }
-  ,"eyeCareReminderEnabled": {
+  },
+  "eyeCareReminderEnabled": {
     "message": "눈 휴식 알림 사용",
     "description": "Toggle for the eye-care break reminder"
   },

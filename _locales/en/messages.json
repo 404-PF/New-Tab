@@ -200,8 +200,8 @@
   "focusModeExit": {
     "message": "Exit Focus Mode",
     "description": "Label for exiting focus mode"
-  }
-  ,"eyeCareReminderEnabled": {
+  },
+  "eyeCareReminderEnabled": {
     "message": "Enable eye-care reminder",
     "description": "Toggle for the eye-care break reminder"
   },

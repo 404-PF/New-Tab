@@ -116,8 +116,8 @@
   "uploadLiveBackground": {
     "message": "Subir fondo en vivo",
     "description": "Tooltip for the upload live background video button"
-  }
-  ,"eyeCareReminderEnabled": {
+  },
+  "eyeCareReminderEnabled": {
     "message": "Activar recordatorio de cuidado visual",
     "description": "Toggle for the eye-care break reminder"
   },

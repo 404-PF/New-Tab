@@ -116,8 +116,8 @@
   "uploadLiveBackground": {
     "message": "上传动态背景",
     "description": "Tooltip for the upload live background video button"
-  }
-  ,"eyeCareReminderEnabled": {
+  },
+  "eyeCareReminderEnabled": {
     "message": "啟用護眼提醒",
     "description": "Toggle for the eye-care break reminder"
   },

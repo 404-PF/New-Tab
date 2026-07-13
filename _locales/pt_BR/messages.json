@@ -116,8 +116,8 @@
   "uploadLiveBackground": {
     "message": "Carregar plano de fundo ao vivo",
     "description": "Tooltip for the upload live background video button"
-  }
-  ,"eyeCareReminderEnabled": {
+  },
+  "eyeCareReminderEnabled": {
     "message": "Ativar lembrete de cuidado com os olhos",
     "description": "Toggle for the eye-care break reminder"
   },
