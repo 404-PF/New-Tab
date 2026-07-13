@@ -30,6 +30,56 @@
     };
   }
 
+  function createCountdownTimer(callback, interval) {
+    if (!window.VisibilityInterval || !window.visibilityManager) {
+      let intervalId = null;
+      const start = function () {
+        if (intervalId === null && !document.hidden) {
+          intervalId = window.setInterval(callback, interval);
+        }
+      };
+      const stop = function () {
+        if (intervalId !== null) {
+          window.clearInterval(intervalId);
+          intervalId = null;
+        }
+      };
+      const handleVisibilityChange = function () {
+        if (document.hidden) stop();
+        else start();
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      start();
+
+      return {
+        destroy: function () {
+          stop();
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
+        }
+      };
+    }
+
+    let skipResumeTick = false;
+    const unsubscribe = window.visibilityManager.onChange(function (visible) {
+      if (visible) skipResumeTick = true;
+    });
+    const timer = new window.VisibilityInterval(function () {
+      if (skipResumeTick) {
+        skipResumeTick = false;
+        return;
+      }
+      callback();
+    }, interval);
+
+    return {
+      destroy: function () {
+        timer.destroy();
+        unsubscribe();
+      }
+    };
+  }
+
   function loadState() {
     if (typeof window.loadEyeCareReminderState === 'function') {
       return window.loadEyeCareReminderState();
@@ -266,7 +316,7 @@
     showBrowserNotification();
 
     stopCountdown();
-    countdownTimer = createTimer(handleCountdownTick, CHECK_INTERVAL_MS);
+    countdownTimer = createCountdownTimer(handleCountdownTick, CHECK_INTERVAL_MS);
   }
 
   function restoreActiveReminder(state, now) {
@@ -299,7 +349,7 @@
     updateCountdownUi();
 
     stopCountdown();
-    countdownTimer = createTimer(handleCountdownTick, CHECK_INTERVAL_MS);
+    countdownTimer = createCountdownTimer(handleCountdownTick, CHECK_INTERVAL_MS);
     return true;
   }
 
@@ -503,6 +553,10 @@
         activeLastVisibleAt: typeof state.activeReminderAt === 'number' ? now : null,
         visibilityPaused: false
       });
+    }
+
+    if (visible && !reminderActive && typeof state.activeReminderAt === 'number') {
+      refreshEyeCareReminder();
     }
   }
 
