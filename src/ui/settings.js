@@ -1139,7 +1139,8 @@ function loadEyeCareReminderState() {
     lastReminder: null,
     elapsedVisibleMs: 0,
     lastVisibleAt: null,
-    activeReminderAt: null
+    activeReminderAt: null,
+    visibilityPaused: false
   };
 
   try {
@@ -1160,7 +1161,8 @@ function loadEyeCareReminderState() {
         ? parsed.elapsedVisibleMs
         : defaults.elapsedVisibleMs,
       lastVisibleAt: typeof parsed.lastVisibleAt === 'number' ? parsed.lastVisibleAt : null,
-      activeReminderAt: typeof parsed.activeReminderAt === 'number' ? parsed.activeReminderAt : null
+      activeReminderAt: typeof parsed.activeReminderAt === 'number' ? parsed.activeReminderAt : null,
+      visibilityPaused: parsed.visibilityPaused === true
     };
   } catch (error) {
     console.warn('Failed to parse eye-care reminder settings:', error);
@@ -1201,7 +1203,8 @@ if (eyeCareEnabledSetting) {
       lastReminder: this.checked ? Date.now() : null,
       elapsedVisibleMs: 0,
       lastVisibleAt: this.checked ? Date.now() : null,
-      activeReminderAt: null
+      activeReminderAt: null,
+      visibilityPaused: false
     };
     saveEyeCareReminderState(updates);
     applyEyeCareReminderSettings();

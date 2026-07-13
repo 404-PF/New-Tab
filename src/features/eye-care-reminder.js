@@ -304,12 +304,30 @@
       return state;
     }
 
+    if (document.hidden) {
+      return state;
+    }
+
     if (typeof state.activeReminderAt === 'number') {
       return {
         ...state,
         elapsedVisibleMs: 0,
-        lastVisibleAt: null
+        lastVisibleAt: null,
+        visibilityPaused: false
       };
+    }
+
+    if (state.visibilityPaused) {
+      const resumedState = {
+        ...state,
+        lastVisibleAt: now,
+        visibilityPaused: false
+      };
+      saveState({
+        lastVisibleAt: now,
+        visibilityPaused: false
+      });
+      return resumedState;
     }
 
     if (typeof state.lastVisibleAt !== 'number') {
@@ -379,7 +397,8 @@
     if (bannerEl) bannerEl.hidden = true;
     saveState({
       lastVisibleAt: null,
-      activeReminderAt: null
+      activeReminderAt: null,
+      visibilityPaused: false
     });
   }
 
@@ -415,17 +434,43 @@
     checkTimer = createTimer(evaluateReminder, CHECK_INTERVAL_MS);
   }
 
+  function handleVisibilityChange(visible) {
+    const state = loadState();
+    const now = Date.now();
+
+    if (!visible) {
+      const elapsed = state.enabled && !reminderActive && typeof state.lastVisibleAt === 'number'
+        ? Math.max(0, now - state.lastVisibleAt)
+        : 0;
+      saveState({
+        elapsedVisibleMs: state.elapsedVisibleMs + elapsed,
+        lastVisibleAt: null,
+        visibilityPaused: true
+      });
+      return;
+    }
+
+    if (state.visibilityPaused) {
+      saveState({
+        lastVisibleAt: now,
+        visibilityPaused: false
+      });
+    }
+  }
+
+  if (window.visibilityManager && typeof window.visibilityManager.onChange === 'function') {
+    window.visibilityManager.onChange(handleVisibilityChange);
+  } else {
+    document.addEventListener('visibilitychange', function () {
+      handleVisibilityChange(!document.hidden);
+    });
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initEyeCareReminder);
   } else {
     initEyeCareReminder();
   }
-
-  document.addEventListener('visibilitychange', function () {
-    if (document.hidden) {
-      saveState({ lastVisibleAt: null });
-    }
-  });
 
   window.addEventListener('languageChanged', function () {
     if (!bannerEl || bannerEl.hidden) return;
