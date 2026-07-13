@@ -283,6 +283,32 @@ describe('eye-care reminder', () => {
     expect(banner.hidden).toBe(true);
   });
 
+  it('pauses the active countdown while the page is hidden', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: Date.now() - (20 * 60 * 1000),
+      elapsedVisibleMs: 20 * 60 * 1000,
+      lastVisibleAt: Date.now(),
+      activeReminderAt: null
+    }));
+
+    window.refreshEyeCareReminder();
+    const banner = document.querySelector('.eye-care-reminder');
+    expect(banner.textContent).toContain('(20s)');
+
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    vi.advanceTimersByTime(10_000);
+
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(banner.hidden).toBe(false);
+    expect(JSON.parse(localStorage.getItem('eyeCareReminder')).activeElapsedVisibleMs).toBe(0);
+  });
+
   it('does not count hidden time toward the visible reminder interval', () => {
     localStorage.setItem('eyeCareReminder', JSON.stringify({
       enabled: true,

@@ -1140,6 +1140,8 @@ function loadEyeCareReminderState() {
     elapsedVisibleMs: 0,
     lastVisibleAt: null,
     activeReminderAt: null,
+    activeElapsedVisibleMs: 0,
+    activeLastVisibleAt: null,
     visibilityPaused: false
   };
 
@@ -1151,6 +1153,8 @@ function loadEyeCareReminderState() {
 
     const interval = parseInt(parsed.intervalMinutes, 10);
     const validIntervals = [15, 20, 30, 45, 60];
+    const activeReminderAt = typeof parsed.activeReminderAt === 'number' ? parsed.activeReminderAt : null;
+    const hasActiveElapsed = typeof parsed.activeElapsedVisibleMs === 'number';
 
     return {
       enabled: parsed.enabled === true,
@@ -1161,7 +1165,11 @@ function loadEyeCareReminderState() {
         ? parsed.elapsedVisibleMs
         : defaults.elapsedVisibleMs,
       lastVisibleAt: typeof parsed.lastVisibleAt === 'number' ? parsed.lastVisibleAt : null,
-      activeReminderAt: typeof parsed.activeReminderAt === 'number' ? parsed.activeReminderAt : null,
+      activeReminderAt,
+      activeElapsedVisibleMs: hasActiveElapsed && parsed.activeElapsedVisibleMs >= 0
+        ? parsed.activeElapsedVisibleMs
+        : activeReminderAt === null ? defaults.activeElapsedVisibleMs : Math.max(0, Date.now() - activeReminderAt),
+      activeLastVisibleAt: typeof parsed.activeLastVisibleAt === 'number' ? parsed.activeLastVisibleAt : null,
       visibilityPaused: parsed.visibilityPaused === true
     };
   } catch (error) {
@@ -1204,6 +1212,8 @@ if (eyeCareEnabledSetting) {
       elapsedVisibleMs: 0,
       lastVisibleAt: this.checked ? Date.now() : null,
       activeReminderAt: null,
+      activeElapsedVisibleMs: 0,
+      activeLastVisibleAt: null,
       visibilityPaused: false
     };
     saveEyeCareReminderState(updates);

@@ -96,6 +96,8 @@ describe('Eye-care reminder settings', () => {
       elapsedVisibleMs: 0,
       lastVisibleAt: null,
       activeReminderAt: null,
+      activeElapsedVisibleMs: 0,
+      activeLastVisibleAt: null,
       visibilityPaused: false
     });
   });

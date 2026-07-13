@@ -171,13 +171,21 @@
       return state;
     }
 
-    if (now - state.activeReminderAt < REMINDER_DURATION_SECONDS * 1000) {
+    const activeElapsedMs = state.activeElapsedVisibleMs + (
+      !document.hidden && typeof state.activeLastVisibleAt === 'number'
+        ? Math.max(0, now - state.activeLastVisibleAt)
+        : 0
+    );
+
+    if (activeElapsedMs < REMINDER_DURATION_SECONDS * 1000) {
       return state;
     }
 
     const recoveredState = {
       ...state,
       activeReminderAt: null,
+      activeElapsedVisibleMs: 0,
+      activeLastVisibleAt: null,
       elapsedVisibleMs: 0,
       lastReminder: now,
       lastVisibleAt: now
@@ -210,7 +218,9 @@
       lastReminder: Date.now(),
       elapsedVisibleMs: 0,
       lastVisibleAt: Date.now(),
-      activeReminderAt: null
+      activeReminderAt: null,
+      activeElapsedVisibleMs: 0,
+      activeLastVisibleAt: null
     });
   }
 
@@ -241,6 +251,8 @@
     const now = Date.now();
     saveState({
       activeReminderAt: now,
+      activeElapsedVisibleMs: 0,
+      activeLastVisibleAt: now,
       lastReminder: now,
       elapsedVisibleMs: 0,
       lastVisibleAt: null
@@ -262,12 +274,22 @@
       return false;
     }
 
-    const elapsedMs = Math.max(0, now - state.activeReminderAt);
+    const elapsedMs = state.activeElapsedVisibleMs + (
+      !document.hidden && typeof state.activeLastVisibleAt === 'number'
+        ? Math.max(0, now - state.activeLastVisibleAt)
+        : 0
+    );
     if (elapsedMs >= REMINDER_DURATION_SECONDS * 1000) {
       return false;
     }
 
     ensureBanner();
+    if (!document.hidden) {
+      saveState({
+        activeElapsedVisibleMs: elapsedMs,
+        activeLastVisibleAt: now
+      });
+    }
     reminderActive = true;
     remainingSeconds = Math.max(
       0,
@@ -357,11 +379,6 @@
       lastVisibleAt: now
     };
 
-    saveState({
-      elapsedVisibleMs: nextState.elapsedVisibleMs,
-      lastVisibleAt: now
-    });
-
     return nextState;
   }
 
@@ -369,7 +386,16 @@
     const now = Date.now();
     let state = clearExpiredActiveReminder(loadState(), now);
     if (!state.enabled) {
-      clearActiveReminderState();
+      if (
+        reminderActive ||
+        state.activeReminderAt !== null ||
+        state.lastVisibleAt !== null ||
+        state.activeElapsedVisibleMs > 0 ||
+        state.activeLastVisibleAt !== null ||
+        state.visibilityPaused
+      ) {
+        clearActiveReminderState();
+      }
       return;
     }
 
@@ -378,7 +404,9 @@
         lastReminder: now,
         lastVisibleAt: now,
         elapsedVisibleMs: 0,
-        activeReminderAt: null
+        activeReminderAt: null,
+        activeElapsedVisibleMs: 0,
+        activeLastVisibleAt: null
       });
       return;
     }
@@ -398,7 +426,9 @@
     saveState({
       lastVisibleAt: null,
       activeReminderAt: null,
-      visibilityPaused: false
+      visibilityPaused: false,
+      activeElapsedVisibleMs: 0,
+      activeLastVisibleAt: null
     });
   }
 
@@ -407,7 +437,16 @@
     const state = clearExpiredActiveReminder(loadState(), now);
 
     if (!state.enabled) {
-      clearActiveReminderState();
+      if (
+        reminderActive ||
+        state.activeReminderAt !== null ||
+        state.lastVisibleAt !== null ||
+        state.activeElapsedVisibleMs > 0 ||
+        state.activeLastVisibleAt !== null ||
+        state.visibilityPaused
+      ) {
+        clearActiveReminderState();
+      }
     } else if (state.lastReminder === null) {
       saveState({
         lastReminder: now,
@@ -416,8 +455,10 @@
         activeReminderAt: null
       });
     } else if (!restoreActiveReminder(state, now)) {
+      stopCountdown();
       reminderActive = false;
       remainingSeconds = REMINDER_DURATION_SECONDS;
+      if (bannerEl) bannerEl.hidden = true;
     }
 
     if (typeof window.applyEyeCareReminderSettings === 'function') {
@@ -442,10 +483,16 @@
       const elapsed = state.enabled && !reminderActive && typeof state.lastVisibleAt === 'number'
         ? Math.max(0, now - state.lastVisibleAt)
         : 0;
+      const activeElapsed = state.enabled && typeof state.activeReminderAt === 'number'
+        && typeof state.activeLastVisibleAt === 'number'
+        ? Math.max(0, now - state.activeLastVisibleAt)
+        : 0;
       saveState({
         elapsedVisibleMs: state.elapsedVisibleMs + elapsed,
         lastVisibleAt: null,
-        visibilityPaused: true
+        visibilityPaused: true,
+        activeElapsedVisibleMs: state.activeElapsedVisibleMs + activeElapsed,
+        activeLastVisibleAt: null
       });
       return;
     }
@@ -453,6 +500,7 @@
     if (state.visibilityPaused) {
       saveState({
         lastVisibleAt: now,
+        activeLastVisibleAt: typeof state.activeReminderAt === 'number' ? now : null,
         visibilityPaused: false
       });
     }
