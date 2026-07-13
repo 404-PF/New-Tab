@@ -139,6 +139,7 @@ const testGlobals = {
   loadTheme: 'readonly',
   loadTodoEnabled: 'readonly',
   loadEyeCareReminderState: 'readonly',
+  saveEyeCareReminderState: 'readonly',
   applyEyeCareReminderSettings: 'readonly',
   refreshEyeCareReminder: 'readonly',
   loadFocusMode: 'readonly',

@@ -241,4 +241,27 @@ describe('eye-care reminder', () => {
     vi.advanceTimersByTime(15_000);
     expect(banner.textContent).toContain('Break complete');
   });
+
+  it('hides the banner when the reminder is disabled while active', () => {
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: Date.now() - (20 * 60 * 1000),
+      elapsedVisibleMs: 20 * 60 * 1000,
+      lastVisibleAt: Date.now(),
+      activeReminderAt: null
+    }));
+
+    window.refreshEyeCareReminder();
+
+    const banner = document.querySelector('.eye-care-reminder');
+    expect(banner.hidden).toBe(false);
+
+    const enabledToggle = document.getElementById('eye-care-enabled-setting');
+    enabledToggle.checked = false;
+    enabledToggle.dispatchEvent(new Event('change'));
+
+    expect(banner.hidden).toBe(true);
+  });
 });

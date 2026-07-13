@@ -5,7 +5,8 @@
   const REMINDER_DURATION_SECONDS = 20;
   const CHECK_INTERVAL_MS = 1000;
   const SVG_NS = 'http://www.w3.org/2000/svg';
-  const RING_CIRCUMFERENCE = 113.097;
+  const RING_RADIUS = 18;
+  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
   let bannerEl = null;
   let statusEl = null;
   let progressEl = null;
