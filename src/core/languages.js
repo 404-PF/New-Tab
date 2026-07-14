@@ -425,7 +425,20 @@ const translations = {
     eyeCareReminderFinished: 'Break complete. Ready when you are.',
     eyeCareReminderSkip: 'Skip',
     eyeCareReminderDone: 'Done',
-    eyeCareReminderNotificationBody: 'Look at something 20 feet away for 20 seconds.'
+    eyeCareReminderNotificationBody: 'Look at something 20 feet away for 20 seconds.',
+
+    // Todo stats
+    enableTodoStats: 'Enable daily stats',
+    statsTitle: 'Stats',
+    clearStats: 'Clear Stats',
+    completedToday: 'Completed Today',
+    completedThisWeek: 'This Week',
+    currentStreak: 'Current Streak',
+    longestStreak: 'Longest Streak',
+    last30Days: 'Last 30 Days',
+    statsToggle: 'Stats',
+    statsToggleAriaLabel: 'Toggle statistics panel',
+    heatmapCellTitle: '$1$: $2$ completed'
   },
 
   zh: {
@@ -3517,6 +3530,20 @@ function applyLanguage(lang) {
   placeholderElements.forEach(element => {
     const key = element.getAttribute('data-i18n-placeholder');
     element.placeholder = getTranslation(lang, key);
+  });
+
+  // Update all elements with data-i18n-title attribute
+  const titleElements = document.querySelectorAll('[data-i18n-title]');
+  titleElements.forEach(element => {
+    const key = element.getAttribute('data-i18n-title');
+    element.setAttribute('title', getTranslation(lang, key));
+  });
+
+  // Update all elements with data-i18n-aria-label attribute
+  const ariaLabelElements = document.querySelectorAll('[data-i18n-aria-label]');
+  ariaLabelElements.forEach(element => {
+    const key = element.getAttribute('data-i18n-aria-label');
+    element.setAttribute('aria-label', getTranslation(lang, key));
   });
 
   // Update any dynamic content that might have been added after initial load

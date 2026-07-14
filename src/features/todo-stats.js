@@ -16,7 +16,7 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return { days: {}, currentStreak: 0, longestStreak: 0 };
       const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed.days !== 'object') return { days: {}, currentStreak: 0, longestStreak: 0 };
+      if (!parsed || typeof parsed.days !== 'object' || parsed.days === null || Array.isArray(parsed.days)) return { days: {}, currentStreak: 0, longestStreak: 0 };
       return parsed;
     } catch (e) {
       console.warn('Failed to load todo stats:', e);
@@ -44,12 +44,12 @@
       if (stats.days[dateStr] > 0) {
         // Check if this date is consecutive to the previous date
         if (prevDate !== null) {
-          const prev = new Date(prevDate);
-          const curr = new Date(dateStr);
+          const [py, pm, pd] = prevDate.split('-').map(Number);
+          const [cy, cm, cd] = dateStr.split('-').map(Number);
+          const prev = new Date(py, pm - 1, pd);
+          const curr = new Date(cy, cm - 1, cd);
           prev.setDate(prev.getDate() + 1);
-          const isConsecutive = prev.getFullYear() === curr.getFullYear() &&
-                                prev.getMonth() === curr.getMonth() &&
-                                prev.getDate() === curr.getDate();
+          const isConsecutive = prev.getTime() === curr.getTime();
           if (isConsecutive) {
             streak++;
           } else {
@@ -69,6 +69,13 @@
     // Calculate current streak by walking backwards from today
     let current = 0;
     const d = new Date();
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    // Grace period: if today has no completions, start checking from yesterday
+    if (!allDates.has(todayStr) || stats.days[todayStr] === 0) {
+      d.setDate(d.getDate() - 1);
+    }
+
     while (true) {
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       if (allDates.has(dateStr) && stats.days[dateStr] > 0) {
