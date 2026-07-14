@@ -200,5 +200,37 @@
   "focusModeExit": {
     "message": "Exit Focus Mode",
     "description": "Label for exiting focus mode"
+  },
+  "enableTodoStats": {
+    "message": "Enable daily stats",
+    "description": "Label for the todo stats toggle"
+  },
+  "statsTitle": {
+    "message": "Stats",
+    "description": "Title for the stats panel"
+  },
+  "clearStats": {
+    "message": "Clear Stats",
+    "description": "Button to clear stats history"
+  },
+  "completedToday": {
+    "message": "Completed Today",
+    "description": "Label for today's completion count"
+  },
+  "completedThisWeek": {
+    "message": "This Week",
+    "description": "Label for this week's completion count"
+  },
+  "currentStreak": {
+    "message": "Current Streak",
+    "description": "Label for current streak count"
+  },
+  "longestStreak": {
+    "message": "Longest Streak",
+    "description": "Label for longest streak count"
+  },
+  "last30Days": {
+    "message": "Last 30 Days",
+    "description": "Label for the heatmap period"
   }
 }

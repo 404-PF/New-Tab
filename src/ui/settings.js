@@ -1118,6 +1118,25 @@ function applyTodoReminderLeadTime() {
   if (select) select.value = String(leadTime);
 }
 
+// Todo stats
+function loadTodoStatsEnabled() {
+  return localStorage.getItem('todoStatsEnabled') === 'true';
+}
+function applyTodoStatsEnabled() {
+  const enabled = loadTodoStatsEnabled();
+  const setting = document.getElementById('todo-stats-enabled-setting');
+  if (setting) setting.checked = enabled;
+  if (window.applyTodoStatsVisibility) window.applyTodoStatsVisibility();
+}
+
+const todoStatsEnabledSetting = document.getElementById('todo-stats-enabled-setting');
+if (todoStatsEnabledSetting) {
+  todoStatsEnabledSetting.addEventListener('change', function () {
+    localStorage.setItem('todoStatsEnabled', this.checked);
+    applyTodoStatsEnabled();
+  });
+}
+
 const todoReminderEnabledSetting = document.getElementById('todo-reminder-enabled-setting');
 if (todoReminderEnabledSetting) {
   todoReminderEnabledSetting.addEventListener('change', function () {
@@ -1426,6 +1445,7 @@ function initSettings() {
   applyTodoEnabled();
   applyTodoReminderEnabled();
   applyTodoReminderLeadTime();
+  applyTodoStatsEnabled();
   applyNotesEnabled();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
@@ -1488,6 +1508,8 @@ window.loadLanguageSetting = loadLanguageSetting;
 window.renderLanguageOptions = renderLanguageOptions;
 window.loadTodoEnabled = loadTodoEnabled;
 window.applyTodoEnabled = applyTodoEnabled;
+window.loadTodoStatsEnabled = loadTodoStatsEnabled;
+window.applyTodoStatsEnabled = applyTodoStatsEnabled;
 window.applyNotesEnabled = applyNotesEnabled;
 window.initSettings = initSettings;
 

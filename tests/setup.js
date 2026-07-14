@@ -351,6 +351,14 @@ globalThis.window.i18n = {
       generalSettingsDesc: 'Configure basic app behavior',
       openNewTab: 'Open apps in a new tab',
       enableTodoList: 'Enable todo list',
+      enableTodoStats: 'Enable daily stats',
+      statsTitle: 'Stats',
+      clearStats: 'Clear Stats',
+      completedToday: 'Completed Today',
+      completedThisWeek: 'This Week',
+      currentStreak: 'Current Streak',
+      longestStreak: 'Longest Streak',
+      last30Days: 'Last 30 Days',
       backgroundSettingsDesc: 'Choose your background image',
       liveBackground: 'Live Background',
       liveBackgroundSettingsDesc: 'Choose an animated background video',
@@ -597,6 +605,7 @@ document.body.appendChild(createStubElement('select', 'date-font-picker'));
 document.body.appendChild(createStubElement('select', 'date-format-picker'));
 document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'todo-stats-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'focus-mode-setting'));
 const leadTimeSelect = document.createElement('select');
 leadTimeSelect.id = 'todo-reminder-lead-time';
@@ -615,6 +624,16 @@ document.body.appendChild(createStubElement('select', 'filter-status'));
 const todoFilters = document.createElement('div');
 todoFilters.className = 'todo-filters';
 document.body.appendChild(todoFilters);
+
+// Todo stats elements
+document.body.appendChild(createStubElement('button', 'todo-stats-toggle'));
+document.body.appendChild(createStubElement('div', 'todo-stats-panel'));
+document.body.appendChild(createStubElement('span', 'todo-stats-today'));
+document.body.appendChild(createStubElement('span', 'todo-stats-week'));
+document.body.appendChild(createStubElement('span', 'todo-stats-current-streak'));
+document.body.appendChild(createStubElement('span', 'todo-stats-longest-streak'));
+document.body.appendChild(createStubElement('div', 'todo-stats-heatmap'));
+document.body.appendChild(createStubElement('button', 'todo-stats-clear'));
 
 // Notes elements required for initNotes to run
 const notesSection = document.createElement('div');
