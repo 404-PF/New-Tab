@@ -18,7 +18,8 @@
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed.days !== 'object') return { days: {}, currentStreak: 0, longestStreak: 0 };
       return parsed;
-    } catch {
+    } catch (e) {
+      console.warn('Failed to load todo stats:', e);
       return { days: {}, currentStreak: 0, longestStreak: 0 };
     }
   }
@@ -38,12 +39,30 @@
 
     // Calculate longest streak from all historical data
     const sortedDates = Object.keys(stats.days).sort();
+    let prevDate = null;
     for (const dateStr of sortedDates) {
       if (stats.days[dateStr] > 0) {
-        streak++;
+        // Check if this date is consecutive to the previous date
+        if (prevDate !== null) {
+          const prev = new Date(prevDate);
+          const curr = new Date(dateStr);
+          prev.setDate(prev.getDate() + 1);
+          const isConsecutive = prev.getFullYear() === curr.getFullYear() &&
+                                prev.getMonth() === curr.getMonth() &&
+                                prev.getDate() === curr.getDate();
+          if (isConsecutive) {
+            streak++;
+          } else {
+            streak = 1;
+          }
+        } else {
+          streak = 1;
+        }
         if (streak > longest) longest = streak;
+        prevDate = dateStr;
       } else {
         streak = 0;
+        prevDate = null;
       }
     }
 
@@ -65,6 +84,7 @@
   }
 
   function recordCompletion() {
+    if (!isStatsEnabled()) return;
     const stats = loadStats();
     const today = getToday();
     stats.days[today] = (stats.days[today] || 0) + 1;
@@ -135,7 +155,8 @@
       const cell = document.createElement('div');
       cell.className = 'heatmap-cell';
       cell.dataset.level = String(getHeatLevel(entry.count, maxCount));
-      cell.title = `${entry.date}: ${entry.count} completed`;
+      const titleTemplate = window.i18n?.heatmapCellTitle?.message || '$1$: $2$ completed';
+      cell.title = titleTemplate.replace('$1$', entry.date).replace('$2$', String(entry.count));
       container.appendChild(cell);
     }
   }

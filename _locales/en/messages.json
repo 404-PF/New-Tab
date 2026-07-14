@@ -232,5 +232,27 @@
   "last30Days": {
     "message": "Last 30 Days",
     "description": "Label for the heatmap period"
+  },
+  "statsToggle": {
+    "message": "Stats",
+    "description": "Tooltip for the stats toggle button"
+  },
+  "statsToggleAriaLabel": {
+    "message": "Toggle statistics panel",
+    "description": "Accessible label for the stats toggle button"
+  },
+  "heatmapCellTitle": {
+    "message": "$1$: $2$ completed",
+    "description": "Tooltip for heatmap cells showing date and completion count. $1$ is the date, $2$ is the count.",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "2024-06-01"
+      },
+      "2": {
+        "content": "$2",
+        "example": "5"
+      }
+    }
   }
 }

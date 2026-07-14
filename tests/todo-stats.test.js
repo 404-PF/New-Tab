@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -52,12 +52,14 @@ describe('Todo stats persistence', () => {
 
 describe('Todo stats recording', () => {
   it('recordTodoCompletion increments today count', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
     recordTodoCompletion();
     const stats = loadTodoStats();
     expect(stats.days[getToday()]).toBe(1);
   });
 
   it('recordTodoCompletion increments existing count', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
     recordTodoCompletion();
     recordTodoCompletion();
     const stats = loadTodoStats();
@@ -65,6 +67,7 @@ describe('Todo stats recording', () => {
   });
 
   it('recordTodoCompletion updates streaks', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
     recordTodoCompletion();
     const stats = loadTodoStats();
     expect(stats.currentStreak).toBeGreaterThanOrEqual(1);
@@ -74,6 +77,7 @@ describe('Todo stats recording', () => {
 
 describe('Todo stats streak calculation', () => {
   it('calculates correct streak for consecutive days', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
     const today = getToday();
     const yesterday = getDateDaysAgo(1);
     const stats = {
@@ -88,6 +92,7 @@ describe('Todo stats streak calculation', () => {
   });
 
   it('breaks streak when a day is missing', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
     const today = getToday();
     const twoDaysAgo = getDateDaysAgo(2);
     const stats = {
@@ -103,6 +108,7 @@ describe('Todo stats streak calculation', () => {
   });
 
   it('tracks longest streak correctly', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
     const today = getToday();
     const d1 = getDateDaysAgo(1);
     const d2 = getDateDaysAgo(2);
@@ -124,21 +130,23 @@ describe('Todo stats streak calculation', () => {
 
 describe('Todo stats weekly count', () => {
   it('getCompletedThisWeek returns 0 when no stats exist', () => {
-    const count = getCompletedToday();
+    const count = getCompletedThisWeek();
     expect(count).toBe(0);
   });
 
   it('records multiple completions on same day', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
     recordTodoCompletion();
     recordTodoCompletion();
     recordTodoCompletion();
-    const count = getCompletedToday();
+    const count = getCompletedThisWeek();
     expect(count).toBe(3);
   });
 });
 
 describe('Todo stats clear', () => {
   it('clearTodoStats resets all data', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
     recordTodoCompletion();
     recordTodoCompletion();
     clearTodoStats();
@@ -215,11 +223,11 @@ describe('Todo stats setting', () => {
 });
 
 describe('Todo completion event', () => {
-  it('dispatches todoCompleted event on completion', () => {
-    const handler = vi.fn();
-    window.addEventListener('todoCompleted', handler);
+  it('records completion when todoCompleted event is dispatched', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    const initialCount = getCompletedToday();
     window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id: 'test-id' } }));
-    expect(handler).toHaveBeenCalled();
-    window.removeEventListener('todoCompleted', handler);
+    const updatedCount = getCompletedToday();
+    expect(updatedCount).toBe(initialCount + 1);
   });
 });
