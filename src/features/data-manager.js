@@ -512,7 +512,19 @@
             } else if (typeof incoming === 'object' && incoming !== null && !Array.isArray(incoming)) {
               // Object: shallow merge
               const currentObj = (typeof current === 'object' && current !== null && !Array.isArray(current)) ? Object.assign({}, current) : {};
-              writeStorage(key, Object.assign(currentObj, incoming));
+              if (key === 'todoStats' && currentObj.days && incoming.days) {
+                // Deep-merge todoStats.days: take the higher count per date
+                const mergedDays = Object.assign({}, currentObj.days);
+                Object.keys(incoming.days).forEach(function (date) {
+                  const localCount = mergedDays[date] || 0;
+                  const incomingCount = incoming.days[date] || 0;
+                  mergedDays[date] = Math.max(localCount, incomingCount);
+                });
+                currentObj.days = mergedDays;
+                writeStorage(key, currentObj);
+              } else {
+                writeStorage(key, Object.assign(currentObj, incoming));
+              }
               count++;
             } else {
               // Scalar: overwrite
