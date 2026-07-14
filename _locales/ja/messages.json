@@ -116,5 +116,65 @@
   "uploadLiveBackground": {
     "message": "ライブ背景をアップロード",
     "description": "Tooltip for the upload live background video button"
+  },
+  "eyeCareReminderEnabled": {
+    "message": "目の休憩リマインダーを有効にする",
+    "description": "Toggle for the eye-care break reminder"
+  },
+  "eyeCareReminderDescription": {
+    "message": "このタブが表示されている間、やさしい休憩通知で20-20-20ルールを実践します。",
+    "description": "Description for the eye-care reminder setting"
+  },
+  "eyeCareReminderInterval": {
+    "message": "休憩間隔",
+    "description": "Label for the eye-care reminder interval selector"
+  },
+  "eyeCareReminderInterval15": {
+    "message": "15分",
+    "description": "Eye-care reminder interval option for 15 minutes"
+  },
+  "eyeCareReminderInterval20": {
+    "message": "20分",
+    "description": "Eye-care reminder interval option for 20 minutes"
+  },
+  "eyeCareReminderInterval30": {
+    "message": "30分",
+    "description": "Eye-care reminder interval option for 30 minutes"
+  },
+  "eyeCareReminderInterval45": {
+    "message": "45分",
+    "description": "Eye-care reminder interval option for 45 minutes"
+  },
+  "eyeCareReminderInterval60": {
+    "message": "60分",
+    "description": "Eye-care reminder interval option for 60 minutes"
+  },
+  "eyeCareReminderBrowserNotification": {
+    "message": "ブラウザー通知",
+    "description": "Toggle for browser notifications when an eye-care break is due"
+  },
+  "eyeCareReminderTitle": {
+    "message": "目の休憩",
+    "description": "Title shown in the eye-care reminder banner"
+  },
+  "eyeCareReminderCountdown": {
+    "message": "20フィート先のものを20秒間見ましょう",
+    "description": "Countdown instruction for the eye-care reminder banner"
+  },
+  "eyeCareReminderFinished": {
+    "message": "休憩が終わりました。準備ができたら再開しましょう。",
+    "description": "Message shown when the eye-care countdown finishes"
+  },
+  "eyeCareReminderSkip": {
+    "message": "スキップ",
+    "description": "Button label to skip the current eye-care reminder"
+  },
+  "eyeCareReminderDone": {
+    "message": "完了",
+    "description": "Button label to dismiss the completed eye-care reminder"
+  },
+  "eyeCareReminderNotificationBody": {
+    "message": "20フィート先のものを20秒間見ましょう。",
+    "description": "Body text for the browser notification when an eye-care break is due"
   }
 }

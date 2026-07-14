@@ -1744,6 +1744,170 @@ body.light-theme .about-cards .setting-card a:hover {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+.setting-description {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(107, 114, 128, 0.8);
+}
+
+.eye-care-reminder {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+  z-index: 5001;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(8, 15, 29, 0.9);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
+  animation: eye-care-reminder-slide-up 0.35s ease;
+}
+
+.eye-care-reminder-content {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+}
+
+.eye-care-reminder-summary {
+  flex: 1;
+  min-width: 0;
+}
+
+.eye-care-reminder-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: #fff;
+}
+
+.eye-care-reminder-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.eye-care-ring {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.eye-care-ring-track,
+.eye-care-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.eye-care-ring-track {
+  stroke: rgba(255, 255, 255, 0.16);
+}
+
+.eye-care-ring-progress {
+  stroke: #7dd3fc;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.eye-care-reminder-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.eye-care-reminder-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.eye-care-reminder-btn:hover {
+  transform: translateY(-1px);
+}
+
+.eye-care-reminder-btn:focus-visible {
+  outline: 2px solid #7dd3fc;
+  outline-offset: 2px;
+}
+
+.eye-care-reminder-btn-primary {
+  background: #7dd3fc;
+  color: #082032;
+}
+
+.eye-care-reminder-btn-secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+@keyframes eye-care-reminder-slide-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+body.light-theme .setting-description {
+  color: rgba(55, 65, 81, 0.8);
+}
+
+body.light-theme .eye-care-reminder {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: 0 16px 50px rgba(15, 23, 42, 0.14);
+}
+
+body.light-theme .eye-care-reminder-title {
+  color: #0f172a;
+}
+
+body.light-theme .eye-care-reminder-text {
+  color: rgba(15, 23, 42, 0.78);
+}
+
+body.light-theme .eye-care-ring-track {
+  stroke: rgba(15, 23, 42, 0.12);
+}
+
+body.light-theme .eye-care-reminder-btn-secondary {
+  background: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+@media (max-width: 640px) {
+  .eye-care-reminder-content {
+    flex-wrap: wrap;
+  }
+
+  .eye-care-reminder-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eye-care-reminder,
+  .eye-care-ring-progress,
+  .eye-care-reminder-btn {
+    animation: none;
+    transition: none;
+  }
+}
+
 @keyframes manualCheckNotificationSlideIn {
   from {
     opacity: 0;

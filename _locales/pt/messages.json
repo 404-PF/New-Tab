@@ -116,5 +116,65 @@
   "uploadLiveBackground": {
     "message": "Carregar plano de fundo ao vivo",
     "description": "Tooltip for the upload live background video button"
+  },
+  "eyeCareReminderEnabled": {
+    "message": "Ativar lembrete de cuidado visual",
+    "description": "Toggle for the eye-care break reminder"
+  },
+  "eyeCareReminderDescription": {
+    "message": "Segue a regra 20-20-20 com um lembrete suave de pausa enquanto este separador estiver visível.",
+    "description": "Description for the eye-care reminder setting"
+  },
+  "eyeCareReminderInterval": {
+    "message": "Intervalo da pausa",
+    "description": "Label for the eye-care reminder interval selector"
+  },
+  "eyeCareReminderInterval15": {
+    "message": "15 minutos",
+    "description": "Eye-care reminder interval option for 15 minutes"
+  },
+  "eyeCareReminderInterval20": {
+    "message": "20 minutos",
+    "description": "Eye-care reminder interval option for 20 minutes"
+  },
+  "eyeCareReminderInterval30": {
+    "message": "30 minutos",
+    "description": "Eye-care reminder interval option for 30 minutes"
+  },
+  "eyeCareReminderInterval45": {
+    "message": "45 minutos",
+    "description": "Eye-care reminder interval option for 45 minutes"
+  },
+  "eyeCareReminderInterval60": {
+    "message": "60 minutos",
+    "description": "Eye-care reminder interval option for 60 minutes"
+  },
+  "eyeCareReminderBrowserNotification": {
+    "message": "Notificação do navegador",
+    "description": "Toggle for browser notifications when an eye-care break is due"
+  },
+  "eyeCareReminderTitle": {
+    "message": "Pausa visual",
+    "description": "Title shown in the eye-care reminder banner"
+  },
+  "eyeCareReminderCountdown": {
+    "message": "Olha para algo a 20 pés de distância durante 20 segundos",
+    "description": "Countdown instruction for the eye-care reminder banner"
+  },
+  "eyeCareReminderFinished": {
+    "message": "Pausa concluída. Continua quando estiveres pronto.",
+    "description": "Message shown when the eye-care countdown finishes"
+  },
+  "eyeCareReminderSkip": {
+    "message": "Ignorar",
+    "description": "Button label to skip the current eye-care reminder"
+  },
+  "eyeCareReminderDone": {
+    "message": "Concluído",
+    "description": "Button label to dismiss the completed eye-care reminder"
+  },
+  "eyeCareReminderNotificationBody": {
+    "message": "Olha para algo a 20 pés de distância durante 20 segundos.",
+    "description": "Body text for the browser notification when an eye-care break is due"
   }
 }

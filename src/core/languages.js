@@ -408,7 +408,24 @@ const translations = {
     bootstrapErrorTitle: 'Extension failed to load',
     bootstrapErrorDesc: 'The following module(s) could not be loaded:',
     bootstrapErrorHint: 'If the problem persists, reinstall the extension.',
-    bootstrapErrorReload: 'Reload'
+    bootstrapErrorReload: 'Reload',
+
+    // Eye-care reminder
+    eyeCareReminderEnabled: 'Enable eye-care reminder',
+    eyeCareReminderDescription: 'Follow the 20-20-20 rule with a gentle break prompt while this tab is visible.',
+    eyeCareReminderInterval: 'Break interval',
+    eyeCareReminderInterval15: '15 minutes',
+    eyeCareReminderInterval20: '20 minutes',
+    eyeCareReminderInterval30: '30 minutes',
+    eyeCareReminderInterval45: '45 minutes',
+    eyeCareReminderInterval60: '60 minutes',
+    eyeCareReminderBrowserNotification: 'Browser notification',
+    eyeCareReminderTitle: 'Eye-care break',
+    eyeCareReminderCountdown: 'Look at something 20 feet away for 20 seconds',
+    eyeCareReminderFinished: 'Break complete. Ready when you are.',
+    eyeCareReminderSkip: 'Skip',
+    eyeCareReminderDone: 'Done',
+    eyeCareReminderNotificationBody: 'Look at something 20 feet away for 20 seconds.'
   },
 
   zh: {
@@ -818,7 +835,24 @@ const translations = {
     bootstrapErrorTitle: '扩展加载失败',
     bootstrapErrorDesc: '以下模块无法加载：',
     bootstrapErrorHint: '如果问题持续存在，请重新安装扩展。',
-    bootstrapErrorReload: '重新加载'
+    bootstrapErrorReload: '重新加载',
+
+    // Eye-care reminder
+    eyeCareReminderEnabled: '啟用護眼提醒',
+    eyeCareReminderDescription: '當此分頁可見時，以溫和的休息提示幫助你遵循 20-20-20 護眼法則。',
+    eyeCareReminderInterval: '休息間隔',
+    eyeCareReminderInterval15: '15 分鐘',
+    eyeCareReminderInterval20: '20 分鐘',
+    eyeCareReminderInterval30: '30 分鐘',
+    eyeCareReminderInterval45: '45 分鐘',
+    eyeCareReminderInterval60: '60 分鐘',
+    eyeCareReminderBrowserNotification: '瀏覽器通知',
+    eyeCareReminderTitle: '護眼休息',
+    eyeCareReminderCountdown: '請注視 20 英尺外的物體 20 秒',
+    eyeCareReminderFinished: '休息結束。準備好後再繼續。',
+    eyeCareReminderSkip: '略過',
+    eyeCareReminderDone: '完成',
+    eyeCareReminderNotificationBody: '請注視 20 英尺外的物體 20 秒。'
   },
 
   ja: {
@@ -1170,7 +1204,24 @@ const translations = {
     bootstrapErrorTitle: '拡張機能の読み込みに失敗しました',
     bootstrapErrorDesc: '以下のモジュールを読み込めませんでした:',
     bootstrapErrorHint: '問題が解決しない場合は、拡張機能を再インストールしてください。',
-    bootstrapErrorReload: '再読み込み'
+    bootstrapErrorReload: '再読み込み',
+
+    // Eye-care reminder
+    eyeCareReminderEnabled: '目の休憩リマインダーを有効にする',
+    eyeCareReminderDescription: 'このタブが表示されている間、やさしい休憩通知で20-20-20ルールを実践します。',
+    eyeCareReminderInterval: '休憩間隔',
+    eyeCareReminderInterval15: '15分',
+    eyeCareReminderInterval20: '20分',
+    eyeCareReminderInterval30: '30分',
+    eyeCareReminderInterval45: '45分',
+    eyeCareReminderInterval60: '60分',
+    eyeCareReminderBrowserNotification: 'ブラウザー通知',
+    eyeCareReminderTitle: '目の休憩',
+    eyeCareReminderCountdown: '20フィート先のものを20秒間見ましょう',
+    eyeCareReminderFinished: '休憩が終わりました。準備ができたら再開しましょう。',
+    eyeCareReminderSkip: 'スキップ',
+    eyeCareReminderDone: '完了',
+    eyeCareReminderNotificationBody: '20フィート先のものを20秒間見ましょう。'
   },
 
   ko: {
@@ -1522,7 +1573,24 @@ const translations = {
     bootstrapErrorTitle: '확장 프로그램을 로드하지 못했습니다',
     bootstrapErrorDesc: '다음 모듈을 로드할 수 없습니다:',
     bootstrapErrorHint: '문제가 계속되면 확장 프로그램을 다시 설치하세요.',
-    bootstrapErrorReload: '새로고침'
+    bootstrapErrorReload: '새로고침',
+
+    // Eye-care reminder
+    eyeCareReminderEnabled: '눈 휴식 알림 사용',
+    eyeCareReminderDescription: '이 탭이 보이는 동안 부드러운 휴식 알림으로 20-20-20 규칙을 실천하세요.',
+    eyeCareReminderInterval: '휴식 간격',
+    eyeCareReminderInterval15: '15분',
+    eyeCareReminderInterval20: '20분',
+    eyeCareReminderInterval30: '30분',
+    eyeCareReminderInterval45: '45분',
+    eyeCareReminderInterval60: '60분',
+    eyeCareReminderBrowserNotification: '브라우저 알림',
+    eyeCareReminderTitle: '눈 휴식',
+    eyeCareReminderCountdown: '20피트 떨어진 곳을 20초 동안 바라보세요',
+    eyeCareReminderFinished: '휴식이 끝났습니다. 준비되면 다시 시작하세요.',
+    eyeCareReminderSkip: '건너뛰기',
+    eyeCareReminderDone: '완료',
+    eyeCareReminderNotificationBody: '20피트 떨어진 곳을 20초 동안 바라보세요.'
   },
 
   es: {
@@ -1874,7 +1942,24 @@ const translations = {
     bootstrapErrorTitle: 'Error al cargar la extensión',
     bootstrapErrorDesc: 'No se pudieron cargar los siguientes módulos:',
     bootstrapErrorHint: 'Si el problema persiste, reinstale la extensión.',
-    bootstrapErrorReload: 'Recargar'
+    bootstrapErrorReload: 'Recargar',
+
+    // Eye-care reminder
+    eyeCareReminderEnabled: 'Activar recordatorio de cuidado visual',
+    eyeCareReminderDescription: 'Sigue la regla 20-20-20 con un suave aviso de descanso mientras esta pestaña esté visible.',
+    eyeCareReminderInterval: 'Intervalo de descanso',
+    eyeCareReminderInterval15: '15 minutos',
+    eyeCareReminderInterval20: '20 minutos',
+    eyeCareReminderInterval30: '30 minutos',
+    eyeCareReminderInterval45: '45 minutos',
+    eyeCareReminderInterval60: '60 minutos',
+    eyeCareReminderBrowserNotification: 'Notificación del navegador',
+    eyeCareReminderTitle: 'Descanso visual',
+    eyeCareReminderCountdown: 'Mira algo a 20 pies de distancia durante 20 segundos',
+    eyeCareReminderFinished: 'Descanso completado. Continúa cuando quieras.',
+    eyeCareReminderSkip: 'Omitir',
+    eyeCareReminderDone: 'Listo',
+    eyeCareReminderNotificationBody: 'Mira algo a 20 pies de distancia durante 20 segundos.'
   },
 
   fr: {
@@ -2226,7 +2311,24 @@ const translations = {
     bootstrapErrorTitle: 'Échec du chargement de l\'extension',
     bootstrapErrorDesc: 'Les modules suivants n\'ont pas pu être chargés :',
     bootstrapErrorHint: 'Si le problème persiste, réinstallez l\'extension.',
-    bootstrapErrorReload: 'Recharger'
+    bootstrapErrorReload: 'Recharger',
+
+    // Eye-care reminder
+    eyeCareReminderEnabled: 'Activer le rappel de pause visuelle',
+    eyeCareReminderDescription: 'Suivez la règle 20-20-20 avec un rappel de pause discret tant que cet onglet est visible.',
+    eyeCareReminderInterval: 'Intervalle des pauses',
+    eyeCareReminderInterval15: '15 minutes',
+    eyeCareReminderInterval20: '20 minutes',
+    eyeCareReminderInterval30: '30 minutes',
+    eyeCareReminderInterval45: '45 minutes',
+    eyeCareReminderInterval60: '60 minutes',
+    eyeCareReminderBrowserNotification: 'Notification du navigateur',
+    eyeCareReminderTitle: 'Pause visuelle',
+    eyeCareReminderCountdown: 'Regardez quelque chose situé à 20 pieds pendant 20 secondes',
+    eyeCareReminderFinished: 'Pause terminée. Reprenez quand vous voulez.',
+    eyeCareReminderSkip: 'Ignorer',
+    eyeCareReminderDone: 'Terminé',
+    eyeCareReminderNotificationBody: 'Regardez quelque chose situé à 20 pieds pendant 20 secondes.'
   },
 
   de: {
@@ -2578,7 +2680,24 @@ const translations = {
     bootstrapErrorTitle: 'Erweiterung konnte nicht geladen werden',
     bootstrapErrorDesc: 'Die folgenden Module konnten nicht geladen werden:',
     bootstrapErrorHint: 'Wenn das Problem weiterhin besteht, installieren Sie die Erweiterung neu.',
-    bootstrapErrorReload: 'Neu laden'
+    bootstrapErrorReload: 'Neu laden',
+
+    // Eye-care reminder
+    eyeCareReminderEnabled: 'Augenschonende Erinnerung aktivieren',
+    eyeCareReminderDescription: 'Befolge die 20-20-20-Regel mit einer sanften Pausenerinnerung, solange dieser Tab sichtbar ist.',
+    eyeCareReminderInterval: 'Pausenintervall',
+    eyeCareReminderInterval15: '15 Minuten',
+    eyeCareReminderInterval20: '20 Minuten',
+    eyeCareReminderInterval30: '30 Minuten',
+    eyeCareReminderInterval45: '45 Minuten',
+    eyeCareReminderInterval60: '60 Minuten',
+    eyeCareReminderBrowserNotification: 'Browserbenachrichtigung',
+    eyeCareReminderTitle: 'Augenpause',
+    eyeCareReminderCountdown: 'Schau 20 Sekunden lang auf etwas, das etwa 6 Meter entfernt ist',
+    eyeCareReminderFinished: 'Pause beendet. Mach weiter, wenn du bereit bist.',
+    eyeCareReminderSkip: 'Überspringen',
+    eyeCareReminderDone: 'Fertig',
+    eyeCareReminderNotificationBody: 'Schau 20 Sekunden lang auf etwas, das etwa 6 Meter entfernt ist.'
   },
 
   pt: {
@@ -2930,7 +3049,24 @@ const translations = {
     bootstrapErrorTitle: 'Falha ao carregar a extensão',
     bootstrapErrorDesc: 'Os seguintes módulos não puderam ser carregados:',
     bootstrapErrorHint: 'Se o problema persistir, reinstale a extensão.',
-    bootstrapErrorReload: 'Recarregar'
+    bootstrapErrorReload: 'Recarregar',
+
+    // Eye-care reminder
+    eyeCareReminderEnabled: 'Ativar lembrete de cuidado visual',
+    eyeCareReminderDescription: 'Segue a regra 20-20-20 com um lembrete suave de pausa enquanto este separador estiver visível.',
+    eyeCareReminderInterval: 'Intervalo da pausa',
+    eyeCareReminderInterval15: '15 minutos',
+    eyeCareReminderInterval20: '20 minutos',
+    eyeCareReminderInterval30: '30 minutos',
+    eyeCareReminderInterval45: '45 minutos',
+    eyeCareReminderInterval60: '60 minutos',
+    eyeCareReminderBrowserNotification: 'Notificação do navegador',
+    eyeCareReminderTitle: 'Pausa visual',
+    eyeCareReminderCountdown: 'Olha para algo a 20 pés de distância durante 20 segundos',
+    eyeCareReminderFinished: 'Pausa concluída. Continua quando estiveres pronto.',
+    eyeCareReminderSkip: 'Ignorar',
+    eyeCareReminderDone: 'Concluído',
+    eyeCareReminderNotificationBody: 'Olha para algo a 20 pés de distância durante 20 segundos.'
   },
 
   ru: {
@@ -3282,7 +3418,24 @@ const translations = {
     bootstrapErrorTitle: 'Не удалось загрузить расширение',
     bootstrapErrorDesc: 'Не удалось загрузить следующие модули:',
     bootstrapErrorHint: 'Если проблема сохраняется, переустановите расширение.',
-    bootstrapErrorReload: 'Перезагрузить'
+    bootstrapErrorReload: 'Перезагрузить',
+
+    // Eye-care reminder
+    eyeCareReminderEnabled: 'Включить напоминание о перерыве для глаз',
+    eyeCareReminderDescription: 'Следуйте правилу 20-20-20 с ненавязчивым напоминанием о перерыве, пока эта вкладка открыта.',
+    eyeCareReminderInterval: 'Интервал перерыва',
+    eyeCareReminderInterval15: '15 минут',
+    eyeCareReminderInterval20: '20 минут',
+    eyeCareReminderInterval30: '30 минут',
+    eyeCareReminderInterval45: '45 минут',
+    eyeCareReminderInterval60: '60 минут',
+    eyeCareReminderBrowserNotification: 'Уведомление браузера',
+    eyeCareReminderTitle: 'Перерыв для глаз',
+    eyeCareReminderCountdown: 'Смотрите 20 секунд на предмет на расстоянии 20 футов',
+    eyeCareReminderFinished: 'Перерыв завершён. Возвращайтесь, когда будете готовы.',
+    eyeCareReminderSkip: 'Пропустить',
+    eyeCareReminderDone: 'Готово',
+    eyeCareReminderNotificationBody: 'Смотрите 20 секунд на предмет на расстоянии 20 футов.'
   }
 };
 

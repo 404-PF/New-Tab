@@ -351,6 +351,21 @@ globalThis.window.i18n = {
       generalSettingsDesc: 'Configure basic app behavior',
       openNewTab: 'Open apps in a new tab',
       enableTodoList: 'Enable todo list',
+      eyeCareReminderEnabled: 'Enable eye-care reminder',
+      eyeCareReminderDescription: 'Follow the 20-20-20 rule with a gentle break prompt while this tab is visible.',
+      eyeCareReminderInterval: 'Break interval',
+      eyeCareReminderInterval15: '15 minutes',
+      eyeCareReminderInterval20: '20 minutes',
+      eyeCareReminderInterval30: '30 minutes',
+      eyeCareReminderInterval45: '45 minutes',
+      eyeCareReminderInterval60: '60 minutes',
+      eyeCareReminderBrowserNotification: 'Browser notification',
+      eyeCareReminderTitle: 'Eye-care break',
+      eyeCareReminderCountdown: 'Look at something 20 feet away for 20 seconds',
+      eyeCareReminderFinished: 'Break complete. Ready when you are.',
+      eyeCareReminderSkip: 'Skip',
+      eyeCareReminderDone: 'Done',
+      eyeCareReminderNotificationBody: 'Look at something 20 feet away for 20 seconds.',
       backgroundSettingsDesc: 'Choose your background image',
       liveBackground: 'Live Background',
       liveBackgroundSettingsDesc: 'Choose an animated background video',
@@ -598,9 +613,23 @@ document.body.appendChild(createStubElement('select', 'date-format-picker'));
 document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'focus-mode-setting'));
+document.body.appendChild(createStubElement('input', 'eye-care-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'eye-care-browser-notification-setting'));
 const leadTimeSelect = document.createElement('select');
 leadTimeSelect.id = 'todo-reminder-lead-time';
 document.body.appendChild(leadTimeSelect);
+const eyeCareIntervalSelect = document.createElement('select');
+eyeCareIntervalSelect.id = 'eye-care-interval-setting';
+eyeCareIntervalSelect.innerHTML = `
+  <option value="15">15 minutes</option>
+  <option value="20">20 minutes</option>
+  <option value="30">30 minutes</option>
+  <option value="45">45 minutes</option>
+  <option value="60">60 minutes</option>
+`;
+document.body.appendChild(eyeCareIntervalSelect);
+document.body.appendChild(createStubElement('div', 'eye-care-interval-option'));
+document.body.appendChild(createStubElement('div', 'eye-care-browser-notification-option'));
 document.body.appendChild(createStubElement('div', 'background-container'));
 document.body.appendChild(createStubElement('img', 'bg-thumbnail'));
 document.body.appendChild(createStubElement('img', 'bg-full'));
