@@ -353,6 +353,7 @@ globalThis.window.i18n = {
       enableTodoList: 'Enable todo list',
       enableTodoStats: 'Enable daily stats',
       statsTitle: 'Stats',
+      heatmapCellTitle: '$1$: $2$ completed',
       clearStats: 'Clear Stats',
       completedToday: 'Completed Today',
       completedThisWeek: 'This Week',

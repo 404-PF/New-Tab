@@ -162,7 +162,9 @@
       const cell = document.createElement('div');
       cell.className = 'heatmap-cell';
       cell.dataset.level = String(getHeatLevel(entry.count, maxCount));
-      const titleTemplate = window.i18n?.heatmapCellTitle?.message || '$1$: $2$ completed';
+      const titleTemplate = (window.i18n && typeof window.i18n.t === 'function')
+        ? window.i18n.t('heatmapCellTitle')
+        : '$1$: $2$ completed';
       cell.title = titleTemplate.replace('$1$', entry.date).replace('$2$', String(entry.count));
       container.appendChild(cell);
     }
