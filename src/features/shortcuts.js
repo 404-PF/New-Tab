@@ -274,6 +274,13 @@
       return;
     }
 
+    // Ctrl+K / Cmd+K always focuses search, even inside text inputs
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      focusSearchBar();
+      return;
+    }
+
     const combo = formatCombo(e);
 
     if (isTextInputFocused() && combo !== activeShortcuts.toggleFocusMode) return;

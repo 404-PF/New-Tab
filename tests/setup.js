@@ -506,7 +506,13 @@ globalThis.window.i18n = {
       bootstrapErrorTitle: 'Extension failed to load',
       bootstrapErrorDesc: 'The following module(s) could not be loaded:',
       bootstrapErrorHint: 'If the problem persists, reinstall the extension.',
-      bootstrapErrorReload: 'Reload'
+      bootstrapErrorReload: 'Reload',
+      searchWith: 'Search with',
+      searchProviderGoogle: 'Google',
+      searchProviderBing: 'Bing',
+      searchProviderDuckDuckGo: 'DuckDuckGo',
+      searchProviderWikipedia: 'Wikipedia',
+      searchProviderYouTube: 'YouTube'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
@@ -542,6 +548,19 @@ document.body.appendChild(createStubElement('span', 'badge-pending'));
 document.body.appendChild(createStubElement('span', 'badge-completed'));
 document.body.appendChild(createStubElement('span', 'badge-overdue'));
 document.body.appendChild(createStubElement('span', 'todo-count'));
+
+// Search provider bar stub
+const providerBar = document.createElement('div');
+providerBar.id = 'search-provider-bar';
+providerBar.className = 'search-provider-bar';
+providerBar.innerHTML = `
+  <button type="button" class="search-provider-btn active" data-provider="google" title="Google" aria-label="Search with Google"></button>
+  <button type="button" class="search-provider-btn" data-provider="bing" title="Bing" aria-label="Search with Bing"></button>
+  <button type="button" class="search-provider-btn" data-provider="duckduckgo" title="DuckDuckGo" aria-label="Search with DuckDuckGo"></button>
+  <button type="button" class="search-provider-btn" data-provider="wikipedia" title="Wikipedia" aria-label="Search with Wikipedia"></button>
+  <button type="button" class="search-provider-btn" data-provider="youtube" title="YouTube" aria-label="Search with YouTube"></button>
+`;
+document.body.appendChild(providerBar);
 
 // Clear-completed dialog with required children
 const clearDialog = document.createElement('div');

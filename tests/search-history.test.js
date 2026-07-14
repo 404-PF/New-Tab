@@ -171,7 +171,7 @@ describe('search history', () => {
     expect(searchQuerySpy).toHaveBeenCalledTimes(1);
     expect(searchQuerySpy).toHaveBeenCalledWith({
       text: 'beta',
-      disposition: 'CURRENT_TAB'
+      disposition: 'NEW_TAB'
     });
     expect(setItemSpy).not.toHaveBeenCalled();
     expect(JSON.parse(localStorage.getItem('searchHistory'))).toEqual(['beta', 'alpha']);
