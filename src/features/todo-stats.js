@@ -90,10 +90,27 @@
     stats.longestStreak = longest;
   }
 
-  function recordCompletion() {
+  function recordCompletion(event) {
     if (!isStatsEnabled()) return;
     const stats = loadStats();
     const today = getToday();
+
+    // Deduplicate per-todo so re-checking the same todo on the same day does
+    // not inflate the daily/weekly counts or the heatmap.
+    const id = event && event.detail && event.detail.id;
+    if (id) {
+      stats.completedIds = stats.completedIds || {};
+      const todaysIds = stats.completedIds[today] || (stats.completedIds[today] = []);
+      Object.keys(stats.completedIds).forEach(function (d) {
+        if (d !== today) delete stats.completedIds[d];
+      });
+      if (todaysIds.indexOf(id) !== -1) {
+        renderStats();
+        return;
+      }
+      todaysIds.push(id);
+    }
+
     stats.days[today] = (stats.days[today] || 0) + 1;
     recalculateStreaks(stats);
     saveStats(stats);

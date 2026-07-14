@@ -229,4 +229,11 @@ describe('Todo completion event', () => {
     const updatedCount = getCompletedToday();
     expect(updatedCount).toBe(initialCount + 1);
   });
+
+  it('does not double-count the same todo completed twice in a day', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id: 'dup-id' } }));
+    window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id: 'dup-id' } }));
+    expect(getCompletedToday()).toBe(1);
+  });
 });
