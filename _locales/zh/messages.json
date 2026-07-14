@@ -176,5 +176,59 @@
   "eyeCareReminderNotificationBody": {
     "message": "請注視 20 英尺外的物體 20 秒。",
     "description": "Body text for the browser notification when an eye-care break is due"
+  },
+  "enableTodoStats": {
+    "message": "啟用每日統計",
+    "description": "Toggle for enabling daily todo statistics"
+  },
+  "statsTitle": {
+    "message": "統計",
+    "description": "Title for the stats panel"
+  },
+  "clearStats": {
+    "message": "清除統計",
+    "description": "Button to clear all stats"
+  },
+  "completedToday": {
+    "message": "今日完成",
+    "description": "Stats label for tasks completed today"
+  },
+  "completedThisWeek": {
+    "message": "本週",
+    "description": "Stats label for tasks completed this week"
+  },
+  "currentStreak": {
+    "message": "目前連續天數",
+    "description": "Stats label for current streak"
+  },
+  "longestStreak": {
+    "message": "最長連續天數",
+    "description": "Stats label for longest streak"
+  },
+  "last30Days": {
+    "message": "近30天",
+    "description": "Stats label for last 30 days"
+  },
+  "statsToggle": {
+    "message": "統計",
+    "description": "Label for the stats toggle button"
+  },
+  "statsToggleAriaLabel": {
+    "message": "切換統計面板",
+    "description": "Accessible label for the stats toggle button"
+  },
+  "heatmapCellTitle": {
+    "message": "$1$：完成 $2$ 項",
+    "description": "Tooltip for heatmap cells. $1$ is the date, $2$ is the number of completed tasks.",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "2024-06-01"
+      },
+      "2": {
+        "content": "$2",
+        "example": "5"
+      }
+    }
   }
 }
