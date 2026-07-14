@@ -8,6 +8,8 @@ class UpdateChecker {
     this.checkInterval = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     this._autoHideTimeoutId = null; // Track auto-hide timeout for cleanup
     this._autoHideUnsubscribe = null; // Track visibility unsubscribe for cleanup
+    this._manualCheckTimeoutId = null; // Track manual-check notification auto-hide timeout
+    this._manualCheckUnsubscribe = null; // Track manual-check notification visibility unsubscribe
     this._manualCheckResultTimeoutId = null; // Track manual-check-result auto-hide timeout
     this._manualCheckResultUnsubscribe = null; // Track manual-check-result visibility unsubscribe
   }
@@ -198,16 +200,23 @@ class UpdateChecker {
     return null; // No update available
   }
 
+  // Shared clear helper matching _scheduleTimedAutoHide's key convention
+  _clearTimedAutoHide(stateKey) {
+    const timeoutKey = `_${stateKey}TimeoutId`;
+    const unsubscribeKey = `_${stateKey}Unsubscribe`;
+    if (this[timeoutKey]) {
+      clearTimeout(this[timeoutKey]);
+      this[timeoutKey] = null;
+    }
+    if (this[unsubscribeKey]) {
+      this[unsubscribeKey]();
+      this[unsubscribeKey] = null;
+    }
+  }
+
   // Clear any existing auto-hide timer
   _clearAutoHideTimer() {
-    if (this._autoHideTimeoutId) {
-      clearTimeout(this._autoHideTimeoutId);
-      this._autoHideTimeoutId = null;
-    }
-    if (this._autoHideUnsubscribe) {
-      this._autoHideUnsubscribe();
-      this._autoHideUnsubscribe = null;
-    }
+    this._clearTimedAutoHide('autoHide');
   }
 
   // Show update notification
@@ -270,14 +279,7 @@ class UpdateChecker {
     const unsubscribeKey = `_${stateKey}Unsubscribe`;
 
     const clear = () => {
-      if (this[timeoutKey]) {
-        clearTimeout(this[timeoutKey]);
-        this[timeoutKey] = null;
-      }
-      if (this[unsubscribeKey]) {
-        this[unsubscribeKey]();
-        this[unsubscribeKey] = null;
-      }
+      this._clearTimedAutoHide(stateKey);
     };
 
     clear();
@@ -398,14 +400,7 @@ class UpdateChecker {
   // Hide manual check notification
   hideManualCheckNotification() {
     // Clear timers
-    if (this._manualCheckTimeoutId) {
-      clearTimeout(this._manualCheckTimeoutId);
-      this._manualCheckTimeoutId = null;
-    }
-    if (this._manualCheckUnsubscribe) {
-      this._manualCheckUnsubscribe();
-      this._manualCheckUnsubscribe = null;
-    }
+    this._clearTimedAutoHide('manualCheck');
 
     const notification = document.querySelector('.manual-check-notification');
     if (notification) {
