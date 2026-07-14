@@ -661,6 +661,10 @@
 
       applyFilters();
       scheduleTodoReminderCheck(id);
+
+      if (todo.completed) {
+        window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id: todo.id } }));
+      }
     }
   }
 

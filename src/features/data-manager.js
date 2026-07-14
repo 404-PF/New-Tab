@@ -31,6 +31,8 @@
     'todoEnabled',
     'todoReminderEnabled',
     'todoReminderLeadTime',
+    'todoStats',
+    'todoStatsEnabled',
     'notes',
     'notesEnabled',
     'appOrder',
@@ -241,6 +243,8 @@
     todoEnabled: function (v) { return typeof v === 'boolean'; },
     todoReminderEnabled: function (v) { return typeof v === 'boolean'; },
     todoReminderLeadTime: function (v) { return typeof v === 'string' || typeof v === 'number'; },
+    todoStats: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
+    todoStatsEnabled: function (v) { return typeof v === 'boolean'; },
     notes: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     notesEnabled: function (v) { return typeof v === 'boolean'; },
     appOrder: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
@@ -508,7 +512,19 @@
             } else if (typeof incoming === 'object' && incoming !== null && !Array.isArray(incoming)) {
               // Object: shallow merge
               const currentObj = (typeof current === 'object' && current !== null && !Array.isArray(current)) ? Object.assign({}, current) : {};
-              writeStorage(key, Object.assign(currentObj, incoming));
+              if (key === 'todoStats' && currentObj.days && incoming.days) {
+                // Deep-merge todoStats.days: take the higher count per date
+                const mergedDays = Object.assign({}, currentObj.days);
+                Object.keys(incoming.days).forEach(function (date) {
+                  const localCount = mergedDays[date] || 0;
+                  const incomingCount = incoming.days[date] || 0;
+                  mergedDays[date] = Math.max(localCount, incomingCount);
+                });
+                currentObj.days = mergedDays;
+                writeStorage(key, currentObj);
+              } else {
+                writeStorage(key, Object.assign(currentObj, incoming));
+              }
               count++;
             } else {
               // Scalar: overwrite

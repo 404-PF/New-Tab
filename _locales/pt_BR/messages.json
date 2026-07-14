@@ -176,5 +176,59 @@
   "eyeCareReminderNotificationBody": {
     "message": "Olhe para algo a 20 pés de distância por 20 segundos.",
     "description": "Body text for the browser notification when an eye-care break is due"
+  },
+  "enableTodoStats": {
+    "message": "Ativar estatísticas diárias",
+    "description": "Toggle for enabling daily todo statistics"
+  },
+  "statsTitle": {
+    "message": "Estatísticas",
+    "description": "Title for the stats panel"
+  },
+  "clearStats": {
+    "message": "Limpar estatísticas",
+    "description": "Button to clear all stats"
+  },
+  "completedToday": {
+    "message": "Concluído hoje",
+    "description": "Stats label for tasks completed today"
+  },
+  "completedThisWeek": {
+    "message": "Esta semana",
+    "description": "Stats label for tasks completed this week"
+  },
+  "currentStreak": {
+    "message": "Sequência atual",
+    "description": "Stats label for current streak"
+  },
+  "longestStreak": {
+    "message": "Maior sequência",
+    "description": "Stats label for longest streak"
+  },
+  "last30Days": {
+    "message": "Últimos 30 dias",
+    "description": "Stats label for last 30 days"
+  },
+  "statsToggle": {
+    "message": "Estatísticas",
+    "description": "Label for the stats toggle button"
+  },
+  "statsToggleAriaLabel": {
+    "message": "Alternar painel de estatísticas",
+    "description": "Accessible label for the stats toggle button"
+  },
+  "heatmapCellTitle": {
+    "message": "$1$: $2$ concluídos",
+    "description": "Tooltip for heatmap cells. $1$ is the date, $2$ is the number of completed tasks.",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "2024-06-01"
+      },
+      "2": {
+        "content": "$2",
+        "example": "5"
+      }
+    }
   }
 }

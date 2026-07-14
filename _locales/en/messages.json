@@ -201,6 +201,60 @@
     "message": "Exit Focus Mode",
     "description": "Label for exiting focus mode"
   },
+  "enableTodoStats": {
+    "message": "Enable daily stats",
+    "description": "Label for the todo stats toggle"
+  },
+  "statsTitle": {
+    "message": "Stats",
+    "description": "Title for the stats panel"
+  },
+  "clearStats": {
+    "message": "Clear Stats",
+    "description": "Button to clear stats history"
+  },
+  "completedToday": {
+    "message": "Completed Today",
+    "description": "Label for today's completion count"
+  },
+  "completedThisWeek": {
+    "message": "This Week",
+    "description": "Label for this week's completion count"
+  },
+  "currentStreak": {
+    "message": "Current Streak",
+    "description": "Label for current streak count"
+  },
+  "longestStreak": {
+    "message": "Longest Streak",
+    "description": "Label for longest streak count"
+  },
+  "last30Days": {
+    "message": "Last 30 Days",
+    "description": "Label for the heatmap period"
+  },
+  "statsToggle": {
+    "message": "Stats",
+    "description": "Tooltip for the stats toggle button"
+  },
+  "statsToggleAriaLabel": {
+    "message": "Toggle statistics panel",
+    "description": "Accessible label for the stats toggle button"
+  },
+  "heatmapCellTitle": {
+    "message": "$1$: $2$ completed",
+    "description": "Tooltip for heatmap cells showing date and completion count. $1$ is the date, $2$ is the count.",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "2024-06-01"
+      },
+      "2": {
+        "content": "$2",
+        "example": "5"
+      }
+    }
+  },
   "eyeCareReminderEnabled": {
     "message": "Enable eye-care reminder",
     "description": "Toggle for the eye-care break reminder"

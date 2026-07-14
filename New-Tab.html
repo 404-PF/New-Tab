@@ -84,6 +84,13 @@
             </svg>
             <span class="progress-text" id="progress-text">0%</span>
           </div>
+          <button type="button" class="todo-stats-toggle" id="todo-stats-toggle" data-i18n-title="statsToggle" aria-label="{{statsToggleAriaLabel}}" data-i18n-aria-label="statsToggleAriaLabel" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+          </button>
         </div>
 
         <div class="todo-controls">
@@ -223,6 +230,35 @@
             </div>
             <p data-i18n="emptyStateTitle">No todos yet. Add one above!</p>
             <small data-i18n="emptyStateDesc">Try adding due dates for better organization.</small>
+          </div>
+        </div>
+
+        <div class="todo-stats-panel" id="todo-stats-panel" style="display:none">
+          <div class="todo-stats-header">
+            <h4 class="todo-stats-title" data-i18n="statsTitle">Stats</h4>
+            <button type="button" class="todo-stats-clear" id="todo-stats-clear" data-i18n="clearStats">Clear Stats</button>
+          </div>
+          <div class="todo-stats-grid">
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="todo-stats-today">0</span>
+              <span class="todo-stat-label" data-i18n="completedToday">Completed Today</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="todo-stats-week">0</span>
+              <span class="todo-stat-label" data-i18n="completedThisWeek">This Week</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="todo-stats-current-streak">0</span>
+              <span class="todo-stat-label" data-i18n="currentStreak">Current Streak</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="todo-stats-longest-streak">0</span>
+              <span class="todo-stat-label" data-i18n="longestStreak">Longest Streak</span>
+            </div>
+          </div>
+          <div class="todo-heatmap-section">
+            <span class="todo-heatmap-label" data-i18n="last30Days">Last 30 Days</span>
+            <div class="todo-heatmap" id="todo-stats-heatmap"></div>
           </div>
         </div>
 
@@ -486,6 +522,19 @@
                     <div class="setting-content">
                       <label for="eye-care-browser-notification-setting" data-i18n="eyeCareReminderBrowserNotification">Browser notification</label>
                       <input type="checkbox" id="eye-care-browser-notification-setting" />
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="20" x2="18" y2="10"></line>
+                      <line x1="12" y1="20" x2="12" y2="4"></line>
+                      <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="todo-stats-enabled-setting" data-i18n="enableTodoStats">Enable daily stats</label>
+                      <input type="checkbox" id="todo-stats-enabled-setting" />
                     </div>
                   </div>
                 </div>

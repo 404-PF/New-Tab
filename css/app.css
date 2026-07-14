@@ -83,6 +83,214 @@ body.light-theme .progress-text {
   color: #1f2937;
 }
 
+/* Todo Stats Panel */
+.todo-stats-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.todo-stats-toggle:hover,
+.todo-stats-toggle.active {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+}
+
+.todo-stats-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.todo-stats-panel {
+  margin-top: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.todo-stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.todo-stats-title {
+  font-size: 1em;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.todo-stats-clear {
+  font-size: 0.75em;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.todo-stats-clear:hover {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+  border-color: rgba(244, 67, 54, 0.3);
+}
+
+.todo-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.todo-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.todo-stat-value {
+  font-size: 1.4em;
+  font-weight: 700;
+  color: #2196f3;
+  line-height: 1.2;
+}
+
+.todo-stat-label {
+  font-size: 0.7em;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  margin-top: 4px;
+}
+
+.todo-heatmap-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.todo-heatmap-label {
+  font-size: 0.75em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.todo-heatmap {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.heatmap-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.heatmap-cell[data-level="0"] {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.heatmap-cell[data-level="1"] {
+  background: rgba(76, 175, 80, 0.35);
+}
+
+.heatmap-cell[data-level="2"] {
+  background: rgba(76, 175, 80, 0.6);
+}
+
+.heatmap-cell[data-level="3"] {
+  background: rgba(76, 175, 80, 0.9);
+}
+
+body.light-theme .todo-stats-toggle {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+body.light-theme .todo-stats-toggle:hover,
+body.light-theme .todo-stats-toggle.active {
+  background: rgba(33, 150, 243, 0.12);
+  color: #1976d2;
+}
+
+body.light-theme .todo-stats-panel {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .todo-stats-title {
+  color: #1f2937;
+}
+
+body.light-theme .todo-stats-clear {
+  border-color: rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+body.light-theme .todo-stats-clear:hover {
+  background: rgba(244, 67, 54, 0.08);
+  color: #d32f2f;
+}
+
+body.light-theme .todo-stat-card {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .todo-stat-value {
+  color: #1976d2;
+}
+
+body.light-theme .todo-stat-label {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+body.light-theme .todo-heatmap-label {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+body.light-theme .heatmap-cell[data-level="0"] {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .heatmap-cell[data-level="1"] {
+  background: rgba(76, 175, 80, 0.25);
+}
+
+body.light-theme .heatmap-cell[data-level="2"] {
+  background: rgba(76, 175, 80, 0.45);
+}
+
+body.light-theme .heatmap-cell[data-level="3"] {
+  background: rgba(76, 175, 80, 0.75);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heatmap-cell,
+  .todo-stats-toggle,
+  .todo-stats-clear {
+    transition: none;
+  }
+}
+
 body.light-theme .todo-count {
   background: rgba(33, 150, 243, 0.15);
   color: #1976d2;
@@ -2303,6 +2511,16 @@ body.light-theme .empty-icon {
   .progress-text {
     font-size: 10px;
   }
+
+  .todo-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .todo-stats-toggle {
+    position: absolute;
+    right: 16px;
+    top: 56px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2335,6 +2553,11 @@ body.light-theme .empty-icon {
 
   #selected-count {
     font-size: 11px;
+  }
+
+  .heatmap-cell {
+    width: 12px;
+    height: 12px;
   }
 }
 
