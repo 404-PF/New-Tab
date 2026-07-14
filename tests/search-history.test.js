@@ -46,6 +46,8 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.removeItem('searchHistory');
+  localStorage.removeItem('searchProvider');
+  window.saveActiveProvider(null);
 
   const input = document.querySelector('.search-bar input');
   if (input) {
@@ -175,6 +177,20 @@ describe('search history', () => {
     });
     expect(setItemSpy).not.toHaveBeenCalled();
     expect(JSON.parse(localStorage.getItem('searchHistory'))).toEqual(['beta', 'alpha']);
+  });
+
+  it('routes google provider through its URL instead of chrome.search.query', () => {
+    window.saveActiveProvider('google');
+    const searchQuerySpy = vi.spyOn(chrome.search, 'query');
+    const openSpy = vi.spyOn(window, 'open');
+
+    runSearch('hello world');
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy.mock.calls[0][0]).toContain('google.com/search?q=');
+    expect(openSpy.mock.calls[0][0]).toContain(encodeURIComponent('hello world'));
+    expect(searchQuerySpy).not.toHaveBeenCalled();
+    openSpy.mockRestore();
   });
 
   it('records history only after chrome.search.query resolves (#280)', async () => {

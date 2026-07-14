@@ -646,8 +646,7 @@ function renderSearchHistorySuggestions() {
 }
 
 function runDefaultSearch(query, onSuccess) {
-  const isActiveDefault = !activeProviderId || activeProviderId === 'google';
-  const providerUrl = isActiveDefault ? null : getActiveProviderUrl(query);
+  const providerUrl = activeProviderId ? getActiveProviderUrl(query) : null;
 
   if (providerUrl) {
     recordSearchHistory(query);
