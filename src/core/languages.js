@@ -865,7 +865,20 @@ const translations = {
     eyeCareReminderFinished: '休息結束。準備好後再繼續。',
     eyeCareReminderSkip: '略過',
     eyeCareReminderDone: '完成',
-    eyeCareReminderNotificationBody: '請注視 20 英尺外的物體 20 秒。'
+    eyeCareReminderNotificationBody: '請注視 20 英尺外的物體 20 秒。',
+
+    // Todo stats
+    enableTodoStats: '啟用每日統計',
+    statsTitle: '統計',
+    clearStats: '清除統計',
+    completedToday: '今日完成',
+    completedThisWeek: '本週',
+    currentStreak: '當前連續',
+    longestStreak: '最長連續',
+    last30Days: '最近 30 天',
+    statsToggle: '統計',
+    statsToggleAriaLabel: '切換統計面板',
+    heatmapCellTitle: '$1$：已完成 $2$ 項'
   },
 
   ja: {
@@ -1234,7 +1247,20 @@ const translations = {
     eyeCareReminderFinished: '休憩が終わりました。準備ができたら再開しましょう。',
     eyeCareReminderSkip: 'スキップ',
     eyeCareReminderDone: '完了',
-    eyeCareReminderNotificationBody: '20フィート先のものを20秒間見ましょう。'
+    eyeCareReminderNotificationBody: '20フィート先のものを20秒間見ましょう。',
+
+    // Todo stats
+    enableTodoStats: '日次統計を有効にする',
+    statsTitle: '統計',
+    clearStats: '統計をクリア',
+    completedToday: '今日完了',
+    completedThisWeek: '今週',
+    currentStreak: '現在の連続',
+    longestStreak: '最長連続',
+    last30Days: '過去30日間',
+    statsToggle: '統計',
+    statsToggleAriaLabel: '統計パネルの切り替え',
+    heatmapCellTitle: '$1$: $2$ 完了'
   },
 
   ko: {
@@ -1603,7 +1629,20 @@ const translations = {
     eyeCareReminderFinished: '휴식이 끝났습니다. 준비되면 다시 시작하세요.',
     eyeCareReminderSkip: '건너뛰기',
     eyeCareReminderDone: '완료',
-    eyeCareReminderNotificationBody: '20피트 떨어진 곳을 20초 동안 바라보세요.'
+    eyeCareReminderNotificationBody: '20피트 떨어진 곳을 20초 동안 바라보세요.',
+
+    // Todo stats
+    enableTodoStats: '일일 통계 사용',
+    statsTitle: '통계',
+    clearStats: '통계 지우기',
+    completedToday: '오늘 완료',
+    completedThisWeek: '이번 주',
+    currentStreak: '현재 연속',
+    longestStreak: '최장 연속',
+    last30Days: '최근 30일',
+    statsToggle: '통계',
+    statsToggleAriaLabel: '통계 패널 전환',
+    heatmapCellTitle: '$1$: $2$ 완료'
   },
 
   es: {
@@ -1972,7 +2011,20 @@ const translations = {
     eyeCareReminderFinished: 'Descanso completado. Continúa cuando quieras.',
     eyeCareReminderSkip: 'Omitir',
     eyeCareReminderDone: 'Listo',
-    eyeCareReminderNotificationBody: 'Mira algo a 20 pies de distancia durante 20 segundos.'
+    eyeCareReminderNotificationBody: 'Mira algo a 20 pies de distancia durante 20 segundos.',
+
+    // Todo stats
+    enableTodoStats: 'Activar estadísticas diarias',
+    statsTitle: 'Estadísticas',
+    clearStats: 'Borrar estadísticas',
+    completedToday: 'Completadas hoy',
+    completedThisWeek: 'Esta semana',
+    currentStreak: 'Racha actual',
+    longestStreak: 'Racha más larga',
+    last30Days: 'Últimos 30 días',
+    statsToggle: 'Estadísticas',
+    statsToggleAriaLabel: 'Alternar panel de estadísticas',
+    heatmapCellTitle: '$1$: $2$ completadas'
   },
 
   fr: {
@@ -2341,7 +2393,20 @@ const translations = {
     eyeCareReminderFinished: 'Pause terminée. Reprenez quand vous voulez.',
     eyeCareReminderSkip: 'Ignorer',
     eyeCareReminderDone: 'Terminé',
-    eyeCareReminderNotificationBody: 'Regardez quelque chose situé à 20 pieds pendant 20 secondes.'
+    eyeCareReminderNotificationBody: 'Regardez quelque chose situé à 20 pieds pendant 20 secondes.',
+
+    // Todo stats
+    enableTodoStats: 'Activer les statistiques quotidiennes',
+    statsTitle: 'Statistiques',
+    clearStats: 'Effacer les statistiques',
+    completedToday: 'Terminées aujourd’hui',
+    completedThisWeek: 'Cette semaine',
+    currentStreak: 'Série actuelle',
+    longestStreak: 'Série la plus longue',
+    last30Days: '30 derniers jours',
+    statsToggle: 'Statistiques',
+    statsToggleAriaLabel: 'Afficher/masquer le panneau de statistiques',
+    heatmapCellTitle: '$1$ : $2$ terminées'
   },
 
   de: {
@@ -2710,7 +2775,20 @@ const translations = {
     eyeCareReminderFinished: 'Pause beendet. Mach weiter, wenn du bereit bist.',
     eyeCareReminderSkip: 'Überspringen',
     eyeCareReminderDone: 'Fertig',
-    eyeCareReminderNotificationBody: 'Schau 20 Sekunden lang auf etwas, das etwa 6 Meter entfernt ist.'
+    eyeCareReminderNotificationBody: 'Schau 20 Sekunden lang auf etwas, das etwa 6 Meter entfernt ist.',
+
+    // Todo stats
+    enableTodoStats: 'Tägliche Statistiken aktivieren',
+    statsTitle: 'Statistiken',
+    clearStats: 'Statistiken löschen',
+    completedToday: 'Heute abgeschlossen',
+    completedThisWeek: 'Diese Woche',
+    currentStreak: 'Aktuelle Serie',
+    longestStreak: 'Längste Serie',
+    last30Days: 'Letzte 30 Tage',
+    statsToggle: 'Statistiken',
+    statsToggleAriaLabel: 'Statistikpanel umschalten',
+    heatmapCellTitle: '$1$: $2$ erledigt'
   },
 
   pt: {
@@ -3079,7 +3157,20 @@ const translations = {
     eyeCareReminderFinished: 'Pausa concluída. Continua quando estiveres pronto.',
     eyeCareReminderSkip: 'Ignorar',
     eyeCareReminderDone: 'Concluído',
-    eyeCareReminderNotificationBody: 'Olha para algo a 20 pés de distância durante 20 segundos.'
+    eyeCareReminderNotificationBody: 'Olha para algo a 20 pés de distância durante 20 segundos.',
+
+    // Todo stats
+    enableTodoStats: 'Ativar estatísticas diárias',
+    statsTitle: 'Estatísticas',
+    clearStats: 'Limpar estatísticas',
+    completedToday: 'Concluídas hoje',
+    completedThisWeek: 'Esta semana',
+    currentStreak: 'Sequência atual',
+    longestStreak: 'Maior sequência',
+    last30Days: 'Últimos 30 dias',
+    statsToggle: 'Estatísticas',
+    statsToggleAriaLabel: 'Alternar painel de estatísticas',
+    heatmapCellTitle: '$1$: $2$ concluídas'
   },
 
   ru: {
@@ -3448,7 +3539,20 @@ const translations = {
     eyeCareReminderFinished: 'Перерыв завершён. Возвращайтесь, когда будете готовы.',
     eyeCareReminderSkip: 'Пропустить',
     eyeCareReminderDone: 'Готово',
-    eyeCareReminderNotificationBody: 'Смотрите 20 секунд на предмет на расстоянии 20 футов.'
+    eyeCareReminderNotificationBody: 'Смотрите 20 секунд на предмет на расстоянии 20 футов.',
+
+    // Todo stats
+    enableTodoStats: 'Включить ежедневную статистику',
+    statsTitle: 'Статистика',
+    clearStats: 'Очистить статистику',
+    completedToday: 'Выполнено сегодня',
+    completedThisWeek: 'На этой неделе',
+    currentStreak: 'Текущая серия',
+    longestStreak: 'Самая длинная серия',
+    last30Days: 'Последние 30 дней',
+    statsToggle: 'Статистика',
+    statsToggleAriaLabel: 'Переключить панель статистики',
+    heatmapCellTitle: '$1$: выполнено $2$'
   }
 };
 
