@@ -425,7 +425,30 @@ const translations = {
     eyeCareReminderFinished: 'Break complete. Ready when you are.',
     eyeCareReminderSkip: 'Skip',
     eyeCareReminderDone: 'Done',
-    eyeCareReminderNotificationBody: 'Look at something 20 feet away for 20 seconds.'
+    eyeCareReminderNotificationBody: 'Look at something 20 feet away for 20 seconds.',
+
+    // Pomodoro
+    pomodoro: 'Pomodoro',
+    pomodoroSettingsDesc: 'Configure the Pomodoro focus timer',
+    pomodoroEnabled: 'Enable Pomodoro timer',
+    pomodoroWorkDuration: 'Work duration (min)',
+    pomodoroShortBreakDuration: 'Short break (min)',
+    pomodoroLongBreakDuration: 'Long break (min)',
+    pomodoroSessionsBeforeLong: 'Sessions before long break',
+    pomodoroStartFocus: 'Start Focus',
+    pomodoroPause: 'Pause',
+    pomodoroResume: 'Resume',
+    pomodoroSkip: 'Skip',
+    pomodoroEnd: 'End Session',
+    pomodoroWork: 'Focus',
+    pomodoroShortBreak: 'Short Break',
+    pomodoroLongBreak: 'Long Break',
+    pomodoroWorkCompleteTitle: 'Focus Session Complete',
+    pomodoroWorkCompleteMessage: 'Time for a break! {sessions} sessions completed.',
+    pomodoroShortBreakCompleteTitle: 'Break Over',
+    pomodoroShortBreakCompleteMessage: 'Ready to focus again?',
+    pomodoroLongBreakCompleteTitle: 'Long Break Over',
+    pomodoroLongBreakCompleteMessage: 'Great work! {sessions} sessions completed.'
   },
 
   zh: {

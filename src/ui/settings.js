@@ -1258,6 +1258,49 @@ if (todoReminderLeadTime) {
   });
 }
 
+// Pomodoro settings
+const pomodoroEnabled = document.getElementById('pomodoro-enabled');
+if (pomodoroEnabled) {
+  pomodoroEnabled.addEventListener('change', function () {
+    if (
+      window.PomodoroTimer &&
+      typeof window.PomodoroTimer.loadSettings === 'function' &&
+      typeof window.PomodoroTimer.saveSettings === 'function' &&
+      typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
+    ) {
+      const s = window.PomodoroTimer.loadSettings();
+      s.enabled = this.checked;
+      window.PomodoroTimer.saveSettings(s);
+      window.PomodoroTimer.applyPomodoroSettings();
+    }
+  });
+}
+
+function bindPomodoroNumberSetting(elementId, settingKey, min, max) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.addEventListener('change', function () {
+    if (
+      window.PomodoroTimer &&
+      typeof window.PomodoroTimer.loadSettings === 'function' &&
+      typeof window.PomodoroTimer.saveSettings === 'function' &&
+      typeof window.PomodoroTimer.applyPomodoroSettings === 'function'
+    ) {
+      const s = window.PomodoroTimer.loadSettings();
+      const next = parseInt(this.value, 10);
+      s[settingKey] = Number.isFinite(next) ? Math.min(max, Math.max(min, next)) : s[settingKey];
+      this.value = s[settingKey];
+      window.PomodoroTimer.saveSettings(s);
+      window.PomodoroTimer.applyPomodoroSettings();
+    }
+  });
+}
+
+bindPomodoroNumberSetting('pomodoro-work-duration', 'work', 1, 120);
+bindPomodoroNumberSetting('pomodoro-short-duration', 'shortBreak', 1, 60);
+bindPomodoroNumberSetting('pomodoro-long-duration', 'longBreak', 1, 60);
+bindPomodoroNumberSetting('pomodoro-sessions-before-long', 'sessionsBeforeLong', 1, 10);
+
 // Notes enabled
 function loadNotesEnabled() {
   return localStorage.getItem('notesEnabled') !== 'false';
@@ -1544,6 +1587,9 @@ function initSettings() {
   applyTodoReminderEnabled();
   applyTodoReminderLeadTime();
   applyEyeCareReminderSettings();
+  if (window.PomodoroTimer && typeof window.PomodoroTimer.applyPomodoroSettings === 'function') {
+    window.PomodoroTimer.applyPomodoroSettings();
+  }
   applyNotesEnabled();
   applyLanguageSetting();
   applyVideoPlaybackSettings();

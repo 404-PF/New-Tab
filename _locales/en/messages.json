@@ -260,5 +260,101 @@
   "eyeCareReminderNotificationBody": {
     "message": "Look at something 20 feet away for 20 seconds.",
     "description": "Body text for the browser notification when an eye-care break is due"
+  },
+  "pomodoro": {
+    "message": "Pomodoro",
+    "description": "Pomodoro timer section label"
+  },
+  "pomodoroSettingsDesc": {
+    "message": "Configure the Pomodoro focus timer",
+    "description": "Description for pomodoro settings section"
+  },
+  "pomodoroEnabled": {
+    "message": "Enable Pomodoro timer",
+    "description": "Label for the pomodoro enable toggle"
+  },
+  "pomodoroWorkDuration": {
+    "message": "Work duration (min)",
+    "description": "Label for work duration setting"
+  },
+  "pomodoroShortBreakDuration": {
+    "message": "Short break (min)",
+    "description": "Label for short break duration setting"
+  },
+  "pomodoroLongBreakDuration": {
+    "message": "Long break (min)",
+    "description": "Label for long break duration setting"
+  },
+  "pomodoroSessionsBeforeLong": {
+    "message": "Sessions before long break",
+    "description": "Label for sessions before long break setting"
+  },
+  "pomodoroStartFocus": {
+    "message": "Start Focus",
+    "description": "Tooltip for the start focus button on a todo item"
+  },
+  "pomodoroPause": {
+    "message": "Pause",
+    "description": "Tooltip for the pause button"
+  },
+  "pomodoroResume": {
+    "message": "Resume",
+    "description": "Tooltip for the resume button"
+  },
+  "pomodoroSkip": {
+    "message": "Skip",
+    "description": "Tooltip for the skip button"
+  },
+  "pomodoroEnd": {
+    "message": "End Session",
+    "description": "Tooltip for the end session button"
+  },
+  "pomodoroWork": {
+    "message": "Focus",
+    "description": "Phase label for work session"
+  },
+  "pomodoroShortBreak": {
+    "message": "Short Break",
+    "description": "Phase label for short break"
+  },
+  "pomodoroLongBreak": {
+    "message": "Long Break",
+    "description": "Phase label for long break"
+  },
+  "pomodoroWorkCompleteTitle": {
+    "message": "Focus Session Complete",
+    "description": "Notification title when work session ends"
+  },
+  "pomodoroWorkCompleteMessage": {
+    "message": "Time for a break! $1$ sessions completed.",
+    "description": "Notification body when work session ends. $1$ is the number of sessions completed.",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "pomodoroShortBreakCompleteTitle": {
+    "message": "Break Over",
+    "description": "Notification title when short break ends"
+  },
+  "pomodoroShortBreakCompleteMessage": {
+    "message": "Ready to focus again?",
+    "description": "Notification body when short break ends"
+  },
+  "pomodoroLongBreakCompleteTitle": {
+    "message": "Long Break Over",
+    "description": "Notification title when long break ends"
+  },
+  "pomodoroLongBreakCompleteMessage": {
+    "message": "Great work! $1$ sessions completed.",
+    "description": "Notification body when long break ends. $1$ is the number of sessions completed.",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "4"
+      }
+    }
   }
 }

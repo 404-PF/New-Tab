@@ -1909,7 +1909,8 @@ body.light-theme .toast-notification.toast-info {
 }
 
 .todo-edit-btn,
-.todo-delete-btn {
+.todo-delete-btn,
+.todo-focus-btn {
   background: none;
   border: none;
   width: 32px;
