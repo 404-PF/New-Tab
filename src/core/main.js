@@ -553,7 +553,8 @@ function ensureSearchHistoryPanel() {
       }
     });
 
-    searchBarElement.appendChild(searchHistoryPanel);
+    const searchHistoryContainer = searchBarElement.closest('.search-bar-wrapper') || searchBarElement;
+    searchHistoryContainer.appendChild(searchHistoryPanel);
   }
 
   return searchHistoryPanel;

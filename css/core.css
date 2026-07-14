@@ -300,6 +300,8 @@ body {
   width: var(--search-bar-width);
   margin-left: auto;
   margin-right: auto;
+  position: relative;
+  isolation: isolate;
 }
 
 .search-bar {
@@ -314,7 +316,7 @@ body {
   height: 50px;
   overflow: visible;
   position: relative;
-  isolation: isolate; /* Scope .search-history-panel z-index within this element */
+  isolation: isolate; /* Keep the search controls in their own stacking context */
   transition: transform 0.25s ease-out;
 }
 .search-bar:focus-within {
