@@ -8,6 +8,10 @@ class UpdateChecker {
     this.checkInterval = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     this._autoHideTimeoutId = null; // Track auto-hide timeout for cleanup
     this._autoHideUnsubscribe = null; // Track visibility unsubscribe for cleanup
+    this._manualCheckTimeoutId = null; // Track manual-check notification auto-hide timeout
+    this._manualCheckUnsubscribe = null; // Track manual-check notification visibility unsubscribe
+    this._manualCheckResultTimeoutId = null; // Track manual-check-result auto-hide timeout
+    this._manualCheckResultUnsubscribe = null; // Track manual-check-result visibility unsubscribe
   }
 
   hasCurrentVersion() {
@@ -196,16 +200,23 @@ class UpdateChecker {
     return null; // No update available
   }
 
+  // Shared clear helper matching _scheduleTimedAutoHide's key convention
+  _clearTimedAutoHide(stateKey) {
+    const timeoutKey = `_${stateKey}TimeoutId`;
+    const unsubscribeKey = `_${stateKey}Unsubscribe`;
+    if (this[timeoutKey]) {
+      clearTimeout(this[timeoutKey]);
+      this[timeoutKey] = null;
+    }
+    if (this[unsubscribeKey]) {
+      this[unsubscribeKey]();
+      this[unsubscribeKey] = null;
+    }
+  }
+
   // Clear any existing auto-hide timer
   _clearAutoHideTimer() {
-    if (this._autoHideTimeoutId) {
-      clearTimeout(this._autoHideTimeoutId);
-      this._autoHideTimeoutId = null;
-    }
-    if (this._autoHideUnsubscribe) {
-      this._autoHideUnsubscribe();
-      this._autoHideUnsubscribe = null;
-    }
+    this._clearTimedAutoHide('autoHide');
   }
 
   // Show update notification
@@ -258,48 +269,49 @@ class UpdateChecker {
     }
 
     // Auto-hide after 30 seconds (visibility-aware)
-    this._scheduleAutoHide(() => this.hideUpdateNotification(), 30000);
+    this._scheduleTimedAutoHide('autoHide', () => this.hideUpdateNotification(), 30000);
   }
 
-  // Schedule auto-hide with visibility awareness
-  _scheduleAutoHide(callback, delay) {
-    // Clear any existing timer first
-    this._clearAutoHideTimer();
+  // Generic visibility-aware auto-hide scheduler, keyed by state name
+  // e.g. stateKey 'autoHide' -> uses _autoHideTimeoutId / _autoHideUnsubscribe
+  _scheduleTimedAutoHide(stateKey, callback, delay) {
+    const timeoutKey = `_${stateKey}TimeoutId`;
+    const unsubscribeKey = `_${stateKey}Unsubscribe`;
+
+    const clear = () => {
+      this._clearTimedAutoHide(stateKey);
+    };
+
+    clear();
 
     if (window.visibilityManager) {
       let remaining = delay;
       let startTime = Date.now();
 
       const hide = () => {
-        this._clearAutoHideTimer();
+        clear();
         callback();
       };
 
       const onVisibilityChange = (visible) => {
         if (visible) {
-          // Tab became visible, resume timer
           startTime = Date.now();
-          this._autoHideTimeoutId = setTimeout(hide, remaining);
-        } else {
-          // Tab hidden, pause timer
-          if (this._autoHideTimeoutId) {
-            remaining -= Date.now() - startTime;
-            clearTimeout(this._autoHideTimeoutId);
-            this._autoHideTimeoutId = null;
-          }
+          this[timeoutKey] = setTimeout(hide, remaining);
+        } else if (this[timeoutKey]) {
+          remaining -= Date.now() - startTime;
+          clearTimeout(this[timeoutKey]);
+          this[timeoutKey] = null;
         }
       };
 
-      this._autoHideUnsubscribe = window.visibilityManager.onChange(onVisibilityChange);
+      this[unsubscribeKey] = window.visibilityManager.onChange(onVisibilityChange);
 
-      // Start timer if visible
       if (window.visibilityManager.isVisible) {
-        this._autoHideTimeoutId = setTimeout(hide, remaining);
+        this[timeoutKey] = setTimeout(hide, remaining);
       }
     } else {
-      // Fallback for browsers without visibility manager
-      this._autoHideTimeoutId = setTimeout(() => {
-        this._clearAutoHideTimer();
+      this[timeoutKey] = setTimeout(() => {
+        clear();
         callback();
       }, delay);
     }
@@ -382,66 +394,13 @@ class UpdateChecker {
 
   // Schedule auto-hide for manual check notification (separate timer tracking)
   _scheduleManualCheckAutoHide(callback, delay) {
-    // Clear any existing manual check timer
-    if (this._manualCheckTimeoutId) {
-      clearTimeout(this._manualCheckTimeoutId);
-    }
-    if (this._manualCheckUnsubscribe) {
-      this._manualCheckUnsubscribe();
-    }
-
-    if (window.visibilityManager) {
-      let remaining = delay;
-      let startTime = Date.now();
-
-      const hide = () => {
-        if (this._manualCheckUnsubscribe) {
-          this._manualCheckUnsubscribe();
-          this._manualCheckUnsubscribe = null;
-        }
-        callback();
-      };
-
-      const onVisibilityChange = (visible) => {
-        if (visible) {
-          startTime = Date.now();
-          this._manualCheckTimeoutId = setTimeout(hide, remaining);
-        } else {
-          if (this._manualCheckTimeoutId) {
-            remaining -= Date.now() - startTime;
-            clearTimeout(this._manualCheckTimeoutId);
-            this._manualCheckTimeoutId = null;
-          }
-        }
-      };
-
-      this._manualCheckUnsubscribe = window.visibilityManager.onChange(onVisibilityChange);
-
-      if (window.visibilityManager.isVisible) {
-        this._manualCheckTimeoutId = setTimeout(hide, remaining);
-      }
-    } else {
-      this._manualCheckTimeoutId = setTimeout(() => {
-        if (this._manualCheckUnsubscribe) {
-          this._manualCheckUnsubscribe();
-          this._manualCheckUnsubscribe = null;
-        }
-        callback();
-      }, delay);
-    }
+    this._scheduleTimedAutoHide('manualCheck', callback, delay);
   }
 
   // Hide manual check notification
   hideManualCheckNotification() {
     // Clear timers
-    if (this._manualCheckTimeoutId) {
-      clearTimeout(this._manualCheckTimeoutId);
-      this._manualCheckTimeoutId = null;
-    }
-    if (this._manualCheckUnsubscribe) {
-      this._manualCheckUnsubscribe();
-      this._manualCheckUnsubscribe = null;
-    }
+    this._clearTimedAutoHide('manualCheck');
 
     const notification = document.querySelector('.manual-check-notification');
     if (notification) {
@@ -516,8 +475,13 @@ class UpdateChecker {
     const aboutSection = document.querySelector('.settings-section[data-section="about"]');
     if (aboutSection) {
       aboutSection.appendChild(result);
-      this._scheduleAutoHide(() => result.remove(), 5000);
+      this._scheduleManualCheckResultAutoHide(() => result.remove(), 5000);
     }
+  }
+
+  // Schedule auto-hide for manual check result (separate timer tracking)
+  _scheduleManualCheckResultAutoHide(callback, delay) {
+    this._scheduleTimedAutoHide('manualCheckResult', callback, delay);
   }
 
   // Get update status for about section
