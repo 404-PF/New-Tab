@@ -45,6 +45,7 @@
     'src/features/onboarding.js',
     'src/features/todo.js',
     'src/features/todo-stats.js',
+    'src/features/eye-care-reminder.js',
     'src/features/notes.js',
     'src/features/simple-mode.js',
     'src/features/focus-mode.js',
