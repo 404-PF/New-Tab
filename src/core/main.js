@@ -405,12 +405,30 @@ function saveActiveProvider(providerId) {
   activeProviderId = providerId;
 }
 
+function isValidProviderUrl(url) {
+  if (typeof url !== 'string' || !url.includes('{query}')) return false;
+
+  try {
+    const parsed = new URL(url);
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isValidCustomProvider(provider) {
+  return provider && typeof provider === 'object' &&
+    typeof provider.id === 'string' && provider.id.trim() &&
+    typeof provider.name === 'string' && provider.name.trim() &&
+    isValidProviderUrl(provider.url);
+}
+
 function loadCustomProviders() {
   try {
     const raw = localStorage.getItem(CUSTOM_PROVIDERS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.filter(isValidCustomProvider) : [];
   } catch (e) {
     console.warn('Failed to read custom providers:', e);
     return [];
@@ -426,7 +444,7 @@ function saveCustomProviders(providers) {
 }
 
 function addCustomProvider(name, url) {
-  if (!name || !url || !url.includes('{query}')) return false;
+  if (typeof name !== 'string' || !name.trim() || !isValidProviderUrl(url)) return false;
   const id = 'custom_' + Date.now();
   const providers = loadCustomProviders();
   providers.push({ id: id, name: name, url: url });
@@ -459,7 +477,7 @@ function getAllProviders() {
 function getActiveProviderUrl(query) {
   const all = getAllProviders();
   const provider = all[activeProviderId];
-  if (!provider) return null;
+  if (!provider || !isValidProviderUrl(provider.url)) return null;
   return provider.url.replace('{query}', encodeURIComponent(query));
 }
 
@@ -476,7 +494,8 @@ function renderCustomProviderButtons() {
     if (activeProviderId === p.id) btn.classList.add('active');
     btn.dataset.provider = p.id;
     btn.title = p.name;
-    btn.setAttribute('aria-label', 'Search with ' + p.name);
+    const searchWith = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('searchWith') : 'Search with';
+    btn.setAttribute('aria-label', searchWith + ' ' + p.name);
     btn.textContent = p.name.charAt(0).toUpperCase();
     bar.appendChild(btn);
   });
@@ -651,7 +670,7 @@ function runDefaultSearch(query, onSuccess) {
 
   if (providerUrl) {
     recordSearchHistory(query);
-    window.open(providerUrl, '_blank');
+    window.open(providerUrl, '_blank', 'noopener,noreferrer');
     if (onSuccess) onSuccess();
     return;
   }
