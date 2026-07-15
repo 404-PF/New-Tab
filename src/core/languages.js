@@ -4,6 +4,12 @@ const translations = {
   en: {
     // General UI
     searchPlaceholder: 'Search or enter website',
+    searchWith: 'Search with',
+    searchProviderGoogle: 'Google',
+    searchProviderBing: 'Bing',
+    searchProviderDuckDuckGo: 'DuckDuckGo',
+    searchProviderWikipedia: 'Wikipedia',
+    searchProviderYouTube: 'YouTube',
     recentSearches: 'Recent searches',
     clearSearchHistory: 'Clear history',
     newApp: 'New',
@@ -431,6 +437,12 @@ const translations = {
   zh: {
     // General UI
     searchPlaceholder: '搜索或输入网站',
+    searchWith: '使用',
+    searchProviderGoogle: 'Google',
+    searchProviderBing: 'Bing',
+    searchProviderDuckDuckGo: 'DuckDuckGo',
+    searchProviderWikipedia: 'Wikipedia',
+    searchProviderYouTube: 'YouTube',
     recentSearches: '最近搜索',
     clearSearchHistory: '清除历史',
     newApp: '新建',
@@ -857,6 +869,12 @@ const translations = {
 
   ja: {
     searchPlaceholder: '検索またはURLを入力',
+    searchWith: '検索',
+    searchProviderGoogle: 'Google',
+    searchProviderBing: 'Bing',
+    searchProviderDuckDuckGo: 'DuckDuckGo',
+    searchProviderWikipedia: 'Wikipedia',
+    searchProviderYouTube: 'YouTube',
     recentSearches: '最近の検索',
     clearSearchHistory: '履歴をクリア',
     newApp: '新規',
@@ -1226,6 +1244,12 @@ const translations = {
 
   ko: {
     searchPlaceholder: '검색 또는 웹사이트 입력',
+    searchWith: '검색',
+    searchProviderGoogle: 'Google',
+    searchProviderBing: 'Bing',
+    searchProviderDuckDuckGo: 'DuckDuckGo',
+    searchProviderWikipedia: 'Wikipedia',
+    searchProviderYouTube: 'YouTube',
     recentSearches: '최근 검색',
     clearSearchHistory: '기록 지우기',
     newApp: '새로 만들기',
@@ -1595,6 +1619,12 @@ const translations = {
 
   es: {
     searchPlaceholder: 'Buscar o ingresar sitio web',
+    searchWith: 'Buscar con',
+    searchProviderGoogle: 'Google',
+    searchProviderBing: 'Bing',
+    searchProviderDuckDuckGo: 'DuckDuckGo',
+    searchProviderWikipedia: 'Wikipedia',
+    searchProviderYouTube: 'YouTube',
     recentSearches: 'Búsquedas recientes',
     clearSearchHistory: 'Borrar historial',
     newApp: 'Nuevo',
@@ -1964,6 +1994,12 @@ const translations = {
 
   fr: {
     searchPlaceholder: 'Rechercher ou saisir un site web',
+    searchWith: 'Rechercher avec',
+    searchProviderGoogle: 'Google',
+    searchProviderBing: 'Bing',
+    searchProviderDuckDuckGo: 'DuckDuckGo',
+    searchProviderWikipedia: 'Wikipedia',
+    searchProviderYouTube: 'YouTube',
     recentSearches: 'Recherches récentes',
     clearSearchHistory: 'Effacer l\'historique',
     newApp: 'Nouveau',
@@ -2333,6 +2369,12 @@ const translations = {
 
   de: {
     searchPlaceholder: 'Suche oder Website eingeben',
+    searchWith: 'Suchen mit',
+    searchProviderGoogle: 'Google',
+    searchProviderBing: 'Bing',
+    searchProviderDuckDuckGo: 'DuckDuckGo',
+    searchProviderWikipedia: 'Wikipedia',
+    searchProviderYouTube: 'YouTube',
     recentSearches: 'Letzte Suchen',
     clearSearchHistory: 'Verlauf löschen',
     newApp: 'Neu',
@@ -2702,6 +2744,12 @@ const translations = {
 
   pt: {
     searchPlaceholder: 'Pesquisar ou digitar site',
+    searchWith: 'Pesquisar com',
+    searchProviderGoogle: 'Google',
+    searchProviderBing: 'Bing',
+    searchProviderDuckDuckGo: 'DuckDuckGo',
+    searchProviderWikipedia: 'Wikipedia',
+    searchProviderYouTube: 'YouTube',
     recentSearches: 'Pesquisas recentes',
     clearSearchHistory: 'Limpar histórico',
     newApp: 'Novo',
@@ -3071,6 +3119,12 @@ const translations = {
 
   ru: {
     searchPlaceholder: 'Поиск или ввод сайта',
+    searchWith: 'Поиск через',
+    searchProviderGoogle: 'Google',
+    searchProviderBing: 'Bing',
+    searchProviderDuckDuckGo: 'DuckDuckGo',
+    searchProviderWikipedia: 'Wikipedia',
+    searchProviderYouTube: 'YouTube',
     recentSearches: 'Недавние поиски',
     clearSearchHistory: 'Очистить историю',
     newApp: 'Новое',
