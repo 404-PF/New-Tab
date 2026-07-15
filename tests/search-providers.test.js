@@ -208,3 +208,43 @@ describe('Search providers - UI selection', () => {
     expect(bar.classList.contains('has-selection')).toBe(false);
   });
 });
+
+describe('Search providers - backup integration', () => {
+  beforeAll(() => {
+    injectScript('src/features/data-manager.js');
+  });
+
+  it('includes search provider keys in the export allowlist', () => {
+    expect(window.DataManager.EXPORT_KEYS).toContain('searchProvider');
+    expect(window.DataManager.EXPORT_KEYS).toContain('customSearchProviders');
+  });
+
+  it('accepts valid provider settings during import', () => {
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      keyCount: 2,
+      data: {
+        searchProvider: 'bing',
+        customSearchProviders: [
+          { id: 'custom_1', name: 'MyCustom', url: 'https://example.com/?q={query}' }
+        ]
+      }
+    };
+    expect(window.DataManager.validateImportData(payload).valid).toBe(true);
+  });
+
+  it('rejects malformed custom provider settings during import', () => {
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      keyCount: 1,
+      data: {
+        customSearchProviders: [
+          { id: 'custom_1', name: 'Bad', url: 'javascript:alert(1)' }
+        ]
+      }
+    };
+    expect(window.DataManager.validateImportData(payload).valid).toBe(false);
+  });
+});
