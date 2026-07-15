@@ -515,7 +515,20 @@ globalThis.window.i18n = {
       bootstrapErrorTitle: 'Extension failed to load',
       bootstrapErrorDesc: 'The following module(s) could not be loaded:',
       bootstrapErrorHint: 'If the problem persists, reinstall the extension.',
-      bootstrapErrorReload: 'Reload'
+      bootstrapErrorReload: 'Reload',
+      ambientSounds: 'Ambient Sounds',
+      enableAmbientSounds: 'Enable ambient sounds',
+      ambientSoundRain: 'Rain',
+      ambientSoundOcean: 'Ocean',
+      ambientSoundWind: 'Wind',
+      ambientSoundForest: 'Forest',
+      ambientSoundCafe: 'Café',
+      ambientSoundFire: 'Fire',
+      ambientSoundWhiteNoise: 'White Noise',
+      ambientSoundPinkNoise: 'Pink Noise',
+      ambientMasterVolume: 'Master Volume',
+      ambientStopAll: 'Stop All',
+      ambientClose: 'Close'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
@@ -623,6 +636,7 @@ document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-stats-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'focus-mode-setting'));
+document.body.appendChild(createStubElement('input', 'ambient-sounds-setting'));
 document.body.appendChild(createStubElement('input', 'eye-care-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'eye-care-browser-notification-setting'));
 const leadTimeSelect = document.createElement('select');

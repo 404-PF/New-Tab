@@ -438,7 +438,22 @@ const translations = {
     last30Days: 'Last 30 Days',
     statsToggle: 'Stats',
     statsToggleAriaLabel: 'Toggle statistics panel',
-    heatmapCellTitle: '$1$: $2$ completed'
+    heatmapCellTitle: '$1$: $2$ completed',
+
+    // Ambient sounds
+    ambientSounds: 'Ambient Sounds',
+    enableAmbientSounds: 'Enable ambient sounds',
+    ambientSoundRain: 'Rain',
+    ambientSoundOcean: 'Ocean',
+    ambientSoundWind: 'Wind',
+    ambientSoundForest: 'Forest',
+    ambientSoundCafe: 'Café',
+    ambientSoundFire: 'Fire',
+    ambientSoundWhiteNoise: 'White Noise',
+    ambientSoundPinkNoise: 'Pink Noise',
+    ambientMasterVolume: 'Master Volume',
+    ambientStopAll: 'Stop All',
+    ambientClose: 'Close'
   },
 
   zh: {
@@ -878,7 +893,22 @@ const translations = {
     last30Days: '最近 30 天',
     statsToggle: '統計',
     statsToggleAriaLabel: '切換統計面板',
-    heatmapCellTitle: '$1$：已完成 $2$ 項'
+    heatmapCellTitle: '$1$：已完成 $2$ 項',
+
+    // Ambient sounds
+    ambientSounds: '環境音',
+    enableAmbientSounds: '啟用環境音',
+    ambientSoundRain: '雨聲',
+    ambientSoundOcean: '海浪',
+    ambientSoundWind: '風聲',
+    ambientSoundForest: '森林',
+    ambientSoundCafe: '咖啡館',
+    ambientSoundFire: '火焰',
+    ambientSoundWhiteNoise: '白噪音',
+    ambientSoundPinkNoise: '粉紅噪音',
+    ambientMasterVolume: '主音量',
+    ambientStopAll: '全部停止',
+    ambientClose: '關閉'
   },
 
   ja: {

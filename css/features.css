@@ -3840,3 +3840,281 @@ body.light-theme .weather-app-forecast-day-high {
 body.light-theme .weather-app-forecast-day-low {
   color: rgba(107, 114, 128, 0.55);
 }
+
+/* ------------------------------------------------------------------
+   Ambient Sounds widget
+   ------------------------------------------------------------------ */
+.ambient-sounds-button {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 500;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ambient-sounds-button:hover {
+  background: rgba(0, 0, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.ambient-sounds-button.active {
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+}
+
+.ambient-sounds-button svg {
+  width: 22px;
+  height: 22px;
+}
+
+.ambient-sounds-button .ambient-speaker-wave {
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+}
+
+.ambient-sounds-button.active .ambient-speaker-wave {
+  opacity: 1;
+}
+
+/* Click-to-start pulse when autoplay is blocked */
+.ambient-sounds-button.needs-start {
+  animation: ambient-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes ambient-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6); }
+  70% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+.ambient-sounds-popover {
+  position: fixed;
+  right: 20px;
+  bottom: 74px;
+  z-index: 501;
+  width: 280px;
+  max-width: calc(100vw - 40px);
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(20, 20, 30, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  color: #f3f4f6;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  animation: ambient-pop-in 0.2s ease;
+}
+
+.ambient-sounds-popover[hidden] {
+  display: none;
+}
+
+@keyframes ambient-pop-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ambient-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ambient-popover-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.ambient-popover-close {
+  border: none;
+  background: transparent;
+  color: #f3f4f6;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 0 4px;
+  transition: opacity 0.2s ease;
+}
+
+.ambient-popover-close:hover {
+  opacity: 1;
+}
+
+.ambient-master {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ambient-master-label {
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.ambient-master-slider {
+  flex: 1;
+}
+
+.ambient-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.ambient-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ambient-layer-toggle {
+  flex: 0 0 88px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f3f4f6;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.ambient-layer-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ambient-layer-toggle.active {
+  background: var(--primary-color, #2563eb);
+  border-color: var(--primary-color, #2563eb);
+  color: #fff;
+}
+
+.ambient-layer-slider {
+  flex: 1;
+}
+
+.ambient-stop-all {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.85);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.ambient-stop-all:hover {
+  background: rgba(239, 68, 68, 1);
+}
+
+/* Range inputs */
+.ambient-master-slider,
+.ambient-layer-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+  outline: none;
+  accent-color: var(--primary-color, #2563eb);
+}
+
+.ambient-master-slider::-webkit-slider-thumb,
+.ambient-layer-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary-color, #2563eb);
+  cursor: pointer;
+}
+
+.ambient-master-slider::-moz-range-thumb,
+.ambient-layer-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary-color, #2563eb);
+  cursor: pointer;
+}
+
+/* Light theme */
+body.light-theme .ambient-sounds-button {
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .ambient-sounds-button:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+body.light-theme .ambient-sounds-popover {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f2937;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+}
+
+body.light-theme .ambient-popover-title,
+body.light-theme .ambient-popover-close {
+  color: #1f2937;
+}
+
+body.light-theme .ambient-layer-toggle {
+  color: #1f2937;
+  border-color: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .ambient-layer-toggle:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .ambient-master-slider,
+body.light-theme .ambient-layer-slider {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+/* Reduced motion: no animations / transitions */
+html.reduce-motion .ambient-sounds-button,
+html.reduce-motion .ambient-sounds-popover,
+html.reduce-motion .ambient-popover-close,
+html.reduce-motion .ambient-layer-toggle,
+html.reduce-motion .ambient-stop-all {
+  transition: none;
+  animation: none;
+}
+
+html.reduce-motion .ambient-sounds-popover {
+  animation: none;
+}
+
