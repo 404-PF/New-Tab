@@ -262,18 +262,26 @@
     ai_current_conversation_id: function (v) { return typeof v === 'string'; },
     updateCheckEnabled: function (v) { return typeof v === 'boolean'; },
     searchProvider: function (v) { return typeof v === 'string'; },
-    customSearchProviders: function (v) { return Array.isArray(v) && v.every(function (item) {
-      if (typeof item !== 'object' || item === null) return false;
-      if (typeof item.id !== 'string' || !item.id.trim()) return false;
-      if (typeof item.name !== 'string' || !item.name.trim()) return false;
-      if (typeof item.url !== 'string' || !item.url.includes('{query}')) return false;
-      try {
-        const parsed = new URL(item.url);
-        return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && Boolean(parsed.hostname);
-      } catch {
-        return false;
-      }
-    }); }
+    customSearchProviders: function (v) {
+      if (!Array.isArray(v)) return false;
+      const builtInIds = window.BUILT_IN_PROVIDERS ? Object.keys(window.BUILT_IN_PROVIDERS) : [];
+      const seenIds = {};
+      return v.every(function (item) {
+        if (typeof item !== 'object' || item === null) return false;
+        if (typeof item.id !== 'string' || !item.id.trim()) return false;
+        if (builtInIds.indexOf(item.id) !== -1) return false;
+        if (seenIds[item.id]) return false;
+        seenIds[item.id] = true;
+        if (typeof item.name !== 'string' || !item.name.trim()) return false;
+        if (typeof item.url !== 'string' || !item.url.includes('{query}')) return false;
+        try {
+          const parsed = new URL(item.url);
+          return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && Boolean(parsed.hostname);
+        } catch {
+          return false;
+        }
+      });
+    }
   };
 
   function validateImportData(data) {
@@ -549,6 +557,11 @@
       // Refresh the UI
       if (typeof window.initSettings === 'function') {
         window.initSettings();
+      }
+
+      // Reinitialize the search provider bar so imported providers/selection take effect live
+      if (typeof window.refreshProviderBar === 'function') {
+        window.refreshProviderBar();
       }
 
       if (hasWriteErrors) {

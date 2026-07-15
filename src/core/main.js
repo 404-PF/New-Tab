@@ -295,6 +295,8 @@ const BUILT_IN_PROVIDERS = {
   }
 };
 
+const RESERVED_PROVIDER_IDS = Object.keys(BUILT_IN_PROVIDERS);
+
 let isSearchInputFocused = false;
 let searchBarElement = null;
 let searchInputElement = null;
@@ -416,11 +418,19 @@ function isValidProviderUrl(url) {
   }
 }
 
-function isValidCustomProvider(provider) {
-  return provider && typeof provider === 'object' &&
-    typeof provider.id === 'string' && provider.id.trim() &&
-    typeof provider.name === 'string' && provider.name.trim() &&
-    isValidProviderUrl(provider.url);
+function isValidCustomProvider(provider, seenIds) {
+  if (!provider || typeof provider !== 'object' ||
+    typeof provider.id !== 'string' || !provider.id.trim() ||
+    typeof provider.name !== 'string' || !provider.name.trim() ||
+    !isValidProviderUrl(provider.url)) {
+    return false;
+  }
+  if (RESERVED_PROVIDER_IDS.indexOf(provider.id) !== -1) return false;
+  if (seenIds) {
+    if (seenIds[provider.id]) return false;
+    seenIds[provider.id] = true;
+  }
+  return true;
 }
 
 function loadCustomProviders() {
@@ -428,7 +438,9 @@ function loadCustomProviders() {
     const raw = localStorage.getItem(CUSTOM_PROVIDERS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isValidCustomProvider) : [];
+    if (!Array.isArray(parsed)) return [];
+    const seenIds = {};
+    return parsed.filter(function (p) { return isValidCustomProvider(p, seenIds); });
   } catch (e) {
     console.warn('Failed to read custom providers:', e);
     return [];
@@ -538,6 +550,12 @@ function initProviderBar() {
       hideSearchHistorySuggestions();
     }
   });
+}
+
+function refreshProviderBar() {
+  activeProviderId = loadActiveProvider();
+  renderCustomProviderButtons();
+  updateProviderSelection();
 }
 
 function ensureSearchHistoryPanel() {
@@ -839,6 +857,7 @@ window.removeCustomProvider = removeCustomProvider;
 window.getAllProviders = getAllProviders;
 window.getActiveProviderUrl = getActiveProviderUrl;
 window.updateProviderSelection = updateProviderSelection;
+window.refreshProviderBar = refreshProviderBar;
 window.BUILT_IN_PROVIDERS = BUILT_IN_PROVIDERS;
 
 // Set the motto and button functionality after the page has finished loading
