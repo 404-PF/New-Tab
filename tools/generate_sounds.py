@@ -99,7 +99,10 @@ def make_seamless(x):
     out = x.copy()
     head = x[:cf]
     tail = x[-cf:]
-    out[:cf] = (head * fade + tail * (1.0 - fade)).astype(np.float32)
+    crossfade = (head * fade + tail * (1.0 - fade)).astype(np.float32)
+    out[:cf] = crossfade
+    out[-cf:] = crossfade
+    out[-1] = out[0]
     return out
 
 
@@ -206,20 +209,21 @@ def write_wav(path, samples):
 
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
-    for name, fn in SOUNDS.items():
-        samples = fn()
-        wav_path = os.path.join(tempfile.gettempdir(), name + ".wav")
-        ogg_path = os.path.join(OUT_DIR, name + ".ogg")
-        write_wav(wav_path, samples)
-        # Opus at a low bitrate keeps each loop well under 200 KB.
-        subprocess.run([
-            "ffmpeg", "-y", "-loglevel", "error",
-            "-i", wav_path,
-            "-c:a", "libopus", "-b:a", "48k", "-application", "audio",
-            ogg_path,
-        ], check=True)
-        size_kb = os.path.getsize(ogg_path) / 1024.0
-        print(f"{name:>10}: {size_kb:6.1f} KB")
+    with tempfile.TemporaryDirectory() as temp_dir:
+        for name, fn in SOUNDS.items():
+            samples = fn()
+            wav_path = os.path.join(temp_dir, name + ".wav")
+            ogg_path = os.path.join(OUT_DIR, name + ".ogg")
+            write_wav(wav_path, samples)
+            # Opus at a low bitrate keeps each loop well under 200 KB.
+            subprocess.run([
+                "ffmpeg", "-y", "-loglevel", "error",
+                "-i", wav_path,
+                "-c:a", "libopus", "-b:a", "48k", "-application", "audio",
+                ogg_path,
+            ], check=True)
+            size_kb = os.path.getsize(ogg_path) / 1024.0
+            print(f"{name:>10}: {size_kb:6.1f} KB")
 
 
 if __name__ == "__main__":

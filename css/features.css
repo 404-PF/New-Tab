@@ -4078,6 +4078,11 @@ body.light-theme .ambient-sounds-button:hover {
   background: rgba(255, 255, 255, 0.75);
 }
 
+body.light-theme .ambient-sounds-button.active {
+  color: #fff;
+  background: var(--primary-color, #2563eb);
+}
+
 body.light-theme .ambient-sounds-popover {
   background: rgba(255, 255, 255, 0.9);
   color: #1f2937;
@@ -4099,6 +4104,12 @@ body.light-theme .ambient-layer-toggle:hover {
   background: rgba(0, 0, 0, 0.08);
 }
 
+body.light-theme .ambient-layer-toggle.active {
+  color: #fff;
+  background: var(--primary-color, #2563eb);
+  border-color: var(--primary-color, #2563eb);
+}
+
 body.light-theme .ambient-master-slider,
 body.light-theme .ambient-layer-slider {
   background: rgba(0, 0, 0, 0.18);
@@ -4106,6 +4117,7 @@ body.light-theme .ambient-layer-slider {
 
 /* Reduced motion: no animations / transitions */
 html.reduce-motion .ambient-sounds-button,
+html.reduce-motion .ambient-sounds-button .ambient-speaker-wave,
 html.reduce-motion .ambient-sounds-popover,
 html.reduce-motion .ambient-popover-close,
 html.reduce-motion .ambient-layer-toggle,

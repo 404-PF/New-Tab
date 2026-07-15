@@ -54,7 +54,17 @@
   // Persistence
   // ------------------------------------------------------------------
   function loadEnabled() {
-    return localStorage.getItem(ENABLED_KEY) !== 'false';
+    try {
+      const stored = localStorage.getItem(ENABLED_KEY);
+      if (stored === null) {
+        console.warn('Failed to load ambient-sounds enabled: setting not found');
+        return false;
+      }
+      return stored === 'true';
+    } catch (e) {
+      console.warn('Failed to load ambient-sounds enabled:', e);
+      return false;
+    }
   }
 
   function saveEnabled(enabled) {
@@ -160,6 +170,7 @@
   }
 
   function startLayer(layerId) {
+    if (!loadEnabled()) return;
     const layer = state.layers[layerId];
     if (!layer || !layer.enabled) return;
     const audio = getAudio(layerId);
@@ -239,25 +250,27 @@
 
   // Attempt to (re)start every enabled layer. Used after a user gesture.
   function resume() {
+    if (!loadEnabled()) return;
     const anyEnabled = SOUND_LAYERS.some(function (l) {
       return state.layers[l.id].enabled;
     });
     if (!anyEnabled) return;
     started = true;
+    let pending = 0;
     let blocked = false;
+    SOUND_LAYERS.forEach(function (layer) {
+      if (state.layers[layer.id].enabled) pending += 1;
+    });
     SOUND_LAYERS.forEach(function (layer) {
       if (!state.layers[layer.id].enabled) return;
       const audio = getAudio(layer.id);
       audio.volume = effectiveVolume(layer.id);
       safePlay(audio, function (err) {
         if (err) blocked = true;
+        pending -= 1;
+        if (pending === 0) showClickToStart(blocked);
       });
     });
-    if (blocked) {
-      showClickToStart(true);
-    } else {
-      showClickToStart(false);
-    }
   }
 
   // ------------------------------------------------------------------
@@ -271,7 +284,11 @@
         syncAll();
       }
     } else {
-      stopAll();
+      SOUND_LAYERS.forEach(function (layer) {
+        stopLayer(layer.id);
+      });
+      started = false;
+      closePopover();
       if (button) button.style.display = 'none';
     }
   }
@@ -409,6 +426,7 @@
     masterSlider.max = '1';
     masterSlider.step = '0.01';
     masterSlider.dataset.role = 'master';
+    masterSlider.setAttribute('data-i18n-aria-label', 'ambientMasterVolume');
     masterSlider.setAttribute('aria-label', t('ambientMasterVolume', 'Master Volume'));
     masterSlider.addEventListener('input', function () {
       setMasterVolume(parseFloat(masterSlider.value));
@@ -444,6 +462,7 @@
       slider.max = '1';
       slider.step = '0.01';
       slider.dataset.soundId = layer.id;
+      slider.setAttribute('data-i18n-aria-label', layer.i18n);
       slider.setAttribute('aria-label', t(layer.i18n, layer.id));
       slider.addEventListener('input', function () {
         setLayerVolume(layer.id, parseFloat(slider.value));
@@ -493,6 +512,7 @@
   }
 
   function togglePopover() {
+    if (!loadEnabled()) return;
     if (!popover) return;
     if (popover.hidden) {
       openPopover();
@@ -590,14 +610,14 @@
 
     if (loadEnabled()) {
       buildWidget();
-      // Auto-resume only when motion is allowed; otherwise wait for the user.
-      if (!(window.prefersReducedMotion && window.prefersReducedMotion())) {
-        const anyEnabled = SOUND_LAYERS.some(function (l) {
-          return state.layers[l.id].enabled;
-        });
-        if (anyEnabled) {
+      const anyEnabled = SOUND_LAYERS.some(function (l) {
+        return state.layers[l.id].enabled;
+      });
+      if (anyEnabled) {
+        ensureResumeOnGesture();
+        // Auto-resume only when motion is allowed; otherwise wait for the user.
+        if (!(window.prefersReducedMotion && window.prefersReducedMotion())) {
           syncAll();
-          ensureResumeOnGesture();
         }
       }
     }

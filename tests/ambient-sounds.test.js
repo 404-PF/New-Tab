@@ -8,15 +8,6 @@ beforeEach(() => {
   localStorage.clear();
   delete window.prefersReducedMotion;
 
-  // Ensure the settings checkbox referenced by the module exists.
-  let cb = document.getElementById('ambient-sounds-setting');
-  if (!cb) {
-    cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.id = 'ambient-sounds-setting';
-    document.body.appendChild(cb);
-  }
-
   // jsdom does not implement media playback; stub it so tests are deterministic.
   if (window.HTMLMediaElement) {
     window.HTMLMediaElement.prototype.play = function () {
