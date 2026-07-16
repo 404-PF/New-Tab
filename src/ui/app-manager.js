@@ -138,7 +138,7 @@ function renderAllApps() {
     const iconUrl = app.cachedIcon || app.icon;
     a.title = displayName;
     const safeIconUrl = window.validateIconUrl ? window.validateIconUrl(iconUrl) : iconUrl;
-    const iconHtml = `<div class="icon"><img src="${escapeHtml(safeIconUrl || '')}" alt="${escapeHtml(displayName)}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/globe.svg';"></div>`;
+    const iconHtml = `<div class="icon"><img src="${window.escapeHtml(safeIconUrl || '')}" alt="${window.escapeHtml(displayName)}" data-app-icon></div>`;
     a.innerHTML = iconHtml + `<span class="app-name">${escapeHtml(displayName)}</span>`;
     appGrid.insertBefore(a, addApp);
   });

@@ -233,6 +233,24 @@ describe('AppFolders UI', () => {
       expect(document.getElementById('folder-popup-title').textContent).toBe('Popup');
     });
 
+    it('uses the bundled fallback when a folder app icon fails to load', () => {
+      AppGridState.addApp({
+        id: 'broken-folder-icon',
+        url: 'https://example.com',
+        name: 'Broken folder icon',
+        icon: 'https://example.com/missing.png'
+      });
+      const folder = AppGridState.createFolder('Broken icons', ['broken-folder-icon']);
+
+      window.AppFolders.openFolderPopup(folder.id);
+
+      const image = document.querySelector('#popup-broken-folder-icon img');
+      image.dispatchEvent(new Event('error'));
+
+      expect(image.getAttribute('src')).toBe('images/icons/globe.svg');
+      expect(image.hasAttribute('data-app-icon')).toBe(false);
+    });
+
     it('closeFolderPopup hides popup and clears currentFolderId', () => {
       const folder = AppGridState.createFolder('Close', []);
       window.AppFolders.openFolderPopup(folder.id);
