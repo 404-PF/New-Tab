@@ -143,4 +143,44 @@ describe('Weather widget', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('re-reads weather cache after storage changes', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
+
+    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
+
+    const originalFetch = global.fetch;
+    global.fetch = async () => ({ ok: true, json: async () => mockWeatherData });
+
+    try {
+      await window.WeatherWidget.refresh(true);
+
+      const updatedData = {
+        ...mockWeatherData,
+        current: {
+          ...mockWeatherData.current,
+          temperature_2m: 30
+        }
+      };
+      localStorage.setItem('weatherCache', JSON.stringify({
+        lat: 37.7749,
+        lon: -122.4194,
+        data: updatedData,
+        timestamp: Date.now(),
+        locationMode: 'auto',
+        manualCity: '',
+        locationName: 'Updated City'
+      }));
+
+      await window.WeatherWidget.refresh();
+
+      const widget = document.getElementById('weather-widget');
+      expect(widget.querySelector('.weather-temp').textContent).toContain('30');
+      expect(widget.querySelector('.weather-location').textContent).toContain('Updated City');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
