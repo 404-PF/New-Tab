@@ -11,7 +11,8 @@ describe('ReleaseNotes', () => {
     window.CURRENT_VERSION = '0.4.7';
   });
 
-  it('shows notes when upgrading from a pre-feature install (no stored version)', () => {
+  it('shows notes when upgrading from a pre-feature install (no stored version, update reason)', () => {
+    localStorage.setItem(window.releaseNotes.INSTALL_REASON_KEY, 'update');
     const result = window.releaseNotes.detectAndShow();
     expect(result).toBe('shown');
     const modal = document.querySelector('.release-notes-modal');
@@ -20,6 +21,23 @@ describe('ReleaseNotes', () => {
     // Subsequent runs with the version now stored are a no-op.
     expect(window.releaseNotes.detectAndShow()).toBe('up-to-date');
     expect(document.querySelectorAll('.release-notes-modal').length).toBe(1);
+  });
+
+  it('does not show notes on a fresh install (no stored version, install reason)', () => {
+    localStorage.setItem(window.releaseNotes.INSTALL_REASON_KEY, 'install');
+    const result = window.releaseNotes.detectAndShow();
+    expect(result).toBe('fresh-install');
+    expect(document.querySelector('.release-notes-modal')).toBeNull();
+    expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe('0.4.7');
+    // Subsequent runs with the version now stored are a no-op.
+    expect(window.releaseNotes.detectAndShow()).toBe('up-to-date');
+  });
+
+  it('does not show notes when the install reason is unknown (safe no-op)', () => {
+    const result = window.releaseNotes.detectAndShow();
+    expect(result).toBe('fresh-install');
+    expect(document.querySelector('.release-notes-modal')).toBeNull();
+    expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe('0.4.7');
   });
 
   it('shows notes after an upgrade and records the new version', () => {

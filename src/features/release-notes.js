@@ -5,6 +5,13 @@
 
   // Storage key tracking the last version the user has seen release notes for.
   const LAST_SEEN_VERSION_KEY = 'lastSeenVersion';
+  // Persisted by the service worker on chrome.runtime.onInstalled so the page
+  // can tell a fresh install ('install') apart from an upgrade ('update').
+  // Prior to this feature existing, no release ever wrote lastSeenVersion, so
+  // an absent key alone is ambiguous between "brand new user" and "existing
+  // user who just upgraded into release-notes support". The install reason
+  // resolves that ambiguity.
+  const INSTALL_REASON_KEY = 'releaseNotesInstallReason';
   const RELEASE_NOTES_BASE_URL = 'https://github.com/404-PF/New-Tab/releases/tag/v';
 
   // Bundled changelog summaries, keyed by version (extracted from CHANGELOG.md).
@@ -42,6 +49,15 @@
       return localStorage.getItem(LAST_SEEN_VERSION_KEY);
     } catch (error) {
       console.warn('Failed to read last seen version:', error);
+      return null;
+    }
+  }
+
+  function getInstallReason() {
+    try {
+      return localStorage.getItem(INSTALL_REASON_KEY) || null;
+    } catch (error) {
+      console.warn('Failed to read install reason:', error);
       return null;
     }
   }
@@ -206,13 +222,23 @@
     const lastSeen = getLastSeenVersion();
 
     if (!lastSeen) {
-      // No stored version. Prior releases (before this feature existed) never
-      // wrote this key, so an absent value means an existing install just
-      // upgraded to a version with release-notes support. Show the notes once
-      // instead of treating it as a clean fresh install.
-      showReleaseNotesModal(currentVersion);
+      // No stored version. This is ambiguous: it could be a brand-new user
+      // (fresh install) or an existing user whose prior release never wrote
+      // this key and who just upgraded into release-notes support. The
+      // install reason, persisted by the service worker on onInstalled,
+      // disambiguates. Only an explicit 'update' reason means we should show
+      // the notes — a fresh install, or any build where the reason is missing
+      // (e.g. dev server, context invalidation), must stay a silent no-op so
+      // we never overlay the first-run / onboarding experience.
+      const reason = getInstallReason();
+      if (reason === 'update') {
+        showReleaseNotesModal(currentVersion);
+        setLastSeenVersion(currentVersion);
+        return 'shown';
+      }
+      // Fresh install (or unknown reason): record the version without showing.
       setLastSeenVersion(currentVersion);
-      return 'shown';
+      return 'fresh-install';
     }
 
     if (compareVersions(currentVersion, lastSeen) > 0) {
@@ -252,6 +278,7 @@
     detectAndShow: detectAndShow,
     showReleaseNotesModal: showReleaseNotesModal,
     LAST_SEEN_VERSION_KEY: LAST_SEEN_VERSION_KEY,
+    INSTALL_REASON_KEY: INSTALL_REASON_KEY,
     RELEASE_NOTES: RELEASE_NOTES
   };
 
