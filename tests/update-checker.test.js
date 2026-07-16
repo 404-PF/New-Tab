@@ -39,7 +39,7 @@ describe('UpdateChecker', () => {
       const instance = window.updateChecker;
       instance.currentVersion = '1.0.0';
       instance.setLastCheckTime(0); // force interval elapsed
-      const spy = vi.spyOn(instance, 'checkForUpdates');
+      const spy = vi.spyOn(instance, 'checkForUpdates').mockResolvedValue();
 
       await captured();
 
