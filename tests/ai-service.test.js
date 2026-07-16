@@ -141,6 +141,19 @@ describe('PuterAPI.validateInput control character rejection (#422)', () => {
 });
 
 describe('PuterAPI resilience', () => {
+  it('passes the configured token limit to Puter', async () => {
+    let sentOptions;
+    window.puter.ai.chat = async (_messages, options) => {
+      sentOptions = options;
+      return (async function*() {})();
+    };
+
+    const result = await realSendMessageStreaming('hello');
+
+    expect(result.success).toBe(true);
+    expect(sentOptions.max_tokens).toBe(4096);
+  });
+
   it('falls back to English when localStorage language access throws', async () => {
     const originalI18n = window.i18n;
     const originalGetItem = Storage.prototype.getItem;

@@ -175,6 +175,7 @@ const PuterAPI = (function() {
     try {
       const response = await window.puter.ai.chat(messages, {
         model: getModel(),
+        max_tokens: CONFIG.maxTokens,
         stream: true,
         signal: signal || undefined
       });
