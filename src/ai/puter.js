@@ -147,8 +147,15 @@ const PuterAPI = (function() {
 
     const xhrPrototype = window.XMLHttpRequest.prototype;
     const originalSend = xhrPrototype.send;
+    let restored = false;
+    const restoreSend = () => {
+      if (!restored && xhrPrototype.send === interceptedSend) {
+        xhrPrototype.send = originalSend;
+      }
+      restored = true;
+    };
 
-    xhrPrototype.send = function(body) {
+    function interceptedSend(body) {
       let isChatRequest = false;
       try {
         const payload = typeof body === 'string' ? JSON.parse(body) : null;
@@ -165,15 +172,20 @@ const PuterAPI = (function() {
           signal.removeEventListener('abort', abortRequest);
         }, { once: true });
         if (signal.aborted) abortRequest();
+        restoreSend();
       }
 
       return originalSend.call(this, body);
-    };
+    }
 
+    xhrPrototype.send = interceptedSend;
     try {
-      return window.puter.ai.chat(messages, options);
-    } finally {
-      xhrPrototype.send = originalSend;
+      const request = window.puter.ai.chat(messages, options);
+      Promise.resolve(request).then(restoreSend, restoreSend);
+      return request;
+    } catch (error) {
+      restoreSend();
+      throw error;
     }
   }
 

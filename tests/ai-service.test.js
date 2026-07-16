@@ -257,6 +257,41 @@ describe('PuterAPI resilience', () => {
       XMLHttpRequest.prototype.abort = originalAbort;
     }
   });
+  it('preserves XHR cancellation while Puter sign-in is pending', async () => {
+    const controller = new AbortController();
+    const originalSend = XMLHttpRequest.prototype.send;
+    const originalAbort = XMLHttpRequest.prototype.abort;
+    let continueAfterSignIn;
+    let abortCalled = false;
+
+    XMLHttpRequest.prototype.send = function() {};
+    XMLHttpRequest.prototype.abort = function() {
+      abortCalled = true;
+    };
+    window.puter.ai.chat = async () => {
+      await new Promise(resolve => {
+        continueAfterSignIn = resolve;
+      });
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/drivers/call');
+      xhr.send(JSON.stringify({ interface: 'puter-chat-completion' }));
+      return {};
+    };
+
+    try {
+      const pending = realSendMessageStreaming('hello', [], null, controller.signal);
+      controller.abort();
+      const result = await pending;
+      continueAfterSignIn();
+      await Promise.resolve();
+
+      expect(result).toMatchObject({ success: false, aborted: true });
+      expect(abortCalled).toBe(true);
+    } finally {
+      XMLHttpRequest.prototype.send = originalSend;
+      XMLHttpRequest.prototype.abort = originalAbort;
+    }
+  });
 });
 describe('AIService error path length guard (#282)', () => {
   it('uses the Puter SDK sign-in flow when authentication is required', async () => {
