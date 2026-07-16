@@ -211,6 +211,17 @@ describe('PuterAPI resilience', () => {
     expect(result).toMatchObject({ success: false, aborted: true });
     expect(returnCalled).toBe(true);
   });
+
+  it('stops promptly when stream creation is stalled', async () => {
+    const controller = new AbortController();
+    window.puter.ai.chat = () => new Promise(() => {});
+
+    const pending = realSendMessageStreaming('hello', [], null, controller.signal);
+    controller.abort();
+    const result = await pending;
+
+    expect(result).toMatchObject({ success: false, aborted: true });
+  });
 });
 describe('AIService error path length guard (#282)', () => {
   it('does not pop messages when the API returns a non-success result on a 0-message conversation', async () => {

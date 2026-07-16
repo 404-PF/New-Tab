@@ -173,18 +173,6 @@ const PuterAPI = (function() {
     let abortHandler = null;
 
     try {
-      const response = await window.puter.ai.chat(messages, {
-        model: getModel(),
-        max_tokens: CONFIG.maxTokens,
-        stream: true,
-        signal: signal || undefined
-      });
-
-      // Response is an async iterable of chunks when stream: true
-      let fullContent = '';
-      let sawError = null;
-
-      iterator = response[Symbol.asyncIterator]();
       const abortPromise = signal
         ? new Promise((_, reject) => {
           abortHandler = () => {
@@ -196,6 +184,21 @@ const PuterAPI = (function() {
           if (signal.aborted) abortHandler();
         })
         : null;
+      const request = window.puter.ai.chat(messages, {
+        model: getModel(),
+        max_tokens: CONFIG.maxTokens,
+        stream: true,
+        signal: signal || undefined
+      });
+      const response = abortPromise
+        ? await Promise.race([request, abortPromise])
+        : await request;
+
+      // Response is an async iterable of chunks when stream: true
+      let fullContent = '';
+      let sawError = null;
+
+      iterator = response[Symbol.asyncIterator]();
 
       while (true) {
         const next = iterator.next();
