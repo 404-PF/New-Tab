@@ -13,6 +13,7 @@
   // resolves that ambiguity.
   const INSTALL_REASON_KEY = 'releaseNotesInstallReason';
   const RELEASE_NOTES_BASE_URL = 'https://github.com/404-PF/New-Tab/releases/tag/v';
+  let installReasonChangeListener = null;
 
   // Bundled changelog summaries, keyed by version (extracted from CHANGELOG.md).
   // Kept intentionally short so the modal stays readable. Keys MUST match the
@@ -68,6 +69,46 @@
     } catch (error) {
       console.warn('Failed to persist last seen version:', error);
     }
+  }
+
+  function stopWaitingForInstallReason() {
+    if (
+      installReasonChangeListener &&
+      window.chrome &&
+      window.chrome.storage &&
+      window.chrome.storage.onChanged &&
+      typeof window.chrome.storage.onChanged.removeListener === 'function'
+    ) {
+      window.chrome.storage.onChanged.removeListener(installReasonChangeListener);
+    }
+    installReasonChangeListener = null;
+  }
+
+  function waitForInstallReason() {
+    if (
+      installReasonChangeListener ||
+      !window.chrome ||
+      !window.chrome.storage ||
+      !window.chrome.storage.onChanged ||
+      typeof window.chrome.storage.onChanged.addListener !== 'function'
+    ) {
+      return;
+    }
+
+    installReasonChangeListener = function (changes, areaName) {
+      if (
+        areaName !== 'local' ||
+        !changes ||
+        !changes[INSTALL_REASON_KEY] ||
+        !changes[INSTALL_REASON_KEY].newValue
+      ) {
+        return;
+      }
+
+      stopWaitingForInstallReason();
+      detectAndShow();
+    };
+    window.chrome.storage.onChanged.addListener(installReasonChangeListener);
   }
 
   // Translate + interpolate. Reuses UpdateChecker.formatMessage so behavior
@@ -252,7 +293,8 @@
   }
 
   // Detect whether the extension was just updated and show release notes if so.
-  // Returns 'shown' | 'up-to-date' | 'skipped' for testing/telemetry.
+  // Returns 'shown' | 'fresh-install' | 'pending' | 'up-to-date' | 'skipped'
+  // for testing/telemetry.
   function detectAndShow() {
     const currentVersion = getCurrentVersion();
     if (!currentVersion) {
@@ -272,12 +314,22 @@
       // (e.g. dev server, context invalidation), must stay a silent no-op so
       // we never overlay the first-run / onboarding experience.
       const reason = getInstallReason();
+      if (!reason) {
+        // The service worker and page start independently after an update.
+        // Avoid permanently marking this release as seen until the install
+        // reason arrives through chrome.storage.
+        waitForInstallReason();
+        return 'pending';
+      }
+
+      stopWaitingForInstallReason();
       if (reason === 'update') {
         showReleaseNotesModal(currentVersion);
         setLastSeenVersion(currentVersion);
         return 'shown';
       }
-      // Fresh install (or unknown reason): record the version without showing.
+      // Fresh install (or an explicit non-update reason): record the version
+      // without showing.
       setLastSeenVersion(currentVersion);
       return 'fresh-install';
     }

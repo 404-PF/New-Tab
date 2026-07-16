@@ -34,10 +34,21 @@ describe('ReleaseNotes', () => {
     expect(window.releaseNotes.detectAndShow()).toBe('up-to-date');
   });
 
-  it('does not show notes when the install reason is unknown (safe no-op)', () => {
+  it('waits without recording the version when the install reason has not arrived', () => {
     const result = window.releaseNotes.detectAndShow();
-    expect(result).toBe('fresh-install');
+    expect(result).toBe('pending');
     expect(document.querySelector('.release-notes-modal')).toBeNull();
+    expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBeNull();
+  });
+
+  it('retries detection when a delayed update reason arrives', async () => {
+    expect(window.releaseNotes.detectAndShow()).toBe('pending');
+
+    await chrome.storage.local.set({
+      [window.releaseNotes.INSTALL_REASON_KEY]: 'update'
+    });
+
+    expect(document.querySelector('.release-notes-modal')).not.toBeNull();
     expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe('0.4.7');
   });
 
