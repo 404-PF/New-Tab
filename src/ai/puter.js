@@ -39,7 +39,11 @@ const PuterAPI = (function() {
     if (window.i18n && window.i18n.currentLanguage) {
       return window.i18n.currentLanguage();
     }
-    return localStorage.getItem('language') || 'en';
+    try {
+      return localStorage.getItem('language') || 'en';
+    } catch {
+      return 'en';
+    }
   }
 
   /**
@@ -104,19 +108,26 @@ const PuterAPI = (function() {
    */
   function isAuthError(error) {
     if (!error) return false;
-    const code = error.code || '';
-    const message = (error.message || '').toLowerCase();
+    const hasAuthIndicator = (code, message) => {
+      const normalizedMessage = (message || '').toLowerCase();
+      return (
+        code === 'auth_required' ||
+        code === 'unauthorized' ||
+        code === 'not_authenticated' ||
+        normalizedMessage.includes('sign in') ||
+        normalizedMessage.includes('signin') ||
+        normalizedMessage.includes('sign-in') ||
+        normalizedMessage.includes('not signed in') ||
+        normalizedMessage.includes('authentication required') ||
+        normalizedMessage.includes('please log in') ||
+        normalizedMessage.includes('login required')
+      );
+    };
+    const nestedError = error.error || {};
     return (
-      code === 'auth_required' ||
-      code === 'unauthorized' ||
-      code === 'not_authenticated' ||
-      message.includes('sign in') ||
-      message.includes('signin') ||
-      message.includes('sign-in') ||
-      message.includes('not signed in') ||
-      message.includes('authentication required') ||
-      message.includes('please log in') ||
-      message.includes('login required')
+      error.status === 401 ||
+      hasAuthIndicator(error.code || '', error.message || '') ||
+      hasAuthIndicator(nestedError.code || '', nestedError.message || '')
     );
   }
 
@@ -158,6 +169,9 @@ const PuterAPI = (function() {
     // Add current user message
     messages.push({ role: 'user', content: validation.message });
 
+    let iterator = null;
+    let abortHandler = null;
+
     try {
       const response = await window.puter.ai.chat(messages, {
         model: getModel(),
@@ -169,7 +183,26 @@ const PuterAPI = (function() {
       let fullContent = '';
       let sawError = null;
 
-      for await (const part of response) {
+      iterator = response[Symbol.asyncIterator]();
+      const abortPromise = signal
+        ? new Promise((_, reject) => {
+          abortHandler = () => {
+            const abortError = new Error('Request cancelled');
+            abortError.name = 'AbortError';
+            reject(abortError);
+          };
+          signal.addEventListener('abort', abortHandler, { once: true });
+          if (signal.aborted) abortHandler();
+        })
+        : null;
+
+      while (true) {
+        const next = iterator.next();
+        const result = abortPromise
+          ? await Promise.race([next, abortPromise])
+          : await next;
+        if (result.done) break;
+        const part = result.value;
         // Streaming error chunk (Puter emits error parts within the stream)
         if (part && part.type === 'error') {
           sawError = part.message || getTranslation('aiError');
@@ -204,6 +237,9 @@ const PuterAPI = (function() {
     } catch (e) {
       // Check if the request was aborted
       if (e && (e.name === 'AbortError' || (signal && signal.aborted))) {
+        if (iterator && typeof iterator.return === 'function') {
+          Promise.resolve(iterator.return()).catch(() => {});
+        }
         return {
           success: false,
           error: 'Request cancelled',
@@ -225,6 +261,8 @@ const PuterAPI = (function() {
         success: false,
         error: getTranslation('aiNetworkError')
       };
+    } finally {
+      if (abortHandler) signal.removeEventListener('abort', abortHandler);
     }
   }
 

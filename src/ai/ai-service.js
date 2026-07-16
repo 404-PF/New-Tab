@@ -557,7 +557,7 @@ const AIService = (function() {
   }
 
   function isAvailable() {
-    return !!PuterAPI && !NetworkDetector.getStatus().isOffline;
+    return typeof PuterAPI !== 'undefined' && !NetworkDetector.getStatus().isOffline;
   }
 
   function initEventListeners() {

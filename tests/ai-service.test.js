@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
+let realSendMessageStreaming;
+
 // ------------------------------------------------------------------
 // DOM stubs required by AIRenderer / AIService
 // ------------------------------------------------------------------
@@ -65,6 +67,7 @@ beforeAll(() => {
   injectScript('src/ai/network-detector.js');
   injectScript('src/ai/offline-mode.js');
   injectScript('src/ai/puter.js');
+  realSendMessageStreaming = PuterAPI.sendMessageStreaming;
   injectScript('src/ai/ai-renderer.js');
   injectScript('src/ai/ai-store.js');
   injectScript('src/ai/ai-service.js');
@@ -137,6 +140,65 @@ describe('PuterAPI.validateInput control character rejection (#422)', () => {
   });
 });
 
+describe('PuterAPI resilience', () => {
+  it('falls back to English when localStorage language access throws', async () => {
+    const originalI18n = window.i18n;
+    const originalGetItem = Storage.prototype.getItem;
+    let sentMessages;
+    window.i18n = null;
+    Storage.prototype.getItem = () => {
+      throw new Error('storage unavailable');
+    };
+    window.puter.ai.chat = async messages => {
+      sentMessages = messages;
+      return (async function*() {})();
+    };
+
+    try {
+      const result = await realSendMessageStreaming('hello');
+      expect(result.success).toBe(true);
+      expect(sentMessages[0].content).toContain('helpful AI assistant');
+    } finally {
+      Storage.prototype.getItem = originalGetItem;
+      window.i18n = originalI18n;
+    }
+  });
+
+  it.each([
+    { status: 401 },
+    { error: { code: 'unauthorized' } },
+    { error: { message: 'Authentication required' } }
+  ])('recognizes nested and HTTP auth errors: %o', async authError => {
+    window.puter.ai.chat = async () => {
+      throw authError;
+    };
+
+    const result = await realSendMessageStreaming('hello');
+    expect(result.authRequired).toBe(true);
+  });
+
+  it('stops a stalled stream promptly and closes its iterator on abort', async () => {
+    const controller = new AbortController();
+    let returnCalled = false;
+    const iterator = {
+      next: () => new Promise(() => {}),
+      return: () => {
+        returnCalled = true;
+        return Promise.resolve({ done: true });
+      }
+    };
+    window.puter.ai.chat = async () => ({
+      [Symbol.asyncIterator]: () => iterator
+    });
+
+    const pending = realSendMessageStreaming('hello', [], null, controller.signal);
+    controller.abort();
+    const result = await pending;
+
+    expect(result).toMatchObject({ success: false, aborted: true });
+    expect(returnCalled).toBe(true);
+  });
+});
 describe('AIService error path length guard (#282)', () => {
   it('does not pop messages when the API returns a non-success result on a 0-message conversation', async () => {
     // Seed an empty conversation
