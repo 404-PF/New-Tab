@@ -683,12 +683,21 @@ function renderSearchHistorySuggestions() {
   searchInputElement.setAttribute('aria-expanded', 'true');
 }
 
+function loadOpenNewTabSetting() {
+  return localStorage.getItem('openAppsInNewTab') !== 'false';
+}
+
 function runDefaultSearch(query, onSuccess) {
   const providerUrl = activeProviderId ? getActiveProviderUrl(query) : null;
+  const openInNewTab = loadOpenNewTabSetting();
 
   if (providerUrl) {
     recordSearchHistory(query);
-    window.open(providerUrl, '_blank', 'noopener,noreferrer');
+    if (openInNewTab) {
+      window.open(providerUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      window.location.href = providerUrl;
+    }
     if (onSuccess) onSuccess();
     return;
   }
@@ -696,7 +705,7 @@ function runDefaultSearch(query, onSuccess) {
   if (typeof chrome !== 'undefined' && chrome.search && typeof chrome.search.query === 'function') {
     chrome.search.query({
       text: query,
-      disposition: 'NEW_TAB',
+      disposition: openInNewTab ? 'NEW_TAB' : 'CURRENT_TAB',
     }).then(() => {
       if (onSuccess) {
         onSuccess();

@@ -292,3 +292,52 @@ describe('search validation feedback clearing (#249)', () => {
     expect(feedbackEl.classList.contains('show')).toBe(false);
   });
 });
+
+// ------------------------------------------------------------------
+// Regression: open-in-current-tab setting must be honored by the search bar
+// ------------------------------------------------------------------
+describe('search bar honors open in current tab setting', () => {
+  it('opens in a new tab by default (openAppsInNewTab not false)', () => {
+    localStorage.removeItem('openAppsInNewTab');
+    window.saveActiveProvider('google');
+    const openSpy = vi.spyOn(window, 'open');
+
+    runSearch('hello world');
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy.mock.calls[0][1]).toBe('_blank');
+    openSpy.mockRestore();
+  });
+
+  it('navigates in the current tab when openAppsInNewTab is false', () => {
+    localStorage.setItem('openAppsInNewTab', 'false');
+    window.saveActiveProvider('google');
+    const openSpy = vi.spyOn(window, 'open');
+    let assigned = null;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { set href(value) { assigned = value; }, get href() { return ''; } },
+    });
+
+    runSearch('hello world');
+
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(assigned).toContain('google.com/search?q=');
+    Object.defineProperty(window, 'location', { configurable: true, value: { href: '' } });
+    openSpy.mockRestore();
+  });
+
+  it('uses CURRENT_TAB disposition when openAppsInNewTab is false', async () => {
+    localStorage.setItem('openAppsInNewTab', 'false');
+    window.saveActiveProvider(null);
+    const querySpy = vi.spyOn(chrome.search, 'query').mockResolvedValue({});
+
+    runSearch('hello world');
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(querySpy).toHaveBeenCalledWith({
+      text: 'hello world',
+      disposition: 'CURRENT_TAB',
+    });
+  });
+});
