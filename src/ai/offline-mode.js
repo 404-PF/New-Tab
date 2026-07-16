@@ -102,7 +102,7 @@ const OfflineMode = (function() {
     'did you know': () => getRandomFact('en'),
     
     // About
-    'who are you': 'I\'m the AI Assistant for this New Tab page. Normally I connect to OpenRouter for AI-powered responses, but when offline I provide basic assistance through local features.',
+    'who are you': 'I\'m the AI Assistant for this New Tab page. Normally I connect to Puter for AI-powered responses, but when offline I provide basic assistance through local features.',
     'what are you': 'I\'m an AI assistant built into this New Tab extension. I can help with questions, calculations, conversions, and more!',
     'your name': 'I\'m the AI Assistant for this New Tab page. You can call me Assistant!',
     
@@ -141,7 +141,7 @@ const OfflineMode = (function() {
     '你知道吗': () => getRandomFact('zh'),
     
     // About
-    '你是谁': '我是这个新标签页的AI助手。通常我连接到OpenRouter获取AI响应，但在离线时我通过本地功能提供基本帮助。',
+    '你是谁': '我是这个新标签页的AI助手。通常我连接到Puter获取AI响应，但在离线时我通过本地功能提供基本帮助。',
     '你是什么': '我是内置在这个新标签扩展中的AI助手。我可以帮助你回答问题、数学计算、单位换算等！',
     '你的名字': '我是这个新标签页的AI助手。你可以叫我助手！',
     

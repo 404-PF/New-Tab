@@ -409,6 +409,8 @@ const translations = {
     aiMessageInvalidChars: 'Message contains invalid control characters',
     aiStopStreaming: 'Stop',
     aiScrollToBottom: 'Scroll to bottom',
+    aiPuterSignIn: 'Please sign in to Puter to use the AI assistant.',
+    aiPuterSignInLink: 'Sign in to Puter',
 
     // Bootstrap error overlay
     bootstrapErrorTitle: 'Extension failed to load',
@@ -855,6 +857,8 @@ const translations = {
     aiMessageInvalidChars: '消息包含无效控制字符',
     aiStopStreaming: '停止',
     aiScrollToBottom: '滚动到底部',
+    aiPuterSignIn: '请登录 Puter 以使用 AI 助手。',
+    aiPuterSignInLink: '登录 Puter',
 
     // Bootstrap error overlay
     bootstrapErrorTitle: '扩展加载失败',
@@ -1243,6 +1247,8 @@ const translations = {
     aiMessageInvalidChars: 'メッセージに無効な制御文字が含まれています',
     aiStopStreaming: '停止',
     aiScrollToBottom: '一番下にスクロール',
+    aiPuterSignIn: 'AI アシスタントを利用するには Puter にサインインしてください。',
+    aiPuterSignInLink: 'Puter にサインイン',
 
     // Bootstrap error overlay
     bootstrapErrorTitle: '拡張機能の読み込みに失敗しました',
@@ -1631,6 +1637,8 @@ const translations = {
     aiMessageInvalidChars: '메시지에 잘못된 제어 문자가 포함되어 있습니다',
     aiStopStreaming: '중지',
     aiScrollToBottom: '맨 아래로 스크롤',
+    aiPuterSignIn: 'AI 비서를 사용하려면 Puter에 로그인하세요.',
+    aiPuterSignInLink: 'Puter에 로그인',
 
     // Bootstrap error overlay
     bootstrapErrorTitle: '확장 프로그램을 로드하지 못했습니다',
@@ -2008,6 +2016,8 @@ const translations = {
     aiMessageInvalidChars: 'El mensaje contiene caracteres de control no válidos',
     aiStopStreaming: 'Detener',
     aiScrollToBottom: 'Desplazar al fondo',
+    aiPuterSignIn: 'Inicia sesión en Puter para usar el asistente de IA.',
+    aiPuterSignInLink: 'Iniciar sesión en Puter',
     createFolder: 'Crear carpeta',
     renameFolder: 'Renombrar carpeta',
     deleteFolder: 'Eliminar carpeta',
@@ -2396,6 +2406,8 @@ const translations = {
     aiMessageInvalidChars: 'Le message contient des caractères de contrôle invalides',
     aiStopStreaming: 'Arrêter',
     aiScrollToBottom: 'Descendre en bas',
+    aiPuterSignIn: 'Veuillez vous connecter à Puter pour utiliser l\'assistant IA.',
+    aiPuterSignInLink: 'Se connecter à Puter',
     createFolder: 'Créer un dossier',
     renameFolder: 'Renommer le dossier',
     deleteFolder: 'Supprimer le dossier',
@@ -2784,6 +2796,8 @@ const translations = {
     aiMessageInvalidChars: 'Nachricht enthält ungültige Steuerzeichen',
     aiStopStreaming: 'Stopp',
     aiScrollToBottom: 'Nach unten scrollen',
+    aiPuterSignIn: 'Bitte bei Puter anmelden, um den KI-Assistenten zu nutzen.',
+    aiPuterSignInLink: 'Bei Puter anmelden',
     createFolder: 'Ordner erstellen',
     renameFolder: 'Ordner umbenennen',
     deleteFolder: 'Ordner löschen',
@@ -3172,6 +3186,8 @@ const translations = {
     aiMessageInvalidChars: 'A mensagem contém caracteres de controle inválidos',
     aiStopStreaming: 'Parar',
     aiScrollToBottom: 'Rolar para o final',
+    aiPuterSignIn: 'Faça login no Puter para usar o assistente de IA.',
+    aiPuterSignInLink: 'Entrar no Puter',
     createFolder: 'Criar pasta',
     renameFolder: 'Renomear pasta',
     deleteFolder: 'Excluir pasta',
@@ -3560,6 +3576,8 @@ const translations = {
     aiMessageInvalidChars: 'Сообщение содержит недопустимые управляющие символы',
     aiStopStreaming: 'Стоп',
     aiScrollToBottom: 'Прокрутить вниз',
+    aiPuterSignIn: 'Войдите в Puter, чтобы использовать ИИ-ассистента.',
+    aiPuterSignInLink: 'Войти в Puter',
     createFolder: 'Создать папку',
     renameFolder: 'Переименовать папку',
     deleteFolder: 'Удалить папку',

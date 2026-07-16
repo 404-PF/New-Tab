@@ -391,7 +391,7 @@ const AIService = (function() {
           }
         }
       } else {
-        result = await OpenRouterAPI.sendMessageStreaming(
+        result = await PuterAPI.sendMessageStreaming(
           userMessage,
           historyForAPI,
           chunk => {
@@ -462,6 +462,18 @@ const AIService = (function() {
           conversation.messages.pop();
           AIRenderer.renderMessages();
         }
+
+        // Puter requires the user to sign in before AI usage. Offer a link
+        // to Puter's auth page so the user can enable the assistant.
+        if (result.authRequired && elements.errorDisplay) {
+          const link = document.createElement('a');
+          link.href = 'https://puter.com/login';
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = getTranslation('aiPuterSignInLink') || 'Sign in to Puter';
+          link.style.marginLeft = '0.4rem';
+          elements.errorDisplay.appendChild(link);
+        }
       }
     } catch (error) {
       if (error.name === 'AbortError' || AIStore.state.abortController === null) {
@@ -530,7 +542,7 @@ const AIService = (function() {
     try {
       const result = networkStatus.isOffline
         ? OfflineMode.getResponse(query)
-        : await OpenRouterAPI.quickSearch(query);
+        : await PuterAPI.quickSearch(query);
 
       if (result.success) {
         return result.content;
@@ -545,7 +557,7 @@ const AIService = (function() {
   }
 
   function isAvailable() {
-    return !!OpenRouterAPI && !NetworkDetector.getStatus().isOffline;
+    return !!PuterAPI && !NetworkDetector.getStatus().isOffline;
   }
 
   function initEventListeners() {

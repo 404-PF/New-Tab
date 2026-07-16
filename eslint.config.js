@@ -9,7 +9,7 @@ const srcGlobals = {
   AIService: 'readonly',
   AIRenderer: 'readonly',
   MarkdownParser: 'readonly',
-  OpenRouterAPI: 'readonly',
+  PuterAPI: 'readonly',
   OfflineMode: 'readonly',
   NetworkDetector: 'readonly',
   AppGridState: 'readonly',
@@ -130,7 +130,7 @@ const testGlobals = {
   AIStore: 'readonly',
   AIService: 'readonly',
   AIRenderer: 'readonly',
-  OpenRouterAPI: 'readonly',
+  PuterAPI: 'readonly',
   OfflineMode: 'readonly',
   NetworkDetector: 'readonly',
   MarkdownParser: 'readonly',
@@ -274,7 +274,7 @@ const commonRules = {
 
 module.exports = [
   {
-    ignores: ['coverage/**', 'node_modules/**', 'eslint.config.js'],
+    ignores: ['coverage/**', 'node_modules/**', 'eslint.config.js', 'src/ai/vendor/**'],
   },
   js.configs.recommended,
   {

@@ -51,7 +51,9 @@
     'src/features/focus-mode.js',
     'src/ai/network-detector.js',
     'src/ai/offline-mode.js',
-    'src/ai/openrouter.js',
+    // Puter.js SDK must load before src/ai/puter.js (it exposes window.puter)
+    'src/ai/vendor/puter.js',
+    'src/ai/puter.js',
     'src/ai/markdown-parser.js',
     'src/ai/ai-store.js',
     'src/ai/ai-renderer.js',
