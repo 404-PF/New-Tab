@@ -519,8 +519,11 @@ const updateChecker = new UpdateChecker();
 // Expose to window object for settings.js access
 window.updateChecker = updateChecker;
 
-// Auto-check on page load
-document.addEventListener('DOMContentLoaded', async () => {
+// Auto-check on page load.
+// bootstrap.js loads scripts after the DOM is already ready, so a
+// DOMContentLoaded listener would never fire. Use onDomReady, which
+// calls directly when the document is not loading.
+window.onDomReady(async () => {
   if (updateChecker.shouldCheck()) {
     const update = await updateChecker.checkForUpdates();
     if (update) {

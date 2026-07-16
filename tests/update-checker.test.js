@@ -1,6 +1,7 @@
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  injectScript('src/core/dom-ready.js');
   injectScript('src/core/update-checker.js');
 });
 
