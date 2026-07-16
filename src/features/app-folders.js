@@ -138,7 +138,7 @@
       }
 
       const safeIconUrl = window.validateIconUrl ? window.validateIconUrl(iconUrl) : iconUrl;
-      a.innerHTML = `<div class="icon"><img src="${escapeHtml(safeIconUrl || '')}" alt="${escapeHtml(displayName)}" data-app-icon></div><span class="app-name">${escapeHtml(displayName)}</span>`;
+      a.innerHTML = `<div class="icon"><img src="${window.escapeHtml(safeIconUrl || '')}" alt="${window.escapeHtml(displayName)}" data-app-icon></div><span class="app-name">${window.escapeHtml(displayName)}</span>`;
 
       grid.appendChild(a);
     });
