@@ -235,16 +235,16 @@ class UpdateChecker {
       <div class="update-notification-content">
         <div class="update-notification-icon">🚀</div>
         <div class="update-notification-text">
-          <strong>${title}</strong>
+          <strong>${window.escapeHtml(title)}</strong>
           <br>
-          ${message}
+          ${window.escapeHtml(message)}
         </div>
         <div class="update-notification-actions">
           <button class="update-btn update-btn-primary" id="update-view-btn">
-            ${viewReleaseLabel}
+            ${window.escapeHtml(viewReleaseLabel)}
           </button>
           <button class="update-btn update-btn-secondary" id="update-dismiss-btn">
-            ${dismissLabel}
+            ${window.escapeHtml(dismissLabel)}
           </button>
         </div>
       </div>
@@ -356,13 +356,13 @@ class UpdateChecker {
 
     notification.innerHTML = `
       <div class="manual-check-notification-content">
-        <div class="manual-check-notification-icon">${icon}</div>
+        <div class="manual-check-notification-icon">${window.escapeHtml(icon)}</div>
         <div class="manual-check-notification-text">
-          ${message}
+          ${window.escapeHtml(message)}
         </div>
         <div class="manual-check-notification-actions">
           <button class="manual-check-btn" id="manual-check-dismiss-btn">
-            ${this.t('dismiss')}
+            ${window.escapeHtml(this.t('dismiss'))}
           </button>
         </div>
       </div>

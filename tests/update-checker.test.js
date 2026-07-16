@@ -2,6 +2,7 @@ import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/core/dom-ready.js');
+  injectScript('src/core/utils.js');
   injectScript('src/core/update-checker.js');
 });
 
@@ -9,7 +10,7 @@ describe('UpdateChecker', () => {
   let checker;
 
   beforeEach(() => {
-    document.querySelectorAll('.update-notification, .manual-check-result')
+    document.querySelectorAll('.update-notification, .manual-check-notification, .manual-check-result')
       .forEach(el => el.remove());
 
     checker = window.updateChecker;
@@ -66,4 +67,17 @@ describe('UpdateChecker', () => {
       expect(checker._manualCheckResultTimeoutId).not.toBe(bannerTimerId);
     });
   });
+  describe('notification content security', () => {
+    it('escapes untrusted content', () => {
+      const payload = '<img src=x onerror=alert(1)>';
+      vi.spyOn(checker, 'formatMessage').mockReturnValue(payload);
+      checker.showUpdateNotification({ version: payload, url: 'https://example.com' });
+      expect(document.querySelector('.update-notification-text').textContent).toContain(payload);
+      expect(document.querySelector('.update-notification-text img')).toBeNull();
+      checker.showManualCheckNotification(payload);
+      expect(document.querySelector('.manual-check-notification-text').textContent.trim()).toBe(payload);
+      expect(document.querySelector('.manual-check-notification-text img')).toBeNull();
+    });
+  });
+
 });
