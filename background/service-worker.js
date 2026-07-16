@@ -125,8 +125,30 @@ function handleStartup() {
   }
 }
 
+// Persist the onInstalled reason so the release-notes feature (which runs in
+// the page context) can tell a fresh install ('install') apart from an upgrade
+// ('update'). Prior releases never wrote lastSeenVersion, so a page-only check
+// cannot distinguish a brand-new user from an existing user who just upgraded
+// into release-notes support. The page reads this marker via localStorage
+// (mirrored from chrome.storage.local by the storage bridge).
+function persistInstallReason(details) {
+  try {
+    const reason = details && details.reason ? details.reason : 'unknown';
+    chrome.storage.local.set({ releaseNotesInstallReason: reason }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn('Failed to persist install reason:', chrome.runtime.lastError.message);
+      }
+    });
+  } catch (e) {
+    console.warn('Failed to persist install reason:', e);
+  }
+}
+
 if (chrome?.runtime?.onInstalled) {
-  chrome.runtime.onInstalled.addListener(handleStartup);
+  chrome.runtime.onInstalled.addListener((details) => {
+    persistInstallReason(details);
+    handleStartup();
+  });
 }
 if (chrome?.runtime?.onStartup) {
   chrome.runtime.onStartup.addListener(handleStartup);
