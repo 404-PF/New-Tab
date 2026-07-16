@@ -447,6 +447,19 @@
     return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c));
   }
 
+  function useAppIconFallback(image) {
+    if (!image) return;
+    image.src = 'images/icons/globe.svg';
+  }
+
+  document.addEventListener('error', function (event) {
+    const image = event.target;
+    if (image instanceof HTMLImageElement && image.hasAttribute('data-app-icon')) {
+      image.removeAttribute('data-app-icon');
+      useAppIconFallback(image);
+    }
+  }, true);
+
   // Make utilities available globally
   window.visibilityManager = visibilityManager;
   window.VisibilityInterval = VisibilityInterval;

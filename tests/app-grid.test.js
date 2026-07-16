@@ -386,6 +386,23 @@ describe('renderAllApps order validation', () => {
     expect(order).toEqual(completeOrder);
   });
 
+  it('uses the bundled fallback when an app icon fails to load', () => {
+    AppGridState.addApp({
+      id: 'broken-icon',
+      url: 'https://example.com',
+      name: 'Broken icon',
+      icon: 'https://example.com/missing.png'
+    });
+
+    window.renderAllApps();
+
+    const image = document.querySelector('#broken-icon img');
+    image.dispatchEvent(new Event('error'));
+
+    expect(image.getAttribute('src')).toBe('images/icons/globe.svg');
+    expect(image.hasAttribute('data-app-icon')).toBe(false);
+  });
+
   it('rebuilds order when order is null (first load)', () => {
     // No order persisted - simulate fresh start
     AppGridStorage.saveOrder(null);
