@@ -1,6 +1,7 @@
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  injectScript('src/core/dom-ready.js');
   injectScript('src/core/update-checker.js');
 });
 
@@ -24,6 +25,27 @@ describe('UpdateChecker', () => {
     checker._manualCheckUnsubscribe = null;
     checker._manualCheckResultTimeoutId = null;
     checker._manualCheckResultUnsubscribe = null;
+  });
+
+  describe('automatic check on load', () => {
+    it('invokes checkForUpdates when the update interval has elapsed', async () => {
+      let captured = null;
+      window.onDomReady = (cb) => { captured = cb; };
+
+      // Re-inject the checker so its onDomReady auto-check registration runs
+      // with the stub above in place. dom-ready.js is already loaded.
+      injectScript('src/core/update-checker.js');
+
+      const instance = window.updateChecker;
+      instance.currentVersion = '1.0.0';
+      instance.setLastCheckTime(0); // force interval elapsed
+      const spy = vi.spyOn(instance, 'checkForUpdates').mockResolvedValue();
+
+      await captured();
+
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
+    });
   });
 
   describe('auto-hide timer isolation', () => {

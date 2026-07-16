@@ -519,8 +519,19 @@ const updateChecker = new UpdateChecker();
 // Expose to window object for settings.js access
 window.updateChecker = updateChecker;
 
-// Auto-check on page load
-document.addEventListener('DOMContentLoaded', async () => {
+// settings.js renders its About section before this module loads (it sits
+// earlier in bootstrap's scriptSources), so its first paint shows the
+// "update checker not loaded" fallback. Re-render the section now that
+// window.updateChecker is available.
+if (typeof window.initAboutSection === 'function') {
+  window.initAboutSection();
+}
+
+// Auto-check on page load.
+// bootstrap.js loads scripts after the DOM is already ready, so a
+// DOMContentLoaded listener would never fire. Use onDomReady, which
+// calls directly when the document is not loading.
+window.onDomReady(async () => {
   if (updateChecker.shouldCheck()) {
     const update = await updateChecker.checkForUpdates();
     if (update) {
