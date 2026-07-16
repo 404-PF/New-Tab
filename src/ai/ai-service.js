@@ -463,15 +463,21 @@ const AIService = (function() {
           AIRenderer.renderMessages();
         }
 
-        // Puter requires the user to sign in before AI usage. Offer a link
-        // to Puter's auth page so the user can enable the assistant.
+        // Puter requires the user to sign in before AI usage. Use the SDK
+        // flow so the new auth token is stored in this extension context.
         if (result.authRequired && elements.errorDisplay) {
           const link = document.createElement('a');
-          link.href = 'https://puter.com/login';
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
+          link.href = '#';
           link.textContent = getTranslation('aiPuterSignInLink') || 'Sign in to Puter';
           link.style.marginLeft = '0.4rem';
+          link.addEventListener('click', async event => {
+            event.preventDefault();
+            try {
+              await window.puter.auth.signIn();
+            } catch (error) {
+              console.warn('Puter sign-in failed:', error);
+            }
+          });
           elements.errorDisplay.appendChild(link);
         }
       }

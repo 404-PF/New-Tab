@@ -52,6 +52,9 @@ beforeAll(() => {
 
   // Provide a fake Puter SDK global. puter.js calls window.puter.ai.chat.
   globalThis.puter = {
+    auth: {
+      signIn: async () => {}
+    },
     ai: {
       chat: async () => {
         // Default: emulate a streamed response via an async iterable
@@ -86,6 +89,7 @@ beforeEach(() => {
   PuterAPI.sendMessageStreaming = async () => {
     return { success: false, error: 'mock API error' };
   };
+  window.puter.auth.signIn = async () => {};
 });
 
 describe('PuterAPI.validateInput control character rejection (#422)', () => {
@@ -224,6 +228,36 @@ describe('PuterAPI resilience', () => {
   });
 });
 describe('AIService error path length guard (#282)', () => {
+  it('uses the Puter SDK sign-in flow when authentication is required', async () => {
+    const conversation = {
+      id: 'conv_auth',
+      title: 'Auth',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    PuterAPI.sendMessageStreaming = async () => ({
+      success: false,
+      error: 'Sign in required',
+      authRequired: true
+    });
+
+    let signInCalls = 0;
+    window.puter.auth.signIn = async () => {
+      signInCalls += 1;
+    };
+
+    await AIService.sendMessage('hello');
+    const signInLink = document.querySelector('#ai-chat-error a');
+    expect(signInLink).not.toBeNull();
+
+    signInLink.click();
+    await Promise.resolve();
+
+    expect(signInCalls).toBe(1);
+  });
   it('does not pop messages when the API returns a non-success result on a 0-message conversation', async () => {
     // Seed an empty conversation
     const conversation = {
