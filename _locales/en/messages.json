@@ -314,5 +314,29 @@
   "eyeCareReminderNotificationBody": {
     "message": "Look at something 20 feet away for 20 seconds.",
     "description": "Body text for the browser notification when an eye-care break is due"
+  },
+  "searchWith": {
+    "message": "Search with",
+    "description": "Label prefix shown before the active search provider name"
+  },
+  "searchProviderGoogle": {
+    "message": "Google",
+    "description": "Name of the Google search provider"
+  },
+  "searchProviderBing": {
+    "message": "Bing",
+    "description": "Name of the Bing search provider"
+  },
+  "searchProviderDuckDuckGo": {
+    "message": "DuckDuckGo",
+    "description": "Name of the DuckDuckGo search provider"
+  },
+  "searchProviderWikipedia": {
+    "message": "Wikipedia",
+    "description": "Name of the Wikipedia search provider"
+  },
+  "searchProviderYouTube": {
+    "message": "YouTube",
+    "description": "Name of the YouTube search provider"
   }
 }

@@ -50,7 +50,9 @@
     'weatherManualCity',
     'ai_conversations',
     'ai_current_conversation_id',
-    'updateCheckEnabled'
+    'updateCheckEnabled',
+    'searchProvider',
+    'customSearchProviders'
   ];
 
   function t(key, fallback) {
@@ -262,7 +264,28 @@
     weatherManualCity: function (v) { return typeof v === 'string'; },
     ai_conversations: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     ai_current_conversation_id: function (v) { return typeof v === 'string'; },
-    updateCheckEnabled: function (v) { return typeof v === 'boolean'; }
+    updateCheckEnabled: function (v) { return typeof v === 'boolean'; },
+    searchProvider: function (v) { return typeof v === 'string'; },
+    customSearchProviders: function (v) {
+      if (!Array.isArray(v)) return false;
+      const builtInIds = window.BUILT_IN_PROVIDERS ? Object.keys(window.BUILT_IN_PROVIDERS) : [];
+      const seenIds = {};
+      return v.every(function (item) {
+        if (typeof item !== 'object' || item === null) return false;
+        if (typeof item.id !== 'string' || !item.id.trim()) return false;
+        if (builtInIds.indexOf(item.id) !== -1) return false;
+        if (seenIds[item.id]) return false;
+        seenIds[item.id] = true;
+        if (typeof item.name !== 'string' || !item.name.trim()) return false;
+        if (typeof item.url !== 'string' || !item.url.includes('{query}')) return false;
+        try {
+          const parsed = new URL(item.url);
+          return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && Boolean(parsed.hostname);
+        } catch {
+          return false;
+        }
+      });
+    }
   };
 
   function validateImportData(data) {
@@ -552,6 +575,11 @@
         window.initSettings();
       }
 
+      // Reinitialize the search provider bar so imported providers/selection take effect live
+      if (typeof window.refreshProviderBar === 'function') {
+        window.refreshProviderBar();
+      }
+
       if (hasWriteErrors) {
         showToast(t('dataImportPartialSuccess', 'Import completed with some errors.'), 'warning');
       } else {
@@ -605,7 +633,10 @@
   window.DataManager = {
     exportAllData: exportAllData,
     triggerImport: triggerImport,
-    initDataManager: initDataManager
+    initDataManager: initDataManager,
+    EXPORT_KEYS: EXPORT_KEYS,
+    EXPECTED_SHAPES: EXPECTED_SHAPES,
+    validateImportData: validateImportData
   };
 
 })();

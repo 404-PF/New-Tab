@@ -4,16 +4,19 @@ import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
 
 // Regression guard for #326 — search history panel (z-index: 60) must be
-// scoped within .search-bar so it cannot intercept app-grid clicks.
+// scoped within .search-bar-wrapper so it cannot intercept app-grid clicks.
 const CORE_CSS_PATH = resolve(process.cwd(), 'css/core.css');
 
 const SEARCH_BAR_HTML = `
-  <div class="search-bar">
-    <svg class="search-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="11" cy="11" r="7"></circle>
-      <path d="m20 20-3.5-3.5"></path>
-    </svg>
-    <input type="text" placeholder="Search or enter website" autofocus />
+  <div class="search-bar-wrapper">
+    <div class="search-bar">
+      <svg class="search-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m20 20-3.5-3.5"></path>
+      </svg>
+      <input type="text" placeholder="Search or enter website" autofocus />
+    </div>
+    <div class="search-provider-bar"></div>
   </div>
 `;
 
@@ -46,6 +49,8 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.removeItem('searchHistory');
+  localStorage.removeItem('searchProvider');
+  window.saveActiveProvider(null);
 
   const input = document.querySelector('.search-bar input');
   if (input) {
@@ -75,14 +80,14 @@ describe('search bar stacking context (#326)', () => {
     // Using [^}]* (instead of [^}]+) tolerates empty blocks, and the overall
     // pattern avoids assuming the rule is a single contiguous block (e.g. if
     // responsive overrides or nested at-rules are added later).
-    expect(css).toMatch(/\.search-bar[^{]*\{[^}]*isolation:\s*isolate/);
+    expect(css).toMatch(/\.search-bar\s*\{[^}]*isolation:\s*isolate/);
   });
 
-  it('scopes search-history-panel z-index within .search-bar via computed isolation', () => {
+  it('preserves the search-bar stacking context', () => {
     // Inject the real .search-bar CSS rule from core.css into the test DOM
     // so getComputedStyle reflects the actual production styles.
     const css = readFileSync(CORE_CSS_PATH, 'utf-8');
-    const ruleBlock = css.match(/\.search-bar[^{]*\{[^}]*isolation:\s*isolate[^}]*\}/);
+    const ruleBlock = css.match(/\.search-bar\s*\{[^}]*isolation:\s*isolate[^}]*\}/);
     expect(ruleBlock).not.toBeNull();
 
     const style = document.createElement('style');
@@ -97,6 +102,17 @@ describe('search bar stacking context (#326)', () => {
 });
 
 describe('search history', () => {
+  it('places suggestions outside the search bar below the provider row', () => {
+    recordSearchHistory('alpha');
+    focusSearchInput();
+
+    const wrapper = document.querySelector('.search-bar-wrapper');
+    const panel = document.querySelector('.search-history-panel');
+
+    expect(panel.parentElement).toBe(wrapper);
+    expect(wrapper.lastElementChild).toBe(panel);
+  });
+
   it('stores recent searches newest-first without duplicates', () => {
     recordSearchHistory('alpha');
     recordSearchHistory('beta');
@@ -171,10 +187,24 @@ describe('search history', () => {
     expect(searchQuerySpy).toHaveBeenCalledTimes(1);
     expect(searchQuerySpy).toHaveBeenCalledWith({
       text: 'beta',
-      disposition: 'CURRENT_TAB'
+      disposition: 'NEW_TAB'
     });
     expect(setItemSpy).not.toHaveBeenCalled();
     expect(JSON.parse(localStorage.getItem('searchHistory'))).toEqual(['beta', 'alpha']);
+  });
+
+  it('routes google provider through its URL instead of chrome.search.query', () => {
+    window.saveActiveProvider('google');
+    const searchQuerySpy = vi.spyOn(chrome.search, 'query');
+    const openSpy = vi.spyOn(window, 'open');
+
+    runSearch('hello world');
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy.mock.calls[0][0]).toContain('google.com/search?q=');
+    expect(openSpy.mock.calls[0][0]).toContain(encodeURIComponent('hello world'));
+    expect(searchQuerySpy).not.toHaveBeenCalled();
+    openSpy.mockRestore();
   });
 
   it('records history only after chrome.search.query resolves (#280)', async () => {
@@ -260,5 +290,54 @@ describe('search validation feedback clearing (#249)', () => {
     selectSearchHistorySuggestion('hello world');
 
     expect(feedbackEl.classList.contains('show')).toBe(false);
+  });
+});
+
+// ------------------------------------------------------------------
+// Regression: open-in-current-tab setting must be honored by the search bar
+// ------------------------------------------------------------------
+describe('search bar honors open in current tab setting', () => {
+  it('opens in a new tab by default (openAppsInNewTab not false)', () => {
+    localStorage.removeItem('openAppsInNewTab');
+    window.saveActiveProvider('google');
+    const openSpy = vi.spyOn(window, 'open');
+
+    runSearch('hello world');
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy.mock.calls[0][1]).toBe('_blank');
+    openSpy.mockRestore();
+  });
+
+  it('navigates in the current tab when openAppsInNewTab is false', () => {
+    localStorage.setItem('openAppsInNewTab', 'false');
+    window.saveActiveProvider('google');
+    const openSpy = vi.spyOn(window, 'open');
+    let assigned = null;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { set href(value) { assigned = value; }, get href() { return ''; } },
+    });
+
+    runSearch('hello world');
+
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(assigned).toContain('google.com/search?q=');
+    Object.defineProperty(window, 'location', { configurable: true, value: { href: '' } });
+    openSpy.mockRestore();
+  });
+
+  it('uses CURRENT_TAB disposition when openAppsInNewTab is false', async () => {
+    localStorage.setItem('openAppsInNewTab', 'false');
+    window.saveActiveProvider(null);
+    const querySpy = vi.spyOn(chrome.search, 'query').mockResolvedValue({});
+
+    runSearch('hello world');
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(querySpy).toHaveBeenCalledWith({
+      text: 'hello world',
+      disposition: 'CURRENT_TAB',
+    });
   });
 });

@@ -108,6 +108,16 @@ const srcGlobals = {
   getCompletedThisWeek: 'readonly',
   module: 'readonly',
   exports: 'readonly',
+  BUILT_IN_PROVIDERS: 'readonly',
+  loadActiveProvider: 'readonly',
+  saveActiveProvider: 'readonly',
+  loadCustomProviders: 'readonly',
+  saveCustomProviders: 'readonly',
+  addCustomProvider: 'readonly',
+  removeCustomProvider: 'readonly',
+  getAllProviders: 'readonly',
+  getActiveProviderUrl: 'readonly',
+  updateProviderSelection: 'readonly',
 };
 
 const testGlobals = {
@@ -238,6 +248,16 @@ const testGlobals = {
   beforeEach: 'readonly',
   afterEach: 'readonly',
   afterAll: 'readonly',
+  BUILT_IN_PROVIDERS: 'readonly',
+  loadActiveProvider: 'readonly',
+  saveActiveProvider: 'readonly',
+  loadCustomProviders: 'readonly',
+  saveCustomProviders: 'readonly',
+  addCustomProvider: 'readonly',
+  removeCustomProvider: 'readonly',
+  getAllProviders: 'readonly',
+  getActiveProviderUrl: 'readonly',
+  updateProviderSelection: 'readonly',
 };
 
 const commonRules = {

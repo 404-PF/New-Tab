@@ -264,6 +264,39 @@ const SEARCH_UNAVAILABLE_MESSAGE = 'Search is unavailable in this browser.';
 const SEARCH_HISTORY_STORAGE_KEY = 'searchHistory';
 const SEARCH_HISTORY_LIMIT = 8;
 
+const SEARCH_PROVIDER_STORAGE_KEY = 'searchProvider';
+const CUSTOM_PROVIDERS_STORAGE_KEY = 'customSearchProviders';
+
+const BUILT_IN_PROVIDERS = {
+  google: {
+    name: 'Google',
+    url: 'https://www.google.com/search?q={query}',
+    icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>'
+  },
+  bing: {
+    name: 'Bing',
+    url: 'https://www.bing.com/search?q={query}',
+    icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M4.07 3.5v14.3l4.57 1.97V6.37l7.47 3.22v4.7L4.07 3.5z" fill="#00809D"/><path d="M16.11 9.59l3.95-1.7v7.32l-3.95 1.7V9.59z" fill="#00809D"/><path d="M4.07 3.5l11.37 4.9-3.8 1.64L4.07 3.5z" fill="#50B9B4"/></svg>'
+  },
+  duckduckgo: {
+    name: 'DuckDuckGo',
+    url: 'https://duckduckgo.com/?q={query}',
+    icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0z" fill="#DE5833"/><path d="M10.07 9.56c-.07.42.15.82.58 1.04.42.22.92.12 1.23-.26l.04-.05c.32-.38.37-.93.12-1.37-.25-.44-.75-.66-1.21-.54-.46.12-.73.58-.66 1.03l.02.04c-.18-.05-.37-.06-.56-.03-.42.07-.72.45-.67.88.05.42.42.7.84.65.32-.04.58-.23.68-.52l.01-.03c.14-.36.09-.78-.15-1.07-.24-.29-.63-.38-.97-.28-.34.1-.55.42-.52.78v.04c-.16-.05-.33-.06-.5-.02-.41.09-.69.43-.63.84.05.42.42.7.83.64z" fill="#FFF"/></svg>'
+  },
+  wikipedia: {
+    name: 'Wikipedia',
+    url: 'https://en.wikipedia.org/w/index.php?search={query}',
+    icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M12.09 2C6.46 2 3.34 3.45 3.34 3.45l.01 1.52s3.12-1.19 5.88-1.19l-.01 2.59H3.72v2.44h5.5v2.98h-4.3v2.44h4.3v3.88c-.03.22-.15.84-.15.84l2.22-.02s-.12-.39-.16-.64v-6.06h4.3v-2.44h-4.3V6.22h5.88v-2.59s-1.8.08-3.42.39c-.41-1.49-1.21-2.02-1.21-2.02h-4.6z" fill="#333"/></svg>'
+  },
+  youtube: {
+    name: 'YouTube',
+    url: 'https://www.youtube.com/results?search_query={query}',
+    icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.38.55A3.02 3.02 0 0 0 .5 6.19 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.81 3.02 3.02 0 0 0 2.12 2.14c1.88.55 9.38.55 9.38.55s7.5 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.81zM9.54 15.57V8.43L15.82 12l-6.28 3.57z" fill="#FF0000"/></svg>'
+  }
+};
+
+const RESERVED_PROVIDER_IDS = Object.keys(BUILT_IN_PROVIDERS);
+
 let isSearchInputFocused = false;
 let searchBarElement = null;
 let searchInputElement = null;
@@ -351,6 +384,180 @@ function clearSearchHistory() {
   }
 }
 
+let activeProviderId = null;
+
+function loadActiveProvider() {
+  try {
+    const stored = localStorage.getItem(SEARCH_PROVIDER_STORAGE_KEY);
+    if (stored && (BUILT_IN_PROVIDERS[stored] || loadCustomProviders().some(function (p) { return p.id === stored; }))) {
+      return stored;
+    }
+  } catch (e) {
+    console.warn('Failed to read search provider:', e);
+  }
+  return 'google';
+}
+
+function saveActiveProvider(providerId) {
+  try {
+    localStorage.setItem(SEARCH_PROVIDER_STORAGE_KEY, providerId);
+  } catch (e) {
+    console.warn('Failed to save search provider:', e);
+  }
+  activeProviderId = providerId;
+}
+
+function isValidProviderUrl(url) {
+  if (typeof url !== 'string' || !url.includes('{query}')) return false;
+
+  try {
+    const parsed = new URL(url);
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isValidCustomProvider(provider, seenIds) {
+  if (!provider || typeof provider !== 'object' ||
+    typeof provider.id !== 'string' || !provider.id.trim() ||
+    typeof provider.name !== 'string' || !provider.name.trim() ||
+    !isValidProviderUrl(provider.url)) {
+    return false;
+  }
+  if (RESERVED_PROVIDER_IDS.indexOf(provider.id) !== -1) return false;
+  if (seenIds) {
+    if (seenIds[provider.id]) return false;
+    seenIds[provider.id] = true;
+  }
+  return true;
+}
+
+function loadCustomProviders() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_PROVIDERS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const seenIds = {};
+    return parsed.filter(function (p) { return isValidCustomProvider(p, seenIds); });
+  } catch (e) {
+    console.warn('Failed to read custom providers:', e);
+    return [];
+  }
+}
+
+function saveCustomProviders(providers) {
+  try {
+    localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, JSON.stringify(providers));
+  } catch (e) {
+    console.warn('Failed to save custom providers:', e);
+  }
+}
+
+function addCustomProvider(name, url) {
+  if (typeof name !== 'string' || !name.trim() || !isValidProviderUrl(url)) return false;
+  const id = 'custom_' + Date.now();
+  const providers = loadCustomProviders();
+  providers.push({ id: id, name: name, url: url });
+  saveCustomProviders(providers);
+  renderCustomProviderButtons();
+  return id;
+}
+
+function removeCustomProvider(id) {
+  const providers = loadCustomProviders().filter(function (p) { return p.id !== id; });
+  saveCustomProviders(providers);
+  if (activeProviderId === id) {
+    saveActiveProvider('google');
+    updateProviderSelection();
+  }
+  renderCustomProviderButtons();
+}
+
+function getAllProviders() {
+  const all = {};
+  Object.keys(BUILT_IN_PROVIDERS).forEach(function (key) {
+    all[key] = BUILT_IN_PROVIDERS[key];
+  });
+  loadCustomProviders().forEach(function (p) {
+    all[p.id] = { name: p.name, url: p.url, icon: '' };
+  });
+  return all;
+}
+
+function getActiveProviderUrl(query) {
+  const all = getAllProviders();
+  const provider = all[activeProviderId];
+  if (!provider || !isValidProviderUrl(provider.url)) return null;
+  return provider.url.replace('{query}', encodeURIComponent(query));
+}
+
+function renderCustomProviderButtons() {
+  const bar = document.getElementById('search-provider-bar');
+  if (!bar) return;
+
+  bar.querySelectorAll('.search-provider-custom').forEach(function (el) { el.remove(); });
+
+  loadCustomProviders().forEach(function (p) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'search-provider-btn search-provider-custom';
+    if (activeProviderId === p.id) btn.classList.add('active');
+    btn.dataset.provider = p.id;
+    btn.title = p.name;
+    const searchWith = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('searchWith') : 'Search with';
+    btn.setAttribute('aria-label', searchWith + ' ' + p.name);
+    btn.textContent = p.name.charAt(0).toUpperCase();
+    bar.appendChild(btn);
+  });
+}
+
+function updateProviderSelection() {
+  const bar = document.getElementById('search-provider-bar');
+  if (!bar) return;
+
+  bar.querySelectorAll('.search-provider-btn').forEach(function (btn) {
+    btn.classList.toggle('active', btn.dataset.provider === activeProviderId);
+  });
+
+  if (activeProviderId && activeProviderId !== 'google') {
+    bar.classList.add('has-selection');
+  } else {
+    bar.classList.remove('has-selection');
+  }
+}
+
+function initProviderBar() {
+  activeProviderId = loadActiveProvider();
+
+  const bar = document.getElementById('search-provider-bar');
+  if (!bar) return;
+
+  renderCustomProviderButtons();
+  updateProviderSelection();
+
+  bar.addEventListener('click', function (event) {
+    const btn = event.target.closest('.search-provider-btn');
+    if (!btn) return;
+    saveActiveProvider(btn.dataset.provider);
+    updateProviderSelection();
+  });
+
+  bar.addEventListener('focusin', function (event) {
+    if (event.target.closest('.search-provider-btn')) {
+      isSearchInputFocused = false;
+      hideSearchHistorySuggestions();
+    }
+  });
+}
+
+function refreshProviderBar() {
+  activeProviderId = loadActiveProvider();
+  renderCustomProviderButtons();
+  updateProviderSelection();
+}
+
 function ensureSearchHistoryPanel() {
   if (!searchBarElement) {
     return null;
@@ -383,7 +590,8 @@ function ensureSearchHistoryPanel() {
       }
     });
 
-    searchBarElement.appendChild(searchHistoryPanel);
+    const searchHistoryContainer = searchBarElement.closest('.search-bar-wrapper') || searchBarElement;
+    searchHistoryContainer.appendChild(searchHistoryPanel);
   }
 
   return searchHistoryPanel;
@@ -475,11 +683,29 @@ function renderSearchHistorySuggestions() {
   searchInputElement.setAttribute('aria-expanded', 'true');
 }
 
+function loadOpenNewTabSetting() {
+  return localStorage.getItem('openAppsInNewTab') !== 'false';
+}
+
 function runDefaultSearch(query, onSuccess) {
+  const providerUrl = activeProviderId ? getActiveProviderUrl(query) : null;
+  const openInNewTab = loadOpenNewTabSetting();
+
+  if (providerUrl) {
+    recordSearchHistory(query);
+    if (openInNewTab) {
+      window.open(providerUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      window.location.href = providerUrl;
+    }
+    if (onSuccess) onSuccess();
+    return;
+  }
+
   if (typeof chrome !== 'undefined' && chrome.search && typeof chrome.search.query === 'function') {
     chrome.search.query({
       text: query,
-      disposition: 'CURRENT_TAB',
+      disposition: openInNewTab ? 'NEW_TAB' : 'CURRENT_TAB',
     }).then(() => {
       if (onSuccess) {
         onSuccess();
@@ -535,7 +761,7 @@ function initSearchEngine() {
 
   searchBarElement.addEventListener('focusout', function (event) {
     const nextTarget = event.relatedTarget;
-    if (nextTarget && searchBarElement.contains(nextTarget)) {
+    if (nextTarget && (searchBarElement.contains(nextTarget) || (searchBarElement.parentElement && searchBarElement.parentElement.contains(nextTarget)))) {
       return;
     }
 
@@ -568,6 +794,7 @@ function initSearchEngine() {
     }
   });
   isSearchHandlerBound = true;
+  initProviderBar();
 }
 
 function showSearchValidationFeedback(message) {
@@ -628,6 +855,19 @@ function checkFooterOverlap() {
 
 // Make checkFooterOverlap globally accessible
 window.checkFooterOverlap = checkFooterOverlap;
+
+// Search provider functions (exposed for testing)
+window.loadActiveProvider = loadActiveProvider;
+window.saveActiveProvider = saveActiveProvider;
+window.loadCustomProviders = loadCustomProviders;
+window.saveCustomProviders = saveCustomProviders;
+window.addCustomProvider = addCustomProvider;
+window.removeCustomProvider = removeCustomProvider;
+window.getAllProviders = getAllProviders;
+window.getActiveProviderUrl = getActiveProviderUrl;
+window.updateProviderSelection = updateProviderSelection;
+window.refreshProviderBar = refreshProviderBar;
+window.BUILT_IN_PROVIDERS = BUILT_IN_PROVIDERS;
 
 // Set the motto and button functionality after the page has finished loading
 document.addEventListener('DOMContentLoaded', () => {
