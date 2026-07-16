@@ -42,6 +42,7 @@
     'src/features/context-menu.js',
     'src/features/app-folders.js',
     'src/core/update-checker.js',
+    'src/features/release-notes.js',
     'src/features/onboarding.js',
     'src/features/todo.js',
     'src/features/todo-stats.js',
