@@ -65,7 +65,6 @@
   let isRefreshing = false;
   let widgetHasBeenShown = false;
   let pendingRefresh = false;
-  let currentCache = null;
 
   // ===================== Utility Functions =====================
 
@@ -176,7 +175,6 @@
     },
 
     loadCache() {
-      if (currentCache) return currentCache;
       const raw = _safeGet(CACHE_KEY);
       if (!raw) return null;
       try {
@@ -185,8 +183,7 @@
           console.warn('Invalid weather cache data shape, discarding');
           return null;
         }
-        currentCache = parsed;
-        return currentCache;
+        return parsed;
       } catch (e) {
         console.warn('Failed to parse weather cache:', e);
         return null;
@@ -194,7 +191,6 @@
     },
 
     saveCache(cacheData) {
-      currentCache = cacheData;
       _safeSet(CACHE_KEY, JSON.stringify(cacheData));
       // Dispatch custom event for same-tab listeners (storage events only fire in other tabs)
       window.dispatchEvent(new CustomEvent('weatherCacheUpdated'));
