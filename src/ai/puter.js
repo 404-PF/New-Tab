@@ -171,7 +171,11 @@ const PuterAPI = (function() {
         xhr.addEventListener('loadend', () => {
           signal.removeEventListener('abort', abortRequest);
         }, { once: true });
-        if (signal.aborted) abortRequest();
+        if (signal.aborted) {
+          abortRequest();
+          restoreSend();
+          return undefined;
+        }
         restoreSend();
       }
 

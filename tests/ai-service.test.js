@@ -263,8 +263,11 @@ describe('PuterAPI resilience', () => {
     const originalAbort = XMLHttpRequest.prototype.abort;
     let continueAfterSignIn;
     let abortCalled = false;
+    let sendCalled = false;
 
-    XMLHttpRequest.prototype.send = function() {};
+    XMLHttpRequest.prototype.send = function() {
+      sendCalled = true;
+    };
     XMLHttpRequest.prototype.abort = function() {
       abortCalled = true;
     };
@@ -287,6 +290,7 @@ describe('PuterAPI resilience', () => {
 
       expect(result).toMatchObject({ success: false, aborted: true });
       expect(abortCalled).toBe(true);
+      expect(sendCalled).toBe(false);
     } finally {
       XMLHttpRequest.prototype.send = originalSend;
       XMLHttpRequest.prototype.abort = originalAbort;
