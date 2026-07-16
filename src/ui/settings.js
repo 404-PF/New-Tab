@@ -1528,6 +1528,11 @@ window.addEventListener('languageChanged', function() {
   renderLanguageOptions();
 });
 
+// update-checker.js loads after this module, so its first render of the About
+// section runs before window.updateChecker exists. Expose the re-render hook so
+// update-checker.js can refresh the section once it has registered itself.
+window.initAboutSection = initAboutSection;
+
 // When the OS-level motion preference changes while a video background is
 // active, pause or resume the video accordingly. This is what makes the
 // `prefers-reduced-motion` setting respond to the live system toggle instead
