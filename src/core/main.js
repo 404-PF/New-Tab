@@ -262,6 +262,7 @@ let isSearchHandlerBound = false;
 
 const SEARCH_UNAVAILABLE_MESSAGE = 'Search is unavailable in this browser.';
 const SEARCH_HISTORY_STORAGE_KEY = 'searchHistory';
+const SEARCH_HISTORY_ENABLED_STORAGE_KEY = 'searchHistoryEnabled';
 const SEARCH_HISTORY_LIMIT = 8;
 
 const SEARCH_PROVIDER_STORAGE_KEY = 'searchProvider';
@@ -303,6 +304,10 @@ let searchInputElement = null;
 let searchHistoryPanel = null;
 let searchHistoryListEl = null;
 let searchHistoryClearBtn = null;
+
+function isSearchHistoryEnabled() {
+  return localStorage.getItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY) !== 'false';
+}
 
 function readSearchHistory() {
   try {
@@ -359,6 +364,10 @@ function writeSearchHistory(history) {
 }
 
 function recordSearchHistory(query) {
+  if (!isSearchHistoryEnabled()) {
+    return;
+  }
+
   const normalizedQuery = query.trim();
   if (!normalizedQuery) {
     return;
@@ -640,6 +649,11 @@ function renderSearchHistorySuggestions() {
     return;
   }
 
+  if (!isSearchHistoryEnabled()) {
+    hideSearchHistorySuggestions();
+    return;
+  }
+
   const panel = ensureSearchHistoryPanel();
   if (!panel || !searchHistoryListEl || !searchHistoryClearBtn) {
     return;
@@ -753,6 +767,19 @@ function initSearchEngine() {
   searchInputElement.setAttribute('aria-autocomplete', 'list');
   searchInputElement.setAttribute('aria-expanded', 'false');
   searchInputElement.setAttribute('aria-controls', 'search-history-panel');
+
+  const searchHistoryEnabledSetting = document.getElementById('search-history-enabled-setting');
+  if (searchHistoryEnabledSetting) {
+    searchHistoryEnabledSetting.checked = isSearchHistoryEnabled();
+    searchHistoryEnabledSetting.addEventListener('change', function () {
+      localStorage.setItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked);
+      if (this.checked) {
+        renderSearchHistorySuggestions();
+      } else {
+        hideSearchHistorySuggestions();
+      }
+    });
+  }
 
   searchInputElement.addEventListener('focus', function () {
     isSearchInputFocused = true;

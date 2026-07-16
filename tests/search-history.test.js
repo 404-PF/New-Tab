@@ -49,6 +49,7 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.removeItem('searchHistory');
+  localStorage.removeItem('searchHistoryEnabled');
   localStorage.removeItem('searchProvider');
   window.saveActiveProvider(null);
 
@@ -102,6 +103,18 @@ describe('search bar stacking context (#326)', () => {
 });
 
 describe('search history', () => {
+  it('does not store or show history when disabled', () => {
+    localStorage.setItem('searchHistory', JSON.stringify(['existing query']));
+    localStorage.setItem('searchHistoryEnabled', 'false');
+
+    recordSearchHistory('new query');
+    focusSearchInput();
+
+    expect(JSON.parse(localStorage.getItem('searchHistory'))).toEqual(['existing query']);
+    const panel = document.querySelector('.search-history-panel');
+    expect(panel === null || panel.hidden).toBe(true);
+  });
+
   it('places suggestions outside the search bar below the provider row', () => {
     recordSearchHistory('alpha');
     focusSearchInput();

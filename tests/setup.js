@@ -312,6 +312,7 @@ globalThis.window.i18n = {
       searchPlaceholder: 'Search or enter URL...',
       recentSearches: 'Recent searches',
       clearSearchHistory: 'Clear history',
+      enableSearchHistory: 'Enable search history',
       newApp: 'New',
       filterAll: 'All',
       filterPending: 'Pending',
