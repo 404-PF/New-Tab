@@ -172,8 +172,16 @@
 
     document.body.appendChild(overlay);
 
+    const previouslyFocused = document.activeElement;
+
     const close = function () {
+      if (!overlay.isConnected) {
+        return;
+      }
       overlay.remove();
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+        previouslyFocused.focus();
+      }
     };
 
     const viewBtn = overlay.querySelector('#release-notes-view');
@@ -198,12 +206,45 @@
       }
     });
 
-    document.addEventListener('keydown', function onEscape(event) {
+    const getFocusable = function () {
+      return Array.prototype.filter.call(
+        overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+        function (el) {
+          return el.offsetParent !== null || el === document.activeElement;
+        }
+      );
+    };
+
+    document.addEventListener('keydown', function onKeydown(event) {
+      if (!overlay.isConnected) {
+        document.removeEventListener('keydown', onKeydown);
+        return;
+      }
       if (event.key === 'Escape') {
         close();
-        document.removeEventListener('keydown', onEscape);
+        return;
+      }
+      if (event.key === 'Tab') {
+        const focusable = getFocusable();
+        if (!focusable.length) {
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     });
+
+    const focusable = getFocusable();
+    if (focusable.length) {
+      focusable[0].focus();
+    }
   }
 
   function escapeHtml(text) {

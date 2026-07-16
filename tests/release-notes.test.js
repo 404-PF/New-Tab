@@ -8,6 +8,7 @@ describe('ReleaseNotes', () => {
   beforeEach(() => {
     document.querySelectorAll('.release-notes-modal').forEach((el) => el.remove());
     localStorage.removeItem(window.releaseNotes.LAST_SEEN_VERSION_KEY);
+    localStorage.removeItem(window.releaseNotes.INSTALL_REASON_KEY);
     window.CURRENT_VERSION = '0.4.7';
   });
 
@@ -76,7 +77,11 @@ describe('ReleaseNotes', () => {
     localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.4.7');
     const result = window.releaseNotes.detectAndShow();
     expect(result).toBe('shown');
-    expect(document.querySelector('.release-notes-modal')).not.toBeNull();
+    const modal = document.querySelector('.release-notes-modal');
+    expect(modal).not.toBeNull();
+    expect(modal.querySelector('.release-notes-list li').textContent).toBe(
+      'Check the full changelog for everything included in this update.'
+    );
     expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe('9.9.9');
   });
 
