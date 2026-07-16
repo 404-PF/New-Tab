@@ -97,7 +97,7 @@ const AIStore = (function() {
         saveConversations();
       }
     } catch (error) {
-      console.error('Failed to load conversations:', error);
+      console.warn('Failed to load conversations:', error);
       recoverConversations();
     }
   }

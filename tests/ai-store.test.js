@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -13,7 +13,7 @@ beforeEach(() => {
 
 describe('AIStore conversation recovery (#458)', () => {
   it('persists a canonical conversation after malformed JSON', () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     localStorage.setItem(AIStore.STORAGE_KEYS.conversations, '{invalid');
 
     AIStore.loadConversations();
@@ -25,7 +25,7 @@ describe('AIStore conversation recovery (#458)', () => {
     expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe(
       AIStore.state.currentConversationId
     );
-    consoleError.mockRestore();
+    consoleWarn.mockRestore();
   });
 
   it.each([
