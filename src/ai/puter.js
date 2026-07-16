@@ -112,6 +112,7 @@ const PuterAPI = (function() {
       const normalizedMessage = (message || '').toLowerCase();
       return (
         code === 'auth_required' ||
+        code === 'auth_canceled' ||
         code === 'unauthorized' ||
         code === 'not_authenticated' ||
         normalizedMessage.includes('sign in') ||
@@ -129,6 +130,51 @@ const PuterAPI = (function() {
       hasAuthIndicator(error.code || '', error.message || '') ||
       hasAuthIndicator(nestedError.code || '', nestedError.message || '')
     );
+  }
+
+  /**
+   * Call Puter's chat API while wiring cancellation to its internal XHR.
+   * The vendored SDK currently drops unknown options, including `signal`.
+   * @param {Array} messages - Chat messages
+   * @param {Object} options - Puter chat options
+   * @param {AbortSignal|null} signal - Optional cancellation signal
+   * @returns {Promise<Object>} Puter chat response
+   */
+  function callPuterChat(messages, options, signal) {
+    if (!signal || !window.XMLHttpRequest) {
+      return window.puter.ai.chat(messages, options);
+    }
+
+    const xhrPrototype = window.XMLHttpRequest.prototype;
+    const originalSend = xhrPrototype.send;
+
+    xhrPrototype.send = function(body) {
+      let isChatRequest = false;
+      try {
+        const payload = typeof body === 'string' ? JSON.parse(body) : null;
+        isChatRequest = payload && payload.interface === 'puter-chat-completion';
+      } catch {
+        // Ignore non-JSON requests made while Puter initializes the chat call.
+      }
+
+      if (isChatRequest) {
+        const xhr = this;
+        const abortRequest = () => xhr.abort();
+        signal.addEventListener('abort', abortRequest, { once: true });
+        xhr.addEventListener('loadend', () => {
+          signal.removeEventListener('abort', abortRequest);
+        }, { once: true });
+        if (signal.aborted) abortRequest();
+      }
+
+      return originalSend.call(this, body);
+    };
+
+    try {
+      return window.puter.ai.chat(messages, options);
+    } finally {
+      xhrPrototype.send = originalSend;
+    }
   }
 
   /**
@@ -184,12 +230,11 @@ const PuterAPI = (function() {
           if (signal.aborted) abortHandler();
         })
         : null;
-      const request = window.puter.ai.chat(messages, {
+      const request = callPuterChat(messages, {
         model: getModel(),
         max_tokens: CONFIG.maxTokens,
-        stream: true,
-        signal: signal || undefined
-      });
+        stream: true
+      }, signal);
       const response = abortPromise
         ? await Promise.race([request, abortPromise])
         : await request;

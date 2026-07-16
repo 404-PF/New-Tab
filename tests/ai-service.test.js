@@ -183,6 +183,7 @@ describe('PuterAPI resilience', () => {
 
   it.each([
     { status: 401 },
+    { error: { code: 'auth_canceled', message: 'Authentication canceled' } },
     { error: { code: 'unauthorized' } },
     { error: { message: 'Authentication required' } }
   ])('recognizes nested and HTTP auth errors: %o', async authError => {
@@ -225,6 +226,36 @@ describe('PuterAPI resilience', () => {
     const result = await pending;
 
     expect(result).toMatchObject({ success: false, aborted: true });
+  });
+
+  it('aborts the Puter chat XHR when cancellation is requested', async () => {
+    const controller = new AbortController();
+    const originalSend = XMLHttpRequest.prototype.send;
+    const originalAbort = XMLHttpRequest.prototype.abort;
+    let abortCalled = false;
+
+    XMLHttpRequest.prototype.send = function() {};
+    XMLHttpRequest.prototype.abort = function() {
+      abortCalled = true;
+    };
+    window.puter.ai.chat = () => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/drivers/call');
+      xhr.send(JSON.stringify({ interface: 'puter-chat-completion' }));
+      return new Promise(() => {});
+    };
+
+    try {
+      const pending = realSendMessageStreaming('hello', [], null, controller.signal);
+      controller.abort();
+      const result = await pending;
+
+      expect(result).toMatchObject({ success: false, aborted: true });
+      expect(abortCalled).toBe(true);
+    } finally {
+      XMLHttpRequest.prototype.send = originalSend;
+      XMLHttpRequest.prototype.abort = originalAbort;
+    }
   });
 });
 describe('AIService error path length guard (#282)', () => {
