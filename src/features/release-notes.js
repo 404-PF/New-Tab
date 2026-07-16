@@ -195,7 +195,7 @@
   }
 
   // Detect whether the extension was just updated and show release notes if so.
-  // Returns 'shown' | 'fresh-install' | 'up-to-date' | 'skipped' for testing/telemetry.
+  // Returns 'shown' | 'up-to-date' | 'skipped' for testing/telemetry.
   function detectAndShow() {
     const currentVersion = getCurrentVersion();
     if (!currentVersion) {
@@ -206,9 +206,13 @@
     const lastSeen = getLastSeenVersion();
 
     if (!lastSeen) {
-      // First run: record the version but do not show notes.
+      // No stored version. Prior releases (before this feature existed) never
+      // wrote this key, so an absent value means an existing install just
+      // upgraded to a version with release-notes support. Show the notes once
+      // instead of treating it as a clean fresh install.
+      showReleaseNotesModal(currentVersion);
       setLastSeenVersion(currentVersion);
-      return 'fresh-install';
+      return 'shown';
     }
 
     if (compareVersions(currentVersion, lastSeen) > 0) {

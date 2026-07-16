@@ -11,11 +11,15 @@ describe('ReleaseNotes', () => {
     window.CURRENT_VERSION = '0.4.7';
   });
 
-  it('does not show notes on fresh install (no stored version)', () => {
+  it('shows notes when upgrading from a pre-feature install (no stored version)', () => {
     const result = window.releaseNotes.detectAndShow();
-    expect(result).toBe('fresh-install');
-    expect(document.querySelector('.release-notes-modal')).toBeNull();
+    expect(result).toBe('shown');
+    const modal = document.querySelector('.release-notes-modal');
+    expect(modal).not.toBeNull();
     expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe('0.4.7');
+    // Subsequent runs with the version now stored are a no-op.
+    expect(window.releaseNotes.detectAndShow()).toBe('up-to-date');
+    expect(document.querySelectorAll('.release-notes-modal').length).toBe(1);
   });
 
   it('shows notes after an upgrade and records the new version', () => {
