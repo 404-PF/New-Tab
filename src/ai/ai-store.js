@@ -46,10 +46,43 @@ const AIStore = (function() {
     };
   }
 
+  function isValidConversation(conversation) {
+    return Boolean(
+      conversation &&
+      typeof conversation === 'object' &&
+      typeof conversation.id === 'string' &&
+      conversation.id &&
+      typeof conversation.title === 'string' &&
+      Array.isArray(conversation.messages) &&
+      conversation.messages.every(message =>
+        message &&
+        typeof message === 'object' &&
+        typeof message.role === 'string' &&
+        typeof message.content === 'string'
+      ) &&
+      typeof conversation.createdAt === 'number' &&
+      typeof conversation.updatedAt === 'number'
+    );
+  }
+
+  function recoverConversations() {
+    const newConversation = createNewConversation();
+    state.conversations = [newConversation];
+    state.currentConversationId = newConversation.id;
+    saveConversations();
+  }
+
   function loadConversations() {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.conversations);
-      state.conversations = stored ? JSON.parse(stored) : [];
+      const conversations = stored ? JSON.parse(stored) : [];
+
+      if (!Array.isArray(conversations) || !conversations.every(isValidConversation)) {
+        recoverConversations();
+        return;
+      }
+
+      state.conversations = conversations;
 
       const currentId = localStorage.getItem(STORAGE_KEYS.currentId);
 
@@ -64,11 +97,8 @@ const AIStore = (function() {
         saveConversations();
       }
     } catch (error) {
-      console.error('Failed to load conversations:', error);
-      state.conversations = [];
-      const newConversation = createNewConversation();
-      state.conversations.push(newConversation);
-      state.currentConversationId = newConversation.id;
+      console.warn('Failed to load conversations:', error);
+      recoverConversations();
     }
   }
 
