@@ -306,7 +306,12 @@ let searchHistoryListEl = null;
 let searchHistoryClearBtn = null;
 
 function isSearchHistoryEnabled() {
-  return localStorage.getItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY) !== 'false';
+  try {
+    return localStorage.getItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY) !== 'false';
+  } catch (e) {
+    console.warn('Failed to read search history enabled setting:', e);
+    return true;
+  }
 }
 
 function readSearchHistory() {
@@ -772,7 +777,11 @@ function initSearchEngine() {
   if (searchHistoryEnabledSetting) {
     searchHistoryEnabledSetting.checked = isSearchHistoryEnabled();
     searchHistoryEnabledSetting.addEventListener('change', function () {
-      localStorage.setItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked);
+      try {
+        localStorage.setItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked);
+      } catch (e) {
+        console.warn('Failed to save search history enabled setting:', e);
+      }
       if (this.checked) {
         renderSearchHistorySuggestions();
       } else {
