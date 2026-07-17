@@ -1158,25 +1158,33 @@ describe('Manual update check button', () => {
       document.body.appendChild(el);
     }
 
+    const originalUpdateChecker = window.updateChecker;
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const manualCheck = vi.fn().mockRejectedValue(new Error('network'));
-    window.updateChecker = {
-      getUpdateStatus: () => ({ status: 'idle' }),
-      isEnabled: () => true,
-      manualCheck,
-    };
 
-    window.initAboutSection();
+    try {
+      window.updateChecker = {
+        getUpdateStatus: () => ({ status: 'idle' }),
+        isEnabled: () => true,
+        manualCheck,
+      };
 
-    const button = document.getElementById('manual-update-check');
-    expect(button).not.toBeNull();
+      window.initAboutSection();
 
-    button.click();
+      const button = document.getElementById('manual-update-check');
+      expect(button).not.toBeNull();
 
-    // Allow the async handler (including the rejected promise) to settle.
-    await new Promise(resolve => setTimeout(resolve, 0));
+      button.click();
 
-    expect(button.disabled).toBe(false);
-    expect(button.textContent).toBe('Check Now');
-    expect(manualCheck).toHaveBeenCalled();
+      // Allow the async handler (including the rejected promise) to settle.
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(button.disabled).toBe(false);
+      expect(button.textContent).toBe('Check Now');
+      expect(manualCheck).toHaveBeenCalled();
+    } finally {
+      window.updateChecker = originalUpdateChecker;
+      consoleErrorSpy.mockRestore();
+    }
   });
 });
