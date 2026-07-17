@@ -1148,3 +1148,43 @@ describe('video background transition overlay', () => {
     }
   });
 });
+
+describe('Manual update check button', () => {
+  it('restores button state even when manualCheck rejects', async () => {
+    if (!document.querySelector('.settings-section[data-section="about"]')) {
+      const el = document.createElement('section');
+      el.className = 'settings-section';
+      el.setAttribute('data-section', 'about');
+      document.body.appendChild(el);
+    }
+
+    const originalUpdateChecker = window.updateChecker;
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const manualCheck = vi.fn().mockRejectedValue(new Error('network'));
+
+    try {
+      window.updateChecker = {
+        getUpdateStatus: () => ({ status: 'idle' }),
+        isEnabled: () => true,
+        manualCheck,
+      };
+
+      window.initAboutSection();
+
+      const button = document.getElementById('manual-update-check');
+      expect(button).not.toBeNull();
+
+      button.click();
+
+      // Allow the async handler (including the rejected promise) to settle.
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(button.disabled).toBe(false);
+      expect(button.textContent).toBe('Check Now');
+      expect(manualCheck).toHaveBeenCalled();
+    } finally {
+      window.updateChecker = originalUpdateChecker;
+      consoleErrorSpy.mockRestore();
+    }
+  });
+});

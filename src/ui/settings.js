@@ -1497,9 +1497,14 @@ function initAboutSection() {
         const tBtn = window.i18n ? window.i18n.t : (key => key);
         this.disabled = true;
         this.textContent = tBtn('checking');
-        await updateChecker.manualCheck();
-        this.disabled = false;
-        this.textContent = tBtn('checkNow');
+        try {
+          await updateChecker.manualCheck();
+        } catch (err) {
+          console.error('Manual update check failed:', err);
+        } finally {
+          this.disabled = false;
+          this.textContent = tBtn('checkNow');
+        }
         // Refresh the about section after manual check
         setTimeout(() => initAboutSection(), 100);
       });
