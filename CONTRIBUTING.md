@@ -29,7 +29,7 @@ This is a Chrome/Edge Manifest V3 new-tab page extension. It is **vanilla JS wit
 Before opening a pull request, run the same checks CI runs, in this order:
 
 ```bash
-npm ci        # runs lifecycle scripts, including Husky's prepare hook
+npm ci --ignore-scripts   # matches CI; skips Husky's prepare hook
 npm run lint
 npm test
 ```
