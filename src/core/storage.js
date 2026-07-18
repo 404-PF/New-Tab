@@ -77,10 +77,6 @@
 
     try {
       const snapshotKeys = Object.keys(snapshot);
-      snapshotKeys.forEach((key) => {
-        nativeLocalStorage.setItem(key, snapshot[key]);
-      });
-
       const expectedKeys = new Set(snapshotKeys);
       for (let index = nativeLocalStorage.length - 1; index >= 0; index -= 1) {
         const key = nativeLocalStorage.key(index);
@@ -88,6 +84,10 @@
           nativeLocalStorage.removeItem(key);
         }
       }
+
+      snapshotKeys.forEach((key) => {
+        nativeLocalStorage.setItem(key, snapshot[key]);
+      });
     } catch (error) {
       console.warn('Failed to mirror chrome.storage data to localStorage:', error);
     }

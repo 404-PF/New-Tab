@@ -223,7 +223,7 @@ describe('storage bridge', () => {
     }
   });
 
-  it('keeps stale native fallback data when a snapshot write fails', async () => {
+  it('frees stale native fallback quota before writing a new snapshot key', async () => {
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
       url: 'https://example.com',
       runScripts: 'dangerously'
@@ -237,7 +237,7 @@ describe('storage bridge', () => {
       const storagePrototype = Object.getPrototypeOf(nativeStorage);
       const nativeSetItem = storagePrototype.setItem;
       storagePrototype.setItem = function (key, value) {
-        if (key === 'language') {
+        if (key === 'language' && nativeStorage.getItem('stale') !== null) {
           throw new dom.window.DOMException('Storage quota exceeded', 'QuotaExceededError');
         }
         nativeSetItem.call(this, key, value);
@@ -272,7 +272,8 @@ describe('storage bridge', () => {
       }, 'local');
 
       expect(nativeStorage.getItem('theme')).toBe('dark');
-      expect(nativeStorage.getItem('stale')).toBe('keep-after-failure');
+      expect(nativeStorage.getItem('stale')).toBeNull();
+      expect(nativeStorage.getItem('language')).toBe('en');
     } finally {
       dom.window.close();
     }
