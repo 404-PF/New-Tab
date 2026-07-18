@@ -303,7 +303,13 @@ const AppGridState = {
       return folders;
     });
 
-    if (!updatedFolders || !appAdded) return false;
+    if (!updatedFolders || !appAdded) {
+      if (rollbackFolders || rollbackOrder) {
+        this.saveFolders(previousFolders);
+        if (Array.isArray(previousOrder)) this.saveOrder(previousOrder);
+      }
+      return false;
+    }
 
     const savedOrder = this.updateOrder((latestOrder) => {
       const filtered = latestOrder.filter(oid => oid !== appId);
