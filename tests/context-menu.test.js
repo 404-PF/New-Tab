@@ -71,4 +71,107 @@ describe('context menu previews', () => {
     expect(deletePreview.querySelector('svg')).toBeNull();
     expect(deletePreview.querySelector('[data-test="evil"]')).toBeNull();
   });
+
+  it('skips delayed focus when modal inputs disappear', () => {
+    const appIcon = document.getElementById('app-1');
+    const openContextMenu = () => {
+      appIcon.dispatchEvent(new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+        pageX: 32,
+        pageY: 32
+      }));
+    };
+    const errors = [];
+    const onError = (event) => {
+      errors.push(event.error);
+      event.preventDefault();
+    };
+    window.addEventListener('error', onError);
+    vi.useFakeTimers();
+
+    try {
+      window.renameAppId = null;
+      openContextMenu();
+      document.getElementById('rename-app').click();
+      document.getElementById('rename-app-input').remove();
+      vi.advanceTimersByTime(100);
+      createElement('input', 'rename-app-input');
+
+      window.thumbnailAppId = null;
+      openContextMenu();
+      document.getElementById('change-thumbnail').click();
+      document.getElementById('thumbnail-app-input').remove();
+      vi.advanceTimersByTime(100);
+      createElement('input', 'thumbnail-app-input');
+
+      expect(errors).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+      window.removeEventListener('error', onError);
+    }
+  });
+
+  it('handles missing modal and preview elements without errors', () => {
+    const appIcon = document.getElementById('app-1');
+    const openContextMenu = () => {
+      appIcon.dispatchEvent(new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+        pageX: 32,
+        pageY: 32
+      }));
+    };
+    const errors = [];
+    const onError = (event) => {
+      errors.push(event.error);
+      event.preventDefault();
+    };
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    window.addEventListener('error', onError);
+
+    try {
+      window.renameAppId = null;
+      document.getElementById('rename-app-input').remove();
+      document.getElementById('rename-app-modal').remove();
+      openContextMenu();
+      document.getElementById('rename-app').click();
+      expect(window.renameAppId).toBeNull();
+
+      document.getElementById('thumbnail-preview-icon').remove();
+      document.getElementById('thumbnail-preview-name').remove();
+      openContextMenu();
+      document.getElementById('change-thumbnail').click();
+      expect(window.thumbnailAppId).toBe('app-1');
+      expect(document.getElementById('thumbnail-app-modal').classList).toContain('modal-open');
+
+      window.thumbnailAppId = null;
+      document.getElementById('thumbnail-app-input').remove();
+      document.getElementById('thumbnail-app-modal').remove();
+      openContextMenu();
+      document.getElementById('change-thumbnail').click();
+      expect(window.thumbnailAppId).toBeNull();
+
+      document.getElementById('delete-preview-icon').remove();
+      document.getElementById('delete-preview-name').remove();
+      openContextMenu();
+      document.getElementById('delete-app').click();
+      expect(window.deleteAppId).toBe('app-1');
+      expect(document.getElementById('delete-app-modal').classList).toContain('modal-open');
+
+      window.deleteAppId = null;
+      document.getElementById('delete-app-modal').remove();
+      openContextMenu();
+      document.getElementById('delete-app').click();
+      expect(window.deleteAppId).toBeNull();
+
+      expect(warnSpy).toHaveBeenCalledTimes(3);
+      expect(errors).toEqual([]);
+    } finally {
+      window.removeEventListener('error', onError);
+      warnSpy.mockRestore();
+    }
+  });
 });
