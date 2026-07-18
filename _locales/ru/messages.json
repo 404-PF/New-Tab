@@ -1,5 +1,6 @@
 {
   "enableSearchHistory": { "message": "Включить историю поиска", "description": "Label for the search history toggle" },
+  "appGridSaveError": { "message": "Не удалось сохранить изменения приложений. Последнее действие не было сохранено.", "description": "Error shown when app grid changes cannot be persisted" },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"

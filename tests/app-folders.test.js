@@ -259,4 +259,32 @@ describe('AppFolders UI', () => {
       expect(popup.style.display).toBe('none');
     });
   });
+
+  describe('move-to-folder selector', () => {
+    it('keeps the app icon in place when persistence fails', () => {
+      const folder = AppGridState.createFolder('Target', []);
+      const appGrid = createElement('div', 'app-grid');
+      const appIcon = document.createElement('a');
+      appIcon.id = 'app-to-move';
+      appIcon.className = 'app-icon custom-app';
+      appGrid.appendChild(appIcon);
+
+      const addApp = document.createElement('button');
+      addApp.id = 'new-app';
+      appGrid.appendChild(addApp);
+
+      const moveSpy = vi.spyOn(AppGridState, 'moveAppToFolder').mockReturnValue(false);
+
+      try {
+        window.AppFolders.showMoveToFolderSelector('app-to-move');
+        document.querySelector('#move-to-folder-list .move-to-folder-option:not(.cancel)').click();
+
+        expect(document.getElementById('app-to-move')).toBe(appIcon);
+        expect(moveSpy).toHaveBeenCalledWith(folder.id, 'app-to-move');
+      } finally {
+        moveSpy.mockRestore();
+        appGrid.remove();
+      }
+    });
+  });
 });

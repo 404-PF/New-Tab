@@ -235,9 +235,11 @@
       btn.textContent = f.name;
       btn.addEventListener('click', function () {
         if (moveToFolderAppId) {
-          window.AppGridState.moveAppToFolder(f.id, moveToFolderAppId);
-          removeAppIconFromGrid(moveToFolderAppId);
-          updateFolderIconInGrid(getFolder(f.id));
+          const moved = window.AppGridState.moveAppToFolder(f.id, moveToFolderAppId);
+          if (moved) {
+            removeAppIconFromGrid(moveToFolderAppId);
+            updateFolderIconInGrid(getFolder(f.id));
+          }
         }
         hideMoveToFolderSelector();
       });

@@ -1,5 +1,6 @@
 {
   "enableSearchHistory": { "message": "検索履歴を有効にする", "description": "Label for the search history toggle" },
+  "appGridSaveError": { "message": "アプリの変更を保存できませんでした。直前の操作は保存されていません。", "description": "Error shown when app grid changes cannot be persisted" },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"

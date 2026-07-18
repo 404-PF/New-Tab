@@ -1,5 +1,6 @@
 {
   "enableSearchHistory": { "message": "검색 기록 사용", "description": "Label for the search history toggle" },
+  "appGridSaveError": { "message": "앱 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.", "description": "Error shown when app grid changes cannot be persisted" },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
