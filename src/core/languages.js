@@ -378,6 +378,13 @@ const translations = {
     shortcutCloseModal: 'Close Modal / Dialog',
     shortcutPressAKey: 'Press a key...',
 
+    // Shortcuts settings tab
+    shortcuts: 'Shortcuts',
+    keyboardShortcuts: 'Keyboard Shortcuts',
+    keyboardShortcutsDesc: 'Customize keyboard shortcuts for quick actions',
+    resetToDefaults: 'Reset to Defaults',
+    resetShortcuts: 'Reset Shortcuts',
+
     // AI Assistant
     ai: 'AI Assistant',
     aiAssistant: 'AI Assistant',
@@ -830,6 +837,13 @@ const translations = {
     shortcutCloseModal: '关闭对话框',
     shortcutPressAKey: '按下按键...',
 
+    // Shortcuts settings tab
+    shortcuts: '快捷键',
+    keyboardShortcuts: '键盘快捷键',
+    keyboardShortcutsDesc: '自定义用于控制新标签页的键盘快捷键。',
+    resetToDefaults: '恢复默认设置',
+    resetShortcuts: '重置快捷键',
+
     // AI Assistant
     ai: 'AI 助手',
     aiAssistant: 'AI 助手',
@@ -1225,6 +1239,13 @@ const translations = {
     shortcutCloseModal: 'モーダルを閉じる',
     shortcutPressAKey: 'キーを押してください...',
 
+    // Shortcuts settings tab
+    shortcuts: 'ショートカット',
+    keyboardShortcuts: 'キーボードショートカット',
+    keyboardShortcutsDesc: '新しいタブの操作に使うキーボードショートカットをカスタマイズします。',
+    resetToDefaults: 'デフォルトに戻す',
+    resetShortcuts: 'ショートカットをリセット',
+
     ai: 'AI アシスタント',
     aiAssistant: 'AI アシスタント',
     aiWelcome: 'AI アシスタントへようこそ',
@@ -1619,6 +1640,13 @@ const translations = {
     shortcutCloseModal: '모달 닫기',
     shortcutPressAKey: '키를 누르세요...',
 
+    // Shortcuts settings tab
+    shortcuts: '단축키',
+    keyboardShortcuts: '키보드 단축키',
+    keyboardShortcutsDesc: '새 탭 제어에 사용되는 키보드 단축키를 사용자 지정하세요.',
+    resetToDefaults: '기본값으로 초기화',
+    resetShortcuts: '단축키 초기화',
+
     ai: 'AI 어시스턴트',
     aiAssistant: 'AI 어시스턴트',
     aiWelcome: 'AI 어시스턴트에 오신 것을 환영합니다',
@@ -2001,6 +2029,13 @@ const translations = {
     shortcutToggleNotes: 'Alternar notas',
     shortcutCloseModal: 'Cerrar modal',
     shortcutPressAKey: 'Presiona una tecla...',
+
+    // Shortcuts settings tab
+    shortcuts: 'Atajos',
+    keyboardShortcuts: 'Atajos de teclado',
+    keyboardShortcutsDesc: 'Personaliza los atajos de teclado para controlar Nueva Pestaña.',
+    resetToDefaults: 'Restablecer valores',
+    resetShortcuts: 'Restablecer atajos',
 
     ai: 'Asistente IA',
     aiAssistant: 'Asistente IA',
@@ -2396,6 +2431,13 @@ const translations = {
     shortcutCloseModal: 'Fermer modal',
     shortcutPressAKey: 'Appuyez sur une touche...',
 
+    // Shortcuts settings tab
+    shortcuts: 'Raccourcis',
+    keyboardShortcuts: 'Raccourcis clavier',
+    keyboardShortcutsDesc: 'Personnalisez les raccourcis clavier utilisés pour contrôler New-Tab.',
+    resetToDefaults: 'Réinitialiser',
+    resetShortcuts: 'Réinitialiser les raccourcis',
+
     ai: 'Assistant IA',
     aiAssistant: 'Assistant IA',
     aiWelcome: 'Bienvenue dans l\'Assistant IA',
@@ -2789,6 +2831,13 @@ const translations = {
     shortcutToggleNotes: 'Notizen umschalten',
     shortcutCloseModal: 'Modal schließen',
     shortcutPressAKey: 'Taste drücken...',
+
+    // Shortcuts settings tab
+    shortcuts: 'Tastenkürzel',
+    keyboardShortcuts: 'Tastaturkürzel',
+    keyboardShortcutsDesc: 'Passen Sie die Tastenkürzel zur Steuerung von New-Tab an.',
+    resetToDefaults: 'Auf Standard zurücksetzen',
+    resetShortcuts: 'Tastenkürzel zurücksetzen',
 
     ai: 'KI-Assistent',
     aiAssistant: 'KI-Assistent',
@@ -3184,6 +3233,13 @@ const translations = {
     shortcutCloseModal: 'Fechar modal',
     shortcutPressAKey: 'Pressione uma tecla...',
 
+    // Shortcuts settings tab
+    shortcuts: 'Atalhos',
+    keyboardShortcuts: 'Atalhos de teclado',
+    keyboardShortcutsDesc: 'Personalize os atalhos de teclado usados para controlar o Novo Separador.',
+    resetToDefaults: 'Repor predefinições',
+    resetShortcuts: 'Repor atalhos',
+
     ai: 'Assistente IA',
     aiAssistant: 'Assistente IA',
     aiWelcome: 'Bem-vindo ao Assistente IA',
@@ -3577,6 +3633,13 @@ const translations = {
     shortcutToggleNotes: 'Переключить заметки',
     shortcutCloseModal: 'Закрыть модальное окно',
     shortcutPressAKey: 'Нажмите клавишу...',
+
+    // Shortcuts settings tab
+    shortcuts: 'Ярлыки',
+    keyboardShortcuts: 'Клавиатурные ярлыки',
+    keyboardShortcutsDesc: 'Настройте сочетания клавиш для управления Новой вкладкой.',
+    resetToDefaults: 'Сбросить настройки',
+    resetShortcuts: 'Сбросить ярлыки',
 
     ai: 'ИИ-ассистент',
     aiAssistant: 'ИИ-ассистент',
