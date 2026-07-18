@@ -12,6 +12,7 @@
     '15min': 15 * 60 * 1000,
     '30min': 30 * 60 * 1000,
     '1hour': 60 * 60 * 1000,
+    'hourly': 60 * 60 * 1000, // cadence after the clock-aligned first run
     'daily': 24 * 60 * 60 * 1000,
   };
 
@@ -130,32 +131,30 @@
     if (pool.length <= 1) return;
 
     const intervalKey = loadInterval();
+    const intervalMs = INTERVAL_OPTIONS[intervalKey] || INTERVAL_OPTIONS['30min'];
 
     if (intervalKey === 'hourly') {
       // Special case: align to top of the hour
       const now = new Date();
       const nextHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1, 0, 0, 0);
       const initialDelay = nextHour.getTime() - now.getTime();
-      const hourMs = 60 * 60 * 1000;
 
       // Use setTimeout for initial delay, then setInterval for subsequent runs
       rotationTimer = setTimeout(function () {
         advanceBackground();
         rotationTimer = window.VisibilityInterval
-          ? new window.VisibilityInterval(function () { advanceBackground(); }, hourMs, false)
-          : setInterval(function () { advanceBackground(); }, hourMs);
+          ? new window.VisibilityInterval(function () { advanceBackground(); }, intervalMs, false)
+          : setInterval(function () { advanceBackground(); }, intervalMs);
       }, initialDelay);
     } else {
-      const ms = INTERVAL_OPTIONS[intervalKey] || INTERVAL_OPTIONS['30min'];
-
       if (window.VisibilityInterval) {
         rotationTimer = new window.VisibilityInterval(function () {
           advanceBackground();
-        }, ms, false);
+        }, intervalMs, false);
       } else {
         rotationTimer = setInterval(function () {
           advanceBackground();
-        }, ms);
+        }, intervalMs);
       }
     }
 
