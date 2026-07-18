@@ -267,9 +267,12 @@
       icon.classList.remove('drag-over');
     });
 
-    getAppGrid().querySelectorAll('.drag-over-folder, .drag-over-folder-rejected').forEach(icon => {
-      icon.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
-    });
+    const grid = getAppGrid();
+    if (grid) {
+      grid.querySelectorAll('.drag-over-folder, .drag-over-folder-rejected').forEach(icon => {
+        icon.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
+      });
+    }
 
     removePlaceholder();
     document.removeEventListener('dragover', handleGlobalDragOver);
