@@ -347,8 +347,9 @@ const AIRenderer = (function() {
       ? escapeHTML(content)
       : window.MarkdownParser ? window.MarkdownParser.parse(content) : escapeHTML(content);
 
-    return `
-      <div class="ai-message ${isUser ? 'ai-message-user' : 'ai-message-assistant'}" data-message-id="${message.id || ''}">
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+      <div class="ai-message ${isUser ? 'ai-message-user' : 'ai-message-assistant'}">
         <div class="ai-message-avatar">
           ${isUser
             ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg>'
@@ -369,6 +370,12 @@ const AIRenderer = (function() {
         </div>
       </div>
     `;
+
+    const el = wrapper.firstElementChild;
+    if (el && message.id) {
+      el.dataset.messageId = message.id;
+    }
+    return wrapper.innerHTML;
   }
 
   function renderMessages() {

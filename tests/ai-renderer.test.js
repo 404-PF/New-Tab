@@ -97,3 +97,24 @@ describe('AIRenderer.renderTopicsList', () => {
     expect(onDeleteConversation).toHaveBeenCalledWith('conv-2');
   });
 });
+
+describe('AIRenderer.renderMessages', () => {
+  it('escapes message id so it cannot inject markup into the attribute', () => {
+    const maliciousId = 'x" onload="alert(1)" data-x="y';
+    AIStore.state.conversations = [
+      {
+        id: 'conv-1',
+        title: 'Topic',
+        messages: [{ role: 'user', content: 'hi', id: maliciousId }],
+        createdAt: 1000,
+        updatedAt: 1000
+      }
+    ];
+    AIStore.state.currentConversationId = 'conv-1';
+
+    AIRenderer.renderMessages();
+
+    const el = document.querySelector('.ai-message');
+    expect(el.dataset.messageId).toBe(maliciousId);
+  });
+});
