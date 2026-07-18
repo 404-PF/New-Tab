@@ -84,6 +84,18 @@ const AIStore = (function() {
 
       state.conversations = conversations;
 
+      // Ensure every message has a stable id so the renderer can update
+      // individual messages in place instead of rebuilding the whole list.
+      state.conversations.forEach(conversation => {
+        if (Array.isArray(conversation.messages)) {
+          conversation.messages.forEach(message => {
+            if (!message.id) {
+              message.id = generateId();
+            }
+          });
+        }
+      });
+
       const currentId = localStorage.getItem(STORAGE_KEYS.currentId);
 
       if (currentId && state.conversations.find(conversation => conversation.id === currentId)) {
@@ -146,6 +158,10 @@ const AIStore = (function() {
   function addMessageToConversation(message) {
     const conversation = getCurrentConversation();
     if (!conversation) return;
+
+    if (!message.id) {
+      message.id = generateId();
+    }
 
     conversation.messages.push(message);
     conversation.updatedAt = Date.now();

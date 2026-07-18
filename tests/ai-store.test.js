@@ -74,7 +74,7 @@ describe('AIStore conversation recovery (#458)', () => {
     );
   });
 
-  it('keeps valid stored conversations and selects the saved current ID', () => {
+  it('keeps valid stored conversations, assigns ids to messages, and selects the saved current ID', () => {
     const conversations = [{
       id: 'conv-1',
       title: 'First topic',
@@ -96,7 +96,10 @@ describe('AIStore conversation recovery (#458)', () => {
 
     AIStore.loadConversations();
 
-    expect(AIStore.state.conversations).toEqual(conversations);
+    expect(AIStore.state.conversations[0].id).toBe('conv-1');
+    expect(AIStore.state.conversations[0].messages[0].role).toBe('user');
+    expect(typeof AIStore.state.conversations[0].messages[0].id).toBe('string');
+    expect(AIStore.state.conversations[0].messages[0].id.length).toBeGreaterThan(0);
     expect(AIStore.state.currentConversationId).toBe('conv-2');
   });
 });
