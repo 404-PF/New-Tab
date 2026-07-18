@@ -906,10 +906,16 @@ window.refreshProviderBar = refreshProviderBar;
 window.BUILT_IN_PROVIDERS = BUILT_IN_PROVIDERS;
 
 // Set the motto and button functionality after the page has finished loading
-document.addEventListener('DOMContentLoaded', () => {
+function initMottoAndFooter() {
   displayDailyMotto();
   setupRefreshMotto();
   setupCopyMotto();
   checkFooterOverlap();
   window.addEventListener('resize', checkFooterOverlap);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMottoAndFooter);
+} else {
+  initMottoAndFooter();
+}
