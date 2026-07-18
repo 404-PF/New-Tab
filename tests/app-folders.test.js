@@ -205,6 +205,7 @@ describe('AppGridState folder methods', () => {
       const folders = AppGridState.getFolders();
       expect(folders.find(f => f.id === folderA.id).apps).toContain('app1');
       expect(folders.find(f => f.id === folderB.id).apps).not.toContain('app1');
+      expect(AppGridState.getOrder()).not.toContain('app1');
     });
   });
 

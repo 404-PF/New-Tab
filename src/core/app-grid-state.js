@@ -288,9 +288,10 @@ const AppGridState = {
     return !!updatedFolders;
   },
 
-  addAppToFolder(folderId, appId, rollbackFolders) {
+  addAppToFolder(folderId, appId, rollbackFolders, rollbackOrder) {
     let appAdded = false;
     const previousFolders = rollbackFolders || this.getFolders();
+    const previousOrder = rollbackOrder || this.getOrder();
 
     const updatedFolders = this.updateFolders((folders) => {
       const folder = folders.find(f => f.id === folderId);
@@ -312,6 +313,7 @@ const AppGridState = {
 
     if (!savedOrder) {
       this.saveFolders(previousFolders);
+      if (Array.isArray(previousOrder)) this.saveOrder(previousOrder);
       return false;
     }
 
@@ -325,9 +327,10 @@ const AppGridState = {
     if (currentFolder) {
       if (currentFolder.id === targetFolderId) return true;
       const originalFolders = this.getFolders();
+      const originalOrder = this.getOrder();
       const removed = this.removeAppFromFolder(currentFolder.id, appId);
       if (!removed) return false;
-      return this.addAppToFolder(targetFolderId, appId, originalFolders);
+      return this.addAppToFolder(targetFolderId, appId, originalFolders, originalOrder);
     }
     return this.addAppToFolder(targetFolderId, appId);
   },
