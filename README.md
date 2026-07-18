@@ -1,6 +1,6 @@
 ![New Tab icon](icons/icon.svg)
 
-# New Tab v0.4.6
+# New Tab v0.4.7
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/bgjillpeijfmdopfbmoinfogfhaadina?utm_source=item-share-cb)
 [![Microsoft Edge Add-ons](https://img.shields.io/badge/Microsoft%20Edge-Add--ons-0A7CFF?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/new-tab/mcbemnamenhelofgaclcanfcdjnjnhmi)
@@ -13,7 +13,7 @@
 Chrome Web Store copy: [en-US](docs/CHROME-WEB-STORE.en-US.md) | [zh-CN](docs/CHROME-WEB-STORE.zh-CN.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.6-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.7-blue)](CHANGELOG.md)
 
 A personalized new tab extension for Chromium-based browsers. It replaces the default new tab page with a customizable dashboard for shortcuts, backgrounds, todos, onboarding, and AI assistance, plus an optional search box that uses your browser's default search provider.
 
