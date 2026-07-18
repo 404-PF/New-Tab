@@ -193,6 +193,19 @@ describe('AppGridState folder methods', () => {
       expect(AppGridState.moveAppToFolder(folder.id, 'unplaced-app')).toBe(true);
       expect(AppGridState.getFolders()[0].apps).toContain('unplaced-app');
     });
+
+    it('preserves the source folder when the add phase write fails', () => {
+      const folderA = AppGridState.createFolder('A', ['app1']);
+      const folderB = AppGridState.createFolder('B', []);
+      const orderSpy = vi.spyOn(AppGridStorage, 'saveOrder')
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false);
+      expect(AppGridState.moveAppToFolder(folderB.id, 'app1')).toBe(false);
+      orderSpy.mockRestore();
+      const folders = AppGridState.getFolders();
+      expect(folders.find(f => f.id === folderA.id).apps).toContain('app1');
+      expect(folders.find(f => f.id === folderB.id).apps).not.toContain('app1');
+    });
   });
 
   describe('reorderFolderApps', () => {

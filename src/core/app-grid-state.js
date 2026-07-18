@@ -288,9 +288,9 @@ const AppGridState = {
     return !!updatedFolders;
   },
 
-  addAppToFolder(folderId, appId) {
+  addAppToFolder(folderId, appId, rollbackFolders) {
     let appAdded = false;
-    const previousFolders = this.getFolders();
+    const previousFolders = rollbackFolders || this.getFolders();
 
     const updatedFolders = this.updateFolders((folders) => {
       const folder = folders.find(f => f.id === folderId);
@@ -324,8 +324,10 @@ const AppGridState = {
     const currentFolder = folders.find(f => f.apps.includes(appId));
     if (currentFolder) {
       if (currentFolder.id === targetFolderId) return true;
+      const originalFolders = this.getFolders();
       const removed = this.removeAppFromFolder(currentFolder.id, appId);
       if (!removed) return false;
+      return this.addAppToFolder(targetFolderId, appId, originalFolders);
     }
     return this.addAppToFolder(targetFolderId, appId);
   },
