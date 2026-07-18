@@ -4,12 +4,18 @@
 const NetworkDetector = (function() {
   // State
   let isOnline = navigator.onLine;
+  let initialized = false;
   const listeners = [];
 
   /**
    * Initialize network detection
    */
   function init() {
+    if (initialized) {
+      return;
+    }
+    initialized = true;
+
     // Set initial state
     isOnline = navigator.onLine;
     
@@ -91,3 +97,4 @@ const NetworkDetector = (function() {
 
 // Export to global scope
 window.NetworkDetector = NetworkDetector;
+NetworkDetector.init();
