@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
