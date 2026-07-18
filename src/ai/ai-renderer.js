@@ -412,6 +412,11 @@ const AIRenderer = (function() {
       return;
     }
 
+    // Remove any non-message placeholder (e.g. the welcome panel) left over
+    // from an empty chat before inserting real messages.
+    const welcome = elements.container.querySelector('.ai-welcome');
+    if (welcome) welcome.remove();
+
     // Incremental render: reuse existing message elements when possible so we
     // don't tear down and rebuild the entire conversation on every update
     // (e.g. during streaming). Only the changed/new messages are touched.
