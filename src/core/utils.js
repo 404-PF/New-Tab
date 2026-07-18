@@ -394,7 +394,13 @@
     start() {
       if (this.isRunning || !visibilityManager.isVisible) return;
       this.isRunning = true;
-      this.intervalId = setInterval(this.callback, this.interval);
+      this.intervalId = setInterval(() => {
+        try {
+          this.callback();
+        } catch (error) {
+          console.error('VisibilityInterval callback error:', error);
+        }
+      }, this.interval);
     }
 
     stop() {
