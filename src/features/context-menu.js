@@ -248,19 +248,33 @@ document.getElementById('rename-app').addEventListener('click', function () {
   const currentApp = apps.find(app => app.id === contextTargetId);
   if (!currentApp) return;
 
+  const renameInput = document.getElementById('rename-app-input');
+  const renameModal = document.getElementById('rename-app-modal');
+  const missingElements = getMissingElementIds({
+    'rename-app-input': renameInput,
+    'rename-app-modal': renameModal
+  });
+
+  if (missingElements) {
+    console.warn('Context menu rename action elements were not found:', missingElements.join(', '));
+    return;
+  }
+
   // Store the app id for the modal handler
   window.renameAppId = contextTargetId;
   
   // Set the current name in the input
-  document.getElementById('rename-app-input').value = currentApp.name;
+  renameInput.value = currentApp.name;
   
   // Show the rename modal
-  document.getElementById('rename-app-modal').classList.add('modal-open');
+  renameModal.classList.add('modal-open');
   
   // Focus the input
   setTimeout(() => {
-    document.getElementById('rename-app-input').focus();
-    document.getElementById('rename-app-input').select();
+    const activeRenameInput = document.getElementById('rename-app-input');
+    if (!activeRenameInput) return;
+    activeRenameInput.focus();
+    activeRenameInput.select();
   }, 100);
   
   contextMenu.style.display = 'none';
@@ -385,24 +399,37 @@ document.getElementById('change-thumbnail').addEventListener('click', function (
   const currentApp = apps.find(app => app.id === contextTargetId);
   if (!currentApp) return;
 
+  const thumbnailInput = document.getElementById('thumbnail-app-input');
+  const thumbnailModal = document.getElementById('thumbnail-app-modal');
+  const previewIcon = document.getElementById('thumbnail-preview-icon');
+  const previewName = document.getElementById('thumbnail-preview-name');
+  const missingElements = getMissingElementIds({
+    'thumbnail-app-input': thumbnailInput,
+    'thumbnail-app-modal': thumbnailModal
+  });
+
+  if (missingElements) {
+    console.warn('Context menu thumbnail action elements were not found:', missingElements.join(', '));
+    return;
+  }
+
   // Store the app id for the modal handler
   window.thumbnailAppId = contextTargetId;
   
   // Set the current icon URL in the input
-  document.getElementById('thumbnail-app-input').value = currentApp.icon || '';
+  thumbnailInput.value = currentApp.icon || '';
   
   // Update the preview
-  const previewIcon = document.getElementById('thumbnail-preview-icon');
-  const previewName = document.getElementById('thumbnail-preview-name');
   setContextMenuPreviewIcon(previewIcon, currentApp.icon);
-  previewName.textContent = currentApp.name;
+  if (previewName) previewName.textContent = currentApp.name;
   
   // Show the thumbnail modal
-  document.getElementById('thumbnail-app-modal').classList.add('modal-open');
+  thumbnailModal.classList.add('modal-open');
   
   // Focus the input
   setTimeout(() => {
-    document.getElementById('thumbnail-app-input').focus();
+    const activeThumbnailInput = document.getElementById('thumbnail-app-input');
+    if (activeThumbnailInput) activeThumbnailInput.focus();
   }, 100);
   
   contextMenu.style.display = 'none';
@@ -481,17 +508,27 @@ document.getElementById('delete-app').addEventListener('click', function () {
   const currentApp = apps.find(app => app.id === contextTargetId);
   if (!currentApp) return;
 
+  const deleteModal = document.getElementById('delete-app-modal');
+  const previewIcon = document.getElementById('delete-preview-icon');
+  const previewName = document.getElementById('delete-preview-name');
+  const missingElements = getMissingElementIds({
+    'delete-app-modal': deleteModal
+  });
+
+  if (missingElements) {
+    console.warn('Context menu delete action elements were not found:', missingElements.join(', '));
+    return;
+  }
+
   // Store the app id for the modal handler
   window.deleteAppId = contextTargetId;
   
   // Update the delete preview
-  const previewIcon = document.getElementById('delete-preview-icon');
-  const previewName = document.getElementById('delete-preview-name');
   setContextMenuPreviewIcon(previewIcon, currentApp.icon);
-  previewName.textContent = currentApp.name;
+  if (previewName) previewName.textContent = currentApp.name;
   
   // Show the delete modal
-  document.getElementById('delete-app-modal').classList.add('modal-open');
+  deleteModal.classList.add('modal-open');
   
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');
