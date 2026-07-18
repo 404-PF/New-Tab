@@ -449,7 +449,9 @@ const AIRenderer = (function() {
           if (textEl && textEl.innerHTML !== renderedContent) {
             textEl.innerHTML = renderedContent;
           }
-          el.classList.remove('ai-message-streaming');
+          if (textEl) {
+            textEl.classList.remove('ai-message-streaming');
+          }
         }
       } else {
         const wrapper = document.createElement('div');
