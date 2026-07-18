@@ -124,18 +124,20 @@ class ModernFontPicker {
     });
 
     // Close picker when clicking outside
-    document.addEventListener('click', (e) => {
+    this.handleDocumentClick = (e) => {
       if (this.isOpen && !this.pickerElement.contains(e.target) && !this.swatch.contains(e.target)) {
         this.hide();
       }
-    });
+    };
+    document.addEventListener('click', this.handleDocumentClick);
 
     // ESC key to close
-    document.addEventListener('keydown', (e) => {
+    this.handleDocumentKeydown = (e) => {
       if (e.key === 'Escape' && this.isOpen) {
         this.hide();
       }
-    });
+    };
+    document.addEventListener('keydown', this.handleDocumentKeydown);
   }
 
   bindPopupEvents() {
@@ -239,6 +241,9 @@ class ModernFontPicker {
   }
 
   destroy() {
+    document.removeEventListener('click', this.handleDocumentClick);
+    document.removeEventListener('keydown', this.handleDocumentKeydown);
+
     if (this.pickerElement && this.pickerElement.parentNode) {
       this.pickerElement.parentNode.removeChild(this.pickerElement);
     }

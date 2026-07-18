@@ -412,6 +412,24 @@ describe('Modern picker events', () => {
 
     expect(events).toHaveLength(1);
   });
+
+  it.each([
+    ['font', 'initModernFontPickers'],
+    ['color', 'initModernColorPickers']
+  ])('removes document listeners when a %s picker is destroyed', (_, initMethod) => {
+    const addListener = vi.spyOn(document, 'addEventListener');
+    const removeListener = vi.spyOn(document, 'removeEventListener');
+
+    window[initMethod]();
+    const clickHandler = addListener.mock.calls.find(([type]) => type === 'click')[1];
+    const keydownHandler = addListener.mock.calls.find(([type]) => type === 'keydown')[1];
+    window[initMethod]();
+
+    expect(removeListener).toHaveBeenCalledWith('click', clickHandler);
+    expect(removeListener).toHaveBeenCalledWith('keydown', keydownHandler);
+    addListener.mockRestore();
+    removeListener.mockRestore();
+  });
 });
 
 describe('applyBg stale background regression', () => {
