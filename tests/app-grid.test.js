@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -17,7 +17,7 @@ describe('AppGridStorage', () => {
 
   it('saveCustomApps persists apps', () => {
     const apps = [{ id: '1', name: 'Test', url: 'https://example.com' }];
-    AppGridStorage.saveCustomApps(apps);
+    expect(AppGridStorage.saveCustomApps(apps)).toBe(true);
     expect(AppGridStorage.loadCustomApps()).toEqual(apps);
   });
 
@@ -26,8 +26,79 @@ describe('AppGridStorage', () => {
   });
 
   it('saveOrder persists order', () => {
-    AppGridStorage.saveOrder(['a', 'b', 'c']);
+    expect(AppGridStorage.saveOrder(['a', 'b', 'c'])).toBe(true);
     expect(AppGridStorage.loadOrder()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('saveFolders returns true after persisting folders', () => {
+    const folders = [{ id: 'folder-1', name: 'Folder', apps: [] }];
+    expect(AppGridStorage.saveFolders(folders)).toBe(true);
+    expect(AppGridStorage.loadFolders()).toEqual(folders);
+  });
+
+  it('returns false and notifies the user when writes throw', () => {
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+
+    try {
+      expect(AppGridStorage.saveOrder(['a'])).toBe(false);
+      expect(AppGridStorage.saveCustomApps([])).toBe(false);
+      expect(AppGridStorage.saveFolders([])).toBe(false);
+      expect(showToast).toHaveBeenCalledTimes(3);
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save app changes. Your last action was not saved.',
+        'error'
+      );
+      expect(warnSpy).toHaveBeenCalledTimes(3);
+    } finally {
+      window.showToast = originalShowToast;
+      warnSpy.mockRestore();
+      setItemSpy.mockRestore();
+    }
+  });
+
+  it('returns false when app data cannot be serialized', () => {
+    const folders = [];
+    folders.push(folders);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const originalShowToast = window.showToast;
+    window.showToast = vi.fn();
+
+    try {
+      expect(AppGridStorage.saveFolders(folders)).toBe(false);
+      expect(warnSpy).toHaveBeenCalledOnce();
+    } finally {
+      window.showToast = originalShowToast;
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('notifies the user when the storage bridge reports a late app-grid failure', () => {
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+
+    try {
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+        detail: { key: 'appOrder', message: 'quota exceeded', operation: 'set' }
+      }));
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+        detail: { key: 'theme', message: 'quota exceeded', operation: 'set' }
+      }));
+
+      expect(showToast).toHaveBeenCalledOnce();
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save app changes. Your last action was not saved.',
+        'error'
+      );
+    } finally {
+      window.showToast = originalShowToast;
+    }
   });
 
   it('handles corrupted localStorage gracefully', () => {
@@ -137,6 +208,32 @@ describe('AppGridState', () => {
     }
   });
 
+  it('returns null from state updates when persistence fails', () => {
+    AppGridStorage.saveOrder(['a']);
+    AppGridStorage.saveCustomApps([
+      { id: 'app-1', url: 'https://example.com', name: 'Original' }
+    ]);
+    AppGridStorage.saveFolders([
+      { id: 'folder-1', name: 'Original', apps: [] }
+    ]);
+
+    const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+    const saveAppsSpy = vi.spyOn(AppGridStorage, 'saveCustomApps').mockReturnValue(false);
+    const saveFoldersSpy = vi.spyOn(AppGridStorage, 'saveFolders').mockReturnValue(false);
+
+    try {
+      expect(AppGridState.updateOrder((order) => order.concat('b'))).toBeNull();
+      expect(AppGridState.updateCustomApps((apps) => apps)).toBeNull();
+      expect(AppGridState.updateFolders((folders) => folders)).toBeNull();
+      expect(AppGridState.renameApp('app-1', 'Changed')).toBe(false);
+      expect(AppGridState.renameFolder('folder-1', 'Changed')).toBe(false);
+    } finally {
+      saveFoldersSpy.mockRestore();
+      saveAppsSpy.mockRestore();
+      saveOrderSpy.mockRestore();
+    }
+  });
+
   it('renameApp updates name', () => {
     const app = { id: 'app2', url: 'https://example.com', name: 'Old' };
     AppGridState.addApp(app);
@@ -167,6 +264,33 @@ describe('AppGridState', () => {
 
   it('deleteApp returns false for missing id', () => {
     expect(AppGridState.deleteApp('nonexistent')).toBe(false);
+  });
+
+  it('rolls back custom apps when adding an app cannot save its order', () => {
+    const previousApps = [{ id: 'existing', url: 'https://existing.com', name: 'Existing' }];
+    AppGridStorage.saveCustomApps(previousApps);
+    const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+    try {
+      expect(AppGridState.addApp({ id: 'new', url: 'https://new.com', name: 'New' })).toBe(false);
+      expect(AppGridState.getCustomApps()).toEqual(previousApps);
+    } finally {
+      saveOrderSpy.mockRestore();
+    }
+  });
+
+  it('rolls back custom apps when deleting an app cannot save its order', () => {
+    const previousApps = [{ id: 'existing', url: 'https://existing.com', name: 'Existing' }];
+    AppGridStorage.saveCustomApps(previousApps);
+    AppGridStorage.saveOrder(['existing']);
+    const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+    try {
+      expect(AppGridState.deleteApp('existing')).toBe(false);
+      expect(AppGridState.getCustomApps()).toEqual(previousApps);
+    } finally {
+      saveOrderSpy.mockRestore();
+    }
   });
 
   it('reorder moves item forward', () => {

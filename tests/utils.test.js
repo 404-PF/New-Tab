@@ -189,6 +189,7 @@ describe('iconCache', () => {
         icon: 'https://cdn.example/two.svg'
       }
     ]);
+    AppGridStorage.saveOrder(['app1', 'app2']);
 
     const createDeferred = () => {
       let resolve;

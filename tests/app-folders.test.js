@@ -41,6 +41,19 @@ describe('AppGridState folder methods', () => {
       const order = AppGridState.getOrder();
       expect(order).toContain(folder.id);
     });
+
+    it('rolls back folders when it cannot save the folder order', () => {
+      const previousFolders = [{ id: 'existing', name: 'Existing', apps: [] }];
+      AppGridStorage.saveFolders(previousFolders);
+      const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+      try {
+        expect(AppGridState.createFolder('New', [])).toBeNull();
+        expect(AppGridState.getFolders()).toEqual(previousFolders);
+      } finally {
+        saveOrderSpy.mockRestore();
+      }
+    });
   });
 
   describe('deleteFolder', () => {
@@ -53,6 +66,20 @@ describe('AppGridState folder methods', () => {
 
     it('returns false for missing folder', () => {
       expect(AppGridState.deleteFolder('nonexistent')).toBe(false);
+    });
+
+    it('rolls back folders when it cannot save the updated order', () => {
+      const previousFolders = [{ id: 'existing', name: 'Existing', apps: ['app1'] }];
+      AppGridStorage.saveFolders(previousFolders);
+      AppGridStorage.saveOrder(['existing']);
+      const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+      try {
+        expect(AppGridState.deleteFolder('existing')).toBe(false);
+        expect(AppGridState.getFolders()).toEqual(previousFolders);
+      } finally {
+        saveOrderSpy.mockRestore();
+      }
     });
   });
 
@@ -97,6 +124,20 @@ describe('AppGridState folder methods', () => {
     it('returns false for missing folder', () => {
       expect(AppGridState.addAppToFolder('nonexistent', 'app1')).toBe(false);
     });
+
+    it('rolls back folders when it cannot save the updated order', () => {
+      const folder = { id: 'existing', name: 'Existing', apps: [] };
+      AppGridStorage.saveFolders([folder]);
+      AppGridStorage.saveOrder(['app1', 'existing']);
+      const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+      try {
+        expect(AppGridState.addAppToFolder(folder.id, 'app1')).toBe(false);
+        expect(AppGridState.getFolders()).toEqual([folder]);
+      } finally {
+        saveOrderSpy.mockRestore();
+      }
+    });
   });
 
   describe('removeAppFromFolder', () => {
@@ -122,6 +163,20 @@ describe('AppGridState folder methods', () => {
       const folder = AppGridState.createFolder('F', []);
       expect(AppGridState.removeAppFromFolder(folder.id, 'missing')).toBe(false);
     });
+
+    it('rolls back folders when it cannot save the updated order', () => {
+      const folder = { id: 'existing', name: 'Existing', apps: ['app1'] };
+      AppGridStorage.saveFolders([folder]);
+      AppGridStorage.saveOrder(['existing']);
+      const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+      try {
+        expect(AppGridState.removeAppFromFolder(folder.id, 'app1')).toBe(false);
+        expect(AppGridState.getFolders()).toEqual([folder]);
+      } finally {
+        saveOrderSpy.mockRestore();
+      }
+    });
   });
 
   describe('moveAppToFolder', () => {
@@ -137,6 +192,32 @@ describe('AppGridState folder methods', () => {
       const folder = AppGridState.createFolder('F', []);
       expect(AppGridState.moveAppToFolder(folder.id, 'unplaced-app')).toBe(true);
       expect(AppGridState.getFolders()[0].apps).toContain('unplaced-app');
+    });
+
+    it('preserves the source folder when the add phase write fails', () => {
+      const folderA = AppGridState.createFolder('A', ['app1']);
+      const folderB = AppGridState.createFolder('B', []);
+      const orderSpy = vi.spyOn(AppGridStorage, 'saveOrder')
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false);
+      expect(AppGridState.moveAppToFolder(folderB.id, 'app1')).toBe(false);
+      orderSpy.mockRestore();
+      const folders = AppGridState.getFolders();
+      expect(folders.find(f => f.id === folderA.id).apps).toContain('app1');
+      expect(folders.find(f => f.id === folderB.id).apps).not.toContain('app1');
+      expect(AppGridState.getOrder()).not.toContain('app1');
+    });
+
+    it('restores the source folder when the add phase folder write fails', () => {
+      const folderA = AppGridState.createFolder('A', ['app1']);
+      const folderB = AppGridState.createFolder('B', []);
+      const foldersSpy = vi.spyOn(AppGridStorage, 'saveFolders').mockReturnValue(false);
+      expect(AppGridState.moveAppToFolder(folderB.id, 'app1')).toBe(false);
+      foldersSpy.mockRestore();
+      const folders = AppGridState.getFolders();
+      expect(folders.find(f => f.id === folderA.id).apps).toContain('app1');
+      expect(folders.find(f => f.id === folderB.id).apps).not.toContain('app1');
+      expect(AppGridState.getOrder()).not.toContain('app1');
     });
   });
 
@@ -257,6 +338,34 @@ describe('AppFolders UI', () => {
       window.AppFolders.closeFolderPopup();
       const popup = document.getElementById('folder-popup');
       expect(popup.style.display).toBe('none');
+    });
+  });
+
+  describe('move-to-folder selector', () => {
+    it('keeps the app icon in place when persistence fails', () => {
+      const folder = AppGridState.createFolder('Target', []);
+      const appGrid = createElement('div', 'app-grid');
+      const appIcon = document.createElement('a');
+      appIcon.id = 'app-to-move';
+      appIcon.className = 'app-icon custom-app';
+      appGrid.appendChild(appIcon);
+
+      const addApp = document.createElement('button');
+      addApp.id = 'new-app';
+      appGrid.appendChild(addApp);
+
+      const moveSpy = vi.spyOn(AppGridState, 'moveAppToFolder').mockReturnValue(false);
+
+      try {
+        window.AppFolders.showMoveToFolderSelector('app-to-move');
+        document.querySelector('#move-to-folder-list .move-to-folder-option:not(.cancel)').click();
+
+        expect(document.getElementById('app-to-move')).toBe(appIcon);
+        expect(moveSpy).toHaveBeenCalledWith(folder.id, 'app-to-move');
+      } finally {
+        moveSpy.mockRestore();
+        appGrid.remove();
+      }
     });
   });
 });

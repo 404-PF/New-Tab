@@ -9,6 +9,7 @@
   let storageBridgeResolved = false;
   let storageBridgeTimeoutId = null;
   const STORAGE_BRIDGE_TIMEOUT_MS = 3000;
+  const STORAGE_WRITE_ERROR_EVENT = 'storageBridgeWriteError';
   const storageReady = new Promise((resolve) => {
     resolveStorageBridge = resolve;
   });
@@ -48,6 +49,22 @@
     return chrome.storage.local;
   }
 
+  function reportStorageWriteError(key, error) {
+    if (typeof globalThis.dispatchEvent !== 'function' || typeof globalThis.CustomEvent !== 'function') {
+      return;
+    }
+
+    const message = error && error.message ? error.message : String(error || 'Unknown storage error');
+
+    globalThis.dispatchEvent(new globalThis.CustomEvent(STORAGE_WRITE_ERROR_EVENT, {
+      detail: {
+        key,
+        message,
+        operation: 'set'
+      }
+    }));
+  }
+
   function readNativeSnapshot() {
     const snapshot = {};
 
@@ -69,10 +86,13 @@
     return snapshot;
   }
 
-  function writeNativeSnapshot(snapshot) {
+  function writeNativeSnapshot(snapshot, failureKey) {
     if (!nativeLocalStorage || typeof nativeLocalStorage.setItem !== 'function' ||
         typeof nativeLocalStorage.key !== 'function' || typeof nativeLocalStorage.removeItem !== 'function') {
-      return;
+      if (failureKey) {
+        reportStorageWriteError(failureKey, new Error('Native localStorage is unavailable'));
+      }
+      return false;
     }
 
     try {
@@ -88,8 +108,13 @@
       snapshotKeys.forEach((key) => {
         nativeLocalStorage.setItem(key, snapshot[key]);
       });
+      return true;
     } catch (error) {
       console.warn('Failed to mirror chrome.storage data to localStorage:', error);
+      if (failureKey) {
+        reportStorageWriteError(failureKey, error);
+      }
+      return false;
     }
   }
 
@@ -269,17 +294,21 @@
   function persistSet(key, value) {
     const storageArea = getStorageArea();
     if (!storageArea) {
-      return;
+      return false;
     }
 
     try {
       storageArea.set({ [key]: value }, () => {
         if (chrome.runtime && chrome.runtime.lastError) {
           console.warn(`Failed to persist ${key} to chrome.storage:`, chrome.runtime.lastError.message);
+          reportStorageWriteError(key, chrome.runtime.lastError.message);
         }
       });
+      return true;
     } catch (error) {
       console.warn(`Failed to persist ${key} to chrome.storage:`, error);
+      reportStorageWriteError(key, error);
+      return false;
     }
   }
 
@@ -332,15 +361,36 @@
 
     setItem(key, value) {
       const stringValue = String(value);
+      const hadPreviousValue = cache.has(key);
+      const previousValue = cache.get(key);
       cache.set(key, stringValue);
       trackHydrationMutation(key, stringValue);
 
       if (!getStorageArea()) {
-        writeNativeSnapshot(snapshotToObject());
-        return;
+        const persisted = writeNativeSnapshot(snapshotToObject(), key);
+        if (!persisted) {
+          if (hadPreviousValue) {
+            cache.set(key, previousValue);
+            trackHydrationMutation(key, previousValue);
+          } else {
+            cache.delete(key);
+            trackHydrationMutation(key, null);
+          }
+        }
+        return persisted;
       }
 
-      persistSet(key, stringValue);
+      const accepted = persistSet(key, stringValue);
+      if (!accepted) {
+        if (hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        } else {
+          cache.delete(key);
+          trackHydrationMutation(key, null);
+        }
+      }
+      return accepted;
     },
 
     removeItem(key) {

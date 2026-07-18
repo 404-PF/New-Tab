@@ -16,6 +16,62 @@ describe('storage bridge', () => {
     expect(stored.theme).toBe('light');
   });
 
+  it('reports asynchronous chrome.storage write failures with the affected key', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let setCallback;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({});
+            },
+            set(items, callback) {
+              setCallback = callback;
+              return Promise.resolve();
+            },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      const failurePromise = new Promise((resolveFailure) => {
+        dom.window.addEventListener('storageBridgeWriteError', resolveFailure, { once: true });
+      });
+
+      expect(dom.window.localStorage.setItem('appOrder', '["app-1"]')).toBe(true);
+      dom.window.chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      setCallback();
+      dom.window.chrome.runtime.lastError = null;
+
+      const failureEvent = await failurePromise;
+      expect(failureEvent.detail).toEqual({
+        key: 'appOrder',
+        message: 'QUOTA_BYTES quota exceeded',
+        operation: 'set'
+      });
+    } finally {
+      dom.window.close();
+    }
+  });
+
   it('reflects direct chrome.storage.local writes back into localStorage', async () => {
     await chrome.storage.local.set({ language: 'zh' });
 

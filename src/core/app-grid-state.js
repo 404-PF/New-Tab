@@ -11,9 +11,7 @@ const AppGridState = {
   },
 
   saveOrder(order) {
-    if (window.AppGridStorage) {
-      window.AppGridStorage.saveOrder(order);
-    }
+    return window.AppGridStorage ? window.AppGridStorage.saveOrder(order) : false;
   },
 
   getCustomApps() {
@@ -21,9 +19,7 @@ const AppGridState = {
   },
 
   saveCustomApps(apps) {
-    if (window.AppGridStorage) {
-      window.AppGridStorage.saveCustomApps(apps);
-    }
+    return window.AppGridStorage ? window.AppGridStorage.saveCustomApps(apps) : false;
   },
 
   cloneAppRecord(app) {
@@ -46,7 +42,9 @@ const AppGridState = {
       return null;
     }
 
-    this.saveCustomApps(nextApps);
+    if (!this.saveCustomApps(nextApps)) {
+      return null;
+    }
     return nextApps;
   },
 
@@ -67,7 +65,9 @@ const AppGridState = {
       return null;
     }
 
-    this.saveOrder(nextOrder);
+    if (!this.saveOrder(nextOrder)) {
+      return null;
+    }
     return nextOrder;
   },
 
@@ -126,16 +126,21 @@ const AppGridState = {
     if (!this.isValidAppData(appData)) return false;
     if (this.hasAppWithUrl(appData.url)) return false;
 
+    const previousCustomApps = this.getCustomApps();
     const savedApps = this.updateCustomApps((apps) => {
       apps.push(this.cloneAppRecord(appData));
       return apps;
     });
     if (!savedApps) return false;
 
-    this.updateOrder((order) => {
+    const savedOrder = this.updateOrder((order) => {
       order.push(appData.id);
       return order;
     }, { allowMissing: true });
+    if (!savedOrder) {
+      this.saveCustomApps(previousCustomApps);
+      return false;
+    }
 
     return true;
   },
@@ -166,6 +171,7 @@ const AppGridState = {
 
   // Delete a custom app identified by id and remove it from appOrder.
   deleteApp(id) {
+    const previousCustomApps = this.getCustomApps();
     const updatedApps = this.updateCustomApps((apps) => {
       const idx = apps.findIndex(app => app.id === id);
       if (idx === -1) return null;
@@ -174,7 +180,12 @@ const AppGridState = {
     });
     if (!updatedApps) return false;
 
-    this.updateOrder((latestOrder) => latestOrder.filter(oid => oid !== id));
+    const savedOrder = this.updateOrder((latestOrder) => latestOrder.filter(oid => oid !== id));
+    if (!savedOrder) {
+      this.saveCustomApps(previousCustomApps);
+      return false;
+    }
+
     return true;
   },
 
@@ -185,9 +196,7 @@ const AppGridState = {
   },
 
   saveFolders(folders) {
-    if (window.AppGridStorage) {
-      window.AppGridStorage.saveFolders(folders);
-    }
+    return window.AppGridStorage ? window.AppGridStorage.saveFolders(folders) : false;
   },
 
   updateFolders(updater) {
@@ -202,7 +211,9 @@ const AppGridState = {
       return null;
     }
 
-    this.saveFolders(nextFolders);
+    if (!this.saveFolders(nextFolders)) {
+      return null;
+    }
     return nextFolders;
   },
 
@@ -212,22 +223,28 @@ const AppGridState = {
     const id = 'folder-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
     const folder = { id, name: name.trim(), apps: Array.isArray(appIds) ? appIds : [] };
 
+    const previousFolders = this.getFolders();
     const savedFolders = this.updateFolders((folders) => {
       folders.push(this.cloneAppRecord(folder));
       return folders;
     });
     if (!savedFolders) return null;
 
-    this.updateOrder((order) => {
+    const savedOrder = this.updateOrder((order) => {
       order.push(folder.id);
       return order;
     }, { allowMissing: true });
+    if (!savedOrder) {
+      this.saveFolders(previousFolders);
+      return null;
+    }
 
     return folder;
   },
 
   deleteFolder(id) {
     let removedFolder = null;
+    const previousFolders = this.getFolders();
 
     const updatedFolders = this.updateFolders((folders) => {
       const idx = folders.findIndex(f => f.id === id);
@@ -239,7 +256,7 @@ const AppGridState = {
 
     if (!updatedFolders || !removedFolder) return false;
 
-    this.updateOrder((latestOrder) => {
+    const savedOrder = this.updateOrder((latestOrder) => {
       const folderIdx = latestOrder.indexOf(id);
       const filtered = latestOrder.filter(oid => oid !== id);
       const appIds = removedFolder.apps.filter(aid => !filtered.includes(aid));
@@ -249,6 +266,11 @@ const AppGridState = {
       filtered.splice(insertAt, 0, ...appIds);
       return filtered;
     });
+
+    if (!savedOrder) {
+      this.saveFolders(previousFolders);
+      return false;
+    }
 
     return true;
   },
@@ -266,8 +288,10 @@ const AppGridState = {
     return !!updatedFolders;
   },
 
-  addAppToFolder(folderId, appId) {
+  addAppToFolder(folderId, appId, rollbackFolders, rollbackOrder) {
     let appAdded = false;
+    const previousFolders = rollbackFolders || this.getFolders();
+    const previousOrder = rollbackOrder || this.getOrder();
 
     const updatedFolders = this.updateFolders((folders) => {
       const folder = folders.find(f => f.id === folderId);
@@ -279,13 +303,25 @@ const AppGridState = {
       return folders;
     });
 
-    if (!updatedFolders || !appAdded) return false;
+    if (!updatedFolders || !appAdded) {
+      if (rollbackFolders || rollbackOrder) {
+        this.saveFolders(previousFolders);
+        if (Array.isArray(previousOrder)) this.saveOrder(previousOrder);
+      }
+      return false;
+    }
 
-    this.updateOrder((latestOrder) => {
+    const savedOrder = this.updateOrder((latestOrder) => {
       const filtered = latestOrder.filter(oid => oid !== appId);
       if (filtered.length === latestOrder.length) return latestOrder;
       return filtered;
     });
+
+    if (!savedOrder) {
+      this.saveFolders(previousFolders);
+      if (Array.isArray(previousOrder)) this.saveOrder(previousOrder);
+      return false;
+    }
 
     return true;
   },
@@ -296,14 +332,18 @@ const AppGridState = {
     const currentFolder = folders.find(f => f.apps.includes(appId));
     if (currentFolder) {
       if (currentFolder.id === targetFolderId) return true;
+      const originalFolders = this.getFolders();
+      const originalOrder = this.getOrder();
       const removed = this.removeAppFromFolder(currentFolder.id, appId);
       if (!removed) return false;
+      return this.addAppToFolder(targetFolderId, appId, originalFolders, originalOrder);
     }
     return this.addAppToFolder(targetFolderId, appId);
   },
 
   removeAppFromFolder(folderId, appId) {
     let appRemoved = false;
+    const previousFolders = this.getFolders();
 
     const updatedFolders = this.updateFolders((folders) => {
       const folder = folders.find(f => f.id === folderId);
@@ -317,7 +357,7 @@ const AppGridState = {
 
     if (!updatedFolders || !appRemoved) return false;
 
-    this.updateOrder((latestOrder) => {
+    const savedOrder = this.updateOrder((latestOrder) => {
       const folderIdx = latestOrder.indexOf(folderId);
       if (folderIdx !== -1) {
         latestOrder.splice(folderIdx + 1, 0, appId);
@@ -326,6 +366,11 @@ const AppGridState = {
       }
       return latestOrder;
     });
+
+    if (!savedOrder) {
+      this.saveFolders(previousFolders);
+      return false;
+    }
 
     return true;
   },
