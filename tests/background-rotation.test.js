@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -14,6 +14,13 @@ beforeEach(() => {
   localStorage.setItem('bgRotationInterval', '30min');
   localStorage.removeItem('bgRotationSelection');
   window._backgrounds = undefined;
+});
+
+afterEach(() => {
+  BackgroundRotation.stop();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  delete window.applyBg;
 });
 
 describe('Background rotation storage', () => {
@@ -33,6 +40,11 @@ describe('Background rotation storage', () => {
   it('getInterval reads custom value', () => {
     localStorage.setItem('bgRotationInterval', '1hour');
     expect(BackgroundRotation.getInterval()).toBe('1hour');
+  });
+
+  it('getInterval preserves the clock-aligned hourly value', () => {
+    localStorage.setItem('bgRotationInterval', 'hourly');
+    expect(BackgroundRotation.getInterval()).toBe('hourly');
   });
 
   it('getSelection returns null when no selection stored', () => {
@@ -77,6 +89,54 @@ describe('Background rotation apply', () => {
     ];
     localStorage.setItem('bgRotationEnabled', 'false');
     expect(() => BackgroundRotation.advance()).not.toThrow();
+  });
+});
+
+describe('Background rotation scheduling', () => {
+  beforeEach(() => {
+    window._backgrounds = [
+      { id: 'Test BG 1', title: 'Test BG 1', thumb: 'thumb1.jpg', url: 'img1.jpg' },
+      { id: 'Test BG 2', title: 'Test BG 2', thumb: 'thumb2.jpg', url: 'img2.jpg' },
+    ];
+    localStorage.setItem('bgRotationEnabled', 'true');
+  });
+
+  it('aligns hourly rotation to the next clock hour', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 1, 10, 15, 0, 0));
+    localStorage.setItem('bgRotationInterval', 'hourly');
+    window.applyBg = vi.fn();
+
+    BackgroundRotation.start();
+
+    vi.advanceTimersByTime(30 * 60 * 1000);
+    expect(window.applyBg).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(15 * 60 * 1000);
+    expect(window.applyBg).toHaveBeenCalledOnce();
+  });
+
+  it('keeps 1hour as a rolling one-hour interval', () => {
+    const OriginalVisibilityInterval = window.VisibilityInterval;
+    const destroy = vi.fn();
+    const VisibilityIntervalMock = vi.fn(function () {
+      return { destroy };
+    });
+    window.VisibilityInterval = VisibilityIntervalMock;
+    localStorage.setItem('bgRotationInterval', '1hour');
+
+    try {
+      BackgroundRotation.start();
+
+      expect(VisibilityIntervalMock).toHaveBeenCalledWith(
+        expect.any(Function),
+        60 * 60 * 1000,
+        false
+      );
+    } finally {
+      BackgroundRotation.stop();
+      window.VisibilityInterval = OriginalVisibilityInterval;
+    }
   });
 });
 
