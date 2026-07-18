@@ -70,13 +70,22 @@
   }
 
   function writeNativeSnapshot(snapshot) {
-    if (!nativeLocalStorage || typeof nativeLocalStorage.clear !== 'function' || typeof nativeLocalStorage.setItem !== 'function') {
+    if (!nativeLocalStorage || typeof nativeLocalStorage.setItem !== 'function' ||
+        typeof nativeLocalStorage.key !== 'function' || typeof nativeLocalStorage.removeItem !== 'function') {
       return;
     }
 
     try {
-      nativeLocalStorage.clear();
-      Object.keys(snapshot).forEach((key) => {
+      const snapshotKeys = Object.keys(snapshot);
+      const expectedKeys = new Set(snapshotKeys);
+      for (let index = nativeLocalStorage.length - 1; index >= 0; index -= 1) {
+        const key = nativeLocalStorage.key(index);
+        if (key !== null && !expectedKeys.has(key)) {
+          nativeLocalStorage.removeItem(key);
+        }
+      }
+
+      snapshotKeys.forEach((key) => {
         nativeLocalStorage.setItem(key, snapshot[key]);
       });
     } catch (error) {

@@ -223,6 +223,62 @@ describe('storage bridge', () => {
     }
   });
 
+  it('frees stale native fallback quota before writing a new snapshot key', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      const nativeStorage = dom.window.localStorage;
+      nativeStorage.setItem('theme', 'dark');
+      nativeStorage.setItem('stale', 'keep-after-failure');
+
+      const storagePrototype = Object.getPrototypeOf(nativeStorage);
+      const nativeSetItem = storagePrototype.setItem;
+      storagePrototype.setItem = function (key, value) {
+        if (key === 'language' && nativeStorage.getItem('stale') !== null) {
+          throw new dom.window.DOMException('Storage quota exceeded', 'QuotaExceededError');
+        }
+        nativeSetItem.call(this, key, value);
+      };
+
+      let changeListener;
+      let resolveGet;
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener(listener) { changeListener = listener; },
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) { resolveGet = () => callback({}); },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      changeListener({
+        stale: { oldValue: 'keep-after-failure', newValue: null },
+        language: { oldValue: null, newValue: 'en' }
+      }, 'local');
+
+      expect(nativeStorage.getItem('theme')).toBe('dark');
+      expect(nativeStorage.getItem('stale')).toBeNull();
+      expect(nativeStorage.getItem('language')).toBe('en');
+    } finally {
+      dom.window.close();
+    }
+  });
+
   it('persists settings across simulated restart via native localStorage', async () => {
     const storageData = { theme: 'light', simpleMode: 'true' };
 
