@@ -16,9 +16,11 @@ This is a Chrome/Edge Manifest V3 new-tab page extension. It is **vanilla JS wit
 
 1. **Install Node** `^20.19.0 || ^22.13.0 || >=24` (`.nvmrc` pins `22.13`).
 2. **Install dependencies**:
+
    ```bash
    npm install
    ```
+
    This auto-installs Husky via `npm run prepare`.
 3. **Load the extension unpacked**: open `chrome://extensions` (or `edge://extensions`), enable *Developer mode*, and click *Load unpacked*, selecting the project **root** as the extension directory. There is **no build step**.
 
@@ -27,7 +29,7 @@ This is a Chrome/Edge Manifest V3 new-tab page extension. It is **vanilla JS wit
 Before opening a pull request, run the same checks CI runs, in this order:
 
 ```bash
-npm ci --ignore-scripts   # or just rely on your existing node_modules
+npm ci        # runs lifecycle scripts, including Husky's prepare hook
 npm run lint
 npm test
 ```
@@ -69,6 +71,7 @@ To add a **brand-new language**, see the steps in [docs/CONTRIBUTING.en.md](docs
 - `camelCase` for functions/variables, `UPPER_SNAKE_CASE` for constants.
 - `no-unused-vars` ignores `_`-prefixed and unused arguments; `no-console` warns but allows `info`/`log`/`warn`/`error`.
 - DOM initialization follows the `readyState` guard:
+
   ```js
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
@@ -76,6 +79,7 @@ To add a **brand-new language**, see the steps in [docs/CONTRIBUTING.en.md](docs
     init();
   }
   ```
+
   > ⚠️ Because `bootstrap.js` appends scripts dynamically, `DOMContentLoaded` may have **already fired** by the time a module executes. Always use the guard above — never only `addEventListener('DOMContentLoaded', ...)` for startup logic.
 - Intervals that should pause when the tab is hidden use `new window.VisibilityInterval(fn, ms)`, falling back to `setInterval`.
 

@@ -375,7 +375,7 @@ const AIRenderer = (function() {
     if (el && message.id) {
       el.dataset.messageId = message.id;
     }
-    return wrapper.innerHTML;
+    return el;
   }
 
   function renderMessages() {
@@ -436,13 +436,12 @@ const AIRenderer = (function() {
       if (id) existing.set(id, el);
     });
 
-    const seenIds = new Set();
+    const usedElements = new Set();
     const newElements = [];
     let referenceNode = null;
 
     messages.forEach(message => {
       const id = message.id || '';
-      seenIds.add(id);
 
       const isStreaming = message.isStreaming;
       const renderedContent = message.role === 'user'
@@ -462,11 +461,11 @@ const AIRenderer = (function() {
           el.classList.remove('ai-message-streaming');
         }
       } else {
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = getMessageHTML(message);
-        el = wrapper.firstElementChild;
+        el = getMessageHTML(message);
         newElements.push(el);
       }
+
+      usedElements.add(el);
 
       // Ensure DOM order matches message order.
       const expectedNext = referenceNode ? referenceNode.nextSibling : elements.container.firstChild;
@@ -476,9 +475,10 @@ const AIRenderer = (function() {
       referenceNode = el;
     });
 
-    // Remove elements that no longer correspond to a message.
-    existing.forEach((el, id) => {
-      if (!seenIds.has(id)) {
+    // Remove any message element that was not reused or created this pass,
+    // including orphans that lack a data-message-id.
+    elements.container.querySelectorAll('.ai-message').forEach(el => {
+      if (!usedElements.has(el)) {
         el.remove();
       }
     });

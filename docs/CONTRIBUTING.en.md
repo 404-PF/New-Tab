@@ -63,6 +63,7 @@ The extension supports multiple interface languages. To add a new one:
 - Single quotes, semicolons, `===` only, no `var`.
 - `camelCase` for functions/variables, `UPPER_SNAKE_CASE` for constants.
 - Use the `readyState` guard for DOM initialization, because `bootstrap.js` appends scripts dynamically and `DOMContentLoaded` may have already fired:
+
   ```js
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
@@ -70,6 +71,7 @@ The extension supports multiple interface languages. To add a new one:
     init();
   }
   ```
+
 - Intervals that pause when the tab is hidden use `new window.VisibilityInterval(fn, ms)`.
 
 ## 🔀 Submitting Changes
