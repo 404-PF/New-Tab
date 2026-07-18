@@ -41,6 +41,19 @@ describe('AppGridState folder methods', () => {
       const order = AppGridState.getOrder();
       expect(order).toContain(folder.id);
     });
+
+    it('rolls back folders when it cannot save the folder order', () => {
+      const previousFolders = [{ id: 'existing', name: 'Existing', apps: [] }];
+      AppGridStorage.saveFolders(previousFolders);
+      const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+      try {
+        expect(AppGridState.createFolder('New', [])).toBeNull();
+        expect(AppGridState.getFolders()).toEqual(previousFolders);
+      } finally {
+        saveOrderSpy.mockRestore();
+      }
+    });
   });
 
   describe('deleteFolder', () => {
@@ -53,6 +66,20 @@ describe('AppGridState folder methods', () => {
 
     it('returns false for missing folder', () => {
       expect(AppGridState.deleteFolder('nonexistent')).toBe(false);
+    });
+
+    it('rolls back folders when it cannot save the updated order', () => {
+      const previousFolders = [{ id: 'existing', name: 'Existing', apps: ['app1'] }];
+      AppGridStorage.saveFolders(previousFolders);
+      AppGridStorage.saveOrder(['existing']);
+      const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+      try {
+        expect(AppGridState.deleteFolder('existing')).toBe(false);
+        expect(AppGridState.getFolders()).toEqual(previousFolders);
+      } finally {
+        saveOrderSpy.mockRestore();
+      }
     });
   });
 
@@ -97,6 +124,20 @@ describe('AppGridState folder methods', () => {
     it('returns false for missing folder', () => {
       expect(AppGridState.addAppToFolder('nonexistent', 'app1')).toBe(false);
     });
+
+    it('rolls back folders when it cannot save the updated order', () => {
+      const folder = { id: 'existing', name: 'Existing', apps: [] };
+      AppGridStorage.saveFolders([folder]);
+      AppGridStorage.saveOrder(['app1', 'existing']);
+      const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+      try {
+        expect(AppGridState.addAppToFolder(folder.id, 'app1')).toBe(false);
+        expect(AppGridState.getFolders()).toEqual([folder]);
+      } finally {
+        saveOrderSpy.mockRestore();
+      }
+    });
   });
 
   describe('removeAppFromFolder', () => {
@@ -121,6 +162,20 @@ describe('AppGridState folder methods', () => {
     it('returns false if app not in folder', () => {
       const folder = AppGridState.createFolder('F', []);
       expect(AppGridState.removeAppFromFolder(folder.id, 'missing')).toBe(false);
+    });
+
+    it('rolls back folders when it cannot save the updated order', () => {
+      const folder = { id: 'existing', name: 'Existing', apps: ['app1'] };
+      AppGridStorage.saveFolders([folder]);
+      AppGridStorage.saveOrder(['existing']);
+      const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+      try {
+        expect(AppGridState.removeAppFromFolder(folder.id, 'app1')).toBe(false);
+        expect(AppGridState.getFolders()).toEqual([folder]);
+      } finally {
+        saveOrderSpy.mockRestore();
+      }
     });
   });
 

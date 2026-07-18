@@ -266,6 +266,33 @@ describe('AppGridState', () => {
     expect(AppGridState.deleteApp('nonexistent')).toBe(false);
   });
 
+  it('rolls back custom apps when adding an app cannot save its order', () => {
+    const previousApps = [{ id: 'existing', url: 'https://existing.com', name: 'Existing' }];
+    AppGridStorage.saveCustomApps(previousApps);
+    const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+    try {
+      expect(AppGridState.addApp({ id: 'new', url: 'https://new.com', name: 'New' })).toBe(false);
+      expect(AppGridState.getCustomApps()).toEqual(previousApps);
+    } finally {
+      saveOrderSpy.mockRestore();
+    }
+  });
+
+  it('rolls back custom apps when deleting an app cannot save its order', () => {
+    const previousApps = [{ id: 'existing', url: 'https://existing.com', name: 'Existing' }];
+    AppGridStorage.saveCustomApps(previousApps);
+    AppGridStorage.saveOrder(['existing']);
+    const saveOrderSpy = vi.spyOn(AppGridStorage, 'saveOrder').mockReturnValue(false);
+
+    try {
+      expect(AppGridState.deleteApp('existing')).toBe(false);
+      expect(AppGridState.getCustomApps()).toEqual(previousApps);
+    } finally {
+      saveOrderSpy.mockRestore();
+    }
+  });
+
   it('reorder moves item forward', () => {
     AppGridState.addApp({ id: 'a', url: 'https://a.com', name: 'A' });
     AppGridState.addApp({ id: 'b', url: 'https://b.com', name: 'B' });
