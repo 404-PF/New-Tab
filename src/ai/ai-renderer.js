@@ -347,8 +347,11 @@ const AIRenderer = (function() {
       ? escapeHTML(content)
       : window.MarkdownParser ? window.MarkdownParser.parse(content) : escapeHTML(content);
 
-    return `
-      <div class="ai-message ${isUser ? 'ai-message-user' : 'ai-message-assistant'}">
+    const wrapper = document.createElement('div');
+    wrapper.className = `ai-message ${isUser ? 'ai-message-user' : 'ai-message-assistant'}`;
+    wrapper.dataset.messageId = message.id || '';
+
+    wrapper.innerHTML = `
         <div class="ai-message-avatar">
           ${isUser
             ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg>'
@@ -367,8 +370,9 @@ const AIRenderer = (function() {
             </button>
           </div>
         </div>
-      </div>
     `;
+
+    return wrapper.outerHTML;
   }
 
   function renderMessages() {
@@ -412,8 +416,72 @@ const AIRenderer = (function() {
       return;
     }
 
-    elements.container.innerHTML = messages.map(message => getMessageHTML(message)).join('');
-    initCopyButtons();
+    // Remove any non-message placeholder (e.g. the welcome panel) left over
+    // from an empty chat before inserting real messages.
+    const welcome = elements.container.querySelector('.ai-welcome');
+    if (welcome) welcome.remove();
+
+    // Incremental render: reuse existing message elements when possible so we
+    // don't tear down and rebuild the entire conversation on every update
+    // (e.g. during streaming). Only the changed/new messages are touched.
+    const existing = new Map();
+    elements.container.querySelectorAll('.ai-message').forEach(el => {
+      const id = el.getAttribute('data-message-id');
+      if (id) existing.set(id, el);
+    });
+
+    const seenIds = new Set();
+    const newElements = [];
+    let referenceNode = null;
+
+    messages.forEach(message => {
+      const id = message.id || '';
+      seenIds.add(id);
+
+      const isStreaming = message.isStreaming;
+      const renderedContent = message.role === 'user'
+        ? escapeHTML(message.content || '')
+        : (window.MarkdownParser ? window.MarkdownParser.parse(message.content || '') : escapeHTML(message.content || ''));
+
+      let el = id ? existing.get(id) : null;
+
+      if (el) {
+        // Don't touch the actively-streaming message; updateStreamingContent
+        // owns its text during streaming.
+        if (!isStreaming) {
+          const textEl = el.querySelector('.ai-message-text');
+          if (textEl && textEl.innerHTML !== renderedContent) {
+            textEl.innerHTML = renderedContent;
+          }
+          if (textEl) {
+            textEl.classList.remove('ai-message-streaming');
+          }
+        }
+      } else {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = getMessageHTML(message);
+        el = wrapper.firstElementChild;
+        newElements.push(el);
+      }
+
+      // Ensure DOM order matches message order.
+      const expectedNext = referenceNode ? referenceNode.nextSibling : elements.container.firstChild;
+      if (expectedNext !== el) {
+        elements.container.insertBefore(el, expectedNext);
+      }
+      referenceNode = el;
+    });
+
+    // Remove elements that no longer correspond to a message.
+    existing.forEach((el, id) => {
+      if (!seenIds.has(id)) {
+        el.remove();
+      }
+    });
+
+    if (newElements.length > 0) {
+      initCopyButtons();
+    }
 
     if (!AIStore.state.isUserScrolledUp) {
       scrollToBottom(false);
