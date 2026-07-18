@@ -456,7 +456,7 @@ const AIRenderer = (function() {
           if (textEl && textEl.innerHTML !== renderedContent) {
             textEl.innerHTML = renderedContent;
           }
-          el.classList.remove('ai-message-streaming');
+          textEl.classList.remove('ai-message-streaming');
         }
       } else {
         el = getMessageHTML(message);
