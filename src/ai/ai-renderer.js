@@ -415,6 +415,14 @@ const AIRenderer = (function() {
     // Incremental render: reuse existing message elements when possible so we
     // don't tear down and rebuild the entire conversation on every update
     // (e.g. during streaming). Only the changed/new messages are touched.
+    // Clear any stale non-message nodes (e.g. the welcome block) left over
+    // from the empty-conversation state before inserting the message list.
+    Array.from(elements.container.children).forEach(child => {
+      if (!child.classList.contains('ai-message')) {
+        child.remove();
+      }
+    });
+
     const existing = new Map();
     elements.container.querySelectorAll('.ai-message').forEach(el => {
       const id = el.getAttribute('data-message-id');
