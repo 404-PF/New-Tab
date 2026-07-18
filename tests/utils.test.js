@@ -269,6 +269,30 @@ describe('VisibilityInterval', () => {
     expect(typeof VisibilityInterval).toBe('function');
   });
 
+  it('continues running after a callback error', () => {
+    vi.useFakeTimers();
+
+    const error = new Error('temporary failure');
+    const callback = vi.fn()
+      .mockImplementationOnce(() => {
+        throw error;
+      });
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const interval = new VisibilityInterval(callback, 1000);
+
+    try {
+      vi.advanceTimersByTime(2000);
+
+      expect(callback).toHaveBeenCalledTimes(2);
+      expect(consoleError).toHaveBeenCalledWith('VisibilityInterval callback error:', error);
+      expect(interval.isRunning).toBe(true);
+    } finally {
+      interval.destroy();
+      consoleError.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   const visibilityResumeCases = [
     {
       name: 'visibilitychange',
