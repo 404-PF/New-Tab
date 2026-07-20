@@ -1,5 +1,45 @@
 # Changelog
 
+## v0.4.8 (2026-07-20)
+
+### Features
+
+- Add a search-history toggle (`5f27bb0`)
+- Show a “What’s New” modal after extension updates (`4bea798`)
+- Add a web-search quick-launch bar with keyboard shortcuts (`63dfc5c`)
+- Add a daily focus-stats dashboard for todos (`604dd35`)
+- Add configurable eye-care break reminders (`a267442`)
+- Add a focus-mode layout and shortcut (`34eeceb`)
+
+### Bug Fixes
+
+- Add missing translation keys for the shortcuts settings tab (`64d605c`)
+- Initialize the motto and footer when the DOM is already loaded (`5fc37cb`)
+- Report app-grid persistence failures and preserve fallback data when snapshot writes fail (`521ca48`, `4eace81`)
+- Register the hourly background-rotation interval (`52e65ea`)
+- Guard app-grid setup when interaction elements are missing (`0210da4`)
+- Keep visibility intervals running after callback errors (`20c5ade`)
+- Initialize the AI network detector (`9142d1e`)
+- Clean up document listeners used by settings pickers (`5c42dec`)
+- Prevent update checks from freezing or interfering with banner timers (`2736217`, `625369d`, `0bfc247`)
+- Escape update-notification content before rendering it (`f9944d4`)
+- Use a local fallback when app icons are missing (`2d1f1a3`)
+- Repair malformed AI conversation storage (`f50b9b3`)
+- Refresh cached weather data after storage updates (`c2b8a1a`)
+
+### Performance
+
+- Update streamed AI messages in place instead of rebuilding the full message list (`c69e539`)
+
+### Documentation
+
+- Correct the README version and expand the contributing guide (`54e0812`)
+
+### Maintenance
+
+- Expand test coverage for previously untested modules (`d72352a`)
+- Update the release-skill reference in the agent documentation (`bd795b0`)
+
 ## v0.4.7 (2026-07-04)
 
 ### Features
