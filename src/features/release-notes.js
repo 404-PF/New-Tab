@@ -22,6 +22,14 @@
   // MAINTENANCE: whenever version.js / manifest.json is bumped for a release,
   // add a new entry here (or the modal falls back to RELEASE_NOTES_FALLBACK).
   const RELEASE_NOTES = {
+    '0.4.8': [
+      'Added a focus-mode layout and shortcut',
+      'Added configurable eye-care break reminders',
+      'Added a daily focus-stats dashboard for todos',
+      'Added a web-search quick-launch bar with keyboard shortcuts',
+      'Added a search-history toggle',
+      'Added a What’s New summary after extension updates'
+    ],
     '0.4.7': [
       'Redesigned the Background tab with a card-based layout',
       'Added subtasks and checklists to todo items',
