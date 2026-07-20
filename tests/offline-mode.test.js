@@ -13,9 +13,13 @@ describe('OfflineMode', () => {
   });
 
   it('uses the active language for offline acknowledgements', () => {
-    const original = window.i18n.currentLanguage;
-    window.i18n.currentLanguage = () => 'zh';
-    expect(OfflineMode.getAcknowledgment().content).toContain('离线');
-    window.i18n.currentLanguage = original;
+    const originalI18n = window.i18n;
+    window.i18n = { ...(originalI18n || {}), currentLanguage: () => 'zh' };
+
+    try {
+      expect(OfflineMode.getAcknowledgment().content).toContain('离线');
+    } finally {
+      window.i18n = originalI18n;
+    }
   });
 });

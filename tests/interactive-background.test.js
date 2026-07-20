@@ -8,7 +8,9 @@ describe('interactive background', () => {
     };
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
     Object.defineProperty(document, 'hidden', { configurable: true, value: true });
-    const container = document.getElementById('background-container');
+    const container = document.createElement('div');
+    container.id = 'background-container';
+    document.body.appendChild(container);
     container.getBoundingClientRect = () => ({ width: 300, height: 180, left: 0, top: 0 });
     const canvas = document.createElement('canvas');
     canvas.id = 'bg-interactive';
@@ -23,5 +25,6 @@ describe('interactive background', () => {
     window._interactiveBackground.stop();
     expect(window._interactiveBackground.currentBackgroundId()).toBe('');
     canvas.remove();
+    container.remove();
   });
 });

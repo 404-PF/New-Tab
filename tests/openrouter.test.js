@@ -14,6 +14,7 @@ describe('OpenRouterAPI', () => {
 
   it('builds a streaming request and returns decoded SSE content', async () => {
     const encoder = new TextEncoder();
+    const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       body: {
@@ -26,12 +27,16 @@ describe('OpenRouterAPI', () => {
       }
     });
 
-    const chunks = [];
-    const result = await OpenRouterAPI.sendMessageStreaming('Hi', [], chunk => chunks.push(chunk));
+    try {
+      const chunks = [];
+      const result = await OpenRouterAPI.sendMessageStreaming('Hi', [], chunk => chunks.push(chunk));
 
-    expect(result).toMatchObject({ success: true, content: 'Hello!' });
-    expect(chunks).toEqual(['Hello', '!']);
-    expect(fetch.mock.calls[0][1]).toMatchObject({ method: 'POST' });
-    expect(JSON.parse(fetch.mock.calls[0][1].body).messages.at(-1)).toEqual({ role: 'user', content: 'Hi' });
+      expect(result).toMatchObject({ success: true, content: 'Hello!' });
+      expect(chunks).toEqual(['Hello', '!']);
+      expect(fetch.mock.calls[0][1]).toMatchObject({ method: 'POST' });
+      expect(JSON.parse(fetch.mock.calls[0][1].body).messages.at(-1)).toEqual({ role: 'user', content: 'Hi' });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

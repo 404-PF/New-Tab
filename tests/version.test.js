@@ -2,7 +2,7 @@ import { injectScript } from './helpers/inject-script.js';
 
 describe('version module', () => {
   it('reads the manifest version, exposes it, and renders it after DOM ready', () => {
-    chrome.runtime.getManifest = () => ({ version: '9.8.7' });
+    window.chrome.runtime.getManifest = () => ({ version: '9.8.7' });
     const display = document.createElement('span');
     display.id = 'version-display';
     document.body.appendChild(display);
@@ -14,6 +14,6 @@ describe('version module', () => {
     expect(window.VERSION_DISPLAY_UNAVAILABLE_TEXT).toBe('extension only');
     expect(display.textContent).toBe('v9.8.7');
     display.remove();
-    delete chrome.runtime.getManifest;
+    delete window.chrome.runtime.getManifest;
   });
 });
