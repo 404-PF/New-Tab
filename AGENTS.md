@@ -32,7 +32,7 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 - **Module style**: Browser code is plain scripts that attach functions to `window.*`. There are no ES module imports in `src/` source files (tests are ES modules and use `import`/`export`). A handful of files (`utils.js`, `app-manager.js`, `add-app-modal.js`, `app-folders.js`, `drag-drop.js`, `context-menu.js`) wrap their top-level code in a strict-mode IIFE. Inside these IIFEs, cross-file globals must be referenced as `window.Foo`, not bare `Foo` — ESLint enforces this via `no-restricted-globals` in `eslint.config.js`.
 - **Storage**: `src/core/storage.js` is a shim that bridges `localStorage` onto `chrome.storage.local` and exposes `window.__storageBridgeReady`. The bootstrap waits on that promise before loading the rest of the scripts.
 - **Service worker**: `background/service-worker.js` is a separate context; ESLint treats it with browser globals only.
-- **No build artifacts**: nothing is generated from source. `package.json` and `manifest.json` versions are kept in sync manually (see `.agents/skills/prepare-release/SKILL.md`).
+- **No build artifacts**: nothing is generated from source. `package.json` and `manifest.json` versions are kept in sync manually when preparing a release.
 
 ## Directory Layout
 
@@ -76,12 +76,12 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 - `package.json` and `manifest.json` versions must stay in sync. `CURRENT_VERSION` is read from the manifest at runtime (`src/core/version.js`) — do not hardcode it elsewhere.
 - The release workflow builds a CRX with `crx3` from a stripped source tree (removes `.github`, `.husky`, `.agents`, `tests`, `ISSUES`, `screenshots`, all config and lockfiles). It signs with the `CRX_PRIVATE_KEY` secret (base64-encoded PEM preferred) or, if `ALLOW_EPHEMERAL_KEY=true`, generates an ephemeral key (extension ID will change).
 - Triggers: `release: published` and `workflow_dispatch`.
-- Use the `.agents/skills/prepare-release` skill for full release workflow.
+- Use the `.agents/skills/create-release` skill for the release workflow; ensure the package and manifest versions match before creating the release.
 
 ## Skills
 
 Local skills under `.agents/skills/` (loaded via the `skill` tool):
-- `prepare-release` - version bump, changelog, manifest sync
+- `create-release` - publish releases, create tags, and generate release notes
 - `create-pr` - branch prep and PR description
 - `review-pr` - prioritize review findings
 - `resolve-issue` - narrow evidence-first bug fix loop
