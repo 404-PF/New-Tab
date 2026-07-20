@@ -25,3 +25,7 @@ jobs:
         env:
           DEEPSEEK_KEY: ${{ secrets.DEEPSEEK_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTION_CONFIG.AUTO_REVIEW: "true"
+          GITHUB_ACTION_CONFIG.AUTO_DESCRIBE: "true"
+          GITHUB_ACTION_CONFIG.AUTO_IMPROVE: "true"
+          GITHUB_ACTION_CONFIG.PUSH_TRIGGER_SETTINGS.RUN_ON_PUSH: "true"
