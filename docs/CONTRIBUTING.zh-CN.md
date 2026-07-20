@@ -116,8 +116,8 @@ Husky 的 pre-commit 钩子也会自动运行 `eslint .`。
 扩展支持多种界面语言。添加新语言的方法：
 
 1. **在 `src/core/languages.js` 中添加翻译条目**：
-   - 在 `translations` 对象中新增一个语言对象，包含英文的全部键
-   - 在 `en` 对象中添加原生名称键（例如 `swahili: "Swahili"`）
+   - 在 `translations` 对象中新增一个语言对象。你只需翻译你已有的字符串即可 —— 缺失的键会自动回退到英文，但语言对象及其元数据仍需保留。
+   - 在 `en` 对象中添加原生名称键（例如 `swahili: 'Swahili'`）
    - 在 `SUPPORTED_LANGUAGES` 数组中添加一项，包含语言代码、国旗 emoji、原生名称与名称键
 
 2. **在 `_locales/<code>/messages.json` 中添加 Chrome i18n 语言包**：

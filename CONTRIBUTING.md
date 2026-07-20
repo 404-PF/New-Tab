@@ -120,8 +120,8 @@ A Husky pre-commit hook also runs `eslint .` automatically.
 The extension supports multiple interface languages. To add a new one:
 
 1. **Add translation entries** in `src/core/languages.js`:
-   - Add a new language object inside the `translations` object with all keys from English
-   - Add a native-name key to the `en` object (e.g., `swahili: "Swahili"`)
+   - Add a new language object inside the `translations` object. You may translate only the strings you have available — missing keys automatically fall back to English, but the language object and its metadata must still be present.
+   - Add a native-name key to the `en` object (e.g., `swahili: 'Swahili'`)
    - Add an entry to the `SUPPORTED_LANGUAGES` array with the language code, flag emoji, native name, and name key
 
 2. **Add Chrome i18n locale** in `_locales/<code>/messages.json`:
