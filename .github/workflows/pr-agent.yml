@@ -30,3 +30,7 @@ jobs:
           GITHUB_ACTION_CONFIG.AUTO_IMPROVE: "true"
           GITHUB_ACTION_CONFIG.HANDLE_PUSH_TRIGGER: "true"
           GITHUB_ACTION_CONFIG.PUSH_COMMANDS: '["/describe", "/review", "/improve"]'
+          CONFIG.MODEL: "deepseek/deepseek-v4-flash"
+          CONFIG.FALLBACK_MODELS: '["deepseek/deepseek-v4-flash"]'
+          CONFIG.CUSTOM_MODEL_MAX_TOKENS: "8192"
+          DEEPSEEK.KEY: ${{ secrets.DEEPSEEK_KEY }}
