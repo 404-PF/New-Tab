@@ -29,7 +29,11 @@ describe('version module', () => {
 
     expect(display.textContent).toBe('v9.8.7');
     display.remove();
-    if (readyState) Object.defineProperty(document, 'readyState', readyState);
+    if (readyState) {
+      Object.defineProperty(document, 'readyState', readyState);
+    } else {
+      delete document.readyState;
+    }
     delete window.chrome.runtime.getManifest;
   });
 });
