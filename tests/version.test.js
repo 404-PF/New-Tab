@@ -16,4 +16,24 @@ describe('version module', () => {
     display.remove();
     delete window.chrome.runtime.getManifest;
   });
+
+  it('renders immediately when loaded after the DOM is ready', () => {
+    window.chrome.runtime.getManifest = () => ({ version: '9.8.7' });
+    const display = document.createElement('span');
+    display.id = 'version-display';
+    document.body.appendChild(display);
+    const readyState = Object.getOwnPropertyDescriptor(document, 'readyState');
+
+    Object.defineProperty(document, 'readyState', { configurable: true, value: 'complete' });
+    injectScript('src/core/version.js');
+
+    expect(display.textContent).toBe('v9.8.7');
+    display.remove();
+    if (readyState) {
+      Object.defineProperty(document, 'readyState', readyState);
+    } else {
+      delete document.readyState;
+    }
+    delete window.chrome.runtime.getManifest;
+  });
 });

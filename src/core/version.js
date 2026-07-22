@@ -26,12 +26,19 @@ if (typeof window !== 'undefined') {
   window.VERSION_DISPLAY_UNAVAILABLE_TEXT = VERSION_DISPLAY_UNAVAILABLE_TEXT;
 }
 
-// Update version display in HTML when DOM is ready
+function renderVersionDisplay() {
+  const versionDisplay = document.getElementById('version-display');
+  if (versionDisplay) {
+    versionDisplay.textContent = CURRENT_VERSION ? `v${CURRENT_VERSION}` : VERSION_DISPLAY_UNAVAILABLE_TEXT;
+  }
+}
+
+// This file loads dynamically after the storage bridge. By that point the DOM
+// may already be ready, so support both document states.
 if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', function() {
-    const versionDisplay = document.getElementById('version-display');
-    if (versionDisplay) {
-      versionDisplay.textContent = CURRENT_VERSION ? `v${CURRENT_VERSION}` : VERSION_DISPLAY_UNAVAILABLE_TEXT;
-    }
-  });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderVersionDisplay, { once: true });
+  } else {
+    renderVersionDisplay();
+  }
 }
