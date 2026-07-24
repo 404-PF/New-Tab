@@ -1299,6 +1299,75 @@ if (notesEnabledSetting) {
   });
 }
 
+// Pomodoro settings
+function initPomodoroSettings() {
+  const enabledCheckbox = document.getElementById('pomodoro-enabled-setting');
+  const durationSettings = document.getElementById('pomodoro-duration-settings');
+  const workInput = document.getElementById('pomodoro-work-duration');
+  const shortBreakInput = document.getElementById('pomodoro-short-break-duration');
+  const longBreakInput = document.getElementById('pomodoro-long-break-duration');
+  const sessionsInput = document.getElementById('pomodoro-sessions-before-long');
+
+  if (enabledCheckbox && typeof loadPomodoroEnabled === 'function') {
+    enabledCheckbox.checked = loadPomodoroEnabled();
+    if (durationSettings) {
+      durationSettings.style.display = enabledCheckbox.checked ? 'block' : 'none';
+    }
+
+    enabledCheckbox.addEventListener('change', function () {
+      const settings = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations() : {};
+      settings.enabled = this.checked;
+      if (typeof savePomodoroDurations === 'function') savePomodoroDurations(settings);
+      if (durationSettings) {
+        durationSettings.style.display = this.checked ? 'block' : 'none';
+      }
+      if (typeof applyPomodoroEnabled === 'function') applyPomodoroEnabled();
+    });
+  }
+
+  if (workInput) {
+    workInput.value = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations().workDuration : 25;
+    workInput.addEventListener('change', function () {
+      const val = Math.max(1, Math.min(120, parseInt(this.value, 10) || 25));
+      this.value = val;
+      if (typeof savePomodoroDurations === 'function') savePomodoroDurations({ workDuration: val });
+    });
+  }
+
+  if (shortBreakInput) {
+    shortBreakInput.value = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations().shortBreakDuration : 5;
+    shortBreakInput.addEventListener('change', function () {
+      const val = Math.max(1, Math.min(30, parseInt(this.value, 10) || 5));
+      this.value = val;
+      if (typeof savePomodoroDurations === 'function') savePomodoroDurations({ shortBreakDuration: val });
+    });
+  }
+
+  if (longBreakInput) {
+    longBreakInput.value = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations().longBreakDuration : 15;
+    longBreakInput.addEventListener('change', function () {
+      const val = Math.max(1, Math.min(60, parseInt(this.value, 10) || 15));
+      this.value = val;
+      if (typeof savePomodoroDurations === 'function') savePomodoroDurations({ longBreakDuration: val });
+    });
+  }
+
+  if (sessionsInput) {
+    sessionsInput.value = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations().sessionsBeforeLongBreak : 4;
+    sessionsInput.addEventListener('change', function () {
+      const val = Math.max(1, Math.min(10, parseInt(this.value, 10) || 4));
+      this.value = val;
+      if (typeof savePomodoroDurations === 'function') savePomodoroDurations({ sessionsBeforeLongBreak: val });
+    });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPomodoroSettings);
+} else {
+  initPomodoroSettings();
+}
+
 // Settings menu logic
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];

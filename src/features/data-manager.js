@@ -48,6 +48,7 @@
     'weatherUnit',
     'weatherLocationMode',
     'weatherManualCity',
+    'pomodoro',
     'ai_conversations',
     'ai_current_conversation_id',
     'updateCheckEnabled',
@@ -262,6 +263,7 @@
     weatherUnit: function (v) { return typeof v === 'string'; },
     weatherLocationMode: function (v) { return typeof v === 'string'; },
     weatherManualCity: function (v) { return typeof v === 'string'; },
+    pomodoro: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
     ai_conversations: function (v) {
       if (!Array.isArray(v)) return false;
       return v.every(function (item) {

@@ -596,6 +596,44 @@
                     </div>
                   </div>
                 </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="pomodoro-enabled-setting" data-i18n="enablePomodoro">Enable Pomodoro focus timer</label>
+                      <input type="checkbox" id="pomodoro-enabled-setting" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="pomodoro-duration-settings" id="pomodoro-duration-settings" style="display: none;">
+                <h4 data-i18n="pomodoroDurations">Focus Timer Durations</h4>
+                <p data-i18n="pomodoroDurationsDesc">Configure work and break durations (in minutes)</p>
+                <div class="pomodoro-durations-grid">
+                  <div class="pomodoro-duration-item">
+                    <label for="pomodoro-work-duration" data-i18n="pomodoroWork">Work</label>
+                    <input type="number" id="pomodoro-work-duration" min="1" max="120" value="25" />
+                    <span class="pomodoro-duration-unit">min</span>
+                  </div>
+                  <div class="pomodoro-duration-item">
+                    <label for="pomodoro-short-break-duration" data-i18n="pomodoroShortBreak">Short Break</label>
+                    <input type="number" id="pomodoro-short-break-duration" min="1" max="30" value="5" />
+                    <span class="pomodoro-duration-unit">min</span>
+                  </div>
+                  <div class="pomodoro-duration-item">
+                    <label for="pomodoro-long-break-duration" data-i18n="pomodoroLongBreak">Long Break</label>
+                    <input type="number" id="pomodoro-long-break-duration" min="1" max="60" value="15" />
+                    <span class="pomodoro-duration-unit">min</span>
+                  </div>
+                  <div class="pomodoro-duration-item">
+                    <label for="pomodoro-sessions-before-long" data-i18n="pomodoroSessionsBeforeLong">Sessions before long break</label>
+                    <input type="number" id="pomodoro-sessions-before-long" min="1" max="10" value="4" />
+                  </div>
+                </div>
+              </div>
               </div>
             </div>
           </section>
