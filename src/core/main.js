@@ -18,6 +18,8 @@ function updateTime() {
 }
 
 window.updateTime = updateTime;
+window.getDisplayLocale = getDisplayLocale;
+window.getClockFormat = getClockFormat;
 
 function getDisplayLocale() {
   const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
