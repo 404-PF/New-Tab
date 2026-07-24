@@ -233,6 +233,8 @@ const testGlobals = {
   addNote: 'readonly',
   deleteNote: 'readonly',
   updateNoteText: 'readonly',
+  updateNoteTag: 'readonly',
+  reorderNotes: 'readonly',
   Shortcuts: 'readonly',
   applyTodoEnabled: 'readonly',
   applyNotesEnabled: 'readonly',
