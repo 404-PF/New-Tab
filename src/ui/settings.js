@@ -948,6 +948,67 @@ if (dateFormatPicker) {
   });
 }
 
+// Timezone settings
+function initTimezoneSettings() {
+  const picker = document.getElementById('timezone-picker');
+  const addBtn = document.getElementById('add-timezone-btn');
+  const currentList = document.getElementById('timezone-current-list');
+  if (!picker || !addBtn || !currentList) return;
+
+  const zones = window.POPULAR_ZONES || [];
+  zones.forEach(function (zone) {
+    const option = document.createElement('option');
+    option.value = zone.id;
+    option.textContent = zone.city + ' (UTC' + (zone.offset >= 0 ? '+' : '') + zone.offset + ')';
+    picker.appendChild(option);
+  });
+
+  function renderCurrentTimezones() {
+    const saved = window.loadTimeZones ? window.loadTimeZones() : [];
+    currentList.innerHTML = '';
+    saved.forEach(function (zoneId) {
+      const info = zones.find(function (z) { return z.id === zoneId; });
+      const city = info ? info.city : zoneId.split('/').pop().replace(/_/g, ' ');
+      const chip = document.createElement('span');
+      chip.className = 'timezone-current-chip';
+      chip.innerHTML = city +
+        '<button type="button" data-zone="' + zoneId + '" title="Remove">' +
+          '<svg viewBox="0 0 16 16" width="10" height="10"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '</button>';
+      currentList.appendChild(chip);
+    });
+    addBtn.disabled = saved.length >= (window.MAX_TIMEZONES || 5);
+    picker.value = '';
+  }
+
+  picker.addEventListener('change', function () {
+    addBtn.disabled = !this.value;
+  });
+
+  addBtn.addEventListener('click', function () {
+    const zoneId = picker.value;
+    if (!zoneId) return;
+    if (window.addTimeZone) window.addTimeZone(zoneId);
+    renderCurrentTimezones();
+  });
+
+  currentList.addEventListener('click', function (e) {
+    const btn = e.target.closest('button[data-zone]');
+    if (btn) {
+      if (window.removeTimeZone) window.removeTimeZone(btn.dataset.zone);
+      renderCurrentTimezones();
+    }
+  });
+
+  renderCurrentTimezones();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initTimezoneSettings);
+} else {
+  initTimezoneSettings();
+}
+
 // Theme
 function loadTheme() {
   return localStorage.getItem('theme') || 'dark';

@@ -47,6 +47,7 @@
       <div id="clock" class="clock">
         <span id="clock-time" class="clock-time"></span>
         <span id="date" class="date"></span>
+        <div id="extra-timezones" class="extra-timezones"></div>
       </div>
       <div class="search-bar-wrapper" role="search">
         <div class="search-bar">
@@ -1015,6 +1016,20 @@
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+            <div class="timezone-setting-group">
+              <h4 data-i18n="timezones">Time Zones</h4>
+              <p data-i18n="timezonesDesc">Add up to 5 additional time zone clocks below your main clock</p>
+              <div class="timezone-current" id="timezone-current-list"></div>
+              <div class="timezone-add">
+                <select id="timezone-picker">
+                  <option value="" data-i18n="selectTimezone">Select a time zone...</option>
+                </select>
+                <button id="add-timezone-btn" type="button" class="timezone-add-btn" disabled>
+                  <svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  <span data-i18n="addTimezone">Add</span>
+                </button>
               </div>
             </div>
           </section>
