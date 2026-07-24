@@ -45,6 +45,7 @@
     'src/features/release-notes.js',
     'src/features/onboarding.js',
     'src/features/todo.js',
+    'src/features/pomodoro.js',
     'src/features/todo-stats.js',
     'src/features/eye-care-reminder.js',
     'src/features/notes.js',

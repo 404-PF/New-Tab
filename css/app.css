@@ -1,5 +1,189 @@
 /* Todo, onboarding, AI, markdown, and simple mode styles */
 
+/* Pomodoro Timer Widget */
+.pomodoro-widget {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.pomodoro-widget.pomodoro-break {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+.pomodoro-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pomodoro-phase {
+  font-size: 0.78em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #f87171;
+}
+.pomodoro-break .pomodoro-phase {
+  color: #4ade80;
+}
+.pomodoro-time {
+  font-size: 1.1em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.9);
+}
+.pomodoro-sessions {
+  font-size: 0.72em;
+  color: rgba(255, 255, 255, 0.5);
+}
+.pomodoro-controls {
+  display: flex;
+  gap: 4px;
+}
+.pomodoro-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.pomodoro-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+body.light-theme .pomodoro-widget {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.15);
+}
+body.light-theme .pomodoro-widget.pomodoro-break {
+  background: rgba(34, 197, 94, 0.06);
+  border-color: rgba(34, 197, 94, 0.15);
+}
+body.light-theme .pomodoro-phase {
+  color: #dc2626;
+}
+body.light-theme .pomodoro-break .pomodoro-phase {
+  color: #16a34a;
+}
+body.light-theme .pomodoro-time {
+  color: #1e293b;
+}
+body.light-theme .pomodoro-btn {
+  background: rgba(0, 0, 0, 0.06);
+  color: #475569;
+}
+body.light-theme .pomodoro-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.pomodoro-widget:not(.pomodoro-break) .pomodoro-time {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+body[data-focus-mode="true"] .pomodoro-widget {
+  display: none !important;
+}
+
+/* Todo Focus Button */
+.todo-focus-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.todo-item:hover .todo-focus-btn {
+  opacity: 1;
+}
+.todo-focus-btn:hover {
+  color: #f97316;
+  background: rgba(249, 115, 22, 0.1);
+}
+.todo-focus-btn.active {
+  color: #f97316;
+  opacity: 1;
+}
+body.light-theme .todo-focus-btn {
+  color: rgba(0, 0, 0, 0.3);
+}
+body.light-theme .todo-item:hover .todo-focus-btn {
+  opacity: 1;
+}
+body.light-theme .todo-focus-btn:hover {
+  color: #ea580c;
+  background: rgba(234, 88, 12, 0.1);
+}
+
+/* Pomodoro Settings */
+.pomodoro-duration-settings {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+.pomodoro-durations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.pomodoro-duration-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pomodoro-duration-item label {
+  font-size: 0.82em;
+  color: rgba(255, 255, 255, 0.7);
+}
+body.light-theme .pomodoro-duration-item label {
+  color: #475569;
+}
+.pomodoro-duration-item input {
+  width: 100%;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.9em;
+  box-sizing: border-box;
+}
+body.light-theme .pomodoro-duration-item input {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #1e293b;
+}
+.pomodoro-duration-unit {
+  font-size: 0.75em;
+  color: rgba(255, 255, 255, 0.4);
+}
+body.light-theme .pomodoro-duration-unit {
+  color: #94a3b8;
+}
+
 /* Modern Todo List Styles */
 .todo-section {
   max-width: var(--todo-list-width);

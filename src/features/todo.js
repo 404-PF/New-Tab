@@ -433,6 +433,9 @@
         { tagName: 'line', attributes: { x1: '10', y1: '11', x2: '10', y2: '17' } },
         { tagName: 'line', attributes: { x1: '14', y1: '11', x2: '14', y2: '17' } }
       ]));
+      if (typeof addFocusButtonToTodoActions === 'function') {
+        addFocusButtonToTodoActions(todoActions, todo.id);
+      }
 
       todoItemRow.appendChild(bullet);
       todoItemRow.appendChild(todoContent);

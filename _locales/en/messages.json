@@ -340,5 +340,49 @@
   "searchProviderYouTube": {
     "message": "YouTube",
     "description": "Name of the YouTube search provider"
+  },
+  "timezones": {
+    "message": "Time Zones",
+    "description": "Section header for time zone clock settings"
+  },
+  "timezonesDesc": {
+    "message": "Add up to 5 additional time zone clocks below your main clock",
+    "description": "Description for the time zone settings section"
+  },
+  "selectTimezone": {
+    "message": "Select a time zone...",
+    "description": "Placeholder for time zone dropdown"
+  },
+  "addTimezone": {
+    "message": "Add",
+    "description": "Button to add a selected time zone"
+  },
+  "enablePomodoro": {
+    "message": "Enable Pomodoro focus timer",
+    "description": "Label for the Pomodoro timer toggle"
+  },
+  "pomodoroDurations": {
+    "message": "Focus Timer Durations",
+    "description": "Section header for Pomodoro duration settings"
+  },
+  "pomodoroDurationsDesc": {
+    "message": "Configure work and break durations (in minutes)",
+    "description": "Description for Pomodoro duration settings"
+  },
+  "pomodoroWork": {
+    "message": "Work",
+    "description": "Label for work duration input"
+  },
+  "pomodoroShortBreak": {
+    "message": "Short Break",
+    "description": "Label for short break duration input"
+  },
+  "pomodoroLongBreak": {
+    "message": "Long Break",
+    "description": "Label for long break duration input"
+  },
+  "pomodoroSessionsBeforeLong": {
+    "message": "Sessions before long break",
+    "description": "Label for sessions before long break input"
   }
 }
