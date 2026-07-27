@@ -1023,9 +1023,10 @@
               <p data-i18n="timezonesDesc">Add up to 5 additional time zone clocks below your main clock</p>
               <div class="timezone-current" id="timezone-current-list"></div>
               <div class="timezone-add">
-                <select id="timezone-picker">
-                  <option value="" data-i18n="selectTimezone">Select a time zone...</option>
-                </select>
+                <div class="timezone-picker-wrapper">
+                  <input id="timezone-picker" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="timezone-options" aria-expanded="false" placeholder="Select a time zone..." data-i18n="selectTimezone">
+                  <div id="timezone-options" class="timezone-options" role="listbox" hidden></div>
+                </div>
                 <button id="add-timezone-btn" type="button" class="timezone-add-btn" disabled>
                   <svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                   <span data-i18n="addTimezone">Add</span>

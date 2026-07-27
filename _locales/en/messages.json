@@ -356,5 +356,13 @@
   "addTimezone": {
     "message": "Add",
     "description": "Button to add a selected time zone"
+  },
+  "removeTimezone": {
+    "message": "Remove",
+    "description": "Title for a time zone remove control"
+  },
+  "removeTimezoneLabel": {
+    "message": "Remove {city} time zone",
+    "description": "Accessible label for removing a specific time zone"
   }
 }

@@ -946,6 +946,61 @@ body.light-theme .timezone-current-chip {
   gap: 8px;
   align-items: center;
 }
+.timezone-picker-wrapper {
+  position: relative;
+  flex: 1;
+}
+.timezone-picker-wrapper input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.85em;
+}
+body.light-theme .timezone-picker-wrapper input {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #1e293b;
+}
+.timezone-options {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+}
+.timezone-option {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  font-size: 0.85em;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.timezone-option:hover,
+.timezone-option:focus {
+  background: rgba(99, 102, 241, 0.3);
+}
+body.light-theme .timezone-options {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+body.light-theme .timezone-option {
+  color: #1e293b;
+}
 .timezone-add select {
   flex: 1;
   padding: 6px 10px;

@@ -951,17 +951,59 @@ if (dateFormatPicker) {
 // Timezone settings
 function initTimezoneSettings() {
   const picker = document.getElementById('timezone-picker');
+  const optionsList = document.getElementById('timezone-options');
   const addBtn = document.getElementById('add-timezone-btn');
   const currentList = document.getElementById('timezone-current-list');
-  if (!picker || !addBtn || !currentList) return;
+  if (!picker || !optionsList || !addBtn || !currentList) return;
 
   const zones = window.POPULAR_ZONES || [];
-  zones.forEach(function (zone) {
-    const option = document.createElement('option');
-    option.value = zone.id;
-    option.textContent = zone.city + ' (UTC' + (zone.offset >= 0 ? '+' : '') + zone.offset + ')';
-    picker.appendChild(option);
-  });
+  let selectedZoneId = '';
+
+  function getCurrentOffset(zone) {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: zone.id,
+        timeZoneName: 'shortOffset'
+      }).formatToParts(new Date());
+      const timeZoneName = parts.find(function (part) { return part.type === 'timeZoneName'; });
+      const match = timeZoneName && timeZoneName.value.match(/^GMT([+-])(\d{1,2})(?::(\d{2}))?$/);
+      if (!match) return 0;
+      const offset = Number(match[2]) + (match[3] ? Number(match[3]) / 60 : 0);
+      return match[1] === '-' ? -offset : offset;
+    } catch {
+      return zone.offset;
+    }
+  }
+
+  function getZoneLabel(zone) {
+    const offset = getCurrentOffset(zone);
+    return zone.city + ' (UTC' + (offset >= 0 ? '+' : '') + offset + ')';
+  }
+
+  function updateAddButton() {
+    const saved = window.loadTimeZones ? window.loadTimeZones() : [];
+    const atCapacity = saved.length >= (window.MAX_TIMEZONES || 5);
+    addBtn.disabled = atCapacity || !selectedZoneId || saved.indexOf(selectedZoneId) !== -1;
+  }
+
+  function renderOptions(filter) {
+    const query = filter.trim().toLocaleLowerCase();
+    optionsList.innerHTML = '';
+    const matches = zones.filter(function (zone) {
+      return !query || (zone.city + ' ' + zone.id).toLocaleLowerCase().indexOf(query) !== -1;
+    });
+    matches.forEach(function (zone) {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'timezone-option';
+      option.setAttribute('role', 'option');
+      option.dataset.zone = zone.id;
+      option.textContent = getZoneLabel(zone);
+      optionsList.appendChild(option);
+    });
+    optionsList.hidden = matches.length === 0;
+    picker.setAttribute('aria-expanded', String(matches.length > 0));
+  }
 
   function renderCurrentTimezones() {
     const saved = window.loadTimeZones ? window.loadTimeZones() : [];
@@ -971,24 +1013,63 @@ function initTimezoneSettings() {
       const city = info ? info.city : zoneId.split('/').pop().replace(/_/g, ' ');
       const chip = document.createElement('span');
       chip.className = 'timezone-current-chip';
-      chip.innerHTML = city +
-        '<button type="button" data-zone="' + zoneId + '" title="Remove">' +
-          '<svg viewBox="0 0 16 16" width="10" height="10"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
-        '</button>';
+
+      const cityEl = document.createElement('span');
+      cityEl.className = 'timezone-current-city';
+      cityEl.textContent = city;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.dataset.zone = zoneId;
+      removeBtn.title = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('removeTimezone') : 'Remove';
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 16 16');
+      svg.setAttribute('width', '10');
+      svg.setAttribute('height', '10');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M4 4l8 8M12 4l-8 8');
+      path.setAttribute('stroke', 'currentColor');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(path);
+      removeBtn.appendChild(svg);
+      chip.appendChild(cityEl);
+      chip.appendChild(removeBtn);
       currentList.appendChild(chip);
     });
-    addBtn.disabled = saved.length >= (window.MAX_TIMEZONES || 5);
+    selectedZoneId = '';
     picker.value = '';
+    optionsList.hidden = true;
+    picker.setAttribute('aria-expanded', 'false');
+    updateAddButton();
   }
 
-  picker.addEventListener('change', function () {
-    addBtn.disabled = !this.value;
+  picker.addEventListener('focus', function () {
+    renderOptions(this.value);
+  });
+
+  picker.addEventListener('input', function () {
+    selectedZoneId = '';
+    renderOptions(this.value);
+    updateAddButton();
+  });
+
+  optionsList.addEventListener('click', function (e) {
+    const option = e.target.closest('button[data-zone]');
+    if (!option) return;
+    const zone = zones.find(function (item) { return item.id === option.dataset.zone; });
+    if (!zone) return;
+    selectedZoneId = zone.id;
+    picker.value = getZoneLabel(zone);
+    optionsList.hidden = true;
+    picker.setAttribute('aria-expanded', 'false');
+    updateAddButton();
   });
 
   addBtn.addEventListener('click', function () {
-    const zoneId = picker.value;
-    if (!zoneId) return;
-    if (window.addTimeZone) window.addTimeZone(zoneId);
+    if (!selectedZoneId) return;
+    if (window.addTimeZone) window.addTimeZone(selectedZoneId);
     renderCurrentTimezones();
   });
 

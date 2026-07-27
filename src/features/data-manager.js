@@ -232,7 +232,18 @@
     clockFont: function (v) { return typeof v === 'string'; },
     clockSize: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     clockFormat: function (v) { return typeof v === 'string'; },
-    extraTimeZones: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
+    extraTimeZones: function (v) {
+      if (!Array.isArray(v) || v.length > (window.MAX_TIMEZONES || 5)) return false;
+      const supportedZones = window.POPULAR_ZONES || [];
+      const seen = {};
+      return v.every(function (item) {
+        if (typeof item !== 'string' || seen[item]) return false;
+        const supported = supportedZones.some(function (zone) { return zone.id === item; });
+        if (!supported) return false;
+        seen[item] = true;
+        return true;
+      });
+    },
     dateColor: function (v) { return typeof v === 'string'; },
     dateFont: function (v) { return typeof v === 'string'; },
     dateSize: function (v) { return typeof v === 'string' || typeof v === 'number'; },

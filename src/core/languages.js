@@ -166,6 +166,8 @@ const translations = {
     dateFormatLong: 'Long',
     dateFormatCompact: 'Compact',
     dateFormatNumeric: 'Numeric',
+    removeTimezone: 'Remove',
+    removeTimezoneLabel: 'Remove {city} time zone',
 
     // Weather settings
     weather: 'Weather',

@@ -51,8 +51,13 @@
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
+      const seen = {};
       return parsed.filter(function (tz) {
-        return typeof tz === 'string' && tz.length > 0;
+        if (typeof tz !== 'string' || tz.length === 0 || !getZoneInfo(tz) || seen[tz]) {
+          return false;
+        }
+        seen[tz] = true;
+        return true;
       }).slice(0, MAX_TIMEZONES);
     } catch (_e) {
       console.warn('Failed to load extra time zones');
@@ -62,6 +67,14 @@
 
   function saveTimeZones(zones) {
     try {
+      if (!Array.isArray(zones) || zones.length > MAX_TIMEZONES) return false;
+      const seen = {};
+      const valid = zones.every(function (zoneId) {
+        if (typeof zoneId !== 'string' || !getZoneInfo(zoneId) || seen[zoneId]) return false;
+        seen[zoneId] = true;
+        return true;
+      });
+      if (!valid) return false;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(zones));
       return true;
     } catch (_e) {
@@ -125,6 +138,9 @@
       const info = getZoneInfo(zoneId);
       const city = info ? info.city : zoneId.split('/').pop().replace(/_/g, ' ');
       const time = formatZoneTime(now, zoneId, locale, clockFormat);
+      const i18n = window.i18n;
+      const removeTitle = i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezone') : 'Remove';
+      const removeLabel = i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezoneLabel', { city: city }) : 'Remove ' + city;
 
       const chip = document.createElement('div');
       chip.className = 'timezone-chip';
@@ -133,7 +149,7 @@
       chip.innerHTML =
         '<span class="timezone-city">' + escapeHtml(city) + '</span>' +
         '<span class="timezone-time">' + time + '</span>' +
-        '<button class="timezone-remove" title="Remove" aria-label="Remove ' + escapeHtml(city) + '">' +
+        '<button class="timezone-remove" title="' + escapeHtml(removeTitle) + '" aria-label="' + escapeHtml(removeLabel) + '">' +
           '<svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
         '</button>';
 
@@ -163,6 +179,7 @@
 
   function addTimeZone(zoneId) {
     const zones = loadTimeZones();
+    if (!getZoneInfo(zoneId)) return false;
     if (zones.length >= MAX_TIMEZONES) return false;
     if (zones.indexOf(zoneId) !== -1) return false;
     zones.push(zoneId);
