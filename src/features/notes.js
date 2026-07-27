@@ -20,6 +20,7 @@
   let _dragSourceEl = null;
   let _dragPlaceholder = null;
   let _dragOverId = null;
+  let _dragInsertAfter = false;
 
   const SVG_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
   const SVG_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
@@ -100,6 +101,9 @@
     if (!filterBar) return;
 
     const tags = getUniqueTags();
+    if (_activeTagFilter !== null && !tags.includes(_activeTagFilter)) {
+      _activeTagFilter = null;
+    }
     filterBar.innerHTML = '';
 
     if (tags.length === 0) {
@@ -112,7 +116,7 @@
     const allBtn = document.createElement('button');
     allBtn.type = 'button';
     allBtn.className = 'note-tag-filter-btn' + (_activeTagFilter === null ? ' active' : '');
-    allBtn.textContent = 'All';
+    allBtn.textContent = window.i18n ? window.i18n.t('notesFilterAll') : 'All';
     allBtn.dataset.tag = '';
     filterBar.appendChild(allBtn);
 
@@ -169,8 +173,9 @@
 
     const grip = document.createElement('span');
     grip.className = 'note-grip';
+    grip.draggable = true;
     grip.innerHTML = SVG_GRIP;
-    grip.title = 'Drag to reorder';
+    grip.title = window.i18n ? window.i18n.t('notesDragToReorder') : 'Drag to reorder';
 
     const textarea = document.createElement('textarea');
     textarea.className = 'note-textarea';
@@ -194,7 +199,7 @@
     const tagBtn = document.createElement('button');
     tagBtn.className = 'note-tag-btn';
     tagBtn.dataset.id = note.id;
-    tagBtn.title = note.tag || 'Add tag';
+    tagBtn.title = note.tag || (window.i18n ? window.i18n.t('notesAddTag') : 'Add tag');
     tagBtn.innerHTML = SVG_TAG;
     if (note.tag) {
       const tagLabel = document.createElement('span');
@@ -265,7 +270,7 @@
     const note = {
       id: generateNoteId(),
       text: '',
-      tag: '',
+      tag: _activeTagFilter || '',
       order: maxOrder + 1,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -452,7 +457,7 @@
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'note-tag-input';
-    input.placeholder = 'Tag name...';
+    input.placeholder = window.i18n ? window.i18n.t('notesTagPlaceholder') : 'Tag name...';
     input.value = note.tag || '';
     picker.appendChild(input);
 
@@ -476,7 +481,7 @@
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'note-tag-remove-btn';
-      removeBtn.textContent = 'Remove tag';
+      removeBtn.textContent = window.i18n ? window.i18n.t('notesRemoveTag') : 'Remove tag';
       actions.appendChild(removeBtn);
     }
     picker.appendChild(actions);
@@ -485,19 +490,31 @@
 
     input.focus();
 
+    let blurTimer = null;
+    const cancelBlur = () => {
+      if (blurTimer) {
+        clearTimeout(blurTimer);
+        blurTimer = null;
+      }
+    };
+
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        cancelBlur();
         const val = input.value.trim();
         updateNoteTag(noteId, val);
         closeTagPicker();
       } else if (e.key === 'Escape') {
+        cancelBlur();
         closeTagPicker();
       }
     });
 
     input.addEventListener('blur', () => {
-      setTimeout(() => {
+      cancelBlur();
+      blurTimer = setTimeout(() => {
+        blurTimer = null;
         const val = input.value.trim();
         if (val !== (note.tag || '')) {
           updateNoteTag(noteId, val);
@@ -506,15 +523,23 @@
       }, 150);
     });
 
+    picker.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.note-tag-suggestion, .note-tag-remove-btn')) {
+        cancelBlur();
+      }
+    });
+
     picker.addEventListener('click', (e) => {
       const suggestion = e.target.closest('.note-tag-suggestion');
       if (suggestion) {
+        cancelBlur();
         updateNoteTag(noteId, suggestion.dataset.tag);
         closeTagPicker();
         return;
       }
       const removeBtn = e.target.closest('.note-tag-remove-btn');
       if (removeBtn) {
+        cancelBlur();
         updateNoteTag(noteId, '');
         closeTagPicker();
       }
@@ -548,6 +573,8 @@
     const card = e.target.closest('.note-item');
     if (!card || card.dataset.id === _dragSourceId) {
       if (_dragPlaceholder) _dragPlaceholder.style.display = 'none';
+      _dragOverId = null;
+      _dragInsertAfter = false;
       return;
     }
 
@@ -562,7 +589,8 @@
     const rect = card.getBoundingClientRect();
     const midY = rect.top + rect.height / 2;
 
-    if (e.clientY < midY) {
+    _dragInsertAfter = e.clientY >= midY;
+    if (!_dragInsertAfter) {
       card.parentNode.insertBefore(_dragPlaceholder, card);
     } else {
       card.parentNode.insertBefore(_dragPlaceholder, card.nextSibling);
@@ -573,15 +601,19 @@
 
   function handleDrop(e) {
     e.preventDefault();
+    const sourceId = _dragSourceId;
+    const overId = _dragOverId;
+    const insertAfter = _dragInsertAfter;
     cleanupDrag();
 
-    if (!_dragOverId || !_dragSourceId || _dragOverId === _dragSourceId) return;
+    if (!overId || !sourceId || overId === sourceId) return;
 
     const filtered = getFilteredNotes();
-    const fromIndex = filtered.findIndex(n => n.id === _dragSourceId);
-    const toIndex = filtered.findIndex(n => n.id === _dragOverId);
+    const fromIndex = filtered.findIndex(n => n.id === sourceId);
+    const overIndex = filtered.findIndex(n => n.id === overId);
+    const toIndex = overIndex + (insertAfter ? 1 : 0);
 
-    if (fromIndex !== -1 && toIndex !== -1) {
+    if (fromIndex !== -1 && overIndex !== -1) {
       reorderNotes(fromIndex, toIndex);
     }
   }
@@ -601,6 +633,7 @@
     _dragSourceId = null;
     _dragSourceEl = null;
     _dragOverId = null;
+    _dragInsertAfter = false;
     document.removeEventListener('dragover', handleDragOver);
     document.removeEventListener('dragend', handleDragEnd);
     document.removeEventListener('drop', handleDrop);
