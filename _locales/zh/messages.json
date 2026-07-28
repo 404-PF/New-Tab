@@ -232,5 +232,29 @@
         "example": "5"
       }
     }
+  },
+  "timezones": {
+    "message": "时区",
+    "description": "Section header for time zone clock settings"
+  },
+  "timezonesDesc": {
+    "message": "在主时钟下方添加最多 5 个额外时区时钟",
+    "description": "Description for the time zone settings section"
+  },
+  "selectTimezone": {
+    "message": "选择时区...",
+    "description": "Placeholder for time zone dropdown"
+  },
+  "addTimezone": {
+    "message": "添加",
+    "description": "Button to add a selected time zone"
+  },
+  "removeTimezone": {
+    "message": "移除",
+    "description": "Title for a time zone remove control"
+  },
+  "removeTimezoneLabel": {
+    "message": "移除 {city} 时区",
+    "description": "Accessible label for removing a specific time zone"
   }
 }

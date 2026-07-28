@@ -75,6 +75,55 @@ describe('Theme settings', () => {
   });
 });
 
+describe('Timezone settings', () => {
+  it('gives each remove control a city-specific accessible name', () => {
+    const picker = document.createElement('input');
+    picker.id = 'timezone-picker';
+    const optionsList = document.createElement('div');
+    optionsList.id = 'timezone-options';
+    const addButton = document.createElement('button');
+    addButton.id = 'add-timezone-btn';
+    const currentList = document.createElement('div');
+    currentList.id = 'timezone-current-list';
+    document.body.append(picker, optionsList, addButton, currentList);
+
+    const originalZones = window.POPULAR_ZONES;
+    const originalLoadTimeZones = window.loadTimeZones;
+    const originalI18n = window.i18n;
+    const originalRenderTimezoneCurrentList = window.renderTimezoneCurrentList;
+
+    window.POPULAR_ZONES = [
+      { id: 'America/New_York', city: 'New York', offset: -5 },
+      { id: 'Europe/London', city: 'London', offset: 0 }
+    ];
+    window.loadTimeZones = () => ['America/New_York', 'Europe/London'];
+    window.i18n = {
+      t(key, replacements) {
+        if (key === 'removeTimezone') return 'Remove';
+        return 'Remove ' + replacements.city + ' time zone';
+      }
+    };
+
+    try {
+      injectScript('src/ui/settings.js');
+
+      expect(Array.from(currentList.querySelectorAll('button')).map(button => button.getAttribute('aria-label'))).toEqual([
+        'Remove New York time zone',
+        'Remove London time zone'
+      ]);
+    } finally {
+      window.POPULAR_ZONES = originalZones;
+      window.loadTimeZones = originalLoadTimeZones;
+      window.i18n = originalI18n;
+      window.renderTimezoneCurrentList = originalRenderTimezoneCurrentList;
+      picker.remove();
+      optionsList.remove();
+      addButton.remove();
+      currentList.remove();
+    }
+  });
+});
+
 describe('Todo enabled settings', () => {
   it('loadTodoEnabled returns true by default', () => {
     expect(loadTodoEnabled()).toBe(true);

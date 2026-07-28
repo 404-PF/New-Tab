@@ -232,5 +232,29 @@
         "example": "5"
       }
     }
+  },
+  "timezones": {
+    "message": "Fuseaux horaires",
+    "description": "Section header for time zone clock settings"
+  },
+  "timezonesDesc": {
+    "message": "Ajoutez jusqu'à 5 horloges de fuseau horaire supplémentaires sous votre horloge principale",
+    "description": "Description for the time zone settings section"
+  },
+  "selectTimezone": {
+    "message": "Sélectionnez un fuseau horaire...",
+    "description": "Placeholder for time zone dropdown"
+  },
+  "addTimezone": {
+    "message": "Ajouter",
+    "description": "Button to add a selected time zone"
+  },
+  "removeTimezone": {
+    "message": "Supprimer",
+    "description": "Title for a time zone remove control"
+  },
+  "removeTimezoneLabel": {
+    "message": "Supprimer le fuseau horaire de {city}",
+    "description": "Accessible label for removing a specific time zone"
   }
 }
