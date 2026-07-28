@@ -472,12 +472,19 @@
   }
 
   // Tag picker
-  function closeTagPicker() {
+  function closeTagPicker({ commit = true } = {}) {
     const existing = document.querySelector('.note-tag-picker');
     if (existing) {
       const card = existing.closest('.note-item');
+      const input = existing.querySelector('.note-tag-input');
+      const noteId = card && card.dataset.id;
+      const tag = input ? input.value.trim() : '';
+      const note = noteId ? notes.find(n => n.id === noteId) : null;
       if (card) card.classList.remove('tag-picker-open');
       existing.remove();
+      if (commit && note && input && tag !== (note.tag || '')) {
+        updateNoteTag(noteId, tag);
+      }
     }
   }
 
@@ -550,7 +557,7 @@
         closeTagPicker();
       } else if (e.key === 'Escape') {
         cancelBlur();
-        closeTagPicker();
+        closeTagPicker({ commit: false });
       }
     });
 
@@ -712,6 +719,7 @@
 
     const filterBtn = e.target.closest('.note-tag-filter-btn');
     if (filterBtn) {
+      closeTagPicker();
       _activeTagFilter = filterBtn.dataset.tag || null;
       renderNotes();
       return;
