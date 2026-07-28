@@ -58,6 +58,13 @@ describe('Notes persistence', () => {
     expect(document.querySelectorAll('.note-item')).toHaveLength(0);
   });
 
+  it('migrates legacy notes missing order and tag fields', () => {
+    setNotes([{ id: 'legacy', text: 'Legacy note', createdAt: '2026-01-01', updatedAt: '2026-01-01' }]);
+    initNotes();
+
+    expect(getNotes()[0]).toMatchObject({ id: 'legacy', order: 0, tag: '' });
+  });
+
   it('rolls back note mutations on save failure', () => {
     const note = { id: '1', text: 'Keep me', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
     setNotes([note]);
@@ -358,6 +365,9 @@ describe('Notes event handlers', () => {
 });
 
 describe('Notes tags and drag-and-drop', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   it('adds a new note with the active tag filter', () => {
     setNotes([
       { id: 'tagged', text: 'Tagged', tag: 'work', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
@@ -406,7 +416,6 @@ describe('Notes tags and drag-and-drop', () => {
     vi.advanceTimersByTime(150);
 
     expect(getNotes().find(note => note.id === 'first').tag).toBe('new');
-    vi.useRealTimers();
   });
 
   it('reorders notes using the lower half of the hovered card', () => {
@@ -442,6 +451,45 @@ describe('Notes tags and drag-and-drop', () => {
     target.dispatchEvent(drop);
 
     expect(getNotes().map(note => note.id)).toEqual(['second', 'first']);
+  });
+
+  it('reorders the actual note order when dragging to the tail of a filtered list', () => {
+    setNotes([
+      { id: 'first', text: 'First', tag: 'work', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'untagged', text: 'Untagged', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: 'work', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    document.querySelector('.note-tag-filter-btn[data-tag="work"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const cards = document.querySelectorAll('.note-item');
+    const grip = cards[0].querySelector('.note-grip');
+    const target = cards[1];
+    target.getBoundingClientRect = () => ({ top: 0, height: 100 });
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      setData: vi.fn()
+    };
+
+    const dragStart = new Event('dragstart', { bubbles: true });
+    Object.defineProperty(dragStart, 'dataTransfer', { value: dataTransfer });
+    grip.dispatchEvent(dragStart);
+
+    const dragOver = new Event('dragover', { bubbles: true });
+    Object.defineProperties(dragOver, {
+      dataTransfer: { value: dataTransfer },
+      clientY: { value: 75 }
+    });
+    target.dispatchEvent(dragOver);
+
+    const drop = new Event('drop', { bubbles: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: dataTransfer });
+    target.dispatchEvent(drop);
+
+    expect(getNotes().map(note => note.id)).toEqual(['untagged', 'second', 'first']);
   });
 });
 

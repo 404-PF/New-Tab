@@ -5210,7 +5210,8 @@ body.simple-mode .search-bar.visible:focus-within {
   transition: opacity 0.15s;
   flex-shrink: 0;
 }
-.note-item:hover .note-grip {
+.note-item:hover .note-grip,
+.note-item:focus-within .note-grip {
   opacity: 1;
 }
 .note-grip:active {
@@ -5244,7 +5245,12 @@ body.simple-mode .search-bar.visible:focus-within {
   font-size: 0.75em;
   position: relative;
 }
-.note-item:hover .note-tag-btn {
+.note-tag-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+.note-item:hover .note-tag-btn,
+.note-item:focus-within .note-tag-btn {
   opacity: 1;
 }
 .note-tag-btn.has-tag {

@@ -51,12 +51,13 @@
         n.order = index;
         changed = true;
       }
-      if (n.tag !== undefined && typeof n.tag !== 'string') {
+      if (typeof n.tag !== 'string') {
         n.tag = '';
         changed = true;
       }
       return n;
     });
+    migrated.sort((a, b) => a.order - b.order);
     if (changed) {
       saveNotes(migrated);
     }
@@ -139,6 +140,7 @@
     const { notesList, notesEmpty } = elements;
     if (!notesList || !notesEmpty) return;
 
+    notes.sort((a, b) => a.order - b.order);
     notesList.innerHTML = '';
 
     const activeIds = new Set(notes.map(n => n.id));
@@ -174,6 +176,7 @@
     const grip = document.createElement('span');
     grip.className = 'note-grip';
     grip.draggable = true;
+    grip.tabIndex = 0;
     grip.innerHTML = SVG_GRIP;
     grip.title = window.i18n ? window.i18n.t('notesDragToReorder') : 'Drag to reorder';
 
@@ -209,6 +212,10 @@
       tagBtn.classList.add('has-tag');
     }
 
+    const tagWrapper = document.createElement('div');
+    tagWrapper.className = 'note-tag-wrapper';
+    tagWrapper.appendChild(tagBtn);
+
     const previewBtn = document.createElement('button');
     previewBtn.className = 'note-preview-btn';
     previewBtn.dataset.id = note.id;
@@ -224,7 +231,7 @@
     card.appendChild(grip);
     card.appendChild(textarea);
     card.appendChild(previewDiv);
-    card.appendChild(tagBtn);
+    card.appendChild(tagWrapper);
     card.appendChild(previewBtn);
     card.appendChild(deleteBtn);
     scheduleResize(textarea);
@@ -266,12 +273,14 @@
   }
 
   function addNote() {
-    const maxOrder = notes.reduce((max, n) => Math.max(max, typeof n.order === 'number' ? n.order : 0), -1);
+    const minOrder = notes.length > 0
+      ? notes.reduce((min, n) => Math.min(min, n.order), notes[0].order)
+      : 0;
     const note = {
       id: generateNoteId(),
       text: '',
       tag: _activeTagFilter || '',
-      order: maxOrder + 1,
+      order: minOrder - 1,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -338,9 +347,10 @@
 
   function reorderNotes(fromIndex, toIndex) {
     if (fromIndex === toIndex) return;
-    const previousNotes = notes.map(n => ({ ...n }));
-
     const filtered = getFilteredNotes();
+    if (fromIndex < 0 || fromIndex >= filtered.length || toIndex < 0 || toIndex > filtered.length) return;
+
+    const previousNotes = notes.map(n => ({ ...n }));
     const movedNote = filtered[fromIndex];
     if (!movedNote) return;
 
@@ -486,7 +496,9 @@
     }
     picker.appendChild(actions);
 
-    tagBtn.appendChild(picker);
+    const tagWrapper = tagBtn.closest('.note-tag-wrapper');
+    if (!tagWrapper) return;
+    tagWrapper.appendChild(picker);
 
     input.focus();
 
@@ -652,9 +664,12 @@
       return;
     }
 
+    if (e.target.closest('.note-tag-picker')) return;
+
     const tagBtn = e.target.closest('.note-tag-btn');
     if (tagBtn) {
-      const picker = tagBtn.querySelector('.note-tag-picker');
+      const tagWrapper = tagBtn.closest('.note-tag-wrapper');
+      const picker = tagWrapper && tagWrapper.querySelector('.note-tag-picker');
       if (picker) {
         closeTagPicker();
       } else {
@@ -665,8 +680,7 @@
 
     const filterBtn = e.target.closest('.note-tag-filter-btn');
     if (filterBtn) {
-      const tag = filterBtn.dataset.tag || null;
-      _activeTagFilter = tag === '' ? null : tag;
+      _activeTagFilter = filterBtn.dataset.tag || null;
       renderNotes();
       return;
     }
@@ -710,6 +724,22 @@
   }
 
   function handleNotesKeydown(e) {
+    const grip = e.target.closest('.note-grip');
+    if (grip) {
+      if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+      const card = grip.closest('.note-item');
+      if (!card) return;
+
+      const filtered = getFilteredNotes();
+      const fromIndex = filtered.findIndex(note => note.id === card.dataset.id);
+      if (fromIndex !== -1) {
+        const toIndex = fromIndex + (e.key === 'ArrowUp' ? -1 : 1);
+        reorderNotes(fromIndex, toIndex);
+      }
+      e.preventDefault();
+      return;
+    }
+
     const ta = e.target.closest('.note-textarea');
     if (!ta) return;
     if (e.key === 'Escape') {
