@@ -1021,7 +1021,9 @@ function initTimezoneSettings() {
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.dataset.zone = zoneId;
-      removeBtn.title = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('removeTimezone') : 'Remove';
+      const i18n = window.i18n;
+      removeBtn.title = i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezone') : 'Remove';
+      removeBtn.setAttribute('aria-label', i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezoneLabel', { city: city }) : 'Remove ' + city);
 
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('viewBox', '0 0 16 16');
