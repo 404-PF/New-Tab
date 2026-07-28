@@ -17,6 +17,7 @@
     'clockFont',
     'clockSize',
     'clockFormat',
+    'extraTimeZones',
     'dateColor',
     'dateFont',
     'dateSize',
@@ -232,6 +233,18 @@
     clockFont: function (v) { return typeof v === 'string'; },
     clockSize: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     clockFormat: function (v) { return typeof v === 'string'; },
+    extraTimeZones: function (v) {
+      if (!Array.isArray(v) || v.length > (window.MAX_TIMEZONES || 5)) return false;
+      const supportedZones = window.POPULAR_ZONES || [];
+      const seen = {};
+      return v.every(function (item) {
+        if (typeof item !== 'string' || seen[item]) return false;
+        const supported = supportedZones.some(function (zone) { return zone.id === item; });
+        if (!supported) return false;
+        seen[item] = true;
+        return true;
+      });
+    },
     dateColor: function (v) { return typeof v === 'string'; },
     dateFont: function (v) { return typeof v === 'string'; },
     dateSize: function (v) { return typeof v === 'string' || typeof v === 'number'; },
@@ -526,6 +539,24 @@
                   writeStorage(key, currentConvs);
                   count++;
                 }
+              } else if (key === 'extraTimeZones') {
+                // Merge only supported, unique zones and preserve the five-zone limit.
+                const maxTimeZones = window.MAX_TIMEZONES || 5;
+                const supportedIds = Object.create(null);
+                (window.POPULAR_ZONES || []).forEach(function (zone) {
+                  supportedIds[zone.id] = true;
+                });
+                const mergedZones = [];
+                const seenZones = Object.create(null);
+                const zonesToMerge = (Array.isArray(current) ? current : []).concat(incoming);
+                zonesToMerge.forEach(function (zoneId) {
+                  if (mergedZones.length >= maxTimeZones || typeof zoneId !== 'string' ||
+                      !supportedIds[zoneId] || seenZones[zoneId]) return;
+                  seenZones[zoneId] = true;
+                  mergedZones.push(zoneId);
+                });
+                writeStorage(key, mergedZones);
+                count++;
               } else {
                 // Generic array merge (concatenate unique)
                 const existingArr = Array.isArray(current) ? current.slice() : [];
@@ -586,6 +617,14 @@
       // Refresh the UI
       if (typeof window.initSettings === 'function') {
         window.initSettings();
+      }
+
+      // Refresh timezone views after merge/replace
+      if (typeof window.renderExtraClocks === 'function') {
+        window.renderExtraClocks();
+      }
+      if (typeof window.renderTimezoneCurrentList === 'function') {
+        window.renderTimezoneCurrentList();
       }
 
       // Reinitialize the search provider bar so imported providers/selection take effect live
