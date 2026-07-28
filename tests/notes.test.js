@@ -65,6 +65,25 @@ describe('Notes persistence', () => {
     expect(getNotes()[0]).toMatchObject({ id: 'legacy', order: 0, tag: '' });
   });
 
+  it('normalizes duplicate or non-finite orders while preserving merged list order', () => {
+    setNotes([
+      { id: 'existing-1', text: 'Existing 1', order: 0 },
+      { id: 'existing-2', text: 'Existing 2', order: 1 },
+      { id: 'imported-1', text: 'Imported 1', order: 0 },
+      { id: 'imported-2', text: 'Imported 2', order: null }
+    ]);
+    initNotes();
+
+    const notes = getNotes();
+    expect(notes.map(note => note.id)).toEqual([
+      'existing-1',
+      'existing-2',
+      'imported-1',
+      'imported-2'
+    ]);
+    expect(notes.map(note => note.order)).toEqual([0, 1, 2, 3]);
+  });
+
   it('rolls back note mutations on save failure', () => {
     const note = { id: '1', text: 'Keep me', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
     setNotes([note]);

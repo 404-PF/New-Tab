@@ -45,9 +45,22 @@
 
   function migrateNotes(data) {
     let changed = false;
+    const orders = data.map(note => note && note.order);
+    const hasInvalidOrder = orders.some(order => !Number.isFinite(order));
+    const hasDuplicateOrder = new Set(orders).size !== orders.length;
+    const shouldNormalizeOrders = hasInvalidOrder || hasDuplicateOrder;
+
+    if (shouldNormalizeOrders) {
+      changed = true;
+    }
+
     const migrated = data.map((note, index) => {
       const n = { ...note };
-      if (typeof n.order !== 'number') {
+      if (shouldNormalizeOrders) {
+        // A merged import can contain the same order range as the existing
+        // notes. Reassign in array order so existing notes stay before imports.
+        n.order = index;
+      } else if (typeof n.order !== 'number') {
         n.order = index;
         changed = true;
       }
