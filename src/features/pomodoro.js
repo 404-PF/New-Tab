@@ -4,6 +4,9 @@
   'use strict';
 
   const STORAGE_KEY = 'pomodoro';
+  const TIMER_STATE_KEY = STORAGE_KEY + '_state';
+  const LEASE_DURATION_MS = 5000;
+  const TAB_ID = 'pomodoro-' + Math.random().toString(36).slice(2);
   const PHASES = { WORK: 'work', SHORT_BREAK: 'shortBreak', LONG_BREAK: 'longBreak' };
 
   const DEFAULTS = {
@@ -24,6 +27,8 @@
   };
 
   let _timerInterval = null;
+  let _coordinationInterval = null;
+  let _isLeader = false;
 
   function loadSettings() {
     try {
@@ -37,7 +42,8 @@
         sessionsBeforeLongBreak: typeof parsed.sessionsBeforeLongBreak === 'number' ? parsed.sessionsBeforeLongBreak : DEFAULTS.sessionsBeforeLongBreak,
         enabled: typeof parsed.enabled === 'boolean' ? parsed.enabled : DEFAULTS.enabled
       };
-    } catch (_e) {
+    } catch (error) {
+      console.warn('Failed to load Pomodoro settings from localStorage:', error);
       return Object.assign({}, DEFAULTS);
     }
   }
@@ -53,26 +59,36 @@
 
   function loadTimerState() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY + '_state');
+      const raw = localStorage.getItem(TIMER_STATE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (parsed && parsed.active && typeof parsed.timeRemaining === 'number') {
         return parsed;
       }
-    } catch (_e) { /* ignore */ }
+    } catch (error) {
+      console.warn('Failed to load Pomodoro timer state from localStorage:', error);
+    }
     return null;
   }
 
   function saveTimerState() {
     try {
-      localStorage.setItem(STORAGE_KEY + '_state', JSON.stringify(state));
+      localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state));
     } catch (_e) { /* ignore */ }
   }
 
   function clearTimerState() {
     try {
-      localStorage.removeItem(STORAGE_KEY + '_state');
+      localStorage.removeItem(TIMER_STATE_KEY);
     } catch (_e) { /* ignore */ }
+  }
+
+  function updateFocusButtons() {
+    document.querySelectorAll('.todo-focus-btn').forEach(function (focusBtn) {
+      const isActive = state.active && state.todoId === focusBtn.dataset.todoId;
+      focusBtn.classList.toggle('active', isActive);
+      focusBtn.title = isActive ? 'Stop Focus' : 'Start Focus';
+    });
   }
 
   function formatTime(seconds) {
@@ -165,6 +181,8 @@
   }
 
   function updateWidget() {
+    updateFocusButtons();
+
     const widget = document.getElementById('pomodoro-widget');
     if (!widget) return;
 
@@ -208,20 +226,30 @@
   }
 
   function tick() {
-    if (!state.active || state.paused) return;
+    if (!state.active || state.paused || !_isLeader) return;
 
+    const persisted = loadTimerState();
+    if (persisted && persisted.ownerId !== TAB_ID && persisted.ownerLeaseExpiresAt > Date.now()) {
+      applyTimerState(persisted);
+      return;
+    }
+
+    if (persisted && persisted.ownerId === TAB_ID) state = persisted;
     state.timeRemaining--;
-    saveTimerState();
 
     if (state.timeRemaining <= 0) {
       onPhaseComplete();
       return;
     }
 
+    state.ownerId = TAB_ID;
+    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+    saveTimerState();
     updateWidget();
   }
 
   function onPhaseComplete() {
+    if (!state.active || !_isLeader) return;
     const isWork = state.phase === PHASES.WORK;
     const todoText = getTodoText(state.todoId);
 
@@ -234,6 +262,8 @@
     const nextPhase = getNextPhase();
     state.phase = nextPhase;
     state.timeRemaining = getPhaseDuration(nextPhase);
+    state.ownerId = TAB_ID;
+    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
     saveTimerState();
     updateWidget();
   }
@@ -262,10 +292,14 @@
     state.todoId = todoId;
     state.timeRemaining = getPhaseDuration(PHASES.WORK);
     state.paused = false;
+    state.ownerId = TAB_ID;
+    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+    _isLeader = true;
 
     createTimerWidget();
     updateWidget();
     saveTimerState();
+    startCoordinationInterval();
     startInterval();
   }
 
@@ -276,27 +310,47 @@
     state.timeRemaining = 0;
     state.sessionsCompleted = 0;
     state.paused = false;
+    state.ownerId = null;
+    state.ownerLeaseExpiresAt = 0;
+    _isLeader = false;
     stopInterval();
+    stopCoordinationInterval();
     clearTimerState();
     updateWidget();
   }
 
   function togglePause() {
     if (!state.active) return;
-    state.paused = !state.paused;
+
+    if (state.paused) {
+      if (!claimLeadership(true)) return;
+      state.paused = false;
+      state.ownerId = TAB_ID;
+      state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+      startInterval();
+    } else {
+      state.paused = true;
+      state.ownerId = null;
+      state.ownerLeaseExpiresAt = 0;
+      _isLeader = false;
+      stopInterval();
+    }
+
     saveTimerState();
     updateWidget();
   }
 
   function skipPhase() {
     if (!state.active) return;
+    if (!_isLeader && !claimLeadership(true)) return;
     onPhaseComplete();
   }
 
   function startInterval() {
     stopInterval();
+    if (!state.active || state.paused || !_isLeader) return;
     if (window.VisibilityInterval) {
-      _timerInterval = new VisibilityInterval(tick, 1000);
+      _timerInterval = new window.VisibilityInterval(tick, 1000);
     } else {
       _timerInterval = setInterval(tick, 1000);
     }
@@ -310,6 +364,125 @@
     }
   }
 
+  function startCoordinationInterval() {
+    if (_coordinationInterval || !state.active) return;
+    _coordinationInterval = setInterval(reconcileTimerState, 1000);
+  }
+
+  function stopCoordinationInterval() {
+    if (_coordinationInterval) {
+      clearInterval(_coordinationInterval);
+      _coordinationInterval = null;
+    }
+  }
+
+  function applyTimerState(nextState) {
+    if (!nextState || !nextState.active) {
+      _isLeader = false;
+      stopInterval();
+      stopCoordinationInterval();
+      state = {
+        active: false,
+        phase: PHASES.WORK,
+        todoId: null,
+        timeRemaining: 0,
+        sessionsCompleted: 0,
+        paused: false
+      };
+      updateWidget();
+      return;
+    }
+
+    const wasLeader = _isLeader;
+    state = nextState;
+    startCoordinationInterval();
+    if (state.ownerId === TAB_ID && !state.paused) {
+      _isLeader = true;
+      if (!wasLeader || !_timerInterval) startInterval();
+    } else {
+      _isLeader = false;
+      stopInterval();
+    }
+    updateWidget();
+  }
+
+  function claimLeadership(allowPaused) {
+    const persisted = loadTimerState();
+    if (!persisted || !persisted.active || (persisted.paused && !allowPaused)) return false;
+
+    const leaseIsActive = persisted.ownerId && persisted.ownerId !== TAB_ID &&
+      persisted.ownerLeaseExpiresAt > Date.now();
+    if (leaseIsActive) {
+      applyTimerState(persisted);
+      return false;
+    }
+
+    state = persisted;
+    state.ownerId = TAB_ID;
+    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+    _isLeader = true;
+    if (!(allowPaused && persisted.paused)) saveTimerState();
+    updateWidget();
+    startCoordinationInterval();
+    startInterval();
+    return true;
+  }
+
+  function reconcileTimerState() {
+    const persisted = loadTimerState();
+    if (!persisted) {
+      if (state.active) applyTimerState(null);
+      return;
+    }
+
+    const ownsLease = persisted.ownerId === TAB_ID;
+    const leaseIsActive = persisted.ownerId && !ownsLease && persisted.ownerLeaseExpiresAt > Date.now();
+    if (leaseIsActive) {
+      applyTimerState(persisted);
+      return;
+    }
+    if (_isLeader && ownsLease) {
+      state = persisted;
+      updateWidget();
+      return;
+    }
+    if (!_isLeader && persisted.active && !persisted.paused) {
+      claimLeadership();
+      return;
+    }
+    applyTimerState(persisted);
+  }
+
+  function handleTimerStateChange(newValue) {
+    if (!newValue) {
+      applyTimerState(null);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(newValue);
+      if (parsed && parsed.active && typeof parsed.timeRemaining === 'number') {
+        applyTimerState(parsed);
+      }
+    } catch (error) {
+      console.warn('Failed to reconcile Pomodoro timer state change:', error);
+    }
+  }
+
+  function subscribeToTimerStateChanges() {
+    window.addEventListener('storage', function (event) {
+      if (event.key === TIMER_STATE_KEY) handleTimerStateChange(event.newValue);
+    });
+
+    if (window.chrome && window.chrome.storage && window.chrome.storage.onChanged &&
+        typeof window.chrome.storage.onChanged.addListener === 'function') {
+      window.chrome.storage.onChanged.addListener(function (changes, areaName) {
+        if (areaName === 'local' && changes[TIMER_STATE_KEY]) {
+          handleTimerStateChange(changes[TIMER_STATE_KEY].newValue);
+        }
+      });
+    }
+  }
+
   function addFocusButtonToTodoActions(todoActions, todoId) {
     const settings = loadSettings();
     if (!settings.enabled) return;
@@ -317,7 +490,9 @@
     const focusBtn = document.createElement('button');
     focusBtn.className = 'todo-focus-btn';
     focusBtn.dataset.todoId = todoId;
-    focusBtn.title = 'Start Focus';
+    const isActive = state.active && state.todoId === todoId;
+    focusBtn.classList.toggle('active', isActive);
+    focusBtn.title = isActive ? 'Stop Focus' : 'Start Focus';
     focusBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>';
     todoActions.appendChild(focusBtn);
   }
@@ -353,13 +528,16 @@
   }
 
   function initPomodoro() {
+    subscribeToTimerStateChanges();
+
     const saved = loadTimerState();
     if (saved) {
       state = saved;
       createTimerWidget();
       updateWidget();
-      if (state.active && !state.paused) {
-        startInterval();
+      if (state.active) {
+        startCoordinationInterval();
+        if (!state.paused) claimLeadership();
       }
     }
 
@@ -383,11 +561,15 @@
 
   function savePomodoroDurations(durations) {
     const settings = loadSettings();
+    const previousDuration = state.active ? getPhaseDuration(state.phase) : null;
     Object.assign(settings, durations);
     saveSettings(settings);
     if (state.active) {
-      state.timeRemaining = getPhaseDuration(state.phase);
-      updateWidget();
+      const newDuration = getPhaseDuration(state.phase);
+      if (newDuration !== previousDuration) {
+        state.timeRemaining = newDuration;
+        updateWidget();
+      }
     }
   }
 
