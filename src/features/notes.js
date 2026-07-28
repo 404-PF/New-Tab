@@ -527,11 +527,12 @@
       cancelBlur();
       blurTimer = setTimeout(() => {
         blurTimer = null;
+        if (!picker.isConnected || picker.contains(document.activeElement)) return;
         const val = input.value.trim();
         if (val !== (note.tag || '')) {
           updateNoteTag(noteId, val);
         }
-        closeTagPicker();
+        picker.remove();
       }, 150);
     });
 
