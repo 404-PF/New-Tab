@@ -261,6 +261,8 @@
   window.POPULAR_ZONES = POPULAR_ZONES;
   window.MAX_TIMEZONES = MAX_TIMEZONES;
 
+  window.addEventListener('languageChanged', renderExtraClocks);
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initTimezoneClocks);
   } else {

@@ -1081,6 +1081,7 @@ function initTimezoneSettings() {
     }
   });
 
+  window.renderTimezoneCurrentList = renderCurrentTimezones;
   renderCurrentTimezones();
 }
 

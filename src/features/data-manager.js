@@ -621,6 +621,9 @@
       if (typeof window.renderExtraClocks === 'function') {
         window.renderExtraClocks();
       }
+      if (typeof window.renderTimezoneCurrentList === 'function') {
+        window.renderTimezoneCurrentList();
+      }
 
       // Reinitialize the search provider bar so imported providers/selection take effect live
       if (typeof window.refreshProviderBar === 'function') {
