@@ -252,5 +252,29 @@
   "notesDragToReorder": {
     "message": "Arrastar para reordenar",
     "description": "Accessible label for the note drag handle"
+  },
+  "timezones": {
+    "message": "Fusos horários",
+    "description": "Section header for time zone clock settings"
+  },
+  "timezonesDesc": {
+    "message": "Adicione até 5 relógios de fuso horário adicionais abaixo do relógio principal",
+    "description": "Description for the time zone settings section"
+  },
+  "selectTimezone": {
+    "message": "Selecione um fuso horário...",
+    "description": "Placeholder for time zone dropdown"
+  },
+  "addTimezone": {
+    "message": "Adicionar",
+    "description": "Button to add a selected time zone"
+  },
+  "removeTimezone": {
+    "message": "Remover",
+    "description": "Title for a time zone remove control"
+  },
+  "removeTimezoneLabel": {
+    "message": "Remover fuso horário de {city}",
+    "description": "Accessible label for removing a specific time zone"
   }
 }

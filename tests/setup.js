@@ -528,7 +528,9 @@ globalThis.window.i18n = {
       searchProviderBing: 'Bing',
       searchProviderDuckDuckGo: 'DuckDuckGo',
       searchProviderWikipedia: 'Wikipedia',
-      searchProviderYouTube: 'YouTube'
+      searchProviderYouTube: 'YouTube',
+      removeTimezone: 'Remove',
+      removeTimezoneLabel: 'Remove {city} time zone'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {

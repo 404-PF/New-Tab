@@ -252,5 +252,29 @@
   "notesDragToReorder": {
     "message": "ドラッグで並べ替え",
     "description": "Accessible label for the note drag handle"
+  },
+  "timezones": {
+    "message": "タイムゾーン",
+    "description": "Section header for time zone clock settings"
+  },
+  "timezonesDesc": {
+    "message": "メイン時計の下に最大5つの追加タイムゾーン時計を追加",
+    "description": "Description for the time zone settings section"
+  },
+  "selectTimezone": {
+    "message": "タイムゾーンを選択...",
+    "description": "Placeholder for time zone dropdown"
+  },
+  "addTimezone": {
+    "message": "追加",
+    "description": "Button to add a selected time zone"
+  },
+  "removeTimezone": {
+    "message": "削除",
+    "description": "Title for a time zone remove control"
+  },
+  "removeTimezoneLabel": {
+    "message": "{city} タイムゾーンを削除",
+    "description": "Accessible label for removing a specific time zone"
   }
 }

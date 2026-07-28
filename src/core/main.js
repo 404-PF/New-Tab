@@ -18,6 +18,8 @@ function updateTime() {
 }
 
 window.updateTime = updateTime;
+window.getDisplayLocale = getDisplayLocale;
+window.getClockFormat = getClockFormat;
 
 function getDisplayLocale() {
   const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
@@ -127,11 +129,13 @@ function initClock() {
     if (_clockInterval.destroy) _clockInterval.destroy();
     else clearInterval(_clockInterval);
   }
-  // Use VisibilityInterval if available, fallback to regular setInterval
+  // Use VisibilityInterval if available, fallback to regular setInterval.
+  // Reference window.updateTime so that later wrappers (e.g. timezone-clocks.js)
+  // that replace window.updateTime are picked up by the interval.
   if (window.VisibilityInterval) {
-    _clockInterval = new VisibilityInterval(updateTime, 1000);
+    _clockInterval = new VisibilityInterval(function () { window.updateTime(); }, 1000);
   } else {
-    _clockInterval = setInterval(updateTime, 1000);
+    _clockInterval = setInterval(function () { window.updateTime(); }, 1000);
   }
 }
 

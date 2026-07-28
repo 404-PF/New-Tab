@@ -24,6 +24,7 @@
     'src/core/dom-ready.js',
     'src/core/app-grid-storage.js',
     'src/core/main.js',
+    'src/features/timezone-clocks.js',
     'src/core/app-grid-state.js',
     // app-manager.js must execute before add-app-modal.js, context-menu.js,
     // and app-folders.js. This ordering currently relies on script.async = false
