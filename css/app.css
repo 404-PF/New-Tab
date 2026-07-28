@@ -5245,6 +5245,9 @@ body.simple-mode .search-bar.visible:focus-within {
   font-size: 0.75em;
   position: relative;
 }
+body.light-theme .note-tag-btn {
+  color: #64748b;
+}
 .note-tag-wrapper {
   position: relative;
   flex-shrink: 0;
@@ -5282,6 +5285,9 @@ body.simple-mode .search-bar.visible:focus-within {
   min-width: 160px;
   z-index: 100;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.note-item.tag-picker-open {
+  z-index: 1;
 }
 body.light-theme .note-tag-picker {
   background: #ffffff;

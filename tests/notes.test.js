@@ -84,6 +84,19 @@ describe('Notes persistence', () => {
     expect(notes.map(note => note.order)).toEqual([0, 1, 2, 3]);
   });
 
+  it('normalizes out-of-order values while preserving the stored array order', () => {
+    setNotes([
+      { id: 'existing', text: 'Existing', order: 0 },
+      { id: 'imported-1', text: 'Imported 1', order: -2 },
+      { id: 'imported-2', text: 'Imported 2', order: -1 }
+    ]);
+    initNotes();
+
+    const notes = getNotes();
+    expect(notes.map(note => note.id)).toEqual(['existing', 'imported-1', 'imported-2']);
+    expect(notes.map(note => note.order)).toEqual([0, 1, 2]);
+  });
+
   it('rolls back note mutations on save failure', () => {
     const note = { id: '1', text: 'Keep me', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
     setNotes([note]);
@@ -904,6 +917,22 @@ describe('Notes markdown preview', () => {
       previewBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       expect(card.querySelector('.note-textarea').style.display).toBe('none');
       expect(card.querySelector('.note-preview').style.display).not.toBe('none');
+    });
+
+    it('does not delete empty note when tag button mousedown precedes blur', () => {
+      addNote();
+      const id = getNotes()[0].id;
+      const card = document.querySelector(`.note-item[data-id="${id}"]`);
+      const ta = card.querySelector('.note-textarea');
+      const tagButton = card.querySelector('.note-tag-btn');
+
+      tagButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      ta.dispatchEvent(new Event('blur', { bubbles: true }));
+
+      expect(getNotes()).toHaveLength(1);
+
+      tagButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(card.querySelector('.note-tag-picker')).toBeTruthy();
     });
 
     it('still deletes empty note on normal blur (no preview mousedown)', () => {

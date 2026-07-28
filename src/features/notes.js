@@ -48,7 +48,10 @@
     const orders = data.map(note => note && note.order);
     const hasInvalidOrder = orders.some(order => !Number.isFinite(order));
     const hasDuplicateOrder = new Set(orders).size !== orders.length;
-    const shouldNormalizeOrders = hasInvalidOrder || hasDuplicateOrder;
+    const hasOutOfOrderEntries = orders.some((order, index) => (
+      index > 0 && order < orders[index - 1]
+    ));
+    const shouldNormalizeOrders = hasInvalidOrder || hasDuplicateOrder || hasOutOfOrderEntries;
 
     if (shouldNormalizeOrders) {
       changed = true;
@@ -462,7 +465,11 @@
   // Tag picker
   function closeTagPicker() {
     const existing = document.querySelector('.note-tag-picker');
-    if (existing) existing.remove();
+    if (existing) {
+      const card = existing.closest('.note-item');
+      if (card) card.classList.remove('tag-picker-open');
+      existing.remove();
+    }
   }
 
   function openTagPicker(noteId) {
@@ -511,6 +518,8 @@
 
     const tagWrapper = tagBtn.closest('.note-tag-wrapper');
     if (!tagWrapper) return;
+    const card = tagBtn.closest('.note-item');
+    if (card) card.classList.add('tag-picker-open');
     tagWrapper.appendChild(picker);
 
     input.focus();
@@ -762,7 +771,7 @@
   }
 
   function handlePreviewMouseDown(e) {
-    _previewMouseDown = !!e.target.closest('.note-preview-btn');
+    _previewMouseDown = !!e.target.closest('.note-preview-btn, .note-tag-btn');
   }
 
   function initNotes() {
