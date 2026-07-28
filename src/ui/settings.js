@@ -1676,6 +1676,9 @@ function initAboutSection() {
 window.addEventListener('languageChanged', function() {
   initAboutSection();
   renderLanguageOptions();
+  if (typeof window.renderTimezoneCurrentList === 'function') {
+    window.renderTimezoneCurrentList();
+  }
 });
 
 // update-checker.js loads after this module, so its first render of the About

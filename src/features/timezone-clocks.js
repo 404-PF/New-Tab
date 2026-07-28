@@ -214,6 +214,9 @@
     zones.splice(index, 1);
     if (saveTimeZones(zones)) {
       renderExtraClocks();
+      if (typeof window.renderTimezoneCurrentList === 'function') {
+        window.renderTimezoneCurrentList();
+      }
       return true;
     }
     return false;
