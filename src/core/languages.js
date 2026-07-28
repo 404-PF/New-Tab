@@ -100,6 +100,15 @@ const translations = {
     enableFocusMode: 'Enable focus mode',
     focusModeExit: 'Exit Focus Mode',
 
+    // Pomodoro settings
+    enablePomodoro: 'Enable Pomodoro focus timer',
+    pomodoroDurations: 'Focus Timer Durations',
+    pomodoroDurationsDesc: 'Configure work and break durations (in minutes)',
+    pomodoroWork: 'Work',
+    pomodoroShortBreak: 'Short Break',
+    pomodoroLongBreak: 'Long Break',
+    pomodoroSessionsBeforeLong: 'Sessions before long break',
+
     // Background settings
     backgroundSettings: 'Background',
     backgroundSettingsDesc: 'Choose your background image',

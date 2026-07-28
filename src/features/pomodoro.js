@@ -568,6 +568,7 @@
       const newDuration = getPhaseDuration(state.phase);
       if (newDuration !== previousDuration) {
         state.timeRemaining = newDuration;
+        saveTimerState();
         updateWidget();
       }
     }
