@@ -232,5 +232,25 @@
         "example": "5"
       }
     }
+  },
+  "notesFilterAll": {
+    "message": "すべて",
+    "description": "Label for the 'All' tag filter in notes"
+  },
+  "notesAddTag": {
+    "message": "タグを追加",
+    "description": "Button label to add a new tag to a note"
+  },
+  "notesTagPlaceholder": {
+    "message": "タグ名...",
+    "description": "Placeholder text for the tag name input"
+  },
+  "notesRemoveTag": {
+    "message": "タグを削除",
+    "description": "Tooltip for removing a tag from a note"
+  },
+  "notesDragToReorder": {
+    "message": "ドラッグで並べ替え",
+    "description": "Accessible label for the note drag handle"
   }
 }

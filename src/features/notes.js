@@ -733,7 +733,7 @@
       const filtered = getFilteredNotes();
       const fromIndex = filtered.findIndex(note => note.id === card.dataset.id);
       if (fromIndex !== -1) {
-        const toIndex = fromIndex + (e.key === 'ArrowUp' ? -1 : 1);
+        const toIndex = fromIndex + (e.key === 'ArrowUp' ? -1 : 2);
         reorderNotes(fromIndex, toIndex);
       }
       e.preventDefault();

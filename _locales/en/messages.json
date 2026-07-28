@@ -340,5 +340,25 @@
   "searchProviderYouTube": {
     "message": "YouTube",
     "description": "Name of the YouTube search provider"
+  },
+  "notesFilterAll": {
+    "message": "All",
+    "description": "Label for the 'All' tag filter in notes"
+  },
+  "notesAddTag": {
+    "message": "Add tag",
+    "description": "Button label to add a new tag to a note"
+  },
+  "notesTagPlaceholder": {
+    "message": "Tag name...",
+    "description": "Placeholder text for the tag name input"
+  },
+  "notesRemoveTag": {
+    "message": "Remove tag",
+    "description": "Tooltip for removing a tag from a note"
+  },
+  "notesDragToReorder": {
+    "message": "Drag to reorder",
+    "description": "Accessible label for the note drag handle"
   }
 }

@@ -232,5 +232,25 @@
         "example": "5"
       }
     }
+  },
+  "notesFilterAll": {
+    "message": "Todos",
+    "description": "Label for the 'All' tag filter in notes"
+  },
+  "notesAddTag": {
+    "message": "Añadir etiqueta",
+    "description": "Button label to add a new tag to a note"
+  },
+  "notesTagPlaceholder": {
+    "message": "Nombre de etiqueta...",
+    "description": "Placeholder text for the tag name input"
+  },
+  "notesRemoveTag": {
+    "message": "Eliminar etiqueta",
+    "description": "Tooltip for removing a tag from a note"
+  },
+  "notesDragToReorder": {
+    "message": "Arrastrar para reordenar",
+    "description": "Accessible label for the note drag handle"
   }
 }

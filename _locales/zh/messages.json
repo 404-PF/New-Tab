@@ -232,5 +232,25 @@
         "example": "5"
       }
     }
+  },
+  "notesFilterAll": {
+    "message": "全部",
+    "description": "Label for the 'All' tag filter in notes"
+  },
+  "notesAddTag": {
+    "message": "新增標籤",
+    "description": "Button label to add a new tag to a note"
+  },
+  "notesTagPlaceholder": {
+    "message": "標籤名稱...",
+    "description": "Placeholder text for the tag name input"
+  },
+  "notesRemoveTag": {
+    "message": "刪除標籤",
+    "description": "Tooltip for removing a tag from a note"
+  },
+  "notesDragToReorder": {
+    "message": "拖曳排序",
+    "description": "Accessible label for the note drag handle"
   }
 }
