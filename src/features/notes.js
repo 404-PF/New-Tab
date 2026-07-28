@@ -369,6 +369,9 @@
     const previousNotes = notes.map(n => ({ ...n }));
     const movedNote = filtered[fromIndex];
     if (!movedNote) return;
+    const activeElement = document.activeElement;
+    const shouldRestoreFocus = activeElement && activeElement.classList.contains('note-grip')
+      && activeElement.closest('.note-item')?.dataset.id === movedNote.id;
 
     const actualFromIndex = notes.findIndex(n => n.id === movedNote.id);
     let actualToIndex;
@@ -392,9 +395,15 @@
     if (!saveNotes(notes)) {
       notes = previousNotes;
       renderNotes();
+      if (shouldRestoreFocus) {
+        document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
+      }
       return;
     }
     renderNotes();
+    if (shouldRestoreFocus) {
+      document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
+    }
   }
 
   function renderNotePreview(text) {
@@ -736,6 +745,10 @@
     if (notePreviewModes[ta.dataset.id] === true) return;
     if (_previewMouseDown) {
       _previewMouseDown = false;
+      const text = ta.value || '';
+      if (text) {
+        updateNoteText(ta.dataset.id, text);
+      }
       return;
     }
     const text = ta.value || '';

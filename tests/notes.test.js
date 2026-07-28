@@ -581,6 +581,66 @@ describe('Notes tags and drag-and-drop', () => {
 
     expect(getNotes().map(note => note.id)).toEqual(['untagged', 'second', 'first']);
   });
+
+  it('preserves pending text edits when opening the tag picker', () => {
+    setNotes([
+      { id: 'first', text: 'Original', tag: 'old', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: 'new', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    const card = document.querySelector('.note-item[data-id="first"]');
+    const textarea = card.querySelector('.note-textarea');
+    textarea.value = 'Latest typed text';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const tagButton = card.querySelector('.note-tag-btn');
+    tagButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    textarea.dispatchEvent(new Event('blur', { bubbles: true }));
+    tagButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    document.querySelector('.note-tag-suggestion[data-tag="new"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(getNotes().find(note => note.id === 'first')).toMatchObject({
+      text: 'Latest typed text',
+      tag: 'new'
+    });
+  });
+
+  it('restores grip focus after keyboard reordering', () => {
+    setNotes([
+      { id: 'first', text: 'First', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'third', text: 'Third', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    let grip = document.querySelector('.note-item[data-id="first"] .note-grip');
+    grip.focus();
+    grip.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      altKey: true,
+      bubbles: true
+    }));
+
+    expect(getNotes().map(note => note.id)).toEqual(['second', 'first', 'third']);
+    expect(document.activeElement).toBe(
+      document.querySelector('.note-item[data-id="first"] .note-grip')
+    );
+
+    grip = document.activeElement;
+    grip.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      altKey: true,
+      bubbles: true
+    }));
+
+    expect(getNotes().map(note => note.id)).toEqual(['second', 'third', 'first']);
+    expect(document.activeElement).toBe(
+      document.querySelector('.note-item[data-id="first"] .note-grip')
+    );
+  });
 });
 
 describe('Notes multiple operations', () => {
