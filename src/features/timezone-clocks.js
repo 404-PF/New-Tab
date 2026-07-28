@@ -103,9 +103,11 @@
       const options = {
         timeZone: zoneId,
         hour: 'numeric',
-        minute: '2-digit',
-        hour12: clockFormat === '12h' || (clockFormat === 'auto' && locale && locale.indexOf('US') !== -1)
+        minute: '2-digit'
       };
+      if (clockFormat === '12h') {
+        options.hour12 = true;
+      }
       if (clockFormat === '24h') {
         options.hour12 = false;
         options.hour = '2-digit';

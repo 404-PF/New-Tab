@@ -537,6 +537,24 @@
                   writeStorage(key, currentConvs);
                   count++;
                 }
+              } else if (key === 'extraTimeZones') {
+                // Merge only supported, unique zones and preserve the five-zone limit.
+                const maxTimeZones = window.MAX_TIMEZONES || 5;
+                const supportedIds = Object.create(null);
+                (window.POPULAR_ZONES || []).forEach(function (zone) {
+                  supportedIds[zone.id] = true;
+                });
+                const mergedZones = [];
+                const seenZones = Object.create(null);
+                const zonesToMerge = (Array.isArray(current) ? current : []).concat(incoming);
+                zonesToMerge.forEach(function (zoneId) {
+                  if (mergedZones.length >= maxTimeZones || typeof zoneId !== 'string' ||
+                      !supportedIds[zoneId] || seenZones[zoneId]) return;
+                  seenZones[zoneId] = true;
+                  mergedZones.push(zoneId);
+                });
+                writeStorage(key, mergedZones);
+                count++;
               } else {
                 // Generic array merge (concatenate unique)
                 const existingArr = Array.isArray(current) ? current.slice() : [];

@@ -166,6 +166,10 @@ const translations = {
     dateFormatLong: 'Long',
     dateFormatCompact: 'Compact',
     dateFormatNumeric: 'Numeric',
+    timezones: 'Time Zones',
+    timezonesDesc: 'Add up to 5 additional time zone clocks below your main clock',
+    selectTimezone: 'Select a time zone...',
+    addTimezone: 'Add',
     removeTimezone: 'Remove',
     removeTimezoneLabel: 'Remove {city} time zone',
 
@@ -463,6 +467,10 @@ const translations = {
   },
 
   zh: {
+    timezones: '时区',
+    timezonesDesc: '在主时钟下方添加最多 5 个额外时区时钟',
+    selectTimezone: '选择时区...',
+    addTimezone: '添加',
     // General UI
     searchPlaceholder: '搜索或输入网站',
     searchWith: '使用',
@@ -922,6 +930,10 @@ const translations = {
   },
 
   ja: {
+    timezones: 'タイムゾーン',
+    timezonesDesc: 'メイン時計の下に最大5つの追加タイムゾーン時計を追加',
+    selectTimezone: 'タイムゾーンを選択...',
+    addTimezone: '追加',
     searchPlaceholder: '検索またはURLを入力',
     searchWith: '検索',
     searchProviderGoogle: 'Google',
@@ -1323,6 +1335,10 @@ const translations = {
   },
 
   ko: {
+    timezones: '시간대',
+    timezonesDesc: '기본 시계 아래에 최대 5개의 추가 시간대 시계를 추가하세요',
+    selectTimezone: '시간대 선택...',
+    addTimezone: '추가',
     searchPlaceholder: '검색 또는 웹사이트 입력',
     searchWith: '검색',
     searchProviderGoogle: 'Google',
@@ -1724,6 +1740,10 @@ const translations = {
   },
 
   es: {
+    timezones: 'Zonas horarias',
+    timezonesDesc: 'Añade hasta 5 relojes de zonas horarias adicionales debajo del reloj principal',
+    selectTimezone: 'Selecciona una zona horaria...',
+    addTimezone: 'Añadir',
     searchPlaceholder: 'Buscar o ingresar sitio web',
     searchWith: 'Buscar con',
     searchProviderGoogle: 'Google',
@@ -2125,6 +2145,10 @@ const translations = {
   },
 
   fr: {
+    timezones: 'Fuseaux horaires',
+    timezonesDesc: 'Ajoutez jusqu’à 5 horloges de fuseau horaire supplémentaires sous votre horloge principale',
+    selectTimezone: 'Sélectionnez un fuseau horaire...',
+    addTimezone: 'Ajouter',
     searchPlaceholder: 'Rechercher ou saisir un site web',
     searchWith: 'Rechercher avec',
     searchProviderGoogle: 'Google',
@@ -2526,6 +2550,10 @@ const translations = {
   },
 
   de: {
+    timezones: 'Zeitzonen',
+    timezonesDesc: 'Füge bis zu 5 zusätzliche Zeitzonen-Uhren unter deiner Hauptuhr hinzu',
+    selectTimezone: 'Zeitzone auswählen...',
+    addTimezone: 'Hinzufügen',
     searchPlaceholder: 'Suche oder Website eingeben',
     searchWith: 'Suchen mit',
     searchProviderGoogle: 'Google',
@@ -2927,6 +2955,10 @@ const translations = {
   },
 
   pt: {
+    timezones: 'Fusos horários',
+    timezonesDesc: 'Adicione até 5 relógios de fuso horário adicionais abaixo do relógio principal',
+    selectTimezone: 'Selecione um fuso horário...',
+    addTimezone: 'Adicionar',
     searchPlaceholder: 'Pesquisar ou digitar site',
     searchWith: 'Pesquisar com',
     searchProviderGoogle: 'Google',
@@ -3328,6 +3360,10 @@ const translations = {
   },
 
   ru: {
+    timezones: 'Часовые пояса',
+    timezonesDesc: 'Добавьте до 5 дополнительных часов часовых поясов под основными часами',
+    selectTimezone: 'Выберите часовой пояс...',
+    addTimezone: 'Добавить',
     searchPlaceholder: 'Поиск или ввод сайта',
     searchWith: 'Поиск через',
     searchProviderGoogle: 'Google',
