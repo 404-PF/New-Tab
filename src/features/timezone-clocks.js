@@ -92,12 +92,6 @@
     return null;
   }
 
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
   function formatZoneTime(date, zoneId, locale, clockFormat) {
     try {
       const options = {
@@ -148,13 +142,34 @@
       chip.className = 'timezone-chip';
       chip.dataset.zone = zoneId;
 
-      chip.innerHTML =
-        '<span class="timezone-city">' + escapeHtml(city) + '</span>' +
-        '<span class="timezone-time">' + time + '</span>' +
-        '<button class="timezone-remove" title="' + escapeHtml(removeTitle) + '" aria-label="' + escapeHtml(removeLabel) + '">' +
-          '<svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
-        '</button>';
+      const cityEl = document.createElement('span');
+      cityEl.className = 'timezone-city';
+      cityEl.textContent = city;
 
+      const timeEl = document.createElement('span');
+      timeEl.className = 'timezone-time';
+      timeEl.textContent = time;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'timezone-remove';
+      removeBtn.title = removeTitle;
+      removeBtn.setAttribute('aria-label', removeLabel);
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 16 16');
+      svg.setAttribute('width', '12');
+      svg.setAttribute('height', '12');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M4 4l8 8M12 4l-8 8');
+      path.setAttribute('stroke', 'currentColor');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(path);
+      removeBtn.appendChild(svg);
+
+      chip.appendChild(cityEl);
+      chip.appendChild(timeEl);
+      chip.appendChild(removeBtn);
       container.appendChild(chip);
     });
   }

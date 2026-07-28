@@ -232,5 +232,29 @@
         "example": "5"
       }
     }
+  },
+  "timezones": {
+    "message": "시간대",
+    "description": "Section header for time zone clock settings"
+  },
+  "timezonesDesc": {
+    "message": "기본 시계 아래에 최대 5개의 추가 시간대 시계를 추가하세요",
+    "description": "Description for the time zone settings section"
+  },
+  "selectTimezone": {
+    "message": "시간대 선택...",
+    "description": "Placeholder for time zone dropdown"
+  },
+  "addTimezone": {
+    "message": "추가",
+    "description": "Button to add a selected time zone"
+  },
+  "removeTimezone": {
+    "message": "제거",
+    "description": "Title for a time zone remove control"
+  },
+  "removeTimezoneLabel": {
+    "message": "{city} 시간대 제거",
+    "description": "Accessible label for removing a specific time zone"
   }
 }

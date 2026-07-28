@@ -617,6 +617,11 @@
         window.initSettings();
       }
 
+      // Refresh timezone views after merge/replace
+      if (typeof window.renderExtraClocks === 'function') {
+        window.renderExtraClocks();
+      }
+
       // Reinitialize the search provider bar so imported providers/selection take effect live
       if (typeof window.refreshProviderBar === 'function') {
         window.refreshProviderBar();

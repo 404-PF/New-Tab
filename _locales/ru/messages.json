@@ -232,5 +232,29 @@
         "example": "5"
       }
     }
+  },
+  "timezones": {
+    "message": "Часовые пояса",
+    "description": "Section header for time zone clock settings"
+  },
+  "timezonesDesc": {
+    "message": "Добавьте до 5 дополнительных часов часовых поясов под основными часами",
+    "description": "Description for the time zone settings section"
+  },
+  "selectTimezone": {
+    "message": "Выберите часовой пояс...",
+    "description": "Placeholder for time zone dropdown"
+  },
+  "addTimezone": {
+    "message": "Добавить",
+    "description": "Button to add a selected time zone"
+  },
+  "removeTimezone": {
+    "message": "Удалить",
+    "description": "Title for a time zone remove control"
+  },
+  "removeTimezoneLabel": {
+    "message": "Удалить часовой пояс {city}",
+    "description": "Accessible label for removing a specific time zone"
   }
 }
