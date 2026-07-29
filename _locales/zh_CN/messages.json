@@ -249,6 +249,62 @@
     "message": "添加",
     "description": "Button to add a selected time zone"
   },
+  "pomodoroPhaseWork": {
+    "message": "Focus",
+    "description": "Phase label for the work/focus session"
+  },
+  "pomodoroPhaseShortBreak": {
+    "message": "Short Break",
+    "description": "Phase label for the short break"
+  },
+  "pomodoroPhaseLongBreak": {
+    "message": "Long Break",
+    "description": "Phase label for the long break"
+  },
+  "pomodoroSessionLabel": {
+    "message": "Session {number}",
+    "description": "Label showing the current session number"
+  },
+  "pomodoroPause": {
+    "message": "Pause",
+    "description": "Title for the pause button"
+  },
+  "pomodoroResume": {
+    "message": "Resume",
+    "description": "Title for the resume button"
+  },
+  "pomodoroSkip": {
+    "message": "Skip",
+    "description": "Title for the skip button"
+  },
+  "pomodoroReset": {
+    "message": "Reset",
+    "description": "Title for the reset button"
+  },
+  "pomodoroStartFocus": {
+    "message": "Start Focus",
+    "description": "Title for the focus button on a todo item"
+  },
+  "pomodoroStopFocus": {
+    "message": "Stop Focus",
+    "description": "Title for stopping focus on a todo item"
+  },
+  "pomodoroWorkComplete": {
+    "message": "Focus session complete!",
+    "description": "Notification title when a work session ends"
+  },
+  "pomodoroWorkCompleteBody": {
+    "message": "Task: {task}",
+    "description": "Notification body for completed work session with task name"
+  },
+  "pomodoroBreakComplete": {
+    "message": "Break over!",
+    "description": "Notification title when a break ends"
+  },
+  "pomodoroBreakCompleteBody": {
+    "message": "Ready to focus again?",
+    "description": "Notification body when a break ends"
+  },
   "removeTimezone": {
     "message": "移除",
     "description": "Title for a time zone remove control"

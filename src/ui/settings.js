@@ -1467,6 +1467,7 @@ function initPomodoroSettings() {
         durationSettings.style.display = this.checked ? 'block' : 'none';
       }
       if (typeof applyPomodoroEnabled === 'function') applyPomodoroEnabled();
+      if (this.checked && typeof renderTodos === 'function') renderTodos();
     });
   }
 

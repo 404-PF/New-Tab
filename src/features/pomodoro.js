@@ -22,6 +22,7 @@
     phase: PHASES.WORK,
     todoId: null,
     timeRemaining: 0,
+    deadline: 0,
     sessionsCompleted: 0,
     paused: false
   };
@@ -63,6 +64,9 @@
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (parsed && parsed.active && typeof parsed.timeRemaining === 'number') {
+        if (!parsed.deadline) {
+          parsed.deadline = Date.now() + parsed.timeRemaining * 1000;
+        }
         return parsed;
       }
     } catch (error) {
@@ -84,10 +88,13 @@
   }
 
   function updateFocusButtons() {
+    const i18n = window.i18n;
     document.querySelectorAll('.todo-focus-btn').forEach(function (focusBtn) {
       const isActive = state.active && state.todoId === focusBtn.dataset.todoId;
       focusBtn.classList.toggle('active', isActive);
-      focusBtn.title = isActive ? 'Stop Focus' : 'Start Focus';
+      focusBtn.title = isActive
+        ? (i18n ? i18n.t('pomodoroStopFocus') : 'Stop Focus')
+        : (i18n ? i18n.t('pomodoroStartFocus') : 'Start Focus');
     });
   }
 
@@ -98,10 +105,11 @@
   }
 
   function getPhaseLabel(phase) {
+    const i18n = window.i18n;
     const labels = {
-      work: 'Focus',
-      shortBreak: 'Short Break',
-      longBreak: 'Long Break'
+      work: i18n ? i18n.t('pomodoroPhaseWork') : 'Focus',
+      shortBreak: i18n ? i18n.t('pomodoroPhaseShortBreak') : 'Short Break',
+      longBreak: i18n ? i18n.t('pomodoroPhaseLongBreak') : 'Long Break'
     };
     return labels[phase] || phase;
   }
@@ -157,17 +165,17 @@
 
     const pauseBtn = document.createElement('button');
     pauseBtn.className = 'pomodoro-btn pomodoro-pause-btn';
-    pauseBtn.title = 'Pause';
+    pauseBtn.title = window.i18n ? window.i18n.t('pomodoroPause') : 'Pause';
     pauseBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
 
     const skipBtn = document.createElement('button');
     skipBtn.className = 'pomodoro-btn pomodoro-skip-btn';
-    skipBtn.title = 'Skip';
+    skipBtn.title = window.i18n ? window.i18n.t('pomodoroSkip') : 'Skip';
     skipBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polygon points="5,4 15,12 5,20"/><line x1="19" y1="5" x2="19" y2="19"/></svg>';
 
     const resetBtn = document.createElement('button');
     resetBtn.className = 'pomodoro-btn pomodoro-reset-btn';
-    resetBtn.title = 'Reset';
+    resetBtn.title = window.i18n ? window.i18n.t('pomodoroReset') : 'Reset';
     resetBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
 
     controls.appendChild(pauseBtn);
@@ -200,12 +208,12 @@
 
     if (phaseEl) phaseEl.textContent = getPhaseLabel(state.phase);
     if (timeEl) timeEl.textContent = formatTime(state.timeRemaining);
-    if (sessionsEl) sessionsEl.textContent = 'Session ' + (state.sessionsCompleted + 1);
+    if (sessionsEl) sessionsEl.textContent = window.i18n ? window.i18n.t('pomodoroSessionLabel', { number: String(state.sessionsCompleted + 1) }) : 'Session ' + (state.sessionsCompleted + 1);
     if (pauseBtn) {
       pauseBtn.innerHTML = state.paused
         ? '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><polygon points="5,3 19,12 5,21"/></svg>'
         : '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-      pauseBtn.title = state.paused ? 'Resume' : 'Pause';
+      pauseBtn.title = state.paused ? (window.i18n ? window.i18n.t('pomodoroResume') : 'Resume') : (window.i18n ? window.i18n.t('pomodoroPause') : 'Pause');
     }
 
     widget.classList.toggle('pomodoro-work', state.phase === PHASES.WORK);
@@ -235,7 +243,12 @@
     }
 
     if (persisted && persisted.ownerId === TAB_ID) state = persisted;
-    state.timeRemaining--;
+
+    if (state.deadline) {
+      state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
+    } else {
+      state.timeRemaining--;
+    }
 
     if (state.timeRemaining <= 0) {
       onPhaseComplete();
@@ -252,16 +265,24 @@
     if (!state.active || !_isLeader) return;
     const isWork = state.phase === PHASES.WORK;
     const todoText = getTodoText(state.todoId);
+    const i18n = window.i18n;
 
     if (isWork) {
-      sendNotification('Focus session complete!', todoText ? 'Task: ' + todoText : 'Time for a break.');
+      sendNotification(
+        i18n ? i18n.t('pomodoroWorkComplete') : 'Focus session complete!',
+        todoText ? (i18n ? i18n.t('pomodoroWorkCompleteBody', { task: todoText }) : 'Task: ' + todoText) : (i18n ? i18n.t('pomodoroBreakCompleteBody') : 'Time for a break.')
+      );
     } else {
-      sendNotification('Break over!', 'Ready to focus again?');
+      sendNotification(
+        i18n ? i18n.t('pomodoroBreakComplete') : 'Break over!',
+        i18n ? i18n.t('pomodoroBreakCompleteBody') : 'Ready to focus again?'
+      );
     }
 
     const nextPhase = getNextPhase();
     state.phase = nextPhase;
     state.timeRemaining = getPhaseDuration(nextPhase);
+    state.deadline = Date.now() + state.timeRemaining * 1000;
     state.ownerId = TAB_ID;
     state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
     saveTimerState();
@@ -291,6 +312,7 @@
     state.phase = PHASES.WORK;
     state.todoId = todoId;
     state.timeRemaining = getPhaseDuration(PHASES.WORK);
+    state.deadline = Date.now() + state.timeRemaining * 1000;
     state.paused = false;
     state.ownerId = TAB_ID;
     state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
@@ -308,6 +330,7 @@
     state.phase = PHASES.WORK;
     state.todoId = null;
     state.timeRemaining = 0;
+    state.deadline = 0;
     state.sessionsCompleted = 0;
     state.paused = false;
     state.ownerId = null;
@@ -325,11 +348,18 @@
     if (state.paused) {
       if (!claimLeadership(true)) return;
       state.paused = false;
+      if (state.timeRemaining > 0) {
+        state.deadline = Date.now() + state.timeRemaining * 1000;
+      }
       state.ownerId = TAB_ID;
       state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
       startInterval();
     } else {
       state.paused = true;
+      if (state.deadline) {
+        state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
+      }
+      state.deadline = 0;
       state.ownerId = null;
       state.ownerLeaseExpiresAt = 0;
       _isLeader = false;
@@ -349,17 +379,12 @@
   function startInterval() {
     stopInterval();
     if (!state.active || state.paused || !_isLeader) return;
-    if (window.VisibilityInterval) {
-      _timerInterval = new window.VisibilityInterval(tick, 1000);
-    } else {
-      _timerInterval = setInterval(tick, 1000);
-    }
+    _timerInterval = setInterval(tick, 1000);
   }
 
   function stopInterval() {
     if (_timerInterval) {
-      if (_timerInterval.destroy) _timerInterval.destroy();
-      else clearInterval(_timerInterval);
+      clearInterval(_timerInterval);
       _timerInterval = null;
     }
   }
@@ -386,6 +411,7 @@
         phase: PHASES.WORK,
         todoId: null,
         timeRemaining: 0,
+        deadline: 0,
         sessionsCompleted: 0,
         paused: false
       };
@@ -395,6 +421,9 @@
 
     const wasLeader = _isLeader;
     state = nextState;
+    if (!state.deadline && state.timeRemaining > 0 && !state.paused) {
+      state.deadline = Date.now() + state.timeRemaining * 1000;
+    }
     startCoordinationInterval();
     if (state.ownerId === TAB_ID && !state.paused) {
       _isLeader = true;
@@ -418,6 +447,9 @@
     }
 
     state = persisted;
+    if (!state.deadline && state.timeRemaining > 0 && !state.paused) {
+      state.deadline = Date.now() + state.timeRemaining * 1000;
+    }
     state.ownerId = TAB_ID;
     state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
     _isLeader = true;
@@ -492,7 +524,10 @@
     focusBtn.dataset.todoId = todoId;
     const isActive = state.active && state.todoId === todoId;
     focusBtn.classList.toggle('active', isActive);
-    focusBtn.title = isActive ? 'Stop Focus' : 'Start Focus';
+    const i18n = window.i18n;
+    focusBtn.title = isActive
+      ? (i18n ? i18n.t('pomodoroStopFocus') : 'Stop Focus')
+      : (i18n ? i18n.t('pomodoroStartFocus') : 'Start Focus');
     focusBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>';
     todoActions.appendChild(focusBtn);
   }
@@ -541,6 +576,20 @@
       }
     }
 
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && state.active && _isLeader && !state.paused) {
+        if (state.deadline) {
+          state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
+          if (state.timeRemaining <= 0) {
+            onPhaseComplete();
+            return;
+          }
+          saveTimerState();
+          updateWidget();
+        }
+      }
+    });
+
     document.addEventListener('click', handleTodoClick);
     document.addEventListener('click', handleWidgetClick);
   }
@@ -568,6 +617,7 @@
       const newDuration = getPhaseDuration(state.phase);
       if (newDuration !== previousDuration) {
         state.timeRemaining = newDuration;
+        state.deadline = Date.now() + newDuration * 1000;
         saveTimerState();
         updateWidget();
       }
