@@ -641,7 +641,7 @@ describe('Notes tags and drag-and-drop', () => {
     expect(getNotes().map(note => note.id)).toEqual(['second', 'first']);
   });
 
-  it('reorders the actual note order when dragging to the tail of a filtered list', () => {
+  it('preserves hidden-note positions when dragging to the tail of a filtered list', () => {
     setNotes([
       { id: 'first', text: 'First', tag: 'work', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
       { id: 'untagged', text: 'Untagged', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
@@ -677,7 +677,7 @@ describe('Notes tags and drag-and-drop', () => {
     Object.defineProperty(drop, 'dataTransfer', { value: dataTransfer });
     target.dispatchEvent(drop);
 
-    expect(getNotes().map(note => note.id)).toEqual(['untagged', 'second', 'first']);
+    expect(getNotes().map(note => note.id)).toEqual(['second', 'untagged', 'first']);
   });
 
   it('preserves pending text edits when opening the tag picker', () => {

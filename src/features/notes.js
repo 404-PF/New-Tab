@@ -373,22 +373,19 @@
     const shouldRestoreFocus = activeElement && activeElement.classList.contains('note-grip')
       && activeElement.closest('.note-item')?.dataset.id === movedNote.id;
 
-    const actualFromIndex = notes.findIndex(n => n.id === movedNote.id);
-    let actualToIndex;
-    if (toIndex >= filtered.length) {
-      const lastFiltered = filtered[filtered.length - 1];
-      actualToIndex = notes.findIndex(n => n.id === lastFiltered.id);
-      if (actualToIndex !== -1) actualToIndex += 1;
-    } else {
-      const targetNote = filtered[toIndex];
-      actualToIndex = notes.findIndex(n => n.id === targetNote.id);
-    }
+    const reorderedFiltered = [...filtered];
+    const [removed] = reorderedFiltered.splice(fromIndex, 1);
+    const insertionIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
+    reorderedFiltered.splice(Math.min(insertionIndex, reorderedFiltered.length), 0, removed);
 
-    if (actualFromIndex === -1 || actualToIndex === -1) return;
-
-    const [removed] = notes.splice(actualFromIndex, 1);
-    const insertAt = actualToIndex > actualFromIndex ? actualToIndex - 1 : actualToIndex;
-    notes.splice(insertAt, 0, removed);
+    // When a tag filter is active, only replace the visible notes in their
+    // existing slots so unfiltered notes keep their relative positions.
+    const filteredSlots = notes
+      .map((note, index) => (_activeTagFilter === null || note.tag === _activeTagFilter ? index : -1))
+      .filter(index => index !== -1);
+    filteredSlots.forEach((slot, index) => {
+      notes[slot] = reorderedFiltered[index];
+    });
 
     notes.forEach((n, i) => { n.order = i; });
 
