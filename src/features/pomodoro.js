@@ -24,12 +24,14 @@
     timeRemaining: 0,
     deadline: 0,
     sessionsCompleted: 0,
-    paused: false
+    paused: false,
+    pauseReason: null
   };
 
   let _timerInterval = null;
   let _coordinationInterval = null;
   let _isLeader = false;
+  let _isCompletingPhase = false;
 
   function loadSettings() {
     try {
@@ -78,13 +80,17 @@
   function saveTimerState() {
     try {
       localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state));
-    } catch (_e) { /* ignore */ }
+    } catch (error) {
+      console.warn('Failed to save Pomodoro timer state to localStorage:', error);
+    }
   }
 
   function clearTimerState() {
     try {
       localStorage.removeItem(TIMER_STATE_KEY);
-    } catch (_e) { /* ignore */ }
+    } catch (error) {
+      console.warn('Failed to clear Pomodoro timer state from localStorage:', error);
+    }
   }
 
   function updateFocusButtons() {
@@ -236,14 +242,6 @@
   function tick() {
     if (!state.active || state.paused || !_isLeader) return;
 
-    const persisted = loadTimerState();
-    if (persisted && persisted.ownerId !== TAB_ID && persisted.ownerLeaseExpiresAt > Date.now()) {
-      applyTimerState(persisted);
-      return;
-    }
-
-    if (persisted && persisted.ownerId === TAB_ID) state = persisted;
-
     if (state.deadline) {
       state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
     } else {
@@ -251,7 +249,7 @@
     }
 
     if (state.timeRemaining <= 0) {
-      onPhaseComplete();
+      completePhase();
       return;
     }
 
@@ -289,6 +287,16 @@
     updateWidget();
   }
 
+  function completePhase() {
+    if (_isCompletingPhase || !state.active || !_isLeader) return;
+    _isCompletingPhase = true;
+    try {
+      onPhaseComplete();
+    } finally {
+      _isCompletingPhase = false;
+    }
+  }
+
   function getTodoText(todoId) {
     if (!todoId) return '';
     try {
@@ -314,6 +322,7 @@
     state.timeRemaining = getPhaseDuration(PHASES.WORK);
     state.deadline = Date.now() + state.timeRemaining * 1000;
     state.paused = false;
+    state.pauseReason = null;
     state.ownerId = TAB_ID;
     state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
     _isLeader = true;
@@ -333,6 +342,7 @@
     state.deadline = 0;
     state.sessionsCompleted = 0;
     state.paused = false;
+    state.pauseReason = null;
     state.ownerId = null;
     state.ownerLeaseExpiresAt = 0;
     _isLeader = false;
@@ -348,6 +358,7 @@
     if (state.paused) {
       if (!claimLeadership(true)) return;
       state.paused = false;
+      state.pauseReason = null;
       if (state.timeRemaining > 0) {
         state.deadline = Date.now() + state.timeRemaining * 1000;
       }
@@ -360,6 +371,7 @@
         state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
       }
       state.deadline = 0;
+      state.pauseReason = 'manual';
       state.ownerId = null;
       state.ownerLeaseExpiresAt = 0;
       _isLeader = false;
@@ -373,24 +385,30 @@
   function skipPhase() {
     if (!state.active) return;
     if (!_isLeader && !claimLeadership(true)) return;
-    onPhaseComplete();
+    completePhase();
   }
 
   function startInterval() {
     stopInterval();
     if (!state.active || state.paused || !_isLeader) return;
-    _timerInterval = setInterval(tick, 1000);
+    _timerInterval = window.VisibilityInterval
+      ? new window.VisibilityInterval(tick, 1000)
+      : setInterval(tick, 1000);
   }
 
   function stopInterval() {
     if (_timerInterval) {
-      clearInterval(_timerInterval);
+      if (typeof _timerInterval.destroy === 'function') {
+        _timerInterval.destroy();
+      } else {
+        clearInterval(_timerInterval);
+      }
       _timerInterval = null;
     }
   }
 
   function startCoordinationInterval() {
-    if (_coordinationInterval || !state.active) return;
+    if (_coordinationInterval || !state.active || _isLeader) return;
     _coordinationInterval = setInterval(reconcileTimerState, 1000);
   }
 
@@ -413,7 +431,8 @@
         timeRemaining: 0,
         deadline: 0,
         sessionsCompleted: 0,
-        paused: false
+        paused: false,
+        pauseReason: null
       };
       updateWidget();
       return;
@@ -425,12 +444,14 @@
       state.deadline = Date.now() + state.timeRemaining * 1000;
     }
     startCoordinationInterval();
-    if (state.ownerId === TAB_ID && !state.paused) {
+    if (state.ownerId === TAB_ID) {
       _isLeader = true;
-      if (!wasLeader || !_timerInterval) startInterval();
+      stopCoordinationInterval();
+      if (!state.paused && (!wasLeader || !_timerInterval)) startInterval();
     } else {
       _isLeader = false;
       stopInterval();
+      startCoordinationInterval();
     }
     updateWidget();
   }
@@ -455,12 +476,13 @@
     _isLeader = true;
     if (!(allowPaused && persisted.paused)) saveTimerState();
     updateWidget();
-    startCoordinationInterval();
+    stopCoordinationInterval();
     startInterval();
     return true;
   }
 
   function reconcileTimerState() {
+    if (_isLeader) return;
     const persisted = loadTimerState();
     if (!persisted) {
       if (state.active) applyTimerState(null);
@@ -558,8 +580,20 @@
     }
     const resetBtn = e.target.closest('.pomodoro-reset-btn');
     if (resetBtn) {
-      stopTimer();
+      resetCurrentPhase();
     }
+  }
+
+  function resetCurrentPhase() {
+    if (!state.active) return;
+    if (!_isLeader && !claimLeadership(true)) return;
+
+    state.timeRemaining = getPhaseDuration(state.phase);
+    state.deadline = state.paused ? 0 : Date.now() + state.timeRemaining * 1000;
+    state.ownerId = TAB_ID;
+    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+    saveTimerState();
+    updateWidget();
   }
 
   function initPomodoro() {
@@ -577,16 +611,29 @@
     }
 
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden && state.active && _isLeader && !state.paused) {
+      if (!state.active || !_isLeader) return;
+
+      if (document.hidden && !state.paused) {
         if (state.deadline) {
           state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
-          if (state.timeRemaining <= 0) {
-            onPhaseComplete();
-            return;
-          }
-          saveTimerState();
-          updateWidget();
         }
+        state.deadline = 0;
+        state.paused = true;
+        state.pauseReason = 'visibility';
+        state.ownerId = TAB_ID;
+        state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+        stopInterval();
+        saveTimerState();
+        updateWidget();
+      } else if (!document.hidden && state.paused && state.pauseReason === 'visibility') {
+        state.paused = false;
+        state.pauseReason = null;
+        state.deadline = Date.now() + state.timeRemaining * 1000;
+        state.ownerId = TAB_ID;
+        state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+        saveTimerState();
+        updateWidget();
+        startInterval();
       }
     });
 

@@ -276,7 +276,17 @@
     weatherUnit: function (v) { return typeof v === 'string'; },
     weatherLocationMode: function (v) { return typeof v === 'string'; },
     weatherManualCity: function (v) { return typeof v === 'string'; },
-    pomodoro: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
+    pomodoro: function (v) {
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+      const integerInRange = function (value, min, max) {
+        return Number.isInteger(value) && value >= min && value <= max;
+      };
+      return typeof v.enabled === 'boolean' &&
+        integerInRange(v.workDuration, 1, 120) &&
+        integerInRange(v.shortBreakDuration, 1, 30) &&
+        integerInRange(v.longBreakDuration, 1, 60) &&
+        integerInRange(v.sessionsBeforeLongBreak, 1, 10);
+    },
     ai_conversations: function (v) {
       if (!Array.isArray(v)) return false;
       return v.every(function (item) {
