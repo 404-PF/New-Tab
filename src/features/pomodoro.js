@@ -495,11 +495,6 @@
       applyTimerState(persisted);
       return;
     }
-    if (_isLeader && ownsLease) {
-      state = persisted;
-      updateWidget();
-      return;
-    }
     if (!_isLeader && persisted.active && !persisted.paused) {
       claimLeadership();
       return;
@@ -589,7 +584,9 @@
     if (!_isLeader && !claimLeadership(true)) return;
 
     state.timeRemaining = getPhaseDuration(state.phase);
-    state.deadline = state.paused ? 0 : Date.now() + state.timeRemaining * 1000;
+    state.deadline = Date.now() + state.timeRemaining * 1000;
+    state.paused = false;
+    state.pauseReason = null;
     state.ownerId = TAB_ID;
     state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
     saveTimerState();

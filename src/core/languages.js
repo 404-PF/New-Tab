@@ -3817,11 +3817,22 @@ const pomodoroTranslations = {
   },
   ru: {
     enablePomodoro: 'Включить таймер «Помодоро»', pomodoroDurations: 'Длительность таймера', pomodoroDurationsDesc: 'Настройте длительность работы и перерывов (в минутах)', pomodoroWork: 'Работа', pomodoroShortBreak: 'Короткий перерыв', pomodoroLongBreak: 'Длинный перерыв', pomodoroSessionsBeforeLong: 'Сессий до длинного перерыва', pomodoroPhaseWork: 'Фокус', pomodoroPhaseShortBreak: 'Короткий перерыв', pomodoroPhaseLongBreak: 'Длинный перерыв', pomodoroSessionLabel: 'Сессия {number}', pomodoroPause: 'Пауза', pomodoroResume: 'Продолжить', pomodoroSkip: 'Пропустить', pomodoroReset: 'Сбросить', pomodoroStartFocus: 'Начать фокус', pomodoroStopFocus: 'Остановить фокус', pomodoroWorkComplete: 'Фокус-сессия завершена!', pomodoroWorkCompleteBody: 'Задача: {task}', pomodoroBreakComplete: 'Перерыв окончен!', pomodoroBreakCompleteBody: 'Готовы снова сосредоточиться?'
+  },
+  en_US: {
+    enablePomodoro: 'Enable Pomodoro focus timer', pomodoroDurations: 'Focus Timer Durations', pomodoroDurationsDesc: 'Configure work and break durations (in minutes)', pomodoroWork: 'Work', pomodoroShortBreak: 'Short Break', pomodoroLongBreak: 'Long Break', pomodoroSessionsBeforeLong: 'Sessions before long break', pomodoroPhaseWork: 'Focus', pomodoroPhaseShortBreak: 'Short Break', pomodoroPhaseLongBreak: 'Long Break', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Pause', pomodoroResume: 'Resume', pomodoroSkip: 'Skip', pomodoroReset: 'Reset', pomodoroStartFocus: 'Start Focus', pomodoroStopFocus: 'Stop Focus', pomodoroWorkComplete: 'Focus session complete!', pomodoroWorkCompleteBody: 'Task: {task}', pomodoroBreakComplete: 'Break over!', pomodoroBreakCompleteBody: 'Ready to focus again?'
+  },
+  pt_BR: {
+    enablePomodoro: 'Ativar temporizador Pomodoro', pomodoroDurations: 'Durações do temporizador', pomodoroDurationsDesc: 'Configure as durações de trabalho e pausa (em minutos)', pomodoroWork: 'Trabalho', pomodoroShortBreak: 'Pausa curta', pomodoroLongBreak: 'Pausa longa', pomodoroSessionsBeforeLong: 'Sessões antes da pausa longa', pomodoroPhaseWork: 'Foco', pomodoroPhaseShortBreak: 'Pausa curta', pomodoroPhaseLongBreak: 'Pausa longa', pomodoroSessionLabel: 'Sessão {number}', pomodoroPause: 'Pausar', pomodoroResume: 'Retomar', pomodoroSkip: 'Pular', pomodoroReset: 'Redefinir', pomodoroStartFocus: 'Iniciar foco', pomodoroStopFocus: 'Parar foco', pomodoroWorkComplete: 'Sessão de foco concluída!', pomodoroWorkCompleteBody: 'Tarefa: {task}', pomodoroBreakComplete: 'Pausa terminada!', pomodoroBreakCompleteBody: 'Pronto para focar novamente?'
+  },
+  zh_CN: {
+    enablePomodoro: '启用番茄钟专注计时器', pomodoroDurations: '专注计时器时长', pomodoroDurationsDesc: '配置工作和休息时长（分钟）', pomodoroWork: '专注', pomodoroShortBreak: '短休息', pomodoroLongBreak: '长休息', pomodoroSessionsBeforeLong: '长休息前的专注次数', pomodoroPhaseWork: '专注', pomodoroPhaseShortBreak: '短休息', pomodoroPhaseLongBreak: '长休息', pomodoroSessionLabel: '第 {number} 次', pomodoroPause: '暂停', pomodoroResume: '继续', pomodoroSkip: '跳过', pomodoroReset: '重置', pomodoroStartFocus: '开始专注', pomodoroStopFocus: '停止专注', pomodoroWorkComplete: '专注完成！', pomodoroWorkCompleteBody: '任务：{task}', pomodoroBreakComplete: '休息结束！', pomodoroBreakCompleteBody: '准备好重新专注了吗？'
   }
 };
 
 Object.keys(pomodoroTranslations).forEach(function (language) {
-  Object.assign(translations[language], pomodoroTranslations[language]);
+  if (translations[language]) {
+    Object.assign(translations[language], pomodoroTranslations[language]);
+  }
 });
 
 const SUPPORTED_LANGUAGES = [
