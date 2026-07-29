@@ -565,13 +565,35 @@
       cancelBlur();
       blurTimer = setTimeout(() => {
         blurTimer = null;
-        if (!picker.isConnected || picker.contains(document.activeElement)) return;
+        if (!picker.isConnected) {
+          const val = input.value.trim();
+          if (val !== (note.tag || '')) {
+            updateNoteTag(noteId, val);
+          }
+          return;
+        }
+        if (picker.contains(document.activeElement)) return;
         const val = input.value.trim();
         if (val !== (note.tag || '')) {
           updateNoteTag(noteId, val);
         }
         picker.remove();
       }, 150);
+    });
+
+    picker.addEventListener('focusout', (e) => {
+      const next = e.relatedTarget;
+      if (next && picker.contains(next)) {
+        cancelBlur();
+        return;
+      }
+      cancelBlur();
+      if (!picker.isConnected) return;
+      const val = input.value.trim();
+      if (val !== (note.tag || '')) {
+        updateNoteTag(noteId, val);
+      }
+      picker.remove();
     });
 
     picker.addEventListener('mousedown', (e) => {

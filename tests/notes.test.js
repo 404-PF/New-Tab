@@ -526,6 +526,66 @@ describe('Notes tags and drag-and-drop', () => {
     expect(getNotes().find(note => note.id === 'first').tag).toBe('work');
   });
 
+  it('commits a typed tag when renderNotes removes the picker before the blur timer fires', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    const tagButton = document.querySelector('.note-tag-btn[data-id="first"]');
+    tagButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    input.value = 'work';
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+
+    document.querySelector('.note-item[data-id="first"]').remove();
+
+    vi.advanceTimersByTime(150);
+
+    expect(getNotes().find(n => n.id === 'first').tag).toBe('work');
+  });
+
+  it('cancels the blur timer when focus moves within the picker', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: 'old', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: 'new', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    document.querySelector('.note-tag-btn[data-id="first"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    const suggestion = document.querySelector('.note-tag-suggestion[data-tag="new"]');
+
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    suggestion.dispatchEvent(new FocusEvent('focusout', { relatedTarget: suggestion, bubbles: true }));
+
+    vi.advanceTimersByTime(150);
+
+    expect(document.querySelector('.note-tag-picker')).toBeTruthy();
+    expect(getNotes().find(n => n.id === 'first').tag).toBe('old');
+  });
+
+  it('commits typed tag when focus leaves the picker entirely via focusout', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    document.querySelector('.note-tag-btn[data-id="first"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    input.value = 'work';
+
+    input.dispatchEvent(new FocusEvent('focusout', { relatedTarget: null, bubbles: true }));
+
+    expect(getNotes().find(n => n.id === 'first').tag).toBe('work');
+    expect(document.querySelector('.note-tag-picker')).toBeFalsy();
+  });
+
   it('persists typed tag text before a filter re-renders the notes', () => {
     vi.useFakeTimers();
     setNotes([
