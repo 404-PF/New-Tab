@@ -577,6 +577,8 @@
         if (val !== (note.tag || '')) {
           updateNoteTag(noteId, val);
         }
+        const card = picker.closest('.note-item');
+        if (card) card.classList.remove('tag-picker-open');
         picker.remove();
       }, 150);
     });
@@ -593,6 +595,8 @@
       if (val !== (note.tag || '')) {
         updateNoteTag(noteId, val);
       }
+      const card = picker.closest('.note-item');
+      if (card) card.classList.remove('tag-picker-open');
       picker.remove();
     });
 
