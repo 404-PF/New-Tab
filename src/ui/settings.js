@@ -1444,6 +1444,62 @@ if (notesEnabledSetting) {
   });
 }
 
+// Pomodoro settings
+function updatePomodoroDurationSettingsVisibility(durationSettings, enabled) {
+  if (durationSettings) {
+    durationSettings.style.display = enabled ? 'block' : 'none';
+  }
+}
+
+function initPomodoroEnabledSetting(enabledCheckbox, durationSettings) {
+  if (!enabledCheckbox || typeof loadPomodoroEnabled !== 'function') return;
+
+  enabledCheckbox.checked = loadPomodoroEnabled();
+  updatePomodoroDurationSettingsVisibility(durationSettings, enabledCheckbox.checked);
+  enabledCheckbox.addEventListener('change', function () {
+    const settings = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations() : {};
+    settings.enabled = this.checked;
+    if (typeof savePomodoroDurations === 'function') savePomodoroDurations(settings);
+    updatePomodoroDurationSettingsVisibility(durationSettings, this.checked);
+    if (typeof window.applyPomodoroEnabled === 'function') window.applyPomodoroEnabled();
+    if (typeof window.renderTodos === 'function') window.renderTodos();
+  });
+}
+
+function initPomodoroDurationInput(input, setting, min, max, defaultValue) {
+  if (!input) return;
+
+  input.value = typeof loadPomodoroDurations === 'function'
+    ? loadPomodoroDurations()[setting]
+    : defaultValue;
+  input.addEventListener('change', function () {
+    const value = Math.max(min, Math.min(max, Number.parseInt(this.value, 10) || defaultValue));
+    this.value = value;
+    if (typeof savePomodoroDurations === 'function') savePomodoroDurations({ [setting]: value });
+  });
+}
+
+function initPomodoroSettings() {
+  const enabledCheckbox = document.getElementById('pomodoro-enabled-setting');
+  const durationSettings = document.getElementById('pomodoro-duration-settings');
+  const workInput = document.getElementById('pomodoro-work-duration');
+  const shortBreakInput = document.getElementById('pomodoro-short-break-duration');
+  const longBreakInput = document.getElementById('pomodoro-long-break-duration');
+  const sessionsInput = document.getElementById('pomodoro-sessions-before-long');
+
+  initPomodoroEnabledSetting(enabledCheckbox, durationSettings);
+  initPomodoroDurationInput(workInput, 'workDuration', 1, 120, 25);
+  initPomodoroDurationInput(shortBreakInput, 'shortBreakDuration', 1, 30, 5);
+  initPomodoroDurationInput(longBreakInput, 'longBreakDuration', 1, 60, 15);
+  initPomodoroDurationInput(sessionsInput, 'sessionsBeforeLongBreak', 1, 10, 4);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPomodoroSettings);
+} else {
+  initPomodoroSettings();
+}
+
 // Settings menu logic
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];
