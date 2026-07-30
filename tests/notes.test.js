@@ -58,6 +58,45 @@ describe('Notes persistence', () => {
     expect(document.querySelectorAll('.note-item')).toHaveLength(0);
   });
 
+  it('migrates legacy notes missing order and tag fields', () => {
+    setNotes([{ id: 'legacy', text: 'Legacy note', createdAt: '2026-01-01', updatedAt: '2026-01-01' }]);
+    initNotes();
+
+    expect(getNotes()[0]).toMatchObject({ id: 'legacy', order: 0, tag: '' });
+  });
+
+  it('normalizes duplicate or non-finite orders while preserving merged list order', () => {
+    setNotes([
+      { id: 'existing-1', text: 'Existing 1', order: 0 },
+      { id: 'existing-2', text: 'Existing 2', order: 1 },
+      { id: 'imported-1', text: 'Imported 1', order: 0 },
+      { id: 'imported-2', text: 'Imported 2', order: null }
+    ]);
+    initNotes();
+
+    const notes = getNotes();
+    expect(notes.map(note => note.id)).toEqual([
+      'existing-1',
+      'existing-2',
+      'imported-1',
+      'imported-2'
+    ]);
+    expect(notes.map(note => note.order)).toEqual([0, 1, 2, 3]);
+  });
+
+  it('normalizes out-of-order values while preserving the stored array order', () => {
+    setNotes([
+      { id: 'existing', text: 'Existing', order: 0 },
+      { id: 'imported-1', text: 'Imported 1', order: -2 },
+      { id: 'imported-2', text: 'Imported 2', order: -1 }
+    ]);
+    initNotes();
+
+    const notes = getNotes();
+    expect(notes.map(note => note.id)).toEqual(['existing', 'imported-1', 'imported-2']);
+    expect(notes.map(note => note.order)).toEqual([0, 1, 2]);
+  });
+
   it('rolls back note mutations on save failure', () => {
     const note = { id: '1', text: 'Keep me', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
     setNotes([note]);
@@ -354,6 +393,351 @@ describe('Notes event handlers', () => {
     ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(blurSpy).not.toHaveBeenCalled();
     blurSpy.mockRestore();
+  });
+});
+
+describe('Notes tags and drag-and-drop', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  it('adds a new note with the active tag filter', () => {
+    setNotes([
+      { id: 'tagged', text: 'Tagged', tag: 'work', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    const filterButton = document.querySelector('.note-tag-filter-btn[data-tag="work"]');
+    filterButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    addNote();
+
+    expect(getNotes()[0].tag).toBe('work');
+    expect(document.querySelectorAll('.note-item')).toHaveLength(2);
+  });
+
+  it('resets the active filter when its last tag is removed', () => {
+    setNotes([
+      { id: 'tagged', text: 'Tagged', tag: 'work', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    document.querySelector('.note-tag-filter-btn[data-tag="work"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    updateNoteTag('tagged', '');
+
+    expect(document.getElementById('notes-tag-filter').style.display).toBe('none');
+    expect(document.querySelectorAll('.note-item')).toHaveLength(1);
+  });
+
+  it('keeps the selected tag when a picker suggestion is clicked after blur', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: 'old', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: 'new', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    const tagButton = document.querySelector('.note-tag-btn[data-id="first"]');
+    tagButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    const suggestion = document.querySelector('.note-tag-suggestion[data-tag="new"]');
+
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    suggestion.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    suggestion.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    vi.advanceTimersByTime(150);
+
+    expect(getNotes().find(note => note.id === 'first').tag).toBe('new');
+  });
+
+  it('keeps the picker open when focus moves to a suggestion button', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: 'old', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: 'new', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    document.querySelector('.note-tag-btn[data-id="first"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    const suggestion = document.querySelector('.note-tag-suggestion[data-tag="new"]');
+
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    suggestion.focus();
+    vi.advanceTimersByTime(150);
+
+    expect(document.querySelector('.note-tag-picker')).toBeTruthy();
+  });
+
+  it('keeps the picker open when focus moves to the remove button', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: 'old', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    document.querySelector('.note-tag-btn[data-id="first"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    const removeButton = document.querySelector('.note-tag-remove-btn');
+
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    removeButton.focus();
+    vi.advanceTimersByTime(150);
+
+    expect(document.querySelector('.note-tag-picker')).toBeTruthy();
+  });
+
+  it('does not let a stale blur callback close a newly opened picker', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: 'old', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: 'new', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    document.querySelector('.note-tag-btn[data-id="first"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    document.querySelector('.note-tag-input').dispatchEvent(new Event('blur', { bubbles: true }));
+    document.querySelector('.note-tag-btn[data-id="second"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    vi.advanceTimersByTime(150);
+
+    expect(document.querySelector('.note-item[data-id="second"] .note-tag-picker')).toBeTruthy();
+  });
+
+  it('persists typed tag text when the picker is closed with its tag button', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    const tagButton = document.querySelector('.note-tag-btn[data-id="first"]');
+    tagButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    input.value = 'work';
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    tagButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    vi.advanceTimersByTime(150);
+
+    expect(getNotes().find(note => note.id === 'first').tag).toBe('work');
+  });
+
+  it('commits a typed tag when renderNotes removes the picker before the blur timer fires', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    const tagButton = document.querySelector('.note-tag-btn[data-id="first"]');
+    tagButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    input.value = 'work';
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+
+    document.querySelector('.note-item[data-id="first"]').remove();
+
+    vi.advanceTimersByTime(150);
+
+    expect(getNotes().find(n => n.id === 'first').tag).toBe('work');
+  });
+
+  it('cancels the blur timer when focus moves within the picker', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: 'old', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: 'new', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    document.querySelector('.note-tag-btn[data-id="first"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    const suggestion = document.querySelector('.note-tag-suggestion[data-tag="new"]');
+
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    suggestion.dispatchEvent(new FocusEvent('focusout', { relatedTarget: suggestion, bubbles: true }));
+
+    vi.advanceTimersByTime(150);
+
+    expect(document.querySelector('.note-tag-picker')).toBeTruthy();
+    expect(getNotes().find(n => n.id === 'first').tag).toBe('old');
+  });
+
+  it('commits typed tag when focus leaves the picker entirely via focusout', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    document.querySelector('.note-tag-btn[data-id="first"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    input.value = 'work';
+
+    input.dispatchEvent(new FocusEvent('focusout', { relatedTarget: null, bubbles: true }));
+
+    expect(getNotes().find(n => n.id === 'first').tag).toBe('work');
+    expect(document.querySelector('.note-tag-picker')).toBeFalsy();
+  });
+
+  it('persists typed tag text before a filter re-renders the notes', () => {
+    vi.useFakeTimers();
+    setNotes([
+      { id: 'first', text: 'First', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: 'personal', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    const tagButton = document.querySelector('.note-tag-btn[data-id="first"]');
+    tagButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const input = document.querySelector('.note-tag-input');
+    input.value = 'work';
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    document.querySelector('.note-tag-filter-btn[data-tag="personal"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    vi.advanceTimersByTime(150);
+
+    expect(getNotes().find(note => note.id === 'first').tag).toBe('work');
+  });
+
+  it('reorders notes using the lower half of the hovered card', () => {
+    setNotes([
+      { id: 'first', text: 'First', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    const cards = document.querySelectorAll('.note-item');
+    const grip = cards[0].querySelector('.note-grip');
+    const target = cards[1];
+    target.getBoundingClientRect = () => ({ top: 0, height: 100 });
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      setData: vi.fn()
+    };
+
+    const dragStart = new Event('dragstart', { bubbles: true });
+    Object.defineProperty(dragStart, 'dataTransfer', { value: dataTransfer });
+    grip.dispatchEvent(dragStart);
+
+    const dragOver = new Event('dragover', { bubbles: true });
+    Object.defineProperties(dragOver, {
+      dataTransfer: { value: dataTransfer },
+      clientY: { value: 75 }
+    });
+    target.dispatchEvent(dragOver);
+
+    const drop = new Event('drop', { bubbles: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: dataTransfer });
+    target.dispatchEvent(drop);
+
+    expect(getNotes().map(note => note.id)).toEqual(['second', 'first']);
+  });
+
+  it('preserves hidden-note positions when dragging to the tail of a filtered list', () => {
+    setNotes([
+      { id: 'first', text: 'First', tag: 'work', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'untagged', text: 'Untagged', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: 'work', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    document.querySelector('.note-tag-filter-btn[data-tag="work"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const cards = document.querySelectorAll('.note-item');
+    const grip = cards[0].querySelector('.note-grip');
+    const target = cards[1];
+    target.getBoundingClientRect = () => ({ top: 0, height: 100 });
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      setData: vi.fn()
+    };
+
+    const dragStart = new Event('dragstart', { bubbles: true });
+    Object.defineProperty(dragStart, 'dataTransfer', { value: dataTransfer });
+    grip.dispatchEvent(dragStart);
+
+    const dragOver = new Event('dragover', { bubbles: true });
+    Object.defineProperties(dragOver, {
+      dataTransfer: { value: dataTransfer },
+      clientY: { value: 75 }
+    });
+    target.dispatchEvent(dragOver);
+
+    const drop = new Event('drop', { bubbles: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: dataTransfer });
+    target.dispatchEvent(drop);
+
+    expect(getNotes().map(note => note.id)).toEqual(['second', 'untagged', 'first']);
+  });
+
+  it('preserves pending text edits when opening the tag picker', () => {
+    setNotes([
+      { id: 'first', text: 'Original', tag: 'old', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: 'new', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    const card = document.querySelector('.note-item[data-id="first"]');
+    const textarea = card.querySelector('.note-textarea');
+    textarea.value = 'Latest typed text';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const tagButton = card.querySelector('.note-tag-btn');
+    tagButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    textarea.dispatchEvent(new Event('blur', { bubbles: true }));
+    tagButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    document.querySelector('.note-tag-suggestion[data-tag="new"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(getNotes().find(note => note.id === 'first')).toMatchObject({
+      text: 'Latest typed text',
+      tag: 'new'
+    });
+  });
+
+  it('restores grip focus after keyboard reordering', () => {
+    setNotes([
+      { id: 'first', text: 'First', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'second', text: 'Second', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'third', text: 'Third', tag: '', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    let grip = document.querySelector('.note-item[data-id="first"] .note-grip');
+    grip.focus();
+    grip.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      altKey: true,
+      bubbles: true
+    }));
+
+    expect(getNotes().map(note => note.id)).toEqual(['second', 'first', 'third']);
+    expect(document.activeElement).toBe(
+      document.querySelector('.note-item[data-id="first"] .note-grip')
+    );
+
+    grip = document.activeElement;
+    grip.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      altKey: true,
+      bubbles: true
+    }));
+
+    expect(getNotes().map(note => note.id)).toEqual(['second', 'third', 'first']);
+    expect(document.activeElement).toBe(
+      document.querySelector('.note-item[data-id="first"] .note-grip')
+    );
   });
 });
 
@@ -691,6 +1075,22 @@ describe('Notes markdown preview', () => {
       previewBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       expect(card.querySelector('.note-textarea').style.display).toBe('none');
       expect(card.querySelector('.note-preview').style.display).not.toBe('none');
+    });
+
+    it('does not delete empty note when tag button mousedown precedes blur', () => {
+      addNote();
+      const id = getNotes()[0].id;
+      const card = document.querySelector(`.note-item[data-id="${id}"]`);
+      const ta = card.querySelector('.note-textarea');
+      const tagButton = card.querySelector('.note-tag-btn');
+
+      tagButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      ta.dispatchEvent(new Event('blur', { bubbles: true }));
+
+      expect(getNotes()).toHaveLength(1);
+
+      tagButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(card.querySelector('.note-tag-picker')).toBeTruthy();
     });
 
     it('still deletes empty note on normal blur (no preview mousedown)', () => {

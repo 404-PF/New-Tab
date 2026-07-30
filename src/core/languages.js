@@ -1,5 +1,21 @@
 // src/core/languages.js - Internationalization support
 
+function createNoteTagTranslations(
+  notesFilterAll,
+  notesAddTag,
+  notesTagPlaceholder,
+  notesRemoveTag,
+  notesDragToReorder
+) {
+  return {
+    notesFilterAll,
+    notesAddTag,
+    notesTagPlaceholder,
+    notesRemoveTag,
+    notesDragToReorder
+  };
+}
+
 const translations = {
   en: {
     // General UI
@@ -33,6 +49,7 @@ const translations = {
     notesEmpty: 'No notes yet. Click + to add one!',
     notesPlaceholder: 'Type your note here...',
     notesDeleteTooltip: 'Delete Note',
+    ...createNoteTagTranslations('All', 'Add tag', 'Tag name...', 'Remove tag', 'Drag to reorder'),
     addNoteTooltip: 'Add note',
     newAppTitle: 'New App',
     newAppDescription: 'Enter a website URL to add it to your apps',
@@ -513,6 +530,7 @@ const translations = {
     notesEmpty: '还没有便签。点击 + 添加一个！',
     notesPlaceholder: '在此输入你的便签...',
     notesDeleteTooltip: '删除便签',
+    ...createNoteTagTranslations('全部', '添加标签', '标签名称...', '移除标签', '拖动以重新排序'),
     addNoteTooltip: '添加便签',
     newAppTitle: '新建应用',
     newAppDescription: '输入网站URL将其添加到您的应用',
@@ -977,6 +995,7 @@ const translations = {
     notesEmpty: 'メモはまだありません。+ をクリックして追加！',
     notesPlaceholder: 'ここにメモを入力...',
     notesDeleteTooltip: 'メモを削除',
+    ...createNoteTagTranslations('すべて', 'タグを追加', 'タグ名...', 'タグを削除', 'ドラッグして並べ替え'),
     addNoteTooltip: 'メモを追加',
     newAppTitle: '新しいアプリ',
     newAppDescription: 'WebサイトのURLを入力してアプリに追加',
@@ -1384,6 +1403,7 @@ const translations = {
     notesEmpty: '아직 메모가 없습니다. +를 클릭하여 추가하세요!',
     notesPlaceholder: '여기에 메모를 입력하세요...',
     notesDeleteTooltip: '메모 삭제',
+    ...createNoteTagTranslations('모두', '태그 추가', '태그 이름...', '태그 제거', '드래그하여 순서 변경'),
     addNoteTooltip: '메모 추가',
     newAppTitle: '새 앱',
     newAppDescription: '웹사이트 URL을 입력하여 앱에 추가',
@@ -1791,6 +1811,7 @@ const translations = {
     notesEmpty: 'Aún no hay notas. ¡Haz clic en + para agregar una!',
     notesPlaceholder: 'Escribe tu nota aquí...',
     notesDeleteTooltip: 'Eliminar nota',
+    ...createNoteTagTranslations('Todas', 'Añadir etiqueta', 'Nombre de etiqueta...', 'Eliminar etiqueta', 'Arrastra para reordenar'),
     addNoteTooltip: 'Añadir nota',
     newAppTitle: 'Nueva aplicación',
     newAppDescription: 'Ingresa la URL de un sitio web para agregarlo a tus aplicaciones',
@@ -2198,6 +2219,7 @@ const translations = {
     notesEmpty: 'Pas encore de notes. Cliquez sur + pour en ajouter une !',
     notesPlaceholder: 'Tapez votre note ici...',
     notesDeleteTooltip: 'Supprimer la note',
+    ...createNoteTagTranslations('Tout', 'Ajouter un tag', 'Nom du tag...', 'Supprimer le tag', 'Faire glisser pour réorganiser'),
     addNoteTooltip: 'Ajouter une note',
     newAppTitle: 'Nouvelle application',
     newAppDescription: 'Saisissez l\'URL d\'un site web pour l\'ajouter à vos applications',
@@ -2605,6 +2627,7 @@ const translations = {
     notesEmpty: 'Noch keine Notizen. Klicke auf +, um eine hinzuzufügen!',
     notesPlaceholder: 'Schreibe deine Notiz hier...',
     notesDeleteTooltip: 'Notiz löschen',
+    ...createNoteTagTranslations('Alle', 'Tag hinzufügen', 'Tagname...', 'Tag entfernen', 'Zum Neuordnen ziehen'),
     addNoteTooltip: 'Notiz hinzufügen',
     newAppTitle: 'Neue App',
     newAppDescription: 'Gib die URL einer Website ein, um sie zu deinen Apps hinzuzufügen',
@@ -3012,6 +3035,7 @@ const translations = {
     notesEmpty: 'Nenhuma nota ainda. Clique em + para adicionar uma!',
     notesPlaceholder: 'Digite sua nota aqui...',
     notesDeleteTooltip: 'Excluir nota',
+    ...createNoteTagTranslations('Todos', 'Adicionar etiqueta', 'Nome da etiqueta...', 'Remover etiqueta', 'Arraste para reordenar'),
     addNoteTooltip: 'Adicionar nota',
     newAppTitle: 'Novo aplicativo',
     newAppDescription: 'Digite a URL de um site para adicioná-lo aos seus aplicativos',
@@ -3419,6 +3443,7 @@ const translations = {
     notesEmpty: 'Пока нет заметок. Нажмите +, чтобы добавить!',
     notesPlaceholder: 'Введите вашу заметку здесь...',
     notesDeleteTooltip: 'Удалить заметку',
+    ...createNoteTagTranslations('Все', 'Добавить тег', 'Название тега...', 'Удалить тег', 'Перетащите для изменения порядка'),
     addNoteTooltip: 'Добавить заметку',
     newAppTitle: 'Новое приложение',
     newAppDescription: 'Введите URL сайта, чтобы добавить его в приложения',

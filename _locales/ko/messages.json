@@ -233,6 +233,26 @@
       }
     }
   },
+  "notesFilterAll": {
+    "message": "전체",
+    "description": "Label for the 'All' tag filter in notes"
+  },
+  "notesAddTag": {
+    "message": "태그 추가",
+    "description": "Button label to add a new tag to a note"
+  },
+  "notesTagPlaceholder": {
+    "message": "태그 이름...",
+    "description": "Placeholder text for the tag name input"
+  },
+  "notesRemoveTag": {
+    "message": "태그 삭제",
+    "description": "Tooltip for removing a tag from a note"
+  },
+  "notesDragToReorder": {
+    "message": "드래그하여 정렬",
+    "description": "Accessible label for the note drag handle"
+  },
   "timezones": {
     "message": "시간대",
     "description": "Section header for time zone clock settings"

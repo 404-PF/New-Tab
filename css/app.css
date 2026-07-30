@@ -1,189 +1,5 @@
 /* Todo, onboarding, AI, markdown, and simple mode styles */
 
-/* Pomodoro Timer Widget */
-.pomodoro-widget {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 10px;
-  margin-bottom: 8px;
-}
-.pomodoro-widget.pomodoro-break {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.2);
-}
-.pomodoro-display {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.pomodoro-phase {
-  font-size: 0.78em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #f87171;
-}
-.pomodoro-break .pomodoro-phase {
-  color: #4ade80;
-}
-.pomodoro-time {
-  font-size: 1.1em;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.9);
-}
-.pomodoro-sessions {
-  font-size: 0.72em;
-  color: rgba(255, 255, 255, 0.5);
-}
-.pomodoro-controls {
-  display: flex;
-  gap: 4px;
-}
-.pomodoro-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.7);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.pomodoro-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-body.light-theme .pomodoro-widget {
-  background: rgba(239, 68, 68, 0.06);
-  border-color: rgba(239, 68, 68, 0.15);
-}
-body.light-theme .pomodoro-widget.pomodoro-break {
-  background: rgba(34, 197, 94, 0.06);
-  border-color: rgba(34, 197, 94, 0.15);
-}
-body.light-theme .pomodoro-phase {
-  color: #dc2626;
-}
-body.light-theme .pomodoro-break .pomodoro-phase {
-  color: #16a34a;
-}
-body.light-theme .pomodoro-time {
-  color: #1e293b;
-}
-body.light-theme .pomodoro-btn {
-  background: #e2e8f0;
-  color: #334155;
-}
-body.light-theme .pomodoro-btn:hover {
-  background: #cbd5e1;
-}
-@keyframes pulse-glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-.pomodoro-widget:not(.pomodoro-break) .pomodoro-time {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-body[data-focus-mode="true"] .pomodoro-widget {
-  display: none !important;
-}
-
-/* Todo Focus Button */
-.todo-focus-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.3);
-  border-radius: 6px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s, color 0.15s, background 0.15s;
-}
-.todo-item:hover .todo-focus-btn {
-  opacity: 1;
-}
-.todo-focus-btn:hover {
-  color: #9a3412;
-  background: #ffedd5;
-}
-.todo-focus-btn.active {
-  color: #f97316;
-  opacity: 1;
-}
-body.light-theme .todo-focus-btn {
-  color: rgba(0, 0, 0, 0.3);
-}
-body.light-theme .todo-item:hover .todo-focus-btn {
-  opacity: 1;
-}
-body.light-theme .todo-focus-btn:hover {
-  color: #9a3412;
-  background: #ffedd5;
-}
-
-/* Pomodoro Settings */
-.pomodoro-duration-settings {
-  margin-top: 16px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-}
-.pomodoro-durations-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-.pomodoro-duration-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.pomodoro-duration-item label {
-  font-size: 0.82em;
-  color: rgba(255, 255, 255, 0.7);
-}
-body.light-theme .pomodoro-duration-item label {
-  color: #475569;
-}
-.pomodoro-duration-item input {
-  width: 100%;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  color: #fff;
-  font-size: 0.9em;
-  box-sizing: border-box;
-}
-body.light-theme .pomodoro-duration-item input {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.12);
-  color: #1e293b;
-}
-.pomodoro-duration-unit {
-  font-size: 0.75em;
-  color: rgba(255, 255, 255, 0.4);
-}
-body.light-theme .pomodoro-duration-unit {
-  color: #94a3b8;
-}
-
 /* Modern Todo List Styles */
 .todo-section {
   max-width: var(--todo-list-width);
@@ -1004,7 +820,7 @@ body.light-theme .calendar-btn.secondary:hover {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -4178,7 +3994,7 @@ body.light-theme .ai-copy-error-notification {
   right: 24px;
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: rgba(99, 102, 241, 0.9);
   border: none;
   border-radius: 50%;
   cursor: pointer;
@@ -4611,9 +4427,9 @@ body.light-theme .ai-topic-delete.ctrl-ready:hover {
   margin: 12px 0;
   padding: 8px 16px;
   border-left: 3px solid rgba(99, 102, 241, 0.5);
-  background: #3730a3;
+  background: rgba(99, 102, 241, 0.1);
   border-radius: 0 8px 8px 0;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.85);
   font-style: italic;
 }
 
@@ -5381,6 +5197,204 @@ body.simple-mode .search-bar.visible:focus-within {
   border-color: rgba(148, 163, 184, 0.2);
 }
 
+.note-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  min-width: 14px;
+  height: 20px;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.note-item:hover .note-grip,
+.note-item:focus-within .note-grip {
+  opacity: 1;
+}
+.note-grip:active {
+  cursor: grabbing;
+}
+
+.note-item.dragging {
+  opacity: 0.4;
+}
+
+.note-drag-placeholder {
+  height: 4px;
+  background: rgba(99, 102, 241, 0.5);
+  border-radius: 2px;
+  margin: 2px 0;
+}
+
+.note-tag-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+  font-size: 0.75em;
+  position: relative;
+}
+body.light-theme .note-tag-btn {
+  color: #64748b;
+}
+.note-tag-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+.note-item:hover .note-tag-btn,
+.note-item:focus-within .note-tag-btn {
+  opacity: 1;
+}
+.note-tag-btn.has-tag {
+  opacity: 1;
+  color: #e0e7ff;
+  border-color: #818cf8;
+  background: #312e81;
+}
+.note-tag-btn svg {
+  width: 12px;
+  height: 12px;
+}
+.note-tag-label {
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-tag-picker {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px;
+  min-width: 160px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.note-item.tag-picker-open {
+  z-index: 1;
+}
+body.light-theme .note-tag-picker {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.note-tag-input {
+  width: 100%;
+  padding: 4px 8px;
+  background: #334155;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: #f8fafc;
+  font-size: 0.82em;
+  outline: none;
+  box-sizing: border-box;
+}
+body.light-theme .note-tag-input {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+.note-tag-input:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.note-tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.note-tag-suggestion,
+.note-tag-filter-btn {
+  background: #334155;
+  border: 1px solid #475569;
+  color: #f8fafc;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.note-tag-suggestion {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75em;
+}
+.note-tag-filter-btn {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.78em;
+}
+.note-tag-suggestion:hover,
+.note-tag-filter-btn:hover {
+  background: #3730a3;
+  color: #eef2ff;
+}
+.note-tag-suggestion.active,
+.note-tag-filter-btn.active {
+  background: #4338ca;
+  border-color: #818cf8;
+  color: #fff;
+}
+body.light-theme .note-tag-suggestion,
+body.light-theme .note-tag-filter-btn {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+body.light-theme .note-tag-suggestion:hover,
+body.light-theme .note-tag-filter-btn:hover {
+  background: #c7d2fe;
+  color: #312e81;
+}
+body.light-theme .note-tag-suggestion.active,
+body.light-theme .note-tag-filter-btn.active {
+  background: #a5b4fc;
+  border-color: #6366f1;
+  color: #312e81;
+}
+
+.note-tag-actions {
+  margin-top: 6px;
+}
+
+.note-tag-remove-btn {
+  padding: 3px 8px;
+  background: #7f1d1d;
+  border: 1px solid #ef4444;
+  border-radius: 6px;
+  color: #fee2e2;
+  font-size: 0.75em;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.note-tag-remove-btn:hover {
+  background: #991b1b;
+}
+
+.notes-tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+
 .note-textarea {
   flex: 1;
   min-height: 28px;
@@ -5459,15 +5473,15 @@ body.light-theme .notes-title {
 }
 
 body.light-theme .notes-add-btn {
-  border-color: rgba(15, 23, 42, 0.15);
-  background: rgba(15, 23, 42, 0.04);
-  color: #64748b;
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+  color: #475569;
 }
 
 body.light-theme .notes-add-btn:hover {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
-  color: #1e293b;
+  background: #cbd5e1;
+  border-color: #94a3b8;
+  color: #0f172a;
 }
 
 body.light-theme .note-item {
@@ -5523,8 +5537,8 @@ body.light-theme .notes-empty {
 }
 
 .note-preview-btn:hover {
-  background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
+  background: #3730a3;
+  color: #eef2ff;
 }
 
 .note-preview-btn svg {
@@ -5577,8 +5591,8 @@ body.light-theme .note-preview-btn {
 }
 
 body.light-theme .note-preview-btn:hover {
-  background: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
+  background: #c7d2fe;
+  color: #312e81;
 }
 
 body.simple-mode .notes-section {
@@ -5591,7 +5605,8 @@ body.light-theme .notes-empty-icon svg {
 
 @media (hover: none) {
   .edit-subtask-delete,
-  .todo-subtask-delete {
+  .todo-subtask-delete,
+  .note-tag-btn {
     opacity: 1;
   }
 }

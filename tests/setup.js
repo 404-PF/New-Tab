@@ -281,6 +281,11 @@ globalThis.window.i18n = {
       todoDeleteTooltip: 'Delete Todo',
       notesPlaceholder: 'Type your note here...',
       notesDeleteTooltip: 'Delete Note',
+      notesFilterAll: 'All',
+      notesAddTag: 'Add tag',
+      notesTagPlaceholder: 'Tag name...',
+      notesRemoveTag: 'Remove tag',
+      notesDragToReorder: 'Drag to reorder',
       notesPreviewTooltip: 'Preview',
       notesEditTooltip: 'Edit',
       clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',
@@ -696,6 +701,7 @@ notesSection.innerHTML = `
     <h3 class="notes-title">Notes</h3>
     <button id="add-note-btn" class="notes-add-btn">+</button>
   </div>
+  <div class="notes-tag-filter" id="notes-tag-filter"></div>
   <div class="notes-list" id="notes-list"></div>
   <div class="notes-empty" id="notes-empty"><p>No notes yet.</p></div>
 `;

@@ -233,6 +233,26 @@
       }
     }
   },
+  "notesFilterAll": {
+    "message": "Все",
+    "description": "Label for the 'All' tag filter in notes"
+  },
+  "notesAddTag": {
+    "message": "Добавить тег",
+    "description": "Button label to add a new tag to a note"
+  },
+  "notesTagPlaceholder": {
+    "message": "Название тега...",
+    "description": "Placeholder text for the tag name input"
+  },
+  "notesRemoveTag": {
+    "message": "Удалить тег",
+    "description": "Tooltip for removing a tag from a note"
+  },
+  "notesDragToReorder": {
+    "message": "Перетащите для изменения порядка",
+    "description": "Accessible label for the note drag handle"
+  },
   "timezones": {
     "message": "Часовые пояса",
     "description": "Section header for time zone clock settings"

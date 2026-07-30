@@ -233,6 +233,26 @@
       }
     }
   },
+  "notesFilterAll": {
+    "message": "Tous",
+    "description": "Label for the 'All' tag filter in notes"
+  },
+  "notesAddTag": {
+    "message": "Ajouter un tag",
+    "description": "Button label to add a new tag to a note"
+  },
+  "notesTagPlaceholder": {
+    "message": "Nom du tag...",
+    "description": "Placeholder text for the tag name input"
+  },
+  "notesRemoveTag": {
+    "message": "Supprimer le tag",
+    "description": "Tooltip for removing a tag from a note"
+  },
+  "notesDragToReorder": {
+    "message": "Glisser pour réordonner",
+    "description": "Accessible label for the note drag handle"
+  },
   "timezones": {
     "message": "Fuseaux horaires",
     "description": "Section header for time zone clock settings"
