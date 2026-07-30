@@ -45,7 +45,7 @@
 
   function migrateNotes(data) {
     let changed = false;
-    const orders = data.map(note => note && note.order);
+    const orders = data.map(note => note?.order);
     const hasInvalidOrder = orders.some(order => !Number.isFinite(order));
     const hasDuplicateOrder = new Set(orders).size !== orders.length;
     const hasOutOfOrderEntries = orders.some((order, index) => (
@@ -108,7 +108,7 @@
     notes.forEach(n => {
       if (n.tag) tagSet.add(n.tag);
     });
-    return [...tagSet].sort();
+    return [...tagSet].sort((a, b) => a.localeCompare(b));
   }
 
   let _activeTagFilter = null;
@@ -474,7 +474,7 @@
     if (existing) {
       const card = existing.closest('.note-item');
       const input = existing.querySelector('.note-tag-input');
-      const noteId = card && card.dataset.id;
+      const noteId = card?.dataset.id;
       const tag = input ? input.value.trim() : '';
       const note = noteId ? notes.find(n => n.id === noteId) : null;
       if (card) card.classList.remove('tag-picker-open');
@@ -731,7 +731,7 @@
     const tagBtn = e.target.closest('.note-tag-btn');
     if (tagBtn) {
       const tagWrapper = tagBtn.closest('.note-tag-wrapper');
-      const picker = tagWrapper && tagWrapper.querySelector('.note-tag-picker');
+      const picker = tagWrapper?.querySelector('.note-tag-picker');
       if (picker) {
         closeTagPicker();
       } else {
