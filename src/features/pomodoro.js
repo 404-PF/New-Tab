@@ -6,7 +6,19 @@
   const STORAGE_KEY = 'pomodoro';
   const TIMER_STATE_KEY = STORAGE_KEY + '_state';
   const LEASE_DURATION_MS = 5000;
-  const TAB_ID = 'pomodoro-' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+  function generateTabId() {
+    if (typeof crypto.randomUUID === 'function') {
+      return 'pomodoro-' + crypto.randomUUID();
+    }
+
+    const randomBytes = new Uint8Array(16);
+    crypto.getRandomValues(randomBytes);
+    return 'pomodoro-' + Array.from(randomBytes, function (byte) {
+      return byte.toString(16).padStart(2, '0');
+    }).join('');
+  }
+
+  const TAB_ID = generateTabId();
   const PHASES = { WORK: 'work', SHORT_BREAK: 'shortBreak', LONG_BREAK: 'longBreak' };
 
   const DEFAULTS = {
