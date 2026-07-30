@@ -3830,8 +3830,9 @@ const pomodoroTranslations = {
 };
 
 Object.keys(pomodoroTranslations).forEach(function (language) {
-  if (translations[language]) {
-    Object.assign(translations[language], pomodoroTranslations[language]);
+  const target = translations[language] || translations[language.split('_')[0]];
+  if (target) {
+    Object.assign(target, pomodoroTranslations[language]);
   }
 });
 
