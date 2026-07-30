@@ -81,7 +81,7 @@ body.light-theme .pomodoro-time {
 }
 body.light-theme .pomodoro-btn {
   background: rgba(0, 0, 0, 0.06);
-  color: #475569;
+  color: #334155;
 }
 body.light-theme .pomodoro-btn:hover {
   background: rgba(0, 0, 0, 0.1);
@@ -117,7 +117,7 @@ body[data-focus-mode="true"] .pomodoro-widget {
   opacity: 1;
 }
 .todo-focus-btn:hover {
-  color: #f97316;
+  color: #c2410c;
   background: rgba(249, 115, 22, 0.1);
 }
 .todo-focus-btn.active {
@@ -131,7 +131,7 @@ body.light-theme .todo-item:hover .todo-focus-btn {
   opacity: 1;
 }
 body.light-theme .todo-focus-btn:hover {
-  color: #ea580c;
+  color: #c2410c;
   background: rgba(234, 88, 12, 0.1);
 }
 
@@ -1004,7 +1004,7 @@ body.light-theme .calendar-btn.secondary:hover {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;

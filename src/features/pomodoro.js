@@ -6,7 +6,7 @@
   const STORAGE_KEY = 'pomodoro';
   const TIMER_STATE_KEY = STORAGE_KEY + '_state';
   const LEASE_DURATION_MS = 5000;
-  const TAB_ID = 'pomodoro-' + Math.random().toString(36).slice(2);
+  const TAB_ID = 'pomodoro-' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
   const PHASES = { WORK: 'work', SHORT_BREAK: 'shortBreak', LONG_BREAK: 'longBreak' };
 
   const DEFAULTS = {
@@ -36,7 +36,7 @@
   function loadSettings() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return Object.assign({}, DEFAULTS);
+      if (!raw) return { ...DEFAULTS };
       const parsed = JSON.parse(raw);
       return {
         workDuration: typeof parsed.workDuration === 'number' ? parsed.workDuration : DEFAULTS.workDuration,
@@ -47,7 +47,7 @@
       };
     } catch (error) {
       console.warn('Failed to load Pomodoro settings from localStorage:', error);
-      return Object.assign({}, DEFAULTS);
+      return { ...DEFAULTS };
     }
   }
 
@@ -56,6 +56,7 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
       return true;
     } catch (_e) {
+      console.warn('Failed to save Pomodoro settings:', _e);
       return false;
     }
   }
@@ -65,7 +66,7 @@
       const raw = localStorage.getItem(TIMER_STATE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.active && typeof parsed.timeRemaining === 'number') {
+      if (parsed?.active && typeof parsed.timeRemaining === 'number') {
         if (!parsed.deadline) {
           parsed.deadline = Date.now() + parsed.timeRemaining * 1000;
         }
@@ -98,9 +99,9 @@
     document.querySelectorAll('.todo-focus-btn').forEach(function (focusBtn) {
       const isActive = state.active && state.todoId === focusBtn.dataset.todoId;
       focusBtn.classList.toggle('active', isActive);
-      focusBtn.title = isActive
-        ? (i18n ? i18n.t('pomodoroStopFocus') : 'Stop Focus')
-        : (i18n ? i18n.t('pomodoroStartFocus') : 'Start Focus');
+      const stopLabel = i18n ? i18n.t('pomodoroStopFocus') : 'Stop Focus';
+      const startLabel = i18n ? i18n.t('pomodoroStartFocus') : 'Start Focus';
+      focusBtn.title = isActive ? stopLabel : startLabel;
     });
   }
 
@@ -194,6 +195,15 @@
     return widget;
   }
 
+  function updatePauseButton(pauseBtn) {
+    pauseBtn.innerHTML = state.paused
+      ? '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><polygon points="5,3 19,12 5,21"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+    const resumeLabel = window.i18n ? window.i18n.t('pomodoroResume') : 'Resume';
+    const pauseLabel = window.i18n ? window.i18n.t('pomodoroPause') : 'Pause';
+    pauseBtn.title = state.paused ? resumeLabel : pauseLabel;
+  }
+
   function updateWidget() {
     updateFocusButtons();
 
@@ -214,12 +224,12 @@
 
     if (phaseEl) phaseEl.textContent = getPhaseLabel(state.phase);
     if (timeEl) timeEl.textContent = formatTime(state.timeRemaining);
-    if (sessionsEl) sessionsEl.textContent = window.i18n ? window.i18n.t('pomodoroSessionLabel', { number: String(state.sessionsCompleted + 1) }) : 'Session ' + (state.sessionsCompleted + 1);
+    if (sessionsEl) {
+      const i18n = window.i18n;
+      sessionsEl.textContent = i18n ? i18n.t('pomodoroSessionLabel', { number: String(state.sessionsCompleted + 1) }) : 'Session ' + (state.sessionsCompleted + 1);
+    }
     if (pauseBtn) {
-      pauseBtn.innerHTML = state.paused
-        ? '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><polygon points="5,3 19,12 5,21"/></svg>'
-        : '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-      pauseBtn.title = state.paused ? (window.i18n ? window.i18n.t('pomodoroResume') : 'Resume') : (window.i18n ? window.i18n.t('pomodoroPause') : 'Pause');
+      updatePauseButton(pauseBtn);
     }
 
     widget.classList.toggle('pomodoro-work', state.phase === PHASES.WORK);
@@ -228,7 +238,7 @@
 
   function sendNotification(title, message) {
     try {
-      if (typeof chrome !== 'undefined' && chrome.notifications && chrome.notifications.create) {
+      if (typeof chrome !== 'undefined' && chrome.notifications?.create) {
         chrome.notifications.create('pomodoro-' + Date.now(), {
           type: 'basic',
           iconUrl: 'icons/icon128.png',
@@ -259,6 +269,11 @@
     updateWidget();
   }
 
+  function getWorkNotificationBody(i18n, todoText) {
+    if (!todoText) return i18n ? i18n.t('pomodoroBreakCompleteBody') : 'Time for a break.';
+    return i18n ? i18n.t('pomodoroWorkCompleteBody', { task: todoText }) : 'Task: ' + todoText;
+  }
+
   function onPhaseComplete() {
     if (!state.active || !_isLeader) return;
     const isWork = state.phase === PHASES.WORK;
@@ -268,7 +283,7 @@
     if (isWork) {
       sendNotification(
         i18n ? i18n.t('pomodoroWorkComplete') : 'Focus session complete!',
-        todoText ? (i18n ? i18n.t('pomodoroWorkCompleteBody', { task: todoText }) : 'Task: ' + todoText) : (i18n ? i18n.t('pomodoroBreakCompleteBody') : 'Time for a break.')
+        getWorkNotificationBody(i18n, todoText)
       );
     } else {
       sendNotification(
@@ -307,6 +322,7 @@
       const todo = todos.find(function (t) { return t.id === todoId; });
       return todo ? todo.text : '';
     } catch (_e) {
+      console.warn('Failed to parse todos from localStorage:', _e);
       return '';
     }
   }
@@ -420,7 +436,7 @@
   }
 
   function applyTimerState(nextState) {
-    if (!nextState || !nextState.active) {
+    if (!nextState?.active) {
       _isLeader = false;
       stopInterval();
       stopCoordinationInterval();
@@ -458,7 +474,7 @@
 
   function claimLeadership(allowPaused) {
     const persisted = loadTimerState();
-    if (!persisted || !persisted.active || (persisted.paused && !allowPaused)) return false;
+    if (!persisted?.active || (persisted.paused && !allowPaused)) return false;
 
     const leaseIsActive = persisted.ownerId && persisted.ownerId !== TAB_ID &&
       persisted.ownerLeaseExpiresAt > Date.now();
@@ -509,7 +525,7 @@
     }
     try {
       const parsed = JSON.parse(newValue);
-      if (parsed && parsed.active && typeof parsed.timeRemaining === 'number') {
+      if (parsed?.active && typeof parsed.timeRemaining === 'number') {
         applyTimerState(parsed);
       }
     } catch (error) {
@@ -522,8 +538,7 @@
       if (event.key === TIMER_STATE_KEY) handleTimerStateChange(event.newValue);
     });
 
-    if (window.chrome && window.chrome.storage && window.chrome.storage.onChanged &&
-        typeof window.chrome.storage.onChanged.addListener === 'function') {
+    if (typeof window.chrome?.storage?.onChanged?.addListener === 'function') {
       window.chrome.storage.onChanged.addListener(function (changes, areaName) {
         if (areaName === 'local' && changes[TIMER_STATE_KEY]) {
           handleTimerStateChange(changes[TIMER_STATE_KEY].newValue);
@@ -542,9 +557,9 @@
     const isActive = state.active && state.todoId === todoId;
     focusBtn.classList.toggle('active', isActive);
     const i18n = window.i18n;
-    focusBtn.title = isActive
-      ? (i18n ? i18n.t('pomodoroStopFocus') : 'Stop Focus')
-      : (i18n ? i18n.t('pomodoroStartFocus') : 'Start Focus');
+    const stopLabel = i18n ? i18n.t('pomodoroStopFocus') : 'Stop Focus';
+    const startLabel = i18n ? i18n.t('pomodoroStartFocus') : 'Start Focus';
+    focusBtn.title = isActive ? stopLabel : startLabel;
     focusBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>';
     todoActions.appendChild(focusBtn);
   }

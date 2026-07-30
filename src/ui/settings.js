@@ -1474,7 +1474,7 @@ function initPomodoroSettings() {
   if (workInput) {
     workInput.value = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations().workDuration : 25;
     workInput.addEventListener('change', function () {
-      const val = Math.max(1, Math.min(120, parseInt(this.value, 10) || 25));
+      const val = Math.max(1, Math.min(120, Number.parseInt(this.value, 10) || 25));
       this.value = val;
       if (typeof savePomodoroDurations === 'function') savePomodoroDurations({ workDuration: val });
     });
@@ -1483,7 +1483,7 @@ function initPomodoroSettings() {
   if (shortBreakInput) {
     shortBreakInput.value = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations().shortBreakDuration : 5;
     shortBreakInput.addEventListener('change', function () {
-      const val = Math.max(1, Math.min(30, parseInt(this.value, 10) || 5));
+      const val = Math.max(1, Math.min(30, Number.parseInt(this.value, 10) || 5));
       this.value = val;
       if (typeof savePomodoroDurations === 'function') savePomodoroDurations({ shortBreakDuration: val });
     });
@@ -1492,7 +1492,7 @@ function initPomodoroSettings() {
   if (longBreakInput) {
     longBreakInput.value = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations().longBreakDuration : 15;
     longBreakInput.addEventListener('change', function () {
-      const val = Math.max(1, Math.min(60, parseInt(this.value, 10) || 15));
+      const val = Math.max(1, Math.min(60, Number.parseInt(this.value, 10) || 15));
       this.value = val;
       if (typeof savePomodoroDurations === 'function') savePomodoroDurations({ longBreakDuration: val });
     });
@@ -1501,7 +1501,7 @@ function initPomodoroSettings() {
   if (sessionsInput) {
     sessionsInput.value = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations().sessionsBeforeLongBreak : 4;
     sessionsInput.addEventListener('change', function () {
-      const val = Math.max(1, Math.min(10, parseInt(this.value, 10) || 4));
+      const val = Math.max(1, Math.min(10, Number.parseInt(this.value, 10) || 4));
       this.value = val;
       if (typeof savePomodoroDurations === 'function') savePomodoroDurations({ sessionsBeforeLongBreak: val });
     });
