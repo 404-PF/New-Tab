@@ -5618,7 +5618,8 @@ body.light-theme .notes-empty-icon svg {
 
 @media (hover: none) {
   .edit-subtask-delete,
-  .todo-subtask-delete {
+  .todo-subtask-delete,
+  .note-tag-btn {
     opacity: 1;
   }
 }

@@ -858,6 +858,7 @@
   }
 
   window.addEventListener('beforeunload', () => {
+    closeTagPicker();
     flushPendingSaves();
   });
 
