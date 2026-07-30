@@ -2304,6 +2304,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
     flex-direction: column;
     min-height: auto;
     height: min(720px, calc(85vh - 20px));
+    max-height: min(720px, calc(85vh - 20px));
   }
 
   .settings-menu {
