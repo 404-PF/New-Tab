@@ -44,6 +44,9 @@
         request.onsuccess = function () { resolve(request.result); };
         request.onerror = function () { reject(request.error); };
       });
+    }).catch(function (error) {
+      console.error('Failed to read custom backgrounds from IndexedDB:', error);
+      throw error;
     });
   }
 
@@ -56,6 +59,9 @@
         request.onsuccess = function () { resolve(request.result); };
         request.onerror = function () { reject(request.error); };
       });
+    }).catch(function (error) {
+      console.error('Failed to read custom background from IndexedDB:', error);
+      throw error;
     });
   }
 
@@ -68,6 +74,9 @@
         request.onsuccess = function () { resolve(request.result); };
         request.onerror = function () { reject(request.error); };
       });
+    }).catch(function (error) {
+      console.error('Failed to save custom background to IndexedDB:', error);
+      throw error;
     });
   }
 
@@ -80,7 +89,19 @@
         request.onsuccess = function () { resolve(); };
         request.onerror = function () { reject(request.error); };
       });
+    }).catch(function (error) {
+      console.error('Failed to delete custom background from IndexedDB:', error);
+      throw error;
     });
+  }
+
+  function showBackgroundError(message, error) {
+    console.error(message, error);
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+    } else {
+      window.alert(message);
+    }
   }
 
   // --- Thumbnail generation ---
@@ -401,6 +422,9 @@
       for (let i = 0; i < allThumbs.length; i++) {
         allThumbs[i].classList.toggle('selected', allThumbs[i].getAttribute('data-bg') === currentBg);
       }
+    }).catch(function (error) {
+      showBackgroundError('Failed to load custom backgrounds. Please try again.', error);
+      return [];
     });
   }
 
@@ -632,6 +656,9 @@
       }
 
       return true;
+    }).catch(function (error) {
+      showBackgroundError('Failed to load the custom background. Please try again.', error);
+      return false;
     });
   }
 
@@ -737,6 +764,8 @@
         }
 
         renderCustomBackgrounds();
+      }).catch(function (error) {
+        showBackgroundError('Failed to delete the custom background. Please try again.', error);
       });
     });
   });

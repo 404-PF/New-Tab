@@ -35,4 +35,17 @@ describe('DataManager backup validation', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('ai_conversations');
     expect(window.DataManager.EXPORT_KEYS).not.toContain('searchHistory');
   });
+
+  it('shows an error instead of exporting when custom background metadata fails to load', async () => {
+    window._customBackgrounds = {
+      getAll: vi.fn().mockRejectedValue(new Error('IndexedDB unavailable'))
+    };
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click');
+
+    window.DataManager.exportAllData();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(document.querySelector('.toast-notification').textContent).toBe('dataExportReadError');
+  });
 });
