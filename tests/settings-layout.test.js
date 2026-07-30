@@ -1,0 +1,22 @@
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+const CORE_CSS_PATH = resolve(process.cwd(), 'css/core.css');
+const FEATURES_CSS_PATH = resolve(process.cwd(), 'css/features.css');
+
+describe('Settings layout stability (#512)', () => {
+  it('uses a stable modal width and reserves scrollbar space', () => {
+    const css = readFileSync(CORE_CSS_PATH, 'utf-8');
+
+    expect(css).toMatch(/#settings-modal > div\s*\{[^}]*width:\s*min\(720px, calc\(100vw - 32px\)\)/);
+    expect(css).toMatch(/\.settings-content\s*\{[^}]*min-width:\s*0[^}]*overflow-x:\s*hidden[^}]*scrollbar-gutter:\s*stable/);
+  });
+
+  it('keeps the narrow layout centered with contained scrolling', () => {
+    const css = readFileSync(FEATURES_CSS_PATH, 'utf-8');
+
+    expect(css).toMatch(/@media screen and \(max-width: 600px\)[\s\S]*?#settings-modal\s*\{[^}]*justify-content:\s*center/);
+    expect(css).toMatch(/#settings-modal > div\s*\{[^}]*width:\s*calc\(100vw - 24px\)/);
+    expect(css).toMatch(/\.settings-content\s*\{[^}]*min-height:\s*0[^}]*max-height:\s*none/);
+  });
+});

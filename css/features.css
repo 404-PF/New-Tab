@@ -2288,11 +2288,11 @@ body.light-theme .update-settings-group .setting-btn:hover {
   #settings-modal {
     align-items: flex-start;
     padding-top: 20px;
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   #settings-modal > div {
-    width: 95%;
+    width: calc(100vw - 24px);
     max-height: 85vh;
     position: relative;
     top: auto;
@@ -2303,9 +2303,11 @@ body.light-theme .update-settings-group .setting-btn:hover {
   .settings-body {
     flex-direction: column;
     min-height: auto;
+    height: min(720px, calc(85vh - 20px));
   }
 
   .settings-menu {
+    flex: 0 0 auto;
     width: 100%;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -2332,8 +2334,9 @@ body.light-theme .update-settings-group .setting-btn:hover {
   }
 
   .settings-content {
+    min-height: 0;
     padding: 16px;
-    max-height: 60vh;
+    max-height: none;
   }
 
   .clock-options,
