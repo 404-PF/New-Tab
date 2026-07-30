@@ -660,7 +660,9 @@
 
       return true;
     }).catch(function (error) {
-      showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', error);
+      if (isActiveCustomBackgroundRequest(id, loadVersion)) {
+        showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', error);
+      }
       return false;
     });
   }

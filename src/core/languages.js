@@ -355,9 +355,6 @@ const translations = {
     exportDataBtn: 'Export Data',
     dataExportSuccess: 'Data exported successfully.',
     dataExportReadError: 'Export failed: could not read all settings.',
-    customBackgroundsLoadError: 'Failed to load custom backgrounds. Please try again.',
-    customBackgroundLoadError: 'Failed to load the custom background. Please try again.',
-    customBackgroundDeleteError: 'Failed to delete the custom background. Please try again.',
     importData: 'Import Data',
     importDataDesc: 'Restore settings from a previously exported backup file',
     importDataBtn: 'Import Data',
@@ -824,9 +821,6 @@ const translations = {
     exportDataBtn: '导出数据',
     dataExportSuccess: '数据导出成功。',
     dataExportReadError: '导出失败：无法读取所有设置。',
-    customBackgroundsLoadError: '无法加载自定义背景。请重试。',
-    customBackgroundLoadError: '无法加载该自定义背景。请重试。',
-    customBackgroundDeleteError: '无法删除自定义背景。请重试。',
     importData: '导入数据',
     importDataDesc: '从之前导出的备份文件恢复设置',
     importDataBtn: '导入数据',
@@ -1240,9 +1234,6 @@ const translations = {
     exportDataBtn: 'データをエクスポート',
     dataExportSuccess: 'データのエクスポートに成功しました。',
     dataExportReadError: 'エクスポート失敗：すべての設定を読み取れませんでした。',
-    customBackgroundsLoadError: 'カスタム背景を読み込めませんでした。もう一度お試しください。',
-    customBackgroundLoadError: 'このカスタム背景を読み込めませんでした。もう一度お試しください。',
-    customBackgroundDeleteError: 'カスタム背景を削除できませんでした。もう一度お試しください。',
     importData: 'データをインポート',
     importDataDesc: '以前にエクスポートしたバックアップファイルから設定を復元します',
     importDataBtn: 'データをインポート',
@@ -1651,9 +1642,6 @@ const translations = {
     exportDataBtn: '데이터 내보내기',
     dataExportSuccess: '데이터를 성공적으로 내보냈습니다.',
     dataExportReadError: '내보내기 실패: 모든 설정을 읽을 수 없습니다.',
-    customBackgroundsLoadError: '사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.',
-    customBackgroundLoadError: '이 사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.',
-    customBackgroundDeleteError: '사용자 지정 배경을 삭제하지 못했습니다. 다시 시도해 주세요.',
     importData: '데이터 가져오기',
     importDataDesc: '이전에 내보낸 백업 파일에서 설정을 복원합니다',
     importDataBtn: '데이터 가져오기',
@@ -2051,9 +2039,6 @@ const translations = {
     exportDataBtn: 'Exportar datos',
     dataExportSuccess: 'Datos exportados correctamente.',
     dataExportReadError: 'Error al exportar: no se pudieron leer todas las configuraciones.',
-    customBackgroundsLoadError: 'No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.',
-    customBackgroundLoadError: 'No se pudo cargar el fondo personalizado. Inténtalo de nuevo.',
-    customBackgroundDeleteError: 'No se pudo eliminar el fondo personalizado. Inténtalo de nuevo.',
     importData: 'Importar datos',
     importDataDesc: 'Restaura la configuración desde un archivo de respaldo exportado anteriormente',
     importDataBtn: 'Importar datos',
@@ -2462,9 +2447,6 @@ const translations = {
     exportDataBtn: 'Exporter les données',
     dataExportSuccess: 'Données exportées avec succès.',
     dataExportReadError: 'Échec de l\'exportation : impossible de lire tous les paramètres.',
-    customBackgroundsLoadError: 'Impossible de charger les arrière-plans personnalisés. Veuillez réessayer.',
-    customBackgroundLoadError: 'Impossible de charger l’arrière-plan personnalisé. Veuillez réessayer.',
-    customBackgroundDeleteError: 'Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.',
     importData: 'Importer les données',
     importDataDesc: 'Restaurez les paramètres depuis un fichier de sauvegarde précédemment exporté',
     importDataBtn: 'Importer les données',
@@ -2873,9 +2855,6 @@ const translations = {
     exportDataBtn: 'Daten exportieren',
     dataExportSuccess: 'Daten erfolgreich exportiert.',
     dataExportReadError: 'Export fehlgeschlagen: Einige Einstellungen konnten nicht gelesen werden.',
-    customBackgroundsLoadError: 'Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.',
-    customBackgroundLoadError: 'Der benutzerdefinierte Hintergrund konnte nicht geladen werden. Bitte versuche es erneut.',
-    customBackgroundDeleteError: 'Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.',
     importData: 'Daten importieren',
     importDataDesc: 'Stellen Sie Einstellungen aus einer zuvor exportierten Sicherungsdatei wieder her',
     importDataBtn: 'Daten importieren',
@@ -3284,9 +3263,6 @@ const translations = {
     exportDataBtn: 'Exportar dados',
     dataExportSuccess: 'Dados exportados com sucesso.',
     dataExportReadError: 'Falha na exportação: não foi possível ler todas as configurações.',
-    customBackgroundsLoadError: 'Não foi possível carregar os planos de fundo personalizados. Tente novamente.',
-    customBackgroundLoadError: 'Não foi possível carregar o plano de fundo personalizado. Tente novamente.',
-    customBackgroundDeleteError: 'Não foi possível excluir o plano de fundo personalizado. Tente novamente.',
     importData: 'Importar dados',
     importDataDesc: 'Restaure as configurações de um arquivo de backup exportado anteriormente',
     importDataBtn: 'Importar dados',
@@ -3695,9 +3671,6 @@ const translations = {
     exportDataBtn: 'Экспорт данных',
     dataExportSuccess: 'Данные успешно экспортированы.',
     dataExportReadError: 'Ошибка экспорта: не удалось прочитать все настройки.',
-    customBackgroundsLoadError: 'Не удалось загрузить пользовательские фоны. Повторите попытку.',
-    customBackgroundLoadError: 'Не удалось загрузить пользовательский фон. Повторите попытку.',
-    customBackgroundDeleteError: 'Не удалось удалить пользовательский фон. Повторите попытку.',
     importData: 'Импорт данных',
     importDataDesc: 'Восстановите настройки из ранее экспортированного файла резервной копии',
     importDataBtn: 'Импорт данных',
@@ -3842,6 +3815,25 @@ const translations = {
   }
 };
 
+const customBackgroundErrorTranslations = {
+  en: ['Failed to load custom backgrounds. Please try again.', 'Failed to load the custom background. Please try again.', 'Failed to delete the custom background. Please try again.'],
+  zh: ['无法加载自定义背景。请重试。', '无法加载该自定义背景。请重试。', '无法删除自定义背景。请重试。'],
+  ja: ['カスタム背景を読み込めませんでした。もう一度お試しください。', 'このカスタム背景を読み込めませんでした。もう一度お試しください。', 'カスタム背景を削除できませんでした。もう一度お試しください。'],
+  ko: ['사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.', '이 사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.', '사용자 지정 배경을 삭제하지 못했습니다. 다시 시도해 주세요.'],
+  es: ['No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.', 'No se pudo cargar el fondo personalizado. Inténtalo de nuevo.', 'No se pudo eliminar el fondo personalizado. Inténtalo de nuevo.'],
+  fr: ['Impossible de charger les arrière-plans personnalisés. Veuillez réessayer.', 'Impossible de charger l’arrière-plan personnalisé. Veuillez réessayer.', 'Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.'],
+  de: ['Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.', 'Der benutzerdefinierte Hintergrund konnte nicht geladen werden. Bitte versuche es erneut.', 'Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.'],
+  pt: ['Não foi possível carregar os planos de fundo personalizados. Tente novamente.', 'Não foi possível carregar o plano de fundo personalizado. Tente novamente.', 'Não foi possível excluir o plano de fundo personalizado. Tente novamente.'],
+  ru: ['Не удалось загрузить пользовательские фоны. Повторите попытку.', 'Не удалось загрузить пользовательский фон. Повторите попытку.', 'Не удалось удалить пользовательский фон. Повторите попытку.']
+};
+
+Object.keys(customBackgroundErrorTranslations).forEach(function (language) {
+  const target = translations[language];
+  const messages = customBackgroundErrorTranslations[language];
+  target.customBackgroundsLoadError = messages[0];
+  target.customBackgroundLoadError = messages[1];
+  target.customBackgroundDeleteError = messages[2];
+});
 const pomodoroTranslations = {
   en: {
     enablePomodoro: 'Enable Pomodoro focus timer', pomodoroDurations: 'Focus Timer Durations', pomodoroDurationsDesc: 'Configure work and break durations (in minutes)', pomodoroWork: 'Work', pomodoroShortBreak: 'Short Break', pomodoroLongBreak: 'Long Break', pomodoroSessionsBeforeLong: 'Sessions before long break', pomodoroPhaseWork: 'Focus', pomodoroPhaseShortBreak: 'Short Break', pomodoroPhaseLongBreak: 'Long Break', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Pause', pomodoroResume: 'Resume', pomodoroSkip: 'Skip', pomodoroReset: 'Reset', pomodoroStartFocus: 'Start Focus', pomodoroStopFocus: 'Stop Focus', pomodoroWorkComplete: 'Focus session complete!', pomodoroWorkCompleteBody: 'Task: {task}', pomodoroBreakComplete: 'Break over!', pomodoroBreakCompleteBody: 'Ready to focus again?'
