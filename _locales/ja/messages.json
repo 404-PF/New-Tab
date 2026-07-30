@@ -1,6 +1,9 @@
 {
   "enableSearchHistory": { "message": "検索履歴を有効にする", "description": "Label for the search history toggle" },
   "appGridSaveError": { "message": "アプリの変更を保存できませんでした。直前の操作は保存されていません。", "description": "Error shown when app grid changes cannot be persisted" },
+  "customBackgroundsLoadError": { "message": "カスタム背景を読み込めませんでした。もう一度お試しください。", "description": "Error shown when custom backgrounds cannot be listed" },
+  "customBackgroundLoadError": { "message": "このカスタム背景を読み込めませんでした。もう一度お試しください。", "description": "Error shown when a custom background cannot be applied" },
+  "customBackgroundDeleteError": { "message": "カスタム背景を削除できませんでした。もう一度お試しください。", "description": "Error shown when a custom background cannot be deleted" },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"

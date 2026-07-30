@@ -20,6 +20,12 @@ const POMODORO_TRANSLATION_KEYS = [
   'pomodoroSessionsBeforeLong'
 ];
 
+const CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS = [
+  'customBackgroundsLoadError',
+  'customBackgroundLoadError',
+  'customBackgroundDeleteError'
+];
+
 beforeAll(() => {
   injectScript('src/core/languages.js');
 });
@@ -48,6 +54,20 @@ describe('Pomodoro translations', () => {
 
       POMODORO_TRANSLATION_KEYS.forEach((key) => {
         expect(window.i18n.t(key), code + ':' + key).not.toBe(key);
+      });
+    });
+  });
+});
+
+describe('Custom background error translations', () => {
+  it('defines every error message for all supported languages', () => {
+    const languages = window.i18n.getSupportedLanguages();
+
+    languages.forEach(({ code }) => {
+      window.i18n.applyLanguage(code);
+
+      CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS.forEach((key) => {
+        expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
       });
     });
   });

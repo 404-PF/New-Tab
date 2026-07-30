@@ -1,6 +1,9 @@
 {
   "enableSearchHistory": { "message": "Enable search history", "description": "Label for the search history toggle" },
   "appGridSaveError": { "message": "Failed to save app changes. Your last action was not saved.", "description": "Error shown when app grid changes cannot be persisted" },
+  "customBackgroundsLoadError": { "message": "Failed to load custom backgrounds. Please try again.", "description": "Error shown when custom backgrounds cannot be listed" },
+  "customBackgroundLoadError": { "message": "Failed to load the custom background. Please try again.", "description": "Error shown when a custom background cannot be applied" },
+  "customBackgroundDeleteError": { "message": "Failed to delete the custom background. Please try again.", "description": "Error shown when a custom background cannot be deleted" },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"

@@ -95,7 +95,10 @@
     });
   }
 
-  function showBackgroundError(message, error) {
+  function showBackgroundError(key, fallback, error) {
+    const message = window.i18n && typeof window.i18n.t === 'function'
+      ? window.i18n.t(key)
+      : fallback;
     console.error(message, error);
     if (typeof window.showToast === 'function') {
       window.showToast(message, 'error');
@@ -423,7 +426,7 @@
         allThumbs[i].classList.toggle('selected', allThumbs[i].getAttribute('data-bg') === currentBg);
       }
     }).catch(function (error) {
-      showBackgroundError('Failed to load custom backgrounds. Please try again.', error);
+      showBackgroundError('customBackgroundsLoadError', 'Failed to load custom backgrounds. Please try again.', error);
       return [];
     });
   }
@@ -657,7 +660,7 @@
 
       return true;
     }).catch(function (error) {
-      showBackgroundError('Failed to load the custom background. Please try again.', error);
+      showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', error);
       return false;
     });
   }
@@ -765,7 +768,7 @@
 
         renderCustomBackgrounds();
       }).catch(function (error) {
-        showBackgroundError('Failed to delete the custom background. Please try again.', error);
+        showBackgroundError('customBackgroundDeleteError', 'Failed to delete the custom background. Please try again.', error);
       });
     });
   });
