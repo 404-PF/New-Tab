@@ -10,14 +10,15 @@ describe('Settings layout stability (#512)', () => {
 
     expect(css).toMatch(/#settings-modal > div\s*\{[^}]*width:\s*min\(720px, calc\(100vw - 32px\)\)/);
     expect(css).toMatch(/\.settings-content\s*\{[^}]*min-width:\s*0[^}]*overflow-x:\s*hidden[^}]*scrollbar-gutter:\s*stable/);
+    expect(css).toMatch(/\.settings-section\s*\{[^}]*min-width:\s*0[^}]*overflow-wrap:\s*anywhere/);
   });
 
   it('keeps the narrow layout centered with contained scrolling', () => {
     const css = readFileSync(FEATURES_CSS_PATH, 'utf-8');
 
-    expect(css).toMatch(/@media screen and \(max-width: 600px\)[\s\S]*?#settings-modal\s*\{[^}]*justify-content:\s*center/);
-    expect(css).toMatch(/#settings-modal > div\s*\{[^}]*width:\s*calc\(100vw - 24px\)/);
-    expect(css).toMatch(/\.settings-content\s*\{[^}]*min-height:\s*0[^}]*max-height:\s*none/);
-    expect(css).toMatch(/\.settings-body\s*\{[^}]*height:\s*min\(720px, calc\(85vh - 20px\)\)[^}]*max-height:\s*min\(720px, calc\(85vh - 20px\)\)/);
+    expect(css).toMatch(/@media screen and \(max-width: 600px\) \{(?:(?!^\}).)*?#settings-modal\s*\{[^}]*justify-content:\s*center/ms);
+    expect(css).toMatch(/@media screen and \(max-width: 600px\) \{(?:(?!^\}).)*?#settings-modal > div\s*\{[^}]*width:\s*calc\(100vw - 24px\)[^}]*min-width:\s*0/ms);
+    expect(css).toMatch(/@media screen and \(max-width: 600px\) \{(?:(?!^\}).)*?\.settings-content\s*\{[^}]*min-height:\s*0[^}]*max-height:\s*none/ms);
+    expect(css).toMatch(/@media screen and \(max-width: 600px\) \{(?:(?!^\}).)*?\.settings-body\s*\{[^}]*height:\s*min\(720px, calc\(85vh - 20px\)\)[^}]*max-height:\s*min\(720px, calc\(85vh - 20px\)\)/ms);
   });
 });

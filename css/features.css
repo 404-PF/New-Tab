@@ -2293,6 +2293,7 @@ body.light-theme .update-settings-group .setting-btn:hover {
 
   #settings-modal > div {
     width: calc(100vw - 24px);
+    min-width: 0;
     max-height: 85vh;
     position: relative;
     top: auto;
