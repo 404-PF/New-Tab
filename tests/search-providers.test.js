@@ -188,7 +188,13 @@ describe('Search providers - UI selection', () => {
     window.refreshProviderBar();
     Object.entries(BUILT_IN_PROVIDERS).forEach(([providerId, provider]) => {
       const button = document.querySelector('[data-provider="' + providerId + '"]');
-      expect(button.querySelector('[fill="' + provider.icon.match(/fill="([^"]+)/)[1] + '"]')).not.toBeNull();
+      if (!button) {
+        throw new Error('Provider button not found: ' + providerId);
+      }
+      expect(button).not.toBeNull();
+      const expectedIconContainer = document.createElement('div');
+      expectedIconContainer.innerHTML = provider.icon;
+      expect(button.innerHTML).toBe(expectedIconContainer.innerHTML);
       expect(button.dataset.providerIcon).toBe(providerId);
     });
 
