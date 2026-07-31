@@ -89,12 +89,12 @@ describe('simple-mode', () => {
     expect(checkbox.checked).toBe(false);
   });
 
-  it('applySimpleMode toggles search bar visibility', () => {
+  it('applySimpleMode leaves the normal search bar layout unchanged', () => {
     const searchBar = document.querySelector('.search-bar');
 
     localStorage.setItem('simpleMode', 'true');
     applySimpleMode();
-    expect(searchBar.classList.contains('visible')).toBe(true);
+    expect(searchBar.classList.contains('visible')).toBe(false);
 
     localStorage.setItem('simpleMode', 'false');
     applySimpleMode();
@@ -148,7 +148,7 @@ describe('simple-mode', () => {
     window.removeEventListener('simpleModeChanged', handler);
   });
 
-  it('pauses video when simple mode is enabled', () => {
+  it('does not pause video when simple mode is enabled', () => {
     const videoEl = document.getElementById('bg-video');
     Object.defineProperty(videoEl, 'currentSrc', { value: 'https://example.com/video.mp4', configurable: true });
     Object.defineProperty(videoEl, 'readyState', { value: 4, configurable: true });
@@ -160,13 +160,13 @@ describe('simple-mode', () => {
 
     localStorage.setItem('simpleMode', 'true');
     applySimpleMode();
-    expect(videoEl.dataset.simpleModePaused).toBe('true');
-    expect(safePauseSpy).toHaveBeenCalledWith(videoEl);
+    expect(videoEl.dataset.simpleModePaused).toBeUndefined();
+    expect(safePauseSpy).not.toHaveBeenCalled();
 
     if (origPaused) Object.defineProperty(videoEl, 'paused', origPaused);
   });
 
-  it('resumes video when simple mode is disabled and autoplay is on', () => {
+  it('does not restart an already paused video when simple mode is disabled', () => {
     const videoEl = document.getElementById('bg-video');
     Object.defineProperty(videoEl, 'currentSrc', { value: 'https://example.com/video.mp4', configurable: true });
     Object.defineProperty(videoEl, 'readyState', { value: 4, configurable: true });
@@ -178,7 +178,7 @@ describe('simple-mode', () => {
 
     localStorage.setItem('simpleMode', 'false');
     applySimpleMode();
-    expect(videoEl.dataset.simpleModePaused).toBe('false');
-    expect(playSpy).toHaveBeenCalled();
+    expect(videoEl.dataset.simpleModePaused).toBe('true');
+    expect(playSpy).not.toHaveBeenCalled();
   });
 });

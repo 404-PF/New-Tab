@@ -145,7 +145,6 @@ function resetBackgroundVideo(videoEl, unloadSource) {
 
   delete videoEl.dataset.currentBg;
   delete videoEl.dataset.wasPlaying;
-  delete videoEl.dataset.simpleModePaused;
   delete videoEl.dataset.reducedMotionPaused;
   delete videoEl.dataset.crossfadeTriggered;
   delete videoEl.dataset.lastPauseTime;
@@ -229,7 +228,6 @@ function initVideoVisibilityHandler() {
         videoEl.dataset.wasPlaying === 'true' &&
         videoEl.paused &&
         loadVideoAutoplay() &&
-        videoEl.dataset.simpleModePaused !== 'true' &&
         videoEl.dataset.reducedMotionPaused !== 'true'
       ) {
         videoEl.play().catch(() => {});
@@ -530,13 +528,6 @@ function applyBg() {
           return;
         }
 
-        // When simple mode is active, mark paused and keep video hidden
-        if (window.loadSimpleMode && window.loadSimpleMode()) {
-          videoEl.dataset.simpleModePaused = 'true';
-          hideBackgroundOverlay();
-          return;
-        }
-
         // When reduced motion is preferred, treat the looping video as
         // non-essential motion: keep the static thumbnail visible and skip
         // the crossfade + autoplay. The user still gets the same end state
@@ -665,7 +656,7 @@ function applyBg() {
         // that cause high CPU usage when the video cannot sustain playback
         const resumeAttempts = parseInt(videoEl.dataset.resumeAttempts || '0', 10);
 
-        if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
+        if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
           if (resumeAttempts >= 3) return;
           videoEl.dataset.resumeAttempts = String(resumeAttempts + 1);
           videoEl.play().catch(() => {});
@@ -1184,9 +1175,7 @@ document.addEventListener('change', function (e) {
               thumbnailEl.classList.remove('clearing');
             }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS));
           }
-          if (!window.loadSimpleMode || !window.loadSimpleMode()) {
-            videoEl.play().catch(function () {});
-          }
+          videoEl.play().catch(function () {});
         } else {
           // Video not ready yet — reset crossfade guard and let the
           // oncanplaythrough handler from applyBg() fire naturally
@@ -1757,7 +1746,7 @@ function syncVideoToMotionPreference(reduced) {
   } else {
     const wasReducedPaused = videoEl.dataset.reducedMotionPaused === 'true';
     delete videoEl.dataset.reducedMotionPaused;
-    if (wasReducedPaused && loadVideoAutoplay() && !document.hidden && (!window.loadSimpleMode || !window.loadSimpleMode()) && videoEl.readyState >= 3) {
+    if (wasReducedPaused && loadVideoAutoplay() && !document.hidden && videoEl.readyState >= 3) {
       videoEl.play().catch(() => {});
     }
   }

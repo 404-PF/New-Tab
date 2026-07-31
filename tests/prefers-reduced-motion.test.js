@@ -437,7 +437,7 @@ describe('video visibility-resume respects reduced motion', () => {
     expect(videoEl.dataset.wasPlaying).toBeUndefined();
   });
 
-  it('does not replay the video on visibilitychange when simpleModePaused is set', () => {
+  it('replays the video on visibilitychange despite a legacy simple-mode flag', () => {
     const videoEl = document.getElementById('bg-video');
     videoEl.dataset.wasPlaying = 'true';
     videoEl.dataset.simpleModePaused = 'true';
@@ -449,8 +449,8 @@ describe('video visibility-resume respects reduced motion', () => {
     Object.defineProperty(document, 'hidden', { value: false, configurable: true });
     document.dispatchEvent(new Event('visibilitychange'));
 
-    expect(playSpy).not.toHaveBeenCalled();
-    expect(videoEl.dataset.wasPlaying).toBeUndefined();
+    expect(playSpy).toHaveBeenCalled();
+    expect(videoEl.dataset.wasPlaying).toBe('false');
   });
 
   it('replays the video on visibilitychange when no pause flag is set', () => {
