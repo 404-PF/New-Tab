@@ -6,6 +6,7 @@ import { injectScript } from './helpers/inject-script.js';
 // Regression guard for #326 — search history panel (z-index: 60) must be
 // scoped within .search-bar-wrapper so it cannot intercept app-grid clicks.
 const CORE_CSS_PATH = resolve(process.cwd(), 'css/core.css');
+const NEW_TAB_PATH = resolve(process.cwd(), 'New-Tab.html');
 
 const SEARCH_BAR_HTML = `
   <div class="search-bar-wrapper">
@@ -14,7 +15,7 @@ const SEARCH_BAR_HTML = `
         <circle cx="11" cy="11" r="7"></circle>
         <path d="m20 20-3.5-3.5"></path>
       </svg>
-      <input type="text" placeholder="Search or enter website" autofocus />
+      <input type="text" placeholder="Search or enter website" />
     </div>
     <div class="search-provider-bar"></div>
   </div>
@@ -103,6 +104,31 @@ describe('search bar stacking context (#326)', () => {
 });
 
 describe('search history', () => {
+  it('does not autofocus the search input during startup (#513)', () => {
+    const html = readFileSync(NEW_TAB_PATH, 'utf-8');
+    const searchInput = html.match(/<input[^>]*data-i18n="searchPlaceholder"[^>]*>/);
+
+    expect(searchInput).not.toBeNull();
+    expect(searchInput[0]).not.toMatch(/\sautofocus(?:\s|=|>)/);
+  });
+
+  it('keeps history hidden when an app-grid item is clicked without search focus (#513)', () => {
+    const input = document.querySelector('.search-bar input');
+    input.focus();
+    recordSearchHistory('alpha');
+
+    const panel = document.querySelector('.search-history-panel');
+    expect(panel).not.toBeNull();
+    expect(panel.hidden).toBe(false);
+
+    const appLink = document.getElementById('test-app-link');
+    input.blur();
+
+    appLink.click();
+
+    expect(document.activeElement).not.toBe(input);
+    expect(panel.hidden).toBe(true);
+  });
   it('does not store or show history when disabled', () => {
     localStorage.setItem('searchHistory', JSON.stringify(['existing query']));
     localStorage.setItem('searchHistoryEnabled', 'false');
