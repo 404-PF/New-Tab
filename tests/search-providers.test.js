@@ -185,6 +185,12 @@ describe('Search providers - UI selection', () => {
   it('updateProviderSelection toggles active class on provider buttons', () => {
     saveActiveProvider('bing');
     updateProviderSelection();
+    window.refreshProviderBar();
+    Object.entries(BUILT_IN_PROVIDERS).forEach(([providerId, provider]) => {
+      const button = document.querySelector('[data-provider="' + providerId + '"]');
+      expect(button.querySelector('[fill="' + provider.icon.match(/fill="([^"]+)/)[1] + '"]')).not.toBeNull();
+      expect(button.dataset.providerIcon).toBe(providerId);
+    });
 
     const googleBtn = document.querySelector('[data-provider="google"]');
     const bingBtn = document.querySelector('[data-provider="bing"]');

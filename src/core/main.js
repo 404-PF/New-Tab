@@ -511,6 +511,19 @@ function getActiveProviderUrl(query) {
   return provider.url.replace('{query}', encodeURIComponent(query));
 }
 
+function renderBuiltInProviderIcons() {
+  const bar = document.getElementById('search-provider-bar');
+  if (!bar) return;
+
+  Object.keys(BUILT_IN_PROVIDERS).forEach(function (providerId) {
+    const button = bar.querySelector('.search-provider-btn[data-provider="' + providerId + '"]');
+    if (!button) return;
+
+    button.innerHTML = BUILT_IN_PROVIDERS[providerId].icon;
+    button.dataset.providerIcon = providerId;
+  });
+}
+
 function renderCustomProviderButtons() {
   const bar = document.getElementById('search-provider-bar');
   if (!bar) return;
@@ -552,6 +565,7 @@ function initProviderBar() {
   const bar = document.getElementById('search-provider-bar');
   if (!bar) return;
 
+  renderBuiltInProviderIcons();
   renderCustomProviderButtons();
   updateProviderSelection();
 
@@ -572,6 +586,7 @@ function initProviderBar() {
 
 function refreshProviderBar() {
   activeProviderId = loadActiveProvider();
+  renderBuiltInProviderIcons();
   renderCustomProviderButtons();
   updateProviderSelection();
 }
