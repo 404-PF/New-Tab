@@ -26,15 +26,17 @@ describe('Settings layout stability (#512)', () => {
 
   it('keeps all settings sections nested inside the content area', () => {
     const html = readFileSync(HTML_PATH, 'utf-8');
-    const contentStart = html.indexOf('<div class="settings-content">');
-    const backgroundSection = html.indexOf('data-section="background"', contentStart);
-    expect(contentStart).toBeGreaterThan(-1);
-    expect(backgroundSection).toBeGreaterThan(contentStart);
+    const parsedHtml = document.implementation.createHTMLDocument('New Tab');
+    parsedHtml.documentElement.innerHTML = html;
+    const settingsContent = parsedHtml.querySelector('#settings-modal .settings-content');
+    const sections = parsedHtml.querySelectorAll('.settings-section');
 
-    const region = html.slice(contentStart, backgroundSection);
-    const openDivs = (region.match(/<div\b/g) || []).length;
-    const closeDivs = (region.match(/<\/div>/g) || []).length;
-    expect(openDivs).toBe(closeDivs + 1);
+    expect(settingsContent).not.toBeNull();
+    expect(sections.length).toBeGreaterThan(0);
+    expect(parsedHtml.querySelector('[data-section="about"]')).not.toBeNull();
+    sections.forEach((section) => {
+      expect(settingsContent.contains(section)).toBe(true);
+    });
   });
 
   it('keeps the narrow layout centered with contained scrolling', () => {
