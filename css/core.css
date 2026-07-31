@@ -1099,9 +1099,10 @@ body.light-theme .timezone-add-btn {
 .settings-body {
   display: flex;
   min-height: 400px;
-  height: min(640px, var(--overlay-max-height));
+  height: min(640px, var(--overlay-max-height), 400px);
   max-height: var(--overlay-max-height);
   min-width: 0;
+  overflow-y: auto;
 }
 .settings-menu {
   flex: 0 0 180px;

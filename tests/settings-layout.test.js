@@ -15,10 +15,12 @@ describe('Settings layout stability (#512)', () => {
 
   it('keeps the narrow layout centered with contained scrolling', () => {
     const css = readFileSync(FEATURES_CSS_PATH, 'utf-8');
+    const mq = css.match(/@media screen and \(max-width: 600px\) \{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/);
+    expect(mq).toBeTruthy();
 
-    expect(css).toMatch(/@media screen and \(max-width: 600px\) \{(?:(?!^\}).)*?#settings-modal\s*\{[^}]*justify-content:\s*center/ms);
-    expect(css).toMatch(/@media screen and \(max-width: 600px\) \{(?:(?!^\}).)*?#settings-modal > div\s*\{[^}]*width:\s*calc\(100vw - 24px\)[^}]*min-width:\s*0/ms);
-    expect(css).toMatch(/@media screen and \(max-width: 600px\) \{(?:(?!^\}).)*?\.settings-content\s*\{[^}]*min-height:\s*0[^}]*max-height:\s*none/ms);
-    expect(css).toMatch(/@media screen and \(max-width: 600px\) \{(?:(?!^\}).)*?\.settings-body\s*\{[^}]*height:\s*min\(720px, calc\(85vh - 20px\)\)[^}]*max-height:\s*min\(720px, calc\(85vh - 20px\)\)/ms);
+    expect(mq[0]).toMatch(/#settings-modal\s*\{[^}]*justify-content:\s*center/);
+    expect(mq[0]).toMatch(/#settings-modal > div\s*\{[^}]*width:\s*calc\(100vw - 24px\)[^}]*min-width:\s*0/);
+    expect(mq[0]).toMatch(/\.settings-content\s*\{[^}]*min-height:\s*0[^}]*max-height:\s*none/);
+    expect(mq[0]).toMatch(/\.settings-body\s*\{[^}]*height:\s*min\(720px, calc\(85vh - 20px\)\)[^}]*max-height:\s*min\(720px, calc\(85vh - 20px\)\)/);
   });
 });
