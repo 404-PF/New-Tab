@@ -1099,7 +1099,7 @@ body.light-theme .timezone-add-btn {
 .settings-body {
   display: flex;
   min-height: 400px;
-  height: min(640px, var(--overlay-max-height), 400px);
+  height: min(640px, var(--overlay-max-height));
   max-height: var(--overlay-max-height);
   min-width: 0;
   overflow-y: auto;
@@ -1111,12 +1111,12 @@ body.light-theme .timezone-add-btn {
   background: var(--settings-menu-bg);
   border-top-left-radius: 16px;
   border-bottom-left-radius: 16px;
-  padding: 28px 0;
+  padding: 20px 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
   box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.05);
-  overflow-y: auto;
+  overflow-y: scroll;
 }
 .settings-menu-item {
   background: none;
@@ -1125,7 +1125,7 @@ body.light-theme .timezone-add-btn {
   font-size: 0.95em;
   font-weight: 500;
   cursor: pointer;
-  padding: 12px 24px;
+  padding: 10px 24px;
   text-align: left;
   min-width: 0;
   white-space: normal;

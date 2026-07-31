@@ -3,6 +3,7 @@ import { resolve } from 'path';
 
 const CORE_CSS_PATH = resolve(process.cwd(), 'css/core.css');
 const FEATURES_CSS_PATH = resolve(process.cwd(), 'css/features.css');
+const HTML_PATH = resolve(process.cwd(), 'New-Tab.html');
 
 describe('Settings layout stability (#512)', () => {
   it('uses a stable modal width and reserves scrollbar space', () => {
@@ -13,6 +14,27 @@ describe('Settings layout stability (#512)', () => {
     expect(css).toMatch(/\.settings-content\s*\{[^}]*min-width:\s*0[^}]*overflow-x:\s*hidden[^}]*overflow-y:\s*auto[^}]*scrollbar-gutter:\s*stable/);
     expect(css).toMatch(/\.settings-section\s*\{[^}]*min-width:\s*0[^}]*overflow-wrap:\s*anywhere/);
     expect(css).toMatch(/\.settings-menu-item\s*\{[^}]*min-width:\s*0[^}]*white-space:\s*normal[^}]*overflow-wrap:\s*anywhere/);
+  });
+
+  it('keeps the sidebar scrollable and pinned while the content scrolls', () => {
+    const css = readFileSync(CORE_CSS_PATH, 'utf-8');
+
+    expect(css).toMatch(/\.settings-menu\s*\{[^}]*overflow-y:\s*scroll/);
+    expect(css).toMatch(/\.settings-body\s*\{[^}]*height:\s*min\(640px, var\(--overlay-max-height\)\)/);
+    expect(css).not.toMatch(/\.settings-body\s*\{[^}]*height:\s*min\(640px, var\(--overlay-max-height\), 400px\)/);
+  });
+
+  it('keeps all settings sections nested inside the content area', () => {
+    const html = readFileSync(HTML_PATH, 'utf-8');
+    const contentStart = html.indexOf('<div class="settings-content">');
+    const backgroundSection = html.indexOf('data-section="background"', contentStart);
+    expect(contentStart).toBeGreaterThan(-1);
+    expect(backgroundSection).toBeGreaterThan(contentStart);
+
+    const region = html.slice(contentStart, backgroundSection);
+    const openDivs = (region.match(/<div\b/g) || []).length;
+    const closeDivs = (region.match(/<\/div>/g) || []).length;
+    expect(openDivs).toBe(closeDivs + 1);
   });
 
   it('keeps the narrow layout centered with contained scrolling', () => {
