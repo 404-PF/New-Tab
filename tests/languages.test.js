@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 const SEARCH_TRANSLATION_KEYS = [
@@ -26,8 +26,17 @@ const CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS = [
   'customBackgroundDeleteError'
 ];
 
+let originalLanguage;
+
 beforeAll(() => {
   injectScript('src/core/languages.js');
+  originalLanguage = window.i18n.currentLanguage();
+});
+
+afterEach(() => {
+  if (originalLanguage && window.i18n) {
+    window.i18n.applyLanguage(originalLanguage);
+  }
 });
 
 describe('Search provider translations', () => {

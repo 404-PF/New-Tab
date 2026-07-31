@@ -41,8 +41,12 @@
         const tx = database.transaction(STORE_NAME, 'readonly');
         const store = tx.objectStore(STORE_NAME);
         const request = store.getAll();
-        request.onsuccess = function () { resolve(request.result); };
+        let result;
+        request.onsuccess = function () { result = request.result; };
         request.onerror = function () { reject(request.error); };
+        tx.oncomplete = function () { resolve(result); };
+        tx.onabort = function () { reject(tx.error || new Error('Transaction aborted')); };
+        tx.onerror = function () { reject(tx.error || new Error('Transaction error')); };
       });
     }).catch(function (error) {
       console.error('Failed to read custom backgrounds from IndexedDB:', error);
@@ -56,8 +60,12 @@
         const tx = database.transaction(STORE_NAME, 'readonly');
         const store = tx.objectStore(STORE_NAME);
         const request = store.get(id);
-        request.onsuccess = function () { resolve(request.result); };
+        let result;
+        request.onsuccess = function () { result = request.result; };
         request.onerror = function () { reject(request.error); };
+        tx.oncomplete = function () { resolve(result); };
+        tx.onabort = function () { reject(tx.error || new Error('Transaction aborted')); };
+        tx.onerror = function () { reject(tx.error || new Error('Transaction error')); };
       });
     }).catch(function (error) {
       console.error('Failed to read custom background from IndexedDB:', error);
@@ -71,8 +79,12 @@
         const tx = database.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
         const request = store.put(bg);
-        request.onsuccess = function () { resolve(request.result); };
-        request.onerror = function () { reject(request.error); };
+        let requestError;
+        request.onsuccess = function () { /* operation queued */ };
+        request.onerror = function () { requestError = request.error; };
+        tx.oncomplete = function () { resolve(); };
+        tx.onabort = function () { reject(requestError || tx.error || new Error('Transaction aborted')); };
+        tx.onerror = function () { reject(requestError || tx.error || new Error('Transaction error')); };
       });
     }).catch(function (error) {
       console.error('Failed to save custom background to IndexedDB:', error);
@@ -86,8 +98,12 @@
         const tx = database.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
         const request = store.delete(id);
-        request.onsuccess = function () { resolve(); };
-        request.onerror = function () { reject(request.error); };
+        let requestError;
+        request.onsuccess = function () { /* operation queued */ };
+        request.onerror = function () { requestError = request.error; };
+        tx.oncomplete = function () { resolve(); };
+        tx.onabort = function () { reject(requestError || tx.error || new Error('Transaction aborted')); };
+        tx.onerror = function () { reject(requestError || tx.error || new Error('Transaction error')); };
       });
     }).catch(function (error) {
       console.error('Failed to delete custom background from IndexedDB:', error);
