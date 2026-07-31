@@ -191,7 +191,6 @@ describe('Search providers - UI selection', () => {
       if (!button) {
         throw new Error('Provider button not found: ' + providerId);
       }
-      expect(button).not.toBeNull();
       const expectedIconContainer = document.createElement('div');
       expectedIconContainer.innerHTML = provider.icon;
       expect(button.innerHTML).toBe(expectedIconContainer.innerHTML);
