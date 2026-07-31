@@ -12,12 +12,18 @@ function applySimpleMode() {
   const effectiveSimpleMode = isSimple && !focusModeActive;
   const checkbox = document.getElementById('simple-mode-checkbox');
   const searchBar = document.querySelector('.search-bar');
+  const providerBar = document.getElementById('search-provider-bar');
   
   if (checkbox) {
     checkbox.checked = isSimple;
   }
   
   document.body.classList.toggle('simple-mode', effectiveSimpleMode);
+
+  if (providerBar) {
+    providerBar.hidden = effectiveSimpleMode;
+    providerBar.setAttribute('aria-hidden', String(effectiveSimpleMode));
+  }
 
   if (searchBar) {
     searchBar.classList.toggle('visible', effectiveSimpleMode);

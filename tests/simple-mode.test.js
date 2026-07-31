@@ -91,14 +91,19 @@ describe('simple-mode', () => {
 
   it('applySimpleMode toggles search bar visibility', () => {
     const searchBar = document.querySelector('.search-bar');
+    const providerBar = document.getElementById('search-provider-bar');
 
     localStorage.setItem('simpleMode', 'true');
     applySimpleMode();
     expect(searchBar.classList.contains('visible')).toBe(true);
+    expect(providerBar.hidden).toBe(true);
+    expect(providerBar.getAttribute('aria-hidden')).toBe('true');
 
     localStorage.setItem('simpleMode', 'false');
     applySimpleMode();
     expect(searchBar.classList.contains('visible')).toBe(false);
+    expect(providerBar.hidden).toBe(false);
+    expect(providerBar.getAttribute('aria-hidden')).toBe('false');
   });
 
   it('applySimpleMode emits simpleModeChanged event', () => {
