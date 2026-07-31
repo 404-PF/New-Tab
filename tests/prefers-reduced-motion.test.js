@@ -378,6 +378,33 @@ describe('custom-backgrounds.js respects dynamic reduced motion changes', () => 
     delete videoEl.currentSrc;
   });
 
+  it('pauses an active custom video when autoplay and Simple Mode are enabled', () => {
+    const videoEl = document.getElementById('bg-video');
+    videoEl.classList.add('active');
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'custom.mp4', configurable: true });
+    Object.defineProperty(videoEl, 'paused', { value: false, configurable: true });
+    const pauseSpy = vi.fn();
+    videoEl.pause = pauseSpy;
+
+    const originalLoadVideoAutoplay = window.loadVideoAutoplay;
+    const originalLoadSimpleMode = window.loadSimpleMode;
+    window.loadVideoAutoplay = () => true;
+    window.loadSimpleMode = () => true;
+
+    try {
+      setReduced(true);
+
+      expect(videoEl.dataset.reducedMotionPaused).toBe('true');
+      expect(pauseSpy).toHaveBeenCalled();
+    } finally {
+      window.loadVideoAutoplay = originalLoadVideoAutoplay;
+      window.loadSimpleMode = originalLoadSimpleMode;
+      delete videoEl.dataset.reducedMotionPaused;
+      videoEl.classList.remove('active');
+      delete videoEl.currentSrc;
+    }
+  });
+
   it('clears the flag and replays the video when motion goes back to normal', () => {
     setReduced(true);
     const videoEl = document.getElementById('bg-video');
@@ -437,7 +464,7 @@ describe('video visibility-resume respects reduced motion', () => {
     expect(videoEl.dataset.wasPlaying).toBeUndefined();
   });
 
-  it('does not replay the video on visibilitychange when simpleModePaused is set', () => {
+  it('replays the video on visibilitychange despite a legacy simple-mode flag', () => {
     const videoEl = document.getElementById('bg-video');
     videoEl.dataset.wasPlaying = 'true';
     videoEl.dataset.simpleModePaused = 'true';
@@ -449,8 +476,8 @@ describe('video visibility-resume respects reduced motion', () => {
     Object.defineProperty(document, 'hidden', { value: false, configurable: true });
     document.dispatchEvent(new Event('visibilitychange'));
 
-    expect(playSpy).not.toHaveBeenCalled();
-    expect(videoEl.dataset.wasPlaying).toBeUndefined();
+    expect(playSpy).toHaveBeenCalled();
+    expect(videoEl.dataset.wasPlaying).toBe('false');
   });
 
   it('replays the video on visibilitychange when no pause flag is set', () => {

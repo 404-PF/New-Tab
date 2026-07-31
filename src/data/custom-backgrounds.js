@@ -253,7 +253,6 @@
 
     delete videoEl.dataset.currentBg;
     delete videoEl.dataset.wasPlaying;
-    delete videoEl.dataset.simpleModePaused;
     delete videoEl.dataset.reducedMotionPaused;
     delete videoEl.dataset.crossfadeTriggered;
     delete videoEl.dataset.lastPauseTime;
@@ -492,13 +491,6 @@
               return;
             }
 
-            // When simple mode is active, mark paused and keep video hidden
-            if (window.loadSimpleMode && window.loadSimpleMode()) {
-              videoEl.dataset.simpleModePaused = 'true';
-              if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
-              return;
-            }
-
             // When reduced motion is preferred, treat the looping video as
             // non-essential motion: keep the static thumbnail visible and
             // skip autoplay. The end state (a full-bleed background) is
@@ -586,7 +578,7 @@
             // that cause high CPU usage when the video cannot sustain playback
             const resumeAttempts = parseInt(videoEl.dataset.resumeAttempts || '0', 10);
 
-            if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.simpleModePaused !== 'true' && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
+            if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
               if (resumeAttempts >= 3) return;
               videoEl.dataset.resumeAttempts = String(resumeAttempts + 1);
               videoEl.play().catch(function () {});
@@ -783,8 +775,8 @@
   // background pauses/resumes without a page reload. Only acts when the
   // active custom background is a video.
   //
-  // References `window.loadBg`, `window.safePause`, `window.loadVideoAutoplay`,
-  // and `window.loadSimpleMode` at call time (not at module evaluation). This
+  // References `window.loadBg`, `window.safePause`, and `window.loadVideoAutoplay`
+  // at call time (not at module evaluation). This
   // module loads before settings.js in production, so the references must be
   // resolved lazily — the OS-level motion change can only fire after the
   // user interacts with the page, by which time settings.js has loaded.
@@ -808,7 +800,7 @@
         // Restore the 'active' + 'ready' state that applyCustomBackground
         // would have set via triggerCrossfade, then start playback.
         videoEl.classList.add('active', 'ready');
-        if (window.loadVideoAutoplay() && !document.hidden && (!window.loadSimpleMode || !window.loadSimpleMode()) && videoEl.readyState >= 3) {
+        if (window.loadVideoAutoplay() && !document.hidden && videoEl.readyState >= 3) {
           videoEl.play().catch(function () {});
           // Schedule thumbnail cleanup matching triggerCrossfade()'s
           // post-crossfade state so the static thumbnail is hidden

@@ -115,24 +115,20 @@ describe('focus-mode', () => {
   });
 
   it('suspends simple mode visuals while focus mode is enabled', () => {
-    const searchBar = document.querySelector('.search-bar');
 
     localStorage.setItem('simpleMode', 'true');
     window.applySimpleMode();
     expect(document.body.classList.contains('simple-mode')).toBe(true);
-    expect(searchBar.classList.contains('visible')).toBe(true);
 
     localStorage.setItem('focusMode', 'true');
     applyFocusMode();
     expect(document.body.classList.contains('focus-mode')).toBe(true);
     expect(document.body.classList.contains('simple-mode')).toBe(false);
-    expect(searchBar.classList.contains('visible')).toBe(false);
 
     localStorage.setItem('focusMode', 'false');
     applyFocusMode();
     expect(document.body.classList.contains('focus-mode')).toBe(false);
     expect(document.body.classList.contains('simple-mode')).toBe(true);
-    expect(searchBar.classList.contains('visible')).toBe(true);
   });
 
   it('applyFocusMode emits focusModeChanged event', () => {
