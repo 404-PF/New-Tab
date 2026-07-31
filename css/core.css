@@ -1127,6 +1127,9 @@ body.light-theme .timezone-add-btn {
   cursor: pointer;
   padding: 12px 24px;
   text-align: left;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
   border-radius: 0 12px 12px 0;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;

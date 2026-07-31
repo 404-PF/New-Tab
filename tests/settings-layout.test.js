@@ -9,8 +9,10 @@ describe('Settings layout stability (#512)', () => {
     const css = readFileSync(CORE_CSS_PATH, 'utf-8');
 
     expect(css).toMatch(/#settings-modal > div\s*\{[^}]*width:\s*min\(720px, calc\(100vw - 32px\)\)/);
-    expect(css).toMatch(/\.settings-content\s*\{[^}]*min-width:\s*0[^}]*overflow-x:\s*hidden[^}]*scrollbar-gutter:\s*stable/);
+    expect(css).toMatch(/\.settings-body\s*\{[^}]*overflow-y:\s*auto/);
+    expect(css).toMatch(/\.settings-content\s*\{[^}]*min-width:\s*0[^}]*overflow-x:\s*hidden[^}]*overflow-y:\s*auto[^}]*scrollbar-gutter:\s*stable/);
     expect(css).toMatch(/\.settings-section\s*\{[^}]*min-width:\s*0[^}]*overflow-wrap:\s*anywhere/);
+    expect(css).toMatch(/\.settings-menu-item\s*\{[^}]*min-width:\s*0[^}]*white-space:\s*normal[^}]*overflow-wrap:\s*anywhere/);
   });
 
   it('keeps the narrow layout centered with contained scrolling', () => {
