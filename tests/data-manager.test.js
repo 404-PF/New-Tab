@@ -35,4 +35,28 @@ describe('DataManager backup validation', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('ai_conversations');
     expect(window.DataManager.EXPORT_KEYS).not.toContain('searchHistory');
   });
+
+  it('shows an error instead of exporting when custom background metadata fails to load', async () => {
+    const customBackgroundsDescriptor = Object.getOwnPropertyDescriptor(window, '_customBackgrounds');
+    window._customBackgrounds = {
+      getAll: vi.fn().mockRejectedValue(new Error('IndexedDB unavailable'))
+    };
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click');
+
+    try {
+      window.DataManager.exportAllData();
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(clickSpy).not.toHaveBeenCalled();
+      expect(document.querySelector('.toast-notification').textContent).toBe('dataExportReadError');
+    } finally {
+      clickSpy.mockRestore();
+      document.querySelectorAll('.toast-notification').forEach(el => el.remove());
+      if (customBackgroundsDescriptor) {
+        Object.defineProperty(window, '_customBackgrounds', customBackgroundsDescriptor);
+      } else {
+        delete window._customBackgrounds;
+      }
+    }
+  });
 });

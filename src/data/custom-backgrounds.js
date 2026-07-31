@@ -35,52 +35,59 @@
     });
   }
 
-  function getAllCustomBackgrounds() {
+  function runCustomBackgroundTransaction(mode, operation, errorMessage) {
     return openDB().then(function (database) {
       return new Promise(function (resolve, reject) {
-        const tx = database.transaction(STORE_NAME, 'readonly');
+        const tx = database.transaction(STORE_NAME, mode);
         const store = tx.objectStore(STORE_NAME);
-        const request = store.getAll();
-        request.onsuccess = function () { resolve(request.result); };
-        request.onerror = function () { reject(request.error); };
+        const request = operation(store);
+        let result;
+        request.onsuccess = function () { result = request.result; };
+        request.onerror = function () { /* The transaction handlers reject with the request error. */ };
+        tx.oncomplete = function () { resolve(result); };
+        tx.onabort = function () { reject(request.error || tx.error || new Error('Transaction aborted')); };
+        tx.onerror = function () { reject(request.error || tx.error || new Error('Transaction error')); };
       });
+    }).catch(function (error) {
+      console.error(errorMessage, error);
+      throw error;
     });
+  }
+
+  function getAllCustomBackgrounds() {
+    return runCustomBackgroundTransaction('readonly', function (store) {
+      return store.getAll();
+    }, 'Failed to read custom backgrounds from IndexedDB:');
   }
 
   function getCustomBackground(id) {
-    return openDB().then(function (database) {
-      return new Promise(function (resolve, reject) {
-        const tx = database.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const request = store.get(id);
-        request.onsuccess = function () { resolve(request.result); };
-        request.onerror = function () { reject(request.error); };
-      });
-    });
+    return runCustomBackgroundTransaction('readonly', function (store) {
+      return store.get(id);
+    }, 'Failed to read custom background from IndexedDB:');
   }
 
   function saveCustomBackground(bg) {
-    return openDB().then(function (database) {
-      return new Promise(function (resolve, reject) {
-        const tx = database.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const request = store.put(bg);
-        request.onsuccess = function () { resolve(request.result); };
-        request.onerror = function () { reject(request.error); };
-      });
-    });
+    return runCustomBackgroundTransaction('readwrite', function (store) {
+      return store.put(bg);
+    }, 'Failed to save custom background to IndexedDB:');
   }
 
   function deleteCustomBackground(id) {
-    return openDB().then(function (database) {
-      return new Promise(function (resolve, reject) {
-        const tx = database.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const request = store.delete(id);
-        request.onsuccess = function () { resolve(); };
-        request.onerror = function () { reject(request.error); };
-      });
-    });
+    return runCustomBackgroundTransaction('readwrite', function (store) {
+      return store.delete(id);
+    }, 'Failed to delete custom background from IndexedDB:');
+  }
+
+  function showBackgroundError(key, fallback, error) {
+    const message = window.i18n && typeof window.i18n.t === 'function'
+      ? window.i18n.t(key)
+      : fallback;
+    console.error(message, error);
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+    } else {
+      window.alert(message);
+    }
   }
 
   // --- Thumbnail generation ---
@@ -401,6 +408,9 @@
       for (let i = 0; i < allThumbs.length; i++) {
         allThumbs[i].classList.toggle('selected', allThumbs[i].getAttribute('data-bg') === currentBg);
       }
+    }).catch(function (error) {
+      showBackgroundError('customBackgroundsLoadError', 'Failed to load custom backgrounds. Please try again.', error);
+      return [];
     });
   }
 
@@ -632,6 +642,11 @@
       }
 
       return true;
+    }).catch(function (error) {
+      if (isActiveCustomBackgroundRequest(id, loadVersion)) {
+        showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', error);
+      }
+      return false;
     });
   }
 
@@ -737,6 +752,8 @@
         }
 
         renderCustomBackgrounds();
+      }).catch(function (error) {
+        showBackgroundError('customBackgroundDeleteError', 'Failed to delete the custom background. Please try again.', error);
       });
     });
   });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 const SEARCH_TRANSLATION_KEYS = [
@@ -20,8 +20,23 @@ const POMODORO_TRANSLATION_KEYS = [
   'pomodoroSessionsBeforeLong'
 ];
 
+const CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS = [
+  'customBackgroundsLoadError',
+  'customBackgroundLoadError',
+  'customBackgroundDeleteError'
+];
+
+let originalLanguage;
+
 beforeAll(() => {
   injectScript('src/core/languages.js');
+  originalLanguage = window.i18n.currentLanguage();
+});
+
+afterEach(() => {
+  if (originalLanguage && window.i18n) {
+    window.i18n.applyLanguage(originalLanguage);
+  }
 });
 
 describe('Search provider translations', () => {
@@ -48,6 +63,20 @@ describe('Pomodoro translations', () => {
 
       POMODORO_TRANSLATION_KEYS.forEach((key) => {
         expect(window.i18n.t(key), code + ':' + key).not.toBe(key);
+      });
+    });
+  });
+});
+
+describe('Custom background error translations', () => {
+  it('defines every error message for all supported languages', () => {
+    const languages = window.i18n.getSupportedLanguages();
+
+    languages.forEach(({ code }) => {
+      window.i18n.applyLanguage(code);
+
+      CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS.forEach((key) => {
+        expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
       });
     });
   });

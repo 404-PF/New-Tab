@@ -1022,18 +1022,23 @@ describe('background image load failure recovery', () => {
     };
 
     const mockDB = {
-      transaction: () => ({
-        objectStore: () => ({
-          get: () => {
-            const req = { result: null };
-            setTimeout(() => {
-              req.result = bgData;
-              if (req.onsuccess) req.onsuccess();
-            }, 0);
-            return req;
-          }
-        })
-      }),
+      transaction: () => {
+        const tx = {
+          oncomplete: null,
+          objectStore: () => ({
+            get: () => {
+              const req = { result: null };
+              setTimeout(() => {
+                req.result = bgData;
+                if (req.onsuccess) req.onsuccess();
+                if (tx.oncomplete) tx.oncomplete();
+              }, 0);
+              return req;
+            }
+          })
+        };
+        return tx;
+      },
       objectStoreNames: { contains: () => false }
     };
 

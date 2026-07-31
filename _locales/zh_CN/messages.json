@@ -1,6 +1,9 @@
 {
   "enableSearchHistory": { "message": "启用搜索历史记录", "description": "Label for the search history toggle" },
   "appGridSaveError": { "message": "无法保存应用更改。您上次的操作未被保存。", "description": "Error shown when app grid changes cannot be persisted" },
+  "customBackgroundsLoadError": { "message": "无法加载自定义背景。请重试。", "description": "Error shown when custom backgrounds cannot be listed" },
+  "customBackgroundLoadError": { "message": "无法加载该自定义背景。请重试。", "description": "Error shown when a custom background cannot be applied" },
+  "customBackgroundDeleteError": { "message": "无法删除自定义背景。请重试。", "description": "Error shown when a custom background cannot be deleted" },
   "name": {
     "message": "新标签页",
     "description": "The name of the extension"

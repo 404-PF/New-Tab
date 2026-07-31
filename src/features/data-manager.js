@@ -167,8 +167,9 @@
           // thumb: bg.thumb
         };
       });
-    }).catch(function () {
-      return [];
+    }).catch(function (error) {
+      console.error('[data-manager] Failed to read custom background metadata:', error);
+      throw error;
     });
   }
 
@@ -219,6 +220,9 @@
       setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
 
       showToast(t('dataExportSuccess', 'Data exported successfully.'), 'success');
+    }).catch(function (error) {
+      console.error('[data-manager] Failed to export data:', error);
+      showToast(t('dataExportReadError', 'Export failed: could not read all settings.'), 'error');
     });
   }
 
