@@ -378,6 +378,33 @@ describe('custom-backgrounds.js respects dynamic reduced motion changes', () => 
     delete videoEl.currentSrc;
   });
 
+  it('pauses an active custom video when autoplay and Simple Mode are enabled', () => {
+    const videoEl = document.getElementById('bg-video');
+    videoEl.classList.add('active');
+    Object.defineProperty(videoEl, 'currentSrc', { value: 'custom.mp4', configurable: true });
+    Object.defineProperty(videoEl, 'paused', { value: false, configurable: true });
+    const pauseSpy = vi.fn();
+    videoEl.pause = pauseSpy;
+
+    const originalLoadVideoAutoplay = window.loadVideoAutoplay;
+    const originalLoadSimpleMode = window.loadSimpleMode;
+    window.loadVideoAutoplay = () => true;
+    window.loadSimpleMode = () => true;
+
+    try {
+      setReduced(true);
+
+      expect(videoEl.dataset.reducedMotionPaused).toBe('true');
+      expect(pauseSpy).toHaveBeenCalled();
+    } finally {
+      window.loadVideoAutoplay = originalLoadVideoAutoplay;
+      window.loadSimpleMode = originalLoadSimpleMode;
+      delete videoEl.dataset.reducedMotionPaused;
+      videoEl.classList.remove('active');
+      delete videoEl.currentSrc;
+    }
+  });
+
   it('clears the flag and replays the video when motion goes back to normal', () => {
     setReduced(true);
     const videoEl = document.getElementById('bg-video');

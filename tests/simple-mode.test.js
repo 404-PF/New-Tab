@@ -91,14 +91,20 @@ describe('simple-mode', () => {
 
   it('applySimpleMode leaves the normal search bar layout unchanged', () => {
     const searchBar = document.querySelector('.search-bar');
+    localStorage.setItem('simpleMode', 'false');
+    applySimpleMode();
+    const normalLayout = {
+      className: searchBar.className,
+      style: searchBar.getAttribute('style')
+    };
 
     localStorage.setItem('simpleMode', 'true');
     applySimpleMode();
-    expect(searchBar.classList.contains('visible')).toBe(false);
+    expect({ className: searchBar.className, style: searchBar.getAttribute('style') }).toEqual(normalLayout);
 
     localStorage.setItem('simpleMode', 'false');
     applySimpleMode();
-    expect(searchBar.classList.contains('visible')).toBe(false);
+    expect({ className: searchBar.className, style: searchBar.getAttribute('style') }).toEqual(normalLayout);
   });
 
   it('applySimpleMode emits simpleModeChanged event', () => {
@@ -159,9 +165,11 @@ describe('simple-mode', () => {
     window.safePause = safePauseSpy;
 
     localStorage.setItem('simpleMode', 'true');
+    const pausedBefore = videoEl.paused;
     applySimpleMode();
     expect(videoEl.dataset.simpleModePaused).toBeUndefined();
     expect(safePauseSpy).not.toHaveBeenCalled();
+    expect(videoEl.paused).toBe(pausedBefore);
 
     if (origPaused) Object.defineProperty(videoEl, 'paused', origPaused);
   });
