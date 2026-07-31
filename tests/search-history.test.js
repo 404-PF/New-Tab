@@ -15,7 +15,7 @@ const SEARCH_BAR_HTML = `
         <circle cx="11" cy="11" r="7"></circle>
         <path d="m20 20-3.5-3.5"></path>
       </svg>
-      <input type="text" placeholder="Search or enter website" autofocus />
+      <input type="text" placeholder="Search or enter website" />
     </div>
     <div class="search-provider-bar"></div>
   </div>
@@ -113,16 +113,21 @@ describe('search history', () => {
   });
 
   it('keeps history hidden when an app-grid item is clicked without search focus (#513)', () => {
-    recordSearchHistory('alpha');
     const input = document.querySelector('.search-bar input');
+    input.focus();
+    recordSearchHistory('alpha');
+
+    const panel = document.querySelector('.search-history-panel');
+    expect(panel).not.toBeNull();
+    expect(panel.hidden).toBe(false);
+
     const appLink = document.getElementById('test-app-link');
     input.blur();
 
     appLink.click();
 
-    const panel = document.querySelector('.search-history-panel');
     expect(document.activeElement).not.toBe(input);
-    expect(panel === null || panel.hidden).toBe(true);
+    expect(panel.hidden).toBe(true);
   });
   it('does not store or show history when disabled', () => {
     localStorage.setItem('searchHistory', JSON.stringify(['existing query']));
