@@ -4,8 +4,6 @@
 (function() {
   'use strict';
 
-  const escapeHtml = window.escapeHtml;
-
   // Extract the base language from locale variants (e.g. "zh_CN" → "zh")
   function normalizeLang(lang) {
     return String(lang || 'en').split(/[-_]/)[0].toLowerCase();
@@ -387,11 +385,16 @@
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
               <circle cx="12" cy="10" r="3"/>
             </svg>
-            <span>${escapeHtml(displayLocation)}</span>
+            <span></span>
           </div>
         </div>
       </div>
     `;
+
+    const locationElement = el.querySelector('.weather-location span');
+    if (locationElement) {
+      locationElement.textContent = displayLocation;
+    }
 
     // Show the widget with entrance animation on first reveal, or just update content on refresh.
     showWidgetWithAnimation(el);

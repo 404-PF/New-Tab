@@ -171,14 +171,17 @@ describe('Weather widget', () => {
         timestamp: Date.now(),
         locationMode: 'auto',
         manualCity: '',
-        locationName: 'Updated City'
+        locationName: '<img src=x onerror=alert(1)>'
       }));
 
       await window.WeatherWidget.refresh();
 
       const widget = document.getElementById('weather-widget');
       expect(widget.querySelector('.weather-temp').textContent).toContain('30');
-      expect(widget.querySelector('.weather-location').textContent).toContain('Updated City');
+      expect(widget.querySelector('.weather-location span').textContent).toBe(
+        '<img src=x onerror=alert(1)>'
+      );
+      expect(widget.querySelector('.weather-location img')).toBeNull();
     } finally {
       global.fetch = originalFetch;
     }
