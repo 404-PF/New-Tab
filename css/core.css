@@ -322,7 +322,6 @@ body {
 .search-bar:focus-within {
   z-index: 1;
   transform: scale(1.04);
-  box-shadow: 0 6px 24px rgba(33, 150, 243, 0.13);
 }
 .search-bar input {
   width: 100%;

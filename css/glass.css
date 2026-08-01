@@ -267,12 +267,10 @@ body.light-theme {
 
 /* Focus-visible remains explicit on every interactive control. */
 button:focus-visible,
-input:focus-visible,
+input:not(#todo-input):not(.search-bar input):focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 :is(
-  .search-bar,
-  .todo-input-container,
   .ai-chat-input-container,
   .ai-topics-search,
   .settings-section select,
