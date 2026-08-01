@@ -266,6 +266,23 @@ describe('AppGridState', () => {
     expect(AppGridState.deleteApp('nonexistent')).toBe(false);
   });
 
+  it('creates a folder ID with getRandomValues when randomUUID is unavailable', () => {
+    const getRandomValues = vi.fn(bytes => {
+      bytes.fill(0);
+      return bytes;
+    });
+    vi.stubGlobal('crypto', { getRandomValues });
+
+    try {
+      const folder = AppGridState.createFolder('Group', []);
+
+      expect(getRandomValues).toHaveBeenCalledOnce();
+      expect(folder.id).toBe('folder-00000000-0000-4000-8000-000000000000');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('rolls back custom apps when adding an app cannot save its order', () => {
     const previousApps = [{ id: 'existing', url: 'https://existing.com', name: 'Existing' }];
     AppGridStorage.saveCustomApps(previousApps);

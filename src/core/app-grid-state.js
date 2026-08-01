@@ -191,6 +191,19 @@ const AppGridState = {
 
   // --- Folder operations ---
 
+  generateFolderId() {
+    if (typeof crypto.randomUUID === 'function') {
+      return 'folder-' + crypto.randomUUID();
+    }
+
+    const randomBytes = new Uint8Array(16);
+    crypto.getRandomValues(randomBytes);
+    randomBytes[6] = (randomBytes[6] & 0x0f) | 0x40;
+    randomBytes[8] = (randomBytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    return 'folder-' + `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  },
+
   getFolders() {
     return window.AppGridStorage ? window.AppGridStorage.loadFolders() : [];
   },
@@ -220,7 +233,7 @@ const AppGridState = {
   createFolder(name, appIds) {
     if (!name || typeof name !== 'string' || name.trim() === '') return null;
 
-    const id = 'folder-' + crypto.randomUUID();
+    const id = this.generateFolderId();
     const folder = { id, name: name.trim(), apps: Array.isArray(appIds) ? appIds : [] };
 
     const previousFolders = this.getFolders();
