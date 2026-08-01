@@ -33,7 +33,10 @@ const AIStore = (function() {
   };
 
   function generateId() {
-    return 'conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const randomValues = new Uint32Array(2);
+    crypto.getRandomValues(randomValues);
+    const randomSuffix = Array.from(randomValues, value => value.toString(36)).join('');
+    return 'conv_' + Date.now() + '_' + randomSuffix;
   }
 
   function createNewConversation() {

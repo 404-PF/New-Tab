@@ -11,6 +11,26 @@ beforeEach(() => {
   AIStore.state.currentConversationId = null;
 });
 
+describe('AIStore conversation identifiers', () => {
+  it('uses the platform CSPRNG for the unique suffix', () => {
+    const getRandomValues = vi.fn(values => {
+      values[0] = 35;
+      values[1] = 36;
+      return values;
+    });
+    const now = vi.spyOn(Date, 'now').mockReturnValue(123);
+    vi.stubGlobal('crypto', { getRandomValues });
+
+    try {
+      expect(AIStore.generateId()).toBe('conv_123_z10');
+      expect(getRandomValues).toHaveBeenCalledWith(expect.any(Uint32Array));
+    } finally {
+      now.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 describe('AIStore conversation recovery (#458)', () => {
   it('persists a canonical conversation after malformed JSON', () => {
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
