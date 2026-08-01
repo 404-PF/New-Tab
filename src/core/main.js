@@ -193,7 +193,9 @@ function setupRefreshMotto() {
         // Get mottos for current language, fallback to English
         const currentMottos = mottos[currentLang] || mottos.en;
         // Pick a random motto
-        const randomIndex = Math.floor(Math.random() * currentMottos.length);
+        const randomValue = new Uint32Array(1);
+        crypto.getRandomValues(randomValue);
+        const randomIndex = randomValue[0] % currentMottos.length;
         mottoText.textContent = currentMottos[randomIndex];
         // Add refresh animation
         if (window.prefersReducedMotion && window.prefersReducedMotion()) {
