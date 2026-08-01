@@ -95,12 +95,11 @@ describe('motto fade respects reduced motion', () => {
       el.style.opacity = '';
     }
     // setupRefreshMotto attaches its click handler to #refresh-motto-btn;
-    // the global test stubs don't include it, so add a fresh one each test.
-    if (!document.getElementById('refresh-motto-btn')) {
-      const btn = document.createElement('button');
-      btn.id = 'refresh-motto-btn';
-      document.body.appendChild(btn);
-    }
+    // the global test stubs don't include it, so use a fresh one each test.
+    document.getElementById('refresh-motto-btn')?.remove();
+    const btn = document.createElement('button');
+    btn.id = 'refresh-motto-btn';
+    document.body.appendChild(btn);
   });
 
   it('skips the 50ms fade timer when reduced motion is on', () => {
@@ -138,6 +137,28 @@ describe('motto fade respects reduced motion', () => {
     expect(mottoText.style.opacity).toBe('1');
     expect(mottoText.style.transition).toBe('none');
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('retries out-of-range random values to avoid modulo bias', () => {
+    const originalMottos = globalThis.mottos.en;
+    const randomValues = [0xffffffff, 4];
+    const getRandomValues = vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation((values) => {
+      values[0] = randomValues.shift();
+      return values;
+    });
+
+    try {
+      globalThis.mottos.en = ['zero', 'one', 'two'];
+      setReduced(true);
+      setupRefreshMotto();
+      document.getElementById('refresh-motto-btn').dispatchEvent(new Event('click', { bubbles: true }));
+
+      expect(getRandomValues).toHaveBeenCalledTimes(2);
+      expect(document.getElementById('motto-text').textContent).toBe('one');
+    } finally {
+      globalThis.mottos.en = originalMottos;
+      getRandomValues.mockRestore();
+    }
   });
 
   it('renderTodos asks the helper before applying a FLIP transform', async () => {

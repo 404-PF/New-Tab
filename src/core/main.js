@@ -194,7 +194,10 @@ function setupRefreshMotto() {
         const currentMottos = mottos[currentLang] || mottos.en;
         // Pick a random motto
         const randomValue = new Uint32Array(1);
-        crypto.getRandomValues(randomValue);
+        const maxUnbiasedValue = Math.floor(0x100000000 / currentMottos.length) * currentMottos.length;
+        do {
+          crypto.getRandomValues(randomValue);
+        } while (randomValue[0] >= maxUnbiasedValue);
         const randomIndex = randomValue[0] % currentMottos.length;
         mottoText.textContent = currentMottos[randomIndex];
         // Add refresh animation
