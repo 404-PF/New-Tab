@@ -185,6 +185,17 @@ describe('Search providers - UI selection', () => {
   it('updateProviderSelection toggles active class on provider buttons', () => {
     saveActiveProvider('bing');
     updateProviderSelection();
+    window.refreshProviderBar();
+    Object.entries(BUILT_IN_PROVIDERS).forEach(([providerId, provider]) => {
+      const button = document.querySelector('[data-provider="' + providerId + '"]');
+      if (!button) {
+        throw new Error('Provider button not found: ' + providerId);
+      }
+      const expectedIconContainer = document.createElement('div');
+      expectedIconContainer.innerHTML = provider.icon;
+      expect(button.innerHTML).toBe(expectedIconContainer.innerHTML);
+      expect(button.dataset.providerIcon).toBe(providerId);
+    });
 
     const googleBtn = document.querySelector('[data-provider="google"]');
     const bingBtn = document.querySelector('[data-provider="bing"]');
