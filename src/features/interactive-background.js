@@ -48,7 +48,7 @@
       speedX: (Math.random() - 0.5) * 0.18,
       speedY: (Math.random() - 0.5) * 0.16,
       drift: 0.6 + randomFloat() * 1.4,
-      alpha: 0.18 + Math.random() * 0.28,
+      alpha: 0.18 + randomFloat() * 0.28,
     };
   }
 
