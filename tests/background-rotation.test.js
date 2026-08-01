@@ -20,6 +20,7 @@ afterEach(() => {
   BackgroundRotation.stop();
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   delete window.applyBg;
 });
 
@@ -68,6 +69,23 @@ describe('Background rotation storage', () => {
 });
 
 describe('Background rotation apply', () => {
+  it('uses Web Crypto when shuffling backgrounds', () => {
+    const getRandomValues = vi.fn(values => {
+      values.fill(0);
+      return values;
+    });
+    vi.stubGlobal('crypto', { getRandomValues });
+    window._backgrounds = [
+      { id: 'Test BG 1', title: 'Test BG 1', thumb: 'thumb1.jpg', url: 'img1.jpg' },
+      { id: 'Test BG 2', title: 'Test BG 2', thumb: 'thumb2.jpg', url: 'img2.jpg' },
+    ];
+    localStorage.setItem('bgRotationEnabled', 'true');
+
+    BackgroundRotation.start();
+
+    expect(getRandomValues).toHaveBeenCalledOnce();
+  });
+
   it('apply does not throw when backgrounds not loaded', () => {
     window._backgrounds = undefined;
     expect(() => BackgroundRotation.apply()).not.toThrow();

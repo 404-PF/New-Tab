@@ -80,7 +80,9 @@
   function shuffleArray(arr) {
     const copy = arr.slice();
     for (let i = copy.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const randomValue = new Uint32Array(1);
+      crypto.getRandomValues(randomValue);
+      const j = randomValue[0] % (i + 1);
       const tmp = copy[i];
       copy[i] = copy[j];
       copy[j] = tmp;
