@@ -199,7 +199,7 @@ function getFaviconUrl(url) {
 
 function createAppData(url, name, icon) {
   return {
-    id: 'custom-app-' + Date.now() + '-' + Math.floor(Math.random() * 100000),
+    id: 'custom-app-' + crypto.randomUUID(),
     url: normalizeAppUrl(url),
     name,
     icon,
