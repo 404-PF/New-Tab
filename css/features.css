@@ -292,16 +292,6 @@ body.light-theme .settings-section select option {
   color: #1f2937;
 }
 
-body.light-theme .settings-section button {
-  background: rgba(255, 0, 0, 0.9);
-  color: white;
-}
-
-body.light-theme .settings-section button:hover {
-  background: #ff0000;
-  color: white;
-}
-
 /* Custom Delete Confirmation Dialog */
 .ai-confirm-dialog {
   position: absolute;
