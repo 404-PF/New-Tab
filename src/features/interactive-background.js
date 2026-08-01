@@ -42,11 +42,11 @@
 
   function createParticle() {
     return {
-      x: Math.random() * width,
-      y: Math.random() * height,
-      radius: 1.2 + Math.random() * 2.8,
-      speedX: (Math.random() - 0.5) * 0.18,
-      speedY: (Math.random() - 0.5) * 0.16,
+      x: randomFloat() * width,
+      y: randomFloat() * height,
+      radius: 1.2 + randomFloat() * 2.8,
+      speedX: (randomFloat() - 0.5) * 0.18,
+      speedY: (randomFloat() - 0.5) * 0.16,
       drift: 0.6 + randomFloat() * 1.4,
       alpha: 0.18 + randomFloat() * 0.28,
     };
