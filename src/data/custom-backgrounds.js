@@ -735,7 +735,9 @@
         if (currentBg === bgId) {
           const builtInBackgrounds = window._backgrounds || [];
           if (builtInBackgrounds.length > 0) {
-            const randomBg = builtInBackgrounds[Math.floor(Math.random() * builtInBackgrounds.length)];
+            const randomValue = new Uint32Array(1);
+            crypto.getRandomValues(randomValue);
+            const randomBg = builtInBackgrounds[randomValue[0] % builtInBackgrounds.length];
             localStorage.setItem('homepageBg', randomBg.id);
           } else {
             localStorage.setItem('homepageBg', 'Water Beside Forest');
