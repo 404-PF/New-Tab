@@ -5,7 +5,7 @@ describe('motto data', () => {
   it('provides non-empty English and Chinese motto collections', () => {
     const context = vm.createContext({});
     injectScript('src/data/motto.js', context);
-    injectScript('globalThis.mottoData = mottos;', context);
+    injectScript('tests/helpers/expose-motto-data.js', context);
     const mottoData = context.mottoData;
     expect(mottoData.en.length).toBeGreaterThan(0);
     expect(mottoData.zh.length).toBeGreaterThan(0);

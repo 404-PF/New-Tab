@@ -1,22 +1,36 @@
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { readFileSync, realpathSync } from 'fs';
+import { resolve, sep } from 'path';
 import vm from 'vm';
 
-export function injectScript(relativePathOrCode, vmContext) {
-  // If a VM context is provided, run in that context.
-  // If the argument looks like a file path (ends with .js), read it first;
-  // otherwise treat it as raw code.
+const PROJECT_ROOT = realpathSync(process.cwd());
+const TRUSTED_SCRIPT_PATH = /^(?:src|background|tests)(?:\/[A-Za-z0-9._-]+)+\.js$/;
+
+function resolveTrustedScriptPath(relativePath) {
+  if (
+    typeof relativePath !== 'string' ||
+    !TRUSTED_SCRIPT_PATH.test(relativePath) ||
+    relativePath.split('/').includes('..')
+  ) {
+    throw new TypeError('injectScript requires a trusted repository .js path.');
+  }
+
+  const scriptPath = realpathSync(resolve(PROJECT_ROOT, relativePath));
+  if (!scriptPath.startsWith(PROJECT_ROOT + sep)) {
+    throw new TypeError('injectScript path must remain inside the repository.');
+  }
+  return scriptPath;
+}
+
+export function injectScript(relativePath, vmContext) {
+  const scriptPath = resolveTrustedScriptPath(relativePath);
+  const source = readFileSync(scriptPath, 'utf-8');
+  const script = new vm.Script(source, { filename: scriptPath });
+
   if (vmContext) {
-    const source = relativePathOrCode.endsWith('.js')
-      ? readFileSync(resolve(process.cwd(), relativePathOrCode), 'utf-8')
-      : relativePathOrCode;
-    const script = new vm.Script(source);
     script.runInContext(vmContext);
     return;
   }
 
-  // Otherwise, treat first arg as a file path and eval in globalThis (original behavior)
-  const absolutePath = resolve(process.cwd(), relativePathOrCode);
-  const code = readFileSync(absolutePath, 'utf-8');
-  globalThis.eval(code);
+  // source only comes from resolveTrustedScriptPath(), never caller-supplied code.
+  globalThis.eval(source);
 }

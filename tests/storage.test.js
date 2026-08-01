@@ -1,7 +1,5 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import { JSDOM } from 'jsdom';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeEach(() => {
@@ -505,7 +503,6 @@ describe('storage bridge', () => {
   });
 
   it('script writes survive when chrome.storage.get responds after bridge timeout', async () => {
-    const code = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf-8');
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
       url: 'https://example.com',
       runScripts: 'dangerously'
@@ -535,7 +532,7 @@ describe('storage bridge', () => {
         }
       };
 
-      injectScript(code, dom.getInternalVMContext());
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
 
       expect(dom.window.__storageBridgeReady).toBeDefined();
 
