@@ -31,6 +31,15 @@ export function injectScript(relativePath, vmContext) {
     return;
   }
 
-  // source only comes from resolveTrustedScriptPath(), never caller-supplied code.
-  globalThis.eval(source);
+  const sandbox = Object.create(globalThis);
+  sandbox.window = globalThis.window;
+  Object.defineProperty(sandbox, 'crypto', { get: () => globalThis.crypto });
+  const initialSandboxKeys = new Set(Reflect.ownKeys(sandbox));
+  script.runInNewContext(sandbox);
+
+  Reflect.ownKeys(sandbox).forEach((key) => {
+    if (!initialSandboxKeys.has(key)) {
+      globalThis[key] = sandbox[key];
+    }
+  });
 }
