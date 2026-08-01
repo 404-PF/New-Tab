@@ -132,6 +132,23 @@ describe('Notes CRUD', () => {
     expect(list[0].id).toBeDefined();
   });
 
+  it('creates a UUID with getRandomValues when randomUUID is unavailable', () => {
+    const getRandomValues = vi.fn(bytes => {
+      bytes.fill(0);
+      return bytes;
+    });
+    vi.stubGlobal('crypto', { getRandomValues });
+
+    try {
+      addNote();
+
+      expect(getRandomValues).toHaveBeenCalledOnce();
+      expect(getNotes()[0].id).toBe('00000000-0000-4000-8000-000000000000');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('addNote renders the note in the DOM', () => {
     addNote();
     const items = document.querySelectorAll('.note-item');
