@@ -8,13 +8,9 @@
 // then re-inject storage.js and verify the timeout path.
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import { JSDOM } from 'jsdom';
 import { injectScript } from './helpers/inject-script.js';
 
-const STORAGE_JS_PATH = resolve(process.cwd(), 'src/core/storage.js');
-const STORAGE_CODE = readFileSync(STORAGE_JS_PATH, 'utf-8');
 
 describe('bootstrap with stalled chrome.storage', () => {
   it(
@@ -49,7 +45,7 @@ describe('bootstrap with stalled chrome.storage', () => {
         };
 
         // Inject storage.js using the shared injectScript helper
-        injectScript(STORAGE_CODE, dom.getInternalVMContext());
+        injectScript('src/core/storage.js', dom.getInternalVMContext());
 
         // __storageBridgeReady should be a Promise
         expect(dom.window.__storageBridgeReady).toBeDefined();

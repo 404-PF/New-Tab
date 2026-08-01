@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import { JSDOM } from 'jsdom';
 import { injectScript } from './helpers/inject-script.js';
 
 // bootstrap.js is an IIFE that must run in an isolated JSDOM with controlled
 // script loading. This is the same pattern used by bootstrap-timeout.test.js.
-const BOOTSTRAP_CODE = readFileSync(
-  resolve(process.cwd(), 'src/core/bootstrap.js'), 'utf-8'
-);
 
 async function waitFor(predicate, timeout = 2000) {
   const start = Date.now();
@@ -75,7 +70,7 @@ describe('bootstrap error overlay', () => {
   }
 
   async function runBootstrap(dom) {
-    injectScript(BOOTSTRAP_CODE, dom.getInternalVMContext());
+    injectScript('src/core/bootstrap.js', dom.getInternalVMContext());
     await dom.window.__storageBridgeReady;
   }
 
