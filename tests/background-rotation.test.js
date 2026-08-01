@@ -70,20 +70,26 @@ describe('Background rotation storage', () => {
 
 describe('Background rotation apply', () => {
   it('uses Web Crypto when shuffling backgrounds', () => {
-    const getRandomValues = vi.fn(values => {
-      values.fill(0);
+    const getRandomValues = vi.fn((values) => {
+      values[0] = getRandomValues.mock.calls.length === 1 ? 1 : 0;
       return values;
     });
+    const mathRandom = vi.spyOn(Math, 'random');
     vi.stubGlobal('crypto', { getRandomValues });
     window._backgrounds = [
       { id: 'Test BG 1', title: 'Test BG 1', thumb: 'thumb1.jpg', url: 'img1.jpg' },
       { id: 'Test BG 2', title: 'Test BG 2', thumb: 'thumb2.jpg', url: 'img2.jpg' },
+      { id: 'Test BG 3', title: 'Test BG 3', thumb: 'thumb3.jpg', url: 'img3.jpg' },
     ];
     localStorage.setItem('bgRotationEnabled', 'true');
 
     BackgroundRotation.start();
+    BackgroundRotation.advance();
 
-    expect(getRandomValues).toHaveBeenCalledOnce();
+    expect(getRandomValues).toHaveBeenCalledTimes(2);
+    expect(getRandomValues).toHaveBeenCalledWith(expect.any(Uint32Array));
+    expect(mathRandom).not.toHaveBeenCalled();
+    expect(localStorage.getItem('homepageBg')).toBe('Test BG 3');
   });
 
   it('apply does not throw when backgrounds not loaded', () => {
