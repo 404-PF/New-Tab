@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -20,6 +21,21 @@ describe('OfflineMode', () => {
       expect(OfflineMode.getAcknowledgment().content).toContain('离线');
     } finally {
       window.i18n = originalI18n;
+    }
+  });
+
+  it('uses the platform CSPRNG when selecting a fact', () => {
+    const getRandomValues = vi.fn(values => {
+      values[0] = 0;
+      return values;
+    });
+    vi.stubGlobal('crypto', { getRandomValues });
+
+    try {
+      expect(OfflineMode.getRandomFact('en')).toContain('The human brain');
+      expect(getRandomValues).toHaveBeenCalledWith(expect.any(Uint32Array));
+    } finally {
+      vi.unstubAllGlobals();
     }
   });
 });

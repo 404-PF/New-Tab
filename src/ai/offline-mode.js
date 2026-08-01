@@ -170,7 +170,11 @@ const OfflineMode = (function() {
   function getRandomFact(lang) {
     const language = lang || getCurrentLanguage();
     const facts = language === 'zh' ? FACTS_ZH : FACTS_EN;
-    const index = Math.floor(Math.random() * facts.length);
+    // Fact selection is not security-sensitive, but use the platform CSPRNG so
+    // this helper remains safe if its output is later used in a sensitive flow.
+    const randomValue = new Uint32Array(1);
+    crypto.getRandomValues(randomValue);
+    const index = Math.floor((randomValue[0] / 0x100000000) * facts.length);
     
     const prefix = language === 'zh' ? '你知道吗？' : 'Did you know? ';
     return prefix + facts[index];
