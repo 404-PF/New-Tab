@@ -220,7 +220,7 @@ const AppGridState = {
   createFolder(name, appIds) {
     if (!name || typeof name !== 'string' || name.trim() === '') return null;
 
-    const id = 'folder-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
+    const id = 'folder-' + crypto.randomUUID();
     const folder = { id, name: name.trim(), apps: Array.isArray(appIds) ? appIds : [] };
 
     const previousFolders = this.getFolders();
