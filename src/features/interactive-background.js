@@ -34,6 +34,12 @@
     return Math.min(max, Math.max(min, value));
   }
 
+  function randomFloat() {
+    const randomBytes = new Uint32Array(1);
+    crypto.getRandomValues(randomBytes);
+    return randomBytes[0] / 0x100000000;
+  }
+
   function createParticle() {
     return {
       x: Math.random() * width,
@@ -41,7 +47,7 @@
       radius: 1.2 + Math.random() * 2.8,
       speedX: (Math.random() - 0.5) * 0.18,
       speedY: (Math.random() - 0.5) * 0.16,
-      drift: 0.6 + Math.random() * 1.4,
+      drift: 0.6 + randomFloat() * 1.4,
       alpha: 0.18 + Math.random() * 0.28,
     };
   }
