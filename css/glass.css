@@ -1,0 +1,478 @@
+/* Light-theme glassmorphism overrides.
+   Loaded last so the glass treatment does not alter the default dark theme. */
+
+:root {
+  /* Opaque fallback values preserve legibility without backdrop-filter. */
+  --glass-surface: rgba(15, 23, 42, 0.86);
+  --glass-surface-elevated: rgba(15, 23, 42, 0.92);
+  --glass-surface-subtle: rgba(255, 255, 255, 0.1);
+  --glass-control: rgba(255, 255, 255, 0.1);
+  --glass-control-hover: rgba(255, 255, 255, 0.16);
+  --glass-control-active: rgba(33, 150, 243, 0.22);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-border-subtle: rgba(255, 255, 255, 0.12);
+  --glass-border-hover: rgba(255, 255, 255, 0.34);
+  --glass-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --glass-shadow-elevated:
+    0 20px 60px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  --glass-shadow-hover:
+    0 16px 40px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --glass-shadow-active: 0 6px 18px rgba(0, 0, 0, 0.2);
+  --glass-focus-ring: 0 0 0 3px rgba(33, 150, 243, 0.3);
+  --glass-danger-ring: 0 0 0 3px rgba(244, 67, 54, 0.22);
+  --glass-overlay: rgba(2, 6, 23, 0.48);
+  --glass-blur: 18px;
+  --glass-overlay-blur: 10px;
+  --glass-saturate: 135%;
+  --glass-radius-md: 16px;
+  --glass-text-primary: rgba(255, 255, 255, 0.95);
+  --glass-text-secondary: rgba(226, 232, 240, 0.82);
+  --glass-text-muted: rgba(203, 213, 225, 0.68);
+  --glass-text-placeholder: rgba(203, 213, 225, 0.58);
+}
+
+body.light-theme {
+  --glass-surface: rgba(255, 255, 255, 0.88);
+  --glass-surface-elevated: rgba(255, 255, 255, 0.94);
+  --glass-surface-subtle: rgba(255, 255, 255, 0.46);
+  --glass-control: rgba(255, 255, 255, 0.58);
+  --glass-control-hover: rgba(255, 255, 255, 0.76);
+  --glass-control-active: rgba(33, 150, 243, 0.14);
+  --glass-border: rgba(15, 23, 42, 0.14);
+  --glass-border-subtle: rgba(15, 23, 42, 0.1);
+  --glass-border-hover: rgba(15, 23, 42, 0.24);
+  --glass-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --glass-shadow-elevated:
+    0 20px 60px rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+  --glass-shadow-hover:
+    0 16px 40px rgba(15, 23, 42, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --glass-shadow-active: 0 6px 18px rgba(15, 23, 42, 0.12);
+  --glass-focus-ring: 0 0 0 3px rgba(33, 150, 243, 0.22);
+  --glass-danger-ring: 0 0 0 3px rgba(211, 47, 47, 0.18);
+  --glass-overlay: rgba(15, 23, 42, 0.22);
+  /* Opaque text avoids alpha blending against unpredictable backgrounds. */
+  --glass-text-primary: #0f172a;
+  --glass-text-secondary: #334155;
+  --glass-text-muted: #475569;
+  --glass-text-placeholder: #64748b;
+  --settings-text-color: #1f2937;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  :root {
+    --glass-surface: rgba(15, 23, 42, 0.58);
+    --glass-surface-elevated: rgba(15, 23, 42, 0.68);
+    --glass-surface-subtle: rgba(255, 255, 255, 0.07);
+    --glass-control: rgba(255, 255, 255, 0.08);
+    --glass-control-hover: rgba(255, 255, 255, 0.15);
+  }
+
+  body.light-theme {
+    --glass-surface: rgba(255, 255, 255, 0.56);
+    --glass-surface-elevated: rgba(255, 255, 255, 0.68);
+    --glass-surface-subtle: rgba(255, 255, 255, 0.34);
+    --glass-control: rgba(255, 255, 255, 0.4);
+    --glass-control-hover: rgba(255, 255, 255, 0.62);
+  }
+}
+
+/* Primary surfaces retain visible background depth. */
+body.light-theme :is(
+  .search-bar,
+  .icon,
+  .todo-section,
+  .notes-section,
+  .weather-widget,
+  .focus-mode-indicator,
+  #motto-container,
+  .todo-stats-panel,
+  .setting-card,
+  .bg-subsection
+) {
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+/* Dialogs, popovers, menus, and folder panels share one elevated surface. */
+body.light-theme :is(
+  #settings-modal > div,
+  #add-app-modal > div,
+  #todo-edit-modal > .todo-edit-modal-content,
+  .ai-chat-modal-content,
+  .ai-confirm-content,
+  .folder-popup-content,
+  .move-to-folder-selector-content,
+  .weather-app-modal-content,
+  .release-notes-dialog,
+  .rename-app-modal-content,
+  .thumbnail-app-modal-content,
+  .delete-app-modal-content,
+  .color-picker-popup,
+  .font-picker-popup,
+  .app-context-menu,
+  .engine-dropdown,
+  .search-history-panel,
+  .custom-calendar,
+  .timezone-options,
+  .bg-rotation-picker
+) {
+  background: var(--glass-surface-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-md);
+  box-shadow: var(--glass-shadow-elevated);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+/* Overlay layers add depth without making the background disappear. */
+body.light-theme :is(
+  #settings-modal,
+  #add-app-modal,
+  #todo-edit-modal,
+  #ai-chat-modal,
+  .ai-confirm-dialog.screen-overlay,
+  .weather-app-modal,
+  .release-notes-modal,
+  .folder-popup,
+  .move-to-folder-selector,
+  #rename-app-modal,
+  #thumbnail-app-modal,
+  #delete-app-modal
+) {
+  background: var(--glass-overlay);
+  -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
+  backdrop-filter: blur(var(--glass-overlay-blur));
+}
+
+/* Nested cards and controls share the same lower-level surface. */
+body.light-theme :is(
+  .todo-input-container,
+  .ai-chat-input-container,
+  .ai-topics-search,
+  .notes-add-btn,
+  .todo-stats-toggle,
+  .filter-pill,
+  .quick-action-btn,
+  .search-provider-btn,
+  .selected-engine,
+  .date-picker-trigger,
+  .calendar-nav-btn,
+  .calendar-btn.secondary,
+  .priority-selector-btn,
+  .weather-choice-button,
+  .font-swatch,
+  .timezone-current-chip,
+  .timezone-picker-wrapper input,
+  .timezone-add select,
+  .settings-section select,
+  .settings-section input:not([type="checkbox"]):not([type="radio"]),
+  #add-app-modal input,
+  .rename-app-input-wrapper input,
+  .thumbnail-app-input-wrapper input,
+  .todo-edit-field input,
+  .todo-edit-field select,
+  .weather-city-inline input
+) {
+  background: var(--glass-control);
+  border-color: var(--glass-border-subtle);
+  color: var(--glass-text-primary);
+}
+
+body.light-theme :is(.todo-input-container, .ai-chat-input-container) {
+  border: 1px solid var(--glass-border);
+}
+
+/* Lightweight cards avoid unrelated opaque blocks in lists and settings. */
+body.light-theme :is(
+  .todo-item,
+  .note-item,
+  .todo-stat-card,
+  .weather-app-detail-card,
+  .weather-app-forecast-day,
+  .search-history-item,
+  .move-to-folder-option,
+  .theme-option.modern,
+  .language-option.modern,
+  .curvature-option.modern,
+  .size-choice-button,
+  .font-option,
+  .color-swatch
+) {
+  background: var(--glass-surface-subtle);
+  border-color: var(--glass-border-subtle);
+}
+
+body.light-theme :is(.settings-menu, .ai-chat-sidebar) {
+  background: var(--glass-surface);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+/* Shared hover and active states. */
+body.light-theme :is(
+  .search-bar,
+  .icon,
+  .todo-section,
+  .notes-section,
+  .weather-widget,
+  .focus-mode-indicator,
+  #motto-container,
+  .todo-stats-panel,
+  .setting-card,
+  .bg-subsection
+):hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--glass-shadow-hover);
+}
+
+body.light-theme :is(
+  .search-provider-btn,
+  .selected-engine,
+  .settings-menu-item,
+  .filter-pill,
+  .quick-action-btn,
+  .todo-stats-toggle,
+  .todo-stats-clear,
+  .notes-add-btn,
+  .date-picker-trigger,
+  .calendar-nav-btn,
+  .calendar-btn.secondary,
+  .priority-selector-btn,
+  .weather-choice-button,
+  .font-swatch,
+  .timezone-add-btn,
+  .btn-secondary,
+  .ai-confirm-cancel
+):is(:hover, :active, .active) {
+  background: var(--glass-control-hover);
+  border-color: var(--glass-border-hover);
+}
+
+body.light-theme :is(
+  .filter-pill.active,
+  .todo-stats-toggle.active,
+  .settings-menu-item.selected,
+  .weather-choice-button.active,
+  .size-choice-button.active,
+  .font-option.selected
+) {
+  background: var(--glass-control-active);
+  border-color: rgba(33, 150, 243, 0.58);
+}
+
+/* Focus-visible remains explicit on every interactive control. */
+body.light-theme button:focus-visible,
+body.light-theme select:focus-visible,
+body.light-theme textarea:not(.note-textarea):focus-visible,
+body.light-theme :is(
+  .settings-section select,
+  .todo-edit-field select
+):focus-within {
+  outline: 2px solid rgba(33, 150, 243, 0.72);
+  outline-offset: 2px;
+  box-shadow: var(--glass-focus-ring);
+}
+
+body.light-theme :is([aria-invalid="true"], .add-app-preview.invalid, .add-app-validation-message.invalid) {
+  border-color: rgba(244, 67, 54, 0.72) !important;
+  box-shadow: var(--glass-danger-ring);
+}
+
+body.light-theme :is(button:disabled, input:disabled, select:disabled, textarea:disabled, .disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: saturate(0.7);
+}
+
+body.light-theme :is(.btn-primary, .btn-danger, .ai-confirm-primary, .ai-confirm-delete):focus-visible {
+  outline-color: rgba(255, 255, 255, 0.9);
+}
+
+body.light-theme :is(.btn-danger, .ai-confirm-delete, .quick-action-btn.danger, .delete-item):focus-visible {
+  box-shadow: var(--glass-danger-ring);
+}
+
+body.light-theme :is(.app-icon.drag-over .icon, .app-icon.folder-icon.drag-over-folder .icon) {
+  background: rgba(33, 150, 243, 0.2);
+  border-color: rgba(33, 150, 243, 0.58);
+  box-shadow:
+    0 8px 32px rgba(33, 150, 243, 0.3),
+    0 0 0 2px rgba(33, 150, 243, 0.35),
+    inset 0 0 20px rgba(255, 255, 255, 0.06);
+}
+
+body.light-theme :is(.app-icon.folder-icon.drag-over-folder-rejected .icon, .delete-app-preview) {
+  border-color: rgba(244, 67, 54, 0.52);
+}
+
+/* Notes get a softer, layered backfill so the scratchpad feels intentional
+   without becoming another opaque block over the background. */
+body.light-theme .notes-section {
+  padding: 16px 18px 18px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(96, 165, 250, 0.16), transparent 34%),
+    radial-gradient(circle at 0 100%, rgba(167, 139, 250, 0.12), transparent 38%),
+    var(--glass-surface);
+  background-clip: padding-box;
+}
+
+body.light-theme .notes-title {
+  letter-spacing: 0.2px;
+}
+
+body.light-theme .notes-add-btn {
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+body.light-theme .note-item {
+  background: rgba(255, 255, 255, 0.42);
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow:
+    0 4px 14px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+body.light-theme .note-item:hover,
+body.light-theme .note-item:focus-within {
+  background: rgba(255, 255, 255, 0.58);
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--glass-shadow-hover);
+  transform: translateY(-1px);
+}
+
+body.light-theme .notes-tag-filter {
+  padding: 2px 0 4px;
+}
+
+body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion) {
+  background: rgba(255, 255, 255, 0.38);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #475569;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion):hover {
+  background: rgba(199, 210, 254, 0.72);
+  border-color: rgba(99, 102, 241, 0.42);
+  color: #312e81;
+}
+
+body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion).active {
+  background: rgba(129, 140, 248, 0.3);
+  border-color: rgba(99, 102, 241, 0.56);
+  color: #020617;
+}
+
+body.light-theme .note-tag-btn.has-tag {
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(99, 102, 241, 0.48);
+  color: #020617;
+}
+
+body.light-theme :is(
+  .todo-text,
+  .todo-subtask-text,
+  .edit-subtask-text,
+  .todo-stat-value,
+  .calendar-day,
+  .inline-calendar-days .calendar-day,
+  .ai-topic-title,
+  .ai-message-text,
+  .note-textarea,
+  .note-preview
+) {
+  color: var(--glass-text-primary);
+}
+
+body.light-theme :is(
+  .todo-meta,
+  .todo-due-date,
+  .todo-date-btn,
+  .todo-edit-body label,
+  .todo-edit-subtasks-section label,
+  .todo-subtask-progress,
+  .todo-stat-label,
+  .todo-heatmap-label,
+  .calendar-weekdays span,
+  .inline-calendar-weekdays span,
+  .search-history-title,
+  .search-history-clear-btn,
+  .add-app-header-text p,
+  .add-app-section > p,
+  .preview-url,
+  .quick-add-icon svg,
+  .bg-subsection-desc,
+  .weather-location,
+  .folder-popup-empty,
+  .move-to-folder-option.cancel,
+  .ai-topic-time,
+  .ai-topics-empty,
+  .ai-message-time,
+  .ai-welcome-subtitle,
+  .ai-chat-title,
+  .ai-topics-header
+) {
+  color: var(--glass-text-secondary);
+}
+
+body.light-theme :is(
+  .todo-edit-btn,
+  .todo-delete-btn,
+  .todo-bullet .bullet-unchecked,
+  .todo-subtask-delete,
+  .edit-subtask-delete,
+  .note-delete-btn,
+  .note-preview-btn,
+  .folder-popup-rename-btn,
+  .folder-popup-close-btn,
+  .ai-topic-icon svg,
+  .ai-topics-no-results
+) {
+  color: var(--glass-text-muted);
+}
+
+body.light-theme :is(
+  .search-bar input,
+  #todo-input,
+  #todo-due-date,
+  #filter-status,
+  .settings-section input:not([type="checkbox"]):not([type="radio"]),
+  .settings-section select,
+  .todo-edit-field input,
+  .todo-edit-field select,
+  .todo-edit-subtask-input,
+  .ai-topics-search input,
+  #ai-chat-input
+) {
+  color: var(--glass-text-primary);
+}
+
+body.light-theme :is(input::placeholder, textarea::placeholder) {
+  color: var(--glass-text-placeholder);
+  opacity: 1;
+}
+
+body.light-theme :is(
+  .todo-due-date.empty,
+  .calendar-day.other-month,
+  .inline-calendar-days .calendar-day.other-month,
+  .todo-subtask-progress,
+  .notes-empty
+) {
+  color: var(--glass-text-muted);
+}

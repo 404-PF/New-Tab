@@ -101,6 +101,14 @@ describe('search bar stacking context (#326)', () => {
 
     document.head.removeChild(style);
   });
+
+  it('raises the focused search wrapper above the app grid', () => {
+    const css = readFileSync(CORE_CSS_PATH, 'utf-8');
+    const selector = '.search-bar-wrapper:focus-within {';
+    const ruleStart = css.indexOf(selector);
+    const ruleEnd = css.indexOf('}', ruleStart);
+    expect(css.slice(ruleStart, ruleEnd)).toContain('z-index: 1;');
+  });
 });
 
 describe('search history', () => {

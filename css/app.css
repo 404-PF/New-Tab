@@ -328,9 +328,11 @@ body.light-theme .todo-count {
 
 .todo-input-container:focus-within {
   background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+body:not(.light-theme) .todo-input-container:focus-within {
   border-color: rgba(33, 150, 243, 0.3);
   box-shadow: 0 8px 32px rgba(33, 150, 243, 0.15);
-  transform: translateY(-2px);
 }
 
 .context-menu-open .todo-input-container {
@@ -5296,7 +5298,10 @@ body.light-theme .note-tag-input {
   color: #1e293b;
 }
 .note-tag-input:focus {
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: #475569;
+}
+body.light-theme .note-tag-input:focus {
+  border-color: #cbd5e1;
 }
 
 .note-tag-suggestions {
