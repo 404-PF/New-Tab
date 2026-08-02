@@ -63,6 +63,7 @@ body.light-theme {
   --glass-text-secondary: #334155;
   --glass-text-muted: #475569;
   --glass-text-placeholder: #64748b;
+  --settings-text-color: #1f2937;
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
@@ -213,8 +214,9 @@ body.light-theme :is(
 }
 
 body.light-theme :is(.settings-menu, .ai-chat-sidebar) {
-  background: var(--glass-surface-subtle);
-  border-color: var(--glass-border-subtle);
+  background: var(--glass-surface);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
 }
@@ -303,105 +305,6 @@ body.light-theme :is(.btn-danger, .ai-confirm-delete, .quick-action-btn.danger, 
   box-shadow: var(--glass-danger-ring);
 }
 
-/* These rules win over older component-specific opaque light-theme values. */
-body.light-theme :is(
-  .search-bar,
-  .icon,
-  .todo-section,
-  .notes-section,
-  .weather-widget,
-  .focus-mode-indicator,
-  #motto-container,
-  .todo-stats-panel,
-  .setting-card,
-  .bg-subsection,
-  .settings-menu,
-  .ai-chat-sidebar
-) {
-  background: var(--glass-surface);
-  border-color: var(--glass-border);
-  box-shadow: var(--glass-shadow);
-}
-
-body.light-theme :is(
-  #settings-modal > div,
-  #add-app-modal > div,
-  #todo-edit-modal > .todo-edit-modal-content,
-  .ai-chat-modal-content,
-  .ai-confirm-content,
-  .folder-popup-content,
-  .move-to-folder-selector-content,
-  .weather-app-modal-content,
-  .release-notes-dialog,
-  .rename-app-modal-content,
-  .thumbnail-app-modal-content,
-  .delete-app-modal-content,
-  .color-picker-popup,
-  .font-picker-popup,
-  .app-context-menu,
-  .engine-dropdown,
-  .search-history-panel,
-  .custom-calendar,
-  .timezone-options,
-  .bg-rotation-picker
-) {
-  background: var(--glass-surface-elevated);
-  border-color: var(--glass-border);
-  box-shadow: var(--glass-shadow-elevated);
-}
-
-body.light-theme :is(
-  .todo-input-container,
-  .ai-chat-input-container,
-  .ai-topics-search,
-  .notes-add-btn,
-  .todo-stats-toggle,
-  .filter-pill,
-  .quick-action-btn,
-  .search-provider-btn,
-  .selected-engine,
-  .date-picker-trigger,
-  .calendar-nav-btn,
-  .calendar-btn.secondary,
-  .priority-selector-btn,
-  .weather-choice-button,
-  .font-swatch,
-  .timezone-current-chip,
-  .timezone-picker-wrapper input,
-  .timezone-add select,
-  .settings-section select,
-  .settings-section input:not([type="checkbox"]):not([type="radio"]),
-  #add-app-modal input,
-  .rename-app-input-wrapper input,
-  .thumbnail-app-input-wrapper input,
-  .todo-edit-field input,
-  .todo-edit-field select,
-  .weather-city-inline input
-) {
-  background: var(--glass-control);
-  border-color: var(--glass-border-subtle);
-  color: var(--glass-text-primary);
-}
-
-body.light-theme :is(
-  .todo-item,
-  .note-item,
-  .todo-stat-card,
-  .weather-app-detail-card,
-  .weather-app-forecast-day,
-  .search-history-item,
-  .move-to-folder-option,
-  .theme-option.modern,
-  .language-option.modern,
-  .curvature-option.modern,
-  .size-choice-button,
-  .font-option,
-  .color-swatch
-) {
-  background: var(--glass-surface-subtle);
-  border-color: var(--glass-border-subtle);
-}
-
 body.light-theme :is(.app-icon.drag-over .icon, .app-icon.folder-icon.drag-over-folder .icon) {
   background: rgba(33, 150, 243, 0.2);
   border-color: rgba(33, 150, 243, 0.58);
@@ -472,18 +375,13 @@ body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion):hover {
 body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion).active {
   background: rgba(129, 140, 248, 0.3);
   border-color: rgba(99, 102, 241, 0.56);
-  color: #312e81;
+  color: #020617;
 }
 
 body.light-theme .note-tag-btn.has-tag {
   background: rgba(99, 102, 241, 0.16);
   border-color: rgba(99, 102, 241, 0.48);
-  color: #4338ca;
-}
-
-/* Keep light-theme text legible on translucent surfaces. */
-body.light-theme {
-  --settings-text-color: #1f2937;
+  color: #020617;
 }
 
 body.light-theme :is(
