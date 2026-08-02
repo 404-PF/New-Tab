@@ -30,6 +30,9 @@
   --glass-saturate: 135%;
   --glass-radius-md: 16px;
   --glass-text-primary: rgba(255, 255, 255, 0.95);
+  --glass-text-secondary: rgba(226, 232, 240, 0.82);
+  --glass-text-muted: rgba(203, 213, 225, 0.68);
+  --glass-text-placeholder: rgba(203, 213, 225, 0.58);
 }
 
 body.light-theme {
@@ -55,7 +58,11 @@ body.light-theme {
   --glass-focus-ring: 0 0 0 3px rgba(33, 150, 243, 0.22);
   --glass-danger-ring: 0 0 0 3px rgba(211, 47, 47, 0.18);
   --glass-overlay: rgba(15, 23, 42, 0.22);
-  --glass-text-primary: rgba(15, 23, 42, 0.94);
+  /* Opaque text avoids alpha blending against unpredictable backgrounds. */
+  --glass-text-primary: #0f172a;
+  --glass-text-secondary: #334155;
+  --glass-text-muted: #475569;
+  --glass-text-placeholder: #64748b;
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
@@ -472,4 +479,104 @@ body.light-theme .note-tag-btn.has-tag {
   background: rgba(99, 102, 241, 0.16);
   border-color: rgba(99, 102, 241, 0.48);
   color: #4338ca;
+}
+
+/* Keep light-theme text legible on translucent surfaces. */
+body.light-theme {
+  --text-color: #1f2937;
+  --text-light: #475569;
+  --settings-text-color: #1f2937;
+}
+
+body.light-theme :is(
+  .todo-text,
+  .todo-subtask-text,
+  .edit-subtask-text,
+  .todo-stat-value,
+  .calendar-day,
+  .inline-calendar-days .calendar-day,
+  .ai-topic-title,
+  .ai-message-text,
+  .note-textarea,
+  .note-preview
+) {
+  color: var(--glass-text-primary);
+}
+
+body.light-theme :is(
+  .todo-meta,
+  .todo-due-date,
+  .todo-date-btn,
+  .todo-edit-body label,
+  .todo-edit-subtasks-section label,
+  .todo-subtask-progress,
+  .todo-stat-label,
+  .todo-heatmap-label,
+  .calendar-weekdays span,
+  .inline-calendar-weekdays span,
+  .search-history-title,
+  .search-history-clear-btn,
+  .add-app-header-text p,
+  .add-app-section > p,
+  .preview-url,
+  .quick-add-icon svg,
+  .bg-subsection-desc,
+  .weather-location,
+  .folder-popup-empty,
+  .move-to-folder-option.cancel,
+  .ai-topic-time,
+  .ai-topics-empty,
+  .ai-message-time,
+  .ai-welcome-subtitle,
+  .ai-chat-title,
+  .ai-topics-header
+) {
+  color: var(--glass-text-secondary);
+}
+
+body.light-theme :is(
+  .todo-edit-btn,
+  .todo-delete-btn,
+  .todo-bullet .bullet-unchecked,
+  .todo-subtask-delete,
+  .edit-subtask-delete,
+  .note-delete-btn,
+  .note-preview-btn,
+  .folder-popup-rename-btn,
+  .folder-popup-close-btn,
+  .ai-topic-icon svg,
+  .ai-topics-no-results
+) {
+  color: var(--glass-text-muted);
+}
+
+body.light-theme :is(
+  .search-bar input,
+  #todo-input,
+  #todo-due-date,
+  #filter-status,
+  .settings-section input:not([type="checkbox"]):not([type="radio"]),
+  .settings-section select,
+  .todo-edit-field input,
+  .todo-edit-field select,
+  .todo-edit-subtask-input,
+  .ai-topics-search input,
+  #ai-chat-input
+) {
+  color: var(--glass-text-primary);
+}
+
+body.light-theme :is(input::placeholder, textarea::placeholder) {
+  color: var(--glass-text-placeholder);
+  opacity: 1;
+}
+
+body.light-theme :is(
+  .todo-due-date.empty,
+  .calendar-day.other-month,
+  .inline-calendar-days .calendar-day.other-month,
+  .todo-subtask-progress,
+  .notes-empty
+) {
+  color: var(--glass-text-muted);
 }

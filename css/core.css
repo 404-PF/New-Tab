@@ -304,6 +304,11 @@ body {
   isolation: isolate;
 }
 
+/* Keep the open history panel above the app grid's entrance stacking context. */
+.search-bar-wrapper:focus-within {
+  z-index: 1;
+}
+
 .search-bar {
   align-items: center;
   background: #f0f0f0;
