@@ -266,17 +266,11 @@ body.light-theme :is(
 
 /* Focus-visible remains explicit on every interactive control. */
 body.light-theme button:focus-visible,
-body.light-theme input:not(#todo-input):not(.search-bar input):not(.note-tag-input):focus-visible,
 body.light-theme select:focus-visible,
 body.light-theme textarea:not(.note-textarea):focus-visible,
 body.light-theme :is(
-  .ai-chat-input-container,
-  .ai-topics-search,
   .settings-section select,
-  .settings-section input,
-  .todo-edit-field input,
-  .todo-edit-field select,
-  .weather-city-inline input
+  .todo-edit-field select
 ):focus-within {
   outline: 2px solid rgba(33, 150, 243, 0.72);
   outline-offset: 2px;
