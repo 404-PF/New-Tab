@@ -58,7 +58,7 @@ body.light-theme {
   --glass-text-primary: rgba(15, 23, 42, 0.94);
 }
 
-@supports (backdrop-filter: blur(1px)) {
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   :root {
     --glass-surface: rgba(15, 23, 42, 0.58);
     --glass-surface-elevated: rgba(15, 23, 42, 0.68);
@@ -286,7 +286,7 @@ textarea:focus-visible,
 
 :is([aria-invalid="true"], .add-app-preview.invalid, .add-app-validation-message.invalid) {
   border-color: rgba(244, 67, 54, 0.72) !important;
-  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.22);
+  box-shadow: var(--glass-danger-ring);
 }
 
 :is(button:disabled, input:disabled, select:disabled, textarea:disabled, .disabled) {
@@ -300,7 +300,7 @@ textarea:focus-visible,
 }
 
 :is(.btn-danger, .ai-confirm-delete, .quick-action-btn.danger, .delete-item):focus-visible {
-  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.22);
+  box-shadow: var(--glass-danger-ring);
 }
 
 /* These rules win over older component-specific opaque light-theme values. */
@@ -411,6 +411,6 @@ body.light-theme :is(
     inset 0 0 20px rgba(255, 255, 255, 0.06);
 }
 
-:is(.app-icon.folder-icon.drag-over-folder-rejected .icon, .delete-app-preview, .add-app-preview.invalid) {
+:is(.app-icon.folder-icon.drag-over-folder-rejected .icon, .delete-app-preview) {
   border-color: rgba(244, 67, 54, 0.52);
 }
