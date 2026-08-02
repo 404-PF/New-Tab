@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.4.9 (2026-08-02)
+
+### Features
+
+- Add drag-and-drop note reordering and tag categories (`35d3b26`)
+- Add a configurable Pomodoro focus timer with todo-linked sessions (`4e51e26`)
+- Add support for multiple time zone clocks (`99fc571`)
+
+### Bug Fixes
+
+- Use cryptographically secure IDs and randomness across AI conversations, app folders, todos, notes, custom apps, mottos, backgrounds, and particles (`480e2ca`, `7c7a0f9`, `826f91a`, `5fd1ea4`, `e64783d`, `9e96614`, `f783042`, `c34ff6b`, `c1896f1`, `69153fc`, `32a2c6a`, `e02e90d`)
+- Render weather locations as text (`d05ed7b`)
+- Require an absolute FFmpeg path and prevent thumbnail generation from hanging (`89f46c2`)
+- Remove broad settings button styling that overrides component variants (`db5c67d`)
+- Render provider-specific search icons (`d1705a7`)
+- Preserve normal background behavior in Simple Mode (`54d4919`)
+- Stabilize settings modal layout, scrolling, and localized labels (`658d9d4`)
+- Handle IndexedDB failures for custom backgrounds (`89c8f27`)
+- Prevent search history from taking focus at startup (`79b0510`)
+- Render the manifest version reliably (`229f0a8`)
+
+### Changed
+
+- Unify the global UI with the glassmorphism styling system (`b39256c`)
+
+### Maintenance
+
+- Constrain injected script paths and run injection tests in a sandboxed V8 context (`5139370`)
+
 ## v0.4.8 (2026-07-20)
 
 ### Features
