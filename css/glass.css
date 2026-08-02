@@ -483,8 +483,6 @@ body.light-theme .note-tag-btn.has-tag {
 
 /* Keep light-theme text legible on translucent surfaces. */
 body.light-theme {
-  --text-color: #1f2937;
-  --text-light: #475569;
   --settings-text-color: #1f2937;
 }
 
