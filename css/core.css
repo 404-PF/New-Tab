@@ -323,6 +323,9 @@ body {
   z-index: 1;
   transform: scale(1.04);
 }
+body:not(.light-theme) .search-bar:focus-within {
+  box-shadow: 0 6px 24px rgba(33, 150, 243, 0.13);
+}
 .search-bar input {
   width: 100%;
   height: 100%;

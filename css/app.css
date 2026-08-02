@@ -330,6 +330,10 @@ body.light-theme .todo-count {
   background: rgba(255, 255, 255, 0.12);
   transform: translateY(-2px);
 }
+body:not(.light-theme) .todo-input-container:focus-within {
+  border-color: rgba(33, 150, 243, 0.3);
+  box-shadow: 0 8px 32px rgba(33, 150, 243, 0.15);
+}
 
 .context-menu-open .todo-input-container {
   backdrop-filter: none;
