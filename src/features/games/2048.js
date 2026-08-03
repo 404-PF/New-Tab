@@ -31,10 +31,6 @@
     return b;
   }
 
-  function _cloneBoard(b) {
-    return b.map(function (row) { return row.slice(); });
-  }
-
   function emptyCells() {
     const cells = [];
     for (let r = 0; r < SIZE; r++) {
@@ -131,7 +127,9 @@
       let col = [];
       for (let r = 0; r < SIZE; r++) col.push(board[r][c]);
       const before = col.join(',');
-      col = slideRow(col.reverse()).reverse();
+      const reversed = col.reverse();
+      col = slideRow(reversed);
+      col.reverse();
       for (let r = 0; r < SIZE; r++) board[r][c] = col[r];
       if (col.join(',') !== before) changed = true;
     }
@@ -146,7 +144,6 @@
 
     const cellSize = 70;
     const gap = 8;
-    const _totalSize = SIZE * cellSize + (SIZE + 1) * gap;
 
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
@@ -201,6 +198,22 @@
 
   // ===================== Input =====================
 
+  function afterMove(moved) {
+    if (!moved) return;
+    addRandomTile();
+    render();
+    if (hasWon() && !won) {
+      won = true;
+    }
+    if (!canMove()) {
+      gameOver = true;
+      render();
+    }
+    if (won || gameOver) {
+      saveStats();
+    }
+  }
+
   function handleKeydown(e) {
     if (gameOver) {
       if (e.code === 'Space') {
@@ -219,20 +232,7 @@
       default: return;
     }
 
-    if (moved) {
-      addRandomTile();
-      render();
-      if (hasWon() && !won) {
-        won = true;
-      }
-      if (!canMove()) {
-        gameOver = true;
-        render();
-      }
-      if (won || gameOver) {
-        saveStats();
-      }
-    }
+    afterMove(moved);
   }
 
   // ===================== Touch =====================
@@ -266,20 +266,7 @@
       moved = dy > 0 ? moveDown() : moveUp();
     }
 
-    if (moved) {
-      addRandomTile();
-      render();
-      if (hasWon() && !won) {
-        won = true;
-      }
-      if (!canMove()) {
-        gameOver = true;
-        render();
-      }
-      if (won || gameOver) {
-        saveStats();
-      }
-    }
+    afterMove(moved);
   }
 
   // ===================== Stats =====================
@@ -348,9 +335,9 @@
     scoreEl = null;
   }
 
-  function pause() {}
+  function pause() { /* 2048 is turn-based, no timer to pause */ }
 
-  function resume() {}
+  function resume() { /* 2048 is turn-based, no timer to resume */ }
 
   window.GameRegistry && window.GameRegistry.register({
     id: '2048',

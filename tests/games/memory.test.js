@@ -57,7 +57,7 @@ describe('Memory Match Game', () => {
     game.init(container);
 
     const cards = container.querySelectorAll('.games-memory-card');
-    expect(cards.length).toBe(16);
+    expect(cards).toHaveLength(16);
 
     game.destroy();
     container.remove();

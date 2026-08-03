@@ -58,7 +58,7 @@ describe('2048 Game', () => {
 
     const board = container.querySelector('.games-2048-board');
     const filledCells = board.querySelectorAll('.games-2048-cell-filled');
-    expect(filledCells.length).toBe(2);
+    expect(filledCells).toHaveLength(2);
 
     game.destroy();
     container.remove();
@@ -72,7 +72,7 @@ describe('2048 Game', () => {
 
     const board = container.querySelector('.games-2048-board');
     const cells = board.querySelectorAll('.games-2048-cell');
-    expect(cells.length).toBe(16);
+    expect(cells).toHaveLength(16);
 
     game.destroy();
     container.remove();

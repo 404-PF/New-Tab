@@ -120,7 +120,7 @@
       const bestTime = stats.bestTime || Infinity;
       window.GameRegistry.updateStats('memory', {
         bestMoves: Math.min(bestMoves, moves),
-        bestTime: Math.min(bestTime, parseFloat(time)),
+        bestTime: Math.min(bestTime, Number.parseFloat(time)),
         gamesPlayed: (stats.gamesPlayed || 0) + 1
       });
     }

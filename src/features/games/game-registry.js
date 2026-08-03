@@ -62,7 +62,7 @@
   // ===================== Public API =====================
 
   function register(gameDef) {
-    if (!gameDef || !gameDef.id || !gameDef.name || !gameDef.init || !gameDef.destroy) {
+    if (!gameDef?.id || !gameDef.name || !gameDef.init || !gameDef.destroy) {
       console.warn('GameRegistry.register: invalid game definition', gameDef);
       return false;
     }
@@ -92,7 +92,7 @@
 
   function updateStats(id, updates) {
     const all = loadStats();
-    all[id] = Object.assign({}, all[id] || {}, updates);
+    all[id] = { ...(all[id] || {}), ...updates };
     saveStats(all);
   }
 
@@ -168,10 +168,8 @@
       if (typeof currentGame.pause === 'function') {
         currentGame.pause();
       }
-    } else {
-      if (typeof currentGame.resume === 'function') {
-        currentGame.resume();
-      }
+    } else if (typeof currentGame.resume === 'function') {
+      currentGame.resume();
     }
   }
 

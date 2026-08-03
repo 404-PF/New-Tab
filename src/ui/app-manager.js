@@ -363,7 +363,7 @@ function attachSettingsAppHandler() {
     gamesApp.removeEventListener('click', gamesApp._clickHandler);
     gamesApp._clickHandler = function (e) {
       e.preventDefault();
-      if (window.GamesApp && window.GamesApp.open) {
+      if (window.GamesApp?.open) {
         window.GamesApp.open();
       }
     };

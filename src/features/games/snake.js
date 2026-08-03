@@ -68,7 +68,7 @@
     if (paused || gameOver) return;
 
     direction = nextDirection;
-    const head = Object.assign({}, snake[0]);
+    const head = { ...snake[0] };
 
     if (direction === 'right') head.x++;
     else if (direction === 'left') head.x--;
@@ -82,8 +82,8 @@
     }
 
     // Self collision
-    for (let i = 0; i < snake.length; i++) {
-      if (snake[i].x === head.x && snake[i].y === head.y) {
+    for (const seg of snake) {
+      if (seg.x === head.x && seg.y === head.y) {
         endGame();
         return;
       }
