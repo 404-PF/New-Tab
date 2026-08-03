@@ -17,6 +17,7 @@
   let gridEl = null;
   let movesEl = null;
   let timeEl = null;
+  let pendingTimeouts = [];
 
   // ===================== Helpers =====================
 
@@ -67,6 +68,11 @@
     }
   }
 
+  function clearPendingTimeouts() {
+    pendingTimeouts.forEach(function (id) { clearTimeout(id); });
+    pendingTimeouts = [];
+  }
+
   function checkMatch() {
     const a = flipped[0];
     const b = flipped[1];
@@ -77,19 +83,21 @@
       matched++;
       flipped = [];
 
-      setTimeout(function () {
+      pendingTimeouts.push(setTimeout(function () {
+        if (gameOver) return;
         renderCard(a.id);
         renderCard(b.id);
         if (matched === PAIRS) endGame();
-      }, 200);
+      }, 200));
     } else {
-      setTimeout(function () {
+      pendingTimeouts.push(setTimeout(function () {
+        if (gameOver) return;
         a.flipped = false;
         b.flipped = false;
         renderCard(a.id);
         renderCard(b.id);
         flipped = [];
-      }, 800);
+      }, 800));
     }
   }
 
@@ -154,7 +162,8 @@
 
   function renderCard(cardId) {
     const card = cards[cardId];
-    const el = document.querySelector('.games-memory-card[data-id="' + cardId + '"]');
+    if (!gridEl) return;
+    const el = gridEl.querySelector('.games-memory-card[data-id="' + cardId + '"]');
     if (!el) return;
 
     if (card.matched) {
@@ -244,6 +253,7 @@
   }
 
   function destroy() {
+    clearPendingTimeouts();
     stopTimer();
     document.removeEventListener('keydown', handleKeydown);
     cards = [];

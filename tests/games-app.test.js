@@ -114,6 +114,9 @@ describe('GameRegistry', () => {
 
   it('destroys current game when launching a different one', () => {
     let destroyCalled = false;
+    const container = document.createElement('div');
+    container.id = 'games-game-container';
+    document.body.appendChild(container);
     window.GameRegistry.register({
       id: 'destroy-test-1',
       name: 'D1',
@@ -131,6 +134,7 @@ describe('GameRegistry', () => {
     expect(window.GameRegistry.getCurrentGame()).not.toBeNull();
     window.GameRegistry.launch('destroy-test-2');
     expect(destroyCalled).toBe(true);
+    container.remove();
   });
 
   it('persists and reads stats', () => {

@@ -1491,7 +1491,11 @@ if (document.readyState === 'loading') {
 
 // Games enabled
 function loadGamesEnabled() {
-  return localStorage.getItem('games_enabled') !== 'false';
+  try {
+    return localStorage.getItem('games_enabled') !== 'false';
+  } catch (_e) {
+    return true;
+  }
 }
 function applyGamesEnabled() {
   const enabled = loadGamesEnabled();
@@ -1509,7 +1513,11 @@ const gamesEnabledSetting = document.getElementById('games-enabled-setting');
 if (gamesEnabledSetting) {
   gamesEnabledSetting.checked = loadGamesEnabled();
   gamesEnabledSetting.addEventListener('change', function () {
-    localStorage.setItem('games_enabled', this.checked);
+    try {
+      localStorage.setItem('games_enabled', this.checked);
+    } catch (_e) {
+      // ignore storage errors
+    }
     applyGamesEnabled();
   });
 }

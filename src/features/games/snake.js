@@ -16,6 +16,7 @@
   let score = 0;
   let gameOver = false;
   let paused = false;
+  let manualPause = false;
   let tickTimer = null;
   let container = null;
   let scoreEl = null;
@@ -230,9 +231,14 @@
       return;
     }
 
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+      return;
+    }
+
     if (e.code === 'Space') {
       e.preventDefault();
       paused = !paused;
+      manualPause = paused;
       if (paused) stopTick(); else startTick();
       draw();
       return;
@@ -335,13 +341,14 @@
   }
 
   function pause() {
+    if (!paused) manualPause = false;
     paused = true;
     stopTick();
     draw();
   }
 
   function resume() {
-    if (!gameOver) {
+    if (!gameOver && !manualPause) {
       paused = false;
       startTick();
       draw();

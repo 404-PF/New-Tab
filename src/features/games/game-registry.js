@@ -115,9 +115,6 @@
       return true;
     }
 
-    currentGame = game;
-    touchMRU(gameId);
-
     // Get the game container
     const container = document.getElementById('games-game-container');
     if (!container) {
@@ -125,8 +122,18 @@
       return false;
     }
 
+    currentGame = game;
+    touchMRU(gameId);
+
     container.innerHTML = '';
-    game.init(container);
+    try {
+      game.init(container);
+    } catch (e) {
+      console.warn('GameRegistry.launch: error initializing', game.id, e);
+      currentGame = null;
+      container.innerHTML = '';
+      return false;
+    }
     return true;
   }
 
