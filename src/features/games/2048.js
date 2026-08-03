@@ -127,9 +127,9 @@
       let col = [];
       for (let r = 0; r < SIZE; r++) col.push(board[r][c]);
       const before = col.join(',');
-      const reversed = col.toReversed();
+      const reversed = col.slice().reverse();
       const slid = slideRow(reversed);
-      const result = slid.toReversed();
+      const result = slid.slice().reverse();
       for (let r = 0; r < SIZE; r++) board[r][c] = result[r];
       if (result.join(',') !== before) changed = true;
     }
