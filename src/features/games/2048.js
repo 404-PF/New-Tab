@@ -224,12 +224,13 @@
       render();
       if (hasWon() && !won) {
         won = true;
-        saveStats();
       }
       if (!canMove()) {
         gameOver = true;
-        saveStats();
         render();
+      }
+      if (won || gameOver) {
+        saveStats();
       }
     }
   }
@@ -248,7 +249,7 @@
 
   function handleTouchEnd(e) {
     if (gameOver) {
-      if (e.code === 'Space') resetGame();
+      if (e.changedTouches && e.changedTouches.length > 0) resetGame();
       return;
     }
     if (e.changedTouches.length !== 1) return;
@@ -270,12 +271,13 @@
       render();
       if (hasWon() && !won) {
         won = true;
-        saveStats();
       }
       if (!canMove()) {
         gameOver = true;
-        saveStats();
         render();
+      }
+      if (won || gameOver) {
+        saveStats();
       }
     }
   }

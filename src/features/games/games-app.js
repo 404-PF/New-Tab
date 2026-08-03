@@ -139,6 +139,9 @@
       return;
     }
 
+    if (window.GameRegistry) {
+      window.GameRegistry.destroyCurrent();
+    }
     renderHub();
     modal.classList.add('modal-open');
   }

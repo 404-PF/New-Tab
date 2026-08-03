@@ -12,6 +12,7 @@
   let startTime = 0;
   let timerInterval = null;
   let gameOver = false;
+  let pausedAt = 0;
   let container = null;
   let gridEl = null;
   let movesEl = null;
@@ -255,11 +256,14 @@
   }
 
   function pause() {
+    pausedAt = Date.now();
     stopTimer();
   }
 
   function resume() {
     if (!gameOver && startTime > 0) {
+      const elapsed = pausedAt - startTime;
+      startTime = Date.now() - elapsed;
       startTimer();
     }
   }

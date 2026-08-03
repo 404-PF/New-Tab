@@ -219,6 +219,10 @@
           if (def.selector === '#app-context-menu') {
             window.dispatchEvent(new CustomEvent('contextMenuClose'));
           }
+          if (def.selector === '#games-app-modal' && typeof window.GamesApp === 'object' && window.GamesApp.close) {
+            window.GamesApp.close();
+            return;
+          }
           return true;
         }
       } else if (def.useDisplay) {
