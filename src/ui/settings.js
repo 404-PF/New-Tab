@@ -1489,6 +1489,31 @@ if (document.readyState === 'loading') {
   initPomodoroSettings();
 }
 
+// Games enabled
+function loadGamesEnabled() {
+  return localStorage.getItem('games_enabled') !== 'false';
+}
+function applyGamesEnabled() {
+  const enabled = loadGamesEnabled();
+  const gamesApp = document.getElementById('games-app');
+  if (gamesApp) {
+    gamesApp.style.display = enabled ? '' : 'none';
+  }
+  const checkbox = document.getElementById('games-enabled-setting');
+  if (checkbox) checkbox.checked = enabled;
+  if (!enabled && window.GamesApp && typeof window.GamesApp.close === 'function') {
+    window.GamesApp.close();
+  }
+}
+const gamesEnabledSetting = document.getElementById('games-enabled-setting');
+if (gamesEnabledSetting) {
+  gamesEnabledSetting.checked = loadGamesEnabled();
+  gamesEnabledSetting.addEventListener('change', function () {
+    localStorage.setItem('games_enabled', this.checked);
+    applyGamesEnabled();
+  });
+}
+
 // Settings menu logic
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];
@@ -1768,6 +1793,7 @@ function initSettings() {
   applyTodoStatsEnabled();
   applyEyeCareReminderSettings();
   applyNotesEnabled();
+  applyGamesEnabled();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
   if (window.WeatherWidget && window.WeatherWidget.applySettings) {
@@ -1835,6 +1861,8 @@ window.loadEyeCareReminderState = loadEyeCareReminderState;
 window.saveEyeCareReminderState = saveEyeCareReminderState;
 window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;
 window.applyNotesEnabled = applyNotesEnabled;
+window.applyGamesEnabled = applyGamesEnabled;
+window.loadGamesEnabled = loadGamesEnabled;
 window.initSettings = initSettings;
 
 })();

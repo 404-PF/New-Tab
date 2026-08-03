@@ -23,7 +23,7 @@ beforeAll(() => {
 
 describe('app manager', () => {
   it('exposes immutable default apps and repairs duplicate custom app IDs while rendering', () => {
-    expect(window.defaultApps.map(app => app.id)).toEqual(['ai-app', 'weather-app', 'feedback-app', 'settings-app']);
+    expect(window.defaultApps.map(app => app.id)).toEqual(['ai-app', 'weather-app', 'games-app', 'feedback-app', 'settings-app']);
     localStorage.setItem('customApps', JSON.stringify([
       { id: 'custom-1', name: 'One', url: 'https://one.test', icon: 'one.png' },
       { id: 'custom-1', name: 'Duplicate', url: 'https://two.test', icon: 'two.png' }
@@ -31,9 +31,9 @@ describe('app manager', () => {
 
     window.renderAllApps();
 
-    expect(document.querySelectorAll('#app-grid .app-icon')).toHaveLength(5);
+    expect(document.querySelectorAll('#app-grid .app-icon')).toHaveLength(6);
     expect(JSON.parse(localStorage.getItem('appOrder'))).toEqual([
-      'ai-app', 'weather-app', 'feedback-app', 'settings-app', 'custom-1'
+      'ai-app', 'weather-app', 'games-app', 'feedback-app', 'settings-app', 'custom-1'
     ]);
   });
 });

@@ -1,0 +1,203 @@
+// src/features/games/game-registry.js - Game Registry & Lifecycle Manager
+
+(function () {
+  'use strict';
+
+  const STATS_KEY = 'games_stats';
+  const MRU_KEY = 'games_recently_played';
+  const MAX_MRU = 20;
+
+  let registeredGames = {};
+  let launchOrder = [];
+  let currentGame = null;
+  let initialized = false;
+
+  // ===================== Storage Helpers =====================
+
+  function loadStats() {
+    try {
+      const raw = localStorage.getItem(STATS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      console.warn('Failed to load games_stats:', e);
+      return {};
+    }
+  }
+
+  function saveStats(stats) {
+    try {
+      localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+    } catch (e) {
+      console.warn('Failed to save games_stats:', e);
+    }
+  }
+
+  function loadMRU() {
+    try {
+      const raw = localStorage.getItem(MRU_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.warn('Failed to load games_recently_played:', e);
+      return [];
+    }
+  }
+
+  function saveMRU(mru) {
+    try {
+      localStorage.setItem(MRU_KEY, JSON.stringify(mru));
+    } catch (e) {
+      console.warn('Failed to save games_recently_played:', e);
+    }
+  }
+
+  function touchMRU(gameId) {
+    const mru = loadMRU();
+    const idx = mru.indexOf(gameId);
+    if (idx !== -1) mru.splice(idx, 1);
+    mru.unshift(gameId);
+    if (mru.length > MAX_MRU) mru.length = MAX_MRU;
+    saveMRU(mru);
+  }
+
+  // ===================== Public API =====================
+
+  function register(gameDef) {
+    if (!gameDef || !gameDef.id || !gameDef.name || !gameDef.init || !gameDef.destroy) {
+      console.warn('GameRegistry.register: invalid game definition', gameDef);
+      return false;
+    }
+    if (registeredGames[gameDef.id]) {
+      console.warn('GameRegistry.register: duplicate game id', gameDef.id);
+      return false;
+    }
+    registeredGames[gameDef.id] = gameDef;
+    launchOrder.push(gameDef.id);
+    return true;
+  }
+
+  function list() {
+    return launchOrder.map(function (id) {
+      return registeredGames[id];
+    }).filter(Boolean);
+  }
+
+  function get(id) {
+    return registeredGames[id] || null;
+  }
+
+  function getStats(id) {
+    const all = loadStats();
+    return all[id] || {};
+  }
+
+  function updateStats(id, updates) {
+    const all = loadStats();
+    all[id] = Object.assign({}, all[id] || {}, updates);
+    saveStats(all);
+  }
+
+  // ===================== Lifecycle =====================
+
+  function launch(gameId) {
+    const game = registeredGames[gameId];
+    if (!game) {
+      console.warn('GameRegistry.launch: unknown game', gameId);
+      return false;
+    }
+
+    // Destroy current game if one is running
+    if (currentGame && currentGame.id !== gameId) {
+      destroyCurrent();
+    }
+
+    // Already running same game
+    if (currentGame && currentGame.id === gameId) {
+      return true;
+    }
+
+    currentGame = game;
+    touchMRU(gameId);
+
+    // Get the game container
+    const container = document.getElementById('games-game-container');
+    if (!container) {
+      console.warn('GameRegistry.launch: missing #games-game-container');
+      return false;
+    }
+
+    container.innerHTML = '';
+    game.init(container);
+    return true;
+  }
+
+  function destroyCurrent() {
+    if (!currentGame) return;
+    try {
+      currentGame.destroy();
+    } catch (e) {
+      console.warn('GameRegistry.destroyCurrent: error destroying', currentGame.id, e);
+    }
+    const container = document.getElementById('games-game-container');
+    if (container) container.innerHTML = '';
+    currentGame = null;
+  }
+
+  function backToHub() {
+    destroyCurrent();
+    if (window.GamesApp && typeof window.GamesApp.showHub === 'function') {
+      window.GamesApp.showHub();
+    }
+  }
+
+  function getCurrentGame() {
+    return currentGame;
+  }
+
+  // ===================== Visibility Handling =====================
+
+  function onVisibilityChange() {
+    if (!currentGame) return;
+    if (document.hidden) {
+      if (typeof currentGame.pause === 'function') {
+        currentGame.pause();
+      }
+    } else {
+      if (typeof currentGame.resume === 'function') {
+        currentGame.resume();
+      }
+    }
+  }
+
+  // ===================== Init =====================
+
+  function init() {
+    if (initialized) return;
+    initialized = true;
+    document.addEventListener('visibilitychange', onVisibilityChange);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  function _reset() {
+    destroyCurrent();
+    registeredGames = {};
+    launchOrder = [];
+  }
+
+  window.GameRegistry = {
+    register: register,
+    list: list,
+    get: get,
+    getStats: getStats,
+    updateStats: updateStats,
+    launch: launch,
+    destroyCurrent: destroyCurrent,
+    backToHub: backToHub,
+    getCurrentGame: getCurrentGame,
+    _reset: _reset
+  };
+})();

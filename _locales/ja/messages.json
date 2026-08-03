@@ -335,5 +335,101 @@
   "removeTimezoneLabel": {
     "message": "{city} タイムゾーンを削除",
     "description": "Accessible label for removing a specific time zone"
+  },
+  "games": {
+    "message": "Games",
+    "description": "Games app name"
+  },
+  "enableGames": {
+    "message": "Enable games",
+    "description": "Toggle label for enabling the games feature"
+  },
+  "gamesPlay": {
+    "message": "Play",
+    "description": "Button label to start a game"
+  },
+  "gamesBack": {
+    "message": "Back",
+    "description": "Button label to return to the games hub"
+  },
+  "gamesScore": {
+    "message": "Score",
+    "description": "Game score label"
+  },
+  "gamesHighScore": {
+    "message": "High Score",
+    "description": "High score label"
+  },
+  "gamesBestMoves": {
+    "message": "Best Moves",
+    "description": "Best moves label for memory game"
+  },
+  "gamesMoves": {
+    "message": "Moves",
+    "description": "Moves count label"
+  },
+  "gamesTime": {
+    "message": "Time",
+    "description": "Time elapsed label"
+  },
+  "gamesGameOver": {
+    "message": "Game Over",
+    "description": "Game over message"
+  },
+  "gamesYouWin": {
+    "message": "You Win!",
+    "description": "Win message"
+  },
+  "gamesPaused": {
+    "message": "Paused",
+    "description": "Paused state label"
+  },
+  "gamesPressSpace": {
+    "message": "Press Space to restart",
+    "description": "Restart instruction"
+  },
+  "gamesNoGames": {
+    "message": "No games available",
+    "description": "Message when no games are registered"
+  },
+  "gamesDisabled": {
+    "message": "Games are disabled. Enable them in Settings.",
+    "description": "Message when games feature is disabled"
+  },
+  "gamesSnake": {
+    "message": "Snake",
+    "description": "Snake game name"
+  },
+  "gamesSnakeDesc": {
+    "message": "Classic snake game. Eat food to grow!",
+    "description": "Snake game description"
+  },
+  "gamesSnakeControls": {
+    "message": "Arrow keys or WASD to move, Space to pause",
+    "description": "Snake game controls"
+  },
+  "games2048": {
+    "message": "2048",
+    "description": "2048 game name"
+  },
+  "games2048Desc": {
+    "message": "Merge tiles to reach 2048!",
+    "description": "2048 game description"
+  },
+  "games2048Controls": {
+    "message": "Arrow keys to merge tiles",
+    "description": "2048 game controls"
+  },
+  "gamesMemory": {
+    "message": "Memory Match",
+    "description": "Memory match game name"
+  },
+  "gamesMemoryDesc": {
+    "message": "Find matching pairs of cards!",
+    "description": "Memory match game description"
+  },
+  "gamesMemoryControls": {
+    "message": "Flip cards to find matching pairs",
+    "description": "Memory match game controls"
   }
 }
