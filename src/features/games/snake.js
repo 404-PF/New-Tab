@@ -28,7 +28,7 @@
   }
 
   function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min; // NOSONAR game random range
+    return Math.floor(window.GameRegistry.secureRandom() * (max - min + 1)) + min;
   }
 
   // ===================== Game Logic =====================

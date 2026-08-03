@@ -59,6 +59,14 @@
     saveMRU(mru);
   }
 
+  // ===================== Crypto-safe Random =====================
+
+  function secureRandom() {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    return buf[0] / (0xFFFFFFFF + 1);
+  }
+
   // ===================== Public API =====================
 
   function register(gameDef) {
@@ -203,6 +211,7 @@
     destroyCurrent: destroyCurrent,
     backToHub: backToHub,
     getCurrentGame: getCurrentGame,
+    secureRandom: secureRandom,
     _reset: _reset
   };
 })();
