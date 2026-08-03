@@ -44,8 +44,8 @@
   function addRandomTile() {
     const empty = emptyCells();
     if (empty.length === 0) return;
-    const cell = empty[Math.floor(Math.random() * empty.length)];
-    board[cell.r][cell.c] = Math.random() < 0.9 ? 2 : 4;
+    const cell = empty[Math.floor(Math.random() * empty.length)]; // NOSONAR game tile placement
+    board[cell.r][cell.c] = Math.random() < 0.9 ? 2 : 4; // NOSONAR game tile value
   }
 
   function canMove() {
