@@ -4034,11 +4034,20 @@ body.light-theme .release-notes-btn-secondary:hover {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
+  border: 0;
+  padding: 0;
+  max-width: none;
+  max-height: none;
+  color: inherit;
 }
 
-.games-app-modal.modal-open {
+.games-app-modal[open] {
   opacity: 1;
   pointer-events: auto;
+}
+
+.games-app-modal[open]::backdrop {
+  background: transparent;
 }
 
 .games-app-modal-content {
@@ -4058,7 +4067,7 @@ body.light-theme .release-notes-btn-secondary:hover {
   transition: all 0.3s ease;
 }
 
-.games-app-modal.modal-open .games-app-modal-content {
+.games-app-modal[open] .games-app-modal-content {
   opacity: 1;
   transform: translateY(0);
 }
@@ -4238,12 +4247,12 @@ body.light-theme .release-notes-btn-secondary:hover {
 .games-2048-tile-8 { background: #f2b179; color: #3d3226; }
 .games-2048-tile-16 { background: #f59563; color: #3d3226; }
 .games-2048-tile-32 { background: #f67c5f; color: #3d3226; }
-.games-2048-tile-64 { background: #f65e3b; color: #3d3226; }
-.games-2048-tile-128 { background: #edcf72; color: #605c52; font-size: 1.2rem; }
-.games-2048-tile-256 { background: #edcc61; color: #605c52; font-size: 1.2rem; }
-.games-2048-tile-512 { background: #edc850; color: #605c52; font-size: 1.2rem; }
-.games-2048-tile-1024 { background: #edc53f; color: #605c52; font-size: 1rem; }
-.games-2048-tile-2048 { background: #edc22e; color: #605c52; font-size: 1rem; }
+.games-2048-tile-64 { background: #f65e3b; color: #2d2519; }
+.games-2048-tile-128 { background: #edcf72; color: #2d2519; font-size: 1.2rem; }
+.games-2048-tile-256 { background: #edcc61; color: #2d2519; font-size: 1.2rem; }
+.games-2048-tile-512 { background: #edc850; color: #2d2519; font-size: 1.2rem; }
+.games-2048-tile-1024 { background: #edc53f; color: #2d2519; font-size: 1rem; }
+.games-2048-tile-2048 { background: #edc22e; color: #2d2519; font-size: 1rem; }
 .games-2048-tile-super { background: #3c3a32; color: #f9f6f2; font-size: 0.9rem; }
 
 .games-2048-overlay {

@@ -211,8 +211,8 @@
       if (def.selector === '#games-app-modal') {
         if (typeof window.GamesApp === 'object' && window.GamesApp.close) {
           window.GamesApp.close();
-        } else {
-          el.classList.remove('modal-open');
+        } else if (typeof el.close === 'function') {
+          el.close();
         }
         return true;
       }

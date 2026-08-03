@@ -135,7 +135,7 @@
 
     if (!isEnabled()) {
       renderDisabled();
-      modal.classList.add('modal-open');
+      modal.showModal();
       return;
     }
 
@@ -143,13 +143,13 @@
       window.GameRegistry.destroyCurrent();
     }
     renderHub();
-    modal.classList.add('modal-open');
+    modal.showModal();
   }
 
   function close() {
     const modal = getModalElement();
     if (!modal) return;
-    modal.classList.remove('modal-open');
+    modal.close();
     // Destroy any running game
     if (window.GameRegistry) {
       window.GameRegistry.destroyCurrent();

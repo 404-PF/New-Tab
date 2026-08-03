@@ -633,7 +633,7 @@ document.body.appendChild(createStubElement('div', 'settings-modal'));
 document.body.appendChild(createStubElement('div', 'weather-app-modal'));
 document.body.appendChild(createStubElement('div', 'weather-app-body'));
 document.body.appendChild(createStubElement('div', 'weather-widget'));
-document.body.appendChild(createStubElement('div', 'games-app-modal'));
+document.body.appendChild(createStubElement('dialog', 'games-app-modal'));
 document.body.appendChild(createStubElement('div', 'games-hub-content'));
 document.body.appendChild(createStubElement('div', 'games-game-container'));
 document.body.appendChild(createStubElement('input', 'games-enabled-setting'));
