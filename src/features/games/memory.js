@@ -279,7 +279,7 @@
     }
   }
 
-  window.GameRegistry && window.GameRegistry.register({
+  window.GameRegistry?.register({
     id: 'memory',
     name: 'gamesMemory',
     description: 'gamesMemoryDesc',

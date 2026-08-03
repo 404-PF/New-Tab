@@ -127,11 +127,11 @@
       let col = [];
       for (let r = 0; r < SIZE; r++) col.push(board[r][c]);
       const before = col.join(',');
-      const reversed = col.reverse();
-      col = slideRow(reversed);
-      col.reverse();
-      for (let r = 0; r < SIZE; r++) board[r][c] = col[r];
-      if (col.join(',') !== before) changed = true;
+      const reversed = col.toReversed();
+      const slid = slideRow(reversed);
+      const result = slid.toReversed();
+      for (let r = 0; r < SIZE; r++) board[r][c] = result[r];
+      if (result.join(',') !== before) changed = true;
     }
     return changed;
   }
@@ -339,7 +339,7 @@
 
   function resume() { /* 2048 is turn-based, no timer to resume */ }
 
-  window.GameRegistry && window.GameRegistry.register({
+  window.GameRegistry?.register({
     id: '2048',
     name: 'games2048',
     description: 'games2048Desc',

@@ -92,7 +92,7 @@
 
   function updateStats(id, updates) {
     const all = loadStats();
-    all[id] = { ...(all[id] || {}), ...updates };
+    all[id] = { ...all[id], ...updates };
     saveStats(all);
   }
 

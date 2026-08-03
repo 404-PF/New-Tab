@@ -355,7 +355,7 @@
     }
   }
 
-  window.GameRegistry && window.GameRegistry.register({
+  window.GameRegistry?.register({
     id: 'snake',
     name: 'gamesSnake',
     description: 'gamesSnakeDesc',
