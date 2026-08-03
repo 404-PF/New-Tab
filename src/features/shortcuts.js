@@ -214,7 +214,7 @@
         } else {
           el.classList.remove('modal-open');
         }
-        return;
+        return true;
       }
 
       if (def.bodyClass) {
