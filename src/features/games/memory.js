@@ -206,6 +206,7 @@
 
   function resetGame() {
     stopTimer();
+    pausedAt = 0;
     cards = createCards();
     flipped = [];
     matched = 0;
@@ -271,7 +272,7 @@
   }
 
   function resume() {
-    if (!gameOver && startTime > 0) {
+    if (!gameOver && startTime > 0 && pausedAt > 0) {
       const elapsed = pausedAt - startTime;
       startTime = Date.now() - elapsed;
       startTimer();

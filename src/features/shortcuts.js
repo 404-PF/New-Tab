@@ -208,6 +208,15 @@
       const el = document.querySelector(def.selector);
       if (!el) continue;
 
+      if (def.selector === '#games-app-modal') {
+        if (typeof window.GamesApp === 'object' && window.GamesApp.close) {
+          window.GamesApp.close();
+        } else {
+          el.classList.remove('modal-open');
+        }
+        return;
+      }
+
       if (def.bodyClass) {
         if (def.cssClass && document.body.classList.contains(def.cssClass)) {
           if (def.selector === '#folder-popup' && typeof window.AppFolders === 'object' && window.AppFolders.closeFolderPopup) {
@@ -218,10 +227,6 @@
           }
           if (def.selector === '#app-context-menu') {
             window.dispatchEvent(new CustomEvent('contextMenuClose'));
-          }
-          if (def.selector === '#games-app-modal' && typeof window.GamesApp === 'object' && window.GamesApp.close) {
-            window.GamesApp.close();
-            return;
           }
           return true;
         }
