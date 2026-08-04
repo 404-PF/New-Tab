@@ -337,75 +337,75 @@
     "description": "Accessible label for removing a specific time zone"
   },
   "games": {
-    "message": "Games",
+    "message": "Spiele",
     "description": "Games app name"
   },
   "enableGames": {
-    "message": "Enable games",
+    "message": "Spiele aktivieren",
     "description": "Toggle label for enabling the games feature"
   },
   "gamesPlay": {
-    "message": "Play",
+    "message": "Spielen",
     "description": "Button label to start a game"
   },
   "gamesBack": {
-    "message": "Back",
+    "message": "Zurück",
     "description": "Button label to return to the games hub"
   },
   "gamesScore": {
-    "message": "Score",
+    "message": "Punkte",
     "description": "Game score label"
   },
   "gamesHighScore": {
-    "message": "High Score",
+    "message": "Rekord",
     "description": "High score label"
   },
   "gamesBestMoves": {
-    "message": "Best Moves",
+    "message": "Beste Züge",
     "description": "Best moves label for memory game"
   },
   "gamesMoves": {
-    "message": "Moves",
+    "message": "Züge",
     "description": "Moves count label"
   },
   "gamesTime": {
-    "message": "Time",
+    "message": "Zeit",
     "description": "Time elapsed label"
   },
   "gamesGameOver": {
-    "message": "Game Over",
+    "message": "Spiel beendet",
     "description": "Game over message"
   },
   "gamesYouWin": {
-    "message": "You Win!",
+    "message": "Gewonnen!",
     "description": "Win message"
   },
   "gamesPaused": {
-    "message": "Paused",
+    "message": "Pausiert",
     "description": "Paused state label"
   },
   "gamesPressSpace": {
-    "message": "Press Space to restart",
+    "message": "Leertaste zum Neustarten",
     "description": "Restart instruction"
   },
   "gamesNoGames": {
-    "message": "No games available",
+    "message": "Keine Spiele verfügbar",
     "description": "Message when no games are registered"
   },
   "gamesDisabled": {
-    "message": "Games are disabled. Enable them in Settings.",
+    "message": "Spiele sind deaktiviert. Aktiviere sie in den Einstellungen.",
     "description": "Message when games feature is disabled"
   },
   "gamesSnake": {
-    "message": "Snake",
+    "message": "Schlange",
     "description": "Snake game name"
   },
   "gamesSnakeDesc": {
-    "message": "Classic snake game. Eat food to grow!",
+    "message": "Die klassische Schlange. Iss, um zu wachsen!",
     "description": "Snake game description"
   },
   "gamesSnakeControls": {
-    "message": "Arrow keys or WASD to move, Space to pause",
+    "message": "Pfeile oder WASD zum Steuern, Leertaste zum Pausieren",
     "description": "Snake game controls"
   },
   "games2048": {
@@ -413,23 +413,23 @@
     "description": "2048 game name"
   },
   "games2048Desc": {
-    "message": "Merge tiles to reach 2048!",
+    "message": "Verschmelze Blöcke, um 2048 zu erreichen!",
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "Arrow keys to merge tiles",
+    "message": "Pfeile zum Verschmelzen der Blöcke",
     "description": "2048 game controls"
   },
   "gamesMemory": {
-    "message": "Memory Match",
+    "message": "Gedächtnis",
     "description": "Memory match game name"
   },
   "gamesMemoryDesc": {
-    "message": "Find matching pairs of cards!",
+    "message": "Finde die passenden Paare!",
     "description": "Memory match game description"
   },
   "gamesMemoryControls": {
-    "message": "Flip cards to find matching pairs",
+    "message": "Karten umdrehen und Paare finden",
     "description": "Memory match game controls"
   }
 }

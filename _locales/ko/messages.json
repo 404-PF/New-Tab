@@ -337,75 +337,75 @@
     "description": "Accessible label for removing a specific time zone"
   },
   "games": {
-    "message": "Games",
+    "message": "게임",
     "description": "Games app name"
   },
   "enableGames": {
-    "message": "Enable games",
+    "message": "게임 활성화",
     "description": "Toggle label for enabling the games feature"
   },
   "gamesPlay": {
-    "message": "Play",
+    "message": "플레이",
     "description": "Button label to start a game"
   },
   "gamesBack": {
-    "message": "Back",
+    "message": "뒤로",
     "description": "Button label to return to the games hub"
   },
   "gamesScore": {
-    "message": "Score",
+    "message": "점수",
     "description": "Game score label"
   },
   "gamesHighScore": {
-    "message": "High Score",
+    "message": "최고 점수",
     "description": "High score label"
   },
   "gamesBestMoves": {
-    "message": "Best Moves",
+    "message": "최소 움직임",
     "description": "Best moves label for memory game"
   },
   "gamesMoves": {
-    "message": "Moves",
+    "message": "움직임",
     "description": "Moves count label"
   },
   "gamesTime": {
-    "message": "Time",
+    "message": "시간",
     "description": "Time elapsed label"
   },
   "gamesGameOver": {
-    "message": "Game Over",
+    "message": "게임 오버",
     "description": "Game over message"
   },
   "gamesYouWin": {
-    "message": "You Win!",
+    "message": "승리!",
     "description": "Win message"
   },
   "gamesPaused": {
-    "message": "Paused",
+    "message": "일시정지",
     "description": "Paused state label"
   },
   "gamesPressSpace": {
-    "message": "Press Space to restart",
+    "message": "스페이스바로 다시 시작",
     "description": "Restart instruction"
   },
   "gamesNoGames": {
-    "message": "No games available",
+    "message": "게임이 없습니다",
     "description": "Message when no games are registered"
   },
   "gamesDisabled": {
-    "message": "Games are disabled. Enable them in Settings.",
+    "message": "게임이 비활성화되어 있습니다. 설정에서 활성화하세요.",
     "description": "Message when games feature is disabled"
   },
   "gamesSnake": {
-    "message": "Snake",
+    "message": "스네이크",
     "description": "Snake game name"
   },
   "gamesSnakeDesc": {
-    "message": "Classic snake game. Eat food to grow!",
+    "message": "클래식 스네이크. 먹이를 먹고 성장하세요!",
     "description": "Snake game description"
   },
   "gamesSnakeControls": {
-    "message": "Arrow keys or WASD to move, Space to pause",
+    "message": "방향키 또는 WASD로 이동, 스페이스바로 일시정지",
     "description": "Snake game controls"
   },
   "games2048": {
@@ -413,23 +413,23 @@
     "description": "2048 game name"
   },
   "games2048Desc": {
-    "message": "Merge tiles to reach 2048!",
+    "message": "블록을 합쳐 2048을 달성하세요!",
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "Arrow keys to merge tiles",
+    "message": "방향키로 블록 합치기",
     "description": "2048 game controls"
   },
   "gamesMemory": {
-    "message": "Memory Match",
+    "message": "메모리 매치",
     "description": "Memory match game name"
   },
   "gamesMemoryDesc": {
-    "message": "Find matching pairs of cards!",
+    "message": "쌍을 찾아 맞추세요!",
     "description": "Memory match game description"
   },
   "gamesMemoryControls": {
-    "message": "Flip cards to find matching pairs",
+    "message": "카드를 뒤집어 쌍을 찾으세요",
     "description": "Memory match game controls"
   }
 }

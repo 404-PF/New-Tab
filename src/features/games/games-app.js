@@ -144,11 +144,15 @@
     }
     renderHub();
     modal.showModal();
+    requestAnimationFrame(() => {
+      modal.classList.add('modal-open');
+    });
   }
 
   function close() {
     const modal = getModalElement();
     if (!modal) return;
+    modal.classList.remove('modal-open');
     modal.close();
     // Destroy any running game
     if (window.GameRegistry) {
@@ -178,6 +182,12 @@
       if (ev.target === modal) {
         close();
       }
+    });
+
+    // Escape key to close
+    modal.addEventListener('cancel', function (ev) {
+      ev.preventDefault();
+      close();
     });
   }
 
