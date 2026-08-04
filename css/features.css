@@ -4228,10 +4228,6 @@ body.light-theme .games-hub-card-desc {
   background: rgba(255, 255, 255, 0.1);
 }
 
-body.light-theme .games-back-btn:hover {
-  background: rgba(33, 150, 243, 0.1);
-}
-
 /* Game shared styles */
 .games-score-display {
   font-size: 1.1rem;
@@ -4413,8 +4409,13 @@ body.light-theme :is(.games-hub-empty, .games-app-disabled, .games-hub-card-desc
   color: #475569;
 }
 
-body.light-theme .games-instructions {
+body.light-theme :is(.games-instructions, .games-hub-card-stats) {
   color: #64748b;
+}
+
+body.light-theme .games-memory-card:not(.games-memory-card-flipped):not(.games-memory-card-matched) {
+  background: rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.16);
 }
 
 /* Simple mode hide */
