@@ -167,13 +167,11 @@
     }
 
     if (gameOver) {
-      const overlay = document.createElement('div');
-      overlay.className = 'games-2048-overlay';
-      overlay.innerHTML = '<div class="games-2048-overlay-text">' +
-        (won ? (t('gamesYouWin') || 'You Win!') : (t('gamesGameOver') || 'Game Over')) +
-        '</div><div class="games-2048-overlay-sub">' +
-        (t('gamesPressSpace') || 'Press Space to restart') + '</div>';
-      boardEl.appendChild(overlay);
+      window.gamesHelpers && window.gamesHelpers.renderDOMOverlay && window.gamesHelpers.renderDOMOverlay(boardEl, {
+        className: 'games-2048-overlay',
+        text: won ? (t('gamesYouWin') || 'You Win!') : (t('gamesGameOver') || 'Game Over'),
+        sub: (t('gamesPressSpace') || 'Press Space to restart')
+      });
     }
   }
 
@@ -214,7 +212,9 @@
 
   function handleKeydown(e) {
     if (gameOver) {
-      if (e.code === 'Space') {
+      if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
+        window.gamesHelpers.handleRestartSpace(e, resetGame);
+      } else if (e.code === 'Space') {
         e.preventDefault();
         resetGame();
       }
@@ -270,14 +270,13 @@
   // ===================== Stats =====================
 
   function saveStats() {
-    if (window.GameRegistry) {
-      const stats = window.GameRegistry.getStats('2048');
+    window.gamesHelpers && window.gamesHelpers.updateStatsWith && window.gamesHelpers.updateStatsWith('2048', function (stats) {
       const highScore = stats.highScore || 0;
-      window.GameRegistry.updateStats('2048', {
+      return {
         highScore: Math.max(highScore, score),
         gamesPlayed: (stats.gamesPlayed || 0) + 1
-      });
-    }
+      };
+    });
   }
 
   // ===================== Lifecycle =====================

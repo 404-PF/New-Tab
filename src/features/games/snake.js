@@ -105,14 +105,13 @@
     gameOver = true;
     stopTick();
     // Save stats
-    if (window.GameRegistry) {
-      const stats = window.GameRegistry.getStats('snake');
+    window.gamesHelpers && window.gamesHelpers.updateStatsWith && window.gamesHelpers.updateStatsWith('snake', function (stats) {
       const highScore = stats.highScore || 0;
-      window.GameRegistry.updateStats('snake', {
+      return {
         highScore: Math.max(highScore, score),
         gamesPlayed: (stats.gamesPlayed || 0) + 1
-      });
-    }
+      };
+    });
     draw();
   }
 
@@ -220,7 +219,9 @@
 
   function handleKeydown(e) {
     if (gameOver) {
-      if (e.code === 'Space') {
+      if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
+        window.gamesHelpers.handleRestartSpace(e, function () { initSnake(); draw(); startTick(); });
+      } else if (e.code === 'Space') {
         e.preventDefault();
         initSnake();
         draw();

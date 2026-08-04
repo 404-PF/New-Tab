@@ -112,32 +112,26 @@
   }
 
   function saveStats(time) {
-    if (window.GameRegistry) {
-      const stats = window.GameRegistry.getStats('memory');
+    window.gamesHelpers && window.gamesHelpers.updateStatsWith && window.gamesHelpers.updateStatsWith('memory', function (stats) {
       const bestMoves = stats.bestMoves || Infinity;
       const bestTime = stats.bestTime || Infinity;
-      window.GameRegistry.updateStats('memory', {
+      return {
         bestMoves: Math.min(bestMoves, moves),
         bestTime: Math.min(bestTime, Number.parseFloat(time)),
         gamesPlayed: (stats.gamesPlayed || 0) + 1
-      });
-    }
+      };
+    });
   }
 
   function showWinOverlay(time) {
     if (!gridEl) return;
-    const overlay = document.createElement('div');
-    overlay.className = 'games-memory-overlay';
-    overlay.innerHTML =
-      '<div class="games-memory-overlay-text">' + (t('gamesYouWin') || 'You Win!') + '</div>' +
-      '<div class="games-memory-overlay-stats">' +
-        (t('gamesMoves') || 'Moves') + ': ' + moves + ' | ' +
-        (t('gamesTime') || 'Time') + ': ' + time + 's' +
-      '</div>' +
-      '<div class="games-memory-overlay-sub">' +
-        (t('gamesPressSpace') || 'Press Space to play again') +
-      '</div>';
-    gridEl.appendChild(overlay);
+    const statsHtml = (t('gamesMoves') || 'Moves') + ': ' + moves + ' | ' + (t('gamesTime') || 'Time') + ': ' + time + 's';
+    window.gamesHelpers && window.gamesHelpers.renderDOMOverlay && window.gamesHelpers.renderDOMOverlay(gridEl, {
+      className: 'games-memory-overlay',
+      text: (t('gamesYouWin') || 'You Win!'),
+      statsHtml: statsHtml,
+      sub: (t('gamesPressSpace') || 'Press Space to play again')
+    });
   }
 
   // ===================== Timer =====================
@@ -193,7 +187,9 @@
 
   function handleKeydown(e) {
     if (gameOver) {
-      if (e.code === 'Space') {
+      if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
+        window.gamesHelpers.handleRestartSpace(e, resetGame);
+      } else if (e.code === 'Space') {
         e.preventDefault();
         resetGame();
       }
