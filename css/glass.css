@@ -125,8 +125,7 @@ body.light-theme :is(
   .search-history-panel,
   .custom-calendar,
   .timezone-options,
-  .bg-rotation-picker,
-  .games-app-modal-content
+  .bg-rotation-picker
 ) {
   background: var(--glass-surface-elevated);
   border: 1px solid var(--glass-border);
