@@ -297,8 +297,7 @@
         flipped = [];
       }
     }
-    // A lone revealed card (first of a pending pair) is left flipped so resume
-    // preserves the current turn state; only timers/pending timeouts are frozen.
+    // A lone revealed card stays flipped so resume preserves the current turn state.
   }
 
   function resume() {
