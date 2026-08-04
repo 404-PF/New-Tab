@@ -4022,7 +4022,9 @@ body.light-theme .release-notes-btn-secondary:hover {
 
 .games-app-modal {
   z-index: 1000;
-  background: transparent;
+  background: var(--glass-overlay);
+  -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
+  backdrop-filter: blur(var(--glass-overlay-blur));
   border: 0;
   padding: 0;
   max-width: none;
@@ -4138,8 +4140,8 @@ body.light-theme .release-notes-btn-secondary:hover {
   padding: 8px 20px;
   border: none;
   border-radius: 8px;
-  background: #4ecdc4;
-  color: #1a1a2e;
+  background: var(--glass-accent, #4ecdc4);
+  color: var(--glass-accent-contrast, #1a1a2e);
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
@@ -4175,6 +4177,10 @@ body.light-theme .release-notes-btn-secondary:hover {
 
 .games-back-btn:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+body.light-theme .games-back-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
 }
 
 /* Game shared styles */
