@@ -4172,5 +4172,5 @@ window.i18n = {
   t,
   currentLanguage: () => currentLanguage,
   getSupportedLanguages,
-  getTranslations: (code) => translations[code]
+  getTranslations: (code) => ({ ...translations[code] })
 };
