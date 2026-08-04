@@ -385,7 +385,7 @@
     "description": "Paused state label"
   },
   "gamesPressSpace": {
-    "message": "スペースキーで再開",
+    "message": "スペースキーで再スタート",
     "description": "Restart instruction"
   },
   "gamesNoGames": {

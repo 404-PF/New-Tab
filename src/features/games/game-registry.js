@@ -35,7 +35,9 @@
   function loadMRU() {
     try {
       const raw = localStorage.getItem(MRU_KEY);
-      return raw ? JSON.parse(raw) : [];
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
       console.warn('Failed to load games_recently_played:', e);
       return [];

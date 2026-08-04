@@ -209,12 +209,14 @@
       if (!el) continue;
 
       if (def.selector === '#games-app-modal') {
-        if (typeof window.GamesApp === 'object' && window.GamesApp.close) {
-          window.GamesApp.close();
-        } else if (typeof el.close === 'function') {
-          el.close();
+        if (el.open === true || el.classList.contains(def.cssClass)) {
+          if (typeof window.GamesApp === 'object' && typeof window.GamesApp.close === 'function') {
+            window.GamesApp.close();
+          } else if (typeof el.close === 'function') {
+            el.close();
+          }
+          return true;
         }
-        return true;
       }
 
       if (def.bodyClass) {

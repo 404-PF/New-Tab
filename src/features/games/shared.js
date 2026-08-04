@@ -25,11 +25,18 @@
     const overlay = document.createElement('div');
     overlay.className = options && options.className ? options.className : 'games-overlay';
 
-    let inner = '';
-    if (options && options.text) inner += '<div class="' + (options.textClass || (overlay.className + '-text')) + '">' + options.text + '</div>';
-    if (options && options.statsHtml) inner += '<div class="' + (options.statsClass || (overlay.className + '-stats')) + '">' + options.statsHtml + '</div>';
-    if (options && options.sub) inner += '<div class="' + (options.subClass || (overlay.className + '-sub')) + '">' + options.sub + '</div>';
-    overlay.innerHTML = inner;
+    function addLine(text, className) {
+      if (!text) return;
+      const node = document.createElement('div');
+      node.className = className;
+      node.textContent = text;
+      overlay.appendChild(node);
+    }
+
+    addLine(options && options.text, (options && options.textClass) || (overlay.className + '-text'));
+    addLine(options && options.statsHtml, (options && options.statsClass) || (overlay.className + '-stats'));
+    addLine(options && options.sub, (options && options.subClass) || (overlay.className + '-sub'));
+
     parentEl.appendChild(overlay);
     return overlay;
   };
@@ -47,6 +54,9 @@
   // Key handling helper for restarting on Space when gameOver
   window.gamesHelpers.handleRestartSpace = function (ev, resetFn) {
     if (!ev) return;
+    if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA' || ev.target.isContentEditable)) {
+      return;
+    }
     if (ev.code === 'Space') {
       try { ev.preventDefault(); } catch (e) { /* ignore */ }
       if (typeof resetFn === 'function') resetFn();

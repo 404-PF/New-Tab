@@ -1430,7 +1430,7 @@ const translations = {
     gamesGameOver: 'ゲームオーバー',
     gamesYouWin: '勝利！',
     gamesPaused: '一時停止',
-    gamesPressSpace: 'スペースキーで再開',
+    gamesPressSpace: 'スペースキーで再スタート',
     gamesNoGames: 'ゲームがありません',
     gamesDisabled: 'ゲームは無効です。設定で有効にしてください。',
     gamesSnake: 'スネーク',

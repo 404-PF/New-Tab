@@ -56,7 +56,7 @@
       }
     }
     if (empty.length === 0) {
-      gameOver = true;
+      endGame();
       return;
     }
     food = empty[randomInt(0, empty.length - 1)];
@@ -218,6 +218,10 @@
   // ===================== Input =====================
 
   function handleKeydown(e) {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+      return;
+    }
+
     if (gameOver) {
       if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
         window.gamesHelpers.handleRestartSpace(e, function () { initSnake(); draw(); startTick(); });
@@ -227,10 +231,6 @@
         draw();
         startTick();
       }
-      return;
-    }
-
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
       return;
     }
 

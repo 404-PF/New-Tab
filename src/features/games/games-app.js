@@ -39,7 +39,12 @@
     // Sort by MRU
     let mru = [];
     try {
-      mru = JSON.parse(localStorage.getItem('games_recently_played') || '[]');
+      const parsedMru = JSON.parse(localStorage.getItem('games_recently_played') || '[]');
+      if (Array.isArray(parsedMru)) {
+        mru = parsedMru;
+      } else {
+        console.warn('Invalid games_recently_played value, expected an array');
+      }
     } catch (_err) { /* use empty */ }
 
     const sorted = games.slice().sort(function (a, b) {

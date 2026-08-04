@@ -198,19 +198,26 @@
     if (!moved) return;
     addRandomTile();
     render();
+    let shouldSave = false;
     if (hasWon() && !won) {
       won = true;
+      shouldSave = true;
     }
     if (!canMove()) {
       gameOver = true;
       render();
+      shouldSave = true;
     }
-    if (won || gameOver) {
+    if (shouldSave) {
       saveStats();
     }
   }
 
   function handleKeydown(e) {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+      return;
+    }
+
     if (gameOver) {
       if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
         window.gamesHelpers.handleRestartSpace(e, resetGame);

@@ -136,11 +136,16 @@
 
   // ===================== Timer =====================
 
-  function startTimer() {
-    startTime = Date.now();
+  function startTicker() {
+    stopTimer();
     timerInterval = setInterval(function () {
       if (timeEl) timeEl.textContent = t('gamesTime') + ': ' + getElapsed() + 's';
     }, 200);
+  }
+
+  function startTimer() {
+    startTime = Date.now();
+    startTicker();
   }
 
   function stopTimer() {
@@ -199,6 +204,7 @@
   // ===================== Lifecycle =====================
 
   function resetGame() {
+    clearPendingTimeouts();
     stopTimer();
     pausedAt = 0;
     cards = createCards();
@@ -269,7 +275,7 @@
     if (!gameOver && startTime > 0 && pausedAt > 0) {
       const elapsed = pausedAt - startTime;
       startTime = Date.now() - elapsed;
-      startTimer();
+      startTicker();
     }
   }
 
