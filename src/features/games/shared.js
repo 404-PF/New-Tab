@@ -30,7 +30,8 @@
     if (!parentEl) return null;
     const className = options?.className || 'games-overlay';
     // Remove any existing overlay of the same class
-    const prev = parentEl.querySelector('.' + className);
+    const selectorClass = typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(className) : className;
+    const prev = parentEl.querySelector('.' + selectorClass);
     if (prev) prev.remove();
 
     const overlay = document.createElement('div');
