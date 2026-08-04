@@ -4163,7 +4163,7 @@ body.light-theme .games-hub-header {
   border-bottom-color: rgba(15, 23, 42, 0.1);
 }
 
-body.light-theme .games-hub-title {
+body.light-theme :is(.games-hub-title, .games-hub-card-name) {
   color: #0f172a;
 }
 
@@ -4178,10 +4178,6 @@ body.light-theme .games-hub-card {
 
 body.light-theme .games-hub-card:hover {
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.85);
-}
-
-body.light-theme .games-hub-card-name {
-  color: #0f172a;
 }
 
 body.light-theme .games-hub-card-desc {
