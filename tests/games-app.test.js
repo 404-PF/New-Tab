@@ -156,4 +156,11 @@ describe('GameRegistry', () => {
     const stats = window.GameRegistry.getStats('unknown-game');
     expect(stats).toEqual({});
   });
+
+  it('handles a primitive games_stats value', () => {
+    localStorage.setItem('games_stats', '5');
+    expect(window.GameRegistry.getStats('primitive-game')).toEqual({});
+    window.GameRegistry.updateStats('primitive-game', { highScore: 10 });
+    expect(window.GameRegistry.getStats('primitive-game').highScore).toBe(10);
+  });
 });

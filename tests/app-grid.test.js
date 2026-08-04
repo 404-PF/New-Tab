@@ -673,16 +673,22 @@ describe('renderAllApps order validation', () => {
       const gamesApp = document.getElementById('games-app');
       if (gamesApp) gamesApp.style.display = 'none';
     });
-    window.applyGamesEnabled = applyGamesEnabled;
+    const originalApplyGamesEnabled = window.applyGamesEnabled;
+    try {
+      window.applyGamesEnabled = applyGamesEnabled;
+      window.renderAllApps();
 
-    window.renderAllApps();
-
-    expect(applyGamesEnabled).toHaveBeenCalled();
-    const gamesApp = document.getElementById('games-app');
-    expect(gamesApp).not.toBeNull();
-    expect(gamesApp.style.display).toBe('none');
-
-    delete window.applyGamesEnabled;
+      expect(applyGamesEnabled).toHaveBeenCalled();
+      const gamesApp = document.getElementById('games-app');
+      expect(gamesApp).not.toBeNull();
+      expect(gamesApp.style.display).toBe('none');
+    } finally {
+      if (originalApplyGamesEnabled === undefined) {
+        delete window.applyGamesEnabled;
+      } else {
+        window.applyGamesEnabled = originalApplyGamesEnabled;
+      }
+    }
   });
 });
 

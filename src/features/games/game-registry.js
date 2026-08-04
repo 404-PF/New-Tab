@@ -17,7 +17,9 @@
   function loadStats() {
     try {
       const raw = localStorage.getItem(STATS_KEY);
-      return raw ? JSON.parse(raw) : {};
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
     } catch (e) {
       console.warn('Failed to load games_stats:', e);
       return {};

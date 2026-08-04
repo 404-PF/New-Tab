@@ -276,6 +276,14 @@
   }
 
   function handleTouchEnd(e) {
+    if (gameOver) {
+      if (e.changedTouches && e.changedTouches.length > 0) {
+        initSnake();
+        draw();
+        startTick();
+      }
+      return;
+    }
     if (e.changedTouches.length !== 1) return;
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
