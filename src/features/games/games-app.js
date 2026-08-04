@@ -7,7 +7,7 @@
 
   // ===================== Helpers =====================
 
-  const t = window.gamesHelpers && window.gamesHelpers.t ? window.gamesHelpers.t : function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
+  const t = window.gamesHelpers?.t || function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
 
   function getModalElement() {
     return document.getElementById('games-app-modal');
@@ -48,7 +48,9 @@
       } else {
         console.warn('Invalid games_recently_played value, expected an array');
       }
-    } catch (_err) { /* use empty */ }
+    } catch (_err) {
+      console.warn('Invalid games_recently_played value, using empty list');
+    }
 
     const sorted = games.slice().sort(function (a, b) {
       const ia = mru.indexOf(a.id);

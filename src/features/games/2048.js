@@ -14,7 +14,7 @@
 
   // ===================== Helpers =====================
 
-  const t = window.gamesHelpers && window.gamesHelpers.t ? window.gamesHelpers.t : function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
+  const t = window.gamesHelpers?.t || function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
 
   // ===================== Board Logic =====================
 
@@ -167,7 +167,7 @@
     }
 
     if (gameOver) {
-      window.gamesHelpers && window.gamesHelpers.renderDOMOverlay && window.gamesHelpers.renderDOMOverlay(boardEl, {
+      window.gamesHelpers?.renderDOMOverlay?.(boardEl, {
         className: 'games-2048-overlay',
         text: won ? (t('gamesYouWin') || 'You Win!') : (t('gamesGameOver') || 'Game Over'),
         sub: (t('gamesPressSpace') || 'Press Space to restart')
@@ -278,7 +278,7 @@
   // ===================== Stats =====================
 
   function saveStats() {
-    window.gamesHelpers && window.gamesHelpers.updateStatsWith && window.gamesHelpers.updateStatsWith('2048', function (stats) {
+    window.gamesHelpers?.updateStatsWith?.('2048', function (stats) {
       const highScore = stats.highScore || 0;
       return {
         highScore: Math.max(highScore, score),

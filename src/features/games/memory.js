@@ -22,7 +22,7 @@
 
   // ===================== Helpers =====================
 
-  const t = window.gamesHelpers && window.gamesHelpers.t ? window.gamesHelpers.t : function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
+  const t = window.gamesHelpers?.t || function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
@@ -117,7 +117,7 @@
   }
 
   function saveStats(time) {
-    window.gamesHelpers && window.gamesHelpers.updateStatsWith && window.gamesHelpers.updateStatsWith('memory', function (stats) {
+    window.gamesHelpers?.updateStatsWith?.('memory', function (stats) {
       const bestMoves = stats.bestMoves || Infinity;
       const bestTime = stats.bestTime || Infinity;
       return {
@@ -131,7 +131,7 @@
   function showWinOverlay(time) {
     if (!gridEl) return;
     const statsHtml = (t('gamesMoves') || 'Moves') + ': ' + moves + ' | ' + (t('gamesTime') || 'Time') + ': ' + time + 's';
-    window.gamesHelpers && window.gamesHelpers.renderDOMOverlay && window.gamesHelpers.renderDOMOverlay(gridEl, {
+    window.gamesHelpers?.renderDOMOverlay?.(gridEl, {
       className: 'games-memory-overlay',
       text: (t('gamesYouWin') || 'You Win!'),
       statsHtml: statsHtml,

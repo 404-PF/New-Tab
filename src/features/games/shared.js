@@ -28,12 +28,10 @@
   // options: { className, text, sub, statsHtml }
   window.gamesHelpers.renderDOMOverlay = function (parentEl, options) {
     if (!parentEl) return null;
-    const className = options && options.className ? options.className : 'games-overlay';
+    const className = options?.className || 'games-overlay';
     // Remove any existing overlay of the same class
-    try {
-      const prev = parentEl.querySelector('.' + className);
-      if (prev) parentEl.removeChild(prev);
-    } catch (e) { /* ignore */ }
+    const prev = parentEl.querySelector('.' + className);
+    if (prev) prev.remove();
 
     const overlay = document.createElement('div');
     overlay.className = className;
@@ -46,9 +44,9 @@
       overlay.appendChild(node);
     }
 
-    addLine(options && options.text, (options && options.textClass) || (overlay.className + '-text'));
-    addLine(options && options.statsHtml, (options && options.statsClass) || (overlay.className + '-stats'));
-    addLine(options && options.sub, (options && options.subClass) || (overlay.className + '-sub'));
+    addLine(options?.text, options?.textClass || (overlay.className + '-text'));
+    addLine(options?.statsHtml, options?.statsClass || (overlay.className + '-stats'));
+    addLine(options?.sub, options?.subClass || (overlay.className + '-sub'));
 
     parentEl.appendChild(overlay);
     return overlay;

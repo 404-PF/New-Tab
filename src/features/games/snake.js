@@ -23,7 +23,7 @@
 
   // ===================== Helpers =====================
 
-  const t = window.gamesHelpers && window.gamesHelpers.t ? window.gamesHelpers.t : function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
+  const t = window.gamesHelpers?.t || function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
 
   function randomInt(min, max) {
     return Math.floor(window.GameRegistry.secureRandom() * (max - min + 1)) + min;
@@ -63,6 +63,13 @@
     food = empty[randomInt(0, empty.length - 1)];
   }
 
+  function hitsSelf(head, body) {
+    for (const seg of body) {
+      if (seg.x === head.x && seg.y === head.y) return true;
+    }
+    return false;
+  }
+
   function tick() {
     if (paused || gameOver) return;
 
@@ -86,11 +93,9 @@
     // so moving into it is legal; exclude it from the check. When eating the
     // snake grows, so the tail still occupies its cell.
     const body = eating ? snake : snake.slice(0, -1);
-    for (const seg of body) {
-      if (seg.x === head.x && seg.y === head.y) {
-        endGame();
-        return;
-      }
+    if (hitsSelf(head, body)) {
+      endGame();
+      return;
     }
 
     snake.unshift(head);
@@ -111,7 +116,7 @@
     gameOver = true;
     stopTick();
     // Save stats
-    window.gamesHelpers && window.gamesHelpers.updateStatsWith && window.gamesHelpers.updateStatsWith('snake', function (stats) {
+    window.gamesHelpers?.updateStatsWith?.('snake', function (stats) {
       const highScore = stats.highScore || 0;
       return {
         highScore: Math.max(highScore, score),
