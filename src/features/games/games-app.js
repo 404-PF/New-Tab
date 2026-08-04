@@ -14,14 +14,9 @@
   }
 
   function isEnabled() {
-    if (window.gamesHelpers && typeof window.gamesHelpers.isEnabled === 'function') {
-      return window.gamesHelpers.isEnabled();
-    }
-    try {
-      return localStorage.getItem('games_enabled') !== 'false';
-    } catch (_err) {
-      return true;
-    }
+    return window.gamesHelpers && typeof window.gamesHelpers.isEnabled === 'function'
+      ? window.gamesHelpers.isEnabled()
+      : true;
   }
 
   // ===================== Hub Rendering =====================
