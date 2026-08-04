@@ -296,12 +296,9 @@
         renderCard(resolve.b.id);
         flipped = [];
       }
-    } else if (flipped.length === 1) {
-      const card = flipped[0];
-      card.flipped = false;
-      flipped = [];
-      renderCard(card.id);
     }
+    // A lone revealed card (first of a pending pair) is left flipped so resume
+    // preserves the current turn state; only timers/pending timeouts are frozen.
   }
 
   function resume() {

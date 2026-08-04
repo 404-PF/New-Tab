@@ -104,4 +104,25 @@ describe('Memory Match Game', () => {
     game.destroy();
     container.remove();
   });
+
+  it('keeps a lone revealed card flipped across pause', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+    game.init(container);
+
+    const cards = container.querySelectorAll('.games-memory-card');
+    cards[0].click();
+
+    const flippedEl = container.querySelector('.games-memory-card-flipped');
+    expect(flippedEl).not.toBeNull();
+
+    game.pause();
+    game.resume();
+
+    expect(flippedEl.classList.contains('games-memory-card-flipped')).toBe(true);
+
+    game.destroy();
+    container.remove();
+  });
 });
