@@ -4171,5 +4171,6 @@ window.i18n = {
   applyLanguage,
   t,
   currentLanguage: () => currentLanguage,
-  getSupportedLanguages
+  getSupportedLanguages,
+  getTranslations: (code) => translations[code]
 };

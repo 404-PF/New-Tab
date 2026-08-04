@@ -110,14 +110,16 @@ describe('Custom background error translations', () => {
 });
 
 describe('Games translations', () => {
-  it('defines every games string for all supported languages', () => {
+  it('defines every games string in each supported language', () => {
     const languages = window.i18n.getSupportedLanguages();
 
     languages.forEach(({ code }) => {
-      window.i18n.applyLanguage(code);
+      const localeTranslations = window.i18n.getTranslations(code);
 
       GAMES_TRANSLATION_KEYS.forEach((key) => {
-        expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
+        expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
+        expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
+        expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
       });
     });
   });
