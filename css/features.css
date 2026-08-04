@@ -4206,10 +4206,6 @@ body.light-theme .games-hub-card-desc {
   color: var(--games-text-secondary);
 }
 
-body.light-theme .games-hub-empty {
-  color: #475569;
-}
-
 /* Game header & back button */
 .games-game-header {
   padding: 12px 0 16px;
@@ -4232,10 +4228,6 @@ body.light-theme .games-hub-empty {
   background: rgba(255, 255, 255, 0.1);
 }
 
-body.light-theme .games-back-btn {
-  color: #0f172a;
-}
-
 body.light-theme .games-back-btn:hover {
   background: rgba(33, 150, 243, 0.1);
 }
@@ -4249,10 +4241,6 @@ body.light-theme .games-back-btn:hover {
   padding: 8px 0;
 }
 
-body.light-theme .games-score-display {
-  color: #0f172a;
-}
-
 .games-instructions {
   font-size: 0.8rem;
   color: var(--games-text-muted);
@@ -4260,19 +4248,11 @@ body.light-theme .games-score-display {
   padding: 8px 0 4px;
 }
 
-body.light-theme .games-instructions {
-  color: #64748b;
-}
-
 /* Disabled state */
 .games-app-disabled {
   text-align: center;
   padding: 40px 20px;
   color: var(--games-text-secondary);
-}
-
-body.light-theme .games-app-disabled {
-  color: #475569;
 }
 
 /* ==================== Snake ==================== */
@@ -4303,10 +4283,6 @@ body.light-theme .games-app-disabled {
   font-size: 1.4rem;
   color: var(--games-text-primary);
   transition: background 0.15s;
-}
-
-body.light-theme .games-2048-cell {
-  color: #0f172a;
 }
 
 .games-2048-cell-filled {
@@ -4349,10 +4325,6 @@ body.light-theme .games-2048-cell {
   margin-top: 12px;
 }
 
-body.light-theme .games-2048-overlay-sub {
-  color: #475569;
-}
-
 /* ==================== Memory Match ==================== */
 
 .games-memory-stats {
@@ -4362,10 +4334,6 @@ body.light-theme .games-2048-overlay-sub {
   padding: 8px 0;
   font-weight: 600;
   color: var(--games-text-primary);
-}
-
-body.light-theme .games-memory-stats {
-  color: #0f172a;
 }
 
 .games-memory-grid {
@@ -4434,6 +4402,19 @@ body.light-theme .games-memory-stats {
   font-size: 0.85rem;
   color: var(--glass-text-secondary);
   margin-top: 12px;
+}
+
+/* Consolidated light theme color overrides */
+body.light-theme :is(.games-back-btn, .games-score-display, .games-2048-cell, .games-memory-stats) {
+  color: #0f172a;
+}
+
+body.light-theme :is(.games-hub-empty, .games-app-disabled, .games-hub-card-desc, .games-2048-overlay-sub) {
+  color: #475569;
+}
+
+body.light-theme .games-instructions {
+  color: #64748b;
 }
 
 /* Simple mode hide */
