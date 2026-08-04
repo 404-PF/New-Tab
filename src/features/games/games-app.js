@@ -14,6 +14,9 @@
   }
 
   function isEnabled() {
+    if (window.gamesHelpers && typeof window.gamesHelpers.isEnabled === 'function') {
+      return window.gamesHelpers.isEnabled();
+    }
     try {
       return localStorage.getItem('games_enabled') !== 'false';
     } catch (_err) {
@@ -139,6 +142,9 @@
     if (!isEnabled()) {
       renderDisabled();
       modal.showModal();
+      requestAnimationFrame(() => {
+        modal.classList.add('modal-open');
+      });
       return;
     }
 
@@ -156,7 +162,9 @@
     const modal = getModalElement();
     if (!modal) return;
     modal.classList.remove('modal-open');
-    modal.close();
+    if (modal.open) {
+      modal.close();
+    }
     // Destroy any running game
     if (window.GameRegistry) {
       window.GameRegistry.destroyCurrent();

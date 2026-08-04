@@ -981,7 +981,7 @@ const translations = {
     last30Days: '最近 30 天',
     statsToggle: '統計',
     statsToggleAriaLabel: '切換統計面板',
-    heatmapCellTitle: '$1$：已完成 $2$ 项',
+    heatmapCellTitle: '$1$：已完成 $2$ 項',
 
     // Games
     games: '游戏',

@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
 
 beforeAll(() => {
-  injectScript('src/core/storage.js');
   injectScript('src/core/utils.js');
   injectScript('src/features/games/game-registry.js');
   injectScript('src/features/games/memory.js');
@@ -90,6 +89,19 @@ describe('Memory Match Game', () => {
     expect(container.querySelector('.games-memory-grid')).toBeNull();
     expect(container.querySelector('.games-memory-stats')).toBeNull();
 
+    container.remove();
+  });
+
+  it('can be paused and resumed without error', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+    game.init(container);
+
+    expect(() => game.pause()).not.toThrow();
+    expect(() => game.resume()).not.toThrow();
+
+    game.destroy();
     container.remove();
   });
 });

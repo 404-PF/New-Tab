@@ -18,6 +18,7 @@
   let movesEl = null;
   let timeEl = null;
   let pendingTimeouts = [];
+  let pendingResolve = null;
 
   // ===================== Helpers =====================
 
@@ -80,16 +81,20 @@
       b.matched = true;
       matched++;
       flipped = [];
+      pendingResolve = { a: a, b: b, match: true };
 
       pendingTimeouts.push(setTimeout(function () {
         if (gameOver) return;
+        pendingResolve = null;
         renderCard(a.id);
         renderCard(b.id);
         if (matched === PAIRS) endGame();
       }, 200));
     } else {
+      pendingResolve = { a: a, b: b, match: false };
       pendingTimeouts.push(setTimeout(function () {
         if (gameOver) return;
+        pendingResolve = null;
         a.flipped = false;
         b.flipped = false;
         renderCard(a.id);
@@ -191,6 +196,10 @@
   // ===================== Input =====================
 
   function handleKeydown(e) {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+      return;
+    }
+
     if (gameOver) {
       if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
         window.gamesHelpers.handleRestartSpace(e, resetGame);
@@ -205,6 +214,7 @@
 
   function resetGame() {
     clearPendingTimeouts();
+    pendingResolve = null;
     stopTimer();
     pausedAt = 0;
     cards = createCards();
@@ -255,6 +265,7 @@
 
   function destroy() {
     clearPendingTimeouts();
+    pendingResolve = null;
     stopTimer();
     document.removeEventListener('keydown', handleKeydown);
     cards = [];
@@ -269,6 +280,28 @@
   function pause() {
     pausedAt = Date.now();
     stopTimer();
+    clearPendingTimeouts();
+    // Finalize any pending pair resolution so the board stays consistent while hidden.
+    if (pendingResolve) {
+      const resolve = pendingResolve;
+      pendingResolve = null;
+      if (resolve.match) {
+        renderCard(resolve.a.id);
+        renderCard(resolve.b.id);
+        if (matched === PAIRS) endGame();
+      } else {
+        resolve.a.flipped = false;
+        resolve.b.flipped = false;
+        renderCard(resolve.a.id);
+        renderCard(resolve.b.id);
+        flipped = [];
+      }
+    } else if (flipped.length === 1) {
+      const card = flipped[0];
+      card.flipped = false;
+      flipped = [];
+      renderCard(card.id);
+    }
   }
 
   function resume() {

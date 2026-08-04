@@ -7,7 +7,7 @@
   const MRU_KEY = 'games_recently_played';
   const MAX_MRU = 20;
 
-  let registeredGames = {};
+  let registeredGames = Object.create(null);
   let launchOrder = [];
   let currentGame = null;
   let initialized = false;
@@ -74,7 +74,7 @@
   // ===================== Public API =====================
 
   function register(gameDef) {
-    if (!gameDef?.id || !gameDef.name || !gameDef.init || !gameDef.destroy) {
+    if (!gameDef?.id || !gameDef.name || typeof gameDef.init !== 'function' || typeof gameDef.destroy !== 'function') {
       console.warn('GameRegistry.register: invalid game definition', gameDef);
       return false;
     }
@@ -135,17 +135,16 @@
     }
 
     currentGame = game;
-    touchMRU(gameId);
 
     container.innerHTML = '';
     try {
       game.init(container);
     } catch (e) {
       console.warn('GameRegistry.launch: error initializing', game.id, e);
-      currentGame = null;
-      container.innerHTML = '';
+      destroyCurrent();
       return false;
     }
+    touchMRU(gameId);
     return true;
   }
 
@@ -201,7 +200,7 @@
 
   function _reset() {
     destroyCurrent();
-    registeredGames = {};
+    registeredGames = Object.create(null);
     launchOrder = [];
   }
 

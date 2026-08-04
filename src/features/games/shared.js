@@ -6,7 +6,21 @@
 
   if (!window.gamesHelpers.t) {
     window.gamesHelpers.t = function (key) {
-      return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key;
+      if (window.i18n && typeof window.i18n.t === 'function') {
+        const value = window.i18n.t(key);
+        return value === key ? undefined : value;
+      }
+      return key;
+    };
+  }
+
+  if (!window.gamesHelpers.isEnabled) {
+    window.gamesHelpers.isEnabled = function () {
+      try {
+        return localStorage.getItem('games_enabled') !== 'false';
+      } catch (_err) {
+        return true;
+      }
     };
   }
 
@@ -14,16 +28,15 @@
   // options: { className, text, sub, statsHtml }
   window.gamesHelpers.renderDOMOverlay = function (parentEl, options) {
     if (!parentEl) return null;
+    const className = options && options.className ? options.className : 'games-overlay';
     // Remove any existing overlay of the same class
     try {
-      if (options && options.className) {
-        const prev = parentEl.querySelector('.' + options.className);
-        if (prev) parentEl.removeChild(prev);
-      }
+      const prev = parentEl.querySelector('.' + className);
+      if (prev) parentEl.removeChild(prev);
     } catch (e) { /* ignore */ }
 
     const overlay = document.createElement('div');
-    overlay.className = options && options.className ? options.className : 'games-overlay';
+    overlay.className = className;
 
     function addLine(text, className) {
       if (!text) return;
@@ -39,16 +52,6 @@
 
     parentEl.appendChild(overlay);
     return overlay;
-  };
-
-  window.gamesHelpers.removeOverlay = function (parentEl, selectorOrClass) {
-    if (!parentEl) return;
-    try {
-      if (!selectorOrClass) selectorOrClass = '.games-overlay';
-      const sel = selectorOrClass.indexOf('.') === 0 || selectorOrClass.indexOf('#') === 0 ? selectorOrClass : '.' + selectorOrClass;
-      const el = parentEl.querySelector(sel);
-      if (el) parentEl.removeChild(el);
-    } catch (e) { /* ignore */ }
   };
 
   // Key handling helper for restarting on Space when gameOver

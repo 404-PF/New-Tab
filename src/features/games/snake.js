@@ -42,6 +42,7 @@
     direction = 'right';
     nextDirection = 'right';
     score = 0;
+    if (scoreEl) scoreEl.textContent = t('gamesScore') + ': 0';
     gameOver = false;
     paused = false;
     spawnFood();

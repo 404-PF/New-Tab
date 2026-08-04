@@ -1491,14 +1491,17 @@ if (document.readyState === 'loading') {
 
 // Games enabled
 function loadGamesEnabled() {
+  if (window.gamesHelpers && typeof window.gamesHelpers.isEnabled === 'function') {
+    return window.gamesHelpers.isEnabled();
+  }
   try {
     return localStorage.getItem('games_enabled') !== 'false';
   } catch (_e) {
     return true;
   }
 }
-function applyGamesEnabled() {
-  const enabled = loadGamesEnabled();
+function applyGamesEnabled(enabledOverride) {
+  const enabled = typeof enabledOverride === 'boolean' ? enabledOverride : loadGamesEnabled();
   const gamesApp = document.getElementById('games-app');
   if (gamesApp) {
     gamesApp.style.display = enabled ? '' : 'none';
@@ -1513,12 +1516,13 @@ const gamesEnabledSetting = document.getElementById('games-enabled-setting');
 if (gamesEnabledSetting) {
   gamesEnabledSetting.checked = loadGamesEnabled();
   gamesEnabledSetting.addEventListener('change', function () {
+    const enabled = this.checked;
     try {
-      localStorage.setItem('games_enabled', this.checked);
+      localStorage.setItem('games_enabled', enabled);
     } catch (_e) {
       // ignore storage errors
     }
-    applyGamesEnabled();
+    applyGamesEnabled(enabled);
   });
 }
 
