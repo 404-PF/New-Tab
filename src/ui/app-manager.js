@@ -154,6 +154,12 @@ function renderAllApps() {
 
   // Re-apply the open-in-new-tab preference after rebuilding links.
   applyOpenNewTabSetting();
+  // Re-apply the games-enabled preference after rebuilding the grid so a
+  // disabled Games app stays hidden across re-renders (e.g. language change,
+  // app/folder edits). settings.js loads after this module, so guard the call.
+  if (typeof window.applyGamesEnabled === 'function') {
+    window.applyGamesEnabled();
+  }
   window.__appGridState.setPhase('rendered');
 }
 

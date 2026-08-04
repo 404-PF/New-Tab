@@ -79,8 +79,13 @@
       return;
     }
 
-    // Self collision
-    for (const seg of snake) {
+    const eating = food && head.x === food.x && head.y === food.y;
+
+    // Self collision. When not eating, the tail vacates its cell this tick,
+    // so moving into it is legal; exclude it from the check. When eating the
+    // snake grows, so the tail still occupies its cell.
+    const body = eating ? snake : snake.slice(0, -1);
+    for (const seg of body) {
       if (seg.x === head.x && seg.y === head.y) {
         endGame();
         return;
@@ -90,7 +95,7 @@
     snake.unshift(head);
 
     // Eat food
-    if (food && head.x === food.x && head.y === food.y) {
+    if (eating) {
       score += 10;
       if (scoreEl) scoreEl.textContent = t('gamesScore') + ': ' + score;
       spawnFood();

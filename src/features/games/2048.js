@@ -201,14 +201,15 @@
     let shouldSave = false;
     if (hasWon() && !won) {
       won = true;
+      gameOver = true;
       shouldSave = true;
     }
-    if (!canMove()) {
+    if (!canMove() && !gameOver) {
       gameOver = true;
-      render();
       shouldSave = true;
     }
     if (shouldSave) {
+      render();
       saveStats();
     }
   }

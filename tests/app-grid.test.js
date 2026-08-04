@@ -662,6 +662,28 @@ describe('renderAllApps order validation', () => {
     // prepended defaults.
     expect(AppGridState.getOrder()).toEqual(['weather-app', 'games-app', 'feedback-app', 'settings-app', 'ai-app', 'c1']);
   });
+
+  it('re-applies the games-enabled preference after a grid re-render', () => {
+    // Regression: renderAllApps rebuilds the grid from scratch, creating a
+    // fresh visible #games-app anchor. When games are disabled, the toggle
+    // must be re-applied after every render so the Games app stays hidden
+    // (e.g. after a language change or app/folder edit).
+    localStorage.setItem('games_enabled', 'false');
+    const applyGamesEnabled = vi.fn(() => {
+      const gamesApp = document.getElementById('games-app');
+      if (gamesApp) gamesApp.style.display = 'none';
+    });
+    window.applyGamesEnabled = applyGamesEnabled;
+
+    window.renderAllApps();
+
+    expect(applyGamesEnabled).toHaveBeenCalled();
+    const gamesApp = document.getElementById('games-app');
+    expect(gamesApp).not.toBeNull();
+    expect(gamesApp.style.display).toBe('none');
+
+    delete window.applyGamesEnabled;
+  });
 });
 
 describe('__appGridState', () => {
