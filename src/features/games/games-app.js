@@ -43,8 +43,8 @@
       } else {
         console.warn('Invalid games_recently_played value, expected an array');
       }
-    } catch (_err) {
-      console.warn('Invalid games_recently_played value, using empty list');
+    } catch (err) {
+      console.warn('Invalid games_recently_played value, using empty list:', err.message);
     }
 
     const sorted = games.slice().sort(function (a, b) {
