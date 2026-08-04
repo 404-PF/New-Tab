@@ -4078,18 +4078,6 @@ body.light-theme .games-app-modal-content {
   color: #0f172a;
 }
 
-body.light-theme .games-hub-header {
-  border-bottom-color: rgba(15, 23, 42, 0.1);
-}
-
-body.light-theme .games-hub-title {
-  color: #0f172a;
-}
-
-body.light-theme .games-hub-content {
-  color: #0f172a;
-}
-
 @media (min-width: 576px) {
   .games-app-modal-content {
     width: min(600px, 90vw);
