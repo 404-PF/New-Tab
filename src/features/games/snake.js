@@ -23,9 +23,7 @@
 
   // ===================== Helpers =====================
 
-  function t(key) {
-    return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key;
-  }
+  const t = window.gamesHelpers && window.gamesHelpers.t ? window.gamesHelpers.t : function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
 
   function randomInt(min, max) {
     return Math.floor(window.GameRegistry.secureRandom() * (max - min + 1)) + min;

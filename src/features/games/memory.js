@@ -21,9 +21,7 @@
 
   // ===================== Helpers =====================
 
-  function t(key) {
-    return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key;
-  }
+  const t = window.gamesHelpers && window.gamesHelpers.t ? window.gamesHelpers.t : function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {

@@ -64,6 +64,7 @@
     'src/features/background-rotation.js',
     'src/features/shortcuts.js',
     'src/features/auto-theme.js',
+    'src/features/games/shared.js',
     'src/features/games/game-registry.js',
     'src/features/games/snake.js',
     'src/features/games/2048.js',
