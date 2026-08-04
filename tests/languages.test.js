@@ -26,6 +26,33 @@ const CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS = [
   'customBackgroundDeleteError'
 ];
 
+const GAMES_TRANSLATION_KEYS = [
+  'games',
+  'enableGames',
+  'gamesPlay',
+  'gamesBack',
+  'gamesScore',
+  'gamesHighScore',
+  'gamesBestMoves',
+  'gamesMoves',
+  'gamesTime',
+  'gamesGameOver',
+  'gamesYouWin',
+  'gamesPaused',
+  'gamesPressSpace',
+  'gamesNoGames',
+  'gamesDisabled',
+  'gamesSnake',
+  'gamesSnakeDesc',
+  'gamesSnakeControls',
+  'games2048',
+  'games2048Desc',
+  'games2048Controls',
+  'gamesMemory',
+  'gamesMemoryDesc',
+  'gamesMemoryControls'
+];
+
 let originalLanguage;
 
 beforeAll(() => {
@@ -76,6 +103,20 @@ describe('Custom background error translations', () => {
       window.i18n.applyLanguage(code);
 
       CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS.forEach((key) => {
+        expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
+      });
+    });
+  });
+});
+
+describe('Games translations', () => {
+  it('defines every games string for all supported languages', () => {
+    const languages = window.i18n.getSupportedLanguages();
+
+    languages.forEach(({ code }) => {
+      window.i18n.applyLanguage(code);
+
+      GAMES_TRANSLATION_KEYS.forEach((key) => {
         expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
       });
     });
