@@ -34,18 +34,10 @@
       return;
     }
 
-    // Sort by MRU
-    let mru = [];
-    try {
-      const parsedMru = JSON.parse(localStorage.getItem('games_recently_played') || '[]');
-      if (Array.isArray(parsedMru)) {
-        mru = parsedMru;
-      } else {
-        console.warn('Invalid games_recently_played value, expected an array');
-      }
-    } catch (err) {
-      console.warn('Invalid games_recently_played value, using empty list:', err.message);
-    }
+    // Sort by MRU (source of truth lives in GameRegistry)
+    const mru = window.GameRegistry && typeof window.GameRegistry.getMRU === 'function'
+      ? window.GameRegistry.getMRU()
+      : [];
 
     const sorted = games.slice().sort(function (a, b) {
       const ia = mru.indexOf(a.id);
@@ -138,7 +130,7 @@
 
     if (!isEnabled()) {
       renderDisabled();
-      modal.showModal();
+      if (!modal.open) modal.showModal();
       requestAnimationFrame(() => {
         modal.classList.add('modal-open');
       });
@@ -149,7 +141,7 @@
       window.GameRegistry.destroyCurrent();
     }
     renderHub();
-    modal.showModal();
+    if (!modal.open) modal.showModal();
     requestAnimationFrame(() => {
       modal.classList.add('modal-open');
     });

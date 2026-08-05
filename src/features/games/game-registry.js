@@ -6,6 +6,8 @@
   const STATS_KEY = 'games_stats';
   const MRU_KEY = 'games_recently_played';
   const MAX_MRU = 20;
+  const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+  const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
 
   let registeredGames = Object.create(null);
   let launchOrder = [];
@@ -74,7 +76,8 @@
   // ===================== Public API =====================
 
   function register(gameDef) {
-    if (!gameDef?.id || !gameDef.name || typeof gameDef.init !== 'function' || typeof gameDef.destroy !== 'function') {
+    const idIsSafe = typeof gameDef?.id === 'string' && SAFE_ID_PATTERN.test(gameDef.id) && !RESERVED_IDS.has(gameDef.id);
+    if (!idIsSafe || !gameDef.name || typeof gameDef.init !== 'function' || typeof gameDef.destroy !== 'function') {
       console.warn('GameRegistry.register: invalid game definition', gameDef);
       return false;
     }
@@ -171,16 +174,28 @@
     return currentGame;
   }
 
+  function getMRU() {
+    return loadMRU();
+  }
+
   // ===================== Visibility Handling =====================
 
   function onVisibilityChange() {
     if (!currentGame) return;
     if (document.hidden) {
       if (typeof currentGame.pause === 'function') {
-        currentGame.pause();
+        try {
+          currentGame.pause();
+        } catch (e) {
+          console.warn('GameRegistry.onVisibilityChange: error pausing', currentGame.id, e);
+        }
       }
     } else if (typeof currentGame.resume === 'function') {
-      currentGame.resume();
+      try {
+        currentGame.resume();
+      } catch (e) {
+        console.warn('GameRegistry.onVisibilityChange: error resuming', currentGame.id, e);
+      }
     }
   }
 
@@ -214,6 +229,7 @@
     destroyCurrent: destroyCurrent,
     backToHub: backToHub,
     getCurrentGame: getCurrentGame,
+    getMRU: getMRU,
     secureRandom: secureRandom,
     _reset: _reset
   };

@@ -14,7 +14,7 @@
 
   // ===================== Helpers =====================
 
-  const t = window.gamesHelpers?.t || function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
+  const t = window.gamesHelpers?.t || function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : undefined; };
 
   // ===================== Board Logic =====================
 
