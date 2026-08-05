@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Games icon - Game controller -->
+<!-- Games icon - Modern game controller -->
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-  <!-- Controller body -->
-  <path d="M6 11h.01M18 11h.01"/>
-  <path d="M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a6 6 0 0 1-6 6H8a6 6 0 0 1-6-6V8z"/>
+  <!-- Controller body with ergonomic grips -->
+  <path d="M5.5 8H18.5C20.5 8 21.5 9.4 21.5 11.4C21.5 13.3 21 14.7 20 15.4C19.1 15.9 18.2 15.5 17.8 14.8L16.9 13.1C16.3 12.1 15.5 11.7 14.4 11.7H9.6C8.5 11.7 7.7 12.1 7.1 13.1L6.2 14.8C5.8 15.5 4.9 15.9 4 15.4C3 14.7 2.5 13.3 2.5 11.4C2.5 9.4 3.5 8 5.5 8Z"/>
   <!-- D-pad -->
-  <path d="M9 7v4M7 9h4"/>
-  <!-- Buttons -->
-  <circle cx="16" cy="8.5" r="0.5" fill="currentColor"/>
-  <circle cx="18" cy="10.5" r="0.5" fill="currentColor"/>
-  <circle cx="14" cy="10.5" r="0.5" fill="currentColor"/>
-  <circle cx="16" cy="12.5" r="0.5" fill="currentColor"/>
+  <path d="M7.3 8.3v3M5.8 9.8h3"/>
+  <!-- Action buttons -->
+  <circle cx="16.7" cy="8.7" r="0.55" fill="currentColor" stroke="none"/>
+  <circle cx="18" cy="10" r="0.55" fill="currentColor" stroke="none"/>
+  <circle cx="16.7" cy="11.3" r="0.55" fill="currentColor" stroke="none"/>
+  <circle cx="15.4" cy="10" r="0.55" fill="currentColor" stroke="none"/>
+  <!-- Start / select -->
+  <path d="M10.4 11h1.2M12.4 11h1.2"/>
 </svg>
