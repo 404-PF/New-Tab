@@ -163,7 +163,7 @@
     }
 
     if (scoreEl) {
-      scoreEl.textContent = t('gamesScore') + ': ' + score;
+      scoreEl.textContent = (t('gamesScore') || 'Score') + ': ' + score;
     }
 
     if (gameOver) {
