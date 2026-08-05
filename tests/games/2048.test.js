@@ -146,7 +146,7 @@ describe('2048 Game', () => {
     const board = container.querySelector('.games-2048-board');
     const cells = board.querySelectorAll('.games-2048-cell');
     // Should still have 16 cells even if some are filled
-    expect(cells.length).toBe(16);
+    expect(cells).toHaveLength(16);
     
     // If an overlay was rendered, it should be inside the board
     const overlay = board.querySelector('.games-2048-overlay');
