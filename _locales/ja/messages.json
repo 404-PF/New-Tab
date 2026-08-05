@@ -335,5 +335,101 @@
   "removeTimezoneLabel": {
     "message": "{city} タイムゾーンを削除",
     "description": "Accessible label for removing a specific time zone"
+  },
+  "games": {
+    "message": "ゲーム",
+    "description": "Games app name"
+  },
+  "enableGames": {
+    "message": "ゲームを有効にする",
+    "description": "Toggle label for enabling the games feature"
+  },
+  "gamesPlay": {
+    "message": "プレイ",
+    "description": "Button label to start a game"
+  },
+  "gamesBack": {
+    "message": "戻る",
+    "description": "Button label to return to the games hub"
+  },
+  "gamesScore": {
+    "message": "スコア",
+    "description": "Game score label"
+  },
+  "gamesHighScore": {
+    "message": "ハイスコア",
+    "description": "High score label"
+  },
+  "gamesBestMoves": {
+    "message": "ベストムーブ",
+    "description": "Best moves label for memory game"
+  },
+  "gamesMoves": {
+    "message": "ムーブ",
+    "description": "Moves count label"
+  },
+  "gamesTime": {
+    "message": "時間",
+    "description": "Time elapsed label"
+  },
+  "gamesGameOver": {
+    "message": "ゲームオーバー",
+    "description": "Game over message"
+  },
+  "gamesYouWin": {
+    "message": "勝利！",
+    "description": "Win message"
+  },
+  "gamesPaused": {
+    "message": "一時停止",
+    "description": "Paused state label"
+  },
+  "gamesPressSpace": {
+    "message": "スペースキーで再スタート",
+    "description": "Restart instruction"
+  },
+  "gamesNoGames": {
+    "message": "ゲームがありません",
+    "description": "Message when no games are registered"
+  },
+  "gamesDisabled": {
+    "message": "ゲームは無効です。設定で有効にしてください。",
+    "description": "Message when games feature is disabled"
+  },
+  "gamesSnake": {
+    "message": "スネーク",
+    "description": "Snake game name"
+  },
+  "gamesSnakeDesc": {
+    "message": "クラシックなスネークゲーム。エサを食べて成長しよう！",
+    "description": "Snake game description"
+  },
+  "gamesSnakeControls": {
+    "message": "矢印キーまたはWASDで移動、スペースで一時停止",
+    "description": "Snake game controls"
+  },
+  "games2048": {
+    "message": "2048",
+    "description": "2048 game name"
+  },
+  "games2048Desc": {
+    "message": "ブロックを合体させて2048を目指そう！",
+    "description": "2048 game description"
+  },
+  "games2048Controls": {
+    "message": "矢印キーでブロックを合体",
+    "description": "2048 game controls"
+  },
+  "gamesMemory": {
+    "message": "メモリーマッチ",
+    "description": "Memory match game name"
+  },
+  "gamesMemoryDesc": {
+    "message": "ペアを見つけて合わせよう！",
+    "description": "Memory match game description"
+  },
+  "gamesMemoryControls": {
+    "message": "カードをめくってペアを見つけよう",
+    "description": "Memory match game controls"
   }
 }

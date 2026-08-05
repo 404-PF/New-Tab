@@ -335,5 +335,101 @@
   "removeTimezoneLabel": {
     "message": "Удалить часовой пояс {city}",
     "description": "Accessible label for removing a specific time zone"
+  },
+  "games": {
+    "message": "Игры",
+    "description": "Games app name"
+  },
+  "enableGames": {
+    "message": "Включить игры",
+    "description": "Toggle label for enabling the games feature"
+  },
+  "gamesPlay": {
+    "message": "Играть",
+    "description": "Button label to start a game"
+  },
+  "gamesBack": {
+    "message": "Назад",
+    "description": "Button label to return to the games hub"
+  },
+  "gamesScore": {
+    "message": "Очки",
+    "description": "Game score label"
+  },
+  "gamesHighScore": {
+    "message": "Рекорд",
+    "description": "High score label"
+  },
+  "gamesBestMoves": {
+    "message": "Лучшие ходы",
+    "description": "Best moves label for memory game"
+  },
+  "gamesMoves": {
+    "message": "Ходы",
+    "description": "Moves count label"
+  },
+  "gamesTime": {
+    "message": "Время",
+    "description": "Time elapsed label"
+  },
+  "gamesGameOver": {
+    "message": "Игра окончена",
+    "description": "Game over message"
+  },
+  "gamesYouWin": {
+    "message": "Победа!",
+    "description": "Win message"
+  },
+  "gamesPaused": {
+    "message": "Пауза",
+    "description": "Paused state label"
+  },
+  "gamesPressSpace": {
+    "message": "Нажмите пробел для перезапуска",
+    "description": "Restart instruction"
+  },
+  "gamesNoGames": {
+    "message": "Нет доступных игр",
+    "description": "Message when no games are registered"
+  },
+  "gamesDisabled": {
+    "message": "Игры отключены. Включите их в настройках.",
+    "description": "Message when games feature is disabled"
+  },
+  "gamesSnake": {
+    "message": "Змейка",
+    "description": "Snake game name"
+  },
+  "gamesSnakeDesc": {
+    "message": "Классическая змейка. Ешьте, чтобы расти!",
+    "description": "Snake game description"
+  },
+  "gamesSnakeControls": {
+    "message": "Стрелки или WASD для движения, пробел для паузы",
+    "description": "Snake game controls"
+  },
+  "games2048": {
+    "message": "2048",
+    "description": "2048 game name"
+  },
+  "games2048Desc": {
+    "message": "Объединяйте блоки, чтобы достичь 2048!",
+    "description": "2048 game description"
+  },
+  "games2048Controls": {
+    "message": "Стрелки для объединения блоков",
+    "description": "2048 game controls"
+  },
+  "gamesMemory": {
+    "message": "Игра на память",
+    "description": "Memory match game name"
+  },
+  "gamesMemoryDesc": {
+    "message": "Найдите одинаковые пары!",
+    "description": "Memory match game description"
+  },
+  "gamesMemoryControls": {
+    "message": "Переворачивайте карточки, чтобы найти пары",
+    "description": "Memory match game controls"
   }
 }

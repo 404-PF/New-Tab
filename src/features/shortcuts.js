@@ -41,6 +41,7 @@
     { selector: '#ai-chat-modal', cssClass: 'ai-modal-open' },
     { selector: '#settings-modal', cssClass: 'modal-open' },
     { selector: '#weather-app-modal', cssClass: 'modal-open' },
+    { selector: '#games-app-modal', cssClass: 'modal-open' },
     { selector: '#folder-popup', cssClass: 'folder-popup-open', bodyClass: true },
     { selector: '#move-to-folder-selector', useDisplay: true },
     { selector: '#app-context-menu', cssClass: 'context-menu-open', bodyClass: true }
@@ -206,6 +207,17 @@
       const def = MODAL_SELECTORS[i];
       const el = document.querySelector(def.selector);
       if (!el) continue;
+
+      if (def.selector === '#games-app-modal') {
+        if (el.open === true || el.classList.contains(def.cssClass)) {
+          if (typeof window.GamesApp === 'object' && typeof window.GamesApp.close === 'function') {
+            window.GamesApp.close();
+          } else if (typeof el.close === 'function') {
+            el.close();
+          }
+          return true;
+        }
+      }
 
       if (def.bodyClass) {
         if (def.cssClass && document.body.classList.contains(def.cssClass)) {

@@ -1489,6 +1489,45 @@ if (document.readyState === 'loading') {
   initPomodoroSettings();
 }
 
+// Games enabled
+function loadGamesEnabled() {
+  if (window.gamesHelpers && typeof window.gamesHelpers.isEnabled === 'function') {
+    return window.gamesHelpers.isEnabled();
+  }
+  try {
+    return localStorage.getItem('games_enabled') !== 'false';
+  } catch (_e) {
+    // When localStorage is unavailable, use the current checkbox state as fallback
+    const checkbox = document.getElementById('games-enabled-setting');
+    return checkbox ? checkbox.checked : true;
+  }
+}
+function applyGamesEnabled(enabledOverride) {
+  const enabled = typeof enabledOverride === 'boolean' ? enabledOverride : loadGamesEnabled();
+  const gamesApp = document.getElementById('games-app');
+  if (gamesApp) {
+    gamesApp.style.display = enabled ? '' : 'none';
+  }
+  const checkbox = document.getElementById('games-enabled-setting');
+  if (checkbox) checkbox.checked = enabled;
+  if (!enabled && window.GamesApp && typeof window.GamesApp.close === 'function') {
+    window.GamesApp.close();
+  }
+}
+const gamesEnabledSetting = document.getElementById('games-enabled-setting');
+if (gamesEnabledSetting) {
+  gamesEnabledSetting.checked = loadGamesEnabled();
+  gamesEnabledSetting.addEventListener('change', function () {
+    const enabled = this.checked;
+    try {
+      localStorage.setItem('games_enabled', enabled);
+    } catch (_e) {
+      // ignore storage errors
+    }
+    applyGamesEnabled(enabled);
+  });
+}
+
 // Settings menu logic
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];
@@ -1768,6 +1807,7 @@ function initSettings() {
   applyTodoStatsEnabled();
   applyEyeCareReminderSettings();
   applyNotesEnabled();
+  applyGamesEnabled();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
   if (window.WeatherWidget && window.WeatherWidget.applySettings) {
@@ -1835,6 +1875,8 @@ window.loadEyeCareReminderState = loadEyeCareReminderState;
 window.saveEyeCareReminderState = saveEyeCareReminderState;
 window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;
 window.applyNotesEnabled = applyNotesEnabled;
+window.applyGamesEnabled = applyGamesEnabled;
+window.loadGamesEnabled = loadGamesEnabled;
 window.initSettings = initSettings;
 
 })();

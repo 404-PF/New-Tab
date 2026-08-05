@@ -335,5 +335,101 @@
   "removeTimezoneLabel": {
     "message": "Remover fuso horário de {city}",
     "description": "Accessible label for removing a specific time zone"
+  },
+  "games": {
+    "message": "Jogos",
+    "description": "Games app name"
+  },
+  "enableGames": {
+    "message": "Ativar jogos",
+    "description": "Toggle label for enabling the games feature"
+  },
+  "gamesPlay": {
+    "message": "Jogar",
+    "description": "Button label to start a game"
+  },
+  "gamesBack": {
+    "message": "Voltar",
+    "description": "Button label to return to the games hub"
+  },
+  "gamesScore": {
+    "message": "Pontuação",
+    "description": "Game score label"
+  },
+  "gamesHighScore": {
+    "message": "Recorde",
+    "description": "High score label"
+  },
+  "gamesBestMoves": {
+    "message": "Melhor número de jogadas",
+    "description": "Best moves label for memory game"
+  },
+  "gamesMoves": {
+    "message": "Jogadas",
+    "description": "Moves count label"
+  },
+  "gamesTime": {
+    "message": "Tempo",
+    "description": "Time elapsed label"
+  },
+  "gamesGameOver": {
+    "message": "Fim de jogo",
+    "description": "Game over message"
+  },
+  "gamesYouWin": {
+    "message": "Vitória!",
+    "description": "Win message"
+  },
+  "gamesPaused": {
+    "message": "Pausado",
+    "description": "Paused state label"
+  },
+  "gamesPressSpace": {
+    "message": "Pressione espaço para reiniciar",
+    "description": "Restart instruction"
+  },
+  "gamesNoGames": {
+    "message": "Nenhum jogo disponível",
+    "description": "Message when no games are registered"
+  },
+  "gamesDisabled": {
+    "message": "Jogos desativados. Ative nas configurações.",
+    "description": "Message when games feature is disabled"
+  },
+  "gamesSnake": {
+    "message": "Cobra",
+    "description": "Snake game name"
+  },
+  "gamesSnakeDesc": {
+    "message": "A clássica cobrinha. Coma para crescer!",
+    "description": "Snake game description"
+  },
+  "gamesSnakeControls": {
+    "message": "Setas ou WASD para mover, espaço para pausar",
+    "description": "Snake game controls"
+  },
+  "games2048": {
+    "message": "2048",
+    "description": "2048 game name"
+  },
+  "games2048Desc": {
+    "message": "Junte blocos para chegar a 2048!",
+    "description": "2048 game description"
+  },
+  "games2048Controls": {
+    "message": "Setas para juntar blocos",
+    "description": "2048 game controls"
+  },
+  "gamesMemory": {
+    "message": "Jogo da Memória",
+    "description": "Memory match game name"
+  },
+  "gamesMemoryDesc": {
+    "message": "Encontre os pares de cartas!",
+    "description": "Memory match game description"
+  },
+  "gamesMemoryControls": {
+    "message": "Vire as cartas para encontrar os pares",
+    "description": "Memory match game controls"
   }
 }

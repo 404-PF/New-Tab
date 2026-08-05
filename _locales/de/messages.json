@@ -335,5 +335,101 @@
   "removeTimezoneLabel": {
     "message": "Zeitzone von {city} entfernen",
     "description": "Accessible label for removing a specific time zone"
+  },
+  "games": {
+    "message": "Spiele",
+    "description": "Games app name"
+  },
+  "enableGames": {
+    "message": "Spiele aktivieren",
+    "description": "Toggle label for enabling the games feature"
+  },
+  "gamesPlay": {
+    "message": "Spielen",
+    "description": "Button label to start a game"
+  },
+  "gamesBack": {
+    "message": "Zurück",
+    "description": "Button label to return to the games hub"
+  },
+  "gamesScore": {
+    "message": "Punkte",
+    "description": "Game score label"
+  },
+  "gamesHighScore": {
+    "message": "Rekord",
+    "description": "High score label"
+  },
+  "gamesBestMoves": {
+    "message": "Beste Züge",
+    "description": "Best moves label for memory game"
+  },
+  "gamesMoves": {
+    "message": "Züge",
+    "description": "Moves count label"
+  },
+  "gamesTime": {
+    "message": "Zeit",
+    "description": "Time elapsed label"
+  },
+  "gamesGameOver": {
+    "message": "Spiel beendet",
+    "description": "Game over message"
+  },
+  "gamesYouWin": {
+    "message": "Gewonnen!",
+    "description": "Win message"
+  },
+  "gamesPaused": {
+    "message": "Pausiert",
+    "description": "Paused state label"
+  },
+  "gamesPressSpace": {
+    "message": "Leertaste zum Neustarten",
+    "description": "Restart instruction"
+  },
+  "gamesNoGames": {
+    "message": "Keine Spiele verfügbar",
+    "description": "Message when no games are registered"
+  },
+  "gamesDisabled": {
+    "message": "Spiele sind deaktiviert. Aktiviere sie in den Einstellungen.",
+    "description": "Message when games feature is disabled"
+  },
+  "gamesSnake": {
+    "message": "Schlange",
+    "description": "Snake game name"
+  },
+  "gamesSnakeDesc": {
+    "message": "Die klassische Schlange. Iss, um zu wachsen!",
+    "description": "Snake game description"
+  },
+  "gamesSnakeControls": {
+    "message": "Pfeile oder WASD zum Steuern, Leertaste zum Pausieren",
+    "description": "Snake game controls"
+  },
+  "games2048": {
+    "message": "2048",
+    "description": "2048 game name"
+  },
+  "games2048Desc": {
+    "message": "Verschmelze Blöcke, um 2048 zu erreichen!",
+    "description": "2048 game description"
+  },
+  "games2048Controls": {
+    "message": "Pfeile zum Verschmelzen der Blöcke",
+    "description": "2048 game controls"
+  },
+  "gamesMemory": {
+    "message": "Gedächtnis",
+    "description": "Memory match game name"
+  },
+  "gamesMemoryDesc": {
+    "message": "Finde die passenden Paare!",
+    "description": "Memory match game description"
+  },
+  "gamesMemoryControls": {
+    "message": "Karten umdrehen und Paare finden",
+    "description": "Memory match game controls"
   }
 }

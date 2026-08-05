@@ -335,5 +335,101 @@
   "removeTimezoneLabel": {
     "message": "{city} 시간대 제거",
     "description": "Accessible label for removing a specific time zone"
+  },
+  "games": {
+    "message": "게임",
+    "description": "Games app name"
+  },
+  "enableGames": {
+    "message": "게임 활성화",
+    "description": "Toggle label for enabling the games feature"
+  },
+  "gamesPlay": {
+    "message": "플레이",
+    "description": "Button label to start a game"
+  },
+  "gamesBack": {
+    "message": "뒤로",
+    "description": "Button label to return to the games hub"
+  },
+  "gamesScore": {
+    "message": "점수",
+    "description": "Game score label"
+  },
+  "gamesHighScore": {
+    "message": "최고 점수",
+    "description": "High score label"
+  },
+  "gamesBestMoves": {
+    "message": "최소 움직임",
+    "description": "Best moves label for memory game"
+  },
+  "gamesMoves": {
+    "message": "움직임",
+    "description": "Moves count label"
+  },
+  "gamesTime": {
+    "message": "시간",
+    "description": "Time elapsed label"
+  },
+  "gamesGameOver": {
+    "message": "게임 오버",
+    "description": "Game over message"
+  },
+  "gamesYouWin": {
+    "message": "승리!",
+    "description": "Win message"
+  },
+  "gamesPaused": {
+    "message": "일시정지",
+    "description": "Paused state label"
+  },
+  "gamesPressSpace": {
+    "message": "스페이스바로 다시 시작",
+    "description": "Restart instruction"
+  },
+  "gamesNoGames": {
+    "message": "게임이 없습니다",
+    "description": "Message when no games are registered"
+  },
+  "gamesDisabled": {
+    "message": "게임이 비활성화되어 있습니다. 설정에서 활성화하세요.",
+    "description": "Message when games feature is disabled"
+  },
+  "gamesSnake": {
+    "message": "스네이크",
+    "description": "Snake game name"
+  },
+  "gamesSnakeDesc": {
+    "message": "클래식 스네이크. 먹이를 먹고 성장하세요!",
+    "description": "Snake game description"
+  },
+  "gamesSnakeControls": {
+    "message": "방향키 또는 WASD로 이동, 스페이스바로 일시정지",
+    "description": "Snake game controls"
+  },
+  "games2048": {
+    "message": "2048",
+    "description": "2048 game name"
+  },
+  "games2048Desc": {
+    "message": "블록을 합쳐 2048을 달성하세요!",
+    "description": "2048 game description"
+  },
+  "games2048Controls": {
+    "message": "방향키로 블록 합치기",
+    "description": "2048 game controls"
+  },
+  "gamesMemory": {
+    "message": "메모리 매치",
+    "description": "Memory match game name"
+  },
+  "gamesMemoryDesc": {
+    "message": "쌍을 찾아 맞추세요!",
+    "description": "Memory match game description"
+  },
+  "gamesMemoryControls": {
+    "message": "카드를 뒤집어 쌍을 찾으세요",
+    "description": "Memory match game controls"
   }
 }

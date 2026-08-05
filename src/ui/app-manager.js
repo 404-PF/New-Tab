@@ -17,6 +17,7 @@ function loadCustomApps() {
 const defaultApps = [
   { id: 'ai-app', nameKey: 'ai', url: '#', icon: 'images/icons/ai.svg', className: 'default-app', isInternal: true },
   { id: 'weather-app', nameKey: 'weather', url: '#', icon: 'images/icons/weather.svg', className: 'default-app', isInternal: true },
+  { id: 'games-app', nameKey: 'games', url: '#', icon: 'images/icons/games.svg', className: 'default-app', isInternal: true },
   { id: 'feedback-app', nameKey: 'feedback', url: 'https://github.com/404-PF/New-Tab/issues/new', icon: 'images/icons/feedback.svg', className: 'default-app' },
   { id: 'settings-app', nameKey: 'settings', url: '#', icon: 'images/icons/settings.svg', className: 'default-app' },
 ];
@@ -153,6 +154,12 @@ function renderAllApps() {
 
   // Re-apply the open-in-new-tab preference after rebuilding links.
   applyOpenNewTabSetting();
+  // Re-apply the games-enabled preference after rebuilding the grid so a
+  // disabled Games app stays hidden across re-renders (e.g. language change,
+  // app/folder edits). settings.js loads after this module, so guard the call.
+  if (typeof window.applyGamesEnabled === 'function') {
+    window.applyGamesEnabled();
+  }
   window.__appGridState.setPhase('rendered');
 }
 
@@ -354,6 +361,19 @@ function attachSettingsAppHandler() {
       }
     };
     weatherApp.addEventListener('click', weatherApp._clickHandler);
+  }
+
+  // Attach Games app click handler
+  const gamesApp = document.getElementById('games-app');
+  if (gamesApp) {
+    gamesApp.removeEventListener('click', gamesApp._clickHandler);
+    gamesApp._clickHandler = function (e) {
+      e.preventDefault();
+      if (window.GamesApp?.open) {
+        window.GamesApp.open();
+      }
+    };
+    gamesApp.addEventListener('click', gamesApp._clickHandler);
   }
 
   // Attach modal close handler (only once)

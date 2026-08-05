@@ -335,5 +335,101 @@
   "removeTimezoneLabel": {
     "message": "Supprimer le fuseau horaire de {city}",
     "description": "Accessible label for removing a specific time zone"
+  },
+  "games": {
+    "message": "Jeux",
+    "description": "Games app name"
+  },
+  "enableGames": {
+    "message": "Activer les jeux",
+    "description": "Toggle label for enabling the games feature"
+  },
+  "gamesPlay": {
+    "message": "Jouer",
+    "description": "Button label to start a game"
+  },
+  "gamesBack": {
+    "message": "Retour",
+    "description": "Button label to return to the games hub"
+  },
+  "gamesScore": {
+    "message": "Score",
+    "description": "Game score label"
+  },
+  "gamesHighScore": {
+    "message": "Meilleur score",
+    "description": "High score label"
+  },
+  "gamesBestMoves": {
+    "message": "Meilleur nombre de coups",
+    "description": "Best moves label for memory game"
+  },
+  "gamesMoves": {
+    "message": "Coups",
+    "description": "Moves count label"
+  },
+  "gamesTime": {
+    "message": "Temps",
+    "description": "Time elapsed label"
+  },
+  "gamesGameOver": {
+    "message": "Partie terminée",
+    "description": "Game over message"
+  },
+  "gamesYouWin": {
+    "message": "Victoire !",
+    "description": "Win message"
+  },
+  "gamesPaused": {
+    "message": "Pause",
+    "description": "Paused state label"
+  },
+  "gamesPressSpace": {
+    "message": "Appuyez sur espace pour recommencer",
+    "description": "Restart instruction"
+  },
+  "gamesNoGames": {
+    "message": "Aucun jeu disponible",
+    "description": "Message when no games are registered"
+  },
+  "gamesDisabled": {
+    "message": "Les jeux sont désactivés. Activez-les dans les paramètres.",
+    "description": "Message when games feature is disabled"
+  },
+  "gamesSnake": {
+    "message": "Serpent",
+    "description": "Snake game name"
+  },
+  "gamesSnakeDesc": {
+    "message": "Le classique serpent. Mangez pour grandir !",
+    "description": "Snake game description"
+  },
+  "gamesSnakeControls": {
+    "message": "Flèches ou ZQSD pour se déplacer, espace pour pause",
+    "description": "Snake game controls"
+  },
+  "games2048": {
+    "message": "2048",
+    "description": "2048 game name"
+  },
+  "games2048Desc": {
+    "message": "Fusionnez les blocs pour atteindre 2048 !",
+    "description": "2048 game description"
+  },
+  "games2048Controls": {
+    "message": "Flèches pour fusionner les blocs",
+    "description": "2048 game controls"
+  },
+  "gamesMemory": {
+    "message": "Jeu de mémoire",
+    "description": "Memory match game name"
+  },
+  "gamesMemoryDesc": {
+    "message": "Trouvez les paires de cartes !",
+    "description": "Memory match game description"
+  },
+  "gamesMemoryControls": {
+    "message": "Retournez les cartes pour trouver les paires",
+    "description": "Memory match game controls"
   }
 }

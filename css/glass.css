@@ -207,7 +207,8 @@ body.light-theme :is(
   .curvature-option.modern,
   .size-choice-button,
   .font-option,
-  .color-swatch
+  .color-swatch,
+  .games-hub-card
 ) {
   background: var(--glass-surface-subtle);
   border-color: var(--glass-border-subtle);

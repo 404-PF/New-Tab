@@ -335,5 +335,101 @@
   "removeTimezoneLabel": {
     "message": "移除 {city} 时区",
     "description": "Accessible label for removing a specific time zone"
+  },
+  "games": {
+    "message": "游戏",
+    "description": "Games app name"
+  },
+  "enableGames": {
+    "message": "启用游戏",
+    "description": "Toggle label for enabling the games feature"
+  },
+  "gamesPlay": {
+    "message": "开始",
+    "description": "Button label to start a game"
+  },
+  "gamesBack": {
+    "message": "返回",
+    "description": "Button label to return to the games hub"
+  },
+  "gamesScore": {
+    "message": "分数",
+    "description": "Game score label"
+  },
+  "gamesHighScore": {
+    "message": "最高分",
+    "description": "High score label"
+  },
+  "gamesBestMoves": {
+    "message": "最少步数",
+    "description": "Best moves label for memory game"
+  },
+  "gamesMoves": {
+    "message": "步数",
+    "description": "Moves count label"
+  },
+  "gamesTime": {
+    "message": "时间",
+    "description": "Time elapsed label"
+  },
+  "gamesGameOver": {
+    "message": "游戏结束",
+    "description": "Game over message"
+  },
+  "gamesYouWin": {
+    "message": "你赢了！",
+    "description": "Win message"
+  },
+  "gamesPaused": {
+    "message": "已暂停",
+    "description": "Paused state label"
+  },
+  "gamesPressSpace": {
+    "message": "按空格键重新开始",
+    "description": "Restart instruction"
+  },
+  "gamesNoGames": {
+    "message": "暂无游戏",
+    "description": "Message when no games are registered"
+  },
+  "gamesDisabled": {
+    "message": "游戏已禁用。请在设置中启用。",
+    "description": "Message when games feature is disabled"
+  },
+  "gamesSnake": {
+    "message": "贪吃蛇",
+    "description": "Snake game name"
+  },
+  "gamesSnakeDesc": {
+    "message": "经典贪吃蛇。吃食物来成长！",
+    "description": "Snake game description"
+  },
+  "gamesSnakeControls": {
+    "message": "方向键或 WASD 移动，空格键暂停",
+    "description": "Snake game controls"
+  },
+  "games2048": {
+    "message": "2048",
+    "description": "2048 game name"
+  },
+  "games2048Desc": {
+    "message": "合并方块达到 2048！",
+    "description": "2048 game description"
+  },
+  "games2048Controls": {
+    "message": "方向键合并方块",
+    "description": "2048 game controls"
+  },
+  "gamesMemory": {
+    "message": "记忆配对",
+    "description": "Memory match game name"
+  },
+  "gamesMemoryDesc": {
+    "message": "找到匹配的卡片对！",
+    "description": "Memory match game description"
+  },
+  "gamesMemoryControls": {
+    "message": "翻牌找到配对",
+    "description": "Memory match game controls"
   }
 }
