@@ -1497,7 +1497,9 @@ function loadGamesEnabled() {
   try {
     return localStorage.getItem('games_enabled') !== 'false';
   } catch (_e) {
-    return true;
+    // When localStorage is unavailable, use the current checkbox state as fallback
+    const checkbox = document.getElementById('games-enabled-setting');
+    return checkbox ? checkbox.checked : true;
   }
 }
 function applyGamesEnabled(enabledOverride) {
