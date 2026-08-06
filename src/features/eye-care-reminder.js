@@ -555,7 +555,7 @@
       });
     }
 
-    if (visible && !reminderActive && typeof state.activeReminderAt === 'number') {
+    if (!reminderActive && typeof state.activeReminderAt === 'number') {
       refreshEyeCareReminder();
     }
   }
