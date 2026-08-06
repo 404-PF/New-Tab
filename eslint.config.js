@@ -206,7 +206,6 @@ const testGlobals = {
   initModernFontPickers: 'readonly',
   initModernColorPickers: 'readonly',
   loadVideoAutoplay: 'readonly',
-  loadVideoMuted: 'readonly',
   crossfadeDelayMs: 'readonly',
   loadVideoPauseHidden: 'readonly',
   applyVideoPlaybackSettings: 'readonly',
