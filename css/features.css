@@ -4253,12 +4253,205 @@ body.light-theme .games-hub-card-desc {
 
 /* ==================== Snake ==================== */
 
+.games-snake-hud {
+  text-align: center;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: var(--games-text-primary);
+}
+
+.games-snake-board {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+}
+
 .games-snake-canvas {
   display: block;
   margin: 0 auto;
   border-radius: 8px;
   border: 2px solid var(--games-border-subtle);
 }
+
+.games-snake-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.games-snake-btn {
+  padding: 8px 20px;
+  border: 1px solid var(--games-border-subtle-secondary);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--games-text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.games-snake-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.games-snake-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.games-snake-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Overlay (pause / game over) */
+.games-snake-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  z-index: 2;
+}
+
+.games-snake-overlay-text {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #4ecdc4;
+}
+
+.games-snake-overlay-stats {
+  font-size: 1rem;
+  color: var(--games-text-secondary);
+  margin-top: 8px;
+}
+
+.games-snake-overlay-sub {
+  font-size: 0.85rem;
+  color: var(--games-text-muted);
+  margin-top: 12px;
+}
+
+.games-snake-overlay-restart {
+  margin-top: 16px;
+}
+
+/* Bonus toast */
+.games-snake-bonus-toast {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.6);
+  color: #ffd700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  z-index: 3;
+  animation: games-snake-toast 1.2s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes games-snake-toast {
+  0% { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Settings panel */
+.games-snake-settings {
+  max-width: 320px;
+  margin: 14px auto 0;
+  padding: 12px 14px;
+  border: 1px solid var(--games-border-subtle);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.games-snake-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.games-snake-setting-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.games-snake-setting-label {
+  color: var(--games-text-primary);
+  font-weight: 600;
+}
+
+.games-snake-setting-desc {
+  color: var(--games-text-muted);
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+.games-snake-setting-input {
+  accent-color: #4ecdc4;
+  flex-shrink: 0;
+}
+
+.games-snake-setting-select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--games-border-subtle-secondary);
+  border-radius: 6px;
+  color: var(--games-text-primary);
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.games-snake-setting-select option {
+  background: #1a1a2e;
+  color: var(--games-text-primary);
+}
+
+/* Touch D-pad */
+.games-snake-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(2, 48px);
+  gap: 6px;
+  justify-content: center;
+  margin: 12px auto 0;
+}
+
+.games-snake-dpad-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--games-border-subtle-secondary);
+  border-radius: 8px;
+  color: var(--games-text-primary);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  touch-action: manipulation;
+}
+
+.games-snake-dpad-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.games-snake-dpad-up { grid-column: 2; grid-row: 1; }
+.games-snake-dpad-left { grid-column: 1; grid-row: 2; }
+.games-snake-dpad-down { grid-column: 2; grid-row: 2; }
+.games-snake-dpad-right { grid-column: 3; grid-row: 2; }
 
 /* ==================== 2048 ==================== */
 
@@ -4401,11 +4594,11 @@ body.light-theme .games-hub-card-desc {
 }
 
 /* Consolidated light theme color overrides */
-body.light-theme :is(.games-back-btn, .games-score-display, .games-2048-cell, .games-memory-stats) {
+body.light-theme :is(.games-back-btn, .games-score-display, .games-2048-cell, .games-memory-stats, .games-snake-hud, .games-snake-btn, .games-snake-setting-label, .games-snake-dpad-btn) {
   color: #0f172a;
 }
 
-body.light-theme :is(.games-hub-empty, .games-app-disabled, .games-hub-card-desc, .games-2048-overlay-sub) {
+body.light-theme :is(.games-hub-empty, .games-app-disabled, .games-hub-card-desc, .games-2048-overlay-sub, .games-snake-setting-desc, .games-snake-overlay-sub) {
   color: #475569;
 }
 
@@ -4416,6 +4609,40 @@ body.light-theme :is(.games-instructions, .games-hub-card-stats) {
 body.light-theme .games-memory-card:not(.games-memory-card-flipped):not(.games-memory-card-matched) {
   background: rgba(15, 23, 42, 0.05);
   border-color: rgba(15, 23, 42, 0.16);
+}
+
+body.light-theme .games-snake-btn {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.16);
+}
+
+body.light-theme .games-snake-btn:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.1);
+}
+
+body.light-theme .games-snake-settings {
+  background: rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+body.light-theme .games-snake-setting-select {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.2);
+  color: #0f172a;
+}
+
+body.light-theme .games-snake-setting-select option {
+  background: #fff;
+  color: #0f172a;
+}
+
+body.light-theme .games-snake-dpad-btn {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.16);
+}
+
+body.light-theme .games-snake-dpad-btn:hover {
+  background: rgba(15, 23, 42, 0.1);
 }
 
 /* Simple mode hide */

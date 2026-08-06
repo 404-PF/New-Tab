@@ -5,21 +5,68 @@
 
   const GRID_SIZE = 20;
   const CELL_SIZE = 15;
-  const TICK_MS = 120;
+  const BASE_TICK_MS = 120;
+  const MAX_OBSTACLES = 6;
+  const OBSTACLE_START_FOODS = 5;
+  const OBSTACLE_EVERY_FOODS = 5;
+  const BONUS_START_FOODS = 4;
+  const BONUS_WORTH = 30;
+  const BONUS_LIFETIME_MS = 5000;
+  const BONUS_SPAWN_CHANCE = 0.3;
+
+  // Difficulty presets: tick drops `step` ms every `every` foods eaten, floored at `min`.
+  // `constant` keeps a fixed speed regardless of progress.
+  const DIFFICULTIES = {
+    constant: { start: 120, min: 120, step: 0, every: 5 },
+    easy: { start: 130, min: 85, step: 5, every: 4 },
+    normal: { start: 120, min: 60, step: 5, every: 3 },
+    hard: { start: 100, min: 45, step: 5, every: 2 }
+  };
+
+  const SETTINGS_KEYS = {
+    wrap: 'snake_wrap_enabled',
+    bonus: 'snake_bonus_enabled',
+    obstacles: 'snake_obstacles_enabled',
+    dpad: 'snake_dpad_enabled',
+    sound: 'snake_sound_enabled',
+    difficulty: 'snake_difficulty'
+  };
 
   let canvas = null;
   let ctx = null;
+  let boardEl = null;
+  let dpadEl = null;
   let snake = [];
   let food = null;
+  let bonusFood = null;
+  let bonusTimer = null;
+  let obstacles = [];
   let direction = 'right';
   let nextDirection = 'right';
   let score = 0;
+  let foodsEaten = 0;
+  let highScore = 0;
+  let tickMs = BASE_TICK_MS;
   let gameOver = false;
   let paused = false;
   let manualPause = false;
   let tickTimer = null;
   let container = null;
   let scoreEl = null;
+  let pauseBtn = null;
+  let restartBtn = null;
+  let audioCtx = null;
+  let bonusToast = null;
+  let bonusToastTimer = null;
+
+  const settings = {
+    wrap: false,
+    bonus: true,
+    obstacles: true,
+    dpad: false,
+    sound: false,
+    difficulty: 'normal'
+  };
 
   // ===================== Helpers =====================
 
@@ -29,7 +76,170 @@
     return Math.floor(window.GameRegistry.secureRandom() * (max - min + 1)) + min;
   }
 
+  // ===================== Settings =====================
+
+  function loadSettings() {
+    try {
+      settings.wrap = localStorage.getItem(SETTINGS_KEYS.wrap) === 'true';
+      settings.bonus = localStorage.getItem(SETTINGS_KEYS.bonus) !== 'false';
+      settings.obstacles = localStorage.getItem(SETTINGS_KEYS.obstacles) !== 'false';
+      settings.sound = localStorage.getItem(SETTINGS_KEYS.sound) === 'true';
+      const dpadRaw = localStorage.getItem(SETTINGS_KEYS.dpad);
+      settings.dpad = dpadRaw === null
+        ? ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0)
+        : dpadRaw === 'true';
+      settings.difficulty = localStorage.getItem(SETTINGS_KEYS.difficulty) || 'normal';
+    } catch (_e) {
+      // keep defaults when storage is unavailable
+    }
+    if (!DIFFICULTIES[settings.difficulty]) settings.difficulty = 'normal';
+  }
+
+  function saveSettings() {
+    try {
+      localStorage.setItem(SETTINGS_KEYS.wrap, settings.wrap);
+      localStorage.setItem(SETTINGS_KEYS.bonus, settings.bonus);
+      localStorage.setItem(SETTINGS_KEYS.obstacles, settings.obstacles);
+      localStorage.setItem(SETTINGS_KEYS.sound, settings.sound);
+      localStorage.setItem(SETTINGS_KEYS.dpad, settings.dpad);
+      localStorage.setItem(SETTINGS_KEYS.difficulty, settings.difficulty);
+    } catch (_e) {
+      // ignore storage errors
+    }
+  }
+
+  // ===================== Speed / difficulty =====================
+
+  function getTickMs() {
+    const cfg = DIFFICULTIES[settings.difficulty] || DIFFICULTIES.normal;
+    const steps = Math.floor(foodsEaten / cfg.every);
+    return Math.max(cfg.min, cfg.start - steps * cfg.step);
+  }
+
+  function applySpeed() {
+    const nextMs = getTickMs();
+    if (nextMs !== tickMs) {
+      tickMs = nextMs;
+      if (!paused && !gameOver) startTick();
+    }
+  }
+
+  // ===================== Board helpers =====================
+
+  function isCellFree(p) {
+    const onSnake = snake.some(function (s) { return s.x === p.x && s.y === p.y; });
+    if (onSnake) return false;
+    if (food && food.x === p.x && food.y === p.y) return false;
+    if (bonusFood && bonusFood.x === p.x && bonusFood.y === p.y) return false;
+    return !obstacles.some(function (o) { return o.x === p.x && o.y === p.y; });
+  }
+
+  function isNearHead(p) {
+    const head = snake[0];
+    if (!head) return false;
+    return Math.abs(p.x - head.x) <= 2 && Math.abs(p.y - head.y) <= 2;
+  }
+
+  function pickEmptyCell(opts) {
+    const fixed = opts && opts.fixed;
+    if (fixed && isCellFree(fixed)) return { x: fixed.x, y: fixed.y };
+
+    const empty = [];
+    for (let x = 0; x < GRID_SIZE; x++) {
+      for (let y = 0; y < GRID_SIZE; y++) {
+        const p = { x: x, y: y };
+        if (!isCellFree(p)) continue;
+        if (opts && opts.avoidHead && isNearHead(p)) continue;
+        empty.push(p);
+      }
+    }
+    if (empty.length === 0) return null;
+    return empty[randomInt(0, empty.length - 1)];
+  }
+
+  function spawnFood() {
+    const pos = pickEmptyCell();
+    if (!pos) {
+      endGame();
+      return;
+    }
+    food = pos;
+  }
+
+  // ===================== Bonus food =====================
+
+  function clearBonusTimer() {
+    if (bonusTimer) {
+      clearTimeout(bonusTimer);
+      bonusTimer = null;
+    }
+  }
+
+  function maybeSpawnBonus() {
+    if (!settings.bonus || bonusFood || foodsEaten < BONUS_START_FOODS) return;
+    if (window.GameRegistry.secureRandom() >= BONUS_SPAWN_CHANCE) return;
+    spawnBonusFood();
+  }
+
+  function spawnBonusFood(x, y) {
+    const pos = pickEmptyCell({ fixed: (x !== undefined && y !== undefined) ? { x: x, y: y } : null });
+    if (!pos) return;
+    bonusFood = pos;
+    clearBonusTimer();
+    bonusTimer = setTimeout(function () {
+      bonusFood = null;
+      draw();
+    }, BONUS_LIFETIME_MS);
+  }
+
+  function showBonusToast() {
+    if (!boardEl) return;
+    if (bonusToastTimer) clearTimeout(bonusToastTimer);
+    if (bonusToast) bonusToast.remove();
+    bonusToast = document.createElement('div');
+    bonusToast.className = 'games-snake-bonus-toast';
+    bonusToast.textContent = '+' + BONUS_WORTH + ' ' + (t('gamesSnakeBonusGot') || 'Bonus!');
+    boardEl.appendChild(bonusToast);
+    bonusToastTimer = setTimeout(function () {
+      if (bonusToast) bonusToast.remove();
+      bonusToast = null;
+      bonusToastTimer = null;
+    }, 1200);
+  }
+
+  function clearBonusToast() {
+    if (bonusToastTimer) {
+      clearTimeout(bonusToastTimer);
+      bonusToastTimer = null;
+    }
+    if (bonusToast) {
+      bonusToast.remove();
+      bonusToast = null;
+    }
+  }
+
+  // ===================== Obstacles =====================
+
+  function maybeSpawnObstacles() {
+    if (!settings.obstacles || foodsEaten < OBSTACLE_START_FOODS) return;
+    if (obstacles.length >= MAX_OBSTACLES) return;
+    const targetCount = Math.min(MAX_OBSTACLES, Math.floor((foodsEaten - OBSTACLE_START_FOODS) / OBSTACLE_EVERY_FOODS) + 1);
+    while (obstacles.length < targetCount) {
+      const pos = pickEmptyCell({ avoidHead: true });
+      if (!pos) break;
+      obstacles.push(pos);
+    }
+  }
+
   // ===================== Game Logic =====================
+
+  function loadHighScore() {
+    try {
+      highScore = (window.GameRegistry && window.GameRegistry.getStats('snake').highScore) || 0;
+    } catch (_e) {
+      highScore = 0;
+    }
+  }
 
   function initSnake() {
     const midX = Math.floor(GRID_SIZE / 2);
@@ -42,25 +252,17 @@
     direction = 'right';
     nextDirection = 'right';
     score = 0;
-    if (scoreEl) scoreEl.textContent = t('gamesScore') + ': 0';
+    foodsEaten = 0;
+    obstacles = [];
+    clearBonusTimer();
+    bonusFood = null;
+    loadHighScore();
+    tickMs = getTickMs();
     gameOver = false;
     paused = false;
+    manualPause = false;
     spawnFood();
-  }
-
-  function spawnFood() {
-    const empty = [];
-    for (let x = 0; x < GRID_SIZE; x++) {
-      for (let y = 0; y < GRID_SIZE; y++) {
-        const occupied = snake.some(function (s) { return s.x === x && s.y === y; });
-        if (!occupied) empty.push({ x: x, y: y });
-      }
-    }
-    if (empty.length === 0) {
-      endGame();
-      return;
-    }
-    food = empty[randomInt(0, empty.length - 1)];
+    renderHud();
   }
 
   function hitsSelf(head, body) {
@@ -81,18 +283,31 @@
     else if (direction === 'up') head.y--;
     else if (direction === 'down') head.y++;
 
-    // Wall collision
+    // Wall collision / wrap-around
     if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+      if (settings.wrap) {
+        head.x = (head.x + GRID_SIZE) % GRID_SIZE;
+        head.y = (head.y + GRID_SIZE) % GRID_SIZE;
+      } else {
+        endGame();
+        return;
+      }
+    }
+
+    // Obstacle collision
+    const hitsObstacle = obstacles.some(function (o) { return o.x === head.x && o.y === head.y; });
+    if (hitsObstacle) {
       endGame();
       return;
     }
 
-    const eating = food && head.x === food.x && head.y === food.y;
+    const eating = !!food && head.x === food.x && head.y === food.y;
+    const eatingBonus = !!bonusFood && head.x === bonusFood.x && head.y === bonusFood.y;
 
     // Self collision. When not eating, the tail vacates its cell this tick,
     // so moving into it is legal; exclude it from the check. When eating the
     // snake grows, so the tail still occupies its cell.
-    const body = eating ? snake : snake.slice(0, -1);
+    const body = eating || eatingBonus ? snake : snake.slice(0, -1);
     if (hitsSelf(head, body)) {
       endGame();
       return;
@@ -100,11 +315,22 @@
 
     snake.unshift(head);
 
-    // Eat food
     if (eating) {
       score += 10;
-      if (scoreEl) scoreEl.textContent = t('gamesScore') + ': ' + score;
+      foodsEaten++;
+      applySpeed();
+      maybeSpawnBonus();
+      maybeSpawnObstacles();
       spawnFood();
+      playSound('eat');
+      renderHud();
+    } else if (eatingBonus) {
+      score += BONUS_WORTH;
+      clearBonusTimer();
+      bonusFood = null;
+      showBonusToast();
+      playSound('bonus');
+      renderHud();
     } else {
       snake.pop();
     }
@@ -115,15 +341,28 @@
   function endGame() {
     gameOver = true;
     stopTick();
-    // Save stats
+    clearBonusTimer();
+    if (score > highScore) highScore = score;
     window.gamesHelpers?.updateStatsWith?.('snake', function (stats) {
-      const highScore = stats.highScore || 0;
+      const prevHigh = stats.highScore || 0;
       return {
-        highScore: Math.max(highScore, score),
+        highScore: Math.max(prevHigh, score),
         gamesPlayed: (stats.gamesPlayed || 0) + 1
       };
     });
+    renderHud();
     draw();
+    renderOverlays();
+    playSound('gameover');
+  }
+
+  function restart() {
+    clearOverlays();
+    clearBonusToast();
+    initSnake();
+    draw();
+    updateControls();
+    startTick();
   }
 
   function stopTick() {
@@ -135,7 +374,25 @@
 
   function startTick() {
     stopTick();
-    tickTimer = setInterval(tick, TICK_MS);
+    tickTimer = setInterval(tick, tickMs);
+  }
+
+  // ===================== HUD =====================
+
+  function renderHud() {
+    if (scoreEl) {
+      scoreEl.textContent = (t('gamesScore') || 'Score') + ': ' + score + ' · ' +
+        (t('gamesHighScore') || 'High Score') + ': ' + Math.max(highScore, score);
+    }
+  }
+
+  function updateControls() {
+    if (pauseBtn) {
+      pauseBtn.disabled = gameOver;
+      pauseBtn.textContent = paused && !gameOver
+        ? (t('gamesSnakeResume') || 'Resume')
+        : (t('gamesSnakePause') || 'Pause');
+    }
   }
 
   // ===================== Drawing =====================
@@ -163,6 +420,12 @@
       ctx.stroke();
     }
 
+    // Obstacles
+    ctx.fillStyle = '#57606a';
+    obstacles.forEach(function (o) {
+      ctx.fillRect(o.x * CELL_SIZE + 1, o.y * CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+    });
+
     // Food
     if (food) {
       ctx.fillStyle = '#ff6b6b';
@@ -175,6 +438,23 @@
         Math.PI * 2
       );
       ctx.fill();
+    }
+
+    // Bonus food (golden, timed)
+    if (bonusFood) {
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath();
+      ctx.arc(
+        bonusFood.x * CELL_SIZE + CELL_SIZE / 2,
+        bonusFood.y * CELL_SIZE + CELL_SIZE / 2,
+        CELL_SIZE / 2 - 1,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.strokeStyle = '#e6c200';
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
 
     // Snake
@@ -200,57 +480,88 @@
         );
       }
     });
+  }
 
-    // Game over overlay
+  // ===================== Overlays =====================
+
+  function clearOverlays() {
+    if (!boardEl) return;
+    boardEl.querySelectorAll('.games-snake-overlay').forEach(function (el) { el.remove(); });
+  }
+
+  function renderOverlays() {
+    if (!boardEl) return;
+    clearOverlays();
+
     if (gameOver) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = '#ff6b6b';
-      ctx.font = 'bold 24px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(t('gamesGameOver') || 'Game Over', w / 2, h / 2 - 10);
-      ctx.fillStyle = '#e0e0e0';
-      ctx.font = '16px system-ui, sans-serif';
-      ctx.fillText((t('gamesScore') || 'Score') + ': ' + score, w / 2, h / 2 + 20);
-      ctx.fillText(t('gamesPressSpace') || 'Press Space to restart', w / 2, h / 2 + 50);
-    }
-
-    // Paused overlay
-    if (paused && !gameOver) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = '#e0e0e0';
-      ctx.font = 'bold 24px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(t('gamesPaused') || 'Paused', w / 2, h / 2);
+      const statsHtml = (t('gamesScore') || 'Score') + ': ' + score + ' · ' +
+        (t('gamesHighScore') || 'High Score') + ': ' + Math.max(highScore, score);
+      const overlay = window.gamesHelpers?.renderDOMOverlay?.(boardEl, {
+        className: 'games-snake-overlay',
+        text: t('gamesGameOver') || 'Game Over',
+        statsHtml: statsHtml,
+        sub: t('gamesPressSpace') || 'Press Space to restart'
+      });
+      if (overlay) {
+        const btn = document.createElement('button');
+        btn.className = 'games-snake-btn games-snake-overlay-restart';
+        btn.textContent = t('gamesSnakeRestart') || 'Restart';
+        btn.addEventListener('click', restart);
+        overlay.appendChild(btn);
+      }
+    } else if (paused) {
+      window.gamesHelpers?.renderDOMOverlay?.(boardEl, {
+        className: 'games-snake-overlay',
+        text: t('gamesPaused') || 'Paused',
+        sub: t('gamesSnakePauseHint') || 'Press Space to resume'
+      });
     }
   }
 
   // ===================== Input =====================
 
+  function setDirection(newDir) {
+    const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
+    if (opposites[newDir] !== direction) {
+      nextDirection = newDir;
+    }
+  }
+
+  function togglePause() {
+    if (gameOver) return;
+    if (paused) {
+      paused = false;
+      manualPause = false;
+      startTick();
+    } else {
+      paused = true;
+      manualPause = true;
+      stopTick();
+      playSound('pause');
+    }
+    updateControls();
+    renderOverlays();
+    draw();
+  }
+
   function handleKeydown(e) {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable)) {
       return;
     }
 
     if (gameOver) {
       if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
-        window.gamesHelpers.handleRestartSpace(e, function () { initSnake(); draw(); startTick(); });
+        window.gamesHelpers.handleRestartSpace(e, restart);
       } else if (e.code === 'Space') {
         e.preventDefault();
-        initSnake();
-        draw();
-        startTick();
+        restart();
       }
       return;
     }
 
     if (e.code === 'Space') {
       e.preventDefault();
-      paused = !paused;
-      manualPause = paused;
-      if (paused) stopTick(); else startTick();
-      draw();
+      togglePause();
       return;
     }
 
@@ -263,10 +574,7 @@
     if (!newDir) return;
 
     e.preventDefault();
-    const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
-    if (opposites[newDir] !== direction) {
-      nextDirection = newDir;
-    }
+    setDirection(newDir);
   }
 
   // ===================== Touch =====================
@@ -284,9 +592,7 @@
   function handleTouchEnd(e) {
     if (gameOver) {
       if (e.changedTouches && e.changedTouches.length > 0) {
-        initSnake();
-        draw();
-        startTick();
+        restart();
       }
       return;
     }
@@ -303,31 +609,206 @@
     } else {
       newDir = dy > 0 ? 'down' : 'up';
     }
+    setDirection(newDir);
+  }
 
-    const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
-    if (opposites[newDir] !== direction) {
-      nextDirection = newDir;
+  // ===================== Sound =====================
+
+  function getAudioCtx() {
+    if (audioCtx) return audioCtx;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    try {
+      audioCtx = new Ctx();
+    } catch (_e) {
+      return null;
     }
+    return audioCtx;
+  }
+
+  function playSound(type) {
+    if (!settings.sound) return;
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    try {
+      const freqs = { eat: 660, bonus: 880, gameover: 220, pause: 440 };
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freqs[type] || 440;
+      gain.gain.value = 0.05;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+    } catch (_e) {
+      // ignore audio errors
+    }
+  }
+
+  // ===================== Settings UI =====================
+
+  function createToggleRow(key, label, desc) {
+    const row = document.createElement('label');
+    row.className = 'games-snake-setting';
+
+    const textWrap = document.createElement('span');
+    textWrap.className = 'games-snake-setting-text';
+    const name = document.createElement('span');
+    name.className = 'games-snake-setting-label';
+    name.textContent = label || key;
+    textWrap.appendChild(name);
+    if (desc) {
+      const d = document.createElement('span');
+      d.className = 'games-snake-setting-desc';
+      d.textContent = desc;
+      textWrap.appendChild(d);
+    }
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'games-snake-setting-input';
+    checkbox.checked = !!settings[key];
+    checkbox.addEventListener('change', function () {
+      settings[key] = this.checked;
+      saveSettings();
+      applySettingChange(key);
+    });
+
+    row.appendChild(textWrap);
+    row.appendChild(checkbox);
+    return row;
+  }
+
+  function applySettingChange(key) {
+    if (key === 'dpad') {
+      applyDpad();
+    } else if (key === 'bonus' && !settings.bonus) {
+      clearBonusTimer();
+      bonusFood = null;
+      draw();
+    } else if (key === 'obstacles' && !settings.obstacles) {
+      obstacles = [];
+      draw();
+    } else if (key === 'wrap') {
+      draw();
+    }
+  }
+
+  function buildSettings() {
+    const wrap = document.createElement('div');
+    wrap.className = 'games-snake-settings';
+
+    wrap.appendChild(createToggleRow('wrap', t('gamesSnakeWrap'), t('gamesSnakeWrapDesc')));
+    wrap.appendChild(createToggleRow('bonus', t('gamesSnakeBonusFood'), t('gamesSnakeBonusFoodDesc')));
+    wrap.appendChild(createToggleRow('obstacles', t('gamesSnakeObstacles'), t('gamesSnakeObstaclesDesc')));
+    wrap.appendChild(createToggleRow('sound', t('gamesSnakeSound'), t('gamesSnakeSoundDesc')));
+    wrap.appendChild(createToggleRow('dpad', t('gamesSnakeDpad'), t('gamesSnakeDpadDesc')));
+
+    const diffRow = document.createElement('label');
+    diffRow.className = 'games-snake-setting';
+    const diffLabel = document.createElement('span');
+    diffLabel.className = 'games-snake-setting-label';
+    diffLabel.textContent = t('gamesSnakeDifficulty') || 'Difficulty';
+    diffRow.appendChild(diffLabel);
+
+    const select = document.createElement('select');
+    select.className = 'games-snake-setting-select';
+    Object.keys(DIFFICULTIES).forEach(function (key) {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = t('gamesSnakeDifficulty' + key.charAt(0).toUpperCase() + key.slice(1)) || key;
+      select.appendChild(opt);
+    });
+    select.value = settings.difficulty;
+    select.addEventListener('change', function () {
+      settings.difficulty = this.value;
+      saveSettings();
+      tickMs = getTickMs();
+      if (!paused && !gameOver) startTick();
+    });
+    diffRow.appendChild(select);
+
+    wrap.appendChild(diffRow);
+    return wrap;
+  }
+
+  // ===================== D-pad =====================
+
+  function createDpad() {
+    const dpad = document.createElement('div');
+    dpad.className = 'games-snake-dpad';
+    const dirs = ['up', 'left', 'down', 'right'];
+    const arrows = { up: '▲', down: '▼', left: '◀', right: '▶' };
+    dirs.forEach(function (dir) {
+      const btn = document.createElement('button');
+      btn.className = 'games-snake-dpad-btn games-snake-dpad-' + dir;
+      btn.setAttribute('data-dir', dir);
+      btn.setAttribute('aria-label', dir);
+      btn.textContent = arrows[dir];
+      btn.addEventListener('click', function () {
+        if (gameOver) {
+          restart();
+          return;
+        }
+        setDirection(dir);
+      });
+      dpad.appendChild(btn);
+    });
+    return dpad;
+  }
+
+  function applyDpad() {
+    if (dpadEl) dpadEl.style.display = settings.dpad ? '' : 'none';
   }
 
   // ===================== Lifecycle =====================
 
   function init(containerEl) {
     container = containerEl;
+    loadSettings();
 
     // Score display
     scoreEl = document.createElement('div');
-    scoreEl.className = 'games-score-display';
-    scoreEl.textContent = t('gamesScore') + ': 0';
+    scoreEl.className = 'games-score-display games-snake-hud';
     container.appendChild(scoreEl);
 
-    // Canvas
+    // Controls (pause / restart)
+    const controls = document.createElement('div');
+    controls.className = 'games-snake-controls';
+
+    pauseBtn = document.createElement('button');
+    pauseBtn.className = 'games-snake-btn games-snake-pause';
+    pauseBtn.textContent = t('gamesSnakePause') || 'Pause';
+    pauseBtn.addEventListener('click', togglePause);
+
+    restartBtn = document.createElement('button');
+    restartBtn.className = 'games-snake-btn games-snake-restart';
+    restartBtn.textContent = t('gamesSnakeRestart') || 'Restart';
+    restartBtn.addEventListener('click', restart);
+
+    controls.appendChild(pauseBtn);
+    controls.appendChild(restartBtn);
+    container.appendChild(controls);
+
+    // Board wrapper + canvas
+    boardEl = document.createElement('div');
+    boardEl.className = 'games-snake-board';
     canvas = document.createElement('canvas');
     canvas.width = GRID_SIZE * CELL_SIZE;
     canvas.height = GRID_SIZE * CELL_SIZE;
     canvas.className = 'games-snake-canvas';
     ctx = canvas.getContext('2d');
-    container.appendChild(canvas);
+    boardEl.appendChild(canvas);
+    container.appendChild(boardEl);
+
+    // Settings panel
+    container.appendChild(buildSettings());
+
+    // Touch D-pad
+    dpadEl = createDpad();
+    container.appendChild(dpadEl);
+    applyDpad();
 
     // Instructions
     const instructions = document.createElement('div');
@@ -337,6 +818,7 @@
 
     initSnake();
     draw();
+    updateControls();
     startTick();
 
     document.addEventListener('keydown', handleKeydown);
@@ -346,6 +828,8 @@
 
   function destroy() {
     stopTick();
+    clearBonusTimer();
+    clearBonusToast();
     document.removeEventListener('keydown', handleKeydown);
     if (canvas) {
       canvas.removeEventListener('touchstart', handleTouchStart);
@@ -353,15 +837,21 @@
     }
     canvas = null;
     ctx = null;
+    boardEl = null;
+    dpadEl = null;
     if (container) container.innerHTML = '';
     container = null;
     scoreEl = null;
+    pauseBtn = null;
+    restartBtn = null;
   }
 
   function pause() {
     if (!paused) manualPause = false;
     paused = true;
     stopTick();
+    updateControls();
+    renderOverlays();
     draw();
   }
 
@@ -369,8 +859,48 @@
     if (!gameOver && !manualPause) {
       paused = false;
       startTick();
+      updateControls();
+      renderOverlays();
       draw();
     }
+  }
+
+  // ===================== Debug / test API =====================
+
+  function getState() {
+    return {
+      score: score,
+      foodsEaten: foodsEaten,
+      tickMs: tickMs,
+      highScore: Math.max(highScore, score),
+      direction: direction,
+      nextDirection: nextDirection,
+      paused: paused,
+      gameOver: gameOver,
+      manualPause: manualPause,
+      wrapEnabled: settings.wrap,
+      bonusEnabled: settings.bonus,
+      obstaclesEnabled: settings.obstacles,
+      soundEnabled: settings.sound,
+      dpadEnabled: settings.dpad,
+      difficulty: settings.difficulty,
+      snake: snake.map(function (s) { return { x: s.x, y: s.y }; }),
+      food: food ? { x: food.x, y: food.y } : null,
+      bonusFood: bonusFood ? { x: bonusFood.x, y: bonusFood.y } : null,
+      obstacles: obstacles.map(function (o) { return { x: o.x, y: o.y }; })
+    };
+  }
+
+  function simulateEatenFoods(n) {
+    for (let i = 0; i < n; i++) {
+      foodsEaten++;
+      score += 10;
+      applySpeed();
+      maybeSpawnBonus();
+      maybeSpawnObstacles();
+    }
+    renderHud();
+    draw();
   }
 
   window.GameRegistry?.register({
@@ -381,6 +911,31 @@
     init: init,
     destroy: destroy,
     pause: pause,
-    resume: resume
+    resume: resume,
+    _debug: {
+      getState: getState,
+      step: tick,
+      setDirection: setDirection,
+      setFood: function (x, y) {
+        if (x !== undefined && y !== undefined && x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE) {
+          food = { x: x, y: y };
+        }
+      },
+      setBonusFood: function (x, y) {
+        if (x !== undefined && y !== undefined && x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE) {
+          clearBonusTimer();
+          bonusFood = { x: x, y: y };
+        }
+      },
+      setObstacles: function (cells) {
+        obstacles = Array.isArray(cells)
+          ? cells.filter(function (c) {
+            return c && c.x >= 0 && c.y >= 0 && c.x < GRID_SIZE && c.y < GRID_SIZE;
+          }).map(function (c) { return { x: c.x, y: c.y }; })
+          : [];
+      },
+      simulateEatenFoods: simulateEatenFoods,
+      spawnBonusFood: function (x, y) { spawnBonusFood(x, y); }
+    }
   });
 })();

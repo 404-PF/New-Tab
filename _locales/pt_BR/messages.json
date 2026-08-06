@@ -408,6 +408,86 @@
     "message": "Setas ou WASD para mover, espaço para pausar",
     "description": "Snake game controls"
   },
+  "gamesSnakePause": {
+    "message": "Pausar",
+    "description": "Snake pause button label"
+  },
+  "gamesSnakeResume": {
+    "message": "Continuar",
+    "description": "Snake resume button label"
+  },
+  "gamesSnakeRestart": {
+    "message": "Reiniciar",
+    "description": "Snake restart button label"
+  },
+  "gamesSnakeWrap": {
+    "message": "Atravessar bordas",
+    "description": "Snake wrap-around toggle label"
+  },
+  "gamesSnakeWrapDesc": {
+    "message": "A cobra aparece no lado oposto",
+    "description": "Snake wrap-around toggle description"
+  },
+  "gamesSnakeBonusFood": {
+    "message": "Comida bônus",
+    "description": "Snake bonus food toggle label"
+  },
+  "gamesSnakeBonusFoodDesc": {
+    "message": "Comida dourada ocasional que vale pontos extras",
+    "description": "Snake bonus food toggle description"
+  },
+  "gamesSnakeObstacles": {
+    "message": "Obstáculos",
+    "description": "Snake obstacles toggle label"
+  },
+  "gamesSnakeObstaclesDesc": {
+    "message": "Obstáculos aparecem conforme você cresce",
+    "description": "Snake obstacles toggle description"
+  },
+  "gamesSnakeDpad": {
+    "message": "D-pad de toque",
+    "description": "Snake touch D-pad toggle label"
+  },
+  "gamesSnakeDpadDesc": {
+    "message": "Mostrar botões de direção na tela",
+    "description": "Snake touch D-pad toggle description"
+  },
+  "gamesSnakeSound": {
+    "message": "Efeitos sonoros",
+    "description": "Snake sound effects toggle label"
+  },
+  "gamesSnakeSoundDesc": {
+    "message": "Reproduzir sons ao comer e em eventos do jogo",
+    "description": "Snake sound effects toggle description"
+  },
+  "gamesSnakeDifficulty": {
+    "message": "Dificuldade",
+    "description": "Snake difficulty selector label"
+  },
+  "gamesSnakeDifficultyConstant": {
+    "message": "Constante",
+    "description": "Snake difficulty option: constant speed"
+  },
+  "gamesSnakeDifficultyEasy": {
+    "message": "Fácil",
+    "description": "Snake difficulty option: easy"
+  },
+  "gamesSnakeDifficultyNormal": {
+    "message": "Normal",
+    "description": "Snake difficulty option: normal"
+  },
+  "gamesSnakeDifficultyHard": {
+    "message": "Difícil",
+    "description": "Snake difficulty option: hard"
+  },
+  "gamesSnakeBonusGot": {
+    "message": "Bônus!",
+    "description": "Toast shown when bonus food is eaten"
+  },
+  "gamesSnakePauseHint": {
+    "message": "Pressione Espaço para continuar",
+    "description": "Hint shown on the pause overlay"
+  },
   "games2048": {
     "message": "2048",
     "description": "2048 game name"

@@ -408,6 +408,86 @@
     "message": "矢印キーまたはWASDで移動、スペースで一時停止",
     "description": "Snake game controls"
   },
+  "gamesSnakePause": {
+    "message": "一時停止",
+    "description": "Snake pause button label"
+  },
+  "gamesSnakeResume": {
+    "message": "再開",
+    "description": "Snake resume button label"
+  },
+  "gamesSnakeRestart": {
+    "message": "リスタート",
+    "description": "Snake restart button label"
+  },
+  "gamesSnakeWrap": {
+    "message": "壁をすり抜ける",
+    "description": "Snake wrap-around toggle label"
+  },
+  "gamesSnakeWrapDesc": {
+    "message": "ヘビが反対側の端から現れます",
+    "description": "Snake wrap-around toggle description"
+  },
+  "gamesSnakeBonusFood": {
+    "message": "ボーナスフード",
+    "description": "Snake bonus food toggle label"
+  },
+  "gamesSnakeBonusFoodDesc": {
+    "message": "時々現れる、ボーナス点の黄金の餌",
+    "description": "Snake bonus food toggle description"
+  },
+  "gamesSnakeObstacles": {
+    "message": "障害物",
+    "description": "Snake obstacles toggle label"
+  },
+  "gamesSnakeObstaclesDesc": {
+    "message": "成長するにつれて障害物が現れます",
+    "description": "Snake obstacles toggle description"
+  },
+  "gamesSnakeDpad": {
+    "message": "タッチDパッド",
+    "description": "Snake touch D-pad toggle label"
+  },
+  "gamesSnakeDpadDesc": {
+    "message": "画面上に方向ボタンを表示",
+    "description": "Snake touch D-pad toggle description"
+  },
+  "gamesSnakeSound": {
+    "message": "効果音",
+    "description": "Snake sound effects toggle label"
+  },
+  "gamesSnakeSoundDesc": {
+    "message": "食事やゲームイベントで音を再生",
+    "description": "Snake sound effects toggle description"
+  },
+  "gamesSnakeDifficulty": {
+    "message": "難易度",
+    "description": "Snake difficulty selector label"
+  },
+  "gamesSnakeDifficultyConstant": {
+    "message": "一定",
+    "description": "Snake difficulty option: constant speed"
+  },
+  "gamesSnakeDifficultyEasy": {
+    "message": "かんたん",
+    "description": "Snake difficulty option: easy"
+  },
+  "gamesSnakeDifficultyNormal": {
+    "message": "ふつう",
+    "description": "Snake difficulty option: normal"
+  },
+  "gamesSnakeDifficultyHard": {
+    "message": "むずかしい",
+    "description": "Snake difficulty option: hard"
+  },
+  "gamesSnakeBonusGot": {
+    "message": "ボーナス！",
+    "description": "Toast shown when bonus food is eaten"
+  },
+  "gamesSnakePauseHint": {
+    "message": "スペースで再開",
+    "description": "Hint shown on the pause overlay"
+  },
   "games2048": {
     "message": "2048",
     "description": "2048 game name"

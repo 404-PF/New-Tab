@@ -408,6 +408,86 @@
     "message": "Стрелки или WASD для движения, пробел для паузы",
     "description": "Snake game controls"
   },
+  "gamesSnakePause": {
+    "message": "Пауза",
+    "description": "Snake pause button label"
+  },
+  "gamesSnakeResume": {
+    "message": "Продолжить",
+    "description": "Snake resume button label"
+  },
+  "gamesSnakeRestart": {
+    "message": "Заново",
+    "description": "Snake restart button label"
+  },
+  "gamesSnakeWrap": {
+    "message": "Сквозь стены",
+    "description": "Snake wrap-around toggle label"
+  },
+  "gamesSnakeWrapDesc": {
+    "message": "Змейка появляется с противоположной стороны",
+    "description": "Snake wrap-around toggle description"
+  },
+  "gamesSnakeBonusFood": {
+    "message": "Бонусная еда",
+    "description": "Snake bonus food toggle label"
+  },
+  "gamesSnakeBonusFoodDesc": {
+    "message": "Изредка появляется золотая еда за бонусные очки",
+    "description": "Snake bonus food toggle description"
+  },
+  "gamesSnakeObstacles": {
+    "message": "Препятствия",
+    "description": "Snake obstacles toggle label"
+  },
+  "gamesSnakeObstaclesDesc": {
+    "message": "Препятствия появляются по мере роста",
+    "description": "Snake obstacles toggle description"
+  },
+  "gamesSnakeDpad": {
+    "message": "Сенсорный D-pad",
+    "description": "Snake touch D-pad toggle label"
+  },
+  "gamesSnakeDpadDesc": {
+    "message": "Показывать кнопки направления на экране",
+    "description": "Snake touch D-pad toggle description"
+  },
+  "gamesSnakeSound": {
+    "message": "Звуковые эффекты",
+    "description": "Snake sound effects toggle label"
+  },
+  "gamesSnakeSoundDesc": {
+    "message": "Воспроизводить звуки при еде и событиях",
+    "description": "Snake sound effects toggle description"
+  },
+  "gamesSnakeDifficulty": {
+    "message": "Сложность",
+    "description": "Snake difficulty selector label"
+  },
+  "gamesSnakeDifficultyConstant": {
+    "message": "Постоянная",
+    "description": "Snake difficulty option: constant speed"
+  },
+  "gamesSnakeDifficultyEasy": {
+    "message": "Лёгкая",
+    "description": "Snake difficulty option: easy"
+  },
+  "gamesSnakeDifficultyNormal": {
+    "message": "Обычная",
+    "description": "Snake difficulty option: normal"
+  },
+  "gamesSnakeDifficultyHard": {
+    "message": "Сложная",
+    "description": "Snake difficulty option: hard"
+  },
+  "gamesSnakeBonusGot": {
+    "message": "Бонус!",
+    "description": "Toast shown when bonus food is eaten"
+  },
+  "gamesSnakePauseHint": {
+    "message": "Пробел для продолжения",
+    "description": "Hint shown on the pause overlay"
+  },
   "games2048": {
     "message": "2048",
     "description": "2048 game name"

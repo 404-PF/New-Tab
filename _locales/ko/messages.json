@@ -408,6 +408,86 @@
     "message": "방향키 또는 WASD로 이동, 스페이스바로 일시정지",
     "description": "Snake game controls"
   },
+  "gamesSnakePause": {
+    "message": "일시정지",
+    "description": "Snake pause button label"
+  },
+  "gamesSnakeResume": {
+    "message": "재개",
+    "description": "Snake resume button label"
+  },
+  "gamesSnakeRestart": {
+    "message": "다시 시작",
+    "description": "Snake restart button label"
+  },
+  "gamesSnakeWrap": {
+    "message": "벽 통과",
+    "description": "Snake wrap-around toggle label"
+  },
+  "gamesSnakeWrapDesc": {
+    "message": "뱀이 반대쪽 가장자리에서 나타납니다",
+    "description": "Snake wrap-around toggle description"
+  },
+  "gamesSnakeBonusFood": {
+    "message": "보너스 먹이",
+    "description": "Snake bonus food toggle label"
+  },
+  "gamesSnakeBonusFoodDesc": {
+    "message": "가끔 나타나는 보너스 점수 황금 먹이",
+    "description": "Snake bonus food toggle description"
+  },
+  "gamesSnakeObstacles": {
+    "message": "장애물",
+    "description": "Snake obstacles toggle label"
+  },
+  "gamesSnakeObstaclesDesc": {
+    "message": "성장하면서 장애물이 나타납니다",
+    "description": "Snake obstacles toggle description"
+  },
+  "gamesSnakeDpad": {
+    "message": "터치 D-패드",
+    "description": "Snake touch D-pad toggle label"
+  },
+  "gamesSnakeDpadDesc": {
+    "message": "화면에 방향 버튼 표시",
+    "description": "Snake touch D-pad toggle description"
+  },
+  "gamesSnakeSound": {
+    "message": "효과음",
+    "description": "Snake sound effects toggle label"
+  },
+  "gamesSnakeSoundDesc": {
+    "message": "먹기 및 게임 이벤트 시 소리 재생",
+    "description": "Snake sound effects toggle description"
+  },
+  "gamesSnakeDifficulty": {
+    "message": "난이도",
+    "description": "Snake difficulty selector label"
+  },
+  "gamesSnakeDifficultyConstant": {
+    "message": "고정",
+    "description": "Snake difficulty option: constant speed"
+  },
+  "gamesSnakeDifficultyEasy": {
+    "message": "쉬움",
+    "description": "Snake difficulty option: easy"
+  },
+  "gamesSnakeDifficultyNormal": {
+    "message": "보통",
+    "description": "Snake difficulty option: normal"
+  },
+  "gamesSnakeDifficultyHard": {
+    "message": "어려움",
+    "description": "Snake difficulty option: hard"
+  },
+  "gamesSnakeBonusGot": {
+    "message": "보너스!",
+    "description": "Toast shown when bonus food is eaten"
+  },
+  "gamesSnakePauseHint": {
+    "message": "스페이스바로 재개",
+    "description": "Hint shown on the pause overlay"
+  },
   "games2048": {
     "message": "2048",
     "description": "2048 game name"
