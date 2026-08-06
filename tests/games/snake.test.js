@@ -193,7 +193,7 @@ describe('Snake Game mechanics', () => {
   it('does not spawn obstacles when the toggle is off', () => {
     const { debug } = setupGame({ settings: { snake_obstacles_enabled: 'false' } });
     debug.simulateEatenFoods(20);
-    expect(debug.getState().obstacles.length).toBe(0);
+    expect(debug.getState().obstacles).toHaveLength(0);
   });
 });
 
@@ -267,7 +267,7 @@ describe('Snake Game controls & QoL', () => {
     const { debug, container } = setupGame({ settings: { snake_dpad_enabled: 'true' } });
     const dpad = container.querySelector('.games-snake-dpad');
     expect(dpad.style.display).not.toBe('none');
-    expect(dpad.querySelectorAll('.games-snake-dpad-btn').length).toBe(4);
+    expect(dpad.querySelectorAll('.games-snake-dpad-btn')).toHaveLength(4);
     dpad.querySelector('.games-snake-dpad-up').click();
     expect(debug.getState().nextDirection).toBe('up');
   });

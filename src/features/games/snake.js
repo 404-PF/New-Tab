@@ -141,7 +141,7 @@
   }
 
   function pickEmptyCell(opts) {
-    const fixed = opts && opts.fixed;
+    const fixed = opts?.fixed;
     if (fixed && isCellFree(fixed)) return { x: fixed.x, y: fixed.y };
 
     const empty = [];
@@ -149,7 +149,7 @@
       for (let y = 0; y < GRID_SIZE; y++) {
         const p = { x: x, y: y };
         if (!isCellFree(p)) continue;
-        if (opts && opts.avoidHead && isNearHead(p)) continue;
+        if (opts?.avoidHead && isNearHead(p)) continue;
         empty.push(p);
       }
     }
@@ -235,7 +235,7 @@
 
   function loadHighScore() {
     try {
-      highScore = (window.GameRegistry && window.GameRegistry.getStats('snake').highScore) || 0;
+      highScore = window.GameRegistry?.getStats('snake')?.highScore || 0;
     } catch (_e) {
       highScore = 0;
     }
@@ -272,27 +272,34 @@
     return false;
   }
 
+  function moveHead(direction, head) {
+    if (direction === 'right') head.x++;
+    else if (direction === 'left') head.x--;
+    else if (direction === 'up') head.y--;
+    else if (direction === 'down') head.y++;
+  }
+
+  function resolveWall(head) {
+    if (head.x >= 0 && head.x < GRID_SIZE && head.y >= 0 && head.y < GRID_SIZE) return false;
+    if (settings.wrap) {
+      head.x = (head.x + GRID_SIZE) % GRID_SIZE;
+      head.y = (head.y + GRID_SIZE) % GRID_SIZE;
+      return false;
+    }
+    endGame();
+    return true;
+  }
+
   function tick() {
     if (paused || gameOver) return;
 
     direction = nextDirection;
     const head = { ...snake[0] };
 
-    if (direction === 'right') head.x++;
-    else if (direction === 'left') head.x--;
-    else if (direction === 'up') head.y--;
-    else if (direction === 'down') head.y++;
+    moveHead(direction, head);
 
     // Wall collision / wrap-around
-    if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
-      if (settings.wrap) {
-        head.x = (head.x + GRID_SIZE) % GRID_SIZE;
-        head.y = (head.y + GRID_SIZE) % GRID_SIZE;
-      } else {
-        endGame();
-        return;
-      }
-    }
+    if (resolveWall(head)) return;
 
     // Obstacle collision
     const hitsObstacle = obstacles.some(function (o) { return o.x === head.x && o.y === head.y; });
@@ -643,7 +650,7 @@
       osc.start();
       osc.stop(ctx.currentTime + 0.1);
     } catch (_e) {
-      // ignore audio errors
+      console.warn('Snake: unable to play sound effect', _e);
     }
   }
 
@@ -748,7 +755,7 @@
     dirs.forEach(function (dir) {
       const btn = document.createElement('button');
       btn.className = 'games-snake-dpad-btn games-snake-dpad-' + dir;
-      btn.setAttribute('data-dir', dir);
+      btn.dataset.dir = dir;
       btn.setAttribute('aria-label', t(labelKeys[dir]) || dir);
       btn.textContent = arrows[dir];
       btn.addEventListener('click', function () {
