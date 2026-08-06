@@ -229,7 +229,6 @@ const testGlobals = {
   formatDateISO: 'readonly',
   isOverdue: 'readonly',
   parseLocalDate: 'readonly',
-  AppGridState: 'readonly',
   AppFolders: 'readonly',
   defaultApps: 'readonly',
   clearCompleted: 'readonly',
