@@ -215,12 +215,12 @@ describe('Video playback settings', () => {
   });
 
   it('loadVideoMuted returns true by default', () => {
-    expect(loadVideoMuted()).toBe(true);
+    expect(window.loadVideoMuted()).toBe(true);
   });
 
   it('loadVideoMuted reads localStorage', () => {
     localStorage.setItem('videoMuted', 'false');
-    expect(loadVideoMuted()).toBe(false);
+    expect(window.loadVideoMuted()).toBe(false);
   });
 
   it('loadVideoPauseHidden returns true by default', () => {
