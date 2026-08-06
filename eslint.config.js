@@ -287,8 +287,6 @@ const testGlobals = {
   test: 'readonly',
   expect: 'readonly',
   vi: 'readonly',
-  initModernFontPickers: 'readonly',
-  initModernColorPickers: 'readonly',
   beforeAll: 'readonly',
   beforeEach: 'readonly',
   afterEach: 'readonly',
