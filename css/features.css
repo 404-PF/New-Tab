@@ -4346,8 +4346,8 @@ body.light-theme .games-hub-card-desc {
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(255, 215, 0, 0.2);
-  border: 1px solid rgba(255, 215, 0, 0.6);
+  background: #4a3600;
+  border: 1px solid #ffd700;
   color: #ffd700;
   padding: 6px 14px;
   border-radius: 8px;
@@ -4594,11 +4594,11 @@ body.light-theme .games-hub-card-desc {
 }
 
 /* Consolidated light theme color overrides */
-body.light-theme :is(.games-back-btn, .games-score-display, .games-2048-cell, .games-memory-stats, .games-snake-hud, .games-snake-btn, .games-snake-setting-label, .games-snake-dpad-btn) {
+body.light-theme :is(.games-back-btn, .games-score-display, .games-memory-stats, .games-snake-hud, .games-snake-btn, .games-snake-setting-label, .games-snake-dpad-btn) {
   color: #0f172a;
 }
 
-body.light-theme :is(.games-hub-empty, .games-app-disabled, .games-hub-card-desc, .games-2048-overlay-sub, .games-snake-setting-desc, .games-snake-overlay-sub) {
+body.light-theme :is(.games-hub-empty, .games-app-disabled, .games-hub-card-desc, .games-snake-setting-desc) {
   color: #475569;
 }
 

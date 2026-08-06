@@ -452,6 +452,22 @@
     "message": "Mostrar botones de dirección en pantalla",
     "description": "Snake touch D-pad toggle description"
   },
+  "gamesSnakeDpadUp": {
+    "message": "Arriba",
+    "description": "Snake D-pad up button accessible name"
+  },
+  "gamesSnakeDpadDown": {
+    "message": "Abajo",
+    "description": "Snake D-pad down button accessible name"
+  },
+  "gamesSnakeDpadLeft": {
+    "message": "Izquierda",
+    "description": "Snake D-pad left button accessible name"
+  },
+  "gamesSnakeDpadRight": {
+    "message": "Derecha",
+    "description": "Snake D-pad right button accessible name"
+  },
   "gamesSnakeSound": {
     "message": "Efectos de sonido",
     "description": "Snake sound effects toggle label"

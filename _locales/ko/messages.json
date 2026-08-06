@@ -433,7 +433,7 @@
     "description": "Snake bonus food toggle label"
   },
   "gamesSnakeBonusFoodDesc": {
-    "message": "가끔 나타나는 보너스 점수 황금 먹이",
+    "message": "가끔 나타나 보너스 점수를 주는 황금 먹이",
     "description": "Snake bonus food toggle description"
   },
   "gamesSnakeObstacles": {
@@ -451,6 +451,22 @@
   "gamesSnakeDpadDesc": {
     "message": "화면에 방향 버튼 표시",
     "description": "Snake touch D-pad toggle description"
+  },
+  "gamesSnakeDpadUp": {
+    "message": "위",
+    "description": "Snake D-pad up button accessible name"
+  },
+  "gamesSnakeDpadDown": {
+    "message": "아래",
+    "description": "Snake D-pad down button accessible name"
+  },
+  "gamesSnakeDpadLeft": {
+    "message": "왼쪽",
+    "description": "Snake D-pad left button accessible name"
+  },
+  "gamesSnakeDpadRight": {
+    "message": "오른쪽",
+    "description": "Snake D-pad right button accessible name"
   },
   "gamesSnakeSound": {
     "message": "효과음",

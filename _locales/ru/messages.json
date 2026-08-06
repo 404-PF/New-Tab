@@ -452,6 +452,22 @@
     "message": "Показывать кнопки направления на экране",
     "description": "Snake touch D-pad toggle description"
   },
+  "gamesSnakeDpadUp": {
+    "message": "Вверх",
+    "description": "Snake D-pad up button accessible name"
+  },
+  "gamesSnakeDpadDown": {
+    "message": "Вниз",
+    "description": "Snake D-pad down button accessible name"
+  },
+  "gamesSnakeDpadLeft": {
+    "message": "Влево",
+    "description": "Snake D-pad left button accessible name"
+  },
+  "gamesSnakeDpadRight": {
+    "message": "Вправо",
+    "description": "Snake D-pad right button accessible name"
+  },
   "gamesSnakeSound": {
     "message": "Звуковые эффекты",
     "description": "Snake sound effects toggle label"

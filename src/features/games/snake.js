@@ -89,8 +89,8 @@
         ? ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0)
         : dpadRaw === 'true';
       settings.difficulty = localStorage.getItem(SETTINGS_KEYS.difficulty) || 'normal';
-    } catch (_e) {
-      // keep defaults when storage is unavailable
+    } catch (e) {
+      console.warn('Snake: failed to load settings, using defaults', e);
     }
     if (!DIFFICULTIES[settings.difficulty]) settings.difficulty = 'normal';
   }
@@ -103,8 +103,8 @@
       localStorage.setItem(SETTINGS_KEYS.sound, settings.sound);
       localStorage.setItem(SETTINGS_KEYS.dpad, settings.dpad);
       localStorage.setItem(SETTINGS_KEYS.difficulty, settings.difficulty);
-    } catch (_e) {
-      // ignore storage errors
+    } catch (e) {
+      console.warn('Snake: failed to save settings', e);
     }
   }
 
@@ -352,6 +352,7 @@
     });
     renderHud();
     draw();
+    updateControls();
     renderOverlays();
     playSound('gameover');
   }
@@ -740,11 +741,15 @@
     dpad.className = 'games-snake-dpad';
     const dirs = ['up', 'left', 'down', 'right'];
     const arrows = { up: '▲', down: '▼', left: '◀', right: '▶' };
+    const labelKeys = {
+      up: 'gamesSnakeDpadUp', down: 'gamesSnakeDpadDown',
+      left: 'gamesSnakeDpadLeft', right: 'gamesSnakeDpadRight'
+    };
     dirs.forEach(function (dir) {
       const btn = document.createElement('button');
       btn.className = 'games-snake-dpad-btn games-snake-dpad-' + dir;
       btn.setAttribute('data-dir', dir);
-      btn.setAttribute('aria-label', dir);
+      btn.setAttribute('aria-label', t(labelKeys[dir]) || dir);
       btn.textContent = arrows[dir];
       btn.addEventListener('click', function () {
         if (gameOver) {

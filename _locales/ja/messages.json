@@ -433,7 +433,7 @@
     "description": "Snake bonus food toggle label"
   },
   "gamesSnakeBonusFoodDesc": {
-    "message": "時々現れる、ボーナス点の黄金の餌",
+    "message": "時々現れる、ボーナスポイントがもらえる金色の餌",
     "description": "Snake bonus food toggle description"
   },
   "gamesSnakeObstacles": {
@@ -452,12 +452,28 @@
     "message": "画面上に方向ボタンを表示",
     "description": "Snake touch D-pad toggle description"
   },
+  "gamesSnakeDpadUp": {
+    "message": "上",
+    "description": "Snake D-pad up button accessible name"
+  },
+  "gamesSnakeDpadDown": {
+    "message": "下",
+    "description": "Snake D-pad down button accessible name"
+  },
+  "gamesSnakeDpadLeft": {
+    "message": "左",
+    "description": "Snake D-pad left button accessible name"
+  },
+  "gamesSnakeDpadRight": {
+    "message": "右",
+    "description": "Snake D-pad right button accessible name"
+  },
   "gamesSnakeSound": {
     "message": "効果音",
     "description": "Snake sound effects toggle label"
   },
   "gamesSnakeSoundDesc": {
-    "message": "食事やゲームイベントで音を再生",
+    "message": "餌を食べたときやゲームイベントで音を再生",
     "description": "Snake sound effects toggle description"
   },
   "gamesSnakeDifficulty": {

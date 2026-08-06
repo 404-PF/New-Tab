@@ -452,12 +452,28 @@
     "message": "Bildschirmtasten für die Richtung anzeigen",
     "description": "Snake touch D-pad toggle description"
   },
+  "gamesSnakeDpadUp": {
+    "message": "Oben",
+    "description": "Snake D-pad up button accessible name"
+  },
+  "gamesSnakeDpadDown": {
+    "message": "Unten",
+    "description": "Snake D-pad down button accessible name"
+  },
+  "gamesSnakeDpadLeft": {
+    "message": "Links",
+    "description": "Snake D-pad left button accessible name"
+  },
+  "gamesSnakeDpadRight": {
+    "message": "Rechts",
+    "description": "Snake D-pad right button accessible name"
+  },
   "gamesSnakeSound": {
     "message": "Soundeffekte",
     "description": "Snake sound effects toggle label"
   },
   "gamesSnakeSoundDesc": {
-    "message": "Töne beim Fressen und bei Spielfolgen abspielen",
+    "message": "Töne beim Fressen und bei Spielereignissen abspielen",
     "description": "Snake sound effects toggle description"
   },
   "gamesSnakeDifficulty": {
