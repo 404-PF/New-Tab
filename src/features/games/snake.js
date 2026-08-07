@@ -213,6 +213,7 @@
       bonusTimer = null;
       bonusRemainingMs = Math.max(0, bonusDeadline - Date.now());
       bonusDeadline = 0;
+      if (bonusRemainingMs === 0) bonusFood = null;
     }
   }
 

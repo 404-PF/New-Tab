@@ -216,6 +216,26 @@ describe('Snake Game mechanics', () => {
     }
   });
 
+  it('clears an already-expired bonus when pausing right at expiry', () => {
+    vi.useFakeTimers();
+    try {
+      const { debug, container } = setupGame({ settings: { snake_wrap_enabled: 'true' } });
+      debug.setFood(0, 0);
+      debug.spawnBonusFood(15, 15);
+      expect(debug.getState().bonusFood).toEqual({ x: 15, y: 15 });
+
+      // Jump the clock past the 5000ms lifetime without firing the expiry timer,
+      // then pause: the frozen countdown has 0 remaining, so the expired bonus
+      // must not linger on the board.
+      vi.setSystemTime(Date.now() + 6000);
+      container.querySelector('.games-snake-pause').click();
+      expect(debug.getState().paused).toBe(true);
+      expect(debug.getState().bonusFood).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('ends the game on obstacle collision', () => {
     const { debug } = setupGame();
     debug.setFood(0, 0);
