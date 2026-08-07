@@ -292,3 +292,54 @@ describe('Snake Game controls & QoL', () => {
     expect(pauseBtn.disabled).toBe(true);
   });
 });
+
+describe('Snake Game sound', () => {
+  function installAudioContextMock() {
+    const constructed = { count: 0 };
+    const RealAudioContext = window.AudioContext;
+    function MockAudioContext() {
+      constructed.count++;
+      this.state = 'suspended';
+      this.resume = () => Promise.resolve();
+      this.createOscillator = () => ({
+        connect: () => {},
+        start: () => {},
+        stop: () => {},
+        frequency: { value: 0 }
+      });
+      this.createGain = () => ({ connect: () => {}, gain: { value: 0 } });
+      this.destination = {};
+      this.currentTime = 0;
+    }
+    window.AudioContext = MockAudioContext;
+    return {
+      constructed,
+      restore() {
+        if (RealAudioContext === undefined) delete window.AudioContext;
+        else window.AudioContext = RealAudioContext;
+      }
+    };
+  }
+
+  it('does not create an AudioContext on input when sound is off', () => {
+    const { constructed, restore } = installAudioContextMock();
+    try {
+      setupGame();
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp' }));
+      expect(constructed.count).toBe(0);
+    } finally {
+      restore();
+    }
+  });
+
+  it('creates and resumes an AudioContext on input when sound is on', () => {
+    const { constructed, restore } = installAudioContextMock();
+    try {
+      setupGame({ settings: { snake_sound_enabled: 'true' } });
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp' }));
+      expect(constructed.count).toBe(1);
+    } finally {
+      restore();
+    }
+  });
+});

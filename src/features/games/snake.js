@@ -647,6 +647,7 @@
   // the browser autoplay policy (a context created outside a gesture starts
   // suspended and would otherwise stay silent).
   function unlockAudio() {
+    if (!settings.sound) return;
     const ctx = getAudioCtx();
     if (!ctx || ctx.state === 'running') return;
     const resume = ctx.resume && ctx.resume.bind(ctx);
