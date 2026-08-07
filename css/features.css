@@ -4258,6 +4258,7 @@ body.light-theme .games-hub-card-desc {
   margin: 0 auto;
   border-radius: 8px;
   border: 2px solid var(--games-border-subtle);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 24px rgba(78, 205, 196, 0.12);
 }
 
 /* ==================== 2048 ==================== */
