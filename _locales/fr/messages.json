@@ -501,7 +501,7 @@
     "description": "Toast shown when bonus food is eaten"
   },
   "gamesSnakePauseHint": {
-    "message": "Appuyez sur Espace pour reprendre",
+    "message": "Appuyez sur espace pour reprendre",
     "description": "Hint shown on the pause overlay"
   },
   "games2048": {

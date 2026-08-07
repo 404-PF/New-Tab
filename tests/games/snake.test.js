@@ -230,6 +230,7 @@ describe('Snake Game controls & QoL', () => {
     container.querySelector('.games-snake-restart').click();
     const state = debug.getState();
     expect(state.score).toBe(0);
+    expect(container.querySelector('.games-score-display').textContent).toContain(': 0');
     expect(state.gameOver).toBe(false);
     expect(state.paused).toBe(false);
   });

@@ -137,6 +137,13 @@
   function isNearHead(p) {
     const head = snake[0];
     if (!head) return false;
+    if (settings.wrap) {
+      // Use wrapping distance so edge-adjacent cells across opposite
+      // borders are not treated as far away when wrap-around is enabled.
+      const dx = Math.min(Math.abs(p.x - head.x), GRID_SIZE - Math.abs(p.x - head.x));
+      const dy = Math.min(Math.abs(p.y - head.y), GRID_SIZE - Math.abs(p.y - head.y));
+      return dx <= 2 && dy <= 2;
+    }
     return Math.abs(p.x - head.x) <= 2 && Math.abs(p.y - head.y) <= 2;
   }
 
@@ -329,6 +336,7 @@
       maybeSpawnBonus();
       maybeSpawnObstacles();
       spawnFood();
+      if (gameOver) return;
       playSound('eat');
       renderHud();
     } else if (eatingBonus) {
@@ -553,6 +561,7 @@
   }
 
   function handleKeydown(e) {
+    unlockAudio();
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable)) {
       return;
     }
@@ -632,6 +641,18 @@
       return null;
     }
     return audioCtx;
+  }
+
+  // Resume the AudioContext from a user gesture so sounds are audible under
+  // the browser autoplay policy (a context created outside a gesture starts
+  // suspended and would otherwise stay silent).
+  function unlockAudio() {
+    const ctx = getAudioCtx();
+    if (!ctx || ctx.state === 'running') return;
+    const resume = ctx.resume && ctx.resume.bind(ctx);
+    if (resume) {
+      Promise.resolve(resume()).catch(function () {});
+    }
   }
 
   function playSound(type) {
@@ -834,6 +855,7 @@
     startTick();
 
     document.addEventListener('keydown', handleKeydown);
+    document.addEventListener('pointerdown', unlockAudio, { passive: true });
     canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
   }
@@ -843,6 +865,7 @@
     clearBonusTimer();
     clearBonusToast();
     document.removeEventListener('keydown', handleKeydown);
+    document.removeEventListener('pointerdown', unlockAudio);
     if (canvas) {
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchend', handleTouchEnd);
