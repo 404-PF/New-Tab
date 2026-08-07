@@ -337,6 +337,7 @@ describe('Snake Game sound', () => {
   function installAudioContextMock() {
     const constructed = { count: 0 };
     const resumed = { count: 0 };
+    const closed = { count: 0 };
     const RealAudioContext = window.AudioContext;
     function MockAudioContext() {
       constructed.count++;
@@ -344,6 +345,11 @@ describe('Snake Game sound', () => {
       this.resume = () => {
         resumed.count++;
         this.state = 'running';
+        return Promise.resolve();
+      };
+      this.close = () => {
+        closed.count++;
+        this.state = 'closed';
         return Promise.resolve();
       };
       this.createOscillator = () => ({
@@ -360,6 +366,7 @@ describe('Snake Game sound', () => {
     return {
       constructed,
       resumed,
+      closed,
       restore() {
         if (RealAudioContext === undefined) delete window.AudioContext;
         else window.AudioContext = RealAudioContext;
@@ -391,14 +398,16 @@ describe('Snake Game sound', () => {
   });
 
   it('clears the cached AudioContext on destroy so a new game gets a fresh one', () => {
-    const { constructed, restore } = installAudioContextMock();
+    const { constructed, closed, restore } = installAudioContextMock();
     try {
       const first = setupGame({ settings: { snake_sound_enabled: 'true' } });
       document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp' }));
       expect(constructed.count).toBe(1);
 
-      // Tear down and start a fresh game: the cached context must not leak.
+      // Tear down and start a fresh game: the cached context must not leak,
+      // and the old context must be closed to avoid accumulating Web Audio contexts.
       first.game.destroy();
+      expect(closed.count).toBe(1);
       first.container.remove();
       setupGame({ settings: { snake_sound_enabled: 'true' } });
       document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp' }));

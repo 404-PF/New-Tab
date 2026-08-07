@@ -903,6 +903,12 @@
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchend', handleTouchEnd);
     }
+    if (audioCtx) {
+      const close = audioCtx.close && audioCtx.close.bind(audioCtx);
+      if (close) {
+        Promise.resolve(close()).catch(function () {});
+      }
+    }
     audioCtx = null;
     canvas = null;
     ctx = null;
