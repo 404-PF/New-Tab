@@ -302,6 +302,28 @@ describe('Snake Game controls & QoL', () => {
     expect(container.querySelector('.games-score-display').textContent).toContain('100');
   });
 
+  it('treats a non-numeric stored high score as 0 on load', () => {
+    const { debug, container } = setupGame({ highScore: 'corrupted' });
+    const state = debug.getState();
+    expect(Number.isNaN(state.highScore)).toBe(false);
+    expect(state.highScore).toBe(0);
+    expect(container.querySelector('.games-score-display').textContent).toContain('0');
+  });
+
+  it('does not persist NaN when the stored high score is non-numeric', () => {
+    const { debug } = setupGame({ highScore: 'corrupted' });
+    debug.setFood(0, 0);
+    debug.setBonusFood(11, 10);
+    debug.step(); // +30 bonus points
+    expect(debug.getState().score).toBe(30);
+    debug.setObstacles([{ x: 12, y: 10 }]); // die on the next step
+    debug.step();
+    expect(debug.getState().gameOver).toBe(true);
+    const stats = window.GameRegistry.getStats('snake');
+    expect(Number.isNaN(stats.highScore)).toBe(false);
+    expect(stats.highScore).toBe(30);
+  });
+
   it('persists a new high score on game over', () => {
     const { debug } = setupGame();
     debug.setFood(0, 0);

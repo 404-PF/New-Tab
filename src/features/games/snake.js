@@ -272,9 +272,14 @@
 
   // ===================== Game Logic =====================
 
+  function toFiniteScore(value) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+  }
+
   function loadHighScore() {
     try {
-      highScore = window.GameRegistry?.getStats('snake')?.highScore || 0;
+      highScore = toFiniteScore(window.GameRegistry?.getStats('snake')?.highScore);
     } catch (_e) {
       highScore = 0;
     }
@@ -391,7 +396,7 @@
     clearBonusTimer();
     if (score > highScore) highScore = score;
     window.gamesHelpers?.updateStatsWith?.('snake', function (stats) {
-      const prevHigh = stats.highScore || 0;
+      const prevHigh = toFiniteScore(stats.highScore);
       return {
         highScore: Math.max(prevHigh, score),
         gamesPlayed: (stats.gamesPlayed || 0) + 1
