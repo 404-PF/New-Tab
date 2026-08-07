@@ -4623,13 +4623,13 @@ body.light-theme .games-snake-btn:hover:not(:disabled) {
 /* The pause/game-over overlay keeps a dark background in every theme, so the
    restart button inside it must keep light text even in light mode. */
 body.light-theme .games-snake-overlay .games-snake-btn {
-  background: rgba(255, 255, 255, 0.16);
+  background: #334155;
   border-color: rgba(255, 255, 255, 0.24);
   color: #f1f5f9;
 }
 
 body.light-theme .games-snake-overlay .games-snake-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.26);
+  background: #475569;
 }
 
 body.light-theme .games-snake-settings {

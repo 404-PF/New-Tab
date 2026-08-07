@@ -684,7 +684,7 @@
     if (!settings.sound) return;
     const ctx = getAudioCtx();
     if (!ctx || ctx.state === 'running') return;
-    const resume = ctx.resume && ctx.resume.bind(ctx);
+    const resume = ctx.resume?.bind(ctx);
     if (resume) {
       Promise.resolve(resume()).catch(function () {});
     }
@@ -905,7 +905,7 @@
       canvas.removeEventListener('touchend', handleTouchEnd);
     }
     if (audioCtx) {
-      const close = audioCtx.close && audioCtx.close.bind(audioCtx);
+      const close = audioCtx.close?.bind(audioCtx);
       if (close) {
         Promise.resolve(close()).catch(function () {});
       }
