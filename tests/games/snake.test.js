@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
 
 beforeAll(() => {
@@ -135,6 +135,22 @@ describe('Snake Game speed & difficulty', () => {
     expect(debug.getState().tickMs).toBe(130);
     expect(localStorage.getItem('snake_difficulty')).toBe('easy');
   });
+
+  it('does not restart the tick interval when the difficulty change keeps the same speed', () => {
+    const { debug, container } = setupGame();
+    const intervalSpy = vi.spyOn(window, 'setInterval');
+    try {
+      const select = container.querySelector('.games-snake-setting-select');
+      // normal starts at 120ms; constant stays at 120ms -> no restart
+      select.value = 'constant';
+      select.dispatchEvent(new Event('change'));
+      expect(debug.getState().difficulty).toBe('constant');
+      expect(debug.getState().tickMs).toBe(120);
+      expect(intervalSpy).not.toHaveBeenCalled();
+    } finally {
+      intervalSpy.mockRestore();
+    }
+  });
 });
 
 describe('Snake Game mechanics', () => {
@@ -174,6 +190,30 @@ describe('Snake Game mechanics', () => {
     debug.spawnBonusFood(15, 15);
     const state = debug.getState();
     expect(state.bonusFood).toEqual({ x: 15, y: 15 });
+  });
+
+  it('keeps bonus food while paused and lets it expire after resume', () => {
+    vi.useFakeTimers();
+    try {
+      const { debug, container } = setupGame({ settings: { snake_wrap_enabled: 'true' } });
+      debug.setFood(0, 0); // keep the regular food out of the way
+      debug.spawnBonusFood(15, 15);
+      expect(debug.getState().bonusFood).toEqual({ x: 15, y: 15 });
+
+      // Pause: the bonus countdown must be frozen, not keep running.
+      container.querySelector('.games-snake-pause').click();
+      expect(debug.getState().paused).toBe(true);
+      vi.advanceTimersByTime(10000); // well past the 5000ms lifetime
+      expect(debug.getState().bonusFood).toEqual({ x: 15, y: 15 });
+
+      // Resume: the countdown restarts and the bonus expires shortly after.
+      container.querySelector('.games-snake-pause').click();
+      expect(debug.getState().paused).toBe(false);
+      vi.advanceTimersByTime(6000);
+      expect(debug.getState().bonusFood).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('ends the game on obstacle collision', () => {
@@ -345,6 +385,24 @@ describe('Snake Game sound', () => {
       document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp' }));
       expect(constructed.count).toBe(1);
       expect(resumed.count).toBe(1);
+    } finally {
+      restore();
+    }
+  });
+
+  it('clears the cached AudioContext on destroy so a new game gets a fresh one', () => {
+    const { constructed, restore } = installAudioContextMock();
+    try {
+      const first = setupGame({ settings: { snake_sound_enabled: 'true' } });
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp' }));
+      expect(constructed.count).toBe(1);
+
+      // Tear down and start a fresh game: the cached context must not leak.
+      first.game.destroy();
+      first.container.remove();
+      setupGame({ settings: { snake_sound_enabled: 'true' } });
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp' }));
+      expect(constructed.count).toBe(2);
     } finally {
       restore();
     }

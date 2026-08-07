@@ -40,6 +40,8 @@
   let food = null;
   let bonusFood = null;
   let bonusTimer = null;
+  let bonusRemainingMs = 0;
+  let bonusDeadline = 0;
   let obstacles = [];
   let direction = 'right';
   let nextDirection = 'right';
@@ -180,6 +182,8 @@
       clearTimeout(bonusTimer);
       bonusTimer = null;
     }
+    bonusRemainingMs = 0;
+    bonusDeadline = 0;
   }
 
   function maybeSpawnBonus() {
@@ -188,15 +192,42 @@
     spawnBonusFood();
   }
 
+  // Arm the bonus expiration timer for `ms`. Remaining time is tracked so the
+  // countdown can be frozen while the game is paused.
+  function scheduleBonusExpiration(ms) {
+    clearBonusTimer();
+    bonusRemainingMs = ms;
+    bonusDeadline = Date.now() + ms;
+    bonusTimer = setTimeout(function () {
+      bonusFood = null;
+      bonusRemainingMs = 0;
+      bonusDeadline = 0;
+      draw();
+    }, ms);
+  }
+
+  // Stop the countdown while paused, keeping the time left for resume.
+  function freezeBonusTimer() {
+    if (bonusTimer) {
+      clearTimeout(bonusTimer);
+      bonusTimer = null;
+      bonusRemainingMs = Math.max(0, bonusDeadline - Date.now());
+      bonusDeadline = 0;
+    }
+  }
+
+  // Re-arm the countdown with the remaining time once the game resumes.
+  function thawBonusTimer() {
+    if (bonusFood && bonusRemainingMs > 0 && !paused && !gameOver) {
+      scheduleBonusExpiration(bonusRemainingMs);
+    }
+  }
+
   function spawnBonusFood(x, y) {
     const pos = pickEmptyCell({ fixed: (x !== undefined && y !== undefined) ? { x: x, y: y } : null });
     if (!pos) return;
     bonusFood = pos;
-    clearBonusTimer();
-    bonusTimer = setTimeout(function () {
-      bonusFood = null;
-      draw();
-    }, BONUS_LIFETIME_MS);
+    scheduleBonusExpiration(BONUS_LIFETIME_MS);
   }
 
   function showBonusToast() {
@@ -549,10 +580,12 @@
       paused = false;
       manualPause = false;
       startTick();
+      thawBonusTimer();
     } else {
       paused = true;
       manualPause = true;
       stopTick();
+      freezeBonusTimer();
       playSound('pause');
     }
     updateControls();
@@ -754,8 +787,7 @@
     select.addEventListener('change', function () {
       settings.difficulty = this.value;
       saveSettings();
-      tickMs = getTickMs();
-      if (!paused && !gameOver) startTick();
+      applySpeed();
     });
     diffRow.appendChild(select);
 
@@ -871,6 +903,7 @@
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchend', handleTouchEnd);
     }
+    audioCtx = null;
     canvas = null;
     ctx = null;
     boardEl = null;
@@ -886,6 +919,7 @@
     if (!paused) manualPause = false;
     paused = true;
     stopTick();
+    freezeBonusTimer();
     updateControls();
     renderOverlays();
     draw();
@@ -895,6 +929,7 @@
     if (!gameOver && !manualPause) {
       paused = false;
       startTick();
+      thawBonusTimer();
       updateControls();
       renderOverlays();
       draw();
