@@ -296,11 +296,16 @@ describe('Snake Game controls & QoL', () => {
 describe('Snake Game sound', () => {
   function installAudioContextMock() {
     const constructed = { count: 0 };
+    const resumed = { count: 0 };
     const RealAudioContext = window.AudioContext;
     function MockAudioContext() {
       constructed.count++;
       this.state = 'suspended';
-      this.resume = () => Promise.resolve();
+      this.resume = () => {
+        resumed.count++;
+        this.state = 'running';
+        return Promise.resolve();
+      };
       this.createOscillator = () => ({
         connect: () => {},
         start: () => {},
@@ -314,6 +319,7 @@ describe('Snake Game sound', () => {
     window.AudioContext = MockAudioContext;
     return {
       constructed,
+      resumed,
       restore() {
         if (RealAudioContext === undefined) delete window.AudioContext;
         else window.AudioContext = RealAudioContext;
@@ -333,11 +339,12 @@ describe('Snake Game sound', () => {
   });
 
   it('creates and resumes an AudioContext on input when sound is on', () => {
-    const { constructed, restore } = installAudioContextMock();
+    const { constructed, resumed, restore } = installAudioContextMock();
     try {
       setupGame({ settings: { snake_sound_enabled: 'true' } });
       document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp' }));
       expect(constructed.count).toBe(1);
+      expect(resumed.count).toBe(1);
     } finally {
       restore();
     }
