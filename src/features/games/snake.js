@@ -44,7 +44,7 @@
   }
 
   function reducedMotion() {
-    return !!(window.prefersReducedMotion && window.prefersReducedMotion());
+    return !!window.prefersReducedMotion?.();
   }
 
   function clamp(value, min, max) {
@@ -279,7 +279,7 @@
 
   function segmentPosition(idx, now) {
     const target = snake[idx];
-    const interpolate = !paused && !gameOver && !reducedMotion() && prevSnake && prevSnake[idx];
+    const interpolate = !paused && !gameOver && !reducedMotion() && prevSnake?.[idx];
     let gx = target.x;
     let gy = target.y;
     if (interpolate) {
