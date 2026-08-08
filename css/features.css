@@ -2054,7 +2054,7 @@ body.light-theme .eye-care-reminder-btn-secondary {
 
 .language-option.modern input[type="radio"]:checked ~ .language-preview {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2);
+  box-shadow: 0 0 0 3px rgb(from var(--primary-color) r g b / 0.2);
 }
 
 .language-option.modern input[type="radio"]:checked ~ .label {

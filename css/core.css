@@ -1774,7 +1774,7 @@ body.light-theme .bg-rotation-next-btn:hover {
 
 .curvature-option.modern input[type="radio"]:checked ~ .preview-icon {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+  box-shadow: 0 0 0 3px rgb(from var(--primary-color) r g b / 0.1);
 }
 
 .curvature-option.modern input[type="radio"]:checked ~ .label {
@@ -1857,7 +1857,7 @@ body.light-theme .bg-rotation-next-btn:hover {
 
 .theme-option.modern input[type="radio"]:checked ~ .preview-icon {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2);
+  box-shadow: 0 0 0 3px rgb(from var(--primary-color) r g b / 0.2);
 }
 
 .theme-option.modern input[type="radio"]:checked ~ .label {
