@@ -6,6 +6,9 @@
   const GRID_SIZE = 20;
   const CELL_SIZE = 15;
   const TICK_MS = 120;
+  const SHAKE_MS = 140;
+  const HEAD_COLOR = { r: 94, g: 234, b: 212 };
+  const TAIL_COLOR = { r: 45, g: 138, b: 131 };
 
   let canvas = null;
   let ctx = null;
@@ -198,10 +201,6 @@
 
   // ===================== Drawing =====================
 
-  const SHAKE_MS = 140;
-  const HEAD_COLOR = { r: 94, g: 234, b: 212 };
-  const TAIL_COLOR = { r: 45, g: 138, b: 131 };
-
   function drawBackground() {
     const w = GRID_SIZE * CELL_SIZE;
     const h = GRID_SIZE * CELL_SIZE;
@@ -365,16 +364,16 @@
   function spawnParticles(x, y) {
     if (reducedMotion()) return;
     for (let i = 0; i < 12; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 20 + Math.random() * 45;
+      const angle = window.GameRegistry.secureRandom() * Math.PI * 2;
+      const speed = 20 + window.GameRegistry.secureRandom() * 45;
       particles.push({
         x: x,
         y: y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         born: nowMs(),
-        life: 450 + Math.random() * 250,
-        size: 1.5 + Math.random() * 2
+        life: 450 + window.GameRegistry.secureRandom() * 250,
+        size: 1.5 + window.GameRegistry.secureRandom() * 2
       });
     }
   }
@@ -398,11 +397,13 @@
   function drawOverlayPanel(title, titleColor, subLines) {
     const w = GRID_SIZE * CELL_SIZE;
     const h = GRID_SIZE * CELL_SIZE;
+    const LINE_STEP = 26;
     const panelW = Math.min(w - 40, 250);
-    const panelH = 74 + subLines.length * 26;
+    const panelH = 74 + subLines.length * LINE_STEP;
     const px = (w - panelW) / 2;
     const py = (h - panelH) / 2;
 
+    ctx.save();
     ctx.fillStyle = 'rgba(10, 10, 24, 0.72)';
     ctx.fillRect(0, 0, w, h);
 
@@ -421,8 +422,9 @@
     ctx.fillStyle = '#e0e0e0';
     ctx.font = '15px system-ui, sans-serif';
     subLines.forEach(function (line, i) {
-      ctx.fillText(line, w / 2, py + 34 + 26 + i * 24);
+      ctx.fillText(line, w / 2, py + 34 + LINE_STEP + i * LINE_STEP);
     });
+    ctx.restore();
   }
 
   function draw(now) {
@@ -436,8 +438,8 @@
     let shakeY = 0;
     if (!reducedMotion() && now < shakeUntil) {
       const strength = clamp((shakeUntil - now) / SHAKE_MS, 0, 1) * 2.5;
-      shakeX = (Math.random() * 2 - 1) * strength;
-      shakeY = (Math.random() * 2 - 1) * strength;
+      shakeX = (window.GameRegistry.secureRandom() * 2 - 1) * strength;
+      shakeY = (window.GameRegistry.secureRandom() * 2 - 1) * strength;
     }
 
     ctx.save();
@@ -465,8 +467,8 @@
 
   // ===================== Animation =====================
 
-  function animate(now) {
-    draw(now);
+  function animate() {
+    draw(nowMs());
     if (animFrame !== null) {
       animFrame = window.requestAnimationFrame(animate);
     }
@@ -485,6 +487,13 @@
     animFrame = null;
   }
 
+  function restart() {
+    initSnake();
+    draw();
+    startTick();
+    startAnimation();
+  }
+
   // ===================== Input =====================
 
   function handleKeydown(e) {
@@ -494,13 +503,10 @@
 
     if (gameOver) {
       if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
-        window.gamesHelpers.handleRestartSpace(e, function () { initSnake(); draw(); startTick(); startAnimation(); });
+        window.gamesHelpers.handleRestartSpace(e, restart);
       } else if (e.code === 'Space') {
         e.preventDefault();
-        initSnake();
-        draw();
-        startTick();
-        startAnimation();
+        restart();
       }
       return;
     }
@@ -550,10 +556,7 @@
   function handleTouchEnd(e) {
     if (gameOver) {
       if (e.changedTouches && e.changedTouches.length > 0) {
-        initSnake();
-        draw();
-        startTick();
-        startAnimation();
+        restart();
       }
       return;
     }
