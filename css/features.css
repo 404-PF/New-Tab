@@ -250,7 +250,7 @@ body.light-theme .settings-section label {
 body.light-theme .settings-section input[type="checkbox"] {
   border-color: #d1d5db;
   background: rgba(255, 255, 255, 0.95);
-  accent-color: var(--primary-color, #2563eb);
+  accent-color: var(--primary-color);
 }
 
 body.light-theme .settings-section input[type="radio"]::before {
@@ -260,7 +260,7 @@ body.light-theme .settings-section input[type="radio"]::before {
 
 body.light-theme .settings-section input[type="radio"]:checked::before {
   background: rgba(255, 255, 255, 1);
-  border-color: #2196f3;
+  border-color: var(--primary-color);
 }
 
 body.light-theme .settings-section select,
@@ -2053,12 +2053,12 @@ body.light-theme .eye-care-reminder-btn-secondary {
 }
 
 .language-option.modern input[type="radio"]:checked ~ .language-preview {
-  border-color: #2196f3;
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2);
 }
 
 .language-option.modern input[type="radio"]:checked ~ .label {
-  color: #2196f3;
+  color: var(--primary-color);
   font-weight: 600;
 }
 

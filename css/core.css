@@ -1623,8 +1623,8 @@ body.light-theme .bg-rotation-next-btn:hover {
 }
 
 .settings-section input[type="checkbox"]:checked {
-  background-color: var(--primary-color, #2563eb);
-  border-color: var(--primary-color, #2563eb);
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
 }
 
 .settings-section input[type="checkbox"]:checked::after {
@@ -1662,7 +1662,7 @@ body.light-theme .bg-rotation-next-btn:hover {
 
 .settings-section input[type="radio"]:checked::before {
   background: rgba(255, 255, 255, 1);
-  border-color: #2196f3;
+  border-color: var(--primary-color);
 }
 
 /* Shared Settings Group Styles */
@@ -1773,12 +1773,12 @@ body.light-theme .bg-rotation-next-btn:hover {
 }
 
 .curvature-option.modern input[type="radio"]:checked ~ .preview-icon {
-  border-color: #2196f3;
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
 }
 
 .curvature-option.modern input[type="radio"]:checked ~ .label {
-  color: #2196f3;
+  color: var(--primary-color);
   font-weight: 600;
 }
 
@@ -1856,12 +1856,12 @@ body.light-theme .bg-rotation-next-btn:hover {
 }
 
 .theme-option.modern input[type="radio"]:checked ~ .preview-icon {
-  border-color: #2196f3;
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2);
 }
 
 .theme-option.modern input[type="radio"]:checked ~ .label {
-  color: #2196f3;
+  color: var(--primary-color);
   font-weight: 600;
 }
 
@@ -1954,7 +1954,7 @@ body.light-theme .preview-icon.light {
   appearance: none;
   width: 20px;
   height: 20px;
-  background: #2196f3;
+  background: var(--primary-color);
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.8);
   cursor: pointer;
@@ -1970,7 +1970,7 @@ body.light-theme .preview-icon.light {
 .settings-section input[type="range"]::-moz-range-thumb {
   width: 20px;
   height: 20px;
-  background: #2196f3;
+  background: var(--primary-color);
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.8);
   cursor: pointer;

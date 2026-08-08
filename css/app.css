@@ -4606,7 +4606,7 @@ body.light-theme .syntax-variable {
   height: 18px;
   margin-top: 2px;
   flex-shrink: 0;
-  accent-color: #6366f1;
+  accent-color: var(--primary-color);
   cursor: default;
 }
 
@@ -4629,10 +4629,6 @@ body.light-theme .md-task-item {
 
 body.light-theme .md-task-item:hover {
   background: rgba(0, 0, 0, 0.04);
-}
-
-body.light-theme .md-task-item input[type="checkbox"] {
-  accent-color: #6366f1;
 }
 
 /* ==================== Enhanced List Styles ==================== */
