@@ -24,7 +24,10 @@ function resolveTrustedScriptPath(relativePath) {
 export function injectScript(relativePath, vmContext) {
   const scriptPath = resolveTrustedScriptPath(relativePath);
   const source = readFileSync(scriptPath, 'utf-8');
-  const script = new vm.Script(source, { filename: scriptPath });
+  // Safe: `source` is read from a trusted, allowlisted repo file
+  // (resolveTrustedScriptPath: regex allowlist + .. rejection + realpath containment)
+  // and executed in an isolated vm sandbox, not globalThis.eval.
+  const script = new vm.Script(source, { filename: scriptPath }); // NOSONAR
 
   if (vmContext) {
     script.runInContext(vmContext);
