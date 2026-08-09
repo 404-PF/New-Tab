@@ -345,7 +345,7 @@
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
       </div>
-      <span class="weather-error-text">${message}</span>
+      <span class="weather-error-text">${window.escapeHtml(message)}</span>
     `;
     showWidgetWithAnimation(el);
   }

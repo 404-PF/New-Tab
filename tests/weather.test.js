@@ -186,4 +186,26 @@ describe('Weather widget', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('escapes HTML in error messages', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'manual');
+    localStorage.setItem('weatherManualCity', '');
+
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => (key === 'weatherEnterCity' ? '<img src=x onerror=alert(1)>' : originalT(key));
+
+    try {
+      await window.WeatherWidget.refresh(true);
+
+      const widget = document.getElementById('weather-widget');
+      const errorText = widget.querySelector('.weather-error-text');
+      expect(errorText).not.toBeNull();
+      expect(errorText.textContent).toBe('<img src=x onerror=alert(1)>');
+      expect(widget.querySelector('.weather-error-text img')).toBeNull();
+    } finally {
+      window.i18n.t = originalT;
+    }
+  });
 });
