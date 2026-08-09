@@ -154,4 +154,24 @@ describe('Weather app', () => {
 
     expect(body.querySelector('.weather-app-current-temp').textContent).toContain('30');
   });
+
+  it('escapes HTML in error messages', () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherCache', JSON.stringify({ data: {} }));
+
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => (key === 'weatherError' ? '<img src=x onerror=alert(1)>' : originalT(key));
+
+    try {
+      window.WeatherApp.open();
+
+      const body = document.getElementById('weather-app-body');
+      const errorText = body.querySelector('.weather-app-error-text');
+      expect(errorText).not.toBeNull();
+      expect(errorText.textContent).toBe('<img src=x onerror=alert(1)>');
+      expect(body.querySelector('.weather-app-error-text img')).toBeNull();
+    } finally {
+      window.i18n.t = originalT;
+    }
+  });
 });

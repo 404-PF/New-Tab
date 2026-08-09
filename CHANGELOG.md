@@ -6,6 +6,10 @@
 
 - Enhance the Snake game's visuals with a gradient background, interpolated smooth movement, rounded gradient snake segments with eyes, an animated pulsing food, eat particle bursts, and screen shake (#579)
 
+### Bug Fixes
+
+- Escape error messages before inserting them into the weather widget and weather app modal (security hardening)
+
 ## v0.4.9 (2026-08-02)
 
 ### Features
