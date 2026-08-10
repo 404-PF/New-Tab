@@ -6,7 +6,13 @@
 
   // Shared weather lookup/conversion helpers. Defined once in
   // src/features/weather-utils.js and consumed by both the widget and the
-  // app modal so the two surfaces cannot drift apart.
+  // app modal so the two surfaces cannot drift apart. weather-utils.js is
+  // loaded first via bootstrap.js; bail out defensively if it is missing or
+  // late so the widget degrades instead of throwing an uncaught TypeError.
+  if (!window.WeatherUtils) {
+    console.warn('[weather] window.WeatherUtils unavailable; weather widget disabled');
+    return;
+  }
   const {
     getWeatherInfo,
     getWeatherLabel,
