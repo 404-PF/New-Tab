@@ -3,18 +3,18 @@ const CHECK_INTERVAL_MINUTES = 1;
 const ALARM_NAME = 'todoReminderCheck';
 let reminderCheckInProgress = false;
 const reminderCheckPendingQueue = [];
-// Track invalid dueDates we've already warned about (keyed by todo id + raw
-// dueDate) so a persistent malformed todo doesn't re-print the same warning on
+// Track invalid dueDates we've already warned about (keyed by item id + raw
+// dueDate) so a persistent malformed item doesn't re-print the same warning on
 // every alarm check. A changed dueDate gets a fresh key, so it warns anew.
 const warnedInvalidDueDates = new Set();
 
-// dueDate is written by src/features/todo.js as a local YYYY-MM-DD string, but
+// dueDate is written as a local YYYY-MM-DD string, but
 // legacy or hand-edited todos may hold other shapes. Accept only that format and
 // parse it as a local-time Date at end-of-day so the reminder window fires on the
 // due date itself. Returns null for any malformed value (including calendar
 // rollovers like 2026-13-45) so callers can warn instead of silently skipping.
 // SYNC: keep this validation (pattern + calendar round-trip) in sync with the
-// dueDate check in validateTodoData (src/features/todo.js).
+// dueDate check in validateTodoData.
 const DUE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 function parseDueDate(dueDate) {
   if (typeof dueDate !== 'string' || !DUE_DATE_PATTERN.test(dueDate)) return null;
