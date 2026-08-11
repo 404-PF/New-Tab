@@ -211,7 +211,6 @@
           timestamp: Date.now()
         };
         localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
-        this.pruneIconCache();
         return true;
       } catch (error) {
         if (error.name === 'QuotaExceededError') {
@@ -247,8 +246,9 @@
 
     // Remove stale, corrupt, or overflowing icon cache entries. Entries are
     // otherwise only evicted when the same URL is re-read, so abandoned icons
-    // would accumulate forever. Runs on every write, on quota-exceeded failure,
-    // and once per page load via cacheExistingAppIcons.
+    // would accumulate forever. Runs on quota-exceeded failure and once per
+    // page load via cacheExistingAppIcons; sweeping on every write would turn
+    // the startup cache of many icons into an O(N²) scan.
     pruneIconCache() {
       const now = Date.now();
       const freshEntries = [];
@@ -261,7 +261,12 @@
         try {
           const raw = localStorage.getItem(key);
           const parsed = raw ? JSON.parse(raw) : null;
-          if (parsed && typeof parsed.timestamp === 'number') {
+          if (
+            parsed &&
+            typeof parsed.url === 'string' &&
+            typeof parsed.dataUrl === 'string' &&
+            Number.isFinite(parsed.timestamp)
+          ) {
             entry = parsed;
           }
         } catch {
