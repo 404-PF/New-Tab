@@ -5,6 +5,7 @@
   // Keys included in export. Excludes transient/derived keys:
   //   iconCache_* (dynamic, derived from apps)
   //   todoReminderNotified (service-worker only, transient)
+  //   warnedInvalidDueDates (service-worker only, transient)
   //   searchHistory (transient)
   //   weatherCache (API cache, expires)
   //   lastUpdateCheck (transient)

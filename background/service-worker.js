@@ -4,6 +4,38 @@ const ALARM_NAME = 'todoReminderCheck';
 let reminderCheckInProgress = false;
 const reminderCheckPendingQueue = [];
 
+// dueDate is written as a local YYYY-MM-DD string, but
+// legacy or hand-edited todos may hold other shapes. Accept only that format and
+// parse it as a local-time Date at end-of-day so the reminder window fires on the
+// due date itself. Returns null for any malformed value (including calendar
+// rollovers like 2026-13-45) so callers can warn instead of silently skipping.
+// SYNC: keep this validation (pattern + calendar round-trip) in sync with the
+// dueDate check in validateTodoData.
+const DUE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+function parseDueDate(dueDate) {
+  if (typeof dueDate !== 'string' || !DUE_DATE_PATTERN.test(dueDate)) return null;
+  const [year, month, day] = dueDate.split('-').map(Number);
+  // new Date(y, m-1, d) silently rolls invalid calendar dates forward (e.g.
+  // 2026-02-30 -> March 2) and maps years 0-99 to 1900+year; reject those by
+  // round-tripping the components.
+  const date = new Date(year, month - 1, day, 23, 59, 59);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
+// Dedup key for an item whose dueDate is present but malformed, or null when the
+// item should be silently skipped (completed, or no dueDate) or its dueDate
+// parses cleanly. Shared by the reminder loop's warning dedup and the stale
+// state pruning below so the "is this malformed" rule (and the key shape) only
+// lives in one place. Note that an empty-string dueDate counts as malformed,
+// while null/undefined means "no date" and is skipped silently.
+function invalidDueDateKey(todo) {
+  if (todo.completed) return null;
+  if (todo.dueDate === null || todo.dueDate === undefined) return null;
+  if (parseDueDate(todo.dueDate)) return null;
+  return todo.id + '_' + todo.dueDate;
+}
+
 async function getFromStorage(keys) {
   return new Promise((resolve) => {
     chrome.storage.local.get(keys, resolve);
@@ -38,7 +70,7 @@ async function checkReminders(todosJson) {
 }
 
 async function runReminderCheck(todosJson) {
-  const keys = ['todoReminderEnabled', 'todoReminderLeadTime', 'todoReminderNotified'];
+  const keys = ['todoReminderEnabled', 'todoReminderLeadTime', 'todoReminderNotified', 'warnedInvalidDueDates'];
   if (!todosJson) keys.push('todos');
   const data = await getFromStorage(keys);
   if (String(data.todoReminderEnabled) !== 'true') return;
@@ -51,6 +83,13 @@ async function runReminderCheck(todosJson) {
   const parsedLeadTime = parseInt(data.todoReminderLeadTime, 10);
   const leadTime = isNaN(parsedLeadTime) ? 30 : parsedLeadTime;
   const notified = data.todoReminderNotified || {};
+  // Track invalid dueDates we've already warned about (keyed by item id + raw
+  // dueDate) so a persistent malformed item doesn't re-print the same warning on
+  // every alarm check. A changed dueDate gets a fresh key, so it warns anew.
+  // This lives in storage rather than module state because MV3 service workers
+  // are suspended after short idle periods: an in-memory Set would be emptied on
+  // every wake, re-printing the warning on each 1-minute alarm check.
+  const warnedInvalidDueDates = data.warnedInvalidDueDates || {};
 
   if (!Array.isArray(todos)) return;
 
@@ -72,8 +111,24 @@ async function runReminderCheck(todosJson) {
     }
   }
 
+  // Prune warned-invalid entries whose item is no longer malformed (fixed,
+  // completed, deleted, or date changed) so a future malformed value warns again
+  // instead of being swallowed by stale state.
+  const currentInvalidKeys = new Set(
+    todos.map(invalidDueDateKey).filter((key) => key !== null)
+  );
+  let warnedUpdated = false;
+  for (const key of Object.keys(warnedInvalidDueDates)) {
+    if (!currentInvalidKeys.has(key)) {
+      delete warnedInvalidDueDates[key];
+      warnedUpdated = true;
+    }
+  }
+
   if (todos.length === 0) {
-    if (updated) await setToStorage({ todoReminderNotified: notified });
+    if (updated || warnedUpdated) {
+      await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
+    }
     return;
   }
 
@@ -81,21 +136,29 @@ async function runReminderCheck(todosJson) {
 
   for (const todo of todos) {
     if (todo.completed) continue;
-    if (!todo.dueDate) continue;
-    const dueDate = new Date(todo.dueDate + 'T23:59:59');
-    if (isNaN(dueDate.getTime())) continue;
-    const reminderTime = new Date(dueDate.getTime() - leadTime * 60 * 1000);
-    if (now >= reminderTime && now <= dueDate) {
+    if (todo.dueDate === null || todo.dueDate === undefined) continue;
+    const warnedKey = invalidDueDateKey(todo);
+    if (warnedKey) {
+      if (!warnedInvalidDueDates[warnedKey]) {
+        warnedInvalidDueDates[warnedKey] = true;
+        warnedUpdated = true;
+        console.warn('Skipping todo reminder: invalid dueDate', todo.id, todo.dueDate);
+      }
+      continue;
+    }
+    const due = parseDueDate(todo.dueDate);
+    const reminderTime = new Date(due.getTime() - leadTime * 60 * 1000);
+    if (now >= reminderTime && now <= due) {
       const notifiedKey = todo.id + '_' + todo.dueDate;
       if (notified[notifiedKey]) continue;
-      const dueDisplay = dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const dueDisplay = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       await showTodoNotification(todo, dueDisplay);
       notified[notifiedKey] = Date.now();
       updated = true;
     }
   }
-  if (updated) {
-    await setToStorage({ todoReminderNotified: notified });
+  if (updated || warnedUpdated) {
+    await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
   }
 }
 
