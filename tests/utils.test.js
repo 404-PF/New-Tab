@@ -372,6 +372,52 @@ describe('iconCache pruning', () => {
 
     expect(localStorage.getItem(cacheKeyFor('https://stale.example'))).toBeNull();
   });
+
+  it('serves a fresh valid entry and evicts a stale one on read', () => {
+    seedEntry('https://fresh.example', Date.now());
+    seedEntry('https://stale.example', Date.now() - oneWeek - 1);
+
+    expect(iconCache.loadIconFromCache('https://fresh.example')).toBe('data:image/png;base64,icon');
+    // The stale entry is evicted on the read path, not merely skipped
+    expect(iconCache.loadIconFromCache('https://stale.example')).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://stale.example'))).toBeNull();
+  });
+
+  it('does not serve a JSON-parseable entry with a non-string dataUrl', () => {
+    localStorage.setItem(
+      cacheKeyFor('https://numeric-dataurl.example'),
+      JSON.stringify({ url: 'https://numeric-dataurl.example', dataUrl: 42, timestamp: Date.now() })
+    );
+    localStorage.setItem(
+      cacheKeyFor('https://object-dataurl.example'),
+      JSON.stringify({ url: 'https://object-dataurl.example', dataUrl: { nope: true }, timestamp: Date.now() })
+    );
+
+    expect(iconCache.loadIconFromCache('https://numeric-dataurl.example')).toBeNull();
+    expect(iconCache.loadIconFromCache('https://object-dataurl.example')).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://numeric-dataurl.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://object-dataurl.example'))).toBeNull();
+  });
+
+  it('does not let a non-finite timestamp bypass the TTL on read', () => {
+    localStorage.setItem(
+      cacheKeyFor('https://nan-timestamp.example'),
+      JSON.stringify({ url: 'https://nan-timestamp.example', dataUrl: 'data:image/png;base64,icon', timestamp: 'not-a-number' })
+    );
+
+    expect(iconCache.loadIconFromCache('https://nan-timestamp.example')).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://nan-timestamp.example'))).toBeNull();
+  });
+
+  it('rejects an entry whose stored url does not match the requested one', () => {
+    localStorage.setItem(
+      cacheKeyFor('https://requested.example'),
+      JSON.stringify({ url: 'https://different.example', dataUrl: 'data:image/png;base64,icon', timestamp: Date.now() })
+    );
+
+    expect(iconCache.loadIconFromCache('https://requested.example')).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://requested.example'))).toBeNull();
+  });
 });
 
 describe('VisibilityInterval', () => {

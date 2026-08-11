@@ -177,6 +177,19 @@
     return `${ICON_CACHE_PREFIX}${btoa(encodeURIComponent(iconUrl))}`;
   }
 
+  // A cache entry is usable only when it carries a string url/dataUrl and a
+  // finite timestamp. Shared by the read path and the sweep so both agree on
+  // what constitutes a valid entry: a JSON-parseable but malformed entry must
+  // never be served, and a NaN timestamp must not bypass the TTL.
+  function isIconCacheEntry(entry) {
+    return !!(
+      entry &&
+      typeof entry.url === 'string' &&
+      typeof entry.dataUrl === 'string' &&
+      Number.isFinite(entry.timestamp)
+    );
+  }
+
   // Icon caching utilities
   const iconCache = {
     // Fetch an icon and convert to data URL
@@ -232,6 +245,14 @@
         if (!cached) return null;
 
         const entry = JSON.parse(cached);
+        // Mirror the sweep's structural checks so a JSON-parseable but malformed
+        // entry is never served (and a NaN timestamp cannot bypass the TTL).
+        // Drop it now rather than waiting for the next prune, which only runs
+        // once per page load or on quota-exceeded.
+        if (!isIconCacheEntry(entry) || entry.url !== iconUrl) {
+          localStorage.removeItem(cacheKey);
+          return null;
+        }
         // Check if cache is stale (older than 7 days)
         if (Date.now() - entry.timestamp > ICON_CACHE_TTL_MS) {
           localStorage.removeItem(cacheKey);
@@ -261,12 +282,7 @@
         try {
           const raw = localStorage.getItem(key);
           const parsed = raw ? JSON.parse(raw) : null;
-          if (
-            parsed &&
-            typeof parsed.url === 'string' &&
-            typeof parsed.dataUrl === 'string' &&
-            Number.isFinite(parsed.timestamp)
-          ) {
+          if (isIconCacheEntry(parsed)) {
             entry = parsed;
           }
         } catch {
