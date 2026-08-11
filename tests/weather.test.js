@@ -30,6 +30,8 @@ beforeAll(() => {
 
   // Inject utils.js first to provide escapeHtml
   injectScript('src/core/utils.js');
+  // weather.js depends on the shared WeatherUtils module
+  injectScript('src/features/weather-utils.js');
   injectScript('src/features/weather.js');
 });
 

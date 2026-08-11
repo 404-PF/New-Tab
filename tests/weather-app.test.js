@@ -3,6 +3,8 @@ import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
+  // weather-app.js depends on the shared WeatherUtils module
+  injectScript('src/features/weather-utils.js');
   injectScript('src/features/weather-app.js');
 });
 

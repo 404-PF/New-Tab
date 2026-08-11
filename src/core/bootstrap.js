@@ -59,6 +59,9 @@
     'src/ai/ai-store.js',
     'src/ai/ai-renderer.js',
     'src/ai/ai-service.js',
+    // weather-utils.js must execute before weather.js and weather-app.js,
+    // which consume window.WeatherUtils.
+    'src/features/weather-utils.js',
     'src/features/weather.js',
     'src/features/weather-app.js',
     'src/features/background-rotation.js',
