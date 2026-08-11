@@ -501,6 +501,26 @@ describe('Todo validateTodoData', () => {
     expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '2026-08-11' }] })).toBe(true);
   });
 
+  it('rejects calendar rollover dueDate (Feb 30)', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '2026-02-30' }] })).toBe(false);
+  });
+
+  it('rejects invalid month dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '2026-13-01' }] })).toBe(false);
+  });
+
+  it('rejects invalid day dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '2026-08-32' }] })).toBe(false);
+  });
+
+  it('rejects non-leap-year Feb 29 dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '2027-02-29' }] })).toBe(false);
+  });
+
+  it('accepts leap-year Feb 29 dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '2028-02-29' }] })).toBe(true);
+  });
+
   it('accepts undefined dueDate', () => {
     expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false }] })).toBe(true);
   });

@@ -42,6 +42,56 @@ describe('service worker todo reminders', () => {
     }
   });
 
+  it('warns only once for a persistent malformed dueDate across checks', async () => {
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: {},
+      todos: JSON.stringify([
+        { id: 'persist', text: 'Broken', completed: false, dueDate: '2026-02-30' }
+      ])
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      await checkReminders();
+      await checkReminders();
+
+      const warned = warnSpy.mock.calls.filter((call) => String(call[0]).includes('invalid dueDate'));
+      expect(warned).toHaveLength(1);
+      expect(warned.map((call) => call[1])).toEqual(['persist']);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('warns again when a malformed dueDate value changes', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      await chrome.storage.local.set({
+        todoReminderEnabled: 'true',
+        todoReminderLeadTime: '30',
+        todoReminderNotified: {},
+        todos: JSON.stringify([
+          { id: 'flip', text: 'Broken', completed: false, dueDate: '2026-02-30' }
+        ])
+      });
+      await checkReminders();
+      await chrome.storage.local.set({
+        todos: JSON.stringify([
+          { id: 'flip', text: 'Broken', completed: false, dueDate: '2026-13-01' }
+        ])
+      });
+      await checkReminders();
+
+      const warned = warnSpy.mock.calls.filter((call) => String(call[0]).includes('invalid dueDate'));
+      expect(warned).toHaveLength(2);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('silently skips todos without a due date', async () => {
     await chrome.storage.local.set({
       todoReminderEnabled: 'true',

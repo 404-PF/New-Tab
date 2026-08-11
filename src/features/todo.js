@@ -1923,9 +1923,15 @@ function validateTodoData(data) {
     if (typeof item.text !== 'string' || !item.text.trim()) return false;
     if (typeof item.completed !== 'boolean') return false;
     if (item.dueDate !== undefined && item.dueDate !== null && typeof item.dueDate !== 'string') return false;
-    // dueDate must be a well-formed YYYY-MM-DD string so only valid dates reach
-    // the reminder service worker (keep in sync with DUE_DATE_PATTERN there).
-    if (item.dueDate && typeof item.dueDate === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(item.dueDate)) return false;
+    // dueDate must be a well-formed YYYY-MM-DD string and a real calendar date
+    // so only dates the reminder service worker accepts reach it (keep in sync
+    // with DUE_DATE_PATTERN and parseDueDate there).
+    if (item.dueDate && typeof item.dueDate === 'string') {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(item.dueDate)) return false;
+      const [year, month, day] = item.dueDate.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+    }
     if (item.createdAt !== undefined && item.createdAt !== null && typeof item.createdAt !== 'string') return false;
     if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
