@@ -265,6 +265,64 @@ describe('iconCache', () => {
   });
 });
 
+describe('iconCache pruning', () => {
+  const oneWeek = 7 * 24 * 60 * 60 * 1000;
+  const cacheKeyFor = (url) => `iconCache_${btoa(encodeURIComponent(url))}`;
+
+  const seedEntry = (url, timestamp) => {
+    localStorage.setItem(
+      cacheKeyFor(url),
+      JSON.stringify({ url, dataUrl: 'data:image/png;base64,icon', timestamp })
+    );
+  };
+
+  it('removes stale and corrupt entries but keeps fresh and non-cache keys', () => {
+    seedEntry('https://fresh.example', Date.now());
+    seedEntry('https://stale.example', Date.now() - oneWeek - 1);
+    localStorage.setItem(cacheKeyFor('https://corrupt.example'), '{not valid json');
+    localStorage.setItem('theme', 'dark');
+
+    iconCache.pruneIconCache();
+
+    expect(localStorage.getItem(cacheKeyFor('https://fresh.example'))).not.toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://stale.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://corrupt.example'))).toBeNull();
+    expect(localStorage.getItem('theme')).toBe('dark');
+  });
+
+  it('keeps only the newest entries when the count cap is exceeded', () => {
+    for (let i = 0; i < 105; i += 1) {
+      // app-0 is oldest, app-104 is newest; all well within the TTL
+      seedEntry(`https://app-${i}.example`, Date.now() - (104 - i) * 1000);
+    }
+
+    iconCache.pruneIconCache();
+
+    // The 5 oldest entries (app-0..app-4) are evicted, the 100 newest remain
+    expect(localStorage.getItem(cacheKeyFor('https://app-0.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://app-4.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://app-5.example'))).not.toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://app-104.example'))).not.toBeNull();
+  });
+
+  it('prunes stale entries after saving a new icon', () => {
+    seedEntry('https://stale.example', Date.now() - oneWeek - 1);
+
+    expect(iconCache.saveIconToCache('https://new.example', 'data:image/png;base64,new')).toBe(true);
+
+    expect(localStorage.getItem(cacheKeyFor('https://stale.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://new.example'))).not.toBeNull();
+  });
+
+  it('prunes once per page load through cacheExistingAppIcons', async () => {
+    seedEntry('https://stale.example', Date.now() - oneWeek - 1);
+
+    await iconCache.cacheExistingAppIcons();
+
+    expect(localStorage.getItem(cacheKeyFor('https://stale.example'))).toBeNull();
+  });
+});
+
 describe('VisibilityInterval', () => {
   it('is globally available', () => {
     expect(typeof VisibilityInterval).toBe('function');

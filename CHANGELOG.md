@@ -9,6 +9,7 @@
 ### Bug Fixes
 
 - Escape error messages before inserting them into the weather widget and weather app modal (security hardening)
+- Prune stale, corrupt, or oversized `iconCache_*` entries so abandoned data-URL icons no longer accumulate in localStorage and exhaust storage quota (#585)
 
 ## v0.4.9 (2026-08-02)
 
