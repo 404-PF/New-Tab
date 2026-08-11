@@ -65,6 +65,39 @@ describe('service worker todo reminders', () => {
     }
   });
 
+  it('does not re-warn after a service-worker restart (warned state is persisted)', async () => {
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: {},
+      todos: JSON.stringify([
+        { id: 'reboot', text: 'Broken', completed: false, dueDate: '2026-02-30' }
+      ])
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      await checkReminders();
+      const warnedOnce = warnSpy.mock.calls.filter((call) => String(call[0]).includes('invalid dueDate'));
+      expect(warnedOnce).toHaveLength(1);
+      expect(await chrome.storage.local.get('warnedInvalidDueDates')).toEqual({
+        warnedInvalidDueDates: { 'reboot_2026-02-30': true }
+      });
+
+      // Simulate an MV3 worker suspension: re-evaluating the module resets all
+      // in-memory state, but chrome.storage.local persists across the restart.
+      injectScript('background/service-worker.js');
+
+      warnSpy.mockClear();
+      await checkReminders();
+
+      const warnedAfterRestart = warnSpy.mock.calls.filter((call) => String(call[0]).includes('invalid dueDate'));
+      expect(warnedAfterRestart).toHaveLength(0);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('warns again when a malformed dueDate value changes', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
