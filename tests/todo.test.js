@@ -485,6 +485,10 @@ describe('Todo validateTodoData', () => {
     expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: null, createdAt: '2025-01-01T00:00:00Z', completedAt: null, order: 0 }] })).toBe(true);
   });
 
+  it('rejects empty-string dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '' }] })).toBe(false);
+  });
+
   it('rejects malformed dueDate format', () => {
     expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '12/31/2026' }] })).toBe(false);
   });

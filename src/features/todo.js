@@ -1925,8 +1925,9 @@ function validateTodoData(data) {
     if (item.dueDate !== undefined && item.dueDate !== null && typeof item.dueDate !== 'string') return false;
     // dueDate must be a well-formed YYYY-MM-DD string and a real calendar date
     // so only dates the reminder service worker accepts reach it (keep in sync
-    // with DUE_DATE_PATTERN and parseDueDate there).
-    if (item.dueDate && typeof item.dueDate === 'string') {
+    // with DUE_DATE_PATTERN and parseDueDate there). An empty string is present
+    // but malformed, so reject it too; an absent date is null/undefined.
+    if (item.dueDate !== null && item.dueDate !== undefined) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(item.dueDate)) return false;
       const [year, month, day] = item.dueDate.split('-').map(Number);
       const date = new Date(year, month - 1, day);

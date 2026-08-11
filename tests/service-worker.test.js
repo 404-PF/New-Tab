@@ -6,6 +6,9 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+  // The invalid-dueDate warning dedup lives in chrome.storage.local (see
+  // warnedInvalidDueDates in service-worker.js), so clearing storage also
+  // isolates the warning-state assertions between tests.
   await chrome.storage.local.clear();
   chrome.notifications._notifications = {};
 });
@@ -86,7 +89,13 @@ describe('service worker todo reminders', () => {
 
       // Simulate an MV3 worker suspension: re-evaluating the module resets all
       // in-memory state, but chrome.storage.local persists across the restart.
+      // Drop the listeners the previous evaluation registered so the shared
+      // chrome mocks don't accumulate a second copy of each handler.
+      chrome.notifications.onClicked._clearListeners();
+      chrome.runtime.onMessage._clearListeners();
       injectScript('background/service-worker.js');
+      expect(chrome.notifications.onClicked._listeners).toHaveLength(1);
+      expect(chrome.runtime.onMessage._listeners).toHaveLength(1);
 
       warnSpy.mockClear();
       await checkReminders();
@@ -132,8 +141,7 @@ describe('service worker todo reminders', () => {
       todoReminderNotified: {},
       todos: JSON.stringify([
         { id: 'null-date', text: 'Null', completed: false, dueDate: null },
-        { id: 'no-date', text: 'Undefined', completed: false },
-        { id: 'empty-date', text: 'Empty', completed: false, dueDate: '' }
+        { id: 'no-date', text: 'Undefined', completed: false }
       ])
     });
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -143,6 +151,32 @@ describe('service worker todo reminders', () => {
 
       expect(warnSpy).not.toHaveBeenCalled();
       expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('warns for an empty-string dueDate and does not notify', async () => {
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: {},
+      todos: JSON.stringify([
+        { id: 'empty-date', text: 'Empty', completed: false, dueDate: '' }
+      ])
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      await checkReminders();
+
+      const warned = warnSpy.mock.calls.filter((call) => String(call[0]).includes('invalid dueDate'));
+      expect(warned).toHaveLength(1);
+      expect(warned.map((call) => call[1])).toEqual(['empty-date']);
+      expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+      expect(await chrome.storage.local.get('warnedInvalidDueDates')).toEqual({
+        warnedInvalidDueDates: { 'empty-date_': true }
+      });
     } finally {
       warnSpy.mockRestore();
     }

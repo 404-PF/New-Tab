@@ -34,6 +34,12 @@ const createEvent = () => {
       return listeners.has(listener);
     },
 
+    // Test helper: drop all registered listeners so a re-injected module
+    // doesn't leave duplicate handlers on the shared mock.
+    _clearListeners() {
+      listeners.clear();
+    },
+
     _emit(...args) {
       listeners.forEach((listener) => {
         listener(...args);
@@ -198,6 +204,9 @@ globalThis.chrome = {
       addListener(fn) { chrome.notifications.onClicked._listeners.push(fn); },
       removeListener(fn) {
         chrome.notifications.onClicked._listeners = chrome.notifications.onClicked._listeners.filter(l => l !== fn);
+      },
+      _clearListeners() {
+        chrome.notifications.onClicked._listeners = [];
       }
     }
   },
@@ -217,6 +226,9 @@ globalThis.chrome = {
       addListener(fn) { chrome.runtime.onMessage._listeners.push(fn); },
       removeListener(fn) {
         chrome.runtime.onMessage._listeners = chrome.runtime.onMessage._listeners.filter(l => l !== fn);
+      },
+      _clearListeners() {
+        chrome.runtime.onMessage._listeners = [];
       }
     },
     sendMessage(msg, callback) {

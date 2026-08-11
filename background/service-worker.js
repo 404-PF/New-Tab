@@ -23,6 +23,19 @@ function parseDueDate(dueDate) {
   return date;
 }
 
+// Dedup key for a todo whose dueDate is present but malformed, or null when the
+// todo should be silently skipped (completed, or no dueDate) or its dueDate
+// parses cleanly. Shared by the reminder loop's warning dedup and the stale
+// state pruning below so the "is this malformed" rule (and the key shape) only
+// lives in one place. Note that an empty-string dueDate counts as malformed,
+// while null/undefined means "no date" and is skipped silently.
+function invalidDueDateKey(todo) {
+  if (todo.completed) return null;
+  if (todo.dueDate === null || todo.dueDate === undefined) return null;
+  if (parseDueDate(todo.dueDate)) return null;
+  return todo.id + '_' + todo.dueDate;
+}
+
 async function getFromStorage(keys) {
   return new Promise((resolve) => {
     chrome.storage.local.get(keys, resolve);
@@ -102,9 +115,7 @@ async function runReminderCheck(todosJson) {
   // completed, deleted, or date changed) so a future malformed value warns again
   // instead of being swallowed by stale state.
   const currentInvalidKeys = new Set(
-    todos
-      .filter(t => !t.completed && t.dueDate && !parseDueDate(t.dueDate))
-      .map(t => t.id + '_' + t.dueDate)
+    todos.map(invalidDueDateKey).filter((key) => key !== null)
   );
   let warnedUpdated = false;
   for (const key of Object.keys(warnedInvalidDueDates)) {
@@ -125,10 +136,9 @@ async function runReminderCheck(todosJson) {
 
   for (const todo of todos) {
     if (todo.completed) continue;
-    if (!todo.dueDate) continue;
-    const due = parseDueDate(todo.dueDate);
-    if (!due) {
-      const warnedKey = todo.id + '_' + todo.dueDate;
+    if (todo.dueDate === null || todo.dueDate === undefined) continue;
+    const warnedKey = invalidDueDateKey(todo);
+    if (warnedKey) {
       if (!warnedInvalidDueDates[warnedKey]) {
         warnedInvalidDueDates[warnedKey] = true;
         warnedUpdated = true;
@@ -136,6 +146,7 @@ async function runReminderCheck(todosJson) {
       }
       continue;
     }
+    const due = parseDueDate(todo.dueDate);
     const reminderTime = new Date(due.getTime() - leadTime * 60 * 1000);
     if (now >= reminderTime && now <= due) {
       const notifiedKey = todo.id + '_' + todo.dueDate;
