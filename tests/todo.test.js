@@ -485,6 +485,22 @@ describe('Todo validateTodoData', () => {
     expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: null, createdAt: '2025-01-01T00:00:00Z', completedAt: null, order: 0 }] })).toBe(true);
   });
 
+  it('rejects malformed dueDate format', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '12/31/2026' }] })).toBe(false);
+  });
+
+  it('rejects ISO datetime dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '2026-08-11T12:00:00' }] })).toBe(false);
+  });
+
+  it('rejects partial dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '2026-08' }] })).toBe(false);
+  });
+
+  it('accepts well-formed YYYY-MM-DD dueDate', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, dueDate: '2026-08-11' }] })).toBe(true);
+  });
+
   it('accepts undefined dueDate', () => {
     expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false }] })).toBe(true);
   });

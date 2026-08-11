@@ -1923,6 +1923,9 @@ function validateTodoData(data) {
     if (typeof item.text !== 'string' || !item.text.trim()) return false;
     if (typeof item.completed !== 'boolean') return false;
     if (item.dueDate !== undefined && item.dueDate !== null && typeof item.dueDate !== 'string') return false;
+    // dueDate must be a well-formed YYYY-MM-DD string so only valid dates reach
+    // the reminder service worker (keep in sync with DUE_DATE_PATTERN there).
+    if (item.dueDate && typeof item.dueDate === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(item.dueDate)) return false;
     if (item.createdAt !== undefined && item.createdAt !== null && typeof item.createdAt !== 'string') return false;
     if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;

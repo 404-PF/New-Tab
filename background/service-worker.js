@@ -4,6 +4,25 @@ const ALARM_NAME = 'todoReminderCheck';
 let reminderCheckInProgress = false;
 const reminderCheckPendingQueue = [];
 
+// dueDate is written by src/features/todo.js as a local YYYY-MM-DD string, but
+// legacy or hand-edited todos may hold other shapes. Accept only that format and
+// parse it as a local-time Date at end-of-day so the reminder window fires on the
+// due date itself. Returns null for any malformed value (including calendar
+// rollovers like 2026-13-45) so callers can warn instead of silently skipping.
+// SYNC: keep the pattern in sync with the dueDate check in validateTodoData
+// (src/features/todo.js).
+const DUE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+function parseDueDate(dueDate) {
+  if (typeof dueDate !== 'string' || !DUE_DATE_PATTERN.test(dueDate)) return null;
+  const [year, month, day] = dueDate.split('-').map(Number);
+  // new Date(y, m-1, d) silently rolls invalid calendar dates forward (e.g.
+  // 2026-02-30 -> March 2) and maps years 0-99 to 1900+year; reject those by
+  // round-tripping the components.
+  const date = new Date(year, month - 1, day, 23, 59, 59);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
 async function getFromStorage(keys) {
   return new Promise((resolve) => {
     chrome.storage.local.get(keys, resolve);
@@ -82,13 +101,16 @@ async function runReminderCheck(todosJson) {
   for (const todo of todos) {
     if (todo.completed) continue;
     if (!todo.dueDate) continue;
-    const dueDate = new Date(todo.dueDate + 'T23:59:59');
-    if (isNaN(dueDate.getTime())) continue;
-    const reminderTime = new Date(dueDate.getTime() - leadTime * 60 * 1000);
-    if (now >= reminderTime && now <= dueDate) {
+    const due = parseDueDate(todo.dueDate);
+    if (!due) {
+      console.warn('Skipping todo reminder: invalid dueDate', todo.id, todo.dueDate);
+      continue;
+    }
+    const reminderTime = new Date(due.getTime() - leadTime * 60 * 1000);
+    if (now >= reminderTime && now <= due) {
       const notifiedKey = todo.id + '_' + todo.dueDate;
       if (notified[notifiedKey]) continue;
-      const dueDisplay = dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const dueDisplay = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       await showTodoNotification(todo, dueDisplay);
       notified[notifiedKey] = Date.now();
       updated = true;
