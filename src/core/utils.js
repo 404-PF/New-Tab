@@ -276,7 +276,7 @@
 
       for (let index = localStorage.length - 1; index >= 0; index -= 1) {
         const key = localStorage.key(index);
-        if (!key || !key.startsWith(ICON_CACHE_PREFIX)) continue;
+        if (!key?.startsWith(ICON_CACHE_PREFIX)) continue;
 
         let entry = null;
         try {
