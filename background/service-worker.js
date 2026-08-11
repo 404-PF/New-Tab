@@ -23,8 +23,8 @@ function parseDueDate(dueDate) {
   return date;
 }
 
-// Dedup key for a todo whose dueDate is present but malformed, or null when the
-// todo should be silently skipped (completed, or no dueDate) or its dueDate
+// Dedup key for an item whose dueDate is present but malformed, or null when the
+// item should be silently skipped (completed, or no dueDate) or its dueDate
 // parses cleanly. Shared by the reminder loop's warning dedup and the stale
 // state pruning below so the "is this malformed" rule (and the key shape) only
 // lives in one place. Note that an empty-string dueDate counts as malformed,
@@ -111,7 +111,7 @@ async function runReminderCheck(todosJson) {
     }
   }
 
-  // Prune warned-invalid entries whose todo is no longer malformed (fixed,
+  // Prune warned-invalid entries whose item is no longer malformed (fixed,
   // completed, deleted, or date changed) so a future malformed value warns again
   // instead of being swallowed by stale state.
   const currentInvalidKeys = new Set(
