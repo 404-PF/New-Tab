@@ -265,6 +265,161 @@ describe('iconCache', () => {
   });
 });
 
+describe('iconCache pruning', () => {
+  const oneWeek = 7 * 24 * 60 * 60 * 1000;
+  const cachePrefix = 'iconCache_';
+  const cacheKeyFor = (url) => `${cachePrefix}${btoa(encodeURIComponent(url))}`;
+
+  const seedEntry = (url, timestamp) => {
+    localStorage.setItem(
+      cacheKeyFor(url),
+      JSON.stringify({ url, dataUrl: 'data:image/png;base64,icon', timestamp })
+    );
+  };
+
+  const countIconCacheKeys = () => {
+    let count = 0;
+    for (let index = 0; index < localStorage.length; index += 1) {
+      if (localStorage.key(index).startsWith(cachePrefix)) count += 1;
+    }
+    return count;
+  };
+
+  it('removes stale and corrupt entries but keeps fresh and non-cache keys', () => {
+    seedEntry('https://fresh.example', Date.now());
+    seedEntry('https://stale.example', Date.now() - oneWeek - 1);
+    localStorage.setItem(cacheKeyFor('https://corrupt.example'), '{not valid json');
+    localStorage.setItem('theme', 'dark');
+
+    iconCache.pruneIconCache();
+
+    expect(localStorage.getItem(cacheKeyFor('https://fresh.example'))).not.toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://stale.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://corrupt.example'))).toBeNull();
+    expect(localStorage.getItem('theme')).toBe('dark');
+  });
+
+  it('drops structurally invalid entries even when the JSON parses', () => {
+    localStorage.setItem(
+      cacheKeyFor('https://missing-url.example'),
+      JSON.stringify({ dataUrl: 'data:image/png;base64,icon', timestamp: Date.now() })
+    );
+    localStorage.setItem(
+      cacheKeyFor('https://missing-dataurl.example'),
+      JSON.stringify({ url: 'https://missing-dataurl.example', timestamp: Date.now() })
+    );
+    localStorage.setItem(
+      cacheKeyFor('https://nonstring-url.example'),
+      JSON.stringify({ url: 42, dataUrl: 'data:image/png;base64,icon', timestamp: Date.now() })
+    );
+    localStorage.setItem(
+      cacheKeyFor('https://infinite-timestamp.example'),
+      '{"url":"https://infinite-timestamp.example","dataUrl":"data:image/png;base64,icon","timestamp":1e999}'
+    );
+
+    iconCache.pruneIconCache();
+
+    expect(localStorage.getItem(cacheKeyFor('https://missing-url.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://missing-dataurl.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://nonstring-url.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://infinite-timestamp.example'))).toBeNull();
+  });
+
+  it('keeps only the newest entries when the count cap is exceeded', () => {
+    for (let i = 0; i < 105; i += 1) {
+      // app-0 is oldest, app-104 is newest; all well within the TTL
+      seedEntry(`https://app-${i}.example`, Date.now() - (104 - i) * 1000);
+    }
+
+    iconCache.pruneIconCache();
+
+    // The 5 oldest entries (app-0..app-4) are evicted, the 100 newest remain
+    expect(localStorage.getItem(cacheKeyFor('https://app-0.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://app-4.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://app-5.example'))).not.toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://app-104.example'))).not.toBeNull();
+    expect(countIconCacheKeys()).toBe(100);
+  });
+
+  it('does not sweep the cache when saving a new icon', () => {
+    seedEntry('https://stale.example', Date.now() - oneWeek - 1);
+
+    expect(iconCache.saveIconToCache('https://new.example', 'data:image/png;base64,new')).toBe(true);
+
+    // The write path stays O(1): stale entries are left for the page-load sweep
+    expect(localStorage.getItem(cacheKeyFor('https://new.example'))).not.toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://stale.example'))).not.toBeNull();
+  });
+
+  it('prunes stale entries when saving hits the storage quota', () => {
+    seedEntry('https://stale.example', Date.now() - oneWeek - 1);
+    const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota exceeded', 'QuotaExceededError');
+    });
+
+    try {
+      expect(iconCache.saveIconToCache('https://new.example', 'data:image/png;base64,new')).toBe(false);
+      expect(localStorage.getItem(cacheKeyFor('https://stale.example'))).toBeNull();
+    } finally {
+      setItem.mockRestore();
+    }
+  });
+
+  it('prunes once per page load through cacheExistingAppIcons', async () => {
+    seedEntry('https://stale.example', Date.now() - oneWeek - 1);
+
+    await iconCache.cacheExistingAppIcons();
+
+    expect(localStorage.getItem(cacheKeyFor('https://stale.example'))).toBeNull();
+  });
+
+  it('serves a fresh valid entry and evicts a stale one on read', () => {
+    seedEntry('https://fresh.example', Date.now());
+    seedEntry('https://stale.example', Date.now() - oneWeek - 1);
+
+    expect(iconCache.loadIconFromCache('https://fresh.example')).toBe('data:image/png;base64,icon');
+    // The stale entry is evicted on the read path, not merely skipped
+    expect(iconCache.loadIconFromCache('https://stale.example')).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://stale.example'))).toBeNull();
+  });
+
+  it('does not serve a JSON-parseable entry with a non-string dataUrl', () => {
+    localStorage.setItem(
+      cacheKeyFor('https://numeric-dataurl.example'),
+      JSON.stringify({ url: 'https://numeric-dataurl.example', dataUrl: 42, timestamp: Date.now() })
+    );
+    localStorage.setItem(
+      cacheKeyFor('https://object-dataurl.example'),
+      JSON.stringify({ url: 'https://object-dataurl.example', dataUrl: { nope: true }, timestamp: Date.now() })
+    );
+
+    expect(iconCache.loadIconFromCache('https://numeric-dataurl.example')).toBeNull();
+    expect(iconCache.loadIconFromCache('https://object-dataurl.example')).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://numeric-dataurl.example'))).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://object-dataurl.example'))).toBeNull();
+  });
+
+  it('does not let a non-finite timestamp bypass the TTL on read', () => {
+    localStorage.setItem(
+      cacheKeyFor('https://nan-timestamp.example'),
+      JSON.stringify({ url: 'https://nan-timestamp.example', dataUrl: 'data:image/png;base64,icon', timestamp: 'not-a-number' })
+    );
+
+    expect(iconCache.loadIconFromCache('https://nan-timestamp.example')).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://nan-timestamp.example'))).toBeNull();
+  });
+
+  it('rejects an entry whose stored url does not match the requested one', () => {
+    localStorage.setItem(
+      cacheKeyFor('https://requested.example'),
+      JSON.stringify({ url: 'https://different.example', dataUrl: 'data:image/png;base64,icon', timestamp: Date.now() })
+    );
+
+    expect(iconCache.loadIconFromCache('https://requested.example')).toBeNull();
+    expect(localStorage.getItem(cacheKeyFor('https://requested.example'))).toBeNull();
+  });
+});
+
 describe('VisibilityInterval', () => {
   it('is globally available', () => {
     expect(typeof VisibilityInterval).toBe('function');

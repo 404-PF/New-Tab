@@ -166,6 +166,30 @@
     return null;
   }
 
+  // Icon cache bounds. Entries older than the TTL or beyond the count cap are
+  // pruned so abandoned icons do not accumulate in localStorage (and, via the
+  // storage bridge, chrome.storage.local) indefinitely.
+  const ICON_CACHE_PREFIX = 'iconCache_';
+  const ICON_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const ICON_CACHE_MAX_ENTRIES = 100;
+
+  function getIconCacheKey(iconUrl) {
+    return `${ICON_CACHE_PREFIX}${btoa(encodeURIComponent(iconUrl))}`;
+  }
+
+  // A cache entry is usable only when it carries a string url/dataUrl and a
+  // finite timestamp. Shared by the read path and the sweep so both agree on
+  // what constitutes a valid entry: a JSON-parseable but malformed entry must
+  // never be served, and a NaN timestamp must not bypass the TTL.
+  function isIconCacheEntry(entry) {
+    return !!(
+      entry &&
+      typeof entry.url === 'string' &&
+      typeof entry.dataUrl === 'string' &&
+      Number.isFinite(entry.timestamp)
+    );
+  }
+
   // Icon caching utilities
   const iconCache = {
     // Fetch an icon and convert to data URL
@@ -193,7 +217,7 @@
     saveIconToCache(iconUrl, dataUrl) {
       if (!dataUrl) return false;
       try {
-        const cacheKey = `iconCache_${btoa(encodeURIComponent(iconUrl))}`;
+        const cacheKey = getIconCacheKey(iconUrl);
         const cacheEntry = {
           url: iconUrl,
           dataUrl: dataUrl,
@@ -204,6 +228,8 @@
       } catch (error) {
         if (error.name === 'QuotaExceededError') {
           console.warn('localStorage quota exceeded, cannot cache icon');
+          // Free space so subsequent caches succeed
+          this.pruneIconCache();
         } else {
           console.warn('Failed to cache icon:', error);
         }
@@ -214,14 +240,21 @@
     // Load icon from cache
     loadIconFromCache(iconUrl) {
       try {
-        const cacheKey = `iconCache_${btoa(encodeURIComponent(iconUrl))}`;
+        const cacheKey = getIconCacheKey(iconUrl);
         const cached = localStorage.getItem(cacheKey);
         if (!cached) return null;
 
         const entry = JSON.parse(cached);
+        // Mirror the sweep's structural checks so a JSON-parseable but malformed
+        // entry is never served (and a NaN timestamp cannot bypass the TTL).
+        // Drop it now rather than waiting for the next prune, which only runs
+        // once per page load or on quota-exceeded.
+        if (!isIconCacheEntry(entry) || entry.url !== iconUrl) {
+          localStorage.removeItem(cacheKey);
+          return null;
+        }
         // Check if cache is stale (older than 7 days)
-        const oneWeek = 7 * 24 * 60 * 60 * 1000;
-        if (Date.now() - entry.timestamp > oneWeek) {
+        if (Date.now() - entry.timestamp > ICON_CACHE_TTL_MS) {
           localStorage.removeItem(cacheKey);
           return null;
         }
@@ -229,6 +262,48 @@
       } catch (error) {
         console.warn('Failed to load cached icon:', error);
         return null;
+      }
+    },
+
+    // Remove stale, corrupt, or overflowing icon cache entries. Entries are
+    // otherwise only evicted when the same URL is re-read, so abandoned icons
+    // would accumulate forever. Runs on quota-exceeded failure and once per
+    // page load via cacheExistingAppIcons; sweeping on every write would turn
+    // the startup cache of many icons into an O(N²) scan.
+    pruneIconCache() {
+      const now = Date.now();
+      const freshEntries = [];
+
+      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+        const key = localStorage.key(index);
+        if (!key?.startsWith(ICON_CACHE_PREFIX)) continue;
+
+        let entry = null;
+        try {
+          const raw = localStorage.getItem(key);
+          const parsed = raw ? JSON.parse(raw) : null;
+          if (isIconCacheEntry(parsed)) {
+            entry = parsed;
+          }
+        } catch {
+          // Corrupt entry — drop it so the sweep can continue
+        }
+
+        if (!entry || now - entry.timestamp > ICON_CACHE_TTL_MS) {
+          localStorage.removeItem(key);
+          continue;
+        }
+
+        freshEntries.push({ key, timestamp: entry.timestamp });
+      }
+
+      // Keep the newest entries when the count cap is exceeded
+      if (freshEntries.length > ICON_CACHE_MAX_ENTRIES) {
+        freshEntries.sort((a, b) => a.timestamp - b.timestamp);
+        const overflow = freshEntries.length - ICON_CACHE_MAX_ENTRIES;
+        for (let index = 0; index < overflow; index += 1) {
+          localStorage.removeItem(freshEntries[index].key);
+        }
       }
     },
 
@@ -266,6 +341,7 @@
     // Cache icons for existing apps
     async cacheExistingAppIcons() {
       try {
+        this.pruneIconCache();
         const apps = window.AppGridState.getCustomApps();
         const appSnapshotsById = new Map(
           apps.map((app) => [app.id, {
