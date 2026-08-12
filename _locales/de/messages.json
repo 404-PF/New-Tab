@@ -356,6 +356,10 @@
     "message": "Punkte",
     "description": "Game score label"
   },
+  "gamesLevel": {
+    "message": "Level",
+    "description": "Level label"
+  },
   "gamesHighScore": {
     "message": "Rekord",
     "description": "High score label"

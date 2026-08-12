@@ -492,6 +492,10 @@
     "message": "Score",
     "description": "Game score label"
   },
+  "gamesLevel": {
+    "message": "Level",
+    "description": "Level label"
+  },
   "gamesHighScore": {
     "message": "High Score",
     "description": "High score label"

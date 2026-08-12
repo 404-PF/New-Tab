@@ -356,6 +356,10 @@
     "message": "Очки",
     "description": "Game score label"
   },
+  "gamesLevel": {
+    "message": "Уровень",
+    "description": "Level label"
+  },
   "gamesHighScore": {
     "message": "Рекорд",
     "description": "High score label"

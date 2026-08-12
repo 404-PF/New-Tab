@@ -91,3 +91,48 @@ describe('Snake Game', () => {
     container.remove();
   });
 });
+
+describe('Snake dynamic difficulty (#589)', () => {
+  it('exposes the difficulty helpers', () => {
+    const d = window.__snakeDifficulty;
+    expect(d).toBeTypeOf('object');
+    expect(typeof d.tickMsForScore).toBe('function');
+    expect(typeof d.levelForScore).toBe('function');
+  });
+
+  it('starts at the base speed and shrinks the tick interval as the score grows, floored at min', () => {
+    const d = window.__snakeDifficulty;
+    expect(d.tickMsForScore(0)).toBe(d.baseTickMs);
+    // 10 foods eaten (score 100) → 10 × tickMsPerFood slower interval.
+    expect(d.tickMsForScore(100)).toBe(d.baseTickMs - 10 * d.tickMsPerFood);
+    // 30 foods eaten (score 300) → at the floor.
+    expect(d.tickMsForScore(300)).toBe(d.minTickMs);
+    // Never faster than the floor, even at extreme scores.
+    expect(d.tickMsForScore(100000)).toBe(d.minTickMs);
+    expect(d.minTickMs).toBeLessThan(d.baseTickMs);
+  });
+
+  it('increments the level as the snake eats', () => {
+    const d = window.__snakeDifficulty;
+    const scoreAtLevelTwo = 10 * d.foodsPerLevel;
+    expect(d.levelForScore(0)).toBe(1);
+    expect(d.levelForScore(scoreAtLevelTwo - 1)).toBe(1);
+    expect(d.levelForScore(scoreAtLevelTwo)).toBe(2);
+    expect(d.levelForScore(scoreAtLevelTwo * 2)).toBe(3);
+  });
+
+  it('shows a level indicator in the score display on init', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+
+    const scoreEl = container.querySelector('.games-score-display');
+    expect(scoreEl.textContent).toContain('Score');
+    expect(scoreEl.textContent).toContain('Level');
+    expect(scoreEl.textContent).toContain('1');
+
+    game.destroy();
+    container.remove();
+  });
+});

@@ -5,7 +5,12 @@
 
   const GRID_SIZE = 20;
   const CELL_SIZE = 15;
-  const TICK_MS = 120;
+  // Difficulty: the tick interval shrinks as the snake eats, ramping up the
+  // speed. MIN_TICK_MS floors it so the game never becomes unplayable.
+  const BASE_TICK_MS = 120;
+  const MIN_TICK_MS = 60;
+  const TICK_MS_PER_FOOD = 2;
+  const FOODS_PER_LEVEL = 5;
   const SHAKE_MS = 140;
   const HEAD_COLOR = { r: 94, g: 234, b: 212 };
   const TAIL_COLOR = { r: 45, g: 138, b: 131 };
@@ -28,6 +33,7 @@
   let animFrame = null;
   let particles = [];
   let shakeUntil = 0;
+  let tickMs = BASE_TICK_MS;
 
   // ===================== Helpers =====================
 
@@ -79,6 +85,26 @@
     ctx.closePath();
   }
 
+  // ===================== Difficulty =====================
+  // Score climbs by 10 per food eaten, so foods = score / 10. The tick
+  // interval shrinks per food and floors out at MIN_TICK_MS.
+
+  function foodsEatenForScore(scoreValue) {
+    return Math.floor(scoreValue / 10);
+  }
+
+  function tickMsForScore(scoreValue) {
+    return Math.max(MIN_TICK_MS, BASE_TICK_MS - foodsEatenForScore(scoreValue) * TICK_MS_PER_FOOD);
+  }
+
+  function levelForScore(scoreValue) {
+    return 1 + Math.floor(foodsEatenForScore(scoreValue) / FOODS_PER_LEVEL);
+  }
+
+  function currentTickMs() {
+    return tickMsForScore(score);
+  }
+
   // ===================== Game Logic =====================
 
   function initSnake() {
@@ -92,7 +118,8 @@
     direction = 'right';
     nextDirection = 'right';
     score = 0;
-    if (scoreEl) scoreEl.textContent = t('gamesScore') + ': 0';
+    tickMs = BASE_TICK_MS;
+    updateScoreHud();
     gameOver = false;
     paused = false;
     prevSnake = null;
@@ -122,6 +149,21 @@
       if (seg.x === head.x && seg.y === head.y) return true;
     }
     return false;
+  }
+
+  function updateScoreHud() {
+    if (!scoreEl) return;
+    scoreEl.textContent = t('gamesScore') + ': ' + score + '  ·  ' + (t('gamesLevel') || 'Level') + ': ' + levelForScore(score);
+  }
+
+  // Recompute the current tick interval and, when it changed, restart the
+  // timer so the new speed takes effect immediately.
+  function rescheduleTick() {
+    const nextTickMs = tickMsForScore(score);
+    if (nextTickMs === tickMs || !tickTimer) return;
+    tickMs = nextTickMs;
+    stopTick();
+    tickTimer = setInterval(tick, tickMs);
   }
 
   function tick() {
@@ -161,7 +203,8 @@
     // Eat food
     if (eating) {
       score += 10;
-      if (scoreEl) scoreEl.textContent = t('gamesScore') + ': ' + score;
+      updateScoreHud();
+      rescheduleTick();
       spawnParticles(food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
       shakeUntil = nowMs() + SHAKE_MS;
       spawnFood();
@@ -195,8 +238,9 @@
   }
 
   function startTick() {
+    tickMs = currentTickMs();
     stopTick();
-    tickTimer = setInterval(tick, TICK_MS);
+    tickTimer = setInterval(tick, tickMs);
   }
 
   // ===================== Drawing =====================
@@ -283,7 +327,7 @@
     let gx = target.x;
     let gy = target.y;
     if (interpolate) {
-      const p = clamp((now - lastTickAt) / TICK_MS, 0, 1);
+      const p = clamp((now - lastTickAt) / tickMs, 0, 1);
       gx = lerp(prevSnake[idx].x, target.x, p);
       gy = lerp(prevSnake[idx].y, target.y, p);
     }
@@ -588,7 +632,7 @@
     // Score display
     scoreEl = document.createElement('div');
     scoreEl.className = 'games-score-display';
-    scoreEl.textContent = t('gamesScore') + ': 0';
+    updateScoreHud();
     container.appendChild(scoreEl);
 
     // Canvas
@@ -657,4 +701,15 @@
     pause: pause,
     resume: resume
   });
+
+  // Test hook: expose the pure difficulty helpers so tests can verify the
+  // speed curve without driving real-time gameplay.
+  window.__snakeDifficulty = {
+    tickMsForScore: tickMsForScore,
+    levelForScore: levelForScore,
+    baseTickMs: BASE_TICK_MS,
+    minTickMs: MIN_TICK_MS,
+    tickMsPerFood: TICK_MS_PER_FOOD,
+    foodsPerLevel: FOODS_PER_LEVEL
+  };
 })();
