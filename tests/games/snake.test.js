@@ -128,9 +128,11 @@ describe('Snake dynamic difficulty (#589)', () => {
     game.init(container);
 
     const scoreEl = container.querySelector('.games-score-display');
-    expect(scoreEl.textContent).toContain('Score');
-    expect(scoreEl.textContent).toContain('Level');
-    expect(scoreEl.textContent).toContain('1');
+    // The HUD renders as "Score: 0  ·  Level: 1" on init. Assert the fully
+    // formatted segments so a '1' floating anywhere in the text can't
+    // masquerade as a rendered level (e.g. a non-zero score).
+    expect(scoreEl.textContent).toContain('Score: 0');
+    expect(scoreEl.textContent).toContain('Level: 1');
 
     game.destroy();
     container.remove();
