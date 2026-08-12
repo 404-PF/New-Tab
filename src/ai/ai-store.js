@@ -130,12 +130,13 @@ const AIStore = (function() {
           kept[kept.length - 1] = active;
         }
         state.conversations = kept;
+      }
 
-        // currentConversationId should always resolve to a survivor; only reset
-        // it when it referenced a conversation that no longer exists.
-        if (!state.conversations.some(conversation => conversation.id === state.currentConversationId)) {
-          state.currentConversationId = state.conversations[0] ? state.conversations[0].id : null;
-        }
+      // currentConversationId should always resolve to a survivor, whether or
+      // not the cap was applied; only reset it when it referenced a
+      // conversation that no longer exists.
+      if (!state.conversations.some(conversation => conversation.id === state.currentConversationId)) {
+        state.currentConversationId = state.conversations[0] ? state.conversations[0].id : null;
       }
 
       localStorage.setItem(STORAGE_KEYS.conversations, JSON.stringify(state.conversations));

@@ -201,4 +201,15 @@ describe('AIStore conversation cap (#586)', () => {
     expect(AIStore.state.currentConversationId).toBe('conv-0');
     expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-0');
   });
+
+  it('resets an unresolved current id even when under the cap', () => {
+    AIStore.state.conversations = buildConversations(AIStore.MAX_CONVERSATIONS);
+    AIStore.state.currentConversationId = 'does-not-exist';
+
+    AIStore.saveConversations();
+
+    expect(AIStore.state.conversations).toHaveLength(AIStore.MAX_CONVERSATIONS);
+    expect(AIStore.state.currentConversationId).toBe('conv-0');
+    expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-0');
+  });
 });
