@@ -120,12 +120,23 @@ const AIStore = (function() {
   function saveConversations() {
     try {
       if (state.conversations.length > MAX_CONVERSATIONS) {
-        state.conversations = state.conversations.slice(0, MAX_CONVERSATIONS);
-
-        const activeExists = state.conversations.some(conversation => conversation.id === state.currentConversationId);
-        if (!activeExists) {
-          state.currentConversationId = state.conversations[0] ? state.conversations[0].id : null;
+        // Keep the newest MAX_CONVERSATIONS conversations, but never silently
+        // drop the active one (issue #586): if it falls outside the newest
+        // window, swap it in for the oldest survivor so an in-progress session
+        // is not lost from storage.
+        const kept = state.conversations.slice(0, MAX_CONVERSATIONS);
+        const active = state.conversations.find(conversation => conversation.id === state.currentConversationId);
+        if (active && !kept.some(conversation => conversation.id === active.id)) {
+          kept[kept.length - 1] = active;
         }
+        state.conversations = kept;
+      }
+
+      // currentConversationId should always resolve to a survivor, whether or
+      // not the cap was applied; only reset it when it referenced a
+      // conversation that no longer exists.
+      if (!state.conversations.some(conversation => conversation.id === state.currentConversationId)) {
+        state.currentConversationId = state.conversations[0] ? state.conversations[0].id : null;
       }
 
       localStorage.setItem(STORAGE_KEYS.conversations, JSON.stringify(state.conversations));
