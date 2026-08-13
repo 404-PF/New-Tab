@@ -203,6 +203,49 @@ describe('service worker todo reminders', () => {
     expect(notification.message).toContain('due');
   });
 
+  it('fires a reminder at due time with "At due time" (leadTime = 0)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // 30s before the end-of-day due instant: with leadTime 0 the window must be
+    // at least one check interval wide (not a zero-width instant at
+    // 23:59:59.000), or this check would fall before it and never fire.
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 59, 30));
+
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '0',
+      todoReminderNotified: {},
+      todos: JSON.stringify([
+        { id: 'due-now', text: 'Pay rent', completed: false, dueDate: '2026-08-11' }
+      ])
+    });
+
+    await checkReminders();
+
+    const notification = chrome.notifications._notifications['todo_reminder_due-now'];
+    expect(notification).toBeTruthy();
+    expect(notification.message).toContain('Pay rent');
+    expect(notification.message).toContain('due');
+  });
+
+  it('does not fire before the due date with "At due time" (leadTime = 0)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 10, 23, 59, 30));
+
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '0',
+      todoReminderNotified: {},
+      todos: JSON.stringify([
+        { id: 'due-tomorrow', text: 'Book flight', completed: false, dueDate: '2026-08-11' }
+      ])
+    });
+
+    await checkReminders();
+
+    expect(chrome.notifications._notifications['todo_reminder_due-tomorrow']).toBeUndefined();
+    expect(await chrome.storage.local.get('todoReminderNotified')).toEqual({ todoReminderNotified: {} });
+  });
+
   it('does not fire for a dueDate outside the lead-time window', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 7, 11, 10, 0, 0));

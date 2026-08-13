@@ -147,7 +147,13 @@ async function runReminderCheck(todosJson) {
       continue;
     }
     const due = parseDueDate(todo.dueDate);
-    const reminderTime = new Date(due.getTime() - leadTime * 60 * 1000);
+    // A positive lead time opens the window [due - leadTime, due]. "At due
+    // time" (leadTime 0) must not collapse that window to a single end-of-day
+    // instant — a once-a-minute check would have to land exactly on
+    // 23:59:59.000 to fire, so it would never actually go off. Keep the window
+    // at least one check interval wide so the check scheduled for the due
+    // instant always lands inside it.
+    const reminderTime = new Date(due.getTime() - Math.max(leadTime, CHECK_INTERVAL_MINUTES) * 60 * 1000);
     if (now >= reminderTime && now <= due) {
       const notifiedKey = todo.id + '_' + todo.dueDate;
       if (notified[notifiedKey]) continue;
