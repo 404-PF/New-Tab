@@ -24,8 +24,7 @@ const GAMES_TRANSLATION_KEYS = [
   'games2048Controls',
   'gamesMemory',
   'gamesMemoryDesc',
-  'gamesMemoryControls',
-  'gamesLevel'
+  'gamesMemoryControls'
 ];
 
 function createNoteTagTranslations(
@@ -3896,10 +3895,14 @@ Object.keys(customBackgroundErrorTranslations).forEach(function (language) {
   target.customBackgroundDeleteError = messages[2];
 });
 
-// The games "Level" label is added separately from the createGamesTranslations
-// arrays above so it lives outside the per-locale blocks. The blocks themselves
-// are structurally identical across locales, so appending a new string to each
-// one would count every line as new duplication in SonarCloud's quality gate.
+// The games "Level" label is defined here rather than in the per-locale
+// createGamesTranslations arrays. Those blocks are structurally identical across
+// locales, so appending a string to each one would count every line as new
+// duplication in SonarCloud's quality gate. Because it is no longer part of the
+// positional arrays, the 'gamesLevel' key must stay out of GAMES_TRANSLATION_KEYS
+// (that list drives createGamesTranslations one-to-one), and this map is the
+// single source of truth for the key: every locale in SUPPORTED_LANGUAGES must
+// have an entry here, or gamesLevel will be undefined for it.
 const gamesLevelTranslations = {
   en: 'Level',
   zh: '等级',
