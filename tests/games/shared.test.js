@@ -7,6 +7,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  localStorage.clear();
   document.querySelectorAll('.games-ready-overlay').forEach(el => el.remove());
 });
 
@@ -57,12 +58,13 @@ describe('gamesHelpers.createReadyScreen', () => {
   it('does not start on unrelated keys', () => {
     const parent = makeParent();
     const onStart = vi.fn();
-    window.gamesHelpers.createReadyScreen(parent, { onStart });
+    const screen = window.gamesHelpers.createReadyScreen(parent, { onStart });
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter' }));
 
     expect(onStart).not.toHaveBeenCalled();
     expect(parent.querySelector('.games-ready-overlay')).not.toBeNull();
+    screen.remove();
     parent.remove();
   });
 
@@ -81,7 +83,7 @@ describe('gamesHelpers.createReadyScreen', () => {
   it('ignores Space typed into an input or textarea', () => {
     const parent = makeParent();
     const onStart = vi.fn();
-    window.gamesHelpers.createReadyScreen(parent, { onStart });
+    const screen = window.gamesHelpers.createReadyScreen(parent, { onStart });
 
     const input = document.createElement('input');
     document.body.appendChild(input);
@@ -90,6 +92,7 @@ describe('gamesHelpers.createReadyScreen', () => {
     expect(onStart).not.toHaveBeenCalled();
     expect(parent.querySelector('.games-ready-overlay')).not.toBeNull();
     input.remove();
+    screen.remove();
     parent.remove();
   });
 
@@ -117,6 +120,43 @@ describe('gamesHelpers.createReadyScreen', () => {
 
     expect(onStart).toHaveBeenCalledTimes(1);
     expect(parent.querySelector('.games-ready-overlay')).toBeNull();
+    parent.remove();
+  });
+
+  it('traps Tab focus inside the overlay', () => {
+    const parent = makeParent();
+    const onStart = vi.fn();
+    const screen = window.gamesHelpers.createReadyScreen(parent, { onStart });
+
+    const button = parent.querySelector('.games-ready-start');
+    button.focus();
+
+    // Tab away from the only focusable element cycles back to it instead of
+    // escaping into the board behind the overlay.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
+    expect(document.activeElement).toBe(button);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', shiftKey: true, bubbles: true }));
+    expect(document.activeElement).toBe(button);
+
+    screen.remove();
+    parent.remove();
+  });
+
+  it('restores focus to the previously focused element on remove()', () => {
+    const parent = makeParent();
+    const other = document.createElement('button');
+    document.body.appendChild(other);
+    other.focus();
+
+    const onStart = vi.fn();
+    const screen = window.gamesHelpers.createReadyScreen(parent, { onStart });
+    expect(document.activeElement).not.toBe(other);
+
+    screen.remove();
+    expect(document.activeElement).toBe(other);
+
+    other.remove();
     parent.remove();
   });
 });

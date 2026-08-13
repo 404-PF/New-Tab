@@ -124,9 +124,11 @@ describe('Snake ready state (#597)', () => {
     const game = window.GameRegistry.get('snake');
     game.init(container);
 
-    // A visibility cycle while still on the ready screen must not start the loop.
+    // A visibility cycle while still on the ready screen must not start the loop
+    // nor leave the ready screen.
     game.pause();
     game.resume();
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
     expect(window.__snakeReady.isStarted()).toBe(false);
 
     game.destroy();

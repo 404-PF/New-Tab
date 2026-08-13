@@ -334,14 +334,20 @@
 
     // Hold play until the user signals they are ready.
     started = false;
-    readyScreen = window.gamesHelpers?.createReadyScreen?.(boardEl, {
-      text: t('gamesReady') || 'Ready?',
-      sub: t('gamesReadyStart') || 'Press Space or tap to start',
-      buttonText: t('gamesStart') || 'Start',
-      onStart: function () {
-        started = true;
-      }
-    });
+    if (typeof window.gamesHelpers?.createReadyScreen === 'function') {
+      readyScreen = window.gamesHelpers.createReadyScreen(boardEl, {
+        text: t('gamesReady') || 'Ready?',
+        sub: t('gamesReadyStart') || 'Press Space or tap to start',
+        buttonText: t('gamesStart') || 'Start',
+        onStart: function () {
+          started = true;
+        }
+      });
+    } else {
+      // No ready-screen helper available: start immediately so the game is
+      // still playable instead of being stuck with started === false.
+      started = true;
+    }
   }
 
   function destroy() {
@@ -349,7 +355,7 @@
       try {
         readyScreen.remove();
       } catch (e) {
-        console.warn('GameRegistry.destroyCurrent: error removing 2048 ready screen', e);
+        console.warn('2048.destroy: error removing ready screen', e);
       }
       readyScreen = null;
     }

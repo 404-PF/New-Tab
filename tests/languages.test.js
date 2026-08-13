@@ -26,42 +26,16 @@ const CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS = [
   'customBackgroundDeleteError'
 ];
 
-const GAMES_TRANSLATION_KEYS = [
-  'games',
-  'enableGames',
-  'gamesPlay',
-  'gamesBack',
-  'gamesScore',
-  'gamesHighScore',
-  'gamesBestMoves',
-  'gamesMoves',
-  'gamesTime',
-  'gamesGameOver',
-  'gamesYouWin',
-  'gamesPaused',
-  'gamesPressSpace',
-  'gamesNoGames',
-  'gamesDisabled',
-  'gamesSnake',
-  'gamesSnakeDesc',
-  'gamesSnakeControls',
-  'games2048',
-  'games2048Desc',
-  'games2048Controls',
-  'gamesMemory',
-  'gamesMemoryDesc',
-  'gamesMemoryControls',
-  'gamesLevel',
-  'gamesReady',
-  'gamesReadyStart',
-  'gamesStart'
-];
+// Derived from the source's window.i18n.gamesTranslationKeys in beforeAll so
+// this list can never drift from the keys languages.js actually defines.
+let GAMES_TRANSLATION_KEYS = [];
 
 let originalLanguage;
 
 beforeAll(() => {
   injectScript('src/core/languages.js');
   originalLanguage = window.i18n.currentLanguage();
+  GAMES_TRANSLATION_KEYS = window.i18n.gamesTranslationKeys;
 });
 
 afterEach(() => {

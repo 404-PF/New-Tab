@@ -218,11 +218,14 @@ describe('2048 ready state (#597)', () => {
     expect(board.querySelector('.games-ready-overlay')).not.toBeNull();
     expect(window.__game2048Ready.isStarted()).toBe(false);
 
-    // A move while ready is ignored: the board still holds exactly the two
-    // initial tiles.
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+    // Moves while ready are ignored: the board is unchanged no matter which
+    // direction is pressed (a single direction could be a legitimate no-op).
+    const boardBeforeInput = board.innerHTML;
+    ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].forEach((key) => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: key, code: key }));
+    });
     expect(window.__game2048Ready.isStarted()).toBe(false);
-    expect(board.querySelectorAll('.games-2048-cell-filled')).toHaveLength(2);
+    expect(board.innerHTML).toBe(boardBeforeInput);
 
     // Space signals readiness.
     document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));

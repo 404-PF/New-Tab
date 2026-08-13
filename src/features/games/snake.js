@@ -688,7 +688,7 @@
       try {
         readyScreen.remove();
       } catch (e) {
-        console.warn('GameRegistry.destroyCurrent: error removing snake ready screen', e);
+        console.warn('snake.destroy: error removing ready screen', e);
       }
       readyScreen = null;
     }

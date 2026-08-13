@@ -27,6 +27,18 @@ const GAMES_TRANSLATION_KEYS = [
   'gamesMemoryControls'
 ];
 
+// Every games key a supported locale must resolve, including the keys that live
+// in per-language maps (gamesLevel, gamesReady, gamesReadyStart, gamesStart)
+// rather than in GAMES_TRANSLATION_KEYS. Exported as window.i18n.gamesTranslationKeys
+// so completeness tests iterate the same list the source uses and cannot drift
+// from it.
+const GAMES_ALL_TRANSLATION_KEYS = GAMES_TRANSLATION_KEYS.concat([
+  'gamesLevel',
+  'gamesReady',
+  'gamesReadyStart',
+  'gamesStart'
+]);
+
 function createNoteTagTranslations(
   notesFilterAll,
   notesAddTag,
@@ -4195,5 +4207,6 @@ window.i18n = {
   t,
   currentLanguage: () => currentLanguage,
   getSupportedLanguages,
-  getTranslations: (code) => ({ ...translations[code] })
+  getTranslations: (code) => ({ ...translations[code] }),
+  gamesTranslationKeys: GAMES_ALL_TRANSLATION_KEYS
 };

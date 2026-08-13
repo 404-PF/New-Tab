@@ -91,9 +91,16 @@
 
     let started = false;
 
+    // Remember what had focus before the overlay opened so remove() can hand
+    // focus back instead of leaving it dangling behind a removed element.
+    const previouslyFocused = document.activeElement;
+
     function remove() {
       document.removeEventListener('keydown', onKeydown);
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function' && previouslyFocused.isConnected) {
+        try { previouslyFocused.focus(); } catch { /* ignore */ }
+      }
     }
 
     function start() {
@@ -104,6 +111,25 @@
     }
 
     function onKeydown(e) {
+      if (e.code === 'Tab') {
+        // Trap focus inside the overlay so Tab can't escape into the board
+        // behind it while the modal dialog is open.
+        const focusables = overlay.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length > 0) {
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (e.shiftKey && (document.activeElement === first || document.activeElement === overlay)) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+        return;
+      }
       if (e.code !== 'Space') return;
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
         return;

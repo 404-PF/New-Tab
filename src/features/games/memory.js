@@ -278,6 +278,9 @@
       buttonText: t('gamesStart') || 'Start',
       onStart: function () {
         started = true;
+        // A pause taken before Start must not leak a stale pausedAt into the
+        // new run's elapsed-time math.
+        pausedAt = 0;
         startTimer();
       }
     });
@@ -288,7 +291,7 @@
       try {
         readyScreen.remove();
       } catch (e) {
-        console.warn('GameRegistry.destroyCurrent: error removing memory ready screen', e);
+        console.warn('memory.destroy: error removing ready screen', e);
       }
       readyScreen = null;
     }
@@ -307,6 +310,8 @@
   }
 
   function pause() {
+    // A game that hasn't been started yet must stay on the ready screen.
+    if (!started) return;
     pausedAt = Date.now();
     stopTimer();
     clearPendingTimeouts();
@@ -330,6 +335,8 @@
   }
 
   function resume() {
+    // A game that hasn't been started yet must stay on the ready screen.
+    if (!started) return;
     if (!gameOver && startTime > 0 && pausedAt > 0) {
       const elapsed = pausedAt - startTime;
       startTime = Date.now() - elapsed;

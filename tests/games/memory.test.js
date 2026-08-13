@@ -174,4 +174,39 @@ describe('Memory ready state (#597)', () => {
 
     container.remove();
   });
+
+  it('does not start the ticker during a pre-start visibility cycle after relaunch', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+
+    // First run: start the run so timer state (startTime/pausedAt) is populated.
+    game.init(container);
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    game.pause();
+    game.destroy();
+
+    // Relaunch: the game holds on the ready screen again. setupBoard() keeps the
+    // previous startTime, so a pre-start visibility cycle must not leak into the
+    // timer while the ready screen is active.
+    game.init(container);
+    expect(window.__memoryReady.isStarted()).toBe(false);
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+
+    const setIntervalSpy = vi.spyOn(window, 'setInterval');
+    try {
+      // A visibility cycle while still on the ready screen must not start the ticker.
+      game.pause();
+      game.resume();
+
+      expect(window.__memoryReady.isStarted()).toBe(false);
+      expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+      expect(setIntervalSpy).not.toHaveBeenCalled();
+    } finally {
+      setIntervalSpy.mockRestore();
+    }
+
+    game.destroy();
+    container.remove();
+  });
 });
