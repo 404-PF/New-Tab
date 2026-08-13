@@ -98,7 +98,20 @@
     function remove() {
       document.removeEventListener('keydown', onKeydown);
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      if (previouslyFocused && typeof previouslyFocused.focus === 'function' && previouslyFocused.isConnected) {
+      // Restore focus only when the captured target is still meaningful. The
+      // launch flow clears the hub grid (removing the focused Play button)
+      // before the game mounts, so the browser drops focus to document.body;
+      // restoring that would yank focus away from the modal opener right after
+      // dialog.close() already returned it. Elements inside a closed dialog
+      // are not rendered either, so skip those as well.
+      if (
+        previouslyFocused &&
+        previouslyFocused !== document.body &&
+        previouslyFocused !== document.documentElement &&
+        typeof previouslyFocused.focus === 'function' &&
+        previouslyFocused.isConnected &&
+        !(typeof previouslyFocused.closest === 'function' && previouslyFocused.closest('dialog:not([open])'))
+      ) {
         try { previouslyFocused.focus(); } catch { /* ignore */ }
       }
     }

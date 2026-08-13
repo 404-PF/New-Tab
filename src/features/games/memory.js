@@ -272,18 +272,26 @@
 
     // Hold play until the user signals they are ready.
     started = false;
-    readyScreen = window.gamesHelpers?.createReadyScreen?.(gridEl, {
-      text: t('gamesReady') || 'Ready?',
-      sub: t('gamesReadyStart') || 'Press Space or tap to start',
-      buttonText: t('gamesStart') || 'Start',
-      onStart: function () {
-        started = true;
-        // A pause taken before Start must not leak a stale pausedAt into the
-        // new run's elapsed-time math.
-        pausedAt = 0;
-        startTimer();
-      }
-    });
+    if (typeof window.gamesHelpers?.createReadyScreen === 'function') {
+      readyScreen = window.gamesHelpers.createReadyScreen(gridEl, {
+        text: t('gamesReady') || 'Ready?',
+        sub: t('gamesReadyStart') || 'Press Space or tap to start',
+        buttonText: t('gamesStart') || 'Start',
+        onStart: function () {
+          started = true;
+          // A pause taken before Start must not leak a stale pausedAt into the
+          // new run's elapsed-time math.
+          pausedAt = 0;
+          startTimer();
+        }
+      });
+    } else {
+      // No ready-screen helper available: start immediately so the game is
+      // still playable instead of being stuck with started === false.
+      started = true;
+      pausedAt = 0;
+      startTimer();
+    }
   }
 
   function destroy() {
@@ -356,8 +364,12 @@
   });
 
   // Test hook: expose whether the game has been started so tests can assert it
-  // holds on the ready screen until the player signals readiness.
+  // holds on the ready screen until the player signals readiness. get/setPausedAt
+  // let tests simulate a stale pausedAt surviving into the ready state so the
+  // resume() guard can be pinned directly.
   window.__memoryReady = {
-    isStarted: function () { return started; }
+    isStarted: function () { return started; },
+    getPausedAt: function () { return pausedAt; },
+    setPausedAt: function (value) { pausedAt = value; }
   };
 })();

@@ -669,18 +669,28 @@
 
     // Hold play until the user signals they are ready.
     started = false;
-    readyScreen = window.gamesHelpers?.createReadyScreen?.(stage, {
-      text: t('gamesReady') || 'Ready?',
-      sub: t('gamesReadyStart') || 'Press Space or tap to start',
-      buttonText: t('gamesStart') || 'Start',
-      onStart: function () {
-        started = true;
-        manualPause = false;
-        paused = false;
-        startTick();
-        startAnimation();
-      }
-    });
+    if (typeof window.gamesHelpers?.createReadyScreen === 'function') {
+      readyScreen = window.gamesHelpers.createReadyScreen(stage, {
+        text: t('gamesReady') || 'Ready?',
+        sub: t('gamesReadyStart') || 'Press Space or tap to start',
+        buttonText: t('gamesStart') || 'Start',
+        onStart: function () {
+          started = true;
+          manualPause = false;
+          paused = false;
+          startTick();
+          startAnimation();
+        }
+      });
+    } else {
+      // No ready-screen helper available: start immediately so the game is
+      // still playable instead of being stuck with started === false.
+      started = true;
+      manualPause = false;
+      paused = false;
+      startTick();
+      startAnimation();
+    }
   }
 
   function destroy() {

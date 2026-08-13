@@ -184,6 +184,7 @@ describe('Memory ready state (#597)', () => {
     game.init(container);
     document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
     game.pause();
+    expect(window.__memoryReady.getPausedAt()).toBeGreaterThan(0);
     game.destroy();
 
     // Relaunch: the game holds on the ready screen again. setupBoard() keeps the
@@ -192,9 +193,17 @@ describe('Memory ready state (#597)', () => {
     game.init(container);
     expect(window.__memoryReady.isStarted()).toBe(false);
     expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+    // The stale pausedAt from the first run must not survive into the ready state.
+    expect(window.__memoryReady.getPausedAt()).toBe(0);
 
     const setIntervalSpy = vi.spyOn(window, 'setInterval');
     try {
+      // Simulate a stale pausedAt surviving into the ready state (as if
+      // setupBoard had not reset it) so the resume() guard itself is exercised:
+      // even with pausedAt > 0 and a populated startTime, resume() must not
+      // start the ticker while the game is still unstarted.
+      window.__memoryReady.setPausedAt(Date.now());
+
       // A visibility cycle while still on the ready screen must not start the ticker.
       game.pause();
       game.resume();
