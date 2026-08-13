@@ -488,6 +488,13 @@
       // fallback when we dropped directly on another icon
       const order = window.AppGridState.getOrder();
       if (order) toIdx = order.indexOf(target.id);
+    } else if (toIdx !== -1) {
+      // The placeholder index is measured against the app icons only (folder
+      // icons are excluded from the drag math), while reorder() indexes into
+      // the full appOrder.  Translate across the two coordinate spaces so
+      // folder slots before the drop point don't shift the app into the
+      // wrong slot (issue #599).
+      toIdx = window.AppGridState.appIndexToOrderIndex(toIdx);
     }
 
     // Reorder via the shared state helper and refresh

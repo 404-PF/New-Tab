@@ -416,6 +416,26 @@ const AppGridState = {
     return !!updatedFolders;
   },
 
+  // Convert an insertion index in the app-only sequence (the grid's app
+  // icons, folders excluded) into the equivalent insertion index in the full
+  // appOrder array (apps and folders interleaved).  Drag-and-drop computes
+  // drop positions against the app icons only, so folder slots that precede
+  // the drop point must be added back in or the app lands in the wrong slot
+  // (issue #599).  -1 is returned unchanged as a "no position" sentinel.
+  appIndexToOrderIndex(appOnlyIndex) {
+    const order = this.getOrder();
+    if (!Array.isArray(order)) return appOnlyIndex;
+
+    if (appOnlyIndex === -1) return -1;
+    if (appOnlyIndex < 0) return 0;
+
+    const folderIds = new Set(this.getFolders().map(folder => folder.id));
+    const appsInOrder = order.filter(id => !folderIds.has(id));
+
+    if (appOnlyIndex >= appsInOrder.length) return order.length;
+    return order.indexOf(appsInOrder[appOnlyIndex]);
+  },
+
   // Move sourceId to the given placeholder drop index within appOrder.
   // toIdx is the desired insertion position in the current order array;
   // pass -1 or a value beyond the array length to append at the end.
