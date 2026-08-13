@@ -356,6 +356,10 @@
     "message": "スコア",
     "description": "Game score label"
   },
+  "gamesLevel": {
+    "message": "レベル",
+    "description": "Level label"
+  },
   "gamesHighScore": {
     "message": "ハイスコア",
     "description": "High score label"

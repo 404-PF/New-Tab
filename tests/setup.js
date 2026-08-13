@@ -542,7 +542,9 @@ globalThis.window.i18n = {
       searchProviderWikipedia: 'Wikipedia',
       searchProviderYouTube: 'YouTube',
       removeTimezone: 'Remove',
-      removeTimezoneLabel: 'Remove {city} time zone'
+      removeTimezoneLabel: 'Remove {city} time zone',
+      gamesScore: 'Score',
+      gamesLevel: 'Level'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {

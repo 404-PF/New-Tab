@@ -3894,6 +3894,30 @@ Object.keys(customBackgroundErrorTranslations).forEach(function (language) {
   target.customBackgroundLoadError = messages[1];
   target.customBackgroundDeleteError = messages[2];
 });
+
+// The games "Level" label is defined here rather than in the per-locale
+// createGamesTranslations arrays. Those blocks are structurally identical across
+// locales, so appending a string to each one would count every line as new
+// duplication in SonarCloud's quality gate. Because it is no longer part of the
+// positional arrays, the 'gamesLevel' key must stay out of GAMES_TRANSLATION_KEYS
+// (that list drives createGamesTranslations one-to-one), and this map is the
+// single source of truth for the key: every locale in SUPPORTED_LANGUAGES must
+// have an entry here, or gamesLevel will be undefined for it.
+const gamesLevelTranslations = {
+  en: 'Level',
+  zh: '等级',
+  ja: 'レベル',
+  ko: '레벨',
+  es: 'Nivel',
+  fr: 'Niveau',
+  de: 'Level',
+  pt: 'Nível',
+  ru: 'Уровень'
+};
+
+Object.keys(gamesLevelTranslations).forEach(function (language) {
+  translations[language].gamesLevel = gamesLevelTranslations[language];
+});
 const pomodoroTranslations = {
   en: {
     enablePomodoro: 'Enable Pomodoro focus timer', pomodoroDurations: 'Focus Timer Durations', pomodoroDurationsDesc: 'Configure work and break durations (in minutes)', pomodoroWork: 'Work', pomodoroShortBreak: 'Short Break', pomodoroLongBreak: 'Long Break', pomodoroSessionsBeforeLong: 'Sessions before long break', pomodoroPhaseWork: 'Focus', pomodoroPhaseShortBreak: 'Short Break', pomodoroPhaseLongBreak: 'Long Break', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Pause', pomodoroResume: 'Resume', pomodoroSkip: 'Skip', pomodoroReset: 'Reset', pomodoroStartFocus: 'Start Focus', pomodoroStopFocus: 'Stop Focus', pomodoroWorkComplete: 'Focus session complete!', pomodoroWorkCompleteBody: 'Task: {task}', pomodoroBreakComplete: 'Break over!', pomodoroBreakCompleteBody: 'Ready to focus again?'
