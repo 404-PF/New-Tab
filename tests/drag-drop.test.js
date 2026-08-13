@@ -41,6 +41,15 @@ describe('App grid drag-and-drop with folders present', () => {
     localStorage.clear();
     // Drop any leftover grids so drag-drop.js binds to the fresh test grid.
     document.querySelectorAll('#app-grid').forEach((el) => el.remove());
+    // Fake timers so the drop bounce's setTimeout(cleanup, 500) fallback in
+    // drag-drop.js (which jsdom never fires via animationend) is a fake timer
+    // that afterEach clears, instead of a real one firing 500ms after teardown.
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('lands the app where the placeholder was shown when folders are present (#599)', () => {

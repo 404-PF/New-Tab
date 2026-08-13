@@ -422,12 +422,13 @@ const AppGridState = {
   // drop positions against the app icons only, so folder slots that precede
   // the drop point must be added back in or the app lands in the wrong slot
   // (issue #599).  -1 is returned unchanged as a "no position" sentinel.
+  // Lower indices are not produced by callers (drop indices are clamped to
+  // >= 0) and resolve to the same no-position result.
   appIndexToOrderIndex(appOnlyIndex) {
     const order = this.getOrder();
     if (!Array.isArray(order)) return appOnlyIndex;
 
     if (appOnlyIndex === -1) return -1;
-    if (appOnlyIndex < 0) return 0;
 
     const folderIds = new Set(this.getFolders().map(folder => folder.id));
     const appsInOrder = order.filter(id => !folderIds.has(id));
