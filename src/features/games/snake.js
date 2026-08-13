@@ -633,6 +633,19 @@
 
   // ===================== Lifecycle =====================
 
+  // Begin the run: clear any pre-start state, then start the game loops.
+  // draw() must run after clearing `paused` so a "Paused" panel painted by
+  // pause() while the ready screen was up isn't left stale on the canvas —
+  // reduced-motion users would otherwise see it until the first tick.
+  function startRun() {
+    started = true;
+    manualPause = false;
+    paused = false;
+    draw();
+    startTick();
+    startAnimation();
+  }
+
   function init(containerEl) {
     container = containerEl;
 
@@ -674,22 +687,12 @@
         text: t('gamesReady') || 'Ready?',
         sub: t('gamesReadyStart') || 'Press Space or tap to start',
         buttonText: t('gamesStart') || 'Start',
-        onStart: function () {
-          started = true;
-          manualPause = false;
-          paused = false;
-          startTick();
-          startAnimation();
-        }
+        onStart: startRun
       });
     } else {
       // No ready-screen helper available: start immediately so the game is
       // still playable instead of being stuck with started === false.
-      started = true;
-      manualPause = false;
-      paused = false;
-      startTick();
-      startAnimation();
+      startRun();
     }
   }
 
