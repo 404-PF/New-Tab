@@ -118,14 +118,17 @@ describe('App grid drag-and-drop with folders present', () => {
       Object.defineProperty(dragStart, 'dataTransfer', { value: dataTransfer });
       appA.dispatchEvent(dragStart);
 
-      // Drag to the last slot. With a 4-per-row grid (itemWidth 110) the
-      // pointer over column 2 of row 0 yields app-only index 2 = past B and C,
-      // i.e. the very end of the grid including the trailing folders.
+      // Drag to the bottom-right of the grid. calculateDropIndex derives the
+      // cell from measured geometry (padding, gap, item width) and clamps the
+      // result to the end of the app-only list, so pointing past the last slot
+      // always lands after both trailing folders — without the coordinates
+      // depending on getGridLayout's fallback constants in drag-drop.js.
+      const gridRect = grid.getBoundingClientRect();
       const dragOver = new Event('dragover', { bubbles: true });
       Object.defineProperties(dragOver, {
         dataTransfer: { value: dataTransfer },
-        clientX: { value: 320 },
-        clientY: { value: 30 }
+        clientX: { value: gridRect.right - 1 },
+        clientY: { value: gridRect.bottom - 1 }
       });
       document.body.dispatchEvent(dragOver);
 
