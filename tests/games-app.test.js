@@ -3,6 +3,7 @@ import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
+  injectScript('src/features/games/shared.js');
   injectScript('src/features/games/game-registry.js');
 });
 
@@ -161,5 +162,39 @@ describe('GameRegistry', () => {
     expect(window.GameRegistry.getStats('primitive-game')).toEqual({});
     window.GameRegistry.updateStats('primitive-game', { highScore: 10 });
     expect(window.GameRegistry.getStats('primitive-game').highScore).toBe(10);
+  });
+
+  it('launched games can hold in a ready state until the player starts', () => {
+    let started = false;
+    window.GameRegistry.register({
+      id: 'ready-game',
+      name: 'Ready Game',
+      init: (container) => {
+        window.gamesHelpers.createReadyScreen(container, {
+          text: 'Ready?',
+          buttonText: 'Start',
+          onStart: () => { started = true; }
+        });
+      },
+      destroy: () => {}
+    });
+
+    let container = document.getElementById('games-game-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'games-game-container';
+      document.body.appendChild(container);
+    }
+
+    const result = window.GameRegistry.launch('ready-game');
+    expect(result).toBe(true);
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+    expect(started).toBe(false);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(started).toBe(true);
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+
+    container.remove();
   });
 });

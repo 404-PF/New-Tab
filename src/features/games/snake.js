@@ -34,6 +34,8 @@
   let particles = [];
   let shakeUntil = 0;
   let tickMs = BASE_TICK_MS;
+  let started = false;
+  let readyScreen = null;
 
   // ===================== Helpers =====================
 
@@ -532,6 +534,7 @@
   }
 
   function restart() {
+    started = true;
     initSnake();
     draw();
     startTick();
@@ -544,6 +547,9 @@
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
       return;
     }
+
+    // Ignore all steering until the player has started the run.
+    if (!started) return;
 
     if (gameOver) {
       if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
@@ -604,6 +610,7 @@
       }
       return;
     }
+    if (!started) return;
     if (e.changedTouches.length !== 1) return;
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
@@ -635,13 +642,17 @@
     updateScoreHud();
     container.appendChild(scoreEl);
 
-    // Canvas
+    // Canvas (wrapped in a stage so the ready overlay can cover exactly the
+    // board, not the score/instructions that surround it)
+    const stage = document.createElement('div');
+    stage.className = 'games-snake-stage';
     canvas = document.createElement('canvas');
     canvas.width = GRID_SIZE * CELL_SIZE;
     canvas.height = GRID_SIZE * CELL_SIZE;
     canvas.className = 'games-snake-canvas';
     ctx = canvas.getContext('2d');
-    container.appendChild(canvas);
+    stage.appendChild(canvas);
+    container.appendChild(stage);
 
     // Instructions
     const instructions = document.createElement('div');
@@ -651,15 +662,37 @@
 
     initSnake();
     draw();
-    startTick();
-    startAnimation();
 
     document.addEventListener('keydown', handleKeydown);
     canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    // Hold play until the user signals they are ready.
+    started = false;
+    readyScreen = window.gamesHelpers?.createReadyScreen?.(stage, {
+      text: t('gamesReady') || 'Ready?',
+      sub: t('gamesReadyStart') || 'Press Space or tap to start',
+      buttonText: t('gamesStart') || 'Start',
+      onStart: function () {
+        started = true;
+        manualPause = false;
+        paused = false;
+        startTick();
+        startAnimation();
+      }
+    });
   }
 
   function destroy() {
+    if (readyScreen) {
+      try {
+        readyScreen.remove();
+      } catch (e) {
+        console.warn('GameRegistry.destroyCurrent: error removing snake ready screen', e);
+      }
+      readyScreen = null;
+    }
+    started = false;
     stopTick();
     stopAnimation();
     document.removeEventListener('keydown', handleKeydown);
@@ -683,12 +716,12 @@
   }
 
   function resume() {
-    if (!gameOver && !manualPause) {
-      paused = false;
-      startTick();
-      startAnimation();
-      draw();
-    }
+    // A game that hasn't been started yet must stay on the ready screen.
+    if (!started || gameOver || manualPause) return;
+    paused = false;
+    startTick();
+    startAnimation();
+    draw();
   }
 
   window.GameRegistry?.register({
@@ -711,5 +744,11 @@
     minTickMs: MIN_TICK_MS,
     tickMsPerFood: TICK_MS_PER_FOOD,
     foodsPerLevel: FOODS_PER_LEVEL
+  };
+
+  // Test hook: expose whether the run has been started so tests can assert the
+  // game holds on the ready screen until the player signals readiness.
+  window.__snakeReady = {
+    isStarted: function () { return started; }
   };
 })();

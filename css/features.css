@@ -4253,6 +4253,12 @@ body.light-theme .games-hub-card-desc {
 
 /* ==================== Snake ==================== */
 
+.games-snake-stage {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+}
+
 .games-snake-canvas {
   display: block;
   margin: 0 auto;
@@ -4399,6 +4405,53 @@ body.light-theme .games-hub-card-desc {
   font-size: 0.85rem;
   color: var(--glass-text-secondary);
   margin-top: 12px;
+}
+
+/* ==================== Ready screen (shared) ==================== */
+
+.games-ready-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+  background: rgba(8, 10, 24, 0.82);
+  border-radius: 8px;
+}
+
+.games-ready-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--games-text-primary);
+}
+
+.games-ready-sub {
+  font-size: 0.9rem;
+  color: var(--games-text-secondary);
+}
+
+.games-ready-start {
+  margin-top: 6px;
+  padding: 10px 28px;
+  border: none;
+  border-radius: 999px;
+  background: #4ecdc4;
+  color: #06282a;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
+}
+
+.games-ready-start:hover,
+.games-ready-start:focus-visible {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
 }
 
 /* Consolidated light theme color overrides */

@@ -528,6 +528,18 @@
     "message": "Press Space to restart",
     "description": "Restart instruction"
   },
+  "gamesReady": {
+    "message": "Ready?",
+    "description": "Ready-screen label"
+  },
+  "gamesReadyStart": {
+    "message": "Press Space or tap to start",
+    "description": "Ready-screen label"
+  },
+  "gamesStart": {
+    "message": "Start",
+    "description": "Ready-screen label"
+  },
   "gamesNoGames": {
     "message": "No games available",
     "description": "Message when no games are registered"

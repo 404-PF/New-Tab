@@ -3,13 +3,14 @@ import { injectScript } from '../helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
+  injectScript('src/features/games/shared.js');
   injectScript('src/features/games/game-registry.js');
   injectScript('src/features/games/2048.js');
 });
 
 beforeEach(() => {
   localStorage.clear();
-  document.querySelectorAll('.games-score-display, .games-2048-board, .games-instructions').forEach(el => el.remove());
+  document.querySelectorAll('.games-score-display, .games-2048-board, .games-ready-overlay, .games-instructions').forEach(el => el.remove());
 });
 
 describe('2048 Game', () => {
@@ -109,8 +110,11 @@ describe('2048 Game', () => {
     const game = window.GameRegistry.get('2048');
     game.init(container);
 
+    // Start the run (the game holds on a ready screen until the player signals).
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+
     const scoreEl = container.querySelector('.games-score-display');
-    
+
     // Dispatch multiple moves to allow potential merges and new tile generation
     for (let i = 0; i < 8; i++) {
       const dirs = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
@@ -134,6 +138,9 @@ describe('2048 Game', () => {
     document.body.appendChild(container);
     const game = window.GameRegistry.get('2048');
     game.init(container);
+
+    // Start the run (the game holds on a ready screen until the player signals).
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
 
     // Make many moves to increase chance of high tiles appearing
     for (let i = 0; i < 50; i++) {
@@ -167,6 +174,9 @@ describe('2048 Game', () => {
     const game = window.GameRegistry.get('2048');
     game.init(container);
 
+    // Start the run (the game holds on a ready screen until the player signals).
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+
     const scoreEl = container.querySelector('.games-score-display');
     
     // Make many moves to potentially reach game-over
@@ -192,6 +202,50 @@ describe('2048 Game', () => {
 
     game.destroy();
     expect(container.querySelector('.games-2048-board')).toBeNull();
+
+    container.remove();
+  });
+});
+
+describe('2048 ready state (#597)', () => {
+  it('shows a ready screen and ignores moves until the player starts', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+    game.init(container);
+
+    const board = container.querySelector('.games-2048-board');
+    expect(board.querySelector('.games-ready-overlay')).not.toBeNull();
+    expect(window.__game2048Ready.isStarted()).toBe(false);
+
+    // A move while ready is ignored: the board still holds exactly the two
+    // initial tiles.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+    expect(window.__game2048Ready.isStarted()).toBe(false);
+    expect(board.querySelectorAll('.games-2048-cell-filled')).toHaveLength(2);
+
+    // Space signals readiness.
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__game2048Ready.isStarted()).toBe(true);
+    expect(board.querySelector('.games-ready-overlay')).toBeNull();
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('cleans up the ready screen on destroy before starting', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+    game.init(container);
+
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+    game.destroy();
+
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+    // Starting after destroy is a no-op (listeners are gone).
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__game2048Ready.isStarted()).toBe(false);
 
     container.remove();
   });

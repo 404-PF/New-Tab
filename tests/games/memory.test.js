@@ -3,13 +3,14 @@ import { injectScript } from '../helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
+  injectScript('src/features/games/shared.js');
   injectScript('src/features/games/game-registry.js');
   injectScript('src/features/games/memory.js');
 });
 
 beforeEach(() => {
   localStorage.clear();
-  document.querySelectorAll('.games-memory-stats, .games-memory-grid, .games-instructions').forEach(el => el.remove());
+  document.querySelectorAll('.games-memory-stats, .games-memory-grid, .games-ready-overlay, .games-instructions').forEach(el => el.remove());
 });
 
 describe('Memory Match Game', () => {
@@ -111,6 +112,9 @@ describe('Memory Match Game', () => {
     const game = window.GameRegistry.get('memory');
     game.init(container);
 
+    // Start the run (the game holds on a ready screen until the player signals).
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+
     const cards = container.querySelectorAll('.games-memory-card');
     cards[0].click();
 
@@ -123,6 +127,51 @@ describe('Memory Match Game', () => {
     expect(flippedEl.classList.contains('games-memory-card-flipped')).toBe(true);
 
     game.destroy();
+    container.remove();
+  });
+});
+
+describe('Memory ready state (#597)', () => {
+  it('shows a ready screen and does not flip cards until the player starts', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+    game.init(container);
+
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+    expect(window.__memoryReady.isStarted()).toBe(false);
+
+    // Clicks while ready are ignored: every card stays face down.
+    const cards = container.querySelectorAll('.games-memory-card');
+    cards[0].click();
+    cards.forEach(card => {
+      expect(card.textContent).toBe('?');
+    });
+    expect(window.__memoryReady.isStarted()).toBe(false);
+
+    // Space signals readiness.
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__memoryReady.isStarted()).toBe(true);
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('cleans up the ready screen on destroy before starting', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+    game.init(container);
+
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+    game.destroy();
+
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+    // Starting after destroy is a no-op (listeners are gone).
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__memoryReady.isStarted()).toBe(false);
+
     container.remove();
   });
 });

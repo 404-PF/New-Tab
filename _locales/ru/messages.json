@@ -392,6 +392,18 @@
     "message": "Нажмите пробел для перезапуска",
     "description": "Restart instruction"
   },
+  "gamesReady": {
+    "message": "Готовы?",
+    "description": "Ready-screen label"
+  },
+  "gamesReadyStart": {
+    "message": "Нажмите пробел или коснитесь, чтобы начать",
+    "description": "Ready-screen label"
+  },
+  "gamesStart": {
+    "message": "Старт",
+    "description": "Ready-screen label"
+  },
   "gamesNoGames": {
     "message": "Нет доступных игр",
     "description": "Message when no games are registered"

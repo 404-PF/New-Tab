@@ -19,6 +19,8 @@
   let timeEl = null;
   let pendingTimeouts = [];
   let pendingResolve = null;
+  let started = false;
+  let readyScreen = null;
 
   // ===================== Helpers =====================
 
@@ -51,7 +53,7 @@
   }
 
   function flipCard(cardId) {
-    if (gameOver) return;
+    if (!started || gameOver) return;
     const card = cards[cardId];
     if (!card || card.flipped || card.matched) return;
     if (flipped.length >= 2) return;
@@ -212,7 +214,9 @@
 
   // ===================== Lifecycle =====================
 
-  function resetGame() {
+  // Build a fresh board without starting the clock. Used on init() so the game
+  // can hold on the ready screen; resetGame() calls it and then starts the timer.
+  function setupBoard() {
     clearPendingTimeouts();
     pendingResolve = null;
     stopTimer();
@@ -225,6 +229,10 @@
     if (movesEl) movesEl.textContent = t('gamesMoves') + ': 0';
     if (timeEl) timeEl.textContent = t('gamesTime') + ': 0.0s';
     renderAll();
+  }
+
+  function resetGame() {
+    setupBoard();
     startTimer();
   }
 
@@ -258,12 +266,33 @@
     instructions.textContent = t('gamesMemoryControls') || 'Flip cards to find matching pairs';
     container.appendChild(instructions);
 
-    resetGame();
+    setupBoard();
 
     document.addEventListener('keydown', handleKeydown);
+
+    // Hold play until the user signals they are ready.
+    started = false;
+    readyScreen = window.gamesHelpers?.createReadyScreen?.(gridEl, {
+      text: t('gamesReady') || 'Ready?',
+      sub: t('gamesReadyStart') || 'Press Space or tap to start',
+      buttonText: t('gamesStart') || 'Start',
+      onStart: function () {
+        started = true;
+        startTimer();
+      }
+    });
   }
 
   function destroy() {
+    if (readyScreen) {
+      try {
+        readyScreen.remove();
+      } catch (e) {
+        console.warn('GameRegistry.destroyCurrent: error removing memory ready screen', e);
+      }
+      readyScreen = null;
+    }
+    started = false;
     clearPendingTimeouts();
     pendingResolve = null;
     stopTimer();
@@ -318,4 +347,10 @@
     pause: pause,
     resume: resume
   });
+
+  // Test hook: expose whether the game has been started so tests can assert it
+  // holds on the ready screen until the player signals readiness.
+  window.__memoryReady = {
+    isStarted: function () { return started; }
+  };
 })();

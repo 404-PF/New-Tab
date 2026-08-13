@@ -53,6 +53,78 @@
     return overlay;
   };
 
+  // Render a "ready" screen that holds gameplay until the user signals they are
+  // ready (press Space, or click/tap the Start button). Games opt in by calling
+  // this from init() and gating their loop behind the onStart callback.
+  // options: { text, sub, buttonText, onStart }
+  // Returns { start, remove } (or null when parentEl is missing):
+  //   - start(): tears down the screen and fires onStart once.
+  //   - remove(): tears down the screen without starting (for destroy()).
+  window.gamesHelpers.createReadyScreen = function (parentEl, options) {
+    if (!parentEl) return null;
+    const onStart = typeof options?.onStart === 'function' ? options.onStart : function () {};
+    const title = options?.text || window.gamesHelpers.t('gamesReady') || 'Ready?';
+    const sub = options?.sub || window.gamesHelpers.t('gamesReadyStart') || 'Press Space or tap to start';
+    const buttonText = options?.buttonText || window.gamesHelpers.t('gamesStart') || 'Start';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'games-ready-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', title);
+
+    const textEl = document.createElement('div');
+    textEl.className = 'games-ready-text';
+    textEl.textContent = title;
+    overlay.appendChild(textEl);
+
+    const subEl = document.createElement('div');
+    subEl.className = 'games-ready-sub';
+    subEl.textContent = sub;
+    overlay.appendChild(subEl);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'games-ready-start';
+    button.textContent = buttonText;
+    overlay.appendChild(button);
+
+    let started = false;
+
+    function remove() {
+      document.removeEventListener('keydown', onKeydown);
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+
+    function start() {
+      if (started) return;
+      started = true;
+      remove();
+      onStart();
+    }
+
+    function onKeydown(e) {
+      if (e.code !== 'Space') return;
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+        return;
+      }
+      e.preventDefault();
+      start();
+    }
+
+    button.addEventListener('click', start);
+    parentEl.appendChild(overlay);
+
+    // Move focus to the Start button so keyboard users can also activate it
+    // with Enter/Space. Guarded because some environments (tests) may not
+    // support element focus.
+    try { button.focus(); } catch { /* ignore */ }
+
+    document.addEventListener('keydown', onKeydown);
+
+    return { start: start, remove: remove };
+  };
+
   // Key handling helper for restarting on Space when gameOver
   window.gamesHelpers.handleRestartSpace = function (ev, resetFn) {
     if (!ev) return;

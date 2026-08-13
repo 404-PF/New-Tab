@@ -51,7 +51,10 @@ const GAMES_TRANSLATION_KEYS = [
   'gamesMemory',
   'gamesMemoryDesc',
   'gamesMemoryControls',
-  'gamesLevel'
+  'gamesLevel',
+  'gamesReady',
+  'gamesReadyStart',
+  'gamesStart'
 ];
 
 let originalLanguage;

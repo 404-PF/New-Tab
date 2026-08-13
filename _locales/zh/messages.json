@@ -392,6 +392,18 @@
     "message": "按空格键重新开始",
     "description": "Restart instruction"
   },
+  "gamesReady": {
+    "message": "准备好了吗？",
+    "description": "Ready-screen label"
+  },
+  "gamesReadyStart": {
+    "message": "按空格键或轻触开始",
+    "description": "Ready-screen label"
+  },
+  "gamesStart": {
+    "message": "开始",
+    "description": "Ready-screen label"
+  },
   "gamesNoGames": {
     "message": "暂无游戏",
     "description": "Message when no games are registered"

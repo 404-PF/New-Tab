@@ -11,6 +11,8 @@
   let container = null;
   let boardEl = null;
   let scoreEl = null;
+  let started = false;
+  let readyScreen = null;
 
   // ===================== Helpers =====================
 
@@ -219,6 +221,9 @@
       return;
     }
 
+    // Ignore all moves until the player has started the game.
+    if (!started) return;
+
     if (gameOver) {
       if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
         window.gamesHelpers.handleRestartSpace(e, resetGame);
@@ -258,6 +263,7 @@
       if (e.changedTouches && e.changedTouches.length > 0) resetGame();
       return;
     }
+    if (!started) return;
     if (e.changedTouches.length !== 1) return;
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
@@ -325,9 +331,29 @@
     document.addEventListener('keydown', handleKeydown);
     boardEl.addEventListener('touchstart', handleTouchStart, { passive: true });
     boardEl.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    // Hold play until the user signals they are ready.
+    started = false;
+    readyScreen = window.gamesHelpers?.createReadyScreen?.(boardEl, {
+      text: t('gamesReady') || 'Ready?',
+      sub: t('gamesReadyStart') || 'Press Space or tap to start',
+      buttonText: t('gamesStart') || 'Start',
+      onStart: function () {
+        started = true;
+      }
+    });
   }
 
   function destroy() {
+    if (readyScreen) {
+      try {
+        readyScreen.remove();
+      } catch (e) {
+        console.warn('GameRegistry.destroyCurrent: error removing 2048 ready screen', e);
+      }
+      readyScreen = null;
+    }
+    started = false;
     document.removeEventListener('keydown', handleKeydown);
     if (boardEl) {
       boardEl.removeEventListener('touchstart', handleTouchStart);
@@ -354,4 +380,10 @@
     pause: pause,
     resume: resume
   });
+
+  // Test hook: expose whether the game has been started so tests can assert it
+  // holds on the ready screen until the player signals readiness.
+  window.__game2048Ready = {
+    isStarted: function () { return started; }
+  };
 })();

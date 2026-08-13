@@ -392,6 +392,18 @@
     "message": "スペースキーで再スタート",
     "description": "Restart instruction"
   },
+  "gamesReady": {
+    "message": "準備はいいですか？",
+    "description": "Ready-screen label"
+  },
+  "gamesReadyStart": {
+    "message": "スペースキーまたはタップで開始",
+    "description": "Ready-screen label"
+  },
+  "gamesStart": {
+    "message": "開始",
+    "description": "Ready-screen label"
+  },
   "gamesNoGames": {
     "message": "ゲームがありません",
     "description": "Message when no games are registered"

@@ -392,6 +392,18 @@
     "message": "Appuyez sur espace pour recommencer",
     "description": "Restart instruction"
   },
+  "gamesReady": {
+    "message": "Prêt ?",
+    "description": "Ready-screen label"
+  },
+  "gamesReadyStart": {
+    "message": "Appuyez sur espace ou touchez pour commencer",
+    "description": "Ready-screen label"
+  },
+  "gamesStart": {
+    "message": "Commencer",
+    "description": "Ready-screen label"
+  },
   "gamesNoGames": {
     "message": "Aucun jeu disponible",
     "description": "Message when no games are registered"

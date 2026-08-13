@@ -392,6 +392,18 @@
     "message": "스페이스바로 다시 시작",
     "description": "Restart instruction"
   },
+  "gamesReady": {
+    "message": "준비됐나요?",
+    "description": "Ready-screen label"
+  },
+  "gamesReadyStart": {
+    "message": "스페이스바를 누르거나 탭하여 시작",
+    "description": "Ready-screen label"
+  },
+  "gamesStart": {
+    "message": "시작",
+    "description": "Ready-screen label"
+  },
   "gamesNoGames": {
     "message": "게임이 없습니다",
     "description": "Message when no games are registered"
