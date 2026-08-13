@@ -343,6 +343,63 @@ describe('AppGridState', () => {
     expect(AppGridState.reorder('x', 0)).toBe(false);
   });
 
+  describe('appIndexToOrderIndex', () => {
+    it('maps an index past trailing folders to the full-order end (#599)', () => {
+      // Issue #599 repro: dragging app A to the last grid slot computes an
+      // app-only index of 3 (after A, B, C) which must land after F1 and F2.
+      AppGridStorage.saveOrder(['A', 'B', 'C', 'F1', 'F2']);
+      AppGridStorage.saveFolders([
+        { id: 'F1', name: 'One', apps: [] },
+        { id: 'F2', name: 'Two', apps: [] }
+      ]);
+      expect(AppGridState.appIndexToOrderIndex(3)).toBe(5);
+    });
+
+    it('maps an app-only index to the full-order index of the target app', () => {
+      AppGridStorage.saveOrder(['A', 'F1', 'B', 'C', 'F2']);
+      AppGridStorage.saveFolders([
+        { id: 'F1', name: 'One', apps: [] },
+        { id: 'F2', name: 'Two', apps: [] }
+      ]);
+      // Insert before app-only index 2 (app C), which sits after F2.
+      expect(AppGridState.appIndexToOrderIndex(2)).toBe(3);
+    });
+
+    it('maps the front of the app-only sequence past a leading folder', () => {
+      AppGridStorage.saveOrder(['F0', 'A', 'B', 'F1', 'C']);
+      AppGridStorage.saveFolders([
+        { id: 'F0', name: 'Zero', apps: [] },
+        { id: 'F1', name: 'One', apps: [] }
+      ]);
+      expect(AppGridState.appIndexToOrderIndex(0)).toBe(1);
+    });
+
+    it('is the identity when no folders are present', () => {
+      AppGridStorage.saveOrder(['A', 'B', 'C']);
+      AppGridStorage.saveFolders([]);
+      expect(AppGridState.appIndexToOrderIndex(0)).toBe(0);
+      expect(AppGridState.appIndexToOrderIndex(2)).toBe(2);
+      expect(AppGridState.appIndexToOrderIndex(3)).toBe(3);
+    });
+
+    it('returns the order length for an index at the end of the sequence', () => {
+      AppGridStorage.saveOrder(['A', 'F1', 'B']);
+      AppGridStorage.saveFolders([{ id: 'F1', name: 'One', apps: [] }]);
+      expect(AppGridState.appIndexToOrderIndex(2)).toBe(3);
+    });
+
+    it('returns -1 unchanged as the no-position sentinel', () => {
+      AppGridStorage.saveOrder(['A', 'F1', 'B']);
+      AppGridStorage.saveFolders([{ id: 'F1', name: 'One', apps: [] }]);
+      expect(AppGridState.appIndexToOrderIndex(-1)).toBe(-1);
+    });
+
+    it('passes the index through when the order is missing', () => {
+      AppGridStorage.saveOrder(null);
+      expect(AppGridState.appIndexToOrderIndex(3)).toBe(3);
+    });
+  });
+
   describe('getCanonicalUrl', () => {
     it('strips www prefix', () => {
       expect(AppGridState.getCanonicalUrl('https://www.example.com'))
