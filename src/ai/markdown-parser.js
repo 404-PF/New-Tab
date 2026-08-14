@@ -407,14 +407,33 @@ const MarkdownParser = (function() {
 
   // ============== Block Parsing ==============
 
+  // Generated HTML blocks are temporarily replaced with placeholder tokens so
+  // later line-based parsers treat them as opaque text. The tokens use a
+  // Private Use Area character that markdown cannot produce, so they can
+  // never collide with user content.
+  const blockToken = (index) => `\uE000BLOCK${index}\uE000`;
+  const BLOCK_PLACEHOLDER_RE = /\uE000BLOCK(\d+)\uE000/g;
+
+  /**
+   * Restore placeholder tokens back into the protected HTML blocks.
+   * @param {string} text - Text containing placeholder tokens
+   * @param {string[]} protectedBlocks - Pool of protected HTML blocks
+   * @returns {string} Text with placeholders restored
+   */
+  function restoreBlockTokens(text, protectedBlocks) {
+    return text.replace(BLOCK_PLACEHOLDER_RE, (match, index) => protectedBlocks[Number(index)]);
+  }
+
   /**
    * Parse code blocks with syntax highlighting
    * @param {string} text - Text containing code blocks
    * @returns {string} HTML string
    */
   function parseCodeBlocks(text) {
-    // Fenced code blocks with language
-    text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+    // Fenced code blocks with language. The fence must start a line: lines
+    // like '> ```' (a fence inside a blockquote) are left for
+    // parseBlockquoteContent to handle after the '>' prefixes are stripped.
+    text = text.replace(/(^|\n)```(\w*)\n([\s\S]*?)```/g, (match, lineStart, lang, code) => {
       const language = lang ? lang.toLowerCase() : '';
       const languageLabel = lang ? `<span class="md-code-lang">${escapeHTML(lang)}</span>` : '';
       const highlightedCode = highlightCode(code.trim(), language);
@@ -422,7 +441,7 @@ const MarkdownParser = (function() {
     });
     
     // Fenced code blocks without language
-    text = text.replace(/```\n?([\s\S]*?)```/g, (match, code) => {
+    text = text.replace(/(^|\n)```\n?([\s\S]*?)```/g, (match, lineStart, code) => {
       return `<div class="md-code-block"><pre><code>${escapeHTML(code.trim())}</code></pre></div>`;
     });
     
@@ -438,13 +457,42 @@ const MarkdownParser = (function() {
    * @returns {string} HTML string
    */
   function parseBlockquoteContent(content) {
+    const protectedBlocks = [];
+
+    // Replace a generated HTML block with a placeholder token so later passes
+    // treat it as opaque text (they cannot re-parse or inline-parse inside it)
+    const protect = (match) => {
+      protectedBlocks.push(match);
+      return blockToken(protectedBlocks.length - 1);
+    };
+
+    // Code blocks first; their rendered HTML is multiline, so protect it
+    // before the line-based parsers below can scan inside the <code> content
     let html = parseCodeBlocks(content);
+    html = html.replace(/<div class="md-code-block">[\s\S]*?<\/div>/g, protect);
+
     html = parseTables(html);
     html = parseHeaders(html);
     html = parseTaskLists(html);
     html = parseLists(html);
     html = parseHorizontalRules(html);
-    return html;
+
+    // Protect the block HTML generated above, then inline-parse the remaining
+    // plain text so formatting like **bold** keeps working inside blockquotes
+    html = html.replace(/<div class="md-table-wrapper">[\s\S]*?<\/div>/g, protect);
+    html = html.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/g, protect);
+    html = html.replace(/<hr[^>]*\/?>/g, protect);
+
+    // Lists can nest, so protect the innermost lists first (each pass wraps a
+    // complete list element instead of cutting across nested ones)
+    const nestedListRe = /<ul[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ul>|<ol[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ol>/;
+    let iterations = 0;
+    while (nestedListRe.test(html) && iterations++ < 50) {
+      html = html.replace(nestedListRe, protect);
+    }
+
+    html = parseInline(html);
+    return restoreBlockTokens(html, protectedBlocks);
   }
 
   /**
@@ -977,15 +1025,27 @@ const MarkdownParser = (function() {
     }
 
     let html = markdown;
+    const protectedBlocks = [];
+
+    // Replace rendered code-block HTML with a placeholder token so the
+    // line-based parsers below never scan inside the <code> content
+    const protect = (match) => {
+      protectedBlocks.push(match);
+      return blockToken(protectedBlocks.length - 1);
+    };
 
     // Parse in order of precedence
     html = parseCodeBlocks(html);      // Code blocks first to protect content
+    html = html.replace(/<div class="md-code-block">[\s\S]*?<\/div>/g, protect);
     html = parseTables(html);          // Tables
     html = parseHeaders(html);         // Headers
     html = parseBlockquotes(html);     // Blockquotes
+    // Protect code blocks generated inside blockquotes as well
+    html = html.replace(/<div class="md-code-block">[\s\S]*?<\/div>/g, protect);
     html = parseTaskLists(html);       // Task lists (before regular lists)
     html = parseLists(html);           // Lists
     html = parseHorizontalRules(html); // Horizontal rules
+    html = restoreBlockTokens(html, protectedBlocks); // Restore code blocks
     html = parseParagraphs(html);      // Paragraphs last
 
     // Sanitize the final HTML through a strict allowlist

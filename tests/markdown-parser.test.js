@@ -279,73 +279,160 @@ describe('MarkdownParser HTML sanitization', () => {
 });
 
 describe('MarkdownParser blockquote and list rendering', () => {
-  it('renders unordered list items inside a blockquote', () => {
-    const html = MarkdownParser.parse('> - item1\n> - item2');
+  /**
+   * Parse markdown into a DOM container so tests can assert structural
+   * relationships (e.g. a list being a descendant of a blockquote)
+   * instead of matching independent HTML fragments.
+   * @param {string} markdown - Markdown input
+   * @returns {HTMLDivElement} Container with parsed HTML
+   */
+  function parseToContainer(markdown) {
+    const container = document.createElement('div');
+    container.innerHTML = MarkdownParser.parse(markdown);
+    return container;
+  }
 
-    expect(html).toContain('<blockquote class="md-blockquote">');
-    expect(html).toContain('<ul class="md-list md-list-ul">');
-    expect(html).toContain('<li class="md-list-item">item1</li>');
-    expect(html).toContain('<li class="md-list-item">item2</li>');
-    expect(html).toContain('</blockquote>');
+  it('renders unordered list items inside a blockquote', () => {
+    const container = parseToContainer('> - item1\n> - item2');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const items = blockquote.querySelectorAll('li.md-list-item');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('ul.md-list-ul')).not.toBeNull();
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toBe('item1');
+    expect(items[1].textContent).toBe('item2');
     // Items must render as list items, not literal text
-    expect(html).not.toContain('>- item1');
-    expect(html).not.toContain('- item1</blockquote>');
+    expect(blockquote.textContent).not.toContain('- item1');
   });
 
   it('renders a single list item inside a blockquote', () => {
-    const html = MarkdownParser.parse('> - only item');
+    const container = parseToContainer('> - only item');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
 
-    expect(html).toContain('<blockquote class="md-blockquote">');
-    expect(html).toContain('<ul class="md-list md-list-ul">');
-    expect(html).toContain('<li class="md-list-item">only item</li>');
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('ul.md-list-ul')).not.toBeNull();
+    expect(blockquote.querySelectorAll('li.md-list-item')).toHaveLength(1);
+    expect(blockquote.querySelector('li.md-list-item').textContent).toBe('only item');
   });
 
   it('renders ordered lists inside a blockquote', () => {
-    const html = MarkdownParser.parse('> 1. first\n> 2. second');
+    const container = parseToContainer('> 1. first\n> 2. second');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const items = blockquote.querySelectorAll('li.md-list-item');
 
-    expect(html).toContain('<blockquote class="md-blockquote">');
-    expect(html).toContain('<ol class="md-list md-list-ol">');
-    expect(html).toContain('<li class="md-list-item">first</li>');
-    expect(html).toContain('<li class="md-list-item">second</li>');
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('ol.md-list-ol')).not.toBeNull();
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toBe('first');
+    expect(items[1].textContent).toBe('second');
   });
 
   it('renders task lists inside a blockquote', () => {
-    const html = MarkdownParser.parse('> - [ ] todo\n> - [x] done');
+    const container = parseToContainer('> - [ ] todo\n> - [x] done');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
 
-    expect(html).toContain('<blockquote class="md-blockquote">');
-    expect(html).toContain('<ul class="md-list md-list-ul md-task-list">');
-    expect(html).toMatch(/<input type="checkbox" [^>]*disabled/);
-    expect(html).toContain('<span class="md-task-checked">done</span>');
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('ul.md-task-list')).not.toBeNull();
+    expect(blockquote.querySelectorAll('input[type="checkbox"]')).toHaveLength(2);
+    expect(blockquote.querySelectorAll('input[type="checkbox"]')[1].checked).toBe(true);
+    expect(blockquote.querySelector('span.md-task-checked').textContent).toBe('done');
   });
 
   it('keeps text and list items inside a blockquote', () => {
-    const html = MarkdownParser.parse('> intro text\n> - item1\n> - item2');
+    const container = parseToContainer('> intro text\n> - item1\n> - item2');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
 
-    expect(html).toContain('intro text');
-    expect(html).toContain('<li class="md-list-item">item1</li>');
-    expect(html).toContain('<li class="md-list-item">item2</li>');
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.textContent).toContain('intro text');
+    expect(blockquote.querySelector('ul.md-list-ul')).not.toBeNull();
+    expect(blockquote.querySelectorAll('li.md-list-item')).toHaveLength(2);
+  });
+
+  it('renders inline formatting in plain blockquote text', () => {
+    const container = parseToContainer('> **bold** and *italic* and `code`');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote.querySelector('strong')).not.toBeNull();
+    expect(blockquote.querySelector('em')).not.toBeNull();
+    expect(blockquote.querySelector('code.md-inline-code')).not.toBeNull();
+  });
+
+  it('renders links in plain blockquote text', () => {
+    const container = parseToContainer('> see [site](https://example.com)');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const link = blockquote.querySelector('a.md-link');
+
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('https://example.com/');
+    expect(link.textContent).toBe('site');
+  });
+
+  it('escapes raw HTML in plain blockquote text', () => {
+    const container = parseToContainer('> hello <b>world</b>');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote.querySelector('b')).toBeNull();
+    expect(blockquote.textContent).toContain('<b>world</b>');
+  });
+
+  it('keeps quoted fenced code blocks intact when content looks like markdown', () => {
+    const container = parseToContainer('> ```\n> - item\n> # header\n> ---\n> ```');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const code = blockquote.querySelector('div.md-code-block code');
+
+    expect(blockquote).not.toBeNull();
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('- item\n# header\n---');
+    expect(blockquote.querySelector('li.md-list-item')).toBeNull();
+    expect(blockquote.querySelector('h1')).toBeNull();
+    expect(blockquote.querySelector('hr')).toBeNull();
+  });
+
+  it('keeps quoted fenced code blocks with table-like content intact', () => {
+    const container = parseToContainer('> ```\n> | a | b |\n> |---|---|\n> ```');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const code = blockquote.querySelector('div.md-code-block code');
+
+    expect(blockquote).not.toBeNull();
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('| a | b |\n|---|---|');
+    expect(blockquote.querySelector('table')).toBeNull();
+  });
+
+  it('keeps multiline code blocks intact when content looks like markdown', () => {
+    const container = parseToContainer('```\nline one\n- item\n# header\n```');
+    const code = container.querySelector('div.md-code-block code');
+
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('line one\n- item\n# header');
+    expect(container.querySelector('li.md-list-item')).toBeNull();
+    expect(container.querySelector('h1')).toBeNull();
   });
 
   it('renders plain unordered lists (lines are not dropped)', () => {
-    const html = MarkdownParser.parse('- item1\n- item2');
+    const container = parseToContainer('- item1\n- item2');
 
-    expect(html).toContain('<ul class="md-list md-list-ul">');
-    expect(html).toContain('<li class="md-list-item">item1</li>');
-    expect(html).toContain('<li class="md-list-item">item2</li>');
+    expect(container.querySelector('ul.md-list-ul')).not.toBeNull();
+    expect(container.querySelectorAll('li.md-list-item')).toHaveLength(2);
+    expect(container.querySelectorAll('li.md-list-item')[0].textContent).toBe('item1');
+    expect(container.querySelectorAll('li.md-list-item')[1].textContent).toBe('item2');
   });
 
   it('renders plain ordered lists (lines are not dropped)', () => {
-    const html = MarkdownParser.parse('1. first\n2. second');
+    const container = parseToContainer('1. first\n2. second');
 
-    expect(html).toContain('<ol class="md-list md-list-ol">');
-    expect(html).toContain('<li class="md-list-item">first</li>');
-    expect(html).toContain('<li class="md-list-item">second</li>');
+    expect(container.querySelector('ol.md-list-ol')).not.toBeNull();
+    expect(container.querySelectorAll('li.md-list-item')).toHaveLength(2);
   });
 
   it('renders a regular list item after closing an open task list', () => {
-    const html = MarkdownParser.parse('- [ ] task\n- plain item');
+    const container = parseToContainer('- [ ] task\n- plain item');
+    const lists = container.querySelectorAll('ul.md-list');
 
-    expect(html).toContain('md-task-list');
-    expect(html).toContain('<li class="md-list-item">plain item</li>');
+    expect(lists).toHaveLength(2);
+    expect(lists[0].classList.contains('md-task-list')).toBe(true);
+    expect(lists[1].classList.contains('md-task-list')).toBe(false);
+    expect(lists[1].textContent).toContain('plain item');
   });
 });
