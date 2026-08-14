@@ -19,6 +19,8 @@
   let timeEl = null;
   let pendingTimeouts = [];
   let pendingResolve = null;
+  let started = false;
+  let readyScreen = null;
 
   // ===================== Helpers =====================
 
@@ -51,7 +53,7 @@
   }
 
   function flipCard(cardId) {
-    if (gameOver) return;
+    if (!started || gameOver) return;
     const card = cards[cardId];
     if (!card || card.flipped || card.matched) return;
     if (flipped.length >= 2) return;
@@ -212,7 +214,9 @@
 
   // ===================== Lifecycle =====================
 
-  function resetGame() {
+  // Build a fresh board without starting the clock. Used on init() so the game
+  // can hold on the ready screen; resetGame() calls it and then starts the timer.
+  function setupBoard() {
     clearPendingTimeouts();
     pendingResolve = null;
     stopTimer();
@@ -225,6 +229,10 @@
     if (movesEl) movesEl.textContent = t('gamesMoves') + ': 0';
     if (timeEl) timeEl.textContent = t('gamesTime') + ': 0.0s';
     renderAll();
+  }
+
+  function resetGame() {
+    setupBoard();
     startTimer();
   }
 
@@ -258,12 +266,44 @@
     instructions.textContent = t('gamesMemoryControls') || 'Flip cards to find matching pairs';
     container.appendChild(instructions);
 
-    resetGame();
+    setupBoard();
 
     document.addEventListener('keydown', handleKeydown);
+
+    // Hold play until the user signals they are ready.
+    started = false;
+    if (typeof window.gamesHelpers?.createReadyScreen === 'function') {
+      readyScreen = window.gamesHelpers.createReadyScreen(gridEl, {
+        text: t('gamesReady') || 'Ready?',
+        sub: t('gamesReadyStart') || 'Press Space or tap to start',
+        buttonText: t('gamesStart') || 'Start',
+        onStart: function () {
+          started = true;
+          // A pause taken before Start must not leak a stale pausedAt into the
+          // new run's elapsed-time math.
+          pausedAt = 0;
+          startTimer();
+        }
+      });
+    } else {
+      // No ready-screen helper available: start immediately so the game is
+      // still playable instead of being stuck with started === false.
+      started = true;
+      pausedAt = 0;
+      startTimer();
+    }
   }
 
   function destroy() {
+    if (readyScreen) {
+      try {
+        readyScreen.remove();
+      } catch (e) {
+        console.warn('memory.destroy: error removing ready screen', e);
+      }
+      readyScreen = null;
+    }
+    started = false;
     clearPendingTimeouts();
     pendingResolve = null;
     stopTimer();
@@ -278,6 +318,8 @@
   }
 
   function pause() {
+    // A game that hasn't been started yet must stay on the ready screen.
+    if (!started) return;
     pausedAt = Date.now();
     stopTimer();
     clearPendingTimeouts();
@@ -301,6 +343,8 @@
   }
 
   function resume() {
+    // A game that hasn't been started yet must stay on the ready screen.
+    if (!started) return;
     if (!gameOver && startTime > 0 && pausedAt > 0) {
       const elapsed = pausedAt - startTime;
       startTime = Date.now() - elapsed;
@@ -318,4 +362,14 @@
     pause: pause,
     resume: resume
   });
+
+  // Test hook: expose whether the game has been started so tests can assert it
+  // holds on the ready screen until the player signals readiness. get/setPausedAt
+  // let tests simulate a stale pausedAt surviving into the ready state so the
+  // resume() guard can be pinned directly.
+  window.__memoryReady = {
+    isStarted: function () { return started; },
+    getPausedAt: function () { return pausedAt; },
+    setPausedAt: function (value) { pausedAt = value; }
+  };
 })();

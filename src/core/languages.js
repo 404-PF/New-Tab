@@ -27,6 +27,18 @@ const GAMES_TRANSLATION_KEYS = [
   'gamesMemoryControls'
 ];
 
+// Every games key a supported locale must resolve, including the keys that live
+// in per-language maps (gamesLevel, gamesReady, gamesReadyStart, gamesStart)
+// rather than in GAMES_TRANSLATION_KEYS. Exported as window.i18n.gamesTranslationKeys
+// so completeness tests iterate the same list the source uses and cannot drift
+// from it.
+const GAMES_ALL_TRANSLATION_KEYS = GAMES_TRANSLATION_KEYS.concat([
+  'gamesLevel',
+  'gamesReady',
+  'gamesReadyStart',
+  'gamesStart'
+]);
+
 function createNoteTagTranslations(
   notesFilterAll,
   notesAddTag,
@@ -3918,6 +3930,26 @@ const gamesLevelTranslations = {
 Object.keys(gamesLevelTranslations).forEach(function (language) {
   translations[language].gamesLevel = gamesLevelTranslations[language];
 });
+
+// Like gamesLevel, the ready-screen strings live in a per-language map instead
+// of the positional createGamesTranslations arrays so they don't add duplicated
+// lines to the SonarCloud quality gate. Each supported language must have an
+// entry here, or the key resolves to the English fallback in the games.
+const gamesReadyTranslations = {
+  en: { gamesReady: 'Ready?', gamesReadyStart: 'Press Space or tap to start', gamesStart: 'Start' },
+  zh: { gamesReady: '准备好了吗？', gamesReadyStart: '按空格键或轻触开始', gamesStart: '开始' },
+  ja: { gamesReady: '準備はいいですか？', gamesReadyStart: 'スペースキーまたはタップで開始', gamesStart: '開始' },
+  ko: { gamesReady: '준비됐나요?', gamesReadyStart: '스페이스바를 누르거나 탭하여 시작', gamesStart: '시작' },
+  es: { gamesReady: '¿Listo?', gamesReadyStart: 'Presiona espacio o toca para comenzar', gamesStart: 'Comenzar' },
+  fr: { gamesReady: 'Prêt ?', gamesReadyStart: 'Appuyez sur espace ou touchez pour commencer', gamesStart: 'Commencer' },
+  de: { gamesReady: 'Bereit?', gamesReadyStart: 'Leertaste drücken oder antippen zum Starten', gamesStart: 'Starten' },
+  pt: { gamesReady: 'Pronto?', gamesReadyStart: 'Pressione espaço ou toque para começar', gamesStart: 'Começar' },
+  ru: { gamesReady: 'Готовы?', gamesReadyStart: 'Нажмите пробел или коснитесь, чтобы начать', gamesStart: 'Старт' }
+};
+
+Object.keys(gamesReadyTranslations).forEach(function (language) {
+  Object.assign(translations[language], gamesReadyTranslations[language]);
+});
 const pomodoroTranslations = {
   en: {
     enablePomodoro: 'Enable Pomodoro focus timer', pomodoroDurations: 'Focus Timer Durations', pomodoroDurationsDesc: 'Configure work and break durations (in minutes)', pomodoroWork: 'Work', pomodoroShortBreak: 'Short Break', pomodoroLongBreak: 'Long Break', pomodoroSessionsBeforeLong: 'Sessions before long break', pomodoroPhaseWork: 'Focus', pomodoroPhaseShortBreak: 'Short Break', pomodoroPhaseLongBreak: 'Long Break', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Pause', pomodoroResume: 'Resume', pomodoroSkip: 'Skip', pomodoroReset: 'Reset', pomodoroStartFocus: 'Start Focus', pomodoroStopFocus: 'Stop Focus', pomodoroWorkComplete: 'Focus session complete!', pomodoroWorkCompleteBody: 'Task: {task}', pomodoroBreakComplete: 'Break over!', pomodoroBreakCompleteBody: 'Ready to focus again?'
@@ -4175,5 +4207,6 @@ window.i18n = {
   t,
   currentLanguage: () => currentLanguage,
   getSupportedLanguages,
-  getTranslations: (code) => ({ ...translations[code] })
+  getTranslations: (code) => ({ ...translations[code] }),
+  gamesTranslationKeys: GAMES_ALL_TRANSLATION_KEYS
 };

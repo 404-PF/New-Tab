@@ -3,13 +3,14 @@ import { injectScript } from '../helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
+  injectScript('src/features/games/shared.js');
   injectScript('src/features/games/game-registry.js');
   injectScript('src/features/games/snake.js');
 });
 
 beforeEach(() => {
   localStorage.clear();
-  document.querySelectorAll('.games-score-display, .games-snake-canvas, .games-instructions').forEach(el => el.remove());
+  document.querySelectorAll('.games-score-display, .games-snake-canvas, .games-snake-stage, .games-ready-overlay, .games-instructions').forEach(el => el.remove());
 });
 
 describe('Snake Game', () => {
@@ -88,6 +89,66 @@ describe('Snake Game', () => {
     expect(() => game.resume()).not.toThrow();
 
     game.destroy();
+    container.remove();
+  });
+});
+
+describe('Snake ready state (#597)', () => {
+  it('shows a ready screen on init and does not start until the player starts', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+
+    const stage = container.querySelector('.games-snake-stage');
+    expect(stage).not.toBeNull();
+    expect(stage.querySelector('.games-ready-overlay')).not.toBeNull();
+    expect(window.__snakeReady.isStarted()).toBe(false);
+
+    // Steering while ready is ignored.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight' }));
+    expect(window.__snakeReady.isStarted()).toBe(false);
+
+    // Space signals readiness.
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__snakeReady.isStarted()).toBe(true);
+    expect(stage.querySelector('.games-ready-overlay')).toBeNull();
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('does not resume an un-started game into play', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+
+    // A visibility cycle while still on the ready screen must not start the loop
+    // nor leave the ready screen.
+    game.pause();
+    game.resume();
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+    expect(window.__snakeReady.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('cleans up the ready screen on destroy before starting', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+    game.destroy();
+
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+    // Starting after destroy is a no-op (listeners are gone).
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__snakeReady.isStarted()).toBe(false);
+
     container.remove();
   });
 });

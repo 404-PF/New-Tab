@@ -392,6 +392,18 @@
     "message": "Leertaste zum Neustarten",
     "description": "Restart instruction"
   },
+  "gamesReady": {
+    "message": "Bereit?",
+    "description": "Ready-screen label"
+  },
+  "gamesReadyStart": {
+    "message": "Leertaste drücken oder antippen zum Starten",
+    "description": "Ready-screen label"
+  },
+  "gamesStart": {
+    "message": "Starten",
+    "description": "Ready-screen label"
+  },
   "gamesNoGames": {
     "message": "Keine Spiele verfügbar",
     "description": "Message when no games are registered"

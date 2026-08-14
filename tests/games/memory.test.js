@@ -3,13 +3,14 @@ import { injectScript } from '../helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
+  injectScript('src/features/games/shared.js');
   injectScript('src/features/games/game-registry.js');
   injectScript('src/features/games/memory.js');
 });
 
 beforeEach(() => {
   localStorage.clear();
-  document.querySelectorAll('.games-memory-stats, .games-memory-grid, .games-instructions').forEach(el => el.remove());
+  document.querySelectorAll('.games-memory-stats, .games-memory-grid, .games-ready-overlay, .games-instructions').forEach(el => el.remove());
 });
 
 describe('Memory Match Game', () => {
@@ -111,6 +112,9 @@ describe('Memory Match Game', () => {
     const game = window.GameRegistry.get('memory');
     game.init(container);
 
+    // Start the run (the game holds on a ready screen until the player signals).
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+
     const cards = container.querySelectorAll('.games-memory-card');
     cards[0].click();
 
@@ -121,6 +125,95 @@ describe('Memory Match Game', () => {
     game.resume();
 
     expect(flippedEl.classList.contains('games-memory-card-flipped')).toBe(true);
+
+    game.destroy();
+    container.remove();
+  });
+});
+
+describe('Memory ready state (#597)', () => {
+  it('shows a ready screen and does not flip cards until the player starts', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+    game.init(container);
+
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+    expect(window.__memoryReady.isStarted()).toBe(false);
+
+    // Clicks while ready are ignored: every card stays face down.
+    const cards = container.querySelectorAll('.games-memory-card');
+    cards[0].click();
+    cards.forEach(card => {
+      expect(card.textContent).toBe('?');
+    });
+    expect(window.__memoryReady.isStarted()).toBe(false);
+
+    // Space signals readiness.
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__memoryReady.isStarted()).toBe(true);
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('cleans up the ready screen on destroy before starting', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+    game.init(container);
+
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+    game.destroy();
+
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+    // Starting after destroy is a no-op (listeners are gone).
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__memoryReady.isStarted()).toBe(false);
+
+    container.remove();
+  });
+
+  it('does not start the ticker during a pre-start visibility cycle after relaunch', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+
+    // First run: start the run so timer state (startTime/pausedAt) is populated.
+    game.init(container);
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    game.pause();
+    expect(window.__memoryReady.getPausedAt()).toBeGreaterThan(0);
+    game.destroy();
+
+    // Relaunch: the game holds on the ready screen again. setupBoard() keeps the
+    // previous startTime, so a pre-start visibility cycle must not leak into the
+    // timer while the ready screen is active.
+    game.init(container);
+    expect(window.__memoryReady.isStarted()).toBe(false);
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+    // The stale pausedAt from the first run must not survive into the ready state.
+    expect(window.__memoryReady.getPausedAt()).toBe(0);
+
+    const setIntervalSpy = vi.spyOn(window, 'setInterval');
+    try {
+      // Simulate a stale pausedAt surviving into the ready state (as if
+      // setupBoard had not reset it) so the resume() guard itself is exercised:
+      // even with pausedAt > 0 and a populated startTime, resume() must not
+      // start the ticker while the game is still unstarted.
+      window.__memoryReady.setPausedAt(Date.now());
+
+      // A visibility cycle while still on the ready screen must not start the ticker.
+      game.pause();
+      game.resume();
+
+      expect(window.__memoryReady.isStarted()).toBe(false);
+      expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+      expect(setIntervalSpy).not.toHaveBeenCalled();
+    } finally {
+      setIntervalSpy.mockRestore();
+    }
 
     game.destroy();
     container.remove();
