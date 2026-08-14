@@ -412,7 +412,6 @@ const MarkdownParser = (function() {
   // Private Use Area character that markdown cannot produce, so they can
   // never collide with user content.
   const blockToken = (index) => `\uE000BLOCK${index}\uE000`;
-  const BLOCK_PLACEHOLDER_RE = /\uE000BLOCK(\d+)\uE000/g;
 
   /**
    * Restore placeholder tokens back into the protected HTML blocks.
@@ -421,7 +420,18 @@ const MarkdownParser = (function() {
    * @returns {string} Text with placeholders restored
    */
   function restoreBlockTokens(text, protectedBlocks) {
-    return text.replace(BLOCK_PLACEHOLDER_RE, (match, index) => protectedBlocks[Number(index)]);
+    // Nested blocks (e.g. inner lists are protected before their parents)
+    // can embed child tokens inside their HTML, and replace() never rescans
+    // its replacement strings. Restore in reverse index order so a parent's
+    // embedded child tokens are still present in the text when their own
+    // restore pass runs. A function replacement avoids $& / $1 interpolation
+    // of the block HTML.
+    let result = text;
+    for (let i = protectedBlocks.length - 1; i >= 0; i--) {
+      const tokenRe = new RegExp(`\uE000BLOCK${i}\uE000`, 'g');
+      result = result.replace(tokenRe, () => protectedBlocks[i]);
+    }
+    return result;
   }
 
   /**
@@ -437,12 +447,14 @@ const MarkdownParser = (function() {
       const language = lang ? lang.toLowerCase() : '';
       const languageLabel = lang ? `<span class="md-code-lang">${escapeHTML(lang)}</span>` : '';
       const highlightedCode = highlightCode(code.trim(), language);
-      return `<div class="md-code-block">${languageLabel}<pre><code>${highlightedCode}</code></pre></div>`;
+      // Preserve the newline before the fence so the block stays on its own
+      // line and line-based parsers treat it as a block element
+      return lineStart + `<div class="md-code-block">${languageLabel}<pre><code>${highlightedCode}</code></pre></div>`;
     });
     
     // Fenced code blocks without language
     text = text.replace(/(^|\n)```\n?([\s\S]*?)```/g, (match, lineStart, code) => {
-      return `<div class="md-code-block"><pre><code>${escapeHTML(code.trim())}</code></pre></div>`;
+      return lineStart + `<div class="md-code-block"><pre><code>${escapeHTML(code.trim())}</code></pre></div>`;
     });
     
     return text;
@@ -483,11 +495,13 @@ const MarkdownParser = (function() {
     html = html.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/g, protect);
     html = html.replace(/<hr[^>]*\/?>/g, protect);
 
-    // Lists can nest, so protect the innermost lists first (each pass wraps a
-    // complete list element instead of cutting across nested ones)
-    const nestedListRe = /<ul[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ul>|<ol[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ol>/;
-    let iterations = 0;
-    while (nestedListRe.test(html) && iterations++ < 50) {
+    // Lists can nest, so protect the innermost lists first (each pass wraps
+    // a complete list element instead of cutting across nested ones). The /g
+    // flag protects every list at the current nesting level in a single pass,
+    // so the loop runs once per nesting depth — each pass replaces at least
+    // one list element with a token, so it always terminates.
+    const nestedListRe = /<ul[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ul>|<ol[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ol>/g;
+    while (nestedListRe.test(html)) {
       html = html.replace(nestedListRe, protect);
     }
 
@@ -815,7 +829,11 @@ const MarkdownParser = (function() {
       if (!block) return '';
       
       // Don't wrap if already wrapped in block elements
-      if (block.startsWith('<h') || 
+      // (protected-block tokens are single-line placeholders for block-level
+      // HTML like code blocks; leaving them unwrapped keeps the restored
+      // block a real block element)
+      if (block.startsWith('\uE000') ||
+          block.startsWith('<h') || 
           block.startsWith('<ul') || 
           block.startsWith('<ol') || 
           block.startsWith('<blockquote') || 
@@ -1045,8 +1063,10 @@ const MarkdownParser = (function() {
     html = parseTaskLists(html);       // Task lists (before regular lists)
     html = parseLists(html);           // Lists
     html = parseHorizontalRules(html); // Horizontal rules
-    html = restoreBlockTokens(html, protectedBlocks); // Restore code blocks
     html = parseParagraphs(html);      // Paragraphs last
+    // Restore code blocks only after paragraph parsing: parseParagraphs
+    // splits on blank lines, which would cut through multiline code content
+    html = restoreBlockTokens(html, protectedBlocks); // Restore code blocks
 
     // Sanitize the final HTML through a strict allowlist
     html = sanitizeHTML(html);

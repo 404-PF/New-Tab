@@ -435,4 +435,63 @@ describe('MarkdownParser blockquote and list rendering', () => {
     expect(lists[1].classList.contains('md-task-list')).toBe(false);
     expect(lists[1].textContent).toContain('plain item');
   });
+
+  it('renders a fenced code block that follows paragraph text as a real code block', () => {
+    // Regression: the code-block regexes consumed the newline before the
+    // fence, gluing the block to the previous line so the paragraph parser
+    // escaped the whole code block as literal text
+    const container = parseToContainer('Some text\n```js\ncode\n```');
+    const code = container.querySelector('div.md-code-block code');
+
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('code');
+    expect(container.querySelector('p.md-paragraph').textContent).toContain('Some text');
+    expect(container.innerHTML).not.toContain('&lt;div');
+    expect(container.innerHTML).not.toContain('&lt;pre');
+  });
+
+  it('protects every list inside a blockquote, even with many separate lists', () => {
+    // Regression: the innermost-list protection loop capped at 50 iterations
+    // with a single list matched per pass, leaving later lists escaped as
+    // literal text
+    const lines = [];
+    for (let i = 0; i < 60; i++) {
+      lines.push(`> - item${i}`, `> note ${i}`);
+    }
+    const container = parseToContainer(lines.join('\n'));
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelectorAll('li.md-list-item')).toHaveLength(60);
+    // Unprotected lists would be escaped and appear as literal text
+    expect(blockquote.textContent).not.toContain('<ul');
+    expect(blockquote.textContent).not.toContain('<li');
+  });
+
+  it('resolves nested lists inside a blockquote without leftover placeholder tokens', () => {
+    // Regression: inner lists are tokenized before their parents, and a
+    // single forward restore pass left the inner token embedded in the
+    // outer list's HTML
+    const container = parseToContainer('> - outer\n>   - inner');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('ul.md-list-ul ul.md-list-ul')).not.toBeNull();
+    expect(blockquote.querySelectorAll('li.md-list-item')).toHaveLength(2);
+    expect(blockquote.querySelectorAll('li.md-list-item')[1].textContent).toBe('inner');
+    expect(blockquote.textContent).not.toContain('\uE000');
+  });
+
+  it('keeps fenced code blocks containing blank lines intact', () => {
+    // Regression: restored code-block HTML passed through parseParagraphs,
+    // which split on the blank line inside the code and escaped the tail
+    // (leaving an unclosed <div>)
+    const container = parseToContainer('```\nline one\n\nline two\n```');
+    const code = container.querySelector('div.md-code-block code');
+
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('line one\n\nline two');
+    expect(container.innerHTML).not.toContain('&lt;/code&gt;');
+    expect(container.innerHTML).not.toContain('&lt;/pre&gt;');
+  });
 });
