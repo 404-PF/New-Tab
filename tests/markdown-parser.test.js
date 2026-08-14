@@ -450,6 +450,44 @@ describe('MarkdownParser blockquote and list rendering', () => {
     expect(container.innerHTML).not.toContain('&lt;pre');
   });
 
+  it('renders a code block after paragraph text without a blank line as a sibling block', () => {
+    // Regression: the code block's placeholder token sat on the second line
+    // of a paragraph block, so parseParagraphs merged it into the <p> and
+    // restoreBlockTokens expanded a <div> inside the <p> (invalid HTML)
+    const container = parseToContainer('Some text\n```js\ncode\n```');
+    const paragraph = container.querySelector('p.md-paragraph');
+    const codeBlock = container.querySelector('div.md-code-block');
+
+    expect(paragraph).not.toBeNull();
+    expect(codeBlock).not.toBeNull();
+    expect(paragraph.textContent).toContain('Some text');
+    expect(paragraph.textContent).not.toContain('code');
+    // The code block must be a sibling of the paragraph, not nested inside it
+    expect(paragraph.contains(codeBlock)).toBe(false);
+    expect(codeBlock.parentElement).toBe(paragraph.parentElement);
+    expect(container.querySelector('p.md-paragraph div.md-code-block')).toBeNull();
+  });
+
+  it('keeps code blocks inside a blockquote intact when quote text follows without a blank line', () => {
+    // The same placeholder-token merge must not split blockquote HTML: a
+    // code block nested inside a <blockquote> stays put even when the quote
+    // has no blank lines around the block
+    const container = parseToContainer('> intro\n> ```js\n> code\n> ```\n> outro');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const codeBlock = blockquote.querySelector('div.md-code-block');
+    const code = codeBlock.querySelector('code');
+
+    expect(blockquote).not.toBeNull();
+    expect(codeBlock).not.toBeNull();
+    expect(code.textContent).toBe('code');
+    expect(blockquote.textContent).toContain('intro');
+    expect(blockquote.textContent).toContain('outro');
+    // No stray paragraph wrappers cut through the blockquote and no
+    // placeholder tokens leak into the output
+    expect(container.querySelector('p.md-paragraph')).toBeNull();
+    expect(blockquote.textContent).not.toContain('\uE000');
+  });
+
   it('protects every list inside a blockquote, even with many separate lists', () => {
     // Regression: the innermost-list protection loop capped at 50 iterations
     // with a single list matched per pass, leaving later lists escaped as

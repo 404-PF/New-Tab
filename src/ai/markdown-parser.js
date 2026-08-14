@@ -824,33 +824,65 @@ const MarkdownParser = (function() {
    */
   function parseParagraphs(text) {
     const blocks = text.split(/\n\n+/);
-    return blocks.map(block => {
+    return blocks.flatMap(block => {
       block = block.trim();
-      if (!block) return '';
-      
-      // Don't wrap if already wrapped in block elements
-      // (protected-block tokens are single-line placeholders for block-level
-      // HTML like code blocks; leaving them unwrapped keeps the restored
-      // block a real block element)
-      if (block.startsWith('\uE000') ||
-          block.startsWith('<h') || 
-          block.startsWith('<ul') || 
-          block.startsWith('<ol') || 
-          block.startsWith('<blockquote') || 
-          block.startsWith('<pre') || 
-          block.startsWith('<div') ||
-          block.startsWith('<hr') ||
-          block.startsWith('<table')) {
-        return block;
+      if (!block) return [];
+
+      // Split at standalone protected-block token lines (placeholders for
+      // block-level HTML like code blocks) before wrapping so a fenced code
+      // block that immediately follows a paragraph — with no blank line
+      // between them — renders as a sibling block element instead of having
+      // its <div> restored inside the <p>. Tokens nested inside other block
+      // HTML (e.g. a code block inside a blockquote) must stay put, so a
+      // token line only splits when no <blockquote> tag is still open.
+      const parts = [];
+      let current = [];
+      let openBlockquotes = 0;
+      for (const line of block.split('\n')) {
+        if (/^\uE000BLOCK\d+\uE000$/.test(line.trim()) && openBlockquotes === 0) {
+          if (current.length > 0) {
+            parts.push(current.join('\n'));
+            current = [];
+          }
+          parts.push(line);
+          continue;
+        }
+        current.push(line);
+        openBlockquotes += (line.match(/<blockquote/g) || []).length;
+        openBlockquotes -= (line.match(/<\/blockquote>/g) || []).length;
       }
-      
-      // Handle single line breaks within paragraphs
-      const lines = block.split('\n').filter(line => line.trim());
-      if (lines.length === 1) {
-        return `<p class="md-paragraph">${parseInline(lines[0])}</p>`;
+      if (current.length > 0) {
+        parts.push(current.join('\n'));
       }
-      
-      return `<p class="md-paragraph">${lines.map(line => parseInline(line)).join('<br />')}</p>`;
+
+      return parts.map(part => {
+        part = part.trim();
+        if (!part) return '';
+
+        // Don't wrap if already wrapped in block elements
+        // (protected-block tokens are single-line placeholders for block-level
+        // HTML like code blocks; leaving them unwrapped keeps the restored
+        // block a real block element)
+        if (part.startsWith('\uE000') ||
+            part.startsWith('<h') ||
+            part.startsWith('<ul') ||
+            part.startsWith('<ol') ||
+            part.startsWith('<blockquote') ||
+            part.startsWith('<pre') ||
+            part.startsWith('<div') ||
+            part.startsWith('<hr') ||
+            part.startsWith('<table')) {
+          return part;
+        }
+
+        // Handle single line breaks within paragraphs
+        const lines = part.split('\n').filter(line => line.trim());
+        if (lines.length === 1) {
+          return `<p class="md-paragraph">${parseInline(lines[0])}</p>`;
+        }
+
+        return `<p class="md-paragraph">${lines.map(line => parseInline(line)).join('<br />')}</p>`;
+      }).filter(Boolean);
     }).join('\n\n');
   }
 
