@@ -277,3 +277,75 @@ describe('MarkdownParser HTML sanitization', () => {
     expect(html).not.toContain('rel=');
   });
 });
+
+describe('MarkdownParser blockquote and list rendering', () => {
+  it('renders unordered list items inside a blockquote', () => {
+    const html = MarkdownParser.parse('> - item1\n> - item2');
+
+    expect(html).toContain('<blockquote class="md-blockquote">');
+    expect(html).toContain('<ul class="md-list md-list-ul">');
+    expect(html).toContain('<li class="md-list-item">item1</li>');
+    expect(html).toContain('<li class="md-list-item">item2</li>');
+    expect(html).toContain('</blockquote>');
+    // Items must render as list items, not literal text
+    expect(html).not.toContain('>- item1');
+    expect(html).not.toContain('- item1</blockquote>');
+  });
+
+  it('renders a single list item inside a blockquote', () => {
+    const html = MarkdownParser.parse('> - only item');
+
+    expect(html).toContain('<blockquote class="md-blockquote">');
+    expect(html).toContain('<ul class="md-list md-list-ul">');
+    expect(html).toContain('<li class="md-list-item">only item</li>');
+  });
+
+  it('renders ordered lists inside a blockquote', () => {
+    const html = MarkdownParser.parse('> 1. first\n> 2. second');
+
+    expect(html).toContain('<blockquote class="md-blockquote">');
+    expect(html).toContain('<ol class="md-list md-list-ol">');
+    expect(html).toContain('<li class="md-list-item">first</li>');
+    expect(html).toContain('<li class="md-list-item">second</li>');
+  });
+
+  it('renders task lists inside a blockquote', () => {
+    const html = MarkdownParser.parse('> - [ ] todo\n> - [x] done');
+
+    expect(html).toContain('<blockquote class="md-blockquote">');
+    expect(html).toContain('<ul class="md-list md-list-ul md-task-list">');
+    expect(html).toMatch(/<input type="checkbox" [^>]*disabled/);
+    expect(html).toContain('<span class="md-task-checked">done</span>');
+  });
+
+  it('keeps text and list items inside a blockquote', () => {
+    const html = MarkdownParser.parse('> intro text\n> - item1\n> - item2');
+
+    expect(html).toContain('intro text');
+    expect(html).toContain('<li class="md-list-item">item1</li>');
+    expect(html).toContain('<li class="md-list-item">item2</li>');
+  });
+
+  it('renders plain unordered lists (lines are not dropped)', () => {
+    const html = MarkdownParser.parse('- item1\n- item2');
+
+    expect(html).toContain('<ul class="md-list md-list-ul">');
+    expect(html).toContain('<li class="md-list-item">item1</li>');
+    expect(html).toContain('<li class="md-list-item">item2</li>');
+  });
+
+  it('renders plain ordered lists (lines are not dropped)', () => {
+    const html = MarkdownParser.parse('1. first\n2. second');
+
+    expect(html).toContain('<ol class="md-list md-list-ol">');
+    expect(html).toContain('<li class="md-list-item">first</li>');
+    expect(html).toContain('<li class="md-list-item">second</li>');
+  });
+
+  it('renders a regular list item after closing an open task list', () => {
+    const html = MarkdownParser.parse('- [ ] task\n- plain item');
+
+    expect(html).toContain('md-task-list');
+    expect(html).toContain('<li class="md-list-item">plain item</li>');
+  });
+});

@@ -430,6 +430,24 @@ const MarkdownParser = (function() {
   }
 
   /**
+   * Parse block-level markdown inside a blockquote's content.
+   * Runs the same block parsers as the main pipeline, except blockquotes
+   * themselves (to avoid infinite recursion) and paragraphs (so plain quote
+   * text keeps its existing inline-only rendering).
+   * @param {string} content - Raw blockquote content (after '>' prefixes are stripped)
+   * @returns {string} HTML string
+   */
+  function parseBlockquoteContent(content) {
+    let html = parseCodeBlocks(content);
+    html = parseTables(html);
+    html = parseHeaders(html);
+    html = parseTaskLists(html);
+    html = parseLists(html);
+    html = parseHorizontalRules(html);
+    return html;
+  }
+
+  /**
    * Parse blockquotes
    * @param {string} text - Text containing blockquotes
    * @returns {string} HTML string
@@ -452,7 +470,7 @@ const MarkdownParser = (function() {
         blockquoteContent.push(blockquoteMatch[1]);
       } else {
         if (inBlockquote) {
-          result.push(`<blockquote class="md-blockquote">${parseInline(blockquoteContent.join('\n'))}</blockquote>`);
+          result.push(`<blockquote class="md-blockquote">${parseBlockquoteContent(blockquoteContent.join('\n'))}</blockquote>`);
           inBlockquote = false;
           blockquoteContent = [];
         }
@@ -461,7 +479,7 @@ const MarkdownParser = (function() {
     }
 
     if (inBlockquote) {
-      result.push(`<blockquote class="md-blockquote">${parseInline(blockquoteContent.join('\n'))}</blockquote>`);
+      result.push(`<blockquote class="md-blockquote">${parseBlockquoteContent(blockquoteContent.join('\n'))}</blockquote>`);
     }
 
     return result.join('\n');
@@ -496,21 +514,23 @@ const MarkdownParser = (function() {
           content: taskMatch[2]
         });
       } else if (unorderedMatch && !taskMatch) {
-        // Non-task unordered list item - close any open task list and let parseLists handle it
+        // Non-task unordered list item - close any open task list, then pass
+        // the line through unchanged so parseLists can render it
         if (inList) {
           result.push(buildTaskList(listItems));
           inList = false;
           listItems = [];
         }
-        // Don't push the line - let parseLists handle it
+        result.push(line);
       } else if (orderedMatch) {
-        // Ordered list item - close any open task list and let parseLists handle it
+        // Ordered list item - close any open task list, then pass the line
+        // through unchanged so parseLists can render it
         if (inList) {
           result.push(buildTaskList(listItems));
           inList = false;
           listItems = [];
         }
-        // Don't push the line - let parseLists handle it
+        result.push(line);
       } else {
         // Not a list item - close any open task list and push the line
         if (inList) {
