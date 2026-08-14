@@ -97,7 +97,9 @@
 
     function remove() {
       document.removeEventListener('keydown', onKeydown);
-      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      // remove() is a no-op when the overlay is already detached, so no
+      // parentNode guard is needed.
+      overlay.remove();
       // Restore focus only when the captured target is still meaningful. The
       // launch flow clears the hub grid (removing the focused Play button)
       // before the game mounts, so the browser drops focus to document.body;
