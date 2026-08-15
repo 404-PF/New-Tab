@@ -277,3 +277,465 @@ describe('MarkdownParser HTML sanitization', () => {
     expect(html).not.toContain('rel=');
   });
 });
+
+describe('MarkdownParser blockquote and list rendering', () => {
+  /**
+   * Parse markdown into a DOM container so tests can assert structural
+   * relationships (e.g. a list being a descendant of a blockquote)
+   * instead of matching independent HTML fragments.
+   * @param {string} markdown - Markdown input
+   * @returns {HTMLDivElement} Container with parsed HTML
+   */
+  function parseToContainer(markdown) {
+    const container = document.createElement('div');
+    container.innerHTML = MarkdownParser.parse(markdown);
+    return container;
+  }
+
+  it('renders unordered list items inside a blockquote', () => {
+    const container = parseToContainer('> - item1\n> - item2');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const items = blockquote.querySelectorAll('li.md-list-item');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('ul.md-list-ul')).not.toBeNull();
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toBe('item1');
+    expect(items[1].textContent).toBe('item2');
+    // Items must render as list items, not literal text
+    expect(blockquote.textContent).not.toContain('- item1');
+  });
+
+  it('renders a single list item inside a blockquote', () => {
+    const container = parseToContainer('> - only item');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('ul.md-list-ul')).not.toBeNull();
+    expect(blockquote.querySelectorAll('li.md-list-item')).toHaveLength(1);
+    expect(blockquote.querySelector('li.md-list-item').textContent).toBe('only item');
+  });
+
+  it('renders ordered lists inside a blockquote', () => {
+    const container = parseToContainer('> 1. first\n> 2. second');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const items = blockquote.querySelectorAll('li.md-list-item');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('ol.md-list-ol')).not.toBeNull();
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toBe('first');
+    expect(items[1].textContent).toBe('second');
+  });
+
+  it('renders task lists inside a blockquote', () => {
+    const container = parseToContainer('> - [ ] todo\n> - [x] done');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('ul.md-task-list')).not.toBeNull();
+    expect(blockquote.querySelectorAll('input[type="checkbox"]')).toHaveLength(2);
+    expect(blockquote.querySelectorAll('input[type="checkbox"]')[1].checked).toBe(true);
+    expect(blockquote.querySelector('span.md-task-checked').textContent).toBe('done');
+  });
+
+  it('keeps text and list items inside a blockquote', () => {
+    const container = parseToContainer('> intro text\n> - item1\n> - item2');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.textContent).toContain('intro text');
+    expect(blockquote.querySelector('ul.md-list-ul')).not.toBeNull();
+    expect(blockquote.querySelectorAll('li.md-list-item')).toHaveLength(2);
+  });
+
+  it('renders inline formatting in plain blockquote text', () => {
+    const container = parseToContainer('> **bold** and *italic* and `code`');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote.querySelector('strong')).not.toBeNull();
+    expect(blockquote.querySelector('em')).not.toBeNull();
+    expect(blockquote.querySelector('code.md-inline-code')).not.toBeNull();
+  });
+
+  it('renders links in plain blockquote text', () => {
+    const container = parseToContainer('> see [site](https://example.com)');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const link = blockquote.querySelector('a.md-link');
+
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('https://example.com/');
+    expect(link.textContent).toBe('site');
+  });
+
+  it('escapes raw HTML in plain blockquote text', () => {
+    const container = parseToContainer('> hello <b>world</b>');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote.querySelector('b')).toBeNull();
+    expect(blockquote.textContent).toContain('<b>world</b>');
+  });
+
+  it('escapes raw <blockquote> tags written inline in text', () => {
+    // Regression: the whole-blockquote protection regex matched user-authored
+    // tags too, restoring them as live HTML instead of escaping them
+    const container = parseToContainer('prefix <blockquote>raw</blockquote> suffix');
+
+    expect(container.querySelector('blockquote')).toBeNull();
+    expect(container.textContent).toContain('<blockquote>raw</blockquote>');
+    // The line stays a single paragraph — the tag must not split it
+    const paragraphs = container.querySelectorAll('p.md-paragraph');
+    expect(paragraphs).toHaveLength(1);
+    expect(paragraphs[0].textContent).toBe('prefix <blockquote>raw</blockquote> suffix');
+  });
+
+  it('escapes a raw <blockquote> tag alone on a line', () => {
+    // Regression: the paragraph parser's startsWith('<blockquote') guard
+    // (leftover from before blockquotes were tokenized) let a lone raw tag
+    // through unescaped
+    const container = parseToContainer('<blockquote>raw</blockquote>');
+
+    expect(container.querySelector('blockquote')).toBeNull();
+    expect(container.querySelector('p.md-paragraph').textContent).toBe('<blockquote>raw</blockquote>');
+    expect(container.innerHTML).toContain('&lt;blockquote&gt;');
+  });
+
+  it('escapes raw block-level tags in plain blockquote text', () => {
+    // Regression: the h1-h6 / hr / list protection inside
+    // parseBlockquoteContent matched user-authored tags too, restoring them
+    // as live HTML instead of escaping them
+    const container = parseToContainer('> a <h1>x</h1> <hr> <ul>y</ul> <ol>z</ol> b');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('h1')).toBeNull();
+    expect(blockquote.querySelector('hr')).toBeNull();
+    expect(blockquote.querySelector('ul')).toBeNull();
+    expect(blockquote.querySelector('ol')).toBeNull();
+    expect(blockquote.textContent).toContain('<h1>x</h1>');
+    expect(blockquote.textContent).toContain('<hr>');
+    expect(blockquote.textContent).toContain('<ul>y</ul>');
+    expect(blockquote.textContent).toContain('<ol>z</ol>');
+  });
+
+  it('escapes raw HTML that copies generated class names inside a blockquote', () => {
+    // Regression: the blockquote protection regexes identified generated
+    // blocks by class-name patterns in the text, so raw user HTML that
+    // copied them (md-header, md-hr, md-list, md-table-wrapper) bypassed
+    // parseInline escaping and rendered as live markup. Generated blocks
+    // are now tokenized at the point of creation, so spoofed tags stay
+    // plain text.
+    const container = parseToContainer(
+      '> <h1 class="md-header md-header-1">x</h1>\n' +
+      '> <hr class="md-hr">\n' +
+      '> <ul class="md-list md-list-ul"><li>y</li></ul>\n' +
+      '> <div class="md-table-wrapper">t</div>\n' +
+      '> <div class="md-code-block">c</div>'
+    );
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('h1')).toBeNull();
+    expect(blockquote.querySelector('hr')).toBeNull();
+    expect(blockquote.querySelector('ul')).toBeNull();
+    expect(blockquote.querySelector('li')).toBeNull();
+    expect(blockquote.querySelector('div')).toBeNull();
+    expect(blockquote.textContent).toContain('<h1 class="md-header md-header-1">x</h1>');
+    expect(blockquote.textContent).toContain('<hr class="md-hr">');
+    expect(blockquote.textContent).toContain('<ul class="md-list md-list-ul"><li>y</li></ul>');
+    expect(blockquote.textContent).toContain('<div class="md-table-wrapper">t</div>');
+    expect(blockquote.textContent).toContain('<div class="md-code-block">c</div>');
+  });
+
+  it('renders real generated blocks while escaping spoofed copies beside them', () => {
+    // Real markdown blocks must still render as markup even when the user
+    // also writes raw HTML that mimics the generated class names
+    const container = parseToContainer(
+      '> # real header\n' +
+      '> <h1 class="md-header md-header-1">fake</h1>\n' +
+      '> - real item\n' +
+      '> <ul class="md-list md-list-ul">fake</ul>'
+    );
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelectorAll('h1.md-header')).toHaveLength(1);
+    expect(blockquote.querySelector('h1.md-header').textContent).toBe('real header');
+    expect(blockquote.querySelectorAll('ul.md-list-ul')).toHaveLength(1);
+    expect(blockquote.querySelector('li.md-list-item').textContent).toBe('real item');
+    expect(blockquote.textContent).toContain('<h1 class="md-header md-header-1">fake</h1>');
+    expect(blockquote.textContent).toContain('<ul class="md-list md-list-ul">fake</ul>');
+  });
+
+  it('escapes raw HTML that copies generated class names in plain text', () => {
+    // Regression: the main pipeline protected code-block HTML with a
+    // post-hoc regex, and the paragraph parser unwrapped parts starting
+    // with generated-looking tags (<h1>, <div>, <ul>, ...). Both let raw
+    // user HTML with copied class names render as live markup.
+    const container = parseToContainer(
+      '<div class="md-code-block">t</div>\n\n' +
+      '<h1>raw</h1>\n\n' +
+      '<hr class="md-hr">\n\n' +
+      '<ul class="md-list md-list-ul"><li>y</li></ul>'
+    );
+
+    expect(container.querySelector('div.md-code-block')).toBeNull();
+    expect(container.querySelector('h1')).toBeNull();
+    expect(container.querySelector('hr')).toBeNull();
+    expect(container.querySelector('ul')).toBeNull();
+    expect(container.textContent).toContain('<div class="md-code-block">t</div>');
+    expect(container.textContent).toContain('<h1>raw</h1>');
+    expect(container.textContent).toContain('<hr class="md-hr">');
+    expect(container.textContent).toContain('<ul class="md-list md-list-ul"><li>y</li></ul>');
+  });
+
+  it('keeps quoted fenced code blocks intact when content looks like markdown', () => {
+    const container = parseToContainer('> ```\n> - item\n> # header\n> ---\n> ```');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const code = blockquote.querySelector('div.md-code-block code');
+
+    expect(blockquote).not.toBeNull();
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('- item\n# header\n---');
+    expect(blockquote.querySelector('li.md-list-item')).toBeNull();
+    expect(blockquote.querySelector('h1')).toBeNull();
+    expect(blockquote.querySelector('hr')).toBeNull();
+  });
+
+  it('keeps quoted fenced code blocks with table-like content intact', () => {
+    const container = parseToContainer('> ```\n> | a | b |\n> |---|---|\n> ```');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const code = blockquote.querySelector('div.md-code-block code');
+
+    expect(blockquote).not.toBeNull();
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('| a | b |\n|---|---|');
+    expect(blockquote.querySelector('table')).toBeNull();
+  });
+
+  it('keeps multiline code blocks intact when content looks like markdown', () => {
+    const container = parseToContainer('```\nline one\n- item\n# header\n```');
+    const code = container.querySelector('div.md-code-block code');
+
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('line one\n- item\n# header');
+    expect(container.querySelector('li.md-list-item')).toBeNull();
+    expect(container.querySelector('h1')).toBeNull();
+  });
+
+  it('renders plain unordered lists (lines are not dropped)', () => {
+    const container = parseToContainer('- item1\n- item2');
+
+    expect(container.querySelector('ul.md-list-ul')).not.toBeNull();
+    expect(container.querySelectorAll('li.md-list-item')).toHaveLength(2);
+    expect(container.querySelectorAll('li.md-list-item')[0].textContent).toBe('item1');
+    expect(container.querySelectorAll('li.md-list-item')[1].textContent).toBe('item2');
+  });
+
+  it('renders plain ordered lists (lines are not dropped)', () => {
+    const container = parseToContainer('1. first\n2. second');
+
+    expect(container.querySelector('ol.md-list-ol')).not.toBeNull();
+    expect(container.querySelectorAll('li.md-list-item')).toHaveLength(2);
+  });
+
+  it('renders a regular list item after closing an open task list', () => {
+    const container = parseToContainer('- [ ] task\n- plain item');
+    const lists = container.querySelectorAll('ul.md-list');
+
+    expect(lists).toHaveLength(2);
+    expect(lists[0].classList.contains('md-task-list')).toBe(true);
+    expect(lists[1].classList.contains('md-task-list')).toBe(false);
+    expect(lists[1].textContent).toContain('plain item');
+  });
+
+  it('renders a fenced code block that follows paragraph text as a real code block', () => {
+    // Regression: the code-block regexes consumed the newline before the
+    // fence, gluing the block to the previous line so the paragraph parser
+    // escaped the whole code block as literal text
+    const container = parseToContainer('Some text\n```js\ncode\n```');
+    const code = container.querySelector('div.md-code-block code');
+
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('code');
+    expect(container.querySelector('p.md-paragraph').textContent).toContain('Some text');
+    expect(container.innerHTML).not.toContain('&lt;div');
+    expect(container.innerHTML).not.toContain('&lt;pre');
+  });
+
+  it('renders a code block after paragraph text without a blank line as a sibling block', () => {
+    // Regression: the code block's placeholder token sat on the second line
+    // of a paragraph block, so parseParagraphs merged it into the <p> and
+    // restoreBlockTokens expanded a <div> inside the <p> (invalid HTML)
+    const container = parseToContainer('Some text\n```js\ncode\n```');
+    const paragraph = container.querySelector('p.md-paragraph');
+    const codeBlock = container.querySelector('div.md-code-block');
+
+    expect(paragraph).not.toBeNull();
+    expect(codeBlock).not.toBeNull();
+    expect(paragraph.textContent).toContain('Some text');
+    expect(paragraph.textContent).not.toContain('code');
+    // The code block must be a sibling of the paragraph, not nested inside it
+    expect(paragraph.contains(codeBlock)).toBe(false);
+    expect(codeBlock.parentElement).toBe(paragraph.parentElement);
+    expect(container.querySelector('p.md-paragraph div.md-code-block')).toBeNull();
+  });
+
+  it('keeps code blocks inside a blockquote intact when quote text follows without a blank line', () => {
+    // The same placeholder-token merge must not split blockquote HTML: a
+    // code block nested inside a <blockquote> stays put even when the quote
+    // has no blank lines around the block
+    const container = parseToContainer('> intro\n> ```js\n> code\n> ```\n> outro');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const codeBlock = blockquote.querySelector('div.md-code-block');
+    const code = codeBlock.querySelector('code');
+
+    expect(blockquote).not.toBeNull();
+    expect(codeBlock).not.toBeNull();
+    expect(code.textContent).toBe('code');
+    expect(blockquote.textContent).toContain('intro');
+    expect(blockquote.textContent).toContain('outro');
+    // No stray paragraph wrappers cut through the blockquote and no
+    // placeholder tokens leak into the output
+    expect(container.querySelector('p.md-paragraph')).toBeNull();
+    expect(blockquote.textContent).not.toContain('\uE000');
+  });
+
+  it('keeps a blockquote closed when a code block follows a blank quoted line', () => {
+    // Regression: parseParagraphs split blockquote HTML on the blank quoted
+    // line, and the blockquote-depth guard (reset per chunk) let the trailing
+    // quote line be wrapped in a <p>, escaping the closing </blockquote> as
+    // literal text inside the quote. The whole blockquote must be treated as
+    // opaque block HTML instead.
+    const container = parseToContainer('> line 1\n>\n> ```js\n> code\n> ```\n>\n> line 3');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const code = blockquote.querySelector('div.md-code-block code');
+
+    expect(blockquote).not.toBeNull();
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('code');
+    expect(blockquote.textContent).toContain('line 1');
+    expect(blockquote.textContent).toContain('line 3');
+    // The closing tag must not be escaped into a paragraph, and no placeholder
+    // tokens may leak into the output
+    expect(blockquote.textContent).not.toContain('</blockquote>');
+    expect(container.querySelector('p.md-paragraph')).toBeNull();
+    expect(blockquote.textContent).not.toContain('\uE000');
+  });
+
+  it('does not let a blockquote with blank quoted lines swallow following content', () => {
+    // Regression: the escaped closing tag left the blockquote open, so
+    // unquoted text after it was swallowed inside the blockquote
+    const container = parseToContainer('> line 1\n>\n> ```js\n> code\n> ```\n>\n> line 3\n\noutside text');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const paragraphs = container.querySelectorAll('p.md-paragraph');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.textContent).not.toContain('outside text');
+    expect(paragraphs.length).toBeGreaterThan(0);
+    const lastParagraph = paragraphs[paragraphs.length - 1];
+    expect(lastParagraph.textContent).toBe('outside text');
+    expect(blockquote.contains(lastParagraph)).toBe(false);
+  });
+
+  it('keeps plain text inside a blockquote that contains blank quoted lines', () => {
+    // Regression: without any code block, the trailing line of a multiline
+    // blockquote was wrapped in a <p> with the closing tag escaped
+    const container = parseToContainer('> line 1\n>\n> line 2');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.textContent).toContain('line 1');
+    expect(blockquote.textContent).toContain('line 2');
+    expect(blockquote.textContent).not.toContain('</blockquote>');
+    expect(container.querySelector('p.md-paragraph')).toBeNull();
+  });
+
+  it('protects every list inside a blockquote, even with many separate lists', () => {
+    // Regression: the innermost-list protection loop capped at 50 iterations
+    // with a single list matched per pass, leaving later lists escaped as
+    // literal text
+    const lines = [];
+    for (let i = 0; i < 60; i++) {
+      lines.push(`> - item${i}`, `> note ${i}`);
+    }
+    const container = parseToContainer(lines.join('\n'));
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelectorAll('li.md-list-item')).toHaveLength(60);
+    // Unprotected lists would be escaped and appear as literal text
+    expect(blockquote.textContent).not.toContain('<ul');
+    expect(blockquote.textContent).not.toContain('<li');
+  });
+
+  it('resolves nested lists inside a blockquote without leftover placeholder tokens', () => {
+    // Regression: inner lists are tokenized before their parents, and a
+    // single forward restore pass left the inner token embedded in the
+    // outer list's HTML
+    const container = parseToContainer('> - outer\n>   - inner');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('ul.md-list-ul ul.md-list-ul')).not.toBeNull();
+    expect(blockquote.querySelectorAll('li.md-list-item')).toHaveLength(2);
+    expect(blockquote.querySelectorAll('li.md-list-item')[1].textContent).toBe('inner');
+    expect(blockquote.textContent).not.toContain('\uE000');
+  });
+
+  it('keeps fenced code blocks containing blank lines intact', () => {
+    // Regression: restored code-block HTML passed through parseParagraphs,
+    // which split on the blank line inside the code and escaped the tail
+    // (leaving an unclosed <div>)
+    const container = parseToContainer('```\nline one\n\nline two\n```');
+    const code = container.querySelector('div.md-code-block code');
+
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('line one\n\nline two');
+    expect(container.innerHTML).not.toContain('&lt;/code&gt;');
+    expect(container.innerHTML).not.toContain('&lt;/pre&gt;');
+  });
+});
+
+describe('MarkdownParser token-spoofing resistance', () => {
+  /**
+   * Parse markdown into a DOM container for structural assertions.
+   * @param {string} markdown - Markdown input
+   * @returns {HTMLDivElement} Container with parsed HTML
+   */
+  function parseToContainer(markdown) {
+    const container = document.createElement('div');
+    container.innerHTML = MarkdownParser.parse(markdown);
+    return container;
+  }
+
+  it('keeps literal token-shaped text as text instead of substituting generated HTML', () => {
+    // Block placeholders are unguessable per parse, so user content that
+    // merely looks like a token (\uE000BLOCK0\uE000) must not be replaced
+    // with a generated block's HTML nor treated as a block boundary. Before
+    // the fix, restoreBlockTokens replaced this literal text with the code
+    // block's HTML, duplicating it in the output.
+    const container = parseToContainer('```js\ncode\n```\n\n\uE000BLOCK0\uE000');
+    const paragraphs = container.querySelectorAll('p.md-paragraph');
+
+    // The literal text survives, wrapped in a paragraph like any other text
+    expect(container.textContent).toContain('\uE000BLOCK0\uE000');
+    expect(paragraphs).toHaveLength(1);
+    expect(paragraphs[0].textContent).toBe('\uE000BLOCK0\uE000');
+    // Only the real code block renders — the token-shaped text must not be
+    // substituted with a copy of its HTML
+    expect(container.querySelectorAll('div.md-code-block')).toHaveLength(1);
+  });
+
+  it('escapes raw HTML that follows token-shaped text', () => {
+    // Regression: a part starting with \uE000 bypassed parseInline entirely,
+    // so raw HTML after a token-shaped prefix was injected into the output
+    // as live markup (only the final allowlist sanitizer limited it)
+    const container = parseToContainer('```\ncode\n```\n\n\uE000BLOCK0\uE000 <img src=x onerror=alert(1)>');
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent).toContain('\uE000BLOCK0\uE000');
+    expect(container.textContent).toContain('<img src=x onerror=alert(1)>');
+    expect(container.querySelectorAll('div.md-code-block')).toHaveLength(1);
+  });
+});
