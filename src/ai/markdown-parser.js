@@ -591,12 +591,18 @@ const MarkdownParser = (function() {
     let inList = false;
     let listItems = [];
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const taskMatch = line.match(/^[\s]*[-*+]\s+\[([ xX])\]\s+(.*)/);
-      const unorderedMatch = line.match(/^[\s]*[-*+]\s+(.*)/);
-      const orderedMatch = line.match(/^[\s]*\d+\.\s+(.*)/);
+    // Close any open task list, then let the triggering line pass through
+    // unchanged so parseLists can render it (plain list items and ordinary
+    // text both take this path)
+    const closeTaskList = () => {
+      if (!inList) return;
+      result.push(buildTaskList(listItems, protect));
+      inList = false;
+      listItems = [];
+    };
 
+    for (const line of lines) {
+      const taskMatch = line.match(/^[\s]*[-*+]\s+\[([ xX])\]\s+(.*)/);
       if (taskMatch) {
         if (!inList) {
           inList = true;
@@ -608,38 +614,13 @@ const MarkdownParser = (function() {
           checked: isChecked,
           content: taskMatch[2]
         });
-      } else if (unorderedMatch && !taskMatch) {
-        // Non-task unordered list item - close any open task list, then pass
-        // the line through unchanged so parseLists can render it
-        if (inList) {
-          result.push(buildTaskList(listItems, protect));
-          inList = false;
-          listItems = [];
-        }
-        result.push(line);
-      } else if (orderedMatch) {
-        // Ordered list item - close any open task list, then pass the line
-        // through unchanged so parseLists can render it
-        if (inList) {
-          result.push(buildTaskList(listItems, protect));
-          inList = false;
-          listItems = [];
-        }
-        result.push(line);
       } else {
-        // Not a list item - close any open task list and push the line
-        if (inList) {
-          result.push(buildTaskList(listItems, protect));
-          inList = false;
-          listItems = [];
-        }
+        closeTaskList();
         result.push(line);
       }
     }
 
-    if (inList) {
-      result.push(buildTaskList(listItems, protect));
-    }
+    closeTaskList();
 
     return result.join('\n');
   }
@@ -675,8 +656,20 @@ const MarkdownParser = (function() {
     const listStack = [];
     let currentIndent = -1;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    // Close the innermost open list: build its HTML, then attach it to the
+    // parent's last item as a nested list, or push it as a top-level block
+    const closeTopList = () => {
+      const closedList = listStack.pop();
+      const listHtml = buildList(closedList.type, closedList.items, protect);
+      const parentList = listStack[listStack.length - 1];
+      if (parentList && parentList.items.length > 0) {
+        parentList.items[parentList.items.length - 1].nested = listHtml;
+      } else {
+        result.push(listHtml);
+      }
+    };
+
+    for (const line of lines) {
       const indent = line.search(/\S/);
       const unorderedMatch = line.match(/^[\s]*[-*+]\s+(.*)/);
       const orderedMatch = line.match(/^[\s]*(\d+)\.\s+(.*)/);
@@ -692,22 +685,12 @@ const MarkdownParser = (function() {
         // Handle indentation changes
         if (indent > currentIndent) {
           // Start new nested list
-          listStack.push({ type: listType, items: [], indent: indent });
+          listStack.push({ type: listType, items: [], indent });
           currentIndent = indent;
         } else if (indent < currentIndent) {
           // Close lists until we reach the right level
           while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) {
-            const closedList = listStack.pop();
-            const listHtml = buildList(closedList.type, closedList.items, protect);
-            if (listStack.length > 0) {
-              // Add as nested list to parent
-              const parentList = listStack[listStack.length - 1];
-              if (parentList.items.length > 0) {
-                parentList.items[parentList.items.length - 1].nested = listHtml;
-              }
-            } else {
-              result.push(listHtml);
-            }
+            closeTopList();
           }
           currentIndent = indent;
         }
@@ -717,33 +700,15 @@ const MarkdownParser = (function() {
           const currentList = listStack[listStack.length - 1];
           if (currentList.type !== listType) {
             // Different list type, close current and start new
-            const closedList = listStack.pop();
-            const listHtml = buildList(closedList.type, closedList.items, protect);
-            if (listStack.length > 0) {
-              const parentList = listStack[listStack.length - 1];
-              if (parentList.items.length > 0) {
-                parentList.items[parentList.items.length - 1].nested = listHtml;
-              }
-            } else {
-              result.push(listHtml);
-            }
-            listStack.push({ type: listType, items: [], indent: indent });
+            closeTopList();
+            listStack.push({ type: listType, items: [], indent });
           }
           listStack[listStack.length - 1].items.push({ content, number, nested: null });
         }
       } else {
         // Not a list item, close all open lists
         while (listStack.length > 0) {
-          const closedList = listStack.pop();
-          const listHtml = buildList(closedList.type, closedList.items, protect);
-          if (listStack.length > 0) {
-            const parentList = listStack[listStack.length - 1];
-            if (parentList.items.length > 0) {
-              parentList.items[parentList.items.length - 1].nested = listHtml;
-            }
-          } else {
-            result.push(listHtml);
-          }
+          closeTopList();
         }
         currentIndent = -1;
         result.push(line);
@@ -752,16 +717,7 @@ const MarkdownParser = (function() {
 
     // Close any remaining lists
     while (listStack.length > 0) {
-      const closedList = listStack.pop();
-      const listHtml = buildList(closedList.type, closedList.items, protect);
-      if (listStack.length > 0) {
-        const parentList = listStack[listStack.length - 1];
-        if (parentList.items.length > 0) {
-          parentList.items[parentList.items.length - 1].nested = listHtml;
-        }
-      } else {
-        result.push(listHtml);
-      }
+      closeTopList();
     }
 
     return result.join('\n');
