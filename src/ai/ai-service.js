@@ -426,7 +426,7 @@ const AIService = (function() {
         // Finalize the exact assistant message created for this request, not
         // whatever is last in the current conversation: a newer request may
         // have started (or the conversation switched) before this one settled.
-        if (assistantMsg && assistantMsg.isStreaming) {
+        if (assistantMsg?.isStreaming) {
           assistantMsg.isStreaming = false;
           // Offline mode simulates streaming with a chunk loop that breaks on
           // stop; keep the partial content or mark the message as cancelled
@@ -450,7 +450,7 @@ const AIService = (function() {
         AIStore.saveConversations();
         renderConversationUI();
       } else if (result.aborted) {
-        if (assistantMsg && assistantMsg.isStreaming) {
+        if (assistantMsg?.isStreaming) {
           assistantMsg.isStreaming = false;
           assistantMsg.content = accumulatedContent || '[Cancelled]';
         }
@@ -479,7 +479,7 @@ const AIService = (function() {
       }
     } catch (error) {
       if (error.name === 'AbortError' || AIStore.state.abortController === null) {
-        if (assistantMsg && assistantMsg.isStreaming) {
+        if (assistantMsg?.isStreaming) {
           assistantMsg.isStreaming = false;
           assistantMsg.content = accumulatedContent || '[Cancelled]';
         }
