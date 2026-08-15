@@ -418,6 +418,77 @@ describe('MarkdownParser blockquote and list rendering', () => {
     expect(blockquote.textContent).toContain('<ol>z</ol>');
   });
 
+  it('escapes raw HTML that copies generated class names inside a blockquote', () => {
+    // Regression: the blockquote protection regexes identified generated
+    // blocks by class-name patterns in the text, so raw user HTML that
+    // copied them (md-header, md-hr, md-list, md-table-wrapper) bypassed
+    // parseInline escaping and rendered as live markup. Generated blocks
+    // are now tokenized at the point of creation, so spoofed tags stay
+    // plain text.
+    const container = parseToContainer(
+      '> <h1 class="md-header md-header-1">x</h1>\n' +
+      '> <hr class="md-hr">\n' +
+      '> <ul class="md-list md-list-ul"><li>y</li></ul>\n' +
+      '> <div class="md-table-wrapper">t</div>\n' +
+      '> <div class="md-code-block">c</div>'
+    );
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('h1')).toBeNull();
+    expect(blockquote.querySelector('hr')).toBeNull();
+    expect(blockquote.querySelector('ul')).toBeNull();
+    expect(blockquote.querySelector('li')).toBeNull();
+    expect(blockquote.querySelector('div')).toBeNull();
+    expect(blockquote.textContent).toContain('<h1 class="md-header md-header-1">x</h1>');
+    expect(blockquote.textContent).toContain('<hr class="md-hr">');
+    expect(blockquote.textContent).toContain('<ul class="md-list md-list-ul"><li>y</li></ul>');
+    expect(blockquote.textContent).toContain('<div class="md-table-wrapper">t</div>');
+    expect(blockquote.textContent).toContain('<div class="md-code-block">c</div>');
+  });
+
+  it('renders real generated blocks while escaping spoofed copies beside them', () => {
+    // Real markdown blocks must still render as markup even when the user
+    // also writes raw HTML that mimics the generated class names
+    const container = parseToContainer(
+      '> # real header\n' +
+      '> <h1 class="md-header md-header-1">fake</h1>\n' +
+      '> - real item\n' +
+      '> <ul class="md-list md-list-ul">fake</ul>'
+    );
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelectorAll('h1.md-header')).toHaveLength(1);
+    expect(blockquote.querySelector('h1.md-header').textContent).toBe('real header');
+    expect(blockquote.querySelectorAll('ul.md-list-ul')).toHaveLength(1);
+    expect(blockquote.querySelector('li.md-list-item').textContent).toBe('real item');
+    expect(blockquote.textContent).toContain('<h1 class="md-header md-header-1">fake</h1>');
+    expect(blockquote.textContent).toContain('<ul class="md-list md-list-ul">fake</ul>');
+  });
+
+  it('escapes raw HTML that copies generated class names in plain text', () => {
+    // Regression: the main pipeline protected code-block HTML with a
+    // post-hoc regex, and the paragraph parser unwrapped parts starting
+    // with generated-looking tags (<h1>, <div>, <ul>, ...). Both let raw
+    // user HTML with copied class names render as live markup.
+    const container = parseToContainer(
+      '<div class="md-code-block">t</div>\n\n' +
+      '<h1>raw</h1>\n\n' +
+      '<hr class="md-hr">\n\n' +
+      '<ul class="md-list md-list-ul"><li>y</li></ul>'
+    );
+
+    expect(container.querySelector('div.md-code-block')).toBeNull();
+    expect(container.querySelector('h1')).toBeNull();
+    expect(container.querySelector('hr')).toBeNull();
+    expect(container.querySelector('ul')).toBeNull();
+    expect(container.textContent).toContain('<div class="md-code-block">t</div>');
+    expect(container.textContent).toContain('<h1>raw</h1>');
+    expect(container.textContent).toContain('<hr class="md-hr">');
+    expect(container.textContent).toContain('<ul class="md-list md-list-ul"><li>y</li></ul>');
+  });
+
   it('keeps quoted fenced code blocks intact when content looks like markdown', () => {
     const container = parseToContainer('> ```\n> - item\n> # header\n> ---\n> ```');
     const blockquote = container.querySelector('blockquote.md-blockquote');

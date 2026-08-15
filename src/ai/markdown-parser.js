@@ -437,9 +437,10 @@ const MarkdownParser = (function() {
   /**
    * Parse code blocks with syntax highlighting
    * @param {string} text - Text containing code blocks
+   * @param {Function} [protect] - Callback that replaces generated block HTML with a placeholder token
    * @returns {string} HTML string
    */
-  function parseCodeBlocks(text) {
+  function parseCodeBlocks(text, protect) {
     // Fenced code blocks with language. The fence must start a line: lines
     // like '> ```' (a fence inside a blockquote) are left for
     // parseBlockquoteContent to handle after the '>' prefixes are stripped.
@@ -448,13 +449,17 @@ const MarkdownParser = (function() {
       const languageLabel = lang ? `<span class="md-code-lang">${escapeHTML(lang)}</span>` : '';
       const highlightedCode = highlightCode(code.trim(), language);
       // Preserve the newline before the fence so the block stays on its own
-      // line and line-based parsers treat it as a block element
-      return lineStart + `<div class="md-code-block">${languageLabel}<pre><code>${highlightedCode}</code></pre></div>`;
+      // line and line-based parsers treat it as a block element. The block is
+      // tokenized here, at the point of generation, so later parsers never
+      // regex-match user-authored HTML that mimics its markup.
+      const blockHtml = `<div class="md-code-block">${languageLabel}<pre><code>${highlightedCode}</code></pre></div>`;
+      return lineStart + (protect ? protect(blockHtml) : blockHtml);
     });
     
     // Fenced code blocks without language
     text = text.replace(/(^|\n)```\n?([\s\S]*?)```/g, (match, lineStart, code) => {
-      return lineStart + `<div class="md-code-block"><pre><code>${escapeHTML(code.trim())}</code></pre></div>`;
+      const blockHtml = `<div class="md-code-block"><pre><code>${escapeHTML(code.trim())}</code></pre></div>`;
+      return lineStart + (protect ? protect(blockHtml) : blockHtml);
     });
     
     return text;
@@ -478,38 +483,23 @@ const MarkdownParser = (function() {
       return blockToken(protectedBlocks.length - 1);
     };
 
-    // Code blocks first; their rendered HTML is multiline, so protect it
-    // before the line-based parsers below can scan inside the <code> content
-    let html = parseCodeBlocks(content);
-    html = html.replace(/<div class="md-code-block">[\s\S]*?<\/div>/g, protect);
+    // Every block parser below tokenizes its own generated HTML at the point
+    // of creation, so no pass ever has to identify generated blocks by
+    // regex-matching class names in the (user-controlled) text. Whatever
+    // remains after these passes is guaranteed to be plain user text, so
+    // parseInline escapes raw HTML — including tags that merely copy the
+    // generated class names — instead of restoring it as live markup.
+    // Code blocks run first; their rendered HTML is multiline, so it is
+    // tokenized before the line-based parsers can scan inside the <code>.
+    let html = parseCodeBlocks(content, protect);
+    html = parseTables(html, protect);
+    html = parseHeaders(html, protect);
+    html = parseTaskLists(html, protect);
+    html = parseLists(html, protect);
+    html = parseHorizontalRules(html, protect);
 
-    html = parseTables(html);
-    html = parseHeaders(html);
-    html = parseTaskLists(html);
-    html = parseLists(html);
-    html = parseHorizontalRules(html);
-
-    // Protect the block HTML generated above, then inline-parse the remaining
-    // plain text so formatting like **bold** keeps working inside blockquotes.
-    // Each pattern is scoped to the exact markup generated above (the class
-    // names set by parseHeaders / parseHorizontalRules / buildList), so raw
-    // tags written by the user — <h1>, <hr>, <ul>, <ol> — stay plain text
-    // and are escaped by parseInline below instead of being restored as
-    // live HTML.
-    html = html.replace(/<div class="md-table-wrapper">[\s\S]*?<\/div>/g, protect);
-    html = html.replace(/<h[1-6] class="md-header md-header-[1-6]">[\s\S]*?<\/h[1-6]>/g, protect);
-    html = html.replace(/<hr class="md-hr"[^>]*\/?>/g, protect);
-
-    // Lists can nest, so protect the innermost lists first (each pass wraps
-    // a complete list element instead of cutting across nested ones). The /g
-    // flag protects every list at the current nesting level in a single pass,
-    // so the loop runs once per nesting depth — each pass replaces at least
-    // one list element with a token, so it always terminates.
-    const nestedListRe = /<ul class="md-list md-list-ul[^"]*"[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ul>|<ol class="md-list md-list-ol[^"]*"[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ol>/g;
-    while (nestedListRe.test(html)) {
-      html = html.replace(nestedListRe, protect);
-    }
-
+    // Inline-parse the remaining plain text so formatting like **bold** keeps
+    // working inside blockquotes.
     html = parseInline(html);
     return restoreBlockTokens(html, protectedBlocks);
   }
@@ -566,9 +556,10 @@ const MarkdownParser = (function() {
   /**
    * Parse task lists
    * @param {string} text - Text containing task lists
+   * @param {Function} [protect] - Callback that replaces generated list HTML with a placeholder token
    * @returns {string} HTML string
    */
-  function parseTaskLists(text) {
+  function parseTaskLists(text, protect) {
     const lines = text.split('\n');
     const result = [];
     let inList = false;
@@ -595,7 +586,7 @@ const MarkdownParser = (function() {
         // Non-task unordered list item - close any open task list, then pass
         // the line through unchanged so parseLists can render it
         if (inList) {
-          result.push(buildTaskList(listItems));
+          result.push(buildTaskList(listItems, protect));
           inList = false;
           listItems = [];
         }
@@ -604,7 +595,7 @@ const MarkdownParser = (function() {
         // Ordered list item - close any open task list, then pass the line
         // through unchanged so parseLists can render it
         if (inList) {
-          result.push(buildTaskList(listItems));
+          result.push(buildTaskList(listItems, protect));
           inList = false;
           listItems = [];
         }
@@ -612,7 +603,7 @@ const MarkdownParser = (function() {
       } else {
         // Not a list item - close any open task list and push the line
         if (inList) {
-          result.push(buildTaskList(listItems));
+          result.push(buildTaskList(listItems, protect));
           inList = false;
           listItems = [];
         }
@@ -621,7 +612,7 @@ const MarkdownParser = (function() {
     }
 
     if (inList) {
-      result.push(buildTaskList(listItems));
+      result.push(buildTaskList(listItems, protect));
     }
 
     return result.join('\n');
@@ -630,9 +621,10 @@ const MarkdownParser = (function() {
   /**
    * Build task list HTML
    * @param {Array} items - Task list items
+   * @param {Function} [protect] - Callback that replaces generated list HTML with a placeholder token
    * @returns {string} HTML string
    */
-  function buildTaskList(items) {
+  function buildTaskList(items, protect) {
     const itemsHtml = items.map(item => {
       const checkedAttr = item.checked ? 'checked' : '';
       const checkedClass = item.checked ? 'md-task-checked' : '';
@@ -641,15 +633,17 @@ const MarkdownParser = (function() {
         <span class="${checkedClass}">${parseInline(item.content)}</span>
       </li>`;
     }).join('');
-    return `<ul class="md-list md-list-ul md-task-list">${itemsHtml}</ul>`;
+    const listHtml = `<ul class="md-list md-list-ul md-task-list">${itemsHtml}</ul>`;
+    return protect ? protect(listHtml) : listHtml;
   }
 
   /**
    * Parse lists (ordered and unordered) with improved nesting
    * @param {string} text - Text containing lists
+   * @param {Function} [protect] - Callback that replaces generated list HTML with a placeholder token
    * @returns {string} HTML string
    */
-  function parseLists(text) {
+  function parseLists(text, protect) {
     const lines = text.split('\n');
     const result = [];
     const listStack = [];
@@ -678,7 +672,7 @@ const MarkdownParser = (function() {
           // Close lists until we reach the right level
           while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) {
             const closedList = listStack.pop();
-            const listHtml = buildList(closedList.type, closedList.items);
+            const listHtml = buildList(closedList.type, closedList.items, protect);
             if (listStack.length > 0) {
               // Add as nested list to parent
               const parentList = listStack[listStack.length - 1];
@@ -698,7 +692,7 @@ const MarkdownParser = (function() {
           if (currentList.type !== listType) {
             // Different list type, close current and start new
             const closedList = listStack.pop();
-            const listHtml = buildList(closedList.type, closedList.items);
+            const listHtml = buildList(closedList.type, closedList.items, protect);
             if (listStack.length > 0) {
               const parentList = listStack[listStack.length - 1];
               if (parentList.items.length > 0) {
@@ -715,7 +709,7 @@ const MarkdownParser = (function() {
         // Not a list item, close all open lists
         while (listStack.length > 0) {
           const closedList = listStack.pop();
-          const listHtml = buildList(closedList.type, closedList.items);
+          const listHtml = buildList(closedList.type, closedList.items, protect);
           if (listStack.length > 0) {
             const parentList = listStack[listStack.length - 1];
             if (parentList.items.length > 0) {
@@ -733,7 +727,7 @@ const MarkdownParser = (function() {
     // Close any remaining lists
     while (listStack.length > 0) {
       const closedList = listStack.pop();
-      const listHtml = buildList(closedList.type, closedList.items);
+      const listHtml = buildList(closedList.type, closedList.items, protect);
       if (listStack.length > 0) {
         const parentList = listStack[listStack.length - 1];
         if (parentList.items.length > 0) {
@@ -751,9 +745,10 @@ const MarkdownParser = (function() {
    * Build list HTML with nested support
    * @param {string} type - 'ul' or 'ol'
    * @param {Array} items - List items
+   * @param {Function} [protect] - Callback that replaces generated list HTML with a placeholder token
    * @returns {string} HTML string
    */
-  function buildList(type, items) {
+  function buildList(type, items, protect) {
     const itemsHtml = items.map((item, index) => {
       const nestedHtml = item.nested || '';
       const contentHtml = parseInline(item.content);
@@ -761,15 +756,17 @@ const MarkdownParser = (function() {
     }).join('');
     
     const startAttr = type === 'ol' && items[0]?.number ? ` start="${items[0].number}"` : '';
-    return `<${type} class="md-list md-list-${type}"${startAttr}>${itemsHtml}</${type}>`;
+    const listHtml = `<${type} class="md-list md-list-${type}"${startAttr}>${itemsHtml}</${type}>`;
+    return protect ? protect(listHtml) : listHtml;
   }
 
   /**
    * Parse tables
    * @param {string} text - Text containing tables
+   * @param {Function} [protect] - Callback that replaces generated table HTML with a placeholder token
    * @returns {string} HTML string
    */
-  function parseTables(text) {
+  function parseTables(text, protect) {
     const lines = text.split('\n');
     const result = [];
     let i = 0;
@@ -796,7 +793,8 @@ const MarkdownParser = (function() {
           return `<tr class="md-table-row">${cellsHtml}</tr>`;
         }).join('');
 
-        result.push(`<div class="md-table-wrapper"><table class="md-table"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`);
+        const blockHtml = `<div class="md-table-wrapper"><table class="md-table"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+        result.push(protect ? protect(blockHtml) : blockHtml);
       } else {
         result.push(line);
         i++;
@@ -809,16 +807,18 @@ const MarkdownParser = (function() {
   /**
    * Parse headers
    * @param {string} text - Text containing headers
+   * @param {Function} [protect] - Callback that replaces generated header HTML with a placeholder token
    * @returns {string} HTML string
    */
-  function parseHeaders(text) {
+  function parseHeaders(text, protect) {
     const lines = text.split('\n');
     return lines.map(line => {
       const headerMatch = line.match(/^(#{1,6})\s+(.*)/);
       if (headerMatch) {
         const level = headerMatch[1].length;
         const content = headerMatch[2];
-        return `<h${level} class="md-header md-header-${level}">${parseInline(content)}</h${level}>`;
+        const blockHtml = `<h${level} class="md-header md-header-${level}">${parseInline(content)}</h${level}>`;
+        return protect ? protect(blockHtml) : blockHtml;
       }
       return line;
     }).join('\n');
@@ -827,10 +827,14 @@ const MarkdownParser = (function() {
   /**
    * Parse horizontal rules
    * @param {string} text - Text containing horizontal rules
+   * @param {Function} [protect] - Callback that replaces generated rule HTML with a placeholder token
    * @returns {string} HTML string
    */
-  function parseHorizontalRules(text) {
-    return text.replace(/^[-*_]{3,}$/gm, '<hr class="md-hr" />');
+  function parseHorizontalRules(text, protect) {
+    return text.replace(/^[-*_]{3,}$/gm, () => {
+      const blockHtml = '<hr class="md-hr" />';
+      return protect ? protect(blockHtml) : blockHtml;
+    });
   }
 
   /**
@@ -872,21 +876,12 @@ const MarkdownParser = (function() {
         part = part.trim();
         if (!part) return '';
 
-        // Don't wrap if already wrapped in block elements
-        // (protected-block tokens are single-line placeholders for block-level
-        // HTML like code blocks; leaving them unwrapped keeps the restored
-        // block a real block element)
-        // Blockquotes are not listed here: parseBlockquotes tokenizes every
-        // quote it generates, so any <blockquote> reaching this point is raw
-        // user-authored HTML and must be escaped like the rest of the text.
-        if (part.startsWith('\uE000') ||
-            part.startsWith('<h') ||
-            part.startsWith('<ul') ||
-            part.startsWith('<ol') ||
-            part.startsWith('<pre') ||
-            part.startsWith('<div') ||
-            part.startsWith('<hr') ||
-            part.startsWith('<table')) {
+        // Don't wrap placeholder-token parts (single-line placeholders for
+        // block-level HTML). Every block the parsers generate is tokenized at
+        // the point of creation, so any markup reaching this point is raw
+        // user-authored HTML and must be escaped by parseInline like the rest
+        // of the text — even when it mimics a generated tag or class name.
+        if (part.startsWith('\uE000')) {
           return part;
         }
 
@@ -1099,11 +1094,15 @@ const MarkdownParser = (function() {
       return blockToken(protectedBlocks.length - 1);
     };
 
-    // Parse in order of precedence
-    html = parseCodeBlocks(html);      // Code blocks first to protect content
-    html = html.replace(/<div class="md-code-block">[\s\S]*?<\/div>/g, protect);
-    html = parseTables(html);          // Tables
-    html = parseHeaders(html);         // Headers
+    // Parse in order of precedence. Every block parser below tokenizes its
+    // own generated HTML at the point of creation via the protect callback,
+    // so no pass ever identifies generated blocks by regex-matching class
+    // names in the (user-controlled) input. Raw HTML written by the user —
+    // including tags that copy generated class names — is never protected
+    // and is escaped by parseInline.
+    html = parseCodeBlocks(html, protect);      // Code blocks first to protect content
+    html = parseTables(html, protect);          // Tables
+    html = parseHeaders(html, protect);         // Headers
     // Blockquotes. parseBlockquotes protects each quote it generates with a
     // placeholder token: blank quoted lines and nested code/table HTML would
     // otherwise be cut up by the blank-line split in parseParagraphs, which
@@ -1112,10 +1111,10 @@ const MarkdownParser = (function() {
     // protected — raw <blockquote> tags in the input stay plain text and are
     // escaped by parseInline like any other user-authored HTML.
     html = parseBlockquotes(html, protect);     // Blockquotes
-    html = parseTaskLists(html);       // Task lists (before regular lists)
-    html = parseLists(html);           // Lists
-    html = parseHorizontalRules(html); // Horizontal rules
-    html = parseParagraphs(html);      // Paragraphs last
+    html = parseTaskLists(html, protect);       // Task lists (before regular lists)
+    html = parseLists(html, protect);           // Lists
+    html = parseHorizontalRules(html, protect); // Horizontal rules
+    html = parseParagraphs(html);               // Paragraphs last
     // Restore code blocks only after paragraph parsing: parseParagraphs
     // splits on blank lines, which would cut through multiline code content
     html = restoreBlockTokens(html, protectedBlocks); // Restore code blocks
