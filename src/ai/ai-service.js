@@ -492,27 +492,24 @@ const AIService = (function() {
     if (AIStore.state.abortController) {
       AIStore.state.abortController.abort();
       AIStore.setAbortController(null);
-    }
-
-    const conversation = AIStore.getCurrentConversation();
-    if (conversation && conversation.messages.length > 0) {
-      const lastMsg = conversation.messages[conversation.messages.length - 1];
-      if (lastMsg && lastMsg.role === 'assistant' && lastMsg.isStreaming) {
-        lastMsg.isStreaming = false;
-        AIStore.saveConversations();
-
-        const assistantElements = elements.container?.querySelectorAll('.ai-message-assistant');
-        if (assistantElements) {
-          const lastAssistantElement = assistantElements[assistantElements.length - 1];
-          if (lastAssistantElement && lastMsg.content) {
-            const copyBtn = lastAssistantElement.querySelector('.ai-message-copy');
-            if (copyBtn) {
-              copyBtn.dataset.content = lastMsg.content.replace(/<[^>]*>/g, '').trim();
-            }
-          }
+    } else {
+      // No in-flight request will settle the message state later, so finalize
+      // defensively to avoid leaving a message stuck in the streaming state.
+      const conversation = AIStore.getCurrentConversation();
+      if (conversation && conversation.messages.length > 0) {
+        const lastMsg = conversation.messages[conversation.messages.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+          lastMsg.isStreaming = false;
+          AIStore.saveConversations();
         }
       }
     }
+
+    // When a request IS in flight, do NOT finalize the message here: the
+    // partial text lives in sendMessage's local accumulatedContent, and the
+    // aborted request writes it into lastMsg.content (or a '[Cancelled]'
+    // marker) when it settles. Finalizing synchronously would persist an
+    // empty message instead (issue #600).
 
     const streamingElements = elements.container?.querySelectorAll('.ai-message-streaming');
     if (streamingElements) {
