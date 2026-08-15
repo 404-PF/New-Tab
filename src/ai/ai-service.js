@@ -354,6 +354,7 @@ const AIService = (function() {
     let accumulatedContent = '';
     let lastRenderTime = 0;
     const RENDER_THROTTLE_MS = 50;
+    let streamAborted = false;
 
     try {
       let result;
@@ -365,7 +366,13 @@ const AIService = (function() {
           const chunks = result.content.split('');
 
           for (let index = 0; index < chunks.length; index++) {
-            if (AIStore.state.abortController === null) {
+            // Check this request's own signal, not the global controller: a
+            // new message sent right after Stop replaces the global abort
+            // controller, which would mask this request's abort and let the
+            // full offline response persist instead of the partial content
+            // the user stopped (issue #600).
+            if (abortController.signal.aborted) {
+              streamAborted = true;
               break;
             }
 
@@ -386,7 +393,7 @@ const AIService = (function() {
             }
           }
 
-          if (AIStore.state.abortController !== null) {
+          if (!streamAborted) {
             AIRenderer.updateStreamingContent(streamingTextElement, accumulatedContent);
           }
         }
@@ -416,12 +423,17 @@ const AIService = (function() {
       }
 
       if (result.success) {
-        const conversation = AIStore.getCurrentConversation();
-        const lastMsg = conversation.messages[conversation.messages.length - 1];
-
-        if (lastMsg && lastMsg.isStreaming) {
-          lastMsg.isStreaming = false;
-          lastMsg.content = accumulatedContent || result.content || '';
+        // Finalize the exact assistant message created for this request, not
+        // whatever is last in the current conversation: a newer request may
+        // have started (or the conversation switched) before this one settled.
+        if (assistantMsg?.isStreaming) {
+          assistantMsg.isStreaming = false;
+          // Offline mode simulates streaming with a chunk loop that breaks on
+          // stop; keep the partial content or mark the message as cancelled
+          // instead of persisting the full response the user chose to stop.
+          assistantMsg.content = streamAborted
+            ? accumulatedContent || '[Cancelled]'
+            : accumulatedContent || result.content || '';
         }
 
         if (streamingTextElement) {
@@ -438,12 +450,9 @@ const AIService = (function() {
         AIStore.saveConversations();
         renderConversationUI();
       } else if (result.aborted) {
-        const conversation = AIStore.getCurrentConversation();
-        const lastMsg = conversation.messages[conversation.messages.length - 1];
-
-        if (lastMsg && lastMsg.isStreaming) {
-          lastMsg.isStreaming = false;
-          lastMsg.content = accumulatedContent || '[Cancelled]';
+        if (assistantMsg?.isStreaming) {
+          assistantMsg.isStreaming = false;
+          assistantMsg.content = accumulatedContent || '[Cancelled]';
         }
 
         if (streamingElement && accumulatedContent) {
@@ -454,6 +463,11 @@ const AIService = (function() {
         }
 
         AIStore.saveConversations();
+        // Re-render so the '[Cancelled]' marker (or the partial content)
+        // becomes visible: the streaming text node was blank when the user
+        // stopped before the first chunk, and stopStreaming only removed the
+        // streaming class.
+        renderConversationUI();
       } else {
         showError(result.error);
         const conversation = AIStore.getCurrentConversation();
@@ -465,14 +479,14 @@ const AIService = (function() {
       }
     } catch (error) {
       if (error.name === 'AbortError' || AIStore.state.abortController === null) {
-        const conversation = AIStore.getCurrentConversation();
-        const lastMsg = conversation.messages[conversation.messages.length - 1];
-
-        if (lastMsg && lastMsg.isStreaming) {
-          lastMsg.isStreaming = false;
-          lastMsg.content = accumulatedContent || '[Cancelled]';
+        if (assistantMsg?.isStreaming) {
+          assistantMsg.isStreaming = false;
+          assistantMsg.content = accumulatedContent || '[Cancelled]';
         }
         AIStore.saveConversations();
+        // Re-render so the '[Cancelled]' marker (or the partial content)
+        // becomes visible when the user stopped before the first chunk.
+        renderConversationUI();
       } else {
         showError(getTranslation('aiError'));
         console.error('AI sendMessage error:', error);
@@ -485,34 +499,40 @@ const AIService = (function() {
       }
     }
 
-    hideLoading();
+    // Only the latest request may clear the loading state: when a newer
+    // request started before this one settled (Stop re-enables the input
+    // immediately), leave its state and abort controller intact.
+    if (AIStore.state.abortController === null || AIStore.state.abortController === abortController) {
+      hideLoading();
+    }
   }
 
   function stopStreaming() {
     if (AIStore.state.abortController) {
       AIStore.state.abortController.abort();
       AIStore.setAbortController(null);
-    }
-
-    const conversation = AIStore.getCurrentConversation();
-    if (conversation && conversation.messages.length > 0) {
-      const lastMsg = conversation.messages[conversation.messages.length - 1];
-      if (lastMsg && lastMsg.role === 'assistant' && lastMsg.isStreaming) {
-        lastMsg.isStreaming = false;
-        AIStore.saveConversations();
-
-        const assistantElements = elements.container?.querySelectorAll('.ai-message-assistant');
-        if (assistantElements) {
-          const lastAssistantElement = assistantElements[assistantElements.length - 1];
-          if (lastAssistantElement && lastMsg.content) {
-            const copyBtn = lastAssistantElement.querySelector('.ai-message-copy');
-            if (copyBtn) {
-              copyBtn.dataset.content = lastMsg.content.replace(/<[^>]*>/g, '').trim();
-            }
-          }
+    } else {
+      // No in-flight request will settle the message state later, so finalize
+      // defensively to avoid leaving a message stuck in the streaming state.
+      const conversation = AIStore.getCurrentConversation();
+      if (conversation && conversation.messages.length > 0) {
+        const lastMsg = conversation.messages[conversation.messages.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+          lastMsg.content = lastMsg.content || '[Cancelled]';
+          lastMsg.isStreaming = false;
+          AIStore.saveConversations();
+          // Re-render so the '[Cancelled]' marker (or existing partial
+          // content) becomes visible instead of a blank streaming bubble.
+          renderConversationUI();
         }
       }
     }
+
+    // When a request IS in flight, do NOT finalize the message here: the
+    // partial text lives in sendMessage's local accumulatedContent, and the
+    // aborted request writes it into lastMsg.content (or a '[Cancelled]'
+    // marker) when it settles. Finalizing synchronously would persist an
+    // empty message instead (issue #600).
 
     const streamingElements = elements.container?.querySelectorAll('.ai-message-streaming');
     if (streamingElements) {
