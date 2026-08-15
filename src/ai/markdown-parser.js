@@ -408,10 +408,34 @@ const MarkdownParser = (function() {
   // ============== Block Parsing ==============
 
   // Generated HTML blocks are temporarily replaced with placeholder tokens so
-  // later line-based parsers treat them as opaque text. The tokens use a
-  // Private Use Area character that markdown cannot produce, so they can
-  // never collide with user content.
-  const blockToken = (index) => `\uE000BLOCK${index}\uE000`;
+  // later line-based parsers treat them as opaque text. Each parse() call
+  // draws a fresh random token namespace, so the full token string is
+  // unguessable: user content that merely looks like a token
+  // (\uE000...BLOCKn...) can never collide with a real placeholder, be
+  // mistaken for a block boundary, or be substituted for generated HTML.
+  // (A bare Private Use Area character is NOT enough — PUA characters are
+  // valid Unicode and can appear in any markdown input.)
+  let tokenNamespace = '';
+
+  /**
+   * Generate a fresh unguessable namespace for this parse's block tokens.
+   * Restricted to [0-9a-z] so the value is safe to embed in the regexes
+   * used by restoreBlockTokens and parseParagraphs.
+   * @returns {string}
+   */
+  function makeTokenNamespace() {
+    const randomPart = () => {
+      if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const buf = new Uint32Array(2);
+        crypto.getRandomValues(buf);
+        return buf[0].toString(36) + buf[1].toString(36);
+      }
+      return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    };
+    return randomPart() + randomPart();
+  }
+
+  const blockToken = (index) => `\uE000${tokenNamespace}BLOCK${index}\uE000`;
 
   /**
    * Restore placeholder tokens back into the protected HTML blocks.
@@ -425,10 +449,11 @@ const MarkdownParser = (function() {
     // its replacement strings. Restore in reverse index order so a parent's
     // embedded child tokens are still present in the text when their own
     // restore pass runs. A function replacement avoids $& / $1 interpolation
-    // of the block HTML.
+    // of the block HTML. Only tokens carrying the current parse's random
+    // namespace are restored — identical-looking user text is left alone.
     let result = text;
     for (let i = protectedBlocks.length - 1; i >= 0; i--) {
-      const tokenRe = new RegExp(`\uE000BLOCK${i}\uE000`, 'g');
+      const tokenRe = new RegExp(`\uE000${tokenNamespace}BLOCK${i}\uE000`, 'g');
       result = result.replace(tokenRe, () => protectedBlocks[i]);
     }
     return result;
@@ -855,10 +880,14 @@ const MarkdownParser = (function() {
       // of having its HTML restored inside the <p>. Block-level HTML
       // generated inside a blockquote is protected along with the blockquote
       // itself, so no token line can be nested inside other block HTML here.
+      // The regex is namespaced per parse so user text that merely looks
+      // like a token is never mistaken for one.
+      const tokenLineRe = new RegExp(`^\uE000${tokenNamespace}BLOCK\\d+\uE000$`);
+      const tokenPrefix = `\uE000${tokenNamespace}`;
       const parts = [];
       let current = [];
       for (const line of block.split('\n')) {
-        if (/^\uE000BLOCK\d+\uE000$/.test(line.trim())) {
+        if (tokenLineRe.test(line.trim())) {
           if (current.length > 0) {
             parts.push(current.join('\n'));
             current = [];
@@ -881,7 +910,9 @@ const MarkdownParser = (function() {
         // the point of creation, so any markup reaching this point is raw
         // user-authored HTML and must be escaped by parseInline like the rest
         // of the text — even when it mimics a generated tag or class name.
-        if (part.startsWith('\uE000')) {
+        // Only parts carrying this parse's random namespace are tokens;
+        // user text that merely starts with a PUA character is escaped.
+        if (part.startsWith(tokenPrefix)) {
           return part;
         }
 
@@ -1083,6 +1114,10 @@ const MarkdownParser = (function() {
     if (cached) {
       return cached;
     }
+
+    // Fresh unguessable token namespace for this parse so user content can
+    // never forge a placeholder token (see blockToken / makeTokenNamespace)
+    tokenNamespace = makeTokenNamespace();
 
     let html = markdown;
     const protectedBlocks = [];

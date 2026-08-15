@@ -696,3 +696,46 @@ describe('MarkdownParser blockquote and list rendering', () => {
     expect(container.innerHTML).not.toContain('&lt;/pre&gt;');
   });
 });
+
+describe('MarkdownParser token-spoofing resistance', () => {
+  /**
+   * Parse markdown into a DOM container for structural assertions.
+   * @param {string} markdown - Markdown input
+   * @returns {HTMLDivElement} Container with parsed HTML
+   */
+  function parseToContainer(markdown) {
+    const container = document.createElement('div');
+    container.innerHTML = MarkdownParser.parse(markdown);
+    return container;
+  }
+
+  it('keeps literal token-shaped text as text instead of substituting generated HTML', () => {
+    // Block placeholders are unguessable per parse, so user content that
+    // merely looks like a token (\uE000BLOCK0\uE000) must not be replaced
+    // with a generated block's HTML nor treated as a block boundary. Before
+    // the fix, restoreBlockTokens replaced this literal text with the code
+    // block's HTML, duplicating it in the output.
+    const container = parseToContainer('```js\ncode\n```\n\n\uE000BLOCK0\uE000');
+    const paragraphs = container.querySelectorAll('p.md-paragraph');
+
+    // The literal text survives, wrapped in a paragraph like any other text
+    expect(container.textContent).toContain('\uE000BLOCK0\uE000');
+    expect(paragraphs.length).toBe(1);
+    expect(paragraphs[0].textContent).toBe('\uE000BLOCK0\uE000');
+    // Only the real code block renders — the token-shaped text must not be
+    // substituted with a copy of its HTML
+    expect(container.querySelectorAll('div.md-code-block')).toHaveLength(1);
+  });
+
+  it('escapes raw HTML that follows token-shaped text', () => {
+    // Regression: a part starting with \uE000 bypassed parseInline entirely,
+    // so raw HTML after a token-shaped prefix was injected into the output
+    // as live markup (only the final allowlist sanitizer limited it)
+    const container = parseToContainer('```\ncode\n```\n\n\uE000BLOCK0\uE000 <img src=x onerror=alert(1)>');
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent).toContain('\uE000BLOCK0\uE000');
+    expect(container.textContent).toContain('<img src=x onerror=alert(1)>');
+    expect(container.querySelectorAll('div.md-code-block')).toHaveLength(1);
+  });
+});
