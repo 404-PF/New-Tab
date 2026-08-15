@@ -420,17 +420,18 @@ const MarkdownParser = (function() {
   /**
    * Generate a fresh unguessable namespace for this parse's block tokens.
    * Restricted to [0-9a-z] so the value is safe to embed in the regexes
-   * used by restoreBlockTokens and parseParagraphs.
+   * used by restoreBlockTokens and parseParagraphs. crypto.getRandomValues
+   * is a CSPRNG available in every context the parser runs in (the
+   * Chromium extension page and the Node test environment), so no
+   * Math.random fallback is used — a predictable fallback would let user
+   * content forge placeholder tokens.
    * @returns {string}
    */
   function makeTokenNamespace() {
     const randomPart = () => {
-      if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-        const buf = new Uint32Array(2);
-        crypto.getRandomValues(buf);
-        return buf[0].toString(36) + buf[1].toString(36);
-      }
-      return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      const buf = new Uint32Array(2);
+      crypto.getRandomValues(buf);
+      return buf[0].toString(36) + buf[1].toString(36);
     };
     return randomPart() + randomPart();
   }
