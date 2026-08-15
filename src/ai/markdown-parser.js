@@ -644,6 +644,10 @@ const MarkdownParser = (function() {
     return protect ? protect(listHtml) : listHtml;
   }
 
+  // Matches a list item line in one pass: leading whitespace, a `-`/`*`/`+`
+  // or `1.` marker, and the item content. Used by parseLists.
+  const LIST_ITEM_RE = /^(\s*)([-*+]|\d+\.)\s+(.*)$/;
+
   /**
    * Parse lists (ordered and unordered) with improved nesting
    * @param {string} text - Text containing lists
@@ -669,50 +673,62 @@ const MarkdownParser = (function() {
       }
     };
 
-    for (const line of lines) {
-      const indent = line.search(/\S/);
-      const unorderedMatch = line.match(/^[\s]*[-*+]\s+(.*)/);
-      const orderedMatch = line.match(/^[\s]*(\d+)\.\s+(.*)/);
-
-      if (unorderedMatch || orderedMatch) {
-        const isOrdered = !!orderedMatch;
-        const content = isOrdered ? orderedMatch[2] : unorderedMatch[1];
-        const number = isOrdered ? parseInt(orderedMatch[1]) : null;
-
-        // Determine list type
-        const listType = isOrdered ? 'ol' : 'ul';
-
-        // Handle indentation changes
-        if (indent > currentIndent) {
-          // Start new nested list
-          listStack.push({ type: listType, items: [], indent });
-          currentIndent = indent;
-        } else if (indent < currentIndent) {
-          // Close lists until we reach the right level
-          while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) {
-            closeTopList();
-          }
-          currentIndent = indent;
-        }
-
-        // Add item to current list
-        if (listStack.length > 0) {
-          const currentList = listStack[listStack.length - 1];
-          if (currentList.type !== listType) {
-            // Different list type, close current and start new
-            closeTopList();
-            listStack.push({ type: listType, items: [], indent });
-          }
-          listStack[listStack.length - 1].items.push({ content, number, nested: null });
-        }
-      } else {
-        // Not a list item, close all open lists
-        while (listStack.length > 0) {
-          closeTopList();
-        }
-        currentIndent = -1;
-        result.push(line);
+    // Close every open list nested deeper than the given indent
+    const dedentTo = (indent) => {
+      while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) {
+        closeTopList();
       }
+    };
+
+    // Not a list item: close all open lists and let the line pass through
+    const flushNonListLine = (line) => {
+      while (listStack.length > 0) {
+        closeTopList();
+      }
+      currentIndent = -1;
+      result.push(line);
+    };
+
+    // Add one list-item line, opening or closing lists as the indent and
+    // list type require
+    const addItem = (line) => {
+      const match = LIST_ITEM_RE.exec(line);
+      if (!match) {
+        flushNonListLine(line);
+        return;
+      }
+
+      const indent = match[1].length;
+      const isOrdered = match[2].endsWith('.');
+      const content = match[3];
+      const number = isOrdered ? parseInt(match[2], 10) : null;
+      const listType = isOrdered ? 'ol' : 'ul';
+
+      // Handle indentation changes
+      if (indent > currentIndent) {
+        // Start new nested list
+        listStack.push({ type: listType, items: [], indent });
+        currentIndent = indent;
+      } else if (indent < currentIndent) {
+        // Close lists until we reach the right level
+        dedentTo(indent);
+        currentIndent = indent;
+      }
+
+      // Add the item to the current list, closing a type-mismatched list first
+      const topList = listStack[listStack.length - 1];
+      if (topList) {
+        if (topList.type !== listType) {
+          // Different list type, close current and start new
+          closeTopList();
+          listStack.push({ type: listType, items: [], indent });
+        }
+        listStack[listStack.length - 1].items.push({ content, number, nested: null });
+      }
+    };
+
+    for (const line of lines) {
+      addItem(line);
     }
 
     // Close any remaining lists
