@@ -256,34 +256,52 @@ describe('AIService error path length guard (#282)', () => {
 
 describe('AIService stop streaming preserves partial content (#600)', () => {
   // Helper: seed a conversation and mock a streaming request that stays
-  // pending until the test resolves it (like a real fetch that aborts).
-  const startStreamingSend = () => {
-    const conversation = {
-      id: 'conv_stop',
-      title: 'Stop',
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    AIStore.state.conversations = [conversation];
-    AIStore.state.currentConversationId = conversation.id;
+  // pending until the test resolves/rejects it (like a real fetch that
+  // aborts). Pass { seedConversation: false } to reuse the current
+  // conversation instead of replacing it (e.g. for the new-message race).
+  const startStreamingSend = ({ seedConversation = true } = {}) => {
+    const conversation = seedConversation
+      ? {
+          id: 'conv_stop',
+          title: 'Stop',
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
+      : AIStore.getCurrentConversation();
+
+    if (seedConversation) {
+      AIStore.state.conversations = [conversation];
+      AIStore.state.currentConversationId = conversation.id;
+    }
 
     let onChunkCallback = null;
     let resolveRequest = null;
-    OpenRouterAPI.sendMessageStreaming = async (userMessage, history, onChunk) => {
+    let rejectRequest = null;
+    let requestSignal = null;
+    OpenRouterAPI.sendMessageStreaming = async (userMessage, history, onChunk, signal) => {
       onChunkCallback = onChunk;
-      return new Promise(resolve => {
+      requestSignal = signal;
+      return new Promise((resolve, reject) => {
         resolveRequest = resolve;
+        rejectRequest = reject;
       });
     };
 
     const sendPromise = AIService.sendMessage('hello');
 
-    return { conversation, sendPromise, getOnChunk: () => onChunkCallback, resolveRequest };
+    return {
+      conversation,
+      sendPromise,
+      getOnChunk: () => onChunkCallback,
+      getRequestSignal: () => requestSignal,
+      resolveRequest,
+      rejectRequest
+    };
   };
 
   it('keeps the partially streamed text when stopping mid-stream', async () => {
-    const { conversation, sendPromise, getOnChunk, resolveRequest } = startStreamingSend();
+    const { conversation, sendPromise, getOnChunk, getRequestSignal, resolveRequest } = startStreamingSend();
 
     // Let sendMessage reach the streaming call and accumulate some content
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -291,6 +309,8 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
 
     // Press Stop, then let the aborted request settle
     AIService.stopStreaming();
+    // Stop must actually abort the signal passed to the request
+    expect(getRequestSignal().aborted).toBe(true);
     resolveRequest({ success: false, error: 'Request cancelled', aborted: true });
     await sendPromise;
 
@@ -305,18 +325,122 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
   });
 
   it('stores a [Cancelled] marker when nothing was streamed before stop', async () => {
-    const { conversation, sendPromise, resolveRequest } = startStreamingSend();
+    const { conversation, sendPromise, getRequestSignal, resolveRequest } = startStreamingSend();
 
     await new Promise(resolve => setTimeout(resolve, 0));
 
     // Stop before any chunk arrives
     AIService.stopStreaming();
+    expect(getRequestSignal().aborted).toBe(true);
     resolveRequest({ success: false, error: 'Request cancelled', aborted: true });
     await sendPromise;
 
     const lastMsg = conversation.messages[1];
     expect(lastMsg.isStreaming).toBe(false);
     expect(lastMsg.content).toBe('[Cancelled]');
+  });
+
+  it('keeps partial content when the request rejects with an AbortError', async () => {
+    const { conversation, sendPromise, getOnChunk, getRequestSignal, rejectRequest } = startStreamingSend();
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+    getOnChunk()('Partial answer');
+
+    AIService.stopStreaming();
+    expect(getRequestSignal().aborted).toBe(true);
+
+    // A real aborted fetch rejects with a DOMException AbortError
+    rejectRequest(new DOMException('The operation was aborted.', 'AbortError'));
+    await sendPromise;
+
+    const lastMsg = conversation.messages[1];
+    expect(lastMsg.isStreaming).toBe(false);
+    expect(lastMsg.content).toBe('Partial answer');
+
+    // The partial content must survive a reload from storage
+    const saved = JSON.parse(localStorage.getItem('ai_conversations'));
+    expect(saved[0].messages[1].content).toBe('Partial answer');
+  });
+
+  it('finalizes the original message when a new request starts before the aborted one settles', async () => {
+    const { conversation, sendPromise, getOnChunk, getRequestSignal, resolveRequest } = startStreamingSend();
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+    getOnChunk()('Partial answer');
+
+    AIService.stopStreaming();
+    expect(getRequestSignal().aborted).toBe(true);
+
+    // The input is re-enabled immediately after Stop; if the user sends a new
+    // message before the aborted request settles, finalization must still
+    // target the original assistant message, not the new one.
+    const second = startStreamingSend({ seedConversation: false });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    second.getOnChunk()('Second answer');
+
+    // The aborted request settles after the new message is in the conversation
+    resolveRequest({ success: false, error: 'Request cancelled', aborted: true });
+    await sendPromise;
+
+    // The original message keeps its partial content and is finalized
+    const firstAssistant = conversation.messages[1];
+    expect(firstAssistant.isStreaming).toBe(false);
+    expect(firstAssistant.content).toBe('Partial answer');
+
+    // The newer request keeps its abort controller and loading state
+    expect(AIStore.state.abortController).not.toBeNull();
+    expect(AIStore.state.isLoading).toBe(true);
+
+    // The new streaming message is left untouched until its own request settles
+    const secondAssistant = conversation.messages[3];
+    expect(secondAssistant.isStreaming).toBe(true);
+    expect(secondAssistant.content).toBe('');
+
+    second.resolveRequest({ success: true, content: 'Second answer', aborted: false });
+    await second.sendPromise;
+    expect(secondAssistant.isStreaming).toBe(false);
+    expect(secondAssistant.content).toBe('Second answer');
+  });
+
+  it('keeps the partial simulated response when stopping mid-stream in offline mode', async () => {
+    const conversation = {
+      id: 'conv_offline',
+      title: 'Offline',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+
+    // Flip the network detector into offline mode for this test
+    window.dispatchEvent(new Event('offline'));
+    expect(NetworkDetector.getStatus().isOffline).toBe(true);
+
+    const fullResponse = OfflineMode.getResponse('hello').content;
+
+    try {
+      const sendPromise = AIService.sendMessage('hello');
+
+      // Let the simulated offline stream accumulate a few chunks
+      await new Promise(resolve => setTimeout(resolve, 30));
+
+      AIService.stopStreaming();
+      await sendPromise;
+
+      const lastMsg = conversation.messages[1];
+      expect(lastMsg.isStreaming).toBe(false);
+      // Partial content preserved - not the full response the user stopped
+      expect(lastMsg.content.length).toBeGreaterThan(0);
+      expect(lastMsg.content.length).toBeLessThan(fullResponse.length);
+
+      // The partial content must survive a reload from storage
+      const saved = JSON.parse(localStorage.getItem('ai_conversations'));
+      expect(saved[0].messages[1].content).toBe(lastMsg.content);
+    } finally {
+      // Restore online state for the remaining tests
+      window.dispatchEvent(new Event('online'));
+    }
   });
 
   it('does not leave the message stuck streaming when no request is in flight', async () => {
@@ -338,5 +462,32 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
 
     const lastMsg = conversation.messages[1];
     expect(lastMsg.isStreaming).toBe(false);
+    // An empty stuck message is marked as cancelled instead of persisted blank
+    expect(lastMsg.content).toBe('[Cancelled]');
+
+    const saved = JSON.parse(localStorage.getItem('ai_conversations'));
+    expect(saved[0].messages[1].content).toBe('[Cancelled]');
+  });
+
+  it('keeps existing content on a stuck message when no request is in flight', async () => {
+    const conversation = {
+      id: 'conv_stuck_content',
+      title: 'StuckContent',
+      messages: [
+        { role: 'user', content: 'hello', timestamp: Date.now() },
+        { role: 'assistant', content: 'Partial thought', timestamp: Date.now(), isStreaming: true }
+      ],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    AIStore.state.abortController = null;
+
+    AIService.stopStreaming();
+
+    const lastMsg = conversation.messages[1];
+    expect(lastMsg.isStreaming).toBe(false);
+    expect(lastMsg.content).toBe('Partial thought');
   });
 });

@@ -354,6 +354,7 @@ const AIService = (function() {
     let accumulatedContent = '';
     let lastRenderTime = 0;
     const RENDER_THROTTLE_MS = 50;
+    let streamAborted = false;
 
     try {
       let result;
@@ -366,6 +367,7 @@ const AIService = (function() {
 
           for (let index = 0; index < chunks.length; index++) {
             if (AIStore.state.abortController === null) {
+              streamAborted = true;
               break;
             }
 
@@ -416,12 +418,17 @@ const AIService = (function() {
       }
 
       if (result.success) {
-        const conversation = AIStore.getCurrentConversation();
-        const lastMsg = conversation.messages[conversation.messages.length - 1];
-
-        if (lastMsg && lastMsg.isStreaming) {
-          lastMsg.isStreaming = false;
-          lastMsg.content = accumulatedContent || result.content || '';
+        // Finalize the exact assistant message created for this request, not
+        // whatever is last in the current conversation: a newer request may
+        // have started (or the conversation switched) before this one settled.
+        if (assistantMsg && assistantMsg.isStreaming) {
+          assistantMsg.isStreaming = false;
+          // Offline mode simulates streaming with a chunk loop that breaks on
+          // stop; keep the partial content or mark the message as cancelled
+          // instead of persisting the full response the user chose to stop.
+          assistantMsg.content = streamAborted
+            ? accumulatedContent || '[Cancelled]'
+            : accumulatedContent || result.content || '';
         }
 
         if (streamingTextElement) {
@@ -438,12 +445,9 @@ const AIService = (function() {
         AIStore.saveConversations();
         renderConversationUI();
       } else if (result.aborted) {
-        const conversation = AIStore.getCurrentConversation();
-        const lastMsg = conversation.messages[conversation.messages.length - 1];
-
-        if (lastMsg && lastMsg.isStreaming) {
-          lastMsg.isStreaming = false;
-          lastMsg.content = accumulatedContent || '[Cancelled]';
+        if (assistantMsg && assistantMsg.isStreaming) {
+          assistantMsg.isStreaming = false;
+          assistantMsg.content = accumulatedContent || '[Cancelled]';
         }
 
         if (streamingElement && accumulatedContent) {
@@ -465,12 +469,9 @@ const AIService = (function() {
       }
     } catch (error) {
       if (error.name === 'AbortError' || AIStore.state.abortController === null) {
-        const conversation = AIStore.getCurrentConversation();
-        const lastMsg = conversation.messages[conversation.messages.length - 1];
-
-        if (lastMsg && lastMsg.isStreaming) {
-          lastMsg.isStreaming = false;
-          lastMsg.content = accumulatedContent || '[Cancelled]';
+        if (assistantMsg && assistantMsg.isStreaming) {
+          assistantMsg.isStreaming = false;
+          assistantMsg.content = accumulatedContent || '[Cancelled]';
         }
         AIStore.saveConversations();
       } else {
@@ -485,7 +486,12 @@ const AIService = (function() {
       }
     }
 
-    hideLoading();
+    // Only the latest request may clear the loading state: when a newer
+    // request started before this one settled (Stop re-enables the input
+    // immediately), leave its state and abort controller intact.
+    if (AIStore.state.abortController === null || AIStore.state.abortController === abortController) {
+      hideLoading();
+    }
   }
 
   function stopStreaming() {
@@ -499,6 +505,7 @@ const AIService = (function() {
       if (conversation && conversation.messages.length > 0) {
         const lastMsg = conversation.messages[conversation.messages.length - 1];
         if (lastMsg && lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+          lastMsg.content = lastMsg.content || '[Cancelled]';
           lastMsg.isStreaming = false;
           AIStore.saveConversations();
         }
