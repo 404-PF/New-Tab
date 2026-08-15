@@ -376,6 +376,48 @@ describe('MarkdownParser blockquote and list rendering', () => {
     expect(blockquote.textContent).toContain('<b>world</b>');
   });
 
+  it('escapes raw <blockquote> tags written inline in text', () => {
+    // Regression: the whole-blockquote protection regex matched user-authored
+    // tags too, restoring them as live HTML instead of escaping them
+    const container = parseToContainer('prefix <blockquote>raw</blockquote> suffix');
+
+    expect(container.querySelector('blockquote')).toBeNull();
+    expect(container.textContent).toContain('<blockquote>raw</blockquote>');
+    // The line stays a single paragraph — the tag must not split it
+    const paragraphs = container.querySelectorAll('p.md-paragraph');
+    expect(paragraphs).toHaveLength(1);
+    expect(paragraphs[0].textContent).toBe('prefix <blockquote>raw</blockquote> suffix');
+  });
+
+  it('escapes a raw <blockquote> tag alone on a line', () => {
+    // Regression: the paragraph parser's startsWith('<blockquote') guard
+    // (leftover from before blockquotes were tokenized) let a lone raw tag
+    // through unescaped
+    const container = parseToContainer('<blockquote>raw</blockquote>');
+
+    expect(container.querySelector('blockquote')).toBeNull();
+    expect(container.querySelector('p.md-paragraph').textContent).toBe('<blockquote>raw</blockquote>');
+    expect(container.innerHTML).toContain('&lt;blockquote&gt;');
+  });
+
+  it('escapes raw block-level tags in plain blockquote text', () => {
+    // Regression: the h1-h6 / hr / list protection inside
+    // parseBlockquoteContent matched user-authored tags too, restoring them
+    // as live HTML instead of escaping them
+    const container = parseToContainer('> a <h1>x</h1> <hr> <ul>y</ul> <ol>z</ol> b');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.querySelector('h1')).toBeNull();
+    expect(blockquote.querySelector('hr')).toBeNull();
+    expect(blockquote.querySelector('ul')).toBeNull();
+    expect(blockquote.querySelector('ol')).toBeNull();
+    expect(blockquote.textContent).toContain('<h1>x</h1>');
+    expect(blockquote.textContent).toContain('<hr>');
+    expect(blockquote.textContent).toContain('<ul>y</ul>');
+    expect(blockquote.textContent).toContain('<ol>z</ol>');
+  });
+
   it('keeps quoted fenced code blocks intact when content looks like markdown', () => {
     const container = parseToContainer('> ```\n> - item\n> # header\n> ---\n> ```');
     const blockquote = container.querySelector('blockquote.md-blockquote');

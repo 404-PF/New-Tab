@@ -490,17 +490,22 @@ const MarkdownParser = (function() {
     html = parseHorizontalRules(html);
 
     // Protect the block HTML generated above, then inline-parse the remaining
-    // plain text so formatting like **bold** keeps working inside blockquotes
+    // plain text so formatting like **bold** keeps working inside blockquotes.
+    // Each pattern is scoped to the exact markup generated above (the class
+    // names set by parseHeaders / parseHorizontalRules / buildList), so raw
+    // tags written by the user — <h1>, <hr>, <ul>, <ol> — stay plain text
+    // and are escaped by parseInline below instead of being restored as
+    // live HTML.
     html = html.replace(/<div class="md-table-wrapper">[\s\S]*?<\/div>/g, protect);
-    html = html.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/g, protect);
-    html = html.replace(/<hr[^>]*\/?>/g, protect);
+    html = html.replace(/<h[1-6] class="md-header md-header-[1-6]">[\s\S]*?<\/h[1-6]>/g, protect);
+    html = html.replace(/<hr class="md-hr"[^>]*\/?>/g, protect);
 
     // Lists can nest, so protect the innermost lists first (each pass wraps
     // a complete list element instead of cutting across nested ones). The /g
     // flag protects every list at the current nesting level in a single pass,
     // so the loop runs once per nesting depth — each pass replaces at least
     // one list element with a token, so it always terminates.
-    const nestedListRe = /<ul[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ul>|<ol[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ol>/g;
+    const nestedListRe = /<ul class="md-list md-list-ul[^"]*"[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ul>|<ol class="md-list md-list-ol[^"]*"[^>]*>(?:(?!<\/?[uo]l[^>]*>)[\s\S])*?<\/ol>/g;
     while (nestedListRe.test(html)) {
       html = html.replace(nestedListRe, protect);
     }
@@ -512,13 +517,26 @@ const MarkdownParser = (function() {
   /**
    * Parse blockquotes
    * @param {string} text - Text containing blockquotes
+   * @param {Function} protect - Callback that replaces generated blockquote HTML with a placeholder token
    * @returns {string} HTML string
    */
-  function parseBlockquotes(text) {
+  function parseBlockquotes(text, protect) {
     const lines = text.split('\n');
     let inBlockquote = false;
     let blockquoteContent = [];
     const result = [];
+
+    // Each generated blockquote is protected with a placeholder token right
+    // away, so the line-based parsers downstream (task lists, lists, rules,
+    // paragraphs) treat the whole quote — including blank quoted lines and
+    // nested block HTML — as opaque. Only quotes generated here are ever
+    // protected: raw <blockquote> tags written by the user stay plain text
+    // and are escaped by parseInline like any other user-authored HTML.
+    const closeBlockquote = () => {
+      result.push(protect(`<blockquote class="md-blockquote">${parseBlockquoteContent(blockquoteContent.join('\n'))}</blockquote>`));
+      inBlockquote = false;
+      blockquoteContent = [];
+    };
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -532,16 +550,14 @@ const MarkdownParser = (function() {
         blockquoteContent.push(blockquoteMatch[1]);
       } else {
         if (inBlockquote) {
-          result.push(`<blockquote class="md-blockquote">${parseBlockquoteContent(blockquoteContent.join('\n'))}</blockquote>`);
-          inBlockquote = false;
-          blockquoteContent = [];
+          closeBlockquote();
         }
         result.push(line);
       }
     }
 
     if (inBlockquote) {
-      result.push(`<blockquote class="md-blockquote">${parseBlockquoteContent(blockquoteContent.join('\n'))}</blockquote>`);
+      closeBlockquote();
     }
 
     return result.join('\n');
@@ -860,11 +876,13 @@ const MarkdownParser = (function() {
         // (protected-block tokens are single-line placeholders for block-level
         // HTML like code blocks; leaving them unwrapped keeps the restored
         // block a real block element)
+        // Blockquotes are not listed here: parseBlockquotes tokenizes every
+        // quote it generates, so any <blockquote> reaching this point is raw
+        // user-authored HTML and must be escaped like the rest of the text.
         if (part.startsWith('\uE000') ||
             part.startsWith('<h') ||
             part.startsWith('<ul') ||
             part.startsWith('<ol') ||
-            part.startsWith('<blockquote') ||
             part.startsWith('<pre') ||
             part.startsWith('<div') ||
             part.startsWith('<hr') ||
@@ -1086,15 +1104,14 @@ const MarkdownParser = (function() {
     html = html.replace(/<div class="md-code-block">[\s\S]*?<\/div>/g, protect);
     html = parseTables(html);          // Tables
     html = parseHeaders(html);         // Headers
-    html = parseBlockquotes(html);     // Blockquotes
-    // Protect code blocks generated inside blockquotes as well
-    html = html.replace(/<div class="md-code-block">[\s\S]*?<\/div>/g, protect);
-    // Protect complete blockquote HTML (which may embed the code tokens above
-    // and contain blank quoted lines). Line-based parsers — especially the
-    // blank-line split in parseParagraphs — would otherwise cut the quote into
-    // chunks, wrap its trailing line in a <p> and escape the closing
-    // </blockquote> as literal text, leaving the blockquote unclosed.
-    html = html.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/g, protect);
+    // Blockquotes. parseBlockquotes protects each quote it generates with a
+    // placeholder token: blank quoted lines and nested code/table HTML would
+    // otherwise be cut up by the blank-line split in parseParagraphs, which
+    // escaped the closing </blockquote> as literal text and left the quote
+    // open, swallowing following content. Only generated quotes are ever
+    // protected — raw <blockquote> tags in the input stay plain text and are
+    // escaped by parseInline like any other user-authored HTML.
+    html = parseBlockquotes(html, protect);     // Blockquotes
     html = parseTaskLists(html);       // Task lists (before regular lists)
     html = parseLists(html);           // Lists
     html = parseHorizontalRules(html); // Horizontal rules
