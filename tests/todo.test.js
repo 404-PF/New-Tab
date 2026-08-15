@@ -2235,3 +2235,112 @@ describe('Todo subtasks', () => {
     }
   });
 });
+
+describe('Date picker month navigation', () => {
+  it('custom picker advances exactly one month from the 31st', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 31)); // Jan 31, 2026
+
+    try {
+      // Fresh buttons so only the newly initialized picker instance listens
+      const prevBtn = document.createElement('button');
+      prevBtn.id = 'prev-month';
+      const nextBtn = document.createElement('button');
+      nextBtn.id = 'next-month';
+      document.body.replaceChild(prevBtn, document.getElementById('prev-month'));
+      document.body.replaceChild(nextBtn, document.getElementById('next-month'));
+
+      window.initCustomDatePicker();
+
+      // Jan 31 → Feb (previously rolled over to Mar 3)
+      nextBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(document.getElementById('calendar-month').textContent).toBe('February');
+      expect(document.getElementById('calendar-year').textContent).toBe('2026');
+
+      // Feb 28 → Mar, not Apr
+      nextBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(document.getElementById('calendar-month').textContent).toBe('March');
+      expect(document.getElementById('calendar-year').textContent).toBe('2026');
+
+      // Mar 28 → Feb
+      prevBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(document.getElementById('calendar-month').textContent).toBe('February');
+      expect(document.getElementById('calendar-year').textContent).toBe('2026');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('custom picker goes back from March 31 to February', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 2, 31)); // Mar 31, 2026
+
+    try {
+      // Fresh button so only the newly initialized picker instance listens
+      const prevBtn = document.createElement('button');
+      prevBtn.id = 'prev-month';
+      document.body.replaceChild(prevBtn, document.getElementById('prev-month'));
+
+      window.initCustomDatePicker();
+
+      // Mar 31 → Feb 28 (previously rolled over to Mar 3)
+      prevBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(document.getElementById('calendar-month').textContent).toBe('February');
+      expect(document.getElementById('calendar-year').textContent).toBe('2026');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('inline picker advances exactly one month from the 31st', () => {
+    addTodo('Pay rent', '2026-01-31');
+    renderTodos();
+
+    const dueDateElement = document.querySelector('.todo-due-date.clickable');
+    expect(dueDateElement).not.toBeNull();
+    dueDateElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    let picker = document.querySelector('.inline-date-picker');
+    expect(picker).not.toBeNull();
+    expect(picker.querySelector('.inline-calendar-month').textContent).toBe('January');
+    expect(picker.querySelector('.inline-calendar-year').textContent).toBe('2026');
+
+    // Jan 31 → Feb (previously rolled over to Mar 3)
+    picker.querySelector('.inline-next-month').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    picker = document.querySelector('.inline-date-picker');
+    expect(picker.querySelector('.inline-calendar-month').textContent).toBe('February');
+    expect(picker.querySelector('.inline-calendar-year').textContent).toBe('2026');
+
+    // Feb 28 → Mar, not Apr
+    picker.querySelector('.inline-next-month').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    picker = document.querySelector('.inline-date-picker');
+    expect(picker.querySelector('.inline-calendar-month').textContent).toBe('March');
+    expect(picker.querySelector('.inline-calendar-year').textContent).toBe('2026');
+
+    // Mar 28 → Feb
+    picker.querySelector('.inline-prev-month').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    picker = document.querySelector('.inline-date-picker');
+    expect(picker.querySelector('.inline-calendar-month').textContent).toBe('February');
+    expect(picker.querySelector('.inline-calendar-year').textContent).toBe('2026');
+  });
+
+  it('inline picker goes back from March 31 to February', () => {
+    addTodo('Pay rent', '2026-03-31');
+    renderTodos();
+
+    const dueDateElement = document.querySelector('.todo-due-date.clickable');
+    expect(dueDateElement).not.toBeNull();
+    dueDateElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    let picker = document.querySelector('.inline-date-picker');
+    expect(picker).not.toBeNull();
+    expect(picker.querySelector('.inline-calendar-month').textContent).toBe('March');
+    expect(picker.querySelector('.inline-calendar-year').textContent).toBe('2026');
+
+    // Mar 31 → Feb 28 (previously rolled over to Mar 3)
+    picker.querySelector('.inline-prev-month').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    picker = document.querySelector('.inline-date-picker');
+    expect(picker.querySelector('.inline-calendar-month').textContent).toBe('February');
+    expect(picker.querySelector('.inline-calendar-year').textContent).toBe('2026');
+  });
+});
