@@ -366,7 +366,12 @@ const AIService = (function() {
           const chunks = result.content.split('');
 
           for (let index = 0; index < chunks.length; index++) {
-            if (AIStore.state.abortController === null) {
+            // Check this request's own signal, not the global controller: a
+            // new message sent right after Stop replaces the global abort
+            // controller, which would mask this request's abort and let the
+            // full offline response persist instead of the partial content
+            // the user stopped (issue #600).
+            if (abortController.signal.aborted) {
               streamAborted = true;
               break;
             }
@@ -388,7 +393,7 @@ const AIService = (function() {
             }
           }
 
-          if (AIStore.state.abortController !== null) {
+          if (!streamAborted) {
             AIRenderer.updateStreamingContent(streamingTextElement, accumulatedContent);
           }
         }
@@ -458,6 +463,11 @@ const AIService = (function() {
         }
 
         AIStore.saveConversations();
+        // Re-render so the '[Cancelled]' marker (or the partial content)
+        // becomes visible: the streaming text node was blank when the user
+        // stopped before the first chunk, and stopStreaming only removed the
+        // streaming class.
+        renderConversationUI();
       } else {
         showError(result.error);
         const conversation = AIStore.getCurrentConversation();
@@ -474,6 +484,9 @@ const AIService = (function() {
           assistantMsg.content = accumulatedContent || '[Cancelled]';
         }
         AIStore.saveConversations();
+        // Re-render so the '[Cancelled]' marker (or the partial content)
+        // becomes visible when the user stopped before the first chunk.
+        renderConversationUI();
       } else {
         showError(getTranslation('aiError'));
         console.error('AI sendMessage error:', error);
@@ -508,6 +521,9 @@ const AIService = (function() {
           lastMsg.content = lastMsg.content || '[Cancelled]';
           lastMsg.isStreaming = false;
           AIStore.saveConversations();
+          // Re-render so the '[Cancelled]' marker (or existing partial
+          // content) becomes visible instead of a blank streaming bubble.
+          renderConversationUI();
         }
       }
     }

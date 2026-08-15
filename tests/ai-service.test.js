@@ -490,4 +490,123 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
     expect(lastMsg.isStreaming).toBe(false);
     expect(lastMsg.content).toBe('Partial thought');
   });
+
+  it('keeps partial offline content when a new message starts right after stop', async () => {
+    const conversation = {
+      id: 'conv_offline_race',
+      title: 'OfflineRace',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+
+    // Flip the network detector into offline mode for this test
+    window.dispatchEvent(new Event('offline'));
+    expect(NetworkDetector.getStatus().isOffline).toBe(true);
+
+    const fullResponse = OfflineMode.getResponse('hello').content;
+    const secondFullResponse = OfflineMode.getResponse('again').content;
+
+    try {
+      const firstSend = AIService.sendMessage('hello');
+
+      // Let the first simulated stream accumulate a few chunks
+      await new Promise(resolve => setTimeout(resolve, 30));
+
+      AIService.stopStreaming();
+
+      // A new message starts before the first loop's next 5ms tick resolves.
+      // It must not mask the first request's abort: the old loop must detect
+      // its own signal, otherwise the full response gets persisted.
+      const secondSend = AIService.sendMessage('again');
+
+      await firstSend;
+      await secondSend;
+
+      const firstAssistant = conversation.messages[1];
+      const secondAssistant = conversation.messages[3];
+
+      // The stopped request keeps its partial content, not the full response
+      expect(firstAssistant.isStreaming).toBe(false);
+      expect(firstAssistant.content.length).toBeGreaterThan(0);
+      expect(firstAssistant.content.length).toBeLessThan(fullResponse.length);
+
+      // The newer request streams to completion untouched
+      expect(secondAssistant.isStreaming).toBe(false);
+      expect(secondAssistant.content).toBe(secondFullResponse);
+
+      // The partial content must survive a reload from storage
+      const saved = JSON.parse(localStorage.getItem('ai_conversations'));
+      expect(saved[0].messages[1].content).toBe(firstAssistant.content);
+      expect(saved[0].messages[3].content).toBe(secondFullResponse);
+    } finally {
+      // Restore online state for the remaining tests
+      window.dispatchEvent(new Event('online'));
+    }
+  });
+
+  it('renders the [Cancelled] marker in the DOM when nothing was streamed before stop', async () => {
+    // Clear messages rendered by previous tests from the shared container
+    document.querySelector('#ai-chat-container').innerHTML = '';
+
+    const { sendPromise, getRequestSignal, resolveRequest } = startStreamingSend();
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    AIService.stopStreaming();
+    expect(getRequestSignal().aborted).toBe(true);
+    resolveRequest({ success: false, error: 'Request cancelled', aborted: true });
+    await sendPromise;
+
+    // The open conversation must show the marker, not a blank bubble
+    const textNodes = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    expect(textNodes[textNodes.length - 1].textContent).toBe('[Cancelled]');
+  });
+
+  it('renders the [Cancelled] marker in the DOM when the request rejects with an AbortError before any chunk', async () => {
+    // Clear messages rendered by previous tests from the shared container
+    document.querySelector('#ai-chat-container').innerHTML = '';
+
+    const { sendPromise, getRequestSignal, rejectRequest } = startStreamingSend();
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    AIService.stopStreaming();
+    expect(getRequestSignal().aborted).toBe(true);
+    rejectRequest(new DOMException('The operation was aborted.', 'AbortError'));
+    await sendPromise;
+
+    // The open conversation must show the marker, not a blank bubble
+    const textNodes = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    expect(textNodes[textNodes.length - 1].textContent).toBe('[Cancelled]');
+  });
+
+  it('renders the [Cancelled] marker in the DOM for a stuck message when no request is in flight', async () => {
+    const conversation = {
+      id: 'conv_stuck_dom',
+      title: 'StuckDom',
+      messages: [
+        { id: 'm_user', role: 'user', content: 'hello', timestamp: Date.now() },
+        { id: 'm_assistant', role: 'assistant', content: '', timestamp: Date.now(), isStreaming: true }
+      ],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    AIStore.state.abortController = null;
+
+    // Clear messages rendered by previous tests from the shared container
+    document.querySelector('#ai-chat-container').innerHTML = '';
+
+    // Render the stuck conversation so the blank bubble exists in the DOM
+    AIRenderer.renderMessages();
+
+    AIService.stopStreaming();
+
+    const textNodes = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    expect(textNodes[textNodes.length - 1].textContent).toBe('[Cancelled]');
+  });
 });
