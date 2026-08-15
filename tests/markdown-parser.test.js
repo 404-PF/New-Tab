@@ -720,7 +720,7 @@ describe('MarkdownParser token-spoofing resistance', () => {
 
     // The literal text survives, wrapped in a paragraph like any other text
     expect(container.textContent).toContain('\uE000BLOCK0\uE000');
-    expect(paragraphs.length).toBe(1);
+    expect(paragraphs).toHaveLength(1);
     expect(paragraphs[0].textContent).toBe('\uE000BLOCK0\uE000');
     // Only the real code block renders — the token-shaped text must not be
     // substituted with a copy of its HTML
