@@ -142,6 +142,20 @@
     return new Date(year, month - 1, day);
   }
 
+  // Advance `date` by exactly one calendar month (delta can be ±1). A plain
+  // setMonth rolls the date forward when the current day doesn't exist in the
+  // target month (e.g. Jan 31 → Mar 3), skipping a month. Clamp to the 1st
+  // first, then restore the day clamped to the target month's length
+  // (e.g. Jan 31 → Feb 28).
+  function navigateMonthSafe(date, delta) {
+    const day = date.getDate();
+    date.setDate(1);
+    date.setMonth(date.getMonth() + delta);
+    const lastDayOfTargetMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    date.setDate(Math.min(day, lastDayOfTargetMonth));
+    return date;
+  }
+
   // Generate unique ID for todos
   function generateTodoId() {
     return crypto.randomUUID();
@@ -1285,7 +1299,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
   if (prevBtn) {
     prevBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      currentDate.setMonth(currentDate.getMonth() - 1);
+      navigateMonthSafe(currentDate, -1);
       pickerContainer._currentDate = currentDate;
       updateInlineCalendar(pickerContainer, currentDate, todo.dueDate);
     });
@@ -1294,7 +1308,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
   if (nextBtn) {
     nextBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      currentDate.setMonth(currentDate.getMonth() + 1);
+      navigateMonthSafe(currentDate, 1);
       pickerContainer._currentDate = currentDate;
       updateInlineCalendar(pickerContainer, currentDate, todo.dueDate);
     });
@@ -2205,7 +2219,7 @@ class CustomDatePicker {
   }
 
   navigateMonth(delta) {
-    this.currentDate.setMonth(this.currentDate.getMonth() + delta);
+    navigateMonthSafe(this.currentDate, delta);
     this.renderCalendar();
   }
 

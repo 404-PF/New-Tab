@@ -580,6 +580,11 @@ document.body.appendChild(createStubElement('span', 'badge-pending'));
 document.body.appendChild(createStubElement('span', 'badge-completed'));
 document.body.appendChild(createStubElement('span', 'badge-overdue'));
 document.body.appendChild(createStubElement('span', 'todo-count'));
+document.body.appendChild(createStubElement('div', 'calendar-month'));
+document.body.appendChild(createStubElement('div', 'calendar-year'));
+document.body.appendChild(createStubElement('div', 'calendar-days'));
+document.body.appendChild(createStubElement('button', 'prev-month'));
+document.body.appendChild(createStubElement('button', 'next-month'));
 
 // Search provider bar stub
 const providerBar = document.createElement('div');
