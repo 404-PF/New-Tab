@@ -488,6 +488,56 @@ describe('MarkdownParser blockquote and list rendering', () => {
     expect(blockquote.textContent).not.toContain('\uE000');
   });
 
+  it('keeps a blockquote closed when a code block follows a blank quoted line', () => {
+    // Regression: parseParagraphs split blockquote HTML on the blank quoted
+    // line, and the blockquote-depth guard (reset per chunk) let the trailing
+    // quote line be wrapped in a <p>, escaping the closing </blockquote> as
+    // literal text inside the quote. The whole blockquote must be treated as
+    // opaque block HTML instead.
+    const container = parseToContainer('> line 1\n>\n> ```js\n> code\n> ```\n>\n> line 3');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const code = blockquote.querySelector('div.md-code-block code');
+
+    expect(blockquote).not.toBeNull();
+    expect(code).not.toBeNull();
+    expect(code.textContent).toBe('code');
+    expect(blockquote.textContent).toContain('line 1');
+    expect(blockquote.textContent).toContain('line 3');
+    // The closing tag must not be escaped into a paragraph, and no placeholder
+    // tokens may leak into the output
+    expect(blockquote.textContent).not.toContain('</blockquote>');
+    expect(container.querySelector('p.md-paragraph')).toBeNull();
+    expect(blockquote.textContent).not.toContain('\uE000');
+  });
+
+  it('does not let a blockquote with blank quoted lines swallow following content', () => {
+    // Regression: the escaped closing tag left the blockquote open, so
+    // unquoted text after it was swallowed inside the blockquote
+    const container = parseToContainer('> line 1\n>\n> ```js\n> code\n> ```\n>\n> line 3\n\noutside text');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+    const paragraphs = container.querySelectorAll('p.md-paragraph');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.textContent).not.toContain('outside text');
+    expect(paragraphs.length).toBeGreaterThan(0);
+    const lastParagraph = paragraphs[paragraphs.length - 1];
+    expect(lastParagraph.textContent).toBe('outside text');
+    expect(blockquote.contains(lastParagraph)).toBe(false);
+  });
+
+  it('keeps plain text inside a blockquote that contains blank quoted lines', () => {
+    // Regression: without any code block, the trailing line of a multiline
+    // blockquote was wrapped in a <p> with the closing tag escaped
+    const container = parseToContainer('> line 1\n>\n> line 2');
+    const blockquote = container.querySelector('blockquote.md-blockquote');
+
+    expect(blockquote).not.toBeNull();
+    expect(blockquote.textContent).toContain('line 1');
+    expect(blockquote.textContent).toContain('line 2');
+    expect(blockquote.textContent).not.toContain('</blockquote>');
+    expect(container.querySelector('p.md-paragraph')).toBeNull();
+  });
+
   it('protects every list inside a blockquote, even with many separate lists', () => {
     // Regression: the innermost-list protection loop capped at 50 iterations
     // with a single list matched per pass, leaving later lists escaped as

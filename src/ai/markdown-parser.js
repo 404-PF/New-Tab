@@ -829,17 +829,16 @@ const MarkdownParser = (function() {
       if (!block) return [];
 
       // Split at standalone protected-block token lines (placeholders for
-      // block-level HTML like code blocks) before wrapping so a fenced code
-      // block that immediately follows a paragraph — with no blank line
-      // between them — renders as a sibling block element instead of having
-      // its <div> restored inside the <p>. Tokens nested inside other block
-      // HTML (e.g. a code block inside a blockquote) must stay put, so a
-      // token line only splits when no <blockquote> tag is still open.
+      // block-level HTML like code blocks and complete blockquotes) before
+      // wrapping so a block that immediately follows a paragraph — with no
+      // blank line between them — renders as a sibling block element instead
+      // of having its HTML restored inside the <p>. Block-level HTML
+      // generated inside a blockquote is protected along with the blockquote
+      // itself, so no token line can be nested inside other block HTML here.
       const parts = [];
       let current = [];
-      let openBlockquotes = 0;
       for (const line of block.split('\n')) {
-        if (/^\uE000BLOCK\d+\uE000$/.test(line.trim()) && openBlockquotes === 0) {
+        if (/^\uE000BLOCK\d+\uE000$/.test(line.trim())) {
           if (current.length > 0) {
             parts.push(current.join('\n'));
             current = [];
@@ -848,8 +847,6 @@ const MarkdownParser = (function() {
           continue;
         }
         current.push(line);
-        openBlockquotes += (line.match(/<blockquote/g) || []).length;
-        openBlockquotes -= (line.match(/<\/blockquote>/g) || []).length;
       }
       if (current.length > 0) {
         parts.push(current.join('\n'));
@@ -1092,6 +1089,12 @@ const MarkdownParser = (function() {
     html = parseBlockquotes(html);     // Blockquotes
     // Protect code blocks generated inside blockquotes as well
     html = html.replace(/<div class="md-code-block">[\s\S]*?<\/div>/g, protect);
+    // Protect complete blockquote HTML (which may embed the code tokens above
+    // and contain blank quoted lines). Line-based parsers — especially the
+    // blank-line split in parseParagraphs — would otherwise cut the quote into
+    // chunks, wrap its trailing line in a <p> and escape the closing
+    // </blockquote> as literal text, leaving the blockquote unclosed.
+    html = html.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/g, protect);
     html = parseTaskLists(html);       // Task lists (before regular lists)
     html = parseLists(html);           // Lists
     html = parseHorizontalRules(html); // Horizontal rules
