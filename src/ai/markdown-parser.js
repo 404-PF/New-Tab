@@ -644,9 +644,10 @@ const MarkdownParser = (function() {
     return protect ? protect(listHtml) : listHtml;
   }
 
-  // Matches a list item line in one pass: leading whitespace, a `-`/`*`/`+`
-  // or `1.` marker, and the item content. Used by parseLists.
-  const LIST_ITEM_RE = /^(\s*)([-*+]|\d+\.)\s+(.*)$/;
+  // List item line patterns: leading whitespace, a `-`/`*`/`+` or `1.`
+  // marker, and the item content. Used by parseLists.
+  const UNORDERED_LIST_ITEM_RE = /^[\s]*[-*+]\s+(.*)/;
+  const ORDERED_LIST_ITEM_RE = /^[\s]*(\d+)\.\s+(.*)/;
 
   /**
    * Parse lists (ordered and unordered) with improved nesting
@@ -665,7 +666,7 @@ const MarkdownParser = (function() {
     const closeTopList = () => {
       const closedList = listStack.pop();
       const listHtml = buildList(closedList.type, closedList.items, protect);
-      const parentList = listStack[listStack.length - 1];
+      const parentList = listStack.at(-1);
       if (parentList && parentList.items.length > 0) {
         parentList.items[parentList.items.length - 1].nested = listHtml;
       } else {
@@ -675,7 +676,7 @@ const MarkdownParser = (function() {
 
     // Close every open list nested deeper than the given indent
     const dedentTo = (indent) => {
-      while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) {
+      while (listStack.length > 0 && listStack.at(-1).indent > indent) {
         closeTopList();
       }
     };
@@ -692,16 +693,17 @@ const MarkdownParser = (function() {
     // Add one list-item line, opening or closing lists as the indent and
     // list type require
     const addItem = (line) => {
-      const match = LIST_ITEM_RE.exec(line);
-      if (!match) {
+      const unorderedMatch = line.match(UNORDERED_LIST_ITEM_RE);
+      const orderedMatch = line.match(ORDERED_LIST_ITEM_RE);
+      if (!unorderedMatch && !orderedMatch) {
         flushNonListLine(line);
         return;
       }
 
-      const indent = match[1].length;
-      const isOrdered = match[2].endsWith('.');
-      const content = match[3];
-      const number = isOrdered ? parseInt(match[2], 10) : null;
+      const indent = line.search(/\S/);
+      const isOrdered = !!orderedMatch;
+      const content = isOrdered ? orderedMatch[2] : unorderedMatch[1];
+      const number = isOrdered ? Number.parseInt(orderedMatch[1], 10) : null;
       const listType = isOrdered ? 'ol' : 'ul';
 
       // Handle indentation changes
@@ -716,14 +718,14 @@ const MarkdownParser = (function() {
       }
 
       // Add the item to the current list, closing a type-mismatched list first
-      const topList = listStack[listStack.length - 1];
+      const topList = listStack.at(-1);
       if (topList) {
         if (topList.type !== listType) {
           // Different list type, close current and start new
           closeTopList();
           listStack.push({ type: listType, items: [], indent });
         }
-        listStack[listStack.length - 1].items.push({ content, number, nested: null });
+        listStack.at(-1).items.push({ content, number, nested: null });
       }
     };
 
