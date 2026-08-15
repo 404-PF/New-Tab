@@ -646,8 +646,8 @@ const MarkdownParser = (function() {
 
   // List item line patterns: leading whitespace, a `-`/`*`/`+` or `1.`
   // marker, and the item content. Used by parseLists.
-  const UNORDERED_LIST_ITEM_RE = /^[\s]*[-*+]\s+(.*)/;
-  const ORDERED_LIST_ITEM_RE = /^[\s]*(\d+)\.\s+(.*)/;
+  const UNORDERED_LIST_ITEM_RE = /^\s*[-*+]\s+(.*)/;
+  const ORDERED_LIST_ITEM_RE = /^\s*(\d+)\.\s+(.*)/;
 
   /**
    * Parse lists (ordered and unordered) with improved nesting
