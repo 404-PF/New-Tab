@@ -101,6 +101,7 @@ describe('AI export translations', () => {
   // non-English entry behind a passing assertion.
   it('defines every export string in each supported language', () => {
     const languages = window.i18n.getSupportedLanguages();
+    const english = window.i18n.getTranslations('en');
 
     languages.forEach(({ code }) => {
       const localeTranslations = window.i18n.getTranslations(code);
@@ -109,6 +110,9 @@ describe('AI export translations', () => {
         expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
         expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
         expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
+        if (code !== 'en') {
+          expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
+        }
       });
     });
   });

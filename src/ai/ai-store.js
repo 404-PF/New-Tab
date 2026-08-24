@@ -231,12 +231,16 @@ const AIStore = (function() {
   }
 
   function sanitizeFilenameTitle(title) {
-    const cleaned = String(title || '')
+    let cleaned = String(title || '')
       // Strip characters that are illegal in filenames on common platforms
       // eslint-disable-next-line no-control-regex
       .replace(/[\\/:*?"<>|\x00-\x1f]/g, '')
-      .trim()
-      .replace(/\.+$/, '');
+      .trim();
+    // Drop trailing extension dots (e.g. "..." titles) without a quantified
+    // overlap regex, which SonarCloud S8786 flags as super-linear.
+    while (cleaned.endsWith('.')) {
+      cleaned = cleaned.slice(0, -1).trimEnd();
+    }
     return cleaned.slice(0, 80).trim() || 'conversation';
   }
 
@@ -256,15 +260,21 @@ const AIStore = (function() {
   function serializeConversationToMarkdown(conversation) {
     // Auto-generated titles can contain newlines (they preview the first
     // message); flatten them so the heading stays on a single line.
-    const title = String(conversation.title || '').replace(/\s*[\r\n]+\s*/g, ' ').trim();
+    // [^\S\r\n] = whitespace excluding CR/LF; disjoint classes avoid the
+    // backtracking shape SonarCloud S8786 flags on \s*[\r\n]+\s*.
+    const title = String(conversation.title || '')
+      .replace(/[^\S\r\n]*[\r\n]+[^\S\r\n]*/g, ' ')
+      .trim();
     const lines = ['# ' + title, ''];
     (conversation.messages || []).forEach(message => {
       const label = message.role === 'user' ? 'You' : 'Assistant';
       const time = formatExportTime(message.timestamp);
-      lines.push(time ? '**' + label + '** _(' + time + ')_' : '**' + label + '**');
-      lines.push('');
-      lines.push(message.content || '');
-      lines.push('');
+      lines.push(
+        (time ? '**' + label + '** _(' + time + ')_' : '**' + label + '**'),
+        '',
+        message.content || '',
+        ''
+      );
     });
     return lines.join('\n');
   }

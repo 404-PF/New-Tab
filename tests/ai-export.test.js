@@ -161,6 +161,22 @@ describe('AIStore conversation Markdown serialization (#647)', () => {
     expect(AIStore.exportConversation('conv-1').filename).toMatch(/^conversation-\d{4}-\d{2}-\d{2}\.md$/);
   });
 
+  it('strips trailing dots from the title so the filename cannot end with one', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 24, 12, 0));
+
+    try {
+      seedConversations();
+      AIStore.state.conversations[0].title = 'Really?...';
+
+      const exported = AIStore.exportConversation('conv-1');
+
+      expect(exported.filename).toBe('Really-2026-08-24.md');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('returns null for an unknown conversation id', () => {
     seedConversations();
 

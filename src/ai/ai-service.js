@@ -54,7 +54,7 @@ const AIService = (function() {
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
@@ -292,7 +292,7 @@ const AIService = (function() {
     // Native button activation wins when an action button inside the list has
     // focus: otherwise Enter on the export/delete button would be hijacked to
     // switch conversations instead of clicking the button.
-    if (event.target.closest && event.target.closest('.ai-topic-export, .ai-topic-delete')) {
+    if (event.target?.closest?.('.ai-topic-export, .ai-topic-delete')) {
       return;
     }
 
