@@ -96,14 +96,19 @@ describe('Custom background error translations', () => {
 });
 
 describe('AI export translations', () => {
-  it('defines every export string for all supported languages', () => {
+  // Inspect getTranslations() directly rather than t(): t() silently falls
+  // back to English when a locale lacks the key, which would hide a stale
+  // non-English entry behind a passing assertion.
+  it('defines every export string in each supported language', () => {
     const languages = window.i18n.getSupportedLanguages();
 
     languages.forEach(({ code }) => {
-      window.i18n.applyLanguage(code);
+      const localeTranslations = window.i18n.getTranslations(code);
 
       AI_EXPORT_TRANSLATION_KEYS.forEach((key) => {
-        expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
+        expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
+        expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
+        expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
       });
     });
   });
