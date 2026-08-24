@@ -51,12 +51,39 @@
     'weatherLocationMode',
     'weatherManualCity',
     'pomodoro',
+    'eyeCareReminder',
+    'games_enabled',
     'ai_conversations',
     'ai_current_conversation_id',
     'updateCheckEnabled',
     'searchProvider',
+    'searchHistoryEnabled',
     'customSearchProviders'
   ];
+
+  // Object keys whose storage entries mix persistent settings with transient
+  // runtime state. Exports and imports keep only the listed fields so stale
+  // timer bookkeeping is never replayed from a backup.
+  const PERSISTENT_OBJECT_FIELDS = {
+    eyeCareReminder: ['enabled', 'intervalMinutes', 'browserNotification']
+  };
+
+  // Returns value unchanged except for keys in PERSISTENT_OBJECT_FIELDS,
+  // where only the persistent fields survive; null when nothing survives so
+  // callers treat the entry as absent.
+  function pickPersistentFields(key, value) {
+    const fields = PERSISTENT_OBJECT_FIELDS[key];
+    if (!fields || typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return value;
+    }
+    const picked = {};
+    fields.forEach(function (field) {
+      if (Object.prototype.hasOwnProperty.call(value, field)) {
+        picked[field] = value[field];
+      }
+    });
+    return Object.keys(picked).length > 0 ? picked : null;
+  }
 
   function t(key, fallback) {
     return window.i18n ? window.i18n.t(key) : (fallback || key);
@@ -185,8 +212,12 @@
         hasReadError = true;
         return;
       }
-      if (val !== null) {
-        data[key] = val;
+      if (val === null) {
+        return;
+      }
+      const persistentVal = pickPersistentFields(key, val);
+      if (persistentVal !== null) {
+        data[key] = persistentVal;
       }
     });
 
@@ -294,6 +325,14 @@
         integerInRange(v.longBreakDuration, 1, 60) &&
         integerInRange(v.sessionsBeforeLongBreak, 1, 10);
     },
+    eyeCareReminder: function (v) {
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+
+      return typeof v.enabled === 'boolean' &&
+        [15, 20, 30, 45, 60].indexOf(v.intervalMinutes) !== -1 &&
+        typeof v.browserNotification === 'boolean';
+    },
+    games_enabled: function (v) { return typeof v === 'boolean'; },
     ai_conversations: function (v) {
       if (!Array.isArray(v)) return false;
       return v.every(function (item) {
@@ -309,6 +348,7 @@
     ai_current_conversation_id: function (v) { return typeof v === 'string'; },
     updateCheckEnabled: function (v) { return typeof v === 'boolean'; },
     searchProvider: function (v) { return typeof v === 'string'; },
+    searchHistoryEnabled: function (v) { return typeof v === 'boolean'; },
     customSearchProviders: function (v) {
       if (!Array.isArray(v)) return false;
       const builtInIds = window.BUILT_IN_PROVIDERS ? Object.keys(window.BUILT_IN_PROVIDERS) : [];
@@ -453,6 +493,9 @@
       keys.forEach(function (key) {
         if (key.charAt(0) === '_') return; // Skip metadata keys
         try {
+          // Drop transient runtime state mixed into settings objects
+          const importedValue = pickPersistentFields(key, importedData[key]);
+          if (importedValue === null) return;
           if (mode === 'merge') {
             // For arrays, merge by ID where possible; for objects, shallow merge
             const current = readStorage(key);
@@ -461,7 +504,7 @@
               console.warn('[data-manager] Skipping merge for key "' + key + '": read failed');
               return;
             }
-            const incoming = importedData[key];
+            const incoming = importedValue;
             if (Array.isArray(incoming)) {
               if (key === 'todos' || key === 'notes') {
                 // Merge by id
@@ -617,7 +660,7 @@
             }
           } else {
             // Replace: overwrite directly
-            writeStorage(key, importedData[key]);
+            writeStorage(key, importedValue);
             count++;
           }
         } catch (err) {
