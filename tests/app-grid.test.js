@@ -418,14 +418,20 @@ describe('AppGridState', () => {
       expect(orderFor('sv')).toEqual(['b', 'a']);
     });
 
-    it('normalizes legacy underscore locale tags instead of throwing', () => {
-      // Historic language codes like zh_CN are invalid BCP 47 tags; the
-      // collator normalizes them to zh-CN, which Intl accepts.
+    it('normalizes legacy underscore locale tags into working BCP 47 tags', () => {
+      // sv_CN is invalid BCP 47 as-is; underscore normalization must turn it
+      // into sv-CN so Swedish rules apply (ö sorts after z). Asserting the
+      // resolved locale is what actually discriminates normalization from
+      // the try/catch fallback — both produce the same no-throw outcome,
+      // but the fallback would resolve to the host locale instead of sv.
       addApps([{ id: 'b', url: 'https://b.com' }, { id: 'a', url: 'https://a.com' }]);
-      window.i18n = { currentLanguage: () => 'zh_CN', t: () => '' };
+      AppGridState.renameApp('b', 'zeta');
+      AppGridState.renameApp('a', 'österreich');
+      window.i18n = { currentLanguage: () => 'sv_CN', t: () => '' };
 
+      expect(AppGridState.createNameCollator().resolvedOptions().locale).toBe('sv');
       expect(AppGridState.sortAlphabetically()).toBe(true);
-      expect(AppGridState.getOrder()).toEqual(['a', 'b']);
+      expect(AppGridState.getOrder()).toEqual(['b', 'a']);
     });
 
     it('falls back to the runtime default for tags invalid after normalization', () => {

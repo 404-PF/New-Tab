@@ -132,7 +132,7 @@ addHover(createFolderItem);
 const sortAlphabeticallyItem = document.createElement('div');
 sortAlphabeticallyItem.id = 'sort-alphabetically';
 sortAlphabeticallyItem.className = 'context-menu-item context-menu-grid-item';
-sortAlphabeticallyItem.setAttribute('data-i18n', 'sortAlphabetically');
+sortAlphabeticallyItem.dataset.i18n = 'sortAlphabetically';
 sortAlphabeticallyItem.textContent = 'Sort Alphabetically';
 addHover(sortAlphabeticallyItem);
 

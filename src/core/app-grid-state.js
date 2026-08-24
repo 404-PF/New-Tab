@@ -484,7 +484,7 @@ const AppGridState = {
   createNameCollator() {
     const options = { sensitivity: 'base', numeric: true };
     if (window.i18n && typeof window.i18n.currentLanguage === 'function') {
-      const tag = String(window.i18n.currentLanguage() || '').trim().replace(/_/g, '-');
+      const tag = String(window.i18n.currentLanguage() || '').trim().replaceAll('_', '-');
       try {
         return new Intl.Collator(tag, options);
       } catch {
