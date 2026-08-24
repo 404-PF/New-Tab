@@ -105,12 +105,23 @@ describe('Games translations', () => {
 
 describe('App grid context menu translations', () => {
   it('defines the sort action label for all supported languages', () => {
+    // getTranslation silently falls back to the English string when a locale
+    // omits the key, so each non-English locale must also differ from the
+    // English value — not merely return something other than the key name.
+    const englishLabel = window.i18n.getTranslations('en').sortAlphabetically;
+    expect(englishLabel).toBeTypeOf('string');
+    expect(englishLabel).not.toBe('');
+
     const languages = window.i18n.getSupportedLanguages();
 
     languages.forEach(({ code }) => {
       window.i18n.applyLanguage(code);
 
-      expect(window.i18n.t('sortAlphabetically'), `${code}:sortAlphabetically`).not.toBe('sortAlphabetically');
+      const label = window.i18n.t('sortAlphabetically');
+      expect(label, `${code}:sortAlphabetically`).not.toBe('sortAlphabetically');
+      if (code !== 'en') {
+        expect(label, `${code}:sortAlphabetically`).not.toBe(englishLabel);
+      }
     });
   });
 });

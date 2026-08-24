@@ -122,7 +122,7 @@
       const app = appMap[appId];
       if (!app) return;
 
-      const displayName = app.nameKey && window.i18n ? window.i18n.t(app.nameKey) : (app.name || app.nameKey || '');
+      const displayName = window.AppGridState.getAppDisplayName(app);
       const iconUrl = app.cachedIcon || app.icon || '';
 
       const a = document.createElement('a');

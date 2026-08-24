@@ -344,9 +344,23 @@ describe('AppGridState', () => {
   });
 
   describe('sortAlphabetically', () => {
+    let originalDefaultApps;
+    let originalI18n;
+
+    beforeEach(() => {
+      originalDefaultApps = window.defaultApps;
+      originalI18n = window.i18n;
+    });
+
     afterEach(() => {
-      delete window.defaultApps;
-      delete window.i18n;
+      // Restore rather than delete: window.i18n is installed once by
+      // tests/setup.js and later suites in this file rely on it.
+      if (originalDefaultApps === undefined) {
+        delete window.defaultApps;
+      } else {
+        window.defaultApps = originalDefaultApps;
+      }
+      window.i18n = originalI18n;
     });
 
     const addApps = (specs) => {
@@ -371,11 +385,47 @@ describe('AppGridState', () => {
         { id: 'weather-app', url: '#', nameKey: 'weather' },
         { id: 'ai-app', url: '#', nameKey: 'ai' }
       ];
-      window.i18n = { t: (key) => ({ weather: 'Weather', ai: 'AI Chat' }[key] || key) };
+      window.i18n = {
+        currentLanguage: () => 'en',
+        t: (key) => ({ weather: 'Weather', ai: 'AI Chat' }[key] || key)
+      };
       AppGridStorage.saveOrder(['weather-app', 'ai-app']);
 
       expect(AppGridState.sortAlphabetically()).toBe(true);
       expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app']);
+    });
+
+    it('collates according to the selected application locale (#650)', () => {
+      // Swedish ranks ü/ö after z; German treats them as u/o. Same names,
+      // different order — the sort must follow the app language, not the
+      // runtime (browser) locale.
+      const namesById = { a: 'österreich', b: 'zeta' };
+      const buildI18n = (lang) => ({
+        currentLanguage: () => lang,
+        t: () => ''
+      });
+      addApps([{ id: 'a', url: 'https://a.com' }, { id: 'b', url: 'https://b.com' }]);
+      Object.values(namesById).forEach((name, i) => {
+        AppGridState.renameApp(i === 0 ? 'a' : 'b', name);
+      });
+      const orderFor = (lang) => {
+        window.i18n = buildI18n(lang);
+        expect(AppGridState.sortAlphabetically()).toBe(true);
+        return AppGridState.getOrder();
+      };
+
+      expect(orderFor('de')).toEqual(['a', 'b']);
+      expect(orderFor('sv')).toEqual(['b', 'a']);
+    });
+
+    it('survives a legacy underscore locale tag without throwing', () => {
+      // Historic language codes like zh_CN are invalid BCP 47 tags that
+      // Intl.Collator rejects; sorting must fall back to the runtime default.
+      addApps([{ id: 'b', url: 'https://b.com' }, { id: 'a', url: 'https://a.com' }]);
+      window.i18n = { currentLanguage: () => 'zh_CN', t: () => '' };
+
+      expect(AppGridState.sortAlphabetically()).toBe(true);
+      expect(AppGridState.getOrder()).toEqual(['a', 'b']);
     });
 
     it('keeps folder ids anchored at their current indices', () => {

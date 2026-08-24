@@ -184,6 +184,7 @@ describe('context menu previews', () => {
     const sortAlphabetically = vi.fn(() => true);
     const renderAllApps = vi.fn();
     const originalRenderAllApps = window.renderAllApps;
+    const originalSort = window.AppGridState.sortAlphabetically;
     window.AppGridState.sortAlphabetically = sortAlphabetically;
     window.renderAllApps = renderAllApps;
 
@@ -205,6 +206,7 @@ describe('context menu previews', () => {
       // The menu closes after the action.
       expect(document.getElementById('app-context-menu').style.display).toBe('none');
     } finally {
+      window.AppGridState.sortAlphabetically = originalSort;
       if (originalRenderAllApps === undefined) {
         delete window.renderAllApps;
       } else {
@@ -225,6 +227,7 @@ describe('context menu previews', () => {
     const sortAlphabetically = vi.fn(() => false);
     const renderAllApps = vi.fn();
     const originalRenderAllApps = window.renderAllApps;
+    const originalSort = window.AppGridState.sortAlphabetically;
     window.AppGridState.sortAlphabetically = sortAlphabetically;
     window.renderAllApps = renderAllApps;
 
@@ -234,6 +237,7 @@ describe('context menu previews', () => {
       expect(sortAlphabetically).toHaveBeenCalledOnce();
       expect(renderAllApps).not.toHaveBeenCalled();
     } finally {
+      window.AppGridState.sortAlphabetically = originalSort;
       if (originalRenderAllApps === undefined) {
         delete window.renderAllApps;
       } else {
