@@ -64,8 +64,23 @@
   }
 
   function getAllBackgrounds() {
-    if (!window._backgrounds) return [];
-    return window._backgrounds;
+    const builtin = Array.isArray(window._backgrounds) ? window._backgrounds : [];
+    const customApi = window._customBackgrounds;
+    const custom = customApi && typeof customApi.getCachedList === 'function'
+      ? customApi.getCachedList()
+      : [];
+    return builtin.concat(custom);
+  }
+
+  function getUploadsLabel() {
+    try {
+      if (window.i18n && typeof window.i18n.t === 'function') {
+        return window.i18n.t('bgRotationUploads');
+      }
+    } catch (err) {
+      console.warn('i18n lookup failed for bgRotationUploads:', err);
+    }
+    return 'Your uploads';
   }
 
   function getRotatableBackgrounds() {
@@ -197,8 +212,21 @@
     container.innerHTML = '';
     const all = getAllBackgrounds();
     const selection = loadSelection();
+    let uploadsDivider = null;
 
     all.forEach(function (bg) {
+      const isCustom = !!(window._customBackgrounds &&
+        typeof window._customBackgrounds.isCustom === 'function' &&
+        window._customBackgrounds.isCustom(bg.id));
+
+      if (isCustom && !uploadsDivider) {
+        const header = document.createElement('div');
+        header.className = 'bg-rotation-pick-divider';
+        header.textContent = getUploadsLabel();
+        container.appendChild(header);
+        uploadsDivider = header;
+      }
+
       const label = document.createElement('label');
       label.className = 'bg-rotation-pick-item';
 
@@ -212,6 +240,10 @@
       img.src = bg.thumb;
       img.alt = bg.title;
       img.loading = 'lazy';
+      if (isCustom) {
+        img.setAttribute('data-custom', 'true');
+        if (bg.type === 'video') img.classList.add('bg-thumb-video');
+      }
 
       const name = document.createElement('span');
       name.className = 'bg-rotation-pick-name';
@@ -283,6 +315,21 @@
   function init() {
     initRotationUI();
     applyRotation();
+
+    // Keep the picker in sync when the upload metadata cache lands or
+    // changes (upload/delete paths dispatch this after re-rendering).
+    document.addEventListener('custombackgroundschanged', function () {
+      renderBackgroundPicker();
+    });
+
+    // Prime the upload metadata cache so uploaded backgrounds are part of
+    // the rotation pool without requiring a visit to the settings page.
+    const customApi = window._customBackgrounds;
+    if (customApi && typeof customApi.refresh === 'function') {
+      customApi.refresh().catch(function (err) {
+        console.warn('Custom background metadata unavailable for rotation:', err);
+      });
+    }
   }
 
   if (document.readyState === 'loading') {

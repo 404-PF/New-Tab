@@ -26,6 +26,10 @@ const CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS = [
   'customBackgroundDeleteError'
 ];
 
+const ROTATION_UPLOADS_TRANSLATION_KEYS = [
+  'bgRotationUploads'
+];
+
 // Derived from the source's window.i18n.gamesTranslationKeys in beforeAll so
 // this list can never drift from the keys languages.js actually defines.
 let GAMES_TRANSLATION_KEYS = [];
@@ -81,6 +85,20 @@ describe('Custom background error translations', () => {
       window.i18n.applyLanguage(code);
 
       CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS.forEach((key) => {
+        expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
+      });
+    });
+  });
+});
+
+describe('Rotation uploads translations', () => {
+  it('defines every rotation uploads string for all supported languages', () => {
+    const languages = window.i18n.getSupportedLanguages();
+
+    languages.forEach(({ code }) => {
+      window.i18n.applyLanguage(code);
+
+      ROTATION_UPLOADS_TRANSLATION_KEYS.forEach((key) => {
         expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
       });
     });

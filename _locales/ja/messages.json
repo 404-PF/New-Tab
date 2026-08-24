@@ -110,6 +110,10 @@
     "message": "ローテーションする背景を選択",
     "description": "Label for the background picker in rotation settings"
   },
+  "bgRotationUploads": {
+    "message": "アップロードした背景",
+    "description": "Divider label above uploaded backgrounds in the rotation picker"
+  },
   "bgRotationNext": {
     "message": "次の背景",
     "description": "Button to manually advance to next background"

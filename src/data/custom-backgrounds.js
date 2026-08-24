@@ -9,6 +9,11 @@
   let blobUrlCache = {};
   let customBackgroundLoadVersion = 0;
   let customBackgroundTransitionTimeout = null;
+  // Lightweight metadata (id/title/type/thumb — no blobs) for every stored
+  // upload, kept fresh by renderCustomBackgrounds() so other modules (e.g.
+  // background rotation) can include uploads without touching IndexedDB.
+  let cachedList = [];
+  let cachedListRefresh = null;
 
   const VIDEO_THUMBNAIL_HIDE_DELAY_MS = 3000;
   const IMAGE_THUMBNAIL_HIDE_DELAY_MS = 2500;
@@ -58,6 +63,29 @@
     return runCustomBackgroundTransaction('readonly', function (store) {
       return store.getAll();
     }, 'Failed to read custom backgrounds from IndexedDB:');
+  }
+
+  // Refresh the lightweight metadata cache from IndexedDB. Concurrent calls
+  // share one in-flight read so uploads followed by a re-render don't race.
+  // Rejects so callers can surface failures their own way. On success,
+  // dispatches 'custombackgroundschanged' so listeners (e.g. the rotation
+  // picker) can re-render once async metadata lands.
+  function refreshCachedList() {
+    if (cachedListRefresh) return cachedListRefresh;
+    cachedListRefresh = getAllCustomBackgrounds().then(function (customBgs) {
+      cachedList = customBgs.map(function (bg) {
+        return { id: bg.id, title: bg.title, type: bg.type, thumb: bg.thumb };
+      });
+      document.dispatchEvent(new CustomEvent('custombackgroundschanged'));
+      return cachedList;
+    }).finally(function () {
+      cachedListRefresh = null;
+    });
+    return cachedListRefresh;
+  }
+
+  function getCachedList() {
+    return cachedList;
   }
 
   function getCustomBackground(id) {
@@ -338,7 +366,7 @@
   // --- Rendering custom backgrounds in settings ---
 
   function renderCustomBackgrounds() {
-    return getAllCustomBackgrounds().then(function (customBgs) {
+    return refreshCachedList().then(function (customBgs) {
       const staticContainer = document.getElementById('bg-thumbnails-static');
       const liveContainer = document.getElementById('bg-thumbnails-live');
 
@@ -845,6 +873,8 @@
     render: renderCustomBackgrounds,
     getBlobUrl: getBlobUrl,
     revokeAll: revokeAllBlobUrls,
-    showConfirmDialog: showConfirmDialog
+    showConfirmDialog: showConfirmDialog,
+    refresh: refreshCachedList,
+    getCachedList: getCachedList
   };
 })();
