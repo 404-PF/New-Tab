@@ -465,6 +465,72 @@ const AppGridState = {
     if (!updatedOrder) return false;
 
     return true;
+  },
+
+  // Resolve an app's display name exactly as the grid renders it. This is
+  // the single source of truth: app-manager.js and app-folders.js delegate
+  // here so sort order can never drift from the displayed names.
+  getAppDisplayName(app) {
+    if (app.nameKey && window.i18n && typeof window.i18n.t === 'function') {
+      return window.i18n.t(app.nameKey);
+    }
+    return app.name || app.nameKey || '';
+  },
+
+  // Collation follows the selected UI language so translated names sort by
+  // that language's rules rather than the browser locale. Falls back to the
+  // runtime default when no valid locale tag is available (Intl rejects
+  // malformed tags, including the legacy underscore forms like zh_CN).
+  createNameCollator() {
+    const options = { sensitivity: 'base', numeric: true };
+    if (window.i18n && typeof window.i18n.currentLanguage === 'function') {
+      const tag = String(window.i18n.currentLanguage() || '').trim().replaceAll('_', '-');
+      try {
+        return new Intl.Collator(tag, options);
+      } catch {
+        // Invalid tag; fall through to the runtime default locale.
+      }
+    }
+    return new Intl.Collator(undefined, options);
+  },
+
+  // Sort the app icons in appOrder alphabetically by display name while
+  // keeping every folder anchored at its current index. Ids that are neither
+  // apps nor folders (stale entries awaiting repair) keep their slots too.
+  // Returns false when there is nothing persisted to sort; rendering is left
+  // to the caller.
+  sortAlphabetically() {
+    return !!this.updateOrder((order) => {
+      const folderIds = new Set(this.getFolders().map(folder => folder.id));
+
+      // Same precedence as renderAllApps' dedupe: defaults win over a
+      // custom app that reuses their id.
+      const nameById = new Map();
+      (window.defaultApps || []).forEach(app => { nameById.set(app.id, app); });
+      this.getCustomApps().forEach(app => {
+        if (!nameById.has(app.id)) nameById.set(app.id, app);
+      });
+
+      const collator = this.createNameCollator();
+      const sortedAppIds = order
+        .filter(id => !folderIds.has(id))
+        .filter(id => nameById.has(id))
+        .sort((a, b) => {
+          const result = collator.compare(
+            this.getAppDisplayName(nameById.get(a)),
+            this.getAppDisplayName(nameById.get(b))
+          );
+          // Equal names have no intrinsic order; fall back to id for a
+          // stable, deterministic arrangement.
+          if (result !== 0) return result;
+          if (a < b) return -1;
+          if (a > b) return 1;
+          return 0;
+        });
+
+      let appIdx = 0;
+      return order.map(id => folderIds.has(id) || !nameById.has(id) ? id : sortedAppIds[appIdx++]);
+    });
   }
 };
 

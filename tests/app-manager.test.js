@@ -9,7 +9,13 @@ beforeAll(() => {
     getOrder: () => JSON.parse(localStorage.getItem('appOrder') || 'null'),
     saveOrder: order => localStorage.setItem('appOrder', JSON.stringify(order)),
     getCustomApps: () => JSON.parse(localStorage.getItem('customApps') || '[]'),
-    getFolders: () => []
+    getFolders: () => [],
+    getAppDisplayName: app => {
+      if (app.nameKey && window.i18n && typeof window.i18n.t === 'function') {
+        return window.i18n.t(app.nameKey);
+      }
+      return app.name || app.nameKey || '';
+    }
   };
   window.__appGridState = { phase: 'idle', setPhase: vi.fn() };
   const grid = document.createElement('div');

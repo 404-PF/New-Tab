@@ -133,8 +133,8 @@ function renderAllApps() {
       a.setAttribute('target', '_blank');
       a.setAttribute('rel', 'noopener noreferrer');
     }
-    // Get translated name
-    const displayName = app.nameKey && window.i18n ? window.i18n.t(app.nameKey) : (app.name || app.nameKey);
+    // Get translated name (shared resolver keeps sort order in lockstep)
+    const displayName = window.AppGridState.getAppDisplayName(app);
     // Use cached icon if available, otherwise use original icon
     const iconUrl = app.cachedIcon || app.icon;
     a.title = displayName;
