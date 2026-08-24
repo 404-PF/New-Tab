@@ -254,7 +254,10 @@ const AIStore = (function() {
 
   // Role labels stay untranslated so exported files read consistently when shared.
   function serializeConversationToMarkdown(conversation) {
-    const lines = ['# ' + (conversation.title || ''), ''];
+    // Auto-generated titles can contain newlines (they preview the first
+    // message); flatten them so the heading stays on a single line.
+    const title = String(conversation.title || '').replace(/\s*[\r\n]+\s*/g, ' ').trim();
+    const lines = ['# ' + title, ''];
     (conversation.messages || []).forEach(message => {
       const label = message.role === 'user' ? 'You' : 'Assistant';
       const time = formatExportTime(message.timestamp);

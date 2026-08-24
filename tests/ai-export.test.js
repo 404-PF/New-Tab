@@ -24,7 +24,11 @@ beforeAll(() => {
   stubElement('ai-topics-list');
   stubElement('ai-topics-search-input', 'input');
   stubElement('ai-topics-count');
-  stubElement('ai-confirm-dialog');
+  const confirmDialog = stubElement('ai-confirm-dialog');
+  confirmDialog.innerHTML =
+    '<div class="ai-confirm-overlay"></div>' +
+    '<button class="ai-confirm-cancel"></button>' +
+    '<button class="ai-confirm-delete"></button>';
   stubElement('ai-scroll-to-bottom', 'button');
 
   Object.defineProperty(globalThis.navigator, 'onLine', {
@@ -121,6 +125,15 @@ describe('AIStore conversation Markdown serialization (#647)', () => {
     const markdown = AIStore.exportConversation('conv-1').content;
 
     expect(markdown).toContain('**You**\n\nWhat should I pack?');
+  });
+
+  it('flattens newlines in the title so the heading stays on one line', () => {
+    seedConversations();
+    AIStore.state.conversations[0].title = 'Line one\nline two\n\nline three';
+
+    const markdown = AIStore.exportConversation('conv-1').content;
+
+    expect(markdown.split('\n')[0]).toBe('# Line one line two line three');
   });
 
   it('derives a sanitized filename from the title and today\'s ISO date', () => {
@@ -258,6 +271,54 @@ describe('AIService export flow (#647)', () => {
       expect(lastToast()).toBe('aiExportSuccess');
     } finally {
       clickSpy.mockRestore();
+    }
+  });
+
+  it('lets Enter natively activate a focused export button instead of switching conversations', () => {
+    seedConversations();
+    const onSelectConversation = vi.fn();
+    const onExportConversation = vi.fn();
+    AIRenderer.renderTopicsList({ onSelectConversation, onExportConversation });
+
+    const button = document.querySelector('#ai-topics-list .ai-topic-export[data-id="conv-1"]');
+    button.focus();
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    button.dispatchEvent(event);
+
+    // The list handler must not claim the event...
+    expect(event.defaultPrevented).toBe(false);
+    expect(onSelectConversation).not.toHaveBeenCalled();
+  });
+
+  it('ignores letter shortcuts while the delete confirmation dialog is open', async () => {
+    seedConversations();
+    AIStore.setKeyboardSelectedIndex(0);
+    AIRenderer.renderTopicsList();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click');
+    const confirmDialog = document.getElementById('ai-confirm-dialog');
+
+    try {
+      // Delete/Backspace opens the confirm dialog and leaves focus + selection
+      // on the list; pressing E afterwards must not export underneath it.
+      document.getElementById('ai-topics-list').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true })
+      );
+      expect(AIStore.state.confirmDialogCallback).not.toBeNull();
+      expect(confirmDialog.classList.contains('ai-confirm-open')).toBe(true);
+
+      document.getElementById('ai-topics-list').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'e', bubbles: true, cancelable: true })
+      );
+
+      expect(clickSpy).not.toHaveBeenCalled();
+      expect(objectUrls).toHaveLength(0);
+    } finally {
+      clickSpy.mockRestore();
+      // Dismiss the dialog so later tests start clean (Escape path also
+      // exercises hideDeleteConfirm).
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(AIStore.state.confirmDialogCallback).toBeNull();
+      expect(confirmDialog.classList.contains('ai-confirm-open')).toBe(false);
     }
   });
 

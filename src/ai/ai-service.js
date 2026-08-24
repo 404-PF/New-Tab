@@ -289,6 +289,20 @@ const AIService = (function() {
   }
 
   function handleTopicsKeydown(event) {
+    // Native button activation wins when an action button inside the list has
+    // focus: otherwise Enter on the export/delete button would be hijacked to
+    // switch conversations instead of clicking the button.
+    if (event.target.closest && event.target.closest('.ai-topic-export, .ai-topic-delete')) {
+      return;
+    }
+
+    // While the delete confirmation overlay is open its document-level
+    // handler owns Enter/Escape, and stray keypresses (focus still sits on
+    // the list after Delete/Backspace) must not act underneath it.
+    if (AIStore.state.confirmDialogCallback) {
+      return;
+    }
+
     const filteredConversations = AIStore.getFilteredConversations();
     if (filteredConversations.length === 0) return;
 

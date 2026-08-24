@@ -3398,7 +3398,8 @@ body.light-theme .ai-topic-item.keyboard-selected {
   justify-content: center;
 }
 
-.ai-topic-item:hover .ai-topic-delete {
+.ai-topic-item:hover .ai-topic-delete,
+.ai-topic-item:focus-within .ai-topic-delete {
   opacity: 1;
 }
 
@@ -3496,7 +3497,8 @@ body.light-theme .ai-topic-tooltip::after {
   justify-content: center;
 }
 
-.ai-topic-item:hover .ai-topic-export {
+.ai-topic-item:hover .ai-topic-export,
+.ai-topic-item:focus-within .ai-topic-export {
   opacity: 1;
 }
 
