@@ -9,6 +9,7 @@ const AIRenderer = (function() {
     callbacks: {
       onSelectConversation: () => {},
       onDeleteConversation: () => {},
+      onExportConversation: () => {},
       onRequestDeleteConfirm: callback => callback()
     },
     hoveredDeleteBtn: null,
@@ -34,6 +35,7 @@ const AIRenderer = (function() {
     elements.errorDisplay = document.getElementById('ai-chat-error');
     elements.title = document.getElementById('ai-chat-title');
     elements.newChatBtn = document.getElementById('ai-new-chat-btn');
+    elements.exportAllBtn = document.getElementById('ai-export-all-btn');
     elements.topicsList = document.getElementById('ai-topics-list');
     elements.topicsSearch = document.getElementById('ai-topics-search-input');
     elements.topicsCount = document.getElementById('ai-topics-count');
@@ -116,6 +118,22 @@ const AIRenderer = (function() {
     return button;
   }
 
+  function createTopicExportButton(conversationId) {
+    const button = document.createElement('button');
+    button.className = 'ai-topic-export';
+    button.dataset.id = conversationId;
+    button.setAttribute('aria-label', getTranslation('aiExportConversation'));
+    button.title = getTranslation('aiExportConversation');
+    button.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+    `;
+    return button;
+  }
+
   function createTopicElement(conversation, index, state) {
     const item = document.createElement('div');
     item.className = 'ai-topic-item';
@@ -140,7 +158,7 @@ const AIRenderer = (function() {
     time.textContent = formatTopicTime(conversation.updatedAt);
 
     info.append(title, time);
-    item.append(createTopicIcon(), info, createTopicDeleteButton(conversation.id));
+    item.append(createTopicIcon(), info, createTopicExportButton(conversation.id), createTopicDeleteButton(conversation.id));
     return item;
   }
 
@@ -203,6 +221,13 @@ const AIRenderer = (function() {
   }
 
   function handleTopicsClick(event) {
+    const exportButton = event.target.closest('.ai-topic-export');
+    if (exportButton) {
+      event.stopPropagation();
+      topicsListRenderState.callbacks.onExportConversation(exportButton.dataset.id);
+      return;
+    }
+
     const deleteButton = event.target.closest('.ai-topic-delete');
     if (deleteButton) {
       event.stopPropagation();
@@ -281,6 +306,7 @@ const AIRenderer = (function() {
     attachTopicsDelegatedHandlers();
     topicsListRenderState.callbacks.onSelectConversation = options.onSelectConversation || (() => {});
     topicsListRenderState.callbacks.onDeleteConversation = options.onDeleteConversation || (() => {});
+    topicsListRenderState.callbacks.onExportConversation = options.onExportConversation || (() => {});
     topicsListRenderState.callbacks.onRequestDeleteConfirm = options.onRequestDeleteConfirm || ((callback) => callback());
 
     const state = AIStore.state;

@@ -3483,6 +3483,62 @@ body.light-theme .ai-topic-tooltip::after {
   color: #fca5a5;
 }
 
+.ai-topic-export {
+  opacity: 0;
+  background: rgba(99, 102, 241, 0.1);
+  border: none;
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-topic-item:hover .ai-topic-export {
+  opacity: 1;
+}
+
+.ai-topic-export:hover {
+  background: rgba(99, 102, 241, 0.3);
+}
+
+.ai-topic-export svg {
+  width: 14px;
+  height: 14px;
+  color: #a5b4fc;
+}
+
+.ai-export-all-btn {
+  width: 100%;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-export-all-btn:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #fff;
+}
+
+.ai-export-all-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
 .ai-topics-empty {
   display: flex;
   flex-direction: column;
@@ -4226,6 +4282,32 @@ body.light-theme .ai-topic-delete.ctrl-ready:hover {
   box-shadow: 0 0 12px rgba(220, 53, 69, 0.4);
 }
 
+/* AI Chat Light Theme - Topic export button */
+body.light-theme .ai-topic-export {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+body.light-theme .ai-topic-export svg {
+  color: rgba(99, 102, 241, 0.8);
+}
+
+body.light-theme .ai-topic-export:hover {
+  background: rgba(99, 102, 241, 0.18);
+}
+
+/* AI Chat Light Theme - Export all button */
+body.light-theme .ai-export-all-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.6);
+}
+
+body.light-theme .ai-export-all-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #4f46e5;
+}
+
 @media screen and (max-width: 768px) {
   #ai-chat-modal {
     align-items: flex-end;
@@ -4250,12 +4332,23 @@ body.light-theme .ai-topic-delete.ctrl-ready:hover {
   }
 
   .ai-sidebar-header {
+    display: flex;
+    gap: 8px;
     margin-bottom: 8px;
   }
 
   .ai-new-chat-btn {
+    flex: 1;
     padding: 10px 16px;
     font-size: 14px;
+  }
+
+  .ai-export-all-btn {
+    width: auto;
+    margin-top: 0;
+    flex-shrink: 0;
+    padding: 10px 12px;
+    font-size: 12px;
   }
 
   .ai-topics-header {
@@ -4277,7 +4370,8 @@ body.light-theme .ai-topic-delete.ctrl-ready:hover {
     padding: 10px 12px;
   }
 
-  .ai-topic-delete {
+  .ai-topic-delete,
+  .ai-topic-export {
     opacity: 1;
   }
 
