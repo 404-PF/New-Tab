@@ -51,10 +51,13 @@
     'weatherLocationMode',
     'weatherManualCity',
     'pomodoro',
+    'eyeCareReminder',
+    'games_enabled',
     'ai_conversations',
     'ai_current_conversation_id',
     'updateCheckEnabled',
     'searchProvider',
+    'searchHistoryEnabled',
     'customSearchProviders'
   ];
 
@@ -294,6 +297,14 @@
         integerInRange(v.longBreakDuration, 1, 60) &&
         integerInRange(v.sessionsBeforeLongBreak, 1, 10);
     },
+    eyeCareReminder: function (v) {
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+
+      return typeof v.enabled === 'boolean' &&
+        [15, 20, 30, 45, 60].indexOf(v.intervalMinutes) !== -1 &&
+        typeof v.browserNotification === 'boolean';
+    },
+    games_enabled: function (v) { return typeof v === 'boolean'; },
     ai_conversations: function (v) {
       if (!Array.isArray(v)) return false;
       return v.every(function (item) {
@@ -309,6 +320,7 @@
     ai_current_conversation_id: function (v) { return typeof v === 'string'; },
     updateCheckEnabled: function (v) { return typeof v === 'boolean'; },
     searchProvider: function (v) { return typeof v === 'string'; },
+    searchHistoryEnabled: function (v) { return typeof v === 'boolean'; },
     customSearchProviders: function (v) {
       if (!Array.isArray(v)) return false;
       const builtInIds = window.BUILT_IN_PROVIDERS ? Object.keys(window.BUILT_IN_PROVIDERS) : [];
