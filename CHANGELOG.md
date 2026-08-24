@@ -5,6 +5,7 @@
 ### Features
 
 - Enhance the Snake game's visuals with a gradient background, interpolated smooth movement, rounded gradient snake segments with eyes, an animated pulsing food, eat particle bursts, and screen shake (#579)
+- Add a "Sort Alphabetically" action to the grid context menu that rearranges app icons by display name while keeping folders anchored in place (#645)
 
 ### Bug Fixes
 

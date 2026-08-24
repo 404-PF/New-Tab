@@ -465,6 +465,49 @@ const AppGridState = {
     if (!updatedOrder) return false;
 
     return true;
+  },
+
+  // Resolve an app's display name exactly as renderAllApps does
+  // (src/ui/app-manager.js), so sorting matches what users see on screen.
+  getAppDisplayName(app) {
+    if (app.nameKey && window.i18n && typeof window.i18n.t === 'function') {
+      return window.i18n.t(app.nameKey);
+    }
+    return app.name || app.nameKey || '';
+  },
+
+  // Sort the app icons in appOrder alphabetically by display name while
+  // keeping every folder anchored at its current index. Ids that are neither
+  // apps nor folders (stale entries awaiting repair) keep their slots too.
+  // Returns false when there is nothing persisted to sort; rendering is left
+  // to the caller.
+  sortAlphabetically() {
+    return !!this.updateOrder((order) => {
+      const folderIds = new Set(this.getFolders().map(folder => folder.id));
+
+      const nameById = new Map();
+      this.getCustomApps().forEach(app => { nameById.set(app.id, app); });
+      (window.defaultApps || []).forEach(app => {
+        if (!nameById.has(app.id)) nameById.set(app.id, app);
+      });
+
+      const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
+      const sortedAppIds = order
+        .filter(id => !folderIds.has(id))
+        .filter(id => nameById.has(id))
+        .sort((a, b) => {
+          const result = collator.compare(
+            this.getAppDisplayName(nameById.get(a)),
+            this.getAppDisplayName(nameById.get(b))
+          );
+          // Equal names have no intrinsic order; fall back to id for a stable,
+          // deterministic arrangement.
+          return result !== 0 ? result : (a < b ? -1 : a > b ? 1 : 0);
+        });
+
+      let appIdx = 0;
+      return order.map(id => folderIds.has(id) || !nameById.has(id) ? id : sortedAppIds[appIdx++]);
+    });
   }
 };
 

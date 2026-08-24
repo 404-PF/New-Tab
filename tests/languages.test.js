@@ -102,3 +102,15 @@ describe('Games translations', () => {
     });
   });
 });
+
+describe('App grid context menu translations', () => {
+  it('defines the sort action label for all supported languages', () => {
+    const languages = window.i18n.getSupportedLanguages();
+
+    languages.forEach(({ code }) => {
+      window.i18n.applyLanguage(code);
+
+      expect(window.i18n.t('sortAlphabetically'), `${code}:sortAlphabetically`).not.toBe('sortAlphabetically');
+    });
+  });
+});

@@ -343,6 +343,93 @@ describe('AppGridState', () => {
     expect(AppGridState.reorder('x', 0)).toBe(false);
   });
 
+  describe('sortAlphabetically', () => {
+    afterEach(() => {
+      delete window.defaultApps;
+      delete window.i18n;
+    });
+
+    const addApps = (specs) => {
+      specs.forEach(({ id, url }) => {
+        expect(AppGridState.addApp({ id, url, name: id })).toBe(true);
+      });
+    };
+
+    it('sorts custom apps by name and persists the permutation', () => {
+      addApps([
+        { id: 'zeta', url: 'https://z.com' },
+        { id: 'alpha', url: 'https://a.com' },
+        { id: 'mid', url: 'https://m.com' }
+      ]);
+
+      expect(AppGridState.sortAlphabetically()).toBe(true);
+      expect(AppGridState.getOrder()).toEqual(['alpha', 'mid', 'zeta']);
+    });
+
+    it('sorts by display name including default apps via nameKey', () => {
+      window.defaultApps = [
+        { id: 'weather-app', url: '#', nameKey: 'weather' },
+        { id: 'ai-app', url: '#', nameKey: 'ai' }
+      ];
+      window.i18n = { t: (key) => ({ weather: 'Weather', ai: 'AI Chat' }[key] || key) };
+      AppGridStorage.saveOrder(['weather-app', 'ai-app']);
+
+      expect(AppGridState.sortAlphabetically()).toBe(true);
+      expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app']);
+    });
+
+    it('keeps folder ids anchored at their current indices', () => {
+      addApps([{ id: 'b', url: 'https://b.com' }, { id: 'a', url: 'https://a.com' }]);
+      AppGridState.createFolder('Group', []);
+      // Order is [b, a, folderId]; sorting must leave the folder last and
+      // swap only the apps.
+      expect(AppGridState.getFolders()).toHaveLength(1);
+
+      expect(AppGridState.sortAlphabetically()).toBe(true);
+      const order = AppGridState.getOrder();
+      expect(order).toEqual(['a', 'b', AppGridState.getFolders()[0].id]);
+    });
+
+    it('uses case-insensitive natural ordering', () => {
+      addApps([
+        { id: 'banana10', url: 'https://b10.com' },
+        { id: 'apple', url: 'https://a.com' },
+        { id: 'banana2', url: 'https://b2.com' }
+      ]);
+      AppGridState.renameApp('banana10', 'Banana 10');
+      AppGridState.renameApp('banana2', 'banana 2');
+
+      expect(AppGridState.sortAlphabetically()).toBe(true);
+      expect(AppGridState.getOrder()).toEqual(['apple', 'banana2', 'banana10']);
+    });
+
+    it('is deterministic for equal names via id tiebreak', () => {
+      addApps([{ id: 'x2', url: 'https://x2.com' }, { id: 'x1', url: 'https://x1.com' }]);
+      AppGridState.renameApp('x2', 'Same');
+      AppGridState.renameApp('x1', 'same');
+
+      expect(AppGridState.sortAlphabetically()).toBe(true);
+      expect(AppGridState.getOrder()).toEqual(['x1', 'x2']);
+    });
+
+    it('returns false when there is no persisted order', () => {
+      expect(AppGridState.sortAlphabetically()).toBe(false);
+    });
+
+    it('leaves stale ids in place instead of throwing or dropping them', () => {
+      // A foreign id (e.g. mid-repair state) keeps its slot; known apps sort
+      // around it. renderAllApps remains responsible for repair.
+      AppGridStorage.saveCustomApps([
+        { id: 'b', url: 'https://b.com', name: 'Bravo' },
+        { id: 'a', url: 'https://a.com', name: 'Alpha' }
+      ]);
+      AppGridStorage.saveOrder(['b', 'stale-id', 'a']);
+
+      expect(AppGridState.sortAlphabetically()).toBe(true);
+      expect(AppGridState.getOrder()).toEqual(['a', 'stale-id', 'b']);
+    });
+  });
+
   describe('appIndexToOrderIndex', () => {
     it('maps an index past trailing folders to the full-order end (#599)', () => {
       // Issue #599 repro: dragging app A to the last grid slot computes an

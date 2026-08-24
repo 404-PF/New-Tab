@@ -129,6 +129,13 @@ createFolderItem.setAttribute('data-i18n', 'createFolder');
 createFolderItem.textContent = 'Create Folder';
 addHover(createFolderItem);
 
+const sortAlphabeticallyItem = document.createElement('div');
+sortAlphabeticallyItem.id = 'sort-alphabetically';
+sortAlphabeticallyItem.className = 'context-menu-item context-menu-grid-item';
+sortAlphabeticallyItem.setAttribute('data-i18n', 'sortAlphabetically');
+sortAlphabeticallyItem.textContent = 'Sort Alphabetically';
+addHover(sortAlphabeticallyItem);
+
 contextMenu.appendChild(renameItem);
 contextMenu.appendChild(moveToFolderItem);
 contextMenu.appendChild(removeFromFolderItem);
@@ -137,6 +144,7 @@ contextMenu.appendChild(deleteItem);
 contextMenu.appendChild(renameFolderItem);
 contextMenu.appendChild(deleteFolderItem);
 contextMenu.appendChild(createFolderItem);
+contextMenu.appendChild(sortAlphabeticallyItem);
 document.body.appendChild(contextMenu);
 
 // Track which context triggered the menu
@@ -333,6 +341,17 @@ document.getElementById('create-folder').addEventListener('click', function () {
   if (contextMenuTrigger !== 'grid') return;
   if (window.AppFolders) {
     window.AppFolders.promptCreateFolder();
+  }
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
+});
+
+// Sort Alphabetically
+document.getElementById('sort-alphabetically').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'grid') return;
+  const sortable = window.AppGridState && typeof window.AppGridState.sortAlphabetically === 'function';
+  if (sortable && window.AppGridState.sortAlphabetically()) {
+    if (typeof window.renderAllApps === 'function') window.renderAllApps();
   }
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');

@@ -174,4 +174,71 @@ describe('context menu previews', () => {
       warnSpy.mockRestore();
     }
   });
+
+  it('sorts the grid alphabetically from the grid context menu', () => {
+    const grid = document.getElementById('app-grid');
+    if (!grid) {
+      createElement('div', 'app-grid');
+    }
+
+    const sortAlphabetically = vi.fn(() => true);
+    const renderAllApps = vi.fn();
+    const originalRenderAllApps = window.renderAllApps;
+    window.AppGridState.sortAlphabetically = sortAlphabetically;
+    window.renderAllApps = renderAllApps;
+
+    try {
+      // Right-click empty grid space to open the grid section of the menu.
+      document.getElementById('app-grid').dispatchEvent(new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+        pageX: 32,
+        pageY: 32
+      }));
+      expect(document.getElementById('sort-alphabetically').style.display).toBe('block');
+
+      document.getElementById('sort-alphabetically').click();
+
+      expect(sortAlphabetically).toHaveBeenCalledOnce();
+      expect(renderAllApps).toHaveBeenCalledOnce();
+      // The menu closes after the action.
+      expect(document.getElementById('app-context-menu').style.display).toBe('none');
+    } finally {
+      if (originalRenderAllApps === undefined) {
+        delete window.renderAllApps;
+      } else {
+        window.renderAllApps = originalRenderAllApps;
+      }
+    }
+  });
+
+  it('does not re-render when sorting fails to persist', () => {
+    document.getElementById('app-grid').dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      pageX: 32,
+      pageY: 32
+    }));
+
+    const sortAlphabetically = vi.fn(() => false);
+    const renderAllApps = vi.fn();
+    const originalRenderAllApps = window.renderAllApps;
+    window.AppGridState.sortAlphabetically = sortAlphabetically;
+    window.renderAllApps = renderAllApps;
+
+    try {
+      document.getElementById('sort-alphabetically').click();
+
+      expect(sortAlphabetically).toHaveBeenCalledOnce();
+      expect(renderAllApps).not.toHaveBeenCalled();
+    } finally {
+      if (originalRenderAllApps === undefined) {
+        delete window.renderAllApps;
+      } else {
+        window.renderAllApps = originalRenderAllApps;
+      }
+    }
+  });
 });
