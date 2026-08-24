@@ -61,6 +61,30 @@
     'customSearchProviders'
   ];
 
+  // Object keys whose storage entries mix persistent settings with transient
+  // runtime state. Exports and imports keep only the listed fields so stale
+  // timer bookkeeping is never replayed from a backup.
+  const PERSISTENT_OBJECT_FIELDS = {
+    eyeCareReminder: ['enabled', 'intervalMinutes', 'browserNotification']
+  };
+
+  // Returns value unchanged except for keys in PERSISTENT_OBJECT_FIELDS,
+  // where only the persistent fields survive; null when nothing survives so
+  // callers treat the entry as absent.
+  function pickPersistentFields(key, value) {
+    const fields = PERSISTENT_OBJECT_FIELDS[key];
+    if (!fields || typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return value;
+    }
+    const picked = {};
+    fields.forEach(function (field) {
+      if (Object.prototype.hasOwnProperty.call(value, field)) {
+        picked[field] = value[field];
+      }
+    });
+    return Object.keys(picked).length > 0 ? picked : null;
+  }
+
   function t(key, fallback) {
     return window.i18n ? window.i18n.t(key) : (fallback || key);
   }
@@ -188,8 +212,12 @@
         hasReadError = true;
         return;
       }
-      if (val !== null) {
-        data[key] = val;
+      if (val === null) {
+        return;
+      }
+      const persistentVal = pickPersistentFields(key, val);
+      if (persistentVal !== null) {
+        data[key] = persistentVal;
       }
     });
 
@@ -465,6 +493,9 @@
       keys.forEach(function (key) {
         if (key.charAt(0) === '_') return; // Skip metadata keys
         try {
+          // Drop transient runtime state mixed into settings objects
+          const importedValue = pickPersistentFields(key, importedData[key]);
+          if (importedValue === null) return;
           if (mode === 'merge') {
             // For arrays, merge by ID where possible; for objects, shallow merge
             const current = readStorage(key);
@@ -473,7 +504,7 @@
               console.warn('[data-manager] Skipping merge for key "' + key + '": read failed');
               return;
             }
-            const incoming = importedData[key];
+            const incoming = importedValue;
             if (Array.isArray(incoming)) {
               if (key === 'todos' || key === 'notes') {
                 // Merge by id
@@ -629,7 +660,7 @@
             }
           } else {
             // Replace: overwrite directly
-            writeStorage(key, importedData[key]);
+            writeStorage(key, importedValue);
             count++;
           }
         } catch (err) {
