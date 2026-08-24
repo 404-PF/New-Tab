@@ -418,11 +418,22 @@ describe('AppGridState', () => {
       expect(orderFor('sv')).toEqual(['b', 'a']);
     });
 
-    it('survives a legacy underscore locale tag without throwing', () => {
-      // Historic language codes like zh_CN are invalid BCP 47 tags that
-      // Intl.Collator rejects; sorting must fall back to the runtime default.
+    it('normalizes legacy underscore locale tags instead of throwing', () => {
+      // Historic language codes like zh_CN are invalid BCP 47 tags; the
+      // collator normalizes them to zh-CN, which Intl accepts.
       addApps([{ id: 'b', url: 'https://b.com' }, { id: 'a', url: 'https://a.com' }]);
       window.i18n = { currentLanguage: () => 'zh_CN', t: () => '' };
+
+      expect(AppGridState.sortAlphabetically()).toBe(true);
+      expect(AppGridState.getOrder()).toEqual(['a', 'b']);
+    });
+
+    it('falls back to the runtime default for tags invalid after normalization', () => {
+      // An empty tag survives the underscore normalization unchanged and is
+      // still rejected by Intl.Collator; sorting must fall back to the
+      // runtime default rather than throw.
+      addApps([{ id: 'b', url: 'https://b.com' }, { id: 'a', url: 'https://a.com' }]);
+      window.i18n = { currentLanguage: () => '', t: () => '' };
 
       expect(AppGridState.sortAlphabetically()).toBe(true);
       expect(AppGridState.getOrder()).toEqual(['a', 'b']);
