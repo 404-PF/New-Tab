@@ -348,6 +348,14 @@
     "message": "开始",
     "description": "Button label to start a game"
   },
+  "gamesContinue": {
+    "message": "继续",
+    "description": "Button label to resume a saved game"
+  },
+  "gamesSaved": {
+    "message": "已保存",
+    "description": "Indicator on a game card showing a saved run exists"
+  },
   "gamesBack": {
     "message": "返回",
     "description": "Button label to return to the games hub"

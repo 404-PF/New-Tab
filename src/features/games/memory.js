@@ -112,6 +112,9 @@
     const time = getElapsed();
     saveStats(time);
     showWinOverlay(time);
+    // The run reached its terminal state: drop any persisted snapshot so the
+    // next launch starts fresh instead of resuming a finished board.
+    window.GameRegistry?.clearSave('memory');
   }
 
   function getElapsed() {
@@ -212,6 +215,87 @@
     }
   }
 
+  // ===================== Save / Restore (#646) =====================
+
+  function isValidSavedCards(value) {
+    if (!Array.isArray(value) || value.length !== PAIRS * 2) return false;
+    let flippedCount = 0;
+    let matchedCount = 0;
+    for (let idx = 0; idx < value.length; idx++) {
+      const c = value[idx];
+      const ok = c && typeof c === 'object' &&
+        typeof c.emoji === 'string' && EMOJIS.includes(c.emoji) &&
+        typeof c.matched === 'boolean' && (c.flipped === undefined || typeof c.flipped === 'boolean');
+      if (!ok) return false;
+      // ids are positional; a mismatched id would desync flipCard(cardId)
+      if (c.id !== undefined && c.id !== idx) return false;
+      if (c.flipped) flippedCount++;
+      if (c.matched) matchedCount++;
+    }
+    // More than one lone reveal cannot occur in play, and a fully matched
+    // board is terminal so it is never saved.
+    if (flippedCount > 1 || matchedCount >= PAIRS * 2) return false;
+    return true;
+  }
+
+  // Snapshot the live run. Returns null when there is nothing worth carrying
+  // across sessions (never started or already won) so the registry drops any
+  // stale save instead of persisting a finished board.
+  function serialize() {
+    if (!started || gameOver || startTime <= 0) return null;
+    // Settle a pair whose reveal timeout hasn't fired yet so the snapshot is
+    // never taken mid-resolution.
+    finalizePendingPair();
+    if (gameOver) return null;
+    return {
+      cards: cards.map(function (card) {
+        return { emoji: card.emoji, flipped: card.flipped, matched: card.matched };
+      }),
+      moves: moves,
+      elapsedMs: Math.max(0, Date.now() - startTime)
+    };
+  }
+
+  // Returns true when savedState was applied. Runs before the ready screen so
+  // a resumed run picks up where the previous session left off. The clock is
+  // restarted from the saved elapsed offset rather than the wall time at which
+  // the previous session ended.
+  function applyRestoredState(savedState) {
+    if (!savedState || typeof savedState !== 'object') return false;
+    if (!isValidSavedCards(savedState.cards)) return false;
+    if (typeof savedState.moves !== 'number' || !Number.isInteger(savedState.moves) || savedState.moves < 0) return false;
+    if (typeof savedState.elapsedMs !== 'number' || !Number.isFinite(savedState.elapsedMs) || savedState.elapsedMs < 0) return false;
+
+    cards = savedState.cards.map(function (card, idx) {
+      return {
+        id: idx,
+        emoji: card.emoji,
+        flipped: card.flipped === true,
+        matched: card.matched === true
+      };
+    });
+    flipped = [];
+    cards.forEach(function (card) {
+      if (card.flipped && !card.matched) flipped.push(card);
+    });
+    // `matched` counts completed pairs, not cards (endGame triggers at PAIRS).
+    matched = Math.floor(cards.filter(function (card) { return card.matched; }).length / 2);
+    moves = savedState.moves;
+    gameOver = false;
+
+    startTime = Date.now() - Math.floor(savedState.elapsedMs);
+    pausedAt = 0;
+    startTicker();
+    if (timeEl) timeEl.textContent = t('gamesTime') + ': ' + getElapsed() + 's';
+    if (movesEl) movesEl.textContent = t('gamesMoves') + ': ' + moves;
+    renderAll();
+    // Re-apply persisted face-up states on top of the fresh face-down grid.
+    cards.forEach(function (card) {
+      if (card.matched || card.flipped) renderCard(card.id);
+    });
+    return true;
+  }
+
   // ===================== Lifecycle =====================
 
   // Build a fresh board without starting the clock. Used on init() so the game
@@ -236,7 +320,7 @@
     startTimer();
   }
 
-  function init(containerEl) {
+  function init(containerEl, savedState) {
     container = containerEl;
 
     // Stats bar
@@ -266,9 +350,17 @@
     instructions.textContent = t('gamesMemoryControls') || 'Flip cards to find matching pairs';
     container.appendChild(instructions);
 
-    setupBoard();
-
     document.addEventListener('keydown', handleKeydown);
+
+    // A restored run was already started in a previous session, so it skips
+    // the ready screen and is playable immediately.
+    const restored = applyRestoredState(savedState);
+    if (restored) {
+      started = true;
+      return;
+    }
+
+    setupBoard();
 
     // Hold play until the user signals they are ready.
     started = false;
@@ -317,28 +409,33 @@
     timeEl = null;
   }
 
+  // Settle a pair whose reveal timeout hasn't fired yet so the board is
+  // consistent for serialization or while hidden. Shared by pause() and
+  // serialize().
+  function finalizePendingPair() {
+    clearPendingTimeouts();
+    if (!pendingResolve) return;
+    const resolve = pendingResolve;
+    pendingResolve = null;
+    if (resolve.match) {
+      renderCard(resolve.a.id);
+      renderCard(resolve.b.id);
+      if (matched === PAIRS) endGame();
+    } else {
+      resolve.a.flipped = false;
+      resolve.b.flipped = false;
+      renderCard(resolve.a.id);
+      renderCard(resolve.b.id);
+      flipped = [];
+    }
+  }
+
   function pause() {
     // A game that hasn't been started yet must stay on the ready screen.
     if (!started) return;
     pausedAt = Date.now();
     stopTimer();
-    clearPendingTimeouts();
-    // Finalize any pending pair resolution so the board stays consistent while hidden.
-    if (pendingResolve) {
-      const resolve = pendingResolve;
-      pendingResolve = null;
-      if (resolve.match) {
-        renderCard(resolve.a.id);
-        renderCard(resolve.b.id);
-        if (matched === PAIRS) endGame();
-      } else {
-        resolve.a.flipped = false;
-        resolve.b.flipped = false;
-        renderCard(resolve.a.id);
-        renderCard(resolve.b.id);
-        flipped = [];
-      }
-    }
+    finalizePendingPair();
     // A lone revealed card stays flipped so resume preserves the current turn state.
   }
 
@@ -360,7 +457,8 @@
     init: init,
     destroy: destroy,
     pause: pause,
-    resume: resume
+    resume: resume,
+    serialize: serialize
   });
 
   // Test hook: expose whether the game has been started so tests can assert it

@@ -253,3 +253,95 @@ describe('2048 ready state (#597)', () => {
     container.remove();
   });
 });
+
+describe('2048 cross-session saves (#646)', () => {
+  function ensureContainer() {
+    let el = document.getElementById('games-game-container');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'games-game-container';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  // Launch through the registry, start, and make moves until the board
+  // changes from its initial render.
+  function playUntilBoardChanged() {
+    const container = ensureContainer();
+    expect(window.GameRegistry.launch('2048')).toBe(true);
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    const boardBefore = container.querySelector('.games-2048-board').innerHTML;
+    for (let i = 0; i < 4; i++) {
+      const dirs = ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'];
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: dirs[i] }));
+      if (container.querySelector('.games-2048-board').innerHTML !== boardBefore) return true;
+    }
+    return false;
+  }
+
+  beforeEach(() => {
+    document.querySelectorAll('.games-score-display, .games-2048-board, .games-ready-overlay, .games-instructions')
+      .forEach(el => el.remove());
+  });
+
+  it('persists the board on destroyCurrent and restores it on the next init', () => {
+    const container = ensureContainer();
+    if (!playUntilBoardChanged()) {
+      window.GameRegistry.destroyCurrent();
+      container.remove();
+      return; // extremely unlikely with random tiles; nothing to assert
+    }
+
+    const boardHtmlAfterPlay = container.querySelector('.games-2048-board').innerHTML;
+    const scoreTextAfterPlay = container.querySelector('.games-score-display').textContent;
+    window.GameRegistry.destroyCurrent();
+
+    expect(window.GameRegistry.hasSave('2048')).toBe(true);
+    const saved = JSON.parse(localStorage.getItem('games_saves'))['2048'];
+    expect(saved.state.board).toHaveLength(4);
+    expect(saved.state.board.flat().filter(v => v > 0).length).toBeGreaterThanOrEqual(3); // 2 initial + spawn
+
+    // A fresh init receives the snapshot and rebuilds the saved board.
+    const container2 = document.createElement('div');
+    document.body.appendChild(container2);
+    const game = window.GameRegistry.get('2048');
+    game.init(container2, saved.state);
+
+    expect(window.__game2048Ready.isStarted()).toBe(true); // skips ready screen
+    expect(container2.querySelector('.games-ready-overlay')).toBeNull();
+    expect(container2.querySelector('.games-2048-board').innerHTML).toBe(boardHtmlAfterPlay);
+    expect(container2.querySelector('.games-score-display').textContent).toBe(scoreTextAfterPlay);
+
+    game.destroy();
+    container.remove();
+    container2.remove();
+  });
+
+  it('rejects malformed saved state and starts fresh', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    game.init(container, { board: [[2, 'x'], [3]], score: -5, won: false });
+    expect(window.__game2048Ready.isStarted()).toBe(false); // fell back to ready screen
+
+    game.destroy();
+
+    game.init(container, { board: 'nope', score: 0 });
+    expect(window.__game2048Ready.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('drops a stale save when serialize reports nothing to carry over', () => {
+    const container = ensureContainer();
+    expect(window.GameRegistry.launch('2048')).toBe(true);
+    // Never started → serialize returns null.
+    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.hasSave('2048')).toBe(false);
+
+    container.remove();
+  });
+});

@@ -194,6 +194,43 @@
     return colors[val] || 'games-2048-tile-super';
   }
 
+  // ===================== Save / Restore (#646) =====================
+
+  function isValidSavedBoard(value) {
+    return Array.isArray(value) && value.length === SIZE && value.every(function (row) {
+      return Array.isArray(row) && row.length === SIZE && row.every(function (v) {
+        return typeof v === 'number' && Number.isInteger(v) && v >= 0;
+      });
+    });
+  }
+
+  // Snapshot the live run. Returns null when there is nothing worth carrying
+  // across sessions (never started, already over) so the registry drops any
+  // stale save instead of persisting a dead board.
+  function serialize() {
+    if (!started || gameOver) return null;
+    if (!isValidSavedBoard(board)) return null;
+    return {
+      board: board.map(function (row) { return row.slice(); }),
+      score: score,
+      won: won
+    };
+  }
+
+  // Returns true when savedState was applied. Runs before any ready screen so
+  // a resumed run picks up where the previous session left off.
+  function applyRestoredState(savedState) {
+    if (!savedState || typeof savedState !== 'object') return false;
+    if (!isValidSavedBoard(savedState.board)) return false;
+    if (typeof savedState.score !== 'number' || !Number.isFinite(savedState.score) || savedState.score < 0) return false;
+
+    board = savedState.board.map(function (row) { return row.slice(); });
+    score = Math.floor(savedState.score);
+    won = savedState.won === true;
+    gameOver = false;
+    return true;
+  }
+
   // ===================== Input =====================
 
   function afterMove(moved) {
@@ -213,6 +250,9 @@
     if (shouldSave) {
       render();
       saveStats();
+      // The run reached a terminal state: drop any persisted snapshot so the
+      // next launch starts fresh instead of resuming a dead board.
+      window.GameRegistry?.clearSave('2048');
     }
   }
 
@@ -305,7 +345,7 @@
     render();
   }
 
-  function init(containerEl) {
+  function init(containerEl, savedState) {
     container = containerEl;
 
     scoreEl = document.createElement('div');
@@ -326,13 +366,25 @@
     instructions.textContent = t('games2048Controls') || 'Arrow keys to merge tiles';
     container.appendChild(instructions);
 
-    resetGame();
+    // A restored run was already started in a previous session, so it skips
+    // the ready screen and is playable immediately.
+    const restored = applyRestoredState(savedState);
+    if (restored) {
+      started = true;
+    } else {
+      resetGame();
+      started = false;
+    }
+    render();
 
     document.addEventListener('keydown', handleKeydown);
     boardEl.addEventListener('touchstart', handleTouchStart, { passive: true });
     boardEl.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-    // Hold play until the user signals they are ready.
+    // A fresh run holds on the ready screen until the player signals they are
+    // ready; a restored run skips it and is playable immediately.
+    if (restored) return;
+
     started = false;
     if (typeof window.gamesHelpers?.createReadyScreen === 'function') {
       readyScreen = window.gamesHelpers.createReadyScreen(boardEl, {
@@ -384,7 +436,8 @@
     init: init,
     destroy: destroy,
     pause: pause,
-    resume: resume
+    resume: resume,
+    serialize: serialize
   });
 
   // Test hook: expose whether the game has been started so tests can assert it

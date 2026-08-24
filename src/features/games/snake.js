@@ -229,6 +229,9 @@
         gamesPlayed: (stats.gamesPlayed || 0) + 1
       };
     });
+    // The run reached its terminal state: drop any persisted snapshot so the
+    // next launch starts fresh instead of resuming a dead run.
+    window.GameRegistry?.clearSave('snake');
     draw();
   }
 
@@ -631,6 +634,81 @@
     }
   }
 
+  // ===================== Save / Restore (#646) =====================
+
+  function isValidSavedSnake(value) {
+    return Array.isArray(value) && value.length > 0 && value.every(function (seg) {
+      return seg && typeof seg === 'object' &&
+        Number.isInteger(seg.x) && seg.x >= 0 && seg.x < GRID_SIZE &&
+        Number.isInteger(seg.y) && seg.y >= 0 && seg.y < GRID_SIZE;
+    });
+  }
+
+  function isValidDirection(value) {
+    return value === 'up' || value === 'down' || value === 'left' || value === 'right';
+  }
+
+  // Snapshot the live run. Returns null when there is nothing worth carrying
+  // across sessions (never started or already over) so the registry drops any
+  // stale save instead of persisting a dead run. A paused run is saved too —
+  // pausing is exactly when interruptions happen.
+  function serialize() {
+    if (!started || gameOver) return null;
+    if (!isValidSavedSnake(snake)) return null;
+    return {
+      snake: snake.map(function (seg) { return { x: seg.x, y: seg.y }; }),
+      food: food && Number.isInteger(food.x) && Number.isInteger(food.y) ? { x: food.x, y: food.y } : null,
+      direction: direction,
+      nextDirection: nextDirection,
+      score: score
+    };
+  }
+
+  // Returns true when savedState was applied. Rebuilds the board so the run
+  // resumes on the ready screen — a real-time game should not start ticking
+  // unannounced; pressing Start (Space/tap) continues it. The speed level is
+  // derived from the saved score.
+  function applyRestoredState(savedState) {
+    if (!savedState || typeof savedState !== 'object') return false;
+    if (!isValidSavedSnake(savedState.snake)) return false;
+    if (typeof savedState.score !== 'number' || !Number.isInteger(savedState.score) || savedState.score < 0) return false;
+    if (!isValidDirection(savedState.direction)) return false;
+    if (savedState.nextDirection !== undefined && !isValidDirection(savedState.nextDirection)) return false;
+    const savedFood = savedState.food;
+    if (savedFood !== null && savedFood !== undefined &&
+        !(savedFood && typeof savedFood === 'object' &&
+          Number.isInteger(savedFood.x) && savedFood.x >= 0 && savedFood.x < GRID_SIZE &&
+          Number.isInteger(savedFood.y) && savedFood.y >= 0 && savedFood.y < GRID_SIZE)) {
+      return false;
+    }
+    const head = savedState.snake[0];
+    if (savedState.snake.slice(1).some(function (seg) { return seg.x === head.x && seg.y === head.y; })) {
+      // A snake overlapping itself cannot occur in play.
+      return false;
+    }
+    if (savedFood && savedState.snake.some(function (seg) { return seg.x === savedFood.x && seg.y === savedFood.y; })) {
+      // Food never spawns under the body.
+      return false;
+    }
+
+    snake = savedState.snake.map(function (seg) { return { x: seg.x, y: seg.y }; });
+    food = savedFood ? { x: savedFood.x, y: savedFood.y } : null;
+    if (!food) spawnFood();
+    direction = savedState.direction;
+    nextDirection = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
+    score = savedState.score;
+    tickMs = tickMsForScore(score);
+    updateScoreHud();
+    gameOver = false;
+    paused = false;
+    manualPause = false;
+    prevSnake = null;
+    lastTickAt = nowMs();
+    particles = [];
+    shakeUntil = 0;
+    return true;
+  }
+
   // ===================== Lifecycle =====================
 
   // Begin the run: clear any pre-start state, then start the game loops.
@@ -646,7 +724,7 @@
     startAnimation();
   }
 
-  function init(containerEl) {
+  function init(containerEl, savedState) {
     container = containerEl;
 
     // Score display
@@ -673,8 +751,15 @@
     instructions.textContent = t('gamesSnakeControls') || 'Arrow keys or WASD to move, Space to pause';
     container.appendChild(instructions);
 
-    initSnake();
-    draw();
+    // A restored run rebuilds the saved board and holds on the ready screen
+    // so a real-time game never resumes ticking unannounced.
+    const restored = applyRestoredState(savedState);
+    if (!restored) {
+      initSnake();
+      draw();
+    } else {
+      draw();
+    }
 
     document.addEventListener('keydown', handleKeydown);
     canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
@@ -686,7 +771,7 @@
       readyScreen = window.gamesHelpers.createReadyScreen(stage, {
         text: t('gamesReady') || 'Ready?',
         sub: t('gamesReadyStart') || 'Press Space or tap to start',
-        buttonText: t('gamesStart') || 'Start',
+        buttonText: restored ? (t('gamesContinue') || 'Continue') : (t('gamesStart') || 'Start'),
         onStart: startRun
       });
     } else {
@@ -745,7 +830,8 @@
     init: init,
     destroy: destroy,
     pause: pause,
-    resume: resume
+    resume: resume,
+    serialize: serialize
   });
 
   // Test hook: expose the pure difficulty helpers so tests can verify the

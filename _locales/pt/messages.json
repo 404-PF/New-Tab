@@ -348,6 +348,14 @@
     "message": "Jogar",
     "description": "Button label to start a game"
   },
+  "gamesContinue": {
+    "message": "Continuar",
+    "description": "Button label to resume a saved game"
+  },
+  "gamesSaved": {
+    "message": "Guardado",
+    "description": "Indicator on a game card showing a saved run exists"
+  },
   "gamesBack": {
     "message": "Voltar",
     "description": "Button label to return to the games hub"

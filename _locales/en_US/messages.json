@@ -364,6 +364,14 @@
     "message": "Play",
     "description": "Button label to start a game"
   },
+  "gamesContinue": {
+    "message": "Continue",
+    "description": "Button label to resume a saved game"
+  },
+  "gamesSaved": {
+    "message": "Saved",
+    "description": "Indicator on a game card showing a saved run exists"
+  },
   "gamesBack": {
     "message": "Back",
     "description": "Button label to return to the games hub"

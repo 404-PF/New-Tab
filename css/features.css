@@ -4200,6 +4200,31 @@ body.light-theme .games-hub-card-desc {
   background: #3dbdb5;
 }
 
+/* "Saved" indicator on hub cards offering a resumable run */
+.games-hub-card-saved {
+  font-size: 0.7rem;
+  color: #4ecdc4;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.games-hub-card-saved::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ecdc4;
+}
+
+.games-hub-card-play-continue {
+  background: #f5a623;
+}
+
+.games-hub-card-play-continue:hover {
+  background: #e09612;
+}
+
 .games-hub-empty {
   text-align: center;
   padding: 40px 20px;
@@ -4489,4 +4514,16 @@ body.light-theme .games-hub-card-play {
 
 body.light-theme .games-hub-card-play:hover {
   background: #2dada5;
+}
+
+body.light-theme .games-hub-card-saved {
+  color: #1d8f88;
+}
+
+body.light-theme .games-hub-card-play-continue {
+  background: #d98a0b;
+}
+
+body.light-theme .games-hub-card-play-continue:hover {
+  background: #c47c08;
 }

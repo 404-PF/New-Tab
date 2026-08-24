@@ -219,3 +219,144 @@ describe('Memory ready state (#597)', () => {
     container.remove();
   });
 });
+
+describe('Memory cross-session saves (#646)', () => {
+  // Build a valid snapshot for an in-progress board: 1 matched pair, one lone
+  // revealed card, 3 moves, 12.5s elapsed.
+  function makeSavedState() {
+    const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'];
+    const deck = [];
+    for (let i = 0; i < 8; i++) {
+      deck.push(emojis[i], emojis[i]);
+    }
+    // Positional layout: cards 0/1 matched, card 2 is the lone reveal.
+    const cards = deck.map((emoji, idx) => ({
+      emoji: emoji,
+      flipped: idx === 2,
+      matched: idx < 2
+    }));
+    return { cards: cards, moves: 3, elapsedMs: 12500 };
+  }
+
+  it('restores a saved board and skips the ready screen', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+    game.init(container, makeSavedState());
+
+    expect(window.__memoryReady.isStarted()).toBe(true);
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+
+    // 2 matched + 1 flipped are face up; the rest show '?'.
+    const cards = container.querySelectorAll('.games-memory-card');
+    expect(cards[0].classList.contains('games-memory-card-matched')).toBe(true);
+    expect(cards[1].classList.contains('games-memory-card-matched')).toBe(true);
+    expect(cards[2].classList.contains('games-memory-card-flipped')).toBe(true);
+    expect(cards[5].textContent).toBe('?');
+
+    // Moves counter carries over.
+    expect(container.querySelector('.games-memory-moves').textContent).toContain('3');
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('continues the restored run: flipping the matching card completes the pair', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+    game.init(container, makeSavedState());
+
+    // Card 3 pairs with the lone revealed card 2 (same emoji).
+    container.querySelectorAll('.games-memory-card')[3].click();
+    expect(container.querySelector('.games-memory-moves').textContent).toContain('4');
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects malformed or impossible saved boards and starts fresh', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+
+    const bad = [
+      { cards: [{ emoji: '🐶', matched: false }] },                          // wrong length
+      { cards: 'nope' },                                                      // not an array
+      { cards: Array.from({ length: 16 }, () => ({ emoji: '👽', matched: false })) }, // unknown emoji
+      { moves: -1, cards: makeSavedState().cards },                           // negative moves
+      { moves: 1, elapsedMs: NaN, cards: makeSavedState().cards },            // broken elapsed time
+      { moves: 1, elapsedMs: 100, cards: makeSavedState().cards.map(c => ({ ...c, flipped: true, matched: c.matched })) } // 16 face-up
+    ];
+    bad.forEach((state) => {
+      game.init(container, state);
+      expect(window.__memoryReady.isStarted()).toBe(false);
+      expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+      game.destroy();
+    });
+
+    container.remove();
+  });
+
+  it('persists a live run through destroyCurrent and restores it via launch', () => {
+    let el = document.getElementById('games-game-container');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'games-game-container';
+      document.body.appendChild(el);
+    }
+    expect(window.GameRegistry.launch('memory')).toBe(true);
+
+    // Start, then flip two non-matching cards... positions are random, so
+    // just flip one card to create mid-turn state.
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    el.querySelectorAll('.games-memory-card')[0].click();
+
+    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.hasSave('memory')).toBe(true);
+    const saved = JSON.parse(localStorage.getItem('games_saves')).memory;
+    expect(saved.state.cards).toHaveLength(16);
+    expect(saved.state.moves).toBe(0);
+
+    window.GameRegistry.launch('memory');
+    expect(window.__memoryReady.isStarted()).toBe(true);
+    expect(el.querySelector('.games-ready-overlay')).toBeNull();
+    // The lone reveal survived the round trip.
+    expect(el.querySelectorAll('.games-memory-card-flipped').length + el.querySelectorAll('.games-memory-card-matched').length)
+      .toBeGreaterThanOrEqual(1);
+
+    window.GameRegistry.destroyCurrent();
+    el.remove();
+  });
+
+  it('clears the save when the run completes', () => {
+    localStorage.setItem('games_saves', JSON.stringify({
+      memory: { state: makeSavedState(), savedAt: 1 }
+    }));
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+
+    // Restore a board with 7 pairs already matched so one more match wins.
+    const state = makeSavedState();
+    state.cards.forEach((card, idx) => {
+      card.matched = idx !== 2 && idx !== 3;
+    });
+    state.moves = 20;
+    game.init(container, state);
+    expect(window.GameRegistry.hasSave('memory')).toBe(true); // restore does not clear
+
+    // Card 3 pairs with the revealed card 2 → final match → endGame(). The
+    // match resolves on a timeout, so advance fake timers to fire it.
+    vi.useFakeTimers();
+    container.querySelectorAll('.games-memory-card')[3].click();
+    vi.advanceTimersByTime(300);
+    vi.useRealTimers();
+
+    expect(window.GameRegistry.hasSave('memory')).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+});
