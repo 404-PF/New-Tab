@@ -1,69 +1,150 @@
 import { injectScript } from './helpers/inject-script.js';
 
-// Installs an in-memory IndexedDB mock seeded with `records` and loads
-// src/data/custom-backgrounds.js fresh. Returns { records, restore }.
-function loadWithIndexedDB(records) {
+const MAIN_STORE = 'customBackgrounds';
+const META_STORE = 'customBackgroundsMeta';
+
+// Builds an in-memory IndexedDB mock with the module's two object stores.
+// Requests settle asynchronously (setTimeout 0) and fire tx.oncomplete,
+// mirroring real event ordering (the module resolves promises from
+// tx.oncomplete). Reads snapshot the records array at call time, like a
+// readonly transaction pinned at transaction start.
+function createStoreMock(mainRecords, metaRecords, state) {
+  function settle(req, result, onDone) {
+    setTimeout(() => {
+      req.result = result;
+      if (req.onsuccess) req.onsuccess();
+      if (req.tx && req.tx.oncomplete) req.tx.oncomplete();
+      if (onDone) onDone();
+    }, 0);
+    return req;
+  }
+
+  function storeHandle(name) {
+    const target = name === META_STORE ? metaRecords : mainRecords;
+    return {
+      getAll() {
+        return settle({}, target.slice());
+      },
+      get(id) {
+        return settle({}, target.find((bg) => bg.id === id) || null);
+      },
+      put(record) {
+        const idx = target.findIndex((r) => r.id === record.id);
+        if (idx !== -1) target[idx] = record; else target.push(record);
+        return settle({}, record.id);
+      },
+      delete(id) {
+        const idx = target.findIndex((r) => r.id === id);
+        if (idx !== -1) target.splice(idx, 1);
+        return settle({}, undefined);
+      },
+      openCursor() {
+        const req = {};
+        let i = 0;
+        const step = () => {
+          setTimeout(() => {
+            req.result = i < target.length ? { value: target[i], continue: step } : null;
+            i += 1;
+            if (req.onsuccess) req.onsuccess({ target: { result: req.result } });
+          }, 0);
+        };
+        // Kick after the caller attaches onsuccess (same tick, later task).
+        setTimeout(step, 0);
+        return req;
+      }
+    };
+  }
+
   const mockDB = {
-    // Each transaction wires its requests so firing onsuccess also fires
-    // tx.oncomplete, mirroring real IndexedDB event ordering (the module
-    // resolves promises from tx.oncomplete).
+    objectStoreNames: {
+      contains: (name) => name === MAIN_STORE || state.metaCreated
+    },
+    createObjectStore(name) {
+      if (name === META_STORE) state.metaCreated = true;
+    },
     transaction() {
-      const tx = {
-        oncomplete: null,
-        onabort: null,
-        onerror: null
+      const tx = { oncomplete: null, onabort: null, onerror: null };
+      tx.objectStore = (name) => {
+        const handle = storeHandle(name);
+        // Attach tx so requests fire its oncomplete when they settle.
+        const proxied = {};
+        Object.keys(handle).forEach((method) => {
+          proxied[method] = (...args) => {
+            const req = handle[method](...args);
+            req.tx = tx;
+            return req;
+          };
+        });
+        return proxied;
       };
-      function settle(req, result) {
+      return tx;
+    }
+  };
+
+  return {
+    idbFactory: {
+      open() {
+        const req = { onupgradeneeded: null, onerror: null };
         setTimeout(() => {
-          req.result = result;
-          if (req.onsuccess) req.onsuccess();
-          if (tx.oncomplete) tx.oncomplete();
+          if (!state.metaCreated) {
+            const upgradeTx = { objectStore: (name) => storeHandle(name) };
+            if (req.onupgradeneeded) {
+              req.onupgradeneeded({ target: { result: mockDB, transaction: upgradeTx } });
+            }
+            state.metaCreated = true;
+          }
+          if (req.onsuccess) req.onsuccess({ target: { result: mockDB } });
         }, 0);
         return req;
       }
-      tx.objectStore = () => ({
-        getAll() {
-          return settle({}, records.slice());
-        },
-        get(id) {
-          return settle({}, records.find((bg) => bg.id === id) || null);
-        },
-        put(bg) {
-          const existing = records.findIndex((r) => r.id === bg.id);
-          if (existing !== -1) records[existing] = bg; else records.push(bg);
-          return settle({}, bg.id);
-        },
-        delete(id) {
-          const idx = records.findIndex((r) => r.id === id);
-          if (idx !== -1) records.splice(idx, 1);
-          return settle({}, undefined);
-        }
-      });
-      return tx;
     },
-    objectStoreNames: { contains: () => true }
+    mockDB
   };
-  const originalIndexedDB = globalThis.indexedDB;
-  globalThis.indexedDB = {
-    open() {
-      const req = { onupgradeneeded: null, onerror: null };
-      setTimeout(() => { if (req.onsuccess) req.onsuccess({ target: { result: mockDB } }); }, 0);
-      return req;
-    }
-  };
+}
+
+// Installs the mock and loads src/data/custom-backgrounds.js fresh.
+// restore() puts back both the IndexedDB factory and the prior
+// window._customBackgrounds so injections never leak across suites.
+function loadWithIndexedDB(records, options) {
+  const opts = options || {};
+  // A consistent database maintains the mirror alongside every write.
+  const metaRecords = opts.metaRecords || records.map((bg) => ({
+    id: bg.id, title: bg.title, type: bg.type, thumb: bg.thumb
+  }));
+  const state = { metaCreated: opts.metaCreated !== false };
+  const mock = createStoreMock(records, metaRecords, state);
+
+  const previousApi = window._customBackgrounds;
+  const previousIndexedDB = globalThis.indexedDB;
+  globalThis.indexedDB = mock.idbFactory;
 
   injectScript('src/data/custom-backgrounds.js');
 
   return {
     records,
+    metaRecords,
+    mockDB: mock.mockDB,
     restore() {
-      globalThis.indexedDB = originalIndexedDB;
+      globalThis.indexedDB = previousIndexedDB;
+      if (previousApi === undefined) {
+        delete window._customBackgrounds;
+      } else {
+        window._customBackgrounds = previousApi;
+      }
     }
   };
 }
 
 describe('custom backgrounds', () => {
-  loadWithIndexedDB([]);
+  let harness;
+
+  beforeAll(() => {
+    harness = loadWithIndexedDB([]);
+  });
+
+  afterAll(() => {
+    harness.restore();
+  });
 
   it('exposes management helpers and recognizes only custom IDs', () => {
     expect(window._customBackgrounds.isCustom('custom_123')).toBe(true);
@@ -95,12 +176,13 @@ describe('custom backgrounds metadata cache', () => {
     try {
       expect(window._customBackgrounds.getCachedList()).toEqual([]);
 
-      await window._customBackgrounds.refresh();
+      const list = await window._customBackgrounds.refresh();
 
-      expect(window._customBackgrounds.getCachedList()).toEqual([
+      expect(list).toEqual([
         { id: 'custom_image_1', title: 'Sunset photo', type: 'image', thumb: 'data:image/jpeg;base64,thumb1' },
         { id: 'custom_video_1', title: 'Ocean waves', type: 'video', thumb: 'data:image/jpeg;base64,thumb2' }
       ]);
+      expect(window._customBackgrounds.getCachedList()).toBe(list);
     } finally {
       harness.restore();
     }
@@ -109,9 +191,8 @@ describe('custom backgrounds metadata cache', () => {
   it('refresh dispatches custombackgroundschanged after loading', async () => {
     const harness = loadWithIndexedDB([imageRecord]);
     let changeEvents = 0;
+    const onEvent = () => { changeEvents += 1; };
     document.addEventListener('custombackgroundschanged', onEvent);
-
-    function onEvent() { changeEvents += 1; }
 
     try {
       await window._customBackgrounds.refresh();
@@ -125,16 +206,26 @@ describe('custom backgrounds metadata cache', () => {
   it('render keeps the cache in sync after uploads and deletions', async () => {
     const harness = loadWithIndexedDB([]);
 
+    const putBoth = (bg) => {
+      harness.records.push(bg);
+      harness.metaRecords.push({ id: bg.id, title: bg.title, type: bg.type, thumb: bg.thumb });
+    };
+    const deleteBoth = (id) => {
+      const at = (list) => list.findIndex((r) => r.id === id);
+      harness.records.splice(at(harness.records), 1);
+      harness.metaRecords.splice(at(harness.metaRecords), 1);
+    };
+
     try {
-      // Simulate the upload path: put + render (as handleUpload's caller does).
-      harness.records.push(imageRecord);
+      // Simulate the upload path: dual write + render (as handleUpload's caller does).
+      putBoth(imageRecord);
       await window._customBackgrounds.render();
 
       let ids = window._customBackgrounds.getCachedList().map((bg) => bg.id);
       expect(ids).toEqual(['custom_image_1']);
 
-      // Simulate the delete path: remove + render.
-      harness.records.splice(0, 1);
+      // Simulate the delete path: dual removal + render.
+      deleteBoth('custom_image_1');
       await window._customBackgrounds.render();
 
       ids = window._customBackgrounds.getCachedList().map((bg) => bg.id);
@@ -144,7 +235,7 @@ describe('custom backgrounds metadata cache', () => {
     }
   });
 
-  it('concurrent refreshes share one IndexedDB read and resolve identically', async () => {
+  it('concurrent refreshes share one in-flight read', async () => {
     const harness = loadWithIndexedDB([imageRecord]);
 
     try {
@@ -153,9 +244,64 @@ describe('custom backgrounds metadata cache', () => {
 
       expect(second).toBe(first); // same in-flight promise shared
 
-      const [list] = await Promise.all([first, second]);
-      expect(list.length).toBe(1);
+      await Promise.all([first, second]);
       expect(window._customBackgrounds.getCachedList().length).toBe(1);
+    } finally {
+      harness.restore();
+    }
+  });
+
+  it('falls back to a full-record read when the metadata store is unavailable', async () => {
+    // metaCreated: false makes objectStoreNames.contains lie only until the
+    // upgrade runs, so force the meta store to stay unreadable instead.
+    const harness = loadWithIndexedDB([imageRecord], { metaCreated: true });
+    const originalTransaction = harness.mockDB.transaction;
+    harness.mockDB.transaction = function (storeNames, mode) {
+      const tx = originalTransaction.call(harness.mockDB, storeNames, mode);
+      if (Array.isArray(storeNames) && storeNames.indexOf(META_STORE) !== -1 && mode === 'readonly') {
+        const originalObjectStore = tx.objectStore;
+        tx.objectStore = (name) => {
+          if (name === META_STORE) {
+            throw new Error('Simulated metadata store failure');
+          }
+          return originalObjectStore(name);
+        };
+        setTimeout(() => { if (tx.onerror) tx.onerror(); }, 0);
+      }
+      return tx;
+    };
+
+    try {
+      const list = await window._customBackgrounds.refresh();
+      expect(list.map((bg) => bg.id)).toEqual(['custom_image_1']);
+    } finally {
+      harness.restore();
+    }
+  });
+});
+
+describe('custom backgrounds database upgrade', () => {
+  it('seeds the metadata mirror from existing records during version upgrade', async () => {
+    const imageRecord = {
+      id: 'custom_image_legacy',
+      title: 'Pre-upgrade photo',
+      type: 'image',
+      data: new Blob(['legacy'], { type: 'image/png' }),
+      thumb: 'data:image/jpeg;base64,legacy'
+    };
+
+    // metaCreated: false simulates a v1 database without the meta store.
+    const harness = loadWithIndexedDB([imageRecord], { metaCreated: false });
+
+    try {
+      const list = await window._customBackgrounds.refresh();
+
+      expect(list).toEqual([
+        { id: 'custom_image_legacy', title: 'Pre-upgrade photo', type: 'image', thumb: 'data:image/jpeg;base64,legacy' }
+      ]);
+      // The mirror was populated without duplicating the main record.
+      expect(harness.metaRecords.length).toBe(1);
+      expect(harness.records.length).toBe(1);
     } finally {
       harness.restore();
     }

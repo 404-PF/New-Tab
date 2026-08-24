@@ -2,8 +2,11 @@
 
 (function () {
   const DB_NAME = 'NewTabCustomBackgrounds';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const STORE_NAME = 'customBackgrounds';
+  // Metadata mirror (id/title/type/thumb, no blobs) so listing and the
+  // rotation cache never deserialize full media records.
+  const META_STORE_NAME = 'customBackgroundsMeta';
 
   let db = null;
   let blobUrlCache = {};
@@ -14,6 +17,16 @@
   // background rotation) can include uploads without touching IndexedDB.
   let cachedList = [];
   let cachedListRefresh = null;
+  let cachedListRefreshVersion = -1;
+  let cacheVersion = 0;
+
+  function invalidateMetadataCache() {
+    cacheVersion += 1;
+  }
+
+  function toMetadataRecord(bg) {
+    return { id: bg.id, title: bg.title, type: bg.type, thumb: bg.thumb };
+  }
 
   const VIDEO_THUMBNAIL_HIDE_DELAY_MS = 3000;
   const IMAGE_THUMBNAIL_HIDE_DELAY_MS = 2500;
@@ -29,6 +42,19 @@
         if (!database.objectStoreNames.contains(STORE_NAME)) {
           database.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
+        if (!database.objectStoreNames.contains(META_STORE_NAME)) {
+          database.createObjectStore(META_STORE_NAME, { keyPath: 'id' });
+          // Seed the mirror for uploads stored before this version. Runs on
+          // the upgrade transaction's stores, so all cursor writes commit
+          // atomically with the schema change.
+          const upgradeTx = e.target.transaction;
+          upgradeTx.objectStore(STORE_NAME).openCursor().onsuccess = function (ev) {
+            const cursor = ev.target.result;
+            if (!cursor) return;
+            upgradeTx.objectStore(META_STORE_NAME).put(toMetadataRecord(cursor.value));
+            cursor.continue();
+          };
+        }
       };
       request.onsuccess = function (e) {
         db = e.target.result;
@@ -40,12 +66,11 @@
     });
   }
 
-  function runCustomBackgroundTransaction(mode, operation, errorMessage) {
+  function runTransaction(storeNames, mode, operation, errorMessage) {
     return openDB().then(function (database) {
       return new Promise(function (resolve, reject) {
-        const tx = database.transaction(STORE_NAME, mode);
-        const store = tx.objectStore(STORE_NAME);
-        const request = operation(store);
+        const tx = database.transaction(storeNames, mode);
+        const request = operation(tx);
         let result;
         request.onsuccess = function () { result = request.result; };
         request.onerror = function () { /* The transaction handlers reject with the request error. */ };
@@ -59,29 +84,52 @@
     });
   }
 
+  function runCustomBackgroundTransaction(mode, operation, errorMessage) {
+    return runTransaction([STORE_NAME], mode, function (tx) {
+      return operation(tx.objectStore(STORE_NAME));
+    }, errorMessage);
+  }
+
   function getAllCustomBackgrounds() {
     return runCustomBackgroundTransaction('readonly', function (store) {
       return store.getAll();
     }, 'Failed to read custom backgrounds from IndexedDB:');
   }
 
-  // Refresh the lightweight metadata cache from IndexedDB. Concurrent calls
-  // share one in-flight read so uploads followed by a re-render don't race.
-  // Rejects so callers can surface failures their own way. On success,
-  // dispatches 'custombackgroundschanged' so listeners (e.g. the rotation
-  // picker) can re-render once async metadata lands.
+  function getAllCustomBackgroundsMeta() {
+    return runTransaction([META_STORE_NAME], 'readonly', function (tx) {
+      return tx.objectStore(META_STORE_NAME).getAll();
+    }, 'Failed to read custom background metadata from IndexedDB:');
+  }
+
+  // Refresh the lightweight metadata cache from the metadata store, falling
+  // back to a full read if the mirror is unreadable. Concurrent calls share
+  // one in-flight read unless a mutation invalidated it meanwhile. Rejects
+  // so callers can surface failures their own way. On success, dispatches
+  // 'custombackgroundschanged' so listeners (e.g. the rotation picker) can
+  // re-render once async metadata lands.
   function refreshCachedList() {
-    if (cachedListRefresh) return cachedListRefresh;
-    cachedListRefresh = getAllCustomBackgrounds().then(function (customBgs) {
-      cachedList = customBgs.map(function (bg) {
-        return { id: bg.id, title: bg.title, type: bg.type, thumb: bg.thumb };
-      });
+    if (cachedListRefresh && cachedListRefreshVersion === cacheVersion) {
+      return cachedListRefresh;
+    }
+    const versionAtStart = cacheVersion;
+    const request = getAllCustomBackgroundsMeta().catch(function () {
+      return getAllCustomBackgrounds();
+    }).then(function (customBgs) {
+      // Discard snapshots that raced with a mutation: the mutation path
+      // bumps the version and re-renders, triggering a fresh read.
+      if (versionAtStart !== cacheVersion) return cachedList;
+      cachedList = customBgs.map(toMetadataRecord);
       document.dispatchEvent(new CustomEvent('custombackgroundschanged'));
       return cachedList;
-    }).finally(function () {
-      cachedListRefresh = null;
     });
-    return cachedListRefresh;
+    cachedListRefresh = request;
+    cachedListRefreshVersion = versionAtStart;
+    const clearIfCurrent = function () {
+      if (cachedListRefresh === request) cachedListRefresh = null;
+    };
+    request.then(clearIfCurrent, clearIfCurrent);
+    return request;
   }
 
   function getCachedList() {
@@ -95,14 +143,18 @@
   }
 
   function saveCustomBackground(bg) {
-    return runCustomBackgroundTransaction('readwrite', function (store) {
-      return store.put(bg);
+    invalidateMetadataCache();
+    return runTransaction([STORE_NAME, META_STORE_NAME], 'readwrite', function (tx) {
+      tx.objectStore(STORE_NAME).put(bg);
+      return tx.objectStore(META_STORE_NAME).put(toMetadataRecord(bg));
     }, 'Failed to save custom background to IndexedDB:');
   }
 
   function deleteCustomBackground(id) {
-    return runCustomBackgroundTransaction('readwrite', function (store) {
-      return store.delete(id);
+    invalidateMetadataCache();
+    return runTransaction([STORE_NAME, META_STORE_NAME], 'readwrite', function (tx) {
+      tx.objectStore(STORE_NAME).delete(id);
+      return tx.objectStore(META_STORE_NAME).delete(id);
     }, 'Failed to delete custom background from IndexedDB:');
   }
 

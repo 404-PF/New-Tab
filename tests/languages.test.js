@@ -30,6 +30,21 @@ const ROTATION_UPLOADS_TRANSLATION_KEYS = [
   'bgRotationUploads'
 ];
 
+// Expected value per locale for keys asserted below. English fallback would
+// mask a missing non-English entry in a `.not.toBe(key)` check, so these
+// assert the locale's own translation object directly.
+const ROTATION_UPLOADS_EXPECTED = {
+  en: 'Your uploads',
+  zh: '上传的背景',
+  ja: 'アップロードした背景',
+  ko: '업로드한 배경',
+  es: 'Tus subidas',
+  fr: 'Vos importations',
+  de: 'Deine Uploads',
+  pt: 'Seus envios',
+  ru: 'Ваши загрузки'
+};
+
 // Derived from the source's window.i18n.gamesTranslationKeys in beforeAll so
 // this list can never drift from the keys languages.js actually defines.
 let GAMES_TRANSLATION_KEYS = [];
@@ -92,16 +107,23 @@ describe('Custom background error translations', () => {
 });
 
 describe('Rotation uploads translations', () => {
-  it('defines every rotation uploads string for all supported languages', () => {
+  it('defines every rotation uploads string in each supported language', () => {
     const languages = window.i18n.getSupportedLanguages();
 
     languages.forEach(({ code }) => {
-      window.i18n.applyLanguage(code);
+      const localeTranslations = window.i18n.getTranslations(code);
 
       ROTATION_UPLOADS_TRANSLATION_KEYS.forEach((key) => {
-        expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
+        expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
+        expect(localeTranslations[key], `${code}:${key}`).toBe(ROTATION_UPLOADS_EXPECTED[code]);
+        expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
       });
     });
+  });
+
+  it('resolves the active-language value at runtime', () => {
+    window.i18n.applyLanguage('de');
+    expect(window.i18n.t('bgRotationUploads')).toBe(ROTATION_UPLOADS_EXPECTED.de);
   });
 });
 

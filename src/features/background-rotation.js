@@ -75,7 +75,9 @@
   function getUploadsLabel() {
     try {
       if (window.i18n && typeof window.i18n.t === 'function') {
-        return window.i18n.t('bgRotationUploads');
+        const translated = window.i18n.t('bgRotationUploads');
+        // t() returns the raw key when no locale defines it
+        if (translated && translated !== 'bgRotationUploads') return translated;
       }
     } catch (err) {
       console.warn('i18n lookup failed for bgRotationUploads:', err);
@@ -240,9 +242,17 @@
       img.src = bg.thumb;
       img.alt = bg.title;
       img.loading = 'lazy';
+
+      let thumbEl = img;
       if (isCustom) {
-        img.setAttribute('data-custom', 'true');
-        if (bg.type === 'video') img.classList.add('bg-thumb-video');
+        img.dataset.custom = 'true';
+        if (bg.type === 'video') {
+          // Wrap in a span: <img> is a replaced element, so the ::after
+          // play badge on .bg-thumb-video would never render on it.
+          thumbEl = document.createElement('span');
+          thumbEl.className = 'bg-rotation-pick-thumb-wrap bg-thumb-video';
+          thumbEl.appendChild(img);
+        }
       }
 
       const name = document.createElement('span');
@@ -250,7 +260,7 @@
       name.textContent = bg.title;
 
       label.appendChild(checkbox);
-      label.appendChild(img);
+      label.appendChild(thumbEl);
       label.appendChild(name);
       container.appendChild(label);
     });
@@ -318,7 +328,16 @@
 
     // Keep the picker in sync when the upload metadata cache lands or
     // changes (upload/delete paths dispatch this after re-rendering).
+    // applyRotation() re-evaluates the pool: a persisted upload-only
+    // selection starts only once the async cache fills, and crossing the
+    // one-background threshold on upload/delete must start/stop the timer.
     document.addEventListener('custombackgroundschanged', function () {
+      renderBackgroundPicker();
+      applyRotation();
+    });
+
+    // Re-render so the uploads divider follows the active language.
+    window.addEventListener('languageChanged', function () {
       renderBackgroundPicker();
     });
 

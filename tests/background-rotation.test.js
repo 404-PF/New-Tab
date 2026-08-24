@@ -304,8 +304,14 @@ describe('Background rotation with custom backgrounds', () => {
 
       const customThumbs = container.querySelectorAll('img[data-custom="true"]');
       expect(customThumbs.length).toBe(2);
-      const videoThumb = container.querySelector('img[data-custom="true"].bg-thumb-video');
-      expect(videoThumb).not.toBeNull();
+      // Video rows wrap their thumb in a span carrying bg-thumb-video — an
+      // <img> is a replaced element, so its ::after play badge can't render.
+      const videoWrap = container.querySelector('.bg-thumb-video');
+      expect(videoWrap).not.toBeNull();
+      expect(videoWrap.tagName).toBe('SPAN');
+      expect(videoWrap.querySelector('img[data-custom="true"]')).not.toBeNull();
+      const imageRowImg = checkboxes[1].closest('label').querySelector('img[data-custom="true"]');
+      expect(imageRowImg.closest('.bg-thumb-video')).toBeNull();
     } finally {
       document.body.removeChild(container);
     }
@@ -363,6 +369,44 @@ describe('Background rotation with custom backgrounds', () => {
       { id: 'Built-in BG', title: 'Built-in BG', thumb: 'b.jpg', url: 'b-full.jpg' },
     ];
 
+    BackgroundRotation.advance();
+    expect(localStorage.getItem('homepageBg')).toBe('Built-in BG');
+  });
+
+  it('starts rotation once the async cache fills a persisted upload-only selection', async () => {
+    const list = [];
+    stubCustomBackgrounds(list);
+    localStorage.setItem('bgRotationEnabled', 'true');
+    localStorage.setItem('bgRotationSelection', JSON.stringify(['custom_image_1']));
+
+    // Simulate init(): applyRotation runs while the cache is still empty,
+    // so startRotation sees a zero-length pool and must not start.
+    BackgroundRotation.apply();
+
+    list.push({ id: 'custom_image_1', title: 'My Photo', type: 'image', thumb: 'c1.jpg' });
+    document.dispatchEvent(new CustomEvent('custombackgroundschanged'));
+
+    BackgroundRotation.advance();
+    expect(localStorage.getItem('homepageBg')).toBe('custom_image_1');
+  });
+
+  it('stops the running timer when deletions shrink the pool to one background', () => {
+    window._backgrounds = [
+      { id: 'Built-in BG', title: 'Built-in BG', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    const list = [
+      { id: 'custom_image_1', title: 'My Photo', type: 'image', thumb: 'c1.jpg' },
+    ];
+    stubCustomBackgrounds(list);
+    localStorage.setItem('bgRotationEnabled', 'true');
+
+    BackgroundRotation.start();
+    list.length = 0; // delete the only upload
+    document.dispatchEvent(new CustomEvent('custombackgroundschanged'));
+
+    // Pool is now one background; advanceBackground still works but the
+    // timer was stopped by applyRotation (pool <= 1).
+    expect(BackgroundRotation.isEnabled()).toBe(true);
     BackgroundRotation.advance();
     expect(localStorage.getItem('homepageBg')).toBe('Built-in BG');
   });
