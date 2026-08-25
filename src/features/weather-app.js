@@ -234,14 +234,16 @@
           day: '2-digit',
           hour: '2-digit',
           minute: '2-digit',
-          hour12: false
+          hour12: false,
+          hourCycle: 'h23'
         });
         const parts = fmt.formatToParts(new Date());
         const y = parts.find(function(p) { return p.type === 'year'; }).value;
         const mo = parts.find(function(p) { return p.type === 'month'; }).value;
         const d = parts.find(function(p) { return p.type === 'day'; }).value;
-        const h = parts.find(function(p) { return p.type === 'hour'; }).value;
+        let h = parts.find(function(p) { return p.type === 'hour'; }).value;
         const mi = parts.find(function(p) { return p.type === 'minute'; }).value;
+        if (h === '24') h = '00';
         return y + '-' + mo + '-' + d + 'T' + h + ':' + mi;
       } catch { /* ignore timezone errors */ }
     }
