@@ -110,6 +110,10 @@
     "message": "Выберите фоны для смены",
     "description": "Label for the background picker in rotation settings"
   },
+  "bgRotationUploads": {
+    "message": "Ваши загрузки",
+    "description": "Divider label above uploaded backgrounds in the rotation picker"
+  },
   "bgRotationNext": {
     "message": "Следующий фон",
     "description": "Button to manually advance to next background"

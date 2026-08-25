@@ -130,6 +130,7 @@ const translations = {
     deleteFolder: 'Delete Folder',
     moveToFolder: 'Move to Folder',
     removeFromFolder: 'Remove from Folder',
+    sortAlphabetically: 'Sort Alphabetically',
     renameFolderPrompt: 'Enter new folder name:',
     createFolderPrompt: 'Enter folder name:',
     newFolder: 'New Folder',
@@ -202,6 +203,7 @@ const translations = {
     bgRotationHourly: 'Every hour on the hour',
     bgRotationDaily: 'Daily',
     bgRotationPicker: 'Select backgrounds to rotate',
+    bgRotationUploads: 'Your uploads',
     bgRotationNext: 'Next Background',
     rotationOptions: 'Options',
 
@@ -614,6 +616,7 @@ const translations = {
     deleteFolder: '删除文件夹',
     moveToFolder: '移动到文件夹',
     removeFromFolder: '从文件夹中移除',
+    sortAlphabetically: '按字母排序',
     renameFolderPrompt: '输入新文件夹名称：',
     createFolderPrompt: '输入文件夹名称：',
     newFolder: '新建文件夹',
@@ -677,6 +680,7 @@ const translations = {
     bgRotationHourly: '每小时整点',
     bgRotationDaily: '每日',
     bgRotationPicker: '选择要轮播的背景',
+    bgRotationUploads: '上传的背景',
     bgRotationNext: '下一个背景',
     rotationOptions: '选项',
 
@@ -1079,6 +1083,7 @@ const translations = {
     deleteFolder: 'フォルダを削除',
     moveToFolder: 'フォルダに移動',
     removeFromFolder: 'フォルダから削除',
+    sortAlphabetically: 'アルファベット順に並べ替え',
     renameFolderPrompt: '新しいフォルダ名を入力：',
     createFolderPrompt: 'フォルダ名を入力：',
     newFolder: '新しいフォルダ',
@@ -1128,6 +1133,7 @@ const translations = {
     bgRotationHourly: '毎時',
     bgRotationDaily: '毎日',
     bgRotationPicker: 'ローテーションする背景を選択',
+    bgRotationUploads: 'アップロードした背景',
     bgRotationNext: '次の背景',
     rotationOptions: 'オプション',
     appsSettings: 'アプリ',
@@ -1490,6 +1496,7 @@ const translations = {
     deleteFolder: '폴더 삭제',
     moveToFolder: '폴더로 이동',
     removeFromFolder: '폴더에서 제거',
+    sortAlphabetically: '가나다순으로 정렬',
     renameFolderPrompt: '새 폴더 이름을 입력하세요：',
     createFolderPrompt: '폴더 이름을 입력하세요：',
     newFolder: '새 폴더',
@@ -1539,6 +1546,7 @@ const translations = {
     bgRotationHourly: '매시',
     bgRotationDaily: '매일',
     bgRotationPicker: '회전할 배경 선택',
+    bgRotationUploads: '업로드한 배경',
     bgRotationNext: '다음 배경',
     rotationOptions: '옵션',
     appsSettings: '앱',
@@ -1939,6 +1947,7 @@ const translations = {
     bgRotationHourly: 'Cada hora en punto',
     bgRotationDaily: 'Diario',
     bgRotationPicker: 'Seleccionar fondos para rotar',
+    bgRotationUploads: 'Tus subidas',
     bgRotationNext: 'Siguiente fondo',
     rotationOptions: 'Opciones',
     appsSettings: 'Aplicaciones',
@@ -2197,6 +2206,7 @@ const translations = {
     deleteFolder: 'Eliminar carpeta',
     moveToFolder: 'Mover a carpeta',
     removeFromFolder: 'Eliminar de carpeta',
+    sortAlphabetically: 'Ordenar alfabéticamente',
     renameFolderPrompt: 'Ingrese el nuevo nombre de la carpeta:',
     createFolderPrompt: 'Ingrese el nombre de la carpeta:',
     newFolder: 'Nueva carpeta',
@@ -2350,6 +2360,7 @@ const translations = {
     bgRotationHourly: 'Toute heure',
     bgRotationDaily: 'Quotidien',
     bgRotationPicker: 'Sélectionner les arrière-plans à tourner',
+    bgRotationUploads: 'Vos importations',
     bgRotationNext: 'Arrière-plan suivant',
     rotationOptions: 'Options',
     appsSettings: 'Applications',
@@ -2608,6 +2619,7 @@ const translations = {
     deleteFolder: 'Supprimer le dossier',
     moveToFolder: 'Déplacer vers le dossier',
     removeFromFolder: 'Retirer du dossier',
+    sortAlphabetically: 'Trier par ordre alphabétique',
     renameFolderPrompt: 'Entrez le nouveau nom du dossier :',
     createFolderPrompt: 'Entrez le nom du dossier :',
     newFolder: 'Nouveau dossier',
@@ -2761,6 +2773,7 @@ const translations = {
     bgRotationHourly: 'Stündlich',
     bgRotationDaily: 'Täglich',
     bgRotationPicker: 'Hintergründe zum Rotieren auswählen',
+    bgRotationUploads: 'Deine Uploads',
     bgRotationNext: 'Nächster Hintergrund',
     rotationOptions: 'Optionen',
     appsSettings: 'Apps',
@@ -3019,6 +3032,7 @@ const translations = {
     deleteFolder: 'Ordner löschen',
     moveToFolder: 'In Ordner verschieben',
     removeFromFolder: 'Aus Ordner entfernen',
+    sortAlphabetically: 'Alphabetisch sortieren',
     renameFolderPrompt: 'Neuen Ordnernamen eingeben:',
     createFolderPrompt: 'Ordnernamen eingeben:',
     newFolder: 'Neuer Ordner',
@@ -3172,6 +3186,7 @@ const translations = {
     bgRotationHourly: 'A cada hora',
     bgRotationDaily: 'Diariamente',
     bgRotationPicker: 'Selecionar fundos para rotacionar',
+    bgRotationUploads: 'Seus envios',
     bgRotationNext: 'Próximo fundo',
     rotationOptions: 'Opções',
     appsSettings: 'Aplicativos',
@@ -3430,6 +3445,7 @@ const translations = {
     deleteFolder: 'Excluir pasta',
     moveToFolder: 'Mover para pasta',
     removeFromFolder: 'Remover da pasta',
+    sortAlphabetically: 'Ordenar alfabeticamente',
     renameFolderPrompt: 'Digite o novo nome da pasta:',
     createFolderPrompt: 'Digite o nome da pasta:',
     newFolder: 'Nova pasta',
@@ -3583,6 +3599,7 @@ const translations = {
     bgRotationHourly: 'Каждый час',
     bgRotationDaily: 'Ежедневно',
     bgRotationPicker: 'Выберите фоны для смены',
+    bgRotationUploads: 'Ваши загрузки',
     bgRotationNext: 'Следующий фон',
     rotationOptions: 'Параметры',
     appsSettings: 'Приложения',
@@ -3841,6 +3858,7 @@ const translations = {
     deleteFolder: 'Удалить папку',
     moveToFolder: 'Переместить в папку',
     removeFromFolder: 'Убрать из папки',
+    sortAlphabetically: 'Сортировать по алфавиту',
     renameFolderPrompt: 'Введите новое имя папки:',
     createFolderPrompt: 'Введите имя папки:',
     newFolder: 'Новая папка',
@@ -3907,6 +3925,33 @@ Object.keys(customBackgroundErrorTranslations).forEach(function (language) {
   target.customBackgroundsLoadError = messages[0];
   target.customBackgroundLoadError = messages[1];
   target.customBackgroundDeleteError = messages[2];
+});
+
+// The AI export strings are defined here rather than inline in each per-locale
+// block. Those blocks are structurally identical across locales, so repeating
+// the same five keys in every one would count as new duplication in
+// SonarCloud's quality gate (same reason the gamesLevel map exists below).
+const aiExportTranslations = {
+  en: ['Export conversation as Markdown', 'Export All', 'Conversation exported.', 'Conversations exported.', 'Failed to export the conversation.'],
+  zh: ['导出对话为 Markdown', '导出全部', '对话已导出。', '对话已全部导出。', '导出对话失败。'],
+  ja: ['会話をMarkdownでエクスポート', 'すべてエクスポート', '会話をエクスポートしました。', '会話をすべてエクスポートしました。', '会話のエクスポートに失敗しました。'],
+  ko: ['대화를 Markdown으로 내보내기', '모두 내보내기', '대화를 내보냈습니다.', '모든 대화를 내보냈습니다.', '대화를 내보내지 못했습니다.'],
+  es: ['Exportar conversación como Markdown', 'Exportar todo', 'Conversación exportada.', 'Conversaciones exportadas.', 'No se pudo exportar la conversación.'],
+  fr: ['Exporter la conversation en Markdown', 'Tout exporter', 'Conversation exportée.', 'Conversations exportées.', 'Échec de l\'export de la conversation.'],
+  de: ['Unterhaltung als Markdown exportieren', 'Alle exportieren', 'Unterhaltung exportiert.', 'Unterhaltungen exportiert.', 'Export der Unterhaltung fehlgeschlagen.'],
+  pt: ['Exportar conversa como Markdown', 'Exportar tudo', 'Conversa exportada.', 'Conversas exportadas.', 'Falha ao exportar a conversa.'],
+  ru: ['Экспортировать беседу в Markdown', 'Экспортировать все', 'Беседа экспортирована.', 'Беседы экспортированы.', 'Не удалось экспортировать беседу.']
+};
+
+Object.keys(aiExportTranslations).forEach(function (language) {
+  const target = translations[language];
+  if (!target) return;
+  const messages = aiExportTranslations[language];
+  target.aiExportConversation = messages[0];
+  target.aiExportAll = messages[1];
+  target.aiExportSuccess = messages[2];
+  target.aiExportAllSuccess = messages[3];
+  target.aiExportError = messages[4];
 });
 
 // The games "Level" label is defined here rather than in the per-locale

@@ -210,3 +210,204 @@ describe('Background rotation picker', () => {
     document.body.removeChild(container);
   });
 });
+
+describe('Background rotation with custom backgrounds', () => {
+  // Installs a minimal window._customBackgrounds stub exposing a mutable
+  // cached list, mirroring the real getCachedList() contract.
+  function stubCustomBackgrounds(list) {
+    window._customBackgrounds = {
+      isCustom: (id) => typeof id === 'string' && id.startsWith('custom_'),
+      getCachedList: () => list,
+      refresh: () => Promise.resolve(list),
+    };
+  }
+
+  afterEach(() => {
+    delete window._customBackgrounds;
+  });
+
+  it('includes custom backgrounds in the rotation pool', () => {
+    window._backgrounds = [
+      { id: 'Built-in BG', title: 'Built-in BG', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    stubCustomBackgrounds([
+      { id: 'custom_image_1', title: 'My Photo', type: 'image', thumb: 'c1.jpg' },
+      { id: 'custom_video_1', title: 'My Video', type: 'video', thumb: 'c2.jpg' },
+    ]);
+
+    localStorage.setItem('bgRotationSelection', JSON.stringify(['custom_image_1']));
+    BackgroundRotation.start();
+    BackgroundRotation.advance();
+
+    expect(localStorage.getItem('homepageBg')).toBe('custom_image_1');
+  });
+
+  it('rotates through built-ins and uploads without repeating until the pool wraps', () => {
+    window._backgrounds = [
+      { id: 'Built-in BG', title: 'Built-in BG', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    stubCustomBackgrounds([
+      { id: 'custom_image_1', title: 'My Photo', type: 'image', thumb: 'c1.jpg' },
+    ]);
+    localStorage.setItem('bgRotationEnabled', 'true');
+
+    BackgroundRotation.start();
+    BackgroundRotation.advance();
+    const first = localStorage.getItem('homepageBg');
+    BackgroundRotation.advance();
+    const second = localStorage.getItem('homepageBg');
+
+    expect(new Set([first, second])).toEqual(new Set(['Built-in BG', 'custom_image_1']));
+    expect(first).not.toBe(second);
+  });
+
+  it('drops deleted custom backgrounds from the pool on the next advance', () => {
+    window._backgrounds = [
+      { id: 'Built-in BG', title: 'Built-in BG', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    const list = [
+      { id: 'custom_image_1', title: 'My Photo', type: 'image', thumb: 'c1.jpg' },
+    ];
+    stubCustomBackgrounds(list);
+    localStorage.setItem('bgRotationEnabled', 'true');
+
+    BackgroundRotation.start();
+    list.length = 0; // simulate deletion
+    BackgroundRotation.advance();
+
+    expect(localStorage.getItem('homepageBg')).toBe('Built-in BG');
+  });
+
+  it('renderPicker lists uploaded backgrounds after built-ins with an uploads divider', () => {
+    const container = document.createElement('div');
+    container.id = 'bg-rotation-picker';
+    document.body.appendChild(container);
+
+    window._backgrounds = [
+      { id: 'Built-in BG', title: 'Built-in BG', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    stubCustomBackgrounds([
+      { id: 'custom_image_1', title: 'My Photo', type: 'image', thumb: 'c1.jpg' },
+      { id: 'custom_video_1', title: 'My Video', type: 'video', thumb: 'c2.jpg' },
+    ]);
+
+    try {
+      BackgroundRotation.renderPicker();
+
+      const divider = container.querySelector('.bg-rotation-pick-divider');
+      expect(divider).not.toBeNull();
+
+      const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      expect(checkboxes.length).toBe(3);
+      expect(checkboxes[1].value).toBe('custom_image_1');
+      expect(checkboxes[2].value).toBe('custom_video_1');
+
+      const customThumbs = container.querySelectorAll('img[data-custom="true"]');
+      expect(customThumbs.length).toBe(2);
+      // Video rows wrap their thumb in a span carrying bg-thumb-video — an
+      // <img> is a replaced element, so its ::after play badge can't render.
+      const videoWrap = container.querySelector('.bg-thumb-video');
+      expect(videoWrap).not.toBeNull();
+      expect(videoWrap.tagName).toBe('SPAN');
+      expect(videoWrap.querySelector('img[data-custom="true"]')).not.toBeNull();
+      const imageRowImg = checkboxes[1].closest('label').querySelector('img[data-custom="true"]');
+      expect(imageRowImg.closest('.bg-thumb-video')).toBeNull();
+    } finally {
+      document.body.removeChild(container);
+    }
+  });
+
+  it('renderPicker omits the divider when no uploads exist', () => {
+    const container = document.createElement('div');
+    container.id = 'bg-rotation-picker';
+    document.body.appendChild(container);
+
+    window._backgrounds = [
+      { id: 'Built-in BG', title: 'Built-in BG', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    stubCustomBackgrounds([]);
+
+    try {
+      BackgroundRotation.renderPicker();
+
+      expect(container.querySelector('.bg-rotation-pick-divider')).toBeNull();
+      const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      expect(checkboxes.length).toBe(1);
+    } finally {
+      document.body.removeChild(container);
+    }
+  });
+
+  it('renderPicker re-renders when the custom background cache changes', async () => {
+    const container = document.createElement('div');
+    container.id = 'bg-rotation-picker';
+    document.body.appendChild(container);
+
+    window._backgrounds = [
+      { id: 'Built-in BG', title: 'Built-in BG', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    stubCustomBackgrounds([]);
+
+    try {
+      BackgroundRotation.renderPicker();
+      expect(container.querySelectorAll('input[type="checkbox"]').length).toBe(1);
+
+      const list = window._customBackgrounds.getCachedList();
+      list.push({ id: 'custom_image_1', title: 'Late upload', type: 'image', thumb: 'c9.jpg' });
+      document.dispatchEvent(new CustomEvent('custombackgroundschanged'));
+
+      const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      expect(checkboxes.length).toBe(2);
+      expect(checkboxes[1].value).toBe('custom_image_1');
+    } finally {
+      document.body.removeChild(container);
+    }
+  });
+
+  it('works when window._customBackgrounds is absent (legacy behavior)', () => {
+    window._backgrounds = [
+      { id: 'Built-in BG', title: 'Built-in BG', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+
+    BackgroundRotation.advance();
+    expect(localStorage.getItem('homepageBg')).toBe('Built-in BG');
+  });
+
+  it('starts rotation once the async cache fills a persisted upload-only selection', async () => {
+    const list = [];
+    stubCustomBackgrounds(list);
+    localStorage.setItem('bgRotationEnabled', 'true');
+    localStorage.setItem('bgRotationSelection', JSON.stringify(['custom_image_1']));
+
+    // Simulate init(): applyRotation runs while the cache is still empty,
+    // so startRotation sees a zero-length pool and must not start.
+    BackgroundRotation.apply();
+
+    list.push({ id: 'custom_image_1', title: 'My Photo', type: 'image', thumb: 'c1.jpg' });
+    document.dispatchEvent(new CustomEvent('custombackgroundschanged'));
+
+    BackgroundRotation.advance();
+    expect(localStorage.getItem('homepageBg')).toBe('custom_image_1');
+  });
+
+  it('stops the running timer when deletions shrink the pool to one background', () => {
+    window._backgrounds = [
+      { id: 'Built-in BG', title: 'Built-in BG', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    const list = [
+      { id: 'custom_image_1', title: 'My Photo', type: 'image', thumb: 'c1.jpg' },
+    ];
+    stubCustomBackgrounds(list);
+    localStorage.setItem('bgRotationEnabled', 'true');
+
+    BackgroundRotation.start();
+    list.length = 0; // delete the only upload
+    document.dispatchEvent(new CustomEvent('custombackgroundschanged'));
+
+    // Pool is now one background; advanceBackground still works but the
+    // timer was stopped by applyRotation (pool <= 1).
+    expect(BackgroundRotation.isEnabled()).toBe(true);
+    BackgroundRotation.advance();
+    expect(localStorage.getItem('homepageBg')).toBe('Built-in BG');
+  });
+});

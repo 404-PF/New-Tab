@@ -22,11 +22,71 @@ const AIService = (function() {
     AIRenderer.renderTopicsList({
       onSelectConversation: switchConversation,
       onDeleteConversation: deleteConversation,
+      onExportConversation: exportConversation,
       onRequestDeleteConfirm: showDeleteConfirm
     });
 
     if (renderMessages) {
       AIRenderer.renderMessages();
+    }
+  }
+
+  function showToast(message, type) {
+    const existing = document.querySelector('.toast-notification');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    if (type) toast.classList.add('toast-' + type);
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 2000);
+  }
+
+  function downloadMarkdownFile(filename, content) {
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
+  function exportConversation(conversationId) {
+    const exported = AIStore.exportConversation(conversationId);
+    if (!exported) {
+      showToast(getTranslation('aiExportError'), 'error');
+      return;
+    }
+
+    try {
+      downloadMarkdownFile(exported.filename, exported.content);
+      showToast(getTranslation('aiExportSuccess'), 'success');
+    } catch (error) {
+      console.error('Failed to export conversation:', error);
+      showToast(getTranslation('aiExportError'), 'error');
+    }
+  }
+
+  function exportAllConversations() {
+    const exported = AIStore.exportAllConversations();
+    if (!exported) {
+      showToast(getTranslation('aiExportError'), 'error');
+      return;
+    }
+
+    try {
+      downloadMarkdownFile(exported.filename, exported.content);
+      showToast(getTranslation('aiExportAllSuccess'), 'success');
+    } catch (error) {
+      console.error('Failed to export conversations:', error);
+      showToast(getTranslation('aiExportError'), 'error');
     }
   }
 
@@ -229,6 +289,20 @@ const AIService = (function() {
   }
 
   function handleTopicsKeydown(event) {
+    // Native button activation wins when an action button inside the list has
+    // focus: otherwise Enter on the export/delete button would be hijacked to
+    // switch conversations instead of clicking the button.
+    if (event.target?.closest?.('.ai-topic-export, .ai-topic-delete')) {
+      return;
+    }
+
+    // While the delete confirmation overlay is open its document-level
+    // handler owns Enter/Escape, and stray keypresses (focus still sits on
+    // the list after Delete/Backspace) must not act underneath it.
+    if (AIStore.state.confirmDialogCallback) {
+      return;
+    }
+
     const filteredConversations = AIStore.getFilteredConversations();
     if (filteredConversations.length === 0) return;
 
@@ -257,6 +331,14 @@ const AIService = (function() {
         if (AIStore.state.keyboardSelectedIndex >= 0 && AIStore.state.keyboardSelectedIndex < filteredConversations.length) {
           const conversationId = filteredConversations[AIStore.state.keyboardSelectedIndex].id;
           showDeleteConfirm(() => deleteConversation(conversationId));
+        }
+        break;
+
+      case 'e':
+      case 'E':
+        event.preventDefault();
+        if (AIStore.state.keyboardSelectedIndex >= 0 && AIStore.state.keyboardSelectedIndex < filteredConversations.length) {
+          exportConversation(filteredConversations[AIStore.state.keyboardSelectedIndex].id);
         }
         break;
     }
@@ -598,6 +680,10 @@ const AIService = (function() {
       elements.newChatBtn.addEventListener('click', createNewChat);
     }
 
+    if (elements.exportAllBtn) {
+      elements.exportAllBtn.addEventListener('click', exportAllConversations);
+    }
+
     if (elements.topicsSearch) {
       elements.topicsSearch.addEventListener('input', event => {
         AIStore.setSearchQuery(event.target.value);
@@ -670,7 +756,9 @@ const AIService = (function() {
     sendMessage,
     stopStreaming,
     quickSearch,
-    isAvailable
+    isAvailable,
+    exportConversation,
+    exportAllConversations
   };
 })();
 

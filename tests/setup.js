@@ -633,6 +633,27 @@ importDialog.innerHTML = `
 `;
 document.body.appendChild(importDialog);
 
+// Data import/export elements with required children
+const dataImportFileInput = document.createElement('input');
+dataImportFileInput.type = 'file';
+dataImportFileInput.id = 'data-import-file';
+document.body.appendChild(dataImportFileInput);
+
+const dataImportDialog = document.createElement('div');
+dataImportDialog.id = 'data-import-dialog';
+dataImportDialog.innerHTML = `
+  <div class="ai-confirm-overlay"></div>
+  <div class="ai-confirm-content">
+    <p class="ai-confirm-message"></p>
+    <div class="ai-confirm-actions">
+      <button class="ai-confirm-cancel">Cancel</button>
+      <button id="data-import-merge-btn">Merge</button>
+      <button id="data-import-replace-btn">Replace</button>
+    </div>
+  </div>
+`;
+document.body.appendChild(dataImportDialog);
+
 // Edit modal stubs
 document.body.appendChild(createStubElement('div', 'todo-edit-modal'));
 document.body.appendChild(createStubElement('input', 'todo-edit-text'));

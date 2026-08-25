@@ -110,6 +110,10 @@
     "message": "选择要轮播的背景",
     "description": "Label for the background picker in rotation settings"
   },
+  "bgRotationUploads": {
+    "message": "上传的背景",
+    "description": "Divider label above uploaded backgrounds in the rotation picker"
+  },
   "bgRotationNext": {
     "message": "下一个背景",
     "description": "Button to manually advance to next background"
