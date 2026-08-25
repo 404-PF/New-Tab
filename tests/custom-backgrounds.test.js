@@ -67,9 +67,12 @@ function createStoreMock(mainRecords, metaRecords, state) {
       },
       openCursor() {
         const req = {};
+        // Pin the records like a real readonly transaction: mutations made
+        // after openCursor() are invisible to this iteration.
+        const snapshot = target.slice();
         let i = 0;
-        const current = () => (i < target.length
-          ? { value: target[i], continue: () => req.continue() }
+        const current = () => (i < snapshot.length
+          ? { value: snapshot[i], continue: () => req.continue() }
           : null);
         req.continue = () => {
           if (req.tx) req.tx.__requestIssued();
