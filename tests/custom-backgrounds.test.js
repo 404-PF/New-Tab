@@ -6,15 +6,42 @@ const META_STORE = 'customBackgroundsMeta';
 // Builds an in-memory IndexedDB mock with the module's two object stores.
 // Requests settle asynchronously (setTimeout 0) and fire tx.oncomplete,
 // mirroring real event ordering (the module resolves promises from
-// tx.oncomplete). Reads snapshot the records array at call time, like a
-// readonly transaction pinned at transaction start.
+// tx.oncomplete). Transactions are reference-counted: oncomplete fires only
+// once every issued request has settled and none was re-issued from a
+// success handler (e.g. cursor.continue), matching how a real transaction
+// stays alive while requests keep being queued. Reads snapshot the records
+// array at call time, like a readonly transaction pinned at transaction start.
 function createStoreMock(mainRecords, metaRecords, state) {
-  function settle(req, result, onDone) {
+  function makeTx() {
+    const tx = { oncomplete: null, onabort: null, onerror: null };
+    let active = 0;
+    let completed = false;
+    function maybeComplete() {
+      setTimeout(() => {
+        if (!completed && active === 0) {
+          completed = true;
+          if (tx.oncomplete) tx.oncomplete();
+        }
+      }, 0);
+    }
+    tx.__requestIssued = () => { active += 1; };
+    tx.__requestSettled = () => {
+      active -= 1;
+      maybeComplete();
+    };
+    tx.__maybeComplete = maybeComplete;
+    return tx;
+  }
+
+  function settle(req, resultOrFn, withCursorEvent) {
     setTimeout(() => {
-      req.result = result;
-      if (req.onsuccess) req.onsuccess();
-      if (req.tx && req.tx.oncomplete) req.tx.oncomplete();
-      if (onDone) onDone();
+      req.result = typeof resultOrFn === 'function' ? resultOrFn() : resultOrFn;
+      if (req.onsuccess) {
+        // Cursor handlers receive an IDBRequest-style event whose target
+        // carries the just-assigned cursor (or null at exhaustion).
+        req.onsuccess(withCursorEvent ? { target: { result: req.result } } : undefined);
+      }
+      if (req.tx) req.tx.__requestSettled();
     }, 0);
     return req;
   }
@@ -41,19 +68,31 @@ function createStoreMock(mainRecords, metaRecords, state) {
       openCursor() {
         const req = {};
         let i = 0;
-        const step = () => {
-          setTimeout(() => {
-            req.result = i < target.length ? { value: target[i], continue: step } : null;
-            i += 1;
-            if (req.onsuccess) req.onsuccess({ target: { result: req.result } });
-          }, 0);
+        const current = () => (i < target.length
+          ? { value: target[i], continue: () => req.continue() }
+          : null);
+        req.continue = () => {
+          if (req.tx) req.tx.__requestIssued();
+          i += 1;
+          return settle(req, current, true);
         };
-        // Kick after the caller attaches onsuccess (same tick, later task).
-        setTimeout(step, 0);
-        return req;
+        return settle(req, current, true);
       }
     };
   }
+
+  const attachTx = (tx, handle) => {
+    const proxied = {};
+    Object.keys(handle).forEach((method) => {
+      proxied[method] = (...args) => {
+        const req = handle[method](...args);
+        req.tx = tx;
+        tx.__requestIssued();
+        return req;
+      };
+    });
+    return proxied;
+  };
 
   const mockDB = {
     objectStoreNames: {
@@ -63,20 +102,8 @@ function createStoreMock(mainRecords, metaRecords, state) {
       if (name === META_STORE) state.metaCreated = true;
     },
     transaction() {
-      const tx = { oncomplete: null, onabort: null, onerror: null };
-      tx.objectStore = (name) => {
-        const handle = storeHandle(name);
-        // Attach tx so requests fire its oncomplete when they settle.
-        const proxied = {};
-        Object.keys(handle).forEach((method) => {
-          proxied[method] = (...args) => {
-            const req = handle[method](...args);
-            req.tx = tx;
-            return req;
-          };
-        });
-        return proxied;
-      };
+      const tx = makeTx();
+      tx.objectStore = (name) => attachTx(tx, storeHandle(name));
       return tx;
     }
   };
@@ -87,13 +114,23 @@ function createStoreMock(mainRecords, metaRecords, state) {
         const req = { onupgradeneeded: null, onerror: null };
         setTimeout(() => {
           if (!state.metaCreated) {
-            const upgradeTx = { objectStore: (name) => storeHandle(name) };
+            const upgradeTx = makeTx();
+            upgradeTx.objectStore = (name) => attachTx(upgradeTx, storeHandle(name));
             if (req.onupgradeneeded) {
-              req.onupgradeneeded({ target: { result: mockDB, transaction: upgradeTx } });
+              req.onupgradeneeded({
+                target: { result: mockDB, transaction: upgradeTx }
+              });
             }
             state.metaCreated = true;
+            // Like real IndexedDB, the success event waits for the upgrade
+            // transaction to commit, so seeded data is readable afterwards.
+            upgradeTx.oncomplete = () => {
+              if (req.onsuccess) req.onsuccess({ target: { result: mockDB } });
+            };
+            upgradeTx.__maybeComplete(); // covers upgrades issuing no requests
+          } else if (req.onsuccess) {
+            req.onsuccess({ target: { result: mockDB } });
           }
-          if (req.onsuccess) req.onsuccess({ target: { result: mockDB } });
         }, 0);
         return req;
       }
@@ -107,11 +144,14 @@ function createStoreMock(mainRecords, metaRecords, state) {
 // window._customBackgrounds so injections never leak across suites.
 function loadWithIndexedDB(records, options) {
   const opts = options || {};
-  // A consistent database maintains the mirror alongside every write.
-  const metaRecords = opts.metaRecords || records.map((bg) => ({
-    id: bg.id, title: bg.title, type: bg.type, thumb: bg.thumb
-  }));
   const state = { metaCreated: opts.metaCreated !== false };
+  // A consistent v2 database maintains the mirror alongside every write.
+  // A v1 database (metaCreated: false) starts with an empty meta store;
+  // onupgradeneeded seeding must populate it.
+  const metaRecords = opts.metaRecords
+    || (state.metaCreated ? records.map((bg) => ({
+      id: bg.id, title: bg.title, type: bg.type, thumb: bg.thumb
+    })) : []);
   const mock = createStoreMock(records, metaRecords, state);
 
   const previousApi = window._customBackgrounds;
@@ -290,7 +330,9 @@ describe('custom backgrounds database upgrade', () => {
       thumb: 'data:image/jpeg;base64,legacy'
     };
 
-    // metaCreated: false simulates a v1 database without the meta store.
+    // metaCreated: false simulates a v1 database: the meta store does not
+    // exist and the mirror starts empty, so refresh() only sees the record
+    // if onupgradeneeded seeding in custom-backgrounds.js populated it.
     const harness = loadWithIndexedDB([imageRecord], { metaCreated: false });
 
     try {
@@ -299,7 +341,8 @@ describe('custom backgrounds database upgrade', () => {
       expect(list).toEqual([
         { id: 'custom_image_legacy', title: 'Pre-upgrade photo', type: 'image', thumb: 'data:image/jpeg;base64,legacy' }
       ]);
-      // The mirror was populated without duplicating the main record.
+      // The seeding populated the mirror exactly once without touching
+      // the main records.
       expect(harness.metaRecords.length).toBe(1);
       expect(harness.records.length).toBe(1);
     } finally {
