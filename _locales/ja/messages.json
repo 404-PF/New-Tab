@@ -352,6 +352,14 @@
     "message": "プレイ",
     "description": "Button label to start a game"
   },
+  "gamesContinue": {
+    "message": "つづきから",
+    "description": "Button label to resume a saved game"
+  },
+  "gamesSaved": {
+    "message": "保存済み",
+    "description": "Indicator on a game card showing a saved run exists"
+  },
   "gamesBack": {
     "message": "戻る",
     "description": "Button label to return to the games hub"

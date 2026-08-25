@@ -48,12 +48,13 @@
     board[cell.r][cell.c] = window.GameRegistry.secureRandom() < 0.9 ? 2 : 4;
   }
 
-  function canMove() {
+  function canMove(targetBoard) {
+    const b = targetBoard || board;
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
-        if (board[r][c] === 0) return true;
-        if (c < SIZE - 1 && board[r][c] === board[r][c + 1]) return true;
-        if (r < SIZE - 1 && board[r][c] === board[r + 1][c]) return true;
+        if (b[r][c] === 0) return true;
+        if (c < SIZE - 1 && b[r][c] === b[r][c + 1]) return true;
+        if (r < SIZE - 1 && b[r][c] === b[r + 1][c]) return true;
       }
     }
     return false;
@@ -194,6 +195,64 @@
     return colors[val] || 'games-2048-tile-super';
   }
 
+  // ===================== Save / Restore (#646) =====================
+
+  function isValidTileValue(v) {
+    if (v === 0) return true;
+    // Powers of two only. Avoid bitwise checks: they coerce to 32 bits and
+    // would accept values like 4294967297.
+    return typeof v === 'number' && Number.isInteger(v) && v >= 2 &&
+      v <= 4503599627370496 && Math.log2(v) % 1 === 0;
+  }
+
+  function isValidSavedBoard(value) {
+    return Array.isArray(value) && value.length === SIZE && value.every(function (row) {
+      return Array.isArray(row) && row.length === SIZE && row.every(isValidTileValue);
+    });
+  }
+
+  function boardHasWonTile(value) {
+    return value.some(function (row) { return row.includes(2048); });
+  }
+
+  // Snapshot the live run, or null when there is nothing to report right now
+  // (pre-start). Terminal runs and restores rejected as corrupt clear their
+  // save directly via GameRegistry.clearSave, so no third return value is
+  // needed here.
+  function serialize() {
+    if (!started || gameOver) return null;
+    return {
+      board: board.map(function (row) { return row.slice(); }),
+      score: score,
+      won: won
+    };
+  }
+
+  // Returns true when savedState was applied. Runs before any ready screen so
+  // a resumed run picks up where the previous session left off.
+  function applyRestoredState(savedState) {
+    if (!savedState || typeof savedState !== 'object') return false;
+    if (!isValidSavedBoard(savedState.board)) return false;
+    if (typeof savedState.score !== 'number' || !Number.isSafeInteger(savedState.score) || savedState.score < 0) return false;
+    // A won board is terminal: it can never appear in a legitimate snapshot
+    // (the win path ends the run), so treat the flag as corruption rather
+    // than trusting it.
+    if (savedState.won !== false) return false;
+    // Reaching 2048 ends the run, so a live board can never contain a 2048
+    // tile either — reject it even when the flag lies.
+    if (boardHasWonTile(savedState.board)) return false;
+    // A live snapshot must have a legal move; a full dead board would strand
+    // the player with no overlay and no way to restart (Space only works
+    // when gameOver is true).
+    if (!canMove(savedState.board)) return false;
+
+    board = savedState.board.map(function (row) { return row.slice(); });
+    score = savedState.score;
+    won = false;
+    gameOver = false;
+    return true;
+  }
+
   // ===================== Input =====================
 
   function afterMove(moved) {
@@ -213,6 +272,9 @@
     if (shouldSave) {
       render();
       saveStats();
+      // The run reached a terminal state: drop any persisted snapshot so the
+      // next launch starts fresh instead of resuming a dead board.
+      window.GameRegistry?.clearSave('2048');
     }
   }
 
@@ -305,7 +367,7 @@
     render();
   }
 
-  function init(containerEl) {
+  function init(containerEl, savedState) {
     container = containerEl;
 
     scoreEl = document.createElement('div');
@@ -326,13 +388,30 @@
     instructions.textContent = t('games2048Controls') || 'Arrow keys to merge tiles';
     container.appendChild(instructions);
 
-    resetGame();
+    // A restored run was already started in a previous session, so it skips
+    // the ready screen and is playable immediately.
+    const restored = applyRestoredState(savedState);
+    if (restored) {
+      started = true;
+      render();
+    } else {
+      resetGame();
+      started = false;
+    }
+    if (!restored && savedState !== undefined && savedState !== null) {
+      // The handed-down snapshot failed validation: discard that stale save
+      // now rather than keeping or re-saving it at teardown.
+      window.GameRegistry?.clearSave('2048');
+    }
 
     document.addEventListener('keydown', handleKeydown);
     boardEl.addEventListener('touchstart', handleTouchStart, { passive: true });
     boardEl.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-    // Hold play until the user signals they are ready.
+    // A fresh run holds on the ready screen until the player signals they are
+    // ready; a restored run skips it and is playable immediately.
+    if (restored) return;
+
     started = false;
     if (typeof window.gamesHelpers?.createReadyScreen === 'function') {
       readyScreen = window.gamesHelpers.createReadyScreen(boardEl, {
@@ -384,7 +463,8 @@
     init: init,
     destroy: destroy,
     pause: pause,
-    resume: resume
+    resume: resume,
+    serialize: serialize
   });
 
   // Test hook: expose whether the game has been started so tests can assert it

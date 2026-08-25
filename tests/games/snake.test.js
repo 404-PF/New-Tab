@@ -199,3 +199,236 @@ describe('Snake dynamic difficulty (#589)', () => {
     container.remove();
   });
 });
+
+describe('Snake cross-session saves (#646)', () => {
+  function makeSavedState() {
+    return {
+      snake: [
+        { x: 10, y: 10 },
+        { x: 9, y: 10 },
+        { x: 8, y: 10 }
+      ],
+      food: { x: 5, y: 5 },
+      direction: 'right',
+      nextDirection: 'up',
+      score: 40 // level 1 + 4 foods eaten → tickMs = BASE - 4*2
+    };
+  }
+
+  it('restores a saved run onto the ready screen', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container, makeSavedState());
+
+    expect(window.__snakeReady.isStarted()).toBe(false);
+    const overlay = container.querySelector('.games-ready-overlay');
+    expect(overlay).not.toBeNull();
+    // The ready screen offers Continue rather than Start.
+    expect(overlay.querySelector('.games-ready-start').textContent).toBe('Continue');
+
+    // The HUD reflects the restored score and level.
+    const scoreEl = container.querySelector('.games-score-display');
+    expect(scoreEl.textContent).toContain('Score: 40');
+    expect(scoreEl.textContent).toContain('Level: 1'); // floor(4/5) + 1
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('continues the restored run when the player signals readiness', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container, makeSavedState());
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__snakeReady.isStarted()).toBe(true);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects malformed or impossible saved runs and starts fresh', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+
+    const bad = [
+      { snake: [{ x: 0, y: 0 }], food: null, direction: 'right', score: 0 },                    // length 1
+      { snake: makeSavedState().snake, direction: 'diagonal', score: 0 },                       // bad direction
+      { snake: makeSavedState().snake, direction: 'right', score: -3 },                         // negative score
+      { snake: [{ x: 10, y: 10 }, { x: 99, y: 2 }], direction: 'right', score: 0 },             // out of bounds segment
+      { snake: [{ x: 5, y: 5 }, { x: 5, y: 5 }], direction: 'right', score: 0 }                 // self-overlap
+    ];
+    bad.forEach((state) => {
+      game.init(container, state);
+      expect(window.__snakeReady.isStarted()).toBe(false);
+      // A fresh board starts with score 0.
+      expect(container.querySelector('.games-score-display').textContent).toContain('Score: 0');
+      game.destroy();
+    });
+
+    container.remove();
+  });
+
+  it('persists a live run through destroyCurrent and restores via launch', () => {
+    let el = document.getElementById('games-game-container');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'games-game-container';
+      document.body.appendChild(el);
+    }
+    expect(window.GameRegistry.launch('snake')).toBe(true);
+
+    // Start the run so serialize() has something to snapshot.
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+
+    window.GameRegistry.destroyCurrent();
+
+    // The initial snake (score 0) is a valid live run worth saving.
+    expect(window.GameRegistry.hasSave('snake')).toBe(true);
+    const saved = JSON.parse(localStorage.getItem('games_saves')).snake;
+    expect(saved.state.snake.length).toBe(3);
+    expect(saved.state.score).toBe(0);
+    expect(saved.state.direction).toBe('right');
+
+    window.GameRegistry.launch('snake');
+    expect(el.querySelector('.games-ready-overlay .games-ready-start').textContent).toBe('Continue');
+
+    window.GameRegistry.destroyCurrent();
+    el.remove();
+  });
+
+  it('drops the save when the run ends', () => {
+    localStorage.setItem('games_saves', JSON.stringify({
+      snake: { state: makeSavedState(), savedAt: 1 }
+    }));
+
+    let el = document.getElementById('games-game-container');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'games-game-container';
+      document.body.appendChild(el);
+    }
+    window.GameRegistry.launch('snake');
+
+    // Continue the saved run and let ticks drive it into a wall. The saved
+    // state queues nextDirection 'up', so the first tick turns north from
+    // y=10 toward the top wall; the saved tick interval is BASE - 4*2 = 112ms,
+    // so advancing well past that guarantees game over.
+    vi.useFakeTimers();
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    vi.advanceTimersByTime(2000);
+    vi.useRealTimers();
+
+    expect(window.GameRegistry.hasSave('snake')).toBe(false);
+    window.GameRegistry.destroyCurrent();
+    el.remove();
+  });
+});
+
+describe('Snake save validation regressions (review #654)', () => {
+  function makeBase() {
+    return {
+      snake: [
+        { x: 10, y: 10 },
+        { x: 9, y: 10 },
+        { x: 8, y: 10 }
+      ],
+      food: { x: 5, y: 5 },
+      direction: 'right',
+      nextDirection: 'right',
+      score: 0
+    };
+  }
+
+  it('rejects snakes shorter than three segments', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    const state = makeBase();
+    state.snake = state.snake.slice(0, 2);
+
+    game.init(container, state);
+    expect(window.__snakeReady.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects duplicate body cells', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    const state = makeBase();
+    state.snake = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 5, y: 5 }];
+
+    game.init(container, state);
+    expect(window.__snakeReady.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects a queued turn opposite the travel direction', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    const state = makeBase();
+    state.direction = 'right';
+    state.nextDirection = 'left'; // would kill the run on the first tick
+
+    game.init(container, state);
+    expect(window.__snakeReady.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('keeps the stored save while a restored run waits on Continue', () => {
+    localStorage.setItem('games_saves', JSON.stringify({
+      snake: { state: makeBase(), savedAt: 1 }
+    }));
+
+    let el = document.getElementById('games-game-container');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'games-game-container';
+      document.body.appendChild(el);
+    }
+
+    // Launch restores onto the ready screen; serialize reports "nothing yet"
+    // so closing/switching must NOT delete the save (P1 regression).
+    expect(window.GameRegistry.launch('snake')).toBe(true);
+    expect(el.querySelector('.games-ready-overlay')).not.toBeNull();
+    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.hasSave('snake')).toBe(true);
+
+    // Relaunch still offers Continue with the same snapshot.
+    window.GameRegistry.launch('snake');
+    expect(el.querySelector('.games-ready-overlay .games-ready-start').textContent).toBe('Continue');
+
+    window.GameRegistry.destroyCurrent();
+    el.remove();
+  });
+
+  it('discards a stale save whose restore was rejected', () => {
+    localStorage.setItem('games_saves', JSON.stringify({
+      snake: { state: { snake: [{ x: 1, y: 1 }], direction: 'right', score: 0 }, savedAt: 1 }
+    }));
+
+    let el = document.getElementById('games-game-container');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'games-game-container';
+      document.body.appendChild(el);
+    }
+
+    expect(window.GameRegistry.launch('snake')).toBe(true); // restore rejected
+    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.hasSave('snake')).toBe(false);
+
+    el.remove();
+  });
+});

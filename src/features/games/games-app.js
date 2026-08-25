@@ -79,7 +79,12 @@
 
       const playBtn = document.createElement('button');
       playBtn.className = 'games-hub-card-play';
-      playBtn.textContent = t('gamesPlay');
+      // A game with a persisted snapshot offers to continue instead of play.
+      const hasSavedGame = window.GameRegistry.hasSave(game.id);
+      playBtn.textContent = t(hasSavedGame ? 'gamesContinue' : 'gamesPlay');
+      if (hasSavedGame) {
+        playBtn.classList.add('games-hub-card-play-continue');
+      }
       playBtn.addEventListener('click', function () {
         launchGame(game.id);
       });
@@ -88,6 +93,12 @@
       card.appendChild(nameEl);
       card.appendChild(descEl);
       card.appendChild(statsEl);
+      if (hasSavedGame) {
+        const savedEl = document.createElement('div');
+        savedEl.className = 'games-hub-card-saved';
+        savedEl.textContent = t('gamesSaved');
+        card.appendChild(savedEl);
+      }
       card.appendChild(playBtn);
       grid.appendChild(card);
     });
