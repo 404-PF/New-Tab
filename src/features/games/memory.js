@@ -232,7 +232,7 @@
     // Every emoji must occur exactly twice; both cards of a pair must agree
     // on matched, a matched card is never left face up, and at most one
     // unmatched card may be face up mid-turn.
-    if (!value.every(isValidSavedCard)) return false;
+    if (!value.every(function (c, idx) { return isValidSavedCard(c, idx); })) return false;
 
     let loneReveals = 0;
     let matchedTotal = 0;
