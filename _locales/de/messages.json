@@ -550,5 +550,25 @@
   "notesEmpty": {
     "message": "Noch keine Notizen. Klicke auf + zum Hinzufügen!",
     "description": "Empty state when no notes exist"
+  },
+  "todoEditRecurrence": {
+    "message": "Wiederholen",
+    "description": "Label"
+  },
+  "recurrenceNone": {
+    "message": "Keine",
+    "description": "No recurrence"
+  },
+  "recurrenceDaily": {
+    "message": "Täglich",
+    "description": "Daily recurrence"
+  },
+  "recurrenceWeekly": {
+    "message": "Wöchentlich",
+    "description": "Weekly recurrence"
+  },
+  "recurrenceMonthly": {
+    "message": "Monatlich",
+    "description": "Monthly recurrence"
   }
 }
