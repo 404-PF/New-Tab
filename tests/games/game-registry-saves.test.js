@@ -29,6 +29,8 @@ function registerSaveableGame(id, state) {
     destroy: () => {
       if (state && state.onDestroy) state.onDestroy();
     },
+    // Serialize-hook contract: object persists, false discards, null/undefined
+    // reports "nothing right now".
     serialize: () => (state ? state.snapshot : undefined)
   });
   return {
@@ -106,18 +108,55 @@ describe('GameRegistry saves (#646)', () => {
     expect(raw['save-b'].state).toEqual({ n: 2 });
   });
 
-  it('drops the save when serialize returns null (terminal state)', () => {
+  it('drops the save when serialize returns false (terminal state)', () => {
     const game = registerSaveableGame('terminal-game', { snapshot: { hp: 5 } });
     ensureContainer();
     window.GameRegistry.launch('terminal-game');
     window.GameRegistry.destroyCurrent();
     expect(window.GameRegistry.hasSave('terminal-game')).toBe(true);
 
-    game.setSnapshot(null); // e.g. game over was reached before teardown
+    game.setSnapshot(false); // e.g. game over was reached before teardown
     window.GameRegistry.launch('terminal-game');
     window.GameRegistry.destroyCurrent();
     expect(window.GameRegistry.hasSave('terminal-game')).toBe(false);
     expect(localStorage.getItem('games_saves')).toBe('{}');
+  });
+
+  it('keeps the stored save when a launched save reports null (pre-start)', () => {
+    const game = registerSaveableGame('prestart-game', { snapshot: null });
+    ensureContainer();
+    localStorage.setItem('games_saves', JSON.stringify({
+      'prestart-game': { state: { waiting: true }, savedAt: 1 }
+    }));
+
+    window.GameRegistry.launch('prestart-game');
+    expect(window.GameRegistry.hasSave('prestart-game')).toBe(true);
+    // Teardown (close modal) without starting must not delete the save.
+    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.hasSave('prestart-game')).toBe(true);
+
+    // And a relaunch restores it; once the game reports live state, the
+    // snapshot it returns supersedes the stored one.
+    game.setSnapshot({ live: 1 });
+    window.GameRegistry.launch('prestart-game');
+    expect(game.initArgs().savedState).toEqual({ waiting: true });
+    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.getSave('prestart-game').state).toEqual({ live: 1 });
+  });
+
+  it('treats a malformed envelope as no save and clears it on teardown', () => {
+    registerSaveableGame('envelope-game', { snapshot: { n: 1 } });
+    ensureContainer();
+    localStorage.setItem('games_saves', JSON.stringify({
+      'envelope-game': {}
+    }));
+    // No Continue is offered for a malformed entry.
+    expect(window.GameRegistry.hasSave('envelope-game')).toBe(false);
+
+    window.GameRegistry.launch('envelope-game');
+    window.GameRegistry.destroyCurrent();
+    // The live snapshot replaces the malformed entry.
+    expect(window.GameRegistry.getSave('envelope-game').state).toEqual({ n: 1 });
   });
 
   it('survives corrupt games_saves payloads', () => {
@@ -135,10 +174,22 @@ describe('GameRegistry saves (#646)', () => {
     ensureContainer();
     window.GameRegistry.launch('hidden-game');
 
-    document.dispatchEvent(new Event('visibilitychange'));
-    Object.defineProperty(document, 'hidden', { value: true, configurable: true });
-    document.dispatchEvent(new Event('visibilitychange'));
-    Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+    // Shadow document.hidden with an own property, then restore whatever was
+    // there before so later tests observe the real accessor.
+    const originalDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
+    const originalHidden = document.hidden;
+    try {
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+    } finally {
+      if (originalDescriptor) {
+        Object.defineProperty(document, 'hidden', originalDescriptor);
+      } else {
+        delete document.hidden;
+      }
+    }
+    expect(document.hidden).toBe(originalHidden);
 
     expect(window.GameRegistry.hasSave('hidden-game')).toBe(true);
     expect(window.GameRegistry.getSave('hidden-game').state).toEqual({ mid: 'run' });
@@ -175,6 +226,28 @@ describe('GameRegistry saves (#646)', () => {
     ensureContainer();
     window.GameRegistry.launch('throwing-game');
     expect(() => window.GameRegistry.destroyCurrent()).not.toThrow();
+    expect(window.GameRegistry.getCurrentGame()).toBeNull();
+  });
+
+  it('does not serialize a game whose init threw', () => {
+    let serializeCalls = 0;
+    localStorage.setItem('games_saves', JSON.stringify({
+      'broken-init-game': { state: { prior: true }, savedAt: 1 }
+    }));
+    window.GameRegistry.register({
+      id: 'broken-init-game',
+      name: 'Broken Init',
+      init: () => { throw new Error('mount failed'); },
+      destroy: () => {},
+      serialize: () => { serializeCalls++; return { partial: true }; }
+    });
+    ensureContainer();
+
+    expect(window.GameRegistry.launch('broken-init-game')).toBe(false);
+    // A half-mounted game cannot report trustworthy state; its save is left
+    // exactly as it was.
+    expect(serializeCalls).toBe(0);
+    expect(window.GameRegistry.getSave('broken-init-game').state).toEqual({ prior: true });
     expect(window.GameRegistry.getCurrentGame()).toBeNull();
   });
 });

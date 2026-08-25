@@ -283,7 +283,6 @@ describe('Snake cross-session saves (#646)', () => {
 
     // Start the run so serialize() has something to snapshot.
     document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
-    window.__snakeDifficulty && expect(true).toBe(true);
 
     window.GameRegistry.destroyCurrent();
 
@@ -314,9 +313,10 @@ describe('Snake cross-session saves (#646)', () => {
     }
     window.GameRegistry.launch('snake');
 
-    // Continue the saved run (head at x=10 heading right) and let ticks drive
-    // the snake into the wall. The saved tick interval is BASE - 4*2 = 112ms;
-    // advancing well past that guarantees game over.
+    // Continue the saved run and let ticks drive it into a wall. The saved
+    // state queues nextDirection 'up', so the first tick turns north from
+    // y=10 toward the top wall; the saved tick interval is BASE - 4*2 = 112ms,
+    // so advancing well past that guarantees game over.
     vi.useFakeTimers();
     document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
     vi.advanceTimersByTime(2000);
@@ -324,6 +324,111 @@ describe('Snake cross-session saves (#646)', () => {
 
     expect(window.GameRegistry.hasSave('snake')).toBe(false);
     window.GameRegistry.destroyCurrent();
+    el.remove();
+  });
+});
+
+describe('Snake save validation regressions (review #654)', () => {
+  function makeBase() {
+    return {
+      snake: [
+        { x: 10, y: 10 },
+        { x: 9, y: 10 },
+        { x: 8, y: 10 }
+      ],
+      food: { x: 5, y: 5 },
+      direction: 'right',
+      nextDirection: 'right',
+      score: 0
+    };
+  }
+
+  it('rejects snakes shorter than three segments', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    const state = makeBase();
+    state.snake = state.snake.slice(0, 2);
+
+    game.init(container, state);
+    expect(window.__snakeReady.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects duplicate body cells', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    const state = makeBase();
+    state.snake = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 5, y: 5 }];
+
+    game.init(container, state);
+    expect(window.__snakeReady.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects a queued turn opposite the travel direction', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    const state = makeBase();
+    state.direction = 'right';
+    state.nextDirection = 'left'; // would kill the run on the first tick
+
+    game.init(container, state);
+    expect(window.__snakeReady.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('keeps the stored save while a restored run waits on Continue', () => {
+    localStorage.setItem('games_saves', JSON.stringify({
+      snake: { state: makeBase(), savedAt: 1 }
+    }));
+
+    let el = document.getElementById('games-game-container');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'games-game-container';
+      document.body.appendChild(el);
+    }
+
+    // Launch restores onto the ready screen; serialize reports "nothing yet"
+    // so closing/switching must NOT delete the save (P1 regression).
+    expect(window.GameRegistry.launch('snake')).toBe(true);
+    expect(el.querySelector('.games-ready-overlay')).not.toBeNull();
+    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.hasSave('snake')).toBe(true);
+
+    // Relaunch still offers Continue with the same snapshot.
+    window.GameRegistry.launch('snake');
+    expect(el.querySelector('.games-ready-overlay .games-ready-start').textContent).toBe('Continue');
+
+    window.GameRegistry.destroyCurrent();
+    el.remove();
+  });
+
+  it('discards a stale save whose restore was rejected', () => {
+    localStorage.setItem('games_saves', JSON.stringify({
+      snake: { state: { snake: [{ x: 1, y: 1 }], direction: 'right', score: 0 }, savedAt: 1 }
+    }));
+
+    let el = document.getElementById('games-game-container');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'games-game-container';
+      document.body.appendChild(el);
+    }
+
+    expect(window.GameRegistry.launch('snake')).toBe(true); // restore rejected
+    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.hasSave('snake')).toBe(false);
+
     el.remove();
   });
 });

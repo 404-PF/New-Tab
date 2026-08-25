@@ -4520,6 +4520,10 @@ body.light-theme .games-hub-card-saved {
   color: #1d8f88;
 }
 
+body.light-theme .games-hub-card-saved::before {
+  background: #1d8f88;
+}
+
 body.light-theme .games-hub-card-play-continue {
   background: #d98a0b;
 }

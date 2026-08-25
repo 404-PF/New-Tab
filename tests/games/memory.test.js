@@ -360,3 +360,104 @@ describe('Memory cross-session saves (#646)', () => {
     container.remove();
   });
 });
+
+describe('Memory save validation regressions (review #654)', () => {
+  it('accepts a real snapshot that contains completed pairs', () => {
+    // In play, matched cards keep flipped=true until the next render; the
+    // serializer normalizes them, but a validator must not reject such a
+    // board wholesale — pair consistency is what matters.
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+
+    const state = {
+      cards: [],
+      moves: 2,
+      elapsedMs: 5000
+    };
+    const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'];
+    for (let i = 0; i < 8; i++) {
+      state.cards.push({ emoji: emojis[i], matched: i < 1 });
+      state.cards.push({ emoji: emojis[i], matched: i < 1 });
+    }
+    game.init(container, state);
+    expect(window.__memoryReady.isStarted()).toBe(true);
+    expect(container.querySelectorAll('.games-memory-card-matched')).toHaveLength(2);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects boards whose pairs disagree on matched', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+
+    const cards = [];
+    const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'];
+    for (let i = 0; i < 8; i++) {
+      cards.push({ emoji: emojis[i], matched: i === 0 });
+      cards.push({ emoji: emojis[i], matched: false }); // same pair, disagrees
+    }
+    game.init(container, { cards: cards, moves: 1, elapsedMs: 1000 });
+    expect(window.__memoryReady.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects boards with an odd emoji count', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+
+    const cards = [];
+    const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'];
+    // 7 pairs plus one extra 🐶 (3 occurrences) — parity broken at length 16.
+    for (let i = 0; i < 7; i++) {
+      cards.push({ emoji: emojis[i], matched: false });
+      cards.push({ emoji: emojis[i], matched: false });
+    }
+    cards.push({ emoji: emojis[0], matched: false });
+
+    game.init(container, { cards: cards, moves: 0, elapsedMs: 0 });
+    expect(window.__memoryReady.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('saves paused elapsed time from pausedAt, not wall clock', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(1000000);
+      let el = document.getElementById('games-game-container');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'games-game-container';
+        document.body.appendChild(el);
+      }
+      expect(window.GameRegistry.launch('memory')).toBe(true);
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+
+      el.querySelectorAll('.games-memory-card')[0].click();
+      // Pause freezes the timer at pausedAt.
+      window.GameRegistry.getCurrentGame().pause();
+
+      // Time passes while hidden...
+      vi.advanceTimersByTime(60000);
+      vi.setSystemTime(1060000);
+
+      window.GameRegistry.destroyCurrent();
+      const saved = JSON.parse(localStorage.getItem('games_saves')).memory;
+      // Elapsed must be measured to the pause point (~0s), not include the
+      // 60s hidden interval.
+      expect(saved.state.elapsedMs).toBeLessThan(5000);
+
+      window.GameRegistry._reset && window.GameRegistry._reset();
+      el.remove();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

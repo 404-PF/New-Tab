@@ -13,6 +13,9 @@
   let scoreEl = null;
   let started = false;
   let readyScreen = null;
+  // True when this launch was handed a savedState that failed validation, so
+  // teardown must discard the stale save instead of keeping or refreshing it.
+  let restoreRejected = false;
 
   // ===================== Helpers =====================
 
@@ -196,20 +199,26 @@
 
   // ===================== Save / Restore (#646) =====================
 
+  function isValidTileValue(v) {
+    if (v === 0) return true;
+    return typeof v === 'number' && Number.isInteger(v) && v >= 2 && (v & (v - 1)) === 0;
+  }
+
   function isValidSavedBoard(value) {
     return Array.isArray(value) && value.length === SIZE && value.every(function (row) {
-      return Array.isArray(row) && row.length === SIZE && row.every(function (v) {
-        return typeof v === 'number' && Number.isInteger(v) && v >= 0;
-      });
+      return Array.isArray(row) && row.length === SIZE && row.every(isValidTileValue);
     });
   }
 
-  // Snapshot the live run. Returns null when there is nothing worth carrying
-  // across sessions (never started, already over) so the registry drops any
-  // stale save instead of persisting a dead board.
+  // Snapshot the live run. Contract with GameRegistry.serializeCurrent:
+  //   object -> persist;  false -> discard any stored save;  null -> nothing
+  // to report right now (keep whatever save this launch restored).
   function serialize() {
-    if (!started || gameOver) return null;
-    if (!isValidSavedBoard(board)) return null;
+    if (gameOver) return false;
+    // Before Start there is no live state: a launch whose snapshot failed
+    // validation discards the stale save, anything else keeps it.
+    if (!started) return restoreRejected ? false : null;
+    if (!isValidSavedBoard(board)) return false;
     return {
       board: board.map(function (row) { return row.slice(); }),
       score: score,
@@ -222,11 +231,15 @@
   function applyRestoredState(savedState) {
     if (!savedState || typeof savedState !== 'object') return false;
     if (!isValidSavedBoard(savedState.board)) return false;
-    if (typeof savedState.score !== 'number' || !Number.isFinite(savedState.score) || savedState.score < 0) return false;
+    if (typeof savedState.score !== 'number' || !Number.isInteger(savedState.score) || savedState.score < 0) return false;
+    // A won board is terminal: it can never appear in a legitimate snapshot
+    // (the win path ends the run), so treat the flag as corruption rather
+    // than trusting it.
+    if (savedState.won === true) return false;
 
     board = savedState.board.map(function (row) { return row.slice(); });
-    score = Math.floor(savedState.score);
-    won = savedState.won === true;
+    score = savedState.score;
+    won = false;
     gameOver = false;
     return true;
   }
@@ -340,6 +353,7 @@
     score = 0;
     gameOver = false;
     won = false;
+    restoreRejected = false;
     addRandomTile();
     addRandomTile();
     render();
@@ -371,11 +385,14 @@
     const restored = applyRestoredState(savedState);
     if (restored) {
       started = true;
+      render();
     } else {
       resetGame();
       started = false;
     }
-    render();
+    // A launch whose snapshot failed validation must discard that stale save
+    // at teardown instead of keeping or re-saving it.
+    restoreRejected = !restored && savedState !== undefined && savedState !== null;
 
     document.addEventListener('keydown', handleKeydown);
     boardEl.addEventListener('touchstart', handleTouchStart, { passive: true });
@@ -412,6 +429,7 @@
       readyScreen = null;
     }
     started = false;
+    restoreRejected = false;
     document.removeEventListener('keydown', handleKeydown);
     if (boardEl) {
       boardEl.removeEventListener('touchstart', handleTouchStart);

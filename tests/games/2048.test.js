@@ -300,7 +300,10 @@ describe('2048 cross-session saves (#646)', () => {
     expect(window.GameRegistry.hasSave('2048')).toBe(true);
     const saved = JSON.parse(localStorage.getItem('games_saves'))['2048'];
     expect(saved.state.board).toHaveLength(4);
-    expect(saved.state.board.flat().filter(v => v > 0).length).toBeGreaterThanOrEqual(3); // 2 initial + spawn
+    // At least 2 tiles: a board-changing move may merge the two initial tiles
+    // into one before spawning a replacement (2 filled), or just move them
+    // and spawn (3 filled).
+    expect(saved.state.board.flat().filter(v => v > 0).length).toBeGreaterThanOrEqual(2);
 
     // A fresh init receives the snapshot and rebuilds the saved board.
     const container2 = document.createElement('div');
@@ -342,6 +345,58 @@ describe('2048 cross-session saves (#646)', () => {
     window.GameRegistry.destroyCurrent();
     expect(window.GameRegistry.hasSave('2048')).toBe(false);
 
+    container.remove();
+  });
+});
+
+describe('2048 save validation regressions (review #654)', () => {
+  it('rejects non-power-of-two tiles', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    game.init(container, {
+      board: [[2, 4, 3, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 4,
+      won: false
+    });
+    expect(window.__game2048Ready.isStarted()).toBe(false); // fell back to ready screen
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects a non-integer score instead of flooring it', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    game.init(container, {
+      board: [[2, 4, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 1.5,
+      won: false
+    });
+    expect(window.__game2048Ready.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects won:true snapshots as terminal corruption', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    game.init(container, {
+      board: [[2048, 4, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 2000,
+      won: true
+    });
+    expect(window.__game2048Ready.isStarted()).toBe(false);
+
+    // The stale save must be discarded at teardown, not kept or re-saved.
+    expect(() => game.serialize()).not.toThrow();
+    game.destroy();
     container.remove();
   });
 });

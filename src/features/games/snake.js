@@ -36,6 +36,9 @@
   let tickMs = BASE_TICK_MS;
   let started = false;
   let readyScreen = null;
+  // True when this launch was handed a savedState that failed validation, so
+  // teardown must discard the stale save instead of keeping it.
+  let restoreRejected = false;
 
   // ===================== Helpers =====================
 
@@ -538,6 +541,7 @@
 
   function restart() {
     started = true;
+    restoreRejected = false;
     initSnake();
     draw();
     startTick();
@@ -648,13 +652,15 @@
     return value === 'up' || value === 'down' || value === 'left' || value === 'right';
   }
 
-  // Snapshot the live run. Returns null when there is nothing worth carrying
-  // across sessions (never started or already over) so the registry drops any
-  // stale save instead of persisting a dead run. A paused run is saved too —
-  // pausing is exactly when interruptions happen.
+  // Snapshot the live run. Contract with GameRegistry.serializeCurrent:
+  //   object -> persist;  false -> discard any stored save;  null -> nothing
+  // to report right now (keep whatever save this launch restored).
   function serialize() {
-    if (!started || gameOver) return null;
-    if (!isValidSavedSnake(snake)) return null;
+    if (gameOver) return false;
+    // Before Start there is no live state: a launch whose snapshot failed
+    // validation discards the stale save, anything else keeps it.
+    if (!started) return restoreRejected ? false : null;
+    if (!isValidSavedSnake(snake)) return false;
     return {
       snake: snake.map(function (seg) { return { x: seg.x, y: seg.y }; }),
       food: food && Number.isInteger(food.x) && Number.isInteger(food.y) ? { x: food.x, y: food.y } : null,
@@ -671,6 +677,15 @@
   function applyRestoredState(savedState) {
     if (!savedState || typeof savedState !== 'object') return false;
     if (!isValidSavedSnake(savedState.snake)) return false;
+    // The initial snake is three segments; anything shorter cannot occur.
+    if (savedState.snake.length < 3) return false;
+    // Body cells are unique in play; duplicates mean corruption.
+    const seen = Object.create(null);
+    for (const seg of savedState.snake) {
+      const key = seg.x + ',' + seg.y;
+      if (seen[key]) return false;
+      seen[key] = true;
+    }
     if (typeof savedState.score !== 'number' || !Number.isInteger(savedState.score) || savedState.score < 0) return false;
     if (!isValidDirection(savedState.direction)) return false;
     if (savedState.nextDirection !== undefined && !isValidDirection(savedState.nextDirection)) return false;
@@ -690,12 +705,17 @@
       // Food never spawns under the body.
       return false;
     }
+    const nextDir = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
+    // A queued turn opposite the travel direction would kill the run on the
+    // first tick after Continue; play only accepts non-opposite turns.
+    const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
+    if (nextDir === opposites[savedState.direction]) return false;
 
     snake = savedState.snake.map(function (seg) { return { x: seg.x, y: seg.y }; });
     food = savedFood ? { x: savedFood.x, y: savedFood.y } : null;
     if (!food) spawnFood();
     direction = savedState.direction;
-    nextDirection = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
+    nextDirection = nextDir;
     score = savedState.score;
     tickMs = tickMsForScore(score);
     updateScoreHud();
@@ -717,6 +737,7 @@
   // reduced-motion users would otherwise see it until the first tick.
   function startRun() {
     started = true;
+    restoreRejected = false;
     manualPause = false;
     paused = false;
     draw();
@@ -755,6 +776,7 @@
     // so a real-time game never resumes ticking unannounced.
     const restored = applyRestoredState(savedState);
     if (!restored) {
+      restoreRejected = savedState !== undefined && savedState !== null;
       initSnake();
       draw();
     } else {
@@ -791,6 +813,7 @@
       readyScreen = null;
     }
     started = false;
+    restoreRejected = false;
     stopTick();
     stopAnimation();
     document.removeEventListener('keydown', handleKeydown);

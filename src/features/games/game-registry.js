@@ -13,6 +13,9 @@
   let registeredGames = Object.create(null);
   let launchOrder = [];
   let currentGame = null;
+  // True while the running game was launched with a restored snapshot that it
+  // has not yet superseded (see serializeCurrent).
+  let currentLaunchHadSave = false;
   let initialized = false;
 
   // ===================== Storage Helpers =====================
@@ -86,20 +89,26 @@
     }
   }
 
-  // Persist a snapshot for a game that opted in via serialize(). Returns true
-  // when a save was written.
+  // Persist a snapshot for a game that opted in via serialize(). Callers must
+  // pass a concrete state; returns true when a save was written.
   function persistSave(gameId, state) {
-    if (!gameId || state === undefined || state === null) return false;
+    if (!gameId) return false;
     const saves = loadSaves();
     saves[gameId] = { state: state, savedAt: Date.now() };
     saveSaves(saves);
     return true;
   }
 
+  // A well-formed envelope carries a concrete snapshot; anything else (e.g. a
+  // hand-edited or partially written `{}` entry) must not surface as a save.
+  function isValidSaveEnvelope(entry) {
+    return !!(entry && typeof entry === 'object' && !Array.isArray(entry) &&
+      entry.state !== null && entry.state !== undefined);
+  }
+
   function getSave(gameId) {
-    const saves = loadSaves();
-    const entry = saves[gameId];
-    return entry && typeof entry === 'object' ? entry : null;
+    const entry = loadSaves()[gameId];
+    return isValidSaveEnvelope(entry) ? entry : null;
   }
 
   function hasSave(gameId) {
@@ -108,7 +117,7 @@
 
   function clearSave(gameId) {
     const saves = loadSaves();
-    if (!(gameId in saves)) return;
+    if (!Object.prototype.hasOwnProperty.call(saves, gameId)) return;
     delete saves[gameId];
     saveSaves(saves);
   }
@@ -191,13 +200,14 @@
     // ignore the second argument simply start fresh.
     const save = getSave(gameId);
     const savedState = save ? save.state : undefined;
+    currentLaunchHadSave = !!save;
 
     container.innerHTML = '';
     try {
       game.init(container, savedState);
     } catch (e) {
       console.warn('GameRegistry.launch: error initializing', game.id, e);
-      destroyCurrent();
+      destroyCurrent({ serialize: false });
       return false;
     }
     touchMRU(gameId);
@@ -208,11 +218,20 @@
     if (!currentGame || typeof currentGame.serialize !== 'function') return false;
     try {
       const state = currentGame.serialize();
-      // A null snapshot means the run is not worth carrying over (never
-      // started or already over): drop any stale save so the next launch
-      // starts fresh.
-      if (state === null || state === undefined) {
+      // Serialize-hook contract:
+      //   object        -> persist the snapshot
+      //   false         -> explicitly discard any stored save (terminal run)
+      //   null/undefined-> nothing to report right now; keep a snapshot this
+      //                    launch restored (e.g. Snake waiting on Continue),
+      //                    otherwise drop any stale entry
+      if (state === false) {
         clearSave(currentGame.id);
+        return false;
+      }
+      if (state === null || state === undefined) {
+        if (!currentLaunchHadSave) {
+          clearSave(currentGame.id);
+        }
         return false;
       }
       return persistSave(currentGame.id, state);
@@ -222,9 +241,13 @@
     }
   }
 
-  function destroyCurrent() {
+  // serialize: pass false to tear down without touching the save store (used
+  // when init() failed mid-mount and the game cannot report trustworthy state).
+  function destroyCurrent(options) {
     if (!currentGame) return;
-    serializeCurrent();
+    if (!options || options.serialize !== false) {
+      serializeCurrent();
+    }
     try {
       currentGame.destroy();
     } catch (e) {
