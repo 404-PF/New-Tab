@@ -4305,9 +4305,9 @@ body.light-theme .ai-export-all-btn {
 }
 
 body.light-theme .ai-export-all-btn:hover {
-  background: rgba(99, 102, 241, 0.1);
+  background: #e2e4fb;
   border-color: rgba(99, 102, 241, 0.35);
-  color: #4338ca;
+  color: #3730a3;
 }
 
 @media screen and (max-width: 768px) {

@@ -259,11 +259,14 @@ const AIStore = (function() {
   // Role labels stay untranslated so exported files read consistently when shared.
   function serializeConversationToMarkdown(conversation) {
     // Auto-generated titles can contain newlines (they preview the first
-    // message); flatten them so the heading stays on a single line.
-    // [^\S\r\n] = whitespace excluding CR/LF; disjoint classes avoid the
-    // backtracking shape SonarCloud S8786 flags on \s*[\r\n]+\s*.
+    // message); flatten them so the heading stays on a single line. Splitting
+    // instead of a whitespace regex keeps the matcher free of quantifier
+    // adjacency (SonarCloud S8786).
     const title = String(conversation.title || '')
-      .replace(/[^\S\r\n]*[\r\n]+[^\S\r\n]*/g, ' ')
+      .split(/[\r\n]+/)
+      .map(part => part.trim())
+      .filter(Boolean)
+      .join(' ')
       .trim();
     const lines = ['# ' + title, ''];
     (conversation.messages || []).forEach(message => {
