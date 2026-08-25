@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
-function getNotes() {
+function _getNotes() {
   try {
     const raw = localStorage.getItem('notes');
     if (!raw) return [];
