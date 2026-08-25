@@ -173,8 +173,8 @@
     if (_activeSearchQuery) {
       const q = _activeSearchQuery.toLowerCase();
       filtered = filtered.filter(n => {
-        const textMatch = typeof n.text === "string" && n.text.toLowerCase().includes(q);
-        const tagMatch = typeof n.tag === "string" && n.tag.toLowerCase().includes(q);
+        const textMatch = typeof n.text === 'string' && n.text.toLowerCase().includes(q);
+        const tagMatch = typeof n.tag === 'string' && n.tag.toLowerCase().includes(q);
         return textMatch || tagMatch;
       });
     }
