@@ -181,6 +181,15 @@
     return filtered;
   }
 
+  function updateNotesEmptyState(emptyEl, isEmpty) {
+    const emptyParagraph = emptyEl.querySelector('p');
+    if (!emptyParagraph) return;
+    const key = isEmpty ? 'notesEmpty' : 'notesNoResults';
+    const fallback = isEmpty ? 'No notes yet. Click + to add one!' : 'No matching notes.';
+    emptyParagraph.textContent = window.i18n ? window.i18n.t(key) : fallback;
+    emptyParagraph.dataset.i18n = key;
+  }
+
   function renderNotes() {
     const { notesList, notesEmpty } = elements;
     if (!notesList || !notesEmpty) return;
@@ -199,16 +208,7 @@
 
     if (filtered.length === 0) {
       notesEmpty.style.display = 'block';
-      const emptyParagraph = notesEmpty.querySelector('p');
-      if (emptyParagraph) {
-        if (notes.length === 0) {
-          emptyParagraph.textContent = window.i18n ? window.i18n.t('notesEmpty') : 'No notes yet. Click + to add one!';
-          emptyParagraph.setAttribute('data-i18n', 'notesEmpty');
-        } else {
-          emptyParagraph.textContent = window.i18n ? window.i18n.t('notesNoResults') : 'No matching notes.';
-          emptyParagraph.setAttribute('data-i18n', 'notesNoResults');
-        }
-      }
+      updateNotesEmptyState(notesEmpty, notes.length === 0);
       return;
     }
 
