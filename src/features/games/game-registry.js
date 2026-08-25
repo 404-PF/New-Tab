@@ -222,7 +222,6 @@
     try {
       const state = currentGame.serialize();
       // Serialize-hook contract:
-      // Serialize-hook contract:
       //   object         -> persist the snapshot
       //   null/undefined -> nothing live to report right now; keep a snapshot
       //                     this launch restored (e.g. Snake waiting on

@@ -214,6 +214,17 @@
     return value.some(function (row) { return row.includes(2048); });
   }
 
+  function boardHasLegalMove(value) {
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (value[r][c] === 0) return true;
+        if (c < SIZE - 1 && value[r][c] === value[r][c + 1]) return true;
+        if (r < SIZE - 1 && value[r][c] === value[r + 1][c]) return true;
+      }
+    }
+    return false;
+  }
+
   // Snapshot the live run, or null when there is nothing to report right now
   // (pre-start). Terminal runs and restores rejected as corrupt clear their
   // save directly via GameRegistry.clearSave, so no third return value is
@@ -240,6 +251,10 @@
     // Reaching 2048 ends the run, so a live board can never contain a 2048
     // tile either — reject it even when the flag lies.
     if (boardHasWonTile(savedState.board)) return false;
+    // A live snapshot must have a legal move; a full dead board would strand
+    // the player with no overlay and no way to restart (Space only works
+    // when gameOver is true).
+    if (!boardHasLegalMove(savedState.board)) return false;
 
     board = savedState.board.map(function (row) { return row.slice(); });
     score = savedState.score;

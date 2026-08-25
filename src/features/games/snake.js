@@ -780,7 +780,8 @@
 
     // A restored run rebuilds the saved board and holds on the ready screen
     // so a real-time game never resumes ticking unannounced.
-    if (savedState && validateSavedState(savedState)) {
+    const restoredRun = !!savedState && validateSavedState(savedState);
+    if (restoredRun) {
       applyRestoredState(savedState);
       draw();
     } else {
@@ -800,7 +801,6 @@
     // Hold play until the user signals they are ready. A restored run offers
     // Continue instead of Start.
     started = false;
-    const restoredRun = !!savedState && validateSavedState(savedState);
     if (typeof window.gamesHelpers?.createReadyScreen === 'function') {
       readyScreen = window.gamesHelpers.createReadyScreen(stage, {
         text: t('gamesReady') || 'Ready?',

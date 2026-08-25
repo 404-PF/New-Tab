@@ -29,8 +29,8 @@ function registerSaveableGame(id, state) {
     destroy: () => {
       if (state && state.onDestroy) state.onDestroy();
     },
-    // Serialize-hook contract: object persists, false discards, null/undefined
-    // reports "nothing right now".
+    // Serialize-hook contract: an object persists; null/undefined reports
+    // "nothing right now". Games clear their own save via clearSave().
     serialize: () => (state ? state.snapshot : undefined)
   });
   return {
