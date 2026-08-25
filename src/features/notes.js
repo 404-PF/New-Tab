@@ -121,6 +121,15 @@
   }
 
   let _activeTagFilter = null;
+  let _activeSearchQuery = '';
+
+  function getSearchQuery() {
+    return _activeSearchQuery;
+  }
+
+  function setSearchQuery(query) {
+    _activeSearchQuery = (query || '').trim();
+  }
 
   function renderTagFilter() {
     const filterBar = document.getElementById('notes-tag-filter');
@@ -157,8 +166,19 @@
   }
 
   function getFilteredNotes() {
-    if (_activeTagFilter === null) return notes;
-    return notes.filter(n => n.tag === _activeTagFilter);
+    let filtered = notes;
+    if (_activeTagFilter !== null) {
+      filtered = filtered.filter(n => n.tag === _activeTagFilter);
+    }
+    if (_activeSearchQuery) {
+      const q = _activeSearchQuery.toLowerCase();
+      filtered = filtered.filter(n => {
+        const textMatch = n.text && n.text.toLowerCase().includes(q);
+        const tagMatch = n.tag && n.tag.toLowerCase().includes(q);
+        return textMatch || tagMatch;
+      });
+    }
+    return filtered;
   }
 
   function renderNotes() {
@@ -179,6 +199,16 @@
 
     if (filtered.length === 0) {
       notesEmpty.style.display = 'block';
+      const emptyParagraph = notesEmpty.querySelector('p');
+      if (emptyParagraph) {
+        if (notes.length === 0) {
+          emptyParagraph.textContent = window.i18n ? window.i18n.t('notesEmpty') : 'No notes yet. Click + to add one!';
+          emptyParagraph.setAttribute('data-i18n', 'notesEmpty');
+        } else {
+          emptyParagraph.textContent = window.i18n ? window.i18n.t('notesNoResults') : 'No matching notes.';
+          emptyParagraph.setAttribute('data-i18n', 'notesNoResults');
+        }
+      }
       return;
     }
 
@@ -387,10 +417,11 @@
     const insertionIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
     reorderedFiltered.splice(Math.min(insertionIndex, reorderedFiltered.length), 0, removed);
 
-    // When a tag filter is active, only replace the visible notes in their
-    // existing slots so unfiltered notes keep their relative positions.
+    // When any filter is active, only replace the visible notes in their
+    // existing slots so hidden notes keep their relative positions.
+    const activeIds = new Set(filtered.map(n => n.id));
     const filteredSlots = notes
-      .map((note, index) => (_activeTagFilter === null || note.tag === _activeTagFilter ? index : -1))
+      .map((note, index) => (activeIds.has(note.id) ? index : -1))
       .filter(index => index !== -1);
     filteredSlots.forEach((slot, index) => {
       notes[slot] = reorderedFiltered[index];
@@ -827,6 +858,11 @@
     _previewMouseDown = !!e.target.closest('.note-preview-btn, .note-tag-btn');
   }
 
+  function handleNotesSearchInput(e) {
+    setSearchQuery(e.target.value);
+    renderNotes();
+  }
+
   function initNotes() {
     const notesSection = document.querySelector('.notes-section');
     if (!notesSection) {
@@ -837,6 +873,7 @@
     elements.notesList = document.getElementById('notes-list');
     elements.notesEmpty = document.getElementById('notes-empty');
     elements.addNoteBtn = document.getElementById('add-note-btn');
+    elements.notesSearch = document.getElementById('notes-search');
 
     if (!elements.notesList || !elements.notesEmpty) {
       return;
@@ -850,6 +887,16 @@
       elements.addNoteBtn.removeEventListener('click', addNote);
       elements.addNoteBtn.addEventListener('click', addNote);
       elements.addNoteBtn.title = window.i18n ? window.i18n.t('addNoteTooltip') : 'Add note';
+    }
+
+    if (elements.notesSearch) {
+      elements.notesSearch.removeEventListener('input', handleNotesSearchInput);
+      elements.notesSearch.addEventListener('input', handleNotesSearchInput);
+      elements.notesSearch.placeholder = window.i18n ? window.i18n.t('notesSearchPlaceholder') : 'Search notes...';
+      // Restore current query value in case renderNotes cleared it
+      if (elements.notesSearch.value !== _activeSearchQuery) {
+        elements.notesSearch.value = _activeSearchQuery;
+      }
     }
 
     document.removeEventListener('click', handleNotesClick);
@@ -876,6 +923,9 @@
     if (elements.addNoteBtn) {
       elements.addNoteBtn.title = window.i18n ? window.i18n.t('addNoteTooltip') : 'Add note';
     }
+    if (elements.notesSearch) {
+      elements.notesSearch.placeholder = window.i18n ? window.i18n.t('notesSearchPlaceholder') : 'Search notes...';
+    }
     renderNotes();
   });
 
@@ -890,6 +940,9 @@ try {
   window.updateNoteText = updateNoteText;
   window.updateNoteTag = updateNoteTag;
   window.reorderNotes = reorderNotes;
+  window.getFilteredNotes = getFilteredNotes;
+  window.setNotesSearchQuery = setSearchQuery;
+  window.getNotesSearchQuery = getSearchQuery;
 } catch {
   // ignore
 }

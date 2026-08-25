@@ -538,5 +538,13 @@
   "weatherNow": {
     "message": "지금",
     "description": "Label for the current hour in hourly forecast"
+  },
+  "notesSearchPlaceholder": {
+    "message": "Search notes...",
+    "description": "Placeholder text for the notes search input"
+  },
+  "notesNoResults": {
+    "message": "No matching notes.",
+    "description": "Empty state when no notes match the search query"
   }
 }
