@@ -201,7 +201,7 @@
     // Powers of two only. Avoid bitwise checks: they coerce to 32 bits and
     // would accept values like 4294967297.
     return typeof v === 'number' && Number.isInteger(v) && v >= 2 &&
-      v <= Number.MAX_SAFE_INTEGER && Math.log2(v) % 1 === 0;
+      v <= 4503599627370496 && Math.log2(v) % 1 === 0;
   }
 
   function isValidSavedBoard(value) {
@@ -219,7 +219,7 @@
   // save directly via GameRegistry.clearSave, so no third return value is
   // needed here.
   function serialize() {
-    if (!started) return null;
+    if (!started || gameOver) return null;
     return {
       board: board.map(function (row) { return row.slice(); }),
       score: score,

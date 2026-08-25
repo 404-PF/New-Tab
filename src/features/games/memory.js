@@ -233,6 +233,7 @@
     // on matched, a matched card is never left face up, and at most one
     // unmatched card may be face up mid-turn.
     if (!value.every(function (c, idx) { return isValidSavedCard(c, idx); })) return false;
+    if (value.some(function (c) { return c.matched && c.flipped === true; })) return false;
 
     let loneReveals = 0;
     let matchedTotal = 0;

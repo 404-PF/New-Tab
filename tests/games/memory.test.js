@@ -453,7 +453,7 @@ describe('Memory save validation regressions (review #654)', () => {
       // Elapsed must be measured to the pause point (~0s), not include the
       // 60s hidden interval.
       expect(saved.state.elapsedMs).toBeLessThan(5000);
-
+
       el.remove();
     } finally {
       vi.useRealTimers();
@@ -488,7 +488,7 @@ describe('Memory pausedAt lifecycle (review #654 round 2)', () => {
 
       window.GameRegistry.destroyCurrent();
       const saved = JSON.parse(localStorage.getItem('games_saves')).memory;
-      // Elapsed ≈ 35s (0.5s pre-pause + 30s post-resume), not ~0.5s (which
+      // Elapsed ≈ 30s (30s post-resume; pre-pause is ~0 and the 0.5s pause is not counted), not ~0.5s (which
       // would mean post-resume time was lost).
       expect(saved.state.elapsedMs).toBeGreaterThan(25000);
       el.remove();

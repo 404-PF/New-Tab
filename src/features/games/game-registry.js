@@ -105,7 +105,7 @@
   // a save.
   function isValidSaveEnvelope(entry) {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
-    if (entry.state === null || typeof entry.state !== 'object') return false;
+    if (entry.state === null || typeof entry.state !== 'object' || Array.isArray(entry.state)) return false;
     return Number.isFinite(entry.savedAt);
   }
 

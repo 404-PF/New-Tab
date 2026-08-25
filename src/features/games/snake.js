@@ -653,7 +653,7 @@
   // Terminal runs and restores rejected as corrupt clear their save directly
   // via GameRegistry.clearSave, so no third return value is needed here.
   function serialize() {
-    if (!started) return null;
+    if (!started || gameOver) return null;
     return {
       snake: snake.map(function (seg) { return { x: seg.x, y: seg.y }; }),
       food: food && Number.isInteger(food.x) && Number.isInteger(food.y) ? { x: food.x, y: food.y } : null,
