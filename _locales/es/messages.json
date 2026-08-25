@@ -548,7 +548,7 @@
     "description": "Empty state when no notes match the search query"
   },
   "notesEmpty": {
-    "message": "¡Aún no hay notas. Haz clic en + para añadir una!",
+    "message": "Aún no hay notas. ¡Haz clic en + para agregar una!",
     "description": "Empty state when no notes exist"
   }
 }

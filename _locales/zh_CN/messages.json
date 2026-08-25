@@ -548,7 +548,7 @@
     "description": "Empty state when no notes match the search query"
   },
   "notesEmpty": {
-    "message": "还没有便签。点击 + 添加一条！",
+    "message": "还没有便签。点击 + 添加一个！",
     "description": "Empty state when no notes exist"
   }
 }
