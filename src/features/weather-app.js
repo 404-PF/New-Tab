@@ -251,32 +251,58 @@
     return null;
   }
 
+  function parseHourlyTimeFallback(timeStr) {
+    const sep = timeStr.indexOf('T');
+    if (sep === -1) return new Date(Number.NaN);
+    const datePart = timeStr.slice(0, sep);
+    const timePart = timeStr.slice(sep + 1, sep + 6);
+    const dp = datePart.split('-');
+    const tp = timePart.split(':');
+    if (dp.length !== 3 || tp.length !== 2) return new Date(Number.NaN);
+    return new Date(Number.parseInt(dp[0], 10), Number.parseInt(dp[1], 10) - 1, Number.parseInt(dp[2], 10), Number.parseInt(tp[0], 10), Number.parseInt(tp[1], 10));
+  }
+
   function findHourlyStartIndex(times, bounded, nowStr) {
     if (nowStr) {
+      const nowHourStr = nowStr.length >= 13 ? nowStr.slice(0, 13) + ':00' : nowStr;
       for (let i = 0; i < bounded; i++) {
-        if (times[i] >= nowStr) return i;
+        if (times[i] >= nowHourStr) return i;
       }
       return 0;
     }
     const now = new Date();
     for (let i = 0; i < bounded; i++) {
-      const timeStr = times[i];
-      let d = new Date(timeStr);
+      let d = new Date(times[i]);
       if (Number.isNaN(d.getTime())) {
-        const sep = timeStr.indexOf('T');
-        if (sep !== -1) {
-          const datePart = timeStr.slice(0, sep);
-          const timePart = timeStr.slice(sep + 1, sep + 6);
-          const dp = datePart.split('-');
-          const tp = timePart.split(':');
-          if (dp.length === 3 && tp.length === 2) {
-            d = new Date(Number.parseInt(dp[0], 10), Number.parseInt(dp[1], 10) - 1, Number.parseInt(dp[2], 10), Number.parseInt(tp[0], 10), Number.parseInt(tp[1], 10));
-          }
-        }
+        d = parseHourlyTimeFallback(times[i]);
       }
       if (!Number.isNaN(d.getTime()) && d.getTime() >= now.getTime() - 60000) return i;
     }
     return 0;
+  }
+
+  function isCurrentHourSlot(timeStr, nowStr) {
+    if (!timeStr || !nowStr || timeStr.length < 13 || nowStr.length < 13) return false;
+    return timeStr.slice(0, 13) === nowStr.slice(0, 13);
+  }
+
+  function buildHourlyCard(label, tempVal, codeVal, precipVal, unit) {
+    if (!Number.isFinite(tempVal) || !Number.isFinite(codeVal)) return '';
+    const tempDisplay = getTemp(tempVal, unit);
+    const info = getWeatherInfo(codeVal);
+    const icon = getWeatherIcon(info.type);
+    const rawRain = precipVal;
+    const rainVal = rawRain !== undefined ? Number(rawRain) : Number.NaN;
+    let rainHtml = '';
+    if (Number.isFinite(rainVal)) {
+      rainHtml = '<div class="weather-app-hourly-precip">' + Math.round(rainVal) + '%</div>';
+    }
+    return '<div class="weather-app-hourly-hour">' +
+      '<div class="weather-app-hourly-time">' + label + '</div>' +
+      '<div class="weather-app-hourly-icon">' + icon + '</div>' +
+      '<div class="weather-app-hourly-temp">' + tempDisplay + '°</div>' +
+      rainHtml +
+      '</div>';
   }
 
   function formatHourLabel(timeStr) {
@@ -301,7 +327,7 @@
 
   function renderHourlyForecast(data, unit) {
     const hourly = data.hourly;
-    if (!hourly || !hourly.time || !hourly.temperature_2m || !hourly.weather_code) {
+    if (!hourly?.time || !hourly?.temperature_2m || !hourly?.weather_code) {
       return '';
     }
     const times = hourly.time;
@@ -317,30 +343,15 @@
     const hourHtml = [];
     for (let j = startIndex; j < startIndex + visibleCount; j++) {
       const timeStr2 = times[j];
-      const isFirst = j === startIndex;
       const nowLabel = t('weatherNow');
-      const label = isFirst && nowLabel !== 'weatherNow' ? nowLabel : formatHourLabel(timeStr2);
+      const isNow = isCurrentHourSlot(timeStr2, nowStr);
+      const label = isNow && nowLabel !== 'weatherNow' ? nowLabel : formatHourLabel(timeStr2);
       if (!label) continue;
       const tempVal = Number(temps[j]);
       const codeVal = Number(codes[j]);
-      if (!Number.isFinite(tempVal) || !Number.isFinite(codeVal)) continue;
-      const tempDisplay = getTemp(tempVal, unit);
-      const info = getWeatherInfo(codeVal);
-      const icon = getWeatherIcon(info.type);
-      const rawRain = precip?.[j];
-      const rainVal = rawRain !== undefined ? Number(rawRain) : Number.NaN;
-      let rainHtml = '';
-      if (Number.isFinite(rainVal)) {
-        rainHtml = '<div class="weather-app-hourly-precip">' + Math.round(rainVal) + '%</div>';
-      }
-      hourHtml.push(
-        '<div class="weather-app-hourly-hour">' +
-        '<div class="weather-app-hourly-time">' + label + '</div>' +
-        '<div class="weather-app-hourly-icon">' + icon + '</div>' +
-        '<div class="weather-app-hourly-temp">' + tempDisplay + '°</div>' +
-        rainHtml +
-        '</div>'
-      );
+      const card = buildHourlyCard(label, tempVal, codeVal, precip?.[j], unit);
+      if (!card) continue;
+      hourHtml.push(card);
     }
     if (hourHtml.length === 0) return '';
     return '<div class="weather-app-hourly">' +
