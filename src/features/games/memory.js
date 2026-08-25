@@ -21,9 +21,6 @@
   let pendingResolve = null;
   let started = false;
   let readyScreen = null;
-  // True when this launch was handed a savedState that failed validation, so
-  // teardown must discard the stale save instead of keeping or refreshing it.
-  let restoreRejected = false;
 
   // ===================== Helpers =====================
 
@@ -220,55 +217,55 @@
 
   // ===================== Save / Restore (#646) =====================
 
+  // Shape and per-card invariants for one entry of a saved deck.
+  function isValidSavedCard(c, idx) {
+    const ok = c && typeof c === 'object' &&
+      typeof c.emoji === 'string' && EMOJIS.includes(c.emoji) &&
+      typeof c.matched === 'boolean' && (c.flipped === undefined || typeof c.flipped === 'boolean');
+    if (!ok) return false;
+    // ids are positional; a mismatched id would desync flipCard(cardId)
+    return c.id === undefined || c.id === idx;
+  }
+
   function isValidSavedCards(value) {
     if (!Array.isArray(value) || value.length !== PAIRS * 2) return false;
     // Every emoji must occur exactly twice; both cards of a pair must agree
     // on matched, a matched card is never left face up, and at most one
     // unmatched card may be face up mid-turn.
-    const seen = Object.create(null);
-    const seenMatched = Object.create(null);
+    if (!value.every(isValidSavedCard)) return false;
+
     let loneReveals = 0;
     let matchedTotal = 0;
-    for (let idx = 0; idx < value.length; idx++) {
-      const c = value[idx];
-      const ok = c && typeof c === 'object' &&
-        typeof c.emoji === 'string' && EMOJIS.includes(c.emoji) &&
-        typeof c.matched === 'boolean' && (c.flipped === undefined || typeof c.flipped === 'boolean');
-      if (!ok) return false;
-      // ids are positional; a mismatched id would desync flipCard(cardId)
-      if (c.id !== undefined && c.id !== idx) return false;
+    const seen = Object.create(null);
+    const seenMatched = Object.create(null);
+    value.forEach(function (c) {
       seen[c.emoji] = (seen[c.emoji] || 0) + 1;
       seenMatched[c.emoji] = (seenMatched[c.emoji] || 0) + (c.matched ? 1 : 0);
       if (c.matched) matchedTotal++;
-      const faceUp = c.flipped === true;
-      if (c.matched && faceUp) return false;
-      if (!c.matched && faceUp) loneReveals++;
-    }
-    for (const emoji of EMOJIS.slice(0, PAIRS)) {
-      if ((seen[emoji] || 0) % 2 !== 0) return false;
-      // A pair whose cards disagree on matched cannot occur in play.
-      if (seenMatched[emoji] % 2 !== 0) return false;
-    }
+      if (c.flipped === true && !c.matched) loneReveals++;
+    });
+
+    const pairFlagsConsistent = EMOJIS.slice(0, PAIRS).every(function (emoji) {
+      return seen[emoji] % 2 === 0 && seenMatched[emoji] % 2 === 0;
+    });
     // A fully matched board is terminal and is never saved.
-    if (matchedTotal >= PAIRS * 2) return false;
-    return loneReveals <= 1;
+    return pairFlagsConsistent && matchedTotal < PAIRS * 2 && loneReveals <= 1;
   }
 
-  // Snapshot the live run. Contract with GameRegistry.serializeCurrent:
-  //   object -> persist;  false -> discard any stored save;  null -> nothing
-  // to report right now (keep whatever save this launch restored).
+  // Snapshot the live run, or null when there is nothing to report right now
+  // (pre-start). Terminal runs and restores rejected as corrupt clear their
+  // save directly via GameRegistry.clearSave, so no third return value is
+  // needed here.
   function serialize() {
-    if (gameOver) return false;
-    // Before Start there is no live state: a launch whose snapshot failed
-    // validation discards the stale save, anything else keeps it.
-    if (!started || startTime <= 0) return restoreRejected ? false : null;
+    if (!started || startTime <= 0) return null;
     // Settle a pair whose reveal timeout hasn't fired yet so the snapshot is
     // never taken mid-resolution.
     finalizePendingPair();
-    if (gameOver) return false;
-    // While paused the ticker is stopped and pausedAt marks the freeze point;
-    // measuring from Date.now() would silently add the hidden interval to the
-    // saved elapsed time.
+    if (gameOver) return null;
+    // While paused the ticker is stopped and pausedAt marks the freeze point,
+    // so measuring from Date.now() would silently add the hidden interval to
+    // the saved elapsed time. resume() clears pausedAt, so a positive value
+    // here always means the timer is genuinely stopped.
     const nowMs = pausedAt > 0 ? pausedAt : Date.now();
     return {
       cards: cards.map(function (card) {
@@ -342,7 +339,6 @@
 
   function resetGame() {
     setupBoard();
-    restoreRejected = false;
     startTimer();
   }
 
@@ -385,9 +381,11 @@
       started = true;
       return;
     }
-    // A launch whose snapshot failed validation must discard that stale save
-    // at teardown instead of keeping or re-saving it.
-    restoreRejected = savedState !== undefined && savedState !== null;
+    if (savedState !== undefined && savedState !== null) {
+      // The handed-down snapshot failed validation: discard that stale save
+      // now rather than keeping or re-saving it at teardown.
+      window.GameRegistry?.clearSave('memory');
+    }
 
     setupBoard();
 
@@ -425,7 +423,6 @@
       readyScreen = null;
     }
     started = false;
-    restoreRejected = false;
     clearPendingTimeouts();
     pendingResolve = null;
     stopTimer();
@@ -475,6 +472,10 @@
     if (!gameOver && startTime > 0 && pausedAt > 0) {
       const elapsed = pausedAt - startTime;
       startTime = Date.now() - elapsed;
+      // The run is live again: a positive pausedAt from here on would make
+      // serialize() stamp the snapshot at the old pause point and lose the
+      // post-resume interval.
+      pausedAt = 0;
       startTicker();
     }
   }

@@ -400,3 +400,55 @@ describe('2048 save validation regressions (review #654)', () => {
     container.remove();
   });
 });
+
+describe('2048 save validation round 2 (review #654)', () => {
+  it('rejects tiles above the 32-bit range that are not powers of two', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    // 4294967297 = 2^32 + 1: passes a naive bitwise power check.
+    game.init(container, {
+      board: [[2, 4294967297, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 4,
+      won: false
+    });
+    expect(window.__game2048Ready.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('accepts huge legitimate powers of two', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    const big = Math.pow(2, 40);
+    game.init(container, {
+      board: [[big, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: Number.MAX_SAFE_INTEGER,
+      won: false
+    });
+    expect(window.__game2048Ready.isStarted()).toBe(true);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('rejects boards containing a 2048 tile even when won is false', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    game.init(container, {
+      board: [[2048, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 20000,
+      won: false
+    });
+    expect(window.__game2048Ready.isStarted()).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+});

@@ -99,11 +99,14 @@
     return true;
   }
 
-  // A well-formed envelope carries a concrete snapshot; anything else (e.g. a
-  // hand-edited or partially written `{}` entry) must not surface as a save.
+  // A well-formed envelope carries a restorable snapshot: an object (the
+  // games' restore paths all validate objects) plus the savedAt timestamp.
+  // Anything else — a primitive state, a missing stamp — must not surface as
+  // a save.
   function isValidSaveEnvelope(entry) {
-    return !!(entry && typeof entry === 'object' && !Array.isArray(entry) &&
-      entry.state !== null && entry.state !== undefined);
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+    if (entry.state === null || typeof entry.state !== 'object') return false;
+    return Number.isFinite(entry.savedAt);
   }
 
   function getSave(gameId) {
@@ -117,7 +120,7 @@
 
   function clearSave(gameId) {
     const saves = loadSaves();
-    if (!Object.prototype.hasOwnProperty.call(saves, gameId)) return;
+    if (!Object.hasOwn(saves, gameId)) return;
     delete saves[gameId];
     saveSaves(saves);
   }
@@ -219,15 +222,14 @@
     try {
       const state = currentGame.serialize();
       // Serialize-hook contract:
-      //   object        -> persist the snapshot
-      //   false         -> explicitly discard any stored save (terminal run)
-      //   null/undefined-> nothing to report right now; keep a snapshot this
-      //                    launch restored (e.g. Snake waiting on Continue),
-      //                    otherwise drop any stale entry
-      if (state === false) {
-        clearSave(currentGame.id);
-        return false;
-      }
+      // Serialize-hook contract:
+      //   object         -> persist the snapshot
+      //   null/undefined -> nothing live to report right now; keep a snapshot
+      //                     this launch restored (e.g. Snake waiting on
+      //                     Continue), otherwise drop any stale entry.
+      // Games own terminal/rejected-restore handling: they call
+      // GameRegistry.clearSave(id) at those moments, so the hook never needs
+      // to signal "discard" itself.
       if (state === null || state === undefined) {
         if (!currentLaunchHadSave) {
           clearSave(currentGame.id);
@@ -241,11 +243,12 @@
     }
   }
 
-  // serialize: pass false to tear down without touching the save store (used
-  // when init() failed mid-mount and the game cannot report trustworthy state).
+  // serialize: pass { serialize: false } to tear down without touching the
+  // save store (used when init() failed mid-mount and the game cannot report
+  // trustworthy state).
   function destroyCurrent(options) {
     if (!currentGame) return;
-    if (!options || options.serialize !== false) {
+    if (options?.serialize !== false) {
       serializeCurrent();
     }
     try {

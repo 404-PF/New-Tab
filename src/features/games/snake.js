@@ -36,9 +36,6 @@
   let tickMs = BASE_TICK_MS;
   let started = false;
   let readyScreen = null;
-  // True when this launch was handed a savedState that failed validation, so
-  // teardown must discard the stale save instead of keeping it.
-  let restoreRejected = false;
 
   // ===================== Helpers =====================
 
@@ -541,7 +538,6 @@
 
   function restart() {
     started = true;
-    restoreRejected = false;
     initSnake();
     draw();
     startTick();
@@ -652,15 +648,12 @@
     return value === 'up' || value === 'down' || value === 'left' || value === 'right';
   }
 
-  // Snapshot the live run. Contract with GameRegistry.serializeCurrent:
-  //   object -> persist;  false -> discard any stored save;  null -> nothing
-  // to report right now (keep whatever save this launch restored).
+  // Snapshot the live run, or null when there is nothing to report right now
+  // (a restored run still waiting on Continue keeps its stored snapshot).
+  // Terminal runs and restores rejected as corrupt clear their save directly
+  // via GameRegistry.clearSave, so no third return value is needed here.
   function serialize() {
-    if (gameOver) return false;
-    // Before Start there is no live state: a launch whose snapshot failed
-    // validation discards the stale save, anything else keeps it.
-    if (!started) return restoreRejected ? false : null;
-    if (!isValidSavedSnake(snake)) return false;
+    if (!started) return null;
     return {
       snake: snake.map(function (seg) { return { x: seg.x, y: seg.y }; }),
       food: food && Number.isInteger(food.x) && Number.isInteger(food.y) ? { x: food.x, y: food.y } : null,
@@ -674,45 +667,59 @@
   // resumes on the ready screen — a real-time game should not start ticking
   // unannounced; pressing Start (Space/tap) continues it. The speed level is
   // derived from the saved score.
-  function applyRestoredState(savedState) {
-    if (!savedState || typeof savedState !== 'object') return false;
-    if (!isValidSavedSnake(savedState.snake)) return false;
-    // The initial snake is three segments; anything shorter cannot occur.
-    if (savedState.snake.length < 3) return false;
-    // Body cells are unique in play; duplicates mean corruption.
+  function isValidFoodValue(savedFood) {
+    if (savedFood === null || savedFood === undefined) return true;
+    return !!savedFood && typeof savedFood === 'object' &&
+      Number.isInteger(savedFood.x) && savedFood.x >= 0 && savedFood.x < GRID_SIZE &&
+      Number.isInteger(savedFood.y) && savedFood.y >= 0 && savedFood.y < GRID_SIZE;
+  }
+
+  function hasUniqueCells(segments) {
     const seen = Object.create(null);
-    for (const seg of savedState.snake) {
+    for (const seg of segments) {
       const key = seg.x + ',' + seg.y;
       if (seen[key]) return false;
       seen[key] = true;
     }
-    if (typeof savedState.score !== 'number' || !Number.isInteger(savedState.score) || savedState.score < 0) return false;
+    return true;
+  }
+
+  function validateSavedState(savedState) {
+    if (!savedState || typeof savedState !== 'object') return false;
+    if (!isValidSavedSnake(savedState.snake)) return false;
+    // The initial snake is three segments; anything shorter cannot occur.
+    if (savedState.snake.length < 3) return false;
+    if (!hasUniqueCells(savedState.snake)) return false;
+    if (typeof savedState.score !== 'number' || !Number.isSafeInteger(savedState.score) || savedState.score < 0) return false;
     if (!isValidDirection(savedState.direction)) return false;
     if (savedState.nextDirection !== undefined && !isValidDirection(savedState.nextDirection)) return false;
-    const savedFood = savedState.food;
-    if (savedFood !== null && savedFood !== undefined &&
-        !(savedFood && typeof savedFood === 'object' &&
-          Number.isInteger(savedFood.x) && savedFood.x >= 0 && savedFood.x < GRID_SIZE &&
-          Number.isInteger(savedFood.y) && savedFood.y >= 0 && savedFood.y < GRID_SIZE)) {
-      return false;
-    }
+    if (!isValidFoodValue(savedState.food)) return false;
+
     const head = savedState.snake[0];
-    if (savedState.snake.slice(1).some(function (seg) { return seg.x === head.x && seg.y === head.y; })) {
+    const body = savedState.snake.slice(1);
+    if (body.some(function (seg) { return seg.x === head.x && seg.y === head.y; })) {
       // A snake overlapping itself cannot occur in play.
       return false;
     }
-    if (savedFood && savedState.snake.some(function (seg) { return seg.x === savedFood.x && seg.y === savedFood.y; })) {
+    const food = savedState.food;
+    if (food && savedState.snake.some(function (seg) { return seg.x === food.x && seg.y === food.y; })) {
       // Food never spawns under the body.
       return false;
     }
+
     const nextDir = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
     // A queued turn opposite the travel direction would kill the run on the
     // first tick after Continue; play only accepts non-opposite turns.
     const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
-    if (nextDir === opposites[savedState.direction]) return false;
+    return nextDir !== opposites[savedState.direction];
+  }
+
+  // Applies a snapshot that has already passed validateSavedState.
+  function applyRestoredState(savedState) {
+    const nextDir = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
 
     snake = savedState.snake.map(function (seg) { return { x: seg.x, y: seg.y }; });
-    food = savedFood ? { x: savedFood.x, y: savedFood.y } : null;
+    food = savedState.food ? { x: savedState.food.x, y: savedState.food.y } : null;
     if (!food) spawnFood();
     direction = savedState.direction;
     nextDirection = nextDir;
@@ -737,7 +744,6 @@
   // reduced-motion users would otherwise see it until the first tick.
   function startRun() {
     started = true;
-    restoreRejected = false;
     manualPause = false;
     paused = false;
     draw();
@@ -774,26 +780,32 @@
 
     // A restored run rebuilds the saved board and holds on the ready screen
     // so a real-time game never resumes ticking unannounced.
-    const restored = applyRestoredState(savedState);
-    if (!restored) {
-      restoreRejected = savedState !== undefined && savedState !== null;
-      initSnake();
+    if (savedState && validateSavedState(savedState)) {
+      applyRestoredState(savedState);
       draw();
     } else {
+      initSnake();
       draw();
+      if (savedState) {
+        // The handed-down snapshot failed validation: discard that stale
+        // save now rather than keeping or re-saving it at teardown.
+        window.GameRegistry?.clearSave('snake');
+      }
     }
 
     document.addEventListener('keydown', handleKeydown);
     canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-    // Hold play until the user signals they are ready.
+    // Hold play until the user signals they are ready. A restored run offers
+    // Continue instead of Start.
     started = false;
+    const restoredRun = !!savedState && validateSavedState(savedState);
     if (typeof window.gamesHelpers?.createReadyScreen === 'function') {
       readyScreen = window.gamesHelpers.createReadyScreen(stage, {
         text: t('gamesReady') || 'Ready?',
         sub: t('gamesReadyStart') || 'Press Space or tap to start',
-        buttonText: restored ? (t('gamesContinue') || 'Continue') : (t('gamesStart') || 'Start'),
+        buttonText: restoredRun ? (t('gamesContinue') || 'Continue') : (t('gamesStart') || 'Start'),
         onStart: startRun
       });
     } else {
@@ -813,7 +825,6 @@
       readyScreen = null;
     }
     started = false;
-    restoreRejected = false;
     stopTick();
     stopAnimation();
     document.removeEventListener('keydown', handleKeydown);

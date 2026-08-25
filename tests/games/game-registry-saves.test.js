@@ -108,20 +108,6 @@ describe('GameRegistry saves (#646)', () => {
     expect(raw['save-b'].state).toEqual({ n: 2 });
   });
 
-  it('drops the save when serialize returns false (terminal state)', () => {
-    const game = registerSaveableGame('terminal-game', { snapshot: { hp: 5 } });
-    ensureContainer();
-    window.GameRegistry.launch('terminal-game');
-    window.GameRegistry.destroyCurrent();
-    expect(window.GameRegistry.hasSave('terminal-game')).toBe(true);
-
-    game.setSnapshot(false); // e.g. game over was reached before teardown
-    window.GameRegistry.launch('terminal-game');
-    window.GameRegistry.destroyCurrent();
-    expect(window.GameRegistry.hasSave('terminal-game')).toBe(false);
-    expect(localStorage.getItem('games_saves')).toBe('{}');
-  });
-
   it('keeps the stored save when a launched save reports null (pre-start)', () => {
     const game = registerSaveableGame('prestart-game', { snapshot: null });
     ensureContainer();
@@ -249,5 +235,23 @@ describe('GameRegistry saves (#646)', () => {
     expect(serializeCalls).toBe(0);
     expect(window.GameRegistry.getSave('broken-init-game').state).toEqual({ prior: true });
     expect(window.GameRegistry.getCurrentGame()).toBeNull();
+  });
+});
+
+describe('Save envelope hardening (review #654 round 2)', () => {
+  it('does not offer Continue for a non-object snapshot', () => {
+    registerSaveableGame('primitive-state-game', { snapshot: { n: 1 } });
+    localStorage.setItem('games_saves', JSON.stringify({
+      'primitive-state-game': { state: false, savedAt: 1 },
+      'also-primitive': { state: 'nope', savedAt: 2 }
+    }));
+    expect(window.GameRegistry.hasSave('primitive-state-game')).toBe(false);
+    expect(window.GameRegistry.getSave('primitive-state-game')).toBeNull();
+
+    // A live run still overwrites the malformed entry normally.
+    ensureContainer();
+    window.GameRegistry.launch('primitive-state-game');
+    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.getSave('primitive-state-game').state).toEqual({ n: 1 });
   });
 });

@@ -453,8 +453,44 @@ describe('Memory save validation regressions (review #654)', () => {
       // Elapsed must be measured to the pause point (~0s), not include the
       // 60s hidden interval.
       expect(saved.state.elapsedMs).toBeLessThan(5000);
+
+      el.remove();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
 
-      window.GameRegistry._reset && window.GameRegistry._reset();
+describe('Memory pausedAt lifecycle (review #654 round 2)', () => {
+  it('resumes measuring from wall clock after a pause/resume cycle', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(1000000);
+      let el = document.getElementById('games-game-container');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'games-game-container';
+        document.body.appendChild(el);
+      }
+      expect(window.GameRegistry.launch('memory')).toBe(true);
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+
+      el.querySelectorAll('.games-memory-card')[0].click();
+      const game = window.GameRegistry.getCurrentGame();
+      game.pause();
+
+      // Resume: the run is live again and pausedAt must be cleared so the
+      // next serialize stamps at the current time, not the old pause point.
+      vi.setSystemTime(1005000);
+      game.resume();
+      vi.advanceTimersByTime(30000);
+      vi.setSystemTime(1035000);
+
+      window.GameRegistry.destroyCurrent();
+      const saved = JSON.parse(localStorage.getItem('games_saves')).memory;
+      // Elapsed ≈ 35s (0.5s pre-pause + 30s post-resume), not ~0.5s (which
+      // would mean post-resume time was lost).
+      expect(saved.state.elapsedMs).toBeGreaterThan(25000);
       el.remove();
     } finally {
       vi.useRealTimers();
