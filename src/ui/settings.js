@@ -1489,6 +1489,179 @@ if (document.readyState === 'loading') {
   initPomodoroSettings();
 }
 
+
+// Custom search providers settings
+function initCustomSearchProvidersSettings() {
+  const nameInput = document.getElementById('custom-search-provider-name');
+  const urlInput = document.getElementById('custom-search-provider-url');
+  const addBtn = document.getElementById('custom-search-provider-add-btn');
+  const listEl = document.getElementById('custom-search-providers-list');
+  const emptyEl = document.getElementById('custom-search-providers-empty');
+  const feedbackEl = document.getElementById('custom-search-provider-feedback');
+
+  if (!nameInput || !urlInput || !addBtn || !listEl) return;
+
+  function t(key, fallback, replacements) {
+    if (window.i18n && typeof window.i18n.t === 'function') {
+        const val = window.i18n.t(key, replacements);
+      if (val && val !== key) return val;
+    }
+    return fallback || key;
+  }
+
+  function showFeedback(message, type) {
+    if (!feedbackEl) return;
+    feedbackEl.textContent = message || '';
+    feedbackEl.className = 'custom-search-provider-feedback';
+    if (type) feedbackEl.classList.add(type);
+  }
+
+  function clearFeedback() {
+    showFeedback('', '');
+  }
+
+  function renderCustomProvidersList() {
+      let providers = [];
+    try {
+      if (typeof window.loadCustomProviders === 'function') {
+        providers = window.loadCustomProviders() || [];
+      }
+    } catch (e) {
+      console.warn('Failed to load custom providers:', e);
+      providers = [];
+    }
+
+    listEl.innerHTML = '';
+
+    if (!providers.length) {
+      if (emptyEl) emptyEl.style.display = '';
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    providers.forEach(function (provider) {
+      const item = document.createElement('div');
+      item.className = 'custom-search-provider-item';
+
+      const info = document.createElement('div');
+      info.className = 'custom-search-provider-item-info';
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'custom-search-provider-item-name';
+      nameEl.textContent = provider.name;
+
+      const urlEl = document.createElement('span');
+      urlEl.className = 'custom-search-provider-item-url';
+      urlEl.textContent = provider.url;
+      urlEl.title = provider.url;
+
+      info.appendChild(nameEl);
+      info.appendChild(urlEl);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'custom-search-provider-remove';
+      removeBtn.dataset.providerId = provider.id;
+      removeBtn.setAttribute('aria-label', t('searchProviderRemoveLabel', 'Remove ' + provider.name, { name: provider.name }));
+      removeBtn.title = t('searchProviderRemove', 'Remove');
+      removeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+      item.appendChild(info);
+      item.appendChild(removeBtn);
+      listEl.appendChild(item);
+    });
+  }
+
+  function handleAdd() {
+      const name = nameInput.value.trim();
+      const url = urlInput.value.trim();
+
+    if (!name) {
+      showFeedback(t('searchProviderInvalidName', 'Enter a name for the search provider.'), 'error');
+      nameInput.focus();
+      return;
+    }
+
+    if (!url || url.indexOf('{query}') === -1) {
+      showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
+      urlInput.focus();
+      return;
+    }
+
+    if (typeof window.addCustomProvider !== 'function') {
+      showFeedback('Provider API unavailable.', 'error');
+      return;
+    }
+
+      const result = window.addCustomProvider(name, url);
+
+    if (!result) {
+      // addCustomProvider returns false on validation failure
+      const isNameInvalid = !name;
+      if (isNameInvalid) {
+        showFeedback(t('searchProviderInvalidName', 'Enter a name for the search provider.'), 'error');
+      } else {
+        showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
+      }
+      return;
+    }
+
+    nameInput.value = '';
+    urlInput.value = '';
+    clearFeedback();
+    if (typeof window.refreshProviderBar === 'function') {
+      window.refreshProviderBar();
+    }
+    renderCustomProvidersList();
+    nameInput.focus();
+  }
+
+  function handleRemove(providerId) {
+    if (typeof window.removeCustomProvider !== 'function') return;
+    window.removeCustomProvider(providerId);
+    clearFeedback();
+    if (typeof window.refreshProviderBar === 'function') {
+      window.refreshProviderBar();
+    }
+    renderCustomProvidersList();
+  }
+
+  addBtn.addEventListener('click', handleAdd);
+
+  [nameInput, urlInput].forEach(function (input) {
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAdd();
+      }
+    });
+    input.addEventListener('input', clearFeedback);
+  });
+
+  listEl.addEventListener('click', function (e) {
+        const btn = e.target.closest('.custom-search-provider-remove');
+    if (!btn || !btn.dataset.providerId) return;
+    handleRemove(btn.dataset.providerId);
+  });
+
+  // Expose for import refresh and re-render after language change
+  window.renderCustomSearchProvidersList = renderCustomProvidersList;
+  window.refreshCustomSearchProvidersSettings = renderCustomProvidersList;
+
+  // Re-render when language changes so i18n-driven empty text stays consistent
+  window.addEventListener('languageChanged', renderCustomProvidersList);
+
+  renderCustomProvidersList();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCustomSearchProvidersSettings);
+} else {
+  initCustomSearchProvidersSettings();
+}
+
+
 // Games enabled
 function loadGamesEnabled() {
   if (window.gamesHelpers && typeof window.gamesHelpers.isEnabled === 'function') {
@@ -1880,3 +2053,7 @@ window.loadGamesEnabled = loadGamesEnabled;
 window.initSettings = initSettings;
 
 })();
+
+
+
+

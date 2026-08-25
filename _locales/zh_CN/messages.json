@@ -1,9 +1,24 @@
 {
-  "enableSearchHistory": { "message": "启用搜索历史记录", "description": "Label for the search history toggle" },
-  "appGridSaveError": { "message": "无法保存应用更改。您上次的操作未被保存。", "description": "Error shown when app grid changes cannot be persisted" },
-  "customBackgroundsLoadError": { "message": "无法加载自定义背景。请重试。", "description": "Error shown when custom backgrounds cannot be listed" },
-  "customBackgroundLoadError": { "message": "无法加载该自定义背景。请重试。", "description": "Error shown when a custom background cannot be applied" },
-  "customBackgroundDeleteError": { "message": "无法删除自定义背景。请重试。", "description": "Error shown when a custom background cannot be deleted" },
+  "enableSearchHistory": {
+    "message": "启用搜索历史记录",
+    "description": "Label for the search history toggle"
+  },
+  "appGridSaveError": {
+    "message": "无法保存应用更改。您上次的操作未被保存。",
+    "description": "Error shown when app grid changes cannot be persisted"
+  },
+  "customBackgroundsLoadError": {
+    "message": "无法加载自定义背景。请重试。",
+    "description": "Error shown when custom backgrounds cannot be listed"
+  },
+  "customBackgroundLoadError": {
+    "message": "无法加载该自定义背景。请重试。",
+    "description": "Error shown when a custom background cannot be applied"
+  },
+  "customBackgroundDeleteError": {
+    "message": "无法删除自定义背景。请重试。",
+    "description": "Error shown when a custom background cannot be deleted"
+  },
   "name": {
     "message": "新标签页",
     "description": "The name of the extension"
@@ -451,5 +466,55 @@
   "gamesMemoryControls": {
     "message": "翻牌找到配对",
     "description": "Memory match game controls"
+  },
+  "searchProviders": {
+    "message": "Search providers",
+    "description": "Title for the custom search providers settings card"
+  },
+  "searchProvidersDesc": {
+    "message": "Add custom search engines with a name and URL template",
+    "description": "Description for the custom search providers settings card"
+  },
+  "searchProviderNamePlaceholder": {
+    "message": "Name (e.g. Kagi)",
+    "description": "Placeholder for the custom search provider name input"
+  },
+  "searchProviderUrlPlaceholder": {
+    "message": "https://example.com/search?q={query}",
+    "description": "Placeholder for the custom search provider URL input"
+  },
+  "searchProviderAdd": {
+    "message": "Add",
+    "description": "Label for the add custom search provider button"
+  },
+  "searchProvidersEmpty": {
+    "message": "No custom providers yet",
+    "description": "Empty state text when no custom search providers exist"
+  },
+  "searchProviderRemove": {
+    "message": "Remove",
+    "description": "Accessible label for removing a custom search provider"
+  },
+  "searchProviderRemoveLabel": {
+    "message": "Remove {name}",
+    "description": "Accessible label for removing a specific custom search provider",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Kagi"
+      }
+    }
+  },
+  "searchProviderInvalidName": {
+    "message": "Enter a name for the search provider.",
+    "description": "Validation error when the provider name is empty"
+  },
+  "searchProviderInvalidUrl": {
+    "message": "Enter a valid URL with {query} and http(s).",
+    "description": "Validation error when the provider URL is invalid"
+  },
+  "searchWith": {
+    "message": "Search with",
+    "description": "Label prefix shown before the active search provider name"
   }
 }

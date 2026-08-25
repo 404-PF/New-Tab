@@ -1,9 +1,24 @@
 {
-  "enableSearchHistory": { "message": "Ativar histórico de pesquisa", "description": "Label for the search history toggle" },
-  "appGridSaveError": { "message": "Não foi possível salvar as alterações dos aplicativos. Sua última ação não foi salva.", "description": "Error shown when app grid changes cannot be persisted" },
-  "customBackgroundsLoadError": { "message": "Não foi possível carregar os planos de fundo personalizados. Tente novamente.", "description": "Error shown when custom backgrounds cannot be listed" },
-  "customBackgroundLoadError": { "message": "Não foi possível carregar o plano de fundo personalizado. Tente novamente.", "description": "Error shown when a custom background cannot be applied" },
-  "customBackgroundDeleteError": { "message": "Não foi possível excluir o plano de fundo personalizado. Tente novamente.", "description": "Error shown when a custom background cannot be deleted" },
+  "enableSearchHistory": {
+    "message": "Ativar histórico de pesquisa",
+    "description": "Label for the search history toggle"
+  },
+  "appGridSaveError": {
+    "message": "Não foi possível salvar as alterações dos aplicativos. Sua última ação não foi salva.",
+    "description": "Error shown when app grid changes cannot be persisted"
+  },
+  "customBackgroundsLoadError": {
+    "message": "Não foi possível carregar os planos de fundo personalizados. Tente novamente.",
+    "description": "Error shown when custom backgrounds cannot be listed"
+  },
+  "customBackgroundLoadError": {
+    "message": "Não foi possível carregar o plano de fundo personalizado. Tente novamente.",
+    "description": "Error shown when a custom background cannot be applied"
+  },
+  "customBackgroundDeleteError": {
+    "message": "Não foi possível excluir o plano de fundo personalizado. Tente novamente.",
+    "description": "Error shown when a custom background cannot be deleted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
@@ -451,5 +466,55 @@
   "gamesMemoryControls": {
     "message": "Vire as cartas para encontrar os pares",
     "description": "Memory match game controls"
+  },
+  "searchProviders": {
+    "message": "Search providers",
+    "description": "Title for the custom search providers settings card"
+  },
+  "searchProvidersDesc": {
+    "message": "Add custom search engines with a name and URL template",
+    "description": "Description for the custom search providers settings card"
+  },
+  "searchProviderNamePlaceholder": {
+    "message": "Name (e.g. Kagi)",
+    "description": "Placeholder for the custom search provider name input"
+  },
+  "searchProviderUrlPlaceholder": {
+    "message": "https://example.com/search?q={query}",
+    "description": "Placeholder for the custom search provider URL input"
+  },
+  "searchProviderAdd": {
+    "message": "Add",
+    "description": "Label for the add custom search provider button"
+  },
+  "searchProvidersEmpty": {
+    "message": "No custom providers yet",
+    "description": "Empty state text when no custom search providers exist"
+  },
+  "searchProviderRemove": {
+    "message": "Remove",
+    "description": "Accessible label for removing a custom search provider"
+  },
+  "searchProviderRemoveLabel": {
+    "message": "Remove {name}",
+    "description": "Accessible label for removing a specific custom search provider",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Kagi"
+      }
+    }
+  },
+  "searchProviderInvalidName": {
+    "message": "Enter a name for the search provider.",
+    "description": "Validation error when the provider name is empty"
+  },
+  "searchProviderInvalidUrl": {
+    "message": "Enter a valid URL with {query} and http(s).",
+    "description": "Validation error when the provider URL is invalid"
+  },
+  "searchWith": {
+    "message": "Search with",
+    "description": "Label prefix shown before the active search provider name"
   }
 }

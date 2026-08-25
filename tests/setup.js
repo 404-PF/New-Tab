@@ -541,6 +541,16 @@ globalThis.window.i18n = {
       searchProviderDuckDuckGo: 'DuckDuckGo',
       searchProviderWikipedia: 'Wikipedia',
       searchProviderYouTube: 'YouTube',
+      searchProviders: 'Search providers',
+      searchProvidersDesc: 'Add custom search engines with a name and URL template',
+      searchProviderNamePlaceholder: 'Name (e.g. Kagi)',
+      searchProviderUrlPlaceholder: 'https://example.com/search?q={query}',
+      searchProviderAdd: 'Add',
+      searchProvidersEmpty: 'No custom providers yet',
+      searchProviderRemove: 'Remove',
+      searchProviderRemoveLabel: 'Remove {name}',
+      searchProviderInvalidName: 'Enter a name for the search provider.',
+      searchProviderInvalidUrl: 'Enter a valid URL with {query} and http(s).',
       removeTimezone: 'Remove',
       removeTimezoneLabel: 'Remove {city} time zone',
       gamesScore: 'Score',
@@ -736,6 +746,12 @@ document.body.appendChild(createStubElement('span', 'todo-stats-current-streak')
 document.body.appendChild(createStubElement('span', 'todo-stats-longest-streak'));
 document.body.appendChild(createStubElement('div', 'todo-stats-heatmap'));
 document.body.appendChild(createStubElement('button', 'todo-stats-clear'));
+document.body.appendChild(createStubElement('input', 'custom-search-provider-name'));
+document.body.appendChild(createStubElement('input', 'custom-search-provider-url'));
+document.body.appendChild(createStubElement('button', 'custom-search-provider-add-btn'));
+document.body.appendChild(createStubElement('div', 'custom-search-providers-list'));
+document.body.appendChild(createStubElement('div', 'custom-search-providers-empty'));
+document.body.appendChild(createStubElement('div', 'custom-search-provider-feedback'));
 
 // Notes elements required for initNotes to run
 const notesSection = document.createElement('div');
@@ -763,3 +779,6 @@ beforeEach(() => {
   document.querySelectorAll('.toast-notification, .copy-notification, .search-validation-feedback, .inline-date-picker')
     .forEach(el => el.remove());
 });
+
+
+

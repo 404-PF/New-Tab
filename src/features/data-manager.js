@@ -691,6 +691,11 @@
       if (typeof window.refreshProviderBar === 'function') {
         window.refreshProviderBar();
       }
+      if (typeof window.renderCustomSearchProvidersList === 'function') {
+        window.renderCustomSearchProvidersList();
+      } else if (typeof window.refreshCustomSearchProvidersSettings === 'function') {
+        window.refreshCustomSearchProvidersSettings();
+      }
 
       if (hasWriteErrors) {
         showToast(t('dataImportPartialSuccess', 'Import completed with some errors.'), 'warning');
