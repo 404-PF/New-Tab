@@ -540,11 +540,15 @@
     "description": "Label for the current hour in hourly forecast"
   },
   "notesSearchPlaceholder": {
-    "message": "Search notes...",
+    "message": "ノートを検索...",
     "description": "Placeholder text for the notes search input"
   },
   "notesNoResults": {
-    "message": "No matching notes.",
+    "message": "一致するノートがありません。",
     "description": "Empty state when no notes match the search query"
+  },
+  "notesEmpty": {
+    "message": "まだノートがありません。+ をクリックして追加してください！",
+    "description": "Empty state when no notes exist"
   }
 }

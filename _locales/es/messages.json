@@ -540,11 +540,15 @@
     "description": "Label for the current hour in hourly forecast"
   },
   "notesSearchPlaceholder": {
-    "message": "Search notes...",
+    "message": "Buscar notas...",
     "description": "Placeholder text for the notes search input"
   },
   "notesNoResults": {
-    "message": "No matching notes.",
+    "message": "No hay notas coincidentes.",
     "description": "Empty state when no notes match the search query"
+  },
+  "notesEmpty": {
+    "message": "¡Aún no hay notas. Haz clic en + para añadir una!",
+    "description": "Empty state when no notes exist"
   }
 }

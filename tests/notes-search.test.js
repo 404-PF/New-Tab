@@ -1,16 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
-function _getNotes() {
-  try {
-    const raw = localStorage.getItem('notes');
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
 function setNotes(data) {
   localStorage.setItem('notes', JSON.stringify(data));
 }

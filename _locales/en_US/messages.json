@@ -562,5 +562,9 @@
   "notesNoResults": {
     "message": "No matching notes.",
     "description": "Empty state when no notes match the search query"
+  },
+  "notesEmpty": {
+    "message": "No notes yet. Click + to add one!",
+    "description": "Empty state when no notes exist"
   }
 }

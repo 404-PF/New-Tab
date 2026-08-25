@@ -300,6 +300,7 @@ globalThis.window.i18n = {
       notesDragToReorder: 'Drag to reorder',
       notesPreviewTooltip: 'Preview',
       notesEditTooltip: 'Edit',
+      notesEmpty: 'No notes yet. Click + to add one!',
       notesSearchPlaceholder: 'Search notes...',
       notesNoResults: 'No matching notes.',
       clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',

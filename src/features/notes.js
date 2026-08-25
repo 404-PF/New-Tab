@@ -173,8 +173,8 @@
     if (_activeSearchQuery) {
       const q = _activeSearchQuery.toLowerCase();
       filtered = filtered.filter(n => {
-        const textMatch = n.text && n.text.toLowerCase().includes(q);
-        const tagMatch = n.tag && n.tag.toLowerCase().includes(q);
+        const textMatch = typeof n.text === "string" && n.text.toLowerCase().includes(q);
+        const tagMatch = typeof n.tag === "string" && n.tag.toLowerCase().includes(q);
         return textMatch || tagMatch;
       });
     }
@@ -328,6 +328,12 @@
   }
 
   function addNote() {
+    if (_activeSearchQuery) {
+      setSearchQuery('');
+      if (elements.notesSearch) {
+        elements.notesSearch.value = '';
+      }
+    }
     const minOrder = notes.length > 0
       ? notes.reduce((min, n) => Math.min(min, n.order), notes[0].order)
       : 0;

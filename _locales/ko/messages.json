@@ -540,11 +540,15 @@
     "description": "Label for the current hour in hourly forecast"
   },
   "notesSearchPlaceholder": {
-    "message": "Search notes...",
+    "message": "노트 검색...",
     "description": "Placeholder text for the notes search input"
   },
   "notesNoResults": {
-    "message": "No matching notes.",
+    "message": "일치하는 노트가 없습니다.",
     "description": "Empty state when no notes match the search query"
+  },
+  "notesEmpty": {
+    "message": "아직 노트가 없습니다. +를 클릭하여 추가하세요!",
+    "description": "Empty state when no notes exist"
   }
 }
