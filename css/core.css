@@ -1354,6 +1354,15 @@ body.light-theme .bg-loading-spinner {
   color: var(--settings-text-color);
 }
 
+.bg-rotation-pick-divider {
+  flex-basis: 100%;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--settings-text-color);
+  opacity: 0.7;
+  margin: 4px 0 2px;
+}
+
 .bg-rotation-pick-item:hover {
   background: rgba(33, 150, 243, 0.1);
   border-color: rgba(33, 150, 243, 0.3);
@@ -1365,6 +1374,24 @@ body.light-theme .bg-loading-spinner {
   border-radius: 4px;
   object-fit: cover;
   flex-shrink: 0;
+}
+
+/* Wrapper for uploaded video rows: the play badge (::after on
+   .bg-thumb-video) cannot render on the <img> itself, which is a
+   replaced element, so videos get this span around the thumb. */
+.bg-rotation-pick-thumb-wrap {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.bg-rotation-pick-thumb-wrap .bg-rotation-pick-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+.bg-rotation-pick-thumb-wrap.bg-thumb-video::after {
+  font-size: 10px;
 }
 
 .bg-rotation-pick-name {

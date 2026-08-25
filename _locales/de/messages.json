@@ -110,6 +110,10 @@
     "message": "Hintergründe zum Rotieren auswählen",
     "description": "Label for the background picker in rotation settings"
   },
+  "bgRotationUploads": {
+    "message": "Deine Uploads",
+    "description": "Divider label above uploaded backgrounds in the rotation picker"
+  },
   "bgRotationNext": {
     "message": "Nächster Hintergrund",
     "description": "Button to manually advance to next background"

@@ -110,6 +110,10 @@
     "message": "Sélectionner les arrière-plans à tourner",
     "description": "Label for the background picker in rotation settings"
   },
+  "bgRotationUploads": {
+    "message": "Vos importations",
+    "description": "Divider label above uploaded backgrounds in the rotation picker"
+  },
   "bgRotationNext": {
     "message": "Arrière-plan suivant",
     "description": "Button to manually advance to next background"

@@ -110,6 +110,10 @@
     "message": "회전할 배경 선택",
     "description": "Label for the background picker in rotation settings"
   },
+  "bgRotationUploads": {
+    "message": "업로드한 배경",
+    "description": "Divider label above uploaded backgrounds in the rotation picker"
+  },
   "bgRotationNext": {
     "message": "다음 배경",
     "description": "Button to manually advance to next background"
