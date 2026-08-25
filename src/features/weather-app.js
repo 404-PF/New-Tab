@@ -49,7 +49,7 @@
     }
     const date = new Date(dateString + 'T00:00:00');
     const dayIndex = date.getDay();
-    if (!Number.isFinite(dayIndex) || dayIndex < 0 || dayIndex > 6 || isNaN(date.getTime())) {
+    if (!Number.isFinite(dayIndex) || dayIndex < 0 || dayIndex > 6 || Number.isNaN(date.getTime())) {
       return '';
     }
     const dayNames = {
@@ -224,6 +224,61 @@
     body.innerHTML = html;
   }
 
+  function getLocationNowString(timezone, utcOffsetSeconds) {
+    if (timezone) {
+      try {
+        const fmt = new Intl.DateTimeFormat('en-CA', {
+          timeZone: timezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        const parts = fmt.formatToParts(new Date());
+        const y = parts.find(function(p) { return p.type === 'year'; }).value;
+        const mo = parts.find(function(p) { return p.type === 'month'; }).value;
+        const d = parts.find(function(p) { return p.type === 'day'; }).value;
+        const h = parts.find(function(p) { return p.type === 'hour'; }).value;
+        const mi = parts.find(function(p) { return p.type === 'minute'; }).value;
+        return y + '-' + mo + '-' + d + 'T' + h + ':' + mi;
+      } catch { /* ignore timezone errors */ }
+    }
+    if (typeof utcOffsetSeconds === 'number' && Number.isFinite(utcOffsetSeconds)) {
+      return new Date(Date.now() + utcOffsetSeconds * 1000).toISOString().slice(0, 16);
+    }
+    return null;
+  }
+
+  function findHourlyStartIndex(times, bounded, nowStr) {
+    if (nowStr) {
+      for (let i = 0; i < bounded; i++) {
+        if (times[i] >= nowStr) return i;
+      }
+      return 0;
+    }
+    const now = new Date();
+    for (let i = 0; i < bounded; i++) {
+      const timeStr = times[i];
+      let d = new Date(timeStr);
+      if (Number.isNaN(d.getTime())) {
+        const sep = timeStr.indexOf('T');
+        if (sep !== -1) {
+          const datePart = timeStr.slice(0, sep);
+          const timePart = timeStr.slice(sep + 1, sep + 6);
+          const dp = datePart.split('-');
+          const tp = timePart.split(':');
+          if (dp.length === 3 && tp.length === 2) {
+            d = new Date(Number.parseInt(dp[0], 10), Number.parseInt(dp[1], 10) - 1, Number.parseInt(dp[2], 10), Number.parseInt(tp[0], 10), Number.parseInt(tp[1], 10));
+          }
+        }
+      }
+      if (!Number.isNaN(d.getTime()) && d.getTime() >= now.getTime() - 60000) return i;
+    }
+    return 0;
+  }
+
   function formatHourLabel(timeStr) {
     if (!timeStr || typeof timeStr !== 'string') return '';
     const tIndex = timeStr.indexOf('T');
@@ -231,9 +286,9 @@
     const hm = timeStr.slice(tIndex + 1, tIndex + 6);
     if (!/^\d{2}:\d{2}$/.test(hm)) return '';
     const parts = hm.split(':');
-    const h = parseInt(parts[0], 10);
+    const h = Number.parseInt(parts[0], 10);
     const m = parts[1];
-    if (isNaN(h)) return hm;
+    if (Number.isNaN(h)) return hm;
     const lang = getLang();
     if (normalizeLang(lang) === 'en') {
       const suffix = h >= 12 ? ' PM' : ' AM';
@@ -255,39 +310,16 @@
     const precip = hourly.precipitation_probability;
     const bounded = Math.min(times.length, temps.length, codes.length, 24);
     if (bounded <= 0) return '';
-    const now = new Date();
-    let startIndex = 0;
-    let found = false;
-    for (let i = 0; i < bounded; i++) {
-      const timeStr = times[i];
-      let d = new Date(timeStr);
-      if (isNaN(d.getTime())) {
-        const sep = timeStr.indexOf('T');
-        if (sep !== -1) {
-          const datePart = timeStr.slice(0, sep);
-          const timePart = timeStr.slice(sep + 1, sep + 6);
-          const dp = datePart.split('-');
-          const tp = timePart.split(':');
-          if (dp.length === 3 && tp.length === 2) {
-            d = new Date(parseInt(dp[0], 10), parseInt(dp[1], 10) - 1, parseInt(dp[2], 10), parseInt(tp[0], 10), parseInt(tp[1], 10));
-          }
-        }
-      }
-      if (!isNaN(d.getTime()) && d.getTime() >= now.getTime() - 60 * 1000) {
-        startIndex = i;
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      startIndex = 0;
-    }
+    const nowStr = getLocationNowString(data.timezone, data.utc_offset_seconds);
+    const startIndex = findHourlyStartIndex(times, bounded, nowStr);
     const visibleCount = Math.min(12, bounded - startIndex);
     if (visibleCount <= 0) return '';
     const hourHtml = [];
     for (let j = startIndex; j < startIndex + visibleCount; j++) {
       const timeStr2 = times[j];
-      const label = formatHourLabel(timeStr2);
+      const isFirst = j === startIndex;
+      const nowLabel = t('weatherNow');
+      const label = isFirst && nowLabel !== 'weatherNow' ? nowLabel : formatHourLabel(timeStr2);
       if (!label) continue;
       const tempVal = Number(temps[j]);
       const codeVal = Number(codes[j]);
@@ -295,7 +327,8 @@
       const tempDisplay = getTemp(tempVal, unit);
       const info = getWeatherInfo(codeVal);
       const icon = getWeatherIcon(info.type);
-      const rainVal = precip && typeof precip[j] !== 'undefined' ? Number(precip[j]) : NaN;
+      const rawRain = precip?.[j];
+      const rainVal = rawRain !== undefined ? Number(rawRain) : Number.NaN;
       let rainHtml = '';
       if (Number.isFinite(rainVal)) {
         rainHtml = '<div class="weather-app-hourly-precip">' + Math.round(rainVal) + '%</div>';
