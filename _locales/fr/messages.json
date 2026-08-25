@@ -1,9 +1,24 @@
 {
-  "enableSearchHistory": { "message": "Activer l’historique de recherche", "description": "Label for the search history toggle" },
-  "appGridSaveError": { "message": "Impossible d’enregistrer les modifications des applications. Votre dernière action n’a pas été enregistrée.", "description": "Error shown when app grid changes cannot be persisted" },
-  "customBackgroundsLoadError": { "message": "Impossible de charger les arrière-plans personnalisés. Veuillez réessayer.", "description": "Error shown when custom backgrounds cannot be listed" },
-  "customBackgroundLoadError": { "message": "Impossible de charger l’arrière-plan personnalisé. Veuillez réessayer.", "description": "Error shown when a custom background cannot be applied" },
-  "customBackgroundDeleteError": { "message": "Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.", "description": "Error shown when a custom background cannot be deleted" },
+  "enableSearchHistory": {
+    "message": "Activer l’historique de recherche",
+    "description": "Label for the search history toggle"
+  },
+  "appGridSaveError": {
+    "message": "Impossible d’enregistrer les modifications des applications. Votre dernière action n’a pas été enregistrée.",
+    "description": "Error shown when app grid changes cannot be persisted"
+  },
+  "customBackgroundsLoadError": {
+    "message": "Impossible de charger les arrière-plans personnalisés. Veuillez réessayer.",
+    "description": "Error shown when custom backgrounds cannot be listed"
+  },
+  "customBackgroundLoadError": {
+    "message": "Impossible de charger l’arrière-plan personnalisé. Veuillez réessayer.",
+    "description": "Error shown when a custom background cannot be applied"
+  },
+  "customBackgroundDeleteError": {
+    "message": "Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.",
+    "description": "Error shown when a custom background cannot be deleted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
@@ -459,5 +474,13 @@
   "gamesMemoryControls": {
     "message": "Retournez les cartes pour trouver les paires",
     "description": "Memory match game controls"
+  },
+  "weatherHourly": {
+    "message": "Prévisions horaires",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "Maintenant",
+    "description": "Label for the current hour in hourly forecast"
   }
 }

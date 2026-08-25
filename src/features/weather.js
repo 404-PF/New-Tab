@@ -191,7 +191,7 @@
     const timeoutId = setTimeout(() => controller.abort(), GEO_TIMEOUT_MS);
     let response;
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7&hourly=temperature_2m,weather_code,precipitation_probability&forecast_hours=24&timezone=auto`;
       response = await fetch(url, { signal: controller.signal });
     } catch (e) {
       if (e.name === 'AbortError') {

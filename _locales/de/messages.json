@@ -1,9 +1,24 @@
 {
-  "enableSearchHistory": { "message": "Suchverlauf aktivieren", "description": "Label for the search history toggle" },
-  "appGridSaveError": { "message": "App-Änderungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.", "description": "Error shown when app grid changes cannot be persisted" },
-  "customBackgroundsLoadError": { "message": "Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.", "description": "Error shown when custom backgrounds cannot be listed" },
-  "customBackgroundLoadError": { "message": "Der benutzerdefinierte Hintergrund konnte nicht geladen werden. Bitte versuche es erneut.", "description": "Error shown when a custom background cannot be applied" },
-  "customBackgroundDeleteError": { "message": "Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.", "description": "Error shown when a custom background cannot be deleted" },
+  "enableSearchHistory": {
+    "message": "Suchverlauf aktivieren",
+    "description": "Label for the search history toggle"
+  },
+  "appGridSaveError": {
+    "message": "App-Änderungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
+    "description": "Error shown when app grid changes cannot be persisted"
+  },
+  "customBackgroundsLoadError": {
+    "message": "Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.",
+    "description": "Error shown when custom backgrounds cannot be listed"
+  },
+  "customBackgroundLoadError": {
+    "message": "Der benutzerdefinierte Hintergrund konnte nicht geladen werden. Bitte versuche es erneut.",
+    "description": "Error shown when a custom background cannot be applied"
+  },
+  "customBackgroundDeleteError": {
+    "message": "Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.",
+    "description": "Error shown when a custom background cannot be deleted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
@@ -459,5 +474,13 @@
   "gamesMemoryControls": {
     "message": "Karten umdrehen und Paare finden",
     "description": "Memory match game controls"
+  },
+  "weatherHourly": {
+    "message": "Stündliche Vorhersage",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "Jetzt",
+    "description": "Label for the current hour in hourly forecast"
   }
 }

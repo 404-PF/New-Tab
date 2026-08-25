@@ -3743,6 +3743,85 @@ body.light-theme .weather-city-inline input:focus {
   color: rgba(255, 255, 255, 0.45);
 }
 
+/* Weather app - hourly forecast */
+.weather-app-hourly {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 16px;
+  margin-bottom: 16px;
+}
+
+.weather-app-hourly-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px;
+}
+
+.weather-app-hourly-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.weather-app-hourly-list::-webkit-scrollbar {
+  height: 4px;
+}
+
+.weather-app-hourly-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.weather-app-hourly-hour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  min-width: 64px;
+  flex-shrink: 0;
+}
+
+.weather-app-hourly-time {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+.weather-app-hourly-icon {
+  width: 24px;
+  height: 24px;
+  color: rgba(255, 255, 255, 0.85);
+  flex-shrink: 0;
+}
+
+.weather-app-hourly-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.weather-app-hourly-temp {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.weather-app-hourly-precip {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(102, 204, 255, 0.9);
+}
+
 /* Simple mode hide */
 body.simple-mode #weather-app-modal {
   display: none !important;
@@ -3834,6 +3913,42 @@ body.light-theme .weather-app-forecast-day-high {
 
 body.light-theme .weather-app-forecast-day-low {
   color: rgba(107, 114, 128, 0.55);
+}
+
+body.light-theme .weather-app-hourly {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .weather-app-hourly-title {
+  color: rgba(107, 114, 128, 0.7);
+}
+
+body.light-theme .weather-app-hourly-hour {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .weather-app-hourly-time {
+  color: rgba(55, 65, 81, 0.7);
+}
+
+body.light-theme .weather-app-hourly-icon {
+  color: rgba(55, 65, 81, 0.85);
+}
+
+body.light-theme .weather-app-hourly-temp {
+  color: rgba(31, 41, 55, 0.9);
+}
+
+body.light-theme .weather-app-hourly-precip {
+  color: rgba(37, 99, 235, 0.9);
+}
+
+body.light-theme .weather-app-hourly-list {
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+body.light-theme .weather-app-hourly-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
 }
 
 /* Release Notes Modal */

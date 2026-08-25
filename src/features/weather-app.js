@@ -49,7 +49,7 @@
     }
     const date = new Date(dateString + 'T00:00:00');
     const dayIndex = date.getDay();
-    if (!Number.isFinite(dayIndex) || dayIndex < 0 || dayIndex > 6 || isNaN(date.getTime())) {
+    if (!Number.isFinite(dayIndex) || dayIndex < 0 || dayIndex > 6 || Number.isNaN(date.getTime())) {
       return '';
     }
     const dayNames = {
@@ -138,6 +138,35 @@
       '</div>';
   }
 
+  function buildDetailCardsHtml(feelsLike, windSpeed, humidity) {
+    const hasDetails = feelsLike !== null || windSpeed !== null || humidity !== null;
+    if (!hasDetails) return '';
+    let html = '<div class="weather-app-details">';
+    if (feelsLike !== null) {
+      html += '<div class="weather-app-detail-card">';
+      html += '<div class="weather-app-detail-icon">' + DETAIL_ICONS.feelsLike + '</div>';
+      html += '<div class="weather-app-detail-value">' + feelsLike + '</div>';
+      html += '<div class="weather-app-detail-label">' + t('weatherFeelsLike') + '</div>';
+      html += '</div>';
+    }
+    if (windSpeed !== null) {
+      html += '<div class="weather-app-detail-card">';
+      html += '<div class="weather-app-detail-icon">' + DETAIL_ICONS.wind + '</div>';
+      html += '<div class="weather-app-detail-value">' + windSpeed + '</div>';
+      html += '<div class="weather-app-detail-label">' + t('weatherWind') + '</div>';
+      html += '</div>';
+    }
+    if (humidity !== null) {
+      html += '<div class="weather-app-detail-card">';
+      html += '<div class="weather-app-detail-icon">' + DETAIL_ICONS.humidity + '</div>';
+      html += '<div class="weather-app-detail-value">' + humidity + '</div>';
+      html += '<div class="weather-app-detail-label">' + t('weatherHumidity') + '</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   function renderExpandedWeather(data, locationName, unit) {
     const body = getBodyElement();
     if (!body) return;
@@ -179,32 +208,12 @@
     html += '</div>';
     html += '</div>';
 
-    // Detail cards
-    const hasDetails = feelsLike !== null || windSpeed !== null || humidity !== null;
-    if (hasDetails) {
-      html += '<div class="weather-app-details">';
-      if (feelsLike !== null) {
-        html += '<div class="weather-app-detail-card">';
-        html += '<div class="weather-app-detail-icon">' + DETAIL_ICONS.feelsLike + '</div>';
-        html += '<div class="weather-app-detail-value">' + feelsLike + '</div>';
-        html += '<div class="weather-app-detail-label">' + t('weatherFeelsLike') + '</div>';
-        html += '</div>';
-      }
-      if (windSpeed !== null) {
-        html += '<div class="weather-app-detail-card">';
-        html += '<div class="weather-app-detail-icon">' + DETAIL_ICONS.wind + '</div>';
-        html += '<div class="weather-app-detail-value">' + windSpeed + '</div>';
-        html += '<div class="weather-app-detail-label">' + t('weatherWind') + '</div>';
-        html += '</div>';
-      }
-      if (humidity !== null) {
-        html += '<div class="weather-app-detail-card">';
-        html += '<div class="weather-app-detail-icon">' + DETAIL_ICONS.humidity + '</div>';
-        html += '<div class="weather-app-detail-value">' + humidity + '</div>';
-        html += '<div class="weather-app-detail-label">' + t('weatherHumidity') + '</div>';
-        html += '</div>';
-      }
-      html += '</div>';
+    html += buildDetailCardsHtml(feelsLike, windSpeed, humidity);
+
+    // Hourly forecast
+    const hourlyHtml = renderHourlyForecast(data, unit);
+    if (hourlyHtml) {
+      html += hourlyHtml;
     }
 
     // Forecast
@@ -218,7 +227,153 @@
     body.innerHTML = html;
   }
 
-  function renderExpandedForecast(data, unit) {
+  function formatNowWithTimezone(timezone) {
+    try {
+      const fmt = new Intl.DateTimeFormat('en-CA', {
+          timeZone: timezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          hourCycle: 'h23'
+        });
+        const parts = fmt.formatToParts(new Date());
+        const y = parts.find(function(p) { return p.type === 'year'; }).value;
+        const mo = parts.find(function(p) { return p.type === 'month'; }).value;
+        const d = parts.find(function(p) { return p.type === 'day'; }).value;
+        let h = parts.find(function(p) { return p.type === 'hour'; }).value;
+        const mi = parts.find(function(p) { return p.type === 'minute'; }).value;
+        if (h === '24') h = '00';
+        return y + '-' + mo + '-' + d + 'T' + h + ':' + mi;
+      } catch {
+        return null;
+      }
+  }
+
+  function formatNowWithOffset(utcOffsetSeconds) {
+    if (typeof utcOffsetSeconds !== 'number' || !Number.isFinite(utcOffsetSeconds)) return null;
+    return new Date(Date.now() + utcOffsetSeconds * 1000).toISOString().slice(0, 16);
+  }
+
+  function getLocationNowString(timezone, utcOffsetSeconds) {
+    if (timezone) {
+      const tzNow = formatNowWithTimezone(timezone);
+      if (tzNow) return tzNow;
+    }
+    const offsetNow = formatNowWithOffset(utcOffsetSeconds);
+    if (offsetNow) return offsetNow;
+    return null;
+  }  function parseHourlyTimeFallback(timeStr) {
+    const sep = timeStr.indexOf('T');
+    if (sep === -1) return new Date(Number.NaN);
+    const datePart = timeStr.slice(0, sep);
+    const timePart = timeStr.slice(sep + 1, sep + 6);
+    const dp = datePart.split('-');
+    const tp = timePart.split(':');
+    if (dp.length !== 3 || tp.length !== 2) return new Date(Number.NaN);
+    return new Date(Number.parseInt(dp[0], 10), Number.parseInt(dp[1], 10) - 1, Number.parseInt(dp[2], 10), Number.parseInt(tp[0], 10), Number.parseInt(tp[1], 10));
+  }
+
+  function findHourlyStartIndex(times, bounded, nowStr) {
+    if (nowStr) {
+      const nowHourStr = nowStr.length >= 13 ? nowStr.slice(0, 13) + ':00' : nowStr;
+      for (let i = 0; i < bounded; i++) {
+        if (times[i] >= nowHourStr) return i;
+      }
+      return 0;
+    }
+    const now = new Date();
+    for (let i = 0; i < bounded; i++) {
+      let d = new Date(times[i]);
+      if (Number.isNaN(d.getTime())) {
+        d = parseHourlyTimeFallback(times[i]);
+      }
+      if (!Number.isNaN(d.getTime()) && d.getTime() >= now.getTime() - 60000) return i;
+    }
+    return 0;
+  }
+
+  function isCurrentHourSlot(timeStr, nowStr) {
+    if (!timeStr || !nowStr || timeStr.length < 13 || nowStr.length < 13) return false;
+    return timeStr.slice(0, 13) === nowStr.slice(0, 13);
+  }
+
+  function buildHourlyCard(label, tempVal, codeVal, precipVal, unit) {
+    if (!Number.isFinite(tempVal) || !Number.isFinite(codeVal)) return '';
+    const tempDisplay = getTemp(tempVal, unit);
+    const info = getWeatherInfo(codeVal);
+    const icon = getWeatherIcon(info.type);
+    const rawRain = precipVal;
+    const rainVal = rawRain !== undefined ? Number(rawRain) : Number.NaN;
+    let rainHtml = '';
+    if (Number.isFinite(rainVal)) {
+      rainHtml = '<div class="weather-app-hourly-precip">' + Math.round(rainVal) + '%</div>';
+    }
+    return '<div class="weather-app-hourly-hour">' +
+      '<div class="weather-app-hourly-time">' + label + '</div>' +
+      '<div class="weather-app-hourly-icon">' + icon + '</div>' +
+      '<div class="weather-app-hourly-temp">' + tempDisplay + '°</div>' +
+      rainHtml +
+      '</div>';
+  }
+
+  function formatHourLabel(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') return '';
+    const tIndex = timeStr.indexOf('T');
+    if (tIndex === -1) return '';
+    const hm = timeStr.slice(tIndex + 1, tIndex + 6);
+    if (!/^\d{2}:\d{2}$/.test(hm)) return '';
+    const parts = hm.split(':');
+    const h = Number.parseInt(parts[0], 10);
+    const m = parts[1];
+    if (Number.isNaN(h)) return hm;
+    const lang = getLang();
+    if (normalizeLang(lang) === 'en') {
+      const suffix = h >= 12 ? ' PM' : ' AM';
+      let h12 = h % 12;
+      if (h12 === 0) h12 = 12;
+      return h12 + ':' + m + suffix;
+    }
+    return hm;
+  }
+
+  function resolveHourlyLabel(timeStr, nowStr) {
+    const nowLabel = t('weatherNow');
+    if (isCurrentHourSlot(timeStr, nowStr) && nowLabel !== 'weatherNow') return nowLabel;
+    return formatHourLabel(timeStr);
+  }
+
+  function renderHourlyForecast(data, unit) {
+    const hourly = data.hourly;
+    if (!hourly?.time || !hourly?.temperature_2m || !hourly?.weather_code) {
+      return '';
+    }
+    const times = hourly.time;
+    const temps = hourly.temperature_2m;
+    const codes = hourly.weather_code;
+    const precip = hourly.precipitation_probability;
+    const bounded = Math.min(times.length, temps.length, codes.length, 24);
+    if (bounded <= 0) return '';
+    const nowStr = getLocationNowString(data.timezone, data.utc_offset_seconds);
+    const startIndex = findHourlyStartIndex(times, bounded, nowStr);
+    const visibleCount = Math.min(12, bounded - startIndex);
+    if (visibleCount <= 0) return '';
+    const hourHtml = [];
+    for (let j = startIndex; j < startIndex + visibleCount; j++) {
+      const label = resolveHourlyLabel(times[j], nowStr);
+      if (!label) continue;
+      const card = buildHourlyCard(label, Number(temps[j]), Number(codes[j]), precip?.[j], unit);
+      if (!card) continue;
+      hourHtml.push(card);
+    }
+    if (hourHtml.length === 0) return '';
+    return '<div class="weather-app-hourly">' +
+      '<div class="weather-app-hourly-title">' + t('weatherHourly') + '</div>' +
+      '<div class="weather-app-hourly-list">' + hourHtml.join('') + '</div>' +
+      '</div>';
+  }  function renderExpandedForecast(data, unit) {
     const daily = data.daily;
     if (!daily || !daily.time || !daily.temperature_2m_max || !daily.temperature_2m_min || !daily.weather_code) {
       return '';

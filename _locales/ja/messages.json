@@ -1,9 +1,24 @@
 {
-  "enableSearchHistory": { "message": "検索履歴を有効にする", "description": "Label for the search history toggle" },
-  "appGridSaveError": { "message": "アプリの変更を保存できませんでした。直前の操作は保存されていません。", "description": "Error shown when app grid changes cannot be persisted" },
-  "customBackgroundsLoadError": { "message": "カスタム背景を読み込めませんでした。もう一度お試しください。", "description": "Error shown when custom backgrounds cannot be listed" },
-  "customBackgroundLoadError": { "message": "このカスタム背景を読み込めませんでした。もう一度お試しください。", "description": "Error shown when a custom background cannot be applied" },
-  "customBackgroundDeleteError": { "message": "カスタム背景を削除できませんでした。もう一度お試しください。", "description": "Error shown when a custom background cannot be deleted" },
+  "enableSearchHistory": {
+    "message": "検索履歴を有効にする",
+    "description": "Label for the search history toggle"
+  },
+  "appGridSaveError": {
+    "message": "アプリの変更を保存できませんでした。直前の操作は保存されていません。",
+    "description": "Error shown when app grid changes cannot be persisted"
+  },
+  "customBackgroundsLoadError": {
+    "message": "カスタム背景を読み込めませんでした。もう一度お試しください。",
+    "description": "Error shown when custom backgrounds cannot be listed"
+  },
+  "customBackgroundLoadError": {
+    "message": "このカスタム背景を読み込めませんでした。もう一度お試しください。",
+    "description": "Error shown when a custom background cannot be applied"
+  },
+  "customBackgroundDeleteError": {
+    "message": "カスタム背景を削除できませんでした。もう一度お試しください。",
+    "description": "Error shown when a custom background cannot be deleted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
@@ -459,5 +474,13 @@
   "gamesMemoryControls": {
     "message": "カードをめくってペアを見つけよう",
     "description": "Memory match game controls"
+  },
+  "weatherHourly": {
+    "message": "時間別予報",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "現在",
+    "description": "Label for the current hour in hourly forecast"
   }
 }
