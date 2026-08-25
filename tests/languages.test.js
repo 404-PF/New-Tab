@@ -26,6 +26,14 @@ const CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS = [
   'customBackgroundDeleteError'
 ];
 
+const AI_EXPORT_TRANSLATION_KEYS = [
+  'aiExportConversation',
+  'aiExportAll',
+  'aiExportSuccess',
+  'aiExportAllSuccess',
+  'aiExportError'
+];
+
 // Derived from the source's window.i18n.gamesTranslationKeys in beforeAll so
 // this list can never drift from the keys languages.js actually defines.
 let GAMES_TRANSLATION_KEYS = [];
@@ -82,6 +90,29 @@ describe('Custom background error translations', () => {
 
       CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS.forEach((key) => {
         expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
+      });
+    });
+  });
+});
+
+describe('AI export translations', () => {
+  // Inspect getTranslations() directly rather than t(): t() silently falls
+  // back to English when a locale lacks the key, which would hide a stale
+  // non-English entry behind a passing assertion.
+  it('defines every export string in each supported language', () => {
+    const languages = window.i18n.getSupportedLanguages();
+    const english = window.i18n.getTranslations('en');
+
+    languages.forEach(({ code }) => {
+      const localeTranslations = window.i18n.getTranslations(code);
+
+      AI_EXPORT_TRANSLATION_KEYS.forEach((key) => {
+        expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
+        expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
+        expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
+        if (code !== 'en') {
+          expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
+        }
       });
     });
   });

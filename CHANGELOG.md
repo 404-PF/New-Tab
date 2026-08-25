@@ -4,6 +4,7 @@
 
 ### Features
 
+- Add AI conversation export to Markdown files, with a per-conversation download button in the topics list, an Export All button and `E` keyboard shortcut (#647)
 - Enhance the Snake game's visuals with a gradient background, interpolated smooth movement, rounded gradient snake segments with eyes, an animated pulsing food, eat particle bursts, and screen shake (#579)
 - Add a "Sort Alphabetically" action to the grid context menu that rearranges app icons by display name while keeping folders anchored in place (#645)
 

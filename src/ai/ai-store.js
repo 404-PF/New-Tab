@@ -230,6 +230,77 @@ const AIStore = (function() {
     state.keyboardSelectedIndex = -1;
   }
 
+  function sanitizeFilenameTitle(title) {
+    let cleaned = String(title || '')
+      // Strip characters that are illegal in filenames on common platforms
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\\/:*?"<>|\x00-\x1f]/g, '')
+      .trim();
+    // Drop trailing extension dots (e.g. "..." titles) without a quantified
+    // overlap regex, which SonarCloud S8786 flags as super-linear.
+    while (cleaned.endsWith('.')) {
+      cleaned = cleaned.slice(0, -1).trimEnd();
+    }
+    return cleaned.slice(0, 80).trim() || 'conversation';
+  }
+
+  function formatExportTime(timestamp) {
+    return typeof timestamp === 'number' ? new Date(timestamp).toLocaleString() : '';
+  }
+
+  // Same local-date shape as the todo/settings export filenames.
+  function formatExportDate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + d;
+  }
+
+  // Role labels stay untranslated so exported files read consistently when shared.
+  function serializeConversationToMarkdown(conversation) {
+    // Auto-generated titles can contain newlines (they preview the first
+    // message); flatten them so the heading stays on a single line. Splitting
+    // instead of a whitespace regex keeps the matcher free of quantifier
+    // adjacency (SonarCloud S8786).
+    const title = String(conversation.title || '')
+      .split(/[\r\n]+/)
+      .map(part => part.trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    const lines = ['# ' + title, ''];
+    (conversation.messages || []).forEach(message => {
+      const label = message.role === 'user' ? 'You' : 'Assistant';
+      const time = formatExportTime(message.timestamp);
+      lines.push(
+        (time ? '**' + label + '** _(' + time + ')_' : '**' + label + '**'),
+        '',
+        message.content || '',
+        ''
+      );
+    });
+    return lines.join('\n');
+  }
+
+  function exportConversation(conversationId) {
+    const conversation = state.conversations.find(item => item.id === conversationId);
+    if (!conversation) return null;
+
+    return {
+      filename: sanitizeFilenameTitle(conversation.title) + '-' + formatExportDate(new Date()) + '.md',
+      content: serializeConversationToMarkdown(conversation)
+    };
+  }
+
+  function exportAllConversations() {
+    if (!state.conversations.length) return null;
+
+    return {
+      filename: 'ai-conversations-' + formatExportDate(new Date()) + '.md',
+      content: state.conversations.map(serializeConversationToMarkdown).join('\n---\n\n')
+    };
+  }
+
   function setKeyboardSelectedIndex(index) {
     state.keyboardSelectedIndex = index;
   }
@@ -294,6 +365,9 @@ const AIStore = (function() {
     switchConversation,
     deleteConversation,
     setSearchQuery,
+    serializeConversationToMarkdown,
+    exportConversation,
+    exportAllConversations,
     setKeyboardSelectedIndex,
     setLoading,
     setStreaming,

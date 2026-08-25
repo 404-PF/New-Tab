@@ -3916,6 +3916,33 @@ Object.keys(customBackgroundErrorTranslations).forEach(function (language) {
   target.customBackgroundDeleteError = messages[2];
 });
 
+// The AI export strings are defined here rather than inline in each per-locale
+// block. Those blocks are structurally identical across locales, so repeating
+// the same five keys in every one would count as new duplication in
+// SonarCloud's quality gate (same reason the gamesLevel map exists below).
+const aiExportTranslations = {
+  en: ['Export conversation as Markdown', 'Export All', 'Conversation exported.', 'Conversations exported.', 'Failed to export the conversation.'],
+  zh: ['导出对话为 Markdown', '导出全部', '对话已导出。', '对话已全部导出。', '导出对话失败。'],
+  ja: ['会話をMarkdownでエクスポート', 'すべてエクスポート', '会話をエクスポートしました。', '会話をすべてエクスポートしました。', '会話のエクスポートに失敗しました。'],
+  ko: ['대화를 Markdown으로 내보내기', '모두 내보내기', '대화를 내보냈습니다.', '모든 대화를 내보냈습니다.', '대화를 내보내지 못했습니다.'],
+  es: ['Exportar conversación como Markdown', 'Exportar todo', 'Conversación exportada.', 'Conversaciones exportadas.', 'No se pudo exportar la conversación.'],
+  fr: ['Exporter la conversation en Markdown', 'Tout exporter', 'Conversation exportée.', 'Conversations exportées.', 'Échec de l\'export de la conversation.'],
+  de: ['Unterhaltung als Markdown exportieren', 'Alle exportieren', 'Unterhaltung exportiert.', 'Unterhaltungen exportiert.', 'Export der Unterhaltung fehlgeschlagen.'],
+  pt: ['Exportar conversa como Markdown', 'Exportar tudo', 'Conversa exportada.', 'Conversas exportadas.', 'Falha ao exportar a conversa.'],
+  ru: ['Экспортировать беседу в Markdown', 'Экспортировать все', 'Беседа экспортирована.', 'Беседы экспортированы.', 'Не удалось экспортировать беседу.']
+};
+
+Object.keys(aiExportTranslations).forEach(function (language) {
+  const target = translations[language];
+  if (!target) return;
+  const messages = aiExportTranslations[language];
+  target.aiExportConversation = messages[0];
+  target.aiExportAll = messages[1];
+  target.aiExportSuccess = messages[2];
+  target.aiExportAllSuccess = messages[3];
+  target.aiExportError = messages[4];
+});
+
 // The games "Level" label is defined here rather than in the per-locale
 // createGamesTranslations arrays. Those blocks are structurally identical across
 // locales, so appending a string to each one would count every line as new
