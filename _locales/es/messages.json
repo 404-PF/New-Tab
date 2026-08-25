@@ -1,9 +1,24 @@
 {
-  "enableSearchHistory": { "message": "Activar historial de búsqueda", "description": "Label for the search history toggle" },
-  "appGridSaveError": { "message": "No se pudieron guardar los cambios de las aplicaciones. La última acción no se guardó.", "description": "Error shown when app grid changes cannot be persisted" },
-  "customBackgroundsLoadError": { "message": "No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.", "description": "Error shown when custom backgrounds cannot be listed" },
-  "customBackgroundLoadError": { "message": "No se pudo cargar el fondo personalizado. Inténtalo de nuevo.", "description": "Error shown when a custom background cannot be applied" },
-  "customBackgroundDeleteError": { "message": "No se pudo eliminar el fondo personalizado. Inténtalo de nuevo.", "description": "Error shown when a custom background cannot be deleted" },
+  "enableSearchHistory": {
+    "message": "Activar historial de búsqueda",
+    "description": "Label for the search history toggle"
+  },
+  "appGridSaveError": {
+    "message": "No se pudieron guardar los cambios de las aplicaciones. La última acción no se guardó.",
+    "description": "Error shown when app grid changes cannot be persisted"
+  },
+  "customBackgroundsLoadError": {
+    "message": "No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.",
+    "description": "Error shown when custom backgrounds cannot be listed"
+  },
+  "customBackgroundLoadError": {
+    "message": "No se pudo cargar el fondo personalizado. Inténtalo de nuevo.",
+    "description": "Error shown when a custom background cannot be applied"
+  },
+  "customBackgroundDeleteError": {
+    "message": "No se pudo eliminar el fondo personalizado. Inténtalo de nuevo.",
+    "description": "Error shown when a custom background cannot be deleted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
@@ -451,5 +466,13 @@
   "gamesMemoryControls": {
     "message": "Voltea cartas para encontrar pares",
     "description": "Memory match game controls"
+  },
+  "weatherHourly": {
+    "message": "Pronóstico por horas",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "Ahora",
+    "description": "Label for the current hour in hourly forecast"
   }
 }

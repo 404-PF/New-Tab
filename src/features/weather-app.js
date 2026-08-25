@@ -207,6 +207,12 @@
       html += '</div>';
     }
 
+    // Hourly forecast
+    const hourlyHtml = renderHourlyForecast(data, unit);
+    if (hourlyHtml) {
+      html += hourlyHtml;
+    }
+
     // Forecast
     if (data.daily) {
       const forecastHtml = renderExpandedForecast(data, unit);
@@ -216,6 +222,98 @@
     }
 
     body.innerHTML = html;
+  }
+
+  function formatHourLabel(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') return '';
+    const tIndex = timeStr.indexOf('T');
+    if (tIndex === -1) return '';
+    const hm = timeStr.slice(tIndex + 1, tIndex + 6);
+    if (!/^\d{2}:\d{2}$/.test(hm)) return '';
+    const parts = hm.split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parts[1];
+    if (isNaN(h)) return hm;
+    const lang = getLang();
+    if (normalizeLang(lang) === 'en') {
+      const suffix = h >= 12 ? ' PM' : ' AM';
+      let h12 = h % 12;
+      if (h12 === 0) h12 = 12;
+      return h12 + ':' + m + suffix;
+    }
+    return hm;
+  }
+
+  function renderHourlyForecast(data, unit) {
+    const hourly = data.hourly;
+    if (!hourly || !hourly.time || !hourly.temperature_2m || !hourly.weather_code) {
+      return '';
+    }
+    const times = hourly.time;
+    const temps = hourly.temperature_2m;
+    const codes = hourly.weather_code;
+    const precip = hourly.precipitation_probability;
+    const bounded = Math.min(times.length, temps.length, codes.length, 24);
+    if (bounded <= 0) return '';
+    const now = new Date();
+    let startIndex = 0;
+    let found = false;
+    for (let i = 0; i < bounded; i++) {
+      const timeStr = times[i];
+      let d = new Date(timeStr);
+      if (isNaN(d.getTime())) {
+        const sep = timeStr.indexOf('T');
+        if (sep !== -1) {
+          const datePart = timeStr.slice(0, sep);
+          const timePart = timeStr.slice(sep + 1, sep + 6);
+          const dp = datePart.split('-');
+          const tp = timePart.split(':');
+          if (dp.length === 3 && tp.length === 2) {
+            d = new Date(parseInt(dp[0], 10), parseInt(dp[1], 10) - 1, parseInt(dp[2], 10), parseInt(tp[0], 10), parseInt(tp[1], 10));
+          }
+        }
+      }
+      if (!isNaN(d.getTime()) && d.getTime() >= now.getTime() - 60 * 1000) {
+        startIndex = i;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      startIndex = 0;
+    }
+    const visibleCount = Math.min(12, bounded - startIndex);
+    if (visibleCount <= 0) return '';
+    const hourHtml = [];
+    for (let j = startIndex; j < startIndex + visibleCount; j++) {
+      const timeStr2 = times[j];
+      const label = formatHourLabel(timeStr2);
+      if (!label) continue;
+      const tempVal = Number(temps[j]);
+      const codeVal = Number(codes[j]);
+      if (!Number.isFinite(tempVal) || !Number.isFinite(codeVal)) continue;
+      const tempDisplay = getTemp(tempVal, unit);
+      const info = getWeatherInfo(codeVal);
+      const icon = getWeatherIcon(info.type);
+      const rainVal = precip && typeof precip[j] !== 'undefined' ? Number(precip[j]) : NaN;
+      let rainHtml = '';
+      if (Number.isFinite(rainVal)) {
+        rainHtml = '<div class="weather-app-hourly-precip">' + Math.round(rainVal) + '%</div>';
+      }
+      hourHtml.push(
+        '<div class="weather-app-hourly-hour">' +
+        '<div class="weather-app-hourly-time">' + label + '</div>' +
+        '<div class="weather-app-hourly-icon">' + icon + '</div>' +
+        '<div class="weather-app-hourly-temp">' + tempDisplay + '°</div>' +
+        rainHtml +
+        '</div>'
+      );
+    }
+    if (hourHtml.length === 0) return '';
+    return '<div class="weather-app-hourly">' +
+      '<div class="weather-app-hourly-title">' + t('weatherHourly') + '</div>' +
+      '<div class="weather-app-hourly-list">' + hourHtml.join('') + '</div>' +
+      '</div>';
   }
 
   function renderExpandedForecast(data, unit) {

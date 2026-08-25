@@ -1,9 +1,24 @@
 {
-  "enableSearchHistory": { "message": "Ativar histórico de pesquisa", "description": "Label for the search history toggle" },
-  "appGridSaveError": { "message": "Não foi possível salvar as alterações dos aplicativos. Sua última ação não foi salva.", "description": "Error shown when app grid changes cannot be persisted" },
-  "customBackgroundsLoadError": { "message": "Não foi possível carregar os planos de fundo personalizados. Tente novamente.", "description": "Error shown when custom backgrounds cannot be listed" },
-  "customBackgroundLoadError": { "message": "Não foi possível carregar o plano de fundo personalizado. Tente novamente.", "description": "Error shown when a custom background cannot be applied" },
-  "customBackgroundDeleteError": { "message": "Não foi possível excluir o plano de fundo personalizado. Tente novamente.", "description": "Error shown when a custom background cannot be deleted" },
+  "enableSearchHistory": {
+    "message": "Ativar histórico de pesquisa",
+    "description": "Label for the search history toggle"
+  },
+  "appGridSaveError": {
+    "message": "Não foi possível salvar as alterações dos aplicativos. Sua última ação não foi salva.",
+    "description": "Error shown when app grid changes cannot be persisted"
+  },
+  "customBackgroundsLoadError": {
+    "message": "Não foi possível carregar os planos de fundo personalizados. Tente novamente.",
+    "description": "Error shown when custom backgrounds cannot be listed"
+  },
+  "customBackgroundLoadError": {
+    "message": "Não foi possível carregar o plano de fundo personalizado. Tente novamente.",
+    "description": "Error shown when a custom background cannot be applied"
+  },
+  "customBackgroundDeleteError": {
+    "message": "Não foi possível excluir o plano de fundo personalizado. Tente novamente.",
+    "description": "Error shown when a custom background cannot be deleted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
@@ -451,5 +466,13 @@
   "gamesMemoryControls": {
     "message": "Vire as cartas para encontrar os pares",
     "description": "Memory match game controls"
+  },
+  "weatherHourly": {
+    "message": "Previsão horária",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "Agora",
+    "description": "Label for the current hour in hourly forecast"
   }
 }

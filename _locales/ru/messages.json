@@ -1,9 +1,24 @@
 {
-  "enableSearchHistory": { "message": "Включить историю поиска", "description": "Label for the search history toggle" },
-  "appGridSaveError": { "message": "Не удалось сохранить изменения приложений. Последнее действие не было сохранено.", "description": "Error shown when app grid changes cannot be persisted" },
-  "customBackgroundsLoadError": { "message": "Не удалось загрузить пользовательские фоны. Повторите попытку.", "description": "Error shown when custom backgrounds cannot be listed" },
-  "customBackgroundLoadError": { "message": "Не удалось загрузить пользовательский фон. Повторите попытку.", "description": "Error shown when a custom background cannot be applied" },
-  "customBackgroundDeleteError": { "message": "Не удалось удалить пользовательский фон. Повторите попытку.", "description": "Error shown when a custom background cannot be deleted" },
+  "enableSearchHistory": {
+    "message": "Включить историю поиска",
+    "description": "Label for the search history toggle"
+  },
+  "appGridSaveError": {
+    "message": "Не удалось сохранить изменения приложений. Последнее действие не было сохранено.",
+    "description": "Error shown when app grid changes cannot be persisted"
+  },
+  "customBackgroundsLoadError": {
+    "message": "Не удалось загрузить пользовательские фоны. Повторите попытку.",
+    "description": "Error shown when custom backgrounds cannot be listed"
+  },
+  "customBackgroundLoadError": {
+    "message": "Не удалось загрузить пользовательский фон. Повторите попытку.",
+    "description": "Error shown when a custom background cannot be applied"
+  },
+  "customBackgroundDeleteError": {
+    "message": "Не удалось удалить пользовательский фон. Повторите попытку.",
+    "description": "Error shown when a custom background cannot be deleted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
@@ -451,5 +466,13 @@
   "gamesMemoryControls": {
     "message": "Переворачивайте карточки, чтобы найти пары",
     "description": "Memory match game controls"
+  },
+  "weatherHourly": {
+    "message": "Почасовой прогноз",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "Сейчас",
+    "description": "Label for the current hour in hourly forecast"
   }
 }

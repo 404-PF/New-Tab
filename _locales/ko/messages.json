@@ -1,9 +1,24 @@
 {
-  "enableSearchHistory": { "message": "검색 기록 사용", "description": "Label for the search history toggle" },
-  "appGridSaveError": { "message": "앱 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.", "description": "Error shown when app grid changes cannot be persisted" },
-  "customBackgroundsLoadError": { "message": "사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.", "description": "Error shown when custom backgrounds cannot be listed" },
-  "customBackgroundLoadError": { "message": "이 사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.", "description": "Error shown when a custom background cannot be applied" },
-  "customBackgroundDeleteError": { "message": "사용자 지정 배경을 삭제하지 못했습니다. 다시 시도해 주세요.", "description": "Error shown when a custom background cannot be deleted" },
+  "enableSearchHistory": {
+    "message": "검색 기록 사용",
+    "description": "Label for the search history toggle"
+  },
+  "appGridSaveError": {
+    "message": "앱 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
+    "description": "Error shown when app grid changes cannot be persisted"
+  },
+  "customBackgroundsLoadError": {
+    "message": "사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.",
+    "description": "Error shown when custom backgrounds cannot be listed"
+  },
+  "customBackgroundLoadError": {
+    "message": "이 사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.",
+    "description": "Error shown when a custom background cannot be applied"
+  },
+  "customBackgroundDeleteError": {
+    "message": "사용자 지정 배경을 삭제하지 못했습니다. 다시 시도해 주세요.",
+    "description": "Error shown when a custom background cannot be deleted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
@@ -451,5 +466,13 @@
   "gamesMemoryControls": {
     "message": "카드를 뒤집어 쌍을 찾으세요",
     "description": "Memory match game controls"
+  },
+  "weatherHourly": {
+    "message": "시간별 예보",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "지금",
+    "description": "Label for the current hour in hourly forecast"
   }
 }
