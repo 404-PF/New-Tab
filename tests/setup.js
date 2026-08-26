@@ -551,6 +551,8 @@ globalThis.window.i18n = {
       searchProviderRemoveLabel: 'Remove {name}',
       searchProviderInvalidName: 'Enter a name for the search provider.',
       searchProviderInvalidUrl: 'Enter a valid URL with {query} and http(s).',
+      searchProviderNameAriaLabel: 'Provider name',
+      searchProviderUrlAriaLabel: 'Search URL template',
       removeTimezone: 'Remove',
       removeTimezoneLabel: 'Remove {city} time zone',
       gamesScore: 'Score',

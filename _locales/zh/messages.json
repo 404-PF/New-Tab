@@ -468,15 +468,15 @@
     "description": "Memory match game controls"
   },
   "searchProviders": {
-    "message": "Search providers",
+    "message": "搜索引擎",
     "description": "Title for the custom search providers settings card"
   },
   "searchProvidersDesc": {
-    "message": "Add custom search engines with a name and URL template",
+    "message": "添加带有名称和网址模板的自定义搜索引擎",
     "description": "Description for the custom search providers settings card"
   },
   "searchProviderNamePlaceholder": {
-    "message": "Name (e.g. Kagi)",
+    "message": "名称（例如 Kagi）",
     "description": "Placeholder for the custom search provider name input"
   },
   "searchProviderUrlPlaceholder": {
@@ -484,37 +484,39 @@
     "description": "Placeholder for the custom search provider URL input"
   },
   "searchProviderAdd": {
-    "message": "Add",
+    "message": "添加",
     "description": "Label for the add custom search provider button"
   },
   "searchProvidersEmpty": {
-    "message": "No custom providers yet",
+    "message": "暂无自定义搜索引擎",
     "description": "Empty state text when no custom search providers exist"
   },
   "searchProviderRemove": {
-    "message": "Remove",
+    "message": "删除",
     "description": "Accessible label for removing a custom search provider"
   },
   "searchProviderRemoveLabel": {
-    "message": "Remove {name}",
-    "description": "Accessible label for removing a specific custom search provider",
-    "placeholders": {
-      "name": {
-        "content": "$1",
-        "example": "Kagi"
-      }
-    }
+    "message": "删除 {name}",
+    "description": "Accessible label for removing a specific custom search provider"
   },
   "searchProviderInvalidName": {
-    "message": "Enter a name for the search provider.",
+    "message": "请输入搜索引擎的名称。",
     "description": "Validation error when the provider name is empty"
   },
   "searchProviderInvalidUrl": {
-    "message": "Enter a valid URL with {query} and http(s).",
+    "message": "请输入包含 {query} 的有效 http(s) 网址。",
     "description": "Validation error when the provider URL is invalid"
   },
   "searchWith": {
     "message": "Search with",
     "description": "Label prefix shown before the active search provider name"
+  },
+  "searchProviderNameAriaLabel": {
+    "message": "提供商名称",
+    "description": "Accessible name for the provider name input"
+  },
+  "searchProviderUrlAriaLabel": {
+    "message": "搜索网址模板",
+    "description": "Accessible name for the provider URL input"
   }
 }

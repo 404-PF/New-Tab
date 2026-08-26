@@ -414,40 +414,6 @@ body.light-theme .search-provider-btn.active {
   background: rgba(25, 118, 210, 0.1);
 }
 
-/* Custom provider hover remove */
-.search-provider-btn.search-provider-custom {
-  position: relative;
-}
-.search-provider-remove {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  line-height: 1;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  pointer-events: none;
-}
-.search-provider-btn.search-provider-custom:hover .search-provider-remove {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
-}
-body.light-theme .search-provider-remove {
-  background: rgba(0, 0, 0, 0.6);
-}
-
 /* Custom search providers settings card */
 .custom-search-providers-option {
   grid-column: 1 / -1;
@@ -467,7 +433,7 @@ body.light-theme .search-provider-remove {
   min-width: 0;
 }
 
-.custom-search-providers-content label {
+.custom-search-providers-content h4 {
   font-weight: 600;
   font-size: 13px;
 }
@@ -517,21 +483,16 @@ body.light-theme .search-provider-remove {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(33, 150, 243, 0.15);
-  border: 1px solid rgba(33, 150, 243, 0.3);
+  background: #1976d2;
+  border: 1px solid #1976d2;
   border-radius: 6px;
-  color: #64b5f6;
+  color: #ffffff;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 #custom-search-provider-add-btn:hover {
-  background: rgba(33, 150, 243, 0.25);
-  border-color: rgba(33, 150, 243, 0.4);
-}
-body.light-theme #custom-search-provider-add-btn {
-  background: rgba(33, 150, 243, 0.1);
-  border-color: rgba(33, 150, 243, 0.2);
-  color: #1976d2;
+  background: #1565c0;
+  border-color: #1565c0;
 }
 
 .custom-search-provider-feedback {
@@ -601,15 +562,15 @@ body.light-theme #custom-search-provider-add-btn {
   justify-content: center;
   border-radius: 6px;
   border: 1px solid transparent;
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
+  background: #7f1d1d;
+  color: #fecaca;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .custom-search-provider-remove:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: #991b1b;
+  border-color: rgba(254, 202, 202, 0.3);
 }
 
 .custom-search-providers-empty {
@@ -632,6 +593,24 @@ body.light-theme .custom-search-providers-form input[type="text"]:focus {
 body.light-theme .custom-search-provider-item {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .custom-search-providers-form input[type="text"]::placeholder {
+  color: #6b7280;
+}
+
+body.light-theme .custom-search-provider-item-url {
+  color: #4b5563;
+}
+
+body.light-theme .custom-search-provider-remove {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+body.light-theme .custom-search-provider-remove:hover {
+  background: #fecaca;
+  border-color: rgba(153, 27, 27, 0.3);
 }
 
 body.light-theme .custom-search-providers-empty {

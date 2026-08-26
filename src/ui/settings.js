@@ -1583,7 +1583,7 @@ function initCustomSearchProvidersSettings() {
       return;
     }
 
-    if (!url || url.indexOf('{query}') === -1) {
+    if (!url || !url.includes('{query}')) {
       showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
       urlInput.focus();
       return;
@@ -1597,13 +1597,10 @@ function initCustomSearchProvidersSettings() {
       const result = window.addCustomProvider(name, url);
 
     if (!result) {
-      // addCustomProvider returns false on validation failure
-      const isNameInvalid = !name;
-      if (isNameInvalid) {
-        showFeedback(t('searchProviderInvalidName', 'Enter a name for the search provider.'), 'error');
-      } else {
-        showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
-      }
+      // addCustomProvider returns false on validation failure; the name was
+      // already checked above, so only the URL can still be invalid here.
+      showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
+      urlInput.focus();
       return;
     }
 
@@ -1640,9 +1637,9 @@ function initCustomSearchProvidersSettings() {
   });
 
   listEl.addEventListener('click', function (e) {
-        const btn = e.target.closest('.custom-search-provider-remove');
-    if (!btn || !btn.dataset.providerId) return;
-    handleRemove(btn.dataset.providerId);
+    const providerId = e.target.closest('.custom-search-provider-remove')?.dataset.providerId;
+    if (!providerId) return;
+    handleRemove(providerId);
   });
 
   // Expose for import refresh and re-render after language change

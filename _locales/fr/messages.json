@@ -468,15 +468,15 @@
     "description": "Memory match game controls"
   },
   "searchProviders": {
-    "message": "Search providers",
+    "message": "Moteurs de recherche",
     "description": "Title for the custom search providers settings card"
   },
   "searchProvidersDesc": {
-    "message": "Add custom search engines with a name and URL template",
+    "message": "Ajoutez des moteurs de recherche personnalisés avec un nom et un modèle d’URL",
     "description": "Description for the custom search providers settings card"
   },
   "searchProviderNamePlaceholder": {
-    "message": "Name (e.g. Kagi)",
+    "message": "Nom (ex. Kagi)",
     "description": "Placeholder for the custom search provider name input"
   },
   "searchProviderUrlPlaceholder": {
@@ -484,37 +484,39 @@
     "description": "Placeholder for the custom search provider URL input"
   },
   "searchProviderAdd": {
-    "message": "Add",
+    "message": "Ajouter",
     "description": "Label for the add custom search provider button"
   },
   "searchProvidersEmpty": {
-    "message": "No custom providers yet",
+    "message": "Aucun moteur personnalisé pour le moment",
     "description": "Empty state text when no custom search providers exist"
   },
   "searchProviderRemove": {
-    "message": "Remove",
+    "message": "Supprimer",
     "description": "Accessible label for removing a custom search provider"
   },
   "searchProviderRemoveLabel": {
-    "message": "Remove {name}",
-    "description": "Accessible label for removing a specific custom search provider",
-    "placeholders": {
-      "name": {
-        "content": "$1",
-        "example": "Kagi"
-      }
-    }
+    "message": "Supprimer {name}",
+    "description": "Accessible label for removing a specific custom search provider"
   },
   "searchProviderInvalidName": {
-    "message": "Enter a name for the search provider.",
+    "message": "Saisissez un nom pour le moteur de recherche.",
     "description": "Validation error when the provider name is empty"
   },
   "searchProviderInvalidUrl": {
-    "message": "Enter a valid URL with {query} and http(s).",
+    "message": "Saisissez une URL valide contenant {query} et http(s).",
     "description": "Validation error when the provider URL is invalid"
   },
   "searchWith": {
     "message": "Search with",
     "description": "Label prefix shown before the active search provider name"
+  },
+  "searchProviderNameAriaLabel": {
+    "message": "Nom du moteur de recherche",
+    "description": "Accessible name for the provider name input"
+  },
+  "searchProviderUrlAriaLabel": {
+    "message": "Modèle d’URL de recherche",
+    "description": "Accessible name for the provider URL input"
   }
 }

@@ -693,8 +693,6 @@
       }
       if (typeof window.renderCustomSearchProvidersList === 'function') {
         window.renderCustomSearchProvidersList();
-      } else if (typeof window.refreshCustomSearchProvidersSettings === 'function') {
-        window.refreshCustomSearchProvidersSettings();
       }
 
       if (hasWriteErrors) {

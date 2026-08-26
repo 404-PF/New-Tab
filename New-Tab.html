@@ -477,11 +477,11 @@
                       <path d="M11 8a3 3 0 0 0-3 3"></path>
                     </svg>
                     <div class="setting-content custom-search-providers-content">
-                      <label data-i18n="searchProviders">Search providers</label>
+                      <h4 data-i18n="searchProviders">Search providers</h4>
                       <p class="setting-desc" data-i18n="searchProvidersDesc">Add custom search engines with a name and URL template</p>
                       <div class="custom-search-providers-form">
-                        <input type="text" id="custom-search-provider-name" data-i18n-placeholder="searchProviderNamePlaceholder" placeholder="Name" aria-label="Provider name" maxlength="40" />
-                        <input type="text" id="custom-search-provider-url" data-i18n-placeholder="searchProviderUrlPlaceholder" placeholder="https://example.com/search?q={query}" aria-label="Provider URL" />
+                        <input type="text" id="custom-search-provider-name" data-i18n-placeholder="searchProviderNamePlaceholder" placeholder="Name (e.g. Kagi)" aria-label="Provider name" data-i18n-aria-label="searchProviderNameAriaLabel" maxlength="40" />
+                        <input type="text" id="custom-search-provider-url" data-i18n-placeholder="searchProviderUrlPlaceholder" placeholder="https://example.com/search?q={query}" aria-label="Search URL template" data-i18n-aria-label="searchProviderUrlAriaLabel" />
                         <button type="button" id="custom-search-provider-add-btn" class="setting-btn" data-i18n="searchProviderAdd">Add</button>
                       </div>
                       <div id="custom-search-provider-feedback" class="custom-search-provider-feedback" aria-live="polite"></div>

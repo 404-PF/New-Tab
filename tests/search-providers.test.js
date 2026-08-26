@@ -355,7 +355,7 @@ describe('Search providers - settings UI', () => {
   });
 
   it('removes a custom provider via the settings list and updates the bar', () => {
-    const id = addCustomProvider('ToRemove', 'https://remove.com/search?q={query}');
+    addCustomProvider('ToRemove', 'https://remove.com/search?q={query}');
     window.renderCustomSearchProvidersList();
     window.refreshProviderBar();
 

@@ -633,13 +633,7 @@
   },
   "searchProviderRemoveLabel": {
     "message": "Remove {name}",
-    "description": "Accessible label for removing a specific custom search provider",
-    "placeholders": {
-      "name": {
-        "content": "$1",
-        "example": "Kagi"
-      }
-    }
+    "description": "Accessible label for removing a specific custom search provider"
   },
   "searchProviderInvalidName": {
     "message": "Enter a name for the search provider.",
@@ -648,5 +642,13 @@
   "searchProviderInvalidUrl": {
     "message": "Enter a valid URL with {query} and http(s).",
     "description": "Validation error when the provider URL is invalid"
+  },
+  "searchProviderNameAriaLabel": {
+    "message": "Provider name",
+    "description": "Accessible name for the provider name input"
+  },
+  "searchProviderUrlAriaLabel": {
+    "message": "Search URL template",
+    "description": "Accessible name for the provider URL input"
   }
 }
