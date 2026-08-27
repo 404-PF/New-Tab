@@ -1590,7 +1590,7 @@ function initCustomSearchProvidersSettings() {
     }
 
     if (typeof window.addCustomProvider !== 'function') {
-      showFeedback('Provider API unavailable.', 'error');
+      showFeedback(t('searchProviderUnavailable', 'Provider API unavailable.'), 'error');
       return;
     }
 

@@ -534,5 +534,9 @@
   "searchProviderUrlAriaLabel": {
     "message": "Search URL template",
     "description": "Accessible name for the provider URL input"
+  },
+  "searchProviderUnavailable": {
+    "message": "Provider API unavailable.",
+    "description": "Error when the provider API is unavailable"
   }
 }

@@ -508,7 +508,7 @@
     "description": "Validation error when the provider URL is invalid"
   },
   "searchWith": {
-    "message": "Search with",
+    "message": "使用",
     "description": "Label prefix shown before the active search provider name"
   },
   "searchProviderNameAriaLabel": {
@@ -518,5 +518,9 @@
   "searchProviderUrlAriaLabel": {
     "message": "搜索网址模板",
     "description": "Accessible name for the provider URL input"
+  },
+  "searchProviderUnavailable": {
+    "message": "搜索提供商接口不可用。",
+    "description": "Error when the provider API is unavailable"
   }
 }

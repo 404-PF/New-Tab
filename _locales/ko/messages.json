@@ -504,11 +504,11 @@
     "description": "Validation error when the provider name is empty"
   },
   "searchProviderInvalidUrl": {
-    "message": "{query}를 포함하는 유횤한 http(s) URL을 입력하세요.",
+    "message": "{query}를 포함하는 유효한 http(s) URL을 입력하세요.",
     "description": "Validation error when the provider URL is invalid"
   },
   "searchWith": {
-    "message": "Search with",
+    "message": "검색",
     "description": "Label prefix shown before the active search provider name"
   },
   "searchProviderNameAriaLabel": {
@@ -518,5 +518,9 @@
   "searchProviderUrlAriaLabel": {
     "message": "검색 URL 템플릿",
     "description": "Accessible name for the provider URL input"
+  },
+  "searchProviderUnavailable": {
+    "message": "검색 공급자 API를 사용할 수 없습니다.",
+    "description": "Error when the provider API is unavailable"
   }
 }

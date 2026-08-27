@@ -508,7 +508,7 @@
     "description": "Validation error when the provider URL is invalid"
   },
   "searchWith": {
-    "message": "Search with",
+    "message": "Поиск через",
     "description": "Label prefix shown before the active search provider name"
   },
   "searchProviderNameAriaLabel": {
@@ -518,5 +518,9 @@
   "searchProviderUrlAriaLabel": {
     "message": "Шаблон поискового URL",
     "description": "Accessible name for the provider URL input"
+  },
+  "searchProviderUnavailable": {
+    "message": "API поисковой системы недоступен.",
+    "description": "Error when the provider API is unavailable"
   }
 }

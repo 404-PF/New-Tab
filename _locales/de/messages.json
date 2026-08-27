@@ -472,7 +472,7 @@
     "description": "Title for the custom search providers settings card"
   },
   "searchProvidersDesc": {
-    "message": "Eigene Suchmaschinen mit Name und URL-Vorlage hinzufügen",
+    "message": "Eigene Suchmaschinen mit Namen und URL-Vorlage hinzufügen",
     "description": "Description for the custom search providers settings card"
   },
   "searchProviderNamePlaceholder": {
@@ -508,7 +508,7 @@
     "description": "Validation error when the provider URL is invalid"
   },
   "searchWith": {
-    "message": "Search with",
+    "message": "Suchen mit",
     "description": "Label prefix shown before the active search provider name"
   },
   "searchProviderNameAriaLabel": {
@@ -518,5 +518,9 @@
   "searchProviderUrlAriaLabel": {
     "message": "URL-Vorlage für die Suche",
     "description": "Accessible name for the provider URL input"
+  },
+  "searchProviderUnavailable": {
+    "message": "Anbieter-API nicht verfügbar.",
+    "description": "Error when the provider API is unavailable"
   }
 }
