@@ -1527,8 +1527,8 @@ const translations = {
     noTodosHint: '마감일을 설정하여 더 잘 정리해보세요.',
     notesTitle: '메모',
     notesEmpty: '아직 메모가 없습니다. +를 클릭하여 추가하세요!',
-    notesSearchPlaceholder: '노트 검색...',
-    notesNoResults: '일치하는 노트가 없습니다.',
+    notesSearchPlaceholder: '메모 검색...',
+    notesNoResults: '일치하는 메모가 없습니다.',
     notesPlaceholder: '여기에 메모를 입력하세요...',
     notesDeleteTooltip: '메모 삭제',
     ...createNoteTagTranslations('모두', '태그 추가', '태그 이름...', '태그 제거', '드래그하여 순서 변경'),
@@ -4221,6 +4221,17 @@ function getTranslation(lang, key) {
     const translation = localeTranslations[key];
     if (translation !== '') {
       return translation;
+    }
+  }
+
+  const baseLang = lang ? lang.split('_')[0] : '';
+  if (baseLang && baseLang !== lang) {
+    const baseTranslations = translations[baseLang];
+    if (baseTranslations && Object.prototype.hasOwnProperty.call(baseTranslations, key)) {
+      const base = baseTranslations[key];
+      if (base !== '') {
+        return base;
+      }
     }
   }
 
