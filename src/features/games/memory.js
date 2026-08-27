@@ -112,6 +112,9 @@
     const time = getElapsed();
     saveStats(time);
     showWinOverlay(time);
+    // The run reached its terminal state: drop any persisted snapshot so the
+    // next launch starts fresh instead of resuming a finished board.
+    window.GameRegistry?.clearSave('memory');
   }
 
   function getElapsed() {
@@ -212,6 +215,110 @@
     }
   }
 
+  // ===================== Save / Restore (#646) =====================
+
+  // Shape and per-card invariants for one entry of a saved deck.
+  function isValidSavedCard(c, idx) {
+    const ok = c && typeof c === 'object' &&
+      typeof c.emoji === 'string' && EMOJIS.includes(c.emoji) &&
+      typeof c.matched === 'boolean' && (c.flipped === undefined || typeof c.flipped === 'boolean');
+    if (!ok) return false;
+    // ids are positional; a mismatched id would desync flipCard(cardId)
+    return c.id === undefined || c.id === idx;
+  }
+
+  function isValidSavedCards(value) {
+    if (!Array.isArray(value) || value.length !== PAIRS * 2) return false;
+    // Every emoji must occur exactly twice; both cards of a pair must agree
+    // on matched, a matched card is never left face up, and at most one
+    // unmatched card may be face up mid-turn.
+    if (!value.every(function (c, idx) { return isValidSavedCard(c, idx); })) return false;
+    if (value.some(function (c) { return c.matched && c.flipped === true; })) return false;
+
+    let loneReveals = 0;
+    let matchedTotal = 0;
+    const seen = Object.create(null);
+    const seenMatched = Object.create(null);
+    value.forEach(function (c) {
+      seen[c.emoji] = (seen[c.emoji] || 0) + 1;
+      seenMatched[c.emoji] = (seenMatched[c.emoji] || 0) + (c.matched ? 1 : 0);
+      if (c.matched) matchedTotal++;
+      if (c.flipped === true && !c.matched) loneReveals++;
+    });
+
+    const pairFlagsConsistent = EMOJIS.slice(0, PAIRS).every(function (emoji) {
+      return seen[emoji] % 2 === 0 && seenMatched[emoji] % 2 === 0;
+    });
+    // A fully matched board is terminal and is never saved.
+    return pairFlagsConsistent && matchedTotal < PAIRS * 2 && loneReveals <= 1;
+  }
+
+  // Snapshot the live run, or null when there is nothing to report right now
+  // (pre-start). Terminal runs and restores rejected as corrupt clear their
+  // save directly via GameRegistry.clearSave, so no third return value is
+  // needed here.
+  function serialize() {
+    if (!started || startTime <= 0) return null;
+    // Settle a pair whose reveal timeout hasn't fired yet so the snapshot is
+    // never taken mid-resolution.
+    finalizePendingPair();
+    if (gameOver) return null;
+    // While paused the ticker is stopped and pausedAt marks the freeze point,
+    // so measuring from Date.now() would silently add the hidden interval to
+    // the saved elapsed time. resume() clears pausedAt, so a positive value
+    // here always means the timer is genuinely stopped.
+    const nowMs = pausedAt > 0 ? pausedAt : Date.now();
+    return {
+      cards: cards.map(function (card) {
+        // Matched cards are stored face down so the validator's invariants
+        // hold and restore re-applies their matched styling instead.
+        return { emoji: card.emoji, flipped: card.matched ? false : card.flipped, matched: card.matched };
+      }),
+      moves: moves,
+      elapsedMs: Math.max(0, nowMs - startTime)
+    };
+  }
+
+  // Returns true when savedState was applied. Runs before the ready screen so
+  // a resumed run picks up where the previous session left off. The clock is
+  // restarted from the saved elapsed offset rather than the wall time at which
+  // the previous session ended.
+  function applyRestoredState(savedState) {
+    if (!savedState || typeof savedState !== 'object') return false;
+    if (!isValidSavedCards(savedState.cards)) return false;
+    if (typeof savedState.moves !== 'number' || !Number.isInteger(savedState.moves) || savedState.moves < 0) return false;
+    if (typeof savedState.elapsedMs !== 'number' || !Number.isFinite(savedState.elapsedMs) || savedState.elapsedMs < 0) return false;
+
+    cards = savedState.cards.map(function (card, idx) {
+      return {
+        id: idx,
+        emoji: card.emoji,
+        flipped: card.flipped === true,
+        matched: card.matched === true
+      };
+    });
+    flipped = [];
+    cards.forEach(function (card) {
+      if (card.flipped && !card.matched) flipped.push(card);
+    });
+    // `matched` counts completed pairs, not cards (endGame triggers at PAIRS).
+    matched = Math.floor(cards.filter(function (card) { return card.matched; }).length / 2);
+    moves = savedState.moves;
+    gameOver = false;
+
+    startTime = Date.now() - Math.floor(savedState.elapsedMs);
+    pausedAt = 0;
+    startTicker();
+    if (timeEl) timeEl.textContent = t('gamesTime') + ': ' + getElapsed() + 's';
+    if (movesEl) movesEl.textContent = t('gamesMoves') + ': ' + moves;
+    renderAll();
+    // Re-apply persisted face-up states on top of the fresh face-down grid.
+    cards.forEach(function (card) {
+      if (card.matched || card.flipped) renderCard(card.id);
+    });
+    return true;
+  }
+
   // ===================== Lifecycle =====================
 
   // Build a fresh board without starting the clock. Used on init() so the game
@@ -236,7 +343,7 @@
     startTimer();
   }
 
-  function init(containerEl) {
+  function init(containerEl, savedState) {
     container = containerEl;
 
     // Stats bar
@@ -266,9 +373,22 @@
     instructions.textContent = t('gamesMemoryControls') || 'Flip cards to find matching pairs';
     container.appendChild(instructions);
 
-    setupBoard();
-
     document.addEventListener('keydown', handleKeydown);
+
+    // A restored run was already started in a previous session, so it skips
+    // the ready screen and is playable immediately.
+    const restored = applyRestoredState(savedState);
+    if (restored) {
+      started = true;
+      return;
+    }
+    if (savedState !== undefined && savedState !== null) {
+      // The handed-down snapshot failed validation: discard that stale save
+      // now rather than keeping or re-saving it at teardown.
+      window.GameRegistry?.clearSave('memory');
+    }
+
+    setupBoard();
 
     // Hold play until the user signals they are ready.
     started = false;
@@ -317,28 +437,33 @@
     timeEl = null;
   }
 
+  // Settle a pair whose reveal timeout hasn't fired yet so the board is
+  // consistent for serialization or while hidden. Shared by pause() and
+  // serialize().
+  function finalizePendingPair() {
+    clearPendingTimeouts();
+    if (!pendingResolve) return;
+    const resolve = pendingResolve;
+    pendingResolve = null;
+    if (resolve.match) {
+      renderCard(resolve.a.id);
+      renderCard(resolve.b.id);
+      if (matched === PAIRS) endGame();
+    } else {
+      resolve.a.flipped = false;
+      resolve.b.flipped = false;
+      renderCard(resolve.a.id);
+      renderCard(resolve.b.id);
+      flipped = [];
+    }
+  }
+
   function pause() {
     // A game that hasn't been started yet must stay on the ready screen.
     if (!started) return;
     pausedAt = Date.now();
     stopTimer();
-    clearPendingTimeouts();
-    // Finalize any pending pair resolution so the board stays consistent while hidden.
-    if (pendingResolve) {
-      const resolve = pendingResolve;
-      pendingResolve = null;
-      if (resolve.match) {
-        renderCard(resolve.a.id);
-        renderCard(resolve.b.id);
-        if (matched === PAIRS) endGame();
-      } else {
-        resolve.a.flipped = false;
-        resolve.b.flipped = false;
-        renderCard(resolve.a.id);
-        renderCard(resolve.b.id);
-        flipped = [];
-      }
-    }
+    finalizePendingPair();
     // A lone revealed card stays flipped so resume preserves the current turn state.
   }
 
@@ -348,6 +473,10 @@
     if (!gameOver && startTime > 0 && pausedAt > 0) {
       const elapsed = pausedAt - startTime;
       startTime = Date.now() - elapsed;
+      // The run is live again: a positive pausedAt from here on would make
+      // serialize() stamp the snapshot at the old pause point and lose the
+      // post-resume interval.
+      pausedAt = 0;
       startTicker();
     }
   }
@@ -360,7 +489,8 @@
     init: init,
     destroy: destroy,
     pause: pause,
-    resume: resume
+    resume: resume,
+    serialize: serialize
   });
 
   // Test hook: expose whether the game has been started so tests can assert it

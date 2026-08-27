@@ -4,6 +4,8 @@ const GAMES_TRANSLATION_KEYS = [
   'games',
   'enableGames',
   'gamesPlay',
+  'gamesContinue',
+  'gamesSaved',
   'gamesBack',
   'gamesScore',
   'gamesHighScore',
@@ -284,6 +286,8 @@ const translations = {
     weatherWind: 'Wind',
     weatherHumidity: 'Humidity',
     weatherEnablePrompt: 'Enable the weather widget in settings to view weather data.',
+    weatherHourly: 'Hourly Forecast',
+    weatherNow: 'Now',
 
     // Themes settings
     themeSettings: 'Theme',
@@ -552,7 +556,7 @@ const translations = {
     heatmapCellTitle: '$1$: $2$ completed',
 
     // Games
-    ...createGamesTranslations(['Games', 'Enable games', 'Play', 'Back', 'Score', 'High Score', 'Best Moves', 'Moves', 'Time', 'Game Over', 'You Win!', 'Paused', 'Press Space to restart', 'No games available', 'Games are disabled. Enable them in Settings.', 'Snake', 'Classic snake game. Eat food to grow!', 'Arrow keys or WASD to move, Space to pause', '2048', 'Merge tiles to reach 2048!', 'Arrow keys to merge tiles', 'Memory Match', 'Find matching pairs of cards!', 'Flip cards to find matching pairs'])
+    ...createGamesTranslations(['Games', 'Enable games', 'Play', 'Continue', 'Saved', 'Back', 'Score', 'High Score', 'Best Moves', 'Moves', 'Time', 'Game Over', 'You Win!', 'Paused', 'Press Space to restart', 'No games available', 'Games are disabled. Enable them in Settings.', 'Snake', 'Classic snake game. Eat food to grow!', 'Arrow keys or WASD to move, Space to pause', '2048', 'Merge tiles to reach 2048!', 'Arrow keys to merge tiles', 'Memory Match', 'Find matching pairs of cards!', 'Flip cards to find matching pairs'])
   },
 
   zh: {
@@ -768,6 +772,8 @@ const translations = {
     weatherWind: '风速',
     weatherHumidity: '湿度',
     weatherEnablePrompt: '请在设置中启用天气小部件以查看天气数据。',
+    weatherHourly: '逐时预报',
+    weatherNow: '现在',
 
     // Themes settings
     themeSettings: '主题',
@@ -1036,7 +1042,7 @@ const translations = {
     heatmapCellTitle: '$1$：已完成 $2$ 項',
 
     // Games
-    ...createGamesTranslations(['游戏', '启用游戏', '开始', '返回', '分数', '最高分', '最少步数', '步数', '时间', '游戏结束', '你赢了！', '已暂停', '按空格键重新开始', '暂无游戏', '游戏已禁用。请在设置中启用。', '贪吃蛇', '经典贪吃蛇。吃食物来成长！', '方向键或 WASD 移动，空格键暂停', '2048', '合并方块达到 2048！', '方向键合并方块', '记忆配对', '找到匹配的卡片对！', '翻牌找到配对'])
+    ...createGamesTranslations(['游戏', '启用游戏', '开始', '继续', '已保存', '返回', '分数', '最高分', '最少步数', '步数', '时间', '游戏结束', '你赢了！', '已暂停', '按空格键重新开始', '暂无游戏', '游戏已禁用。请在设置中启用。', '贪吃蛇', '经典贪吃蛇。吃食物来成长！', '方向键或 WASD 移动，空格键暂停', '2048', '合并方块达到 2048！', '方向键合并方块', '记忆配对', '找到匹配的卡片对！', '翻牌找到配对'])
   },
 
   ja: {
@@ -1226,6 +1232,8 @@ const translations = {
     weatherWind: '風速',
     weatherHumidity: '湿度',
     weatherEnablePrompt: '設定で天気ウィジェットを有効にして天気データを表示してください。',
+    weatherHourly: '時間別予報',
+    weatherNow: '現在',
     themeSettings: 'テーマ',
     themeSettingsDesc: '好みのインターフェーステーマを選択',
     dark: 'ダーク',
@@ -1462,7 +1470,7 @@ const translations = {
     heatmapCellTitle: '$1$: $2$ 完了',
 
     // Games
-    ...createGamesTranslations(['ゲーム', 'ゲームを有効にする', 'プレイ', '戻る', 'スコア', 'ハイスコア', 'ベストムーブ', 'ムーブ', '時間', 'ゲームオーバー', '勝利！', '一時停止', 'スペースキーで再スタート', 'ゲームがありません', 'ゲームは無効です。設定で有効にしてください。', 'スネーク', 'クラシックなスネークゲーム。エサを食べて成長しよう！', '矢印キーまたはWASDで移動、スペースで一時停止', '2048', 'ブロックを合体させて2048を目指そう！', '矢印キーでブロックを合体', 'メモリーマッチ', 'ペアを見つけて合わせよう！', 'カードをめくってペアを見つけよう'])
+    ...createGamesTranslations(['ゲーム', 'ゲームを有効にする', 'プレイ', 'つづきから', '保存済み', '戻る', 'スコア', 'ハイスコア', 'ベストムーブ', 'ムーブ', '時間', 'ゲームオーバー', '勝利！', '一時停止', 'スペースキーで再スタート', 'ゲームがありません', 'ゲームは無効です。設定で有効にしてください。', 'スネーク', 'クラシックなスネークゲーム。エサを食べて成長しよう！', '矢印キーまたはWASDで移動、スペースで一時停止', '2048', 'ブロックを合体させて2048を目指そう！', '矢印キーでブロックを合体', 'メモリーマッチ', 'ペアを見つけて合わせよう！', 'カードをめくってペアを見つけよう'])
   },
 
   ko: {
@@ -1652,6 +1660,8 @@ const translations = {
     weatherWind: '풍속',
     weatherHumidity: '습도',
     weatherEnablePrompt: '날씨 데이터를 보려면 설정에서 날씨 위젯을 활성화하세요.',
+    weatherHourly: '시간별 예보',
+    weatherNow: '지금',
     themeSettings: '테마',
     themeSettingsDesc: '원하는 인터페이스 테마 선택',
     dark: '다크',
@@ -1888,7 +1898,7 @@ const translations = {
     heatmapCellTitle: '$1$: $2$ 완료',
 
     // Games
-    ...createGamesTranslations(['게임', '게임 활성화', '플레이', '뒤로', '점수', '최고 점수', '최소 움직임', '움직임', '시간', '게임 오버', '승리!', '일시정지', '스페이스바로 다시 시작', '게임이 없습니다', '게임이 비활성화되어 있습니다. 설정에서 활성화하세요.', '스네이크', '클래식 스네이크. 먹이를 먹고 성장하세요!', '방향키 또는 WASD로 이동, 스페이스바로 일시정지', '2048', '블록을 합쳐 2048을 달성하세요!', '방향키로 블록 합치기', '메모리 매치', '쌍을 찾아 맞추세요!', '카드를 뒤집어 쌍을 찾으세요'])
+    ...createGamesTranslations(['게임', '게임 활성화', '플레이', '계속하기', '저장됨', '뒤로', '점수', '최고 점수', '최소 움직임', '움직임', '시간', '게임 오버', '승리!', '일시정지', '스페이스바로 다시 시작', '게임이 없습니다', '게임이 비활성화되어 있습니다. 설정에서 활성화하세요.', '스네이크', '클래식 스네이크. 먹이를 먹고 성장하세요!', '방향키 또는 WASD로 이동, 스페이스바로 일시정지', '2048', '블록을 합쳐 2048을 달성하세요!', '방향키로 블록 합치기', '메모리 매치', '쌍을 찾아 맞추세요!', '카드를 뒤집어 쌍을 찾으세요'])
   },
 
   es: {
@@ -2066,6 +2076,8 @@ const translations = {
     weatherWind: 'Viento',
     weatherHumidity: 'Humedad',
     weatherEnablePrompt: 'Habilite el widget del clima en la configuración para ver los datos del clima.',
+    weatherHourly: 'Pronóstico por horas',
+    weatherNow: 'Ahora',
     themeSettings: 'Tema',
     themeSettingsDesc: 'Elige el tema de interfaz de tu preferencia',
     dark: 'Oscuro',
@@ -2314,7 +2326,7 @@ const translations = {
     heatmapCellTitle: '$1$: $2$ completadas',
 
     // Games
-    ...createGamesTranslations(['Juegos', 'Habilitar juegos', 'Jugar', 'Volver', 'Puntos', 'Récord', 'Mejores movimientos', 'Movimientos', 'Tiempo', 'Fin del juego', '¡Victoria!', 'Pausado', 'Presiona espacio para reiniciar', 'No hay juegos disponibles', 'Los juegos están deshabilitados. Actívalos en la configuración.', 'Serpiente', 'La clásica serpiente. ¡Come para crecer!', 'Flechas o WASD para mover, espacio para pausar', '2048', '¡Fusiona bloques para alcanzar 2048!', 'Flechas para fusionar bloques', 'Memorama', '¡Encuentra los pares de cartas!', 'Voltea cartas para encontrar pares'])
+    ...createGamesTranslations(['Juegos', 'Habilitar juegos', 'Jugar', 'Continuar', 'Partida guardada', 'Volver', 'Puntos', 'Récord', 'Mejores movimientos', 'Movimientos', 'Tiempo', 'Fin del juego', '¡Victoria!', 'Pausado', 'Presiona espacio para reiniciar', 'No hay juegos disponibles', 'Los juegos están deshabilitados. Actívalos en la configuración.', 'Serpiente', 'La clásica serpiente. ¡Come para crecer!', 'Flechas o WASD para mover, espacio para pausar', '2048', '¡Fusiona bloques para alcanzar 2048!', 'Flechas para fusionar bloques', 'Memorama', '¡Encuentra los pares de cartas!', 'Voltea cartas para encontrar pares'])
   },
 
   fr: {
@@ -2492,6 +2504,8 @@ const translations = {
     weatherWind: 'Vent',
     weatherHumidity: 'Humidité',
     weatherEnablePrompt: 'Activez le widget météo dans les paramètres pour afficher les données météo.',
+    weatherHourly: 'Prévisions horaires',
+    weatherNow: 'Maintenant',
     themeSettings: 'Thème',
     themeSettingsDesc: 'Choisissez le thème d\'interface de votre préférence',
     dark: 'Sombre',
@@ -2740,7 +2754,7 @@ const translations = {
     heatmapCellTitle: '$1$ : $2$ terminées',
 
     // Games
-    ...createGamesTranslations(['Jeux', 'Activer les jeux', 'Jouer', 'Retour', 'Score', 'Meilleur score', 'Meilleur nombre de coups', 'Coups', 'Temps', 'Partie terminée', 'Victoire !', 'Pause', 'Appuyez sur espace pour recommencer', 'Aucun jeu disponible', 'Les jeux sont désactivés. Activez-les dans les paramètres.', 'Serpent', 'Le classique serpent. Mangez pour grandir !', 'Flèches ou ZQSD pour se déplacer, espace pour pause', '2048', 'Fusionnez les blocs pour atteindre 2048 !', 'Flèches pour fusionner les blocs', 'Jeu de mémoire', 'Trouvez les paires de cartes !', 'Retournez les cartes pour trouver les paires'])
+    ...createGamesTranslations(['Jeux', 'Activer les jeux', 'Jouer', 'Reprendre', 'Sauvegardé', 'Retour', 'Score', 'Meilleur score', 'Meilleur nombre de coups', 'Coups', 'Temps', 'Partie terminée', 'Victoire !', 'Pause', 'Appuyez sur espace pour recommencer', 'Aucun jeu disponible', 'Les jeux sont désactivés. Activez-les dans les paramètres.', 'Serpent', 'Le classique serpent. Mangez pour grandir !', 'Flèches ou ZQSD pour se déplacer, espace pour pause', '2048', 'Fusionnez les blocs pour atteindre 2048 !', 'Flèches pour fusionner les blocs', 'Jeu de mémoire', 'Trouvez les paires de cartes !', 'Retournez les cartes pour trouver les paires'])
   },
 
   de: {
@@ -2918,6 +2932,8 @@ const translations = {
     weatherWind: 'Wind',
     weatherHumidity: 'Feuchtigkeit',
     weatherEnablePrompt: 'Aktivieren Sie das Wetterwidget in den Einstellungen, um Wetterdaten anzuzeigen.',
+    weatherHourly: 'Stündliche Vorhersage',
+    weatherNow: 'Jetzt',
     themeSettings: 'Thema',
     themeSettingsDesc: 'Wähle dein bevorzugtes Oberflächenthema',
     dark: 'Dunkel',
@@ -3166,7 +3182,7 @@ const translations = {
     heatmapCellTitle: '$1$: $2$ erledigt',
 
     // Games
-    ...createGamesTranslations(['Spiele', 'Spiele aktivieren', 'Spielen', 'Zurück', 'Punkte', 'Rekord', 'Beste Züge', 'Züge', 'Zeit', 'Spiel beendet', 'Gewonnen!', 'Pausiert', 'Leertaste zum Neustarten', 'Keine Spiele verfügbar', 'Spiele sind deaktiviert. Aktiviere sie in den Einstellungen.', 'Schlange', 'Die klassische Schlange. Iss, um zu wachsen!', 'Pfeile oder WASD zum Steuern, Leertaste zum Pausieren', '2048', 'Verschmelze Blöcke, um 2048 zu erreichen!', 'Pfeile zum Verschmelzen der Blöcke', 'Gedächtnis', 'Finde die passenden Paare!', 'Karten umdrehen und Paare finden'])
+    ...createGamesTranslations(['Spiele', 'Spiele aktivieren', 'Spielen', 'Fortsetzen', 'Gespeichert', 'Zurück', 'Punkte', 'Rekord', 'Beste Züge', 'Züge', 'Zeit', 'Spiel beendet', 'Gewonnen!', 'Pausiert', 'Leertaste zum Neustarten', 'Keine Spiele verfügbar', 'Spiele sind deaktiviert. Aktiviere sie in den Einstellungen.', 'Schlange', 'Die klassische Schlange. Iss, um zu wachsen!', 'Pfeile oder WASD zum Steuern, Leertaste zum Pausieren', '2048', 'Verschmelze Blöcke, um 2048 zu erreichen!', 'Pfeile zum Verschmelzen der Blöcke', 'Gedächtnis', 'Finde die passenden Paare!', 'Karten umdrehen und Paare finden'])
   },
 
   pt: {
@@ -3344,6 +3360,8 @@ const translations = {
     weatherWind: 'Vento',
     weatherHumidity: 'Umidade',
     weatherEnablePrompt: 'Ative o widget de clima nas configurações para visualizar os dados do clima.',
+    weatherHourly: 'Previsão horária',
+    weatherNow: 'Agora',
     themeSettings: 'Tema',
     themeSettingsDesc: 'Escolha o tema de interface de sua preferência',
     dark: 'Escuro',
@@ -3592,7 +3610,7 @@ const translations = {
     heatmapCellTitle: '$1$: $2$ concluídas',
 
     // Games
-    ...createGamesTranslations(['Jogos', 'Ativar jogos', 'Jogar', 'Voltar', 'Pontuação', 'Recorde', 'Melhor número de jogadas', 'Jogadas', 'Tempo', 'Fim de jogo', 'Vitória!', 'Pausado', 'Pressione espaço para reiniciar', 'Nenhum jogo disponível', 'Jogos desativados. Ative nas configurações.', 'Cobra', 'A clássica cobrinha. Coma para crescer!', 'Setas ou WASD para mover, espaço para pausar', '2048', 'Junte blocos para chegar a 2048!', 'Setas para juntar blocos', 'Jogo da Memória', 'Encontre os pares de cartas!', 'Vire as cartas para encontrar os pares'])
+    ...createGamesTranslations(['Jogos', 'Ativar jogos', 'Jogar', 'Continuar', 'Guardado', 'Voltar', 'Pontuação', 'Recorde', 'Melhor número de jogadas', 'Jogadas', 'Tempo', 'Fim de jogo', 'Vitória!', 'Pausado', 'Pressione espaço para reiniciar', 'Nenhum jogo disponível', 'Jogos desativados. Ative nas configurações.', 'Cobra', 'A clássica cobrinha. Coma para crescer!', 'Setas ou WASD para mover, espaço para pausar', '2048', 'Junte blocos para chegar a 2048!', 'Setas para juntar blocos', 'Jogo da Memória', 'Encontre os pares de cartas!', 'Vire as cartas para encontrar os pares'])
   },
 
   ru: {
@@ -3770,6 +3788,8 @@ const translations = {
     weatherWind: 'Ветер',
     weatherHumidity: 'Влажность',
     weatherEnablePrompt: 'Включите виджет погоды в настройках для просмотра данных о погоде.',
+    weatherHourly: 'Почасовой прогноз',
+    weatherNow: 'Сейчас',
     themeSettings: 'Тема',
     themeSettingsDesc: 'Выберите предпочитаемую тему интерфейса',
     dark: 'Тёмная',
@@ -4018,7 +4038,7 @@ const translations = {
     heatmapCellTitle: '$1$: выполнено $2$',
 
     // Games
-    ...createGamesTranslations(['Игры', 'Включить игры', 'Играть', 'Назад', 'Очки', 'Рекорд', 'Лучшие ходы', 'Ходы', 'Время', 'Игра окончена', 'Победа!', 'Пауза', 'Нажмите пробел для перезапуска', 'Нет доступных игр', 'Игры отключены. Включите их в настройках.', 'Змейка', 'Классическая змейка. Ешьте, чтобы расти!', 'Стрелки или WASD для движения, пробел для паузы', '2048', 'Объединяйте блоки, чтобы достичь 2048!', 'Стрелки для объединения блоков', 'Игра на память', 'Найдите одинаковые пары!', 'Переворачивайте карточки, чтобы найти пары'])
+    ...createGamesTranslations(['Игры', 'Включить игры', 'Играть', 'Продолжить', 'Сохранено', 'Назад', 'Очки', 'Рекорд', 'Лучшие ходы', 'Ходы', 'Время', 'Игра окончена', 'Победа!', 'Пауза', 'Нажмите пробел для перезапуска', 'Нет доступных игр', 'Игры отключены. Включите их в настройках.', 'Змейка', 'Классическая змейка. Ешьте, чтобы расти!', 'Стрелки или WASD для движения, пробел для паузы', '2048', 'Объединяйте блоки, чтобы достичь 2048!', 'Стрелки для объединения блоков', 'Игра на память', 'Найдите одинаковые пары!', 'Переворачивайте карточки, чтобы найти пары'])
   }
 };
 

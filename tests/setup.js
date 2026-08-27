@@ -556,7 +556,10 @@ globalThis.window.i18n = {
       removeTimezone: 'Remove',
       removeTimezoneLabel: 'Remove {city} time zone',
       gamesScore: 'Score',
-      gamesLevel: 'Level'
+      gamesLevel: 'Level',
+      gamesPlay: 'Play',
+      gamesContinue: 'Continue',
+      gamesSaved: 'Saved'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {

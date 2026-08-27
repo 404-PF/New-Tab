@@ -367,6 +367,14 @@
     "message": "플레이",
     "description": "Button label to start a game"
   },
+  "gamesContinue": {
+    "message": "계속하기",
+    "description": "Button label to resume a saved game"
+  },
+  "gamesSaved": {
+    "message": "저장됨",
+    "description": "Indicator on a game card showing a saved run exists"
+  },
   "gamesBack": {
     "message": "뒤로",
     "description": "Button label to return to the games hub"
@@ -522,5 +530,13 @@
   "searchProviderUnavailable": {
     "message": "검색 공급자 API를 사용할 수 없습니다.",
     "description": "Error when the provider API is unavailable"
+  },
+  "weatherHourly": {
+    "message": "시간별 예보",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "지금",
+    "description": "Label for the current hour in hourly forecast"
   }
 }

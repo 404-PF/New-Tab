@@ -229,6 +229,9 @@
         gamesPlayed: (stats.gamesPlayed || 0) + 1
       };
     });
+    // The run reached its terminal state: drop any persisted snapshot so the
+    // next launch starts fresh instead of resuming a dead run.
+    window.GameRegistry?.clearSave('snake');
     draw();
   }
 
@@ -631,6 +634,108 @@
     }
   }
 
+  // ===================== Save / Restore (#646) =====================
+
+  function isValidSavedSnake(value) {
+    return Array.isArray(value) && value.length > 0 && value.every(function (seg) {
+      return seg && typeof seg === 'object' &&
+        Number.isInteger(seg.x) && seg.x >= 0 && seg.x < GRID_SIZE &&
+        Number.isInteger(seg.y) && seg.y >= 0 && seg.y < GRID_SIZE;
+    });
+  }
+
+  function isValidDirection(value) {
+    return value === 'up' || value === 'down' || value === 'left' || value === 'right';
+  }
+
+  // Snapshot the live run, or null when there is nothing to report right now
+  // (a restored run still waiting on Continue keeps its stored snapshot).
+  // Terminal runs and restores rejected as corrupt clear their save directly
+  // via GameRegistry.clearSave, so no third return value is needed here.
+  function serialize() {
+    if (!started || gameOver) return null;
+    return {
+      snake: snake.map(function (seg) { return { x: seg.x, y: seg.y }; }),
+      food: food && Number.isInteger(food.x) && Number.isInteger(food.y) ? { x: food.x, y: food.y } : null,
+      direction: direction,
+      nextDirection: nextDirection,
+      score: score
+    };
+  }
+
+  // Returns true when savedState was applied. Rebuilds the board so the run
+  // resumes on the ready screen — a real-time game should not start ticking
+  // unannounced; pressing Start (Space/tap) continues it. The speed level is
+  // derived from the saved score.
+  function isValidFoodValue(savedFood) {
+    if (savedFood === null || savedFood === undefined) return true;
+    return !!savedFood && typeof savedFood === 'object' &&
+      Number.isInteger(savedFood.x) && savedFood.x >= 0 && savedFood.x < GRID_SIZE &&
+      Number.isInteger(savedFood.y) && savedFood.y >= 0 && savedFood.y < GRID_SIZE;
+  }
+
+  function hasUniqueCells(segments) {
+    const seen = Object.create(null);
+    for (const seg of segments) {
+      const key = seg.x + ',' + seg.y;
+      if (seen[key]) return false;
+      seen[key] = true;
+    }
+    return true;
+  }
+
+  function validateSavedState(savedState) {
+    if (!savedState || typeof savedState !== 'object') return false;
+    if (!isValidSavedSnake(savedState.snake)) return false;
+    // The initial snake is three segments; anything shorter cannot occur.
+    if (savedState.snake.length < 3) return false;
+    if (!hasUniqueCells(savedState.snake)) return false;
+    if (typeof savedState.score !== 'number' || !Number.isSafeInteger(savedState.score) || savedState.score < 0) return false;
+    if (!isValidDirection(savedState.direction)) return false;
+    if (savedState.nextDirection !== undefined && !isValidDirection(savedState.nextDirection)) return false;
+    if (!isValidFoodValue(savedState.food)) return false;
+
+    const head = savedState.snake[0];
+    const body = savedState.snake.slice(1);
+    if (body.some(function (seg) { return seg.x === head.x && seg.y === head.y; })) {
+      // A snake overlapping itself cannot occur in play.
+      return false;
+    }
+    const food = savedState.food;
+    if (food && savedState.snake.some(function (seg) { return seg.x === food.x && seg.y === food.y; })) {
+      // Food never spawns under the body.
+      return false;
+    }
+
+    const nextDir = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
+    // A queued turn opposite the travel direction would kill the run on the
+    // first tick after Continue; play only accepts non-opposite turns.
+    const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
+    return nextDir !== opposites[savedState.direction];
+  }
+
+  // Applies a snapshot that has already passed validateSavedState.
+  function applyRestoredState(savedState) {
+    const nextDir = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
+
+    snake = savedState.snake.map(function (seg) { return { x: seg.x, y: seg.y }; });
+    food = savedState.food ? { x: savedState.food.x, y: savedState.food.y } : null;
+    if (!food) spawnFood();
+    direction = savedState.direction;
+    nextDirection = nextDir;
+    score = savedState.score;
+    tickMs = tickMsForScore(score);
+    updateScoreHud();
+    gameOver = false;
+    paused = false;
+    manualPause = false;
+    prevSnake = null;
+    lastTickAt = nowMs();
+    particles = [];
+    shakeUntil = 0;
+    return true;
+  }
+
   // ===================== Lifecycle =====================
 
   // Begin the run: clear any pre-start state, then start the game loops.
@@ -646,7 +751,7 @@
     startAnimation();
   }
 
-  function init(containerEl) {
+  function init(containerEl, savedState) {
     container = containerEl;
 
     // Score display
@@ -673,20 +778,34 @@
     instructions.textContent = t('gamesSnakeControls') || 'Arrow keys or WASD to move, Space to pause';
     container.appendChild(instructions);
 
-    initSnake();
-    draw();
+    // A restored run rebuilds the saved board and holds on the ready screen
+    // so a real-time game never resumes ticking unannounced.
+    const restoredRun = !!savedState && validateSavedState(savedState);
+    if (restoredRun) {
+      applyRestoredState(savedState);
+      draw();
+    } else {
+      initSnake();
+      draw();
+      if (savedState) {
+        // The handed-down snapshot failed validation: discard that stale
+        // save now rather than keeping or re-saving it at teardown.
+        window.GameRegistry?.clearSave('snake');
+      }
+    }
 
     document.addEventListener('keydown', handleKeydown);
     canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-    // Hold play until the user signals they are ready.
+    // Hold play until the user signals they are ready. A restored run offers
+    // Continue instead of Start.
     started = false;
     if (typeof window.gamesHelpers?.createReadyScreen === 'function') {
       readyScreen = window.gamesHelpers.createReadyScreen(stage, {
         text: t('gamesReady') || 'Ready?',
         sub: t('gamesReadyStart') || 'Press Space or tap to start',
-        buttonText: t('gamesStart') || 'Start',
+        buttonText: restoredRun ? (t('gamesContinue') || 'Continue') : (t('gamesStart') || 'Start'),
         onStart: startRun
       });
     } else {
@@ -745,7 +864,8 @@
     init: init,
     destroy: destroy,
     pause: pause,
-    resume: resume
+    resume: resume,
+    serialize: serialize
   });
 
   // Test hook: expose the pure difficulty helpers so tests can verify the

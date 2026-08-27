@@ -367,6 +367,14 @@
     "message": "开始",
     "description": "Button label to start a game"
   },
+  "gamesContinue": {
+    "message": "继续",
+    "description": "Button label to resume a saved game"
+  },
+  "gamesSaved": {
+    "message": "已保存",
+    "description": "Indicator on a game card showing a saved run exists"
+  },
   "gamesBack": {
     "message": "返回",
     "description": "Button label to return to the games hub"
@@ -522,5 +530,13 @@
   "searchProviderUnavailable": {
     "message": "搜索提供商接口不可用。",
     "description": "Error when the provider API is unavailable"
+  },
+  "weatherHourly": {
+    "message": "逐时预报",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "现在",
+    "description": "Label for the current hour in hourly forecast"
   }
 }

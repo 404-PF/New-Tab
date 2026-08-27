@@ -367,6 +367,14 @@
     "message": "Jugar",
     "description": "Button label to start a game"
   },
+  "gamesContinue": {
+    "message": "Continuar",
+    "description": "Button label to resume a saved game"
+  },
+  "gamesSaved": {
+    "message": "Partida guardada",
+    "description": "Indicator on a game card showing a saved run exists"
+  },
   "gamesBack": {
     "message": "Volver",
     "description": "Button label to return to the games hub"
@@ -522,5 +530,13 @@
   "searchProviderUnavailable": {
     "message": "API del proveedor no disponible.",
     "description": "Error when the provider API is unavailable"
+  },
+  "weatherHourly": {
+    "message": "Pronóstico por horas",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "Ahora",
+    "description": "Label for the current hour in hourly forecast"
   }
 }

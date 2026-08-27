@@ -367,6 +367,14 @@
     "message": "Играть",
     "description": "Button label to start a game"
   },
+  "gamesContinue": {
+    "message": "Продолжить",
+    "description": "Button label to resume a saved game"
+  },
+  "gamesSaved": {
+    "message": "Сохранено",
+    "description": "Indicator on a game card showing a saved run exists"
+  },
   "gamesBack": {
     "message": "Назад",
     "description": "Button label to return to the games hub"
@@ -522,5 +530,13 @@
   "searchProviderUnavailable": {
     "message": "API поисковой системы недоступен.",
     "description": "Error when the provider API is unavailable"
+  },
+  "weatherHourly": {
+    "message": "Почасовой прогноз",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "Сейчас",
+    "description": "Label for the current hour in hourly forecast"
   }
 }

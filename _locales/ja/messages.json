@@ -367,6 +367,14 @@
     "message": "プレイ",
     "description": "Button label to start a game"
   },
+  "gamesContinue": {
+    "message": "つづきから",
+    "description": "Button label to resume a saved game"
+  },
+  "gamesSaved": {
+    "message": "保存済み",
+    "description": "Indicator on a game card showing a saved run exists"
+  },
   "gamesBack": {
     "message": "戻る",
     "description": "Button label to return to the games hub"
@@ -522,5 +530,13 @@
   "searchProviderUnavailable": {
     "message": "検索プロバイダーAPIは利用できません。",
     "description": "Error when the provider API is unavailable"
+  },
+  "weatherHourly": {
+    "message": "時間別予報",
+    "description": "Title for the hourly forecast section in the weather app modal"
+  },
+  "weatherNow": {
+    "message": "現在",
+    "description": "Label for the current hour in hourly forecast"
   }
 }
