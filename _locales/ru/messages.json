@@ -475,6 +475,62 @@
     "message": "Переворачивайте карточки, чтобы найти пары",
     "description": "Memory match game controls"
   },
+  "searchProviders": {
+    "message": "Поисковые системы",
+    "description": "Title for the custom search providers settings card"
+  },
+  "searchProvidersDesc": {
+    "message": "Добавляйте собственные поисковые системы с именем и шаблоном URL",
+    "description": "Description for the custom search providers settings card"
+  },
+  "searchProviderNamePlaceholder": {
+    "message": "Название (напр. Kagi)",
+    "description": "Placeholder for the custom search provider name input"
+  },
+  "searchProviderUrlPlaceholder": {
+    "message": "https://example.com/search?q={query}",
+    "description": "Placeholder for the custom search provider URL input"
+  },
+  "searchProviderAdd": {
+    "message": "Добавить",
+    "description": "Label for the add custom search provider button"
+  },
+  "searchProvidersEmpty": {
+    "message": "Своих поисковых систем пока нет",
+    "description": "Empty state text when no custom search providers exist"
+  },
+  "searchProviderRemove": {
+    "message": "Удалить",
+    "description": "Accessible label for removing a custom search provider"
+  },
+  "searchProviderRemoveLabel": {
+    "message": "Удалить {name}",
+    "description": "Accessible label for removing a specific custom search provider"
+  },
+  "searchProviderInvalidName": {
+    "message": "Введите название поисковой системы.",
+    "description": "Validation error when the provider name is empty"
+  },
+  "searchProviderInvalidUrl": {
+    "message": "Введите корректный URL с {query} и http(s).",
+    "description": "Validation error when the provider URL is invalid"
+  },
+  "searchWith": {
+    "message": "Поиск через",
+    "description": "Label prefix shown before the active search provider name"
+  },
+  "searchProviderNameAriaLabel": {
+    "message": "Название поисковой системы",
+    "description": "Accessible name for the provider name input"
+  },
+  "searchProviderUrlAriaLabel": {
+    "message": "Шаблон поискового URL",
+    "description": "Accessible name for the provider URL input"
+  },
+  "searchProviderUnavailable": {
+    "message": "API поисковой системы недоступен.",
+    "description": "Error when the provider API is unavailable"
+  },
   "weatherHourly": {
     "message": "Почасовой прогноз",
     "description": "Title for the hourly forecast section in the weather app modal"

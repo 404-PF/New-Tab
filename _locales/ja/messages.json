@@ -475,6 +475,62 @@
     "message": "カードをめくってペアを見つけよう",
     "description": "Memory match game controls"
   },
+  "searchProviders": {
+    "message": "検索プロバイダー",
+    "description": "Title for the custom search providers settings card"
+  },
+  "searchProvidersDesc": {
+    "message": "名前とURLテンプレートを指定してカスタム検索エンジンを追加します",
+    "description": "Description for the custom search providers settings card"
+  },
+  "searchProviderNamePlaceholder": {
+    "message": "名前（例：Kagi）",
+    "description": "Placeholder for the custom search provider name input"
+  },
+  "searchProviderUrlPlaceholder": {
+    "message": "https://example.com/search?q={query}",
+    "description": "Placeholder for the custom search provider URL input"
+  },
+  "searchProviderAdd": {
+    "message": "追加",
+    "description": "Label for the add custom search provider button"
+  },
+  "searchProvidersEmpty": {
+    "message": "カスタムプロバイダーはまだありません",
+    "description": "Empty state text when no custom search providers exist"
+  },
+  "searchProviderRemove": {
+    "message": "削除",
+    "description": "Accessible label for removing a custom search provider"
+  },
+  "searchProviderRemoveLabel": {
+    "message": "{name} を削除",
+    "description": "Accessible label for removing a specific custom search provider"
+  },
+  "searchProviderInvalidName": {
+    "message": "検索プロバイダーの名前を入力してください。",
+    "description": "Validation error when the provider name is empty"
+  },
+  "searchProviderInvalidUrl": {
+    "message": "{query} を含む有効な http(s) URL を入力してください。",
+    "description": "Validation error when the provider URL is invalid"
+  },
+  "searchWith": {
+    "message": "検索",
+    "description": "Label prefix shown before the active search provider name"
+  },
+  "searchProviderNameAriaLabel": {
+    "message": "プロバイダー名",
+    "description": "Accessible name for the provider name input"
+  },
+  "searchProviderUrlAriaLabel": {
+    "message": "検索URLテンプレート",
+    "description": "Accessible name for the provider URL input"
+  },
+  "searchProviderUnavailable": {
+    "message": "検索プロバイダーAPIは利用できません。",
+    "description": "Error when the provider API is unavailable"
+  },
   "weatherHourly": {
     "message": "時間別予報",
     "description": "Title for the hourly forecast section in the weather app modal"

@@ -469,6 +469,27 @@
                     </div>
                   </div>
                 </div>
+                <div class="general-option custom-search-providers-option" style="grid-column: 1 / -1;">
+                  <div class="setting-card custom-search-providers-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="11" cy="11" r="7"></circle>
+                      <path d="m20 20-3.5-3.5"></path>
+                      <path d="M11 8a3 3 0 0 0-3 3"></path>
+                    </svg>
+                    <div class="setting-content custom-search-providers-content">
+                      <h4 data-i18n="searchProviders">Search providers</h4>
+                      <p class="setting-desc" data-i18n="searchProvidersDesc">Add custom search engines with a name and URL template</p>
+                      <div class="custom-search-providers-form">
+                        <input type="text" id="custom-search-provider-name" data-i18n-placeholder="searchProviderNamePlaceholder" placeholder="Name (e.g. Kagi)" aria-label="Provider name" data-i18n-aria-label="searchProviderNameAriaLabel" maxlength="40" />
+                        <input type="text" id="custom-search-provider-url" data-i18n-placeholder="searchProviderUrlPlaceholder" placeholder="https://example.com/search?q={query}" aria-label="Search URL template" data-i18n-aria-label="searchProviderUrlAriaLabel" />
+                        <button type="button" id="custom-search-provider-add-btn" class="setting-btn" data-i18n="searchProviderAdd">Add</button>
+                      </div>
+                      <div id="custom-search-provider-feedback" class="custom-search-provider-feedback" aria-live="polite"></div>
+                      <div id="custom-search-providers-list" class="custom-search-providers-list"></div>
+                      <p id="custom-search-providers-empty" class="custom-search-providers-empty" data-i18n="searchProvidersEmpty">No custom providers yet</p>
+                    </div>
+                  </div>
+                </div>
                 <div class="general-option">
                   <div class="setting-card">
                     <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

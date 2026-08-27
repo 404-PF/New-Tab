@@ -259,3 +259,133 @@ describe('Search providers - backup integration', () => {
     expect(window.DataManager.validateImportData(payload).valid).toBe(false);
   });
 });
+
+describe('Search providers - settings UI', () => {
+  beforeAll(() => {
+    injectScript('src/ui/settings.js');
+    if (window.renderCustomSearchProvidersList) window.renderCustomSearchProvidersList();
+  });
+
+  beforeEach(() => {
+    localStorage.removeItem('customSearchProviders');
+    localStorage.removeItem('searchProvider');
+    document.querySelectorAll('.search-provider-custom').forEach((el) => el.remove());
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+    const list = document.getElementById('custom-search-providers-list');
+    const empty = document.getElementById('custom-search-providers-empty');
+    if (nameInput) nameInput.value = '';
+    if (urlInput) urlInput.value = '';
+    if (feedback) {
+      feedback.textContent = '';
+      feedback.className = 'custom-search-provider-feedback';
+    }
+    if (list) list.innerHTML = '';
+    if (empty) empty.style.display = '';
+    if (window.renderCustomSearchProvidersList) window.renderCustomSearchProvidersList();
+    if (window.refreshProviderBar) window.refreshProviderBar();
+  });
+
+  it('renders empty state when no custom providers', () => {
+    const list = document.getElementById('custom-search-providers-list');
+    const empty = document.getElementById('custom-search-providers-empty');
+    expect(list.children.length).toBe(0);
+    expect(empty.style.display).not.toBe('none');
+  });
+
+  it('adds a custom provider via the settings form and shows it in the list and bar', () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const list = document.getElementById('custom-search-providers-list');
+    const empty = document.getElementById('custom-search-providers-empty');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+
+    nameInput.value = 'Kagi';
+    urlInput.value = 'https://kagi.com/search?q={query}';
+    addBtn.click();
+
+    expect(feedback.textContent).toBe('');
+    expect(loadCustomProviders().length).toBe(1);
+    expect(list.children.length).toBe(1);
+    expect(empty.style.display).toBe('none');
+    expect(list.textContent).toContain('Kagi');
+    expect(list.textContent).toContain('https://kagi.com/search?q={query}');
+
+    const barBtn = document.querySelector('.search-provider-custom');
+    expect(barBtn).not.toBeNull();
+    expect(barBtn.textContent).toContain('K');
+    expect(barBtn.dataset.provider).toContain('custom_');
+  });
+
+  it('shows validation error for empty name', () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+
+    nameInput.value = '';
+    urlInput.value = 'https://example.com/search?q={query}';
+    addBtn.click();
+
+    expect(feedback.textContent.length).toBeGreaterThan(0);
+    expect(feedback.classList.contains('error')).toBe(true);
+    expect(loadCustomProviders().length).toBe(0);
+  });
+
+  it('shows validation error for invalid URL', () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+
+    nameInput.value = 'Bad';
+    urlInput.value = 'javascript:alert(1)';
+    addBtn.click();
+
+    expect(feedback.textContent.length).toBeGreaterThan(0);
+    expect(feedback.classList.contains('error')).toBe(true);
+    expect(loadCustomProviders().length).toBe(0);
+
+    urlInput.value = 'https://example.com/search';
+    addBtn.click();
+    expect(feedback.classList.contains('error')).toBe(true);
+    expect(loadCustomProviders().length).toBe(0);
+  });
+
+  it('removes a custom provider via the settings list and updates the bar', () => {
+    addCustomProvider('ToRemove', 'https://remove.com/search?q={query}');
+    window.renderCustomSearchProvidersList();
+    window.refreshProviderBar();
+
+    const list = document.getElementById('custom-search-providers-list');
+    expect(list.children.length).toBe(1);
+
+    const removeBtn = list.querySelector('.custom-search-provider-remove');
+    expect(removeBtn).not.toBeNull();
+    removeBtn.click();
+
+    expect(loadCustomProviders().length).toBe(0);
+    expect(list.children.length).toBe(0);
+    expect(document.getElementById('custom-search-providers-empty').style.display).not.toBe('none');
+    expect(document.querySelector('.search-provider-custom')).toBeNull();
+  });
+
+  it('clears validation feedback on input', () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+
+    nameInput.value = '';
+    urlInput.value = 'https://example.com/search?q={query}';
+    addBtn.click();
+    expect(feedback.classList.contains('error')).toBe(true);
+
+    nameInput.value = 'New';
+    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(feedback.textContent).toBe('');
+  });
+});
+

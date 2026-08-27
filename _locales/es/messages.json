@@ -475,6 +475,62 @@
     "message": "Voltea cartas para encontrar pares",
     "description": "Memory match game controls"
   },
+  "searchProviders": {
+    "message": "Proveedores de búsqueda",
+    "description": "Title for the custom search providers settings card"
+  },
+  "searchProvidersDesc": {
+    "message": "Añade buscadores personalizados con un nombre y una plantilla de URL",
+    "description": "Description for the custom search providers settings card"
+  },
+  "searchProviderNamePlaceholder": {
+    "message": "Nombre (p. ej., Kagi)",
+    "description": "Placeholder for the custom search provider name input"
+  },
+  "searchProviderUrlPlaceholder": {
+    "message": "https://example.com/search?q={query}",
+    "description": "Placeholder for the custom search provider URL input"
+  },
+  "searchProviderAdd": {
+    "message": "Añadir",
+    "description": "Label for the add custom search provider button"
+  },
+  "searchProvidersEmpty": {
+    "message": "Aún no hay proveedores personalizados",
+    "description": "Empty state text when no custom search providers exist"
+  },
+  "searchProviderRemove": {
+    "message": "Eliminar",
+    "description": "Accessible label for removing a custom search provider"
+  },
+  "searchProviderRemoveLabel": {
+    "message": "Eliminar {name}",
+    "description": "Accessible label for removing a specific custom search provider"
+  },
+  "searchProviderInvalidName": {
+    "message": "Introduce un nombre para el proveedor de búsqueda.",
+    "description": "Validation error when the provider name is empty"
+  },
+  "searchProviderInvalidUrl": {
+    "message": "Introduce una URL válida con {query} y http(s).",
+    "description": "Validation error when the provider URL is invalid"
+  },
+  "searchWith": {
+    "message": "Buscar con",
+    "description": "Label prefix shown before the active search provider name"
+  },
+  "searchProviderNameAriaLabel": {
+    "message": "Nombre del proveedor",
+    "description": "Accessible name for the provider name input"
+  },
+  "searchProviderUrlAriaLabel": {
+    "message": "Plantilla de URL de búsqueda",
+    "description": "Accessible name for the provider URL input"
+  },
+  "searchProviderUnavailable": {
+    "message": "API del proveedor no disponible.",
+    "description": "Error when the provider API is unavailable"
+  },
   "weatherHourly": {
     "message": "Pronóstico por horas",
     "description": "Title for the hourly forecast section in the weather app modal"

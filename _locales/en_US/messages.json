@@ -491,6 +491,62 @@
     "message": "Flip cards to find matching pairs",
     "description": "Memory match game controls"
   },
+  "searchProviders": {
+    "message": "Search providers",
+    "description": "Title for the custom search providers settings card"
+  },
+  "searchProvidersDesc": {
+    "message": "Add custom search engines with a name and URL template",
+    "description": "Description for the custom search providers settings card"
+  },
+  "searchProviderNamePlaceholder": {
+    "message": "Name (e.g. Kagi)",
+    "description": "Placeholder for the custom search provider name input"
+  },
+  "searchProviderUrlPlaceholder": {
+    "message": "https://example.com/search?q={query}",
+    "description": "Placeholder for the custom search provider URL input"
+  },
+  "searchProviderAdd": {
+    "message": "Add",
+    "description": "Label for the add custom search provider button"
+  },
+  "searchProvidersEmpty": {
+    "message": "No custom providers yet",
+    "description": "Empty state text when no custom search providers exist"
+  },
+  "searchProviderRemove": {
+    "message": "Remove",
+    "description": "Accessible label for removing a custom search provider"
+  },
+  "searchProviderRemoveLabel": {
+    "message": "Remove {name}",
+    "description": "Accessible label for removing a specific custom search provider"
+  },
+  "searchProviderInvalidName": {
+    "message": "Enter a name for the search provider.",
+    "description": "Validation error when the provider name is empty"
+  },
+  "searchProviderInvalidUrl": {
+    "message": "Enter a valid URL with {query} and http(s).",
+    "description": "Validation error when the provider URL is invalid"
+  },
+  "searchWith": {
+    "message": "Search with",
+    "description": "Label prefix shown before the active search provider name"
+  },
+  "searchProviderNameAriaLabel": {
+    "message": "Provider name",
+    "description": "Accessible name for the provider name input"
+  },
+  "searchProviderUrlAriaLabel": {
+    "message": "Search URL template",
+    "description": "Accessible name for the provider URL input"
+  },
+  "searchProviderUnavailable": {
+    "message": "Provider API unavailable.",
+    "description": "Error when the provider API is unavailable"
+  },
   "weatherHourly": {
     "message": "Hourly Forecast",
     "description": "Title for the hourly forecast section in the weather app modal"

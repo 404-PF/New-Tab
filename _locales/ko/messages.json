@@ -475,6 +475,62 @@
     "message": "카드를 뒤집어 쌍을 찾으세요",
     "description": "Memory match game controls"
   },
+  "searchProviders": {
+    "message": "검색 공급자",
+    "description": "Title for the custom search providers settings card"
+  },
+  "searchProvidersDesc": {
+    "message": "이름과 URL 템플릿으로 사용자 지정 검색 엔진을 추가합니다",
+    "description": "Description for the custom search providers settings card"
+  },
+  "searchProviderNamePlaceholder": {
+    "message": "이름(예: Kagi)",
+    "description": "Placeholder for the custom search provider name input"
+  },
+  "searchProviderUrlPlaceholder": {
+    "message": "https://example.com/search?q={query}",
+    "description": "Placeholder for the custom search provider URL input"
+  },
+  "searchProviderAdd": {
+    "message": "추가",
+    "description": "Label for the add custom search provider button"
+  },
+  "searchProvidersEmpty": {
+    "message": "아직 사용자 지정 공급자가 없습니다",
+    "description": "Empty state text when no custom search providers exist"
+  },
+  "searchProviderRemove": {
+    "message": "삭제",
+    "description": "Accessible label for removing a custom search provider"
+  },
+  "searchProviderRemoveLabel": {
+    "message": "{name} 삭제",
+    "description": "Accessible label for removing a specific custom search provider"
+  },
+  "searchProviderInvalidName": {
+    "message": "검색 공급자의 이름을 입력하세요.",
+    "description": "Validation error when the provider name is empty"
+  },
+  "searchProviderInvalidUrl": {
+    "message": "{query}를 포함하는 유효한 http(s) URL을 입력하세요.",
+    "description": "Validation error when the provider URL is invalid"
+  },
+  "searchWith": {
+    "message": "검색",
+    "description": "Label prefix shown before the active search provider name"
+  },
+  "searchProviderNameAriaLabel": {
+    "message": "공급자 이름",
+    "description": "Accessible name for the provider name input"
+  },
+  "searchProviderUrlAriaLabel": {
+    "message": "검색 URL 템플릿",
+    "description": "Accessible name for the provider URL input"
+  },
+  "searchProviderUnavailable": {
+    "message": "검색 공급자 API를 사용할 수 없습니다.",
+    "description": "Error when the provider API is unavailable"
+  },
   "weatherHourly": {
     "message": "시간별 예보",
     "description": "Title for the hourly forecast section in the weather app modal"
