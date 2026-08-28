@@ -770,7 +770,7 @@ notesSection.innerHTML = `
     <button id="add-note-btn" class="notes-add-btn">+</button>
   </div>
       <div class="notes-search-wrapper">
-      <input id="notes-search" class="notes-search-input" type="search" data-i18n="notesSearchPlaceholder" placeholder="Search notes..." autocomplete="off" spellcheck="false" aria-label="Search notes" />
+      <input id="notes-search" class="notes-search-input" type="search" data-i18n="notesSearchPlaceholder" data-i18n-aria-label="notesSearchPlaceholder" placeholder="Search notes..." autocomplete="off" spellcheck="false" aria-label="Search notes" />
     </div>
     <div class="notes-tag-filter" id="notes-tag-filter"></div>
   <div class="notes-list" id="notes-list"></div>
