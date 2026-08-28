@@ -4215,34 +4215,32 @@ function getSupportedLanguages() {
 // Current language
 let currentLanguage = 'en';
 
-function getTranslation(lang, key) {
-  const localeTranslations = translations[lang];
-  if (localeTranslations && Object.prototype.hasOwnProperty.call(localeTranslations, key)) {
-    const translation = localeTranslations[key];
-    if (translation !== '') {
-      return translation;
+function getOwnNonEmptyTranslation(dict, key) {
+  if (dict && Object.hasOwn(dict, key)) {
+    const value = dict[key];
+    if (value !== '') {
+      return value;
     }
   }
+  return null;
+}
 
+function getTranslation(lang, key) {
+  const direct = getOwnNonEmptyTranslation(translations[lang], key);
+  if (direct !== null) {
+    return direct;
+  }
   const baseLang = lang ? lang.split('_')[0] : '';
   if (baseLang && baseLang !== lang) {
-    const baseTranslations = translations[baseLang];
-    if (baseTranslations && Object.prototype.hasOwnProperty.call(baseTranslations, key)) {
-      const base = baseTranslations[key];
-      if (base !== '') {
-        return base;
-      }
+    const base = getOwnNonEmptyTranslation(translations[baseLang], key);
+    if (base !== null) {
+      return base;
     }
   }
-
-  const englishTranslations = translations.en;
-  if (englishTranslations && Object.prototype.hasOwnProperty.call(englishTranslations, key)) {
-    const translation = englishTranslations[key];
-    if (translation !== '') {
-      return translation;
-    }
+  const fallback = getOwnNonEmptyTranslation(translations.en, key);
+  if (fallback !== null) {
+    return fallback;
   }
-
   return key;
 }
 
