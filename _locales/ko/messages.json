@@ -538,5 +538,17 @@
   "weatherNow": {
     "message": "지금",
     "description": "Label for the current hour in hourly forecast"
+  },
+  "notesSearchPlaceholder": {
+    "message": "메모 검색...",
+    "description": "Placeholder text for the notes search input"
+  },
+  "notesNoResults": {
+    "message": "일치하는 메모가 없습니다.",
+    "description": "Empty state when no notes match the search query"
+  },
+  "notesEmpty": {
+    "message": "아직 메모가 없습니다. +를 클릭하여 추가하세요!",
+    "description": "Empty state when no notes exist"
   }
 }

@@ -538,5 +538,17 @@
   "weatherNow": {
     "message": "Agora",
     "description": "Label for the current hour in hourly forecast"
+  },
+  "notesSearchPlaceholder": {
+    "message": "Pesquisar notas...",
+    "description": "Placeholder text for the notes search input"
+  },
+  "notesNoResults": {
+    "message": "Nenhuma nota correspondente.",
+    "description": "Empty state when no notes match the search query"
+  },
+  "notesEmpty": {
+    "message": "Nenhuma nota ainda. Clique em + para adicionar uma!",
+    "description": "Empty state when no notes exist"
   }
 }

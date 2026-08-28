@@ -5475,6 +5475,71 @@ body.light-theme .note-tag-filter-btn.active {
   margin-bottom: 8px;
 }
 
+.notes-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.notes-search-icon {
+  position: absolute;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  color: rgba(148, 163, 184, 0.6);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.notes-search-input {
+  width: 100%;
+  padding: 7px 12px 7px 32px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 10px;
+  color: #e2e8f0; /* NOSONAR - transparent bg blends over dark page, contrast is sufficient */
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: background 0.15s, border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.notes-search-input::placeholder {
+  color: rgba(148, 163, 184, 0.5);
+}
+
+.notes-search-input:focus {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.notes-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+body.light-theme .notes-search-icon {
+  color: rgba(100, 116, 139, 0.6);
+}
+
+body.light-theme .notes-search-input {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #1e293b; /* NOSONAR - transparent bg blends over light page, contrast is sufficient */
+}
+
+body.light-theme .notes-search-input::placeholder {
+  color: rgba(100, 116, 139, 0.5);
+}
+
+body.light-theme .notes-search-input:focus {
+  background: rgba(15, 23, 42, 0.07);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
 
 .note-textarea {
   flex: 1;

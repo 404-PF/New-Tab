@@ -538,5 +538,17 @@
   "weatherNow": {
     "message": "Сейчас",
     "description": "Label for the current hour in hourly forecast"
+  },
+  "notesSearchPlaceholder": {
+    "message": "Поиск заметок...",
+    "description": "Placeholder text for the notes search input"
+  },
+  "notesNoResults": {
+    "message": "Нет подходящих заметок.",
+    "description": "Empty state when no notes match the search query"
+  },
+  "notesEmpty": {
+    "message": "Пока нет заметок. Нажмите + чтобы добавить!",
+    "description": "Empty state when no notes exist"
   }
 }

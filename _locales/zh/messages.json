@@ -538,5 +538,17 @@
   "weatherNow": {
     "message": "现在",
     "description": "Label for the current hour in hourly forecast"
+  },
+  "notesSearchPlaceholder": {
+    "message": "搜尋便箋...",
+    "description": "Placeholder text for the notes search input"
+  },
+  "notesNoResults": {
+    "message": "沒有相符的便箋。",
+    "description": "Empty state when no notes match the search query"
+  },
+  "notesEmpty": {
+    "message": "還沒有便箋。點擊 + 新增一則！",
+    "description": "Empty state when no notes exist"
   }
 }

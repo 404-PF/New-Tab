@@ -300,6 +300,9 @@ globalThis.window.i18n = {
       notesDragToReorder: 'Drag to reorder',
       notesPreviewTooltip: 'Preview',
       notesEditTooltip: 'Edit',
+      notesEmpty: 'No notes yet. Click + to add one!',
+      notesSearchPlaceholder: 'Search notes...',
+      notesNoResults: 'No matching notes.',
       clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',
       cancel: 'Cancel',
       save: 'Save',
@@ -766,7 +769,10 @@ notesSection.innerHTML = `
     <h3 class="notes-title">Notes</h3>
     <button id="add-note-btn" class="notes-add-btn">+</button>
   </div>
-  <div class="notes-tag-filter" id="notes-tag-filter"></div>
+      <div class="notes-search-wrapper">
+      <input id="notes-search" class="notes-search-input" type="search" data-i18n="notesSearchPlaceholder" data-i18n-aria-label="notesSearchPlaceholder" placeholder="Search notes..." autocomplete="off" spellcheck="false" aria-label="Search notes" />
+    </div>
+    <div class="notes-tag-filter" id="notes-tag-filter"></div>
   <div class="notes-list" id="notes-list"></div>
   <div class="notes-empty" id="notes-empty"><p>No notes yet.</p></div>
 `;
