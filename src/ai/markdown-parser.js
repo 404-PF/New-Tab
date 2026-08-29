@@ -929,6 +929,7 @@ const MarkdownParser = (function() {
     a: ['href', 'target', 'rel', 'class'],
     img: ['src', 'alt', 'class'],
     input: ['type', 'checked', 'disabled', 'class'],
+    ol: ['class', 'start'],
     '*': ['class']
   };
 
@@ -1004,6 +1005,8 @@ const MarkdownParser = (function() {
           } else if (attr.name === 'src' && !isSafeUrl(attr.value, tagName === 'img' ? ALLOWED_IMG_PROTOCOLS : ALLOWED_URL_PROTOCOLS)) {
             child.removeAttribute(attr.name);
           } else if (tagName === 'input' && attr.name === 'type' && attr.value !== 'checkbox') {
+            child.removeAttribute(attr.name);
+          } else if (attr.name === 'start' && !/^[1-9]\d*$/.test(attr.value)) {
             child.removeAttribute(attr.name);
           }
         }
