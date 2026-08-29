@@ -321,6 +321,8 @@
     return lines.join('\n');
   };
   // Total focus time in the window formatted for the settings summary.
+  // Note: kept locale-JSON CPD exclusions in .sonarcloud.properties so per-locale key
+  // duplication does not count toward the New Code gate.
   window.getPomodoroTotalFormatted = function () {
     const rows = heatmapRows();
     let s = 0; let m = 0;
