@@ -114,4 +114,25 @@ describe('todo filter badge preservation', () => {
       expect(document.getElementById(id), `${id} should exist after startup + language change`).not.toBeNull();
     });
   });
+
+  it('localizes dynamically rendered legacy high/low pills', () => {
+    // Pills rendered after initial applyLanguage - the dynamic path updateDynamicTranslations exists for
+    document.body.innerHTML = '';
+    window.i18n.applyLanguage('en');
+    document.body.innerHTML = `
+      <div class="filter-pills">
+        <button type="button" class="filter-pill" data-filter="high" data-filter-type="priority" data-i18n="priorityHigh">High <span class="filter-badge" id="badge-high">0</span></button>
+        <button type="button" class="filter-pill" data-filter="low" data-filter-type="priority" data-i18n="priorityLow">Low <span class="filter-badge" id="badge-low">0</span></button>
+      </div>
+    `;
+    document.getElementById('badge-high').textContent = '2';
+    window.i18n.applyLanguage('zh');
+    expect(document.getElementById('badge-high').textContent).toBe('2');
+    expect(document.querySelector('[data-filter="high"]').textContent).toContain(window.i18n.t('priorityHigh'));
+    expect(document.querySelector('[data-filter="low"]').textContent).toContain(window.i18n.t('priorityLow'));
+    window.i18n.applyLanguage('de');
+    expect(document.getElementById('badge-high').textContent).toBe('2');
+    expect(document.querySelector('[data-filter="high"]').textContent).toContain(window.i18n.t('priorityHigh'));
+    expect(document.querySelector('[data-filter="low"]').textContent).toContain(window.i18n.t('priorityLow'));
+  });
 });
