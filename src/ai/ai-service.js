@@ -210,6 +210,35 @@ const AIService = (function() {
     }
   }
 
+  function removeFailedMessages(conversation, userId, assistantId) {
+    if (!conversation || !Array.isArray(conversation.messages)) return false;
+    if (!userId && !assistantId) return false;
+    let removed = false;
+    for (let i = conversation.messages.length - 1; i >= 0; i--) {
+      const messageId = conversation.messages[i] && conversation.messages[i].id;
+      if ((userId && messageId === userId) || (assistantId && messageId === assistantId)) {
+        conversation.messages.splice(i, 1);
+        removed = true;
+      }
+    }
+    if (removed) {
+      conversation.updatedAt = Date.now();
+      AIStore.saveConversations();
+      const current = AIStore.getCurrentConversation && AIStore.getCurrentConversation();
+      if (current && current.id === conversation.id) {
+        AIRenderer.renderMessages();
+      } else {
+        AIRenderer.renderTopicsList({
+          onSelectConversation: switchConversation,
+          onDeleteConversation: deleteConversation,
+          onExportConversation: exportConversation,
+          onRequestDeleteConfirm: showDeleteConfirm
+        });
+      }
+    }
+    return removed;
+  }
+
   function openModal() {
     if (!AIRenderer.hasModal()) return;
 
@@ -429,6 +458,10 @@ const AIService = (function() {
     AIStore.addMessageToConversation(assistantMsg);
     renderConversationUI();
 
+    const targetConversation = AIStore.getCurrentConversation();
+    const targetUserId = userMsg.id;
+    const targetAssistantId = assistantMsg.id;
+
     const assistantElements = elements.container?.querySelectorAll('.ai-message-assistant');
     const streamingElement = assistantElements ? assistantElements[assistantElements.length - 1] : null;
     const streamingTextElement = streamingElement?.querySelector('.ai-message-text');
@@ -552,12 +585,7 @@ const AIService = (function() {
         renderConversationUI();
       } else {
         showError(result.error);
-        const conversation = AIStore.getCurrentConversation();
-        if (conversation.messages.length >= 2) {
-          conversation.messages.pop();
-          conversation.messages.pop();
-          AIRenderer.renderMessages();
-        }
+        removeFailedMessages(targetConversation, targetUserId, targetAssistantId);
       }
     } catch (error) {
       if (error.name === 'AbortError' || AIStore.state.abortController === null) {
@@ -572,12 +600,7 @@ const AIService = (function() {
       } else {
         showError(getTranslation('aiError'));
         console.error('AI sendMessage error:', error);
-        const conversation = AIStore.getCurrentConversation();
-        if (conversation.messages.length >= 2) {
-          conversation.messages.pop();
-          conversation.messages.pop();
-          AIRenderer.renderMessages();
-        }
+        removeFailedMessages(targetConversation, targetUserId, targetAssistantId);
       }
     }
 

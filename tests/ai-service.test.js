@@ -610,3 +610,134 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
     expect(textNodes[textNodes.length - 1].textContent).toBe('[Cancelled]');
   });
 });
+
+describe('AIService error path targets correct conversation (#617)', () => {
+  it('removes the failed pair from the original conversation after switching mid-request', async () => {
+    const convA = {
+      id: 'conv_A',
+      title: 'A',
+      messages: [{ id: 'a0', role: 'user', content: 'before', timestamp: Date.now() }],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    const convB = {
+      id: 'conv_B',
+      title: 'B',
+      messages: [{ id: 'b0', role: 'user', content: 'other convo', timestamp: Date.now() }],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [convA, convB];
+    AIStore.state.currentConversationId = convA.id;
+
+    let resolveRequest;
+    OpenRouterAPI.sendMessageStreaming = () => new Promise(resolve => { resolveRequest = resolve; });
+
+    const sendPromise = AIService.sendMessage('hello in A');
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Two messages appended to A (user + assistant placeholder)
+    expect(convA.messages.length).toBe(3);
+    const failedUserId = convA.messages[1].id;
+    const failedAssistantId = convA.messages[2].id;
+
+    // Switch to B before A settles
+    AIStore.switchConversation(convB.id);
+    expect(AIStore.getCurrentConversation().id).toBe(convB.id);
+    expect(convB.messages.length).toBe(1);
+
+    resolveRequest({ success: false, error: 'mock API error' });
+    await sendPromise;
+
+    // The failed pair was removed from A, not B
+    expect(convA.messages.length).toBe(1);
+    expect(convA.messages[0].id).toBe('a0');
+    expect(convA.messages.some(m => m.id === failedUserId)).toBe(false);
+    expect(convA.messages.some(m => m.id === failedAssistantId)).toBe(false);
+    expect(convB.messages.length).toBe(1);
+    expect(convB.messages[0].id).toBe('b0');
+  });
+
+  it('does not delete the new message when a second request starts before the first fails', async () => {
+    const conversation = {
+      id: 'conv_race',
+      title: 'Race',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+
+    const resolvers = [];
+    OpenRouterAPI.sendMessageStreaming = () => new Promise(resolve => { resolvers.push(resolve); });
+
+    const firstSend = AIService.sendMessage('first');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(conversation.messages.length).toBe(2);
+    const firstUserId = conversation.messages[0].id;
+    const firstAssistantId = conversation.messages[1].id;
+
+    // Stop re-enables input immediately so a second message can be sent before first settles
+    AIService.stopStreaming();
+    expect(AIStore.state.isLoading).toBe(false);
+
+    const secondSend = AIService.sendMessage('second');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(conversation.messages.length).toBe(4);
+    const secondUserId = conversation.messages[2].id;
+    const secondAssistantId = conversation.messages[3].id;
+
+    // First request fails
+    resolvers[0]({ success: false, error: 'first failed' });
+    await firstSend;
+
+    // Only the first pair was removed; the second remains
+    expect(conversation.messages.length).toBe(2);
+    expect(conversation.messages[0].id).toBe(secondUserId);
+    expect(conversation.messages[1].id).toBe(secondAssistantId);
+    expect(conversation.messages.some(m => m.id === firstUserId)).toBe(false);
+    expect(conversation.messages.some(m => m.id === firstAssistantId)).toBe(false);
+
+    // Let second settle successfully to clean up loading state
+    resolvers[1]({ success: true, content: 'ok' });
+    await secondSend;
+    expect(conversation.messages.length).toBe(2);
+  });
+
+  it('catch-block also removes the targeted pair from the original conversation after switch', async () => {
+    const convA = {
+      id: 'conv_A2',
+      title: 'A2',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    const convB = {
+      id: 'conv_B2',
+      title: 'B2',
+      messages: [{ id: 'b0', role: 'user', content: 'keep me', timestamp: Date.now() }],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [convA, convB];
+    AIStore.state.currentConversationId = convA.id;
+
+    let rejectRequest;
+    OpenRouterAPI.sendMessageStreaming = () => new Promise((_, reject) => { rejectRequest = reject; });
+
+    const sendPromise = AIService.sendMessage('will throw');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(convA.messages.length).toBe(2);
+    const failedIds = convA.messages.map(m => m.id);
+
+    AIStore.switchConversation(convB.id);
+
+    rejectRequest(new Error('boom'));
+    await sendPromise;
+
+    expect(convA.messages.length).toBe(0);
+    expect(failedIds.every(id => !convA.messages.some(m => m.id === id))).toBe(true);
+    expect(convB.messages.length).toBe(1);
+  });
+});
