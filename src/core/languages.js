@@ -400,6 +400,9 @@ const translations = {
     filterPending: 'Pending',
     filterCompleted: 'Completed',
     filterOverdue: 'Overdue',
+    priorityHigh: 'High',
+    priorityMedium: 'Medium',
+    priorityLow: 'Low',
     clearCompletedText: 'Clear Completed',
     clearCompletedConfirmTitle: 'Clear Completed Todos?',
     clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',
@@ -893,6 +896,9 @@ const translations = {
     filterPending: '待处理',
     filterCompleted: '已完成',
     filterOverdue: '已逾期',
+    priorityHigh: '高',
+    priorityMedium: '中',
+    priorityLow: '低',
     clearCompletedText: '清除已完成',
     clearCompletedConfirmTitle: '清除已完成的待办事项？',
     clearCompletedConfirmMessage: '这将永久删除所有已完成的待办事项。此操作无法撤消。',
@@ -1344,6 +1350,9 @@ const translations = {
     filterPending: '未完了',
     filterCompleted: '完了',
     filterOverdue: '期限切れ',
+    priorityHigh: '高',
+    priorityMedium: '中',
+    priorityLow: '低',
     clearCompletedText: '完了をクリア',
     clearCompletedConfirmTitle: '完了したTodoをクリアしますか？',
     clearCompletedConfirmMessage: '完了したすべてのTodoが完全に削除されます。この操作は元に戻せません。',
@@ -1779,6 +1788,9 @@ const translations = {
     filterPending: '미완료',
     filterCompleted: '완료',
     filterOverdue: '기한 초과',
+    priorityHigh: '높음',
+    priorityMedium: '보통',
+    priorityLow: '낮음',
     clearCompletedText: '완료 항목 지우기',
     clearCompletedConfirmTitle: '완료된 할 일을 지우시겠습니까?',
     clearCompletedConfirmMessage: '완료된 모든 할 일이 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.',
@@ -2202,6 +2214,9 @@ const translations = {
     filterPending: 'Pendientes',
     filterCompleted: 'Completadas',
     filterOverdue: 'Vencidas',
+    priorityHigh: 'Alta',
+    priorityMedium: 'Media',
+    priorityLow: 'Baja',
     clearCompletedText: 'Limpiar completadas',
     clearCompletedConfirmTitle: '¿Limpiar tareas completadas?',
     clearCompletedConfirmMessage: 'Esto eliminará permanentemente todas las tareas completadas. Esta acción no se puede deshacer.',
@@ -2637,6 +2652,9 @@ const translations = {
     filterPending: 'En attente',
     filterCompleted: 'Terminées',
     filterOverdue: 'En retard',
+    priorityHigh: 'Haute',
+    priorityMedium: 'Moyenne',
+    priorityLow: 'Basse',
     clearCompletedText: 'Effacer terminées',
     clearCompletedConfirmTitle: 'Effacer les tâches terminées ?',
     clearCompletedConfirmMessage: 'Cela supprimera définitivement toutes les tâches terminées. Cette action est irréversible.',
@@ -3072,6 +3090,9 @@ const translations = {
     filterPending: 'Offen',
     filterCompleted: 'Erledigt',
     filterOverdue: 'Überfällig',
+    priorityHigh: 'Hoch',
+    priorityMedium: 'Mittel',
+    priorityLow: 'Niedrig',
     clearCompletedText: 'Erledigte löschen',
     clearCompletedConfirmTitle: 'Erledigte Aufgaben löschen?',
     clearCompletedConfirmMessage: 'Dies entfernt dauerhaft alle erledigten Aufgaben. Diese Aktion kann nicht rückgängig gemacht werden.',
@@ -3507,6 +3528,9 @@ const translations = {
     filterPending: 'Pendentes',
     filterCompleted: 'Concluídas',
     filterOverdue: 'Vencidas',
+    priorityHigh: 'Alta',
+    priorityMedium: 'Média',
+    priorityLow: 'Baixa',
     clearCompletedText: 'Limpar concluídas',
     clearCompletedConfirmTitle: 'Limpar tarefas concluídas?',
     clearCompletedConfirmMessage: 'Isso removerá permanentemente todas as tarefas concluídas. Esta ação não pode ser desfeita.',
@@ -3942,6 +3966,9 @@ const translations = {
     filterPending: 'Ожидающие',
     filterCompleted: 'Завершённые',
     filterOverdue: 'Просроченные',
+    priorityHigh: 'Высокий',
+    priorityMedium: 'Средний',
+    priorityLow: 'Низкий',
     clearCompletedText: 'Очистить завершённые',
     clearCompletedConfirmTitle: 'Очистить завершённые дела?',
     clearCompletedConfirmMessage: 'Это навсегда удалит все завершённые дела. Это действие нельзя отменить.',
@@ -4318,6 +4345,40 @@ function applyLanguage(lang) {
       if (element.hasAttribute('aria-label')) {
         element.setAttribute('aria-label', translation);
       }
+    } else if (element.children.length > 0) {
+      // Preserve child elements by updating only the text node.
+      // This is a generic safeguard for any [data-i18n] container that nests children
+      // (historically the todo filter pills with badge spans). If the element has
+      // only element children (e.g., icon-only controls like #folder-popup-rename-btn),
+      // try to update a nested label before falling back to aria-label.
+      let textNode = null;
+      for (let i = 0; i < element.childNodes.length; i++) {
+        const node = element.childNodes[i];
+        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0) {
+          textNode = node;
+          break;
+        }
+      }
+      if (textNode) {
+        textNode.textContent = translation;
+      } else {
+        let descendantText = null;
+        try {
+          const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+            acceptNode: function (node) {
+              if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+              if (node.parentElement && node.parentElement.closest('.filter-badge')) return NodeFilter.FILTER_REJECT;
+              return NodeFilter.FILTER_ACCEPT;
+            }
+          });
+          descendantText = walker.nextNode();
+        } catch (e) { void e; }
+        if (descendantText) {
+          descendantText.textContent = translation;
+        } else {
+          element.setAttribute('aria-label', translation);
+        }
+      }
     } else {
       element.textContent = translation;
     }
@@ -4367,16 +4428,35 @@ function updateDynamicTranslations() {
     emptyStateSmall.textContent = getTranslation(currentLanguage, 'emptyStateDesc');
   }
   
-  // Update filter pills
-  const filterAll = document.querySelector('.filter-pill[data-filter="all"]');
-  const filterPending = document.querySelector('.filter-pill[data-filter="pending"]');
-  const filterCompleted = document.querySelector('.filter-pill[data-filter="completed"]');
-  const filterOverdue = document.querySelector('.filter-pill[data-filter="overdue"]');
-  
-  if (filterAll) filterAll.childNodes[0].textContent = getTranslation(currentLanguage, 'filterAll') + ' ';
-  if (filterPending) filterPending.childNodes[0].textContent = getTranslation(currentLanguage, 'filterPending') + ' ';
-  if (filterCompleted) filterCompleted.childNodes[0].textContent = getTranslation(currentLanguage, 'filterCompleted') + ' ';
-  if (filterOverdue) filterOverdue.childNodes[0].textContent = getTranslation(currentLanguage, 'filterOverdue') + ' ';
+  // Update filter pills - legacy text-node markup only; new inner-span markup
+  // is already handled by the generic [data-i18n] loop in applyLanguage
+  function updateFilterPillLabel(pill, key) {
+    if (!pill) return;
+    const label = pill.querySelector('.filter-label');
+    if (label) {
+      return;
+    }
+    const firstTextNode = Array.from(pill.childNodes).find(function (node) {
+      return node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0;
+    });
+    if (firstTextNode) {
+      firstTextNode.textContent = getTranslation(currentLanguage, key) + ' ';
+    } else if (pill.childNodes[0] && pill.childNodes[0].nodeType === Node.TEXT_NODE) {
+      pill.childNodes[0].textContent = getTranslation(currentLanguage, key) + ' ';
+    } else {
+      const firstElement = pill.firstElementChild;
+      if (firstElement) {
+        pill.insertBefore(document.createTextNode(getTranslation(currentLanguage, key) + ' '), firstElement);
+      }
+    }
+  }
+
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="all"]'), 'filterAll');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="pending"]'), 'filterPending');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="completed"]'), 'filterCompleted');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="overdue"]'), 'filterOverdue');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="high"]'), 'priorityHigh');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="low"]'), 'priorityLow');
   
   // Update quick action button text
   const clearCompletedBtn = document.getElementById('clear-completed');
