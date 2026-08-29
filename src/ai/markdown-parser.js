@@ -409,11 +409,11 @@ const MarkdownParser = (function() {
     const formatLinkLabel = (label) => {
       let out = label;
       out = out.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-      out = out.replace(/(?<!\w)___(?!\s)(.+?)(?<!\s)___(?!\w)/g, '<strong><em>$1</em></strong>');
+      out = out.replace(/(?<![\p{L}\p{N}_])___(?=\S)(.+?)(?<!\s)___(?![\p{L}\p{N}_])/gu, '<strong><em>$1</em></strong>');
       out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      out = out.replace(/(?<!\w)__(?!\s)(.+?)(?<!\s)__(?!\w)/g, '<strong>$1</strong>');
+      out = out.replace(/(?<![\p{L}\p{N}_])__(?=\S)(.+?)(?<!\s)__(?![\p{L}\p{N}_])/gu, '<strong>$1</strong>');
       out = out.replace(/\*(.+?)\*/g, '<em>$1</em>');
-      out = out.replace(/(?<!\w)_(?!\s)(.+?)(?<!\s)_(?!\w)/g, '<em>$1</em>');
+      out = out.replace(/(?<![\p{L}\p{N}_])_(?=\S)(.+?)(?<!\s)_(?![\p{L}\p{N}_])/gu, '<em>$1</em>');
       out = out.replace(/~~(.+?)~~/g, '<del>$1</del>');
       return out;
     };
@@ -452,15 +452,15 @@ const MarkdownParser = (function() {
 
     // Bold and Italic (***text*** or ___text___)
     html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    html = html.replace(/(?<!\w)___(?!\s)(.+?)(?<!\s)___(?!\w)/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/(?<![\p{L}\p{N}_])___(?=\S)(.+?)(?<!\s)___(?![\p{L}\p{N}_])/gu, '<strong><em>$1</em></strong>');
 
     // Bold (**text** or __text__)
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/(?<!\w)__(?!\s)(.+?)(?<!\s)__(?!\w)/g, '<strong>$1</strong>');
+    html = html.replace(/(?<![\p{L}\p{N}_])__(?=\S)(.+?)(?<!\s)__(?![\p{L}\p{N}_])/gu, '<strong>$1</strong>');
 
     // Italic (*text* or _text_)
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    html = html.replace(/(?<!\w)_(?!\s)(.+?)(?<!\s)_(?!\w)/g, '<em>$1</em>');
+    html = html.replace(/(?<![\p{L}\p{N}_])_(?=\S)(.+?)(?<!\s)_(?![\p{L}\p{N}_])/gu, '<em>$1</em>');
 
     // Strikethrough (~~text~~)
     html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
