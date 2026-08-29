@@ -12,7 +12,7 @@
   function pad(n) { return String(n).padStart(2, '0'); }
   function toISO(date) { return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()); }
   function coerceEntry(raw) {
-    if (typeof raw === 'number' && Number.isFinite(raw)) return { sessions: raw, minutes: 0 };
+    if (typeof raw === 'number' && Number.isFinite(raw)) return { sessions: Math.max(0, raw), minutes: 0 };
     if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
       const s = typeof raw.sessions === 'number' && Number.isFinite(raw.sessions) ? raw.sessions : 0;
       const m = typeof raw.minutes === 'number' && Number.isFinite(raw.minutes) ? raw.minutes : 0;
@@ -43,7 +43,8 @@
   function todayISO() { return toISO(new Date()); }
   function record(detail) {
     if (!enabled()) return;
-    const mins = detail && typeof detail.minutes === 'number' && Number.isFinite(detail.minutes) ? detail.minutes : 0;
+    const rawMins = detail && typeof detail.minutes === 'number' && Number.isFinite(detail.minutes) ? detail.minutes : 0;
+    const mins = Math.max(0, rawMins);
     const tid = detail && detail.todoId !== null && detail.todoId !== undefined ? String(detail.todoId) : null;
     const iso = detail && typeof detail.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(detail.date) ? detail.date : todayISO();
     const store = read();
@@ -52,8 +53,10 @@
     cur.minutes = cur.minutes + mins;
     store.days[iso] = cur;
     if (tid) {
-      const map = store.byDateTodos[iso] || (store.byDateTodos[iso] = {});
-      map[tid] = (map[tid] || 0) + mins;
+      const rawMap = store.byDateTodos[iso];
+      const map = rawMap && typeof rawMap === 'object' && !Array.isArray(rawMap) ? rawMap : (store.byDateTodos[iso] = {});
+      const prev = typeof map[tid] === 'number' && Number.isFinite(map[tid]) ? Math.max(0, map[tid]) : 0;
+      map[tid] = prev + mins;
     }
     write(store);
     paint();
@@ -144,10 +147,10 @@
     if (wm) wm.textContent = String(minutesWeek());
     paintHeatmap();
   }
-  function syncVisibility() {
+  function syncVisibility(enabledOverride) {
     const panel = document.getElementById('pomodoro-stats-panel');
     const btn = document.getElementById('pomodoro-stats-toggle');
-    const on = enabled();
+    const on = typeof enabledOverride === 'boolean' ? enabledOverride : enabled();
     if (panel) panel.style.display = on ? '' : 'none';
     if (btn) btn.style.display = on ? '' : 'none';
     if (on) paint();

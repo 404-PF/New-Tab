@@ -1275,18 +1275,23 @@ if (todoStatsEnabledSetting) {
 function loadPomodoroStatsEnabled() {
   return localStorage.getItem('pomodoroStatsEnabled') === 'true';
 }
-function applyPomodoroStatsEnabled() {
-  const enabled = loadPomodoroStatsEnabled();
+function applyPomodoroStatsEnabled(enabledOverride) {
+  const enabled = typeof enabledOverride === 'boolean' ? enabledOverride : loadPomodoroStatsEnabled();
   const setting = document.getElementById('pomodoro-stats-enabled-setting');
   if (setting) setting.checked = enabled;
-  if (window.applyPomodoroStatsVisibility) window.applyPomodoroStatsVisibility();
+  if (window.applyPomodoroStatsVisibility) window.applyPomodoroStatsVisibility(enabled);
 }
 
 const pomodoroStatsEnabledSetting = document.getElementById('pomodoro-stats-enabled-setting');
 if (pomodoroStatsEnabledSetting) {
   pomodoroStatsEnabledSetting.addEventListener('change', function () {
-    localStorage.setItem('pomodoroStatsEnabled', this.checked);
-    applyPomodoroStatsEnabled();
+    const enabled = this.checked;
+    try {
+      localStorage.setItem('pomodoroStatsEnabled', enabled);
+    } catch (_e) {
+      // ignore storage errors
+    }
+    applyPomodoroStatsEnabled(enabled);
   });
 }
 
