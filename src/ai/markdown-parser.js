@@ -244,9 +244,28 @@ const MarkdownParser = (function() {
       }
 
       const textStart = index + (isImage ? 2 : 1);
-      const textEnd = html.indexOf(']', textStart);
+      let textEnd = -1;
+      let bracketDepth = 0;
+      for (let j = textStart; j < html.length; j++) {
+        const ch = html[j];
+        if (ch === '\\' && j + 1 < html.length) {
+          j++;
+          continue;
+        }
+        if (ch === '[') {
+          bracketDepth++;
+        } else if (ch === ']') {
+          if (bracketDepth === 0) {
+            if (html[j + 1] === '(') {
+              textEnd = j;
+            }
+            break;
+          }
+          bracketDepth--;
+        }
+      }
 
-      if (textEnd === -1 || html[textEnd + 1] !== '(') {
+      if (textEnd === -1) {
         result += html[index];
         index++;
         continue;
@@ -287,10 +306,12 @@ const MarkdownParser = (function() {
         if (isImage) {
           result += `<img src="${escapeAttribute(safeUrl)}" alt="${escapeAttribute(text)}" class="md-image" />`;
         } else {
-          result += `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${formatLabel(text)}</a>`;
+          const innerWithImages = replaceMarkdownLinksAndImages(text);
+          const linkContent = formatLabel(innerWithImages);
+          result += `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${linkContent}</a>`;
         }
       } else {
-        result += !isImage ? formatLabel(text) : text;
+        result += !isImage ? formatLabel(replaceMarkdownLinksAndImages(text)) : text;
       }
 
       index = cursor;
