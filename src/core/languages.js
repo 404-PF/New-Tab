@@ -4295,8 +4295,8 @@ function applyLanguage(lang) {
       // Preserve child elements by updating only the text node.
       // This is a generic safeguard for any [data-i18n] container that nests children
       // (historically the todo filter pills with badge spans). If the element has
-      // only element children (e.g., icon-only controls), leave it unchanged and
-      // rely on title/aria-label localization instead.
+      // only element children (e.g., icon-only controls like #folder-popup-rename-btn),
+      // expose the translation as its accessible label so the control remains localized.
       let textNode = null;
       for (let i = 0; i < element.childNodes.length; i++) {
         const node = element.childNodes[i];
@@ -4307,6 +4307,8 @@ function applyLanguage(lang) {
       }
       if (textNode) {
         textNode.textContent = translation;
+      } else {
+        element.setAttribute('aria-label', translation);
       }
     } else {
       element.textContent = translation;
