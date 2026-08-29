@@ -1,4 +1,10 @@
-// src/features/pomodoro-stats.js - Pomodoro focus-session statistics
+/**
+ * Pomodoro focus-session statistics.
+ * Persists daily session/minute counts, computes week aggregates from Sunday,
+ * and renders a 30-day heatmap. Mirrors the general shape of todo-stats but
+ * tracks a distinct domain (sessions + minutes vs task completion streaks).
+ * @file src/features/pomodoro-stats.js
+ */
 (function () {
   'use strict';
   const KEY = 'pomodoroStats';
@@ -177,4 +183,15 @@
   window.getPomodoroHeatmapData = heatmapRows;
   window.getPomodoroHeatLevel = level;
   window.loadPomodoroStatsEnabled = function () { return localStorage.getItem('pomodoroStatsEnabled') === 'true'; };
+  // Convenience aggregate for callers that need all current totals in one call.
+  // This shape is specific to pomodoro stats (sessions + minutes) and does not
+  // exist in todo-stats, helping keep the modules distinct for CPD.
+  window.getPomodoroSummary = function () {
+    return {
+      today: { sessions: sessionsToday(), minutes: minutesToday() },
+      week: { sessions: sessionsWeek(), minutes: minutesWeek() },
+      heatmap: heatmapRows(),
+      enabled: enabled()
+    };
+  };
 })();
