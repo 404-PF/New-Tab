@@ -791,3 +791,44 @@ describe('MarkdownParser ordered list start attribute', () => {
     expect(MarkdownParser.sanitizeHTML('<ol start="9007199254740992" class="md-list"><li>x</li></ol>')).not.toContain('start=');
   });
 });
+
+describe('MarkdownParser inline code spans', () => {
+  function parseToContainer(markdown) {
+    const container = document.createElement('div');
+    container.innerHTML = MarkdownParser.parse(markdown);
+    return container;
+  }
+
+  it('keeps formatting inside inline code literal (regression #614)', () => {
+    const container = parseToContainer('use `__init__` here and `**kwargs**` and `~~x~~`');
+    const codes = container.querySelectorAll('code.md-inline-code');
+
+    expect(codes).toHaveLength(3);
+    expect(codes[0].textContent).toBe('__init__');
+    expect(codes[1].textContent).toBe('**kwargs**');
+    expect(codes[2].textContent).toBe('~~x~~');
+    // No emphasis leaked inside the code spans
+    expect(codes[0].querySelector('strong')).toBeNull();
+    expect(codes[1].querySelector('strong')).toBeNull();
+    expect(codes[2].querySelector('del')).toBeNull();
+    // Surrounding formatting still renders
+    const container2 = parseToContainer('**bold** and `__init__` and *italic*');
+    expect(container2.querySelector('strong').textContent).toBe('bold');
+    expect(container2.querySelector('em').textContent).toBe('italic');
+    expect(container2.querySelector('code.md-inline-code').textContent).toBe('__init__');
+  });
+
+  it('attribute-escapes double quotes in inline code inside image alt text', () => {
+    const html = MarkdownParser.parse('![`a"b` x](https://example.com/image.png)');
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    const img = container.querySelector('img.md-image');
+
+    expect(img).not.toBeNull();
+    expect(img.getAttribute('alt')).toBe('a"b x');
+    expect(html).toContain('alt="a&quot;b x"');
+    expect(html).not.toContain('alt="a"b');
+    // Code HTML must not leak into the attribute
+    expect(img.querySelector('code')).toBeNull();
+  });
+});
