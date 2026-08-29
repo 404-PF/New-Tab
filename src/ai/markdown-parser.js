@@ -703,7 +703,8 @@ const MarkdownParser = (function() {
       const indent = line.search(/\S/);
       const isOrdered = !!orderedMatch;
       const content = isOrdered ? orderedMatch[2] : unorderedMatch[1];
-      const number = isOrdered ? Number.parseInt(orderedMatch[1], 10) : null;
+      const rawNumberStr = isOrdered ? orderedMatch[1] : null;
+      const number = isOrdered ? Number.parseInt(rawNumberStr, 10) : null;
       const listType = isOrdered ? 'ol' : 'ul';
 
       // Handle indentation changes
@@ -725,7 +726,7 @@ const MarkdownParser = (function() {
           closeTopList();
           listStack.push({ type: listType, items: [], indent });
         }
-        listStack.at(-1).items.push({ content, number, nested: null });
+        listStack.at(-1).items.push({ content, number, rawNumberStr, nested: null });
       }
     };
 
@@ -755,7 +756,10 @@ const MarkdownParser = (function() {
       return `<li class="md-list-item">${contentHtml}${nestedHtml}</li>`;
     }).join('');
     
-    const startAttr = type === 'ol' && items[0]?.number ? ` start="${items[0].number}"` : '';
+    const raw = items[0]?.rawNumberStr;
+    const num = items[0]?.number;
+    const isValidStart = raw && /^0*[1-9]\d*$/.test(raw) && Number.isFinite(num) && Number.isSafeInteger(num) && num >= 1;
+    const startAttr = type === 'ol' && isValidStart ? ` start="${String(num)}"` : '';
     const listHtml = `<${type} class="md-list md-list-${type}"${startAttr}>${itemsHtml}</${type}>`;
     return protect ? protect(listHtml) : listHtml;
   }
@@ -1006,7 +1010,7 @@ const MarkdownParser = (function() {
             child.removeAttribute(attr.name);
           } else if (tagName === 'input' && attr.name === 'type' && attr.value !== 'checkbox') {
             child.removeAttribute(attr.name);
-          } else if (attr.name === 'start' && !/^[1-9]\d*$/.test(attr.value)) {
+          } else if (attr.name === 'start' && !/^0*[1-9]\d*$/.test(attr.value)) {
             child.removeAttribute(attr.name);
           }
         }
