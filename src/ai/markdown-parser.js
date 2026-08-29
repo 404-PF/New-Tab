@@ -760,6 +760,20 @@ const MarkdownParser = (function() {
     return protect ? protect(listHtml) : listHtml;
   }
 
+  function parseTableRow(rowLine) {
+    let s = rowLine.trim();
+    if (s.startsWith('|')) s = s.slice(1);
+    const escapedPipe = String.raw`\|`;
+    if (s.endsWith('|') && !s.endsWith(escapedPipe)) s = s.slice(0, -1);
+    return s.split(/(?<!\\)\|/).map(cell => cell.replaceAll(escapedPipe, '|').trim());
+  }
+
+  function normalizeTableRow(cells, targetLen) {
+    if (cells.length === targetLen) return cells;
+    const padded = cells.concat(new Array(Math.max(0, targetLen - cells.length)).fill(''));
+    return padded.slice(0, targetLen);
+  }
+
   /**
    * Parse tables
    * @param {string} text - Text containing tables
@@ -767,13 +781,6 @@ const MarkdownParser = (function() {
    * @returns {string} HTML string
    */
   function parseTables(text, protect) {
-    const parseRow = (rowLine) => {
-      let s = rowLine.trim();
-      if (s.startsWith('|')) s = s.slice(1);
-      if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1);
-      return s.split(/(?<!\\)\|/).map(cell => cell.replace(/\\\|/g, '|').trim());
-    };
-
     const lines = text.split('\n');
     const result = [];
     let i = 0;
@@ -784,18 +791,12 @@ const MarkdownParser = (function() {
 
       // Check if this is a table (has | and next line has |---|)
       if (line.includes('|') && nextLine && /^\|?[\s-:|]+\|?$/.test(nextLine)) {
-        const headerCells = parseRow(line);
+        const headerCells = parseTableRow(line);
         const rows = [];
         i += 2; // Skip header and separator
 
         while (i < lines.length && lines[i].includes('|')) {
-          let cells = parseRow(lines[i]);
-          if (cells.length < headerCells.length) {
-            cells = cells.concat(Array(headerCells.length - cells.length).fill(''));
-          } else if (cells.length > headerCells.length) {
-            cells = cells.slice(0, headerCells.length);
-          }
-          rows.push(cells);
+          rows.push(normalizeTableRow(parseTableRow(lines[i]), headerCells.length));
           i++;
         }
 
