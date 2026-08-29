@@ -549,6 +549,16 @@ describe('MarkdownParser blockquote and list rendering', () => {
     expect(lists[1].textContent).toContain('plain item');
   });
 
+  it('does not drop an item when a dedent closes all open lists (regression #612)', () => {
+    // "  - a\n- b" previously dropped "b" because dedentTo emptied listStack
+    const container = parseToContainer('  - a\n- b');
+    const items = container.querySelectorAll('li.md-list-item');
+
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toBe('a');
+    expect(items[1].textContent).toBe('b');
+  });
+
   it('renders a fenced code block that follows paragraph text as a real code block', () => {
     // Regression: the code-block regexes consumed the newline before the
     // fence, gluing the block to the previous line so the paragraph parser

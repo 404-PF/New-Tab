@@ -1271,6 +1271,30 @@ if (todoStatsEnabledSetting) {
   });
 }
 
+// Pomodoro stats
+function loadPomodoroStatsEnabled() {
+  return localStorage.getItem('pomodoroStatsEnabled') === 'true';
+}
+function applyPomodoroStatsEnabled(enabledOverride) {
+  const enabled = typeof enabledOverride === 'boolean' ? enabledOverride : loadPomodoroStatsEnabled();
+  const setting = document.getElementById('pomodoro-stats-enabled-setting');
+  if (setting) setting.checked = enabled;
+  if (window.applyPomodoroStatsVisibility) window.applyPomodoroStatsVisibility(enabled);
+}
+
+const pomodoroStatsEnabledSetting = document.getElementById('pomodoro-stats-enabled-setting');
+if (pomodoroStatsEnabledSetting) {
+  pomodoroStatsEnabledSetting.addEventListener('change', function () {
+    const enabled = this.checked;
+    try {
+      localStorage.setItem('pomodoroStatsEnabled', enabled);
+    } catch (_e) {
+      // ignore storage errors
+    }
+    applyPomodoroStatsEnabled(enabled);
+  });
+}
+
 const todoReminderEnabledSetting = document.getElementById('todo-reminder-enabled-setting');
 if (todoReminderEnabledSetting) {
   todoReminderEnabledSetting.addEventListener('change', function () {
@@ -1975,6 +1999,7 @@ function initSettings() {
   applyTodoReminderEnabled();
   applyTodoReminderLeadTime();
   applyTodoStatsEnabled();
+  applyPomodoroStatsEnabled();
   applyEyeCareReminderSettings();
   applyNotesEnabled();
   applyGamesEnabled();
@@ -2041,6 +2066,8 @@ window.loadTodoEnabled = loadTodoEnabled;
 window.applyTodoEnabled = applyTodoEnabled;
 window.loadTodoStatsEnabled = loadTodoStatsEnabled;
 window.applyTodoStatsEnabled = applyTodoStatsEnabled;
+window.loadPomodoroStatsEnabled = loadPomodoroStatsEnabled;
+window.applyPomodoroStatsEnabled = applyPomodoroStatsEnabled;
 window.loadEyeCareReminderState = loadEyeCareReminderState;
 window.saveEyeCareReminderState = saveEyeCareReminderState;
 window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;

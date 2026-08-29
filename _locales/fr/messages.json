@@ -570,5 +570,41 @@
   "recurrenceMonthly": {
     "message": "Mensuelle",
     "description": "Monthly recurrence"
+  },
+  "enablePomodoroStats": {
+    "message": "Activer les statistiques de concentration",
+    "description": "Label for the pomodoro focus stats toggle"
+  },
+  "pomodoroStatsTitle": {
+    "message": "Statistiques de concentration",
+    "description": "Title for the pomodoro stats panel"
+  },
+  "pomodoroSessionsToday": {
+    "message": "Sessions aujourd'hui",
+    "description": "Pomodoro sessions completed today"
+  },
+  "pomodoroSessionsThisWeek": {
+    "message": "Sessions cette semaine",
+    "description": "Pomodoro sessions completed this week"
+  },
+  "pomodoroMinutesToday": {
+    "message": "Minutes aujourd'hui",
+    "description": "Pomodoro minutes today"
+  },
+  "pomodoroMinutesThisWeek": {
+    "message": "Minutes cette semaine",
+    "description": "Pomodoro minutes this week"
+  },
+  "pomodoroHeatmapCellTitle": {
+    "message": "$1$ : $2$ sessions",
+    "description": "Title for pomodoro heatmap cell"
+  },
+  "pomodoroStatsToggle": {
+    "message": "Statistiques de concentration",
+    "description": "Toggle for pomodoro stats panel"
+  },
+  "pomodoroStatsToggleAriaLabel": {
+    "message": "Basculer le panneau de statistiques de concentration",
+    "description": "Aria label for pomodoro stats toggle"
   }
 }

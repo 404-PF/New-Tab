@@ -570,5 +570,41 @@
   "recurrenceMonthly": {
     "message": "Ежемесячно",
     "description": "Monthly recurrence"
+  },
+  "enablePomodoroStats": {
+    "message": "Включить статистику фокуса",
+    "description": "Label for the pomodoro focus stats toggle"
+  },
+  "pomodoroStatsTitle": {
+    "message": "Статистика фокуса",
+    "description": "Title for the pomodoro stats panel"
+  },
+  "pomodoroSessionsToday": {
+    "message": "Сессий сегодня",
+    "description": "Pomodoro sessions completed today"
+  },
+  "pomodoroSessionsThisWeek": {
+    "message": "Сессий на этой неделе",
+    "description": "Pomodoro sessions completed this week"
+  },
+  "pomodoroMinutesToday": {
+    "message": "Минут сегодня",
+    "description": "Pomodoro minutes today"
+  },
+  "pomodoroMinutesThisWeek": {
+    "message": "Минут на этой неделе",
+    "description": "Pomodoro minutes this week"
+  },
+  "pomodoroHeatmapCellTitle": {
+    "message": "$1$: $2$ сессий",
+    "description": "Title for pomodoro heatmap cell"
+  },
+  "pomodoroStatsToggle": {
+    "message": "Статистика фокуса",
+    "description": "Toggle for pomodoro stats panel"
+  },
+  "pomodoroStatsToggleAriaLabel": {
+    "message": "Переключить панель статистики фокуса",
+    "description": "Aria label for pomodoro stats toggle"
   }
 }

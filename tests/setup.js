@@ -378,8 +378,17 @@ globalThis.window.i18n = {
       openNewTab: 'Open apps in a new tab',
       enableTodoList: 'Enable todo list',
       enableTodoStats: 'Enable daily stats',
+      enablePomodoroStats: 'Enable focus stats',
       statsTitle: 'Stats',
       heatmapCellTitle: '$1$: $2$ completed',
+      pomodoroHeatmapCellTitle: '$1$: $2$ sessions',
+      pomodoroStatsTitle: 'Focus Stats',
+      pomodoroSessionsToday: 'Sessions Today',
+      pomodoroSessionsThisWeek: 'This Week',
+      pomodoroMinutesToday: 'Minutes Today',
+      pomodoroMinutesThisWeek: 'Minutes This Week',
+      pomodoroStatsToggle: 'Focus stats',
+      pomodoroStatsToggleAriaLabel: 'Toggle focus statistics panel',
       clearStats: 'Clear Stats',
       completedToday: 'Completed Today',
       completedThisWeek: 'This Week',
@@ -724,6 +733,7 @@ document.body.appendChild(createStubElement('select', 'date-format-picker'));
 document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-stats-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'pomodoro-stats-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'focus-mode-setting'));
 document.body.appendChild(createStubElement('input', 'eye-care-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'eye-care-browser-notification-setting'));
@@ -766,6 +776,16 @@ document.body.appendChild(createStubElement('span', 'todo-stats-current-streak')
 document.body.appendChild(createStubElement('span', 'todo-stats-longest-streak'));
 document.body.appendChild(createStubElement('div', 'todo-stats-heatmap'));
 document.body.appendChild(createStubElement('button', 'todo-stats-clear'));
+
+// Pomodoro stats elements
+document.body.appendChild(createStubElement('button', 'pomodoro-stats-toggle'));
+document.body.appendChild(createStubElement('div', 'pomodoro-stats-panel'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-today'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-week'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-today-minutes'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-week-minutes'));
+document.body.appendChild(createStubElement('div', 'pomodoro-stats-heatmap'));
+document.body.appendChild(createStubElement('button', 'pomodoro-stats-clear'));
 document.body.appendChild(createStubElement('input', 'custom-search-provider-name'));
 document.body.appendChild(createStubElement('input', 'custom-search-provider-url'));
 document.body.appendChild(createStubElement('button', 'custom-search-provider-add-btn'));
