@@ -228,6 +228,7 @@ const MarkdownParser = (function() {
    * @param {string} html - HTML-escaped inline text
    * @returns {string} HTML with sanitized links and images
    */
+  // eslint-disable-next-line no-unused-vars -- retained for potential external use; parseInline now inlines link formatting with label emphasis
   function replaceMarkdownLinksAndImages(html) {
     let result = '';
     let index = 0;
@@ -397,10 +398,76 @@ const MarkdownParser = (function() {
 
     // Links/images must be extracted before emphasis so that '_' and '*' inside
     // URLs (e.g. https://example.com/some_article_name) are not converted to
-    // <em>/<strong> before the URL is captured. Protect every generated link
-    // and image tag with a placeholder token so the emphasis regexes below
-    // cannot scan inside href/src attributes.
-    html = replaceMarkdownLinksAndImages(html);
+    // <em>/<strong> before the URL is captured. Link labels are formatted
+    // separately so that `[**docs**](url)` still renders emphasis inside the
+    // label while the URL stays shielded. Protect every generated link and
+    // image tag with a placeholder token so the emphasis regexes below cannot
+    // scan inside href/src attributes.
+    const formatLinkLabel = (label) => {
+      let out = label;
+      out = out.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+      out = out.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+      out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      out = out.replace(/__(.+?)__/g, '<strong>$1</strong>');
+      out = out.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      out = out.replace(/_(.+?)_/g, '<em>$1</em>');
+      out = out.replace(/~~(.+?)~~/g, '<del>$1</del>');
+      return out;
+    };
+
+    // Inline replacement that mirrors replaceMarkdownLinksAndImages but formats
+    // the link label with emphasis while keeping alt plain text.
+    let linkedHtml = '';
+    let cursorIndex = 0;
+    while (cursorIndex < html.length) {
+      const isImage = html[cursorIndex] === '!' && html[cursorIndex + 1] === '[';
+      const isLink = html[cursorIndex] === '[';
+      if (!isImage && !isLink) {
+        linkedHtml += html[cursorIndex];
+        cursorIndex++;
+        continue;
+      }
+      const textStart = cursorIndex + (isImage ? 2 : 1);
+      const textEnd = html.indexOf(']', textStart);
+      if (textEnd === -1 || html[textEnd + 1] !== '(') {
+        linkedHtml += html[cursorIndex];
+        cursorIndex++;
+        continue;
+      }
+      const urlStart = textEnd + 2;
+      let urlCursor = urlStart;
+      let depth = 1;
+      while (urlCursor < html.length && depth > 0) {
+        const ch = html[urlCursor];
+        if (ch === '\\' && urlCursor + 1 < html.length) {
+          urlCursor += 2;
+          continue;
+        }
+        if (ch === '(') depth++;
+        else if (ch === ')') depth--;
+        urlCursor++;
+      }
+      if (depth !== 0) {
+        linkedHtml += html[cursorIndex];
+        cursorIndex++;
+        continue;
+      }
+      const rawText = html.slice(textStart, textEnd);
+      const rawUrl = unescapeMarkdownUrl(decodeHTML(html.slice(urlStart, urlCursor - 1)));
+      const safeUrl = sanitizeMarkdownUrl(rawUrl, isImage);
+      if (safeUrl) {
+        if (isImage) {
+          linkedHtml += `<img src="${escapeAttribute(safeUrl)}" alt="${escapeAttribute(rawText)}" class="md-image" />`;
+        } else {
+          const formattedLabel = formatLinkLabel(rawText);
+          linkedHtml += `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${formattedLabel}</a>`;
+        }
+      } else {
+        linkedHtml += isImage ? rawText : formatLinkLabel(rawText);
+      }
+      cursorIndex = urlCursor;
+    }
+    html = linkedHtml;
 
     // Image alt attributes must stay plain text — injecting <code> HTML there
     // would corrupt the markup — so restore placeholders inside alt="..." with
@@ -421,7 +488,7 @@ const MarkdownParser = (function() {
     const linkPlaceholders = [];
     const linkNs = tokenNamespace;
     const linkToken = (idx) => `\uE001${linkNs}LINK${idx}\uE001`;
-    html = html.replace(/<a\b[^>]*class="md-link"[^>]*>.*?<\/a>/g, (m) => {
+    html = html.replace(/<a\b[^>]*class="md-link"[^>]*>[\s\S]*?<\/a>/g, (m) => {
       const idx = linkPlaceholders.length;
       linkPlaceholders.push(m);
       return linkToken(idx);
