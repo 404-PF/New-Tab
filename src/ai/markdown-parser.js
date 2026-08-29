@@ -229,7 +229,11 @@ const MarkdownParser = (function() {
    * @param {Function} [formatLabel] - Formatter for link labels (e.g. emphasis)
    * @returns {string} HTML with sanitized links and images
    */
-  function replaceMarkdownLinksAndImages(html, formatLabel = (text) => text) {
+  function replaceMarkdownLinksAndImages(html, formatLabel = (text) => text, depth = 0) {
+    const MAX_RECURSION_DEPTH = 8;
+    if (depth > MAX_RECURSION_DEPTH) {
+      return html;
+    }
     let result = '';
     let index = 0;
 
@@ -262,6 +266,23 @@ const MarkdownParser = (function() {
             break;
           }
           bracketDepth--;
+          if (html[j + 1] === '(') {
+            let urlDepth = 1;
+            j += 2;
+            while (j < html.length && urlDepth > 0) {
+              if (html[j] === '\\' && j + 1 < html.length) {
+                j += 2;
+                continue;
+              }
+              if (html[j] === '(') {
+                urlDepth++;
+              } else if (html[j] === ')') {
+                urlDepth--;
+              }
+              j++;
+            }
+            j--;
+          }
         }
       }
 
@@ -306,12 +327,12 @@ const MarkdownParser = (function() {
         if (isImage) {
           result += `<img src="${escapeAttribute(safeUrl)}" alt="${escapeAttribute(text)}" class="md-image" />`;
         } else {
-          const innerWithImages = replaceMarkdownLinksAndImages(text);
+          const innerWithImages = replaceMarkdownLinksAndImages(text, formatLabel, depth + 1);
           const linkContent = formatLabel(innerWithImages);
           result += `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${linkContent}</a>`;
         }
       } else {
-        result += !isImage ? formatLabel(replaceMarkdownLinksAndImages(text)) : text;
+        result += !isImage ? formatLabel(replaceMarkdownLinksAndImages(text, formatLabel, depth + 1)) : text;
       }
 
       index = cursor;
