@@ -391,10 +391,11 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
     expect(AIStore.state.abortController).not.toBeNull();
     expect(AIStore.state.isLoading).toBe(true);
 
-    // The new streaming message is left untouched until its own request settles
+    // The new streaming message keeps its partial content visible (issue #616)
+    // even before its request settles, while staying in streaming state.
     const secondAssistant = conversation.messages[3];
     expect(secondAssistant.isStreaming).toBe(true);
-    expect(secondAssistant.content).toBe('');
+    expect(secondAssistant.content).toBe('Second answer');
 
     second.resolveRequest({ success: true, content: 'Second answer', aborted: false });
     await second.sendPromise;
@@ -611,6 +612,128 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
   });
 });
 
+describe('Reopening AI chat mid-stream (#616)', () => {
+  const reopenStartStreaming = () => {
+    const conversation = {
+      id: 'conv_reopen',
+      title: 'Reopen',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    AIStore.state.isLoading = false;
+    AIStore.state.isStreaming = false;
+    AIStore.state.abortController = null;
+
+    let onChunkCallback = null;
+    let resolveRequest = null;
+    OpenRouterAPI.sendMessageStreaming = async (userMessage, history, onChunk, signal) => {
+      onChunkCallback = onChunk;
+      return new Promise(resolve => {
+        resolveRequest = resolve;
+      });
+    };
+
+    document.querySelector('#ai-chat-container').innerHTML = '';
+    const sendPromise = AIService.sendMessage('hello');
+
+    return {
+      conversation,
+      sendPromise,
+      getOnChunk: () => onChunkCallback,
+      resolveRequest: value => resolveRequest(value)
+    };
+  };
+
+  it('keeps streaming visible after closing and reopening the modal', async () => {
+    const { conversation, sendPromise, getOnChunk, resolveRequest } = reopenStartStreaming();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // First chunk arrives while modal is open
+    getOnChunk()('Hello ');
+    await new Promise(resolve => setTimeout(resolve, 60));
+
+    const texts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    const textEl = texts[texts.length - 1];
+    expect(textEl.textContent).toContain('Hello');
+
+    // Simulate closing and reopening the modal mid-stream
+    AIService.close();
+    expect(document.getElementById('ai-chat-modal').classList.contains('ai-modal-open')).toBe(false);
+    AIService.open();
+    expect(document.getElementById('ai-chat-modal').classList.contains('ai-modal-open')).toBe(true);
+
+    // The reopened bubble must show the partial content, not an empty streaming bubble
+    const reopenedTexts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    const reopenedText = reopenedTexts[reopenedTexts.length - 1];
+    expect(reopenedText.textContent).toContain('Hello');
+    expect(reopenedText.classList.contains('ai-message-streaming')).toBe(true);
+
+    // Next chunk after reopen must update the *visible* bubble, not a detached one
+    getOnChunk()('world');
+    await new Promise(resolve => setTimeout(resolve, 60));
+
+    const updatedTexts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    const updatedText = updatedTexts[updatedTexts.length - 1];
+    expect(updatedText.textContent).toContain('Hello');
+    expect(updatedText.textContent).toContain('world');
+
+    // Finalize
+    resolveRequest({ success: true, content: 'Hello world', aborted: false });
+    await sendPromise;
+
+    const lastMsg = conversation.messages[1];
+    expect(lastMsg.isStreaming).toBe(false);
+    expect(lastMsg.content).toBe('Hello world');
+
+    const finalTexts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    const finalText = finalTexts[finalTexts.length - 1];
+    expect(finalText.textContent).toBe('Hello world');
+    expect(finalText.classList.contains('ai-message-streaming')).toBe(false);
+  });
+
+  it('recovers streaming bubble after a renderMessages rebuild (offline path)', async () => {
+    // Use offline simulated streaming which splits fullResponse into char chunks
+    window.dispatchEvent(new Event('offline'));
+    expect(NetworkDetector.getStatus().isOffline).toBe(true);
+
+    const conversation = {
+      id: 'conv_reopen_offline',
+      title: 'ReopenOffline',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    document.querySelector('#ai-chat-container').innerHTML = '';
+
+    try {
+      const sendPromise = AIService.sendMessage('hello');
+      await new Promise(resolve => setTimeout(resolve, 30));
+
+      // Mid-stream, force a full rebuild as openModal does (load + render)
+      AIRenderer.renderMessages();
+      const midTexts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+      const midText = midTexts[midTexts.length - 1];
+      // Should not be an empty streaming bubble
+      expect(midText.textContent.length).toBeGreaterThan(0);
+      expect(midText.classList.contains('ai-message-streaming')).toBe(true);
+
+      await sendPromise;
+
+      const assistant = conversation.messages[1];
+      expect(assistant.isStreaming).toBe(false);
+      expect(assistant.content.length).toBeGreaterThan(0);
+      const finalTexts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+      expect(finalTexts[finalTexts.length - 1].textContent).toBe(assistant.content);
+    } finally {
+      window.dispatchEvent(new Event('online'));
+    }
+  });
+});
 describe('AIService error path targets correct conversation (#617)', () => {
   it('removes the failed pair from the original conversation after switching mid-request', async () => {
     const convA = {
@@ -629,27 +752,18 @@ describe('AIService error path targets correct conversation (#617)', () => {
     };
     AIStore.state.conversations = [convA, convB];
     AIStore.state.currentConversationId = convA.id;
-
     let resolveRequest;
     OpenRouterAPI.sendMessageStreaming = () => new Promise(resolve => { resolveRequest = resolve; });
-
     const sendPromise = AIService.sendMessage('hello in A');
     await new Promise(resolve => setTimeout(resolve, 0));
-
-    // Two messages appended to A (user + assistant placeholder)
     expect(convA.messages.length).toBe(3);
     const failedUserId = convA.messages[1].id;
     const failedAssistantId = convA.messages[2].id;
-
-    // Switch to B before A settles
     AIStore.switchConversation(convB.id);
     expect(AIStore.getCurrentConversation().id).toBe(convB.id);
     expect(convB.messages.length).toBe(1);
-
     resolveRequest({ success: false, error: 'mock API error' });
     await sendPromise;
-
-    // The failed pair was removed from A, not B
     expect(convA.messages.length).toBe(1);
     expect(convA.messages[0].id).toBe('a0');
     expect(convA.messages.some(m => m.id === failedUserId)).toBe(false);
@@ -657,7 +771,6 @@ describe('AIService error path targets correct conversation (#617)', () => {
     expect(convB.messages.length).toBe(1);
     expect(convB.messages[0].id).toBe('b0');
   });
-
   it('does not delete the new message when a second request starts before the first fails', async () => {
     const conversation = {
       id: 'conv_race',
@@ -668,43 +781,31 @@ describe('AIService error path targets correct conversation (#617)', () => {
     };
     AIStore.state.conversations = [conversation];
     AIStore.state.currentConversationId = conversation.id;
-
     const resolvers = [];
     OpenRouterAPI.sendMessageStreaming = () => new Promise(resolve => { resolvers.push(resolve); });
-
     const firstSend = AIService.sendMessage('first');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(conversation.messages.length).toBe(2);
     const firstUserId = conversation.messages[0].id;
     const firstAssistantId = conversation.messages[1].id;
-
-    // Stop re-enables input immediately so a second message can be sent before first settles
     AIService.stopStreaming();
     expect(AIStore.state.isLoading).toBe(false);
-
     const secondSend = AIService.sendMessage('second');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(conversation.messages.length).toBe(4);
     const secondUserId = conversation.messages[2].id;
     const secondAssistantId = conversation.messages[3].id;
-
-    // First request fails
     resolvers[0]({ success: false, error: 'first failed' });
     await firstSend;
-
-    // Only the first pair was removed; the second remains
     expect(conversation.messages.length).toBe(2);
     expect(conversation.messages[0].id).toBe(secondUserId);
     expect(conversation.messages[1].id).toBe(secondAssistantId);
     expect(conversation.messages.some(m => m.id === firstUserId)).toBe(false);
     expect(conversation.messages.some(m => m.id === firstAssistantId)).toBe(false);
-
-    // Let second settle successfully to clean up loading state
     resolvers[1]({ success: true, content: 'ok' });
     await secondSend;
     expect(conversation.messages.length).toBe(2);
   });
-
   it('catch-block also removes the targeted pair from the original conversation after switch', async () => {
     const convA = {
       id: 'conv_A2',
@@ -722,20 +823,15 @@ describe('AIService error path targets correct conversation (#617)', () => {
     };
     AIStore.state.conversations = [convA, convB];
     AIStore.state.currentConversationId = convA.id;
-
     let rejectRequest;
     OpenRouterAPI.sendMessageStreaming = () => new Promise((_, reject) => { rejectRequest = reject; });
-
     const sendPromise = AIService.sendMessage('will throw');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(convA.messages.length).toBe(2);
     const failedIds = convA.messages.map(m => m.id);
-
     AIStore.switchConversation(convB.id);
-
     rejectRequest(new Error('boom'));
     await sendPromise;
-
     expect(convA.messages.length).toBe(0);
     expect(failedIds.every(id => !convA.messages.some(m => m.id === id))).toBe(true);
     expect(convB.messages.length).toBe(1);
