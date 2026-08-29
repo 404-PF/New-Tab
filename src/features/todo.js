@@ -15,6 +15,7 @@
   const STAGGER_DELAY = 0.05; // seconds between each item
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const MAX_SUBTASKS = 50;
+  const RECURRENCE_VALUES = ['daily', 'weekly', 'monthly'];
 
   // DOM elements
   let elements = {};
@@ -147,6 +148,30 @@
   // target month (e.g. Jan 31 → Mar 3), skipping a month. Clamp to the 1st
   // first, then restore the day clamped to the target month's length
   // (e.g. Jan 31 → Feb 28).
+  function getNextDueDate(currentDueDate, recurrence) {
+    if (!RECURRENCE_VALUES.includes(recurrence)) {
+      return currentDueDate;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let base;
+    if (currentDueDate) {
+      base = parseLocalDate(currentDueDate);
+      base.setHours(0, 0, 0, 0);
+      if (base < today) base = new Date(today);
+    } else {
+      base = new Date(today);
+    }
+    if (recurrence === 'daily') {
+      base.setDate(base.getDate() + 1);
+    } else if (recurrence === 'weekly') {
+      base.setDate(base.getDate() + 7);
+    } else if (recurrence === 'monthly') {
+      navigateMonthSafe(base, 1);
+    }
+    return formatDateISO(base);
+  }
+
   function navigateMonthSafe(date, delta) {
     const day = date.getDate();
     date.setDate(1);
@@ -435,6 +460,32 @@
       dueDateText.textContent = todo.dueDate ? formatDate(todo.dueDate) : (window.i18n ? window.i18n.t('todoSetDate') : 'Set date');
       dueDate.appendChild(dueDateText);
 
+      if (todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence)) {
+        const recurrenceBadge = document.createElement('span');
+        recurrenceBadge.className = 'todo-recurrence-badge recurrence-' + todo.recurrence;
+        recurrenceBadge.title = window.i18n ? window.i18n.t('recurrence' + todo.recurrence.charAt(0).toUpperCase() + todo.recurrence.slice(1)) : todo.recurrence;
+        recurrenceBadge.setAttribute('aria-label', recurrenceBadge.title);
+        const badgeSvg = createSvgElement('svg', {
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          'stroke-width': '2',
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round'
+        });
+        badgeSvg.appendChild(createSvgElement('polyline', { points: '17 1 21 5 17 9' }));
+        badgeSvg.appendChild(createSvgElement('path', { d: 'M3 11V9a4 4 0 0 1 4-4h14' }));
+        badgeSvg.appendChild(createSvgElement('polyline', { points: '7 23 3 19 7 15' }));
+        badgeSvg.appendChild(createSvgElement('path', { d: 'M21 13v2a4 4 0 0 1-4 4H3' }));
+        recurrenceBadge.appendChild(badgeSvg);
+        const badgeLabel = document.createElement('span');
+        badgeLabel.className = 'recurrence-label';
+        badgeLabel.textContent = recurrenceBadge.title;
+        recurrenceBadge.appendChild(badgeLabel);
+        dueDate.appendChild(recurrenceBadge);
+        dueDate.classList.add('has-recurrence');
+      }
+
       const todoActions = document.createElement('div');
       todoActions.className = 'todo-actions';
       todoActions.appendChild(createTodoIconButton('todo-edit-btn', window.i18n ? window.i18n.t('todoEditTooltip') : 'Edit Todo', todo.id, [
@@ -570,7 +621,7 @@
   }
 
   // Add a new todo
-  function addTodo(text, dueDate = null, priority = 'medium') {
+  function addTodo(text, dueDate = null, priority = 'medium', recurrence = null) {
     if (!text.trim()) return;
 
     // Find the maximum order value among existing todos
@@ -585,6 +636,7 @@
       completedAt: null, // Track when todo was completed
       dueDate: dueDate,
       priority: priority || 'medium',
+      recurrence: RECURRENCE_VALUES.includes(recurrence) ? recurrence : null,
       createdAt: new Date().toISOString(),
       order: maxOrder + 1 // Add order property to track position (always at the end)
     };
@@ -608,6 +660,10 @@
     let needsMigration = false;
     
     todos.forEach(todo => {
+      if (todo.recurrence === undefined) {
+        todo.recurrence = null;
+        needsMigration = true;
+      }
       if (todo.completedAt === undefined) {
         // For existing completed todos without completedAt,
         // use createdAt as a fallback (they were completed before this feature)
@@ -629,7 +685,7 @@
   }
 
   // Edit a todo
-  function editTodo(id, newText, newPriority, newDueDate) {
+  function editTodo(id, newText, newPriority, newDueDate, newRecurrence) {
     const todo = todos.find(t => t.id === id);
     if (!todo) {
       return false;
@@ -642,6 +698,9 @@
     }
     if (newDueDate !== null && newDueDate !== undefined) {
       todo.dueDate = newDueDate;
+    }
+    if (newRecurrence !== undefined) {
+      todo.recurrence = RECURRENCE_VALUES.includes(newRecurrence) ? newRecurrence : null;
     }
     if (!saveTodos(todos)) {
       Object.assign(todo, previousTodo);
@@ -658,30 +717,47 @@
   // Toggle todo completion
   function toggleTodo(id) {
     const todo = todos.find(t => t.id === id);
-    if (todo) {
+    if (!todo) return;
+    const wasCompleted = todo.completed;
+    const willComplete = !wasCompleted;
+    const isRecurringCompletion = willComplete && todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence);
+    if (isRecurringCompletion) {
       const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
-      todo.completed = !todo.completed;
-      
-      // Track completion time for sorting
-      if (todo.completed) {
-        todo.completedAt = new Date().toISOString();
-      } else {
-        todo.completedAt = null;
+      const nextDueDate = getNextDueDate(todo.dueDate, todo.recurrence);
+      todo.dueDate = nextDueDate;
+      todo.completed = false;
+      todo.completedAt = null;
+      if (todo.subtasks) {
+        todo.subtasks.forEach(st => { st.checked = false; });
       }
-      
       if (!saveTodos(todos)) {
         Object.assign(todo, previousTodo);
         applyFilters();
         showTodoSaveError();
         return;
       }
-
+      window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id: todo.id } }));
       applyFilters();
       scheduleTodoReminderCheck(id);
-
-      if (todo.completed) {
-        window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id: todo.id } }));
-      }
+      return;
+    }
+    const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
+    todo.completed = !todo.completed;
+    if (todo.completed) {
+      todo.completedAt = new Date().toISOString();
+    } else {
+      todo.completedAt = null;
+    }
+    if (!saveTodos(todos)) {
+      Object.assign(todo, previousTodo);
+      applyFilters();
+      showTodoSaveError();
+      return;
+    }
+    applyFilters();
+    scheduleTodoReminderCheck(id);
+    if (todo.completed) {
+      window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id: todo.id } }));
     }
   }
 
@@ -1645,6 +1721,8 @@ function openEditModal(id) {
 
   if (textInput) textInput.value = todo.text;
   if (prioritySelect) prioritySelect.value = todo.priority || 'medium';
+  const recurrenceSelect = document.getElementById('todo-edit-recurrence');
+  if (recurrenceSelect) recurrenceSelect.value = todo.recurrence || '';
 
   // Render subtasks in edit modal
   renderEditModalSubtasks(todo);
@@ -1694,6 +1772,8 @@ function saveEdit() {
 
   const newText = textInput ? textInput.value.trim() : '';
   const newPriority = prioritySelect ? prioritySelect.value : null;
+  const recurrenceSelect = document.getElementById('todo-edit-recurrence');
+  const newRecurrence = recurrenceSelect ? (recurrenceSelect.value || null) : null;
 
   if (!newText) {
     // Show error or focus on text input
@@ -1721,7 +1801,7 @@ function saveEdit() {
     }
   }
 
-  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate)) {
+  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate, newRecurrence)) {
     // Clear pending IDs before closing so closeEditModal doesn't roll back persisted subtasks
     editModalState.pendingSubtaskIds.clear();
     closeEditModal(false);
@@ -1950,6 +2030,7 @@ function validateTodoData(data) {
     if (item.createdAt !== undefined && item.createdAt !== null && typeof item.createdAt !== 'string') return false;
     if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
+    if (item.recurrence !== undefined && item.recurrence !== null && !RECURRENCE_VALUES.includes(item.recurrence)) return false;
     if (item.subtasks !== undefined && item.subtasks !== null) {
       if (!Array.isArray(item.subtasks)) return false;
       const subtaskIds = new Set();
@@ -2372,6 +2453,8 @@ try {
   window.scheduleTodoReminderCheck = scheduleTodoReminderCheck;
   window.formatDateISO = formatDateISO;
   window.isOverdue = isOverdue;
+  window.getNextDueDate = getNextDueDate;
+  window.RECURRENCE_VALUES = RECURRENCE_VALUES;
   window.parseLocalDate = parseLocalDate;
   window.showToast = showToast;
   window.currentFilters = currentFilters;

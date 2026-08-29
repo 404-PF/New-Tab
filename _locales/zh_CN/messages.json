@@ -550,5 +550,25 @@
   "notesEmpty": {
     "message": "还没有便签。点击 + 添加一个！",
     "description": "Empty state when no notes exist"
+  },
+  "todoEditRecurrence": {
+    "message": "重复",
+    "description": "Label"
+  },
+  "recurrenceNone": {
+    "message": "无",
+    "description": "No recurrence"
+  },
+  "recurrenceDaily": {
+    "message": "每天",
+    "description": "Daily recurrence"
+  },
+  "recurrenceWeekly": {
+    "message": "每周",
+    "description": "Weekly recurrence"
+  },
+  "recurrenceMonthly": {
+    "message": "每月",
+    "description": "Monthly recurrence"
   }
 }

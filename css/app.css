@@ -228,7 +228,7 @@ body.light-theme .todo-stats-toggle {
 body.light-theme .todo-stats-toggle:hover,
 body.light-theme .todo-stats-toggle.active {
   background: rgba(33, 150, 243, 0.12);
-  color: #1976d2;
+  color: #0d47a1;
 }
 
 body.light-theme .todo-stats-panel {
@@ -256,7 +256,7 @@ body.light-theme .todo-stat-card {
 }
 
 body.light-theme .todo-stat-value {
-  color: #1976d2;
+  color: #0d47a1;
 }
 
 body.light-theme .todo-stat-label {
@@ -405,7 +405,7 @@ body:not(.light-theme) .todo-input-container:focus-within {
 }
 
 .date-picker-trigger.selected {
-  background: rgba(33, 150, 243, 0.1);
+  background: rgba(33, 150, 243, 0.22);
   border-color: rgba(33, 150, 243, 0.4);
   color: #2196f3;
 }
@@ -559,7 +559,7 @@ body:not(.light-theme) .todo-input-container:focus-within {
 }
 
 .calendar-day.today {
-  background: rgba(33, 150, 243, 0.1);
+  background: rgba(33, 150, 243, 0.14);
   color: #2196f3;
   font-weight: 600;
 }
@@ -999,6 +999,57 @@ body.light-theme .priority-selector-btn.active {
 body.light-theme .todo-priority-badge.priority-high {
   background: rgba(244, 67, 54, 0.15);
   color: #d32f2f;
+}
+
+
+/* Recurrence badge beside due date */
+.todo-recurrence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #0d47a1;
+  border: 1px solid #1565c0;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+.todo-recurrence-badge svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.todo-recurrence-badge.recurrence-weekly {
+  background: #4a148c;
+  border-color: #6a1b9a;
+  color: #ffffff;
+}
+.todo-recurrence-badge.recurrence-monthly {
+  background: #004d40;
+  border-color: #00695c;
+  color: #ffffff;
+}
+.todo-due-date.has-recurrence {
+  gap: 6px;
+}
+body.light-theme .todo-recurrence-badge {
+  background: #e3f2fd;
+  border-color: #90caf9;
+  color: #0d47a1;
+}
+body.light-theme .todo-recurrence-badge.recurrence-weekly {
+  background: #f3e5f5;
+  border-color: #ce93d8;
+  color: #4a148c;
+}
+body.light-theme .todo-recurrence-badge.recurrence-monthly {
+  background: #e0f2f1;
+  border-color: #80cbc4;
+  color: #004d40;
 }
 
 body.light-theme .todo-priority-badge.priority-low {

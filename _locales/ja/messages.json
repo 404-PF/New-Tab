@@ -550,5 +550,25 @@
   "notesEmpty": {
     "message": "まだメモがありません。+ をクリックして追加してください！",
     "description": "Empty state when no notes exist"
+  },
+  "todoEditRecurrence": {
+    "message": "繰り返し",
+    "description": "Label"
+  },
+  "recurrenceNone": {
+    "message": "なし",
+    "description": "No recurrence"
+  },
+  "recurrenceDaily": {
+    "message": "毎日",
+    "description": "Daily recurrence"
+  },
+  "recurrenceWeekly": {
+    "message": "毎週",
+    "description": "Weekly recurrence"
+  },
+  "recurrenceMonthly": {
+    "message": "毎月",
+    "description": "Monthly recurrence"
   }
 }

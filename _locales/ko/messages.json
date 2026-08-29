@@ -550,5 +550,25 @@
   "notesEmpty": {
     "message": "아직 메모가 없습니다. +를 클릭하여 추가하세요!",
     "description": "Empty state when no notes exist"
+  },
+  "todoEditRecurrence": {
+    "message": "반복",
+    "description": "Label"
+  },
+  "recurrenceNone": {
+    "message": "없음",
+    "description": "No recurrence"
+  },
+  "recurrenceDaily": {
+    "message": "매일",
+    "description": "Daily recurrence"
+  },
+  "recurrenceWeekly": {
+    "message": "매주",
+    "description": "Weekly recurrence"
+  },
+  "recurrenceMonthly": {
+    "message": "매월",
+    "description": "Monthly recurrence"
   }
 }
