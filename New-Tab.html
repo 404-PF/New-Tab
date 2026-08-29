@@ -280,6 +280,38 @@
           </div>
         </div>
 
+        <button type="button" class="todo-stats-toggle" id="pomodoro-stats-toggle" style="display:none" data-i18n-title="pomodoroStatsToggle" data-i18n-aria-label="pomodoroStatsToggleAriaLabel" aria-label="Focus stats">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12,6 12,12 16,14"></polyline></svg>
+        </button>
+        <div class="todo-stats-panel pomodoro-stats-panel" id="pomodoro-stats-panel" style="display:none">
+          <div class="todo-stats-header">
+            <h4 class="todo-stats-title" data-i18n="pomodoroStatsTitle">Focus Stats</h4>
+            <button type="button" class="todo-stats-clear" id="pomodoro-stats-clear" data-i18n="clearStats">Clear Stats</button>
+          </div>
+          <div class="todo-stats-grid">
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-today">0</span>
+              <span class="todo-stat-label" data-i18n="pomodoroSessionsToday">Sessions Today</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-week">0</span>
+              <span class="todo-stat-label" data-i18n="pomodoroSessionsThisWeek">This Week</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-today-minutes">0</span>
+              <span class="todo-stat-label" data-i18n="pomodoroMinutesToday">Minutes Today</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-week-minutes">0</span>
+              <span class="todo-stat-label" data-i18n="pomodoroMinutesThisWeek">Minutes This Week</span>
+            </div>
+          </div>
+          <div class="todo-heatmap-section">
+            <span class="todo-heatmap-label" data-i18n="last30Days">Last 30 Days</span>
+            <div class="todo-heatmap" id="pomodoro-stats-heatmap"></div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Notes Section -->
@@ -598,6 +630,18 @@
                     <div class="setting-content">
                       <label for="todo-stats-enabled-setting" data-i18n="enableTodoStats">Enable daily stats</label>
                       <input type="checkbox" id="todo-stats-enabled-setting" />
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="pomodoro-stats-enabled-setting" data-i18n="enablePomodoroStats">Enable focus stats</label>
+                      <input type="checkbox" id="pomodoro-stats-enabled-setting" />
                     </div>
                   </div>
                 </div>

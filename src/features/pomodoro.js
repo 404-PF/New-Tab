@@ -286,24 +286,37 @@
     return i18n ? i18n.t('pomodoroWorkCompleteBody', { task: todoText }) : 'Task: ' + todoText;
   }
 
-  function onPhaseComplete() {
-    if (!state.active || !_isLeader) return;
-    const isWork = state.phase === PHASES.WORK;
-    const todoText = getTodoText(state.todoId);
-    const i18n = window.i18n;
+  function notifyWorkComplete(todoText, i18n) {
+    sendNotification(
+      i18n ? i18n.t('pomodoroWorkComplete') : 'Focus session complete!',
+      getWorkNotificationBody(i18n, todoText)
+    );
+  }
 
-    if (isWork) {
-      sendNotification(
-        i18n ? i18n.t('pomodoroWorkComplete') : 'Focus session complete!',
-        getWorkNotificationBody(i18n, todoText)
-      );
-    } else {
-      sendNotification(
-        i18n ? i18n.t('pomodoroBreakComplete') : 'Break over!',
-        i18n ? i18n.t('pomodoroBreakCompleteBody') : 'Ready to focus again?'
-      );
+  function notifyBreakComplete(i18n) {
+    sendNotification(
+      i18n ? i18n.t('pomodoroBreakComplete') : 'Break over!',
+      i18n ? i18n.t('pomodoroBreakCompleteBody') : 'Ready to focus again?'
+    );
+  }
+
+  function tryRecordWorkSession(todoId) {
+    try {
+      const minutes = Math.round(getPhaseDuration(PHASES.WORK) / 60);
+      const detail = { minutes: minutes, todoId: todoId };
+      if (typeof window.recordPomodoroSession === 'function') {
+        window.recordPomodoroSession(detail);
+      } else {
+        try {
+          window.dispatchEvent(new CustomEvent('pomodoroSessionCompleted', { detail: detail }));
+        } catch (_e2) { /* ignore */ }
+      }
+    } catch (e) {
+      console.warn('Failed to record pomodoro session:', e);
     }
+  }
 
+  function advancePhase() {
     const nextPhase = getNextPhase();
     state.phase = nextPhase;
     state.timeRemaining = getPhaseDuration(nextPhase);
@@ -314,11 +327,25 @@
     updateWidget();
   }
 
-  function completePhase() {
+  function onPhaseComplete(opts) {
+    if (!state.active || !_isLeader) return;
+    const shouldRecord = !opts || opts.record !== false;
+    const isWork = state.phase === PHASES.WORK;
+    const i18n = window.i18n;
+    if (isWork) {
+      notifyWorkComplete(getTodoText(state.todoId), i18n);
+      if (shouldRecord) tryRecordWorkSession(state.todoId);
+    } else {
+      notifyBreakComplete(i18n);
+    }
+    advancePhase();
+  }
+
+  function completePhase(opts) {
     if (_isCompletingPhase || !state.active || !_isLeader) return;
     _isCompletingPhase = true;
     try {
-      onPhaseComplete();
+      onPhaseComplete(opts);
     } finally {
       _isCompletingPhase = false;
     }
@@ -413,7 +440,7 @@
   function skipPhase() {
     if (!state.active) return;
     if (!_isLeader && !claimLeadership(true)) return;
-    completePhase();
+    completePhase({ record: false });
   }
 
   function startInterval() {
