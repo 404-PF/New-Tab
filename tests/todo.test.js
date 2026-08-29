@@ -1150,7 +1150,7 @@ describe('Todo reminders', () => {
     await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
 
     expect(warnSpy.mock.calls[0][0]).toContain('Reminder sync message failed');
-    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ delayInMinutes: 1 });
+    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ periodInMinutes: 1 });
     warnSpy.mockRestore();
     vi.restoreAllMocks();
   });
@@ -1178,7 +1178,7 @@ describe('Todo reminders', () => {
     scheduleTodoReminderCheck('todo-1');
 
     expect(warnSpy).toHaveBeenCalledWith('Failed to send reminder sync message:', expect.any(Error));
-    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ delayInMinutes: 1 });
+    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ periodInMinutes: 1 });
     warnSpy.mockRestore();
     vi.restoreAllMocks();
   });
@@ -1192,6 +1192,59 @@ describe('Todo reminders', () => {
     const alarmName = swMatch[1];
 
     expect(todoCode).toContain(`'${alarmName}'`);
+  });
+
+  it('fallback alarm is periodic and never creates a one-shot', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(chrome.runtime, 'sendMessage').mockRejectedValue(new Error('context invalidated'));
+    chrome.alarms._alarms = {};
+
+    scheduleTodoReminderCheck('todo-1');
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
+
+    const alarm = chrome.alarms._alarms['todoReminderCheck'];
+    expect(alarm).toEqual({ periodInMinutes: 1 });
+    expect(alarm).not.toHaveProperty('delayInMinutes');
+
+    // Verify source never creates a one-shot fallback via static analysis
+    const todoCode = readFileSync(resolve(process.cwd(), 'src/features/todo.js'), 'utf-8');
+    const fallbackMatch = todoCode.match(/function createReminderAlarmFallback[\s\S]*?chrome\.alarms\.create\([^)]+\)/);
+    expect(fallbackMatch).not.toBeNull();
+    expect(fallbackMatch[0]).toContain('periodInMinutes');
+    expect(fallbackMatch[0]).not.toContain('delayInMinutes');
+
+    warnSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  it('fallback preserves periodic shape when periodic alarm already exists', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(chrome.runtime, 'sendMessage').mockRejectedValue(new Error('Extension context invalidated'));
+    chrome.alarms._alarms = { todoReminderCheck: { periodInMinutes: 1 } };
+
+    scheduleTodoReminderCheck('todo-2');
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
+
+    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ periodInMinutes: 1 });
+    expect(chrome.alarms._alarms['todoReminderCheck']).not.toHaveProperty('delayInMinutes');
+
+    warnSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  it('fallback repairs an existing one-shot alarm back to periodic', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(chrome.runtime, 'sendMessage').mockRejectedValue(new Error('no worker'));
+    // Simulate stale one-shot left by old buggy fallback
+    chrome.alarms._alarms = { todoReminderCheck: { delayInMinutes: 1 } };
+
+    scheduleTodoReminderCheck('todo-3');
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
+
+    expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ periodInMinutes: 1 });
+
+    warnSpy.mockRestore();
+    vi.restoreAllMocks();
   });
 });
 

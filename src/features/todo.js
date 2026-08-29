@@ -85,8 +85,10 @@
     try {
       if (chrome.alarms) {
         // SYNC: This alarm name must match ALARM_NAME in background/service-worker.js
-        // Matches CHECK_INTERVAL_MINUTES in service-worker.js
-        chrome.alarms.create('todoReminderCheck', { delayInMinutes: 1 });
+        // Matches CHECK_INTERVAL_MINUTES in service-worker.js — must be a periodic
+        // alarm so the fallback never degrades the recurring reminder check into a
+        // one-shot (see issue #620).
+        chrome.alarms.create('todoReminderCheck', { periodInMinutes: 1 });
       } else {
         console.warn('Reminder alarm fallback skipped: chrome.alarms is unavailable');
       }
