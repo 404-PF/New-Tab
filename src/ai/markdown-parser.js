@@ -767,6 +767,13 @@ const MarkdownParser = (function() {
    * @returns {string} HTML string
    */
   function parseTables(text, protect) {
+    const parseRow = (rowLine) => {
+      let s = rowLine.trim();
+      if (s.startsWith('|')) s = s.slice(1);
+      if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1);
+      return s.split(/(?<!\\)\|/).map(cell => cell.replace(/\\\|/g, '|').trim());
+    };
+
     const lines = text.split('\n');
     const result = [];
     let i = 0;
@@ -777,12 +784,17 @@ const MarkdownParser = (function() {
 
       // Check if this is a table (has | and next line has |---|)
       if (line.includes('|') && nextLine && /^\|?[\s-:|]+\|?$/.test(nextLine)) {
-        const headerCells = line.split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim());
+        const headerCells = parseRow(line);
         const rows = [];
         i += 2; // Skip header and separator
 
         while (i < lines.length && lines[i].includes('|')) {
-          const cells = lines[i].split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim());
+          let cells = parseRow(lines[i]);
+          if (cells.length < headerCells.length) {
+            cells = cells.concat(Array(headerCells.length - cells.length).fill(''));
+          } else if (cells.length > headerCells.length) {
+            cells = cells.slice(0, headerCells.length);
+          }
           rows.push(cells);
           i++;
         }
