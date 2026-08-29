@@ -290,6 +290,11 @@ globalThis.window.i18n = {
       todayDate: 'Today',
       todoSetDate: 'Set date',
       todoEditTooltip: 'Edit Todo',
+      todoEditRecurrence: 'Repeat',
+      recurrenceNone: 'None',
+      recurrenceDaily: 'Daily',
+      recurrenceWeekly: 'Weekly',
+      recurrenceMonthly: 'Monthly',
       todoDeleteTooltip: 'Delete Todo',
       notesPlaceholder: 'Type your note here...',
       notesDeleteTooltip: 'Delete Note',
@@ -682,6 +687,13 @@ document.body.appendChild(dataImportDialog);
 document.body.appendChild(createStubElement('div', 'todo-edit-modal'));
 document.body.appendChild(createStubElement('input', 'todo-edit-text'));
 document.body.appendChild(createStubElement('select', 'todo-edit-priority'));
+const recurrenceSelect = createStubElement('select', 'todo-edit-recurrence');
+['', 'daily', 'weekly', 'monthly'].forEach(value => {
+  const option = document.createElement('option');
+  option.value = value;
+  recurrenceSelect.appendChild(option);
+});
+document.body.appendChild(recurrenceSelect);
 document.body.appendChild(createStubElement('button', 'todo-edit-close'));
 document.body.appendChild(createStubElement('button', 'todo-edit-cancel'));
 document.body.appendChild(createStubElement('button', 'todo-edit-save'));

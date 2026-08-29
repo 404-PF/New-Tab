@@ -683,6 +683,26 @@
     "message": "No notes yet. Click + to add one!",
     "description": "Empty state when no notes exist"
   },
+  "todoEditRecurrence": {
+    "message": "Repeat",
+    "description": "Label"
+  },
+  "recurrenceNone": {
+    "message": "None",
+    "description": "No recurrence"
+  },
+  "recurrenceDaily": {
+    "message": "Daily",
+    "description": "Daily recurrence"
+  },
+  "recurrenceWeekly": {
+    "message": "Weekly",
+    "description": "Weekly recurrence"
+  },
+  "recurrenceMonthly": {
+    "message": "Monthly",
+    "description": "Monthly recurrence"
+  },
   "enablePomodoroStats": {
     "message": "Enable focus stats",
     "description": "Label for the pomodoro focus stats toggle"

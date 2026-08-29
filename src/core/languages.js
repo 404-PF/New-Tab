@@ -98,6 +98,11 @@ const translations = {
     addTodoPlaceholder: 'Add a new todo...',
     dueDate: 'Due Date',
     todoSetDate: 'Set date',
+    todoEditRecurrence: 'Repeat',
+    recurrenceNone: 'None',
+    recurrenceDaily: 'Daily',
+    recurrenceWeekly: 'Weekly',
+    recurrenceMonthly: 'Monthly',
     todoEditTooltip: 'Edit Todo',
     todoDeleteTooltip: 'Delete Todo',
     todoInlinePrevMonth: 'Previous month',
@@ -612,6 +617,11 @@ const translations = {
     addTodoPlaceholder: '添加新待办事项...',
     dueDate: '到期日期',
     todoSetDate: '设置日期',
+    todoEditRecurrence: '重复',
+    recurrenceNone: '无',
+    recurrenceDaily: '每天',
+    recurrenceWeekly: '每周',
+    recurrenceMonthly: '每月',
     todoEditTooltip: '编辑待办',
     todoDeleteTooltip: '删除待办',
     todoInlinePrevMonth: '上个月',
@@ -1110,6 +1120,11 @@ const translations = {
     addTodoPlaceholder: '新しいTodoを追加...',
     dueDate: '期限日',
     todoSetDate: '日付を設定',
+    todoEditRecurrence: '繰り返し',
+    recurrenceNone: 'なし',
+    recurrenceDaily: '毎日',
+    recurrenceWeekly: '毎週',
+    recurrenceMonthly: '毎月',
     todoEditTooltip: 'Todoを編集',
     todoDeleteTooltip: 'Todoを削除',
     todoInlinePrevMonth: '前月',
@@ -1551,6 +1566,11 @@ const translations = {
     addTodoPlaceholder: '새 할 일 추가...',
     dueDate: '마감일',
     todoSetDate: '날짜 설정',
+    todoEditRecurrence: '반복',
+    recurrenceNone: '없음',
+    recurrenceDaily: '매일',
+    recurrenceWeekly: '매주',
+    recurrenceMonthly: '매월',
     todoEditTooltip: '할 일 편집',
     todoDeleteTooltip: '할 일 삭제',
     todoInlinePrevMonth: '이전 달',
@@ -1992,6 +2012,11 @@ const translations = {
     addTodoPlaceholder: 'Agregar nueva tarea...',
     dueDate: 'Fecha de vencimiento',
     todoSetDate: 'Establecer fecha',
+    todoEditRecurrence: 'Repetir',
+    recurrenceNone: 'Ninguna',
+    recurrenceDaily: 'Diario',
+    recurrenceWeekly: 'Semanal',
+    recurrenceMonthly: 'Mensual',
     todoEditTooltip: 'Editar tarea',
     todoDeleteTooltip: 'Eliminar tarea',
     todoInlinePrevMonth: 'Mes anterior',
@@ -2433,6 +2458,11 @@ const translations = {
     addTodoPlaceholder: 'Ajouter une nouvelle tâche...',
     dueDate: 'Date d\'échéance',
     todoSetDate: 'Définir la date',
+    todoEditRecurrence: 'Répéter',
+    recurrenceNone: 'Aucune',
+    recurrenceDaily: 'Quotidienne',
+    recurrenceWeekly: 'Hebdomadaire',
+    recurrenceMonthly: 'Mensuelle',
     todoEditTooltip: 'Modifier la tâche',
     todoDeleteTooltip: 'Supprimer la tâche',
     todoInlinePrevMonth: 'Mois précédent',
@@ -2874,6 +2904,11 @@ const translations = {
     addTodoPlaceholder: 'Neue Aufgabe hinzufügen...',
     dueDate: 'Fälligkeitsdatum',
     todoSetDate: 'Datum festlegen',
+    todoEditRecurrence: 'Wiederholen',
+    recurrenceNone: 'Keine',
+    recurrenceDaily: 'Täglich',
+    recurrenceWeekly: 'Wöchentlich',
+    recurrenceMonthly: 'Monatlich',
     todoEditTooltip: 'Aufgabe bearbeiten',
     todoDeleteTooltip: 'Aufgabe löschen',
     todoInlinePrevMonth: 'Vorheriger Monat',
@@ -3315,6 +3350,11 @@ const translations = {
     addTodoPlaceholder: 'Adicionar nova tarefa...',
     dueDate: 'Data de vencimento',
     todoSetDate: 'Definir data',
+    todoEditRecurrence: 'Repetir',
+    recurrenceNone: 'Nenhuma',
+    recurrenceDaily: 'Diária',
+    recurrenceWeekly: 'Semanal',
+    recurrenceMonthly: 'Mensal',
     todoEditTooltip: 'Editar tarefa',
     todoDeleteTooltip: 'Excluir tarefa',
     todoInlinePrevMonth: 'Mês anterior',
@@ -3756,6 +3796,11 @@ const translations = {
     addTodoPlaceholder: 'Добавить новое дело...',
     dueDate: 'Срок выполнения',
     todoSetDate: 'Установить дату',
+    todoEditRecurrence: 'Повтор',
+    recurrenceNone: 'Нет',
+    recurrenceDaily: 'Ежедневно',
+    recurrenceWeekly: 'Еженедельно',
+    recurrenceMonthly: 'Ежемесячно',
     todoEditTooltip: 'Редактировать дело',
     todoDeleteTooltip: 'Удалить дело',
     todoInlinePrevMonth: 'Предыдущий месяц',
@@ -4251,40 +4296,40 @@ Object.keys(gamesReadyTranslations).forEach(function (language) {
 });
 const pomodoroTranslations = {
   en: {
-    enablePomodoro: 'Enable Pomodoro focus timer', pomodoroDurations: 'Focus Timer Durations', pomodoroDurationsDesc: 'Configure work and break durations (in minutes)', pomodoroWork: 'Work', pomodoroShortBreak: 'Short Break', pomodoroLongBreak: 'Long Break', pomodoroSessionsBeforeLong: 'Sessions before long break', pomodoroPhaseWork: 'Focus', pomodoroPhaseShortBreak: 'Short Break', pomodoroPhaseLongBreak: 'Long Break', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Pause', pomodoroResume: 'Resume', pomodoroSkip: 'Skip', pomodoroReset: 'Reset', pomodoroStartFocus: 'Start Focus', pomodoroStopFocus: 'Stop Focus', pomodoroWorkComplete: 'Focus session complete!', pomodoroWorkCompleteBody: 'Task: {task}', pomodoroBreakComplete: 'Break over!', pomodoroBreakCompleteBody: 'Ready to focus again?'
+    enablePomodoro: 'Enable Pomodoro focus timer', pomodoroDurations: 'Focus Timer Durations', pomodoroDurationsDesc: 'Configure work and break durations (in minutes)', pomodoroWork: 'Work', pomodoroShortBreak: 'Short Break', pomodoroLongBreak: 'Long Break', pomodoroSessionsBeforeLong: 'Sessions before long break', pomodoroPhaseWork: 'Focus', pomodoroPhaseShortBreak: 'Short Break', pomodoroPhaseLongBreak: 'Long Break', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Pause', pomodoroResume: 'Resume', pomodoroSkip: 'Skip', pomodoroReset: 'Reset', pomodoroStartFocus: 'Start Focus', pomodoroStopFocus: 'Stop Focus', pomodoroWorkComplete: 'Focus session complete!', pomodoroWorkCompleteBody: 'Task: {task}', pomodoroBreakComplete: 'Break over!', pomodoroBreakCompleteBody: 'Ready to focus again?', enablePomodoroStats: 'Enable focus stats', pomodoroStatsTitle: 'Focus Stats', pomodoroSessionsToday: 'Sessions Today', pomodoroSessionsThisWeek: 'This Week', pomodoroMinutesToday: 'Minutes Today', pomodoroMinutesThisWeek: 'Minutes This Week', pomodoroHeatmapCellTitle: '$1$: $2$ sessions', pomodoroStatsToggle: 'Focus stats', pomodoroStatsToggleAriaLabel: 'Toggle focus statistics panel'
   },
   zh: {
-    enablePomodoro: '启用番茄钟专注计时器', pomodoroDurations: '专注计时器时长', pomodoroDurationsDesc: '配置工作和休息时长（分钟）', pomodoroWork: '专注', pomodoroShortBreak: '短休息', pomodoroLongBreak: '长休息', pomodoroSessionsBeforeLong: '长休息前的专注次数', pomodoroPhaseWork: '专注', pomodoroPhaseShortBreak: '短休息', pomodoroPhaseLongBreak: '长休息', pomodoroSessionLabel: '第 {number} 次', pomodoroPause: '暂停', pomodoroResume: '继续', pomodoroSkip: '跳过', pomodoroReset: '重置', pomodoroStartFocus: '开始专注', pomodoroStopFocus: '停止专注', pomodoroWorkComplete: '专注完成！', pomodoroWorkCompleteBody: '任务：{task}', pomodoroBreakComplete: '休息结束！', pomodoroBreakCompleteBody: '准备好重新专注了吗？'
+    enablePomodoro: '启用番茄钟专注计时器', pomodoroDurations: '专注计时器时长', pomodoroDurationsDesc: '配置工作和休息时长（分钟）', pomodoroWork: '专注', pomodoroShortBreak: '短休息', pomodoroLongBreak: '长休息', pomodoroSessionsBeforeLong: '长休息前的专注次数', pomodoroPhaseWork: '专注', pomodoroPhaseShortBreak: '短休息', pomodoroPhaseLongBreak: '长休息', pomodoroSessionLabel: '第 {number} 次', pomodoroPause: '暂停', pomodoroResume: '继续', pomodoroSkip: '跳过', pomodoroReset: '重置', pomodoroStartFocus: '开始专注', pomodoroStopFocus: '停止专注', pomodoroWorkComplete: '专注完成！', pomodoroWorkCompleteBody: '任务：{task}', pomodoroBreakComplete: '休息结束！', pomodoroBreakCompleteBody: '准备好重新专注了吗？', enablePomodoroStats: '启用专注统计', pomodoroStatsTitle: '专注统计', pomodoroSessionsToday: '今日专注次数', pomodoroSessionsThisWeek: '本周专注次数', pomodoroMinutesToday: '今日专注时长', pomodoroMinutesThisWeek: '本周专注时长', pomodoroHeatmapCellTitle: '$1$：$2$ 次专注', pomodoroStatsToggle: '专注统计', pomodoroStatsToggleAriaLabel: '切换专注统计面板'
   },
   ja: {
-    enablePomodoro: 'ポモドーロ集中タイマーを有効にする', pomodoroDurations: '集中タイマーの時間', pomodoroDurationsDesc: '作業時間と休憩時間を設定します（分）', pomodoroWork: '作業', pomodoroShortBreak: '短い休憩', pomodoroLongBreak: '長い休憩', pomodoroSessionsBeforeLong: '長い休憩までのセッション数', pomodoroPhaseWork: '集中', pomodoroPhaseShortBreak: '短い休憩', pomodoroPhaseLongBreak: '長い休憩', pomodoroSessionLabel: 'セッション {number}', pomodoroPause: '一時停止', pomodoroResume: '再開', pomodoroSkip: 'スキップ', pomodoroReset: 'リセット', pomodoroStartFocus: '集中を開始', pomodoroStopFocus: '集中を停止', pomodoroWorkComplete: '集中セッションが完了しました！', pomodoroWorkCompleteBody: 'タスク: {task}', pomodoroBreakComplete: '休憩終了！', pomodoroBreakCompleteBody: '再び集中する準備はできましたか？'
+    enablePomodoro: 'ポモドーロ集中タイマーを有効にする', pomodoroDurations: '集中タイマーの時間', pomodoroDurationsDesc: '作業時間と休憩時間を設定します（分）', pomodoroWork: '作業', pomodoroShortBreak: '短い休憩', pomodoroLongBreak: '長い休憩', pomodoroSessionsBeforeLong: '長い休憩までのセッション数', pomodoroPhaseWork: '集中', pomodoroPhaseShortBreak: '短い休憩', pomodoroPhaseLongBreak: '長い休憩', pomodoroSessionLabel: 'セッション {number}', pomodoroPause: '一時停止', pomodoroResume: '再開', pomodoroSkip: 'スキップ', pomodoroReset: 'リセット', pomodoroStartFocus: '集中を開始', pomodoroStopFocus: '集中を停止', pomodoroWorkComplete: '集中セッションが完了しました！', pomodoroWorkCompleteBody: 'タスク: {task}', pomodoroBreakComplete: '休憩終了！', pomodoroBreakCompleteBody: '再び集中する準備はできましたか？', enablePomodoroStats: '集中統計を有効にする', pomodoroStatsTitle: '集中統計', pomodoroSessionsToday: '今日のセッション', pomodoroSessionsThisWeek: '今週のセッション', pomodoroMinutesToday: '今日の集中時間', pomodoroMinutesThisWeek: '今週の集中時間', pomodoroHeatmapCellTitle: '$1$：$2$ セッション', pomodoroStatsToggle: '集中統計', pomodoroStatsToggleAriaLabel: '集中統計パネルを切り替える'
   },
   ko: {
-    enablePomodoro: '포모도로 집중 타이머 사용', pomodoroDurations: '집중 타이머 시간', pomodoroDurationsDesc: '작업 및 휴식 시간을 설정하세요(분)', pomodoroWork: '작업', pomodoroShortBreak: '짧은 휴식', pomodoroLongBreak: '긴 휴식', pomodoroSessionsBeforeLong: '긴 휴식 전 세션 수', pomodoroPhaseWork: '집중', pomodoroPhaseShortBreak: '짧은 휴식', pomodoroPhaseLongBreak: '긴 휴식', pomodoroSessionLabel: '세션 {number}', pomodoroPause: '일시 정지', pomodoroResume: '재개', pomodoroSkip: '건너뛰기', pomodoroReset: '재설정', pomodoroStartFocus: '집중 시작', pomodoroStopFocus: '집중 중지', pomodoroWorkComplete: '집중 세션이 완료되었습니다!', pomodoroWorkCompleteBody: '작업: {task}', pomodoroBreakComplete: '휴식 종료!', pomodoroBreakCompleteBody: '다시 집중할 준비가 되었나요?'
+    enablePomodoro: '포모도로 집중 타이머 사용', pomodoroDurations: '집중 타이머 시간', pomodoroDurationsDesc: '작업 및 휴식 시간을 설정하세요(분)', pomodoroWork: '작업', pomodoroShortBreak: '짧은 휴식', pomodoroLongBreak: '긴 휴식', pomodoroSessionsBeforeLong: '긴 휴식 전 세션 수', pomodoroPhaseWork: '집중', pomodoroPhaseShortBreak: '짧은 휴식', pomodoroPhaseLongBreak: '긴 휴식', pomodoroSessionLabel: '세션 {number}', pomodoroPause: '일시 정지', pomodoroResume: '재개', pomodoroSkip: '건너뛰기', pomodoroReset: '재설정', pomodoroStartFocus: '집중 시작', pomodoroStopFocus: '집중 중지', pomodoroWorkComplete: '집중 세션이 완료되었습니다!', pomodoroWorkCompleteBody: '작업: {task}', pomodoroBreakComplete: '휴식 종료!', pomodoroBreakCompleteBody: '다시 집중할 준비가 되었나요?', enablePomodoroStats: '집중 통계 사용', pomodoroStatsTitle: '집중 통계', pomodoroSessionsToday: '오늘 세션', pomodoroSessionsThisWeek: '이번 주 세션', pomodoroMinutesToday: '오늘 집중 시간', pomodoroMinutesThisWeek: '이번 주 집중 시간', pomodoroHeatmapCellTitle: '$1$: $2$ 세션', pomodoroStatsToggle: '집중 통계', pomodoroStatsToggleAriaLabel: '집중 통계 패널 전환'
   },
   es: {
-    enablePomodoro: 'Activar temporizador Pomodoro', pomodoroDurations: 'Duraciones del temporizador', pomodoroDurationsDesc: 'Configura las duraciones de trabajo y descanso (en minutos)', pomodoroWork: 'Trabajo', pomodoroShortBreak: 'Descanso corto', pomodoroLongBreak: 'Descanso largo', pomodoroSessionsBeforeLong: 'Sesiones antes del descanso largo', pomodoroPhaseWork: 'Enfoque', pomodoroPhaseShortBreak: 'Descanso corto', pomodoroPhaseLongBreak: 'Descanso largo', pomodoroSessionLabel: 'Sesión {number}', pomodoroPause: 'Pausar', pomodoroResume: 'Reanudar', pomodoroSkip: 'Saltar', pomodoroReset: 'Restablecer', pomodoroStartFocus: 'Iniciar enfoque', pomodoroStopFocus: 'Detener enfoque', pomodoroWorkComplete: '¡Sesión de enfoque completada!', pomodoroWorkCompleteBody: 'Tarea: {task}', pomodoroBreakComplete: '¡Fin del descanso!', pomodoroBreakCompleteBody: '¿Listo para volver a concentrarte?'
+    enablePomodoro: 'Activar temporizador Pomodoro', pomodoroDurations: 'Duraciones del temporizador', pomodoroDurationsDesc: 'Configura las duraciones de trabajo y descanso (en minutos)', pomodoroWork: 'Trabajo', pomodoroShortBreak: 'Descanso corto', pomodoroLongBreak: 'Descanso largo', pomodoroSessionsBeforeLong: 'Sesiones antes del descanso largo', pomodoroPhaseWork: 'Enfoque', pomodoroPhaseShortBreak: 'Descanso corto', pomodoroPhaseLongBreak: 'Descanso largo', pomodoroSessionLabel: 'Sesión {number}', pomodoroPause: 'Pausar', pomodoroResume: 'Reanudar', pomodoroSkip: 'Saltar', pomodoroReset: 'Restablecer', pomodoroStartFocus: 'Iniciar enfoque', pomodoroStopFocus: 'Detener enfoque', pomodoroWorkComplete: '¡Sesión de enfoque completada!', pomodoroWorkCompleteBody: 'Tarea: {task}', pomodoroBreakComplete: '¡Fin del descanso!', pomodoroBreakCompleteBody: '¿Listo para volver a concentrarte?', enablePomodoroStats: 'Activar estadísticas de enfoque', pomodoroStatsTitle: 'Estadísticas de enfoque', pomodoroSessionsToday: 'Sesiones hoy', pomodoroSessionsThisWeek: 'Sesiones esta semana', pomodoroMinutesToday: 'Minutos hoy', pomodoroMinutesThisWeek: 'Minutos esta semana', pomodoroHeatmapCellTitle: '$1$: $2$ sesiones', pomodoroStatsToggle: 'Estadísticas de enfoque', pomodoroStatsToggleAriaLabel: 'Alternar panel de estadísticas de enfoque'
   },
   fr: {
-    enablePomodoro: 'Activer le minuteur Pomodoro', pomodoroDurations: 'Durées du minuteur', pomodoroDurationsDesc: 'Configurez les durées de travail et de pause (en minutes)', pomodoroWork: 'Travail', pomodoroShortBreak: 'Pause courte', pomodoroLongBreak: 'Pause longue', pomodoroSessionsBeforeLong: 'Sessions avant la pause longue', pomodoroPhaseWork: 'Concentration', pomodoroPhaseShortBreak: 'Pause courte', pomodoroPhaseLongBreak: 'Pause longue', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Mettre en pause', pomodoroResume: 'Reprendre', pomodoroSkip: 'Passer', pomodoroReset: 'Réinitialiser', pomodoroStartFocus: 'Commencer à se concentrer', pomodoroStopFocus: 'Arrêter la concentration', pomodoroWorkComplete: 'Session de concentration terminée !', pomodoroWorkCompleteBody: 'Tâche : {task}', pomodoroBreakComplete: 'Fin de la pause !', pomodoroBreakCompleteBody: 'Prêt à vous concentrer à nouveau ?'
+    enablePomodoro: 'Activer le minuteur Pomodoro', pomodoroDurations: 'Durées du minuteur', pomodoroDurationsDesc: 'Configurez les durées de travail et de pause (en minutes)', pomodoroWork: 'Travail', pomodoroShortBreak: 'Pause courte', pomodoroLongBreak: 'Pause longue', pomodoroSessionsBeforeLong: 'Sessions avant la pause longue', pomodoroPhaseWork: 'Concentration', pomodoroPhaseShortBreak: 'Pause courte', pomodoroPhaseLongBreak: 'Pause longue', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Mettre en pause', pomodoroResume: 'Reprendre', pomodoroSkip: 'Passer', pomodoroReset: 'Réinitialiser', pomodoroStartFocus: 'Commencer à se concentrer', pomodoroStopFocus: 'Arrêter la concentration', pomodoroWorkComplete: 'Session de concentration terminée !', pomodoroWorkCompleteBody: 'Tâche : {task}', pomodoroBreakComplete: 'Fin de la pause !', pomodoroBreakCompleteBody: 'Prêt à vous concentrer à nouveau ?', enablePomodoroStats: 'Activer les statistiques de concentration', pomodoroStatsTitle: 'Statistiques de concentration', pomodoroSessionsToday: 'Sessions aujourd\'hui', pomodoroSessionsThisWeek: 'Sessions cette semaine', pomodoroMinutesToday: 'Minutes aujourd\'hui', pomodoroMinutesThisWeek: 'Minutes cette semaine', pomodoroHeatmapCellTitle: '$1$ : $2$ sessions', pomodoroStatsToggle: 'Statistiques de concentration', pomodoroStatsToggleAriaLabel: 'Basculer le panneau de statistiques de concentration'
   },
   de: {
-    enablePomodoro: 'Pomodoro-Fokus-Timer aktivieren', pomodoroDurations: 'Fokus-Timer-Dauern', pomodoroDurationsDesc: 'Arbeits- und Pausenzeiten konfigurieren (in Minuten)', pomodoroWork: 'Arbeit', pomodoroShortBreak: 'Kurze Pause', pomodoroLongBreak: 'Lange Pause', pomodoroSessionsBeforeLong: 'Sitzungen vor langer Pause', pomodoroPhaseWork: 'Fokus', pomodoroPhaseShortBreak: 'Kurze Pause', pomodoroPhaseLongBreak: 'Lange Pause', pomodoroSessionLabel: 'Sitzung {number}', pomodoroPause: 'Pausieren', pomodoroResume: 'Fortsetzen', pomodoroSkip: 'Überspringen', pomodoroReset: 'Zurücksetzen', pomodoroStartFocus: 'Fokus starten', pomodoroStopFocus: 'Fokus beenden', pomodoroWorkComplete: 'Fokus-Sitzung abgeschlossen!', pomodoroWorkCompleteBody: 'Aufgabe: {task}', pomodoroBreakComplete: 'Pause beendet!', pomodoroBreakCompleteBody: 'Bereit, wieder zu fokussieren?'
+    enablePomodoro: 'Pomodoro-Fokus-Timer aktivieren', pomodoroDurations: 'Fokus-Timer-Dauern', pomodoroDurationsDesc: 'Arbeits- und Pausenzeiten konfigurieren (in Minuten)', pomodoroWork: 'Arbeit', pomodoroShortBreak: 'Kurze Pause', pomodoroLongBreak: 'Lange Pause', pomodoroSessionsBeforeLong: 'Sitzungen vor langer Pause', pomodoroPhaseWork: 'Fokus', pomodoroPhaseShortBreak: 'Kurze Pause', pomodoroPhaseLongBreak: 'Lange Pause', pomodoroSessionLabel: 'Sitzung {number}', pomodoroPause: 'Pausieren', pomodoroResume: 'Fortsetzen', pomodoroSkip: 'Überspringen', pomodoroReset: 'Zurücksetzen', pomodoroStartFocus: 'Fokus starten', pomodoroStopFocus: 'Fokus beenden', pomodoroWorkComplete: 'Fokus-Sitzung abgeschlossen!', pomodoroWorkCompleteBody: 'Aufgabe: {task}', pomodoroBreakComplete: 'Pause beendet!', pomodoroBreakCompleteBody: 'Bereit, wieder zu fokussieren?', enablePomodoroStats: 'Fokus-Statistiken aktivieren', pomodoroStatsTitle: 'Fokus-Statistiken', pomodoroSessionsToday: 'Sitzungen heute', pomodoroSessionsThisWeek: 'Sitzungen diese Woche', pomodoroMinutesToday: 'Minuten heute', pomodoroMinutesThisWeek: 'Minuten diese Woche', pomodoroHeatmapCellTitle: '$1$: $2$ Sitzungen', pomodoroStatsToggle: 'Fokus-Statistiken', pomodoroStatsToggleAriaLabel: 'Fokus-Statistik-Panel umschalten'
   },
   pt: {
-    enablePomodoro: 'Ativar temporizador Pomodoro', pomodoroDurations: 'Durações do temporizador', pomodoroDurationsDesc: 'Configure as durações de trabalho e pausa (em minutos)', pomodoroWork: 'Trabalho', pomodoroShortBreak: 'Pausa curta', pomodoroLongBreak: 'Pausa longa', pomodoroSessionsBeforeLong: 'Sessões antes da pausa longa', pomodoroPhaseWork: 'Foco', pomodoroPhaseShortBreak: 'Pausa curta', pomodoroPhaseLongBreak: 'Pausa longa', pomodoroSessionLabel: 'Sessão {number}', pomodoroPause: 'Pausar', pomodoroResume: 'Retomar', pomodoroSkip: 'Pular', pomodoroReset: 'Redefinir', pomodoroStartFocus: 'Iniciar foco', pomodoroStopFocus: 'Parar foco', pomodoroWorkComplete: 'Sessão de foco concluída!', pomodoroWorkCompleteBody: 'Tarefa: {task}', pomodoroBreakComplete: 'Pausa terminada!', pomodoroBreakCompleteBody: 'Pronto para focar novamente?'
+    enablePomodoro: 'Ativar temporizador Pomodoro', pomodoroDurations: 'Durações do temporizador', pomodoroDurationsDesc: 'Configure as durações de trabalho e pausa (em minutos)', pomodoroWork: 'Trabalho', pomodoroShortBreak: 'Pausa curta', pomodoroLongBreak: 'Pausa longa', pomodoroSessionsBeforeLong: 'Sessões antes da pausa longa', pomodoroPhaseWork: 'Foco', pomodoroPhaseShortBreak: 'Pausa curta', pomodoroPhaseLongBreak: 'Pausa longa', pomodoroSessionLabel: 'Sessão {number}', pomodoroPause: 'Pausar', pomodoroResume: 'Retomar', pomodoroSkip: 'Pular', pomodoroReset: 'Redefinir', pomodoroStartFocus: 'Iniciar foco', pomodoroStopFocus: 'Parar foco', pomodoroWorkComplete: 'Sessão de foco concluída!', pomodoroWorkCompleteBody: 'Tarefa: {task}', pomodoroBreakComplete: 'Pausa terminada!', pomodoroBreakCompleteBody: 'Pronto para focar novamente?', enablePomodoroStats: 'Ativar estatísticas de foco', pomodoroStatsTitle: 'Estatísticas de foco', pomodoroSessionsToday: 'Sessões hoje', pomodoroSessionsThisWeek: 'Sessões esta semana', pomodoroMinutesToday: 'Minutos hoje', pomodoroMinutesThisWeek: 'Minutos esta semana', pomodoroHeatmapCellTitle: '$1$: $2$ sessões', pomodoroStatsToggle: 'Estatísticas de foco', pomodoroStatsToggleAriaLabel: 'Alternar painel de estatísticas de foco'
   },
   ru: {
-    enablePomodoro: 'Включить таймер «Помодоро»', pomodoroDurations: 'Длительность таймера', pomodoroDurationsDesc: 'Настройте длительность работы и перерывов (в минутах)', pomodoroWork: 'Работа', pomodoroShortBreak: 'Короткий перерыв', pomodoroLongBreak: 'Длинный перерыв', pomodoroSessionsBeforeLong: 'Сессий до длинного перерыва', pomodoroPhaseWork: 'Фокус', pomodoroPhaseShortBreak: 'Короткий перерыв', pomodoroPhaseLongBreak: 'Длинный перерыв', pomodoroSessionLabel: 'Сессия {number}', pomodoroPause: 'Пауза', pomodoroResume: 'Продолжить', pomodoroSkip: 'Пропустить', pomodoroReset: 'Сбросить', pomodoroStartFocus: 'Начать фокус', pomodoroStopFocus: 'Остановить фокус', pomodoroWorkComplete: 'Фокус-сессия завершена!', pomodoroWorkCompleteBody: 'Задача: {task}', pomodoroBreakComplete: 'Перерыв окончен!', pomodoroBreakCompleteBody: 'Готовы снова сосредоточиться?'
+    enablePomodoro: 'Включить таймер «Помодоро»', pomodoroDurations: 'Длительность таймера', pomodoroDurationsDesc: 'Настройте длительность работы и перерывов (в минутах)', pomodoroWork: 'Работа', pomodoroShortBreak: 'Короткий перерыв', pomodoroLongBreak: 'Длинный перерыв', pomodoroSessionsBeforeLong: 'Сессий до длинного перерыва', pomodoroPhaseWork: 'Фокус', pomodoroPhaseShortBreak: 'Короткий перерыв', pomodoroPhaseLongBreak: 'Длинный перерыв', pomodoroSessionLabel: 'Сессия {number}', pomodoroPause: 'Пауза', pomodoroResume: 'Продолжить', pomodoroSkip: 'Пропустить', pomodoroReset: 'Сбросить', pomodoroStartFocus: 'Начать фокус', pomodoroStopFocus: 'Остановить фокус', pomodoroWorkComplete: 'Фокус-сессия завершена!', pomodoroWorkCompleteBody: 'Задача: {task}', pomodoroBreakComplete: 'Перерыв окончен!', pomodoroBreakCompleteBody: 'Готовы снова сосредоточиться?', enablePomodoroStats: 'Включить статистику фокуса', pomodoroStatsTitle: 'Статистика фокуса', pomodoroSessionsToday: 'Сессий сегодня', pomodoroSessionsThisWeek: 'Сессий на этой неделе', pomodoroMinutesToday: 'Минут сегодня', pomodoroMinutesThisWeek: 'Минут на этой неделе', pomodoroHeatmapCellTitle: '$1$: $2$ сессий', pomodoroStatsToggle: 'Статистика фокуса', pomodoroStatsToggleAriaLabel: 'Переключить панель статистики фокуса'
   },
   en_US: {
-    enablePomodoro: 'Enable Pomodoro focus timer', pomodoroDurations: 'Focus Timer Durations', pomodoroDurationsDesc: 'Configure work and break durations (in minutes)', pomodoroWork: 'Work', pomodoroShortBreak: 'Short Break', pomodoroLongBreak: 'Long Break', pomodoroSessionsBeforeLong: 'Sessions before long break', pomodoroPhaseWork: 'Focus', pomodoroPhaseShortBreak: 'Short Break', pomodoroPhaseLongBreak: 'Long Break', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Pause', pomodoroResume: 'Resume', pomodoroSkip: 'Skip', pomodoroReset: 'Reset', pomodoroStartFocus: 'Start Focus', pomodoroStopFocus: 'Stop Focus', pomodoroWorkComplete: 'Focus session complete!', pomodoroWorkCompleteBody: 'Task: {task}', pomodoroBreakComplete: 'Break over!', pomodoroBreakCompleteBody: 'Ready to focus again?'
+    enablePomodoro: 'Enable Pomodoro focus timer', pomodoroDurations: 'Focus Timer Durations', pomodoroDurationsDesc: 'Configure work and break durations (in minutes)', pomodoroWork: 'Work', pomodoroShortBreak: 'Short Break', pomodoroLongBreak: 'Long Break', pomodoroSessionsBeforeLong: 'Sessions before long break', pomodoroPhaseWork: 'Focus', pomodoroPhaseShortBreak: 'Short Break', pomodoroPhaseLongBreak: 'Long Break', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Pause', pomodoroResume: 'Resume', pomodoroSkip: 'Skip', pomodoroReset: 'Reset', pomodoroStartFocus: 'Start Focus', pomodoroStopFocus: 'Stop Focus', pomodoroWorkComplete: 'Focus session complete!', pomodoroWorkCompleteBody: 'Task: {task}', pomodoroBreakComplete: 'Break over!', pomodoroBreakCompleteBody: 'Ready to focus again?', enablePomodoroStats: 'Enable focus stats', pomodoroStatsTitle: 'Focus Stats', pomodoroSessionsToday: 'Sessions Today', pomodoroSessionsThisWeek: 'This Week', pomodoroMinutesToday: 'Minutes Today', pomodoroMinutesThisWeek: 'Minutes This Week', pomodoroHeatmapCellTitle: '$1$: $2$ sessions', pomodoroStatsToggle: 'Focus stats', pomodoroStatsToggleAriaLabel: 'Toggle focus statistics panel'
   },
   pt_BR: {
-    enablePomodoro: 'Ativar temporizador Pomodoro', pomodoroDurations: 'Durações do temporizador', pomodoroDurationsDesc: 'Configure as durações de trabalho e pausa (em minutos)', pomodoroWork: 'Trabalho', pomodoroShortBreak: 'Pausa curta', pomodoroLongBreak: 'Pausa longa', pomodoroSessionsBeforeLong: 'Sessões antes da pausa longa', pomodoroPhaseWork: 'Foco', pomodoroPhaseShortBreak: 'Pausa curta', pomodoroPhaseLongBreak: 'Pausa longa', pomodoroSessionLabel: 'Sessão {number}', pomodoroPause: 'Pausar', pomodoroResume: 'Retomar', pomodoroSkip: 'Pular', pomodoroReset: 'Redefinir', pomodoroStartFocus: 'Iniciar foco', pomodoroStopFocus: 'Parar foco', pomodoroWorkComplete: 'Sessão de foco concluída!', pomodoroWorkCompleteBody: 'Tarefa: {task}', pomodoroBreakComplete: 'Pausa terminada!', pomodoroBreakCompleteBody: 'Pronto para focar novamente?'
+    enablePomodoro: 'Ativar temporizador Pomodoro', pomodoroDurations: 'Durações do temporizador', pomodoroDurationsDesc: 'Configure as durações de trabalho e pausa (em minutos)', pomodoroWork: 'Trabalho', pomodoroShortBreak: 'Pausa curta', pomodoroLongBreak: 'Pausa longa', pomodoroSessionsBeforeLong: 'Sessões antes da pausa longa', pomodoroPhaseWork: 'Foco', pomodoroPhaseShortBreak: 'Pausa curta', pomodoroPhaseLongBreak: 'Pausa longa', pomodoroSessionLabel: 'Sessão {number}', pomodoroPause: 'Pausar', pomodoroResume: 'Retomar', pomodoroSkip: 'Pular', pomodoroReset: 'Redefinir', pomodoroStartFocus: 'Iniciar foco', pomodoroStopFocus: 'Parar foco', pomodoroWorkComplete: 'Sessão de foco concluída!', pomodoroWorkCompleteBody: 'Tarefa: {task}', pomodoroBreakComplete: 'Pausa terminada!', pomodoroBreakCompleteBody: 'Pronto para focar novamente?', enablePomodoroStats: 'Ativar estatísticas de foco', pomodoroStatsTitle: 'Estatísticas de foco', pomodoroSessionsToday: 'Sessões hoje', pomodoroSessionsThisWeek: 'Sessões esta semana', pomodoroMinutesToday: 'Minutos hoje', pomodoroMinutesThisWeek: 'Minutos esta semana', pomodoroHeatmapCellTitle: '$1$: $2$ sessões', pomodoroStatsToggle: 'Estatísticas de foco', pomodoroStatsToggleAriaLabel: 'Alternar painel de estatísticas de foco'
   },
   zh_CN: {
-    enablePomodoro: '启用番茄钟专注计时器', pomodoroDurations: '专注计时器时长', pomodoroDurationsDesc: '配置工作和休息时长（分钟）', pomodoroWork: '专注', pomodoroShortBreak: '短休息', pomodoroLongBreak: '长休息', pomodoroSessionsBeforeLong: '长休息前的专注次数', pomodoroPhaseWork: '专注', pomodoroPhaseShortBreak: '短休息', pomodoroPhaseLongBreak: '长休息', pomodoroSessionLabel: '第 {number} 次', pomodoroPause: '暂停', pomodoroResume: '继续', pomodoroSkip: '跳过', pomodoroReset: '重置', pomodoroStartFocus: '开始专注', pomodoroStopFocus: '停止专注', pomodoroWorkComplete: '专注完成！', pomodoroWorkCompleteBody: '任务：{task}', pomodoroBreakComplete: '休息结束！', pomodoroBreakCompleteBody: '准备好重新专注了吗？'
+    enablePomodoro: '启用番茄钟专注计时器', pomodoroDurations: '专注计时器时长', pomodoroDurationsDesc: '配置工作和休息时长（分钟）', pomodoroWork: '专注', pomodoroShortBreak: '短休息', pomodoroLongBreak: '长休息', pomodoroSessionsBeforeLong: '长休息前的专注次数', pomodoroPhaseWork: '专注', pomodoroPhaseShortBreak: '短休息', pomodoroPhaseLongBreak: '长休息', pomodoroSessionLabel: '第 {number} 次', pomodoroPause: '暂停', pomodoroResume: '继续', pomodoroSkip: '跳过', pomodoroReset: '重置', pomodoroStartFocus: '开始专注', pomodoroStopFocus: '停止专注', pomodoroWorkComplete: '专注完成！', pomodoroWorkCompleteBody: '任务：{task}', pomodoroBreakComplete: '休息结束！', pomodoroBreakCompleteBody: '准备好重新专注了吗？', enablePomodoroStats: '启用专注统计', pomodoroStatsTitle: '专注统计', pomodoroSessionsToday: '今日专注次数', pomodoroSessionsThisWeek: '本周专注次数', pomodoroMinutesToday: '今日专注时长', pomodoroMinutesThisWeek: '本周专注时长', pomodoroHeatmapCellTitle: '$1$：$2$ 次专注', pomodoroStatsToggle: '专注统计', pomodoroStatsToggleAriaLabel: '切换专注统计面板'
   }
 };
 

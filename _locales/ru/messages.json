@@ -551,6 +551,26 @@
     "message": "Пока нет заметок. Нажмите + чтобы добавить!",
     "description": "Empty state when no notes exist"
   },
+  "todoEditRecurrence": {
+    "message": "Повтор",
+    "description": "Label"
+  },
+  "recurrenceNone": {
+    "message": "Нет",
+    "description": "No recurrence"
+  },
+  "recurrenceDaily": {
+    "message": "Ежедневно",
+    "description": "Daily recurrence"
+  },
+  "recurrenceWeekly": {
+    "message": "Еженедельно",
+    "description": "Weekly recurrence"
+  },
+  "recurrenceMonthly": {
+    "message": "Ежемесячно",
+    "description": "Monthly recurrence"
+  },
   "enablePomodoroStats": {
     "message": "Включить статистику фокуса",
     "description": "Label for the pomodoro focus stats toggle"
