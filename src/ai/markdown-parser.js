@@ -717,16 +717,21 @@ const MarkdownParser = (function() {
         currentIndent = indent;
       }
 
+      // If dedent closed every open list, reopen a fresh list at the
+      // current indent so the item is not silently dropped
+      if (listStack.length === 0) {
+        listStack.push({ type: listType, items: [], indent });
+        currentIndent = indent;
+      }
+
       // Add the item to the current list, closing a type-mismatched list first
       const topList = listStack.at(-1);
-      if (topList) {
-        if (topList.type !== listType) {
-          // Different list type, close current and start new
-          closeTopList();
-          listStack.push({ type: listType, items: [], indent });
-        }
-        listStack.at(-1).items.push({ content, number, nested: null });
+      if (topList.type !== listType) {
+        // Different list type, close current and start new
+        closeTopList();
+        listStack.push({ type: listType, items: [], indent });
       }
+      listStack.at(-1).items.push({ content, number, nested: null });
     };
 
     for (const line of lines) {
