@@ -764,6 +764,40 @@ const MarkdownParser = (function() {
     return protect ? protect(listHtml) : listHtml;
   }
 
+  function parseTableRow(rowLine) {
+    let s = rowLine.trim();
+    if (s.startsWith('|')) s = s.slice(1);
+    if (s.endsWith('|')) {
+      let cnt = 0;
+      for (let k = s.length - 2; k >= 0 && s[k] === '\\'; k--) cnt++;
+      if (cnt % 2 === 0) s = s.slice(0, -1);
+    }
+    const cells = [];
+    let cur = '';
+    for (let idx = 0; idx < s.length; idx++) {
+      const ch = s[idx];
+      if (ch === '|') {
+        let cnt = 0;
+        for (let p = cur.length - 1; p >= 0 && cur[p] === '\\'; p--) cnt++;
+        if (cnt % 2 === 1) {
+          cur = cur.slice(0, -1) + '|';
+        } else {
+          cells.push(cur.trim());
+          cur = '';
+        }
+      } else {
+        cur += ch;
+      }
+    }
+    cells.push(cur.trim());
+    return cells;
+  }
+
+  function normalizeTableRow(cells, targetLen) {
+    if (cells.length >= targetLen) return cells.slice(0, targetLen);
+    return cells.concat(new Array(targetLen - cells.length).fill(''));
+  }
+
   /**
    * Parse tables
    * @param {string} text - Text containing tables
@@ -781,14 +815,19 @@ const MarkdownParser = (function() {
 
       // Check if this is a table (has | and next line has |---|)
       if (line.includes('|') && nextLine && /^\|?[\s-:|]+\|?$/.test(nextLine)) {
-        const headerCells = line.split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim());
+        let headerCells = parseTableRow(line);
         const rows = [];
         i += 2; // Skip header and separator
 
         while (i < lines.length && lines[i].includes('|')) {
-          const cells = lines[i].split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim());
-          rows.push(cells);
+          rows.push(parseTableRow(lines[i]));
           i++;
+        }
+
+        const maxCols = Math.max(headerCells.length, ...rows.map(r => r.length), 0);
+        headerCells = normalizeTableRow(headerCells, maxCols);
+        for (let r = 0; r < rows.length; r++) {
+          rows[r] = normalizeTableRow(rows[r], maxCols);
         }
 
         const headerHtml = headerCells.map(cell => `<th class="md-table-header">${parseInline(cell)}</th>`).join('');
