@@ -266,6 +266,43 @@
     return Number.isInteger(value) && value >= min && value <= max;
   }
 
+  function isValidISODate(key) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+    const d = new Date(key + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return false;
+    return d.toISOString().slice(0, 10) === key;
+  }
+
+  function isNonNegativeInteger(n) {
+    return Number.isInteger(n) && n >= 0;
+  }
+
+  function isValidDayEntry(val) {
+    if (typeof val === 'number') return isNonNegativeInteger(val);
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      return isNonNegativeInteger(val.sessions) && isNonNegativeInteger(val.minutes);
+    }
+    return false;
+  }
+
+  function isValidByDateTodosMap(map) {
+    if (typeof map !== 'object' || map === null || Array.isArray(map)) return false;
+    for (const entry of Object.entries(map)) {
+      if (typeof entry[0] !== 'string' || entry[0].length === 0) return false;
+      if (!isNonNegativeInteger(entry[1])) return false;
+    }
+    return true;
+  }
+
+  function isValidPomodoroByDateTodos(byDateTodos) {
+    if (typeof byDateTodos !== 'object' || byDateTodos === null || Array.isArray(byDateTodos)) return false;
+    for (const entry of Object.entries(byDateTodos)) {
+      if (!isValidISODate(entry[0])) return false;
+      if (!isValidByDateTodosMap(entry[1])) return false;
+    }
+    return true;
+  }
+
   const EXPECTED_SHAPES = {
     theme: function (v) { return typeof v === 'string'; },
     language: function (v) { return typeof v === 'string'; },
@@ -307,29 +344,10 @@
       if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
       if (typeof v.days !== 'object' || v.days === null || Array.isArray(v.days)) return false;
       for (const entry of Object.entries(v.days)) {
-        const key = entry[0];
-        const val = entry[1];
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
-        if (typeof val === 'number') {
-          if (!Number.isFinite(val) || val < 0) return false;
-        } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-          if (typeof val.sessions !== 'number' || !Number.isFinite(val.sessions) || val.sessions < 0) return false;
-          if (typeof val.minutes !== 'number' || !Number.isFinite(val.minutes) || val.minutes < 0) return false;
-        } else return false;
+        if (!isValidISODate(entry[0])) return false;
+        if (!isValidDayEntry(entry[1])) return false;
       }
-      if (v.byDateTodos !== undefined) {
-        if (typeof v.byDateTodos !== 'object' || v.byDateTodos === null || Array.isArray(v.byDateTodos)) return false;
-        for (const entry of Object.entries(v.byDateTodos)) {
-          const date = entry[0];
-          const map = entry[1];
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-          if (typeof map !== 'object' || map === null || Array.isArray(map)) return false;
-          for (const inner of Object.entries(map)) {
-            if (typeof inner[0] !== 'string' || inner[0].length === 0) return false;
-            if (typeof inner[1] !== 'number' || !Number.isFinite(inner[1]) || inner[1] < 0) return false;
-          }
-        }
-      }
+      if (v.byDateTodos !== undefined && !isValidPomodoroByDateTodos(v.byDateTodos)) return false;
       return true;
     },
     pomodoroStatsEnabled: function (v) { return typeof v === 'boolean'; },
@@ -681,6 +699,47 @@
                 });
                 currentObj.days = mergedDays;
                 writeStorage(key, currentObj);
+              } else if (key === 'pomodoroStats') {
+                const merged = Object.assign({}, currentObj);
+                if (currentObj.days || incoming.days) {
+                  const mergedDays = Object.assign({}, currentObj.days || {});
+                  const incDays = incoming.days || {};
+                  Object.keys(incDays).forEach(function (date) {
+                    const curVal = mergedDays[date];
+                    const incVal = incDays[date];
+                    const curN = typeof curVal === 'number' ? { sessions: curVal, minutes: 0 } : (curVal && typeof curVal === 'object' ? curVal : { sessions: 0, minutes: 0 });
+                    const incN = typeof incVal === 'number' ? { sessions: incVal, minutes: 0 } : (incVal && typeof incVal === 'object' ? incVal : { sessions: 0, minutes: 0 });
+                    const cs = typeof curN.sessions === 'number' && Number.isFinite(curN.sessions) ? curN.sessions : 0;
+                    const cm = typeof curN.minutes === 'number' && Number.isFinite(curN.minutes) ? curN.minutes : 0;
+                    const is = typeof incN.sessions === 'number' && Number.isFinite(incN.sessions) ? incN.sessions : 0;
+                    const im = typeof incN.minutes === 'number' && Number.isFinite(incN.minutes) ? incN.minutes : 0;
+                    mergedDays[date] = { sessions: Math.max(cs, is), minutes: Math.max(cm, im) };
+                  });
+                  merged.days = mergedDays;
+                }
+                if (incoming.byDateTodos || currentObj.byDateTodos) {
+                  const mergedTodos = Object.assign({}, currentObj.byDateTodos || {});
+                  const incTodos = incoming.byDateTodos || {};
+                  Object.keys(incTodos).forEach(function (date) {
+                    const curMap = mergedTodos[date] && typeof mergedTodos[date] === 'object' && !Array.isArray(mergedTodos[date]) ? Object.assign({}, mergedTodos[date]) : {};
+                    const incMap = incTodos[date] && typeof incTodos[date] === 'object' && !Array.isArray(incTodos[date]) ? incTodos[date] : {};
+                    Object.keys(incMap).forEach(function (tid) {
+                      const cv = curMap[tid];
+                      const iv = incMap[tid];
+                      const cn = typeof cv === 'number' && Number.isFinite(cv) ? cv : 0;
+                      const inn = typeof iv === 'number' && Number.isFinite(iv) ? iv : 0;
+                      curMap[tid] = Math.max(cn, inn);
+                    });
+                    mergedTodos[date] = curMap;
+                  });
+                  merged.byDateTodos = mergedTodos;
+                }
+                if (incoming.days === undefined && currentObj.days !== undefined) merged.days = currentObj.days;
+                if (incoming.byDateTodos === undefined && currentObj.byDateTodos !== undefined) merged.byDateTodos = currentObj.byDateTodos;
+                Object.keys(incoming).forEach(function (k) {
+                  if (k !== 'days' && k !== 'byDateTodos') merged[k] = incoming[k];
+                });
+                writeStorage(key, merged);
               } else {
                 writeStorage(key, Object.assign(currentObj, incoming));
               }

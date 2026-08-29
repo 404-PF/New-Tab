@@ -39,7 +39,10 @@
     try { localStorage.setItem(KEY, JSON.stringify(data)); }
     catch (err) { console.warn('Failed to save pomodoro stats:', err); }
   }
-  function enabled() { return localStorage.getItem('pomodoroStatsEnabled') === 'true'; }
+  function enabled() {
+    try { return localStorage.getItem('pomodoroStatsEnabled') === 'true'; }
+    catch (err) { console.warn('Failed to read pomodoro stats enabled:', err); return false; }
+  }
   function todayISO() { return toISO(new Date()); }
   function record(detail) {
     if (!enabled()) return;
@@ -202,17 +205,16 @@
    * Unique to pomodoro stats — todo-stats tracks plain counts without durations.
    */
   window.getPomodoroAverageMinutes = function () {
-    const store = read();
-    let s = 0;
-    let m = 0;
-    const keys = Object.keys(store.days);
-    for (let i = 0; i < keys.length; i++) {
-      const e = coerceEntry(store.days[keys[i]]);
-      s += e.sessions;
-      m += e.minutes;
-    }
-    if (s === 0) return 0;
-    return Math.round((m / s) * 10) / 10;
+   const rows = heatmapRows();
+   let s = 0;
+   let m = 0;
+   for (let i = 0; i < rows.length; i++) {
+     const e = coerceEntry(read().days[rows[i].date]);
+     s += e.sessions;
+     m += e.minutes;
+   }
+   if (s === 0) return 0;
+   return Math.round((m / s) * 10) / 10;
   };
   /**
    * Minutes aggregated per todo for the current calendar week (Sun-Sat).
@@ -226,7 +228,7 @@
     for (let i = 0; i < b.len; i++) {
       const iso = toISO(cur);
       const perTodo = store.byDateTodos[iso];
-      if (perTodo && typeof perTodo === 'object') {
+      if (perTodo && typeof perTodo === 'object' && !Array.isArray(perTodo)) {
         const ids = Object.keys(perTodo);
         for (let j = 0; j < ids.length; j++) {
           const id = ids[j];
