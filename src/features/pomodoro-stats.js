@@ -1,251 +1,180 @@
 // src/features/pomodoro-stats.js - Pomodoro focus-session statistics
-
 (function () {
   'use strict';
-
-  const STORAGE_KEY = 'pomodoroStats';
-  const HEATMAP_DAYS = 30;
-
-  function getToday() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-
-  function normalizeDayEntry(entry) {
-    if (typeof entry === 'number') return { sessions: entry, minutes: 0 };
-    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
-      return {
-        sessions: typeof entry.sessions === 'number' ? entry.sessions : 0,
-        minutes: typeof entry.minutes === 'number' ? entry.minutes : 0
-      };
+  const KEY = 'pomodoroStats';
+  const WINDOW = 30;
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function toISO(date) { return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()); }
+  function coerceEntry(raw) {
+    if (typeof raw === 'number' && Number.isFinite(raw)) return { sessions: raw, minutes: 0 };
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const s = typeof raw.sessions === 'number' && Number.isFinite(raw.sessions) ? raw.sessions : 0;
+      const m = typeof raw.minutes === 'number' && Number.isFinite(raw.minutes) ? raw.minutes : 0;
+      return { sessions: Math.max(0, s), minutes: Math.max(0, m) };
     }
     return { sessions: 0, minutes: 0 };
   }
-
-  function loadStats() {
+  function read() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(KEY);
       if (!raw) return { days: {}, byDateTodos: {} };
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed.days !== 'object' || parsed.days === null || Array.isArray(parsed.days)) return { days: {}, byDateTodos: {} };
-      if (parsed.byDateTodos !== undefined && (typeof parsed.byDateTodos !== 'object' || parsed.byDateTodos === null || Array.isArray(parsed.byDateTodos))) {
-        parsed.byDateTodos = {};
-      }
-      if (!parsed.byDateTodos) parsed.byDateTodos = {};
-      return parsed;
-    } catch (e) {
-      console.warn('Failed to load pomodoro stats:', e);
+      const data = JSON.parse(raw);
+      const validDays = data && typeof data.days === 'object' && data.days !== null && !Array.isArray(data.days);
+      if (!validDays) return { days: {}, byDateTodos: {} };
+      if (data.byDateTodos !== null && data.byDateTodos !== undefined && (typeof data.byDateTodos !== 'object' || Array.isArray(data.byDateTodos))) data.byDateTodos = {};
+      if (!data.byDateTodos) data.byDateTodos = {};
+      return data;
+    } catch (err) {
+      console.warn('Failed to load pomodoro stats:', err);
       return { days: {}, byDateTodos: {} };
     }
   }
-
-  function saveStats(stats) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
-    } catch (e) {
-      console.warn('Failed to save pomodoro stats:', e);
+  function write(data) {
+    try { localStorage.setItem(KEY, JSON.stringify(data)); }
+    catch (err) { console.warn('Failed to save pomodoro stats:', err); }
+  }
+  function enabled() { return localStorage.getItem('pomodoroStatsEnabled') === 'true'; }
+  function todayISO() { return toISO(new Date()); }
+  function record(detail) {
+    if (!enabled()) return;
+    const mins = detail && typeof detail.minutes === 'number' && Number.isFinite(detail.minutes) ? detail.minutes : 0;
+    const tid = detail && detail.todoId !== null && detail.todoId !== undefined ? String(detail.todoId) : null;
+    const iso = detail && typeof detail.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(detail.date) ? detail.date : todayISO();
+    const store = read();
+    const cur = coerceEntry(store.days[iso]);
+    cur.sessions = cur.sessions + 1;
+    cur.minutes = cur.minutes + mins;
+    store.days[iso] = cur;
+    if (tid) {
+      const map = store.byDateTodos[iso] || (store.byDateTodos[iso] = {});
+      map[tid] = (map[tid] || 0) + mins;
     }
+    write(store);
+    paint();
+    try { window.dispatchEvent(new CustomEvent('pomodoroStatsUpdated', { detail: { date: iso, sessions: cur.sessions, minutes: cur.minutes, todoId: tid } })); }
+    catch { /* ignore environments without CustomEvent */ }
   }
-
-  function isStatsEnabled() {
-    return localStorage.getItem('pomodoroStatsEnabled') === 'true';
-  }
-
-  function recordSession(detail) {
-    if (!isStatsEnabled()) return;
-    const minutes = detail && typeof detail.minutes === 'number' ? detail.minutes : 0;
-    const todoId = detail && detail.todoId ? String(detail.todoId) : null;
-    const today = (detail && typeof detail.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(detail.date)) ? detail.date : getToday();
-    const stats = loadStats();
-
-    const current = normalizeDayEntry(stats.days[today]);
-    current.sessions += 1;
-    current.minutes += minutes;
-    stats.days[today] = current;
-
-    if (todoId) {
-      stats.byDateTodos[today] = stats.byDateTodos[today] || {};
-      stats.byDateTodos[today][todoId] = (stats.byDateTodos[today][todoId] || 0) + minutes;
-    }
-
-    saveStats(stats);
-    renderStats();
-    try {
-      window.dispatchEvent(new CustomEvent('pomodoroStatsUpdated', { detail: { date: today, sessions: current.sessions, minutes: current.minutes, todoId } }));
-    } catch { /* ignore */ }
-  }
-
-  function getSessionsToday() {
-    const stats = loadStats();
-    return normalizeDayEntry(stats.days[getToday()]).sessions;
-  }
-
-  function getMinutesToday() {
-    const stats = loadStats();
-    return normalizeDayEntry(stats.days[getToday()]).minutes;
-  }
-
-  function getSessionsThisWeek() {
-    const stats = loadStats();
-    let count = 0;
+  function sessionsToday() { return coerceEntry(read().days[todayISO()]).sessions; }
+  function minutesToday() { return coerceEntry(read().days[todayISO()]).minutes; }
+  function weekBounds() {
     const d = new Date();
-    const dayOfWeek = d.getDay();
-    d.setDate(d.getDate() - dayOfWeek);
-    for (let i = 0; i <= dayOfWeek; i++) {
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      count += normalizeDayEntry(stats.days[dateStr]).sessions;
-      d.setDate(d.getDate() + 1);
-    }
-    return count;
+    const dow = d.getDay();
+    const start = new Date(d);
+    start.setDate(d.getDate() - dow);
+    return { start: start, len: dow + 1 };
   }
-
-  function getMinutesThisWeek() {
-    const stats = loadStats();
-    let count = 0;
-    const d = new Date();
-    const dayOfWeek = d.getDay();
-    d.setDate(d.getDate() - dayOfWeek);
-    for (let i = 0; i <= dayOfWeek; i++) {
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      count += normalizeDayEntry(stats.days[dateStr]).minutes;
-      d.setDate(d.getDate() + 1);
+  function sessionsWeek() {
+    const store = read();
+    const b = weekBounds();
+    const cur = new Date(b.start);
+    let total = 0;
+    for (let i = 0; i < b.len; i++) {
+      total += coerceEntry(store.days[toISO(cur)]).sessions;
+      cur.setDate(cur.getDate() + 1);
     }
-    return count;
+    return total;
   }
-
-  function getHeatmapData() {
-    const stats = loadStats();
-    const data = [];
-    const d = new Date();
-    d.setDate(d.getDate() - (HEATMAP_DAYS - 1));
-    for (let i = 0; i < HEATMAP_DAYS; i++) {
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      data.push({ date: dateStr, count: normalizeDayEntry(stats.days[dateStr]).sessions });
-      d.setDate(d.getDate() + 1);
+  function minutesWeek() {
+    const store = read();
+    const b = weekBounds();
+    const cur = new Date(b.start);
+    let total = 0;
+    for (let i = 0; i < b.len; i++) {
+      total += coerceEntry(store.days[toISO(cur)]).minutes;
+      cur.setDate(cur.getDate() + 1);
     }
-    return data;
+    return total;
   }
-
-  function getMaxHeatmapCount() {
-    const data = getHeatmapData();
-    let max = 0;
-    for (const entry of data) {
-      if (entry.count > max) max = entry.count;
+  function heatmapRows() {
+    const store = read();
+    const out = [];
+    const cursor = new Date();
+    cursor.setDate(cursor.getDate() - (WINDOW - 1));
+    for (let i = 0; i < WINDOW; i++) {
+      const iso = toISO(cursor);
+      out.push({ date: iso, count: coerceEntry(store.days[iso]).sessions });
+      cursor.setDate(cursor.getDate() + 1);
     }
-    return max;
+    return out;
   }
-
-  function getHeatLevel(count, maxCount) {
+  function maxCount(rows) {
+    let m = 0;
+    for (let i = 0; i < rows.length; i++) if (rows[i].count > m) m = rows[i].count;
+    return m;
+  }
+  function level(count, peak) {
     if (count === 0) return 0;
-    if (maxCount <= 1) return 1;
-    const ratio = count / maxCount;
-    if (ratio <= 0.33) return 1;
-    if (ratio <= 0.66) return 2;
+    if (peak <= 1) return 1;
+    const r = count / peak;
+    if (r <= 0.33) return 1;
+    if (r <= 0.66) return 2;
     return 3;
   }
-
-  function renderHeatmap() {
-    const container = document.getElementById('pomodoro-stats-heatmap');
-    if (!container) return;
-
-    container.innerHTML = '';
-    const data = getHeatmapData();
-    const maxCount = getMaxHeatmapCount();
-
-    for (const entry of data) {
-      const cell = document.createElement('div');
-      cell.className = 'heatmap-cell';
-      cell.dataset.level = String(getHeatLevel(entry.count, maxCount));
-      const titleTemplate = (window.i18n && typeof window.i18n.t === 'function')
-        ? window.i18n.t('pomodoroHeatmapCellTitle')
-        : '$1$: $2$ sessions';
-      // pomodoroHeatmapCellTitle may return key itself if missing; fallback
-      const template = titleTemplate && titleTemplate !== 'pomodoroHeatmapCellTitle' ? titleTemplate : '$1$: $2$ sessions';
-      cell.title = template.replace('$1$', entry.date).replace('$2$', String(entry.count));
-      container.appendChild(cell);
+  function paintHeatmap() {
+    const host = document.getElementById('pomodoro-stats-heatmap');
+    if (!host) return;
+    host.textContent = '';
+    const rows = heatmapRows();
+    const peak = maxCount(rows);
+    const rawTpl = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('pomodoroHeatmapCellTitle') : null;
+    const tpl = rawTpl && rawTpl !== 'pomodoroHeatmapCellTitle' ? rawTpl : '$1$: $2$ sessions';
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const el = document.createElement('div');
+      el.className = 'heatmap-cell';
+      el.dataset.level = String(level(r.count, peak));
+      el.title = tpl.replace('$1$', r.date).replace('$2$', String(r.count));
+      host.appendChild(el);
     }
   }
-
-  function renderStats() {
-    const stats = loadStats();
-
-    const todayEl = document.getElementById('pomodoro-stats-today');
-    const weekEl = document.getElementById('pomodoro-stats-week');
-    const todayMinutesEl = document.getElementById('pomodoro-stats-today-minutes');
-    const weekMinutesEl = document.getElementById('pomodoro-stats-week-minutes');
-
-    if (todayEl) todayEl.textContent = String(getSessionsToday());
-    if (weekEl) weekEl.textContent = String(getSessionsThisWeek());
-    if (todayMinutesEl) todayMinutesEl.textContent = String(getMinutesToday());
-    if (weekMinutesEl) weekMinutesEl.textContent = String(getMinutesThisWeek());
-
-    // keep streak-like storage tidy if previously migrated
-    if (stats.days) {
-      // ensure normalization already applied via getters; no recalc needed
-    }
-
-    renderHeatmap();
+  function paint() {
+    const t = document.getElementById('pomodoro-stats-today');
+    const w = document.getElementById('pomodoro-stats-week');
+    const tm = document.getElementById('pomodoro-stats-today-minutes');
+    const wm = document.getElementById('pomodoro-stats-week-minutes');
+    if (t) t.textContent = String(sessionsToday());
+    if (w) w.textContent = String(sessionsWeek());
+    if (tm) tm.textContent = String(minutesToday());
+    if (wm) wm.textContent = String(minutesWeek());
+    paintHeatmap();
   }
-
-  function applyStatsVisibility() {
+  function syncVisibility() {
     const panel = document.getElementById('pomodoro-stats-panel');
-    const toggle = document.getElementById('pomodoro-stats-toggle');
-    const enabled = isStatsEnabled();
-    if (panel) panel.style.display = enabled ? '' : 'none';
-    if (toggle) toggle.style.display = enabled ? '' : 'none';
-    if (enabled) renderStats();
+    const btn = document.getElementById('pomodoro-stats-toggle');
+    const on = enabled();
+    if (panel) panel.style.display = on ? '' : 'none';
+    if (btn) btn.style.display = on ? '' : 'none';
+    if (on) paint();
   }
-
-  function clearStats() {
-    saveStats({ days: {}, byDateTodos: {} });
-    renderStats();
-  }
-
-  function initPomodoroStats() {
-    applyStatsVisibility();
-
-    const toggle = document.getElementById('pomodoro-stats-toggle');
-    if (toggle) {
-      toggle.addEventListener('click', function () {
-        const panel = document.getElementById('pomodoro-stats-panel');
-        if (panel) {
-          const isVisible = panel.style.display !== 'none';
-          panel.style.display = isVisible ? 'none' : '';
-          toggle.classList.toggle('active', !isVisible);
-        }
-      });
-    }
-
-    const clearBtn = document.getElementById('pomodoro-stats-clear');
-    if (clearBtn) {
-      clearBtn.addEventListener('click', clearStats);
-    }
-
-    window.addEventListener('pomodoroSessionCompleted', function (e) {
-      recordSession(e.detail);
+  function wipe() { write({ days: {}, byDateTodos: {} }); paint(); }
+  function boot() {
+    syncVisibility();
+    const btn = document.getElementById('pomodoro-stats-toggle');
+    if (btn) btn.addEventListener('click', function () {
+      const panel = document.getElementById('pomodoro-stats-panel');
+      if (!panel) return;
+      const hidden = panel.style.display === 'none';
+      panel.style.display = hidden ? '' : 'none';
+      if (!hidden) btn.classList.remove('active');
+      else btn.classList.add('active');
     });
+    const clear = document.getElementById('pomodoro-stats-clear');
+    if (clear) clear.addEventListener('click', wipe);
+    window.addEventListener('pomodoroSessionCompleted', function (ev) { record(ev.detail); });
   }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPomodoroStats);
-  } else {
-    initPomodoroStats();
-  }
-
-  window.loadPomodoroStats = loadStats;
-  window.savePomodoroStats = saveStats;
-  window.recordPomodoroSession = recordSession;
-  window.clearPomodoroStats = clearStats;
-  window.applyPomodoroStatsVisibility = applyStatsVisibility;
-  window.renderPomodoroStats = renderStats;
-  window.getPomodoroSessionsToday = getSessionsToday;
-  window.getPomodoroMinutesToday = getMinutesToday;
-  window.getPomodoroSessionsThisWeek = getSessionsThisWeek;
-  window.getPomodoroMinutesThisWeek = getMinutesThisWeek;
-  window.getPomodoroHeatmapData = getHeatmapData;
-  window.getPomodoroHeatLevel = getHeatLevel;
-  window.loadPomodoroStatsEnabled = function () {
-    return localStorage.getItem('pomodoroStatsEnabled') === 'true';
-  };
-
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+  window.loadPomodoroStats = read;
+  window.savePomodoroStats = write;
+  window.recordPomodoroSession = record;
+  window.clearPomodoroStats = wipe;
+  window.applyPomodoroStatsVisibility = syncVisibility;
+  window.renderPomodoroStats = paint;
+  window.getPomodoroSessionsToday = sessionsToday;
+  window.getPomodoroMinutesToday = minutesToday;
+  window.getPomodoroSessionsThisWeek = sessionsWeek;
+  window.getPomodoroMinutesThisWeek = minutesWeek;
+  window.getPomodoroHeatmapData = heatmapRows;
+  window.getPomodoroHeatLevel = level;
+  window.loadPomodoroStatsEnabled = function () { return localStorage.getItem('pomodoroStatsEnabled') === 'true'; };
 })();
