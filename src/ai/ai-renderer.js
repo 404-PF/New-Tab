@@ -472,10 +472,13 @@ const AIRenderer = (function() {
       let el = id ? existing.get(id) : null;
 
       if (el) {
-        // Don't touch the actively-streaming message; updateStreamingContent
-        // owns its text during streaming.
-        if (!isStreaming) {
-          const textEl = el.querySelector('.ai-message-text');
+        const textEl = el.querySelector('.ai-message-text');
+        if (isStreaming) {
+          if (textEl && textEl.innerHTML !== renderedContent) {
+            textEl.innerHTML = renderedContent;
+          }
+          if (textEl) textEl.classList.add('ai-message-streaming');
+        } else {
           if (textEl && textEl.innerHTML !== renderedContent) {
             textEl.innerHTML = renderedContent;
           }
