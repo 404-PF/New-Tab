@@ -749,3 +749,45 @@ describe('MarkdownParser token-spoofing resistance', () => {
     expect(container.querySelectorAll('div.md-code-block')).toHaveLength(1);
   });
 });
+
+describe('MarkdownParser ordered list start attribute', () => {
+  it('preserves start attribute for lists not beginning at 1', () => {
+    const html = MarkdownParser.parse('3. c\n4. d');
+    expect(html).toContain('start="3"');
+  });
+
+  it('preserves start attribute for the issue example (5. fifth)', () => {
+    const html = MarkdownParser.parse('5. fifth\n6. sixth');
+    expect(html).toContain('start="5"');
+  });
+
+  it('keeps valid start through sanitizeHTML', () => {
+    const html = MarkdownParser.sanitizeHTML('<ol start="5" class="md-list"><li>x</li></ol>');
+    expect(html).toContain('start="5"');
+  });
+
+  it('keeps leading-zero start through sanitizeHTML (parsed as same integer)', () => {
+    const html = MarkdownParser.sanitizeHTML('<ol start="05" class="md-list"><li>x</li></ol>');
+    expect(html).toContain('start="05"');
+  });
+
+  it('strips invalid start values via sanitizeHTML', () => {
+    expect(MarkdownParser.sanitizeHTML('<ol start="foo" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+    expect(MarkdownParser.sanitizeHTML('<ol start="0" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+    expect(MarkdownParser.sanitizeHTML('<ol start="00" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+    expect(MarkdownParser.sanitizeHTML('<ol start="-1" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+    expect(MarkdownParser.sanitizeHTML('<ol start="1.5" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+  });
+
+  it('rejects out-of-range start markers beyond MAX_SAFE_INTEGER', () => {
+    const huge = '9007199254740993. big\n9007199254740994. next';
+    const html = MarkdownParser.parse(huge);
+    expect(html).not.toContain('start="9007199254740993"');
+    expect(html).not.toContain('start="9007199254740992"');
+  });
+
+  it('rejects out-of-range start via sanitizeHTML (consistent with parse path)', () => {
+    expect(MarkdownParser.sanitizeHTML('<ol start="9007199254740993" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+    expect(MarkdownParser.sanitizeHTML('<ol start="9007199254740992" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+  });
+});
