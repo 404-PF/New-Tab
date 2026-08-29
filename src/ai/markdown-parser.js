@@ -385,19 +385,13 @@ const MarkdownParser = (function() {
     // emphasis / strikethrough / link passes that follow. Reuse the same
     // unguessable token-namespace mechanism as fenced blocks: each parse()
     // draws a fresh CSPRNG namespace, so user text that merely looks like a
-    // placeholder can never collide with a real one. When parseInline is
-    // called outside parse() (no namespace yet), draw a per-call random
-    // suffix instead — still unguessable, still safe.
+    // placeholder can never collide with a real one.
     const codeSpans = [];
-    let inlineNs = tokenNamespace;
-    if (!inlineNs) {
-      const buf = new Uint32Array(2);
-      crypto.getRandomValues(buf);
-      inlineNs = buf[0].toString(36) + buf[1].toString(36);
-    }
+    const codeSpanTexts = [];
     html = html.replace(/`([^`]+)`/g, (match, content) => {
-      const placeholder = `\uE000${inlineNs}INLINE${codeSpans.length}\uE000`;
+      const placeholder = `\uE000${tokenNamespace}INLINE${codeSpans.length}\uE000`;
       codeSpans.push(`<code class="md-inline-code">${content}</code>`);
+      codeSpanTexts.push(content);
       return placeholder;
     });
 
@@ -420,10 +414,24 @@ const MarkdownParser = (function() {
     html = replaceMarkdownLinksAndImages(html);
 
     // Restore inline code placeholders. Use a function replacement to avoid
-    // $& / $1 interpolation of the code HTML.
-    for (let i = 0; i < codeSpans.length; i++) {
-      const tokenRe = new RegExp(`\uE000${inlineNs}INLINE${i}\uE000`, 'g');
-      html = html.replace(tokenRe, () => codeSpans[i]);
+    // $& / $1 interpolation of the code HTML. Image alt attributes must stay
+    // plain text — injecting <code> HTML there would corrupt the markup —
+    // so restore placeholders inside alt="..." with the raw code text first.
+    if (codeSpans.length) {
+      html = html.replace(/alt="([^"]*)"/g, (match, altContent) => {
+        let fixed = altContent;
+        for (let i = 0; i < codeSpanTexts.length; i++) {
+          const token = `\uE000${tokenNamespace}INLINE${i}\uE000`;
+          if (fixed.includes(token)) {
+            fixed = fixed.split(token).join(codeSpanTexts[i]);
+          }
+        }
+        return `alt="${fixed}"`;
+      });
+      for (let i = 0; i < codeSpans.length; i++) {
+        const tokenRe = new RegExp(`\uE000${tokenNamespace}INLINE${i}\uE000`, 'g');
+        html = html.replace(tokenRe, () => codeSpans[i]);
+      }
     }
 
     return html;
