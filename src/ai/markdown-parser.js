@@ -226,10 +226,10 @@ const MarkdownParser = (function() {
   /**
    * Replace markdown links and images while preserving balanced parentheses in URLs.
    * @param {string} html - HTML-escaped inline text
-   * @param {Function} [formatLabel] - Optional formatter for link labels (e.g. emphasis)
+   * @param {Function} [formatLabel] - Formatter for link labels (e.g. emphasis)
    * @returns {string} HTML with sanitized links and images
    */
-  function replaceMarkdownLinksAndImages(html, formatLabel) {
+  function replaceMarkdownLinksAndImages(html, formatLabel = (text) => text) {
     let result = '';
     let index = 0;
 
@@ -287,11 +287,10 @@ const MarkdownParser = (function() {
         if (isImage) {
           result += `<img src="${escapeAttribute(safeUrl)}" alt="${escapeAttribute(text)}" class="md-image" />`;
         } else {
-          const label = typeof formatLabel === 'function' ? formatLabel(text) : text;
-          result += `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${label}</a>`;
+          result += `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${formatLabel(text)}</a>`;
         }
       } else {
-        result += typeof formatLabel === 'function' && !isImage ? formatLabel(text) : text;
+        result += !isImage ? formatLabel(text) : text;
       }
 
       index = cursor;
