@@ -4273,6 +4273,30 @@ function applyLanguage(lang) {
       if (element.hasAttribute('aria-label')) {
         element.setAttribute('aria-label', translation);
       }
+    } else if (element.children.length > 0) {
+      // Preserve child elements (e.g., filter badges) by updating only the text node.
+      // This handles cases where a [data-i18n] container nests badges or other elements.
+      let textNode = null;
+      for (let i = 0; i < element.childNodes.length; i++) {
+        const node = element.childNodes[i];
+        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0) {
+          textNode = node;
+          break;
+        }
+      }
+      if (textNode) {
+        const hasBadge = element.querySelector('.filter-badge');
+        textNode.textContent = translation + (hasBadge ? ' ' : '');
+      } else if (element.firstChild && element.firstChild.nodeType === Node.TEXT_NODE) {
+        element.firstChild.textContent = translation;
+      } else {
+        const firstElement = element.firstElementChild;
+        if (firstElement) {
+          element.insertBefore(document.createTextNode(translation + ' '), firstElement);
+        } else {
+          element.textContent = translation;
+        }
+      }
     } else {
       element.textContent = translation;
     }
@@ -4322,16 +4346,30 @@ function updateDynamicTranslations() {
     emptyStateSmall.textContent = getTranslation(currentLanguage, 'emptyStateDesc');
   }
   
-  // Update filter pills
-  const filterAll = document.querySelector('.filter-pill[data-filter="all"]');
-  const filterPending = document.querySelector('.filter-pill[data-filter="pending"]');
-  const filterCompleted = document.querySelector('.filter-pill[data-filter="completed"]');
-  const filterOverdue = document.querySelector('.filter-pill[data-filter="overdue"]');
-  
-  if (filterAll) filterAll.childNodes[0].textContent = getTranslation(currentLanguage, 'filterAll') + ' ';
-  if (filterPending) filterPending.childNodes[0].textContent = getTranslation(currentLanguage, 'filterPending') + ' ';
-  if (filterCompleted) filterCompleted.childNodes[0].textContent = getTranslation(currentLanguage, 'filterCompleted') + ' ';
-  if (filterOverdue) filterOverdue.childNodes[0].textContent = getTranslation(currentLanguage, 'filterOverdue') + ' ';
+  // Update filter pills - supports both new inner-span markup and legacy text-node markup
+  function updateFilterPillLabel(pill, key) {
+    if (!pill) return;
+    const label = pill.querySelector('.filter-label');
+    if (label) {
+      label.textContent = getTranslation(currentLanguage, key);
+      return;
+    }
+    const firstTextNode = Array.from(pill.childNodes).find(function (node) {
+      return node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0;
+    });
+    if (firstTextNode) {
+      firstTextNode.textContent = getTranslation(currentLanguage, key) + ' ';
+    } else if (pill.childNodes[0]) {
+      pill.childNodes[0].textContent = getTranslation(currentLanguage, key) + ' ';
+    }
+  }
+
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="all"]'), 'filterAll');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="pending"]'), 'filterPending');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="completed"]'), 'filterCompleted');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="overdue"]'), 'filterOverdue');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="high"]'), 'priorityHigh');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="low"]'), 'priorityLow');
   
   // Update quick action button text
   const clearCompletedBtn = document.getElementById('clear-completed');
