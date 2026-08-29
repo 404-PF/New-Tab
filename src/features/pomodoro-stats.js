@@ -309,4 +309,35 @@
     if (changed) write(data);
     return changed;
   };
+  // Export 30-day window as CSV for external analysis.
+  window.exportPomodoroStatsCsv = function () {
+    const rows = heatmapRows();
+    const lines = ['date,sessions,minutes'];
+    for (let i = 0; i < rows.length; i++) {
+      const iso = rows[i].date;
+      const e = coerceEntry(read().days[iso]);
+      lines.push(iso + ',' + e.sessions + ',' + e.minutes);
+    }
+    return lines.join('\n');
+  };
+  // Total focus time in the window formatted for the settings summary.
+  window.getPomodoroTotalFormatted = function () {
+    const rows = heatmapRows();
+    let s = 0; let m = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const e = coerceEntry(read().days[rows[i].date]);
+      s += e.sessions; m += e.minutes;
+    }
+    return { sessions: s, minutes: m, formatted: window.formatPomodoroDuration(m) + ' / ' + s + ' sessions' };
+  };
+  // Day-over-day trend (today vs yesterday) for the dashboard badge.
+  window.getPomodoroTrend = function () {
+    const today = coerceEntry(read().days[todayISO()]);
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const yest = coerceEntry(read().days[toISO(y)]);
+    const ds = today.sessions - yest.sessions;
+    const dm = today.minutes - yest.minutes;
+    const dir = ds > 0 ? 'up' : ds < 0 ? 'down' : 'flat';
+    return { deltaSessions: ds, deltaMinutes: dm, direction: dir };
+  };
 })();
