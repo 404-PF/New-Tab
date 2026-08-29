@@ -423,7 +423,7 @@ const MarkdownParser = (function() {
         for (let i = 0; i < codeSpanTexts.length; i++) {
           const token = `\uE000${tokenNamespace}INLINE${i}\uE000`;
           if (fixed.includes(token)) {
-            fixed = fixed.split(token).join(codeSpanTexts[i]);
+            fixed = fixed.split(token).join(codeSpanTexts[i].replace(/"/g, '&quot;'));
           }
         }
         return `alt="${fixed}"`;
