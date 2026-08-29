@@ -219,7 +219,27 @@ const AIService = (function() {
     elements.modal.classList.add('ai-modal-open');
     AIRenderer.applyThemeToAI();
 
+    const streamingSnapshot = (AIStore.state.isStreaming || AIStore.state.isLoading)
+      ? (() => {
+        const cur = AIStore.getCurrentConversation();
+        const msg = cur?.messages?.find(message => message.isStreaming);
+        return msg ? { conversationId: cur.id, messageId: msg.id, content: msg.content, isStreaming: msg.isStreaming } : null;
+      })()
+      : null;
+
     AIStore.loadConversations();
+
+    if (streamingSnapshot) {
+      const restoredConversation = AIStore.state.conversations.find(conversation => conversation.id === streamingSnapshot.conversationId);
+      if (restoredConversation) {
+        const restoredMsg = restoredConversation.messages.find(message => message.id === streamingSnapshot.messageId);
+        if (restoredMsg) {
+          restoredMsg.content = streamingSnapshot.content;
+          restoredMsg.isStreaming = streamingSnapshot.isStreaming;
+        }
+      }
+    }
+
     renderConversationUI();
 
     console.log('[AI Debug] openModal called - State:', {
@@ -241,6 +261,16 @@ const AIService = (function() {
       }
       if (elements.input) {
         elements.input.disabled = true;
+      }
+
+      const streamingMsg = AIStore.getCurrentMessages().find(message => message.isStreaming);
+      if (streamingMsg && streamingMsg.content) {
+        const liveEl = document.getElementById('ai-chat-container')
+          ?.querySelector('[data-message-id="' + streamingMsg.id + '"] .ai-message-text');
+        if (liveEl) {
+          AIRenderer.updateStreamingContent(liveEl, streamingMsg.content);
+          liveEl.classList.add('ai-message-streaming');
+        }
       }
     }
 
@@ -429,9 +459,43 @@ const AIService = (function() {
     AIStore.addMessageToConversation(assistantMsg);
     renderConversationUI();
 
-    const assistantElements = elements.container?.querySelectorAll('.ai-message-assistant');
-    const streamingElement = assistantElements ? assistantElements[assistantElements.length - 1] : null;
-    const streamingTextElement = streamingElement?.querySelector('.ai-message-text');
+    function getLiveStreamingTextEl() {
+      const container = document.getElementById('ai-chat-container');
+      if (!container || !assistantMsg.id) return null;
+      return container.querySelector('[data-message-id="' + assistantMsg.id + '"] .ai-message-text');
+    }
+
+    function getLiveStreamingEl() {
+      const container = document.getElementById('ai-chat-container');
+      if (!container || !assistantMsg.id) return null;
+      return container.querySelector('[data-message-id="' + assistantMsg.id + '"]');
+    }
+
+    function getLiveStoredMessage() {
+      if (!assistantMsg.id) return null;
+      for (let index = 0; index < AIStore.state.conversations.length; index++) {
+        const conversation = AIStore.state.conversations[index];
+        const found = conversation.messages.find(message => message.id === assistantMsg.id);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function syncContentToStore(content) {
+      assistantMsg.content = content;
+      const live = getLiveStoredMessage();
+      if (live && live !== assistantMsg) {
+        live.content = content;
+      }
+    }
+
+    function syncStreamingFlag(flag) {
+      assistantMsg.isStreaming = flag;
+      const live = getLiveStoredMessage();
+      if (live && live !== assistantMsg) {
+        live.isStreaming = flag;
+      }
+    }
 
     let accumulatedContent = '';
     let lastRenderTime = 0;
@@ -459,10 +523,12 @@ const AIService = (function() {
             }
 
             accumulatedContent += chunks[index];
+            syncContentToStore(accumulatedContent);
 
             const now = Date.now();
             if (now - lastRenderTime >= RENDER_THROTTLE_MS || index === chunks.length - 1) {
-              AIRenderer.updateStreamingContent(streamingTextElement, accumulatedContent);
+              const liveEl = getLiveStreamingTextEl();
+              if (liveEl) AIRenderer.updateStreamingContent(liveEl, accumulatedContent);
               lastRenderTime = now;
 
               if (!AIStore.state.isUserScrolledUp) {
@@ -476,7 +542,9 @@ const AIService = (function() {
           }
 
           if (!streamAborted) {
-            AIRenderer.updateStreamingContent(streamingTextElement, accumulatedContent);
+            syncContentToStore(accumulatedContent);
+            const liveEl = getLiveStreamingTextEl();
+            if (liveEl) AIRenderer.updateStreamingContent(liveEl, accumulatedContent);
           }
         }
       } else {
@@ -485,10 +553,12 @@ const AIService = (function() {
           historyForAPI,
           chunk => {
             accumulatedContent += chunk;
+            syncContentToStore(accumulatedContent);
 
             const now = Date.now();
             if (now - lastRenderTime >= RENDER_THROTTLE_MS) {
-              AIRenderer.updateStreamingContent(streamingTextElement, accumulatedContent);
+              const liveEl = getLiveStreamingTextEl();
+              if (liveEl) AIRenderer.updateStreamingContent(liveEl, accumulatedContent);
               lastRenderTime = now;
 
               if (!AIStore.state.isUserScrolledUp) {
@@ -499,8 +569,10 @@ const AIService = (function() {
           abortController.signal
         );
 
-        if (streamingTextElement && accumulatedContent && !result.aborted) {
-          AIRenderer.updateStreamingContent(streamingTextElement, accumulatedContent);
+        if (accumulatedContent && !result.aborted) {
+          syncContentToStore(accumulatedContent);
+          const liveEl = getLiveStreamingTextEl();
+          if (liveEl) AIRenderer.updateStreamingContent(liveEl, accumulatedContent);
         }
       }
 
@@ -509,21 +581,21 @@ const AIService = (function() {
         // whatever is last in the current conversation: a newer request may
         // have started (or the conversation switched) before this one settled.
         if (assistantMsg?.isStreaming) {
-          assistantMsg.isStreaming = false;
-          // Offline mode simulates streaming with a chunk loop that breaks on
-          // stop; keep the partial content or mark the message as cancelled
-          // instead of persisting the full response the user chose to stop.
-          assistantMsg.content = streamAborted
+          const finalContent = streamAborted
             ? accumulatedContent || '[Cancelled]'
             : accumulatedContent || result.content || '';
+          syncStreamingFlag(false);
+          syncContentToStore(finalContent);
         }
 
-        if (streamingTextElement) {
-          streamingTextElement.classList.remove('ai-message-streaming');
+        {
+          const liveEl = getLiveStreamingTextEl();
+          if (liveEl) liveEl.classList.remove('ai-message-streaming');
         }
 
-        if (streamingElement) {
-          const copyBtn = streamingElement.querySelector('.ai-message-copy');
+        {
+          const liveEl = getLiveStreamingEl();
+          const copyBtn = liveEl?.querySelector('.ai-message-copy');
           if (copyBtn && accumulatedContent) {
             copyBtn.dataset.content = accumulatedContent.replace(/<[^>]*>/g, '').trim();
           }
@@ -533,13 +605,14 @@ const AIService = (function() {
         renderConversationUI();
       } else if (result.aborted) {
         if (assistantMsg?.isStreaming) {
-          assistantMsg.isStreaming = false;
-          assistantMsg.content = accumulatedContent || '[Cancelled]';
+          syncStreamingFlag(false);
+          syncContentToStore(accumulatedContent || '[Cancelled]');
         }
 
-        if (streamingElement && accumulatedContent) {
-          const copyBtn = streamingElement.querySelector('.ai-message-copy');
-          if (copyBtn) {
+        {
+          const liveEl = getLiveStreamingEl();
+          const copyBtn = liveEl?.querySelector('.ai-message-copy');
+          if (copyBtn && accumulatedContent) {
             copyBtn.dataset.content = accumulatedContent.replace(/<[^>]*>/g, '').trim();
           }
         }
@@ -562,8 +635,8 @@ const AIService = (function() {
     } catch (error) {
       if (error.name === 'AbortError' || AIStore.state.abortController === null) {
         if (assistantMsg?.isStreaming) {
-          assistantMsg.isStreaming = false;
-          assistantMsg.content = accumulatedContent || '[Cancelled]';
+          syncStreamingFlag(false);
+          syncContentToStore(accumulatedContent || '[Cancelled]');
         }
         AIStore.saveConversations();
         // Re-render so the '[Cancelled]' marker (or the partial content)
