@@ -380,28 +380,52 @@ const MarkdownParser = (function() {
   function parseInline(text) {
     // Escape HTML first
     let html = escapeHTML(text);
-    
-    // Code (inline) - must be done before other inline elements
-    html = html.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>');
-    
+
+    // Inline code spans must be literal — protect their contents from the
+    // emphasis / strikethrough / link passes that follow. Reuse the same
+    // unguessable token-namespace mechanism as fenced blocks: each parse()
+    // draws a fresh CSPRNG namespace, so user text that merely looks like a
+    // placeholder can never collide with a real one. When parseInline is
+    // called outside parse() (no namespace yet), draw a per-call random
+    // suffix instead — still unguessable, still safe.
+    const codeSpans = [];
+    let inlineNs = tokenNamespace;
+    if (!inlineNs) {
+      const buf = new Uint32Array(2);
+      crypto.getRandomValues(buf);
+      inlineNs = buf[0].toString(36) + buf[1].toString(36);
+    }
+    html = html.replace(/`([^`]+)`/g, (match, content) => {
+      const placeholder = `\uE000${inlineNs}INLINE${codeSpans.length}\uE000`;
+      codeSpans.push(`<code class="md-inline-code">${content}</code>`);
+      return placeholder;
+    });
+
     // Bold and Italic (***text*** or ___text___)
     html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
     html = html.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
-    
+
     // Bold (**text** or __text__)
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-    
+
     // Italic (*text* or _text_)
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
     html = html.replace(/_(.+?)_/g, '<em>$1</em>');
-    
+
     // Strikethrough (~~text~~)
     html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
-    
+
     // Images and links - images first so the link pass does not consume them
     html = replaceMarkdownLinksAndImages(html);
-    
+
+    // Restore inline code placeholders. Use a function replacement to avoid
+    // $& / $1 interpolation of the code HTML.
+    for (let i = 0; i < codeSpans.length; i++) {
+      const tokenRe = new RegExp(`\uE000${inlineNs}INLINE${i}\uE000`, 'g');
+      html = html.replace(tokenRe, () => codeSpans[i]);
+    }
+
     return html;
   }
 
