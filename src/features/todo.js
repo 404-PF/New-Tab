@@ -87,8 +87,25 @@
         // SYNC: This alarm name must match ALARM_NAME in background/service-worker.js
         // Matches CHECK_INTERVAL_MINUTES in service-worker.js — must be a periodic
         // alarm so the fallback never degrades the recurring reminder check into a
-        // one-shot (see issue #620).
-        chrome.alarms.create('todoReminderCheck', { periodInMinutes: 1 });
+        // one-shot (see issue #620). Check first so repeated fallbacks while a
+        // periodic alarm already exists do not reset its next firing time.
+        if (chrome.alarms.get) {
+          try {
+            chrome.alarms.get('todoReminderCheck', (alarm) => {
+              try {
+                if (!alarm || !alarm.periodInMinutes) {
+                  chrome.alarms.create('todoReminderCheck', { periodInMinutes: 1 });
+                }
+              } catch (innerErr) {
+                console.warn('Alarm fallback also failed:', innerErr);
+              }
+            });
+          } catch (getErr) {
+            console.warn('Alarm fallback also failed:', getErr);
+          }
+        } else {
+          chrome.alarms.create('todoReminderCheck', { periodInMinutes: 1 });
+        }
       } else {
         console.warn('Reminder alarm fallback skipped: chrome.alarms is unavailable');
       }

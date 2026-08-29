@@ -1212,6 +1212,9 @@ describe('Todo reminders', () => {
     expect(fallbackMatch).not.toBeNull();
     expect(fallbackMatch[0]).toContain('periodInMinutes');
     expect(fallbackMatch[0]).not.toContain('delayInMinutes');
+    // Fallback must check existing alarm first so repeated failures don't reset timer
+    expect(todoCode).toContain('chrome.alarms.get');
+    expect(todoCode).toContain('!alarm.periodInMinutes');
 
     warnSpy.mockRestore();
     vi.restoreAllMocks();
@@ -1221,12 +1224,15 @@ describe('Todo reminders', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(chrome.runtime, 'sendMessage').mockRejectedValue(new Error('Extension context invalidated'));
     chrome.alarms._alarms = { todoReminderCheck: { periodInMinutes: 1 } };
+    const createSpy = vi.spyOn(chrome.alarms, 'create');
 
     scheduleTodoReminderCheck('todo-2');
     await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
 
     expect(chrome.alarms._alarms['todoReminderCheck']).toEqual({ periodInMinutes: 1 });
     expect(chrome.alarms._alarms['todoReminderCheck']).not.toHaveProperty('delayInMinutes');
+    // Should not reset an already-periodic alarm (avoids postponing next check)
+    expect(createSpy).not.toHaveBeenCalled();
 
     warnSpy.mockRestore();
     vi.restoreAllMocks();
