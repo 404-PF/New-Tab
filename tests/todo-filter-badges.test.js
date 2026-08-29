@@ -54,14 +54,14 @@ describe('todo filter badge preservation', () => {
 
     expect(document.getElementById('badge-all').textContent).toBe('5');
     expect(document.getElementById('badge-pending').textContent).toBe('3');
-    expect(document.querySelector('[data-filter="all"]').textContent).toContain('全部');
-    expect(document.querySelector('[data-filter="high"]').textContent).toContain('高');
-    expect(document.querySelector('[data-filter="low"]').textContent).toContain('低');
+    expect(document.querySelector('[data-filter="all"]').textContent).toContain(window.i18n.t('filterAll'));
+    expect(document.querySelector('[data-filter="high"]').textContent).toContain(window.i18n.t('priorityHigh'));
+    expect(document.querySelector('[data-filter="low"]').textContent).toContain(window.i18n.t('priorityLow'));
 
     window.i18n.applyLanguage('en');
     expect(document.getElementById('badge-all')).not.toBeNull();
     expect(document.getElementById('badge-all').textContent).toBe('5');
-    expect(document.querySelector('[data-filter="high"]').textContent).toContain('High');
+    expect(document.querySelector('[data-filter="high"]').textContent).toContain(window.i18n.t('priorityHigh'));
   });
 
   it('preserves badges with new markup (inner span[data-i18n])', () => {
@@ -72,14 +72,14 @@ describe('todo filter badge preservation', () => {
     const missing = ['badge-all', 'badge-pending', 'badge-completed', 'badge-overdue', 'badge-high', 'badge-low'].filter(id => !document.getElementById(id));
     expect(missing, 'badges should survive with new markup').toEqual([]);
     expect(document.getElementById('badge-all').textContent).toBe('7');
-    expect(document.querySelector('.filter-pill[data-filter="all"] .filter-label').textContent).toBe('全部');
-    expect(document.querySelector('.filter-pill[data-filter="high"] .filter-label').textContent).toBe('高');
-    expect(document.querySelector('.filter-pill[data-filter="low"] .filter-label').textContent).toBe('低');
+    expect(document.querySelector('.filter-pill[data-filter="all"] .filter-label').textContent).toBe(window.i18n.t('filterAll'));
+    expect(document.querySelector('.filter-pill[data-filter="high"] .filter-label').textContent).toBe(window.i18n.t('priorityHigh'));
+    expect(document.querySelector('.filter-pill[data-filter="low"] .filter-label').textContent).toBe(window.i18n.t('priorityLow'));
 
     window.i18n.applyLanguage('de');
     expect(document.getElementById('badge-all').textContent).toBe('7');
-    expect(document.querySelector('.filter-pill[data-filter="high"] .filter-label').textContent).toBe('Hoch');
-    expect(document.querySelector('.filter-pill[data-filter="low"] .filter-label').textContent).toBe('Niedrig');
+    expect(document.querySelector('.filter-pill[data-filter="high"] .filter-label').textContent).toBe(window.i18n.t('priorityHigh'));
+    expect(document.querySelector('.filter-pill[data-filter="low"] .filter-label').textContent).toBe(window.i18n.t('priorityLow'));
   });
 
   it('keeps badge counts updating after multiple language changes', () => {
