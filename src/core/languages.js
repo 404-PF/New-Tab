@@ -4294,7 +4294,9 @@ function applyLanguage(lang) {
     } else if (element.children.length > 0) {
       // Preserve child elements by updating only the text node.
       // This is a generic safeguard for any [data-i18n] container that nests children
-      // (historically the todo filter pills with badge spans).
+      // (historically the todo filter pills with badge spans). If the element has
+      // only element children (e.g., icon-only controls), leave it unchanged and
+      // rely on title/aria-label localization instead.
       let textNode = null;
       for (let i = 0; i < element.childNodes.length; i++) {
         const node = element.childNodes[i];
@@ -4305,15 +4307,6 @@ function applyLanguage(lang) {
       }
       if (textNode) {
         textNode.textContent = translation;
-      } else if (element.firstChild && element.firstChild.nodeType === Node.TEXT_NODE) {
-        element.firstChild.textContent = translation;
-      } else {
-        const firstElement = element.firstElementChild;
-        if (firstElement) {
-          element.insertBefore(document.createTextNode(translation), firstElement);
-        } else {
-          element.textContent = translation;
-        }
       }
     } else {
       element.textContent = translation;
