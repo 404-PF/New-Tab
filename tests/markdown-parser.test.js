@@ -739,3 +739,27 @@ describe('MarkdownParser token-spoofing resistance', () => {
     expect(container.querySelectorAll('div.md-code-block')).toHaveLength(1);
   });
 });
+
+describe('MarkdownParser ordered list start attribute', () => {
+  it('preserves start attribute for lists not beginning at 1', () => {
+    const html = MarkdownParser.parse('3. c\n4. d');
+    expect(html).toContain('start="3"');
+  });
+
+  it('preserves start attribute for the issue example (5. fifth)', () => {
+    const html = MarkdownParser.parse('5. fifth\n6. sixth');
+    expect(html).toContain('start="5"');
+  });
+
+  it('keeps valid start through sanitizeHTML', () => {
+    const html = MarkdownParser.sanitizeHTML('<ol start="5" class="md-list"><li>x</li></ol>');
+    expect(html).toContain('start="5"');
+  });
+
+  it('strips invalid start values via sanitizeHTML', () => {
+    expect(MarkdownParser.sanitizeHTML('<ol start="foo" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+    expect(MarkdownParser.sanitizeHTML('<ol start="0" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+    expect(MarkdownParser.sanitizeHTML('<ol start="-1" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+    expect(MarkdownParser.sanitizeHTML('<ol start="1.5" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+  });
+});
