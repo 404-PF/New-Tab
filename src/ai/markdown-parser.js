@@ -397,15 +397,15 @@ const MarkdownParser = (function() {
 
     // Bold and Italic (***text*** or ___text___)
     html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    html = html.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/(?<![\p{L}\p{N}_])___(?=\S)(.+?)(?<!\s)___(?![\p{L}\p{N}_])/gu, '<strong><em>$1</em></strong>');
 
     // Bold (**text** or __text__)
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    html = html.replace(/(?<![\p{L}\p{N}_])__(?=\S)(.+?)(?<!\s)__(?![\p{L}\p{N}_])/gu, '<strong>$1</strong>');
 
     // Italic (*text* or _text_)
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    html = html.replace(/(?<![\p{L}\p{N}_])_(?=\S)(.+?)(?<!\s)_(?![\p{L}\p{N}_])/gu, '<em>$1</em>');
 
     // Strikethrough (~~text~~)
     html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
