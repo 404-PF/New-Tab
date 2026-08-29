@@ -149,12 +149,18 @@
   // first, then restore the day clamped to the target month's length
   // (e.g. Jan 31 → Feb 28).
   function getNextDueDate(currentDueDate, recurrence) {
+    if (!RECURRENCE_VALUES.includes(recurrence)) {
+      return currentDueDate;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     let base;
     if (currentDueDate) {
       base = parseLocalDate(currentDueDate);
-    } else {
-      base = new Date();
       base.setHours(0, 0, 0, 0);
+      if (base < today) base = new Date(today);
+    } else {
+      base = new Date(today);
     }
     if (recurrence === 'daily') {
       base.setDate(base.getDate() + 1);
@@ -162,8 +168,6 @@
       base.setDate(base.getDate() + 7);
     } else if (recurrence === 'monthly') {
       navigateMonthSafe(base, 1);
-    } else {
-      return currentDueDate;
     }
     return formatDateISO(base);
   }
