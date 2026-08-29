@@ -1506,7 +1506,7 @@ const translations = {
     pomodoroMinutesThisWeek: '今週の集中時間',
     pomodoroHeatmapCellTitle: '$1$：$2$ セッション',
     pomodoroStatsToggle: '集中統計',
-    pomodoroStatsToggleAriaLabel: '集中統計パネルを切り替え',
+    pomodoroStatsToggleAriaLabel: '集中統計パネルを切り替える',
 
     // Games
     ...createGamesTranslations(['ゲーム', 'ゲームを有効にする', 'プレイ', 'つづきから', '保存済み', '戻る', 'スコア', 'ハイスコア', 'ベストムーブ', 'ムーブ', '時間', 'ゲームオーバー', '勝利！', '一時停止', 'スペースキーで再スタート', 'ゲームがありません', 'ゲームは無効です。設定で有効にしてください。', 'スネーク', 'クラシックなスネークゲーム。エサを食べて成長しよう！', '矢印キーまたはWASDで移動、スペースで一時停止', '2048', 'ブロックを合体させて2048を目指そう！', '矢印キーでブロックを合体', 'メモリーマッチ', 'ペアを見つけて合わせよう！', 'カードをめくってペアを見つけよう'])
@@ -2380,15 +2380,15 @@ const translations = {
     heatmapCellTitle: '$1$: $2$ completadas',
 
     // Pomodoro stats
-    enablePomodoroStats: 'Activar estadisticas de enfoque',
-    pomodoroStatsTitle: 'Estadisticas de enfoque',
+    enablePomodoroStats: 'Activar estadísticas de enfoque',
+    pomodoroStatsTitle: 'Estadísticas de enfoque',
     pomodoroSessionsToday: 'Sesiones hoy',
     pomodoroSessionsThisWeek: 'Sesiones esta semana',
     pomodoroMinutesToday: 'Minutos hoy',
     pomodoroMinutesThisWeek: 'Minutos esta semana',
     pomodoroHeatmapCellTitle: '$1$: $2$ sesiones',
-    pomodoroStatsToggle: 'Estadisticas de enfoque',
-    pomodoroStatsToggleAriaLabel: 'Alternar panel de estadisticas de enfoque',
+    pomodoroStatsToggle: 'Estadísticas de enfoque',
+    pomodoroStatsToggleAriaLabel: 'Alternar panel de estadísticas de enfoque',
 
     // Games
     ...createGamesTranslations(['Juegos', 'Habilitar juegos', 'Jugar', 'Continuar', 'Partida guardada', 'Volver', 'Puntos', 'Récord', 'Mejores movimientos', 'Movimientos', 'Tiempo', 'Fin del juego', '¡Victoria!', 'Pausado', 'Presiona espacio para reiniciar', 'No hay juegos disponibles', 'Los juegos están deshabilitados. Actívalos en la configuración.', 'Serpiente', 'La clásica serpiente. ¡Come para crecer!', 'Flechas o WASD para mover, espacio para pausar', '2048', '¡Fusiona bloques para alcanzar 2048!', 'Flechas para fusionar bloques', 'Memorama', '¡Encuentra los pares de cartas!', 'Voltea cartas para encontrar pares'])
@@ -3703,15 +3703,15 @@ const translations = {
     heatmapCellTitle: '$1$: $2$ concluídas',
 
     // Pomodoro stats
-    enablePomodoroStats: 'Ativar estatisticas de foco',
-    pomodoroStatsTitle: 'Estatisticas de foco',
-    pomodoroSessionsToday: 'Sessoes hoje',
-    pomodoroSessionsThisWeek: 'Sessoes esta semana',
+    enablePomodoroStats: 'Ativar estatísticas de foco',
+    pomodoroStatsTitle: 'Estatísticas de foco',
+    pomodoroSessionsToday: 'Sessões hoje',
+    pomodoroSessionsThisWeek: 'Sessões esta semana',
     pomodoroMinutesToday: 'Minutos hoje',
     pomodoroMinutesThisWeek: 'Minutos esta semana',
-    pomodoroHeatmapCellTitle: '$1$: $2$ sessoes',
-    pomodoroStatsToggle: 'Estatisticas de foco',
-    pomodoroStatsToggleAriaLabel: 'Alternar painel de estatisticas de foco',
+    pomodoroHeatmapCellTitle: '$1$: $2$ sessões',
+    pomodoroStatsToggle: 'Estatísticas de foco',
+    pomodoroStatsToggleAriaLabel: 'Alternar painel de estatísticas de foco',
 
     // Games
     ...createGamesTranslations(['Jogos', 'Ativar jogos', 'Jogar', 'Continuar', 'Guardado', 'Voltar', 'Pontuação', 'Recorde', 'Melhor número de jogadas', 'Jogadas', 'Tempo', 'Fim de jogo', 'Vitória!', 'Pausado', 'Pressione espaço para reiniciar', 'Nenhum jogo disponível', 'Jogos desativados. Ative nas configurações.', 'Cobra', 'A clássica cobrinha. Coma para crescer!', 'Setas ou WASD para mover, espaço para pausar', '2048', 'Junte blocos para chegar a 2048!', 'Setas para juntar blocos', 'Jogo da Memória', 'Encontre os pares de cartas!', 'Vire as cartas para encontrar os pares'])

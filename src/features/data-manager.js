@@ -303,7 +303,35 @@
     todoReminderLeadTime: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     todoStats: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
     todoStatsEnabled: function (v) { return typeof v === 'boolean'; },
-    pomodoroStats: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
+    pomodoroStats: function (v) {
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+      if (typeof v.days !== 'object' || v.days === null || Array.isArray(v.days)) return false;
+      for (const entry of Object.entries(v.days)) {
+        const key = entry[0];
+        const val = entry[1];
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+        if (typeof val === 'number') {
+          if (!Number.isFinite(val) || val < 0) return false;
+        } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+          if (typeof val.sessions !== 'number' || !Number.isFinite(val.sessions) || val.sessions < 0) return false;
+          if (typeof val.minutes !== 'number' || !Number.isFinite(val.minutes) || val.minutes < 0) return false;
+        } else return false;
+      }
+      if (v.byDateTodos !== undefined) {
+        if (typeof v.byDateTodos !== 'object' || v.byDateTodos === null || Array.isArray(v.byDateTodos)) return false;
+        for (const entry of Object.entries(v.byDateTodos)) {
+          const date = entry[0];
+          const map = entry[1];
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+          if (typeof map !== 'object' || map === null || Array.isArray(map)) return false;
+          for (const inner of Object.entries(map)) {
+            if (typeof inner[0] !== 'string' || inner[0].length === 0) return false;
+            if (typeof inner[1] !== 'number' || !Number.isFinite(inner[1]) || inner[1] < 0) return false;
+          }
+        }
+      }
+      return true;
+    },
     pomodoroStatsEnabled: function (v) { return typeof v === 'boolean'; },
     notes: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     notesEnabled: function (v) { return typeof v === 'boolean'; },

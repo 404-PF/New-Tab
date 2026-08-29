@@ -584,7 +584,7 @@
     "description": "Toggle for pomodoro stats panel"
   },
   "pomodoroStatsToggleAriaLabel": {
-    "message": "集中統計パネルを切り替え",
+    "message": "集中統計パネルを切り替える",
     "description": "Aria label for pomodoro stats toggle"
   }
 }

@@ -6,8 +6,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  localStorage.removeItem('pomodoroStats');
-  localStorage.removeItem('pomodoroStatsEnabled');
+  localStorage.clear();
 });
 
 function getToday() {
