@@ -297,6 +297,19 @@
         i18n ? i18n.t('pomodoroWorkComplete') : 'Focus session complete!',
         getWorkNotificationBody(i18n, todoText)
       );
+      try {
+        const minutes = Math.round(getPhaseDuration(PHASES.WORK) / 60);
+        const detail = { minutes: minutes, todoId: state.todoId };
+        if (typeof window.recordPomodoroSession === 'function') {
+          window.recordPomodoroSession(detail);
+        } else {
+          try {
+            window.dispatchEvent(new CustomEvent('pomodoroSessionCompleted', { detail: detail }));
+          } catch (_e2) { /* ignore */ }
+        }
+      } catch (e) {
+        console.warn('Failed to record pomodoro session:', e);
+      }
     } else {
       sendNotification(
         i18n ? i18n.t('pomodoroBreakComplete') : 'Break over!',

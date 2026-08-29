@@ -550,5 +550,41 @@
   "notesEmpty": {
     "message": "Aún no hay notas. ¡Haz clic en + para agregar una!",
     "description": "Empty state when no notes exist"
+  },
+  "enablePomodoroStats": {
+    "message": "Activar estadísticas de enfoque",
+    "description": "Label for the pomodoro focus stats toggle"
+  },
+  "pomodoroStatsTitle": {
+    "message": "Estadísticas de enfoque",
+    "description": "Title for the pomodoro stats panel"
+  },
+  "pomodoroSessionsToday": {
+    "message": "Sesiones hoy",
+    "description": "Pomodoro sessions completed today"
+  },
+  "pomodoroSessionsThisWeek": {
+    "message": "Sesiones esta semana",
+    "description": "Pomodoro sessions completed this week"
+  },
+  "pomodoroMinutesToday": {
+    "message": "Minutos hoy",
+    "description": "Pomodoro minutes today"
+  },
+  "pomodoroMinutesThisWeek": {
+    "message": "Minutos esta semana",
+    "description": "Pomodoro minutes this week"
+  },
+  "pomodoroHeatmapCellTitle": {
+    "message": "$1$: $2$ sesiones",
+    "description": "Title for pomodoro heatmap cell"
+  },
+  "pomodoroStatsToggle": {
+    "message": "Estadísticas de enfoque",
+    "description": "Toggle for pomodoro stats panel"
+  },
+  "pomodoroStatsToggleAriaLabel": {
+    "message": "Alternar panel de estadísticas de enfoque",
+    "description": "Aria label for pomodoro stats toggle"
   }
 }

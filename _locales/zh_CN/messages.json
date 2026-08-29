@@ -550,5 +550,41 @@
   "notesEmpty": {
     "message": "还没有便签。点击 + 添加一个！",
     "description": "Empty state when no notes exist"
+  },
+  "enablePomodoroStats": {
+    "message": "启用专注统计",
+    "description": "Label for the pomodoro focus stats toggle"
+  },
+  "pomodoroStatsTitle": {
+    "message": "专注统计",
+    "description": "Title for the pomodoro stats panel"
+  },
+  "pomodoroSessionsToday": {
+    "message": "今日专注次数",
+    "description": "Pomodoro sessions completed today"
+  },
+  "pomodoroSessionsThisWeek": {
+    "message": "本周专注次数",
+    "description": "Pomodoro sessions completed this week"
+  },
+  "pomodoroMinutesToday": {
+    "message": "今日专注时长",
+    "description": "Pomodoro minutes today"
+  },
+  "pomodoroMinutesThisWeek": {
+    "message": "本周专注时长",
+    "description": "Pomodoro minutes this week"
+  },
+  "pomodoroHeatmapCellTitle": {
+    "message": "$1$：$2$ 次专注",
+    "description": "Title for pomodoro heatmap cell"
+  },
+  "pomodoroStatsToggle": {
+    "message": "专注统计",
+    "description": "Toggle for pomodoro stats panel"
+  },
+  "pomodoroStatsToggleAriaLabel": {
+    "message": "切换专注统计面板",
+    "description": "Aria label for pomodoro stats toggle"
   }
 }

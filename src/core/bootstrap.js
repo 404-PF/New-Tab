@@ -39,6 +39,7 @@
     'src/features/interactive-background.js',
     'src/core/languages.js',
     'src/features/pomodoro.js',
+    'src/features/pomodoro-stats.js',
     'src/ui/settings.js',
     'src/features/data-manager.js',
     'src/features/context-menu.js',

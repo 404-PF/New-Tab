@@ -682,5 +682,41 @@
   "notesEmpty": {
     "message": "No notes yet. Click + to add one!",
     "description": "Empty state when no notes exist"
+  },
+  "enablePomodoroStats": {
+    "message": "Enable focus stats",
+    "description": "Label for the pomodoro focus stats toggle"
+  },
+  "pomodoroStatsTitle": {
+    "message": "Focus Stats",
+    "description": "Title for the pomodoro stats panel"
+  },
+  "pomodoroSessionsToday": {
+    "message": "Sessions Today",
+    "description": "Pomodoro sessions completed today"
+  },
+  "pomodoroSessionsThisWeek": {
+    "message": "This Week",
+    "description": "Pomodoro sessions completed this week"
+  },
+  "pomodoroMinutesToday": {
+    "message": "Minutes Today",
+    "description": "Pomodoro minutes today"
+  },
+  "pomodoroMinutesThisWeek": {
+    "message": "Minutes This Week",
+    "description": "Pomodoro minutes this week"
+  },
+  "pomodoroHeatmapCellTitle": {
+    "message": "$1$: $2$ sessions",
+    "description": "Title for pomodoro heatmap cell"
+  },
+  "pomodoroStatsToggle": {
+    "message": "Focus stats",
+    "description": "Toggle for pomodoro stats panel"
+  },
+  "pomodoroStatsToggleAriaLabel": {
+    "message": "Toggle focus statistics panel",
+    "description": "Aria label for pomodoro stats toggle"
   }
 }
