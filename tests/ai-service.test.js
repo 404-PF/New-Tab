@@ -391,10 +391,11 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
     expect(AIStore.state.abortController).not.toBeNull();
     expect(AIStore.state.isLoading).toBe(true);
 
-    // The new streaming message is left untouched until its own request settles
+    // The new streaming message keeps its partial content visible (issue #616)
+    // even before its request settles, while staying in streaming state.
     const secondAssistant = conversation.messages[3];
     expect(secondAssistant.isStreaming).toBe(true);
-    expect(secondAssistant.content).toBe('');
+    expect(secondAssistant.content).toBe('Second answer');
 
     second.resolveRequest({ success: true, content: 'Second answer', aborted: false });
     await second.sendPromise;
@@ -608,5 +609,128 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
 
     const textNodes = document.querySelectorAll('#ai-chat-container .ai-message-text');
     expect(textNodes[textNodes.length - 1].textContent).toBe('[Cancelled]');
+  });
+});
+
+describe('Reopening AI chat mid-stream (#616)', () => {
+  const reopenStartStreaming = () => {
+    const conversation = {
+      id: 'conv_reopen',
+      title: 'Reopen',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    AIStore.state.isLoading = false;
+    AIStore.state.isStreaming = false;
+    AIStore.state.abortController = null;
+
+    let onChunkCallback = null;
+    let resolveRequest = null;
+    OpenRouterAPI.sendMessageStreaming = async (userMessage, history, onChunk, signal) => {
+      onChunkCallback = onChunk;
+      return new Promise(resolve => {
+        resolveRequest = resolve;
+      });
+    };
+
+    document.querySelector('#ai-chat-container').innerHTML = '';
+    const sendPromise = AIService.sendMessage('hello');
+
+    return {
+      conversation,
+      sendPromise,
+      getOnChunk: () => onChunkCallback,
+      resolveRequest: value => resolveRequest(value)
+    };
+  };
+
+  it('keeps streaming visible after closing and reopening the modal', async () => {
+    const { conversation, sendPromise, getOnChunk, resolveRequest } = reopenStartStreaming();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // First chunk arrives while modal is open
+    getOnChunk()('Hello ');
+    await new Promise(resolve => setTimeout(resolve, 60));
+
+    const texts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    const textEl = texts[texts.length - 1];
+    expect(textEl.textContent).toContain('Hello');
+
+    // Simulate closing and reopening the modal mid-stream
+    AIService.close();
+    expect(document.getElementById('ai-chat-modal').classList.contains('ai-modal-open')).toBe(false);
+    AIService.open();
+    expect(document.getElementById('ai-chat-modal').classList.contains('ai-modal-open')).toBe(true);
+
+    // The reopened bubble must show the partial content, not an empty streaming bubble
+    const reopenedTexts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    const reopenedText = reopenedTexts[reopenedTexts.length - 1];
+    expect(reopenedText.textContent).toContain('Hello');
+    expect(reopenedText.classList.contains('ai-message-streaming')).toBe(true);
+
+    // Next chunk after reopen must update the *visible* bubble, not a detached one
+    getOnChunk()('world');
+    await new Promise(resolve => setTimeout(resolve, 60));
+
+    const updatedTexts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    const updatedText = updatedTexts[updatedTexts.length - 1];
+    expect(updatedText.textContent).toContain('Hello');
+    expect(updatedText.textContent).toContain('world');
+
+    // Finalize
+    resolveRequest({ success: true, content: 'Hello world', aborted: false });
+    await sendPromise;
+
+    const lastMsg = conversation.messages[1];
+    expect(lastMsg.isStreaming).toBe(false);
+    expect(lastMsg.content).toBe('Hello world');
+
+    const finalTexts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+    const finalText = finalTexts[finalTexts.length - 1];
+    expect(finalText.textContent).toBe('Hello world');
+    expect(finalText.classList.contains('ai-message-streaming')).toBe(false);
+  });
+
+  it('recovers streaming bubble after a renderMessages rebuild (offline path)', async () => {
+    // Use offline simulated streaming which splits fullResponse into char chunks
+    window.dispatchEvent(new Event('offline'));
+    expect(NetworkDetector.getStatus().isOffline).toBe(true);
+
+    const conversation = {
+      id: 'conv_reopen_offline',
+      title: 'ReopenOffline',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    document.querySelector('#ai-chat-container').innerHTML = '';
+
+    try {
+      const sendPromise = AIService.sendMessage('hello');
+      await new Promise(resolve => setTimeout(resolve, 30));
+
+      // Mid-stream, force a full rebuild as openModal does (load + render)
+      AIRenderer.renderMessages();
+      const midTexts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+      const midText = midTexts[midTexts.length - 1];
+      // Should not be an empty streaming bubble
+      expect(midText.textContent.length).toBeGreaterThan(0);
+      expect(midText.classList.contains('ai-message-streaming')).toBe(true);
+
+      await sendPromise;
+
+      const assistant = conversation.messages[1];
+      expect(assistant.isStreaming).toBe(false);
+      expect(assistant.content.length).toBeGreaterThan(0);
+      const finalTexts = document.querySelectorAll('#ai-chat-container .ai-message-text');
+      expect(finalTexts[finalTexts.length - 1].textContent).toBe(assistant.content);
+    } finally {
+      window.dispatchEvent(new Event('online'));
+    }
   });
 });
