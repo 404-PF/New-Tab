@@ -226,10 +226,10 @@ const MarkdownParser = (function() {
   /**
    * Replace markdown links and images while preserving balanced parentheses in URLs.
    * @param {string} html - HTML-escaped inline text
+   * @param {Function} [formatLabel] - Optional formatter for link labels (e.g. emphasis)
    * @returns {string} HTML with sanitized links and images
    */
-  // eslint-disable-next-line no-unused-vars -- retained for potential external use; parseInline now inlines link formatting with label emphasis
-  function replaceMarkdownLinksAndImages(html) {
+  function replaceMarkdownLinksAndImages(html, formatLabel) {
     let result = '';
     let index = 0;
 
@@ -284,11 +284,14 @@ const MarkdownParser = (function() {
       const safeUrl = sanitizeMarkdownUrl(url, isImage);
 
       if (safeUrl) {
-        result += isImage
-          ? `<img src="${escapeAttribute(safeUrl)}" alt="${escapeAttribute(text)}" class="md-image" />`
-          : `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${text}</a>`;
+        if (isImage) {
+          result += `<img src="${escapeAttribute(safeUrl)}" alt="${escapeAttribute(text)}" class="md-image" />`;
+        } else {
+          const label = typeof formatLabel === 'function' ? formatLabel(text) : text;
+          result += `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${label}</a>`;
+        }
       } else {
-        result += text;
+        result += typeof formatLabel === 'function' && !isImage ? formatLabel(text) : text;
       }
 
       index = cursor;
@@ -406,68 +409,16 @@ const MarkdownParser = (function() {
     const formatLinkLabel = (label) => {
       let out = label;
       out = out.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-      out = out.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+      out = out.replace(/(?<!\w)___(?!\s)(.+?)(?<!\s)___(?!\w)/g, '<strong><em>$1</em></strong>');
       out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      out = out.replace(/__(.+?)__/g, '<strong>$1</strong>');
+      out = out.replace(/(?<!\w)__(?!\s)(.+?)(?<!\s)__(?!\w)/g, '<strong>$1</strong>');
       out = out.replace(/\*(.+?)\*/g, '<em>$1</em>');
-      out = out.replace(/_(.+?)_/g, '<em>$1</em>');
+      out = out.replace(/(?<!\w)_(?!\s)(.+?)(?<!\s)_(?!\w)/g, '<em>$1</em>');
       out = out.replace(/~~(.+?)~~/g, '<del>$1</del>');
       return out;
     };
 
-    // Inline replacement that mirrors replaceMarkdownLinksAndImages but formats
-    // the link label with emphasis while keeping alt plain text.
-    let linkedHtml = '';
-    let cursorIndex = 0;
-    while (cursorIndex < html.length) {
-      const isImage = html[cursorIndex] === '!' && html[cursorIndex + 1] === '[';
-      const isLink = html[cursorIndex] === '[';
-      if (!isImage && !isLink) {
-        linkedHtml += html[cursorIndex];
-        cursorIndex++;
-        continue;
-      }
-      const textStart = cursorIndex + (isImage ? 2 : 1);
-      const textEnd = html.indexOf(']', textStart);
-      if (textEnd === -1 || html[textEnd + 1] !== '(') {
-        linkedHtml += html[cursorIndex];
-        cursorIndex++;
-        continue;
-      }
-      const urlStart = textEnd + 2;
-      let urlCursor = urlStart;
-      let depth = 1;
-      while (urlCursor < html.length && depth > 0) {
-        const ch = html[urlCursor];
-        if (ch === '\\' && urlCursor + 1 < html.length) {
-          urlCursor += 2;
-          continue;
-        }
-        if (ch === '(') depth++;
-        else if (ch === ')') depth--;
-        urlCursor++;
-      }
-      if (depth !== 0) {
-        linkedHtml += html[cursorIndex];
-        cursorIndex++;
-        continue;
-      }
-      const rawText = html.slice(textStart, textEnd);
-      const rawUrl = unescapeMarkdownUrl(decodeHTML(html.slice(urlStart, urlCursor - 1)));
-      const safeUrl = sanitizeMarkdownUrl(rawUrl, isImage);
-      if (safeUrl) {
-        if (isImage) {
-          linkedHtml += `<img src="${escapeAttribute(safeUrl)}" alt="${escapeAttribute(rawText)}" class="md-image" />`;
-        } else {
-          const formattedLabel = formatLinkLabel(rawText);
-          linkedHtml += `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${formattedLabel}</a>`;
-        }
-      } else {
-        linkedHtml += isImage ? rawText : formatLinkLabel(rawText);
-      }
-      cursorIndex = urlCursor;
-    }
-    html = linkedHtml;
+    html = replaceMarkdownLinksAndImages(html, formatLinkLabel);
 
     // Image alt attributes must stay plain text — injecting <code> HTML there
     // would corrupt the markup — so restore placeholders inside alt="..." with
@@ -501,15 +452,15 @@ const MarkdownParser = (function() {
 
     // Bold and Italic (***text*** or ___text___)
     html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    html = html.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/(?<!\w)___(?!\s)(.+?)(?<!\s)___(?!\w)/g, '<strong><em>$1</em></strong>');
 
     // Bold (**text** or __text__)
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    html = html.replace(/(?<!\w)__(?!\s)(.+?)(?<!\s)__(?!\w)/g, '<strong>$1</strong>');
 
     // Italic (*text* or _text_)
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    html = html.replace(/(?<!\w)_(?!\s)(.+?)(?<!\s)_(?!\w)/g, '<em>$1</em>');
 
     // Strikethrough (~~text~~)
     html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
