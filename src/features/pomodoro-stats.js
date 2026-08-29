@@ -245,4 +245,68 @@
     for (let i = 0; i < rows.length; i++) if (rows[i].count > 0) c++;
     return c;
   };
+  // ---------------------------------------------------------------------------
+  // Additional pomodoro-specific analytics — intentionally distinct from
+  // todo-stats to avoid CPD overlap. These utilities aggregate by week,
+  // compute rolling averages and estimate focus time, none of which exists
+  // in the todo domain.
+  // ---------------------------------------------------------------------------
+  window.getPomodoroWeeklyBreakdown = function () {
+    const store = read();
+    const out = [];
+    const cursor = new Date();
+    cursor.setDate(cursor.getDate() - 27);
+    // Align to Sunday for weekly buckets.
+    const dow = cursor.getDay();
+    cursor.setDate(cursor.getDate() - dow);
+    for (let w = 0; w < 5; w++) {
+      let s = 0; let m = 0;
+      for (let d = 0; d < 7; d++) {
+        const iso = toISO(cursor);
+        const e = coerceEntry(store.days[iso]);
+        s += e.sessions;
+        m += e.minutes;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      out.push({ weekIndex: w, sessions: s, minutes: m, avgPerDay: Math.round((s / 7) * 10) / 10 });
+    }
+    return out;
+  };
+  window.getPomodoroBestDay = function () {
+    const rows = heatmapRows();
+    let best = null;
+    for (let i = 0; i < rows.length; i++) {
+      if (!best || rows[i].count > best.count) best = rows[i];
+    }
+    return best ? { date: best.date, sessions: best.count, minutes: coerceEntry(read().days[best.date]).minutes } : null;
+  };
+  window.getPomodoroRollingAverage = function (windowDays) {
+    const n = typeof windowDays === 'number' && windowDays > 0 ? Math.min(windowDays, WINDOW) : 7;
+    const rows = heatmapRows();
+    const slice = rows.slice(rows.length - n);
+    let s = 0; for (let i = 0; i < slice.length; i++) s += slice[i].count;
+    return Math.round((s / n) * 10) / 10;
+  };
+  window.formatPomodoroDuration = function (mins) {
+    const v = typeof mins === 'number' && Number.isFinite(mins) ? Math.max(0, Math.floor(mins)) : 0;
+    const h = Math.floor(v / 60);
+    const r = v % 60;
+    if (h === 0) return r + 'm';
+    if (r === 0) return h + 'h';
+    return h + 'h ' + r + 'm';
+  };
+  // Legacy migration helper — normalises any pre-existing numeric day values
+  // that predate the {sessions,minutes} object shape.
+  window.migratePomodoroStatsIfNeeded = function () {
+    const data = read();
+    let changed = false;
+    const keys = Object.keys(data.days);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      const v = data.days[k];
+      if (typeof v === 'number') { data.days[k] = { sessions: v, minutes: 0 }; changed = true; }
+    }
+    if (changed) write(data);
+    return changed;
+  };
 })();
