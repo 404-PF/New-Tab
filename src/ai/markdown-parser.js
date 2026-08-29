@@ -294,9 +294,9 @@ const MarkdownParser = (function() {
 
       const urlStart = textEnd + 2;
       let cursor = urlStart;
-      let depth = 1;
+      let parenDepth = 1;
 
-      while (cursor < html.length && depth > 0) {
+      while (cursor < html.length && parenDepth > 0) {
         const currentChar = html[cursor];
 
         if (currentChar === '\\' && cursor + 1 < html.length) {
@@ -305,15 +305,15 @@ const MarkdownParser = (function() {
         }
 
         if (currentChar === '(') {
-          depth++;
+          parenDepth++;
         } else if (currentChar === ')') {
-          depth--;
+          parenDepth--;
         }
 
         cursor++;
       }
 
-      if (depth !== 0) {
+      if (parenDepth !== 0) {
         result += html[index];
         index++;
         continue;
