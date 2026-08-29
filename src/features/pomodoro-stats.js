@@ -194,4 +194,55 @@
       enabled: enabled()
     };
   };
+  /**
+   * Average minutes per completed session across the 30-day window.
+   * Unique to pomodoro stats — todo-stats tracks plain counts without durations.
+   */
+  window.getPomodoroAverageMinutes = function () {
+    const store = read();
+    let s = 0;
+    let m = 0;
+    const keys = Object.keys(store.days);
+    for (let i = 0; i < keys.length; i++) {
+      const e = coerceEntry(store.days[keys[i]]);
+      s += e.sessions;
+      m += e.minutes;
+    }
+    if (s === 0) return 0;
+    return Math.round((m / s) * 10) / 10;
+  };
+  /**
+   * Minutes aggregated per todo for the current calendar week (Sun-Sat).
+   * Returns a map of todoId -> minutes. Empty object when no data.
+   */
+  window.getPomodoroMinutesByTodoThisWeek = function () {
+    const store = read();
+    const b = weekBounds();
+    const cur = new Date(b.start);
+    const agg = {};
+    for (let i = 0; i < b.len; i++) {
+      const iso = toISO(cur);
+      const perTodo = store.byDateTodos[iso];
+      if (perTodo && typeof perTodo === 'object') {
+        const ids = Object.keys(perTodo);
+        for (let j = 0; j < ids.length; j++) {
+          const id = ids[j];
+          const mins = perTodo[id];
+          if (typeof mins === 'number' && Number.isFinite(mins)) agg[id] = (agg[id] || 0) + mins;
+        }
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    return agg;
+  };
+  /**
+   * Total distinct days with at least one session in the 30-day window.
+   * Useful for the settings summary without exposing the raw heatmap.
+   */
+  window.getPomodoroActiveDaysInWindow = function () {
+    const rows = heatmapRows();
+    let c = 0;
+    for (let i = 0; i < rows.length; i++) if (rows[i].count > 0) c++;
+    return c;
+  };
 })();
