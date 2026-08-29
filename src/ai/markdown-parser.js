@@ -395,6 +395,43 @@ const MarkdownParser = (function() {
       return placeholder;
     });
 
+    // Links/images must be extracted before emphasis so that '_' and '*' inside
+    // URLs (e.g. https://example.com/some_article_name) are not converted to
+    // <em>/<strong> before the URL is captured. Protect every generated link
+    // and image tag with a placeholder token so the emphasis regexes below
+    // cannot scan inside href/src attributes.
+    html = replaceMarkdownLinksAndImages(html);
+
+    // Image alt attributes must stay plain text — injecting <code> HTML there
+    // would corrupt the markup — so restore placeholders inside alt="..." with
+    // the raw code text first (attribute-escaped).
+    if (codeSpans.length) {
+      html = html.replace(/alt="([^"]*)"/g, (match, altContent) => {
+        let fixed = altContent;
+        for (let i = 0; i < codeSpanTexts.length; i++) {
+          const token = `\uE000${tokenNamespace}INLINE${i}\uE000`;
+          if (fixed.includes(token)) {
+            fixed = fixed.split(token).join(codeSpanTexts[i].replace(/"/g, '&quot;'));
+          }
+        }
+        return `alt="${fixed}"`;
+      });
+    }
+
+    const linkPlaceholders = [];
+    const linkNs = tokenNamespace;
+    const linkToken = (idx) => `\uE001${linkNs}LINK${idx}\uE001`;
+    html = html.replace(/<a\b[^>]*class="md-link"[^>]*>.*?<\/a>/g, (m) => {
+      const idx = linkPlaceholders.length;
+      linkPlaceholders.push(m);
+      return linkToken(idx);
+    });
+    html = html.replace(/<img\b[^>]*class="md-image"[^>]*\/?>/g, (m) => {
+      const idx = linkPlaceholders.length;
+      linkPlaceholders.push(m);
+      return linkToken(idx);
+    });
+
     // Bold and Italic (***text*** or ___text___)
     html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
     html = html.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
@@ -410,24 +447,16 @@ const MarkdownParser = (function() {
     // Strikethrough (~~text~~)
     html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
 
-    // Images and links - images first so the link pass does not consume them
-    html = replaceMarkdownLinksAndImages(html);
+    // Restore link/image placeholders before code spans so that code inside
+    // link text (e.g. [`code`](url)) is still a token when the code loop runs.
+    for (let i = linkPlaceholders.length - 1; i >= 0; i--) {
+      const token = linkToken(i);
+      html = html.split(token).join(linkPlaceholders[i]);
+    }
 
     // Restore inline code placeholders. Use a function replacement to avoid
-    // $& / $1 interpolation of the code HTML. Image alt attributes must stay
-    // plain text — injecting <code> HTML there would corrupt the markup —
-    // so restore placeholders inside alt="..." with the raw code text first.
+    // $& / $1 interpolation of the code HTML.
     if (codeSpans.length) {
-      html = html.replace(/alt="([^"]*)"/g, (match, altContent) => {
-        let fixed = altContent;
-        for (let i = 0; i < codeSpanTexts.length; i++) {
-          const token = `\uE000${tokenNamespace}INLINE${i}\uE000`;
-          if (fixed.includes(token)) {
-            fixed = fixed.split(token).join(codeSpanTexts[i].replace(/"/g, '&quot;'));
-          }
-        }
-        return `alt="${fixed}"`;
-      });
       for (let i = 0; i < codeSpans.length; i++) {
         const tokenRe = new RegExp(`\uE000${tokenNamespace}INLINE${i}\uE000`, 'g');
         html = html.replace(tokenRe, () => codeSpans[i]);
