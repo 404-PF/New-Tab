@@ -210,9 +210,19 @@ const AIService = (function() {
     }
   }
 
-  function removeFailedMessages(conversation, userId, assistantId) {
+  function removeFailedMessages(targetConversationId, userId, assistantId) {
+    if (!targetConversationId || (!userId && !assistantId)) return false;
+    // Resolve the live conversation object by id: the captured reference may
+    // be stale if AIStore.loadConversations() ran while the request was in
+    // flight (e.g. reopening the modal), which replaces state.conversations
+    // with fresh clones.
+    let conversation = null;
+    if (typeof targetConversationId === 'string') {
+      conversation = AIStore.state.conversations.find(c => c.id === targetConversationId) || null;
+    } else if (targetConversationId && typeof targetConversationId.id === 'string') {
+      conversation = AIStore.state.conversations.find(c => c.id === targetConversationId.id) || targetConversationId;
+    }
     if (!conversation || !Array.isArray(conversation.messages)) return false;
-    if (!userId && !assistantId) return false;
     let removed = false;
     for (let i = conversation.messages.length - 1; i >= 0; i--) {
       const messageId = conversation.messages[i] && conversation.messages[i].id;
@@ -488,7 +498,7 @@ const AIService = (function() {
     AIStore.addMessageToConversation(assistantMsg);
     renderConversationUI();
 
-    const targetConversation = AIStore.getCurrentConversation();
+    const targetConversationId = AIStore.getCurrentConversation()?.id || null;
     const targetUserId = userMsg.id;
     const targetAssistantId = assistantMsg.id;
 
@@ -658,7 +668,7 @@ const AIService = (function() {
         renderConversationUI();
       } else {
         showError(result.error);
-        removeFailedMessages(targetConversation, targetUserId, targetAssistantId);
+        removeFailedMessages(targetConversationId, targetUserId, targetAssistantId);
       }
     } catch (error) {
       if (error.name === 'AbortError' || AIStore.state.abortController === null) {
@@ -673,7 +683,7 @@ const AIService = (function() {
       } else {
         showError(getTranslation('aiError'));
         console.error('AI sendMessage error:', error);
-        removeFailedMessages(targetConversation, targetUserId, targetAssistantId);
+        removeFailedMessages(targetConversationId, targetUserId, targetAssistantId);
       }
     }
 
