@@ -4305,7 +4305,7 @@ function applyLanguage(lang) {
       // This is a generic safeguard for any [data-i18n] container that nests children
       // (historically the todo filter pills with badge spans). If the element has
       // only element children (e.g., icon-only controls like #folder-popup-rename-btn),
-      // expose the translation as its accessible label so the control remains localized.
+      // try to update a nested label before falling back to aria-label.
       let textNode = null;
       for (let i = 0; i < element.childNodes.length; i++) {
         const node = element.childNodes[i];
@@ -4317,7 +4317,22 @@ function applyLanguage(lang) {
       if (textNode) {
         textNode.textContent = translation;
       } else {
-        element.setAttribute('aria-label', translation);
+        let descendantText = null;
+        try {
+          const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+            acceptNode: function (node) {
+              if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+              if (node.parentElement && node.parentElement.closest('.filter-badge')) return NodeFilter.FILTER_REJECT;
+              return NodeFilter.FILTER_ACCEPT;
+            }
+          });
+          descendantText = walker.nextNode();
+        } catch (e) { void e; }
+        if (descendantText) {
+          descendantText.textContent = translation;
+        } else {
+          element.setAttribute('aria-label', translation);
+        }
       }
     } else {
       element.textContent = translation;
@@ -4368,12 +4383,12 @@ function updateDynamicTranslations() {
     emptyStateSmall.textContent = getTranslation(currentLanguage, 'emptyStateDesc');
   }
   
-  // Update filter pills - supports both new inner-span markup and legacy text-node markup
+  // Update filter pills - legacy text-node markup only; new inner-span markup
+  // is already handled by the generic [data-i18n] loop in applyLanguage
   function updateFilterPillLabel(pill, key) {
     if (!pill) return;
     const label = pill.querySelector('.filter-label');
     if (label) {
-      label.textContent = getTranslation(currentLanguage, key);
       return;
     }
     const firstTextNode = Array.from(pill.childNodes).find(function (node) {
