@@ -1014,7 +1014,7 @@ const MarkdownParser = (function() {
             child.removeAttribute(attr.name);
           } else if (tagName === 'input' && attr.name === 'type' && attr.value !== 'checkbox') {
             child.removeAttribute(attr.name);
-          } else if (attr.name === 'start' && !/^0*[1-9]\d*$/.test(attr.value)) {
+          } else if (attr.name === 'start' && (!/^0*[1-9]\d*$/.test(attr.value) || !Number.isSafeInteger(Number(attr.value)))) {
             child.removeAttribute(attr.name);
           }
         }

@@ -785,4 +785,9 @@ describe('MarkdownParser ordered list start attribute', () => {
     expect(html).not.toContain('start="9007199254740993"');
     expect(html).not.toContain('start="9007199254740992"');
   });
+
+  it('rejects out-of-range start via sanitizeHTML (consistent with parse path)', () => {
+    expect(MarkdownParser.sanitizeHTML('<ol start="9007199254740993" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+    expect(MarkdownParser.sanitizeHTML('<ol start="9007199254740992" class="md-list"><li>x</li></ol>')).not.toContain('start=');
+  });
 });
