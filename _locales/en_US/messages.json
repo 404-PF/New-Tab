@@ -600,7 +600,7 @@
     "description": "Pomodoro sessions completed today"
   },
   "pomodoroSessionsThisWeek": {
-    "message": "This Week",
+    "message": "Sessions This Week",
     "description": "Pomodoro sessions completed this week"
   },
   "pomodoroMinutesToday": {
