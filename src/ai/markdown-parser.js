@@ -717,11 +717,10 @@ const MarkdownParser = (function() {
         currentIndent = indent;
       }
 
-      // If dedent closed every open list, reopen a fresh list at the
-      // current indent so the item is not silently dropped
+      // If dedent closed every open list, reopen a fresh list so the
+      // item is not silently dropped (currentIndent already set above)
       if (listStack.length === 0) {
         listStack.push({ type: listType, items: [], indent });
-        currentIndent = indent;
       }
 
       // Add the item to the current list, closing a type-mismatched list first
