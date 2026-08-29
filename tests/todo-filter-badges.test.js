@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
+let originalI18n;
 beforeAll(() => {
+  originalI18n = window.i18n;
   injectScript('src/core/languages.js');
+});
+
+afterAll(() => {
+  window.i18n = originalI18n;
 });
 
 afterEach(() => {
