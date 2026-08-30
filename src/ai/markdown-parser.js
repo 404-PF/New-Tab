@@ -229,7 +229,11 @@ const MarkdownParser = (function() {
    * @param {Function} [formatLabel] - Formatter for link labels (e.g. emphasis)
    * @returns {string} HTML with sanitized links and images
    */
-  function replaceMarkdownLinksAndImages(html, formatLabel = (text) => text) {
+  function replaceMarkdownLinksAndImages(html, formatLabel = (text) => text, depth = 0) {
+    const MAX_RECURSION_DEPTH = 8;
+    if (depth > MAX_RECURSION_DEPTH) {
+      return html;
+    }
     let result = '';
     let index = 0;
 
@@ -244,9 +248,45 @@ const MarkdownParser = (function() {
       }
 
       const textStart = index + (isImage ? 2 : 1);
-      const textEnd = html.indexOf(']', textStart);
+      let textEnd = -1;
+      let bracketDepth = 0;
+      for (let j = textStart; j < html.length; j++) {
+        const ch = html[j];
+        if (ch === '\\' && j + 1 < html.length) {
+          j++;
+          continue;
+        }
+        if (ch === '[') {
+          bracketDepth++;
+        } else if (ch === ']') {
+          if (bracketDepth === 0) {
+            if (html[j + 1] === '(') {
+              textEnd = j;
+            }
+            break;
+          }
+          bracketDepth--;
+          if (html[j + 1] === '(') {
+            let urlDepth = 1;
+            j += 2;
+            while (j < html.length && urlDepth > 0) {
+              if (html[j] === '\\' && j + 1 < html.length) {
+                j += 2;
+                continue;
+              }
+              if (html[j] === '(') {
+                urlDepth++;
+              } else if (html[j] === ')') {
+                urlDepth--;
+              }
+              j++;
+            }
+            j--;
+          }
+        }
+      }
 
-      if (textEnd === -1 || html[textEnd + 1] !== '(') {
+      if (textEnd === -1) {
         result += html[index];
         index++;
         continue;
@@ -254,9 +294,9 @@ const MarkdownParser = (function() {
 
       const urlStart = textEnd + 2;
       let cursor = urlStart;
-      let depth = 1;
+      let parenDepth = 1;
 
-      while (cursor < html.length && depth > 0) {
+      while (cursor < html.length && parenDepth > 0) {
         const currentChar = html[cursor];
 
         if (currentChar === '\\' && cursor + 1 < html.length) {
@@ -265,15 +305,15 @@ const MarkdownParser = (function() {
         }
 
         if (currentChar === '(') {
-          depth++;
+          parenDepth++;
         } else if (currentChar === ')') {
-          depth--;
+          parenDepth--;
         }
 
         cursor++;
       }
 
-      if (depth !== 0) {
+      if (parenDepth !== 0) {
         result += html[index];
         index++;
         continue;
@@ -287,10 +327,12 @@ const MarkdownParser = (function() {
         if (isImage) {
           result += `<img src="${escapeAttribute(safeUrl)}" alt="${escapeAttribute(text)}" class="md-image" />`;
         } else {
-          result += `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${formatLabel(text)}</a>`;
+          const innerWithImages = replaceMarkdownLinksAndImages(text, formatLabel, depth + 1);
+          const linkContent = formatLabel(innerWithImages);
+          result += `<a href="${escapeAttribute(safeUrl)}" target="_blank" rel="noopener noreferrer" class="md-link">${linkContent}</a>`;
         }
       } else {
-        result += !isImage ? formatLabel(text) : text;
+        result += !isImage ? formatLabel(replaceMarkdownLinksAndImages(text, formatLabel, depth + 1)) : text;
       }
 
       index = cursor;
