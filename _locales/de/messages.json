@@ -597,7 +597,17 @@
   },
   "pomodoroHeatmapCellTitle": {
     "message": "$1$: $2$ Sitzungen",
-    "description": "Title for pomodoro heatmap cell"
+    "description": "Title for pomodoro heatmap cell",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "2024-06-01"
+      },
+      "2": {
+        "content": "$2",
+        "example": "5"
+      }
+    }
   },
   "pomodoroStatsToggle": {
     "message": "Fokus-Statistiken",
