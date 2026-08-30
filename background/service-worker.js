@@ -55,13 +55,16 @@ async function checkReminders(todosJson) {
   }
   reminderCheckInProgress = true;
   try {
-    await runReminderCheck(todosJson);
-    while (reminderCheckPendingQueue.length > 0) {
-      const nextTodos = reminderCheckPendingQueue.shift();
-      try {
-        await runReminderCheck(nextTodos);
-      } catch (e) {
-        console.warn('Queued reminder check failed:', e);
+    try {
+      await runReminderCheck(todosJson);
+    } finally {
+      while (reminderCheckPendingQueue.length > 0) {
+        const nextTodos = reminderCheckPendingQueue.shift();
+        try {
+          await runReminderCheck(nextTodos);
+        } catch (e) {
+          console.warn('Queued reminder check failed:', e);
+        }
       }
     }
   } finally {
