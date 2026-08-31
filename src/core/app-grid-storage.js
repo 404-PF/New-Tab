@@ -83,17 +83,40 @@ function writeJson(key, value) {
   }
 }
 
+function hasHttpSchemeSafeLocal(url) {
+  if (typeof window.hasHttpScheme === 'function') return window.hasHttpScheme(url);
+  if (typeof window.hasHttpSchemeSafe === 'function') return window.hasHttpSchemeSafe(url);
+  return /^https?:\/\//i.test(String(url || '').trim());
+}
+
+function isCustomSchemeLocal(url) {
+  if (typeof window.isCustomScheme === 'function') return window.isCustomScheme(url);
+  const trimmed = String(url || '').trim();
+  if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return true;
+  if (hasHttpSchemeSafeLocal(trimmed)) return false;
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
+  const colonIdx = trimmed.indexOf(':');
+  const before = trimmed.slice(0, colonIdx);
+  const after = trimmed.slice(colonIdx + 1);
+  const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before)) && /^\d+(\/|$|\?|#)/.test(after);
+  return !looksLikeHostPort;
+}
+
 function needsSchemeMigration(url) {
   if (!url || typeof url !== 'string') return false;
   const trimmed = url.trim();
-  if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return false;
-  const hasScheme = typeof window.hasHttpScheme === 'function'
-    ? window.hasHttpScheme(trimmed)
-    : /^https?:\/\//i.test(trimmed);
-  if (hasScheme) return false;
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
+  if (!trimmed || trimmed === '#') return false;
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return false;
+  if (hasHttpSchemeSafeLocal(trimmed)) return false;
+  if (isCustomSchemeLocal(trimmed)) return false;
+  if (trimmed.startsWith('/')) return false;
   try {
-    new URL('https://' + trimmed);
+    const parsed = new URL('https://' + trimmed);
+    if (!parsed.hostname) return false;
+    if (parsed.hostname.includes(' ') || parsed.hostname.includes('/')) return false;
+    if (!trimmed.includes('.') && !/^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(trimmed) && !/^localhost(:\d+)?$/i.test(trimmed)) {
+      if (!parsed.hostname.includes('.')) return false;
+    }
     return true;
   } catch {
     return false;

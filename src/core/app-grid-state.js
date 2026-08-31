@@ -101,10 +101,17 @@ const AppGridState = {
     return [...apps, ...defaults].some(app => {
       if (!app.url) return false;
       const trimmed = String(app.url).trim();
-      const hasScheme = typeof window.hasHttpScheme === 'function'
-        ? window.hasHttpScheme(trimmed)
-        : /^https?:\/\//i.test(trimmed);
-      const storedUrl = hasScheme ? trimmed : 'https://' + trimmed;
+      if (!trimmed || trimmed.startsWith('/')) return this.getCanonicalUrl(trimmed) === canonicalInput;
+      const hasHttp = typeof window.hasHttpSchemeSafe === 'function'
+        ? window.hasHttpSchemeSafe(trimmed)
+        : typeof window.hasHttpScheme === 'function'
+          ? window.hasHttpScheme(trimmed)
+          : /^https?:\/\//i.test(trimmed);
+      if (hasHttp) return this.getCanonicalUrl(trimmed) === canonicalInput;
+      const isCustom = typeof window.isCustomScheme === 'function'
+        ? window.isCustomScheme(trimmed)
+        : /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) && !((trimmed.split(':')[0].includes('.') || /^localhost$/i.test(trimmed.split(':')[0]) || /^(\d{1,3}\.){3}\d{1,3}$/.test(trimmed.split(':')[0])) && /^\d+(\/|$|\?|#)/.test(trimmed.slice(trimmed.indexOf(':') + 1)));
+      const storedUrl = isCustom ? trimmed : 'https://' + trimmed;
       return this.getCanonicalUrl(storedUrl) === canonicalInput;
     });
   },
