@@ -340,7 +340,7 @@
     "description": "Notification body for completed work session with task name"
   },
   "pomodoroWorkCompleteNoTaskBody": {
-    "message": "Time for a break.",
+    "message": "休憩の時間です。",
     "description": "Notification body when a work session ends without a task"
   },
   "pomodoroBreakComplete": {
