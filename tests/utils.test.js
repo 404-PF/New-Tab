@@ -112,6 +112,22 @@ describe('URL validation', () => {
     const result = validateUrl('exa_mple.com');
     expect(result.status).toBe('malformed');
   });
+
+  it.each([
+    ['https://localhost:5173/preview', 'localhost'],
+    ['http://localhost/preview', 'localhost'],
+    ['http://127.0.0.1:8080/app/', '127.0.0.1']
+  ])('validates localhost/loopback %s with path', (url, expectedHostname) => {
+    const result = validateUrl(url);
+    expect(result.status).toBe('valid');
+    expect(result.url.hostname).toBe(expectedHostname);
+  });
+
+  it('rejects single-label hostname with path as incomplete domain', () => {
+    const result = validateUrl('https://example/foo');
+    expect(result.status).toBe('malformed');
+    expect(result.message).toBe('Invalid URL: incomplete domain name');
+  });
 });
 
 describe('URL boolean helpers', () => {
