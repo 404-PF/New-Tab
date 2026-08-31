@@ -110,7 +110,7 @@ const AppGridState = {
       if (hasHttp) return this.getCanonicalUrl(trimmed) === canonicalInput;
       const isCustom = typeof window.isCustomScheme === 'function'
         ? window.isCustomScheme(trimmed)
-        : /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) && !((trimmed.split(':')[0].includes('.') || /^localhost$/i.test(trimmed.split(':')[0]) || /^(\d{1,3}\.){3}\d{1,3}$/.test(trimmed.split(':')[0])) && /^\d+(\/|$|\?|#)/.test(trimmed.slice(trimmed.indexOf(':') + 1)));
+        : (trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed));
       const storedUrl = isCustom ? trimmed : 'https://' + trimmed;
       return this.getCanonicalUrl(storedUrl) === canonicalInput;
     });

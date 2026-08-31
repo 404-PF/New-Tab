@@ -92,14 +92,10 @@ function hasHttpSchemeSafeLocal(url) {
 function isCustomSchemeLocal(url) {
   if (typeof window.isCustomScheme === 'function') return window.isCustomScheme(url);
   const trimmed = String(url || '').trim();
-  if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return true;
+  if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/')) return true;
   if (hasHttpSchemeSafeLocal(trimmed)) return false;
   if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
-  const colonIdx = trimmed.indexOf(':');
-  const before = trimmed.slice(0, colonIdx);
-  const after = trimmed.slice(colonIdx + 1);
-  const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before)) && /^\d+(\/|$|\?|#)/.test(after);
-  return !looksLikeHostPort;
+  return true;
 }
 
 function needsSchemeMigration(url) {
@@ -114,8 +110,8 @@ function needsSchemeMigration(url) {
     const parsed = new URL('https://' + trimmed);
     if (!parsed.hostname) return false;
     if (parsed.hostname.includes(' ') || parsed.hostname.includes('/')) return false;
-    if (!trimmed.includes('.') && !/^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(trimmed) && !/^localhost(:\d+)?$/i.test(trimmed)) {
-      if (!parsed.hostname.includes('.')) return false;
+    if (!parsed.hostname.includes('.') && !/^(\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname) && !/^localhost$/i.test(parsed.hostname)) {
+      if (!/^[a-zA-Z0-9-]+:\d+/.test(trimmed)) return false;
     }
     return true;
   } catch {

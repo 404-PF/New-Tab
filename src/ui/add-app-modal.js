@@ -83,7 +83,7 @@ function normalizeAppUrl(url) {
   if (hasHttp) return trimmed;
   const isCustom = typeof window.isCustomScheme === 'function'
     ? window.isCustomScheme(trimmed)
-    : /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) && !((trimmed.split(':')[0].includes('.') || /^localhost$/i.test(trimmed.split(':')[0]) || /^(\d{1,3}\.){3}\d{1,3}$/.test(trimmed.split(':')[0])) && /^\d+(\/|$|\?|#)/.test(trimmed.slice(trimmed.indexOf(':') + 1)));
+    : (trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed));
   if (isCustom) return trimmed;
   return 'https://' + trimmed;
 }

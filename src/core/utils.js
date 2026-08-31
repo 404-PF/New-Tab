@@ -561,7 +561,7 @@
     const colonIdx = trimmed.indexOf(':');
     const before = trimmed.slice(0, colonIdx);
     const after = trimmed.slice(colonIdx + 1);
-    const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before)) && /^\d+(\/|$|\?|#)/.test(after);
+    const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before) || /^[a-zA-Z0-9-]+$/.test(before)) && /^\d+(\/|$|\?|#)/.test(after);
     return !looksLikeHostPort;
   }
 
