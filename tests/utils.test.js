@@ -113,20 +113,14 @@ describe('URL validation', () => {
     expect(result.status).toBe('malformed');
   });
 
-  it('validates localhost with protocol, port and path', () => {
-    const result = validateUrl('https://localhost:5173/preview');
+  it.each([
+    ['https://localhost:5173/preview', 'localhost'],
+    ['http://localhost/preview', 'localhost'],
+    ['http://127.0.0.1:8080/app/', '127.0.0.1']
+  ])('validates localhost/loopback %s with path', (url, expectedHostname) => {
+    const result = validateUrl(url);
     expect(result.status).toBe('valid');
-    expect(result.url.hostname).toBe('localhost');
-  });
-
-  it('validates localhost with path without port', () => {
-    const result = validateUrl('http://localhost/preview');
-    expect(result.status).toBe('valid');
-  });
-
-  it('validates loopback IPv4 with path', () => {
-    const result = validateUrl('http://127.0.0.1:8080/app/');
-    expect(result.status).toBe('valid');
+    expect(result.url.hostname).toBe(expectedHostname);
   });
 
   it('rejects single-label hostname with path as incomplete domain', () => {
