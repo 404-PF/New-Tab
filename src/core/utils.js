@@ -561,7 +561,9 @@
     const colonIdx = trimmed.indexOf(':');
     const before = trimmed.slice(0, colonIdx);
     const after = trimmed.slice(colonIdx + 1);
-    const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before) || /^[a-zA-Z0-9-]+$/.test(before)) && /^\d+(\/|$|\?|#)/.test(after);
+    const lowerBefore = before.toLowerCase();
+    const isKnownNumericScheme = ['tel', 'sms', 'mailto', 'sip', 'callto', 'facetime', 'geo', 'magnet', 'urn', 'bitcoin'].includes(lowerBefore);
+    const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before) || (/^[a-zA-Z0-9-]+$/.test(before) && !isKnownNumericScheme)) && /^\d+(\/|$|\?|#)/.test(after);
     return !looksLikeHostPort;
   }
 

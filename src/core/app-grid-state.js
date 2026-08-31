@@ -94,7 +94,36 @@ const AppGridState = {
   hasAppWithUrl(url) {
     if (!url || typeof url !== 'string') return false;
 
-    const canonicalInput = this.getCanonicalUrl(url);
+    const trimmedInput = String(url).trim();
+    let normalizedInput;
+    if (!trimmedInput || trimmedInput.startsWith('/')) {
+      normalizedInput = trimmedInput;
+    } else {
+      const hasHttpInput = typeof window.hasHttpSchemeSafe === 'function'
+        ? window.hasHttpSchemeSafe(trimmedInput)
+        : typeof window.hasHttpScheme === 'function'
+          ? window.hasHttpScheme(trimmedInput)
+          : /^https?:\/\//i.test(trimmedInput);
+      if (hasHttpInput) {
+        normalizedInput = trimmedInput;
+      } else {
+        const isCustomInput = typeof window.isCustomScheme === 'function'
+          ? window.isCustomScheme(trimmedInput)
+          : (() => {
+              if (trimmedInput === '#' || trimmedInput.startsWith('data:') || trimmedInput.startsWith('blob:')) return true;
+              if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmedInput)) return false;
+              const ci = trimmedInput.indexOf(':');
+              const b = trimmedInput.slice(0, ci);
+              const a = trimmedInput.slice(ci + 1);
+              const lb = b.toLowerCase();
+              const isKnown = ['tel', 'sms', 'mailto', 'sip', 'callto', 'facetime', 'geo', 'magnet', 'urn', 'bitcoin'].includes(lb);
+              const looks = (b.includes('.') || /^localhost$/i.test(b) || /^(\d{1,3}\.){3}\d{1,3}$/.test(b) || (/^[a-zA-Z0-9-]+$/.test(b) && !isKnown)) && /^\d+(\/|$|\?|#)/.test(a);
+              return !looks;
+            })();
+        normalizedInput = isCustomInput ? trimmedInput : 'https://' + trimmedInput;
+      }
+    }
+    const canonicalInput = this.getCanonicalUrl(normalizedInput);
     const apps = this.getCustomApps();
     const defaults = window.defaultApps || [];
 
@@ -110,7 +139,17 @@ const AppGridState = {
       if (hasHttp) return this.getCanonicalUrl(trimmed) === canonicalInput;
       const isCustom = typeof window.isCustomScheme === 'function'
         ? window.isCustomScheme(trimmed)
-        : (trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed));
+        : (() => {
+            if (trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/')) return true;
+            if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
+            const ci = trimmed.indexOf(':');
+            const b = trimmed.slice(0, ci);
+            const a = trimmed.slice(ci + 1);
+            const lb = b.toLowerCase();
+            const isKnown = ['tel', 'sms', 'mailto', 'sip', 'callto', 'facetime', 'geo', 'magnet', 'urn', 'bitcoin'].includes(lb);
+            const looks = (b.includes('.') || /^localhost$/i.test(b) || /^(\d{1,3}\.){3}\d{1,3}$/.test(b) || (/^[a-zA-Z0-9-]+$/.test(b) && !isKnown)) && /^\d+(\/|$|\?|#)/.test(a);
+            return !looks;
+          })();
       const storedUrl = isCustom ? trimmed : 'https://' + trimmed;
       return this.getCanonicalUrl(storedUrl) === canonicalInput;
     });

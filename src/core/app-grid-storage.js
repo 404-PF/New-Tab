@@ -95,7 +95,13 @@ function isCustomSchemeLocal(url) {
   if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/')) return true;
   if (hasHttpSchemeSafeLocal(trimmed)) return false;
   if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
-  return true;
+  const colonIdx = trimmed.indexOf(':');
+  const before = trimmed.slice(0, colonIdx);
+  const after = trimmed.slice(colonIdx + 1);
+  const lowerBefore = before.toLowerCase();
+  const isKnownNumericScheme = ['tel', 'sms', 'mailto', 'sip', 'callto', 'facetime', 'geo', 'magnet', 'urn', 'bitcoin'].includes(lowerBefore);
+  const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before) || (/^[a-zA-Z0-9-]+$/.test(before) && !isKnownNumericScheme)) && /^\d+(\/|$|\?|#)/.test(after);
+  return !looksLikeHostPort;
 }
 
 function needsSchemeMigration(url) {
