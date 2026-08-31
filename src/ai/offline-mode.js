@@ -260,7 +260,10 @@ const OfflineMode = (function() {
         case '+': result = a + b; break;
         case '-': result = a - b; break;
         case '*': result = a * b; break;
-        case '/': result = b !== 0 ? a / b : 'undefined (division by zero)'; break;
+        case '/':
+          if (b === 0) return 'The result is: undefined (division by zero)';
+          result = a / b;
+          break;
       }
     }
     

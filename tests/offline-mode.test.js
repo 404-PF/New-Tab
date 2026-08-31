@@ -38,4 +38,11 @@ describe('OfflineMode', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('reports division by zero instead of falling back', () => {
+    expect(OfflineMode.parseMath('5 / 0')).toContain('division by zero');
+    expect(OfflineMode.getResponse('5 / 0').content).toContain('division by zero');
+    expect(OfflineMode.getResponse('5/0').content).toContain('division by zero');
+    expect(OfflineMode.getResponse('0 / 0').content).toContain('division by zero');
+  });
 });
