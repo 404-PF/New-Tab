@@ -339,6 +339,10 @@
     "message": "Task: {task}",
     "description": "Notification body for completed work session with task name"
   },
+  "pomodoroWorkCompleteNoTaskBody": {
+    "message": "휴식 시간입니다.",
+    "description": "Notification body when a work session ends without a task"
+  },
   "pomodoroBreakComplete": {
     "message": "Break over!",
     "description": "Notification title when a break ends"
