@@ -75,19 +75,10 @@ function getAddAppElements() {
 function normalizeAppUrl(url) {
   const trimmed = String(url || '').trim();
   if (!trimmed || trimmed.startsWith('/')) return trimmed ? trimmed : 'https://' + trimmed;
-  const hasHttp = typeof window.hasHttpSchemeSafe === 'function'
-    ? window.hasHttpSchemeSafe(trimmed)
-    : typeof window.hasHttpScheme === 'function'
-      ? window.hasHttpScheme(trimmed)
-      : /^https?:\/\//i.test(trimmed);
-  if (hasHttp) return trimmed;
-  const isCustom = typeof window.isCustomScheme === 'function'
-    ? window.isCustomScheme(trimmed)
-    : typeof window.__fallbackIsCustomScheme === 'function'
-      ? window.__fallbackIsCustomScheme(trimmed)
-      : (trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed));
-  if (isCustom) return trimmed;
-  return 'https://' + trimmed;
+  if (typeof window.__normalizeAppUrlForCheck === 'function') {
+    return window.__normalizeAppUrlForCheck(trimmed);
+  }
+  return trimmed;
 }
 
 function normalizeAppName(name) {
