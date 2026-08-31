@@ -259,7 +259,7 @@ function applyIconSize() {
   syncIconSizeButtons('icon', size, ICON_SIZE_OPTIONS);
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+function initIconSize() {
   const iconSizeGroup = document.querySelector('[data-size-group="icon"]');
   if (iconSizeGroup) {
     iconSizeGroup.addEventListener('click', function (event) {
@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   applyIconSize();
-});
+}
 
 // Map curvature values to percentage border-radius
 const curvatureToPercentage = {
@@ -317,6 +317,8 @@ curvatureRadios.forEach((radio) => {
   });
 });
 applyCurvature();
+
+window.onDomReady(initIconSize);
 
 // Attach settings app click handler
 function attachSettingsAppHandler() {
