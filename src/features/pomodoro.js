@@ -440,7 +440,18 @@
   function skipPhase() {
     if (!state.active) return;
     if (!_isLeader && !claimLeadership(true)) return;
+    const wasPaused = state.paused;
     completePhase({ record: false });
+    if (wasPaused) {
+      state.paused = false;
+      state.pauseReason = null;
+      state.deadline = Date.now() + state.timeRemaining * 1000;
+      state.ownerId = TAB_ID;
+      state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+      saveTimerState();
+      updateWidget();
+    }
+    startInterval();
   }
 
   function startInterval() {
@@ -645,6 +656,7 @@
     state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
     saveTimerState();
     updateWidget();
+    startInterval();
   }
 
   function initPomodoro() {

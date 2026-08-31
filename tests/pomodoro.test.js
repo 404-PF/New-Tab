@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
@@ -45,5 +45,63 @@ describe('Pomodoro duration persistence', () => {
 
     const persisted = JSON.parse(localStorage.getItem('pomodoro_state'));
     expect(persisted.timeRemaining).toBe(10 * 60);
+  });
+});
+
+describe('Pomodoro pause -> reset/skip regression (issue #626)', () => {
+  it('reset on a paused timer resumes countdown', () => {
+    vi.useFakeTimers();
+    const prevVI = window.VisibilityInterval;
+    window.VisibilityInterval = null;
+    try {
+      window.savePomodoroDurations({ enabled: true, workDuration: 25, shortBreakDuration: 5, longBreakDuration: 15 });
+      window.startPomodoro('todo-1');
+      window.togglePomodoroPause();
+      const pausedState = JSON.parse(localStorage.getItem('pomodoro_state'));
+      expect(pausedState.paused).toBe(true);
+
+      document.querySelector('.pomodoro-reset-btn').click();
+
+      const afterReset = JSON.parse(localStorage.getItem('pomodoro_state'));
+      expect(afterReset.paused).toBe(false);
+      expect(afterReset.timeRemaining).toBe(25 * 60);
+
+      vi.advanceTimersByTime(2100);
+
+      const afterTick = JSON.parse(localStorage.getItem('pomodoro_state'));
+      expect(afterTick.timeRemaining).toBeLessThan(25 * 60);
+    } finally {
+      window.VisibilityInterval = prevVI;
+      vi.useRealTimers();
+    }
+  });
+
+  it('skip on a paused timer resumes countdown on next phase', () => {
+    vi.useFakeTimers();
+    const prevVI = window.VisibilityInterval;
+    window.VisibilityInterval = null;
+    try {
+      window.savePomodoroDurations({ enabled: true, workDuration: 25, shortBreakDuration: 5, longBreakDuration: 15 });
+      window.startPomodoro('todo-1');
+      window.togglePomodoroPause();
+      const pausedState = JSON.parse(localStorage.getItem('pomodoro_state'));
+      expect(pausedState.paused).toBe(true);
+      expect(pausedState.phase).toBe('work');
+
+      document.querySelector('.pomodoro-skip-btn').click();
+
+      const afterSkip = JSON.parse(localStorage.getItem('pomodoro_state'));
+      expect(afterSkip.paused).toBe(false);
+      expect(afterSkip.phase).toBe('shortBreak');
+      expect(afterSkip.timeRemaining).toBe(5 * 60);
+
+      vi.advanceTimersByTime(2100);
+
+      const afterTick = JSON.parse(localStorage.getItem('pomodoro_state'));
+      expect(afterTick.timeRemaining).toBeLessThan(5 * 60);
+    } finally {
+      window.VisibilityInterval = prevVI;
+      vi.useRealTimers();
+    }
   });
 });
