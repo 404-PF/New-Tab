@@ -542,6 +542,10 @@
     }
   }, true);
 
+  function hasHttpScheme(url) {
+    return /^https?:\/\//i.test(String(url || '').trim());
+  }
+
   // Make utilities available globally
   window.visibilityManager = visibilityManager;
   window.VisibilityInterval = VisibilityInterval;
@@ -550,6 +554,7 @@
   window.isMalformedUrl = isMalformedUrl;
   window.isSearchQuery = isSearchQuery;
   window.normalizeUrl = normalizeUrl;
+  window.hasHttpScheme = hasHttpScheme;
   window.iconCache = iconCache;
   window.validateIconUrl = validateIconUrl;
   window.escapeHtml = escapeHtml;

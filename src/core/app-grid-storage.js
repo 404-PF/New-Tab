@@ -83,6 +83,34 @@ function writeJson(key, value) {
   }
 }
 
+function needsSchemeMigration(url) {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return false;
+  const hasScheme = typeof window.hasHttpScheme === 'function'
+    ? window.hasHttpScheme(trimmed)
+    : /^https?:\/\//i.test(trimmed);
+  if (hasScheme) return false;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
+  try {
+    new URL('https://' + trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function migrateCustomAppUrls(apps) {
+  let mutated = false;
+  for (const app of apps) {
+    if (app && typeof app.url === 'string' && needsSchemeMigration(app.url)) {
+      app.url = 'https://' + app.url.trim();
+      mutated = true;
+    }
+  }
+  return mutated;
+}
+
 const AppGridStorage = {
   loadOrder() {
     return readJsonArray('appOrder', null, 'appOrder', 'null');
@@ -93,7 +121,11 @@ const AppGridStorage = {
   },
 
   loadCustomApps() {
-    return readJsonArray('customApps', [], 'customApps', '[]');
+    const apps = readJsonArray('customApps', [], 'customApps', '[]');
+    if (migrateCustomAppUrls(apps)) {
+      writeJson('customApps', apps);
+    }
+    return apps;
   },
 
   saveCustomApps(apps) {
