@@ -112,6 +112,28 @@ describe('URL validation', () => {
     const result = validateUrl('exa_mple.com');
     expect(result.status).toBe('malformed');
   });
+
+  it('validates localhost with protocol, port and path', () => {
+    const result = validateUrl('https://localhost:5173/preview');
+    expect(result.status).toBe('valid');
+    expect(result.url.hostname).toBe('localhost');
+  });
+
+  it('validates localhost with path without port', () => {
+    const result = validateUrl('http://localhost/preview');
+    expect(result.status).toBe('valid');
+  });
+
+  it('validates loopback IPv4 with path', () => {
+    const result = validateUrl('http://127.0.0.1:8080/app/');
+    expect(result.status).toBe('valid');
+  });
+
+  it('rejects single-label hostname with path as incomplete domain', () => {
+    const result = validateUrl('https://example/foo');
+    expect(result.status).toBe('malformed');
+    expect(result.message).toBe('Invalid URL: incomplete domain name');
+  });
 });
 
 describe('URL boolean helpers', () => {
