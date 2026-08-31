@@ -282,7 +282,7 @@
   }
 
   function getWorkNotificationBody(i18n, todoText) {
-    if (!todoText) return 'Time for a break.';
+    if (!todoText) return i18n ? i18n.t('pomodoroWorkCompleteNoTaskBody') : 'Time for a break.';
     return i18n ? i18n.t('pomodoroWorkCompleteBody', { task: todoText }) : 'Task: ' + todoText;
   }
 
