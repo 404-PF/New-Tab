@@ -40,8 +40,9 @@
       return createUrlValidationResult('malformed', null, 'Invalid URL: missing hostname', originalInput);
     }
 
+    const isLocalhostHostname = hostname.toLowerCase() === 'localhost';
     const validHostnameChars = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
-    if (!validHostnameChars.test(hostname) && !detection.isIP && !detection.isLocalhost) {
+    if (!validHostnameChars.test(hostname) && !detection.isIP && !isLocalhostHostname) {
       return createUrlValidationResult('malformed', null, 'Invalid URL: hostname contains invalid characters', originalInput);
     }
 
@@ -55,7 +56,7 @@
       return null;
     }
 
-    if (!detection.isIP && !isIpHostname && !detection.isLocalhost && (url.port || url.pathname.length > 1)) {
+    if (!detection.isIP && !isIpHostname && !isLocalhostHostname && (url.port || url.pathname.length > 1)) {
       return createUrlValidationResult('malformed', null, 'Invalid URL: incomplete domain name', originalInput);
     }
 
