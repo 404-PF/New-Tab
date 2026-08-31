@@ -187,25 +187,6 @@ html.dark body.light-theme {
   color-scheme: dark;
 }
 
-/* Backdrop-filter aware overrides — adapt glass opacity when blur is supported */
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  :root {
-    --glass-surface: hsl(var(--card) / 0.56);
-    --glass-surface-elevated: hsl(var(--card) / 0.68);
-    --glass-surface-subtle: hsl(var(--card) / 0.34);
-    --glass-control: hsl(var(--card) / 0.4);
-    --glass-control-hover: hsl(var(--card) / 0.62);
-  }
-
-  .dark {
-    --glass-surface: hsl(var(--card) / 0.58);
-    --glass-surface-elevated: hsl(var(--card) / 0.68);
-    --glass-surface-subtle: hsl(var(--secondary) / 0.5);
-    --glass-control: hsl(var(--secondary) / 0.5);
-    --glass-control-hover: hsl(var(--secondary) / 0.8);
-  }
-}
-
 /* Utility: glass surfaces — opt-in variant, not default for every surface */
 .glass {
   background: var(--glass-surface);

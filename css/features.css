@@ -1,17 +1,6 @@
 /* Feature-heavy styles: themes, dialogs, notifications, pickers, and shared UI */
 
-/* Light Theme */
-body.light-theme {
-  /* override engine hover to use same blue color scheme but lighter for light theme */
-  --engine-hover-bg: rgba(33, 150, 243, 0.06);
-  --engine-hover-border: rgba(33, 150, 243, 0.15);
-  --engine-hover-shadow:
-    0 8px 24px rgba(33, 150, 243, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05);
-  --body-bg: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
-  --settings-modal-bg: rgba(255, 255, 255, 0.98);
-  --settings-menu-bg: rgba(0, 0, 0, 0.03);
-  --settings-text-color: rgba(55, 65, 81, 0.9);
-}
+/* Legacy light-theme overrides for --body-bg / --settings-* / --engine-* removed — now provided by css/theme.css (.dark / :root) */
 
 body.light-theme .app-name {
   color: #fff;

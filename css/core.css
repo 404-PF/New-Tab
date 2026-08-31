@@ -41,11 +41,7 @@
   --z-drag-overlay: 3000;
   --z-context-menu: 10003;
   --icon-radius: 35%;
-  /* Theme specific colors */
-  --body-bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  --settings-modal-bg: rgba(0, 0, 0, 0.85);
-  --settings-menu-bg: rgba(15, 23, 42, 0.6);
-  --settings-text-color: rgba(203, 213, 225, 0.9);
+  /* Theme colors now provided by css/theme.css — see --body-bg, --settings-* there */
 }
 
 /* Background container for layered images */

@@ -218,7 +218,7 @@ textarea:not(.note-textarea):focus-visible,
 }
 
 :is(.btn-primary, .btn-danger, .ai-confirm-primary, .ai-confirm-delete):focus-visible {
-  outline-color: hsl(var(--primary-foreground) / 0.9);
+  outline-color: hsl(var(--ring) / 0.72);
 }
 
 :is(.btn-danger, .ai-confirm-delete, .quick-action-btn.danger, .delete-item):focus-visible {
@@ -244,7 +244,7 @@ textarea:not(.note-textarea):focus-visible,
   border-radius: 22px;
   background:
     radial-gradient(circle at 100% 0, hsl(var(--primary) / 0.16), transparent 34%),
-    radial-gradient(circle at 0 100%, hsl(262 83% 58% / 0.12), transparent 38%),
+    radial-gradient(circle at 0 100%, hsl(var(--ring) / 0.12), transparent 38%),
     var(--glass-surface);
   background-clip: padding-box;
 }
@@ -286,9 +286,9 @@ textarea:not(.note-textarea):focus-visible,
 }
 
 :is(.note-tag-filter-btn, .note-tag-suggestion):hover {
-  background: hsl(239 94% 85% / 0.72);
-  border-color: hsl(239 84% 67% / 0.42);
-  color: hsl(243 47% 20%);
+  background: hsl(var(--primary) / 0.12);
+  border-color: hsl(var(--primary) / 0.32);
+  color: hsl(var(--foreground));
 }
 
 .dark :is(.note-tag-filter-btn, .note-tag-suggestion):hover {
@@ -298,14 +298,26 @@ textarea:not(.note-textarea):focus-visible,
 }
 
 :is(.note-tag-filter-btn, .note-tag-suggestion).active {
-  background: hsl(239 84% 67% / 0.3);
-  border-color: hsl(239 84% 67% / 0.56);
+  background: hsl(var(--primary) / 0.18);
+  border-color: hsl(var(--primary) / 0.42);
+  color: hsl(var(--foreground));
+}
+
+.dark :is(.note-tag-filter-btn, .note-tag-suggestion).active {
+  background: hsl(var(--primary) / 0.28);
+  border-color: hsl(var(--primary) / 0.5);
   color: hsl(var(--foreground));
 }
 
 .note-tag-btn.has-tag {
-  background: hsl(239 84% 67% / 0.16);
-  border-color: hsl(239 84% 67% / 0.48);
+  background: hsl(var(--primary) / 0.12);
+  border-color: hsl(var(--primary) / 0.32);
+  color: hsl(var(--foreground));
+}
+
+.dark .note-tag-btn.has-tag {
+  background: hsl(var(--primary) / 0.22);
+  border-color: hsl(var(--primary) / 0.45);
   color: hsl(var(--foreground));
 }
 

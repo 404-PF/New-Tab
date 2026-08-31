@@ -733,8 +733,9 @@ const AIRenderer = (function() {
     modal.classList.toggle('dark', isDark);
     // Legacy compat
     modal.classList.toggle('light-theme', !isDark);
-    // Also sync root for inheritance if modal is detached
     document.documentElement.classList.toggle('dark', isDark);
+    document.body.classList.toggle('dark', isDark);
+    document.body.classList.toggle('light-theme', !isDark);
   }
 
   function updateConnectionStatus(isOfflineMode) {
