@@ -49,7 +49,6 @@ const srcGlobals = {
   hasHttpScheme: 'readonly',
   hasHttpSchemeSafe: 'readonly',
   isCustomScheme: 'readonly',
-  __fallbackIsCustomScheme: 'readonly',
   iconCache: 'readonly',
   onDomReady: 'readonly',
   initModernFontPickers: 'readonly',

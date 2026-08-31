@@ -95,6 +95,17 @@ function isCustomSchemeLocal(url) {
   if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/')) return true;
   if (hasHttpSchemeSafeLocal(trimmed)) return false;
   if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
+  const sep = trimmed.indexOf(':');
+  const hostPart = trimmed.slice(0, sep);
+  const rest = trimmed.slice(sep + 1);
+  const lowerHost = hostPart.toLowerCase();
+  if (['tel', 'sms', 'mailto', 'sip', 'callto', 'facetime', 'geo', 'magnet', 'urn', 'bitcoin'].includes(lowerHost)) return true;
+  if (/^\d+(\/|$|\?|#)/.test(rest)) {
+    if (hostPart.includes('.')) return false;
+    if (/^localhost$/i.test(hostPart)) return false;
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostPart)) return false;
+    if (/^[a-zA-Z0-9-]+$/.test(hostPart)) return false;
+  }
   return true;
 }
 window.__fallbackIsCustomScheme = isCustomSchemeLocal;
