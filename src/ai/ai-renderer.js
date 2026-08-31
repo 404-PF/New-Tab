@@ -718,19 +718,23 @@ const AIRenderer = (function() {
   }
 
   function loadTheme() {
-    return localStorage.getItem('theme') || 'dark';
+    let t;
+    try { t = localStorage.getItem('theme'); } catch (_e) { return 'dark'; }
+    if (t === 'light-theme' || t === 'light_theme') return 'light';
+    if (t !== 'light' && t !== 'dark') return 'dark';
+    return t;
   }
 
   function applyThemeToAI() {
     const theme = loadTheme();
+    const isDark = theme === 'dark';
     const modal = document.getElementById('ai-chat-modal');
     if (!modal) return;
-
-    if (theme === 'light') {
-      modal.classList.add('light-theme');
-    } else {
-      modal.classList.remove('light-theme');
-    }
+    modal.classList.toggle('dark', isDark);
+    // Legacy compat
+    modal.classList.toggle('light-theme', !isDark);
+    // Also sync root for inheritance if modal is detached
+    document.documentElement.classList.toggle('dark', isDark);
   }
 
   function updateConnectionStatus(isOfflineMode) {

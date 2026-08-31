@@ -1084,13 +1084,28 @@ if (document.readyState === 'loading') {
   initTimezoneSettings();
 }
 
-// Theme
+// Theme — shadcn: :root is light, .dark is dark override
 function loadTheme() {
-  return localStorage.getItem('theme') || 'dark';
+  let theme;
+  try {
+    theme = localStorage.getItem('theme');
+  } catch (_e) {
+    return 'dark';
+  }
+  if (theme === 'light-theme' || theme === 'light_theme') {
+    theme = 'light';
+    try { localStorage.setItem('theme', theme); } catch (_e2) { /* localStorage unavailable */ }
+  }
+  if (theme !== 'light' && theme !== 'dark') return 'dark';
+  return theme;
 }
 function applyTheme() {
   const theme = loadTheme();
-  document.body.classList.toggle('light-theme', theme === 'light');
+  const isDark = theme === 'dark';
+  document.documentElement.classList.toggle('dark', isDark);
+  document.body.classList.toggle('dark', isDark);
+  // Legacy compat: keep body.light-theme for any remaining selectors/tests
+  document.body.classList.toggle('light-theme', !isDark);
   // Update radio buttons
   const darkRadio = document.querySelector('input[name="theme"][value="dark"]');
   const lightRadio = document.querySelector('input[name="theme"][value="light"]');

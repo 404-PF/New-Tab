@@ -562,8 +562,11 @@ class OnboardingTour {
           if (window.applyTheme) {
             window.applyTheme();
           } else {
-            // Fallback: directly apply theme
-            document.body.classList.toggle('light-theme', selectedTheme === 'light');
+            // Fallback: shadcn .dark on html/body, keep legacy light-theme for compat
+            const isDark = selectedTheme === 'dark';
+            document.documentElement.classList.toggle('dark', isDark);
+            document.body.classList.toggle('dark', isDark);
+            document.body.classList.toggle('light-theme', !isDark);
           }
           // Notify other components of theme change
           window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));

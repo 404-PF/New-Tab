@@ -1,4 +1,5 @@
-/* Modular CSS entrypoint */
+/* Modular CSS entrypoint — theme.css must load first (tokens before components) */
+@import url("css/theme.css");
 @import url("css/shell.css");
 @import url("css/core.css");
 @import url("css/features.css");
