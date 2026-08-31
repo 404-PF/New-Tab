@@ -83,17 +83,9 @@ function normalizeAppUrl(url) {
   if (hasHttp) return trimmed;
   const isCustom = typeof window.isCustomScheme === 'function'
     ? window.isCustomScheme(trimmed)
-    : (() => {
-        if (trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/')) return true;
-        if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
-        const ci = trimmed.indexOf(':');
-        const b = trimmed.slice(0, ci);
-        const a = trimmed.slice(ci + 1);
-        const lb = b.toLowerCase();
-        const isKnown = ['tel', 'sms', 'mailto', 'sip', 'callto', 'facetime', 'geo', 'magnet', 'urn', 'bitcoin'].includes(lb);
-        const looks = (b.includes('.') || /^localhost$/i.test(b) || /^(\d{1,3}\.){3}\d{1,3}$/.test(b) || (/^[a-zA-Z0-9-]+$/.test(b) && !isKnown)) && /^\d+(\/|$|\?|#)/.test(a);
-        return !looks;
-      })();
+    : typeof window.__fallbackIsCustomScheme === 'function'
+      ? window.__fallbackIsCustomScheme(trimmed)
+      : (trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed));
   if (isCustom) return trimmed;
   return 'https://' + trimmed;
 }

@@ -103,6 +103,7 @@ function isCustomSchemeLocal(url) {
   const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before) || (/^[a-zA-Z0-9-]+$/.test(before) && !isKnownNumericScheme)) && /^\d+(\/|$|\?|#)/.test(after);
   return !looksLikeHostPort;
 }
+window.__fallbackIsCustomScheme = isCustomSchemeLocal;
 
 function needsSchemeMigration(url) {
   if (!url || typeof url !== 'string') return false;
