@@ -12,6 +12,7 @@
   const notePreviewModes = {};
 
   let _previewMouseDown = false;
+  let _previewMouseDownIsPreview = false;
   const _resizeSet = new Set();
   let _resizeRaf = null;
 
@@ -463,6 +464,11 @@
 
   function handleNotePreviewToggle(id) {
     _previewMouseDown = false;
+    _previewMouseDownIsPreview = false;
+    if (!notes.find(n => n.id === id)) {
+      delete notePreviewModes[id];
+      return;
+    }
     const isCurrentlyPreview = notePreviewModes[id] === true;
     if (!isCurrentlyPreview && debounceTimers[id]) {
       clearTimeout(debounceTimers[id]);
@@ -472,6 +478,9 @@
         const text = ta.value || '';
         if (text) {
           updateNoteText(id, text);
+        } else {
+          deleteNote(id);
+          return;
         }
       }
     }
@@ -815,16 +824,25 @@
   function handleNotesBlur(e) {
     const ta = e.target.closest('.note-textarea');
     if (!ta) return;
-    if (debounceTimers[ta.dataset.id]) {
-      clearTimeout(debounceTimers[ta.dataset.id]);
-      delete debounceTimers[ta.dataset.id];
+    const id = ta.dataset.id;
+    const hadPending = !!debounceTimers[id];
+    if (debounceTimers[id]) {
+      clearTimeout(debounceTimers[id]);
+      delete debounceTimers[id];
     }
-    if (notePreviewModes[ta.dataset.id] === true) return;
+    if (notePreviewModes[id] === true) return;
     if (_previewMouseDown) {
+      const wasPreview = _previewMouseDownIsPreview;
       _previewMouseDown = false;
+      _previewMouseDownIsPreview = false;
       const text = ta.value || '';
       if (text) {
-        updateNoteText(ta.dataset.id, text);
+        updateNoteText(id, text);
+      } else if (wasPreview) {
+        const note = notes.find(n => n.id === id);
+        if (hadPending || (note && note.text)) {
+          deleteNote(id);
+        }
       }
       return;
     }
@@ -861,7 +879,10 @@
   }
 
   function handlePreviewMouseDown(e) {
-    _previewMouseDown = !!e.target.closest('.note-preview-btn, .note-tag-btn');
+    const isPreview = !!e.target.closest('.note-preview-btn');
+    const isTag = !!e.target.closest('.note-tag-btn');
+    _previewMouseDown = isPreview || isTag;
+    _previewMouseDownIsPreview = isPreview;
   }
 
   function handleNotesSearchInput(e) {
