@@ -73,7 +73,12 @@ function getAddAppElements() {
 }
 
 function normalizeAppUrl(url) {
-  return url.startsWith('http') ? url : 'https://' + url;
+  const trimmed = String(url || '').trim();
+  if (!trimmed || trimmed.startsWith('/')) return trimmed ? trimmed : 'https://' + trimmed;
+  if (typeof window.__normalizeAppUrlForCheck === 'function') {
+    return window.__normalizeAppUrlForCheck(trimmed);
+  }
+  return trimmed;
 }
 
 function normalizeAppName(name) {

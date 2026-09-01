@@ -90,17 +90,27 @@ const AppGridState = {
     }
   },
 
+  _normalizeForUrlCheck(trimmed) {
+    if (typeof window.__normalizeAppUrlForCheck === 'function') {
+      return window.__normalizeAppUrlForCheck(trimmed);
+    }
+    return trimmed;
+  },
+
   // Returns true if an existing app (custom or default) has the same canonical URL.
   hasAppWithUrl(url) {
     if (!url || typeof url !== 'string') return false;
 
-    const canonicalInput = this.getCanonicalUrl(url);
+    const trimmedInput = String(url).trim();
+    const normalizedInput = this._normalizeForUrlCheck(trimmedInput);
+    const canonicalInput = this.getCanonicalUrl(normalizedInput);
     const apps = this.getCustomApps();
     const defaults = window.defaultApps || [];
 
     return [...apps, ...defaults].some(app => {
       if (!app.url) return false;
-      const storedUrl = app.url.startsWith('http') ? app.url : 'https://' + app.url;
+      const trimmed = String(app.url).trim();
+      const storedUrl = this._normalizeForUrlCheck(trimmed);
       return this.getCanonicalUrl(storedUrl) === canonicalInput;
     });
   },

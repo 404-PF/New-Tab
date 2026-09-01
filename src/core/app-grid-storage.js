@@ -83,6 +83,71 @@ function writeJson(key, value) {
   }
 }
 
+function hasHttpSchemeSafeLocal(url) {
+  if (typeof window.hasHttpScheme === 'function') return window.hasHttpScheme(url);
+  if (typeof window.hasHttpSchemeSafe === 'function') return window.hasHttpSchemeSafe(url);
+  return /^https?:\/\//i.test(String(url || '').trim());
+}
+
+function isCustomSchemeLocal(url) {
+  if (typeof window.isCustomScheme === 'function') return window.isCustomScheme(url);
+  const trimmed = String(url || '').trim();
+  if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/')) return true;
+  if (hasHttpSchemeSafeLocal(trimmed)) return false;
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
+  const sep = trimmed.indexOf(':');
+  const hostPart = trimmed.slice(0, sep);
+  const rest = trimmed.slice(sep + 1);
+  const lowerHost = hostPart.toLowerCase();
+  if (['tel', 'sms', 'mailto', 'sip', 'callto', 'facetime', 'geo', 'magnet', 'urn', 'bitcoin'].includes(lowerHost)) return true;
+  if (/^\d+(\/|$|\?|#)/.test(rest)) {
+    if (hostPart.includes('.')) return false;
+    if (/^localhost$/i.test(hostPart)) return false;
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostPart)) return false;
+    if (/^[a-zA-Z0-9-]+$/.test(hostPart)) return false;
+  }
+  return true;
+}
+window.__fallbackIsCustomScheme = isCustomSchemeLocal;
+window.__normalizeAppUrlForCheck = function (trimmed) {
+  if (!trimmed || trimmed.startsWith('/')) return trimmed;
+  if (hasHttpSchemeSafeLocal(trimmed)) return trimmed;
+  if (isCustomSchemeLocal(trimmed)) return trimmed;
+  return 'https://' + trimmed;
+};
+
+function needsSchemeMigration(url) {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === '#') return false;
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return false;
+  if (hasHttpSchemeSafeLocal(trimmed)) return false;
+  if (isCustomSchemeLocal(trimmed)) return false;
+  if (trimmed.startsWith('/')) return false;
+  try {
+    const parsed = new URL('https://' + trimmed);
+    if (!parsed.hostname) return false;
+    if (parsed.hostname.includes(' ') || parsed.hostname.includes('/')) return false;
+    if (!parsed.hostname.includes('.') && !/^(\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname) && !/^localhost$/i.test(parsed.hostname)) {
+      if (!/^[a-zA-Z0-9-]+:\d+/.test(trimmed)) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function migrateCustomAppUrls(apps) {
+  let mutated = false;
+  for (const app of apps) {
+    if (app && typeof app.url === 'string' && needsSchemeMigration(app.url)) {
+      app.url = 'https://' + app.url.trim();
+      mutated = true;
+    }
+  }
+  return mutated;
+}
+
 const AppGridStorage = {
   loadOrder() {
     return readJsonArray('appOrder', null, 'appOrder', 'null');
@@ -93,7 +158,11 @@ const AppGridStorage = {
   },
 
   loadCustomApps() {
-    return readJsonArray('customApps', [], 'customApps', '[]');
+    const apps = readJsonArray('customApps', [], 'customApps', '[]');
+    if (migrateCustomAppUrls(apps)) {
+      writeJson('customApps', apps);
+    }
+    return apps;
   },
 
   saveCustomApps(apps) {

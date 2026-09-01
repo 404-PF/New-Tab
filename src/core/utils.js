@@ -543,6 +543,31 @@
     }
   }, true);
 
+  function hasHttpScheme(url) {
+    return /^https?:\/\//i.test(String(url || '').trim());
+  }
+
+  function hasHttpSchemeSafe(url) {
+    if (typeof window.hasHttpScheme === 'function' && window.hasHttpScheme !== hasHttpSchemeSafe) {
+      return window.hasHttpScheme(url);
+    }
+    return /^https?:\/\//i.test(String(url || '').trim());
+  }
+
+  function isCustomScheme(url) {
+    const trimmed = String(url || '').trim();
+    if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return true;
+    if (hasHttpScheme(trimmed)) return false;
+    if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
+    const colonIdx = trimmed.indexOf(':');
+    const before = trimmed.slice(0, colonIdx);
+    const after = trimmed.slice(colonIdx + 1);
+    const lowerBefore = before.toLowerCase();
+    const isKnownNumericScheme = ['tel', 'sms', 'mailto', 'sip', 'callto', 'facetime', 'geo', 'magnet', 'urn', 'bitcoin'].includes(lowerBefore);
+    const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before) || (/^[a-zA-Z0-9-]+$/.test(before) && !isKnownNumericScheme)) && /^\d+(\/|$|\?|#)/.test(after);
+    return !looksLikeHostPort;
+  }
+
   // Make utilities available globally
   window.visibilityManager = visibilityManager;
   window.VisibilityInterval = VisibilityInterval;
@@ -551,6 +576,9 @@
   window.isMalformedUrl = isMalformedUrl;
   window.isSearchQuery = isSearchQuery;
   window.normalizeUrl = normalizeUrl;
+  window.hasHttpScheme = hasHttpScheme;
+  window.hasHttpSchemeSafe = hasHttpSchemeSafe;
+  window.isCustomScheme = isCustomScheme;
   window.iconCache = iconCache;
   window.validateIconUrl = validateIconUrl;
   window.escapeHtml = escapeHtml;
