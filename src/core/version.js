@@ -3,7 +3,11 @@
 function getCurrentVersion() {
   try {
     if (typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.getManifest === 'function') {
-      return chrome.runtime.getManifest().version;
+      const manifest = chrome.runtime.getManifest();
+      if (manifest && typeof manifest.version_name === 'string' && manifest.version_name.trim() !== '') {
+        return manifest.version_name.trim();
+      }
+      return manifest.version || null;
     }
   } catch (error) {
     console.error('Failed to read extension version from manifest:', error);

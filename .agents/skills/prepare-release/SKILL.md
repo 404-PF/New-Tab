@@ -14,7 +14,25 @@ Bumps `manifest.json` + `package.json` to version provided by user (`src/core/ve
 ### 1. Get Version
 
 - If user provided arg, use it. Else ask: `What version? (e.g. 1.2.0)`
-- Strip leading `v`, validate `^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$` — three dot-separated integers, each `0`–`65535`, no leading zeros unless the component is exactly `0`, not all zero, and no prerelease suffix (use `version_name` for display text like `-beta.1`). Reject if tag `v$VERSION` already exists (`git tag -l "v$VERSION"` should be empty).
+- Strip leading `v`, validate shape `^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$` — three dot-separated integers, no leading zeros unless the component is exactly `0`, no prerelease suffix. Then verify each component is `0`–`65535` and reject `0.0.0`. For prerelease display text like `-beta.1`, set `version_name` in `manifest.json` separately — `src/core/version.js` displays `version_name` when present. Reject if tag `v$VERSION` already exists locally (`git tag -l "v$VERSION"` should be empty) or remotely (`git ls-remote --tags origin "refs/tags/v$VERSION"` should be empty; run `git fetch --tags` first if needed).
+
+  ```bash
+  VERSION="${VERSION#v}"
+  if ! printf '%s' "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+    echo "Invalid version: $VERSION" >&2; exit 1
+  fi
+  IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+  for n in "$MAJOR" "$MINOR" "$PATCH"; do
+    if [ "$n" -gt 65535 ]; then echo "Component $n exceeds 65535" >&2; exit 1; fi
+  done
+  if [ "$MAJOR" = 0 ] && [ "$MINOR" = 0 ] && [ "$PATCH" = 0 ]; then
+    echo "Version 0.0.0 is not allowed" >&2; exit 1
+  fi
+  if [ -n "$(git tag -l "v$VERSION")" ]; then echo "Tag v$VERSION already exists locally" >&2; exit 1; fi
+  if git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q "refs/tags/v$VERSION"; then
+    echo "Tag v$VERSION already exists on origin" >&2; exit 1
+  fi
+  ```
 
 ### 2. Bump In-App Version
 
@@ -39,7 +57,7 @@ git commit -m "chore: release v$VERSION" manifest.json package.json package-lock
 ### 4. Tag & Push
 
 ```bash
-git branch --show-current  # must be 'main'; merge to main first if not
+test "$(git branch --show-current)" = "main" || { echo "Release must be prepared from main" >&2; exit 1; }
 git tag -a "v$VERSION" -m "Release v$VERSION"
 git push origin HEAD --follow-tags
 ```
