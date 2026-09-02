@@ -30,19 +30,23 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#v}"
           echo "Validating tag $TAG -> version $VERSION"
-          if ! printf '%s' "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
-            echo "::error::Tag $TAG does not match required pattern vX.Y.Z (no leading zeros, no prerelease)"
+          if ! printf '%s' "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){0,3}$'; then
+            echo "::error::Tag $TAG does not match required pattern vX[.Y[.Z[.W]]] (1-4 dot-separated integers, no leading zeros, no prerelease)"
             exit 1
           fi
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-          for n in "$MAJOR" "$MINOR" "$PATCH"; do
+          IFS='.' read -ra PARTS <<< "$VERSION"
+          for n in "${PARTS[@]}"; do
             if [ "$n" -gt 65535 ]; then
               echo "::error::Version component $n exceeds 65535"
               exit 1
             fi
           done
-          if [ "$MAJOR" = 0 ] && [ "$MINOR" = 0 ] && [ "$PATCH" = 0 ]; then
-            echo "::error::Version 0.0.0 is not allowed"
+          ALL_ZERO=1
+          for n in "${PARTS[@]}"; do
+            if [ "$n" != "0" ]; then ALL_ZERO=0; break; fi
+          done
+          if [ "$ALL_ZERO" = 1 ]; then
+            echo "::error::Version $VERSION is not allowed (all zero)"
             exit 1
           fi
           MANIFEST_VERSION="$(jq -r .version manifest.json)"
