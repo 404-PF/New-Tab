@@ -18,15 +18,15 @@ Systematic pre-commit code review checklist for staged and unstaged changes.
 ## Procedure
 
 ### 1. Identify Changes
-- Determine input type before running git (when argument is not `--staged` or empty): check whether it resolves to a tracked path (`git ls-files --error-unmatch -- <arg>` or `test -e <arg>`) vs a ref (`git rev-parse --verify --quiet <arg>`); if both match, prefer file-path handling and ask the user to disambiguate with `--` or a full ref. Route to the matching branch below.
+- Determine input type before running git (when argument is not `--staged` or empty): check whether it resolves to a tracked path (`git ls-files --error-unmatch -- <arg>` or `test -e <arg>`) vs a ref (`git rev-parse --verify --quiet <arg>`); if both match, prefer file-path handling and ask the user to disambiguate with `--` or a full ref. If neither matches, report that the argument matches neither a path nor a ref and ask the user to clarify. Route to the matching branch below.
 - If the argument is `--staged`, review only staged changes (`git diff --staged`); skip unstaged and untracked.
-- If the argument is a file path, scope all diffs to that path (`git diff --staged -- <path>`, `git diff -- <path>`, `git status -- <path>`).
+- If the argument is a file path, scope all diffs to that path (`git diff --staged -- <path>`, `git diff -- <path>`, `git status -- <path>`). If `git status -- <path>` shows the file as untracked, read its contents (`cat <path>` or `git diff --no-index /dev/null <path>`), since the diff commands provide nothing for untracked files.
 - If the argument is a branch name, compare against it (`git diff <branch>...HEAD`, `git diff <branch>...HEAD --name-only`).
 - Otherwise (no argument), run the full scan:
   - `git diff --staged` to see staged changes
   - `git diff` to see unstaged changes
-  - `git status` to see untracked files
-  - Read every untracked file listed by `git status` (e.g., `cat <file>` or `git diff --no-index /dev/null <file>`) — diff commands alone do not provide their contents
+  - `git status -uall` (or `git ls-files --others --exclude-standard`) to list untracked files without collapsing directories into a single `dir/` entry — enumerate each file before reading
+  - Read every untracked file listed (e.g., `cat <file>` or `git diff --no-index /dev/null <file>`) — diff commands alone do not provide their contents
 - Summarize the scope: which files changed, what the changes accomplish
 
 ### 2. Correctness Check
