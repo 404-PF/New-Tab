@@ -3,7 +3,10 @@ name: Package Extension
 on:
   push:
     tags:
+      - 'v*'
+      - 'v*.*'
       - 'v*.*.*'
+      - 'v*.*.*.*'
   release:
     types: [published]
   workflow_dispatch:
@@ -36,7 +39,7 @@ jobs:
           fi
           IFS='.' read -ra PARTS <<< "$VERSION"
           for n in "${PARTS[@]}"; do
-            if [ "$n" -gt 65535 ]; then
+            if [ "${#n}" -gt 5 ] || { [ "${#n}" -eq 5 ] && [ "$n" -gt 65535 ]; }; then
               echo "::error::Version component $n exceeds 65535"
               exit 1
             fi
@@ -57,6 +60,16 @@ jobs:
           fi
           if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
             echo "::error::package.json version $PACKAGE_VERSION does not match tag $TAG"
+            exit 1
+          fi
+          LOCK_VERSION="$(jq -r .version package-lock.json)"
+          if [ "$LOCK_VERSION" != "$VERSION" ]; then
+            echo "::error::package-lock.json version $LOCK_VERSION does not match tag $TAG"
+            exit 1
+          fi
+          LOCK_PACKAGES_VERSION="$(jq -r '.packages."".version' package-lock.json)"
+          if [ "$LOCK_PACKAGES_VERSION" != "null" ] && [ "$LOCK_PACKAGES_VERSION" != "$VERSION" ]; then
+            echo "::error::package-lock.json packages.\"\".version $LOCK_PACKAGES_VERSION does not match tag $TAG"
             exit 1
           fi
           git fetch origin main --depth=1 || true

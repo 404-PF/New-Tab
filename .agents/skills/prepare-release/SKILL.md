@@ -23,7 +23,7 @@ Bumps `manifest.json` + `package.json` to version provided by user (`src/core/ve
   fi
   IFS='.' read -ra PARTS <<< "$VERSION"
   for n in "${PARTS[@]}"; do
-    if [ "$n" -gt 65535 ]; then echo "Component $n exceeds 65535" >&2; exit 1; fi
+    if [ "${#n}" -gt 5 ] || { [ "${#n}" -eq 5 ] && [ "$n" -gt 65535 ]; }; then echo "Component $n exceeds 65535" >&2; exit 1; fi
   done
   ALL_ZERO=1
   for n in "${PARTS[@]}"; do
@@ -33,10 +33,17 @@ Bumps `manifest.json` + `package.json` to version provided by user (`src/core/ve
     echo "Version $VERSION is not allowed (all zero)" >&2; exit 1
   fi
   if [ -n "$(git tag -l "v$VERSION")" ]; then echo "Tag v$VERSION already exists locally" >&2; exit 1; fi
-  if git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q "refs/tags/v$VERSION"; then
+  remote_tags=$(git ls-remote --tags origin "refs/tags/v$VERSION") || { echo "Unable to verify remote tag v$VERSION" >&2; exit 1; }
+  if printf '%s\n' "$remote_tags" | grep -q "refs/tags/v$VERSION"; then
     echo "Tag v$VERSION already exists on origin" >&2; exit 1
   fi
   ```
+
+Verify you are on `main` before making any version changes:
+
+```bash
+test "$(git branch --show-current)" = "main" || { echo "Release must be prepared from main" >&2; exit 1; }
+```
 
 ### 2. Bump In-App Version
 

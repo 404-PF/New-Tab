@@ -75,7 +75,7 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 
 - `package.json` and `manifest.json` versions must stay in sync. `CURRENT_VERSION` is read from the manifest at runtime (`src/core/version.js`) — do not hardcode it elsewhere.
 - The release workflow builds a CRX with `crx3` from a stripped source tree (removes `.github`, `.husky`, `.agents`, `tests`, `ISSUES`, `screenshots`, all config and lockfiles). It signs with the `CRX_PRIVATE_KEY` secret (base64-encoded PEM preferred) or, if `ALLOW_EPHEMERAL_KEY=true`, generates an ephemeral key (extension ID will change).
-- Triggers: `push` tag `v*.*.*`, `release: published`, and `workflow_dispatch`.
+- Triggers: `push` tag `v*` / `v*.*` / `v*.*.*` / `v*.*.*.*` (1–4 dot-separated components), `release: published`, and `workflow_dispatch`.
 - Use the `.agents/skills/prepare-release` skill (bump + tag) for the release workflow; ensure the package and manifest versions match before pushing the version tag.
 
 ## Skills
