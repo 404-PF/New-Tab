@@ -1,6 +1,12 @@
 name: Package Extension
 
 on:
+  push:
+    tags:
+      - 'v*'
+      - 'v*.*'
+      - 'v*.*.*'
+      - 'v*.*.*.*'
   release:
     types: [published]
   workflow_dispatch:
@@ -17,6 +23,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate version tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          echo "Validating tag $TAG -> version $VERSION"
+          if ! printf '%s' "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){0,3}$'; then
+            echo "::error::Tag $TAG does not match required pattern vX[.Y[.Z[.W]]] (1-4 dot-separated integers, no leading zeros, no prerelease)"
+            exit 1
+          fi
+          IFS='.' read -ra PARTS <<< "$VERSION"
+          for n in "${PARTS[@]}"; do
+            if [ "${#n}" -gt 5 ] || { [ "${#n}" -eq 5 ] && [ "$n" -gt 65535 ]; }; then
+              echo "::error::Version component $n exceeds 65535"
+              exit 1
+            fi
+          done
+          ALL_ZERO=1
+          for n in "${PARTS[@]}"; do
+            if [ "$n" != "0" ]; then ALL_ZERO=0; break; fi
+          done
+          if [ "$ALL_ZERO" = 1 ]; then
+            echo "::error::Version $VERSION is not allowed (all zero)"
+            exit 1
+          fi
+          MANIFEST_VERSION="$(jq -r .version manifest.json)"
+          PACKAGE_VERSION="$(jq -r .version package.json)"
+          if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
+            echo "::error::manifest.json version $MANIFEST_VERSION does not match tag $TAG"
+            exit 1
+          fi
+          if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
+            echo "::error::package.json version $PACKAGE_VERSION does not match tag $TAG"
+            exit 1
+          fi
+          LOCK_VERSION="$(jq -r .version package-lock.json)"
+          if [ "$LOCK_VERSION" != "$VERSION" ]; then
+            echo "::error::package-lock.json version $LOCK_VERSION does not match tag $TAG"
+            exit 1
+          fi
+          LOCK_PACKAGES_VERSION="$(jq -r '.packages."".version' package-lock.json)"
+          if [ "$LOCK_PACKAGES_VERSION" != "null" ] && [ "$LOCK_PACKAGES_VERSION" != "$VERSION" ]; then
+            echo "::error::package-lock.json packages.\"\".version $LOCK_PACKAGES_VERSION does not match tag $TAG"
+            exit 1
+          fi
+          git fetch origin main --depth=1 || true
+          if ! git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
+            if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main 2>/dev/null || echo HEAD)" ]; then
+              echo "::error::Tag $TAG does not point to a commit on main"
+              exit 1
+            fi
+          fi
+          echo "✓ Tag $TAG validated"
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:

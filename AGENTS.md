@@ -69,19 +69,19 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 - Intervals that should pause when the tab is hidden use `new window.VisibilityInterval(fn, ms)` (defined in `src/core/utils.js`), falling back to `setInterval`.
 - Persist with `localStorage` (which is bridged to `chrome.storage.local`). Wrap reads in `try/catch`, return `[]` / `{}` defaults on parse failure; log via `console.warn`.
 - i18n text uses `data-i18n="key"` attributes; placeholder values like `{{searchPlaceholder}}` in `New-Tab.html` are sentinel text for human readability — they are not a template engine. The i18n runtime (`applyLanguage` in `src/core/languages.js`) overwrites the real `placeholder`/`textContent` at runtime using the matching `data-i18n` key. New UI strings need entries in `_locales/*/messages.json` and the `window.i18n` mock in `tests/setup.js` if tests depend on them.
-- Branch off `main`; PRs target `main`. Follow existing commit message style (see `CHANGELOG.md`).
+- Branch off `main`; PRs target `main`. Follow existing commit message style.
 
 ## Release / Packaging
 
 - `package.json` and `manifest.json` versions must stay in sync. `CURRENT_VERSION` is read from the manifest at runtime (`src/core/version.js`) — do not hardcode it elsewhere.
 - The release workflow builds a CRX with `crx3` from a stripped source tree (removes `.github`, `.husky`, `.agents`, `tests`, `ISSUES`, `screenshots`, all config and lockfiles). It signs with the `CRX_PRIVATE_KEY` secret (base64-encoded PEM preferred) or, if `ALLOW_EPHEMERAL_KEY=true`, generates an ephemeral key (extension ID will change).
-- Triggers: `release: published` and `workflow_dispatch`.
-- Use the `.agents/skills/create-release` skill for the release workflow; ensure the package and manifest versions match before creating the release.
+- Triggers: `push` tag `v*` / `v*.*` / `v*.*.*` / `v*.*.*.*` (1–4 dot-separated components), `release: published`, and `workflow_dispatch`.
+- Use the `.agents/skills/prepare-release` skill (bump + tag) for the release workflow; ensure the package and manifest versions match before pushing the version tag.
 
 ## Skills
 
 Local skills under `.agents/skills/` (loaded via the `skill` tool):
-- `create-release` - publish releases, create tags, and generate release notes
+- `prepare-release` - bump display version and push tag
 - `create-pr` - branch prep and PR description
 - `review-pr` - prioritize review findings
 - `resolve-issue` - narrow evidence-first bug fix loop
@@ -91,5 +91,4 @@ Local skills under `.agents/skills/` (loaded via the `skill` tool):
 
 - [README](README.md) - user-facing features and install
 - [Contributing](CONTRIBUTING.md) (en: `docs/CONTRIBUTING.en.md`)
-- [Changelog](CHANGELOG.md) - release history and per-PR attribution
 - Localized READMEs in `docs/README.<lang>.md`
