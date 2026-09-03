@@ -20,8 +20,10 @@ Comprehensive PR review that summarizes changes, identifies potential issues, an
 ### 2. Gather PR Details
 
 Fetch the PR metadata and content:
-- Use `mcp_github_mcp_se_search_pull_requests` with the PR query to get title, description, author, state, and labels.
+- If no PR reference was provided, use `mcp_github_mcp_se_search_pull_requests` only to locate the PR.
+- Once the PR number is known, fetch authoritative metadata (title, description, author, state, labels) with `mcp_github_mcp_se_pull_request_read` (`method: get` / `mcp__github__pull_request_read`) — do not use search for this step.
 - Use `mcp_github_mcp_se_list_branches` if branch info is needed.
+- Fetch the diff itself before reviewing: use `mcp_github_mcp_se_pull_request_read` with `method: get_diff` or `method: get_files` (or locally `git diff base...head` / `git diff origin/<base>...HEAD` once the base and head are known).
 - Note the base and head branches to understand the diff scope.
 
 ### 3. Analyze Changes
@@ -33,7 +35,7 @@ Examine the PR systematically:
 - Check linked issues if any.
 
 **b. Review changed files**
-- Look at the diff for each changed file.
+- Use the diff fetched in Step 2 (`get_diff`/`get_files` or `git diff base...head`) — look at the patch for each changed file.
 - Focus on logic changes, not just formatting.
 
 **c. Evaluate quality across these dimensions:**

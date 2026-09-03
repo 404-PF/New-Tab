@@ -2,7 +2,7 @@
 name: review-changes
 description: 'Review staged and unstaged changes before committing. Use for: code review, pre-commit checks, validating changes, checking diff quality, linting, test verification, security scan. Trigger phrases: review changes, review my changes, check changes, pre-commit review, review diff.'
 user-invocable: true
-argument-hint: '[optional: file path or branch to review]'
+argument-hint: '[optional: --staged | file path | branch]'
 ---
 
 # Review Changes
@@ -18,9 +18,13 @@ Systematic pre-commit code review checklist for staged and unstaged changes.
 ## Procedure
 
 ### 1. Identify Changes
-- Run `git diff --staged` to see staged changes
-- Run `git diff` to see unstaged changes
-- Run `git status` to see untracked files
+- If the argument is `--staged`, review only staged changes (`git diff --staged`); skip unstaged and untracked.
+- If the argument is a file path, scope all diffs to that path (`git diff --staged -- <path>`, `git diff -- <path>`, `git status -- <path>`).
+- If the argument is a branch name, compare against it (`git diff <branch>...HEAD`, `git diff <branch> --name-only`).
+- Otherwise (no argument), run the full scan:
+  - `git diff --staged` to see staged changes
+  - `git diff` to see unstaged changes
+  - `git status` to see untracked files
 - Summarize the scope: which files changed, what the changes accomplish
 
 ### 2. Correctness Check

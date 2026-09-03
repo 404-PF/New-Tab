@@ -9,7 +9,7 @@ argument-hint: '<branch-name-or-issue-number>'
 
 Create a new Git branch and switch to it. Supports two input modes:
 
-1. **Issue number** (e.g., `42`) — fetches the issue title and derives a branch name like `feature/42-fix-login-error`
+1. **Issue number** (e.g., `42`) — fetches the issue title and derives a branch name like `fix/42-fix-login-error` (or `feat/…` for feature labels)
 2. **Branch name** (e.g., `feature/my-feature`) — uses the name as-is
 
 ## Procedure
@@ -25,18 +25,17 @@ Create a new Git branch and switch to it. Supports two input modes:
    - Extract the issue title
    - Derive a slug: lowercase the title, replace spaces with hyphens, strip special characters, truncate to 50 chars
    - Choose a prefix based on issue labels (if available):
-     - `bug`, `bugfix`, `defect` → `bugfix/<number>-<slug>`
-     - `enhancement`, `feature` → `feature/<number>-<slug>`
-     - No matching label → `issue/<number>-<slug>`
+     - `bug`, `bugfix`, `defect` → `fix/<number>-<slug>`
+     - `enhancement`, `feature` → `feat/<number>-<slug>`
+     - No matching label → `fix/<number>-<slug>`
    - Confirm the derived branch name with the user before proceeding
 2. Go to Step 3
 
 ### 2b. Explicit Name Flow
 
 1. Use the provided name exactly
-2. Validate it is a valid Git branch name (no spaces, no `..`, no `~^:?*[\`, not `@{`, not `-`)
-3. If invalid, suggest a sanitized version and ask the user to confirm
-4. Go to Step 3
+2. Validate it with `git check-ref-format --branch "<name>"`; if it fails, suggest a sanitized version and ask the user to confirm
+3. Go to Step 3
 
 ### 3. Create and Switch
 
@@ -73,9 +72,9 @@ After switching:
 
 | User says | Action |
 |-----------|--------|
-| `/checkout-branch 42` | Fetch issue #42, derive `feature/42-fix-login`, create & switch |
-| `/checkout-branch feature/auth-refactor` | Create & switch to `feature/auth-refactor` |
-| `/checkout-branch bugfix/15-memory-leak` | Create & switch to `bugfix/15-memory-leak` |
+| `/checkout-branch 42` | Fetch issue #42, derive `fix/42-fix-login` (prefix by label), confirm with user, then create & switch |
+| `/checkout-branch feat/auth-refactor` | Validate `feat/auth-refactor` with `git check-ref-format`, confirm, then create & switch |
+| `/checkout-branch fix/15-memory-leak` | Validate `fix/15-memory-leak` with `git check-ref-format`, confirm, then create & switch |
 
 ## Edge Cases
 

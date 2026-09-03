@@ -1,7 +1,7 @@
 ---
 name: scan-features
 description: 'Deeply scan and analyze the codebase for potential new features, then open GitHub issues to submit them. USE FOR: discovering missing functionality, finding unimplemented ideas, identifying feature gaps, suggesting enhancements, finding TODOs and stubs that indicate planned work. Triggers: scan features, find feature gaps, suggest new features, discover missing functionality, feature audit, what features are missing.'
-argument-hint: '[optional: focus area like api, ui, cli, performance, or all]'
+argument-hint: '[optional: focus area like api, ui, cli, performance, testing, or all]'
 user-invocable: true
 ---
 
@@ -87,7 +87,7 @@ For each finding:
 - Rank by impact × confidence:
   - **Immediate**: High confidence + High impact
   - **Planned**: High confidence + Low impact, or Medium confidence + High impact
-  - **Backlog**: Medium confidence + Low impact
+  - **Backlog**: Medium confidence + Low impact, or Low confidence + High impact (suggest only if clearly valuable)
   - **Skip**: Low confidence + Low impact
 
 ### 6. Create GitHub Issues

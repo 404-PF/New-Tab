@@ -33,12 +33,14 @@ Stage files intentionally — avoid `git add .` unless all changes are part of o
 Follow this structure:
 
 ```
-<type>(<scope>): <subject>
+<type>(<scope>)[!]: <subject>
 
 <body>
 
 <footer>
 ```
+
+Append `!` after the type/scope (e.g. `refactor(config)!:` or `feat!:`) to flag a breaking change, in addition to the `BREAKING CHANGE:` footer.
 
 **Type** (pick one):
 | Type | When to Use |
@@ -56,7 +58,7 @@ Follow this structure:
 - Use imperative mood: "add" not "added" or "adds"
 - No period at the end
 - Keep under 72 characters
-- Capitalize the first letter
+- Keep the subject lowercase after the type/scope (e.g. `fix(auth): prevent token refresh race condition`)
 
 **Body** (when needed):
 - Explain *what* and *why*, not *how*
@@ -65,7 +67,7 @@ Follow this structure:
 
 **Footer** (when applicable):
 - Reference issues: `Closes #123`, `Fixes #456`
-- Note breaking changes: `BREAKING CHANGE: <description>`
+- Note breaking changes: `BREAKING CHANGE: <description>` and flag the subject with `!` (e.g. `refactor(config)!:`)
 
 ### 4. Commit
 

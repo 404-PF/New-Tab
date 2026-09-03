@@ -15,11 +15,11 @@ This skill provides a structured approach to resolving GitHub issues: from under
 
 ### 1. Understand the Issue
 
-- **Auto-fetch issue details**: Use `issue_read` to get the issue title, body, labels, assignees, and linked PRs
+- **Auto-fetch issue details**: Use `mcp_github_mcp_se_issue_read` (`mcp__github__issue_read`, `method: get`) to get the issue title, body, labels, assignees, and linked PRs
 - **Analyze labels**: Identify issue type from labels (e.g., `bug`, `enhancement`, `feature`) to determine approach and branch naming
 - **Clarify scope**: Identify what's requested vs. what's needed
 - **Identify constraints**: Check for performance, compatibility, or design requirements
-- **Review related discussions**: Use `issue_read` with `get_comments` to gather additional context or decisions
+- **Review related discussions**: Use `mcp_github_mcp_se_issue_read` with `method: get_comments` to gather additional context or decisions
 
 ### 2. Plan the Solution
 
