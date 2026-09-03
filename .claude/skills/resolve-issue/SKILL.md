@@ -30,10 +30,7 @@ This skill provides a structured approach to resolving GitHub issues: from under
 
 ### 3. Implement Changes
 
-- **Create a branch**: Auto-detect naming convention from issue labels:
-  - `bug` labels → `fix/<issue-number>-<short-description>`
-  - `enhancement`/`feature` labels → `feat/<issue-number>-<short-description>`
-  - Default → `fix/<issue-number>-<short-description>`
+- **Create a branch**: Reuse the `checkout-branch` skill flow — derive a slug from the issue title (lowercase, replace spaces with hyphens, strip special characters, truncate to 50 chars), choose the prefix by label (`bug`/`bugfix`/`defect` → `fix/<number>-<slug>`, `enhancement`/`feature` → `feat/<number>-<slug>`, default → `fix/<number>-<slug>`), validate with `git check-ref-format --branch "<name>"` (suggest a sanitized version and re-confirm on failure), confirm the derived name with the user, then create and switch using checkout-branch Step 3 (including detached-HEAD handling from `HEAD` vs `origin/<default-branch>`, existing-branch prompts, and dirty-tree warning).
 - **Make focused changes**: Keep changes minimal and related to the issue
 - **Follow project conventions**: Use existing patterns, coding standards, and architecture
 - **Write tests**: Add or update tests to cover the changes

@@ -53,6 +53,9 @@ git remote show origin | grep "HEAD branch"
 Then create and switch:
 
 ```bash
+# If HEAD is detached, warn and confirm, then preserve the current commit:
+#   git checkout -b <branch-name> HEAD
+# If HEAD is attached, create from the default branch:
 git checkout -b <branch-name> origin/<default-branch>
 ```
 
@@ -80,5 +83,5 @@ After switching:
 
 - **Branch already exists locally**: Offer switch, reset, or rename.
 - **Issue not found**: Report the error and ask the user to provide a branch name manually.
-- **Detached HEAD state**: Warn the user and suggest creating a new branch from their current commit.
+- **Detached HEAD state**: Warn the user and ask for confirmation, then create the branch from the current commit (`git checkout -b <branch-name> HEAD`) to preserve the detached commit; use `origin/<default-branch>` only when HEAD is attached.
 - **Dirty working tree**: Warn the user that uncommitted changes will be carried over; suggest stashing first if they prefer.

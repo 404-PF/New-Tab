@@ -71,6 +71,7 @@ Append `!` after the type/scope (e.g. `refactor(config)!:` or `feat!:`) to flag 
 
 ### 4. Commit
 
+- Run `npm run lint` and `npm test` — stop and fix on failure, do not commit a failing change
 - Review the commit message one more time
 - Commit with `git commit`
 - Verify with `git log --oneline -1`
@@ -105,6 +106,8 @@ BREAKING CHANGE: DATABASE_URL is now DB_CONNECTION_STRING
 Before finalizing a commit, verify:
 
 - [ ] Changes are staged intentionally (no unintended files)
+- [ ] `npm run lint` passes — stop and fix on failure, do not commit
+- [ ] `npm test` passes — stop and fix on failure, do not commit
 - [ ] Commit type accurately describes the change
 - [ ] Subject is imperative, concise, and under 72 chars
 - [ ] Body explains *why* (if non-obvious)

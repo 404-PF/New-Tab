@@ -14,12 +14,12 @@ Bumps `manifest.json` + `package.json` to version provided by user (`src/core/ve
 ### 1. Get Version
 
 - If user provided arg, use it. Else ask: `What version? (e.g. 1.2.0)`
-- Strip leading `v`, validate shape `^(0|[1-9]\d*)(\.(0|[1-9]\d*)){0,3}$` — one to four dot-separated integers (Chrome manifest `version` range), no leading zeros unless the component is exactly `0`, no prerelease suffix. Then verify each component is `0`–`65535` and reject all-zero versions (e.g. `0`, `0.0.0`). For prerelease display text like `-beta.1`, set `version_name` in `manifest.json` separately — `src/core/version.js` displays `version_name` when present. On stable releases, remove `version_name` from `manifest.json` if present (otherwise the stale prerelease string continues to display and masks the stable version). Prerelease tags must use a distinct identifier and never reuse a stable `v$VERSION`. Reject if tag `v$VERSION` already exists locally (`git tag -l "v$VERSION"` should be empty) or remotely (`git ls-remote --tags origin "refs/tags/v$VERSION"` should be empty; run `git fetch --tags` first if needed).
+- Strip leading `v`, validate shape `^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$` — exactly three dot-separated integers `X.Y.Z` (npm-compatible SemVer), no leading zeros unless the component is exactly `0`, no prerelease suffix, no four-component versions like `1.2.3.4`. Then verify each component is `0`–`65535` and reject all-zero versions (e.g. `0.0.0`). For prerelease display text like `-beta.1`, set `version_name` in `manifest.json` separately — `src/core/version.js` displays `version_name` when present. On stable releases, remove `version_name` from `manifest.json` if present (otherwise the stale prerelease string continues to display and masks the stable version). This skill only publishes stable `v$VERSION` tags; do not publish a stable tag while `version_name` contains a prerelease suffix — if a prerelease tag is needed, use a distinct suffixed tag like `v$VERSION-beta.1` in a dedicated prerelease flow (and extend validation accordingly). Prerelease tags must never reuse a stable `v$VERSION`. Reject if tag `v$VERSION` already exists locally (`git tag -l "v$VERSION"` should be empty) or remotely (`git ls-remote --tags origin "refs/tags/v$VERSION"` should be empty; run `git fetch --tags` first if needed).
 
   ```bash
   VERSION="${VERSION#v}"
-  if ! printf '%s' "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){0,3}$'; then
-    echo "Invalid version: $VERSION" >&2; exit 1
+  if ! printf '%s' "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+    echo "Invalid version: $VERSION (expected X.Y.Z, e.g. 1.2.0)" >&2; exit 1
   fi
   IFS='.' read -ra PARTS <<< "$VERSION"
   for n in "${PARTS[@]}"; do
@@ -43,7 +43,7 @@ Verify you are on `main` and up to date with `origin/main` before making any ver
 
 ```bash
 test "$(git branch --show-current)" = "main" || { echo "Release must be prepared from main" >&2; exit 1; }
-git fetch origin main --tags
+git fetch origin main --tags || { echo "git fetch failed" >&2; exit 1; }
 test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo "Local main is not up to date with origin/main — pull or rebase first" >&2; exit 1; }
 ```
 
@@ -77,8 +77,8 @@ if [ -n "$(git diff --cached --name-only)" ]; then
   exit 1
 fi
 # run checks before committing — do not tag/push a failing release
-npm run lint
-npm test
+npm run lint || { echo "Lint failed" >&2; exit 1; }
+npm test || { echo "Tests failed" >&2; exit 1; }
 git add manifest.json package.json package-lock.json
 git diff --cached --name-only  # should list only version files
 # verify only version files are staged
@@ -95,10 +95,10 @@ git commit -m "chore: release v$VERSION" manifest.json package.json package-lock
 ```bash
 test "$(git branch --show-current)" = "main" || { echo "Release must be prepared from main" >&2; exit 1; }
 # re-fetch and ensure the release commit is still on top of origin/main (prevents publishing a tag CI will reject)
-git fetch origin main --tags
+git fetch origin main --tags || { echo "git fetch failed" >&2; exit 1; }
 git merge-base --is-ancestor origin/main HEAD || { echo "Local main diverged from origin/main — rebase first" >&2; exit 1; }
 git tag -a "v$VERSION" -m "Release v$VERSION"
-git push origin HEAD --follow-tags
+git push --atomic origin HEAD "refs/tags/v$VERSION" || { git tag -d "v$VERSION"; echo "Push rejected — removed local tag v$VERSION" >&2; exit 1; }
 ```
 
 ## Checklist

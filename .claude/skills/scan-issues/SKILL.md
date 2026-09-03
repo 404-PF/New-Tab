@@ -66,7 +66,7 @@ For each prioritized issue (or group of related issues), create a GitHub issue u
 3. **Body**: Include:
    - **Description**: What the issue is and why it matters
    - **Location**: Exact file path and line number(s)
-   - **Code snippet**: The problematic code
+   - **Code snippet**: A redacted excerpt; never include secrets, tokens, passwords, or personal data — describe the location without reproducing sensitive values
    - **Suggested fix**: How to resolve the issue
    - **Impact**: What could happen if left unaddressed
 

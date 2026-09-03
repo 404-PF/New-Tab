@@ -107,14 +107,16 @@ Use this template based on issue type:
 ```
 
 ### 4. Confirm with User
-Before creating, present a concise summary:
-- Generated title
+Before creating, redact secrets, credentials, tokens, API keys, and personal identifiers from the generated title and body (replace with `[REDACTED]`). Then present:
+- Generated title (redacted)
 - Detected type (if inferred)
 - Labels to be applied
 - Assignees (if any)
 - Milestone (if any)
+- Final redacted body — the full text that will be published (with redactions applied)
+- Disclosure of any sensitive content that was redacted, if detected
 
-Ask: **"Create this issue?"**
+Ask: **"Create this issue?"** — show the final body before asking, so the user reviews exactly what will be sent to GitHub.
 
 > **Suggestions are optional.** Only present labels/assignees/milestones that were explicitly requested or automatically inferred. Don't add extra fields the user didn't ask for.
 
@@ -130,9 +132,16 @@ Use **GitHub MCP tools** (`mcp_github_mcp_se_issue_write`) to create the issue:
 - `assignees`: Array of usernames
 - `milestone`: Milestone number (if provided)
 
-If MCP tools are unavailable, fall back to **`gh` CLI**:
+If MCP tools are unavailable, fall back to **`gh` CLI** — pass the selected repository with `--repo`, resolve a milestone number to its name first (`gh api repos/<owner>/<repo>/milestones/<number> --jq .title` → `--milestone "<milestone-name>"`), and stream the body without shell interpolation:
+
 ```bash
-gh issue create --title "<title>" --body "<body>" --label "<label1>,<label2>" --assignee "<user1>,<user2>"
+# Resolve milestone name first if you have a number:
+# milestone_name=$(gh api repos/<owner>/<repo>/milestones/<number> --jq .title)
+tmp=$(mktemp -t issue-body-XXXXXX.md) && trap 'rm -f "$tmp"' EXIT
+printf '%s' "$body" > "$tmp"
+gh issue create --repo "<owner>/<repo>" --title "$title" --body-file "$tmp" --label "<label1>,<label2>" --assignee "<user1>,<user2>" --milestone "$milestone_name"
+# alternative: stream body via stdin — title/labels/assignees/milestone as separate args, body via --body-file -
+# printf '%s' "$body" | gh issue create --repo "<owner>/<repo>" --title "$title" --body-file - --label "<label1>,<label2>" --assignee "<user1>,<user2>" --milestone "$milestone_name"
 ```
 
 ### 6. Report Result

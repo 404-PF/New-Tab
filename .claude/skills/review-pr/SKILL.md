@@ -63,6 +63,7 @@ What the PR does well (call out good patterns, thorough tests, clear docs).
 Categorized by severity:
 
 **🔴 Critical** — Must be fixed before merge (bugs, security, data loss)
+**🟠 Major** — Must be fixed before merge (high-impact correctness, security, or reliability issues)
 **🟡 Suggestions** — Should be considered (performance, maintainability)
 **🟢 Nitpicks** — Optional improvements (style, naming)
 
@@ -78,7 +79,7 @@ Whether the test coverage is adequate and what additional tests might be needed.
 One of:
 - **Approve** — Good to merge
 - **Approve with suggestions** — Mergeable but consider the suggestions
-- **Request changes** — Critical issues must be resolved first
+- **Request changes** — Major and Critical issues must be resolved first
 
 ### 5. Optional: Submit the Review
 
