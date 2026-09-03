@@ -116,72 +116,29 @@ jobs:
           rm -f .gitignore .nvmrc vitest.config.js eslint.config.js
           rm -f package.json package-lock.json
 
-      - name: Build CRX package
-        env:
-          CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
+      - name: Build ZIP package
         run: |
           set -euo pipefail
-          CRX3="${{ github.workspace }}/node_modules/.bin/crx3"
           cd "$BUILD_DIR"
-          # Trim leading/trailing whitespace so a misconfigured secret
-          # (e.g. trailing newline or accidental spaces) is caught as empty.
-          CRX_PRIVATE_KEY="$(printf '%s' "$CRX_PRIVATE_KEY" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          if [ -z "$CRX_PRIVATE_KEY" ]; then
-            echo "::error::CRX_PRIVATE_KEY secret is not set."
-            echo ""
-            echo "  To sign releases consistently, add the secret at:"
-            echo "    ${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions"
-            echo ""
-            echo "  The key should be base64-encoded to avoid newline issues:"
-            echo "    base64 -w0 key.pem"
-            exit 1
-          fi
-          # Write key to a temp file so it never lands in the workspace,
-          # and clean up with a trap even if the step fails mid-way.
-          KEY_FILE="$(mktemp)"
-          trap 'rm -f "$KEY_FILE"' EXIT
-          # Support both base64-encoded and raw PEM secrets.  Base64 is
-          # preferred because GitHub's Secrets UI can mangle the newlines
-          # in a multi-line PEM value.  Encode with:
-          #   base64 -w0 key.pem | clip   (or pbcopy / xclip)
-          if printf '%s' "$CRX_PRIVATE_KEY" | base64 --decode 2>/dev/null | grep -qm1 'BEGIN.*PRIVATE KEY'; then
-            printf '%s' "$CRX_PRIVATE_KEY" | base64 --decode > "$KEY_FILE"
-          else
-            printf '%s\n' "$CRX_PRIVATE_KEY" > "$KEY_FILE"
-          fi
-          "$CRX3" . \
-            --crx "${{ github.workspace }}/new-tab.crx" \
-            --zip "${{ github.workspace }}/new-tab.zip" \
-            --private-key "$KEY_FILE"
+          zip -r "${{ github.workspace }}/new-tab.zip" . -x "*.git*"
+          echo "  ✓ new-tab.zip ($(stat -c%s "${{ github.workspace }}/new-tab.zip") bytes)"
 
       - name: Verify built package
         run: |
           set -euo pipefail
-          for f in new-tab.crx new-tab.zip; do
-            if [ ! -f "${{ github.workspace }}/$f" ]; then
-              echo "::error::$f was not built — aborting"
-              exit 1
-            fi
-            size=$(stat -c%s "${{ github.workspace }}/$f")
-            if [ "$size" -eq 0 ]; then
-              echo "::error::$f is empty — aborting"
-              exit 1
-            fi
-            echo "  ✓ $f ($size bytes)"
-          done
+          ZIP="${{ github.workspace }}/new-tab.zip"
+          if [ ! -f "$ZIP" ]; then echo "::error::new-tab.zip was not built"; exit 1; fi
+          if [ ! -s "$ZIP" ]; then echo "::error::new-tab.zip is empty"; exit 1; fi
+          unzip -tq "$ZIP"  # quick integrity check
 
       - name: Upload build artifacts (always)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: extension-package
-          path: |
-            new-tab.crx
-            new-tab.zip
+          path: new-tab.zip
 
       - name: Upload Release Assets
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
-          files: |
-            new-tab.crx
-            new-tab.zip
+          files: new-tab.zip
