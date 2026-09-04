@@ -79,9 +79,9 @@ async function runReminderCheck(todosJson) {
   if (String(data.todoReminderEnabled) !== 'true') return;
   let todos;
   if (todosJson) {
-    try { todos = JSON.parse(todosJson); } catch { todos = []; }
+    try { todos = JSON.parse(todosJson); } catch (e) { console.warn('Skipping todo reminder check: corrupt todos payload', e); todos = null; }
   } else {
-    try { todos = JSON.parse(data.todos); } catch { todos = []; }
+    try { todos = JSON.parse(data.todos); } catch (e) { console.warn('Skipping todo reminder check: corrupt todos payload', e); todos = null; }
   }
   const parsedLeadTime = parseInt(data.todoReminderLeadTime, 10);
   const leadTime = isNaN(parsedLeadTime) ? 30 : parsedLeadTime;
