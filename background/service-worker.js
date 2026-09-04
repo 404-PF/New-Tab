@@ -48,20 +48,20 @@ async function setToStorage(items) {
   });
 }
 
-async function checkReminders(todosJson) {
+async function checkReminders(todosJson, options = {}) {
   if (reminderCheckInProgress) {
-    reminderCheckPendingQueue.push(todosJson);
+    reminderCheckPendingQueue.push({ todosJson, options });
     return;
   }
   reminderCheckInProgress = true;
   try {
     try {
-      await runReminderCheck(todosJson);
+      await runReminderCheck(todosJson, options);
     } finally {
       while (reminderCheckPendingQueue.length > 0) {
-        const nextTodos = reminderCheckPendingQueue.shift();
+        const next = reminderCheckPendingQueue.shift();
         try {
-          await runReminderCheck(nextTodos);
+          await runReminderCheck(next.todosJson, next.options);
         } catch (e) {
           console.warn('Queued reminder check failed:', e);
         }
@@ -72,11 +72,10 @@ async function checkReminders(todosJson) {
   }
 }
 
-async function runReminderCheck(todosJson) {
+async function runReminderCheck(todosJson, options = {}) {
   const keys = ['todoReminderEnabled', 'todoReminderLeadTime', 'todoReminderNotified', 'warnedInvalidDueDates'];
   if (!todosJson) keys.push('todos');
   const data = await getFromStorage(keys);
-  if (String(data.todoReminderEnabled) !== 'true') return;
   let todos;
   if (todosJson) {
     try { todos = JSON.parse(todosJson); } catch (e) { console.warn('Skipping todo reminder check: corrupt todos payload', e); todos = null; }
@@ -85,7 +84,40 @@ async function runReminderCheck(todosJson) {
   }
   const parsedLeadTime = parseInt(data.todoReminderLeadTime, 10);
   const leadTime = isNaN(parsedLeadTime) ? 30 : parsedLeadTime;
-  const notified = data.todoReminderNotified || {};
+  let notified = data.todoReminderNotified || {};
+  // When invoked via syncTodos with resetNotified / todoId, apply those
+  // mutations inside this same read-modify-write cycle so a concurrent alarm
+  // check cannot overwrite the result with its stale copy.
+  let resetApplied = false;
+  if (options.resetNotified) {
+    const ids = new Set();
+    for (const key of Object.keys(notified)) {
+      const idx = key.lastIndexOf('_');
+      ids.add(idx !== -1 ? key.slice(0, idx) : key);
+    }
+    for (const id of ids) {
+      chrome.notifications.clear('todo_reminder_' + id);
+    }
+    notified = {};
+    resetApplied = true;
+  }
+  if (options.todoId) {
+    let todoUpdated = false;
+    for (const key of Object.keys(notified)) {
+      if (key.startsWith(options.todoId + '_')) {
+        chrome.notifications.clear('todo_reminder_' + options.todoId);
+        delete notified[key];
+        todoUpdated = true;
+      }
+    }
+    if (todoUpdated) resetApplied = true;
+  }
+  if (String(data.todoReminderEnabled) !== 'true') {
+    if (resetApplied) {
+      await setToStorage({ todoReminderNotified: notified });
+    }
+    return;
+  }
   // Track invalid dueDates we've already warned about (keyed by item id + raw
   // dueDate) so a persistent malformed item doesn't re-print the same warning on
   // every alarm check. A changed dueDate gets a fresh key, so it warns anew.
@@ -94,7 +126,12 @@ async function runReminderCheck(todosJson) {
   // every wake, re-printing the warning on each 1-minute alarm check.
   const warnedInvalidDueDates = data.warnedInvalidDueDates || {};
 
-  if (!Array.isArray(todos)) return;
+  if (!Array.isArray(todos)) {
+    if (resetApplied) {
+      await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
+    }
+    return;
+  }
 
   // Remove notified entries for todos that are completed, no longer have a due date,
   // or have a changed due date, and clear the corresponding desktop notification.
@@ -129,7 +166,7 @@ async function runReminderCheck(todosJson) {
   }
 
   if (todos.length === 0) {
-    if (updated || warnedUpdated) {
+    if (updated || warnedUpdated || resetApplied) {
       await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
     }
     return;
@@ -166,7 +203,7 @@ async function runReminderCheck(todosJson) {
       updated = true;
     }
   }
-  if (updated || warnedUpdated) {
+  if (updated || warnedUpdated || resetApplied) {
     await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
   }
 }
@@ -248,44 +285,13 @@ if (chrome?.notifications?.onClicked) {
 if (chrome?.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message && message.type === 'syncTodos') {
-      // Relies on message.todos being a valid JSON string from the caller's in-memory state.
-      // If absent/malformed, falls back to chrome.storage.local which may lag behind
-      // due to the async localStorage bridge.
-      const run = (message.resetNotified
-        ? (async () => {
-            const data = await getFromStorage('todoReminderNotified');
-            const notified = data.todoReminderNotified || {};
-            const ids = new Set();
-            for (const key of Object.keys(notified)) {
-              const idx = key.lastIndexOf('_');
-              const todoId = idx !== -1 ? key.slice(0, idx) : key;
-              ids.add(todoId);
-            }
-            for (const id of ids) {
-              chrome.notifications.clear('todo_reminder_' + id);
-            }
-            await setToStorage({ todoReminderNotified: {} });
-          })()
-        : Promise.resolve())
-        .then(() => {
-          if (message.todoId) {
-            return getFromStorage('todoReminderNotified').then(data => {
-              const notified = data.todoReminderNotified || {};
-              let updated = false;
-              for (const key of Object.keys(notified)) {
-                if (key.startsWith(message.todoId + '_')) {
-                  chrome.notifications.clear('todo_reminder_' + message.todoId);
-                  delete notified[key];
-                  updated = true;
-                }
-              }
-              if (updated) {
-                return setToStorage({ todoReminderNotified: notified });
-              }
-            });
-          }
-        })
-        .then(() => checkReminders(message.todos));
+      // Route all todoReminderNotified mutations through the same serialized
+      // checkReminders critical section so a concurrent alarm check cannot
+      // overwrite the handler's results with its stale copy.
+      const run = checkReminders(message.todos, {
+        resetNotified: !!message.resetNotified,
+        todoId: message.todoId || null
+      });
       run.then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
       return true;
     }
