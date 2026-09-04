@@ -107,6 +107,33 @@ describe('Weather widget', () => {
       expect(params.get('current')).toBe('temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code');
       expect(params.get('daily')).toBe('temperature_2m_max,temperature_2m_min,weather_code');
       expect(params.get('forecast_days')).toBe('7');
+      expect(params.get('timezone')).toBe('auto');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('requests forecast in location timezone to avoid GMT day shift (regression #629)', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
+
+    mockGeolocation({ latitude: -36.8485, longitude: 174.7633 }); // Auckland (UTC+13)
+
+    const originalFetch = global.fetch;
+    let capturedUrl;
+    global.fetch = async (url) => {
+      capturedUrl = url;
+      return { ok: true, json: async () => mockWeatherData };
+    };
+
+    try {
+      await window.WeatherWidget.refresh(true);
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const urlObj = new URL(capturedUrl);
+      expect(urlObj.search).toContain('timezone=auto');
+      expect(new URL(capturedUrl).searchParams.get('timezone')).toBe('auto');
     } finally {
       global.fetch = originalFetch;
     }
