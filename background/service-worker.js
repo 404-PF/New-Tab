@@ -72,88 +72,73 @@ async function checkReminders(todosJson, options = {}) {
   }
 }
 
-async function runReminderCheck(todosJson, options = {}) {
-  const keys = ['todoReminderEnabled', 'todoReminderLeadTime', 'todoReminderNotified', 'warnedInvalidDueDates'];
-  if (!todosJson) keys.push('todos');
-  const data = await getFromStorage(keys);
-  let todos;
-  if (todosJson) {
-    try { todos = JSON.parse(todosJson); } catch (e) { console.warn('Skipping todo reminder check: corrupt todos payload', e); todos = null; }
-  } else {
-    try { todos = JSON.parse(data.todos); } catch (e) { console.warn('Skipping todo reminder check: corrupt todos payload', e); todos = null; }
+function parseTodosPayload(todosJson, fallbackJson) {
+  const raw = todosJson !== undefined && todosJson !== null ? todosJson : fallbackJson;
+  if (raw === undefined || raw === null) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Skipping todo reminder check: corrupt todos payload', e);
+    return null;
   }
-  const parsedLeadTime = parseInt(data.todoReminderLeadTime, 10);
-  const leadTime = isNaN(parsedLeadTime) ? 30 : parsedLeadTime;
-  let notified = data.todoReminderNotified || {};
-  // When invoked via syncTodos with resetNotified / todoId, apply those
-  // mutations inside this same read-modify-write cycle so a concurrent alarm
-  // check cannot overwrite the result with its stale copy.
+}
+
+function getLeadTime(rawValue) {
+  const parsed = parseInt(rawValue, 10);
+  return isNaN(parsed) ? 30 : parsed;
+}
+
+function applySyncMutations(notified, options) {
+  let result = notified;
   let resetApplied = false;
   if (options.resetNotified) {
     const ids = new Set();
-    for (const key of Object.keys(notified)) {
+    for (const key of Object.keys(result)) {
       const idx = key.lastIndexOf('_');
       ids.add(idx !== -1 ? key.slice(0, idx) : key);
     }
     for (const id of ids) {
       chrome.notifications.clear('todo_reminder_' + id);
     }
-    notified = {};
+    result = {};
     resetApplied = true;
   }
   if (options.todoId) {
+    // Clear the desktop notification unconditionally so a diverged Chrome /
+    // storage state (e.g. failed prior write) does not leave a stale banner.
+    chrome.notifications.clear('todo_reminder_' + options.todoId);
     let todoUpdated = false;
-    for (const key of Object.keys(notified)) {
+    for (const key of Object.keys(result)) {
       if (key.startsWith(options.todoId + '_')) {
-        chrome.notifications.clear('todo_reminder_' + options.todoId);
-        delete notified[key];
+        delete result[key];
         todoUpdated = true;
       }
     }
     if (todoUpdated) resetApplied = true;
   }
-  if (String(data.todoReminderEnabled) !== 'true') {
-    if (resetApplied) {
-      await setToStorage({ todoReminderNotified: notified });
-    }
-    return;
-  }
-  // Track invalid dueDates we've already warned about (keyed by item id + raw
-  // dueDate) so a persistent malformed item doesn't re-print the same warning on
-  // every alarm check. A changed dueDate gets a fresh key, so it warns anew.
-  // This lives in storage rather than module state because MV3 service workers
-  // are suspended after short idle periods: an in-memory Set would be emptied on
-  // every wake, re-printing the warning on each 1-minute alarm check.
-  const warnedInvalidDueDates = data.warnedInvalidDueDates || {};
+  return { notified: result, resetApplied };
+}
 
-  if (!Array.isArray(todos)) {
-    if (resetApplied) {
-      await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
-    }
-    return;
-  }
-
-  // Remove notified entries for todos that are completed, no longer have a due date,
-  // or have a changed due date, and clear the corresponding desktop notification.
+function pruneStaleNotified(notified, todos) {
   const validKeys = new Set(
     todos
-      .filter(t => !t.completed && t.dueDate)
-      .map(t => t.id + '_' + t.dueDate)
+      .filter((t) => !t.completed && t.dueDate)
+      .map((t) => t.id + '_' + t.dueDate)
   );
   let updated = false;
   for (const key of Object.keys(notified)) {
     if (!validKeys.has(key)) {
-      const underscoreIdx = key.lastIndexOf('_');
-      const todoId = underscoreIdx !== -1 ? key.slice(0, underscoreIdx) : key;
+      const idx = key.lastIndexOf('_');
+      const todoId = idx !== -1 ? key.slice(0, idx) : key;
       chrome.notifications.clear('todo_reminder_' + todoId);
       delete notified[key];
       updated = true;
     }
   }
+  return updated;
+}
 
-  // Prune warned-invalid entries whose item is no longer malformed (fixed,
-  // completed, deleted, or date changed) so a future malformed value warns again
-  // instead of being swallowed by stale state.
+function pruneStaleWarned(warnedInvalidDueDates, todos) {
   const currentInvalidKeys = new Set(
     todos.map(invalidDueDateKey).filter((key) => key !== null)
   );
@@ -164,16 +149,13 @@ async function runReminderCheck(todosJson, options = {}) {
       warnedUpdated = true;
     }
   }
+  return warnedUpdated;
+}
 
-  if (todos.length === 0) {
-    if (updated || warnedUpdated || resetApplied) {
-      await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
-    }
-    return;
-  }
-
+async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime) {
+  let updated = false;
+  let warnedUpdated = false;
   const now = new Date();
-
   for (const todo of todos) {
     if (todo.completed) continue;
     if (todo.dueDate === null || todo.dueDate === undefined) continue;
@@ -203,7 +185,45 @@ async function runReminderCheck(todosJson, options = {}) {
       updated = true;
     }
   }
-  if (updated || warnedUpdated || resetApplied) {
+  return { updated, warnedUpdated };
+}
+
+async function runReminderCheck(todosJson, options = {}) {
+  const keys = ['todoReminderEnabled', 'todoReminderLeadTime', 'todoReminderNotified', 'warnedInvalidDueDates'];
+  if (!todosJson) keys.push('todos');
+  const data = await getFromStorage(keys);
+  const todos = parseTodosPayload(todosJson, data.todos);
+  const leadTime = getLeadTime(data.todoReminderLeadTime);
+  const syncResult = applySyncMutations(data.todoReminderNotified || {}, options);
+  let notified = syncResult.notified;
+  let resetApplied = syncResult.resetApplied;
+
+  if (String(data.todoReminderEnabled) !== 'true') {
+    if (resetApplied) {
+      await setToStorage({ todoReminderNotified: notified });
+    }
+    return;
+  }
+  const warnedInvalidDueDates = data.warnedInvalidDueDates || {};
+  if (!Array.isArray(todos)) {
+    if (resetApplied) {
+      await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
+    }
+    return;
+  }
+
+  const staleNotifiedUpdated = pruneStaleNotified(notified, todos);
+  const staleWarnedUpdated = pruneStaleWarned(warnedInvalidDueDates, todos);
+
+  if (todos.length === 0) {
+    if (staleNotifiedUpdated || staleWarnedUpdated || resetApplied) {
+      await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
+    }
+    return;
+  }
+
+  const reminderResult = await evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime);
+  if (reminderResult.updated || staleNotifiedUpdated || staleWarnedUpdated || reminderResult.warnedUpdated || resetApplied) {
     await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
   }
 }
