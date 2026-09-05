@@ -1470,6 +1470,17 @@ describe('Service worker checkReminders', () => {
     vi.useRealTimers();
   });
 
+  async function seedReminderStorage(todos, { notified = {}, warned = {} } = {}) {
+    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify(todos),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: notified,
+      warnedInvalidDueDates: warned
+    }, resolve));
+  }
+
   it('creates notification for todo within reminder window', async () => {
     vi.setSystemTime(new Date('2026-05-20T23:30:00'));
     const todos = [{ id: 't1', text: 'Buy groceries', completed: false, dueDate: '2026-05-20' }];
@@ -1946,6 +1957,52 @@ describe('Service worker checkReminders', () => {
     const notifKeys = Object.keys(chrome.notifications._notifications);
     expect(notifKeys).toHaveLength(1);
     expect(chrome.notifications._notifications[notifKeys[0]].message).toContain('Suppressed task');
+  });
+
+  it('interleaving alarm check and syncTodos reset preserves empty notified map', async () => {
+    await seedReminderStorage(
+      [{ id: 't1', text: 'Task A', completed: false, dueDate: '2026-05-20' }],
+      { notified: { 't1_2026-05-20': Date.now(), 't2_2026-05-20': Date.now() } }
+    );
+
+    let resolveFirstGet;
+    const originalGet = chrome.storage.local.get.bind(chrome.storage.local);
+    const getSpy = vi.spyOn(chrome.storage.local, 'get').mockImplementationOnce((keys, callback) => {
+      return new Promise(resolve => {
+        resolveFirstGet = () => {
+          originalGet(keys, callback).then(resolve);
+        };
+      });
+    });
+
+    const firstPromise = checkReminders();
+    // While first alarm check is blocked, dispatch syncTodos with resetNotified
+    // (routed through the same serialized checkReminders queue). Use empty todos
+    // so the second run does not re-create a notification via evaluateDueReminders.
+    checkReminders(JSON.stringify([]), { resetNotified: true });
+
+    resolveFirstGet();
+    await firstPromise;
+
+    const data = await new Promise(resolve => chrome.storage.local.get('todoReminderNotified', resolve));
+    expect(data.todoReminderNotified).toEqual({});
+
+    getSpy.mockRestore();
+  });
+
+  it('clears todo notification even when storage map has no matching key (diverged state)', async () => {
+    await seedReminderStorage(
+      [{ id: 't1', text: 'Task', completed: false, dueDate: '2026-05-20' }],
+      { notified: {} }
+    );
+    // Simulate a diverged Chrome notification that was not cleared from storage
+    chrome.notifications._notifications['todo_reminder_t1'] = { message: 'stale' };
+    const clearSpy = vi.spyOn(chrome.notifications, 'clear');
+
+    await checkReminders(JSON.stringify([{ id: 't1', text: 'Task', completed: false, dueDate: '2026-05-20' }]), { todoId: 't1' });
+
+    expect(clearSpy).toHaveBeenCalledWith('todo_reminder_t1');
+    clearSpy.mockRestore();
   });
 
 });
