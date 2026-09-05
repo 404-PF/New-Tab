@@ -73,7 +73,7 @@ async function checkReminders(todosJson, options = {}) {
 }
 
 function parseTodosPayload(todosJson, fallbackJson) {
-  const raw = todosJson !== undefined && todosJson !== null ? todosJson : fallbackJson;
+  const raw = todosJson || fallbackJson;
   if (raw === undefined || raw === null) return null;
   try {
     return JSON.parse(raw);
