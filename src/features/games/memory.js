@@ -83,19 +83,23 @@
       b.matched = true;
       matched++;
       flipped = [];
-      pendingResolve = { a: a, b: b, match: true };
+      const resolve = { a: a, b: b, match: true };
+      pendingResolve = resolve;
 
       pendingTimeouts.push(setTimeout(function () {
         if (gameOver) return;
+        if (pendingResolve !== resolve) return;
         pendingResolve = null;
         renderCard(a.id);
         renderCard(b.id);
         if (matched === PAIRS) endGame();
       }, 200));
     } else {
-      pendingResolve = { a: a, b: b, match: false };
+      const resolve = { a: a, b: b, match: false };
+      pendingResolve = resolve;
       pendingTimeouts.push(setTimeout(function () {
         if (gameOver) return;
+        if (pendingResolve !== resolve) return;
         pendingResolve = null;
         a.flipped = false;
         b.flipped = false;
@@ -439,10 +443,37 @@
 
   // Settle a pair whose reveal timeout hasn't fired yet so the board is
   // consistent for serialization or while hidden. Shared by pause() and
-  // serialize().
+  // serialize(). Also handles the orphaned-pair softlock (#632) where an
+  // earlier timeout cleared pendingResolve before the later pair resolved.
   function finalizePendingPair() {
     clearPendingTimeouts();
-    if (!pendingResolve) return;
+    if (!pendingResolve) {
+      // Defensive fallback: if two non-matched cards are stuck face-up with no
+      // pendingResolve (orphaned by an earlier timeout), finalize directly
+      // from the flipped array so pause() always leaves flipped.length < 2.
+      if (flipped.length === 2) {
+        const fa = flipped[0];
+        const fb = flipped[1];
+        if (!fa.matched && !fb.matched) {
+          if (fa.emoji === fb.emoji) {
+            fa.matched = true;
+            fb.matched = true;
+            matched++;
+            renderCard(fa.id);
+            renderCard(fb.id);
+            flipped = [];
+            if (matched === PAIRS) endGame();
+          } else {
+            fa.flipped = false;
+            fb.flipped = false;
+            renderCard(fa.id);
+            renderCard(fb.id);
+            flipped = [];
+          }
+        }
+      }
+      return;
+    }
     const resolve = pendingResolve;
     pendingResolve = null;
     if (resolve.match) {
