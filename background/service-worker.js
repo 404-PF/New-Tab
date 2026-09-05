@@ -84,37 +84,45 @@ function parseTodosPayload(todosJson, fallbackJson) {
 }
 
 function getLeadTime(rawValue) {
-  const parsed = parseInt(rawValue, 10);
-  return isNaN(parsed) ? 30 : parsed;
+  const parsed = Number.parseInt(rawValue, 10);
+  return Number.isNaN(parsed) ? 30 : parsed;
+}
+
+function getTodoIdFromKey(key) {
+  const idx = key.lastIndexOf('_');
+  return idx !== -1 ? key.slice(0, idx) : key;
+}
+
+function clearAllNotified(notified) {
+  const ids = new Set();
+  for (const key of Object.keys(notified)) ids.add(getTodoIdFromKey(key));
+  for (const id of ids) chrome.notifications.clear('todo_reminder_' + id);
+  return {};
+}
+
+function clearEntriesForTodo(notified, todoId) {
+  let updated = false;
+  for (const key of Object.keys(notified)) {
+    if (key.startsWith(todoId + '_')) {
+      delete notified[key];
+      updated = true;
+    }
+  }
+  return updated;
 }
 
 function applySyncMutations(notified, options) {
   let result = notified;
   let resetApplied = false;
   if (options.resetNotified) {
-    const ids = new Set();
-    for (const key of Object.keys(result)) {
-      const idx = key.lastIndexOf('_');
-      ids.add(idx !== -1 ? key.slice(0, idx) : key);
-    }
-    for (const id of ids) {
-      chrome.notifications.clear('todo_reminder_' + id);
-    }
-    result = {};
+    result = clearAllNotified(result);
     resetApplied = true;
   }
   if (options.todoId) {
     // Clear the desktop notification unconditionally so a diverged Chrome /
     // storage state (e.g. failed prior write) does not leave a stale banner.
     chrome.notifications.clear('todo_reminder_' + options.todoId);
-    let todoUpdated = false;
-    for (const key of Object.keys(result)) {
-      if (key.startsWith(options.todoId + '_')) {
-        delete result[key];
-        todoUpdated = true;
-      }
-    }
-    if (todoUpdated) resetApplied = true;
+    if (clearEntriesForTodo(result, options.todoId)) resetApplied = true;
   }
   return { notified: result, resetApplied };
 }
@@ -128,9 +136,7 @@ function pruneStaleNotified(notified, todos) {
   let updated = false;
   for (const key of Object.keys(notified)) {
     if (!validKeys.has(key)) {
-      const idx = key.lastIndexOf('_');
-      const todoId = idx !== -1 ? key.slice(0, idx) : key;
-      chrome.notifications.clear('todo_reminder_' + todoId);
+      chrome.notifications.clear('todo_reminder_' + getTodoIdFromKey(key));
       delete notified[key];
       updated = true;
     }
@@ -152,22 +158,27 @@ function pruneStaleWarned(warnedInvalidDueDates, todos) {
   return warnedUpdated;
 }
 
+function handleInvalidDueDate(todo, warnedInvalidDueDates) {
+  const warnedKey = invalidDueDateKey(todo);
+  if (!warnedKey) return { skip: false, warnedUpdated: false };
+  let warnedUpdated = false;
+  if (!warnedInvalidDueDates[warnedKey]) {
+    warnedInvalidDueDates[warnedKey] = true;
+    warnedUpdated = true;
+    console.warn('Skipping todo reminder: invalid dueDate', todo.id, todo.dueDate);
+  }
+  return { skip: true, warnedUpdated };
+}
+
 async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime) {
   let updated = false;
   let warnedUpdated = false;
   const now = new Date();
   for (const todo of todos) {
-    if (todo.completed) continue;
-    if (todo.dueDate === null || todo.dueDate === undefined) continue;
-    const warnedKey = invalidDueDateKey(todo);
-    if (warnedKey) {
-      if (!warnedInvalidDueDates[warnedKey]) {
-        warnedInvalidDueDates[warnedKey] = true;
-        warnedUpdated = true;
-        console.warn('Skipping todo reminder: invalid dueDate', todo.id, todo.dueDate);
-      }
-      continue;
-    }
+    if (todo.completed || todo.dueDate === null || todo.dueDate === undefined) continue;
+    const invalid = handleInvalidDueDate(todo, warnedInvalidDueDates);
+    if (invalid.warnedUpdated) warnedUpdated = true;
+    if (invalid.skip) continue;
     const due = parseDueDate(todo.dueDate);
     // A positive lead time opens the window [due - leadTime, due]. "At due
     // time" (leadTime 0) must not collapse that window to a single end-of-day

@@ -1470,6 +1470,17 @@ describe('Service worker checkReminders', () => {
     vi.useRealTimers();
   });
 
+  async function seedReminderStorage(todos, { notified = {}, warned = {} } = {}) {
+    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
+    await new Promise(resolve => chrome.storage.local.set({
+      todos: JSON.stringify(todos),
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todoReminderNotified: notified,
+      warnedInvalidDueDates: warned
+    }, resolve));
+  }
+
   it('creates notification for todo within reminder window', async () => {
     vi.setSystemTime(new Date('2026-05-20T23:30:00'));
     const todos = [{ id: 't1', text: 'Buy groceries', completed: false, dueDate: '2026-05-20' }];
@@ -1949,14 +1960,10 @@ describe('Service worker checkReminders', () => {
   });
 
   it('interleaving alarm check and syncTodos reset preserves empty notified map', async () => {
-    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
-    await new Promise(resolve => chrome.storage.local.set({
-      todos: JSON.stringify([{ id: 't1', text: 'Task A', completed: false, dueDate: '2026-05-20' }]),
-      todoReminderEnabled: 'true',
-      todoReminderLeadTime: '30',
-      todoReminderNotified: { 't1_2026-05-20': Date.now(), 't2_2026-05-20': Date.now() },
-      warnedInvalidDueDates: {}
-    }, resolve));
+    await seedReminderStorage(
+      [{ id: 't1', text: 'Task A', completed: false, dueDate: '2026-05-20' }],
+      { notified: { 't1_2026-05-20': Date.now(), 't2_2026-05-20': Date.now() } }
+    );
 
     let resolveFirstGet;
     const originalGet = chrome.storage.local.get.bind(chrome.storage.local);
@@ -1984,14 +1991,10 @@ describe('Service worker checkReminders', () => {
   });
 
   it('clears todo notification even when storage map has no matching key (diverged state)', async () => {
-    vi.setSystemTime(new Date('2026-05-20T23:30:00'));
-    await new Promise(resolve => chrome.storage.local.set({
-      todos: JSON.stringify([{ id: 't1', text: 'Task', completed: false, dueDate: '2026-05-20' }]),
-      todoReminderEnabled: 'true',
-      todoReminderLeadTime: '30',
-      todoReminderNotified: {},
-      warnedInvalidDueDates: {}
-    }, resolve));
+    await seedReminderStorage(
+      [{ id: 't1', text: 'Task', completed: false, dueDate: '2026-05-20' }],
+      { notified: {} }
+    );
     // Simulate a diverged Chrome notification that was not cleared from storage
     chrome.notifications._notifications['todo_reminder_t1'] = { message: 'stale' };
     const clearSpy = vi.spyOn(chrome.notifications, 'clear');
