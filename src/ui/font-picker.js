@@ -42,10 +42,13 @@ class ModernFontPicker {
   }
 
   normalizeFontValue(value) {
-    const aliases = {
-      '\'Times New Roman\', serif': '\'Times New Roman\', Times, serif',
-    };
-    return aliases[value] || value;
+    if (typeof window.resolveFontAlias === 'function') {
+      return window.resolveFontAlias(value);
+    }
+    if (window.FONT_ALIASES && window.FONT_ALIASES[value]) {
+      return window.FONT_ALIASES[value];
+    }
+    return value;
   }
 
   init() {
