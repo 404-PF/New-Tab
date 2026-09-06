@@ -589,7 +589,7 @@
 
     e.preventDefault();
     const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
-    if (opposites[newDir] !== direction) {
+    if (opposites[newDir] !== nextDirection) {
       nextDirection = newDir;
     }
   }
@@ -629,7 +629,7 @@
     }
 
     const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
-    if (opposites[newDir] !== direction) {
+    if (opposites[newDir] !== nextDirection) {
       nextDirection = newDir;
     }
   }
