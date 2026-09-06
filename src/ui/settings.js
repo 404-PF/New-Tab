@@ -2098,8 +2098,6 @@ window.applyNotesEnabled = applyNotesEnabled;
 window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;
 window.initSettings = initSettings;
-window.FONT_DEFAULT = FONT_DEFAULT;
-window.FONT_ALIASES = FONT_ALIASES;
 window.resolveFontAlias = resolveFontAlias;
 
 })();
