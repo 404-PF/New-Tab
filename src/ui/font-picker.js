@@ -35,10 +35,20 @@ class ModernFontPicker {
     };
 
     this.isOpen = false;
-    this.selectedFont = this.options.defaultFont;
+    this.selectedFont = this.normalizeFontValue(this.options.defaultFont);
     this.pickerElement = null;
 
     this.init();
+  }
+
+  normalizeFontValue(value) {
+    if (typeof window.resolveFontAlias === 'function') {
+      return window.resolveFontAlias(value);
+    }
+    if (window.FONT_ALIASES && window.FONT_ALIASES[value]) {
+      return window.FONT_ALIASES[value];
+    }
+    return value;
   }
 
   init() {
@@ -49,7 +59,8 @@ class ModernFontPicker {
 
   // Find font object by value
   getFontByValue(value) {
-    return this.fonts.find(f => f.value === value) || this.fonts[0];
+    const normalized = this.normalizeFontValue(value);
+    return this.fonts.find(f => f.value === normalized) || this.fonts[0];
   }
 
   createFontSwatch() {
@@ -57,8 +68,15 @@ class ModernFontPicker {
 
     if (!element) return;
 
-    // Get current selected font name
-    const currentFont = this.getFontByValue(element.value || this.options.defaultFont);
+    // Resolve alias so legacy "'Times New Roman', serif" still shows Times New Roman
+    const rawValue = element.value || this.options.defaultFont;
+    const resolvedValue = this.normalizeFontValue(rawValue);
+    // Keep normalized value on the hidden select so future reads match an option
+    if (element.value !== resolvedValue && this.fonts.some(f => f.value === resolvedValue)) {
+      element.value = resolvedValue;
+    }
+    const currentFont = this.getFontByValue(resolvedValue);
+    this.selectedFont = currentFont.value;
 
     // Create the font swatch button
     this.swatch = document.createElement('div');
@@ -99,7 +117,7 @@ class ModernFontPicker {
     popupHTML += '<div class="font-list">';
     
     this.fonts.forEach(font => {
-      const isSelected = font.value === this.selectedFont;
+      const isSelected = font.value === this.normalizeFontValue(this.selectedFont);
       popupHTML += `
         <button class="font-option ${isSelected ? 'selected' : ''}" data-font="${font.value}" style="font-family: ${font.value}">
           <span class="font-option-name">${font.name}</span>
@@ -191,17 +209,18 @@ class ModernFontPicker {
   }
 
   selectFont(font) {
-    this.selectedFont = font;
+    const normalized = this.normalizeFontValue(font);
+    this.selectedFont = normalized;
 
     // Update swatch
-    this.updateSwatch(font);
+    this.updateSwatch(normalized);
 
     // Update popup
-    this.updatePopup(font);
+    this.updatePopup(normalized);
 
     // Update original input for compatibility
     if (this.swatch._originalInput) {
-      this.swatch._originalInput.value = font;
+      this.swatch._originalInput.value = normalized;
       // Trigger change event
       const event = new Event('change', { bubbles: true });
       this.swatch._originalInput.dispatchEvent(event);
@@ -209,12 +228,12 @@ class ModernFontPicker {
 
     // Call callback
     if (this.options.onFontSelect) {
-      this.options.onFontSelect(font);
+      this.options.onFontSelect(normalized);
     }
   }
 
   updateSwatch(font) {
-    const fontObj = this.getFontByValue(font);
+    const fontObj = this.getFontByValue(this.normalizeFontValue(font));
     const preview = this.swatch.querySelector('.font-swatch-preview');
     if (preview) {
       preview.style.fontFamily = fontObj.value;
@@ -223,10 +242,11 @@ class ModernFontPicker {
   }
 
   updatePopup(font) {
+    const normalized = this.normalizeFontValue(font);
     // Update selected option
     const options = this.pickerElement.querySelectorAll('.font-option');
     options.forEach(option => {
-      if (option.dataset.font === font) {
+      if (option.dataset.font === normalized) {
         option.classList.add('selected');
       } else {
         option.classList.remove('selected');
@@ -235,9 +255,10 @@ class ModernFontPicker {
   }
 
   setFont(font) {
-    this.selectedFont = font;
-    this.updateSwatch(font);
-    this.updatePopup(font);
+    const normalized = this.normalizeFontValue(font);
+    this.selectedFont = normalized;
+    this.updateSwatch(normalized);
+    this.updatePopup(normalized);
   }
 
   destroy() {

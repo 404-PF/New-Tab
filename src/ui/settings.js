@@ -732,6 +732,15 @@ document.addEventListener('click', function (e) {
   }
 });
 
+const FONT_DEFAULT = '\'Times New Roman\', Times, serif';
+const FONT_ALIASES = {
+  '\'Times New Roman\', serif': FONT_DEFAULT,
+};
+
+function resolveFontAlias(value) {
+  return FONT_ALIASES[value] || value;
+}
+
 // Clock style
 function loadClockStyle() {
   const size = parseInt(localStorage.getItem('clockSize') || '80', 10);
@@ -739,9 +748,14 @@ function loadClockStyle() {
   if (normalizedSize !== size) {
     localStorage.setItem('clockSize', normalizedSize);
   }
+  const storedFont = localStorage.getItem('clockFont');
+  const resolvedFont = storedFont ? resolveFontAlias(storedFont) : FONT_DEFAULT;
+  if (storedFont && resolvedFont !== storedFont) {
+    localStorage.setItem('clockFont', resolvedFont);
+  }
   return {
     color: localStorage.getItem('clockColor') || '#ffffff',
-    font: localStorage.getItem('clockFont') || '\'Times New Roman\', serif',
+    font: resolvedFont,
     size: normalizedSize,
   };
 }
@@ -855,9 +869,14 @@ function loadDateStyle() {
   if (normalizedSize !== size) {
     localStorage.setItem('dateSize', normalizedSize);
   }
+  const storedFont = localStorage.getItem('dateFont');
+  const resolvedFont = storedFont ? resolveFontAlias(storedFont) : FONT_DEFAULT;
+  if (storedFont && resolvedFont !== storedFont) {
+    localStorage.setItem('dateFont', resolvedFont);
+  }
   return {
     color: localStorage.getItem('dateColor') || '#ffffff',
-    font: localStorage.getItem('dateFont') || '\'Times New Roman\', serif',
+    font: resolvedFont,
     size: normalizedSize,
   };
 }
@@ -2079,6 +2098,7 @@ window.applyNotesEnabled = applyNotesEnabled;
 window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;
 window.initSettings = initSettings;
+window.resolveFontAlias = resolveFontAlias;
 
 })();
 
