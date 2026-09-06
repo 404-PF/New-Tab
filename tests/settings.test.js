@@ -24,7 +24,7 @@ describe('Clock style settings', () => {
   it('loadClockStyle returns defaults', () => {
     const style = loadClockStyle();
     expect(style.color).toBe('#ffffff');
-    expect(style.font).toBe('\'Times New Roman\', serif');
+    expect(style.font).toBe('\'Times New Roman\', Times, serif');
     expect(style.size).toBe(80);
   });
 
@@ -49,7 +49,7 @@ describe('Date style settings', () => {
   it('loadDateStyle returns defaults', () => {
     const style = loadDateStyle();
     expect(style.color).toBe('#ffffff');
-    expect(style.font).toBe('\'Times New Roman\', serif');
+    expect(style.font).toBe('\'Times New Roman\', Times, serif');
     expect(style.size).toBe(24);
   });
 
