@@ -494,16 +494,36 @@
   }
 
   function getFallbackBackgroundId() {
+    if (typeof window._getFallbackBackgroundId === 'function') {
+      return window._getFallbackBackgroundId();
+    }
     if (window._backgrounds && window._backgrounds.length > 0) {
       const preferred = window._backgrounds.find(function (b) { return b.id === 'Water Beside Forest'; });
       return preferred ? preferred.id : window._backgrounds[0].id;
     }
-    return 'Water Beside Forest';
+    return null;
   }
 
   function handleMissingCustomBackground(id, loadVersion) {
     if (!isActiveCustomBackgroundRequest(id, loadVersion)) return;
     const fallbackId = getFallbackBackgroundId();
+    if (!fallbackId) {
+      showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', null);
+      if (typeof window.hideBackgroundOverlay === 'function') {
+        window.hideBackgroundOverlay();
+      }
+      return;
+    }
+    const fallbackExists = window._backgrounds
+      ? window._backgrounds.some(function (b) { return b.id === fallbackId; })
+      : false;
+    if (!fallbackExists) {
+      showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', null);
+      if (typeof window.hideBackgroundOverlay === 'function') {
+        window.hideBackgroundOverlay();
+      }
+      return;
+    }
     localStorage.setItem('homepageBg', fallbackId);
     showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', null);
     if (typeof window.hideBackgroundOverlay === 'function') {

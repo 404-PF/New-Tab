@@ -260,10 +260,19 @@ function findBackgroundUrlById(id) {
   return backgroundsMap[id] ? backgroundsMap[id].url : null;
 }
 
+function getFallbackBackgroundId() {
+  if (window._backgrounds && window._backgrounds.length > 0) {
+    const preferred = window._backgrounds.find(function (b) { return b.id === 'Water Beside Forest'; });
+    return preferred ? preferred.id : window._backgrounds[0].id;
+  }
+  return null;
+}
+
 
 
 // Expose for other scripts (non-module global)
 window._backgrounds = backgrounds;
+window._getFallbackBackgroundId = getFallbackBackgroundId;
 window._initStaticBackgrounds = initStaticBackgrounds;
 window._initLiveBackgrounds = initLiveBackgrounds;
 window._initInteractiveBackgrounds = initInteractiveBackgrounds;
