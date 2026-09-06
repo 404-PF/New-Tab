@@ -114,12 +114,8 @@
     return directionQueue.length > 0 ? directionQueue[directionQueue.length - 1] : direction;
   }
 
-  function isValidQueuedDirection(value) {
-    return value === 'up' || value === 'down' || value === 'left' || value === 'right';
-  }
-
   function queueTurn(newDir) {
-    if (!isValidQueuedDirection(newDir)) return false;
+    if (!isValidDirection(newDir)) return false;
     const last = getLastQueuedDirection();
     if (OPPOSITES[newDir] === last) return false;
     if (newDir === last) return false;
@@ -734,7 +730,7 @@
         if (savedState.directionQueue[0] !== savedState.nextDirection) return false;
       }
       if (savedState.directionQueue.length === 0 && isValidDirection(savedState.nextDirection)) {
-        if (savedState.nextDirection !== savedState.direction && OPPOSITES[savedState.nextDirection] === savedState.direction) return false;
+        if (savedState.nextDirection !== savedState.direction) return false;
       }
     } else {
       const nextDir = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
