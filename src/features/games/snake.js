@@ -21,6 +21,9 @@
   let food = null;
   let direction = 'right';
   let nextDirection = 'right';
+  let directionQueue = [];
+  const MAX_QUEUED_TURNS = 2;
+  const OPPOSITES = { up: 'down', down: 'up', left: 'right', right: 'left' };
   let score = 0;
   let gameOver = false;
   let paused = false;
@@ -107,6 +110,25 @@
     return tickMsForScore(score);
   }
 
+  function getLastQueuedDirection() {
+    return directionQueue.length > 0 ? directionQueue[directionQueue.length - 1] : direction;
+  }
+
+  function isValidQueuedDirection(value) {
+    return value === 'up' || value === 'down' || value === 'left' || value === 'right';
+  }
+
+  function queueTurn(newDir) {
+    if (!isValidQueuedDirection(newDir)) return false;
+    const last = getLastQueuedDirection();
+    if (OPPOSITES[newDir] === last) return false;
+    if (newDir === last) return false;
+    if (directionQueue.length >= MAX_QUEUED_TURNS) return false;
+    directionQueue.push(newDir);
+    nextDirection = directionQueue[0];
+    return true;
+  }
+
   // ===================== Game Logic =====================
 
   function initSnake() {
@@ -119,6 +141,7 @@
     ];
     direction = 'right';
     nextDirection = 'right';
+    directionQueue = [];
     score = 0;
     tickMs = BASE_TICK_MS;
     updateScoreHud();
@@ -171,7 +194,12 @@
   function tick() {
     if (paused || gameOver) return;
 
-    direction = nextDirection;
+    if (directionQueue.length > 0) {
+      direction = directionQueue.shift();
+      nextDirection = directionQueue.length > 0 ? directionQueue[0] : direction;
+    } else {
+      direction = nextDirection;
+    }
     const head = { ...snake[0] };
 
     if (direction === 'right') head.x++;
@@ -588,10 +616,7 @@
     if (!newDir) return;
 
     e.preventDefault();
-    const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
-    if (opposites[newDir] !== nextDirection) {
-      nextDirection = newDir;
-    }
+    queueTurn(newDir);
   }
 
   // ===================== Touch =====================
@@ -628,10 +653,7 @@
       newDir = dy > 0 ? 'down' : 'up';
     }
 
-    const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
-    if (opposites[newDir] !== nextDirection) {
-      nextDirection = newDir;
-    }
+    queueTurn(newDir);
   }
 
   // ===================== Save / Restore (#646) =====================
@@ -659,6 +681,7 @@
       food: food && Number.isInteger(food.x) && Number.isInteger(food.y) ? { x: food.x, y: food.y } : null,
       direction: direction,
       nextDirection: nextDirection,
+      directionQueue: directionQueue.slice(),
       score: score
     };
   }
@@ -693,6 +716,30 @@
     if (typeof savedState.score !== 'number' || !Number.isSafeInteger(savedState.score) || savedState.score < 0) return false;
     if (!isValidDirection(savedState.direction)) return false;
     if (savedState.nextDirection !== undefined && !isValidDirection(savedState.nextDirection)) return false;
+    if (savedState.directionQueue !== undefined) {
+      if (!Array.isArray(savedState.directionQueue)) return false;
+      if (savedState.directionQueue.length > MAX_QUEUED_TURNS) return false;
+      for (let i = 0; i < savedState.directionQueue.length; i++) {
+        if (!isValidDirection(savedState.directionQueue[i])) return false;
+      }
+      let prev = savedState.direction;
+      for (let i = 0; i < savedState.directionQueue.length; i++) {
+        const cur = savedState.directionQueue[i];
+        if (cur === prev) return false;
+        if (OPPOSITES[cur] === prev) return false;
+        prev = cur;
+      }
+      // When both nextDirection and queue are present, they must agree.
+      if (savedState.directionQueue.length > 0 && isValidDirection(savedState.nextDirection)) {
+        if (savedState.directionQueue[0] !== savedState.nextDirection) return false;
+      }
+      if (savedState.directionQueue.length === 0 && isValidDirection(savedState.nextDirection)) {
+        if (savedState.nextDirection !== savedState.direction && OPPOSITES[savedState.nextDirection] === savedState.direction) return false;
+      }
+    } else {
+      const nextDir = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
+      if (OPPOSITES[nextDir] === savedState.direction) return false;
+    }
     if (!isValidFoodValue(savedState.food)) return false;
 
     const head = savedState.snake[0];
@@ -707,22 +754,28 @@
       return false;
     }
 
-    const nextDir = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
-    // A queued turn opposite the travel direction would kill the run on the
-    // first tick after Continue; play only accepts non-opposite turns.
-    const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
-    return nextDir !== opposites[savedState.direction];
+    return true;
   }
 
   // Applies a snapshot that has already passed validateSavedState.
   function applyRestoredState(savedState) {
-    const nextDir = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
-
     snake = savedState.snake.map(function (seg) { return { x: seg.x, y: seg.y }; });
     food = savedState.food ? { x: savedState.food.x, y: savedState.food.y } : null;
     if (!food) spawnFood();
     direction = savedState.direction;
-    nextDirection = nextDir;
+    if (Array.isArray(savedState.directionQueue)) {
+      directionQueue = savedState.directionQueue.slice();
+      nextDirection = directionQueue.length > 0 ? directionQueue[0] : direction;
+    } else {
+      const nextDir = isValidDirection(savedState.nextDirection) ? savedState.nextDirection : savedState.direction;
+      if (nextDir !== direction) {
+        directionQueue = [nextDir];
+        nextDirection = nextDir;
+      } else {
+        directionQueue = [];
+        nextDirection = direction;
+      }
+    }
     score = savedState.score;
     tickMs = tickMsForScore(score);
     updateScoreHud();
