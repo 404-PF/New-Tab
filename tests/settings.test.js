@@ -43,6 +43,13 @@ describe('Clock style settings', () => {
     const style = loadClockStyle();
     expect([60, 80, 100]).toContain(style.size);
   });
+
+  it('migrates legacy clockFont alias and persists canonical value', () => {
+    localStorage.setItem('clockFont', '\'Times New Roman\', serif');
+    const style = loadClockStyle();
+    expect(style.font).toBe('\'Times New Roman\', Times, serif');
+    expect(localStorage.getItem('clockFont')).toBe('\'Times New Roman\', Times, serif');
+  });
 });
 
 describe('Date style settings', () => {
@@ -61,6 +68,13 @@ describe('Date style settings', () => {
     expect(style.color).toBe('#00ff00');
     expect(style.font).toBe('Verdana');
     expect(style.size).toBe(30);
+  });
+
+  it('migrates legacy dateFont alias and persists canonical value', () => {
+    localStorage.setItem('dateFont', '\'Times New Roman\', serif');
+    const style = loadDateStyle();
+    expect(style.font).toBe('\'Times New Roman\', Times, serif');
+    expect(localStorage.getItem('dateFont')).toBe('\'Times New Roman\', Times, serif');
   });
 });
 

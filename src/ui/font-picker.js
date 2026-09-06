@@ -73,6 +73,7 @@ class ModernFontPicker {
       element.value = resolvedValue;
     }
     const currentFont = this.getFontByValue(resolvedValue);
+    this.selectedFont = currentFont.value;
 
     // Create the font swatch button
     this.swatch = document.createElement('div');

@@ -732,13 +732,13 @@ document.addEventListener('click', function (e) {
   }
 });
 
-const CLOCK_FONT_DEFAULT = '\'Times New Roman\', Times, serif';
-const CLOCK_FONT_ALIASES = {
-  '\'Times New Roman\', serif': CLOCK_FONT_DEFAULT,
+const FONT_DEFAULT = '\'Times New Roman\', Times, serif';
+const FONT_ALIASES = {
+  '\'Times New Roman\', serif': FONT_DEFAULT,
 };
 
-function resolveClockFontAlias(value) {
-  return CLOCK_FONT_ALIASES[value] || value;
+function resolveFontAlias(value) {
+  return FONT_ALIASES[value] || value;
 }
 
 // Clock style
@@ -749,7 +749,7 @@ function loadClockStyle() {
     localStorage.setItem('clockSize', normalizedSize);
   }
   const storedFont = localStorage.getItem('clockFont');
-  const resolvedFont = storedFont ? resolveClockFontAlias(storedFont) : CLOCK_FONT_DEFAULT;
+  const resolvedFont = storedFont ? resolveFontAlias(storedFont) : FONT_DEFAULT;
   if (storedFont && resolvedFont !== storedFont) {
     localStorage.setItem('clockFont', resolvedFont);
   }
@@ -870,7 +870,7 @@ function loadDateStyle() {
     localStorage.setItem('dateSize', normalizedSize);
   }
   const storedFont = localStorage.getItem('dateFont');
-  const resolvedFont = storedFont ? resolveClockFontAlias(storedFont) : CLOCK_FONT_DEFAULT;
+  const resolvedFont = storedFont ? resolveFontAlias(storedFont) : FONT_DEFAULT;
   if (storedFont && resolvedFont !== storedFont) {
     localStorage.setItem('dateFont', resolvedFont);
   }
