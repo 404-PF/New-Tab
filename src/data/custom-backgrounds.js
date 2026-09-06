@@ -493,13 +493,44 @@
     });
   }
 
+  function getFallbackBackgroundId() {
+    if (window._backgrounds && window._backgrounds.length > 0) {
+      const preferred = window._backgrounds.find(function (b) { return b.id === 'Water Beside Forest'; });
+      return preferred ? preferred.id : window._backgrounds[0].id;
+    }
+    return 'Water Beside Forest';
+  }
+
+  function handleMissingCustomBackground(id, loadVersion) {
+    if (!isActiveCustomBackgroundRequest(id, loadVersion)) return;
+    const fallbackId = getFallbackBackgroundId();
+    localStorage.setItem('homepageBg', fallbackId);
+    showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', null);
+    if (typeof window.hideBackgroundOverlay === 'function') {
+      // Let the fallback apply handle the crossfade; ensure overlay is not stuck
+      // if applyBg is unavailable.
+      if (typeof window.applyBg !== 'function') {
+        window.hideBackgroundOverlay();
+      }
+    }
+    if (typeof window.applyBg === 'function') {
+      window.applyBg();
+    } else if (typeof window.hideBackgroundOverlay === 'function') {
+      window.hideBackgroundOverlay();
+    }
+  }
+
   // --- Apply custom background ---
 
   function applyCustomBackground(id) {
     const loadVersion = ++customBackgroundLoadVersion;
 
     return getCustomBackground(id).then(function (bg) {
-      if (!bg || !isActiveCustomBackgroundRequest(id, loadVersion)) return false;
+      if (!bg) {
+        handleMissingCustomBackground(id, loadVersion);
+        return false;
+      }
+      if (!isActiveCustomBackgroundRequest(id, loadVersion)) return false;
 
       const thumbnailEl = document.getElementById('bg-thumbnail');
       const fullEl = document.getElementById('bg-full');

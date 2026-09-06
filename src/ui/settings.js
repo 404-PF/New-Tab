@@ -373,6 +373,31 @@ function applyBg() {
     captureBackgroundSnapshot();
     backgroundLoadVersion += 1;
     stopBackground();
+    // Dangling custom id from an import (media lives in IndexedDB and is not
+    // exported) or any other unknown id: fall back to a built-in background
+    // and surface an error instead of leaving a blank viewport.
+    const looksCustom = bg && bg.indexOf('custom_') === 0;
+    const fallbackId = (window._backgrounds && window._backgrounds.length > 0)
+      ? (window._backgrounds.find(function (b) { return b.id === 'Water Beside Forest'; }) || window._backgrounds[0]).id
+      : 'Water Beside Forest';
+    if (bg !== fallbackId) {
+      localStorage.setItem('homepageBg', fallbackId);
+      if (looksCustom && typeof window.showToast === 'function') {
+        const msg = window.i18n && typeof window.i18n.t === 'function'
+          ? window.i18n.t('customBackgroundLoadError')
+          : 'Failed to load the custom background. Please try again.';
+        // Defer so the import's success toast (shown right after initSettings)
+        // appears first and the error remains visible last.
+        setTimeout(function () {
+          window.showToast(msg, 'error');
+          console.error(msg, new Error('Background not found: ' + bg));
+        }, 0);
+      }
+      hideBackgroundOverlay();
+      // Re-enter with the fallback id (now guaranteed to resolve to bgData).
+      applyBg();
+      return;
+    }
     hideBackgroundOverlay();
     return;
   }
