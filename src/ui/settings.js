@@ -834,6 +834,8 @@ if (clockStyleReset) {
     localStorage.removeItem('clockFormat');
     applyClockStyle();
     applyClockFormatSetting();
+    if (window.initModernColorPickers) window.initModernColorPickers();
+    if (window.initModernFontPickers) window.initModernFontPickers();
     if (window.updateTime) updateTime();
   });
 }
@@ -927,6 +929,8 @@ if (dateStyleReset) {
     localStorage.removeItem('dateFormat');
     applyDateStyle();
     applyDateFormatSetting();
+    if (window.initModernColorPickers) window.initModernColorPickers();
+    if (window.initModernFontPickers) window.initModernFontPickers();
     if (window.updateTime) updateTime();
   });
 }
