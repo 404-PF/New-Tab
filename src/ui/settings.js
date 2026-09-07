@@ -638,6 +638,10 @@ function applyBg() {
 
           fullEl.src = bgData.thumb;
           requestAnimationFrame(() => {
+            if (loadVersion !== backgroundLoadVersion) {
+              return;
+            }
+
             fullEl.classList.add('loaded');
             hideBackgroundOverlay();
           });
