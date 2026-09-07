@@ -56,20 +56,20 @@
       return;
     }
 
-    const message = error && error.message ? error.message : String(error || 'Unknown storage error');
+    const message = error?.message ? error.message : String(error || 'Unknown storage error');
 
     const detail = {
       key,
       message,
       operation: 'set'
     };
-    if (extra && typeof extra.generation === 'number') {
+    if (typeof extra?.generation === 'number') {
       detail.generation = extra.generation;
     }
-    if (extra && typeof extra.value === 'string') {
+    if (typeof extra?.value === 'string') {
       detail.value = extra.value;
     }
-    if (extra && extra.error && extra.error !== error) {
+    if (extra?.error && extra.error !== error) {
       detail.error = extra.error;
     }
 
@@ -315,14 +315,13 @@
 
     try {
       storageArea.set({ [key]: value }, () => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          if (pendingWriteGenerations.get(key) !== generation) {
-            return;
-          }
+        if (pendingWriteGenerations.get(key) !== generation) {
+          return;
+        }
+        if (chrome.runtime?.lastError) {
           const lastError = chrome.runtime.lastError;
-          const message = lastError && lastError.message ? lastError.message : String(lastError);
+          const message = lastError?.message ? lastError.message : String(lastError);
           console.warn(`Failed to persist ${key} to chrome.storage:`, message);
-          reportStorageWriteError(key, lastError, { generation, value });
           if (cache.get(key) === value) {
             if (hadPreviousValue) {
               cache.set(key, previousValue);
@@ -332,12 +331,17 @@
               trackHydrationMutation(key, null);
             }
           }
+          reportStorageWriteError(key, lastError, { generation, value });
         }
+        pendingWriteGenerations.delete(key);
       });
       return true;
     } catch (error) {
       console.warn(`Failed to persist ${key} to chrome.storage:`, error);
       reportStorageWriteError(key, error, { generation, value });
+      if (pendingWriteGenerations.get(key) === generation) {
+        pendingWriteGenerations.delete(key);
+      }
       return false;
     }
   }

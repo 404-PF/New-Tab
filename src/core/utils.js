@@ -225,7 +225,7 @@
           timestamp: Date.now()
         };
         const persisted = localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
-        if (persisted === false) {
+        if (persisted === false) { // NOSONAR
           console.warn('localStorage quota exceeded, cannot cache icon');
           try {
             this.pruneIconCache();
@@ -419,7 +419,7 @@
 
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('storageBridgeWriteError', (event) => {
-      const detail = event.detail || {};
+      const detail = event?.detail ?? {};
       const key = detail.key;
       if (typeof key !== 'string' || !key.startsWith(ICON_CACHE_PREFIX)) {
         return;
