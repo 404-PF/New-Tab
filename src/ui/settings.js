@@ -447,11 +447,23 @@ function applyBg() {
       // Still load the full image as fallback
       const fullImg = new Image();
       fullImg.onload = function() {
+        if (loadVersion !== backgroundLoadVersion) {
+          return;
+        }
+
         fullEl.src = bgData.thumb;
         requestAnimationFrame(() => {
+          if (loadVersion !== backgroundLoadVersion) {
+            return;
+          }
+
           fullEl.classList.add('loaded');
           hideBackgroundOverlay();
           setTimeout(() => {
+            if (loadVersion !== backgroundLoadVersion) {
+              return;
+            }
+
             thumbnailEl.classList.add('hidden');
           }, 1200);
         });
@@ -1193,7 +1205,13 @@ document.addEventListener('change', function (e) {
           delete videoEl.dataset.reducedMotionPaused;
           if (thumbnailEl && !thumbnailEl.classList.contains('hidden')) {
             thumbnailEl.classList.add('clearing');
+            const scheduledVersion = backgroundLoadVersion;
+            const scheduledBg = videoEl.dataset.currentBg;
             setTimeout(function () {
+              if (scheduledVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== scheduledBg) {
+                return;
+              }
+
               thumbnailEl.classList.add('hidden');
               thumbnailEl.classList.remove('clearing');
             }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS));
