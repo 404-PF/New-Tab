@@ -291,7 +291,7 @@
     });
   }
 
-  function persistSet(key, value) {
+  function persistSet(key, value, hadPreviousValue, previousValue) {
     const storageArea = getStorageArea();
     if (!storageArea) {
       return false;
@@ -300,8 +300,19 @@
     try {
       storageArea.set({ [key]: value }, () => {
         if (chrome.runtime && chrome.runtime.lastError) {
-          console.warn(`Failed to persist ${key} to chrome.storage:`, chrome.runtime.lastError.message);
-          reportStorageWriteError(key, chrome.runtime.lastError.message);
+          const lastError = chrome.runtime.lastError;
+          const message = lastError && lastError.message ? lastError.message : String(lastError);
+          console.warn(`Failed to persist ${key} to chrome.storage:`, message);
+          reportStorageWriteError(key, lastError);
+          if (cache.get(key) === value) {
+            if (hadPreviousValue) {
+              cache.set(key, previousValue);
+              trackHydrationMutation(key, previousValue);
+            } else {
+              cache.delete(key);
+              trackHydrationMutation(key, null);
+            }
+          }
         }
       });
       return true;
@@ -380,7 +391,7 @@
         return persisted;
       }
 
-      const accepted = persistSet(key, stringValue);
+      const accepted = persistSet(key, stringValue, hadPreviousValue, previousValue);
       if (!accepted) {
         if (hadPreviousValue) {
           cache.set(key, previousValue);
