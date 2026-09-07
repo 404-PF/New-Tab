@@ -349,6 +349,20 @@ function stopBackground() {
   }
 }
 
+function notifyMissingCustomBackground(bg) {
+  const msg = window.i18n && typeof window.i18n.t === 'function'
+    ? window.i18n.t('customBackgroundLoadError')
+    : 'Failed to load the custom background. Please try again.';
+  setTimeout(function () {
+    if (typeof window.showToast === 'function') {
+      window.showToast(msg, 'error');
+    } else {
+      window.alert(msg);
+    }
+    console.error(msg, new Error('Background not found: ' + bg));
+  }, 0);
+}
+
 function applyBg() {
   const bg = syncBackgroundSelection();
   initialBackgroundApplied = true;
@@ -373,6 +387,33 @@ function applyBg() {
     captureBackgroundSnapshot();
     backgroundLoadVersion += 1;
     stopBackground();
+    // Dangling custom id from an import (media lives in IndexedDB and is not
+    // exported) or any other unknown id: fall back to a built-in background
+    // and surface an error instead of leaving a blank viewport.
+    const looksCustom = bg && bg.indexOf('custom_') === 0;
+    const fallbackId = typeof window._getFallbackBackgroundId === 'function'
+      ? window._getFallbackBackgroundId()
+      : null;
+    const fallbackBgData = fallbackId && window._backgrounds
+      ? window._backgrounds.find(function (b) { return b.id === fallbackId; })
+      : null;
+    if (!fallbackBgData) {
+      if (looksCustom) {
+        notifyMissingCustomBackground(bg);
+      }
+      hideBackgroundOverlay();
+      return;
+    }
+    if (bg !== fallbackId) {
+      localStorage.setItem('homepageBg', fallbackId);
+      if (looksCustom) {
+        notifyMissingCustomBackground(bg);
+      }
+      hideBackgroundOverlay();
+      // Re-enter with the fallback id (now guaranteed to resolve to bgData).
+      applyBg();
+      return;
+    }
     hideBackgroundOverlay();
     return;
   }

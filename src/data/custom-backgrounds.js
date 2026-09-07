@@ -493,13 +493,60 @@
     });
   }
 
+  function getFallbackBackgroundId() {
+    if (typeof window._getFallbackBackgroundId === 'function') {
+      return window._getFallbackBackgroundId();
+    }
+    return null;
+  }
+
+  function handleMissingCustomBackground(id, loadVersion) {
+    if (!isActiveCustomBackgroundRequest(id, loadVersion)) return;
+    const fallbackId = getFallbackBackgroundId();
+    if (!fallbackId) {
+      showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', null);
+      if (typeof window.hideBackgroundOverlay === 'function') {
+        window.hideBackgroundOverlay();
+      }
+      return;
+    }
+    const fallbackExists = window._backgrounds
+      ? window._backgrounds.some(function (b) { return b.id === fallbackId; })
+      : false;
+    if (!fallbackExists) {
+      showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', null);
+      if (typeof window.hideBackgroundOverlay === 'function') {
+        window.hideBackgroundOverlay();
+      }
+      return;
+    }
+    localStorage.setItem('homepageBg', fallbackId);
+    showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', null);
+    if (typeof window.hideBackgroundOverlay === 'function') {
+      // Let the fallback apply handle the crossfade; ensure overlay is not stuck
+      // if applyBg is unavailable.
+      if (typeof window.applyBg !== 'function') {
+        window.hideBackgroundOverlay();
+      }
+    }
+    if (typeof window.applyBg === 'function') {
+      window.applyBg();
+    } else if (typeof window.hideBackgroundOverlay === 'function') {
+      window.hideBackgroundOverlay();
+    }
+  }
+
   // --- Apply custom background ---
 
   function applyCustomBackground(id) {
     const loadVersion = ++customBackgroundLoadVersion;
 
     return getCustomBackground(id).then(function (bg) {
-      if (!bg || !isActiveCustomBackgroundRequest(id, loadVersion)) return false;
+      if (!bg) {
+        handleMissingCustomBackground(id, loadVersion);
+        return false;
+      }
+      if (!isActiveCustomBackgroundRequest(id, loadVersion)) return false;
 
       const thumbnailEl = document.getElementById('bg-thumbnail');
       const fullEl = document.getElementById('bg-full');
