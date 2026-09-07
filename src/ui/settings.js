@@ -349,6 +349,20 @@ function stopBackground() {
   }
 }
 
+function notifyMissingCustomBackground(bg) {
+  const msg = window.i18n && typeof window.i18n.t === 'function'
+    ? window.i18n.t('customBackgroundLoadError')
+    : 'Failed to load the custom background. Please try again.';
+  setTimeout(function () {
+    if (typeof window.showToast === 'function') {
+      window.showToast(msg, 'error');
+    } else {
+      window.alert(msg);
+    }
+    console.error(msg, new Error('Background not found: ' + bg));
+  }, 0);
+}
+
 function applyBg() {
   const bg = syncBackgroundSelection();
   initialBackgroundApplied = true;
@@ -379,28 +393,13 @@ function applyBg() {
     const looksCustom = bg && bg.indexOf('custom_') === 0;
     const fallbackId = typeof window._getFallbackBackgroundId === 'function'
       ? window._getFallbackBackgroundId()
-      : (window._backgrounds && window._backgrounds.length > 0)
-        ? (window._backgrounds.find(function (b) { return b.id === 'Water Beside Forest'; }) || window._backgrounds[0]).id
-        : null;
+      : null;
     const fallbackBgData = fallbackId && window._backgrounds
       ? window._backgrounds.find(function (b) { return b.id === fallbackId; })
       : null;
     if (!fallbackBgData) {
       if (looksCustom) {
-        const msg = window.i18n && typeof window.i18n.t === 'function'
-          ? window.i18n.t('customBackgroundLoadError')
-          : 'Failed to load the custom background. Please try again.';
-        // Defer availability check so the toast is not silently dropped when
-        // settings.js runs before todo.js exports window.showToast; fall back
-        // to alert when the toast API is still unavailable.
-        setTimeout(function () {
-          if (typeof window.showToast === 'function') {
-            window.showToast(msg, 'error');
-          } else {
-            window.alert(msg);
-          }
-          console.error(msg, new Error('Background not found: ' + bg));
-        }, 0);
+        notifyMissingCustomBackground(bg);
       }
       hideBackgroundOverlay();
       return;
@@ -408,20 +407,7 @@ function applyBg() {
     if (bg !== fallbackId) {
       localStorage.setItem('homepageBg', fallbackId);
       if (looksCustom) {
-        const msg = window.i18n && typeof window.i18n.t === 'function'
-          ? window.i18n.t('customBackgroundLoadError')
-          : 'Failed to load the custom background. Please try again.';
-        // Defer so the import's success toast (shown right after initSettings)
-        // appears first and the error remains visible last, and defer the
-        // showToast availability check for the same ordering reason.
-        setTimeout(function () {
-          if (typeof window.showToast === 'function') {
-            window.showToast(msg, 'error');
-          } else {
-            window.alert(msg);
-          }
-          console.error(msg, new Error('Background not found: ' + bg));
-        }, 0);
+        notifyMissingCustomBackground(bg);
       }
       hideBackgroundOverlay();
       // Re-enter with the fallback id (now guaranteed to resolve to bgData).
