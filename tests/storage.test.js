@@ -60,11 +60,13 @@ describe('storage bridge', () => {
       dom.window.chrome.runtime.lastError = null;
 
       const failureEvent = await failurePromise;
-      expect(failureEvent.detail).toEqual({
+      expect(failureEvent.detail).toMatchObject({
         key: 'appOrder',
         message: 'QUOTA_BYTES quota exceeded',
         operation: 'set'
       });
+      expect(failureEvent.detail.value).toBe('["app-1"]');
+      expect(typeof failureEvent.detail.generation).toBe('number');
     } finally {
       dom.window.close();
     }

@@ -10,6 +10,8 @@
   let storageBridgeTimeoutId = null;
   const STORAGE_BRIDGE_TIMEOUT_MS = 3000;
   const STORAGE_WRITE_ERROR_EVENT = 'storageBridgeWriteError';
+  let writeSequence = 0;
+  const pendingWriteGenerations = new Map();
   const storageReady = new Promise((resolve) => {
     resolveStorageBridge = resolve;
   });
@@ -49,19 +51,30 @@
     return chrome.storage.local;
   }
 
-  function reportStorageWriteError(key, error) {
+  function reportStorageWriteError(key, error, extra) {
     if (typeof globalThis.dispatchEvent !== 'function' || typeof globalThis.CustomEvent !== 'function') {
       return;
     }
 
     const message = error && error.message ? error.message : String(error || 'Unknown storage error');
 
+    const detail = {
+      key,
+      message,
+      operation: 'set'
+    };
+    if (extra && typeof extra.generation === 'number') {
+      detail.generation = extra.generation;
+    }
+    if (extra && typeof extra.value === 'string') {
+      detail.value = extra.value;
+    }
+    if (extra && extra.error && extra.error !== error) {
+      detail.error = extra.error;
+    }
+
     globalThis.dispatchEvent(new globalThis.CustomEvent(STORAGE_WRITE_ERROR_EVENT, {
-      detail: {
-        key,
-        message,
-        operation: 'set'
-      }
+      detail
     }));
   }
 
@@ -297,13 +310,19 @@
       return false;
     }
 
+    const generation = ++writeSequence;
+    pendingWriteGenerations.set(key, generation);
+
     try {
       storageArea.set({ [key]: value }, () => {
         if (chrome.runtime && chrome.runtime.lastError) {
+          if (pendingWriteGenerations.get(key) !== generation) {
+            return;
+          }
           const lastError = chrome.runtime.lastError;
           const message = lastError && lastError.message ? lastError.message : String(lastError);
           console.warn(`Failed to persist ${key} to chrome.storage:`, message);
-          reportStorageWriteError(key, lastError);
+          reportStorageWriteError(key, lastError, { generation, value });
           if (cache.get(key) === value) {
             if (hadPreviousValue) {
               cache.set(key, previousValue);
@@ -318,7 +337,7 @@
       return true;
     } catch (error) {
       console.warn(`Failed to persist ${key} to chrome.storage:`, error);
-      reportStorageWriteError(key, error);
+      reportStorageWriteError(key, error, { generation, value });
       return false;
     }
   }

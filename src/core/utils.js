@@ -225,7 +225,7 @@
           timestamp: Date.now()
         };
         const persisted = localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
-        if (!persisted) {
+        if (persisted === false) {
           console.warn('localStorage quota exceeded, cannot cache icon');
           try {
             this.pruneIconCache();
@@ -419,13 +419,22 @@
 
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('storageBridgeWriteError', (event) => {
-      const key = event.detail && event.detail.key;
+      const detail = event.detail || {};
+      const key = detail.key;
       if (typeof key !== 'string' || !key.startsWith(ICON_CACHE_PREFIX)) {
         return;
       }
+      const failedValue = detail.value;
       try {
-        if (localStorage.getItem(key) !== null) {
-          localStorage.removeItem(key);
+        const current = localStorage.getItem(key);
+        if (current !== null) {
+          if (typeof failedValue === 'string') {
+            if (current === failedValue) {
+              localStorage.removeItem(key);
+            }
+          } else {
+            localStorage.removeItem(key);
+          }
         }
       } catch {
         // best-effort cleanup
