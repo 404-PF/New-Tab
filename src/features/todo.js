@@ -1544,8 +1544,8 @@ function showDateUpdateFeedback(dueDateElement, oldDate, newDate) {
 
   // Show a toast notification
   const message = newDate
-    ? `Due date updated to ${formatDate(newDate)}`
-    : 'Due date cleared';
+    ? (window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('dueDateUpdatedTo', { date: formatDate(newDate) }) : `Due date updated to ${formatDate(newDate)}`)
+    : (window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('dueDateCleared') : 'Due date cleared');
   showToast(message);
 }
 

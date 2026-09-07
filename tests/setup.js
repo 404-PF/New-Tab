@@ -289,6 +289,8 @@ globalThis.window.i18n = {
       clearDate: 'Clear',
       todayDate: 'Today',
       todoSetDate: 'Set date',
+      dueDateUpdatedTo: 'Due date updated to {date}',
+      dueDateCleared: 'Due date cleared',
       todoEditTooltip: 'Edit Todo',
       todoEditRecurrence: 'Repeat',
       recurrenceNone: 'None',
