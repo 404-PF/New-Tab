@@ -147,27 +147,29 @@ describe('Notes scroll stability (#688)', () => {
       return originalFocus.apply(this, args);
     });
 
-    // Force a re-render while editing (e.g., due to an external tag update /
-    // language change that would previously destroy the focused textarea).
-    // Directly invoke renderNotes via an API that triggers it: updateNoteTag on
-    // the *other* note, which calls renderNotes. The focused note's DOM is rebuilt.
-    updateNoteTag('x', 'work');
+    try {
+      // Force a re-render while editing (e.g., due to an external tag update /
+      // language change that would previously destroy the focused textarea).
+      // Directly invoke renderNotes via an API that triggers it: updateNoteTag on
+      // the *other* note, which calls renderNotes. The focused note's DOM is rebuilt.
+      updateNoteTag('x', 'work');
 
-    expect(window.scrollY).toBe(350);
-    const restored = document.querySelector('.note-textarea[data-id="y"]');
-    expect(document.activeElement).toBe(restored);
-    expect(restored.selectionStart).toBe(2);
-    expect(restored.selectionEnd).toBe(6);
-    // The mocks caused scroll jumps to 0; ensure the fix restored via scrollTo
-    // and never left the viewport at top.
-    expect(scrollToSpy).toHaveBeenCalled();
-    for (const [, y] of scrollToSpy.mock.calls) {
-      expect(y).not.toBe(0);
+      expect(window.scrollY).toBe(350);
+      const restored = document.querySelector('.note-textarea[data-id="y"]');
+      expect(document.activeElement).toBe(restored);
+      expect(restored.selectionStart).toBe(2);
+      expect(restored.selectionEnd).toBe(6);
+      // The mocks caused scroll jumps to 0; ensure the fix restored via scrollTo
+      // and never left the viewport at top.
+      expect(scrollToSpy).toHaveBeenCalled();
+      for (const [, y] of scrollToSpy.mock.calls) {
+        expect(y).not.toBe(0);
+      }
+    } finally {
+      // Cleanup the innerHTML interceptor (vi.restoreAllMocks does not remove
+      // defineProperty on the instance) even if an assertion fails.
+      delete notesListEl.innerHTML;
+      focusInterceptor.mockRestore();
     }
-
-    // Cleanup the innerHTML interceptor (vi.restoreAllMocks does not remove
-    // defineProperty on the instance).
-    delete notesListEl.innerHTML;
-    focusInterceptor.mockRestore();
   });
 });
