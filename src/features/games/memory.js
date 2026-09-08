@@ -21,6 +21,7 @@
   let pendingResolve = null;
   let started = false;
   let readyScreen = null;
+  let cardEls = [];
 
   // ===================== Helpers =====================
 
@@ -174,7 +175,7 @@
   function renderCard(cardId) {
     const card = cards[cardId];
     if (!gridEl) return;
-    const el = gridEl.querySelector('.games-memory-card[data-id="' + cardId + '"]');
+    const el = cardEls[cardId] || gridEl.children[cardId];
     if (!el) return;
 
     if (card.matched) {
@@ -191,15 +192,17 @@
 
   function renderAll() {
     if (!gridEl) return;
-    gridEl.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    cardEls = [];
     cards.forEach(function (card, idx) {
       const el = document.createElement('div');
       el.className = 'games-memory-card';
       el.dataset.id = idx;
       el.textContent = '?';
-      el.addEventListener('click', function () { flipCard(idx); });
-      gridEl.appendChild(el);
+      frag.appendChild(el);
+      cardEls.push(el);
     });
+    gridEl.replaceChildren(frag);
   }
 
   // ===================== Input =====================
@@ -217,6 +220,12 @@
         resetGame();
       }
     }
+  }
+
+  function handleGridClick(e) {
+    const cardEl = e.target.closest('.games-memory-card');
+    if (!cardEl || !gridEl || !gridEl.contains(cardEl)) return;
+    flipCard(Number(cardEl.dataset.id));
   }
 
   // ===================== Save / Restore (#646) =====================
@@ -369,6 +378,7 @@
     // Grid
     gridEl = document.createElement('div');
     gridEl.className = 'games-memory-grid';
+    gridEl.addEventListener('click', handleGridClick);
     container.appendChild(gridEl);
 
     // Instructions
@@ -432,6 +442,8 @@
     pendingResolve = null;
     stopTimer();
     document.removeEventListener('keydown', handleKeydown);
+    if (gridEl) gridEl.removeEventListener('click', handleGridClick);
+    cardEls = [];
     cards = [];
     flipped = [];
     if (container) container.innerHTML = '';
