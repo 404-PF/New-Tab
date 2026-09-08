@@ -224,13 +224,31 @@
           dataUrl: dataUrl,
           timestamp: Date.now()
         };
-        localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
+        const persisted = localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
+        if (persisted === false) { // NOSONAR
+          console.warn('localStorage quota exceeded, cannot cache icon');
+          try {
+            this.pruneIconCache();
+          } catch (error) {
+            console.warn('Failed to prune icon cache after quota error:', error);
+          }
+          return false;
+        }
         return true;
       } catch (error) {
-        if (error.name === 'QuotaExceededError') {
+        const isQuotaError = error && (
+          error.name === 'QuotaExceededError' ||
+          error.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+          error.code === 22
+        );
+        if (isQuotaError) {
           console.warn('localStorage quota exceeded, cannot cache icon');
           // Free space so subsequent caches succeed
-          this.pruneIconCache();
+          try {
+            this.pruneIconCache();
+          } catch (pruneError) {
+            console.warn('Failed to prune icon cache after quota error:', pruneError);
+          }
         } else {
           console.warn('Failed to cache icon:', error);
         }
@@ -398,6 +416,36 @@
       }
     }
   };
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('storageBridgeWriteError', (event) => {
+      const detail = event?.detail ?? {};
+      const key = detail.key;
+      if (typeof key !== 'string' || !key.startsWith(ICON_CACHE_PREFIX)) {
+        return;
+      }
+      const failedValue = detail.value;
+      try {
+        const current = localStorage.getItem(key);
+        if (current !== null) {
+          if (typeof failedValue === 'string') {
+            if (current === failedValue) {
+              localStorage.removeItem(key);
+            }
+          } else {
+            localStorage.removeItem(key);
+          }
+        }
+      } catch {
+        // best-effort cleanup
+      }
+      try {
+        iconCache.pruneIconCache();
+      } catch (error) {
+        console.warn('Failed to prune icon cache after async quota error:', error);
+      }
+    });
+  }
 
   // Page Visibility Manager - handles background tab optimizations
   const visibilityManager = {
