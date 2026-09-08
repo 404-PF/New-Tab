@@ -620,5 +620,9 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "集中統計パネルを切り替える",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "dueTime": {
+    "message": "期限時刻",
+    "description": "Label for the due time input"
   }
 }

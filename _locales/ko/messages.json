@@ -620,5 +620,9 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "집중 통계 패널 전환",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "dueTime": {
+    "message": "마감 시간",
+    "description": "Label for the due time input"
   }
 }

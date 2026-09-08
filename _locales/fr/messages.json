@@ -620,5 +620,9 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "Basculer le panneau de statistiques de concentration",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "dueTime": {
+    "message": "Heure d'échéance",
+    "description": "Label for the due time input"
   }
 }

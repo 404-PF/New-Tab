@@ -752,5 +752,9 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "Toggle focus statistics panel",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "dueTime": {
+    "message": "Due Time",
+    "description": "Label for the due time input"
   }
 }

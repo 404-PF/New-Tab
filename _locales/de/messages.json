@@ -620,5 +620,9 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "Fokus-Statistik-Panel umschalten",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "dueTime": {
+    "message": "Fälligkeitszeit",
+    "description": "Label for the due time input"
   }
 }

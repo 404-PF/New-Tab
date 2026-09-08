@@ -620,5 +620,9 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "Alternar painel de estatísticas de foco",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "dueTime": {
+    "message": "Hora de vencimento",
+    "description": "Label for the due time input"
   }
 }
