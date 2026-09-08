@@ -15,6 +15,7 @@
   let _previewMouseDownIsPreview = false;
   const _resizeSet = new Set();
   let _resizeRaf = null;
+  let _suppressRenderPreserve = false;
 
   // Drag state
   let _dragSourceId = null;
@@ -195,6 +196,27 @@
     const { notesList, notesEmpty } = elements;
     if (!notesList || !notesEmpty) return;
 
+    const active = document.activeElement;
+    const isEditingNote = !_suppressRenderPreserve && active
+      && active.classList.contains('note-textarea')
+      && active.closest('#notes-list');
+    let scrollPos = null;
+    let selection = null;
+    let activeId = null;
+    if (isEditingNote) {
+      scrollPos = { x: window.scrollX, y: window.scrollY };
+      activeId = active.dataset.id;
+      try {
+        selection = {
+          start: active.selectionStart,
+          end: active.selectionEnd,
+          dir: active.selectionDirection
+        };
+      } catch {
+        // Ignore unavailable selection APIs; the note content remains usable.
+      }
+    }
+
     notes.sort((a, b) => a.order - b.order);
     notesList.innerHTML = '';
 
@@ -210,6 +232,9 @@
     if (filtered.length === 0) {
       notesEmpty.style.display = 'block';
       updateNotesEmptyState(notesEmpty, notes.length === 0);
+      if (scrollPos && (window.scrollX !== scrollPos.x || window.scrollY !== scrollPos.y)) {
+        window.scrollTo(scrollPos.x, scrollPos.y);
+      }
       return;
     }
 
@@ -219,6 +244,32 @@
       const card = createNoteCard(note, index);
       notesList.appendChild(card);
     });
+
+    if (isEditingNote && activeId) {
+      if (scrollPos && (window.scrollX !== scrollPos.x || window.scrollY !== scrollPos.y)) {
+        window.scrollTo(scrollPos.x, scrollPos.y);
+      }
+      const restored = [...notesList.querySelectorAll('.note-textarea')].find(ta => ta.dataset.id === activeId);
+      if (restored) {
+        try {
+          restored.focus({ preventScroll: true });
+        } catch {
+          restored.focus();
+        }
+        if (selection) {
+          try {
+            restored.setSelectionRange(selection.start, selection.end, selection.dir);
+          } catch {
+            // Ignore failed setSelectionRange; focus is already restored.
+          }
+        }
+        if (scrollPos && (window.scrollX !== scrollPos.x || window.scrollY !== scrollPos.y)) {
+          window.scrollTo(scrollPos.x, scrollPos.y);
+        }
+      } else if (scrollPos && (window.scrollX !== scrollPos.x || window.scrollY !== scrollPos.y)) {
+        window.scrollTo(scrollPos.x, scrollPos.y);
+      }
+    }
   }
 
   function createNoteCard(note, index) {
@@ -299,9 +350,14 @@
     const tas = [..._resizeSet].filter(t => t.isConnected);
     _resizeSet.clear();
     if (tas.length === 0) return;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
     tas.forEach(t => { t.style.height = 'auto'; });
     const heights = tas.map(t => t.scrollHeight);
     tas.forEach((t, i) => { t.style.height = heights[i] + 'px'; });
+    if (window.scrollX !== scrollX || window.scrollY !== scrollY) {
+      window.scrollTo(scrollX, scrollY);
+    }
   }
 
   function scheduleResize(ta) {
@@ -354,7 +410,9 @@
       renderNotes();
       return;
     }
+    _suppressRenderPreserve = true;
     renderNotes();
+    _suppressRenderPreserve = false;
     focusNewNote(note.id);
   }
 
