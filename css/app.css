@@ -672,11 +672,21 @@ body.light-theme .todo-due-time-input {
   color: #1f2937;
   color-scheme: light;
 }
+body.light-theme .todo-due-time-input:focus {
+  border-color: rgba(33, 150, 243, 0.4);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
+}
 body.light-theme .inline-due-time {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.1);
   color: #1f2937;
   color-scheme: light;
+}
+body.light-theme .inline-time-label {
+  color: rgba(31, 41, 55, 0.7);
+}
+body.light-theme .inline-time-row {
+  border-top-color: rgba(0, 0, 0, 0.08);
 }
 
 /* Light theme adjustments for custom date picker */

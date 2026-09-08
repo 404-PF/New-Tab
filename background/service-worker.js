@@ -30,7 +30,6 @@ function parseDueDate(dueDate, dueTime) {
   // round-tripping the components.
   const date = new Date(year, month - 1, day, hours, minutes, seconds);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  if (typeof dueTime === 'string' && DUE_TIME_PATTERN.test(dueTime) && (date.getHours() !== hours || date.getMinutes() !== minutes)) return null;
   return date;
 }
 

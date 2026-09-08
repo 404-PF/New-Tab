@@ -782,9 +782,6 @@
         // invalid time string ignored
       }
     }
-    if (newDueDate === null && newDueTime === undefined) {
-      // dueDate cleared without explicit dueTime arg — already nulled above
-    }
     if (newRecurrence !== undefined) {
       todo.recurrence = RECURRENCE_VALUES.includes(newRecurrence) ? newRecurrence : null;
     }
@@ -1431,7 +1428,7 @@ function createCalendarHtml(currentDate, selectedDateString, selectedDueTime) {
     </div>
     <div class="inline-time-row">
       <label for="inline-due-time-${year}-${month}" class="inline-time-label">${window.i18n ? window.i18n.t('dueTime') : 'Time'}</label>
-      <input type="time" class="inline-due-time" value="${timeValue}" ${timeDisabled} aria-label="${window.i18n ? window.i18n.t('dueTime') : 'Due time'}" />
+      <input type="time" id="inline-due-time-${year}-${month}" class="inline-due-time" value="${timeValue}" ${timeDisabled} aria-label="${window.i18n ? window.i18n.t('dueTime') : 'Due time'}" />
     </div>
     <div class="inline-calendar-footer">
       <button type="button" class="inline-clear-date">${window.i18n ? window.i18n.t('clearDate') : 'Clear'}</button>
@@ -2475,7 +2472,7 @@ class CustomDatePicker {
     this.updateHiddenInput();
     this.updateTriggerDisplay();
     this.closeCalendar();
-    if (typeof syncDueTimeInputState === 'function') syncDueTimeInputState();
+    syncDueTimeInputState();
   }
 
   clearDate() {
@@ -2483,7 +2480,7 @@ class CustomDatePicker {
     this.updateHiddenInput();
     this.updateTriggerDisplay();
     this.closeCalendar();
-    if (typeof syncDueTimeInputState === 'function') syncDueTimeInputState();
+    syncDueTimeInputState();
   }
 
   selectToday() {

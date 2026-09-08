@@ -286,6 +286,7 @@ globalThis.window.i18n = {
     // Provide minimal fallback strings for common keys
     const fallbacks = {
       dueDate: 'Due Date',
+      dueTime: 'Due Time',
       clearDate: 'Clear',
       todayDate: 'Today',
       todoSetDate: 'Set date',
