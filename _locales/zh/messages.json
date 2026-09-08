@@ -622,11 +622,11 @@
     "description": "Aria label for pomodoro stats toggle"
   },
   "gamesLoading": {
-    "message": "正在加载游戏…",
+    "message": "正在載入遊戲…",
     "description": "Loading state shown while game scripts are being fetched"
   },
   "gamesLoadError": {
-    "message": "游戏加载失败，请重试。",
+    "message": "遊戲載入失敗，請重試。",
     "description": "Error shown when game scripts fail to load"
   }
 }
