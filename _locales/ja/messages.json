@@ -620,5 +620,13 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "集中統計パネルを切り替える",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "gamesLoading": {
+    "message": "ゲームを読み込み中…",
+    "description": "Loading state shown while game scripts are being fetched"
+  },
+  "gamesLoadError": {
+    "message": "ゲームの読み込みに失敗しました。もう一度お試しください。",
+    "description": "Error shown when game scripts fail to load"
   }
 }

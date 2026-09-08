@@ -620,5 +620,13 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "切换专注统计面板",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "gamesLoading": {
+    "message": "正在加载游戏…",
+    "description": "Loading state shown while game scripts are being fetched"
+  },
+  "gamesLoadError": {
+    "message": "游戏加载失败，请重试。",
+    "description": "Error shown when game scripts fail to load"
   }
 }

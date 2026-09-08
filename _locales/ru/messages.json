@@ -620,5 +620,13 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "Переключить панель статистики фокуса",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "gamesLoading": {
+    "message": "Загрузка игр…",
+    "description": "Loading state shown while game scripts are being fetched"
+  },
+  "gamesLoadError": {
+    "message": "Не удалось загрузить игры. Попробуйте ещё раз.",
+    "description": "Error shown when game scripts fail to load"
   }
 }

@@ -620,5 +620,13 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "집중 통계 패널 전환",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "gamesLoading": {
+    "message": "게임을 불러오는 중…",
+    "description": "Loading state shown while game scripts are being fetched"
+  },
+  "gamesLoadError": {
+    "message": "게임을 불러오지 못했습니다. 다시 시도해 주세요.",
+    "description": "Error shown when game scripts fail to load"
   }
 }
