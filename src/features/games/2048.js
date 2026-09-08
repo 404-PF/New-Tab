@@ -13,6 +13,7 @@
   let scoreEl = null;
   let started = false;
   let readyScreen = null;
+  let tiles = null;
 
   // ===================== Helpers =====================
 
@@ -141,27 +142,20 @@
 
   function render() {
     if (!boardEl) return;
-    boardEl.innerHTML = '';
 
-    const cellSize = 70;
-    const gap = 8;
-
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        const val = board[r][c];
-        const cell = document.createElement('div');
-        cell.className = 'games-2048-cell';
-        if (val > 0) {
-          cell.classList.add('games-2048-cell-filled');
-          const colorClass = getColorClass(val);
-          cell.classList.add(colorClass);
-          cell.textContent = val;
+    if (tiles) {
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          const idx = r * SIZE + c;
+          const val = board[r][c];
+          const cell = tiles[idx];
+          cell.className = 'games-2048-cell';
+          cell.textContent = '';
+          if (val > 0) {
+            cell.classList.add('games-2048-cell-filled', getColorClass(val));
+            cell.textContent = val;
+          }
         }
-        cell.style.width = cellSize + 'px';
-        cell.style.height = cellSize + 'px';
-        cell.style.left = (gap + c * (cellSize + gap)) + 'px';
-        cell.style.top = (gap + r * (cellSize + gap)) + 'px';
-        boardEl.appendChild(cell);
       }
     }
 
@@ -175,6 +169,9 @@
         text: won ? (t('gamesYouWin') || 'You Win!') : (t('gamesGameOver') || 'Game Over'),
         sub: (t('gamesPressSpace') || 'Press Space to restart')
       });
+    } else if (boardEl) {
+      const prev = boardEl.querySelector('.games-2048-overlay');
+      if (prev) prev.remove();
     }
   }
 
@@ -383,6 +380,22 @@
     boardEl.style.height = boardSize + 'px';
     container.appendChild(boardEl);
 
+    const cellSize = 70;
+    const gap = 8;
+    tiles = [];
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'games-2048-cell';
+        cell.style.width = cellSize + 'px';
+        cell.style.height = cellSize + 'px';
+        cell.style.left = (gap + c * (cellSize + gap)) + 'px';
+        cell.style.top = (gap + r * (cellSize + gap)) + 'px';
+        boardEl.appendChild(cell);
+        tiles.push(cell);
+      }
+    }
+
     const instructions = document.createElement('div');
     instructions.className = 'games-instructions';
     instructions.textContent = t('games2048Controls') || 'Arrow keys to merge tiles';
@@ -449,6 +462,7 @@
     container = null;
     boardEl = null;
     scoreEl = null;
+    tiles = null;
   }
 
   function pause() { /* 2048 is turn-based, no timer to pause */ }
