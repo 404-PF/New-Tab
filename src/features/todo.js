@@ -16,6 +16,7 @@
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const MAX_SUBTASKS = 50;
   const RECURRENCE_VALUES = ['daily', 'weekly', 'monthly'];
+  const DUE_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
   // DOM elements
   let elements = {};
@@ -162,6 +163,38 @@
     return new Date(year, month - 1, day);
   }
 
+  function isValidDueTime(dueTime) {
+    return typeof dueTime === 'string' && DUE_TIME_PATTERN.test(dueTime);
+  }
+
+  function parseDueTime(dueTime) {
+    if (!isValidDueTime(dueTime)) return null;
+    const [h, m] = dueTime.split(':').map(Number);
+    return { hours: h, minutes: m };
+  }
+
+  function getDueDateTime(dueDate, dueTime) {
+    if (!dueDate) return null;
+    const date = parseLocalDate(dueDate);
+    const parsed = parseDueTime(dueTime);
+    if (parsed) {
+      date.setHours(parsed.hours, parsed.minutes, 0, 0);
+    } else {
+      date.setHours(23, 59, 59, 999);
+    }
+    return date;
+  }
+
+  function formatDueTime(dueTime) {
+    const parsed = parseDueTime(dueTime);
+    if (!parsed) return '';
+    const d = new Date();
+    d.setHours(parsed.hours, parsed.minutes, 0, 0);
+    const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
+    const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
+    return d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+  }
+
   // Advance `date` by exactly one calendar month (delta can be ±1). A plain
   // setMonth rolls the date forward when the current day doesn't exist in the
   // target month (e.g. Jan 31 → Mar 3), skipping a month. Clamp to the 1st
@@ -206,20 +239,28 @@
   }
 
   // Date utilities
-  function formatDate(dateString) {
+  function formatDate(dateString, dueTime) {
     if (!dateString) return '';
     const date = parseLocalDate(dateString);
     const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
     const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
-    return date.toLocaleDateString(locale, {
+    let label = date.toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric',
       year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
     });
+    if (isValidDueTime(dueTime)) {
+      label += ' ' + formatDueTime(dueTime);
+    }
+    return label;
   }
 
-  function isOverdue(dateString) {
+  function isOverdue(dateString, dueTime) {
     if (!dateString) return false;
+    if (isValidDueTime(dueTime)) {
+      const due = getDueDateTime(dateString, dueTime);
+      return due ? due.getTime() < Date.now() : false;
+    }
     const dueDate = parseLocalDate(dateString);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -332,7 +373,7 @@
           case 'completed':
             return todo.completed;
           case 'overdue':
-            return !todo.completed && todo.dueDate && isOverdue(todo.dueDate);
+            return !todo.completed && todo.dueDate && isOverdue(todo.dueDate, todo.dueTime);
           default:
             return true;
         }
@@ -407,7 +448,7 @@
     // Render each todo with staggered animation
     filteredTodos.forEach((todo, index) => {
       const li = document.createElement('li');
-      li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate) ? 'overdue' : ''}`;
+      li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate, todo.dueTime) ? 'overdue' : ''}`;
       li.dataset.id = todo.id;
       li.draggable = true;
 
@@ -435,7 +476,7 @@
       }
 
       const dueDate = document.createElement('div');
-      dueDate.className = `todo-due-date clickable ${todo.dueDate ? (isOverdue(todo.dueDate) ? 'overdue' : '') : 'empty'}`;
+      dueDate.className = `todo-due-date clickable ${todo.dueDate ? (isOverdue(todo.dueDate, todo.dueTime) ? 'overdue' : '') : 'empty'}`;
       dueDate.dataset.todoId = todo.id;
 
       const dueDateSvg = createSvgElement('svg', {
@@ -476,7 +517,7 @@
 
       const dueDateText = document.createElement('span');
       dueDateText.className = 'due-date-text';
-      dueDateText.textContent = todo.dueDate ? formatDate(todo.dueDate) : (window.i18n ? window.i18n.t('todoSetDate') : 'Set date');
+      dueDateText.textContent = todo.dueDate ? formatDate(todo.dueDate, todo.dueTime) : (window.i18n ? window.i18n.t('todoSetDate') : 'Set date');
       dueDate.appendChild(dueDateText);
 
       if (todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence)) {
@@ -640,7 +681,7 @@
   }
 
   // Add a new todo
-  function addTodo(text, dueDate = null, priority = 'medium', recurrence = null) {
+  function addTodo(text, dueDate = null, priority = 'medium', recurrence = null, dueTime = null) {
     if (!text.trim()) return;
 
     // Find the maximum order value among existing todos
@@ -648,12 +689,14 @@
       return todo.order !== undefined ? Math.max(max, todo.order) : max;
     }, -1);
 
+    const normalizedDueTime = isValidDueTime(dueTime) && dueDate ? dueTime : null;
     const newTodo = {
       id: generateTodoId(),
       text: text.trim(),
       completed: false,
       completedAt: null, // Track when todo was completed
       dueDate: dueDate,
+      dueTime: normalizedDueTime,
       priority: priority || 'medium',
       recurrence: RECURRENCE_VALUES.includes(recurrence) ? recurrence : null,
       createdAt: new Date().toISOString(),
@@ -677,7 +720,7 @@
   function migrateTodos() {
     const previousTodos = cloneTodos(todos);
     let needsMigration = false;
-    
+
     todos.forEach(todo => {
       if (todo.recurrence === undefined) {
         todo.recurrence = null;
@@ -689,8 +732,19 @@
         todo.completedAt = todo.completed ? todo.createdAt : null;
         needsMigration = true;
       }
+      if (todo.dueTime === undefined) {
+        todo.dueTime = null;
+        needsMigration = true;
+      } else if (todo.dueTime !== null && !isValidDueTime(todo.dueTime)) {
+        todo.dueTime = null;
+        needsMigration = true;
+      }
+      if (todo.dueTime && !todo.dueDate) {
+        todo.dueTime = null;
+        needsMigration = true;
+      }
     });
-    
+
     if (needsMigration) {
       if (!saveTodos(todos)) {
         todos = previousTodos;
@@ -704,7 +758,7 @@
   }
 
   // Edit a todo
-  function editTodo(id, newText, newPriority, newDueDate, newRecurrence) {
+  function editTodo(id, newText, newPriority, newDueDate, newRecurrence, newDueTime) {
     const todo = todos.find(t => t.id === id);
     if (!todo) {
       return false;
@@ -717,6 +771,19 @@
     }
     if (newDueDate !== null && newDueDate !== undefined) {
       todo.dueDate = newDueDate;
+      if (!newDueDate) todo.dueTime = null;
+    }
+    if (newDueTime !== undefined) {
+      if (newDueTime === null || newDueTime === '') {
+        todo.dueTime = null;
+      } else if (isValidDueTime(newDueTime) && todo.dueDate) {
+        todo.dueTime = newDueTime;
+      } else if (!isValidDueTime(newDueTime)) {
+        // invalid time string ignored
+      }
+    }
+    if (newDueDate === null && newDueTime === undefined) {
+      // dueDate cleared without explicit dueTime arg — already nulled above
     }
     if (newRecurrence !== undefined) {
       todo.recurrence = RECURRENCE_VALUES.includes(newRecurrence) ? newRecurrence : null;
@@ -946,7 +1013,7 @@ function updateFilterCounts() {
   const all = todos.length;
   const pending = todos.filter(t => !t.completed).length;
   const completed = todos.filter(t => t.completed).length;
-  const overdue = todos.filter(t => !t.completed && t.dueDate && isOverdue(t.dueDate)).length;
+  const overdue = todos.filter(t => !t.completed && t.dueDate && isOverdue(t.dueDate, t.dueTime)).length;
   const high = todos.filter(t => (t.priority || 'medium') === 'high').length;
   const low = todos.filter(t => (t.priority || 'medium') === 'low').length;
   
@@ -1058,15 +1125,25 @@ function handleFilterPillClick(event) {
 function clearInputs() {
   if (elements.todoInput) elements.todoInput.value = '';
   if (elements.todoDueDate) elements.todoDueDate.value = '';
+  if (elements.todoDueTime) elements.todoDueTime.value = '';
   // Clear custom date picker
   if (customDatePicker) {
     customDatePicker.clearDate();
   }
+  syncDueTimeInputState();
   // Reset priority selector to medium
   const priorityBtns = document.querySelectorAll('.priority-selector-btn');
   priorityBtns.forEach(btn => {
     btn.classList.toggle('active', btn.dataset.priority === 'medium');
   });
+}
+
+function syncDueTimeInputState() {
+  if (elements.todoDueTime) {
+    const hasDate = !!(elements.todoDueDate && elements.todoDueDate.value);
+    elements.todoDueTime.disabled = !hasDate;
+    if (!hasDate) elements.todoDueTime.value = '';
+  }
 }
 
 // Drag and drop functionality
@@ -1144,16 +1221,18 @@ function handleKeyPress(event) {
   if (event.key === 'Enter') {
     const input = elements.todoInput;
     const dueDate = elements.todoDueDate?.value || null;
+    const dueTime = elements.todoDueTime?.value || null;
     const priority = getSelectedPriority();
-    addTodo(input.value, dueDate, priority);
+    addTodo(input.value, dueDate, priority, null, dueTime);
   }
 }
 
 function handleAddTodo() {
   const input = elements.todoInput;
   const dueDate = elements.todoDueDate?.value || null;
+  const dueTime = elements.todoDueTime?.value || null;
   const priority = getSelectedPriority();
-  addTodo(input.value, dueDate, priority);
+  addTodo(input.value, dueDate, priority, null, dueTime);
 }
 
 function getSelectedPriority() {
@@ -1239,7 +1318,7 @@ function showInlineDatePicker(todoId, dueDateElement) {
   // Create calendar HTML
   const currentDate = todo.dueDate ? parseLocalDate(todo.dueDate) : new Date();
   pickerContainer._currentDate = currentDate;
-  const calendarHtml = createCalendarHtml(currentDate, todo.dueDate);
+  const calendarHtml = createCalendarHtml(currentDate, todo.dueDate, todo.dueTime);
 
   pickerContainer.innerHTML = calendarHtml;
 
@@ -1290,35 +1369,37 @@ function positionPickerRelativeToElement(picker, targetElement) {
 }
 
 // Create calendar HTML for inline picker
-function createCalendarHtml(currentDate, selectedDateString) {
+function createCalendarHtml(currentDate, selectedDateString, selectedDueTime) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const selectedDate = selectedDateString ? parseLocalDate(selectedDateString) : null;
-  
+
   const firstDay = new Date(year, month, 1);
   const startDate = new Date(firstDay);
   startDate.setDate(startDate.getDate() - firstDay.getDay());
-  
+
   let daysHtml = '';
   const today = new Date();
-  
+
   for (let i = 0; i < 42; i++) {
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
-    
+
     const isCurrentMonth = date.getMonth() === month;
     const isToday = date.toDateString() === today.toDateString();
     const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
-    
+
     let classes = 'calendar-day';
     if (!isCurrentMonth) classes += ' other-month';
     if (isToday) classes += ' today';
     if (isSelected) classes += ' selected';
-    
+
     const localDate = formatDateISO(date);
     daysHtml += `<div class="${classes}" data-date="${localDate}">${date.getDate()}</div>`;
   }
-  
+
+  const timeValue = isValidDueTime(selectedDueTime) ? selectedDueTime : '';
+  const timeDisabled = !selectedDateString ? 'disabled' : '';
   return `
     <div class="inline-calendar-header">
       <button type="button" class="inline-prev-month" aria-label="${window.i18n ? window.i18n.t('todoInlinePrevMonth') : 'Previous month'}">
@@ -1347,6 +1428,10 @@ function createCalendarHtml(currentDate, selectedDateString) {
     </div>
     <div class="inline-calendar-days">
       ${daysHtml}
+    </div>
+    <div class="inline-time-row">
+      <label for="inline-due-time-${year}-${month}" class="inline-time-label">${window.i18n ? window.i18n.t('dueTime') : 'Time'}</label>
+      <input type="time" class="inline-due-time" value="${timeValue}" ${timeDisabled} aria-label="${window.i18n ? window.i18n.t('dueTime') : 'Due time'}" />
     </div>
     <div class="inline-calendar-footer">
       <button type="button" class="inline-clear-date">${window.i18n ? window.i18n.t('clearDate') : 'Clear'}</button>
@@ -1396,7 +1481,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
       e.stopPropagation();
       navigateMonthSafe(currentDate, -1);
       pickerContainer._currentDate = currentDate;
-      updateInlineCalendar(pickerContainer, currentDate, todo.dueDate);
+      updateInlineCalendar(pickerContainer, currentDate, todo.dueDate, todo.dueTime);
     });
   }
 
@@ -1405,7 +1490,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
       e.stopPropagation();
       navigateMonthSafe(currentDate, 1);
       pickerContainer._currentDate = currentDate;
-      updateInlineCalendar(pickerContainer, currentDate, todo.dueDate);
+      updateInlineCalendar(pickerContainer, currentDate, todo.dueDate, todo.dueTime);
     });
   }
 
@@ -1418,8 +1503,24 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
 
       e.stopPropagation();
       const selectedDate = parseLocalDate(dayElement.dataset.date);
-      updateTodoDueDate(todoId, selectedDate, dueDateElement);
+      const timeInput = pickerContainer.querySelector('.inline-due-time');
+      const existingTime = timeInput && timeInput.value ? timeInput.value : todo.dueTime;
+      updateTodoDueDate(todoId, selectedDate, dueDateElement, existingTime);
       closeInlineDatePicker(pickerContainer);
+    });
+  }
+
+  // Time input handler
+  const timeInput = pickerContainer.querySelector('.inline-due-time');
+  if (timeInput) {
+    timeInput.addEventListener('click', (e) => e.stopPropagation());
+    timeInput.addEventListener('change', (e) => {
+      e.stopPropagation();
+      const val = timeInput.value || null;
+      if (!todo.dueDate) return;
+      updateTodoDueDate(todoId, parseLocalDate(todo.dueDate), dueDateElement, val);
+      // keep picker open for time change, but re-render display
+      updateDueDateDisplay(dueDateElement, todo.dueDate, todo.dueTime);
     });
   }
 
@@ -1430,7 +1531,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
   if (clearBtn) {
     clearBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      updateTodoDueDate(todoId, null, dueDateElement);
+      updateTodoDueDate(todoId, null, dueDateElement, null);
       closeInlineDatePicker(pickerContainer);
     });
   }
@@ -1438,19 +1539,21 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
   if (todayBtn) {
     todayBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      updateTodoDueDate(todoId, new Date(), dueDateElement);
+      const timeInput2 = pickerContainer.querySelector('.inline-due-time');
+      const existingTime = timeInput2 && timeInput2.value ? timeInput2.value : todo.dueTime;
+      updateTodoDueDate(todoId, new Date(), dueDateElement, existingTime);
       closeInlineDatePicker(pickerContainer);
     });
   }
 }
 
 // Update inline calendar display
-function updateInlineCalendar(pickerContainer, currentDate, selectedDateString) {
+function updateInlineCalendar(pickerContainer, currentDate, selectedDateString, selectedDueTime) {
   const todoId = pickerContainer.dataset.todoId;
   const dueDateElement = pickerContainer._dueDateElement;
 
   pickerContainer._currentDate = currentDate;
-  const calendarHtml = createCalendarHtml(currentDate, selectedDateString);
+  const calendarHtml = createCalendarHtml(currentDate, selectedDateString, selectedDueTime);
   pickerContainer.innerHTML = calendarHtml;
 
   // Rebind calendar DOM handlers only (globals are already bound once)
@@ -1473,50 +1576,65 @@ function refreshInlineDatePickers() {
     pickerContainer._currentDate = currentDate;
     pickerContainer._dueDateElement = dueDateElement;
     positionPickerRelativeToElement(pickerContainer, dueDateElement);
-    pickerContainer.innerHTML = createCalendarHtml(currentDate, todo.dueDate);
+    pickerContainer.innerHTML = createCalendarHtml(currentDate, todo.dueDate, todo.dueTime);
     setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement);
   });
 }
 
 // Update todo due date with visual feedback
-function updateTodoDueDate(todoId, newDate, dueDateElement) {
+function updateTodoDueDate(todoId, newDate, dueDateElement, newDueTime) {
   const todo = todos.find(t => t.id === todoId);
   if (!todo) return;
-  
+
   const oldDate = todo.dueDate;
+  const oldTime = todo.dueTime;
   const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
   todo.dueDate = newDate ? formatDateISO(newDate) : null;
-  
+  if (newDueTime !== undefined) {
+    if (!todo.dueDate || newDueTime === null || newDueTime === '') {
+      todo.dueTime = null;
+    } else if (isValidDueTime(newDueTime)) {
+      todo.dueTime = newDueTime;
+    }
+  } else if (!todo.dueDate) {
+    todo.dueTime = null;
+  }
+
   // Save to localStorage
   if (!saveTodos(todos)) {
     Object.assign(todo, previousTodo);
     if (dueDateElement) {
-      updateDueDateDisplay(dueDateElement, oldDate);
+      updateDueDateDisplay(dueDateElement, oldDate, oldTime);
     }
     showTodoSaveError();
     return;
   }
-  
+
   // Update the display with visual feedback
-  updateDueDateDisplay(dueDateElement, todo.dueDate);
-  
+  updateDueDateDisplay(dueDateElement, todo.dueDate, todo.dueTime);
+
   // Show visual feedback
-  showDateUpdateFeedback(dueDateElement, oldDate, todo.dueDate);
-  
+  showDateUpdateFeedback(dueDateElement, oldDate, todo.dueDate, oldTime, todo.dueTime);
+
   // Re-run filters so overdue view refreshes immediately
   applyFilters();
   scheduleTodoReminderCheck(todoId);
 }
 
 // Update due date display
-function updateDueDateDisplay(dueDateElement, dueDate) {
+function updateDueDateDisplay(dueDateElement, dueDate, dueTime) {
   const textElement = dueDateElement.querySelector('.due-date-text');
   if (!textElement) return;
-  
+  // dueTime may be passed explicitly or inferred from the todo lookup
+  if (dueTime === undefined && dueDate) {
+    const todoId = dueDateElement.dataset.todoId;
+    const todo = todos.find(t => t.id === todoId);
+    if (todo) dueTime = todo.dueTime;
+  }
   if (dueDate) {
-    textElement.textContent = formatDate(dueDate);
+    textElement.textContent = formatDate(dueDate, dueTime);
     dueDateElement.classList.remove('empty');
-    dueDateElement.classList.toggle('overdue', isOverdue(dueDate));
+    dueDateElement.classList.toggle('overdue', isOverdue(dueDate, dueTime));
   } else {
     textElement.textContent = window.i18n ? window.i18n.t('todoSetDate') : 'Set date';
     dueDateElement.classList.add('empty');
@@ -1525,7 +1643,7 @@ function updateDueDateDisplay(dueDateElement, dueDate) {
 }
 
 // Show visual feedback for date update
-function showDateUpdateFeedback(dueDateElement, oldDate, newDate) {
+function showDateUpdateFeedback(dueDateElement, oldDate, newDate, oldTime, newTime) {
   // Under reduced motion we skip the backgroundColor highlight entirely.
   // A 150ms color flash is itself a sudden visual change, which conflicts
   // with the spirit of prefers-reduced-motion (WCAG 2.3.3). The toast
@@ -1551,7 +1669,7 @@ function showDateUpdateFeedback(dueDateElement, oldDate, newDate) {
         return key;
       };
   const message = newDate
-    ? t('dueDateUpdatedTo', { date: formatDate(newDate) })
+    ? t('dueDateUpdatedTo', { date: formatDate(newDate, newTime) })
     : t('dueDateCleared');
   showToast(message);
 }
@@ -1845,6 +1963,7 @@ function initTodo() {
   elements = {
     todoInput: document.getElementById('todo-input'),
     todoDueDate: document.getElementById('todo-due-date'),
+    todoDueTime: document.getElementById('todo-due-time'),
     addTodoBtn: document.getElementById('add-todo-btn'),
     todoList: document.getElementById('todo-list'),
     emptyState: document.getElementById('empty-state'),
@@ -1868,6 +1987,20 @@ function initTodo() {
   // Event listeners
   elements.addTodoBtn.addEventListener('click', handleAddTodo);
   elements.todoInput.addEventListener('keypress', handleKeyPress);
+  if (elements.todoDueTime) {
+    elements.todoDueTime.addEventListener('change', () => {
+      if (!elements.todoDueDate || !elements.todoDueDate.value) {
+        elements.todoDueTime.value = '';
+      }
+    });
+  }
+  if (elements.todoDueDate) {
+    // hidden input value changes via CustomDatePicker; watch via MutationObserver style poll on calendar close
+    const observer = new MutationObserver(() => syncDueTimeInputState());
+    // observe attribute changes on todoDueDate
+    observer.observe(elements.todoDueDate, { attributes: true, attributeFilter: ['value'] });
+    // also hook custom picker changes: monkey-patch its methods after init
+  }
 
   // Filter listeners - pill style
   const filterPills = document.querySelectorAll('.filter-pill');
@@ -2053,6 +2186,11 @@ function validateTodoData(data) {
       const date = new Date(year, month - 1, day);
       if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
     }
+    if (item.dueTime !== undefined && item.dueTime !== null && typeof item.dueTime !== 'string') return false;
+    if (item.dueTime !== null && item.dueTime !== undefined) {
+      if (!DUE_TIME_PATTERN.test(item.dueTime)) return false;
+      if (!item.dueDate) return false;
+    }
     if (item.createdAt !== undefined && item.createdAt !== null && typeof item.createdAt !== 'string') return false;
     if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
@@ -2166,6 +2304,7 @@ function showImportDialog(importedTodos) {
         todo.completed = !!item.completed;
         todo.completedAt = item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null;
         todo.dueDate = item.dueDate || null;
+        todo.dueTime = isValidDueTime(item.dueTime) && todo.dueDate ? item.dueTime : null;
         todo.createdAt = item.createdAt || new Date().toISOString();
         todo.order = ++maxOrder;
         existingTodos.push(todo);
@@ -2200,6 +2339,7 @@ function showImportDialog(importedTodos) {
       todo.completed = !!item.completed;
       todo.completedAt = item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null;
       todo.dueDate = item.dueDate || null;
+      todo.dueTime = isValidDueTime(item.dueTime) && todo.dueDate ? item.dueTime : null;
       todo.createdAt = item.createdAt || new Date().toISOString();
       todo.order = index;
       return todo;
@@ -2335,6 +2475,7 @@ class CustomDatePicker {
     this.updateHiddenInput();
     this.updateTriggerDisplay();
     this.closeCalendar();
+    if (typeof syncDueTimeInputState === 'function') syncDueTimeInputState();
   }
 
   clearDate() {
@@ -2342,6 +2483,7 @@ class CustomDatePicker {
     this.updateHiddenInput();
     this.updateTriggerDisplay();
     this.closeCalendar();
+    if (typeof syncDueTimeInputState === 'function') syncDueTimeInputState();
   }
 
   selectToday() {
@@ -2454,6 +2596,7 @@ window.addEventListener('languageChanged', () => {
 function initTodoModule() {
   initTodo();
   initCustomDatePicker();
+  syncDueTimeInputState();
 }
 
 // Initialize when DOM is ready
@@ -2482,6 +2625,12 @@ try {
   window.getNextDueDate = getNextDueDate;
   window.RECURRENCE_VALUES = RECURRENCE_VALUES;
   window.parseLocalDate = parseLocalDate;
+  window.getDueDateTime = getDueDateTime;
+  window.formatDueTime = formatDueTime;
+  window.isValidDueTime = isValidDueTime;
+  window.parseDueTime = parseDueTime;
+  window.DUE_TIME_PATTERN = DUE_TIME_PATTERN;
+  window.syncDueTimeInputState = syncDueTimeInputState;
   window.showToast = showToast;
   window.currentFilters = currentFilters;
   window.getSelectedPriority = getSelectedPriority;

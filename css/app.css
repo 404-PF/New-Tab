@@ -614,6 +614,71 @@ body:not(.light-theme) .todo-input-container:focus-within {
   transform: translateY(0);
 }
 
+.todo-due-time-input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #ffffff;
+  padding: 8px 10px;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(15px);
+  min-width: 110px;
+  color-scheme: dark;
+}
+.todo-due-time-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.todo-due-time-input:focus {
+  border-color: rgba(33, 150, 243, 0.4);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
+}
+
+.inline-time-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.inline-time-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  min-width: 36px;
+}
+.inline-due-time {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #ffffff;
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+  color-scheme: dark;
+}
+.inline-due-time:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+body.light-theme .todo-due-time-input {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #1f2937;
+  color-scheme: light;
+}
+body.light-theme .inline-due-time {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #1f2937;
+  color-scheme: light;
+}
+
 /* Light theme adjustments for custom date picker */
 body.light-theme .date-picker-trigger {
   background: rgba(0, 0, 0, 0.05);

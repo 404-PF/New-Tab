@@ -12,14 +12,25 @@ const reminderCheckPendingQueue = [];
 // SYNC: keep this validation (pattern + calendar round-trip) in sync with the
 // dueDate check in validateTodoData.
 const DUE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-function parseDueDate(dueDate) {
+const DUE_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+function parseDueDate(dueDate, dueTime) {
   if (typeof dueDate !== 'string' || !DUE_DATE_PATTERN.test(dueDate)) return null;
   const [year, month, day] = dueDate.split('-').map(Number);
+  let hours = 23;
+  let minutes = 59;
+  let seconds = 59;
+  if (typeof dueTime === 'string' && DUE_TIME_PATTERN.test(dueTime)) {
+    const [h, m] = dueTime.split(':').map(Number);
+    hours = h;
+    minutes = m;
+    seconds = 0;
+  }
   // new Date(y, m-1, d) silently rolls invalid calendar dates forward (e.g.
   // 2026-02-30 -> March 2) and maps years 0-99 to 1900+year; reject those by
   // round-tripping the components.
-  const date = new Date(year, month - 1, day, 23, 59, 59);
+  const date = new Date(year, month - 1, day, hours, minutes, seconds);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  if (typeof dueTime === 'string' && DUE_TIME_PATTERN.test(dueTime) && (date.getHours() !== hours || date.getMinutes() !== minutes)) return null;
   return date;
 }
 
@@ -32,8 +43,9 @@ function parseDueDate(dueDate) {
 function invalidDueDateKey(todo) {
   if (todo.completed) return null;
   if (todo.dueDate === null || todo.dueDate === undefined) return null;
-  if (parseDueDate(todo.dueDate)) return null;
-  return todo.id + '_' + todo.dueDate;
+  if (parseDueDate(todo.dueDate, todo.dueTime)) return null;
+  const timePart = todo.dueTime ? '_' + todo.dueTime : '';
+  return todo.id + '_' + todo.dueDate + timePart;
 }
 
 async function getFromStorage(keys) {
@@ -89,8 +101,18 @@ function getLeadTime(rawValue) {
 }
 
 function getTodoIdFromKey(key) {
-  const idx = key.lastIndexOf('_');
-  return idx !== -1 ? key.slice(0, idx) : key;
+  // notifiedKey is id_YYYY-MM-DD or id_YYYY-MM-DD_HH:mm; id may contain underscores.
+  // Strip optional time suffix first, then strip date suffix to recover id.
+  let base = key;
+  const lastUnderscore = base.lastIndexOf('_');
+  if (lastUnderscore !== -1) {
+    const suffix = base.slice(lastUnderscore + 1);
+    if (DUE_TIME_PATTERN.test(suffix)) {
+      base = base.slice(0, lastUnderscore);
+    }
+  }
+  const idx = base.lastIndexOf('_');
+  return idx !== -1 ? base.slice(0, idx) : base;
 }
 
 function clearAllNotified(notified) {
@@ -131,7 +153,10 @@ function pruneStaleNotified(notified, todos) {
   const validKeys = new Set(
     todos
       .filter((t) => !t.completed && t.dueDate)
-      .map((t) => t.id + '_' + t.dueDate)
+      .map((t) => {
+        const timePart = t.dueTime && DUE_TIME_PATTERN.test(t.dueTime) ? '_' + t.dueTime : '';
+        return t.id + '_' + t.dueDate + timePart;
+      })
   );
   let updated = false;
   for (const key of Object.keys(notified)) {
@@ -179,7 +204,7 @@ async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, lead
     const invalid = handleInvalidDueDate(todo, warnedInvalidDueDates);
     if (invalid.warnedUpdated) warnedUpdated = true;
     if (invalid.skip) continue;
-    const due = parseDueDate(todo.dueDate);
+    const due = parseDueDate(todo.dueDate, todo.dueTime);
     // A positive lead time opens the window [due - leadTime, due]. "At due
     // time" (leadTime 0) must not collapse that window to a single end-of-day
     // instant — a once-a-minute check would have to land exactly on
@@ -188,9 +213,13 @@ async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, lead
     // instant always lands inside it.
     const reminderTime = new Date(due.getTime() - Math.max(leadTime, CHECK_INTERVAL_MINUTES) * 60 * 1000);
     if (now >= reminderTime && now <= due) {
-      const notifiedKey = todo.id + '_' + todo.dueDate;
+      const timePart = todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime) ? '_' + todo.dueTime : '';
+      const notifiedKey = todo.id + '_' + todo.dueDate + timePart;
       if (notified[notifiedKey]) continue;
-      const dueDisplay = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      let dueDisplay = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      if (todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime)) {
+        dueDisplay += ' ' + due.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      }
       await showTodoNotification(todo, dueDisplay);
       notified[notifiedKey] = Date.now();
       updated = true;
