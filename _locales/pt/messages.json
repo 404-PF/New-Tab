@@ -620,5 +620,13 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "Alternar painel de estatísticas de foco",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "gamesLoading": {
+    "message": "Carregando jogos…",
+    "description": "Loading state shown while game scripts are being fetched"
+  },
+  "gamesLoadError": {
+    "message": "Falha ao carregar os jogos. Tente novamente.",
+    "description": "Error shown when game scripts fail to load"
   }
 }

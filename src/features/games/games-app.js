@@ -34,7 +34,7 @@
   function ensureGamesLoaded() {
     if (gamesLoaded) return Promise.resolve();
     if (gamesLoadPromise) return gamesLoadPromise;
-    if (window.GameRegistry && window.gamesHelpers) {
+    if (window.GameRegistry && window.gamesHelpers && typeof window.GameRegistry.get === 'function' && window.GameRegistry.get('snake') && window.GameRegistry.get('2048') && window.GameRegistry.get('memory')) {
       gamesLoaded = true;
       return Promise.resolve();
     }
