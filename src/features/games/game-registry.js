@@ -42,6 +42,7 @@
     } catch (e) {
       console.warn('Failed to load games_stats:', e);
       statsCache = {};
+      statsCacheRaw = undefined;
       return statsCache;
     }
   }
@@ -74,6 +75,7 @@
     } catch (e) {
       console.warn('Failed to load games_recently_played:', e);
       mruCache = [];
+      mruCacheRaw = undefined;
       return mruCache;
     }
   }
@@ -115,6 +117,7 @@
     } catch (e) {
       console.warn('Failed to load games_saves:', e);
       savesCache = {};
+      savesCacheRaw = undefined;
       return savesCache;
     }
   }
@@ -423,6 +426,7 @@
     hasSave: hasSave,
     getSave: getSave,
     clearSave: clearSave,
+    isValidSaveEnvelope: isValidSaveEnvelope,
     secureRandom: secureRandom,
     _reset: _reset
   };

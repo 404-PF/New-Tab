@@ -88,9 +88,11 @@
       const playBtn = document.createElement('button');
       playBtn.className = 'games-hub-card-play';
       const entry = allSaves[game.id];
-      const hasSavedGame = entry && typeof entry === 'object' && !Array.isArray(entry)
-        && entry.state !== null && typeof entry.state === 'object' && !Array.isArray(entry.state)
-        && Number.isFinite(entry.savedAt);
+      const hasSavedGame = window.GameRegistry && typeof window.GameRegistry.isValidSaveEnvelope === 'function'
+        ? window.GameRegistry.isValidSaveEnvelope(entry)
+        : entry && typeof entry === 'object' && !Array.isArray(entry)
+          && entry.state !== null && typeof entry.state === 'object' && !Array.isArray(entry.state)
+          && Number.isFinite(entry.savedAt);
       playBtn.textContent = t(hasSavedGame ? 'gamesContinue' : 'gamesPlay');
       if (hasSavedGame) {
         playBtn.classList.add('games-hub-card-play-continue');
