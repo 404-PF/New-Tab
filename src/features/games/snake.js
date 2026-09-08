@@ -327,9 +327,6 @@
 
   function drawBackground() {
     if (!ctx) return;
-    if (!bgCache) {
-      bgCache = buildBackgroundCache();
-    }
     if (bgCache) {
       ctx.drawImage(bgCache, 0, 0);
     }
