@@ -212,7 +212,9 @@
           end: active.selectionEnd,
           dir: active.selectionDirection
         };
-      } catch {}
+      } catch {
+        // Ignore unavailable selection APIs; the note content remains usable.
+      }
     }
 
     notes.sort((a, b) => a.order - b.order);
@@ -247,7 +249,7 @@
       if (scrollPos && (window.scrollX !== scrollPos.x || window.scrollY !== scrollPos.y)) {
         window.scrollTo(scrollPos.x, scrollPos.y);
       }
-      const restored = document.querySelector(`.note-textarea[data-id="${activeId}"]`);
+      const restored = [...notesList.querySelectorAll('.note-textarea')].find(ta => ta.dataset.id === activeId);
       if (restored) {
         try {
           restored.focus({ preventScroll: true });
@@ -257,7 +259,9 @@
         if (selection) {
           try {
             restored.setSelectionRange(selection.start, selection.end, selection.dir);
-          } catch {}
+          } catch {
+            // Ignore failed setSelectionRange; focus is already restored.
+          }
         }
         if (scrollPos && (window.scrollX !== scrollPos.x || window.scrollY !== scrollPos.y)) {
           window.scrollTo(scrollPos.x, scrollPos.y);

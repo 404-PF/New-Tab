@@ -66,6 +66,14 @@ describe('Notes scroll stability (#688)', () => {
     lowerTextarea.selectionStart = 5;
     lowerTextarea.selectionEnd = 5;
 
+    // In jsdom, reading scrollHeight never changes window.scrollY, so the
+    // flushResizeBatch restore branch would never be taken. Mock the getter
+    // to simulate the browser resetting scroll to top during a reflow.
+    vi.spyOn(lowerTextarea, 'scrollHeight', 'get').mockImplementation(() => {
+      window.scrollY = 0;
+      return 80;
+    });
+
     // Simulate continuous typing: several input events.
     lowerTextarea.value = 'Lower note to edit!';
     lowerTextarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -81,8 +89,10 @@ describe('Notes scroll stability (#688)', () => {
 
     // Scroll must remain stable — not reset to top.
     expect(window.scrollY).toBe(400);
-    // If scrollTo was called, it should only restore to original position, never to 0.
-    for (const [x, y] of scrollToSpy.mock.calls) {
+    // The mock caused a scroll jump to 0 during the batch; the fix must
+    // have restored via scrollTo. Without restoration the test would fail.
+    expect(scrollToSpy).toHaveBeenCalled();
+    for (const [, y] of scrollToSpy.mock.calls) {
       expect(y).not.toBe(0);
     }
     // Focus remains on the edited note.
@@ -111,6 +121,32 @@ describe('Notes scroll stability (#688)', () => {
     ta.selectionStart = 2;
     ta.selectionEnd = 6;
 
+    // In jsdom, clearing innerHTML and focusing never change window.scrollY,
+    // so renderNotes' restore branches would never be exercised. Mock both
+    // operations to simulate the browser jumping to top.
+    const notesListEl = document.getElementById('notes-list');
+    const origInnerHTMLDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+    Object.defineProperty(notesListEl, 'innerHTML', {
+      configurable: true,
+      get() { return origInnerHTMLDesc.get.call(this); },
+      set(val) {
+        window.scrollY = 0;
+        origInnerHTMLDesc.set.call(this, val);
+      }
+    });
+    const originalFocus = HTMLElement.prototype.focus;
+    const focusInterceptor = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (...args) {
+      // renderNotes will call focus on the rebuilt textarea; simulate that
+      // this focus resets scroll before the post-focus restore check.
+      if (this.classList && this.classList.contains('note-textarea') && this.dataset.id === 'y') {
+        // Let the original focus run first so activeElement updates, then jump.
+        const result = originalFocus.apply(this, args);
+        window.scrollY = 0;
+        return result;
+      }
+      return originalFocus.apply(this, args);
+    });
+
     // Force a re-render while editing (e.g., due to an external tag update /
     // language change that would previously destroy the focused textarea).
     // Directly invoke renderNotes via an API that triggers it: updateNoteTag on
@@ -122,9 +158,16 @@ describe('Notes scroll stability (#688)', () => {
     expect(document.activeElement).toBe(restored);
     expect(restored.selectionStart).toBe(2);
     expect(restored.selectionEnd).toBe(6);
-    // Ensure we never scrolled to top.
+    // The mocks caused scroll jumps to 0; ensure the fix restored via scrollTo
+    // and never left the viewport at top.
+    expect(scrollToSpy).toHaveBeenCalled();
     for (const [, y] of scrollToSpy.mock.calls) {
       expect(y).not.toBe(0);
     }
+
+    // Cleanup the innerHTML interceptor (vi.restoreAllMocks does not remove
+    // defineProperty on the instance).
+    delete notesListEl.innerHTML;
+    focusInterceptor.mockRestore();
   });
 });
