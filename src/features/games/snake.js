@@ -39,6 +39,7 @@
   let tickMs = BASE_TICK_MS;
   let started = false;
   let readyScreen = null;
+  let bgCache = null;
 
   // ===================== Helpers =====================
 
@@ -274,46 +275,63 @@
 
   // ===================== Drawing =====================
 
-  function drawBackground() {
+  function buildBackgroundCache() {
     const w = GRID_SIZE * CELL_SIZE;
     const h = GRID_SIZE * CELL_SIZE;
+    const offscreen = document.createElement('canvas');
+    offscreen.width = w;
+    offscreen.height = h;
+    const bgCtx = offscreen.getContext('2d');
+    if (!bgCtx) return null;
 
     // Base vertical gradient
-    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    const bg = bgCtx.createLinearGradient(0, 0, 0, h);
     bg.addColorStop(0, '#161631');
     bg.addColorStop(1, '#1c1c3a');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, h);
+    bgCtx.fillStyle = bg;
+    bgCtx.fillRect(0, 0, w, h);
 
     // Subtle checkerboard
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
+    bgCtx.fillStyle = 'rgba(255, 255, 255, 0.015)';
     for (let x = 0; x < GRID_SIZE; x++) {
       for (let y = 0; y < GRID_SIZE; y++) {
         if ((x + y) % 2 === 0) {
-          ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+          bgCtx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
         }
       }
     }
 
     // Vignette
-    const vg = ctx.createRadialGradient(w / 2, h / 2, h * 0.2, w / 2, h / 2, h * 0.75);
+    const vg = bgCtx.createRadialGradient(w / 2, h / 2, h * 0.2, w / 2, h / 2, h * 0.75);
     vg.addColorStop(0, 'rgba(0, 0, 0, 0)');
     vg.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
-    ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, w, h);
+    bgCtx.fillStyle = vg;
+    bgCtx.fillRect(0, 0, w, h);
 
     // Faint grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
-    ctx.lineWidth = 1;
+    bgCtx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
+    bgCtx.lineWidth = 1;
     for (let i = 1; i < GRID_SIZE; i++) {
-      ctx.beginPath();
-      ctx.moveTo(i * CELL_SIZE, 0);
-      ctx.lineTo(i * CELL_SIZE, h);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, i * CELL_SIZE);
-      ctx.lineTo(w, i * CELL_SIZE);
-      ctx.stroke();
+      bgCtx.beginPath();
+      bgCtx.moveTo(i * CELL_SIZE, 0);
+      bgCtx.lineTo(i * CELL_SIZE, h);
+      bgCtx.stroke();
+      bgCtx.beginPath();
+      bgCtx.moveTo(0, i * CELL_SIZE);
+      bgCtx.lineTo(w, i * CELL_SIZE);
+      bgCtx.stroke();
+    }
+
+    return offscreen;
+  }
+
+  function drawBackground() {
+    if (!ctx) return;
+    if (!bgCache) {
+      bgCache = buildBackgroundCache();
+    }
+    if (bgCache) {
+      ctx.drawImage(bgCache, 0, 0);
     }
   }
 
@@ -818,6 +836,7 @@
     canvas.height = GRID_SIZE * CELL_SIZE;
     canvas.className = 'games-snake-canvas';
     ctx = canvas.getContext('2d');
+    bgCache = ctx ? buildBackgroundCache() : null;
     stage.appendChild(canvas);
     container.appendChild(stage);
 
@@ -883,6 +902,7 @@
     }
     canvas = null;
     ctx = null;
+    bgCache = null;
     if (container) container.innerHTML = '';
     container = null;
     scoreEl = null;
