@@ -333,7 +333,9 @@
           }
           reportStorageWriteError(key, lastError, { generation, value });
         }
-        pendingWriteGenerations.delete(key);
+        if (pendingWriteGenerations.get(key) === generation) {
+          pendingWriteGenerations.delete(key);
+        }
       });
       return true;
     } catch (error) {
