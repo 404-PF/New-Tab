@@ -18,45 +18,76 @@
   let currentLaunchHadSave = false;
   let initialized = false;
 
+  let statsCache = null;
+  let statsCacheRaw;
+  let mruCache = null;
+  let mruCacheRaw;
+  let savesCache = null;
+  let savesCacheRaw;
+
   // ===================== Storage Helpers =====================
 
   function loadStats() {
     try {
       const raw = localStorage.getItem(STATS_KEY);
-      if (!raw) return {};
+      if (raw === statsCacheRaw && statsCache !== null) return statsCache;
+      statsCacheRaw = raw;
+      if (!raw) {
+        statsCache = {};
+        return statsCache;
+      }
       const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      statsCache = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      return statsCache;
     } catch (e) {
       console.warn('Failed to load games_stats:', e);
-      return {};
+      statsCache = {};
+      return statsCache;
     }
   }
 
   function saveStats(stats) {
     try {
-      localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+      const serialized = JSON.stringify(stats);
+      localStorage.setItem(STATS_KEY, serialized);
+      statsCache = stats;
+      statsCacheRaw = serialized;
     } catch (e) {
       console.warn('Failed to save games_stats:', e);
+      statsCache = null;
+      statsCacheRaw = undefined;
     }
   }
 
   function loadMRU() {
     try {
       const raw = localStorage.getItem(MRU_KEY);
-      if (!raw) return [];
+      if (raw === mruCacheRaw && mruCache !== null) return mruCache;
+      mruCacheRaw = raw;
+      if (!raw) {
+        mruCache = [];
+        return mruCache;
+      }
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      mruCache = Array.isArray(parsed) ? parsed : [];
+      return mruCache;
     } catch (e) {
       console.warn('Failed to load games_recently_played:', e);
-      return [];
+      mruCache = [];
+      return mruCache;
     }
   }
 
   function saveMRU(mru) {
     try {
-      localStorage.setItem(MRU_KEY, JSON.stringify(mru));
+      const serialized = JSON.stringify(mru);
+      localStorage.setItem(MRU_KEY, serialized);
+      mruCache = mru;
+      mruCacheRaw = serialized;
     } catch (e) {
       console.warn('Failed to save games_recently_played:', e);
+      mruCache = null;
+      mruCacheRaw = undefined;
     }
   }
 
@@ -72,20 +103,32 @@
   function loadSaves() {
     try {
       const raw = localStorage.getItem(SAVES_KEY);
-      if (!raw) return {};
+      if (raw === savesCacheRaw && savesCache !== null) return savesCache;
+      savesCacheRaw = raw;
+      if (!raw) {
+        savesCache = {};
+        return savesCache;
+      }
       const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      savesCache = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      return savesCache;
     } catch (e) {
       console.warn('Failed to load games_saves:', e);
-      return {};
+      savesCache = {};
+      return savesCache;
     }
   }
 
   function saveSaves(saves) {
     try {
-      localStorage.setItem(SAVES_KEY, JSON.stringify(saves));
+      const serialized = JSON.stringify(saves);
+      localStorage.setItem(SAVES_KEY, serialized);
+      savesCache = saves;
+      savesCacheRaw = serialized;
     } catch (e) {
       console.warn('Failed to save games_saves:', e);
+      savesCache = null;
+      savesCacheRaw = undefined;
     }
   }
 
@@ -163,6 +206,14 @@
   function getStats(id) {
     const all = loadStats();
     return all[id] || {};
+  }
+
+  function getAllStats() {
+    return loadStats();
+  }
+
+  function getAllSaves() {
+    return loadSaves();
   }
 
   function updateStats(id, updates) {
@@ -301,10 +352,33 @@
 
   // ===================== Init =====================
 
+  function handleStorageEvent(e) {
+    if (!e || e.key === null) {
+      statsCache = null;
+      statsCacheRaw = undefined;
+      mruCache = null;
+      mruCacheRaw = undefined;
+      savesCache = null;
+      savesCacheRaw = undefined;
+      return;
+    }
+    if (e.key === STATS_KEY) {
+      statsCache = null;
+      statsCacheRaw = undefined;
+    } else if (e.key === MRU_KEY) {
+      mruCache = null;
+      mruCacheRaw = undefined;
+    } else if (e.key === SAVES_KEY) {
+      savesCache = null;
+      savesCacheRaw = undefined;
+    }
+  }
+
   function init() {
     if (initialized) return;
     initialized = true;
     document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('storage', handleStorageEvent);
 
     // A new tab replaces this page without ever closing the games modal, so
     // serialize the current game before the page unloads. pagehide fires on
@@ -325,6 +399,12 @@
     destroyCurrent();
     registeredGames = Object.create(null);
     launchOrder = [];
+    statsCache = null;
+    statsCacheRaw = undefined;
+    mruCache = null;
+    mruCacheRaw = undefined;
+    savesCache = null;
+    savesCacheRaw = undefined;
   }
 
   window.GameRegistry = {
@@ -332,6 +412,8 @@
     list: list,
     get: get,
     getStats: getStats,
+    getAllStats: getAllStats,
+    getAllSaves: getAllSaves,
     updateStats: updateStats,
     launch: launch,
     destroyCurrent: destroyCurrent,

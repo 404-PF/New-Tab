@@ -34,17 +34,25 @@
       return;
     }
 
-    // Sort by MRU (source of truth lives in GameRegistry)
     const mru = window.GameRegistry && typeof window.GameRegistry.getMRU === 'function'
       ? window.GameRegistry.getMRU()
       : [];
+    const allStats = window.GameRegistry && typeof window.GameRegistry.getAllStats === 'function'
+      ? window.GameRegistry.getAllStats()
+      : {};
+    const allSaves = window.GameRegistry && typeof window.GameRegistry.getAllSaves === 'function'
+      ? window.GameRegistry.getAllSaves()
+      : {};
+
+    const mruIndex = new Map();
+    mru.forEach(function (id, i) {
+      if (!mruIndex.has(id)) mruIndex.set(id, i);
+    });
 
     const sorted = games.slice().sort(function (a, b) {
-      const ia = mru.indexOf(a.id);
-      const ib = mru.indexOf(b.id);
-      if (ia === -1 && ib === -1) return 0;
-      if (ia === -1) return 1;
-      if (ib === -1) return -1;
+      const ia = mruIndex.has(a.id) ? mruIndex.get(a.id) : Infinity;
+      const ib = mruIndex.has(b.id) ? mruIndex.get(b.id) : Infinity;
+      if (ia === Infinity && ib === Infinity) return 0;
       return ia - ib;
     });
 
@@ -67,8 +75,8 @@
       descEl.className = 'games-hub-card-desc';
       descEl.textContent = t(game.description) || game.description || '';
 
-      // Stats summary
-      const stats = window.GameRegistry.getStats(game.id);
+      // Stats summary — batch-read via allStats (single parse, O(1) lookup)
+      const stats = allStats[game.id] || {};
       const statsEl = document.createElement('div');
       statsEl.className = 'games-hub-card-stats';
       if (stats.highScore !== undefined) {
@@ -79,8 +87,10 @@
 
       const playBtn = document.createElement('button');
       playBtn.className = 'games-hub-card-play';
-      // A game with a persisted snapshot offers to continue instead of play.
-      const hasSavedGame = window.GameRegistry.hasSave(game.id);
+      const entry = allSaves[game.id];
+      const hasSavedGame = entry && typeof entry === 'object' && !Array.isArray(entry)
+        && entry.state !== null && typeof entry.state === 'object' && !Array.isArray(entry.state)
+        && Number.isFinite(entry.savedAt);
       playBtn.textContent = t(hasSavedGame ? 'gamesContinue' : 'gamesPlay');
       if (hasSavedGame) {
         playBtn.classList.add('games-hub-card-play-continue');
