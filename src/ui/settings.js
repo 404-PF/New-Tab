@@ -1805,6 +1805,9 @@ if (gamesEnabledSetting) {
       // ignore storage errors
     }
     applyGamesEnabled(enabled);
+    if (enabled && window.GamesApp && typeof window.GamesApp.preload === 'function') {
+      try { window.GamesApp.preload().catch(function () {}); } catch (_e) { /* ignore preload errors */ }
+    }
   });
 }
 
