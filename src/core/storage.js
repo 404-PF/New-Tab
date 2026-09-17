@@ -332,7 +332,7 @@
           }
           reportStorageWriteError(key, lastError, { generation, value });
         }
-        if (isCurrentGeneration) {
+        if (pendingWriteGenerations.get(key) === generation) {
           pendingWriteGenerations.delete(key);
         }
       });
