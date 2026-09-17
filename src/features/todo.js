@@ -391,23 +391,12 @@
 
     // Sort: incomplete items first (by due date-time, then order), then completed items (by completion time)
     filtered.sort((a, b) => {
-      // If both are incomplete, sort dated todos by combined due date and
-      // time (minute-accurate); todos without a due date keep manual order
+      // If both are incomplete, sort by order (original position)
       if (!a.completed && !b.completed) {
-        const dueA = a.dueDate ? getDueDateTime(a.dueDate, a.dueTime) : null;
-        const dueB = b.dueDate ? getDueDateTime(b.dueDate, b.dueTime) : null;
-        const timeA = dueA ? dueA.getTime() : NaN;
-        const timeB = dueB ? dueB.getTime() : NaN;
-        if (!Number.isNaN(timeA) && !Number.isNaN(timeB)) {
-          if (timeA !== timeB) return timeA - timeB;
-        } else if (!Number.isNaN(timeA)) {
-          return -1;
-        } else if (!Number.isNaN(timeB)) {
-          return 1;
-        }
         const orderA = a.order !== undefined ? a.order : new Date(a.createdAt).getTime();
         const orderB = b.order !== undefined ? b.order : new Date(b.createdAt).getTime();
         return orderA - orderB;
+      }
       }
       
       // If both are completed, sort by completion time (chronological)
