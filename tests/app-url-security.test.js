@@ -19,6 +19,7 @@ describe('custom app URL security', () => {
       { id: 'unknown', name: 'Unknown', url: 'custom:payload' },
       { id: 'protocol-relative', name: 'Protocol Relative', url: '//attacker.example/payload' },
       { id: 'backslash-authority', name: 'Backslash Authority', url: '/\\attacker.example/path' },
+      { id: 'bare-backslash-authority', name: 'Bare Backslash Authority', url: '\\attacker.example/path' },
       { id: 'https-backslash', name: 'HTTPS Backslash', url: 'https:\\attacker.example/path' },
       { id: 'invalid-array', name: 'Invalid Array', url: ['javascript:alert(1)'] },
       { id: 'invalid-null', name: 'Invalid Null', url: null },
@@ -37,7 +38,7 @@ describe('custom app URL security', () => {
     const apps = AppGridStorage.loadCustomApps();
 
     expect(apps.map(app => app.url)).toEqual([
-      '#', '#', '#', '#', '#', '#', '#', '#', '#',
+      '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',
       'http://example.com',
       'https://example.com',
       '#',
@@ -60,7 +61,8 @@ describe('custom app URL security', () => {
       'javascript:alert(1)',
       'DaTa:text/html,<script>alert(1)</script>',
       ['javascript:alert(1)'],
-      null
+      null,
+      '\\attacker.example/path'
     ]) {
       expect(AppGridStorage.saveCustomApps([
         { id: 'bad', name: 'Bad', url }
