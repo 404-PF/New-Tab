@@ -101,6 +101,11 @@ function hasHttpSchemeSafeLocal(url) {
   return /^https?:\/\//i.test(String(url || '').trim());
 }
 
+/**
+ * Reports whether a URL uses a custom application scheme or another unsafe URL form.
+ * @param {unknown} url Candidate app URL.
+ * @returns {boolean} True when the value should not be treated as an http(s) URL.
+ */
 function isCustomSchemeLocal(url) {
   const trimmed = String(url || '').trim();
   if (trimmed.startsWith('//')) return true;
@@ -129,6 +134,11 @@ window.__normalizeAppUrlForCheck = function (trimmed) {
   return 'https://' + trimmed;
 };
 
+/**
+ * Determines whether a host-like value can be safely migrated to https://.
+ * @param {unknown} url Candidate value from persisted custom app state.
+ * @returns {boolean} True when the value has a valid host-like shape.
+ */
 function needsSchemeMigration(url) {
   if (!url || typeof url !== 'string') return false;
   const trimmed = url.trim();
@@ -136,7 +146,7 @@ function needsSchemeMigration(url) {
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return false;
   if (hasHttpSchemeSafeLocal(trimmed)) return false;
   if (isCustomSchemeLocal(trimmed)) return false;
-  if (trimmed.startsWith('/')) return false;
+  if (trimmed.startsWith('/') || trimmed.startsWith('\\')) return false;
   try {
     const parsed = new URL('https://' + trimmed);
     if (!parsed.hostname) return false;
@@ -150,6 +160,11 @@ function needsSchemeMigration(url) {
   }
 }
 
+/**
+ * Normalizes a custom app URL while allowing only approved schemes and safe path forms.
+ * @param {unknown} url Raw URL supplied by app state.
+ * @returns {string|null} Normalized URL, or null when the value must be rejected.
+ */
 function normalizeCustomAppUrl(url) {
   if (typeof url !== 'string') return null;
 
@@ -159,6 +174,9 @@ function normalizeCustomAppUrl(url) {
   // Protocol-relative URLs still select a network destination and must not
   // bypass the explicit http(s) scheme allowlist.
   if (trimmed.startsWith('//')) return null;
+  // Backslash-prefixed values can be normalized by the browser into an external
+  // authority, so they are not safe same-origin paths.
+  if (trimmed.startsWith('\\')) return null;
   // Backslash authority forms are also interpreted as network destinations by
   // the browser URL parser and must not be accepted as same-origin paths.
   if (trimmed.startsWith('/') && !trimmed.startsWith('/\\')) return trimmed;
@@ -180,6 +198,22 @@ function normalizeCustomAppUrl(url) {
   return needsSchemeMigration(trimmed) ? 'https://' + trimmed : null;
 }
 
+/**
+ * Returns a URL safe to assign to an app link, falling back to a harmless fragment.
+ * @param {unknown} url Raw app URL from any app-data source.
+ * @returns {string} Safe URL or '#'.
+ */
+function getSafeCustomAppUrl(url) {
+  return normalizeCustomAppUrl(url) || '#';
+}
+
+window.getSafeCustomAppUrl = getSafeCustomAppUrl;
+
+/**
+ * Migrates persisted custom app URLs in place and reports whether storage changed.
+ * @param {Array<unknown>} apps Persisted custom app records.
+ * @returns {boolean} True when one or more records were normalized or sanitized.
+ */
 function migrateCustomAppUrls(apps) {
   let mutated = false;
   for (const app of apps) {
@@ -228,6 +262,11 @@ const AppGridStorage = {
     return apps;
   },
 
+  /**
+   * Validates and normalizes custom app URLs before persisting app state.
+   * @param {unknown} apps Custom app records to persist.
+   * @returns {boolean} Whether the value was successfully written.
+   */
   saveCustomApps(apps) {
     if (Array.isArray(apps)) {
       for (const app of apps) {
