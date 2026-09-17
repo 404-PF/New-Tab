@@ -66,14 +66,48 @@
       : null;
   }
 
-  function getIdMap(values) {
+  function getDeterministicIdentity(value) {
+    if (!isPlainObject(value)) return null;
+
+    if (typeof value.role === 'string' && Number.isFinite(value.timestamp)) {
+      return 'message:' + value.role + ':' + value.timestamp;
+    }
+
+    const normalized = {};
+    Object.keys(value).sort().forEach(key => {
+      if (key !== 'id') {
+        normalized[key] = value[key];
+      }
+    });
+
+    try {
+      return 'value:' + JSON.stringify(normalized);
+    } catch {
+      return null;
+    }
+  }
+
+  function createArrayMap(values, baseKeys = null) {
     const map = new Map();
+    const order = [];
+
     for (const value of values) {
       const id = getId(value);
-      if (!id || map.has(id)) return null;
-      map.set(id, value);
+      const idKey = id ? 'id:' + id : null;
+      const deterministicIdentity = getDeterministicIdentity(value);
+      const legacyKey = deterministicIdentity ? 'legacy:' + deterministicIdentity : null;
+      const key = idKey && (!baseKeys || baseKeys.has(idKey))
+        ? idKey
+        : (legacyKey && baseKeys && baseKeys.has(legacyKey)
+          ? legacyKey
+          : idKey || legacyKey);
+
+      if (!key || map.has(key)) return null;
+      map.set(key, value);
+      order.push(key);
     }
-    return map;
+
+    return { map, order };
   }
 
   function mergeObject(base, current, candidate) {
@@ -126,64 +160,68 @@
   }
 
   function mergeIdentifiedArray(base, current, candidate) {
-    const baseMap = getIdMap(base);
-    const currentMap = getIdMap(current);
-    const candidateMap = getIdMap(candidate);
-    if (!baseMap || !currentMap || !candidateMap) return clone(candidate);
+    const baseArray = createArrayMap(base);
+    if (!baseArray) return clone(candidate);
+
+    const baseKeys = new Set(baseArray.map.keys());
+    const currentArray = createArrayMap(current, baseKeys);
+    const candidateArray = createArrayMap(candidate, baseKeys);
+    if (!currentArray || !candidateArray) return clone(candidate);
 
     const result = new Map();
-    const allIds = new Set([...baseMap.keys(), ...currentMap.keys(), ...candidateMap.keys()]);
+    const allKeys = new Set([
+      ...baseArray.map.keys(),
+      ...currentArray.map.keys(),
+      ...candidateArray.map.keys()
+    ]);
 
-    allIds.forEach(id => {
-      const baseHas = baseMap.has(id);
-      const currentHas = currentMap.has(id);
-      const candidateHas = candidateMap.has(id);
-      const baseValue = baseHas ? baseMap.get(id) : missing;
-      const currentValue = currentHas ? currentMap.get(id) : missing;
-      const candidateValue = candidateHas ? candidateMap.get(id) : missing;
+    allKeys.forEach(key => {
+      const baseHas = baseArray.map.has(key);
+      const currentHas = currentArray.map.has(key);
+      const candidateHas = candidateArray.map.has(key);
+      const baseValue = baseHas ? baseArray.map.get(key) : missing;
+      const currentValue = currentHas ? currentArray.map.get(key) : missing;
+      const candidateValue = candidateHas ? candidateArray.map.get(key) : missing;
 
       if (!candidateHas) {
         if (!baseHas) {
-          if (currentHas) result.set(id, clone(currentValue));
+          if (currentHas) result.set(key, clone(currentValue));
         } else if (!currentHas) {
           return;
         } else if (!deepEqual(currentValue, baseValue)) {
-          result.set(id, clone(currentValue));
+          result.set(key, clone(currentValue));
         }
         return;
       }
 
       if (!baseHas) {
-        result.set(id, clone(candidateValue));
+        result.set(key, clone(candidateValue));
         return;
       }
 
       if (!currentHas) {
         if (!deepEqual(candidateValue, baseValue)) {
-          result.set(id, clone(candidateValue));
+          result.set(key, clone(candidateValue));
         }
         return;
       }
 
-      result.set(id, mergeJsonValue(baseValue, currentValue, candidateValue));
+      result.set(key, mergeJsonValue(baseValue, currentValue, candidateValue));
     });
 
-    const baseIds = base.map(value => getId(value));
-    const currentIds = current.map(value => getId(value));
-    const candidateIds = candidate.map(value => getId(value));
-    const localOrderChanged = !deepEqual(candidateIds, baseIds);
-    const currentOrderChanged = !deepEqual(currentIds, baseIds);
-    const primaryOrder = localOrderChanged ? candidateIds : (currentOrderChanged ? currentIds : candidateIds);
-    const secondaryOrder = localOrderChanged ? currentIds : candidateIds;
-    const orderedIds = [];
-
-    [...primaryOrder, ...secondaryOrder, ...allIds].forEach(id => {
-      if (id && result.has(id) && !orderedIds.includes(id)) {
-        orderedIds.push(id);
+    const orderedKeys = [];
+    [
+      ...candidateArray.order,
+      ...currentArray.order,
+      ...baseArray.order,
+      ...allKeys
+    ].forEach(key => {
+      if (!orderedKeys.includes(key) && result.has(key)) {
+        orderedKeys.push(key);
       }
     });
 
-    return orderedIds.map(id => result.get(id));
+    return orderedKeys.map(key => result.get(key));
   }
 
   function mergeJsonValue(base, current, candidate) {
@@ -242,13 +280,14 @@
     const candidateRaw = String(value);
     const currentRaw = nativeGetItem(key);
     const baseRaw = lastLocalValues.has(key) ? lastLocalValues.get(key) : currentRaw;
+    const concurrentChange = baseRaw !== currentRaw;
     const mergedRaw = mergeStoredValue(baseRaw, currentRaw, candidateRaw);
     const result = nativeSetItem(key, mergedRaw);
 
-    // A false return is the bridge's synchronous failure signal. Native
-    // localStorage returns undefined on success, so every non-false result is
-    // treated as an accepted local write.
-    if (result !== false) {
+    // Native localStorage returns undefined on success. When a concurrent
+    // change was merged, keep the original stale base so later writes from
+    // the same in-memory snapshot continue to reconcile against it.
+    if (result !== false && !concurrentChange) {
       lastLocalValues.set(key, mergedRaw);
     }
 
