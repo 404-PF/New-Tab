@@ -1,9 +1,10 @@
 name: PR732 alert audit
 
 on:
-  push:
+  pull_request:
+    types: [synchronize]
     branches:
-      - claude/elastic-borg-609522
+      - main
 
 permissions:
   contents: read
