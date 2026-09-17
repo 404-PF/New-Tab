@@ -39,12 +39,7 @@ async function createHarness() {
   resolveGet();
   await dom.window.__storageBridgeReady;
 
-  const failureEvents = [];
-  dom.window.addEventListener('storageBridgeWriteError', (event) => {
-    failureEvents.push(event.detail);
-  });
-
-  return { dom, setCallbacks, failureEvents };
+  return { dom, setCallbacks, failureEvents: [] };
 }
 
 async function failWrite(harness, callbackIndex) {
@@ -69,6 +64,10 @@ describe('storage bridge write generations', () => {
     const harness = await createHarness();
 
     try {
+      harness.dom.window.addEventListener('storageBridgeWriteError', (event) => {
+        harness.failureEvents.push(event.detail);
+      });
+
       expect(harness.dom.window.localStorage.setItem('testKey', 'first')).toBe(true);
       expect(harness.dom.window.localStorage.setItem('testKey', 'second')).toBe(true);
       expect(harness.setCallbacks).toHaveLength(2);
@@ -91,9 +90,8 @@ describe('storage bridge write generations', () => {
     const harness = await createHarness();
 
     try {
-      harness.failureEvents.length = 0;
-      harness.dom.window.removeEventListener;
       harness.dom.window.addEventListener('storageBridgeWriteError', (event) => {
+        harness.failureEvents.push(event.detail);
         if (event.detail.generation === 2) {
           expect(harness.dom.window.localStorage.setItem('testKey', 'third')).toBe(true);
         }
