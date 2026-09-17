@@ -1,26 +1,44 @@
 name: PR732 alert audit
 
 on:
-  pull_request:
-    types: [synchronize]
+  push:
     branches:
-      - main
+      - claude/elastic-borg-609522
+    paths-ignore:
+      - sonar-pr732-alerts.json
 
 permissions:
-  contents: read
-  checks: read
+  contents: write
 
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - name: Dump SonarCloud annotations
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/elastic-borg-609522
+          fetch-depth: 1
+      - name: Capture SonarCloud PR issues
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           curl -fsSL \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            "https://api.github.com/repos/404-PF/New-Tab/check-runs/105133624329/annotations?per_page=100" \
-            | python3 -c 'import json,sys; [print(json.dumps(a, ensure_ascii=False)) for a in json.load(sys.stdin)]'
+            -H "Accept: application/json" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=404-PF_New-Tab&pullRequest=732&resolved=false&ps=100" \
+            > sonar-pr732-alerts.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('sonar-pr732-alerts.json').read_text())
+          print('total:', data.get('total'))
+          for issue in data.get('issues', []):
+              print(json.dumps({k: issue.get(k) for k in ('key', 'rule', 'severity', 'message', 'component', 'line', 'textRange')}, ensure_ascii=False))
+          PY
+      - name: Commit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sonar-pr732-alerts.json
+          git commit -m "chore: capture PR #732 SonarCloud alerts" || exit 0
+          git push origin HEAD:claude/elastic-borg-609522
