@@ -266,6 +266,8 @@ describe('AppFolders UI', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    window.defaultApps[0].url = '#';
+    document.getElementById('folder-popup-apps').innerHTML = '';
   });
 
   describe('createFolderIconElement', () => {
@@ -330,6 +332,25 @@ describe('AppFolders UI', () => {
 
       expect(image.getAttribute('src')).toBe('images/icons/globe.svg');
       expect(image.hasAttribute('data-app-icon')).toBe(false);
+    });
+
+    it('fails closed for unsafe default and bypassed custom URLs in the folder render sink', () => {
+      const folder = { id: 'unsafe-folder', name: 'Unsafe', apps: ['settings-app', 'unsafe-custom'] };
+      AppGridStorage.saveFolders([folder]);
+      window.defaultApps[0].url = 'javascript:alert(document.domain)';
+      const getCustomAppsSpy = vi.spyOn(AppGridState, 'getCustomApps').mockReturnValue([
+        { id: 'unsafe-custom', name: 'Unsafe custom', url: 'javascript:alert(document.domain)', icon: 'unsafe.png' }
+      ]);
+
+      try {
+        window.AppFolders.openFolderPopup(folder.id);
+
+        expect(document.getElementById('popup-settings-app').getAttribute('href')).toBe('#');
+        expect(document.getElementById('popup-unsafe-custom').getAttribute('href')).toBe('#');
+      } finally {
+        getCustomAppsSpy.mockRestore();
+        window.defaultApps[0].url = '#';
+      }
     });
 
     it('closeFolderPopup hides popup and clears currentFolderId', () => {
