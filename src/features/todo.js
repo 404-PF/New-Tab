@@ -389,7 +389,7 @@
       });
     }
 
-    // Sort: incomplete items first (by due date-time, then order), then completed items (by completion time)
+    // Sort: incomplete items first (by order), then completed items (by completion time)
     filtered.sort((a, b) => {
       // If both are incomplete, sort by order (original position)
       if (!a.completed && !b.completed) {
@@ -397,8 +397,7 @@
         const orderB = b.order !== undefined ? b.order : new Date(b.createdAt).getTime();
         return orderA - orderB;
       }
-      }
-      
+
       // If both are completed, sort by completion time (chronological)
       if (a.completed && b.completed) {
         const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
