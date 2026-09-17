@@ -5,9 +5,68 @@
 
   let initialized = false;
 
+  // ===================== Lazy loader =====================
+
+  // Heavy game modules are not part of the critical bootstrap path.
+  // They are fetched on first interaction with the Games hub.
+  const GAME_SCRIPTS = [
+    'src/features/games/shared.js',
+    'src/features/games/game-registry.js',
+    'src/features/games/snake.js',
+    'src/features/games/2048.js',
+    'src/features/games/memory.js'
+  ];
+
+  let gamesLoadPromise = null;
+  let gamesLoaded = false;
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = false;
+      script.onload = resolve;
+      script.onerror = function () { reject(new Error('Failed to load ' + src)); };
+      document.body.appendChild(script);
+    });
+  }
+
+  function ensureGamesLoaded() {
+    if (gamesLoaded) return Promise.resolve();
+    if (gamesLoadPromise) return gamesLoadPromise;
+    if (window.GameRegistry && window.gamesHelpers && typeof window.GameRegistry.get === 'function' && window.GameRegistry.get('snake') && window.GameRegistry.get('2048') && window.GameRegistry.get('memory')) {
+      gamesLoaded = true;
+      return Promise.resolve();
+    }
+    // Load sequentially to preserve dependency order (shared -> registry -> games)
+    // even when the browser optimizes parallel fetches.
+    let chain = Promise.resolve();
+    GAME_SCRIPTS.forEach(function (src) {
+      chain = chain.then(function () { return loadScript(src); });
+    });
+    gamesLoadPromise = chain.then(function () {
+      gamesLoaded = true;
+    }).catch(function (err) {
+      // Allow retry on next open() attempt
+      gamesLoadPromise = null;
+      throw err;
+    });
+    return gamesLoadPromise;
+  }
+
   // ===================== Helpers =====================
 
-  const t = window.gamesHelpers?.t || function (key) { return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key; };
+  function t(key) {
+    if (window.gamesHelpers && typeof window.gamesHelpers.t === 'function') {
+      const v = window.gamesHelpers.t(key);
+      if (v !== undefined) return v;
+    }
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const v = window.i18n.t(key);
+      if (v !== undefined && v !== key) return v;
+    }
+    return key;
+  }
 
   function getModalElement() {
     return document.getElementById('games-app-modal');
@@ -16,7 +75,9 @@
   function isEnabled() {
     return window.gamesHelpers && typeof window.gamesHelpers.isEnabled === 'function'
       ? window.gamesHelpers.isEnabled()
-      : true;
+      : (function () {
+          try { return localStorage.getItem('games_enabled') !== 'false'; } catch (_e) { return true; }
+        })();
   }
 
   // ===================== Hub Rendering =====================
@@ -34,17 +95,25 @@
       return;
     }
 
-    // Sort by MRU (source of truth lives in GameRegistry)
     const mru = window.GameRegistry && typeof window.GameRegistry.getMRU === 'function'
       ? window.GameRegistry.getMRU()
       : [];
+    const allStats = window.GameRegistry && typeof window.GameRegistry.getAllStats === 'function'
+      ? window.GameRegistry.getAllStats()
+      : {};
+    const allSaves = window.GameRegistry && typeof window.GameRegistry.getAllSaves === 'function'
+      ? window.GameRegistry.getAllSaves()
+      : {};
+
+    const mruIndex = new Map();
+    mru.forEach(function (id, i) {
+      if (!mruIndex.has(id)) mruIndex.set(id, i);
+    });
 
     const sorted = games.slice().sort(function (a, b) {
-      const ia = mru.indexOf(a.id);
-      const ib = mru.indexOf(b.id);
-      if (ia === -1 && ib === -1) return 0;
-      if (ia === -1) return 1;
-      if (ib === -1) return -1;
+      const ia = mruIndex.has(a.id) ? mruIndex.get(a.id) : Infinity;
+      const ib = mruIndex.has(b.id) ? mruIndex.get(b.id) : Infinity;
+      if (ia === Infinity && ib === Infinity) return 0;
       return ia - ib;
     });
 
@@ -67,8 +136,8 @@
       descEl.className = 'games-hub-card-desc';
       descEl.textContent = t(game.description) || game.description || '';
 
-      // Stats summary
-      const stats = window.GameRegistry.getStats(game.id);
+      // Stats summary — batch-read via allStats (single parse, O(1) lookup)
+      const stats = allStats[game.id] || {};
       const statsEl = document.createElement('div');
       statsEl.className = 'games-hub-card-stats';
       if (stats.highScore !== undefined) {
@@ -79,8 +148,12 @@
 
       const playBtn = document.createElement('button');
       playBtn.className = 'games-hub-card-play';
-      // A game with a persisted snapshot offers to continue instead of play.
-      const hasSavedGame = window.GameRegistry.hasSave(game.id);
+      const entry = allSaves[game.id];
+      const hasSavedGame = window.GameRegistry && typeof window.GameRegistry.isValidSaveEnvelope === 'function'
+        ? window.GameRegistry.isValidSaveEnvelope(entry)
+        : entry && typeof entry === 'object' && !Array.isArray(entry)
+          && entry.state !== null && typeof entry.state === 'object' && !Array.isArray(entry.state)
+          && Number.isFinite(entry.savedAt);
       playBtn.textContent = t(hasSavedGame ? 'gamesContinue' : 'gamesPlay');
       if (hasSavedGame) {
         playBtn.classList.add('games-hub-card-play-continue');
@@ -135,16 +208,47 @@
 
   // ===================== Open / Close =====================
 
-  function open() {
+  function renderLoading() {
+    const container = document.getElementById('games-hub-content');
+    if (!container) return;
+    const txt = t('gamesLoading');
+    const display = txt !== 'gamesLoading' ? txt : 'Loading games…';
+    container.innerHTML = '<div class="games-hub-empty"><p>' + display + '</p></div>';
+  }
+
+  function renderLoadError(err) {
+    const container = document.getElementById('games-hub-content');
+    if (!container) return;
+    const fallback = (function () { const v = t('gamesLoadError'); return v !== 'gamesLoadError' ? v : 'Failed to load games. Please try again.'; })();
+    const msg = err && err.message ? err.message : fallback;
+    container.innerHTML = '<div class="games-hub-empty"><p>' + msg + '</p></div>';
+  }
+
+  async function open() {
     const modal = getModalElement();
     if (!modal) return;
 
     if (!isEnabled()) {
       renderDisabled();
       if (!modal.open) modal.showModal();
-      requestAnimationFrame(() => {
+      requestAnimationFrame(function () {
         modal.classList.add('modal-open');
       });
+      return;
+    }
+
+    // Show modal immediately with a loading placeholder while game scripts fetch
+    if (!modal.open) modal.showModal();
+    requestAnimationFrame(function () {
+      modal.classList.add('modal-open');
+    });
+    renderLoading();
+
+    try {
+      await ensureGamesLoaded();
+    } catch (err) {
+      console.error('[GamesApp] Failed to lazy-load game scripts:', err);
+      renderLoadError(err);
       return;
     }
 
@@ -152,10 +256,6 @@
       window.GameRegistry.destroyCurrent();
     }
     renderHub();
-    if (!modal.open) modal.showModal();
-    requestAnimationFrame(() => {
-      modal.classList.add('modal-open');
-    });
   }
 
   function close() {
@@ -218,6 +318,8 @@
     init: init,
     open: open,
     close: close,
-    showHub: showHub
+    showHub: showHub,
+    ensureGamesLoaded: ensureGamesLoaded,
+    preload: ensureGamesLoaded
   };
 })();

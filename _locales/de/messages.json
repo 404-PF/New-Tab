@@ -621,6 +621,14 @@
     "message": "Fokus-Statistik-Panel umschalten",
     "description": "Aria label for pomodoro stats toggle"
   },
+  "gamesLoading": {
+    "message": "Spiele werden geladen…",
+    "description": "Loading state shown while game scripts are being fetched"
+  },
+  "gamesLoadError": {
+    "message": "Spiele konnten nicht geladen werden. Bitte versuche es erneut.",
+    "description": "Error shown when game scripts fail to load"
+  },
   "dueTime": {
     "message": "Fälligkeitszeit",
     "description": "Label for the due time input"
