@@ -17,6 +17,9 @@ describe('cross-tab storage read-modify-write merging', () => {
     nativeRemoveItem('todos');
     nativeRemoveItem('notes');
     nativeRemoveItem('ai_conversations');
+    localStorage.getItem = nativeGetItem;
+    localStorage.setItem = nativeSetItem;
+    localStorage.removeItem = nativeRemoveItem;
   });
 
   it('preserves independent todo, note, and AI conversation edits from a stale snapshot', () => {
@@ -63,6 +66,25 @@ describe('cross-tab storage read-modify-write merging', () => {
     expect(mergedTodo.text).toBe('Task A edited');
     expect(mergedTodo.completed).toBe(true);
 
+    // A second write from the same stale in-memory snapshot must reconcile
+    // against the original base rather than dropping todo-2.
+    localStorage.setItem('todos', JSON.stringify([
+      {
+        ...baseTodo,
+        text: 'Task A edited twice'
+      },
+      {
+        id: 'todo-3',
+        text: 'Task C',
+        completed: false,
+        order: 1
+      }
+    ]));
+    const mergedTodosAgain = JSON.parse(nativeGetItem('todos'));
+    expect(mergedTodosAgain.map(todo => todo.id)).toEqual(expect.arrayContaining(['todo-1', 'todo-2', 'todo-3']));
+    expect(mergedTodosAgain.find(todo => todo.id === 'todo-1').text).toBe('Task A edited twice');
+    expect(mergedTodosAgain.find(todo => todo.id === 'todo-1').completed).toBe(true);
+
     const baseNote = {
       id: 'note-1',
       text: 'Note A',
@@ -97,7 +119,7 @@ describe('cross-tab storage read-modify-write merging', () => {
       id: 'conversation-1',
       title: 'Chat',
       messages: [
-        { id: 'message-1', role: 'user', content: 'Hello' }
+        { role: 'user', content: 'Hello' }
       ],
       createdAt: 1,
       updatedAt: 1
@@ -107,7 +129,7 @@ describe('cross-tab storage read-modify-write merging', () => {
     nativeSetItem('ai_conversations', JSON.stringify([{
       ...baseConversation,
       messages: [
-        ...baseConversation.messages,
+        { id: 'message-from-b', role: 'user', content: 'Hello' },
         { id: 'message-2', role: 'assistant', content: 'Hi from tab B' }
       ],
       updatedAt: 2
@@ -115,7 +137,7 @@ describe('cross-tab storage read-modify-write merging', () => {
     localStorage.setItem('ai_conversations', JSON.stringify([{
       ...baseConversation,
       messages: [
-        ...baseConversation.messages,
+        { id: 'message-from-a', role: 'user', content: 'Hello' },
         { id: 'message-3', role: 'user', content: 'Follow-up from tab A' }
       ],
       updatedAt: 3
@@ -123,8 +145,10 @@ describe('cross-tab storage read-modify-write merging', () => {
 
     const mergedConversations = JSON.parse(nativeGetItem('ai_conversations'));
     const mergedConversation = mergedConversations[0];
+    expect(mergedConversation.messages).toHaveLength(3);
+    expect(mergedConversation.messages.filter(message => message.content === 'Hello')).toHaveLength(1);
     expect(mergedConversation.messages.map(message => message.id)).toEqual(
-      expect.arrayContaining(['message-1', 'message-2', 'message-3'])
+      expect.arrayContaining(['message-from-a', 'message-2', 'message-3'])
     );
   });
 });
