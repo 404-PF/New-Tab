@@ -282,16 +282,14 @@
     const baseRaw = lastLocalValues.has(key) ? lastLocalValues.get(key) : currentRaw;
     const concurrentChange = baseRaw !== currentRaw;
     const mergedRaw = mergeStoredValue(baseRaw, currentRaw, candidateRaw);
-    const result = nativeSetItem(key, mergedRaw);
+    nativeSetItem(key, mergedRaw);
 
     // Native localStorage returns undefined on success. When a concurrent
     // change was merged, keep the original stale base so later writes from
     // the same in-memory snapshot continue to reconcile against it.
-    if (result !== false && !concurrentChange) {
+    if (!concurrentChange) {
       lastLocalValues.set(key, mergedRaw);
     }
-
-    return result;
   }
 
   storage.getItem = wrappedGetItem;
