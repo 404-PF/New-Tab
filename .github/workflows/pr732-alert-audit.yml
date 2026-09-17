@@ -1,0 +1,25 @@
+name: PR732 alert audit
+
+on:
+  push:
+    branches:
+      - claude/elastic-borg-609522
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump SonarCloud annotations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/404-PF/New-Tab/check-runs/105133624329/annotations?per_page=100" \
+            | python3 -c 'import json,sys; [print(json.dumps(a, ensure_ascii=False)) for a in json.load(sys.stdin)]'
