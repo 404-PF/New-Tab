@@ -102,6 +102,13 @@
     renderFolderContents(folder, grid);
   }
 
+  /**
+   * Renders folder app links while validating URLs again at the DOM sink.
+   * Invalid or bypassed app records fail closed to '#'.
+   * @param {object} folder Folder whose apps should be rendered.
+   * @param {HTMLElement} grid Container for the rendered app links.
+   * @returns {void}
+   */
   function renderFolderContents(folder, grid) {
     grid.innerHTML = '';
     const apps = getFolderAppData(folder);
@@ -126,13 +133,16 @@
       const iconUrl = app.cachedIcon || app.icon || '';
 
       const a = document.createElement('a');
-      a.href = app.url || '#';
+      const safeAppUrl = typeof window.getSafeCustomAppUrl === 'function'
+        ? window.getSafeCustomAppUrl(app.url)
+        : '#';
+      a.href = safeAppUrl;
       a.className = 'app-icon ' + (app.className || 'custom-app');
       a.id = 'popup-' + app.id;
       a.draggable = true;
       a.title = displayName;
 
-      if (openInNewTab && app.url && app.url !== '#') {
+      if (openInNewTab && safeAppUrl !== '#') {
         a.setAttribute('target', '_blank');
         a.setAttribute('rel', 'noopener noreferrer');
       }
