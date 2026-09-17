@@ -1,0 +1,53 @@
+name: PR732 final alert fix
+
+on:
+  push:
+    branches:
+      - claude/elastic-borg-609522
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/elastic-borg-609522
+          fetch-depth: 1
+      - name: Extract editTodo due-time logic
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/features/todo.js')
+          text = path.read_text()
+
+          marker = "  // Edit a todo\n  function editTodo(id, newText, newPriority, newDueDate, newRecurrence, newDueTime) {\n"
+          helper = """  function applyDueDateAndTime(todo, newDueDate, newDueTime) {\n    if (newDueDate !== null && newDueDate !== undefined) {\n      todo.dueDate = newDueDate;\n      if (!newDueDate) todo.dueTime = null;\n    }\n    if (newDueTime === undefined) return;\n    if (newDueTime === null || newDueTime === '') {\n      todo.dueTime = null;\n    } else if (isValidDueTime(newDueTime) && todo.dueDate) {\n      todo.dueTime = newDueTime;\n    }\n  }\n\n"""
+          if 'function applyDueDateAndTime(' not in text:
+              if marker not in text:
+                  raise SystemExit('editTodo marker not found')
+              text = text.replace(marker, helper + marker, 1)
+
+          old = """    if (newDueDate !== null && newDueDate !== undefined) {\n      todo.dueDate = newDueDate;\n      if (!newDueDate) todo.dueTime = null;\n    }\n    if (newDueTime !== undefined) {\n      if (newDueTime === null || newDueTime === '') {\n        todo.dueTime = null;\n      } else if (isValidDueTime(newDueTime) && todo.dueDate) {\n        todo.dueTime = newDueTime;\n      }\n    }\n"""
+          if old not in text:
+              raise SystemExit('editTodo due-time block not found')
+          text = text.replace(old, '    applyDueDateAndTime(todo, newDueDate, newDueTime);\n', 1)
+          path.write_text(text)
+          PY
+      - name: Validate
+        run: |
+          node --check src/features/todo.js
+          node --check background/service-worker.js
+          git diff --check
+          npm test -- --run
+      - name: Remove temporary workflow and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/pr732-final-fix.yml
+          git add src/features/todo.js .github/workflows/pr732-final-fix.yml
+          git commit -m "fix: reduce editTodo cognitive complexity"
+          git push origin HEAD:claude/elastic-borg-609522
