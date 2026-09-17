@@ -3,6 +3,18 @@
 
 const APP_GRID_STORAGE_KEYS = new Set(['appOrder', 'customApps', 'appFolders']);
 const APP_GRID_SAVE_ERROR_FALLBACK = 'Failed to save app changes. Your last action was not saved.';
+const SAFE_CUSTOM_APP_SCHEMES = new Set([
+  'tel',
+  'sms',
+  'mailto',
+  'sip',
+  'callto',
+  'facetime',
+  'geo',
+  'magnet',
+  'urn',
+  'bitcoin'
+]);
 
 function getAppGridSaveErrorMessage() {
   if (!window.i18n || typeof window.i18n.t !== 'function') {
@@ -100,7 +112,7 @@ function isCustomSchemeLocal(url) {
   const hostPart = trimmed.slice(0, sep);
   const rest = trimmed.slice(sep + 1);
   const lowerHost = hostPart.toLowerCase();
-  if (['tel', 'sms', 'mailto', 'sip', 'callto', 'facetime', 'geo', 'magnet', 'urn', 'bitcoin'].includes(lowerHost)) return true;
+  if (SAFE_CUSTOM_APP_SCHEMES.has(lowerHost)) return true;
   if (/^\d+(\/|$|\?|#)/.test(rest)) {
     if (hostPart.includes('.')) return false;
     if (/^localhost$/i.test(hostPart)) return false;
@@ -147,7 +159,9 @@ function normalizeCustomAppUrl(url) {
   // Protocol-relative URLs still select a network destination and must not
   // bypass the explicit http(s) scheme allowlist.
   if (trimmed.startsWith('//')) return null;
-  if (trimmed.startsWith('/')) return trimmed;
+  // Backslash authority forms are also interpreted as network destinations by
+  // the browser URL parser and must not be accepted as same-origin paths.
+  if (trimmed.startsWith('/') && !trimmed.startsWith('/\\')) return trimmed;
 
   if (hasHttpSchemeSafeLocal(trimmed)) {
     try {
@@ -158,9 +172,10 @@ function normalizeCustomAppUrl(url) {
     }
   }
 
-  // Any explicit non-http(s) scheme (javascript:, data:, blob:, mailto:, etc.)
-  // is unsafe for use as an app tile href.
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return null;
+  const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(trimmed);
+  if (schemeMatch) {
+    return SAFE_CUSTOM_APP_SCHEMES.has(schemeMatch[1].toLowerCase()) ? trimmed : null;
+  }
 
   return needsSchemeMigration(trimmed) ? 'https://' + trimmed : null;
 }
@@ -168,9 +183,17 @@ function normalizeCustomAppUrl(url) {
 function migrateCustomAppUrls(apps) {
   let mutated = false;
   for (const app of apps) {
-    if (!app || typeof app.url !== 'string') continue;
+    if (!app || typeof app !== 'object' || !Object.prototype.hasOwnProperty.call(app, 'url')) continue;
 
     const originalUrl = app.url;
+    if (typeof originalUrl !== 'string') {
+      // Keep the app record but replace invalid URL values with a harmless no-op
+      // so stale appOrder/folder references remain valid.
+      app.url = '#';
+      mutated = true;
+      continue;
+    }
+
     const normalizedUrl = normalizeCustomAppUrl(originalUrl);
     if (normalizedUrl === null) {
       // Keep the app record but replace attacker-controlled destinations with a
@@ -208,7 +231,8 @@ const AppGridStorage = {
   saveCustomApps(apps) {
     if (Array.isArray(apps)) {
       for (const app of apps) {
-        if (!app || typeof app.url !== 'string') continue;
+        if (!app || typeof app !== 'object' || !Object.prototype.hasOwnProperty.call(app, 'url')) continue;
+        if (typeof app.url !== 'string') return false;
         const normalizedUrl = normalizeCustomAppUrl(app.url);
         if (normalizedUrl === null) return false;
         app.url = normalizedUrl;
