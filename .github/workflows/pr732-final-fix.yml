@@ -39,6 +39,7 @@ jobs:
           PY
       - name: Validate
         run: |
+          npm ci --ignore-scripts
           node --check src/features/todo.js
           node --check background/service-worker.js
           git diff --check
