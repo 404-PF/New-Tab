@@ -19,16 +19,19 @@ function parseDueDate(dueDate, dueTime) {
   let hours = 23;
   let minutes = 59;
   let seconds = 59;
+  let milliseconds = 999;
   if (typeof dueTime === 'string' && DUE_TIME_PATTERN.test(dueTime)) {
     const [h, m] = dueTime.split(':').map(Number);
     hours = h;
     minutes = m;
     seconds = 0;
+    milliseconds = 0;
   }
   // new Date(y, m-1, d) silently rolls invalid calendar dates forward (e.g.
   // 2026-02-30 -> March 2) and maps years 0-99 to 1900+year; reject those by
   // round-tripping the components.
   const date = new Date(year, month - 1, day, hours, minutes, seconds);
+  date.setMilliseconds(milliseconds);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
   return date;
 }

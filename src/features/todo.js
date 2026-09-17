@@ -190,8 +190,9 @@
     if (!parsed) return '';
     const d = new Date();
     d.setHours(parsed.hours, parsed.minutes, 0, 0);
-    const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
-    const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
+    const locale = typeof window.getDisplayLocale === 'function'
+      ? window.getDisplayLocale()
+      : (window.i18n ? window.i18n.currentLanguage() : 'en') === 'zh' ? 'zh-CN' : 'en-US';
     return d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
   }
 
@@ -388,10 +389,22 @@
       });
     }
 
-    // Sort: incomplete items first (by order), then completed items (by completion time)
+    // Sort: incomplete items first (by due date-time, then order), then completed items (by completion time)
     filtered.sort((a, b) => {
-      // If both are incomplete, sort by order (original position)
+      // If both are incomplete, sort dated todos by combined due date and
+      // time (minute-accurate); todos without a due date keep manual order
       if (!a.completed && !b.completed) {
+        const dueA = a.dueDate ? getDueDateTime(a.dueDate, a.dueTime) : null;
+        const dueB = b.dueDate ? getDueDateTime(b.dueDate, b.dueTime) : null;
+        const timeA = dueA ? dueA.getTime() : NaN;
+        const timeB = dueB ? dueB.getTime() : NaN;
+        if (!Number.isNaN(timeA) && !Number.isNaN(timeB)) {
+          if (timeA !== timeB) return timeA - timeB;
+        } else if (!Number.isNaN(timeA)) {
+          return -1;
+        } else if (!Number.isNaN(timeB)) {
+          return 1;
+        }
         const orderA = a.order !== undefined ? a.order : new Date(a.createdAt).getTime();
         const orderB = b.order !== undefined ? b.order : new Date(b.createdAt).getTime();
         return orderA - orderB;
@@ -2507,8 +2520,9 @@ class CustomDatePicker {
   }
 
   formatDateForDisplay(date) {
-    const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
-    const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
+    const locale = typeof window.getDisplayLocale === 'function'
+      ? window.getDisplayLocale()
+      : (window.i18n ? window.i18n.currentLanguage() : 'en') === 'zh' ? 'zh-CN' : 'en-US';
     return date.toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric',

@@ -630,7 +630,7 @@
     "description": "Error shown when game scripts fail to load"
   },
   "dueTime": {
-    "message": "到期时间",
+    "message": "到期時間",
     "description": "Label for the due time input"
   }
 }
