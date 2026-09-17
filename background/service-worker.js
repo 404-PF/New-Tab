@@ -197,35 +197,42 @@ function handleInvalidDueDate(todo, warnedInvalidDueDates) {
   return { skip: true, warnedUpdated };
 }
 
+function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, leadTime) {
+  if (todo.completed || todo.dueDate === null || todo.dueDate === undefined) {
+    return { skip: true, warnedUpdated: false };
+  }
+  const invalid = handleInvalidDueDate(todo, warnedInvalidDueDates);
+  if (invalid.skip) {
+    return { skip: true, warnedUpdated: invalid.warnedUpdated };
+  }
+  const due = parseDueDate(todo.dueDate, todo.dueTime);
+  const reminderTime = new Date(due.getTime() - Math.max(leadTime, CHECK_INTERVAL_MINUTES) * 60 * 1000);
+  if (now < reminderTime || now > due) {
+    return { skip: true, warnedUpdated: false };
+  }
+  const timePart = todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime) ? '_' + todo.dueTime : '';
+  const notifiedKey = todo.id + '_' + todo.dueDate + timePart;
+  if (notified[notifiedKey]) {
+    return { skip: true, warnedUpdated: false };
+  }
+  let dueDisplay = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  if (todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime)) {
+    dueDisplay += ' ' + due.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+  return { skip: false, warnedUpdated: false, notifiedKey, dueDisplay };
+}
+
 async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime) {
   let updated = false;
   let warnedUpdated = false;
   const now = new Date();
   for (const todo of todos) {
-    if (todo.completed || todo.dueDate === null || todo.dueDate === undefined) continue;
-    const invalid = handleInvalidDueDate(todo, warnedInvalidDueDates);
-    if (invalid.warnedUpdated) warnedUpdated = true;
-    if (invalid.skip) continue;
-    const due = parseDueDate(todo.dueDate, todo.dueTime);
-    // A positive lead time opens the window [due - leadTime, due]. "At due
-    // time" (leadTime 0) must not collapse that window to a single end-of-day
-    // instant — a once-a-minute check would have to land exactly on
-    // 23:59:59.000 to fire, so it would never actually go off. Keep the window
-    // at least one check interval wide so the check scheduled for the due
-    // instant always lands inside it.
-    const reminderTime = new Date(due.getTime() - Math.max(leadTime, CHECK_INTERVAL_MINUTES) * 60 * 1000);
-    if (now >= reminderTime && now <= due) {
-      const timePart = todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime) ? '_' + todo.dueTime : '';
-      const notifiedKey = todo.id + '_' + todo.dueDate + timePart;
-      if (notified[notifiedKey]) continue;
-      let dueDisplay = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-      if (todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime)) {
-        dueDisplay += ' ' + due.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-      }
-      await showTodoNotification(todo, dueDisplay);
-      notified[notifiedKey] = Date.now();
-      updated = true;
-    }
+    const candidate = getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, leadTime);
+    if (candidate.warnedUpdated) warnedUpdated = true;
+    if (candidate.skip) continue;
+    await showTodoNotification(todo, candidate.dueDisplay);
+    notified[candidate.notifiedKey] = Date.now();
+    updated = true;
   }
   return { updated, warnedUpdated };
 }

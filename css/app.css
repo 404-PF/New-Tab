@@ -228,7 +228,7 @@ body.light-theme .todo-stats-toggle {
 body.light-theme .todo-stats-toggle:hover,
 body.light-theme .todo-stats-toggle.active {
   background: rgba(33, 150, 243, 0.12);
-  color: #0d47a1;
+  color: #003b73;
 }
 
 body.light-theme .todo-stats-panel {
@@ -2414,9 +2414,9 @@ body.light-theme #filter-status {
 }
 
 body.light-theme .bulk-btn {
-  background: rgba(0, 0, 0, 0.05);
+  background: #f3f4f6;
   border-color: rgba(0, 0, 0, 0.1);
-  color: #1f2937;
+  color: #111827;
 }
 
 body.light-theme .bulk-btn:hover {
@@ -2777,7 +2777,7 @@ body.light-theme .empty-icon {
 }
 
 .onboarding-close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.55);
   color: #ffffff;
 }
 
@@ -2837,7 +2837,7 @@ body.light-theme .empty-icon {
 }
 
 .onboarding-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.55);
   color: #ffffff;
 }
 
@@ -4995,9 +4995,9 @@ body.light-theme .md-table-wrapper {
 }
 
 body.light-theme .md-table-header {
-  background: rgba(0, 0, 0, 0.03);
+  background: #f3f4f6;
   border-bottom-color: rgba(0, 0, 0, 0.1);
-  color: #1f2937;
+  color: #111827;
 }
 
 body.light-theme .md-table-cell {
