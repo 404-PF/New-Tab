@@ -773,6 +773,19 @@
     return true;
   }
 
+  function applyDueDateAndTime(todo, newDueDate, newDueTime) {
+    if (newDueDate !== null && newDueDate !== undefined) {
+      todo.dueDate = newDueDate;
+      if (!newDueDate) todo.dueTime = null;
+    }
+    if (newDueTime === undefined) return;
+    if (newDueTime === null || newDueTime === '') {
+      todo.dueTime = null;
+    } else if (isValidDueTime(newDueTime) && todo.dueDate) {
+      todo.dueTime = newDueTime;
+    }
+  }
+
   // Edit a todo
   function editTodo(id, newText, newPriority, newDueDate, newRecurrence, newDueTime) {
     const todo = todos.find(t => t.id === id);
@@ -785,17 +798,7 @@
     if (newPriority !== null && newPriority !== undefined) {
       todo.priority = newPriority;
     }
-    if (newDueDate !== null && newDueDate !== undefined) {
-      todo.dueDate = newDueDate;
-      if (!newDueDate) todo.dueTime = null;
-    }
-    if (newDueTime !== undefined) {
-      if (newDueTime === null || newDueTime === '') {
-        todo.dueTime = null;
-      } else if (isValidDueTime(newDueTime) && todo.dueDate) {
-        todo.dueTime = newDueTime;
-      }
-    }
+    applyDueDateAndTime(todo, newDueDate, newDueTime);
     if (newRecurrence !== undefined) {
       todo.recurrence = RECURRENCE_VALUES.includes(newRecurrence) ? newRecurrence : null;
     }
