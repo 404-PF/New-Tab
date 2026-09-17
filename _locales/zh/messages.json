@@ -628,5 +628,9 @@
   "gamesLoadError": {
     "message": "遊戲載入失敗，請重試。",
     "description": "Error shown when game scripts fail to load"
+  },
+  "dueTime": {
+    "message": "到期時間",
+    "description": "Label for the due time input"
   }
 }

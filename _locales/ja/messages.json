@@ -628,5 +628,9 @@
   "gamesLoadError": {
     "message": "ゲームの読み込みに失敗しました。もう一度お試しください。",
     "description": "Error shown when game scripts fail to load"
+  },
+  "dueTime": {
+    "message": "期限時刻",
+    "description": "Label for the due time input"
   }
 }

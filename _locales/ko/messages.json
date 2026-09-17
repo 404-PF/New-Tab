@@ -628,5 +628,9 @@
   "gamesLoadError": {
     "message": "게임을 불러오지 못했습니다. 다시 시도해 주세요.",
     "description": "Error shown when game scripts fail to load"
+  },
+  "dueTime": {
+    "message": "마감 시간",
+    "description": "Label for the due time input"
   }
 }

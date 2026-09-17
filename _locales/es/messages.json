@@ -628,5 +628,9 @@
   "gamesLoadError": {
     "message": "No se pudieron cargar los juegos. Inténtalo de nuevo.",
     "description": "Error shown when game scripts fail to load"
+  },
+  "dueTime": {
+    "message": "Hora de vencimiento",
+    "description": "Label for the due time input"
   }
 }

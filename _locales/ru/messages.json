@@ -628,5 +628,9 @@
   "gamesLoadError": {
     "message": "Не удалось загрузить игры. Попробуйте ещё раз.",
     "description": "Error shown when game scripts fail to load"
+  },
+  "dueTime": {
+    "message": "Время выполнения",
+    "description": "Label for the due time input"
   }
 }

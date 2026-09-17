@@ -760,5 +760,9 @@
   "gamesLoadError": {
     "message": "Failed to load games. Please try again.",
     "description": "Error shown when game scripts fail to load"
+  },
+  "dueTime": {
+    "message": "Due Time",
+    "description": "Label for the due time input"
   }
 }
