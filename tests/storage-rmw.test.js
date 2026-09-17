@@ -31,16 +31,15 @@ describe('cross-tab storage read-modify-write merging', () => {
 
     // Simulate another tab writing a newer snapshot after this tab loaded.
     nativeSetItem('todos', JSON.stringify([
-      baseTodo,
+      {
+        ...baseTodo,
+        completed: true
+      },
       {
         id: 'todo-2',
         text: 'Task B',
         completed: false,
         order: 1
-      },
-      {
-        ...baseTodo,
-        completed: true
       }
     ]));
 
