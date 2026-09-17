@@ -90,8 +90,9 @@ function hasHttpSchemeSafeLocal(url) {
 }
 
 function isCustomSchemeLocal(url) {
-  if (typeof window.isCustomScheme === 'function') return window.isCustomScheme(url);
   const trimmed = String(url || '').trim();
+  if (trimmed.startsWith('//')) return true;
+  if (typeof window.isCustomScheme === 'function') return window.isCustomScheme(url);
   if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/')) return true;
   if (hasHttpSchemeSafeLocal(trimmed)) return false;
   if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
@@ -137,11 +138,50 @@ function needsSchemeMigration(url) {
   }
 }
 
+function normalizeCustomAppUrl(url) {
+  if (typeof url !== 'string') return null;
+
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed === '#' || trimmed.startsWith('#')) return trimmed;
+  // Protocol-relative URLs still select a network destination and must not
+  // bypass the explicit http(s) scheme allowlist.
+  if (trimmed.startsWith('//')) return null;
+  if (trimmed.startsWith('/')) return trimmed;
+
+  if (hasHttpSchemeSafeLocal(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? trimmed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Any explicit non-http(s) scheme (javascript:, data:, blob:, mailto:, etc.)
+  // is unsafe for use as an app tile href.
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return null;
+
+  return needsSchemeMigration(trimmed) ? 'https://' + trimmed : null;
+}
+
 function migrateCustomAppUrls(apps) {
   let mutated = false;
   for (const app of apps) {
-    if (app && typeof app.url === 'string' && needsSchemeMigration(app.url)) {
-      app.url = 'https://' + app.url.trim();
+    if (!app || typeof app.url !== 'string') continue;
+
+    const originalUrl = app.url;
+    const normalizedUrl = normalizeCustomAppUrl(originalUrl);
+    if (normalizedUrl === null) {
+      // Keep the app record but replace attacker-controlled destinations with a
+      // harmless no-op so stale appOrder/folder references remain valid.
+      app.url = '#';
+      mutated = true;
+      continue;
+    }
+
+    if (normalizedUrl !== originalUrl) {
+      app.url = normalizedUrl;
       mutated = true;
     }
   }
@@ -166,6 +206,14 @@ const AppGridStorage = {
   },
 
   saveCustomApps(apps) {
+    if (Array.isArray(apps)) {
+      for (const app of apps) {
+        if (!app || typeof app.url !== 'string') continue;
+        const normalizedUrl = normalizeCustomAppUrl(app.url);
+        if (normalizedUrl === null) return false;
+        app.url = normalizedUrl;
+      }
+    }
     return writeJson('customApps', apps);
   },
 
