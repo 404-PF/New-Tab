@@ -315,14 +315,15 @@
 
     try {
       storageArea.set({ [key]: value }, () => {
-        if (pendingWriteGenerations.get(key) !== generation) {
-          return;
-        }
-        if (chrome.runtime?.lastError) {
-          const lastError = chrome.runtime.lastError;
+        const lastError = chrome.runtime?.lastError;
+
+        if (lastError) {
           const message = lastError?.message ? lastError.message : String(lastError);
           console.warn(`Failed to persist ${key} to chrome.storage:`, message);
-          if (cache.get(key) === value) {
+          reportStorageWriteError(key, lastError, { generation, value });
+
+          if (pendingWriteGenerations.get(key) === generation &&
+              cache.get(key) === value) {
             if (hadPreviousValue) {
               cache.set(key, previousValue);
               trackHydrationMutation(key, previousValue);
@@ -331,7 +332,6 @@
               trackHydrationMutation(key, null);
             }
           }
-          reportStorageWriteError(key, lastError, { generation, value });
         }
         if (pendingWriteGenerations.get(key) === generation) {
           pendingWriteGenerations.delete(key);
