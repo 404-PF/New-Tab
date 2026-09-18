@@ -446,6 +446,40 @@
       }
     );
   }
+
+  function persistRemove(key) {
+    const storageArea = getStorageArea();
+    if (!storageArea) {
+      return;
+    }
+
+    try {
+      storageArea.remove(key, () => {
+        if (chrome.runtime && chrome.runtime.lastError) {
+          console.warn(`Failed to remove ${key} from chrome.storage:`, chrome.runtime.lastError.message);
+        }
+      });
+    } catch (error) {
+      console.warn(`Failed to remove ${key} from chrome.storage:`, error);
+    }
+  }
+
+  function persistClear() {
+    const storageArea = getStorageArea();
+    if (!storageArea) {
+      return;
+    }
+
+    try {
+      storageArea.clear(() => {
+        if (chrome.runtime && chrome.runtime.lastError) {
+          console.warn('Failed to clear chrome.storage:', chrome.runtime.lastError.message);
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to clear chrome.storage:', error);
+    }
+  }
   const storageBridge = {
     get length() {
       return cache.size;
