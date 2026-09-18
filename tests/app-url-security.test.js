@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  injectScript('src/core/utils.js');
   injectScript('src/core/app-grid-storage.js');
   injectScript('src/core/app-grid-state.js');
 });
@@ -50,6 +51,9 @@ describe('custom app URL security', () => {
       'magnet:?xt=urn:btih:example',
       'https://example.org'
     ]);
+
+    expect(window.getSafeCustomAppUrl('httpbin.org:8080')).toBe('https://httpbin.org:8080');
+    expect(window.getSafeCustomAppUrl('/\\attacker.example/path')).toBe('#');
 
     expect(JSON.parse(localStorage.getItem('customApps')).map(app => app.url)).toEqual(
       apps.map(app => app.url)
