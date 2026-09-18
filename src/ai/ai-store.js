@@ -142,6 +142,47 @@ const AIStore = (function() {
     };
   }
 
+  function showSaveErrorToast() {
+    const message = getTranslation('aiSaveError');
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+    } else {
+      console.warn(message);
+    }
+  }
+
+  function persistStorageValue(key, value) {
+    if (typeof localStorage.setItemAsync === 'function') {
+      return localStorage.setItemAsync(key, value);
+    }
+
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      console.warn('Failed to persist conversation storage value:', error);
+      return false;
+    }
+  }
+
+  function restoreStorageValue(key, value) {
+    if (value === null || typeof value === 'undefined') {
+      if (typeof localStorage.removeItemAsync === 'function') {
+        return localStorage.removeItemAsync(key);
+      }
+
+      try {
+        localStorage.removeItem(key);
+        return true;
+      } catch (error) {
+        console.warn('Failed to restore conversation storage value:', error);
+        return false;
+      }
+    }
+
+    return persistStorageValue(key, value);
+  }
+
   function isPromiseLike(value) {
     return value && typeof value.then === 'function';
   }
