@@ -31,6 +31,19 @@ const AIService = (function() {
     }
   }
 
+  function rerenderOnSaveFailure(saveResult) {
+    void Promise.resolve(saveResult).then(
+      success => {
+        if (success === false) {
+          renderConversationUI();
+        }
+      },
+      () => {
+        renderConversationUI();
+      }
+    );
+  }
+
   function showToast(message, type) {
     const existing = document.querySelector('.toast-notification');
     if (existing) existing.remove();
@@ -660,7 +673,7 @@ const AIService = (function() {
           }
         }
 
-        AIStore.saveConversations();
+        rerenderOnSaveFailure(AIStore.saveConversations());
         renderConversationUI();
       } else if (result.aborted) {
         if (assistantMsg?.isStreaming) {
@@ -676,7 +689,7 @@ const AIService = (function() {
           }
         }
 
-        AIStore.saveConversations();
+        rerenderOnSaveFailure(AIStore.saveConversations());
         // Re-render so the '[Cancelled]' marker (or the partial content)
         // becomes visible: the streaming text node was blank when the user
         // stopped before the first chunk, and stopStreaming only removed the
@@ -692,7 +705,7 @@ const AIService = (function() {
           syncStreamingFlag(false);
           syncContentToStore(accumulatedContent || '[Cancelled]');
         }
-        AIStore.saveConversations();
+        rerenderOnSaveFailure(AIStore.saveConversations());
         // Re-render so the '[Cancelled]' marker (or the partial content)
         // becomes visible when the user stopped before the first chunk.
         renderConversationUI();
@@ -724,7 +737,7 @@ const AIService = (function() {
         if (lastMsg && lastMsg.role === 'assistant' && lastMsg.isStreaming) {
           lastMsg.content = lastMsg.content || '[Cancelled]';
           lastMsg.isStreaming = false;
-          AIStore.saveConversations();
+          rerenderOnSaveFailure(AIStore.saveConversations());
           // Re-render so the '[Cancelled]' marker (or existing partial
           // content) becomes visible instead of a blank streaming bubble.
           renderConversationUI();

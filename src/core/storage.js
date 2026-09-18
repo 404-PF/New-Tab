@@ -353,17 +353,41 @@
     const generation = ++writeSequence;
     pendingWriteGenerations.set(key, generation);
 
-    return new Promise((resolve, reject) => {
+    let resolveOperation;
+    let rejectOperation;
+    const operationPromise = new Promise((resolve, reject) => {
+      resolveOperation = resolve;
+      rejectOperation = reject;
+    });
+
+    try {
       startOperation(() => {
         const lastError = chrome.runtime?.lastError;
         if (lastError) {
-          reject(lastError);
+          rejectOperation(lastError);
           return;
         }
 
-        resolve(true);
+        resolveOperation(true);
       });
-    }).catch(error => {
+    } catch (error) {
+      // chrome.storage threw synchronously: roll back the optimistic cache
+      // update synchronously so fire-and-forget callers never observe the
+      // failed value before the rejection microtask runs.
+      let failureError = null;
+      try {
+        onFailure(error, generation);
+      } catch (handlerError) {
+        failureError = handlerError;
+      } finally {
+        if (pendingWriteGenerations.get(key) === generation) {
+          pendingWriteGenerations.delete(key);
+        }
+      }
+      return failureError ? Promise.reject(failureError) : Promise.resolve(false);
+    }
+
+    return operationPromise.catch(error => {
       onFailure(error, generation);
       return false;
     }).finally(() => {
