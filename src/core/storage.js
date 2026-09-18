@@ -348,6 +348,113 @@
     }
   }
 
+
+  function persistSetAsync(key, value, hadPreviousValue, previousValue) {
+    const storageArea = getStorageArea();
+    if (!storageArea) {
+      return Promise.resolve(false);
+    }
+
+    const generation = ++writeSequence;
+    pendingWriteGenerations.set(key, generation);
+
+    return new Promise((resolve) => {
+      let settled = false;
+
+      const finish = (success) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (pendingWriteGenerations.get(key) === generation) {
+          pendingWriteGenerations.delete(key);
+        }
+        resolve(success);
+      };
+
+      const restoreCache = () => {
+        if (pendingWriteGenerations.get(key) !== generation) {
+          return;
+        }
+
+        if (hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        } else {
+          cache.delete(key);
+          trackHydrationMutation(key, null);
+        }
+      };
+
+      try {
+        storageArea.set({ [key]: value }, () => {
+          const lastError = chrome.runtime?.lastError;
+
+          if (lastError) {
+            const message = lastError?.message ? lastError.message : String(lastError);
+            console.warn(`Failed to persist ${key} to chrome.storage:`, message);
+            reportStorageWriteError(key, lastError, { generation, value });
+            restoreCache();
+            finish(false);
+            return;
+          }
+
+          finish(true);
+        });
+      } catch (error) {
+        console.warn(`Failed to persist ${key} to chrome.storage:`, error);
+        reportStorageWriteError(key, error, { generation, value });
+        restoreCache();
+        finish(false);
+      }
+    });
+  }
+
+  function persistRemoveAsync(key, hadPreviousValue, previousValue) {
+    const storageArea = getStorageArea();
+    if (!storageArea) {
+      return Promise.resolve(false);
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+
+      const finish = (success) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        resolve(success);
+      };
+
+      const restoreCache = () => {
+        if (hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        }
+      };
+
+      try {
+        storageArea.remove(key, () => {
+          const lastError = chrome.runtime?.lastError;
+
+          if (lastError) {
+            console.warn(`Failed to remove ${key} from chrome.storage:`, lastError.message);
+            restoreCache();
+            finish(false);
+            return;
+          }
+
+          finish(true);
+        });
+      } catch (error) {
+        console.warn(`Failed to remove ${key} from chrome.storage:`, error);
+        restoreCache();
+        finish(false);
+      }
+    });
+  }
+
   function persistRemove(key) {
     const storageArea = getStorageArea();
     if (!storageArea) {
@@ -427,6 +534,30 @@
         }
       }
       return accepted;
+    },
+
+    setItemAsync(key, value) {
+      const stringValue = String(value);
+      const hadPreviousValue = cache.has(key);
+      const previousValue = cache.get(key);
+      cache.set(key, stringValue);
+      trackHydrationMutation(key, stringValue);
+
+      if (!getStorageArea()) {
+        const persisted = writeNativeSnapshot(snapshotToObject(), key);
+        if (!persisted) {
+          if (hadPreviousValue) {
+            cache.set(key, previousValue);
+            trackHydrationMutation(key, previousValue);
+          } else {
+            cache.delete(key);
+            trackHydrationMutation(key, null);
+          }
+        }
+        return Promise.resolve(persisted);
+      }
+
+      return persistSetAsync(key, stringValue, hadPreviousValue, previousValue);
     },
 
     removeItem(key) {
