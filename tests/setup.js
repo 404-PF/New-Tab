@@ -287,6 +287,7 @@ globalThis.window.i18n = {
     const fallbacks = {
       dueDate: 'Due Date',
       dueTime: 'Due Time',
+      aiNetworkError: 'Network error occurred',
       clearDate: 'Clear',
       todayDate: 'Today',
       todoSetDate: 'Set date',
