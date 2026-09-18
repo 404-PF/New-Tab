@@ -22,8 +22,7 @@
   /** Clone a merge value without sharing mutable object references. */
   function clone(value) {
     if (value === missing) return missing;
-    if (value === undefined) return undefined;
-    return JSON.parse(JSON.stringify(value));
+    return structuredClone(value);
   }
 
   /** Return whether a value is a plain object suitable for recursive merging. */
@@ -48,7 +47,7 @@
       const leftKeys = Object.keys(left);
       const rightKeys = Object.keys(right);
       if (leftKeys.length !== rightKeys.length) return false;
-      return leftKeys.every(key => Object.prototype.hasOwnProperty.call(right, key) && deepEqual(left[key], right[key]));
+      return leftKeys.every(key => Object.hasOwn(right, key) && deepEqual(left[key], right[key]));
     }
 
     return false;
@@ -80,7 +79,7 @@
     }
 
     const normalized = {};
-    Object.keys(value).sort().forEach(key => {
+    Object.keys(value).sort((left, right) => left.localeCompare(right)).forEach(key => {
       if (key !== 'id') {
         normalized[key] = value[key];
       }
@@ -93,22 +92,29 @@
     }
   }
 
+  /** Resolve an array entry key using its ID or deterministic legacy identity. */
+  function getArrayKey(value, baseKeys) {
+    const id = getId(value);
+    if (id) {
+      const idKey = 'id:' + id;
+      if (!baseKeys || baseKeys.has(idKey)) return idKey;
+    }
+
+    const deterministicIdentity = getDeterministicIdentity(value);
+    if (!deterministicIdentity) return null;
+
+    const legacyKey = 'legacy:' + deterministicIdentity;
+    if (baseKeys?.has(legacyKey)) return legacyKey;
+    return legacyKey;
+  }
+
   /** Index array entries by stable IDs or deterministic legacy identities. */
   function createArrayMap(values, baseKeys = null) {
     const map = new Map();
     const order = [];
 
     for (const value of values) {
-      const id = getId(value);
-      const idKey = id ? 'id:' + id : null;
-      const deterministicIdentity = getDeterministicIdentity(value);
-      const legacyKey = deterministicIdentity ? 'legacy:' + deterministicIdentity : null;
-      const key = idKey && (!baseKeys || baseKeys.has(idKey))
-        ? idKey
-        : (legacyKey && baseKeys && baseKeys.has(legacyKey)
-          ? legacyKey
-          : idKey || legacyKey);
-
+      const key = getArrayKey(value, baseKeys);
       if (!key || map.has(key)) return null;
       map.set(key, value);
       order.push(key);
@@ -127,9 +133,9 @@
     ]);
 
     keys.forEach(key => {
-      const baseHas = Object.prototype.hasOwnProperty.call(base, key);
-      const currentHas = Object.prototype.hasOwnProperty.call(current, key);
-      const candidateHas = Object.prototype.hasOwnProperty.call(candidate, key);
+      const baseHas = Object.hasOwn(base, key);
+      const currentHas = Object.hasOwn(current, key);
+      const candidateHas = Object.hasOwn(candidate, key);
       const baseValue = baseHas ? base[key] : missing;
       const currentValue = currentHas ? current[key] : missing;
       const candidateValue = candidateHas ? candidate[key] : missing;
