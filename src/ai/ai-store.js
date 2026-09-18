@@ -221,13 +221,16 @@ const AIStore = (function() {
   }
 
   function reportSaveFailure(error, rollbackState, saveGeneration) {
-    if (saveGeneration === saveSequence && rollbackState) {
+    const isLatestSave = saveGeneration === saveSequence;
+    if (isLatestSave && rollbackState) {
       const restoredState = cloneSaveSnapshot(rollbackState);
       state.conversations = restoredState.conversations;
       state.currentConversationId = restoredState.currentConversationId;
     }
     console.error('Failed to save conversations:', error);
-    showSaveErrorToast();
+    if (isLatestSave) {
+      showSaveErrorToast();
+    }
     return false;
   }
 
