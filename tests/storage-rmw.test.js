@@ -1,3 +1,4 @@
+import vm from 'vm';
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
@@ -150,5 +151,78 @@ describe('cross-tab storage read-modify-write merging', () => {
     expect(mergedConversation.messages.map(message => message.id)).toEqual(
       expect.arrayContaining(['message-from-a', 'message-2', 'message-3'])
     );
+  });
+});
+
+
+describe('rejected storage bridge writes', () => {
+  it('keeps the original base when a concurrent merge is rejected', () => {
+    const base = [{
+      id: 'todo-1',
+      text: 'Task A',
+      completed: false,
+      order: 0
+    }];
+    const external = [
+      {
+        ...base[0],
+        completed: true
+      },
+      {
+        id: 'todo-2',
+        text: 'Task B',
+        completed: false,
+        order: 1
+      }
+    ];
+    const staleCandidate = [
+      {
+        ...base[0],
+        text: 'Task A edited'
+      },
+      {
+        id: 'todo-3',
+        text: 'Task C',
+        completed: false,
+        order: 1
+      }
+    ];
+
+    const persisted = new Map([
+      ['todos', JSON.stringify(base)]
+    ]);
+    let rejectNextWrite = true;
+    const fakeStorage = {
+      getItem(key) {
+        return persisted.has(key) ? persisted.get(key) : null;
+      },
+      setItem(key, value) {
+        if (rejectNextWrite) {
+          rejectNextWrite = false;
+          return false;
+        }
+        persisted.set(key, String(value));
+        return true;
+      }
+    };
+    const context = vm.createContext({ localStorage: fakeStorage, console });
+
+    injectScript('src/core/storage-rmw.js', context);
+    context.localStorage.getItem('todos');
+
+    // Another tab writes after this tab's snapshot was loaded.
+    persisted.set('todos', JSON.stringify(external));
+
+    // The concurrent merge is rejected. The original base must remain the
+    // reference point for the next retry from the same stale snapshot.
+    context.localStorage.setItem('todos', JSON.stringify(staleCandidate));
+    expect(JSON.parse(persisted.get('todos'))).toEqual(external);
+
+    context.localStorage.setItem('todos', JSON.stringify(staleCandidate));
+    const merged = JSON.parse(persisted.get('todos'));
+
+    expect(merged.map(todo => todo.id)).toEqual(expect.arrayContaining(['todo-1', 'todo-2', 'todo-3']));
+    expect(merged.find(todo => todo.id === 'todo-1').text).toBe('Task A edited');
+    expect(merged.find(todo => todo.id === 'todo-1').completed).toBe(true);
   });
 });
