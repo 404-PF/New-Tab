@@ -531,6 +531,7 @@ const translations = {
     aiMessageInvalidChars: 'Message contains invalid control characters',
     aiStopStreaming: 'Stop',
     aiScrollToBottom: 'Scroll to bottom',
+    aiSaveError: 'Failed to save conversations. Your last action was not saved.',
 
     // Bootstrap error overlay
     bootstrapErrorTitle: 'Extension failed to load',
@@ -1041,6 +1042,7 @@ const translations = {
     aiMessageInvalidChars: '消息包含无效控制字符',
     aiStopStreaming: '停止',
     aiScrollToBottom: '滚动到底部',
+    aiSaveError: '无法保存对话。您上次的操作未被保存。',
 
     // Bootstrap error overlay
     bootstrapErrorTitle: '扩展加载失败',
@@ -1493,6 +1495,7 @@ const translations = {
     aiMessageInvalidChars: 'メッセージに無効な制御文字が含まれています',
     aiStopStreaming: '停止',
     aiScrollToBottom: '一番下にスクロール',
+    aiSaveError: '会話を保存できませんでした。直前の操作は保存されていません。',
 
     // Bootstrap error overlay
     bootstrapErrorTitle: '拡張機能の読み込みに失敗しました',
@@ -1945,6 +1948,7 @@ const translations = {
     aiMessageInvalidChars: '메시지에 잘못된 제어 문자가 포함되어 있습니다',
     aiStopStreaming: '중지',
     aiScrollToBottom: '맨 아래로 스크롤',
+    aiSaveError: '대화를 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
 
     // Bootstrap error overlay
     bootstrapErrorTitle: '확장 프로그램을 로드하지 못했습니다',
@@ -2385,6 +2389,7 @@ const translations = {
     aiMessageInvalidChars: 'El mensaje contiene caracteres de control no válidos',
     aiStopStreaming: 'Detener',
     aiScrollToBottom: 'Desplazar al fondo',
+    aiSaveError: 'No se pudieron guardar las conversaciones. La última acción no se guardó.',
     createFolder: 'Crear carpeta',
     renameFolder: 'Renombrar carpeta',
     deleteFolder: 'Eliminar carpeta',
@@ -2837,6 +2842,7 @@ const translations = {
     aiMessageInvalidChars: 'Le message contient des caractères de contrôle invalides',
     aiStopStreaming: 'Arrêter',
     aiScrollToBottom: 'Descendre en bas',
+    aiSaveError: 'Impossible d’enregistrer les conversations. Votre dernière action n’a pas été enregistrée.',
     createFolder: 'Créer un dossier',
     renameFolder: 'Renommer le dossier',
     deleteFolder: 'Supprimer le dossier',
@@ -3289,6 +3295,7 @@ const translations = {
     aiMessageInvalidChars: 'Nachricht enthält ungültige Steuerzeichen',
     aiStopStreaming: 'Stopp',
     aiScrollToBottom: 'Nach unten scrollen',
+    aiSaveError: 'Unterhaltungen konnten nicht gespeichert werden. Ihre letzte Aktion wurde nicht gespeichert.',
     createFolder: 'Ordner erstellen',
     renameFolder: 'Ordner umbenennen',
     deleteFolder: 'Ordner löschen',
@@ -3741,6 +3748,7 @@ const translations = {
     aiMessageInvalidChars: 'A mensagem contém caracteres de controle inválidos',
     aiStopStreaming: 'Parar',
     aiScrollToBottom: 'Rolar para o final',
+    aiSaveError: 'Não foi possível salvar as conversas. Sua última ação não foi salva.',
     createFolder: 'Criar pasta',
     renameFolder: 'Renomear pasta',
     deleteFolder: 'Excluir pasta',
@@ -4193,6 +4201,7 @@ const translations = {
     aiMessageInvalidChars: 'Сообщение содержит недопустимые управляющие символы',
     aiStopStreaming: 'Стоп',
     aiScrollToBottom: 'Прокрутить вниз',
+    aiSaveError: 'Не удалось сохранить разговоры. Последнее действие не было сохранено.',
     createFolder: 'Создать папку',
     renameFolder: 'Переименовать папку',
     deleteFolder: 'Удалить папку',
