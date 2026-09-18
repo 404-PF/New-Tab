@@ -34,6 +34,7 @@ describe('custom app URL security', () => {
       { id: 'safe-geo', name: 'Geo', url: 'geo:37.786971,-122.399677' },
       { id: 'safe-sip', name: 'SIP', url: 'sip:user@example.com' },
       { id: 'safe-magnet', name: 'Magnet', url: 'magnet:?xt=urn:btih:example' },
+      { id: 'bare-host-port', name: 'Bare Host Port', url: 'httpbin.org:8080' },
       { id: 'bare-host', name: 'Bare Host', url: 'example.org' }
     ]));
 
@@ -51,6 +52,7 @@ describe('custom app URL security', () => {
       'geo:37.786971,-122.399677',
       'sip:user@example.com',
       'magnet:?xt=urn:btih:example',
+      'https://httpbin.org:8080',
       'https://example.org'
     ]);
 
