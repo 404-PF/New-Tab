@@ -252,7 +252,7 @@ const AIService = (function() {
       const saveResult = AIStore.saveConversations(previousState);
       renderCurrentConversation();
 
-      Promise.resolve(saveResult)
+      void Promise.resolve(saveResult)
         .then(success => {
           if (success === false) {
             renderCurrentConversation();

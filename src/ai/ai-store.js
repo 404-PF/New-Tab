@@ -387,7 +387,7 @@ const AIStore = (function() {
   function saveConversationsSafely(previousState = createSaveSnapshot()) {
     const result = saveConversations(previousState);
     if (isPromiseLike(result)) {
-      result.catch(error => {
+      void result.catch(error => {
         console.error('Unexpected conversation save rejection:', error);
       });
     }
