@@ -213,3 +213,63 @@ describe('AIStore conversation cap (#586)', () => {
     expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-0');
   });
 });
+
+describe('AIStore persistence atomicity (#716)', () => {
+  it('rolls back the conversation write when the current ID write fails', () => {
+    const previousConversations = [{
+      id: 'conv-old',
+      title: 'Old conversation',
+      messages: [],
+      createdAt: 1,
+      updatedAt: 2
+    }];
+    const nextConversation = {
+      id: 'conv-new',
+      title: 'New conversation',
+      messages: [],
+      createdAt: 3,
+      updatedAt: 4
+    };
+
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(previousConversations)
+    );
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-old');
+    AIStore.state.conversations = [nextConversation];
+    AIStore.state.currentConversationId = 'conv-new';
+
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    let setItemCalls = 0;
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+      setItemCalls++;
+      if (setItemCalls === 2) {
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      }
+      return originalSetItem(key, value);
+    });
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+
+    try {
+      expect(AIStore.saveConversations()).toBe(false);
+
+      expect(JSON.parse(
+        localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+      )).toEqual(previousConversations);
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-old');
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save conversations. Your last action was not saved.',
+        'error'
+      );
+    } finally {
+      setItemSpy.mockRestore();
+      if (typeof originalShowToast === 'undefined') {
+        delete window.showToast;
+      } else {
+        window.showToast = originalShowToast;
+      }
+    }
+  });
+});

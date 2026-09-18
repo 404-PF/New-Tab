@@ -117,32 +117,83 @@ const AIStore = (function() {
     }
   }
 
+  function restoreStorageValue(key, value) {
+    if (value === null) {
+      localStorage.removeItem(key);
+      return;
+    }
+    localStorage.setItem(key, value);
+  }
+
+  function showSaveErrorToast() {
+    const message = 'Failed to save conversations. Your last action was not saved.';
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+    }
+  }
+
   function saveConversations() {
+    // Compute the complete next state before touching storage so a failed write
+    // never leaves the in-memory state partially modified by the conversation cap.
+    const previousConversations = state.conversations;
+    const previousCurrentConversationId = state.currentConversationId;
+    let nextConversations = state.conversations;
+    let nextCurrentConversationId = state.currentConversationId;
+
     try {
-      if (state.conversations.length > MAX_CONVERSATIONS) {
+      if (nextConversations.length > MAX_CONVERSATIONS) {
         // Keep the newest MAX_CONVERSATIONS conversations, but never silently
         // drop the active one (issue #586): if it falls outside the newest
         // window, swap it in for the oldest survivor so an in-progress session
         // is not lost from storage.
-        const kept = state.conversations.slice(0, MAX_CONVERSATIONS);
-        const active = state.conversations.find(conversation => conversation.id === state.currentConversationId);
+        const kept = nextConversations.slice(0, MAX_CONVERSATIONS);
+        const active = nextConversations.find(conversation => conversation.id === nextCurrentConversationId);
         if (active && !kept.some(conversation => conversation.id === active.id)) {
           kept[kept.length - 1] = active;
         }
-        state.conversations = kept;
+        nextConversations = kept;
       }
 
       // currentConversationId should always resolve to a survivor, whether or
       // not the cap was applied; only reset it when it referenced a
       // conversation that no longer exists.
-      if (!state.conversations.some(conversation => conversation.id === state.currentConversationId)) {
-        state.currentConversationId = state.conversations[0] ? state.conversations[0].id : null;
+      if (!nextConversations.some(conversation => conversation.id === nextCurrentConversationId)) {
+        nextCurrentConversationId = nextConversations[0] ? nextConversations[0].id : null;
       }
 
-      localStorage.setItem(STORAGE_KEYS.conversations, JSON.stringify(state.conversations));
-      localStorage.setItem(STORAGE_KEYS.currentId, state.currentConversationId);
+      // Capture the persisted values before the first write. If the second key
+      // fails (for example, because the quota is exhausted), restore the first
+      // key so the two legacy storage keys remain consistent.
+      const persistedConversations = localStorage.getItem(STORAGE_KEYS.conversations);
+      const persistedCurrentId = localStorage.getItem(STORAGE_KEYS.currentId);
+      let conversationsWritten = false;
+
+      try {
+        localStorage.setItem(STORAGE_KEYS.conversations, JSON.stringify(nextConversations));
+        conversationsWritten = true;
+        localStorage.setItem(STORAGE_KEYS.currentId, nextCurrentConversationId);
+      } catch (error) {
+        if (conversationsWritten) {
+          try {
+            restoreStorageValue(STORAGE_KEYS.conversations, persistedConversations);
+          } catch (rollbackError) {
+            console.error('Failed to roll back conversations after save failure:', rollbackError);
+          }
+        }
+        throw error;
+      }
+
+      state.conversations = nextConversations;
+      state.currentConversationId = nextCurrentConversationId;
+      return true;
     } catch (error) {
+      // Keep the in-memory state untouched by save-time normalization/capping
+      // when persistence fails, and make the failure visible to the user.
+      state.conversations = previousConversations;
+      state.currentConversationId = previousCurrentConversationId;
       console.error('Failed to save conversations:', error);
+      showSaveErrorToast();
+      return false;
     }
   }
 
