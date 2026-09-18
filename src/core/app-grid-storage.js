@@ -3,19 +3,6 @@
 
 const APP_GRID_STORAGE_KEYS = new Set(['appOrder', 'customApps', 'appFolders']);
 const APP_GRID_SAVE_ERROR_FALLBACK = 'Failed to save app changes. Your last action was not saved.';
-const SAFE_CUSTOM_APP_SCHEMES = new Set([
-  'tel',
-  'sms',
-  'mailto',
-  'sip',
-  'callto',
-  'facetime',
-  'geo',
-  'magnet',
-  'urn',
-  'bitcoin'
-]);
-
 function getAppGridSaveErrorMessage() {
   if (!window.i18n || typeof window.i18n.t !== 'function') {
     return APP_GRID_SAVE_ERROR_FALLBACK;
@@ -95,93 +82,34 @@ function writeJson(key, value) {
   }
 }
 
-function hasHttpSchemeSafeLocal(url) {
-  if (typeof window.hasHttpScheme === 'function') return window.hasHttpScheme(url);
-  if (typeof window.hasHttpSchemeSafe === 'function') return window.hasHttpSchemeSafe(url);
-  return /^https?:\/\//i.test(String(url || '').trim());
-}
-
-/**
- * Reports whether a URL uses a custom application scheme or another unsafe URL form.
- * @param {unknown} url Candidate app URL.
- * @returns {boolean} True when the value should not be treated as an http(s) URL.
- */
 function isCustomSchemeLocal(url) {
-  const trimmed = String(url || '').trim();
-  if (trimmed.startsWith('//')) return true;
   if (typeof window.isCustomScheme === 'function') return window.isCustomScheme(url);
+
+  const trimmed = String(url || '').trim();
   if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/')) return true;
-  if (hasHttpSchemeSafeLocal(trimmed)) return false;
   if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
-  const sep = trimmed.indexOf(':');
-  const hostPart = trimmed.slice(0, sep);
-  const rest = trimmed.slice(sep + 1);
-  const lowerHost = hostPart.toLowerCase();
-  if (SAFE_CUSTOM_APP_SCHEMES.has(lowerHost)) return true;
-  if (/^\d+(\/|$|\?|#)/.test(rest)) {
-    if (hostPart.includes('.')) return false;
-    if (/^localhost$/i.test(hostPart)) return false;
-    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostPart)) return false;
-    if (/^[a-zA-Z0-9-]+$/.test(hostPart)) return false;
-  }
-  return true;
+
+  const colonIdx = trimmed.indexOf(':');
+  const before = trimmed.slice(0, colonIdx);
+  const after = trimmed.slice(colonIdx + 1);
+  const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before) || /^[a-zA-Z0-9-]+$/.test(before)) &&
+    /^\d+(\/|$|\?|#)/.test(after);
+  return !looksLikeHostPort;
 }
+
 window.__fallbackIsCustomScheme = isCustomSchemeLocal;
-window.__normalizeAppUrlForCheck = function (trimmed) {
-  if (!trimmed || trimmed.startsWith('/')) return trimmed;
-  if (hasHttpSchemeSafeLocal(trimmed)) return trimmed;
-  if (isCustomSchemeLocal(trimmed)) return trimmed;
-  return 'https://' + trimmed;
-};
 
-/**
- * Determines whether a host-like value can be safely migrated to https://.
- * @param {unknown} url Candidate value from persisted custom app state.
- * @returns {boolean} True when the value has a valid host-like shape.
- */
-function needsSchemeMigration(url) {
-  if (!url || typeof url !== 'string') return false;
-  const trimmed = url.trim();
-  if (!trimmed || trimmed === '#') return false;
-  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return false;
-  if (hasHttpSchemeSafeLocal(trimmed)) return false;
-  if (isCustomSchemeLocal(trimmed)) return false;
-  if (trimmed.startsWith('/') || trimmed.startsWith('\\')) return false;
-  try {
-    const parsed = new URL('https://' + trimmed);
-    if (!parsed.hostname) return false;
-    if (parsed.hostname.includes(' ') || parsed.hostname.includes('/')) return false;
-    if (!parsed.hostname.includes('.') && !/^(\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname) && !/^localhost$/i.test(parsed.hostname)) {
-      if (!/^[a-zA-Z0-9-]+:\d+/.test(trimmed)) return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Normalizes a custom app URL while allowing only approved schemes and safe path forms.
- * @param {unknown} url Raw URL supplied by app state.
- * @returns {string|null} Normalized URL, or null when the value must be rejected.
- */
-function normalizeCustomAppUrl(url) {
+function normalizeCustomAppUrlFallback(url) {
   if (typeof url !== 'string') return null;
 
   const trimmed = url.trim();
   if (!trimmed) return null;
   if (trimmed === '#' || trimmed.startsWith('#')) return trimmed;
-  // Protocol-relative URLs still select a network destination and must not
-  // bypass the explicit http(s) scheme allowlist.
-  if (trimmed.startsWith('//')) return null;
-  // Backslash-prefixed values can be normalized by the browser into an external
-  // authority, so they are not safe same-origin paths.
-  if (trimmed.startsWith('\\')) return null;
-  // Backslash authority forms are also interpreted as network destinations by
-  // the browser URL parser and must not be accepted as same-origin paths.
-  if (trimmed.startsWith('/') && !trimmed.startsWith('/\\')) return trimmed;
+  if (trimmed.startsWith('//') || trimmed.startsWith('\\')) return null;
+  if (trimmed.startsWith('/\\')) return null;
+  if (trimmed.startsWith('/')) return trimmed;
 
-  if (hasHttpSchemeSafeLocal(trimmed)) {
+  if (/^https?:\/\//i.test(trimmed)) {
     try {
       const parsed = new URL(trimmed);
       return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? trimmed : null;
@@ -190,24 +118,37 @@ function normalizeCustomAppUrl(url) {
     }
   }
 
-  const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(trimmed);
-  if (schemeMatch) {
-    return SAFE_CUSTOM_APP_SCHEMES.has(schemeMatch[1].toLowerCase()) ? trimmed : null;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return null;
+
+  try {
+    const parsed = new URL('https://' + trimmed);
+    if (!parsed.hostname) return null;
+    if (parsed.hostname.includes(' ') || parsed.hostname.includes('/')) return null;
+    if (
+      !parsed.hostname.includes('.') &&
+      !/^(\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname) &&
+      !/^localhost$/i.test(parsed.hostname) &&
+      !/^[a-zA-Z0-9-]+:\d+/.test(trimmed)
+    ) {
+      return null;
+    }
+    return 'https://' + trimmed;
+  } catch {
+    return null;
   }
-
-  return needsSchemeMigration(trimmed) ? 'https://' + trimmed : null;
 }
 
-/**
- * Returns a URL safe to assign to an app link, falling back to a harmless fragment.
- * @param {unknown} url Raw app URL from any app-data source.
- * @returns {string} Safe URL or '#'.
- */
-function getSafeCustomAppUrl(url) {
-  return normalizeCustomAppUrl(url) || '#';
+function normalizeCustomAppUrl(url) {
+  if (typeof window.normalizeCustomAppUrl === 'function') {
+    return window.normalizeCustomAppUrl(url);
+  }
+  return normalizeCustomAppUrlFallback(url);
 }
 
-window.getSafeCustomAppUrl = getSafeCustomAppUrl;
+window.__normalizeAppUrlForCheck = function (trimmed) {
+  if (!trimmed || trimmed.startsWith('/')) return trimmed;
+  return normalizeCustomAppUrl(trimmed) || trimmed;
+};
 
 /**
  * Migrates persisted custom app URLs in place and reports whether storage changed.
