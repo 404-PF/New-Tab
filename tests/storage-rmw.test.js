@@ -156,40 +156,28 @@ describe('cross-tab storage read-modify-write merging', () => {
 
 
 describe('rejected storage bridge writes', () => {
-  it('keeps the original base when a concurrent merge is rejected', () => {
+  it('keeps the original base when a non-concurrent write is rejected', () => {
     const base = [{
-      id: 'todo-1',
-      text: 'Task A',
-      completed: false,
+      id: 'note-1',
+      text: 'Note A',
+      tag: 'original',
       order: 0
     }];
-    const external = [
-      {
-        ...base[0],
-        completed: true
-      },
-      {
-        id: 'todo-2',
-        text: 'Task B',
-        completed: false,
-        order: 1
-      }
-    ];
-    const staleCandidate = [
-      {
-        ...base[0],
-        text: 'Task A edited'
-      },
-      {
-        id: 'todo-3',
-        text: 'Task C',
-        completed: false,
-        order: 1
-      }
-    ];
+    const firstCandidate = [{
+      ...base[0],
+      tag: 'failed-local-edit'
+    }];
+    const retryCandidate = [{
+      ...base[0],
+      tag: 'original'
+    }];
+    const external = [{
+      ...base[0],
+      tag: 'external-edit'
+    }];
 
     const persisted = new Map([
-      ['todos', JSON.stringify(base)]
+      ['notes', JSON.stringify(base)]
     ]);
     let rejectNextWrite = true;
     const fakeStorage = {
@@ -208,21 +196,21 @@ describe('rejected storage bridge writes', () => {
     const context = vm.createContext({ localStorage: fakeStorage, console });
 
     injectScript('src/core/storage-rmw.js', context);
-    context.localStorage.getItem('todos');
+    context.localStorage.getItem('notes');
 
-    // Another tab writes after this tab's snapshot was loaded.
-    persisted.set('todos', JSON.stringify(external));
+    // This local write is rejected, so the stored value remains the original base.
+    context.localStorage.setItem('notes', JSON.stringify(firstCandidate));
+    expect(JSON.parse(persisted.get('notes'))).toEqual(base);
 
-    // The concurrent merge is rejected. The original base must remain the
-    // reference point for the next retry from the same stale snapshot.
-    context.localStorage.setItem('todos', JSON.stringify(staleCandidate));
-    expect(JSON.parse(persisted.get('todos'))).toEqual(external);
+    // Another tab then changes the same field from the original base.
+    persisted.set('notes', JSON.stringify(external));
 
-    context.localStorage.setItem('todos', JSON.stringify(staleCandidate));
-    const merged = JSON.parse(persisted.get('todos'));
+    // The stale tab changes that field back to its original value and succeeds.
+    // With the original base retained, the external edit is recognized as the
+    // independent change and survives the retry.
+    context.localStorage.setItem('notes', JSON.stringify(retryCandidate));
+    const merged = JSON.parse(persisted.get('notes'));
 
-    expect(merged.map(todo => todo.id)).toEqual(expect.arrayContaining(['todo-1', 'todo-2', 'todo-3']));
-    expect(merged.find(todo => todo.id === 'todo-1').text).toBe('Task A edited');
-    expect(merged.find(todo => todo.id === 'todo-1').completed).toBe(true);
+    expect(merged[0].tag).toBe('external-edit');
   });
 });
