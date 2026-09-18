@@ -21,8 +21,9 @@
 
   /** Clone a merge value without sharing mutable object references. */
   function clone(value) {
-    if (value === missing) return missing;
-    return structuredClone(value);
+    if (value === missing || value === undefined) return value;
+    if (typeof structuredClone === 'function') return structuredClone(value);
+    return JSON.parse(JSON.stringify(value));
   }
 
   /** Return whether a value is a plain object suitable for recursive merging. */
