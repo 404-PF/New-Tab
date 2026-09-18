@@ -350,6 +350,7 @@ describe('AppFolders UI', () => {
       } finally {
         getCustomAppsSpy.mockRestore();
         window.defaultApps[0].url = '#';
+        window.AppFolders.closeFolderPopup();
       }
     });
 
