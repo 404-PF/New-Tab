@@ -61,7 +61,7 @@
     const detail = {
       key,
       message,
-      operation: 'set'
+      operation: extra?.operation || 'set'
     };
     if (typeof extra?.generation === 'number') {
       detail.generation = extra.generation;
@@ -348,6 +348,129 @@
     }
   }
 
+
+  function persistAsyncOperation(key, startOperation, onFailure) {
+    const generation = ++writeSequence;
+    pendingWriteGenerations.set(key, generation);
+
+    let resolveOperation;
+    let rejectOperation;
+    const operationPromise = new Promise((resolve, reject) => {
+      resolveOperation = resolve;
+      rejectOperation = reject;
+    });
+
+    try {
+      startOperation(() => {
+        const lastError = chrome.runtime?.lastError;
+        if (lastError) {
+          rejectOperation(lastError);
+          return;
+        }
+
+        resolveOperation(true);
+      });
+    } catch (error) {
+      // chrome.storage threw synchronously: roll back the optimistic cache
+      // update synchronously so fire-and-forget callers never observe the
+      // failed value before the rejection microtask runs.
+      let failureError = null;
+      try {
+        onFailure(error, generation);
+      } catch (handlerError) {
+        failureError = handlerError;
+      } finally {
+        if (pendingWriteGenerations.get(key) === generation) {
+          pendingWriteGenerations.delete(key);
+        }
+      }
+      return failureError ? Promise.reject(failureError) : Promise.resolve(false);
+    }
+
+    return operationPromise.catch(error => {
+      onFailure(error, generation);
+      return false;
+    }).finally(() => {
+      if (pendingWriteGenerations.get(key) === generation) {
+        pendingWriteGenerations.delete(key);
+      }
+    });
+  }
+
+  function persistSetAsync(key, value, hadPreviousValue, previousValue) {
+    const storageArea = getStorageArea();
+    if (!storageArea) {
+      if (cache.get(key) === value) {
+        if (hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        } else {
+          cache.delete(key);
+          trackHydrationMutation(key, null);
+        }
+      }
+      return Promise.resolve(false);
+    }
+
+    return persistAsyncOperation(
+      key,
+      done => storageArea.set({ [key]: value }, done),
+      (error, generation) => {
+        const message = error?.message ? error.message : String(error);
+        console.warn(`Failed to persist ${key} to chrome.storage:`, message);
+        reportStorageWriteError(key, error, { generation, value });
+
+        if (pendingWriteGenerations.get(key) !== generation ||
+            cache.get(key) !== value) {
+          return;
+        }
+
+        if (hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        } else {
+          cache.delete(key);
+          trackHydrationMutation(key, null);
+        }
+      }
+    );
+  }
+
+  function persistRemoveAsync(key, hadPreviousValue, previousValue) {
+    const storageArea = getStorageArea();
+    if (!storageArea) {
+      if (!hadPreviousValue || !cache.has(key)) {
+        return Promise.resolve(false);
+      }
+
+      cache.set(key, previousValue);
+      trackHydrationMutation(key, previousValue);
+      return Promise.resolve(false);
+    }
+
+    return persistAsyncOperation(
+      key,
+      done => storageArea.remove(key, done),
+      (error, generation) => {
+        const message = error?.message ? error.message : String(error);
+        console.warn(`Failed to remove ${key} from chrome.storage:`, message);
+        reportStorageWriteError(key, error, {
+          operation: 'remove',
+          generation
+        });
+
+        if (pendingWriteGenerations.get(key) !== generation || cache.has(key)) {
+          return;
+        }
+
+        if (hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        }
+      }
+    );
+  }
+
   function persistRemove(key) {
     const storageArea = getStorageArea();
     if (!storageArea) {
@@ -381,7 +504,6 @@
       console.warn('Failed to clear chrome.storage:', error);
     }
   }
-
   const storageBridge = {
     get length() {
       return cache.size;
@@ -427,6 +549,48 @@
         }
       }
       return accepted;
+    },
+
+    setItemAsync(key, value) {
+      const stringValue = String(value);
+      const hadPreviousValue = cache.has(key);
+      const previousValue = cache.get(key);
+      cache.set(key, stringValue);
+      trackHydrationMutation(key, stringValue);
+
+      if (!getStorageArea()) {
+        const persisted = writeNativeSnapshot(snapshotToObject(), key);
+        if (!persisted) {
+          if (hadPreviousValue) {
+            cache.set(key, previousValue);
+            trackHydrationMutation(key, previousValue);
+          } else {
+            cache.delete(key);
+            trackHydrationMutation(key, null);
+          }
+        }
+        return Promise.resolve(persisted);
+      }
+
+      return persistSetAsync(key, stringValue, hadPreviousValue, previousValue);
+    },
+
+    removeItemAsync(key) {
+      const hadPreviousValue = cache.has(key);
+      const previousValue = cache.get(key);
+      cache.delete(key);
+      trackHydrationMutation(key, null);
+
+      if (!getStorageArea()) {
+        const persisted = writeNativeSnapshot(snapshotToObject(), key);
+        if (!persisted && hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        }
+        return Promise.resolve(persisted);
+      }
+
+      return persistRemoveAsync(key, hadPreviousValue, previousValue);
     },
 
     removeItem(key) {

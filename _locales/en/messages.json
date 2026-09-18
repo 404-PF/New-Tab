@@ -3,6 +3,10 @@
     "message": "Enable search history",
     "description": "Label for the search history toggle"
   },
+  "aiSaveError": {
+    "message": "Failed to save conversations. Your last action was not saved.",
+    "description": "Error shown when AI conversation changes cannot be persisted"
+  },
   "appGridSaveError": {
     "message": "Failed to save app changes. Your last action was not saved.",
     "description": "Error shown when app grid changes cannot be persisted"

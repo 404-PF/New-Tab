@@ -69,10 +69,11 @@ const AIStore = (function() {
   }
 
   function recoverConversations() {
+    const previousState = createSaveSnapshot();
     const newConversation = createNewConversation();
     state.conversations = [newConversation];
     state.currentConversationId = newConversation.id;
-    saveConversations();
+    saveConversationsSafely(previousState);
   }
 
   function loadConversations() {
@@ -106,10 +107,11 @@ const AIStore = (function() {
       } else if (state.conversations.length > 0) {
         state.currentConversationId = state.conversations[0].id;
       } else {
+        const previousState = createSaveSnapshot();
         const newConversation = createNewConversation();
         state.conversations.push(newConversation);
         state.currentConversationId = newConversation.id;
-        saveConversations();
+        saveConversationsSafely(previousState);
       }
     } catch (error) {
       console.warn('Failed to load conversations:', error);
@@ -117,32 +119,315 @@ const AIStore = (function() {
     }
   }
 
-  function saveConversations() {
+  function cloneSaveSnapshot(snapshot) {
+    return createSaveSnapshot(snapshot.conversations, snapshot.currentConversationId);
+  }
+
+  function createSaveSnapshot(
+    conversations = state.conversations,
+    currentConversationId = state.currentConversationId
+  ) {
+    return {
+      conversations: conversations.map(conversation => ({
+        ...conversation,
+        messages: conversation.messages.map(message => ({ ...message }))
+      })),
+      currentConversationId
+    };
+  }
+
+  function showSaveErrorToast() {
+    const message = getTranslation('aiSaveError');
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+    } else {
+      console.warn(message);
+    }
+  }
+
+  function persistStorageValue(key, value) {
+    if (typeof localStorage.setItemAsync === 'function') {
+      return localStorage.setItemAsync(key, value);
+    }
+
     try {
-      if (state.conversations.length > MAX_CONVERSATIONS) {
-        // Keep the newest MAX_CONVERSATIONS conversations, but never silently
-        // drop the active one (issue #586): if it falls outside the newest
-        // window, swap it in for the oldest survivor so an in-progress session
-        // is not lost from storage.
-        const kept = state.conversations.slice(0, MAX_CONVERSATIONS);
-        const active = state.conversations.find(conversation => conversation.id === state.currentConversationId);
-        if (active && !kept.some(conversation => conversation.id === active.id)) {
-          kept[kept.length - 1] = active;
-        }
-        state.conversations = kept;
-      }
-
-      // currentConversationId should always resolve to a survivor, whether or
-      // not the cap was applied; only reset it when it referenced a
-      // conversation that no longer exists.
-      if (!state.conversations.some(conversation => conversation.id === state.currentConversationId)) {
-        state.currentConversationId = state.conversations[0] ? state.conversations[0].id : null;
-      }
-
-      localStorage.setItem(STORAGE_KEYS.conversations, JSON.stringify(state.conversations));
-      localStorage.setItem(STORAGE_KEYS.currentId, state.currentConversationId);
+      localStorage.setItem(key, value);
+      return true;
     } catch (error) {
-      console.error('Failed to save conversations:', error);
+      console.warn('Failed to persist conversation storage value:', error);
+      return false;
+    }
+  }
+
+  function restoreStorageValue(key, value) {
+    if (value === null || typeof value === 'undefined') {
+      if (typeof localStorage.removeItemAsync === 'function') {
+        return localStorage.removeItemAsync(key);
+      }
+
+      try {
+        localStorage.removeItem(key);
+        return true;
+      } catch (error) {
+        console.warn('Failed to restore conversation storage value:', error);
+        return false;
+      }
+    }
+
+    return persistStorageValue(key, value);
+  }
+
+  function isPromiseLike(value) {
+    return value && typeof value.then === 'function';
+  }
+
+  function settlePersistence(result, onSuccess, onFailure) {
+    if (isPromiseLike(result)) {
+      return result.then(onSuccess, onFailure);
+    }
+
+    return onSuccess(result);
+  }
+
+  function getPersistedStateSnapshot(conversationsValue, currentConversationId, fallbackState) {
+    try {
+      const conversations = conversationsValue ? JSON.parse(conversationsValue) : [];
+      if (Array.isArray(conversations) && conversations.every(isValidConversation)) {
+        return {
+          conversations,
+          currentConversationId
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to parse persisted conversations for rollback:', error);
+    }
+
+    return fallbackState;
+  }
+
+  function commitSavedState(nextConversations, nextCurrentConversationId, saveGeneration) {
+    if (saveGeneration !== saveSequence) {
+      return;
+    }
+
+    state.conversations = nextConversations;
+    state.currentConversationId = nextCurrentConversationId;
+  }
+
+  function reportSaveFailure(error, rollbackState, saveGeneration) {
+    const isLatestSave = saveGeneration === saveSequence;
+    if (isLatestSave && rollbackState) {
+      const restoredState = cloneSaveSnapshot(rollbackState);
+      state.conversations = restoredState.conversations;
+      state.currentConversationId = restoredState.currentConversationId;
+    }
+    console.error('Failed to save conversations:', error);
+    if (isLatestSave) {
+      showSaveErrorToast();
+    }
+    return false;
+  }
+
+  function handleSaveFailure(
+    error,
+    conversationsWritten,
+    persistedConversations,
+    rollbackState,
+    saveGeneration
+  ) {
+    const reportFailure = () => reportSaveFailure(error, rollbackState, saveGeneration);
+
+    if (!conversationsWritten) {
+      return reportFailure();
+    }
+
+    let rollbackResult;
+    try {
+      rollbackResult = restoreStorageValue(STORAGE_KEYS.conversations, persistedConversations);
+    } catch (rollbackError) {
+      console.error('Failed to roll back conversations after save failure:', rollbackError);
+      return reportFailure();
+    }
+
+    return settlePersistence(
+      rollbackResult,
+      restored => {
+        if (restored === false) {
+          console.error('Failed to roll back conversations after save failure');
+        }
+        return reportFailure();
+      },
+      rollbackError => {
+        console.error('Failed to roll back conversations after save failure:', rollbackError);
+        return reportFailure();
+      }
+    );
+  }
+
+  function saveConversationsTransaction(
+    nextConversations,
+    nextCurrentConversationId,
+    previousState,
+    saveGeneration
+  ) {
+    let persistedConversations;
+    let persistedCurrentConversationId;
+
+    try {
+      persistedConversations = localStorage.getItem(STORAGE_KEYS.conversations);
+      persistedCurrentConversationId = localStorage.getItem(STORAGE_KEYS.currentId);
+    } catch (error) {
+      return reportSaveFailure(error, previousState, saveGeneration);
+    }
+
+    const rollbackState = getPersistedStateSnapshot(
+      persistedConversations,
+      persistedCurrentConversationId,
+      previousState
+    );
+    let conversationsWritten = false;
+
+    const handleCurrentIdWrite = success => {
+      if (!success) {
+        return handleSaveFailure(
+          new Error('Current conversation storage write was rejected'),
+          conversationsWritten,
+          persistedConversations,
+          rollbackState,
+          saveGeneration
+        );
+      }
+
+      commitSavedState(nextConversations, nextCurrentConversationId, saveGeneration);
+      return true;
+    };
+
+    const handleConversationsWrite = success => {
+      if (!success) {
+        return handleSaveFailure(
+          new Error('Conversation storage write was rejected'),
+          conversationsWritten,
+          persistedConversations,
+          rollbackState,
+          saveGeneration
+        );
+      }
+
+      conversationsWritten = true;
+
+      let currentIdWrite;
+      try {
+        currentIdWrite = persistStorageValue(
+          STORAGE_KEYS.currentId,
+          nextCurrentConversationId
+        );
+      } catch (error) {
+        return handleSaveFailure(
+          error,
+          conversationsWritten,
+          persistedConversations,
+          rollbackState,
+          saveGeneration
+        );
+      }
+
+      return settlePersistence(
+        currentIdWrite,
+        handleCurrentIdWrite,
+        error => handleSaveFailure(
+          error,
+          conversationsWritten,
+          persistedConversations,
+          rollbackState,
+          saveGeneration
+        )
+      );
+    };
+
+    let conversationsWrite;
+    try {
+      conversationsWrite = persistStorageValue(
+        STORAGE_KEYS.conversations,
+        JSON.stringify(nextConversations)
+      );
+    } catch (error) {
+      return handleSaveFailure(
+        error,
+        conversationsWritten,
+        persistedConversations,
+        rollbackState,
+        saveGeneration
+      );
+    }
+
+    return settlePersistence(
+      conversationsWrite,
+      handleConversationsWrite,
+      error => handleSaveFailure(
+        error,
+        conversationsWritten,
+        persistedConversations,
+        rollbackState,
+        saveGeneration
+      )
+    );
+  }
+
+  let saveSequence = 0;
+  let saveQueue = Promise.resolve();
+
+  function enqueueSave(saveTransaction) {
+    const queuedSave = saveQueue.then(saveTransaction, saveTransaction);
+    saveQueue = queuedSave.then(
+      () => undefined,
+      () => undefined
+    );
+    return queuedSave;
+  }
+
+  function saveConversations(previousState = createSaveSnapshot()) {
+    const saveGeneration = ++saveSequence;
+    const nextState = createSaveSnapshot();
+
+    if (nextState.conversations.length > MAX_CONVERSATIONS) {
+      const kept = nextState.conversations.slice(0, MAX_CONVERSATIONS);
+      const active = nextState.conversations.find(
+        conversation => conversation.id === nextState.currentConversationId
+      );
+      if (active && !kept.some(conversation => conversation.id === active.id)) {
+        kept[kept.length - 1] = active;
+      }
+      nextState.conversations = kept;
+    }
+
+    if (!nextState.conversations.some(
+      conversation => conversation.id === nextState.currentConversationId
+    )) {
+      nextState.currentConversationId = nextState.conversations[0]
+        ? nextState.conversations[0].id
+        : null;
+    }
+
+    const saveTransaction = () => saveConversationsTransaction(
+      nextState.conversations,
+      nextState.currentConversationId,
+      previousState,
+      saveGeneration
+    );
+
+    if (typeof localStorage.setItemAsync === 'function') {
+      return enqueueSave(saveTransaction);
+    }
+
+    return saveTransaction();
+  }
+
+  function saveConversationsSafely(previousState = createSaveSnapshot()) {
+    const result = saveConversations(previousState);
+    if (isPromiseLike(result)) {
+      void result.catch(error => {
+        console.error('Unexpected conversation save rejection:', error);
+      });
     }
   }
 
@@ -173,6 +458,8 @@ const AIStore = (function() {
     const conversation = getCurrentConversation();
     if (!conversation) return;
 
+    const previousState = createSaveSnapshot();
+
     if (!message.id) {
       message.id = generateId();
     }
@@ -184,14 +471,15 @@ const AIStore = (function() {
       conversation.title = message.content.substring(0, 30) + (message.content.length > 30 ? '...' : '');
     }
 
-    saveConversations();
+    saveConversationsSafely(previousState);
   }
 
   function createNewChat() {
+    const previousState = createSaveSnapshot();
     const conversation = createNewConversation();
     state.conversations.unshift(conversation);
     state.currentConversationId = conversation.id;
-    saveConversations();
+    saveConversationsSafely(previousState);
     return conversation;
   }
 
@@ -200,8 +488,9 @@ const AIStore = (function() {
       return false;
     }
 
+    const previousState = createSaveSnapshot();
     state.currentConversationId = conversationId;
-    saveConversations();
+    saveConversationsSafely(previousState);
     return true;
   }
 
@@ -209,6 +498,7 @@ const AIStore = (function() {
     const index = state.conversations.findIndex(conversation => conversation.id === conversationId);
     if (index === -1) return false;
 
+    const previousState = createSaveSnapshot();
     state.conversations.splice(index, 1);
 
     if (state.currentConversationId === conversationId) {
@@ -221,7 +511,7 @@ const AIStore = (function() {
       }
     }
 
-    saveConversations();
+    saveConversationsSafely(previousState);
     return true;
   }
 
@@ -352,6 +642,7 @@ const AIStore = (function() {
   return {
     state,
     STORAGE_KEYS,
+    createSaveSnapshot,
     MAX_CONVERSATIONS,
     generateId,
     createNewConversation,

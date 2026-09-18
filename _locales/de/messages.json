@@ -3,6 +3,10 @@
     "message": "Suchverlauf aktivieren",
     "description": "Label for the search history toggle"
   },
+  "aiSaveError": {
+    "message": "Unterhaltungen konnten nicht gespeichert werden. Ihre letzte Aktion wurde nicht gespeichert.",
+    "description": "Error shown when AI conversation changes cannot be persisted"
+  },
   "appGridSaveError": {
     "message": "App-Änderungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
     "description": "Error shown when app grid changes cannot be persisted"

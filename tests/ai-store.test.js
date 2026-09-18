@@ -136,11 +136,11 @@ describe('AIStore conversation cap (#586)', () => {
     }));
   }
 
-  it('keeps the newest MAX conversations when the active conversation is among them', () => {
+  it('keeps the newest MAX conversations when the active conversation is among them', async () => {
     AIStore.state.conversations = buildConversations(AIStore.MAX_CONVERSATIONS + 5);
     AIStore.state.currentConversationId = 'conv-0';
 
-    AIStore.saveConversations();
+    await AIStore.saveConversations();
 
     expect(AIStore.state.conversations).toHaveLength(AIStore.MAX_CONVERSATIONS);
     expect(AIStore.state.conversations[0].id).toBe('conv-0');
@@ -149,12 +149,12 @@ describe('AIStore conversation cap (#586)', () => {
     expect(AIStore.state.currentConversationId).toBe('conv-0');
   });
 
-  it('never drops the active conversation when it falls outside the newest window', () => {
+  it('never drops the active conversation when it falls outside the newest window', async () => {
     const activeId = `conv-${AIStore.MAX_CONVERSATIONS + 2}`;
     AIStore.state.conversations = buildConversations(AIStore.MAX_CONVERSATIONS + 5);
     AIStore.state.currentConversationId = activeId;
 
-    AIStore.saveConversations();
+    await AIStore.saveConversations();
 
     expect(AIStore.state.conversations).toHaveLength(AIStore.MAX_CONVERSATIONS);
     expect(AIStore.state.conversations.some(c => c.id === activeId)).toBe(true);
@@ -167,49 +167,130 @@ describe('AIStore conversation cap (#586)', () => {
     expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe(activeId);
   });
 
-  it('evicts the oldest survivor when swapping the active conversation in', () => {
+  it('evicts the oldest survivor when swapping the active conversation in', async () => {
     AIStore.state.conversations = buildConversations(AIStore.MAX_CONVERSATIONS + 5);
     AIStore.state.currentConversationId = `conv-${AIStore.MAX_CONVERSATIONS + 2}`;
 
-    AIStore.saveConversations();
+    await AIStore.saveConversations();
 
     const ids = AIStore.state.conversations.map(c => c.id);
     expect(ids).not.toContain(`conv-${AIStore.MAX_CONVERSATIONS - 1}`);
     expect(ids).toContain(`conv-${AIStore.MAX_CONVERSATIONS + 2}`);
   });
 
-  it('keeps the active conversation in storage across repeated saves', () => {
+  it('keeps the active conversation in storage across repeated saves', async () => {
     const activeId = `conv-${AIStore.MAX_CONVERSATIONS + 2}`;
     AIStore.state.conversations = buildConversations(AIStore.MAX_CONVERSATIONS + 5);
     AIStore.state.currentConversationId = activeId;
 
-    AIStore.saveConversations();
-    AIStore.saveConversations();
+    await AIStore.saveConversations();
+    await AIStore.saveConversations();
 
     expect(AIStore.state.conversations).toHaveLength(AIStore.MAX_CONVERSATIONS);
     expect(AIStore.state.conversations.some(c => c.id === activeId)).toBe(true);
     expect(AIStore.state.currentConversationId).toBe(activeId);
   });
 
-  it('falls back to the newest survivor when the current id no longer resolves', () => {
+  it('falls back to the newest survivor when the current id no longer resolves', async () => {
     AIStore.state.conversations = buildConversations(AIStore.MAX_CONVERSATIONS + 5);
     AIStore.state.currentConversationId = 'does-not-exist';
 
-    AIStore.saveConversations();
+    await AIStore.saveConversations();
 
     expect(AIStore.state.conversations).toHaveLength(AIStore.MAX_CONVERSATIONS);
     expect(AIStore.state.currentConversationId).toBe('conv-0');
     expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-0');
   });
 
-  it('resets an unresolved current id even when under the cap', () => {
+  it('resets an unresolved current id even when under the cap', async () => {
     AIStore.state.conversations = buildConversations(AIStore.MAX_CONVERSATIONS);
     AIStore.state.currentConversationId = 'does-not-exist';
 
-    AIStore.saveConversations();
+    await AIStore.saveConversations();
 
     expect(AIStore.state.conversations).toHaveLength(AIStore.MAX_CONVERSATIONS);
     expect(AIStore.state.currentConversationId).toBe('conv-0');
     expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-0');
+  });
+});
+
+describe('AIStore persistence atomicity (#716)', () => {
+  it('rolls back storage and in-memory normalization on a bridge-reported second-write failure', async () => {
+    const previousConversations = Array.from(
+      { length: AIStore.MAX_CONVERSATIONS + 5 },
+      (_, index) => ({
+        id: `conv-${index}`,
+        title: `Conversation ${index}`,
+        messages: [],
+        createdAt: index,
+        updatedAt: index
+      })
+    );
+    const previousCurrentConversationId = `conv-${AIStore.MAX_CONVERSATIONS + 2}`;
+
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(previousConversations)
+    );
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, previousCurrentConversationId);
+    AIStore.state.conversations = previousConversations;
+    AIStore.state.currentConversationId = previousCurrentConversationId;
+
+    const previousState = AIStore.createSaveSnapshot();
+    const originalSetItemAsync = localStorage.setItemAsync;
+    let setItemCalls = 0;
+
+    localStorage.setItemAsync = vi.fn((key, value) => {
+      setItemCalls += 1;
+
+      if (setItemCalls === 2) {
+        window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+          detail: {
+            key,
+            message: 'QUOTA_BYTES quota exceeded',
+            operation: 'set',
+            value
+          }
+        }));
+        return Promise.resolve(false);
+      }
+
+      localStorage.setItem(key, value);
+      return Promise.resolve(true);
+    });
+
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+
+    try {
+      expect(await AIStore.saveConversations(previousState)).toBe(false);
+
+      expect(AIStore.state.conversations).toEqual(previousConversations);
+      expect(AIStore.state.conversations).toHaveLength(AIStore.MAX_CONVERSATIONS + 5);
+      expect(AIStore.state.currentConversationId).toBe(previousCurrentConversationId);
+      expect(JSON.parse(
+        localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+      )).toEqual(previousConversations);
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe(
+        previousCurrentConversationId
+      );
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save conversations. Your last action was not saved.',
+        'error'
+      );
+      expect(localStorage.setItemAsync).toHaveBeenCalledTimes(3);
+    } finally {
+      if (typeof originalSetItemAsync === 'undefined') {
+        delete localStorage.setItemAsync;
+      } else {
+        localStorage.setItemAsync = originalSetItemAsync;
+      }
+      if (typeof originalShowToast === 'undefined') {
+        delete window.showToast;
+      } else {
+        window.showToast = originalShowToast;
+      }
+    }
   });
 });

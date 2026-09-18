@@ -352,6 +352,7 @@ globalThis.window.i18n = {
       emptyStateDesc: 'Try adding due dates for better organization.',
       aiAssistant: 'AI Assistant',
       aiPlaceholder: 'Ask me anything...',
+      aiSaveError: 'Failed to save conversations. Your last action was not saved.',
       aiNewChat: 'New Chat',
       aiSearchConversations: 'Search conversations...',
       aiConversations: 'Conversations',

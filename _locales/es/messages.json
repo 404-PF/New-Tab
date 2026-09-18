@@ -3,6 +3,10 @@
     "message": "Activar historial de búsqueda",
     "description": "Label for the search history toggle"
   },
+  "aiSaveError": {
+    "message": "No se pudieron guardar las conversaciones. La última acción no se guardó.",
+    "description": "Error shown when AI conversation changes cannot be persisted"
+  },
   "appGridSaveError": {
     "message": "No se pudieron guardar los cambios de las aplicaciones. La última acción no se guardó.",
     "description": "Error shown when app grid changes cannot be persisted"
