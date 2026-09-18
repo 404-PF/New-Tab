@@ -52,6 +52,7 @@
     'src/core/utils.js',
     'src/core/motion.js',
     'src/core/dom-ready.js',
+    'src/core/storage-rmw.js',
     'src/core/app-grid-storage.js',
     'src/core/main.js',
     'src/features/timezone-clocks.js',
