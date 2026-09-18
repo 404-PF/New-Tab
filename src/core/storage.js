@@ -61,7 +61,7 @@
     const detail = {
       key,
       message,
-      operation: 'set'
+      operation: extra?.operation || 'set'
     };
     if (typeof extra?.generation === 'number') {
       detail.generation = extra.generation;
@@ -352,6 +352,15 @@
   function persistSetAsync(key, value, hadPreviousValue, previousValue) {
     const storageArea = getStorageArea();
     if (!storageArea) {
+      if (cache.get(key) === value) {
+        if (hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        } else {
+          cache.delete(key);
+          trackHydrationMutation(key, null);
+        }
+      }
       return Promise.resolve(false);
     }
 
@@ -373,7 +382,8 @@
       };
 
       const restoreCache = () => {
-        if (pendingWriteGenerations.get(key) !== generation) {
+        if (pendingWriteGenerations.get(key) !== generation ||
+            cache.get(key) !== value) {
           return;
         }
 
@@ -413,8 +423,17 @@
   function persistRemoveAsync(key, hadPreviousValue, previousValue) {
     const storageArea = getStorageArea();
     if (!storageArea) {
+      if (!hadPreviousValue || !cache.has(key)) {
+        return Promise.resolve(false);
+      }
+
+      cache.set(key, previousValue);
+      trackHydrationMutation(key, previousValue);
       return Promise.resolve(false);
     }
+
+    const generation = ++writeSequence;
+    pendingWriteGenerations.set(key, generation);
 
     return new Promise((resolve) => {
       let settled = false;
@@ -424,10 +443,17 @@
           return;
         }
         settled = true;
+        if (pendingWriteGenerations.get(key) === generation) {
+          pendingWriteGenerations.delete(key);
+        }
         resolve(success);
       };
 
       const restoreCache = () => {
+        if (pendingWriteGenerations.get(key) !== generation || cache.has(key)) {
+          return;
+        }
+
         if (hadPreviousValue) {
           cache.set(key, previousValue);
           trackHydrationMutation(key, previousValue);
@@ -440,6 +466,10 @@
 
           if (lastError) {
             console.warn(`Failed to remove ${key} from chrome.storage:`, lastError.message);
+            reportStorageWriteError(key, lastError, {
+              operation: 'remove',
+              generation
+            });
             restoreCache();
             finish(false);
             return;
@@ -449,6 +479,10 @@
         });
       } catch (error) {
         console.warn(`Failed to remove ${key} from chrome.storage:`, error);
+        reportStorageWriteError(key, error, {
+          operation: 'remove',
+          generation
+        });
         restoreCache();
         finish(false);
       }

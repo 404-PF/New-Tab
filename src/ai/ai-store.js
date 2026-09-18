@@ -119,171 +119,269 @@ const AIStore = (function() {
     }
   }
 
-  function createSaveSnapshot() {
+  function cloneSaveSnapshot(snapshot) {
     return {
-      conversations: state.conversations.map(conversation => ({
+      conversations: snapshot.conversations.map(conversation => ({
         ...conversation,
         messages: conversation.messages.map(message => ({ ...message }))
       })),
-      currentConversationId: state.currentConversationId
+      currentConversationId: snapshot.currentConversationId
     };
   }
 
-  function persistStorageValue(key, value) {
-    if (typeof localStorage.setItemAsync === 'function') {
-      return localStorage.setItemAsync(key, value);
+  function createSaveSnapshot(
+    conversations = state.conversations,
+    currentConversationId = state.currentConversationId
+  ) {
+    return {
+      conversations: conversations.map(conversation => ({
+        ...conversation,
+        messages: conversation.messages.map(message => ({ ...message }))
+      })),
+      currentConversationId
+    };
+  }
+
+  function isPromiseLike(value) {
+    return value && typeof value.then === 'function';
+  }
+
+  function settlePersistence(result, onSuccess, onFailure) {
+    if (isPromiseLike(result)) {
+      return result.then(onSuccess, onFailure);
     }
 
+    return onSuccess(result);
+  }
+
+  function getPersistedStateSnapshot(conversationsValue, currentConversationId, fallbackState) {
     try {
-      return localStorage.setItem(key, value) !== false;
+      const conversations = conversationsValue ? JSON.parse(conversationsValue) : [];
+      if (Array.isArray(conversations) && conversations.every(isValidConversation)) {
+        return {
+          conversations,
+          currentConversationId
+        };
+      }
     } catch (error) {
-      console.warn(`Failed to persist ${key} to localStorage:`, error);
-      return false;
-    }
-  }
-
-  function restoreStorageValue(key, value) {
-    if (value === null) {
-      if (typeof localStorage.removeItemAsync === 'function') {
-        return localStorage.removeItemAsync(key);
-      }
-
-      try {
-        localStorage.removeItem(key);
-        return true;
-      } catch (error) {
-        console.warn(`Failed to remove ${key} from localStorage:`, error);
-        return false;
-      }
+      console.warn('Failed to parse persisted conversations for rollback:', error);
     }
 
-    return persistStorageValue(key, value);
+    return fallbackState;
   }
 
-  function showSaveErrorToast() {
-    const message = getTranslation('aiSaveError');
-    if (typeof window.showToast === 'function') {
-      window.showToast(message, 'error');
+  function commitSavedState(nextConversations, nextCurrentConversationId, saveGeneration) {
+    if (saveGeneration !== saveSequence) {
+      return;
     }
+
+    state.conversations = nextConversations;
+    state.currentConversationId = nextCurrentConversationId;
   }
 
-  function commitSavedState(conversations, currentConversationId) {
-    state.conversations = conversations;
-    state.currentConversationId = currentConversationId;
-  }
-
-  function reportSaveFailure(error, previousState) {
-    state.conversations = previousState.conversations;
-    state.currentConversationId = previousState.currentConversationId;
+  function reportSaveFailure(error, rollbackState, saveGeneration) {
+    if (saveGeneration === saveSequence && rollbackState) {
+      const restoredState = cloneSaveSnapshot(rollbackState);
+      state.conversations = restoredState.conversations;
+      state.currentConversationId = restoredState.currentConversationId;
+    }
     console.error('Failed to save conversations:', error);
     showSaveErrorToast();
     return false;
   }
 
-  function saveConversationsSync(nextConversations, nextCurrentConversationId, previousState, persistedConversations) {
-    let conversationsWritten = false;
+  function handleSaveFailure(
+    error,
+    conversationsWritten,
+    persistedConversations,
+    rollbackState,
+    saveGeneration
+  ) {
+    const reportFailure = () => reportSaveFailure(error, rollbackState, saveGeneration);
 
-    try {
-      if (!persistStorageValue(STORAGE_KEYS.conversations, JSON.stringify(nextConversations))) {
-        throw new Error('Conversation storage write was rejected');
-      }
-      conversationsWritten = true;
-
-      if (!persistStorageValue(STORAGE_KEYS.currentId, nextCurrentConversationId)) {
-        throw new Error('Current conversation storage write was rejected');
-      }
-
-      commitSavedState(nextConversations, nextCurrentConversationId);
-      return true;
-    } catch (error) {
-      if (conversationsWritten) {
-        try {
-          const restored = restoreStorageValue(STORAGE_KEYS.conversations, persistedConversations);
-          if (restored === false) {
-            throw new Error('Conversation storage rollback was rejected');
-          }
-        } catch (rollbackError) {
-          console.error('Failed to roll back conversations after save failure:', rollbackError);
-        }
-      }
-
-      return reportSaveFailure(error, previousState);
+    if (!conversationsWritten) {
+      return reportFailure();
     }
+
+    let rollbackResult;
+    try {
+      rollbackResult = restoreStorageValue(STORAGE_KEYS.conversations, persistedConversations);
+    } catch (rollbackError) {
+      console.error('Failed to roll back conversations after save failure:', rollbackError);
+      return reportFailure();
+    }
+
+    return settlePersistence(
+      rollbackResult,
+      restored => {
+        if (restored === false) {
+          console.error('Failed to roll back conversations after save failure');
+        }
+        return reportFailure();
+      },
+      rollbackError => {
+        console.error('Failed to roll back conversations after save failure:', rollbackError);
+        return reportFailure();
+      }
+    );
   }
 
-  async function saveConversationsAsync(nextConversations, nextCurrentConversationId, previousState, persistedConversations) {
-    let conversationsWritten = false;
-
-    try {
-      if (!(await persistStorageValue(STORAGE_KEYS.conversations, JSON.stringify(nextConversations)))) {
-        throw new Error('Conversation storage write was rejected');
-      }
-      conversationsWritten = true;
-
-      if (!(await persistStorageValue(STORAGE_KEYS.currentId, nextCurrentConversationId))) {
-        throw new Error('Current conversation storage write was rejected');
-      }
-
-      commitSavedState(nextConversations, nextCurrentConversationId);
-      return true;
-    } catch (error) {
-      if (conversationsWritten) {
-        try {
-          const restored = await restoreStorageValue(STORAGE_KEYS.conversations, persistedConversations);
-          if (restored === false) {
-            throw new Error('Conversation storage rollback was rejected');
-          }
-        } catch (rollbackError) {
-          console.error('Failed to roll back conversations after save failure:', rollbackError);
-        }
-      }
-
-      return reportSaveFailure(error, previousState);
-    }
-  }
-
-  function saveConversations(previousState = createSaveSnapshot()) {
-    const nextConversations = state.conversations.length > MAX_CONVERSATIONS
-      ? (() => {
-          const kept = state.conversations.slice(0, MAX_CONVERSATIONS);
-          const active = state.conversations.find(
-            conversation => conversation.id === state.currentConversationId
-          );
-          if (active && !kept.some(conversation => conversation.id === active.id)) {
-            kept[kept.length - 1] = active;
-          }
-          return kept;
-        })()
-      : state.conversations;
-
-    const nextCurrentConversationId = nextConversations.some(
-      conversation => conversation.id === state.currentConversationId
-    )
-      ? state.currentConversationId
-      : (nextConversations[0] ? nextConversations[0].id : null);
-
+  function saveConversationsTransaction(
+    nextConversations,
+    nextCurrentConversationId,
+    previousState,
+    saveGeneration
+  ) {
     let persistedConversations;
+    let persistedCurrentConversationId;
+
     try {
       persistedConversations = localStorage.getItem(STORAGE_KEYS.conversations);
+      persistedCurrentConversationId = localStorage.getItem(STORAGE_KEYS.currentId);
     } catch (error) {
-      return reportSaveFailure(error, previousState);
+      return reportSaveFailure(error, previousState, saveGeneration);
     }
 
-    if (typeof localStorage.setItemAsync === 'function') {
-      return saveConversationsAsync(
-        nextConversations,
-        nextCurrentConversationId,
-        previousState,
-        persistedConversations
+    const rollbackState = getPersistedStateSnapshot(
+      persistedConversations,
+      persistedCurrentConversationId,
+      previousState
+    );
+    let conversationsWritten = false;
+
+    const handleCurrentIdWrite = success => {
+      if (!success) {
+        return handleSaveFailure(
+          new Error('Current conversation storage write was rejected'),
+          conversationsWritten,
+          persistedConversations,
+          rollbackState,
+          saveGeneration
+        );
+      }
+
+      commitSavedState(nextConversations, nextCurrentConversationId, saveGeneration);
+      return true;
+    };
+
+    const handleConversationsWrite = success => {
+      if (!success) {
+        return handleSaveFailure(
+          new Error('Conversation storage write was rejected'),
+          conversationsWritten,
+          persistedConversations,
+          rollbackState,
+          saveGeneration
+        );
+      }
+
+      conversationsWritten = true;
+
+      let currentIdWrite;
+      try {
+        currentIdWrite = persistStorageValue(
+          STORAGE_KEYS.currentId,
+          nextCurrentConversationId
+        );
+      } catch (error) {
+        return handleSaveFailure(
+          error,
+          conversationsWritten,
+          persistedConversations,
+          rollbackState,
+          saveGeneration
+        );
+      }
+
+      return settlePersistence(
+        currentIdWrite,
+        handleCurrentIdWrite,
+        error => handleSaveFailure(
+          error,
+          conversationsWritten,
+          persistedConversations,
+          rollbackState,
+          saveGeneration
+        )
+      );
+    };
+
+    let conversationsWrite;
+    try {
+      conversationsWrite = persistStorageValue(
+        STORAGE_KEYS.conversations,
+        JSON.stringify(nextConversations)
+      );
+    } catch (error) {
+      return handleSaveFailure(
+        error,
+        conversationsWritten,
+        persistedConversations,
+        rollbackState,
+        saveGeneration
       );
     }
 
-    return saveConversationsSync(
-      nextConversations,
-      nextCurrentConversationId,
-      previousState,
-      persistedConversations
+    return settlePersistence(
+      conversationsWrite,
+      handleConversationsWrite,
+      error => handleSaveFailure(
+        error,
+        conversationsWritten,
+        persistedConversations,
+        rollbackState,
+        saveGeneration
+      )
     );
+  }
+
+  let saveSequence = 0;
+  let saveQueue = Promise.resolve();
+
+  function enqueueSave(saveTransaction) {
+    const queuedSave = saveQueue.then(saveTransaction, saveTransaction);
+    saveQueue = queuedSave.then(
+      () => undefined,
+      () => undefined
+    );
+    return queuedSave;
+  }
+
+  function saveConversations(previousState = createSaveSnapshot()) {
+    const saveGeneration = ++saveSequence;
+    const nextState = createSaveSnapshot();
+
+    if (nextState.conversations.length > MAX_CONVERSATIONS) {
+      const kept = nextState.conversations.slice(0, MAX_CONVERSATIONS);
+      const active = nextState.conversations.find(
+        conversation => conversation.id === nextState.currentConversationId
+      );
+      if (active && !kept.some(conversation => conversation.id === active.id)) {
+        kept[kept.length - 1] = active;
+      }
+      nextState.conversations = kept;
+    }
+
+    if (!nextState.conversations.some(
+      conversation => conversation.id === nextState.currentConversationId
+    )) {
+      nextState.currentConversationId = nextState.conversations[0]
+        ? nextState.conversations[0].id
+        : null;
+    }
+
+    const saveTransaction = () => saveConversationsTransaction(
+      nextState.conversations,
+      nextState.currentConversationId,
+      previousState,
+      saveGeneration
+    );
+
+    if (typeof localStorage.setItemAsync === 'function') {
+      return enqueueSave(saveTransaction);
+    }
+
+    return saveTransaction();
   }
 
   function getCurrentConversation() {

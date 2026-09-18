@@ -234,18 +234,33 @@ const AIService = (function() {
     }
     if (removed) {
       conversation.updatedAt = Date.now();
-      AIStore.saveConversations(previousState);
-      const current = AIStore.getCurrentConversation && AIStore.getCurrentConversation();
-      if (current && current.id === conversation.id) {
-        AIRenderer.renderMessages();
-      } else {
-        AIRenderer.renderTopicsList({
-          onSelectConversation: switchConversation,
-          onDeleteConversation: deleteConversation,
-          onExportConversation: exportConversation,
-          onRequestDeleteConfirm: showDeleteConfirm
+
+      const renderCurrentConversation = () => {
+        const current = AIStore.getCurrentConversation && AIStore.getCurrentConversation();
+        if (current && current.id === conversation.id) {
+          AIRenderer.renderMessages();
+        } else {
+          AIRenderer.renderTopicsList({
+            onSelectConversation: switchConversation,
+            onDeleteConversation: deleteConversation,
+            onExportConversation: exportConversation,
+            onRequestDeleteConfirm: showDeleteConfirm
+          });
+        }
+      };
+
+      const saveResult = AIStore.saveConversations(previousState);
+      renderCurrentConversation();
+
+      Promise.resolve(saveResult)
+        .then(success => {
+          if (success === false) {
+            renderCurrentConversation();
+          }
+        })
+        .catch(() => {
+          renderCurrentConversation();
         });
-      }
     }
     return removed;
   }
