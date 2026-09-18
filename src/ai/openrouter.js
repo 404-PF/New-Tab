@@ -175,6 +175,55 @@ const OpenRouterAPI = (function() {
   }
 
   /**
+   * Wait for a retry delay while remaining responsive to caller cancellation.
+   * @param {number} delay - Delay in milliseconds
+   * @param {AbortSignal|null} signal - Optional caller-provided signal
+   * @returns {Promise<boolean>} Whether the retry delay completed normally
+   */
+  function waitForRetryDelay(delay, signal) {
+    if (delay <= 0) {
+      return Promise.resolve(!signal?.aborted);
+    }
+
+    return new Promise(resolve => {
+      let timerId = null;
+      let settled = false;
+
+      const cleanup = () => {
+        if (timerId !== null) {
+          clearTimeout(timerId);
+        }
+        if (signal) {
+          signal.removeEventListener('abort', handleAbort);
+        }
+      };
+
+      const finish = shouldRetry => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(shouldRetry);
+      };
+
+      const handleAbort = () => finish(false);
+
+      if (signal) {
+        if (signal.aborted) {
+          finish(false);
+          return;
+        }
+        signal.addEventListener('abort', handleAbort, { once: true });
+        if (signal.aborted) {
+          finish(false);
+          return;
+        }
+      }
+
+      timerId = setTimeout(() => finish(true), delay);
+    });
+  }
+
+  /**
    * Send streaming chat completion request
    * @param {string} userMessage - User's message
    * @param {Array} conversationHistory - Previous messages
@@ -213,10 +262,18 @@ const OpenRouterAPI = (function() {
     };
 
     for (let attempt = 0; attempt <= CONFIG.maxRetries; attempt++) {
+      if (signal?.aborted) {
+        return {
+          success: false,
+          error: 'Request cancelled',
+          aborted: true
+        };
+      }
+
       let fullContent = '';
-      let retryableFailure = false;
+      let retryableFailure;
       let requestState = null;
-      let reader = null;
+      let reader;
       let timeoutId = null;
 
       try {
@@ -250,6 +307,7 @@ const OpenRouterAPI = (function() {
 
           reader = response.body.getReader();
           const decoder = new TextDecoder();
+          const MAX_SSE_LINE_SIZE = 1024 * 1024;
           let buffer = ''; // Buffer for incomplete SSE data
 
           const processSseLine = (line) => {
@@ -294,6 +352,14 @@ const OpenRouterAPI = (function() {
             // Decode the chunk
             const chunk = decoder.decode(value, { stream: true });
 
+            if (buffer.length + chunk.length > MAX_SSE_LINE_SIZE) {
+              await reader.cancel().catch(() => {});
+              return {
+                success: false,
+                error: 'OpenRouter SSE line exceeds maximum size'
+              };
+            }
+
             // Append to buffer
             buffer += chunk;
 
@@ -333,7 +399,7 @@ const OpenRouterAPI = (function() {
         // Internal timeout and other transport errors are retryable when no
         // content has been delivered yet. Retrying a partially streamed answer
         // would duplicate content in the caller, so surface that failure.
-        if (requestState?.signal.aborted || !fullContent) {
+        if (!fullContent) {
           if (attempt < CONFIG.maxRetries) {
             retryableFailure = true;
           } else {
@@ -357,13 +423,18 @@ const OpenRouterAPI = (function() {
         if (requestState) {
           requestState.cleanup();
         }
-        reader = null;
       }
 
       if (retryableFailure) {
         const delay = CONFIG.retryDelay * 2 ** attempt;
-        if (delay > 0) {
-          await new Promise(resolve => setTimeout(resolve, delay));
+        const shouldRetry = await waitForRetryDelay(delay, signal);
+
+        if (!shouldRetry && signal?.aborted) {
+          return {
+            success: false,
+            error: 'Request cancelled',
+            aborted: true
+          };
         }
       }
     }
