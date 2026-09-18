@@ -124,6 +124,27 @@
     return { map, order };
   }
 
+  /** Resolve a three-way merge entry into a set/omit action. */
+  function resolveMergeEntry(baseHas, currentHas, candidateHas, baseValue, currentValue, candidateValue) {
+    if (!candidateHas) {
+      if (!baseHas && currentHas) return { present: true, value: clone(currentValue) };
+      if (baseHas && currentHas && !deepEqual(currentValue, baseValue)) {
+        return { present: true, value: clone(currentValue) };
+      }
+      return { present: false };
+    }
+
+    if (!baseHas) return { present: true, value: clone(candidateValue) };
+    if (!currentHas) {
+      if (!deepEqual(candidateValue, baseValue)) {
+        return { present: true, value: clone(candidateValue) };
+      }
+      return { present: false };
+    }
+
+    return { present: true, value: mergeJsonValue(baseValue, currentValue, candidateValue) };
+  }
+
   /** Three-way merge object properties while preserving independent edits. */
   function mergeObject(base, current, candidate) {
     const merged = {};
@@ -140,35 +161,16 @@
       const baseValue = baseHas ? base[key] : missing;
       const currentValue = currentHas ? current[key] : missing;
       const candidateValue = candidateHas ? candidate[key] : missing;
+      const resolved = resolveMergeEntry(
+        baseHas,
+        currentHas,
+        candidateHas,
+        baseValue,
+        currentValue,
+        candidateValue
+      );
 
-      if (!candidateHas) {
-        if (!baseHas) {
-          if (currentHas) merged[key] = clone(currentValue);
-        } else if (!currentHas) {
-          // Both sides removed the property, or the external side removed it
-          // while the local side did not change it.
-        } else if (!deepEqual(currentValue, baseValue)) {
-          // Preserve an external change when the local mutation deleted the
-          // same property from an older snapshot.
-          merged[key] = clone(currentValue);
-        }
-        return;
-      }
-
-      if (!baseHas) {
-        merged[key] = clone(candidateValue);
-        return;
-      }
-
-      if (!currentHas) {
-        merged[key] = deepEqual(candidateValue, baseValue)
-          ? undefined
-          : clone(candidateValue);
-        if (merged[key] === undefined) delete merged[key];
-        return;
-      }
-
-      merged[key] = mergeJsonValue(baseValue, currentValue, candidateValue);
+      if (resolved.present) merged[key] = resolved.value;
     });
 
     return merged;
@@ -198,31 +200,16 @@
       const baseValue = baseHas ? baseArray.map.get(key) : missing;
       const currentValue = currentHas ? currentArray.map.get(key) : missing;
       const candidateValue = candidateHas ? candidateArray.map.get(key) : missing;
+      const resolved = resolveMergeEntry(
+        baseHas,
+        currentHas,
+        candidateHas,
+        baseValue,
+        currentValue,
+        candidateValue
+      );
 
-      if (!candidateHas) {
-        if (!baseHas) {
-          if (currentHas) result.set(key, clone(currentValue));
-        } else if (!currentHas) {
-          return;
-        } else if (!deepEqual(currentValue, baseValue)) {
-          result.set(key, clone(currentValue));
-        }
-        return;
-      }
-
-      if (!baseHas) {
-        result.set(key, clone(candidateValue));
-        return;
-      }
-
-      if (!currentHas) {
-        if (!deepEqual(candidateValue, baseValue)) {
-          result.set(key, clone(candidateValue));
-        }
-        return;
-      }
-
-      result.set(key, mergeJsonValue(baseValue, currentValue, candidateValue));
+      if (resolved.present) result.set(key, resolved.value);
     });
 
     const orderedKeys = [];
