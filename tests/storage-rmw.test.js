@@ -152,8 +152,6 @@ describe('cross-tab storage read-modify-write merging', () => {
       expect.arrayContaining(['message-from-a', 'message-2', 'message-3'])
     );
   });
-});
-
 
   it('preserves later external field edits after a concurrent merge', () => {
     const baseNote = {
@@ -222,6 +220,7 @@ describe('cross-tab storage read-modify-write merging', () => {
       expect.arrayContaining(['note-merge-base', 'note-from-b'])
     );
   });
+});
 
 
 describe('rejected storage bridge writes', () => {
