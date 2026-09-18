@@ -349,6 +349,30 @@
   }
 
 
+  function persistAsyncOperation(key, startOperation, onFailure) {
+    const generation = ++writeSequence;
+    pendingWriteGenerations.set(key, generation);
+
+    return new Promise((resolve, reject) => {
+      startOperation(() => {
+        const lastError = chrome.runtime?.lastError;
+        if (lastError) {
+          reject(lastError);
+          return;
+        }
+
+        resolve(true);
+      });
+    }).catch(error => {
+      onFailure(error, generation);
+      return false;
+    }).finally(() => {
+      if (pendingWriteGenerations.get(key) === generation) {
+        pendingWriteGenerations.delete(key);
+      }
+    });
+  }
+
   function persistSetAsync(key, value, hadPreviousValue, previousValue) {
     const storageArea = getStorageArea();
     if (!storageArea) {
@@ -364,24 +388,14 @@
       return Promise.resolve(false);
     }
 
-    const generation = ++writeSequence;
-    pendingWriteGenerations.set(key, generation);
+    return persistAsyncOperation(
+      key,
+      done => storageArea.set({ [key]: value }, done),
+      (error, generation) => {
+        const message = error?.message ? error.message : String(error);
+        console.warn(`Failed to persist ${key} to chrome.storage:`, message);
+        reportStorageWriteError(key, error, { generation, value });
 
-    return new Promise((resolve) => {
-      let settled = false;
-
-      const finish = (success) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        if (pendingWriteGenerations.get(key) === generation) {
-          pendingWriteGenerations.delete(key);
-        }
-        resolve(success);
-      };
-
-      const restoreCache = () => {
         if (pendingWriteGenerations.get(key) !== generation ||
             cache.get(key) !== value) {
           return;
@@ -394,30 +408,8 @@
           cache.delete(key);
           trackHydrationMutation(key, null);
         }
-      };
-
-      try {
-        storageArea.set({ [key]: value }, () => {
-          const lastError = chrome.runtime?.lastError;
-
-          if (lastError) {
-            const message = lastError?.message ? lastError.message : String(lastError);
-            console.warn(`Failed to persist ${key} to chrome.storage:`, message);
-            reportStorageWriteError(key, lastError, { generation, value });
-            restoreCache();
-            finish(false);
-            return;
-          }
-
-          finish(true);
-        });
-      } catch (error) {
-        console.warn(`Failed to persist ${key} to chrome.storage:`, error);
-        reportStorageWriteError(key, error, { generation, value });
-        restoreCache();
-        finish(false);
       }
-    });
+    );
   }
 
   function persistRemoveAsync(key, hadPreviousValue, previousValue) {
@@ -432,24 +424,17 @@
       return Promise.resolve(false);
     }
 
-    const generation = ++writeSequence;
-    pendingWriteGenerations.set(key, generation);
+    return persistAsyncOperation(
+      key,
+      done => storageArea.remove(key, done),
+      (error, generation) => {
+        const message = error?.message ? error.message : String(error);
+        console.warn(`Failed to remove ${key} from chrome.storage:`, message);
+        reportStorageWriteError(key, error, {
+          operation: 'remove',
+          generation
+        });
 
-    return new Promise((resolve) => {
-      let settled = false;
-
-      const finish = (success) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        if (pendingWriteGenerations.get(key) === generation) {
-          pendingWriteGenerations.delete(key);
-        }
-        resolve(success);
-      };
-
-      const restoreCache = () => {
         if (pendingWriteGenerations.get(key) !== generation || cache.has(key)) {
           return;
         }
@@ -458,71 +443,9 @@
           cache.set(key, previousValue);
           trackHydrationMutation(key, previousValue);
         }
-      };
-
-      try {
-        storageArea.remove(key, () => {
-          const lastError = chrome.runtime?.lastError;
-
-          if (lastError) {
-            console.warn(`Failed to remove ${key} from chrome.storage:`, lastError.message);
-            reportStorageWriteError(key, lastError, {
-              operation: 'remove',
-              generation
-            });
-            restoreCache();
-            finish(false);
-            return;
-          }
-
-          finish(true);
-        });
-      } catch (error) {
-        console.warn(`Failed to remove ${key} from chrome.storage:`, error);
-        reportStorageWriteError(key, error, {
-          operation: 'remove',
-          generation
-        });
-        restoreCache();
-        finish(false);
       }
-    });
+    );
   }
-
-  function persistRemove(key) {
-    const storageArea = getStorageArea();
-    if (!storageArea) {
-      return;
-    }
-
-    try {
-      storageArea.remove(key, () => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          console.warn(`Failed to remove ${key} from chrome.storage:`, chrome.runtime.lastError.message);
-        }
-      });
-    } catch (error) {
-      console.warn(`Failed to remove ${key} from chrome.storage:`, error);
-    }
-  }
-
-  function persistClear() {
-    const storageArea = getStorageArea();
-    if (!storageArea) {
-      return;
-    }
-
-    try {
-      storageArea.clear(() => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          console.warn('Failed to clear chrome.storage:', chrome.runtime.lastError.message);
-        }
-      });
-    } catch (error) {
-      console.warn('Failed to clear chrome.storage:', error);
-    }
-  }
-
   const storageBridge = {
     get length() {
       return cache.size;
