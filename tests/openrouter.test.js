@@ -1,5 +1,7 @@
 import { injectScript } from './helpers/inject-script.js';
 
+const originalFetch = globalThis.fetch;
+
 beforeAll(() => {
   injectScript('src/ai/openrouter.js');
 });
@@ -41,6 +43,11 @@ describe('OpenRouterAPI', () => {
   });
 });
 
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  vi.useRealTimers();
+});
+
 function createStreamingResponse(chunks) {
   const encoder = new TextEncoder();
   let index = 0;
@@ -73,7 +80,7 @@ describe('OpenRouter streaming resilience (#714)', () => {
         .mockRejectedValueOnce(new Error('network failure'))
         .mockRejectedValueOnce(new Error('network failure'))
         .mockResolvedValueOnce(createStreamingResponse([
-          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\\n'
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n'
         ]));
 
       const promise = OpenRouterAPI.sendMessageStreaming('hello');
@@ -165,7 +172,7 @@ describe('OpenRouter streaming resilience (#714)', () => {
           }
         })
         .mockResolvedValueOnce(createStreamingResponse([
-          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\\n'
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n'
         ]));
 
       const result = await OpenRouterAPI.sendMessageStreaming('hello');
@@ -197,8 +204,8 @@ describe('OpenRouter streaming resilience (#714)', () => {
   it('logs malformed SSE JSON and continues parsing subsequent chunks', async () => {
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
     globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
-      'data: {not valid json}\\n',
-      'data: {"choices":[{"delta":{"content":"Valid"}}]}\\n'
+      'data: {not valid json}\n',
+      'data: {"choices":[{"delta":{"content":"Valid"}}]}\n'
     ]));
 
     try {
