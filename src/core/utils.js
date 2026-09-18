@@ -641,11 +641,12 @@
 
     const hostPart = trimmed.slice(0, colonIdx);
     const rest = trimmed.slice(colonIdx + 1);
+    const lowerHost = hostPart.toLowerCase();
     return /^\d+(\/|$|\?|#)/.test(rest) && (
       hostPart.includes('.') ||
       /^localhost$/i.test(hostPart) ||
       /^(\d{1,3}\.){3}\d{1,3}$/.test(hostPart) ||
-      /^[a-zA-Z0-9-]+$/.test(hostPart)
+      (/^[a-zA-Z0-9-]+$/.test(hostPart) && !SAFE_CUSTOM_APP_SCHEMES.has(lowerHost))
     );
   }
 
