@@ -155,6 +155,75 @@ describe('cross-tab storage read-modify-write merging', () => {
 });
 
 
+  it('preserves later external field edits after a concurrent merge', () => {
+    const baseNote = {
+      id: 'note-merge-base',
+      text: 'Note A',
+      tag: 'original',
+      order: 0
+    };
+    const externalNote = {
+      id: 'note-from-b',
+      text: 'Note B',
+      tag: 'work',
+      order: 1
+    };
+
+    nativeRemoveItem('notes');
+    localStorage.setItem('notes', JSON.stringify([baseNote]));
+
+    // Tab B changes the tag and adds a note after tab A loaded its base.
+    nativeSetItem('notes', JSON.stringify([
+      {
+        ...baseNote,
+        tag: 'external-1'
+      },
+      externalNote
+    ]));
+
+    // Tab A writes from its stale snapshot, changing only the text.
+    const firstCandidate = [{
+      ...baseNote,
+      text: 'local edit 1'
+    }];
+    localStorage.setItem('notes', JSON.stringify(firstCandidate));
+
+    const firstMerge = JSON.parse(nativeGetItem('notes'));
+    expect(firstMerge.find(note => note.id === 'note-merge-base')).toMatchObject({
+      text: 'local edit 1',
+      tag: 'external-1'
+    });
+    expect(firstMerge.map(note => note.id)).toEqual(
+      expect.arrayContaining(['note-merge-base', 'note-from-b'])
+    );
+
+    // Tab B edits the same field again after the first merge.
+    nativeSetItem('notes', JSON.stringify([
+      {
+        ...baseNote,
+        tag: 'external-2'
+      },
+      externalNote
+    ]));
+
+    // Tab A still writes from its original stale snapshot, updating text only.
+    localStorage.setItem('notes', JSON.stringify([
+      {
+        ...baseNote,
+        text: 'local edit 2'
+      }
+    ]));
+
+    const secondMerge = JSON.parse(nativeGetItem('notes'));
+    const mergedNote = secondMerge.find(note => note.id === 'note-merge-base');
+    expect(mergedNote.text).toBe('local edit 2');
+    expect(mergedNote.tag).toBe('external-2');
+    expect(secondMerge.map(note => note.id)).toEqual(
+      expect.arrayContaining(['note-merge-base', 'note-from-b'])
+    );
+  });
+
+
 describe('rejected storage bridge writes', () => {
   it('keeps the original base when a non-concurrent write is rejected', () => {
     const base = [{
