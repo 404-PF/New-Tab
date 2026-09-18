@@ -12,7 +12,8 @@ const OpenRouterAPI = (function() {
     model: 'openrouter/free',
     maxTokens: 4096,
     maxRetries: 2,
-    retryDelay: 1000,\n    requestTimeout: 15000
+    retryDelay: 1000,
+    requestTimeout: 15000
   };
 
   /**
