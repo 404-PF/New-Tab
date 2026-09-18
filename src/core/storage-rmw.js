@@ -282,12 +282,12 @@
     const baseRaw = lastLocalValues.has(key) ? lastLocalValues.get(key) : currentRaw;
     const concurrentChange = baseRaw !== currentRaw;
     const mergedRaw = mergeStoredValue(baseRaw, currentRaw, candidateRaw);
-    nativeSetItem(key, mergedRaw);
+    const result = nativeSetItem(key, mergedRaw);
 
-    // Native localStorage returns undefined on success. When a concurrent
-    // change was merged, keep the original stale base so later writes from
-    // the same in-memory snapshot continue to reconcile against it.
-    if (!concurrentChange) {
+    // The storage bridge can return false when a synchronous write is rejected;
+    // native localStorage returns undefined on success. Keep the stale base when
+    // a concurrent merge failed to persist so a later retry can merge again.
+    if (!concurrentChange && result !== false) { // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
       lastLocalValues.set(key, mergedRaw);
     }
   }
