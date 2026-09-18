@@ -223,6 +223,7 @@ const AIService = (function() {
       conversation = AIStore.state.conversations.find(c => c.id === targetConversationId.id) || targetConversationId;
     }
     if (!conversation || !Array.isArray(conversation.messages)) return false;
+    const previousState = AIStore.createSaveSnapshot();
     let removed = false;
     for (let i = conversation.messages.length - 1; i >= 0; i--) {
       const messageId = conversation.messages[i] && conversation.messages[i].id;
@@ -233,7 +234,7 @@ const AIService = (function() {
     }
     if (removed) {
       conversation.updatedAt = Date.now();
-      AIStore.saveConversations();
+      AIStore.saveConversations(previousState);
       const current = AIStore.getCurrentConversation && AIStore.getCurrentConversation();
       if (current && current.id === conversation.id) {
         AIRenderer.renderMessages();
