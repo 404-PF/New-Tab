@@ -140,14 +140,6 @@ const OpenRouterAPI = (function() {
   }
 
   /**
-   * Send streaming chat completion request
-   * @param {string} userMessage - User's message
-   * @param {Array} conversationHistory - Previous messages
-   * @param {Function} onChunk - Callback for each chunk received
-   * @param {AbortSignal} signal - Optional abort signal for cancellation
-   * @returns {Promise<Object>} Final result object
-   */
-  /**
    * Create a request signal that combines the caller's cancellation signal
    * with an internal controller used for the request timeout.
    * @param {AbortSignal|null} callerSignal - Optional caller-provided signal
@@ -305,7 +297,7 @@ const OpenRouterAPI = (function() {
             buffer += chunk;
 
             // Parse SSE format - handle multiple events in buffer
-            const lines = buffer.split('\\n');
+            const lines = buffer.split('\n');
 
             // Keep the last potentially incomplete line in buffer
             buffer = lines.pop() || '';
