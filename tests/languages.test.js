@@ -45,12 +45,13 @@ const ROTATION_UPLOADS_EXPECTED = {
   ru: 'Ваши загрузки'
 };
 
-const AI_EXPORT_TRANSLATION_KEYS = [
+const AI_TRANSLATION_KEYS = [
   'aiExportConversation',
   'aiExportAll',
   'aiExportSuccess',
   'aiExportAllSuccess',
-  'aiExportError'
+  'aiExportError',
+  'aiSaveError'
 ];
 
 // Derived from the source's window.i18n.gamesTranslationKeys in beforeAll so
@@ -135,18 +136,18 @@ describe('Rotation uploads translations', () => {
   });
 });
 
-describe('AI export translations', () => {
+describe('AI translations', () => {
   // Inspect getTranslations() directly rather than t(): t() silently falls
   // back to English when a locale lacks the key, which would hide a stale
   // non-English entry behind a passing assertion.
-  it('defines every export string in each supported language', () => {
+  it('defines every AI string in each supported language', () => {
     const languages = window.i18n.getSupportedLanguages();
     const english = window.i18n.getTranslations('en');
 
     languages.forEach(({ code }) => {
       const localeTranslations = window.i18n.getTranslations(code);
 
-      AI_EXPORT_TRANSLATION_KEYS.forEach((key) => {
+      AI_TRANSLATION_KEYS.forEach((key) => {
         expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
         expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
         expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
