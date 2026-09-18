@@ -602,6 +602,19 @@
     return /^https?:\/\//i.test(String(url || '').trim());
   }
 
+  const SAFE_CUSTOM_APP_SCHEMES = new Set([
+    'tel',
+    'sms',
+    'mailto',
+    'sip',
+    'callto',
+    'facetime',
+    'geo',
+    'magnet',
+    'urn',
+    'bitcoin'
+  ]);
+
   function isCustomScheme(url) {
     const trimmed = String(url || '').trim();
     if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return true;
@@ -611,9 +624,87 @@
     const before = trimmed.slice(0, colonIdx);
     const after = trimmed.slice(colonIdx + 1);
     const lowerBefore = before.toLowerCase();
-    const isKnownNumericScheme = ['tel', 'sms', 'mailto', 'sip', 'callto', 'facetime', 'geo', 'magnet', 'urn', 'bitcoin'].includes(lowerBefore);
-    const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before) || (/^[a-zA-Z0-9-]+$/.test(before) && !isKnownNumericScheme)) && /^\d+(\/|$|\?|#)/.test(after);
+    const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before) || (/^[a-zA-Z0-9-]+$/.test(before) && !SAFE_CUSTOM_APP_SCHEMES.has(lowerBefore))) && /^\d+(\/|$|\?|#)/.test(after);
     return !looksLikeHostPort;
+  }
+
+  function isSafeCustomAppScheme(url) {
+    const trimmed = String(url || '').trim();
+    const colonIdx = trimmed.indexOf(':');
+    return colonIdx > 0 && SAFE_CUSTOM_APP_SCHEMES.has(trimmed.slice(0, colonIdx).toLowerCase());
+  }
+
+  function looksLikeLegacyHostPort(url) {
+    const trimmed = String(url || '').trim();
+    const colonIdx = trimmed.indexOf(':');
+    if (colonIdx <= 0) return false;
+
+    const hostPart = trimmed.slice(0, colonIdx);
+    const rest = trimmed.slice(colonIdx + 1);
+    const lowerHost = hostPart.toLowerCase();
+    return /^\d+(\/|$|\?|#)/.test(rest) && (
+      hostPart.includes('.') ||
+      /^localhost$/i.test(hostPart) ||
+      /^(\d{1,3}\.){3}\d{1,3}$/.test(hostPart) ||
+      (/^[a-zA-Z0-9-]+$/.test(hostPart) && !SAFE_CUSTOM_APP_SCHEMES.has(lowerHost))
+    );
+  }
+
+  function needsSchemeMigration(url) {
+    if (typeof url !== 'string') return false;
+    const trimmed = url.trim();
+    if (!trimmed || trimmed === '#' || trimmed.startsWith('/') || trimmed.startsWith('\\')) return false;
+    if (hasHttpScheme(trimmed)) return false;
+    if (looksLikeLegacyHostPort(trimmed)) return true;
+    if (isCustomScheme(trimmed)) return false;
+
+    try {
+      const parsed = new URL('https://' + trimmed);
+      if (!parsed.hostname) return false;
+      if (parsed.hostname.includes(' ') || parsed.hostname.includes('/')) return false;
+      if (
+        !parsed.hostname.includes('.') &&
+        !/^(\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname) &&
+        !/^localhost$/i.test(parsed.hostname) &&
+        !/^[a-zA-Z0-9-]+:\d+/.test(trimmed)
+      ) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function normalizeCustomAppUrl(url) {
+    if (typeof url !== 'string') return null;
+
+    const trimmed = url.trim();
+    if (!trimmed) return null;
+    if (trimmed === '#' || trimmed.startsWith('#')) return trimmed;
+    if (trimmed.startsWith('//') || trimmed.startsWith('\\')) return null;
+    if (trimmed.startsWith('/\\')) return null;
+    if (trimmed.startsWith('/')) return trimmed;
+
+    if (hasHttpScheme(trimmed)) {
+      try {
+        const parsed = new URL(trimmed);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? trimmed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(trimmed);
+    if (schemeMatch && !looksLikeLegacyHostPort(trimmed)) {
+      return isSafeCustomAppScheme(trimmed) ? trimmed : null;
+    }
+
+    return needsSchemeMigration(trimmed) ? 'https://' + trimmed : null;
+  }
+
+  function getSafeCustomAppUrl(url) {
+    return normalizeCustomAppUrl(url) || '#';
   }
 
   // Make utilities available globally
@@ -627,6 +718,9 @@
   window.hasHttpScheme = hasHttpScheme;
   window.hasHttpSchemeSafe = hasHttpSchemeSafe;
   window.isCustomScheme = isCustomScheme;
+  window.isSafeCustomAppScheme = isSafeCustomAppScheme;
+  window.normalizeCustomAppUrl = normalizeCustomAppUrl;
+  window.getSafeCustomAppUrl = getSafeCustomAppUrl;
   window.iconCache = iconCache;
   window.validateIconUrl = validateIconUrl;
   window.escapeHtml = escapeHtml;

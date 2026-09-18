@@ -29,7 +29,11 @@ const getAllAppData = () => {
   return [...defaultApps, ...customApps];
 };
 
-// Render the app grid
+/**
+ * Renders the app grid while validating every app URL at the DOM sink.
+ * Invalid or bypassed app records fail closed to a harmless fragment URL.
+ * @returns {void}
+ */
 function renderAllApps() {
   const appGrid = document.getElementById('app-grid');
   const addApp = document.getElementById('new-app');
@@ -124,12 +128,15 @@ function renderAllApps() {
     const app = appMap[appId];
     if (!app) return;
     const a = document.createElement('a');
-    a.href = app.url;
+    const safeAppUrl = typeof window.getSafeCustomAppUrl === 'function'
+      ? window.getSafeCustomAppUrl(app.url)
+      : '#';
+    a.href = safeAppUrl;
     a.className = 'app-icon ' + app.className;
     a.id = app.id;
     a.draggable = true;
     const openInNewTab = loadOpenNewTabSetting();
-    if (openInNewTab && app.url && app.url !== '#') {
+    if (openInNewTab && safeAppUrl !== '#') {
       a.setAttribute('target', '_blank');
       a.setAttribute('rel', 'noopener noreferrer');
     }
