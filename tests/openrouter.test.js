@@ -61,9 +61,20 @@ function createStreamingResponse(chunks) {
             return { done: true, value: undefined };
           }
           return { done: false, value: encoder.encode(chunks[index++]) };
-        })
+        }),
+        cancel: vi.fn().mockResolvedValue(undefined)
       })
     }
+  };
+}
+
+function createErrorResponse(status) {
+  return {
+    ok: false,
+    status,
+    statusText: 'HTTP ' + status,
+    headers: { get: vi.fn().mockReturnValue(null) },
+    json: vi.fn().mockResolvedValue({ error: { message: 'HTTP ' + status } })
   };
 }
 
@@ -94,7 +105,10 @@ describe('OpenRouter streaming resilience (#714)', () => {
       await Promise.resolve();
       expect(globalThis.fetch).toHaveBeenCalledTimes(2);
 
-      await vi.advanceTimersByTimeAsync(200);
+      await vi.advanceTimersByTimeAsync(199);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+
+      await vi.advanceTimersByTimeAsync(1);
       const result = await promise;
 
       expect(globalThis.fetch).toHaveBeenCalledTimes(3);
@@ -103,6 +117,194 @@ describe('OpenRouter streaming resilience (#714)', () => {
       OpenRouterAPI.config.maxRetries = originalMaxRetries;
       OpenRouterAPI.config.retryDelay = originalRetryDelay;
       vi.useRealTimers();
+    }
+  });
+
+  it('retries rate-limit and server-error responses', async () => {
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalRetryDelay = OpenRouterAPI.config.retryDelay;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 2;
+      OpenRouterAPI.config.retryDelay = 0;
+      globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce(createErrorResponse(429))
+        .mockResolvedValueOnce(createErrorResponse(500))
+        .mockResolvedValueOnce(createStreamingResponse([
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n'
+        ]));
+
+      const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(3);
+      expect(result).toMatchObject({ success: true, content: 'Recovered' });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.retryDelay = originalRetryDelay;
+    }
+  });
+
+  it('does not retry when an active stream times out after partial content', async () => {
+    vi.useFakeTimers();
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalTimeout = OpenRouterAPI.config.requestTimeout;
+    const encoder = new TextEncoder();
+
+    try {
+      OpenRouterAPI.config.maxRetries = 1;
+      OpenRouterAPI.config.requestTimeout = 100;
+
+      globalThis.fetch = vi.fn((_url, options) => {
+        let readCount = 0;
+        return Promise.resolve({
+          ok: true,
+          body: {
+            getReader: () => ({
+              read: vi.fn(() => {
+                if (readCount++ === 0) {
+                  return Promise.resolve({
+                    done: false,
+                    value: encoder.encode('data: {"choices":[{"delta":{"content":"Partial"}}]}\n')
+                  });
+                }
+
+                return new Promise((_resolve, reject) => {
+                  options.signal.addEventListener('abort', () => {
+                    reject(new Error('aborted'));
+                  }, { once: true });
+                });
+              })
+            })
+          }
+        });
+      });
+
+      const chunks = [];
+      const promise = OpenRouterAPI.sendMessageStreaming('hello', [], chunk => chunks.push(chunk));
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(100);
+
+      const result = await promise;
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(chunks).toEqual(['Partial']);
+      expect(result).toMatchObject({ success: false, error: 'Network error occurred' });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.requestTimeout = originalTimeout;
+      vi.useRealTimers();
+    }
+  });
+
+  it('cancels during retry backoff without starting another fetch', async () => {
+    vi.useFakeTimers();
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalRetryDelay = OpenRouterAPI.config.retryDelay;
+    const controller = new AbortController();
+
+    try {
+      OpenRouterAPI.config.maxRetries = 2;
+      OpenRouterAPI.config.retryDelay = 1000;
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('network failure'));
+
+      const promise = OpenRouterAPI.sendMessageStreaming('hello', [], undefined, controller.signal);
+      await Promise.resolve();
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+
+      controller.abort();
+      const result = await promise;
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({
+        success: false,
+        error: 'Request cancelled',
+        aborted: true
+      });
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.retryDelay = originalRetryDelay;
+      vi.useRealTimers();
+    }
+  });
+
+  it('times out an active stream read after fetch succeeds', async () => {
+    vi.useFakeTimers();
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalTimeout = OpenRouterAPI.config.requestTimeout;
+    let readStarted = false;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 0;
+      OpenRouterAPI.config.requestTimeout = 100;
+
+      globalThis.fetch = vi.fn((_url, options) => Promise.resolve({
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: vi.fn(() => {
+              readStarted = true;
+              return new Promise((_resolve, reject) => {
+                options.signal.addEventListener('abort', () => {
+                  reject(new Error('aborted'));
+                }, { once: true });
+              });
+            })
+          })
+        }
+      }));
+
+      const promise = OpenRouterAPI.sendMessageStreaming('hello');
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(readStarted).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(100);
+      const result = await promise;
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(globalThis.fetch.mock.calls[0][1].signal.aborted).toBe(true);
+      expect(result).toMatchObject({ success: false, error: 'Network error occurred' });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.requestTimeout = originalTimeout;
+      vi.useRealTimers();
+    }
+  });
+
+  it('cancels and fails when an SSE line exceeds the maximum size', async () => {
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 0;
+
+      const cancel = vi.fn().mockResolvedValue(undefined);
+      const chunk = 'x'.repeat(1024 * 1024 + 1);
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: vi.fn().mockResolvedValue({
+              done: false,
+              value: new TextEncoder().encode(chunk)
+            }),
+            cancel
+          })
+        }
+      });
+
+      const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({
+        success: false,
+        error: 'OpenRouter SSE line exceeds maximum size'
+      });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
     }
   });
 
