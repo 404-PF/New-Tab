@@ -19,11 +19,19 @@
   const nativeSetItem = storage.setItem.bind(storage);
   const lastLocalValues = new Map();
 
-  /** Clone a merge value without sharing mutable object references. */
+  /** Clone a JSON-compatible merge value without sharing mutable references. */
   function clone(value) {
-    if (value === missing || value === undefined) return value;
+    if (value === missing || value === undefined || value === null || typeof value !== 'object') {
+      return value;
+    }
     if (typeof structuredClone === 'function') return structuredClone(value);
-    return JSON.parse(JSON.stringify(value));
+    if (Array.isArray(value)) return value.map(clone);
+
+    const copy = {};
+    Object.keys(value).forEach(key => {
+      copy[key] = clone(value[key]);
+    });
+    return copy;
   }
 
   /** Return whether a value is a plain object suitable for recursive merging. */
