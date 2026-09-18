@@ -12,7 +12,8 @@ const OpenRouterAPI = (function() {
     model: 'openrouter/free',
     maxTokens: 4096,
     maxRetries: 2,
-    retryDelay: 1000
+    retryDelay: 1000,
+    requestTimeout: 15000
   };
 
   /**
@@ -140,6 +141,89 @@ const OpenRouterAPI = (function() {
   }
 
   /**
+   * Create a request signal that combines the caller's cancellation signal
+   * with an internal controller used for the request timeout.
+   * @param {AbortSignal|null} callerSignal - Optional caller-provided signal
+   * @returns {{controller: AbortController, signal: AbortSignal, cleanup: Function}}
+   */
+  function createRequestSignal(callerSignal) {
+    const controller = new AbortController();
+    let cleanup = () => {};
+
+    if (!callerSignal) {
+      return { controller, signal: controller.signal, cleanup };
+    }
+
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.any === 'function') {
+      return {
+        controller,
+        signal: AbortSignal.any([controller.signal, callerSignal]),
+        cleanup
+      };
+    }
+
+    if (callerSignal.aborted) {
+      controller.abort(callerSignal.reason);
+      return { controller, signal: controller.signal, cleanup };
+    }
+
+    const handleCallerAbort = () => controller.abort(callerSignal.reason);
+    callerSignal.addEventListener('abort', handleCallerAbort, { once: true });
+    cleanup = () => callerSignal.removeEventListener('abort', handleCallerAbort);
+
+    return { controller, signal: controller.signal, cleanup };
+  }
+
+  /**
+   * Wait for a retry delay while remaining responsive to caller cancellation.
+   * @param {number} delay - Delay in milliseconds
+   * @param {AbortSignal|null} signal - Optional caller-provided signal
+   * @returns {Promise<boolean>} Whether the retry delay completed normally
+   */
+  function waitForRetryDelay(delay, signal) {
+    if (delay <= 0) {
+      return Promise.resolve(!signal?.aborted);
+    }
+
+    return new Promise(resolve => {
+      let timerId = null;
+      let settled = false;
+
+      const cleanup = () => {
+        if (timerId !== null) {
+          clearTimeout(timerId);
+        }
+        if (signal) {
+          signal.removeEventListener('abort', handleAbort);
+        }
+      };
+
+      const finish = shouldRetry => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(shouldRetry);
+      };
+
+      const handleAbort = () => finish(false);
+
+      if (signal) {
+        if (signal.aborted) {
+          finish(false);
+          return;
+        }
+        signal.addEventListener('abort', handleAbort, { once: true });
+        if (signal.aborted) {
+          finish(false);
+          return;
+        }
+      }
+
+      timerId = setTimeout(() => finish(true), delay);
+    });
+  }
+
+  /**
    * Send streaming chat completion request
    * @param {string} userMessage - User's message
    * @param {Array} conversationHistory - Previous messages
@@ -156,8 +240,8 @@ const OpenRouterAPI = (function() {
 
     // Build messages array with language-aware system prompt
     const messages = [
-      { 
-        role: 'system', 
+      {
+        role: 'system',
         content: getSystemPrompt()
       }
     ];
@@ -177,126 +261,189 @@ const OpenRouterAPI = (function() {
       stream: true
     };
 
-    try {
-      const fetchOptions = {
-        method: 'POST',
-        headers: buildHeaders(),
-        body: JSON.stringify(requestBody)
-      };
-      
-      // Add abort signal if provided
-      if (signal) {
-        fetchOptions.signal = signal;
-      }
-      
-      const response = await fetch(CONFIG.baseURL, fetchOptions);
-
-      // Handle non-OK responses
-      if (!response.ok) {
-        const errorInfo = await handleError(response);
-        return { success: false, error: errorInfo.message, code: errorInfo.code };
-      }
-
-      // Get the reader for streaming
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = '';
-      let buffer = ''; // Buffer for incomplete SSE data
-
-      // Read the stream
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        // Decode the chunk
-        const chunk = decoder.decode(value, { stream: true });
-        
-        // Append to buffer
-        buffer += chunk;
-        
-        // Parse SSE format - handle multiple events in buffer
-        const lines = buffer.split('\n');
-        
-        // Keep the last potentially incomplete line in buffer
-        buffer = lines.pop() || '';
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-            
-            // Check for [DONE] signal
-            if (data === '[DONE]') {
-              continue;
-            }
-            
-            if (data) {
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content;
-                if (content) {
-                  fullContent += content;
-                  if (onChunk) {
-                    try {
-                      onChunk(content);
-                    } catch (chunkError) {
-                      console.error('Error in streaming callback:', chunkError);
-                    }
-                  }
-                }
-              } catch {
-                // Skip invalid JSON
-              }
-            }
-          }
-        }
-      }
-
-      // Process any remaining data in buffer
-      if (buffer.startsWith('data: ')) {
-        const data = buffer.slice(6).trim();
-        if (data && data !== '[DONE]') {
-          try {
-            const parsed = JSON.parse(data);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              fullContent += content;
-              if (onChunk) {
-                try {
-                  onChunk(content);
-                } catch (chunkError) {
-                  console.error('Error in streaming callback:', chunkError);
-                }
-              }
-            }
-          } catch {
-            // Skip invalid JSON
-          }
-        }
-      }
-
-      return {
-        success: true,
-        content: fullContent,
-        usage: null,
-        model: CONFIG.model
-      };
-
-    } catch (e) {
-      // Check if the request was aborted
-      if (e.name === 'AbortError') {
-        return { 
-          success: false, 
+    for (let attempt = 0; attempt <= CONFIG.maxRetries; attempt++) {
+      if (signal?.aborted) {
+        return {
+          success: false,
           error: 'Request cancelled',
           aborted: true
         };
       }
-      return { 
-        success: false, 
-        error: getTranslation('aiNetworkError')
-      };
-    }
-  }
 
+      let fullContent = '';
+      let retryableFailure;
+      let requestState = null;
+      let reader;
+      let timeoutId = null;
+
+      try {
+        requestState = createRequestSignal(signal);
+        timeoutId = setTimeout(() => requestState.controller.abort(), CONFIG.requestTimeout);
+
+        const fetchOptions = {
+          method: 'POST',
+          headers: buildHeaders(),
+          body: JSON.stringify(requestBody),
+          signal: requestState.signal
+        };
+
+        const response = await fetch(CONFIG.baseURL, fetchOptions);
+
+        // Handle non-OK responses. Retry rate limits and server failures because
+        // they are commonly transient; surface other client errors immediately.
+        if (!response.ok) {
+          const errorInfo = await handleError(response);
+          const retryableStatus = response.status === 429 || response.status >= 500;
+
+          if (retryableStatus && attempt < CONFIG.maxRetries) {
+            retryableFailure = true;
+          } else {
+            return { success: false, error: errorInfo.message, code: errorInfo.code };
+          }
+        } else {
+          if (!response.body || typeof response.body.getReader !== 'function') {
+            throw new Error('OpenRouter response body is unavailable');
+          }
+
+          reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          const MAX_SSE_LINE_SIZE = 1024 * 1024;
+          let buffer = ''; // Buffer for incomplete SSE data
+
+          const processSseLine = (line) => {
+            if (!line.startsWith('data: ')) {
+              return;
+            }
+
+            const data = line.slice(6).trim();
+
+            // Check for [DONE] signal
+            if (data === '[DONE]') {
+              return;
+            }
+
+            if (!data) {
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                fullContent += content;
+                if (onChunk) {
+                  try {
+                    onChunk(content);
+                  } catch (chunkError) {
+                    console.error('Error in streaming callback:', chunkError);
+                  }
+                }
+              }
+            } catch (parseError) {
+              console.debug('Failed to parse OpenRouter SSE data:', parseError);
+            }
+          };
+
+          // Read the stream
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            // Decode the chunk
+            const chunk = decoder.decode(value, { stream: true });
+
+            if (buffer.length + chunk.length > MAX_SSE_LINE_SIZE) {
+              await reader.cancel().catch(() => {});
+              return {
+                success: false,
+                error: 'OpenRouter SSE line exceeds maximum size'
+              };
+            }
+
+            // Append to buffer
+            buffer += chunk;
+
+            // Parse SSE format - handle multiple events in buffer
+            const lines = buffer.split('\n');
+
+            // Keep the last potentially incomplete line in buffer
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              processSseLine(line);
+            }
+          }
+
+          // Process any remaining data in buffer
+          if (buffer) {
+            processSseLine(buffer);
+          }
+
+          return {
+            success: true,
+            content: fullContent,
+            usage: null,
+            model: CONFIG.model
+          };
+        }
+      } catch (e) {
+        // A caller-triggered abort should never be retried.
+        if (signal?.aborted) {
+          return {
+            success: false,
+            error: 'Request cancelled',
+            aborted: true
+          };
+        }
+
+        // Internal timeout and other transport errors are retryable when no
+        // content has been delivered yet. Retrying a partially streamed answer
+        // would duplicate content in the caller, so surface that failure.
+        if (!fullContent) {
+          if (attempt < CONFIG.maxRetries) {
+            retryableFailure = true;
+          } else {
+            console.error('OpenRouter streaming request failed:', e);
+            return {
+              success: false,
+              error: getTranslation('aiNetworkError')
+            };
+          }
+        } else {
+          console.error('OpenRouter streaming request failed after partial response:', e);
+          return {
+            success: false,
+            error: getTranslation('aiNetworkError')
+          };
+        }
+      } finally {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+        if (requestState) {
+          requestState.cleanup();
+        }
+      }
+
+      if (retryableFailure) {
+        const delay = CONFIG.retryDelay * 2 ** attempt;
+        const shouldRetry = await waitForRetryDelay(delay, signal);
+
+        if (!shouldRetry && signal?.aborted) {
+          return {
+            success: false,
+            error: 'Request cancelled',
+            aborted: true
+          };
+        }
+      }
+    }
+
+    return {
+      success: false,
+      error: getTranslation('aiNetworkError')
+    };
+  }
   /**
    * Quick search (single message, no history)
    * @param {string} query - Search query
