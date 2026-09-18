@@ -19,18 +19,21 @@
   const nativeSetItem = storage.setItem.bind(storage);
   const lastLocalValues = new Map();
 
+  /** Clone a merge value without sharing mutable object references. */
   function clone(value) {
     if (value === missing) return missing;
     if (value === undefined) return undefined;
     return JSON.parse(JSON.stringify(value));
   }
 
+  /** Return whether a value is a plain object suitable for recursive merging. */
   function isPlainObject(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const prototype = Object.getPrototypeOf(value);
     return prototype === Object.prototype || prototype === null;
   }
 
+  /** Compare two JSON-compatible values for structural equality. */
   function deepEqual(left, right) {
     if (left === right) return true;
     if (left === missing || right === missing) return false;
@@ -51,6 +54,7 @@
     return false;
   }
 
+  /** Parse persisted JSON, returning the missing sentinel for invalid input. */
   function parseJson(raw) {
     if (typeof raw !== 'string') return missing;
     try {
@@ -60,12 +64,14 @@
     }
   }
 
+  /** Read a non-empty string identifier from an object when one exists. */
   function getId(value) {
     return value && typeof value === 'object' && typeof value.id === 'string' && value.id
       ? value.id
       : null;
   }
 
+  /** Build a stable fallback identity for legacy objects without IDs. */
   function getDeterministicIdentity(value) {
     if (!isPlainObject(value)) return null;
 
@@ -87,6 +93,7 @@
     }
   }
 
+  /** Index array entries by stable IDs or deterministic legacy identities. */
   function createArrayMap(values, baseKeys = null) {
     const map = new Map();
     const order = [];
@@ -110,6 +117,7 @@
     return { map, order };
   }
 
+  /** Three-way merge object properties while preserving independent edits. */
   function mergeObject(base, current, candidate) {
     const merged = {};
     const keys = new Set([
@@ -159,6 +167,7 @@
     return merged;
   }
 
+  /** Three-way merge arrays of identified or deterministically identifiable objects. */
   function mergeIdentifiedArray(base, current, candidate) {
     const baseArray = createArrayMap(base);
     if (!baseArray) return clone(candidate);
@@ -224,6 +233,7 @@
     return orderedKeys.map(key => result.get(key));
   }
 
+  /** Recursively merge JSON values with local conflict precedence. */
   function mergeJsonValue(base, current, candidate) {
     if (deepEqual(candidate, base)) return clone(current);
     if (deepEqual(current, base)) return clone(candidate);
@@ -241,6 +251,7 @@
     return clone(candidate);
   }
 
+  /** Merge serialized storage snapshots, falling back safely on invalid data. */
   function mergeStoredValue(baseRaw, currentRaw, candidateRaw) {
     if (baseRaw === null || baseRaw === missing) return candidateRaw;
 
@@ -264,6 +275,7 @@
     }
   }
 
+  /** Wrap Storage#getItem and capture the first local base for target keys. */
   function wrappedGetItem(key) {
     const value = nativeGetItem(key);
     if (TARGET_KEYS.has(key) && !lastLocalValues.has(key)) {
@@ -272,6 +284,7 @@
     return value;
   }
 
+  /** Wrap Storage#setItem and reconcile stale writes against current storage. */
   function wrappedSetItem(key, value) {
     if (!TARGET_KEYS.has(key)) {
       return nativeSetItem(key, value);
@@ -280,15 +293,14 @@
     const candidateRaw = String(value);
     const currentRaw = nativeGetItem(key);
     const baseRaw = lastLocalValues.has(key) ? lastLocalValues.get(key) : currentRaw;
-    const concurrentChange = baseRaw !== currentRaw;
     const mergedRaw = mergeStoredValue(baseRaw, currentRaw, candidateRaw);
     const result = nativeSetItem(key, mergedRaw);
 
-    // The storage bridge can return false when a synchronous write is rejected;
-    // native localStorage returns undefined on success. Keep the stale base when
-    // a concurrent merge failed to persist so a later retry can merge again.
-    if (!concurrentChange && result !== false) { // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-      lastLocalValues.set(key, mergedRaw);
+    // A successful write establishes the caller's snapshot as the new base.
+    // This preserves later external changes while allowing subsequent local
+    // writes from the same in-memory snapshot to reconcile against them.
+    if (result !== false) { // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+      lastLocalValues.set(key, candidateRaw);
     }
   }
 
