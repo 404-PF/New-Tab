@@ -560,6 +560,24 @@
       return persistSetAsync(key, stringValue, hadPreviousValue, previousValue);
     },
 
+    removeItemAsync(key) {
+      const hadPreviousValue = cache.has(key);
+      const previousValue = cache.get(key);
+      cache.delete(key);
+      trackHydrationMutation(key, null);
+
+      if (!getStorageArea()) {
+        const persisted = writeNativeSnapshot(snapshotToObject(), key);
+        if (!persisted && hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        }
+        return Promise.resolve(persisted);
+      }
+
+      return persistRemoveAsync(key, hadPreviousValue, previousValue);
+    },
+
     removeItem(key) {
       cache.delete(key);
       trackHydrationMutation(key, null);
