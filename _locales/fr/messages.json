@@ -3,6 +3,10 @@
     "message": "Activer l’historique de recherche",
     "description": "Label for the search history toggle"
   },
+  "aiSaveError": {
+    "message": "Impossible d’enregistrer les conversations. Votre dernière action n’a pas été enregistrée.",
+    "description": "Error shown when AI conversation changes cannot be persisted"
+  },
   "appGridSaveError": {
     "message": "Impossible d’enregistrer les modifications des applications. Votre dernière action n’a pas été enregistrée.",
     "description": "Error shown when app grid changes cannot be persisted"
