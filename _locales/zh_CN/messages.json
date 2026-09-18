@@ -3,6 +3,10 @@
     "message": "启用搜索历史记录",
     "description": "Label for the search history toggle"
   },
+  "aiSaveError": {
+    "message": "无法保存对话。您上次的操作未被保存。",
+    "description": "Error shown when AI conversation changes cannot be persisted"
+  },
   "appGridSaveError": {
     "message": "无法保存应用更改。您上次的操作未被保存。",
     "description": "Error shown when app grid changes cannot be persisted"
