@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  injectScript('src/core/utils.js');
   injectScript('src/core/app-grid-storage.js');
   window.escapeHtml = value => String(value).replace(/</g, '&lt;');
   window.validateIconUrl = value => value;
