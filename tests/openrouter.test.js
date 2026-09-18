@@ -40,3 +40,178 @@ describe('OpenRouterAPI', () => {
     }
   });
 });
+
+function createStreamingResponse(chunks) {
+  const encoder = new TextEncoder();
+  let index = 0;
+
+  return {
+    ok: true,
+    body: {
+      getReader: () => ({
+        read: vi.fn(async () => {
+          if (index >= chunks.length) {
+            return { done: true, value: undefined };
+          }
+          return { done: false, value: encoder.encode(chunks[index++]) };
+        })
+      })
+    }
+  };
+}
+
+describe('OpenRouter streaming resilience (#714)', () => {
+  it('retries transient fetch failures using maxRetries and retryDelay backoff', async () => {
+    vi.useFakeTimers();
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalRetryDelay = OpenRouterAPI.config.retryDelay;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 2;
+      OpenRouterAPI.config.retryDelay = 100;
+      globalThis.fetch = vi.fn()
+        .mockRejectedValueOnce(new Error('network failure'))
+        .mockRejectedValueOnce(new Error('network failure'))
+        .mockResolvedValueOnce(createStreamingResponse([
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\\n'
+        ]));
+
+      const promise = OpenRouterAPI.sendMessageStreaming('hello');
+      await Promise.resolve();
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(99);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(1);
+      await Promise.resolve();
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+
+      await vi.advanceTimersByTimeAsync(200);
+      const result = await promise;
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(3);
+      expect(result).toMatchObject({ success: true, content: 'Recovered' });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.retryDelay = originalRetryDelay;
+      vi.useRealTimers();
+    }
+  });
+
+  it('aborts a hung request when the internal timeout expires', async () => {
+    vi.useFakeTimers();
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalTimeout = OpenRouterAPI.config.requestTimeout;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 0;
+      OpenRouterAPI.config.requestTimeout = 100;
+
+      globalThis.fetch = vi.fn((_url, options) => new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => {
+          reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+        }, { once: true });
+      }));
+
+      const promise = OpenRouterAPI.sendMessageStreaming('hello');
+      await vi.advanceTimersByTimeAsync(100);
+      const result = await promise;
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(globalThis.fetch.mock.calls[0][1].signal.aborted).toBe(true);
+      expect(result).toMatchObject({ success: false });
+      expect(result.aborted).not.toBe(true);
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.requestTimeout = originalTimeout;
+      vi.useRealTimers();
+    }
+  });
+
+  it('returns a network error instead of calling getReader on a null body', async () => {
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 0;
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, body: null });
+
+      const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+      expect(result).toMatchObject({
+        success: false,
+        error: 'Network error occurred'
+      });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+    }
+  });
+
+  it('retries a stream reader failure before any content is delivered', async () => {
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalRetryDelay = OpenRouterAPI.config.retryDelay;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 1;
+      OpenRouterAPI.config.retryDelay = 0;
+
+      globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          body: {
+            getReader: () => ({
+              read: vi.fn().mockRejectedValue(new Error('stream dropped'))
+            })
+          }
+        })
+        .mockResolvedValueOnce(createStreamingResponse([
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\\n'
+        ]));
+
+      const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+      expect(result).toMatchObject({ success: true, content: 'Recovered' });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.retryDelay = originalRetryDelay;
+    }
+  });
+
+  it('merges caller cancellation with the internal request signal', async () => {
+    const controller = new AbortController();
+    globalThis.fetch = vi.fn((_url, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => {
+        reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+      }, { once: true });
+    }));
+
+    const promise = OpenRouterAPI.sendMessageStreaming('hello', [], undefined, controller.signal);
+    controller.abort();
+    const result = await promise;
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ success: false, aborted: true, error: 'Request cancelled' });
+  });
+
+  it('logs malformed SSE JSON and continues parsing subsequent chunks', async () => {
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: {not valid json}\\n',
+      'data: {"choices":[{"delta":{"content":"Valid"}}]}\\n'
+    ]));
+
+    try {
+      const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+      expect(result).toMatchObject({ success: true, content: 'Valid' });
+      expect(debugSpy).toHaveBeenCalledWith(
+        'Failed to parse OpenRouter SSE data:',
+        expect.any(Error)
+      );
+    } finally {
+      debugSpy.mockRestore();
+    }
+  });
+});
+
