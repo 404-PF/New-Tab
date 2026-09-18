@@ -165,7 +165,6 @@ const AIStore = (function() {
       // fails (for example, because the quota is exhausted), restore the first
       // key so the two legacy storage keys remain consistent.
       const persistedConversations = localStorage.getItem(STORAGE_KEYS.conversations);
-      const persistedCurrentId = localStorage.getItem(STORAGE_KEYS.currentId);
       let conversationsWritten = false;
 
       try {
