@@ -120,13 +120,7 @@ const AIStore = (function() {
   }
 
   function cloneSaveSnapshot(snapshot) {
-    return {
-      conversations: snapshot.conversations.map(conversation => ({
-        ...conversation,
-        messages: conversation.messages.map(message => ({ ...message }))
-      })),
-      currentConversationId: snapshot.currentConversationId
-    };
+    return createSaveSnapshot(snapshot.conversations, snapshot.currentConversationId);
   }
 
   function createSaveSnapshot(
