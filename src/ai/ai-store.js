@@ -73,7 +73,7 @@ const AIStore = (function() {
     const newConversation = createNewConversation();
     state.conversations = [newConversation];
     state.currentConversationId = newConversation.id;
-    saveConversations(previousState);
+    saveConversationsSafely(previousState);
   }
 
   function loadConversations() {
@@ -111,7 +111,7 @@ const AIStore = (function() {
         const newConversation = createNewConversation();
         state.conversations.push(newConversation);
         state.currentConversationId = newConversation.id;
-        saveConversations(previousState);
+        saveConversationsSafely(previousState);
       }
     } catch (error) {
       console.warn('Failed to load conversations:', error);
@@ -384,6 +384,15 @@ const AIStore = (function() {
     return saveTransaction();
   }
 
+  function saveConversationsSafely(previousState = createSaveSnapshot()) {
+    const result = saveConversations(previousState);
+    if (isPromiseLike(result)) {
+      result.catch(error => {
+        console.error('Unexpected conversation save rejection:', error);
+      });
+    }
+  }
+
   function getCurrentConversation() {
     return state.conversations.find(conversation => conversation.id === state.currentConversationId) || state.conversations[0];
   }
@@ -424,7 +433,7 @@ const AIStore = (function() {
       conversation.title = message.content.substring(0, 30) + (message.content.length > 30 ? '...' : '');
     }
 
-    saveConversations(previousState);
+    saveConversationsSafely(previousState);
   }
 
   function createNewChat() {
@@ -432,7 +441,7 @@ const AIStore = (function() {
     const conversation = createNewConversation();
     state.conversations.unshift(conversation);
     state.currentConversationId = conversation.id;
-    saveConversations(previousState);
+    saveConversationsSafely(previousState);
     return conversation;
   }
 
@@ -443,7 +452,7 @@ const AIStore = (function() {
 
     const previousState = createSaveSnapshot();
     state.currentConversationId = conversationId;
-    saveConversations(previousState);
+    saveConversationsSafely(previousState);
     return true;
   }
 
@@ -464,7 +473,7 @@ const AIStore = (function() {
       }
     }
 
-    saveConversations(previousState);
+    saveConversationsSafely(previousState);
     return true;
   }
 
