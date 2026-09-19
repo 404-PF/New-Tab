@@ -468,4 +468,18 @@ describe('OpenRouter web grounding (#707)', () => {
     expect(result).toMatchObject({ success: true, content: 'Ungrounded' });
     expect(body).not.toHaveProperty('plugins');
   });
+
+  it('keeps the requested grounding value in memory when persistence fails', () => {
+    const setItem = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+
+    try {
+      expect(OpenRouterAPI.setWebGroundingEnabled(false)).toBe(false);
+      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(false);
+    } finally {
+      setItem.mockRestore();
+      OpenRouterAPI.setWebGroundingEnabled(true);
+    }
+  });
 });
