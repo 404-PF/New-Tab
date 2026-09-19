@@ -2,6 +2,11 @@
 
 const AIRenderer = (function() {
   const elements = {};
+  const TRANSLATION_FALLBACKS = {
+    aiGroundWithWeb: 'Ground with web',
+    aiGroundWithWebDescription: 'Use live web results for current answers.',
+    aiSources: 'Sources'
+  };
   const topicsListRenderState = {
     listEl: null,
     signature: '',
@@ -19,10 +24,10 @@ const AIRenderer = (function() {
 
   function getTranslation(key) {
     if (window.i18n && window.i18n.t) {
-      return window.i18n.t(key);
+      const translated = window.i18n.t(key);
+      if (translated && translated !== key) return translated;
     }
-    console.warn('i18n not available, using fallback for:', key);
-    return key;
+    return TRANSLATION_FALLBACKS[key] || key;
   }
 
   function cacheElements() {
@@ -52,6 +57,58 @@ const AIRenderer = (function() {
 
   function hasModal() {
     return !!document.getElementById('ai-chat-modal');
+  }
+
+  function createWebGroundingControl() {
+    if (elements.webGroundingControl) return elements.webGroundingControl;
+
+    const inputContainer = elements.input?.parentElement;
+    if (!inputContainer) return null;
+
+    const label = document.createElement('label');
+    label.className = 'ai-grounding-toggle';
+    label.title = getTranslation('aiGroundWithWebDescription');
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = window.OpenRouterAPI?.isWebGroundingEnabled?.() ?? true;
+    checkbox.setAttribute('aria-label', getTranslation('aiGroundWithWeb'));
+
+    const text = document.createElement('span');
+    text.className = 'ai-grounding-toggle-label';
+    text.textContent = getTranslation('aiGroundWithWeb');
+
+    const refreshLabels = () => {
+      const labelText = getTranslation('aiGroundWithWeb');
+      label.title = getTranslation('aiGroundWithWebDescription');
+      checkbox.setAttribute('aria-label', labelText);
+      text.textContent = labelText;
+    };
+
+    checkbox.addEventListener('change', () => {
+      if (window.OpenRouterAPI?.setWebGroundingEnabled) {
+        window.OpenRouterAPI.setWebGroundingEnabled(checkbox.checked);
+      }
+    });
+
+    label.append(checkbox, text);
+    inputContainer.appendChild(label);
+    elements.webGroundingControl = { label, checkbox, text, refreshLabels };
+    return elements.webGroundingControl;
+  }
+
+  function updateWebGroundingControl(isOffline) {
+    const control = createWebGroundingControl();
+    if (!control) return;
+    control.checkbox.checked = window.OpenRouterAPI?.isWebGroundingEnabled?.() ?? true;
+    control.checkbox.disabled = !!isOffline;
+    control.refreshLabels();
+    control.label.classList.toggle('ai-grounding-disabled', !!isOffline);
+  }
+
+  function initWebGroundingControl() {
+    cacheElements();
+    updateWebGroundingControl(AIStore.state.isOfflineMode === true);
   }
 
   function escapeHTML(str) {
@@ -363,6 +420,56 @@ const AIRenderer = (function() {
     }
   }
 
+  function extractSourceLinks(content) {
+    if (!content || !window.MarkdownParser) return [];
+    const parsed = document.createElement('div');
+    parsed.innerHTML = window.MarkdownParser.parse(content);
+    const seen = new Set();
+    const links = [];
+    parsed.querySelectorAll('a[href]').forEach(anchor => {
+      try {
+        const url = new URL(anchor.getAttribute('href'), window.location.href);
+        if (!['http:', 'https:'].includes(url.protocol)) return;
+        const href = url.href;
+        if (seen.has(href)) return;
+        seen.add(href);
+        links.push({ url: href, label: anchor.textContent.trim() || url.hostname });
+      } catch {
+        // Ignore malformed source URLs.
+      }
+    });
+    return links.slice(0, 5);
+  }
+
+  function renderSourcesHTML(message) {
+    if (!message?.grounded || message?.isStreaming) return '';
+    const sources = extractSourceLinks(message.content);
+    if (sources.length === 0) return '';
+    const items = sources.map(source => {
+      const safeUrl = escapeHTML(source.url).replace(/"/g, '&quot;');
+      const safeLabel = escapeHTML(source.label);
+      return '<li><a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + safeLabel + '</a></li>';
+    }).join('');
+    return '<div class="ai-message-sources"><div class="ai-message-sources-title">'
+      + escapeHTML(getTranslation('aiSources')) + '</div><ul>' + items + '</ul></div>';
+  }
+
+  function updateMessageSources(element, message) {
+    if (!element) return;
+    const existingSources = element.querySelector('.ai-message-sources');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = renderSourcesHTML(message);
+    const nextSources = wrapper.firstElementChild;
+    if (existingSources) {
+      if (nextSources) existingSources.replaceWith(nextSources);
+      else existingSources.remove();
+      return;
+    }
+    if (!nextSources) return;
+    const content = element.querySelector('.ai-message-content');
+    const meta = content?.querySelector('.ai-message-meta');
+    if (content) content.insertBefore(nextSources, meta || null);
+  }
   function getMessageHTML(message) {
     const isUser = message.role === 'user';
     const time = message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : '';
@@ -385,6 +492,7 @@ const AIRenderer = (function() {
         </div>
         <div class="ai-message-content">
           <div class="ai-message-text ${isStreaming ? 'ai-message-streaming' : ''}">${renderedContent}</div>
+          ${renderSourcesHTML(message)}
           <div class="ai-message-meta">
             <div class="ai-message-time">${time}</div>
             <button class="ai-message-copy" aria-label="Copy message" tabindex="0">
@@ -486,6 +594,7 @@ const AIRenderer = (function() {
             textEl.classList.remove('ai-message-streaming');
           }
         }
+        updateMessageSources(el, message);
       } else {
         const wrapper = document.createElement('div');
         wrapper.innerHTML = getMessageHTML(message);
@@ -792,6 +901,8 @@ const AIRenderer = (function() {
     cacheElements,
     getElements,
     hasModal,
+    initWebGroundingControl,
+    updateWebGroundingControl,
     renderTopicsList,
     renderMessages,
     initCopyButtons,

@@ -5890,3 +5890,63 @@ body.light-theme .notes-empty-icon svg {
     opacity: 1;
   }
 }
+
+
+/* Web grounding controls and cited source links */
+.ai-grounding-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  color: var(--text-color, inherit);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 0.9;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.ai-grounding-toggle:hover {
+  background: rgba(99, 102, 241, 0.12);
+  opacity: 1;
+}
+
+.ai-grounding-toggle input {
+  margin: 0;
+  accent-color: #6366f1;
+}
+
+.ai-grounding-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ai-loading-status {
+  margin-left: 8px;
+  font-size: 13px;
+}
+
+.ai-message-sources {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(128, 128, 128, 0.18);
+  font-size: 12px;
+}
+
+.ai-message-sources-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  opacity: 0.78;
+}
+
+.ai-message-sources ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.ai-message-sources a {
+  word-break: break-word;
+}
