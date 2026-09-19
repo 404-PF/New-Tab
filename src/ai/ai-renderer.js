@@ -93,6 +93,10 @@ const AIRenderer = (function() {
 
     label.append(checkbox, text);
     inputContainer.appendChild(label);
+    window.addEventListener('languageChanged', () => {
+      refreshLabels();
+      renderMessages();
+    });
     elements.webGroundingControl = { label, checkbox, text, refreshLabels };
     return elements.webGroundingControl;
   }
