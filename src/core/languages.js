@@ -580,6 +580,13 @@ const translations = {
     pomodoroStatsToggle: 'Focus stats',
     pomodoroStatsToggleAriaLabel: 'Toggle focus statistics panel',
 
+
+    // Web grounding
+    aiGroundWithWeb: "Ground with web",
+    aiGroundWithWebDescription: "Use live web results for current answers.",
+    aiSources: "Sources",
+    aiSearchingWeb: "Searching the web…",
+    aiGroundingFallback: "Web search is unavailable. Answering without live web data.",
     // Games
     ...createGamesTranslations(['Games', 'Enable games', 'Play', 'Continue', 'Saved', 'Back', 'Score', 'High Score', 'Best Moves', 'Moves', 'Time', 'Game Over', 'You Win!', 'Paused', 'Press Space to restart', 'No games available', 'Games are disabled. Enable them in Settings.', 'Snake', 'Classic snake game. Eat food to grow!', 'Arrow keys or WASD to move, Space to pause', '2048', 'Merge tiles to reach 2048!', 'Arrow keys to merge tiles', 'Memory Match', 'Find matching pairs of cards!', 'Flip cards to find matching pairs'])
   },
@@ -1091,6 +1098,13 @@ const translations = {
     pomodoroStatsToggle: '專注統計',
     pomodoroStatsToggleAriaLabel: '切換專注統計面板',
 
+
+    // Web grounding
+    aiGroundWithWeb: "使用网页增强",
+    aiGroundWithWebDescription: "使用实时网页结果回答当前问题。",
+    aiSources: "来源",
+    aiSearchingWeb: "正在搜索网页…",
+    aiGroundingFallback: "网页搜索不可用。将不使用实时网页数据回答。",
     // Games
     ...createGamesTranslations(['游戏', '启用游戏', '开始', '继续', '已保存', '返回', '分数', '最高分', '最少步数', '步数', '时间', '游戏结束', '你赢了！', '已暂停', '按空格键重新开始', '暂无游戏', '游戏已禁用。请在设置中启用。', '贪吃蛇', '经典贪吃蛇。吃食物来成长！', '方向键或 WASD 移动，空格键暂停', '2048', '合并方块达到 2048！', '方向键合并方块', '记忆配对', '找到匹配的卡片对！', '翻牌找到配对'])
   },
@@ -1544,6 +1558,13 @@ const translations = {
     pomodoroStatsToggle: '集中統計',
     pomodoroStatsToggleAriaLabel: '集中統計パネルを切り替える',
 
+
+    // Web grounding
+    aiGroundWithWeb: "ウェブで補強",
+    aiGroundWithWebDescription: "現在の質問への回答にリアルタイムのウェブ結果を使用します。",
+    aiSources: "出典",
+    aiSearchingWeb: "ウェブを検索中…",
+    aiGroundingFallback: "ウェブ検索を利用できません。リアルタイムのウェブデータなしで回答します。",
     // Games
     ...createGamesTranslations(['ゲーム', 'ゲームを有効にする', 'プレイ', 'つづきから', '保存済み', '戻る', 'スコア', 'ハイスコア', 'ベストムーブ', 'ムーブ', '時間', 'ゲームオーバー', '勝利！', '一時停止', 'スペースキーで再スタート', 'ゲームがありません', 'ゲームは無効です。設定で有効にしてください。', 'スネーク', 'クラシックなスネークゲーム。エサを食べて成長しよう！', '矢印キーまたはWASDで移動、スペースで一時停止', '2048', 'ブロックを合体させて2048を目指そう！', '矢印キーでブロックを合体', 'メモリーマッチ', 'ペアを見つけて合わせよう！', 'カードをめくってペアを見つけよう'])
   },
@@ -1997,6 +2018,13 @@ const translations = {
     pomodoroStatsToggle: '집중 통계',
     pomodoroStatsToggleAriaLabel: '집중 통계 패널 전환',
 
+
+    // Web grounding
+    aiGroundWithWeb: "웹으로 보강",
+    aiGroundWithWebDescription: "현재 답변에 실시간 웹 결과를 사용합니다.",
+    aiSources: "출처",
+    aiSearchingWeb: "웹 검색 중…",
+    aiGroundingFallback: "웹 검색을 사용할 수 없습니다. 실시간 웹 데이터 없이 답변합니다.",
     // Games
     ...createGamesTranslations(['게임', '게임 활성화', '플레이', '계속하기', '저장됨', '뒤로', '점수', '최고 점수', '최소 움직임', '움직임', '시간', '게임 오버', '승리!', '일시정지', '스페이스바로 다시 시작', '게임이 없습니다', '게임이 비활성화되어 있습니다. 설정에서 활성화하세요.', '스네이크', '클래식 스네이크. 먹이를 먹고 성장하세요!', '방향키 또는 WASD로 이동, 스페이스바로 일시정지', '2048', '블록을 합쳐 2048을 달성하세요!', '방향키로 블록 합치기', '메모리 매치', '쌍을 찾아 맞추세요!', '카드를 뒤집어 쌍을 찾으세요'])
   },
@@ -2450,6 +2478,13 @@ const translations = {
     pomodoroStatsToggle: 'Estadísticas de enfoque',
     pomodoroStatsToggleAriaLabel: 'Alternar panel de estadísticas de enfoque',
 
+
+    // Web grounding
+    aiGroundWithWeb: "Usar búsqueda web",
+    aiGroundWithWebDescription: "Usa resultados web en tiempo real para las respuestas actuales.",
+    aiSources: "Fuentes",
+    aiSearchingWeb: "Buscando en la web…",
+    aiGroundingFallback: "La búsqueda web no está disponible. Respondiendo sin datos web en tiempo real.",
     // Games
     ...createGamesTranslations(['Juegos', 'Habilitar juegos', 'Jugar', 'Continuar', 'Partida guardada', 'Volver', 'Puntos', 'Récord', 'Mejores movimientos', 'Movimientos', 'Tiempo', 'Fin del juego', '¡Victoria!', 'Pausado', 'Presiona espacio para reiniciar', 'No hay juegos disponibles', 'Los juegos están deshabilitados. Actívalos en la configuración.', 'Serpiente', 'La clásica serpiente. ¡Come para crecer!', 'Flechas o WASD para mover, espacio para pausar', '2048', '¡Fusiona bloques para alcanzar 2048!', 'Flechas para fusionar bloques', 'Memorama', '¡Encuentra los pares de cartas!', 'Voltea cartas para encontrar pares'])
   },
@@ -2903,6 +2938,13 @@ const translations = {
     pomodoroStatsToggle: 'Statistiques de concentration',
     pomodoroStatsToggleAriaLabel: 'Basculer le panneau de statistiques de concentration',
 
+
+    // Web grounding
+    aiGroundWithWeb: "Utiliser le web",
+    aiGroundWithWebDescription: "Utiliser les résultats web en direct pour les réponses actuelles.",
+    aiSources: "Sources",
+    aiSearchingWeb: "Recherche sur le web…",
+    aiGroundingFallback: "La recherche web est indisponible. Réponse sans données web en temps réel.",
     // Games
     ...createGamesTranslations(['Jeux', 'Activer les jeux', 'Jouer', 'Reprendre', 'Sauvegardé', 'Retour', 'Score', 'Meilleur score', 'Meilleur nombre de coups', 'Coups', 'Temps', 'Partie terminée', 'Victoire !', 'Pause', 'Appuyez sur espace pour recommencer', 'Aucun jeu disponible', 'Les jeux sont désactivés. Activez-les dans les paramètres.', 'Serpent', 'Le classique serpent. Mangez pour grandir !', 'Flèches ou ZQSD pour se déplacer, espace pour pause', '2048', 'Fusionnez les blocs pour atteindre 2048 !', 'Flèches pour fusionner les blocs', 'Jeu de mémoire', 'Trouvez les paires de cartes !', 'Retournez les cartes pour trouver les paires'])
   },
@@ -3356,6 +3398,13 @@ const translations = {
     pomodoroStatsToggle: 'Fokus-Statistiken',
     pomodoroStatsToggleAriaLabel: 'Fokus-Statistik-Panel umschalten',
 
+
+    // Web grounding
+    aiGroundWithWeb: "Mit Web anreichern",
+    aiGroundWithWebDescription: "Aktuelle Web-Ergebnisse für aktuelle Antworten verwenden.",
+    aiSources: "Quellen",
+    aiSearchingWeb: "Web wird durchsucht…",
+    aiGroundingFallback: "Die Websuche ist nicht verfügbar. Antwort ohne aktuelle Webdaten.",
     // Games
     ...createGamesTranslations(['Spiele', 'Spiele aktivieren', 'Spielen', 'Fortsetzen', 'Gespeichert', 'Zurück', 'Punkte', 'Rekord', 'Beste Züge', 'Züge', 'Zeit', 'Spiel beendet', 'Gewonnen!', 'Pausiert', 'Leertaste zum Neustarten', 'Keine Spiele verfügbar', 'Spiele sind deaktiviert. Aktiviere sie in den Einstellungen.', 'Schlange', 'Die klassische Schlange. Iss, um zu wachsen!', 'Pfeile oder WASD zum Steuern, Leertaste zum Pausieren', '2048', 'Verschmelze Blöcke, um 2048 zu erreichen!', 'Pfeile zum Verschmelzen der Blöcke', 'Gedächtnis', 'Finde die passenden Paare!', 'Karten umdrehen und Paare finden'])
   },
@@ -3809,6 +3858,13 @@ const translations = {
     pomodoroStatsToggle: 'Estatísticas de foco',
     pomodoroStatsToggleAriaLabel: 'Alternar painel de estatísticas de foco',
 
+
+    // Web grounding
+    aiGroundWithWeb: "Usar a web",
+    aiGroundWithWebDescription: "Usar resultados da web em tempo real para respostas atuais.",
+    aiSources: "Fontes",
+    aiSearchingWeb: "Pesquisando na web…",
+    aiGroundingFallback: "A pesquisa na web está indisponível. Respondendo sem dados da web em tempo real.",
     // Games
     ...createGamesTranslations(['Jogos', 'Ativar jogos', 'Jogar', 'Continuar', 'Guardado', 'Voltar', 'Pontuação', 'Recorde', 'Melhor número de jogadas', 'Jogadas', 'Tempo', 'Fim de jogo', 'Vitória!', 'Pausado', 'Pressione espaço para reiniciar', 'Nenhum jogo disponível', 'Jogos desativados. Ative nas configurações.', 'Cobra', 'A clássica cobrinha. Coma para crescer!', 'Setas ou WASD para mover, espaço para pausar', '2048', 'Junte blocos para chegar a 2048!', 'Setas para juntar blocos', 'Jogo da Memória', 'Encontre os pares de cartas!', 'Vire as cartas para encontrar os pares'])
   },
@@ -4262,6 +4318,13 @@ const translations = {
     pomodoroStatsToggle: 'Статистика фокуса',
     pomodoroStatsToggleAriaLabel: 'Переключить панель статистики фокуса',
 
+
+    // Web grounding
+    aiGroundWithWeb: "Использовать веб-поиск",
+    aiGroundWithWebDescription: "Использовать актуальные результаты веб-поиска для текущих ответов.",
+    aiSources: "Источники",
+    aiSearchingWeb: "Поиск в интернете…",
+    aiGroundingFallback: "Веб-поиск недоступен. Ответ будет дан без актуальных данных из интернета.",
     // Games
     ...createGamesTranslations(['Игры', 'Включить игры', 'Играть', 'Продолжить', 'Сохранено', 'Назад', 'Очки', 'Рекорд', 'Лучшие ходы', 'Ходы', 'Время', 'Игра окончена', 'Победа!', 'Пауза', 'Нажмите пробел для перезапуска', 'Нет доступных игр', 'Игры отключены. Включите их в настройках.', 'Змейка', 'Классическая змейка. Ешьте, чтобы расти!', 'Стрелки или WASD для движения, пробел для паузы', '2048', 'Объединяйте блоки, чтобы достичь 2048!', 'Стрелки для объединения блоков', 'Игра на память', 'Найдите одинаковые пары!', 'Переворачивайте карточки, чтобы найти пары'])
   }
