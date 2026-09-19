@@ -4368,8 +4368,8 @@ const flappyBirdTranslations = {
   },
   zh: {
     gamesFlappyBird: 'Flappy Bird',
-    gamesFlappyBirdDesc: 'Flappy Bird 游戏。引导小鸟穿过水管！',
-    gamesFlappyBirdControls: '按 ↑ / W 或点击/触摸拍翅；空格暂停/继续'
+    gamesFlappyBirdDesc: 'Flappy Bird 遊戲。引導小鳥穿過水管！',
+    gamesFlappyBirdControls: '按 ↑ / W 或點擊/觸摸拍翅；空格暫停/繼續'
   },
   ja: {
     gamesFlappyBird: 'Flappy Bird',
