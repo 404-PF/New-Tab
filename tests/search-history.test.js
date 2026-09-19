@@ -52,6 +52,7 @@ beforeEach(() => {
   localStorage.removeItem('searchHistory');
   localStorage.removeItem('searchHistoryEnabled');
   localStorage.removeItem('searchProvider');
+  localStorage.removeItem('customSearchProviders');
   window.saveActiveProvider(null);
 
   const input = document.querySelector('.search-bar input');
@@ -310,6 +311,134 @@ describe('search history', () => {
       'query-3',
       'query-2'
     ]);
+  });
+
+  it('debounces remote suggestions and merges them after local history', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ['al', ['alpha remote', 'alpha', 'alphabet remote', 'another remote']],
+    });
+
+    window.saveActiveProvider('google');
+    recordSearchHistory('alpha');
+
+    const input = focusSearchInput();
+    input.value = 'al';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(149);
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const suggestions = Array.from(document.querySelectorAll('.search-history-item')).map((item) => item.textContent);
+    expect(suggestions).toEqual(['alpha', 'alpha remote', 'alphabet remote', 'another remote']);
+
+    fetchSpy.mockRestore();
+  });
+
+  it('falls back to local suggestions when the remote endpoint fails', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'));
+
+    window.saveActiveProvider('google');
+    recordSearchHistory('alpha');
+    const input = focusSearchInput();
+    input.value = 'al';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    await vi.advanceTimersByTimeAsync(151);
+    await vi.advanceTimersByTimeAsync(1);
+
+    const suggestions = Array.from(document.querySelectorAll('.search-history-item')).map((item) => item.textContent);
+    expect(suggestions).toEqual(['alpha']);
+
+    fetchSpy.mockRestore();
+  });
+
+  it('navigates suggestions with arrows and Enter', () => {
+    const searchQuerySpy = vi.spyOn(chrome.search, 'query').mockResolvedValue({});
+    window.saveActiveProvider(null);
+
+    recordSearchHistory('alpha');
+    recordSearchHistory('beta');
+
+    const input = focusSearchInput();
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(input.getAttribute('aria-activedescendant')).toBe('search-suggestion-item-0');
+    expect(document.querySelector('#search-suggestion-item-0').getAttribute('aria-selected')).toBe('true');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(input.getAttribute('aria-activedescendant')).toBe('search-suggestion-item-1');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(searchQuerySpy).toHaveBeenCalledWith({
+      text: 'alpha',
+      disposition: 'NEW_TAB'
+    });
+  });
+
+  it('routes bang searches to the requested built-in provider without changing selection', () => {
+    const openSpy = vi.spyOn(window, 'open');
+    window.saveActiveProvider('google');
+
+    runSearch('!w einstein');
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy.mock.calls[0][0]).toContain('wikipedia.org');
+    expect(openSpy.mock.calls[0][0]).toContain(encodeURIComponent('einstein'));
+    expect(window.loadActiveProvider()).toBe('google');
+
+    openSpy.mockRestore();
+  });
+
+  it('supports custom single-letter bang codes', () => {
+    const openSpy = vi.spyOn(window, 'open');
+    const customId = window.addCustomProvider('Kagi', 'https://kagi.com/search?q={query}');
+    window.saveActiveProvider(customId);
+
+    runSearch('!k hello');
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy.mock.calls[0][0]).toContain('kagi.com/search?q=');
+    expect(openSpy.mock.calls[0][0]).toContain(encodeURIComponent('hello'));
+
+    openSpy.mockRestore();
+  });
+
+  it('ignores unknown bangs without throwing or rewriting the query', () => {
+    const openSpy = vi.spyOn(window, 'open');
+    const searchQuerySpy = vi.spyOn(chrome.search, 'query').mockResolvedValue({});
+    window.saveActiveProvider(null);
+
+    runSearch('!unknown hello');
+
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(searchQuerySpy).toHaveBeenCalledWith({
+      text: '!unknown hello',
+      disposition: 'NEW_TAB'
+    });
+  });
+
+  it('cycles providers with Ctrl+K and updates aria-pressed', () => {
+    window.saveActiveProvider('google');
+    const input = focusSearchInput();
+
+    input.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true
+    }));
+
+    expect(window.loadActiveProvider()).toBe('bing');
+    expect(document.querySelector('[data-provider="bing"]').getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector('[data-provider="google"]').getAttribute('aria-pressed')).toBe('false');
   });
 });
 
