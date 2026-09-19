@@ -841,6 +841,16 @@ describe('AIService error path targets correct conversation (#617)', () => {
 
 describe('AIService web grounding fallback (#707)', () => {
   it('falls back to an ungrounded answer when web search fails before streaming', async () => {
+    const conversation = {
+      id: 'conv_grounding',
+      title: 'Grounding',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+
     OpenRouterAPI.sendMessageStreaming = vi.fn()
       .mockResolvedValueOnce({ success: false, error: 'web search unavailable' })
       .mockResolvedValueOnce({ success: true, content: 'Fallback answer' });
