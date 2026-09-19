@@ -4407,6 +4407,88 @@ body.light-theme .games-hub-card-desc {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 24px rgba(78, 205, 196, 0.12);
 }
 
+/* ==================== Flappy Bird ==================== */
+
+.games-flappy-stage {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.games-flappy-canvas {
+  display: block;
+  width: min(360px, 82vw);
+  height: auto;
+  margin: 0 auto;
+  border: 2px solid rgba(78, 205, 196, 0.28);
+  border-radius: 10px;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3), 0 0 28px rgba(78, 205, 196, 0.12);
+  cursor: pointer;
+  outline: none;
+  touch-action: manipulation;
+}
+
+.games-flappy-canvas:focus-visible {
+  box-shadow:
+    0 10px 36px rgba(0, 0, 0, 0.3),
+    0 0 0 2px rgba(78, 205, 196, 0.65),
+    0 0 28px rgba(78, 205, 196, 0.16);
+}
+
+.games-flappy-score {
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.games-flappy-instructions {
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.games-flappy-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px;
+  text-align: center;
+  background: rgba(8, 10, 24, 0.62);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.games-flappy-overlay-text {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--games-text-primary);
+}
+
+.games-flappy-overlay-stats {
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--games-text-primary);
+}
+
+.games-flappy-overlay-sub {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--games-text-secondary);
+}
+
+body.light-theme .games-flappy-canvas {
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+}
+
 /* ==================== 2048 ==================== */
 
 .games-2048-board {

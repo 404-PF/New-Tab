@@ -483,6 +483,18 @@
     "message": "Переворачивайте карточки, чтобы найти пары",
     "description": "Memory match game controls"
   },
+  "gamesFlappyBird": {
+    "message": "Flappy Bird",
+    "description": "Flappy Bird game name"
+  },
+  "gamesFlappyBirdDesc": {
+    "message": "Игра Flappy Bird. Проведите птицу между трубами!",
+    "description": "Flappy Bird game description"
+  },
+  "gamesFlappyBirdControls": {
+    "message": "Нажимайте ↑ / W или касайтесь/кликайте для взмаха; Пробел ставит на паузу/продолжает",
+    "description": "Flappy Bird game controls"
+  },
   "searchProviders": {
     "message": "Поисковые системы",
     "description": "Title for the custom search providers settings card"

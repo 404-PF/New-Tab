@@ -483,6 +483,18 @@
     "message": "翻牌找到配对",
     "description": "Memory match game controls"
   },
+  "gamesFlappyBird": {
+    "message": "Flappy Bird",
+    "description": "Flappy Bird game name"
+  },
+  "gamesFlappyBirdDesc": {
+    "message": "Flappy Bird 遊戲。引導小鳥穿過水管！",
+    "description": "Flappy Bird game description"
+  },
+  "gamesFlappyBirdControls": {
+    "message": "按 ↑ / W 或點擊/觸摸拍翅；空格暫停/繼續",
+    "description": "Flappy Bird game controls"
+  },
   "searchProviders": {
     "message": "搜索引擎",
     "description": "Title for the custom search providers settings card"

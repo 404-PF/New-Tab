@@ -20,6 +20,10 @@ Chrome Web Store 文案：[en-US](CHROME-WEB-STORE.en-US.md) | [zh-CN](CHROME-WE
 - 支持英文和简体中文界面
 - 内置新手引导、更新检查，以及带离线兜底的 AI 聊天
 
+## 🎮 游戏
+
+可选的游戏中心包含 Snake、2048、记忆配对和 Flappy Bird。每款游戏共用相同的弹窗外壳、准备/继续流程、暂停处理、本地最高分以及跨会话保存/恢复功能。
+
 ## 🚀 安装方式
 推荐安装方式：
 1. Chrome 用户：通过 [Chrome 网上应用店](https://chromewebstore.google.com/detail/bgjillpeijfmdopfbmoinfogfhaadina?utm_source=item-share-cb) 安装。

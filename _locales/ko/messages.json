@@ -483,6 +483,18 @@
     "message": "카드를 뒤집어 쌍을 찾으세요",
     "description": "Memory match game controls"
   },
+  "gamesFlappyBird": {
+    "message": "Flappy Bird",
+    "description": "Flappy Bird game name"
+  },
+  "gamesFlappyBirdDesc": {
+    "message": "Flappy Bird 게임. 파이프 사이로 새를 안내하세요!",
+    "description": "Flappy Bird game description"
+  },
+  "gamesFlappyBirdControls": {
+    "message": "↑ / W 또는 탭/클릭으로 비행; Space로 일시정지/재개",
+    "description": "Flappy Bird game controls"
+  },
   "searchProviders": {
     "message": "검색 공급자",
     "description": "Title for the custom search providers settings card"

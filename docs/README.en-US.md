@@ -20,6 +20,10 @@ A personalized new tab extension for Chromium-based browsers. It replaces the de
 - English and Simplified Chinese interface support
 - Built-in onboarding tour, update checks, and AI chat with offline fallback
 
+## 🎮 Games
+
+The optional Games hub includes Snake, 2048, Memory Match, and Flappy Bird. Each game shares the same modal shell, ready/continue flow, pause handling, local high scores, and cross-session save/restore.
+
 ## 🚀 Installation
 Recommended install methods:
 1. Chrome users: install from [Chrome Web Store](https://chromewebstore.google.com/detail/bgjillpeijfmdopfbmoinfogfhaadina?utm_source=item-share-cb).

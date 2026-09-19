@@ -38,7 +38,10 @@ const GAMES_ALL_TRANSLATION_KEYS = GAMES_TRANSLATION_KEYS.concat([
   'gamesLevel',
   'gamesReady',
   'gamesReadyStart',
-  'gamesStart'
+  'gamesStart',
+  'gamesFlappyBird',
+  'gamesFlappyBirdDesc',
+  'gamesFlappyBirdControls'
 ]);
 
 function createNoteTagTranslations(
@@ -4357,6 +4360,75 @@ const gamesReadyTranslations = {
 Object.keys(gamesReadyTranslations).forEach(function (language) {
   Object.assign(translations[language], gamesReadyTranslations[language]);
 });
+const flappyBirdTranslations = {
+  en: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Flappy Bird game. Guide the bird through the pipes!',
+    gamesFlappyBirdControls: 'Press ↑ / W or tap/click to flap; Space pauses/resumes'
+  },
+  zh: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Flappy Bird 遊戲。引導小鳥穿過水管！',
+    gamesFlappyBirdControls: '按 ↑ / W 或點擊/觸摸拍翅；空格暫停/繼續'
+  },
+  ja: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Flappy Bird。鳥を操作してパイプの間を飛び抜けよう！',
+    gamesFlappyBirdControls: '↑ / W またはタップ/クリックで羽ばたき、Space で一時停止/再開'
+  },
+  ko: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Flappy Bird 게임. 파이프 사이로 새를 안내하세요!',
+    gamesFlappyBirdControls: '↑ / W 또는 탭/클릭으로 비행; Space로 일시정지/재개'
+  },
+  es: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Juego Flappy Bird. ¡Guía al pájaro entre las tuberías!',
+    gamesFlappyBirdControls: 'Pulsa ↑ / W o toca/haz clic para aletear; Espacio pausa/reanuda'
+  },
+  fr: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Jeu Flappy Bird. Guidez l\'oiseau entre les tuyaux !',
+    gamesFlappyBirdControls: '↑ / W ou toucher/cliquer pour battre des ailes ; Espace met en pause/reprend'
+  },
+  de: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Flappy-Bird-Spiel. Führe den Vogel durch die Rohre!',
+    gamesFlappyBirdControls: '↑ / W oder Tippen/Klicken zum Flattern; Leertaste pausiert/setzt fort'
+  },
+  pt: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Jogo Flappy Bird. Guie o pássaro entre os canos!',
+    gamesFlappyBirdControls: 'Pressione ↑ / W ou toque/clique para bater as asas; Espaço pausa/retoma'
+  },
+  ru: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Игра Flappy Bird. Проведите птицу между трубами!',
+    gamesFlappyBirdControls: 'Нажимайте ↑ / W или касайтесь/кликайте для взмаха; Пробел ставит на паузу/продолжает'
+  },
+  en_US: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Flappy Bird game. Guide the bird through the pipes!',
+    gamesFlappyBirdControls: 'Press ↑ / W or tap/click to flap; Space pauses/resumes'
+  },
+  pt_BR: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Jogo Flappy Bird. Guie o pássaro entre os canos!',
+    gamesFlappyBirdControls: 'Pressione ↑ / W ou toque/clique para bater as asas; Espaço pausa/retoma'
+  },
+  zh_CN: {
+    gamesFlappyBird: 'Flappy Bird',
+    gamesFlappyBirdDesc: 'Flappy Bird 游戏。引导小鸟穿过水管！',
+    gamesFlappyBirdControls: '按 ↑ / W 或点击/触摸拍翅；空格暂停/继续'
+  }
+};
+
+Object.keys(flappyBirdTranslations).forEach(function (language) {
+  if (translations[language]) {
+    Object.assign(translations[language], flappyBirdTranslations[language]);
+  }
+});
+
 const pomodoroTranslations = {
   en: {
     enablePomodoro: 'Enable Pomodoro focus timer', pomodoroDurations: 'Focus Timer Durations', pomodoroDurationsDesc: 'Configure work and break durations (in minutes)', pomodoroWork: 'Work', pomodoroShortBreak: 'Short Break', pomodoroLongBreak: 'Long Break', pomodoroSessionsBeforeLong: 'Sessions before long break', pomodoroPhaseWork: 'Focus', pomodoroPhaseShortBreak: 'Short Break', pomodoroPhaseLongBreak: 'Long Break', pomodoroSessionLabel: 'Session {number}', pomodoroPause: 'Pause', pomodoroResume: 'Resume', pomodoroSkip: 'Skip', pomodoroReset: 'Reset', pomodoroStartFocus: 'Start Focus', pomodoroStopFocus: 'Stop Focus', pomodoroWorkComplete: 'Focus session complete!', pomodoroWorkCompleteBody: 'Task: {task}', pomodoroWorkCompleteNoTaskBody: 'Time for a break.', pomodoroBreakComplete: 'Break over!', pomodoroBreakCompleteBody: 'Ready to focus again?', enablePomodoroStats: 'Enable focus stats', pomodoroStatsTitle: 'Focus Stats', pomodoroSessionsToday: 'Sessions Today', pomodoroSessionsThisWeek: 'This Week', pomodoroMinutesToday: 'Minutes Today', pomodoroMinutesThisWeek: 'Minutes This Week', pomodoroHeatmapCellTitle: '$1$: $2$ sessions', pomodoroStatsToggle: 'Focus stats', pomodoroStatsToggleAriaLabel: 'Toggle focus statistics panel'
