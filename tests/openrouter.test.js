@@ -452,7 +452,7 @@ describe('OpenRouter web grounding (#707)', () => {
 
   it('omits the web plugin when grounding is disabled', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
-      'data: {"choices":[{"delta":{"content":"Ungrounded"}}]}\\n'
+      'data: {"choices":[{"delta":{"content":"Ungrounded"}}]}\n'
     ]));
 
     const result = await OpenRouterAPI.sendMessageStreaming(
