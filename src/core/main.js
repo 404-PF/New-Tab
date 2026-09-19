@@ -1197,11 +1197,13 @@ function initSearchEngine() {
     }
 
     isSearchInputFocused = false;
+    cancelSearchSuggestionsFetch();
     hideSearchHistorySuggestions();
   });
 
   searchInputElement.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
+      cancelSearchSuggestionsFetch();
       hideSearchHistorySuggestions();
       return;
     }
