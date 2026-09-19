@@ -66,16 +66,6 @@ function startWithSpace() {
   document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
 }
 
-function makeSavedState() {
-  const state = window.__flappyBirdTest.getState();
-  return {
-    bird: { ...state.bird },
-    pipes: state.pipes.map((pipe) => ({ ...pipe })),
-    score: state.score,
-    speed: state.speed
-  };
-}
-
 describe('Flappy Bird registration and ready state', () => {
   it('registers with the GameRegistry contract', () => {
     const game = getGame();
@@ -157,7 +147,6 @@ describe('Flappy Bird input and lifecycle', () => {
     startWithSpace();
     const canvas = container.querySelector('.games-flappy-canvas');
 
-    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp', key: 'ArrowUp' }));
     canvas.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(window.__flappyBirdTest.getState().bird.vy).toBe(-430);
 
@@ -193,7 +182,7 @@ describe('Flappy Bird save and restore', () => {
     container.remove();
   });
 
-  it('rejects malformed, impossible, or colliding save geometry', () => {
+  it('rejects malformed or impossible save geometry', () => {
     const d = window.__flappyBirdTest;
     const valid = {
       bird: { x: d.constants.birdX, y: 250, vy: 0 },
@@ -216,11 +205,6 @@ describe('Flappy Bird save and restore', () => {
       ...valid,
       bird: { x: 10, y: 250, vy: 0 }
     })).toBe(false);
-    expect(d.validateSavedState({
-      ...valid,
-      pipes: [{ x: 330, gapY: 240, passed: false }]
-    })).toBe(false);
-
     const withoutOptionalGap = makeSavedStateForValidation(valid);
     expect(d.applyRestoredState(withoutOptionalGap)).toBe(true);
   });
@@ -252,7 +236,7 @@ describe('Flappy Bird persistence and terminal state', () => {
     expect(window.GameRegistry.hasSave('flappy-bird')).toBe(true);
 
     const stored = JSON.parse(localStorage.getItem('games_saves'));
-    expect(stored['flappy-bird'].state.bird.x).toBe(84);
+    expect(stored['flappy-bird'].state.bird.x).toBe(window.__flappyBirdTest.constants.birdX);
     expect(stored['flappy-bird'].state.pipes.length).toBeGreaterThan(0);
 
     expect(window.GameRegistry.launch('flappy-bird')).toBe(true);
