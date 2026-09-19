@@ -492,7 +492,7 @@
     "description": "Flappy Bird game description"
   },
   "gamesFlappyBirdControls": {
-    "message": "↑ / W またはタップ/クリックで羽ばたき、Space で一時停止/再開",
+    "message": "↑ / W またはタップ/クリックで羽ばたき、スペースで一時停止/再開",
     "description": "Flappy Bird game controls"
   },
   "searchProviders": {
