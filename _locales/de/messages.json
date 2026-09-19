@@ -483,6 +483,18 @@
     "message": "Karten umdrehen und Paare finden",
     "description": "Memory match game controls"
   },
+  "gamesFlappyBird": {
+    "message": "Flappy Bird",
+    "description": "Flappy Bird game name"
+  },
+  "gamesFlappyBirdDesc": {
+    "message": "Flappy-Bird-Spiel. Führe den Vogel durch die Rohre!",
+    "description": "Flappy Bird game description"
+  },
+  "gamesFlappyBirdControls": {
+    "message": "↑ / W oder Tippen/Klicken zum Flattern; Leertaste pausiert/setzt fort",
+    "description": "Flappy Bird game controls"
+  },
   "searchProviders": {
     "message": "Suchanbieter",
     "description": "Title for the custom search providers settings card"

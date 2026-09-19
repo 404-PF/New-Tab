@@ -619,6 +619,18 @@
     "message": "Flip cards to find matching pairs",
     "description": "Memory match game controls"
   },
+  "gamesFlappyBird": {
+    "message": "Flappy Bird",
+    "description": "Flappy Bird game name"
+  },
+  "gamesFlappyBirdDesc": {
+    "message": "Flappy Bird game. Guide the bird through the pipes!",
+    "description": "Flappy Bird game description"
+  },
+  "gamesFlappyBirdControls": {
+    "message": "Press ↑ / W or tap/click to flap; Space pauses/resumes",
+    "description": "Flappy Bird game controls"
+  },
   "searchProviders": {
     "message": "Search providers",
     "description": "Title for the custom search providers settings card"

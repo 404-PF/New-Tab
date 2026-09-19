@@ -483,6 +483,18 @@
     "message": "カードをめくってペアを見つけよう",
     "description": "Memory match game controls"
   },
+  "gamesFlappyBird": {
+    "message": "Flappy Bird",
+    "description": "Flappy Bird game name"
+  },
+  "gamesFlappyBirdDesc": {
+    "message": "Flappy Bird。鳥を操作してパイプの間を飛び抜けよう！",
+    "description": "Flappy Bird game description"
+  },
+  "gamesFlappyBirdControls": {
+    "message": "↑ / W またはタップ/クリックで羽ばたき、Space で一時停止/再開",
+    "description": "Flappy Bird game controls"
+  },
   "searchProviders": {
     "message": "検索プロバイダー",
     "description": "Title for the custom search providers settings card"
