@@ -20,7 +20,7 @@
   const PIPE_MIN_SPACING = PIPE_WIDTH + 44;
   const MAX_PIPES = 8;
   const PIPE_TOP_MARGIN = 76;
-  const PIPE_BOTTOM_MARGIN = 92;
+  const PIPE_BOTTOM_MARGIN = 54;
   const PIPE_MIN_CENTER = PIPE_TOP_MARGIN + MIN_GAP / 2;
   const PIPE_MAX_CENTER = CANVAS_HEIGHT - PIPE_BOTTOM_MARGIN - MIN_GAP / 2;
   const MAX_PIPE_X = CANVAS_WIDTH + PIPE_SPACING * MAX_PIPES;
@@ -397,9 +397,10 @@
       pipes.push(createPipe(CANVAS_WIDTH + 80, score));
       return;
     }
-    const last = pipes[pipes.length - 1];
-    while (last.x < CANVAS_WIDTH + PIPE_SPACING && pipes.length < MAX_PIPES) {
-      pipes.push(createPipe(last.x + PIPE_SPACING, score));
+    let nextX = pipes[pipes.length - 1].x;
+    while (nextX < CANVAS_WIDTH + PIPE_SPACING && pipes.length < MAX_PIPES) {
+      nextX += PIPE_SPACING;
+      pipes.push(createPipe(nextX, score));
     }
   }
 
@@ -557,7 +558,10 @@
   function handleTouchEnd(e) {
     suppressClickUntil = Date.now() + 450;
     if (gameOver) {
-      if (e.changedTouches && e.changedTouches.length > 0) resetAndStart();
+      if (e.changedTouches && e.changedTouches.length > 0) {
+        resetAndStart();
+        suppressClickUntil = Date.now() + 450;
+      }
       return;
     }
     if (!started || paused || !touchActive) {
