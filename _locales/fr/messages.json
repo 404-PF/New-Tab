@@ -492,7 +492,7 @@
     "description": "Flappy Bird game description"
   },
   "gamesFlappyBirdControls": {
-    "message": "↑ / W ou toucher/cliquer pour battre des ailes ; Espace met en pause/reprend",
+    "message": "↑ / W ou toucher/cliquer pour battre des ailes ; espace met en pause/reprend",
     "description": "Flappy Bird game controls"
   },
   "searchProviders": {
