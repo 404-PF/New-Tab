@@ -5900,7 +5900,7 @@ body.light-theme .notes-empty-icon svg {
   margin-left: 8px;
   padding: 6px 8px;
   border-radius: 999px;
-  color: var(--text-color, inherit);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 12px;
   line-height: 1;
   cursor: pointer;
@@ -5919,6 +5919,10 @@ body.light-theme .notes-empty-icon svg {
   accent-color: #6366f1;
 }
 
+body.light-theme .ai-grounding-toggle {
+  color: rgba(17, 24, 39, 0.85);
+}
+
 .ai-grounding-disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -5927,6 +5931,11 @@ body.light-theme .notes-empty-icon svg {
 .ai-loading-status {
   margin-left: 8px;
   font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+body.light-theme .ai-loading-status {
+  color: rgba(31, 41, 55, 0.78);
 }
 
 .ai-message-sources {
@@ -5949,4 +5958,20 @@ body.light-theme .notes-empty-icon svg {
 
 .ai-message-sources a {
   word-break: break-word;
+  color: #93c5fd;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.ai-message-sources a:hover {
+  color: #bfdbfe;
+}
+
+body.light-theme .ai-message-sources a {
+  color: #2563eb;
+}
+
+body.light-theme .ai-message-sources a:hover {
+  color: #1d4ed8;
 }
