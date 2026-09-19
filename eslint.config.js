@@ -188,6 +188,11 @@ const srcGlobals = {
   removeCustomProvider: 'readonly',
   getAllProviders: 'readonly',
   getActiveProviderUrl: 'readonly',
+  resolveSearchQuery: 'readonly',
+  cycleSearchProvider: 'readonly',
+  parseRemoteSearchSuggestions: 'readonly',
+  fetchRemoteSearchSuggestions: 'readonly',
+  scheduleSearchSuggestionsFetch: 'readonly',
   updateProviderSelection: 'readonly',
 };
 
@@ -372,6 +377,11 @@ const testGlobals = {
   removeCustomProvider: 'readonly',
   getAllProviders: 'readonly',
   getActiveProviderUrl: 'readonly',
+  resolveSearchQuery: 'readonly',
+  cycleSearchProvider: 'readonly',
+  parseRemoteSearchSuggestions: 'readonly',
+  fetchRemoteSearchSuggestions: 'readonly',
+  scheduleSearchSuggestionsFetch: 'readonly',
   updateProviderSelection: 'readonly',
 };
 
