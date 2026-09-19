@@ -6,6 +6,7 @@ const OpenRouterAPI = (function() {
   // Configuration
   const GROUNDING_STORAGE_KEY = 'aiGroundWithWeb';
   const GROUNDING_DEFAULT_ENABLED = true;
+  let webGroundingEnabled = null;
 
   const CONFIG = {
     // Cloudflare Worker URL - UPDATE THIS AFTER DEPLOYMENT
@@ -49,13 +50,19 @@ const OpenRouterAPI = (function() {
    * @returns {boolean} Whether web grounding is enabled
    */
   function isWebGroundingEnabled() {
+    if (webGroundingEnabled !== null) {
+      return webGroundingEnabled;
+    }
+
     try {
       const stored = localStorage.getItem(GROUNDING_STORAGE_KEY);
-      return stored === null ? GROUNDING_DEFAULT_ENABLED : stored === 'true';
+      webGroundingEnabled = stored === null ? GROUNDING_DEFAULT_ENABLED : stored === 'true';
     } catch (error) {
       console.warn('Failed to read web grounding preference:', error);
-      return GROUNDING_DEFAULT_ENABLED;
+      webGroundingEnabled = GROUNDING_DEFAULT_ENABLED;
     }
+
+    return webGroundingEnabled;
   }
 
   /**
@@ -64,8 +71,10 @@ const OpenRouterAPI = (function() {
    * @returns {boolean} Whether the setting was persisted
    */
   function setWebGroundingEnabled(enabled) {
+    webGroundingEnabled = enabled === true;
+
     try {
-      localStorage.setItem(GROUNDING_STORAGE_KEY, enabled ? 'true' : 'false');
+      localStorage.setItem(GROUNDING_STORAGE_KEY, webGroundingEnabled ? 'true' : 'false');
       return true;
     } catch (error) {
       console.warn('Failed to save web grounding preference:', error);
