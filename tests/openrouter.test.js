@@ -424,3 +424,62 @@ describe('OpenRouter streaming resilience (#714)', () => {
   });
 });
 
+
+
+describe('OpenRouter web grounding (#707)', () => {
+  it('adds the web plugin with five results when grounding is enabled', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: {"choices":[{"delta":{"content":"Grounded"}}]}\n'
+    ]));
+
+    const result = await OpenRouterAPI.sendMessageStreaming(
+      'What happened today?',
+      [],
+      undefined,
+      null,
+      { grounding: true }
+    );
+
+    const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+
+    expect(result).toMatchObject({ success: true, content: 'Grounded' });
+    expect(body.plugins).toEqual([{
+      id: 'web',
+      max_results: 5,
+      search_prompt: expect.stringContaining('Cite factual claims')
+    }]);
+  });
+
+  it('omits the web plugin when grounding is disabled', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: {"choices":[{"delta":{"content":"Ungrounded"}}]}\n'
+    ]));
+
+    const result = await OpenRouterAPI.sendMessageStreaming(
+      'What happened today?',
+      [],
+      undefined,
+      null,
+      { grounding: false }
+    );
+
+    const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+
+    expect(result).toMatchObject({ success: true, content: 'Ungrounded' });
+    expect(body).not.toHaveProperty('plugins');
+  });
+
+  it('keeps the requested grounding value in memory when persistence fails', () => {
+    const setItem = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+
+    try {
+      expect(OpenRouterAPI.setWebGroundingEnabled(false)).toBe(false);
+      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(false);
+    } finally {
+      setItem.mockRestore();
+      OpenRouterAPI.setWebGroundingEnabled(true);
+    }
+  });
+});
