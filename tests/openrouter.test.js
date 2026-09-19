@@ -449,4 +449,23 @@ describe('OpenRouter web grounding (#707)', () => {
       search_prompt: expect.stringContaining('Cite factual claims')
     }]);
   });
+
+  it('omits the web plugin when grounding is disabled', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: {"choices":[{"delta":{"content":"Ungrounded"}}]}\\n'
+    ]));
+
+    const result = await OpenRouterAPI.sendMessageStreaming(
+      'What happened today?',
+      [],
+      undefined,
+      null,
+      { grounding: false }
+    );
+
+    const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+
+    expect(result).toMatchObject({ success: true, content: 'Ungrounded' });
+    expect(body).not.toHaveProperty('plugins');
+  });
 });
