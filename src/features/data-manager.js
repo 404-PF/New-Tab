@@ -403,15 +403,7 @@
       if (!Array.isArray(v)) return false;
       const builtInIds = window.BUILT_IN_PROVIDERS ? Object.keys(window.BUILT_IN_PROVIDERS) : [];
       const builtInBangCodes = window.SEARCH_BANGS ? Object.keys(window.SEARCH_BANGS) : ['g', 'b', 'd', 'w', 'yt'];
-      const getProviderCode = typeof window.getCustomProviderCode === 'function'
-        ? window.getCustomProviderCode
-        : function (item) {
-          if (typeof item.code === 'string' && /^[a-z0-9]$/i.test(item.code.trim())) {
-            return item.code.trim().toLowerCase();
-          }
-          const match = typeof item.name === 'string' ? item.name.match(/[a-z0-9]/i) : null;
-          return match ? match[0].toLowerCase() : '';
-        };
+      const getProviderCode = window.getCustomProviderCode;
       const seenIds = {};
       const seenBangCodes = {};
       return v.every(function (item) {
@@ -421,9 +413,12 @@
         if (seenIds[item.id]) return false;
         seenIds[item.id] = true;
         if (typeof item.name !== 'string' || !item.name.trim()) return false;
-        const code = getProviderCode(item);
-        if (!code || builtInBangCodes.indexOf(code) !== -1 || seenBangCodes[code]) return false;
-        seenBangCodes[code] = true;
+        if (Object.prototype.hasOwnProperty.call(item, 'code')) {
+          if (typeof getProviderCode !== 'function') return false;
+          const code = getProviderCode(item);
+          if (!code || builtInBangCodes.indexOf(code) !== -1 || seenBangCodes[code]) return false;
+          seenBangCodes[code] = true;
+        }
         if (typeof item.url !== 'string' || !item.url.includes('{query}')) return false;
         try {
           const parsed = new URL(item.url);
