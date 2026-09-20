@@ -648,5 +648,8 @@
   "dueTime": {
     "message": "Fälligkeitszeit",
     "description": "Label for the due time input"
+  },
+  "searchSuggestionsAriaLabel": {
+    "message": "Suchvorschläge"
   }
 }

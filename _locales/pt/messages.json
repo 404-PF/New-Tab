@@ -648,5 +648,8 @@
   "dueTime": {
     "message": "Hora de vencimento",
     "description": "Label for the due time input"
+  },
+  "searchSuggestionsAriaLabel": {
+    "message": "Sugestões de pesquisa"
   }
 }
