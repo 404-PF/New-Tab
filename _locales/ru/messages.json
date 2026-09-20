@@ -648,5 +648,8 @@
   "dueTime": {
     "message": "Время выполнения",
     "description": "Label for the due time input"
+  },
+  "searchSuggestionsAriaLabel": {
+    "message": "Поисковые предложения"
   }
 }

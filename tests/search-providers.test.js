@@ -85,10 +85,13 @@ describe('Search providers - storage', () => {
     expect(loadCustomProviders()).toEqual([]);
   });
 
-  it('loadCustomProviders returns parsed array', () => {
-    const custom = [{ id: 'custom_1', name: 'Test', url: 'https://test.com/search?q={query}' }];
+  it('loadCustomProviders preserves legacy providers without bang codes', () => {
+    const custom = [{ id: 'custom_1', name: 'Google', url: 'https://test.com/search?q={query}' }];
     localStorage.setItem('customSearchProviders', JSON.stringify(custom));
+    localStorage.setItem('searchProvider', 'custom_1');
+
     expect(loadCustomProviders()).toEqual(custom);
+    expect(loadActiveProvider()).toBe('custom_1');
   });
 
   it('loadCustomProviders returns empty array on invalid JSON', () => {
@@ -107,6 +110,25 @@ describe('Search providers - custom providers', () => {
     expect(custom.length).toBe(1);
     expect(custom[0].name).toBe('Test Search');
     expect(custom[0].url).toBe('https://test.com/search?q={query}');
+  });
+
+  it('allocates a custom bang code that does not collide with built-ins', () => {
+    const id = addCustomProvider('Google Search', 'https://google.example/search?q={query}');
+    const provider = loadCustomProviders().find((item) => item.id === id);
+
+    expect(provider).toBeDefined();
+    expect(provider.code).toMatch(/^[a-z0-9]$/);
+    expect(provider.code).not.toBe('g');
+  });
+
+  it('filters duplicate or built-in custom bang codes from persisted providers', () => {
+    localStorage.setItem('customSearchProviders', JSON.stringify([
+      { id: 'custom_1', name: 'Kagi', url: 'https://kagi.example/search?q={query}', code: 'k' },
+      { id: 'custom_2', name: 'Kagi Pro', url: 'https://kagi-pro.example/search?q={query}', code: 'k' },
+      { id: 'custom_3', name: 'Google Search', url: 'https://google.example/search?q={query}', code: 'g' }
+    ]));
+
+    expect(loadCustomProviders().map((provider) => provider.id)).toEqual(['custom_1']);
   });
 
   it('addCustomProvider returns false for missing name', () => {
@@ -238,11 +260,29 @@ describe('Search providers - backup integration', () => {
       data: {
         searchProvider: 'bing',
         customSearchProviders: [
-          { id: 'custom_1', name: 'MyCustom', url: 'https://example.com/?q={query}' }
+          { id: 'custom_1', name: 'Google', url: 'https://example.com/?q={query}' }
         ]
       }
     };
     expect(window.DataManager.validateImportData(payload).valid).toBe(true);
+  });
+
+  it('rejects duplicate or built-in custom bang codes during import', () => {
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      keyCount: 1,
+      data: {
+        customSearchProviders: [
+          { id: 'custom_1', name: 'Kagi', url: 'https://kagi.example/search?q={query}', code: 'k' },
+          { id: 'custom_2', name: 'Kagi Pro', url: 'https://kagi-pro.example/search?q={query}', code: 'k' }
+        ]
+      }
+    };
+    expect(window.DataManager.validateImportData(payload).valid).toBe(false);
+
+    payload.data.customSearchProviders[1].code = 'g';
+    expect(window.DataManager.validateImportData(payload).valid).toBe(false);
   });
 
   it('rejects malformed custom provider settings during import', () => {

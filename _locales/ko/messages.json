@@ -648,5 +648,8 @@
   "dueTime": {
     "message": "마감 시간",
     "description": "Label for the due time input"
+  },
+  "searchSuggestionsAriaLabel": {
+    "message": "검색 제안"
   }
 }

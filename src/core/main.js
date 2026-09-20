@@ -273,9 +273,20 @@ const SEARCH_UNAVAILABLE_MESSAGE = 'Search is unavailable in this browser.';
 const SEARCH_HISTORY_STORAGE_KEY = 'searchHistory';
 const SEARCH_HISTORY_ENABLED_STORAGE_KEY = 'searchHistoryEnabled';
 const SEARCH_HISTORY_LIMIT = 8;
+const SEARCH_SUGGESTION_DEBOUNCE_MS = 150;
+const SEARCH_REMOTE_SUGGESTION_LIMIT = 5;
+const SEARCH_SUGGESTION_LIMIT = 8;
 
 const SEARCH_PROVIDER_STORAGE_KEY = 'searchProvider';
 const CUSTOM_PROVIDERS_STORAGE_KEY = 'customSearchProviders';
+
+const SEARCH_BANGS = Object.freeze({
+  g: 'google',
+  b: 'bing',
+  d: 'duckduckgo',
+  w: 'wikipedia',
+  yt: 'youtube'
+});
 
 const BUILT_IN_PROVIDERS = {
   google: {
@@ -313,6 +324,12 @@ let searchInputElement = null;
 let searchHistoryPanel = null;
 let searchHistoryListEl = null;
 let searchHistoryClearBtn = null;
+let searchSuggestionDebounceTimer = null;
+let searchSuggestionRequestController = null;
+let searchSuggestionRequestSequence = 0;
+let searchSuggestionItems = [];
+let searchSuggestionIndex = -1;
+let searchProviderLiveRegion = null;
 
 function isSearchHistoryEnabled() {
   try {
@@ -441,7 +458,7 @@ function isValidProviderUrl(url) {
   }
 }
 
-function isValidCustomProvider(provider, seenIds) {
+function isValidCustomProvider(provider, seenIds, seenBangCodes) {
   if (!provider || typeof provider !== 'object' ||
     typeof provider.id !== 'string' || !provider.id.trim() ||
     typeof provider.name !== 'string' || !provider.name.trim() ||
@@ -449,9 +466,18 @@ function isValidCustomProvider(provider, seenIds) {
     return false;
   }
   if (RESERVED_PROVIDER_IDS.indexOf(provider.id) !== -1) return false;
+
+  const hasStoredCode = Object.prototype.hasOwnProperty.call(provider, 'code');
+  const code = hasStoredCode ? getCustomProviderCode(provider) : '';
+  if (hasStoredCode && (!code || Object.prototype.hasOwnProperty.call(SEARCH_BANGS, code))) return false;
+
   if (seenIds) {
     if (seenIds[provider.id]) return false;
     seenIds[provider.id] = true;
+  }
+  if (seenBangCodes && hasStoredCode) {
+    if (seenBangCodes[code]) return false;
+    seenBangCodes[code] = true;
   }
   return true;
 }
@@ -463,7 +489,8 @@ function loadCustomProviders() {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     const seenIds = {};
-    return parsed.filter(function (p) { return isValidCustomProvider(p, seenIds); });
+    const seenBangCodes = {};
+    return parsed.filter(function (p) { return isValidCustomProvider(p, seenIds, seenBangCodes); });
   } catch (e) {
     console.warn('Failed to read custom providers:', e);
     return [];
@@ -482,7 +509,30 @@ function addCustomProvider(name, url) {
   if (typeof name !== 'string' || !name.trim() || !isValidProviderUrl(url)) return false;
   const id = 'custom_' + Date.now();
   const providers = loadCustomProviders();
-  providers.push({ id: id, name: name, url: url });
+  const normalizedName = name.trim();
+  const usedCodes = new Set(Object.keys(SEARCH_BANGS));
+  providers.forEach(function (provider) {
+    const code = getCustomProviderCode(provider);
+    if (code) usedCodes.add(code);
+  });
+
+  const codeCandidates = [];
+  const addCodeCandidate = function (candidate) {
+    if (/^[a-z0-9]$/i.test(candidate) && !codeCandidates.includes(candidate)) {
+      codeCandidates.push(candidate.toLowerCase());
+    }
+  };
+  for (const char of normalizedName.toLowerCase()) {
+    addCodeCandidate(char);
+  }
+  for (const char of 'abcdefghijklmnopqrstuvwxyz0123456789') {
+    addCodeCandidate(char);
+  }
+
+  const code = codeCandidates.find(function (candidate) { return !usedCodes.has(candidate); });
+  if (!code) return false;
+
+  providers.push({ id: id, name: normalizedName, url: url, code: code });
   saveCustomProviders(providers);
   renderCustomProviderButtons();
   return id;
@@ -509,11 +559,310 @@ function getAllProviders() {
   return all;
 }
 
-function getActiveProviderUrl(query) {
+function getProviderUrl(providerId, query) {
   const all = getAllProviders();
-  const provider = all[activeProviderId];
+  const provider = all[providerId];
   if (!provider || !isValidProviderUrl(provider.url)) return null;
   return provider.url.replace('{query}', encodeURIComponent(query));
+}
+
+function getActiveProviderUrl(query) {
+  return getProviderUrl(activeProviderId, query);
+}
+
+function getProviderSuggestionEndpoint(providerId, query) {
+  const encodedQuery = encodeURIComponent(query);
+
+  switch (providerId) {
+    case 'google':
+      return 'https://suggestqueries.google.com/complete/search?client=firefox&q=' + encodedQuery;
+    case 'youtube':
+      return 'https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=' + encodedQuery;
+    case 'bing':
+      return 'https://api.bing.com/qsonhs.aspx?q=' + encodedQuery;
+    case 'duckduckgo':
+      return 'https://duckduckgo.com/ac/?q=' + encodedQuery + '&type=list';
+    case 'wikipedia':
+      return 'https://en.wikipedia.org/w/api.php?action=opensearch&search=' + encodedQuery + '&limit=' + SEARCH_REMOTE_SUGGESTION_LIMIT + '&namespace=0&format=json&origin=*';
+    default:
+      return null;
+  }
+}
+
+function normalizeRemoteSuggestion(value, query) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized || normalized.toLowerCase() === query.trim().toLowerCase()) return null;
+  return normalized;
+}
+
+function parseRemoteSearchSuggestions(providerId, payload, query) {
+  const values = [];
+
+  function add(value) {
+    const normalized = normalizeRemoteSuggestion(value, query);
+    if (normalized) values.push(normalized);
+  }
+
+  if ((providerId === 'google' || providerId === 'youtube') && Array.isArray(payload)) {
+    const googleSuggestions = Array.isArray(payload[1]) ? payload[1] : [];
+    googleSuggestions.forEach((item) => {
+      if (Array.isArray(item)) add(item[0]);
+      else add(item);
+    });
+  } else if (providerId === 'bing') {
+    const results = Array.isArray(payload?.AS?.Results) ? payload.AS.Results : [];
+    results.forEach((result) => {
+      const suggests = Array.isArray(result?.Suggests) ? result.Suggests : [];
+      suggests.forEach((item) => add(item?.Txt));
+    });
+  } else if (providerId === 'duckduckgo' && Array.isArray(payload)) {
+    payload.forEach((item) => add(item && item.phrase));
+  } else if (providerId === 'wikipedia' && Array.isArray(payload)) {
+    const wikipediaSuggestions = Array.isArray(payload[1]) ? payload[1] : [];
+    wikipediaSuggestions.forEach(add);
+  }
+
+  return values.slice(0, SEARCH_REMOTE_SUGGESTION_LIMIT);
+}
+
+async function fetchRemoteSearchSuggestions(providerId, query, signal) {
+  const endpoint = getProviderSuggestionEndpoint(providerId, query);
+  if (!endpoint || !query.trim() || navigator.onLine === false) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      credentials: 'omit',
+      signal
+    });
+    if (!response.ok) return [];
+
+    const payload = await response.json();
+    return parseRemoteSearchSuggestions(providerId, payload, query);
+  } catch (error) {
+    if (error && error.name !== 'AbortError') {
+      console.warn('Failed to fetch search suggestions:', error);
+    }
+    return [];
+  }
+}
+
+function getCustomProviderCode(provider) {
+  if (!provider || typeof provider !== 'object') return '';
+  if (typeof provider.code === 'string' && /^[a-z0-9]$/i.test(provider.code.trim())) {
+    return provider.code.trim().toLowerCase();
+  }
+
+  const match = typeof provider.name === 'string' ? provider.name.match(/[a-z0-9]/i) : null;
+  return match ? match[0].toLowerCase() : '';
+}
+
+function resolveSearchQuery(query) {
+  const originalQuery = typeof query === 'string' ? query.trim() : '';
+  if (!originalQuery) {
+    return { query: '', providerId: activeProviderId, hasBang: false };
+  }
+
+  const match = /^!([a-z0-9]{1,10})(?:\s+(.*))?$/i.exec(originalQuery);
+  if (!match) {
+    return { query: originalQuery, providerId: activeProviderId, hasBang: false };
+  }
+
+  const code = match[1].toLowerCase();
+  let providerId = SEARCH_BANGS[code] || null;
+
+  if (!providerId) {
+    const customProvider = loadCustomProviders().find((provider) => getCustomProviderCode(provider) === code);
+    providerId = customProvider ? customProvider.id : null;
+  }
+
+  if (!providerId) {
+    return { query: originalQuery, providerId: activeProviderId, hasBang: false };
+  }
+
+  return {
+    query: (match[2] || '').trim(),
+    providerId,
+    hasBang: true
+  };
+}
+
+function ensureSearchProviderLiveRegion() {
+  if (searchProviderLiveRegion) return searchProviderLiveRegion;
+
+  searchProviderLiveRegion = document.createElement('div');
+  searchProviderLiveRegion.className = 'search-status-live';
+  searchProviderLiveRegion.setAttribute('role', 'status');
+  searchProviderLiveRegion.setAttribute('aria-live', 'polite');
+  searchProviderLiveRegion.setAttribute('aria-atomic', 'true');
+
+  const container = searchBarElement ? (searchBarElement.parentElement || searchBarElement) : document.body;
+  container.appendChild(searchProviderLiveRegion);
+  return searchProviderLiveRegion;
+}
+
+function announceSearchProvider(providerId) {
+  const provider = getAllProviders()[providerId];
+  if (!provider) return;
+
+  const liveRegion = ensureSearchProviderLiveRegion();
+  const t = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t : (key) => key;
+  liveRegion.textContent = t('searchWith') + ' ' + provider.name;
+}
+
+function cycleSearchProvider(step) {
+  const providers = Object.keys(getAllProviders());
+  if (!providers.length) return null;
+
+  let currentIndex = providers.indexOf(activeProviderId);
+  if (currentIndex === -1) currentIndex = 0;
+
+  const direction = step < 0 ? -1 : 1;
+  const nextIndex = (currentIndex + direction + providers.length) % providers.length;
+  const nextProviderId = providers[nextIndex];
+
+  saveActiveProvider(nextProviderId);
+  updateProviderSelection();
+  announceSearchProvider(nextProviderId);
+
+  if (isSearchInputFocused) {
+    scheduleSearchSuggestionsFetch();
+  }
+
+  return nextProviderId;
+}
+
+function resetSearchSuggestionSelection() {
+  searchSuggestionIndex = -1;
+  if (searchInputElement) {
+    searchInputElement.removeAttribute('aria-activedescendant');
+  }
+}
+
+function updateSearchSuggestionSelection(index) {
+  if (!searchHistoryListEl || !searchInputElement) return;
+
+  const items = Array.from(searchHistoryListEl.querySelectorAll('.search-history-item'));
+  items.forEach((item, itemIndex) => {
+    const selected = itemIndex === index;
+    item.classList.toggle('is-selected', selected);
+    item.setAttribute('aria-selected', selected ? 'true' : 'false');
+  });
+
+  searchSuggestionIndex = index;
+
+  if (index >= 0 && items[index]) {
+    const item = items[index];
+    searchInputElement.setAttribute('aria-activedescendant', item.id);
+    if (typeof item.scrollIntoView === 'function') {
+      item.scrollIntoView({ block: 'nearest' });
+    }
+  } else {
+    searchInputElement.removeAttribute('aria-activedescendant');
+  }
+}
+
+function moveSearchSuggestionSelection(direction) {
+  const itemCount = searchSuggestionItems.length;
+  if (!itemCount) return;
+
+  let nextIndex = searchSuggestionIndex + direction;
+  if (nextIndex < 0) nextIndex = itemCount - 1;
+  if (nextIndex >= itemCount) nextIndex = 0;
+
+  updateSearchSuggestionSelection(nextIndex);
+}
+
+function mergeSearchSuggestions(localSuggestions, remoteSuggestions) {
+  const merged = [];
+  const seen = new Set();
+
+  [...localSuggestions, ...remoteSuggestions].forEach((item) => {
+    const normalized = normalizeRemoteSuggestion(item, '');
+    if (!normalized) return;
+
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    merged.push(normalized);
+  });
+
+  return merged.slice(0, SEARCH_SUGGESTION_LIMIT);
+}
+
+function cancelSearchSuggestionsFetch() {
+  if (searchSuggestionDebounceTimer) {
+    clearTimeout(searchSuggestionDebounceTimer);
+    searchSuggestionDebounceTimer = null;
+  }
+
+  if (searchSuggestionRequestController) {
+    searchSuggestionRequestController.abort();
+    searchSuggestionRequestController = null;
+  }
+
+  searchSuggestionRequestSequence += 1;
+}
+
+function scheduleSearchSuggestionsFetch() {
+  if (!searchInputElement || !isSearchInputFocused || !isSearchHistoryEnabled()) {
+    cancelSearchSuggestionsFetch();
+    return;
+  }
+
+  cancelSearchSuggestionsFetch();
+  const rawQuery = searchInputElement.value.trim();
+  const resolved = resolveSearchQuery(rawQuery);
+  const effectiveQuery = resolved.query;
+  const searchHistory = readSearchHistory();
+  const localSuggestions = effectiveQuery
+    ? searchHistory.filter((item) => item.toLowerCase().includes(effectiveQuery.toLowerCase()))
+    : searchHistory;
+
+  renderSearchSuggestions(localSuggestions, resolved.providerId);
+
+  if (!effectiveQuery || navigator.onLine === false || !resolved.providerId) {
+    return;
+  }
+
+  const requestSequence = searchSuggestionRequestSequence;
+  searchSuggestionDebounceTimer = setTimeout(async () => {
+    searchSuggestionDebounceTimer = null;
+    searchSuggestionRequestController = new AbortController();
+
+    const remoteSuggestions = await fetchRemoteSearchSuggestions(
+      resolved.providerId,
+      resolved.query,
+      searchSuggestionRequestController.signal
+    );
+
+    if (requestSequence !== searchSuggestionRequestSequence || !isSearchInputFocused) {
+      return;
+    }
+
+    const latestHistory = readSearchHistory();
+    const latestQuery = searchInputElement.value.trim();
+    const latestResolved = resolveSearchQuery(latestQuery);
+    const latestEffectiveQuery = latestResolved.query;
+    const latestLocalSuggestions = latestEffectiveQuery
+      ? latestHistory.filter((item) => item.toLowerCase().includes(latestEffectiveQuery.toLowerCase()))
+      : latestHistory;
+
+    if (
+      latestResolved.providerId !== resolved.providerId ||
+      latestResolved.query.toLowerCase() !== resolved.query.toLowerCase()
+    ) {
+      scheduleSearchSuggestionsFetch();
+      return;
+    }
+
+    renderSearchSuggestions(mergeSearchSuggestions(latestLocalSuggestions, remoteSuggestions), latestResolved.providerId);
+    searchSuggestionRequestController = null;
+  }, SEARCH_SUGGESTION_DEBOUNCE_MS);
 }
 
 function renderBuiltInProviderIcons() {
@@ -526,6 +875,10 @@ function renderBuiltInProviderIcons() {
 
     button.innerHTML = BUILT_IN_PROVIDERS[providerId].icon;
     button.dataset.providerIcon = providerId;
+    const code = providerId === 'youtube' ? 'yt' : Object.keys(SEARCH_BANGS).find((bang) => SEARCH_BANGS[bang] === providerId);
+    button.dataset.providerCode = code || '';
+    button.setAttribute('aria-keyshortcuts', 'Control+K');
+    button.setAttribute('aria-pressed', activeProviderId === providerId ? 'true' : 'false');
   });
 }
 
@@ -541,9 +894,13 @@ function renderCustomProviderButtons() {
     btn.className = 'search-provider-btn search-provider-custom';
     if (activeProviderId === p.id) btn.classList.add('active');
     btn.dataset.provider = p.id;
-    btn.title = p.name;
+    const providerCode = getCustomProviderCode(p);
+    btn.dataset.providerCode = providerCode;
+    btn.title = p.name + (providerCode ? ' (!' + providerCode + ')' : '');
     const searchWith = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('searchWith') : 'Search with';
-    btn.setAttribute('aria-label', searchWith + ' ' + p.name);
+    btn.setAttribute('aria-label', searchWith + ' ' + p.name + (providerCode ? ' !' + providerCode : ''));
+    btn.setAttribute('aria-keyshortcuts', 'Control+K');
+    btn.setAttribute('aria-pressed', activeProviderId === p.id ? 'true' : 'false');
     btn.textContent = p.name.charAt(0).toUpperCase();
     bar.appendChild(btn);
   });
@@ -554,7 +911,10 @@ function updateProviderSelection() {
   if (!bar) return;
 
   bar.querySelectorAll('.search-provider-btn').forEach(function (btn) {
-    btn.classList.toggle('active', btn.dataset.provider === activeProviderId);
+    const isActive = btn.dataset.provider === activeProviderId;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    btn.setAttribute('aria-keyshortcuts', 'Control+K');
   });
 
   if (activeProviderId && activeProviderId !== 'google') {
@@ -579,6 +939,7 @@ function initProviderBar() {
     if (!btn) return;
     saveActiveProvider(btn.dataset.provider);
     updateProviderSelection();
+    announceSearchProvider(btn.dataset.provider);
   });
 
   bar.addEventListener('focusin', function (event) {
@@ -611,7 +972,7 @@ function ensureSearchHistoryPanel() {
         <span class="search-history-title"></span>
         <button type="button" class="search-history-clear-btn"></button>
       </div>
-      <div class="search-history-list"></div>
+      <div class="search-history-list" id="search-suggestions-list" role="listbox" data-i18n-aria-label="searchSuggestionsAriaLabel"></div>
     `;
 
     searchHistoryListEl = searchHistoryPanel.querySelector('.search-history-list');
@@ -640,40 +1001,58 @@ function hideSearchHistorySuggestions() {
     searchHistoryPanel.hidden = true;
   }
 
+  searchSuggestionItems = [];
+  resetSearchSuggestionSelection();
+
   if (searchInputElement) {
     searchInputElement.setAttribute('aria-expanded', 'false');
   }
 }
 
-function executeSearch(query) {
+function executeSearch(query, providerIdOverride = null) {
   clearSearchValidationFeedback();
-  const validation = validateUrl(query);
+  const resolved = resolveSearchQuery(query);
+  const providerId = providerIdOverride || resolved.providerId;
 
-  if (validation.status === 'valid') {
-    window.location.href = validation.url.href;
+  if (!resolved.query) {
     return;
   }
 
-  if (validation.status === 'malformed') {
-    showSearchValidationFeedback(translateValidationMessage(validation.message));
-    return;
+  if (!resolved.hasBang) {
+    const validation = validateUrl(resolved.query);
+
+    if (validation.status === 'valid') {
+      window.location.href = validation.url.href;
+      return;
+    }
+
+    if (validation.status === 'malformed') {
+      showSearchValidationFeedback(translateValidationMessage(validation.message));
+      return;
+    }
   }
 
-  runDefaultSearch(query);
+  runDefaultSearch(resolved.query, null, providerId);
 }
 
-function selectSearchHistorySuggestion(query) {
+function selectSearchHistorySuggestion(suggestion) {
   if (!searchInputElement) {
     return;
   }
 
-  searchInputElement.value = query;
+  const suggestionText = typeof suggestion === 'string' ? suggestion : (suggestion && suggestion.text);
+  const providerId = typeof suggestion === 'object' && suggestion ? suggestion.providerId : null;
+  if (!suggestionText) {
+    return;
+  }
+
+  searchInputElement.value = suggestionText;
   hideSearchHistorySuggestions();
   searchInputElement.focus();
-  executeSearch(query);
+  executeSearch(suggestionText, providerId);
 }
 
-function renderSearchHistorySuggestions() {
+function renderSearchSuggestions(suggestions, providerId = activeProviderId) {
   if (!searchInputElement) {
     return;
   }
@@ -688,31 +1067,33 @@ function renderSearchHistorySuggestions() {
     return;
   }
 
-  const t = window.i18n ? window.i18n.t : (key) => key;
-  const searchHistory = readSearchHistory();
-  const query = searchInputElement.value.trim().toLowerCase();
-  const suggestions = query
-    ? searchHistory.filter((item) => item.toLowerCase().includes(query))
-    : searchHistory;
-
   if (!isSearchInputFocused || suggestions.length === 0) {
     hideSearchHistorySuggestions();
     return;
   }
 
+  const t = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t : (key) => key;
   const title = panel.querySelector('.search-history-title');
   if (title) {
     title.textContent = t('recentSearches');
   }
 
   searchHistoryClearBtn.textContent = t('clearSearchHistory');
+  searchHistoryListEl.setAttribute('aria-label', t('searchSuggestionsAriaLabel'));
   searchHistoryListEl.innerHTML = '';
+  searchSuggestionItems = suggestions.slice(0, SEARCH_SUGGESTION_LIMIT).map((item) => ({
+    text: typeof item === 'string' ? item : (item && item.text) || '',
+    providerId: typeof item === 'object' && item && item.providerId ? item.providerId : providerId
+  }));
 
-  suggestions.forEach((item) => {
+  searchSuggestionItems.forEach((item, index) => {
     const suggestionBtn = document.createElement('button');
     suggestionBtn.type = 'button';
     suggestionBtn.className = 'search-history-item';
-    suggestionBtn.textContent = item;
+    suggestionBtn.id = 'search-suggestion-item-' + index;
+    suggestionBtn.setAttribute('role', 'option');
+    suggestionBtn.setAttribute('aria-selected', 'false');
+    suggestionBtn.textContent = item.text;
     suggestionBtn.addEventListener('mousedown', (event) => {
       event.preventDefault();
     });
@@ -722,26 +1103,47 @@ function renderSearchHistorySuggestions() {
     searchHistoryListEl.appendChild(suggestionBtn);
   });
 
+  resetSearchSuggestionSelection();
   panel.hidden = false;
   searchInputElement.setAttribute('aria-expanded', 'true');
+}
+
+function renderSearchHistorySuggestions() {
+  if (!searchInputElement) {
+    return;
+  }
+
+  const rawQuery = searchInputElement.value.trim();
+  const resolved = resolveSearchQuery(rawQuery);
+  const searchHistory = readSearchHistory();
+  const suggestions = resolved.query
+    ? searchHistory.filter((item) => item.toLowerCase().includes(resolved.query.toLowerCase()))
+    : searchHistory;
+
+  renderSearchSuggestions(suggestions, resolved.providerId);
+  scheduleSearchSuggestionsFetch();
 }
 
 function loadOpenNewTabSetting() {
   return localStorage.getItem('openAppsInNewTab') !== 'false';
 }
 
-function runDefaultSearch(query, onSuccess) {
-  const providerUrl = activeProviderId ? getActiveProviderUrl(query) : null;
+function runDefaultSearch(query, onSuccess, providerId = activeProviderId) {
+  const providerUrl = providerId ? getProviderUrl(providerId, query) : null;
   const openInNewTab = loadOpenNewTabSetting();
 
   if (providerUrl) {
-    recordSearchHistory(query);
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      recordSearchHistory(query);
+    }
+
     if (openInNewTab) {
       window.open(providerUrl, '_blank', 'noopener,noreferrer');
     } else {
       window.location.href = providerUrl;
     }
-    if (onSuccess) onSuccess();
     return;
   }
 
@@ -766,20 +1168,29 @@ function runDefaultSearch(query, onSuccess) {
 
 function runSearch(query) {
   clearSearchValidationFeedback();
-  const validation = validateUrl(query);
+  cancelSearchSuggestionsFetch();
 
-  if (validation.status === 'valid') {
-    recordSearchHistory(query);
-    window.location.href = validation.url.href;
+  const resolved = resolveSearchQuery(query);
+  if (!resolved.query) {
     return;
   }
 
-  if (validation.status === 'malformed') {
-    showSearchValidationFeedback(translateValidationMessage(validation.message));
-    return;
+  if (!resolved.hasBang) {
+    const validation = validateUrl(resolved.query);
+
+    if (validation.status === 'valid') {
+      recordSearchHistory(resolved.query);
+      window.location.href = validation.url.href;
+      return;
+    }
+
+    if (validation.status === 'malformed') {
+      showSearchValidationFeedback(translateValidationMessage(validation.message));
+      return;
+    }
   }
 
-  runDefaultSearch(query, () => recordSearchHistory(query));
+  runDefaultSearch(resolved.query, () => recordSearchHistory(resolved.query), resolved.providerId);
 }
 
 function initSearchEngine() {
@@ -793,9 +1204,10 @@ function initSearchEngine() {
     return;
   }
 
+  searchInputElement.setAttribute('role', 'combobox');
   searchInputElement.setAttribute('aria-autocomplete', 'list');
   searchInputElement.setAttribute('aria-expanded', 'false');
-  searchInputElement.setAttribute('aria-controls', 'search-history-panel');
+  searchInputElement.setAttribute('aria-controls', 'search-suggestions-list');
 
   const searchHistoryEnabledSetting = document.getElementById('search-history-enabled-setting');
   if (searchHistoryEnabledSetting) {
@@ -826,13 +1238,32 @@ function initSearchEngine() {
     }
 
     isSearchInputFocused = false;
+    cancelSearchSuggestionsFetch();
     hideSearchHistorySuggestions();
   });
 
   searchInputElement.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
-      isSearchInputFocused = false;
+      cancelSearchSuggestionsFetch();
       hideSearchHistorySuggestions();
+      return;
+    }
+
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      cycleSearchProvider(event.shiftKey ? -1 : 1);
+      return;
+    }
+
+    if (event.key === 'ArrowDown' && searchSuggestionItems.length) {
+      event.preventDefault();
+      moveSearchSuggestionSelection(1);
+      return;
+    }
+
+    if (event.key === 'ArrowUp' && searchSuggestionItems.length) {
+      event.preventDefault();
+      moveSearchSuggestionSelection(-1);
       return;
     }
 
@@ -841,6 +1272,11 @@ function initSearchEngine() {
     }
 
     event.preventDefault();
+    if (searchSuggestionIndex >= 0 && searchSuggestionItems[searchSuggestionIndex]) {
+      selectSearchHistorySuggestion(searchSuggestionItems[searchSuggestionIndex]);
+      return;
+    }
+
     const query = this.value.trim();
     if (!query) return;
 
@@ -921,10 +1357,17 @@ window.loadActiveProvider = loadActiveProvider;
 window.saveActiveProvider = saveActiveProvider;
 window.loadCustomProviders = loadCustomProviders;
 window.saveCustomProviders = saveCustomProviders;
+window.SEARCH_BANGS = SEARCH_BANGS;
+window.getCustomProviderCode = getCustomProviderCode;
 window.addCustomProvider = addCustomProvider;
 window.removeCustomProvider = removeCustomProvider;
 window.getAllProviders = getAllProviders;
 window.getActiveProviderUrl = getActiveProviderUrl;
+window.resolveSearchQuery = resolveSearchQuery;
+window.cycleSearchProvider = cycleSearchProvider;
+window.parseRemoteSearchSuggestions = parseRemoteSearchSuggestions;
+window.fetchRemoteSearchSuggestions = fetchRemoteSearchSuggestions;
+window.scheduleSearchSuggestionsFetch = scheduleSearchSuggestionsFetch;
 window.updateProviderSelection = updateProviderSelection;
 window.refreshProviderBar = refreshProviderBar;
 window.BUILT_IN_PROVIDERS = BUILT_IN_PROVIDERS;
