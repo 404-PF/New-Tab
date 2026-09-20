@@ -837,3 +837,39 @@ describe('AIService error path targets correct conversation (#617)', () => {
     expect(convB.messages.length).toBe(1);
   });
 });
+
+
+describe('AIService web grounding fallback (#707)', () => {
+  it('falls back to an ungrounded answer when web search fails before streaming', async () => {
+    const conv = {
+      id: 'conv_grounding',
+      title: 'Grounding',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conv];
+    AIStore.state.currentConversationId = conv.id;
+
+    OpenRouterAPI.sendMessageStreaming = vi.fn()
+      .mockResolvedValueOnce({ success: false, error: 'web search unavailable' })
+      .mockResolvedValueOnce({ success: true, content: 'Fallback answer' });
+
+    await AIService.sendMessage('What happened today?');
+
+    expect(OpenRouterAPI.sendMessageStreaming).toHaveBeenCalledTimes(2);
+    expect(OpenRouterAPI.sendMessageStreaming.mock.calls[0][4]).toEqual({ grounding: true });
+    expect(OpenRouterAPI.sendMessageStreaming.mock.calls[1][4]).toEqual({ grounding: false });
+
+    const conversation = AIStore.getCurrentConversation();
+    expect(conversation.messages.at(-1)).toMatchObject({
+      role: 'assistant',
+      content: 'Fallback answer',
+      grounded: false,
+      isStreaming: false
+    });
+
+    expect(document.getElementById('ai-chat-error').textContent)
+      .toContain('Web search is unavailable');
+  });
+});

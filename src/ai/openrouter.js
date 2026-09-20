@@ -4,6 +4,10 @@
 
 const OpenRouterAPI = (function() {
   // Configuration
+  const GROUNDING_STORAGE_KEY = 'aiGroundWithWeb';
+  const GROUNDING_DEFAULT_ENABLED = true;
+  let webGroundingEnabled = null;
+
   const CONFIG = {
     // Cloudflare Worker URL - UPDATE THIS AFTER DEPLOYMENT
     // Run: cd cloudflare && wrangler deploy
@@ -39,6 +43,43 @@ const OpenRouterAPI = (function() {
     // Fallback - should not happen if languages.js loads first
     console.warn('i18n not available, using fallback for:', key);
     return key;
+  }
+
+  /**
+   * Read the user's web-grounding preference.
+   * @returns {boolean} Whether web grounding is enabled
+   */
+  function isWebGroundingEnabled() {
+    if (webGroundingEnabled !== null) {
+      return webGroundingEnabled;
+    }
+
+    try {
+      const stored = localStorage.getItem(GROUNDING_STORAGE_KEY);
+      webGroundingEnabled = stored === null ? GROUNDING_DEFAULT_ENABLED : stored === 'true';
+    } catch (error) {
+      console.warn('Failed to read web grounding preference:', error);
+      webGroundingEnabled = GROUNDING_DEFAULT_ENABLED;
+    }
+
+    return webGroundingEnabled;
+  }
+
+  /**
+   * Persist the user's web-grounding preference.
+   * @param {boolean} enabled - Whether web grounding should be enabled
+   * @returns {boolean} Whether the setting was persisted
+   */
+  function setWebGroundingEnabled(enabled) {
+    webGroundingEnabled = enabled === true;
+
+    try {
+      localStorage.setItem(GROUNDING_STORAGE_KEY, webGroundingEnabled ? 'true' : 'false');
+      return true;
+    } catch (error) {
+      console.warn('Failed to save web grounding preference:', error);
+      return false;
+    }
   }
 
   /**
@@ -229,9 +270,11 @@ const OpenRouterAPI = (function() {
    * @param {Array} conversationHistory - Previous messages
    * @param {Function} onChunk - Callback for each chunk received
    * @param {AbortSignal} signal - Optional abort signal for cancellation
+   * @param {Object} options - Optional request options
+   * @param {boolean} options.grounding - Enable OpenRouter web search grounding
    * @returns {Promise<Object>} Final result object
    */
-  async function sendMessageStreaming(userMessage, conversationHistory = [], onChunk, signal = null) {
+  async function sendMessageStreaming(userMessage, conversationHistory = [], onChunk, signal = null, options = {}) {
     // Validate input
     const validation = validateInput(userMessage);
     if (!validation.valid) {
@@ -253,12 +296,23 @@ const OpenRouterAPI = (function() {
     // Add current user message
     messages.push({ role: 'user', content: validation.message });
 
-    // Build request body with streaming enabled
+    const groundingEnabled = options.grounding === true;
+
+    // Web search runs server-side through OpenRouter, so no host permissions are added.
     const requestBody = {
       model: CONFIG.model,
       messages: messages,
       max_tokens: CONFIG.maxTokens,
-      stream: true
+      stream: true,
+      ...(groundingEnabled
+        ? {
+            plugins: [{
+              id: 'web',
+              max_results: 5,
+              search_prompt: 'Use these live web results to answer the user. Cite factual claims with markdown links to the source domain and prefer the most relevant sources.'
+            }]
+          }
+        : {})
     };
 
     for (let attempt = 0; attempt <= CONFIG.maxRetries; attempt++) {
@@ -453,15 +507,29 @@ const OpenRouterAPI = (function() {
     return sendMessageStreaming(query, []);
   }
 
+  if (globalThis.chrome?.storage?.onChanged?.addListener) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if ((areaName === 'local' || areaName === 'sync') &&
+          Object.prototype.hasOwnProperty.call(changes || {}, GROUNDING_STORAGE_KEY)) {
+        webGroundingEnabled = null;
+      }
+    });
+  }
+
   // ============== Public API ==============
 
   return {
     // Configuration
     config: CONFIG,
-    
+    groundingStorageKey: GROUNDING_STORAGE_KEY,
+
     // Validation
     validateInput,
-    
+
+    // Web grounding
+    isWebGroundingEnabled,
+    setWebGroundingEnabled,
+
     // API
     sendMessageStreaming,
     quickSearch

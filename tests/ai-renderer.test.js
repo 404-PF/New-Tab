@@ -29,6 +29,7 @@ const stubElements = () => {
 beforeAll(() => {
   stubElements();
   injectScript('src/ai/ai-store.js');
+  injectScript('src/ai/markdown-parser.js');
   injectScript('src/ai/ai-renderer.js');
 });
 
@@ -95,5 +96,35 @@ describe('AIRenderer.renderTopicsList', () => {
     expect(onSelectConversation).toHaveBeenCalledWith('conv-2');
     expect(onRequestDeleteConfirm).toHaveBeenCalledTimes(1);
     expect(onDeleteConversation).toHaveBeenCalledWith('conv-2');
+  });
+});
+
+
+describe('AIRenderer grounded source rendering (#707)', () => {
+  it('renders cited links below grounded assistant messages', () => {
+    const conversation = {
+      id: 'grounded',
+      title: 'Grounded',
+      messages: [{
+        id: 'assistant-grounded',
+        role: 'assistant',
+        content: 'Latest update: [Example](https://example.com/article)',
+        timestamp: Date.now(),
+        isStreaming: false,
+        grounded: true
+      }]
+    };
+
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    AIRenderer.renderMessages();
+
+    const message = document.querySelector('[data-message-id="assistant-grounded"]');
+    const sources = message.querySelector('.ai-message-sources');
+
+    expect(sources).not.toBeNull();
+    expect(sources.textContent).toContain('Sources');
+    expect(sources.querySelector('a').getAttribute('href'))
+      .toBe('https://example.com/article');
   });
 });

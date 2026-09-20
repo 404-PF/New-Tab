@@ -2,14 +2,19 @@
 
 const AIService = (function() {
   const elements = AIRenderer.getElements();
+  const TRANSLATION_FALLBACKS = {
+    aiThinking: 'Thinking…',
+    aiSearchingWeb: 'Searching the web…',
+    aiGroundingFallback: 'Web search is unavailable. Answering without live web data.'
+  };
   let activeConfirmKeydownHandler = null;
 
   function getTranslation(key) {
     if (window.i18n && window.i18n.t) {
-      return window.i18n.t(key);
+      const translated = window.i18n.t(key);
+      if (translated && translated !== key) return translated;
     }
-    console.warn('i18n not available, using fallback for:', key);
-    return key;
+    return TRANSLATION_FALLBACKS[key] || key;
   }
 
   function cacheElements() {
@@ -174,12 +179,25 @@ const AIService = (function() {
     AIStore.clearConfirmDialogCallback();
   }
 
-  function showLoading() {
+  function setLoadingStatus(message) {
+    if (!elements.loadingIndicator) return;
+    let status = elements.loadingIndicator.querySelector('.ai-loading-status');
+    if (!status) {
+      status = document.createElement('span');
+      status.className = 'ai-loading-status';
+      elements.loadingIndicator.appendChild(status);
+    }
+    status.textContent = message || '';
+    status.hidden = !message;
+  }
+
+  function showLoading(statusMessage = null) {
     AIStore.setLoading(true);
     AIStore.setStreaming(true);
 
     if (elements.loadingIndicator) {
       elements.loadingIndicator.style.display = 'flex';
+      setLoadingStatus(statusMessage || getTranslation('aiThinking'));
     }
     if (elements.sendBtn) {
       elements.sendBtn.style.display = 'none';
@@ -203,6 +221,7 @@ const AIService = (function() {
 
     if (elements.loadingIndicator) {
       elements.loadingIndicator.style.display = 'none';
+      setLoadingStatus('');
     }
     if (elements.sendBtn) {
       elements.sendBtn.style.display = 'flex';
@@ -445,6 +464,9 @@ const AIService = (function() {
   function handleNetworkStatusChange(status) {
     const wasOffline = AIStore.state.isOfflineMode;
     AIStore.setOfflineMode(status.isOffline);
+    if (typeof AIRenderer.updateWebGroundingControl === 'function') {
+      AIRenderer.updateWebGroundingControl(status.isOffline);
+    }
 
     if (wasOffline !== AIStore.state.isOfflineMode) {
       if (!document.getElementById('ai-connection-status')) {
@@ -493,6 +515,8 @@ const AIService = (function() {
     }
 
     const networkStatus = NetworkDetector.getStatus();
+    const groundingEnabled = !networkStatus.isOffline
+      && window.OpenRouterAPI.isWebGroundingEnabled();
     const userMsg = {
       role: 'user',
       content: userMessage.trim(),
@@ -506,7 +530,11 @@ const AIService = (function() {
       elements.input.value = '';
     }
 
-    showLoading();
+    showLoading(
+      groundingEnabled
+        ? getTranslation('aiSearchingWeb')
+        : getTranslation('aiThinking')
+    );
 
     const abortController = new AbortController();
     AIStore.setAbortController(abortController);
@@ -521,7 +549,8 @@ const AIService = (function() {
       role: 'assistant',
       content: '',
       timestamp: Date.now(),
-      isStreaming: true
+      isStreaming: true,
+      grounded: groundingEnabled
     };
 
     AIStore.addMessageToConversation(assistantMsg);
@@ -566,6 +595,14 @@ const AIService = (function() {
       const live = getLiveStoredMessage();
       if (live && live !== assistantMsg) {
         live.isStreaming = flag;
+      }
+    }
+
+    function syncGroundingFlag(flag) {
+      assistantMsg.grounded = flag;
+      const live = getLiveStoredMessage();
+      if (live && live !== assistantMsg) {
+        live.grounded = flag;
       }
     }
 
@@ -620,14 +657,15 @@ const AIService = (function() {
           }
         }
       } else {
-        result = await OpenRouterAPI.sendMessageStreaming(
-          userMessage,
-          historyForAPI,
-          chunk => {
-            accumulatedContent += chunk;
-            syncContentToStore(accumulatedContent);
+        const handleStreamingChunk = chunk => {
+          accumulatedContent += chunk;
+          syncContentToStore(accumulatedContent);
 
-            const now = Date.now();
+          if (groundingEnabled) {
+            setLoadingStatus(getTranslation('aiThinking'));
+          }
+
+          const now = Date.now();
             if (now - lastRenderTime >= RENDER_THROTTLE_MS) {
               const liveEl = getLiveStreamingTextEl();
               if (liveEl) AIRenderer.updateStreamingContent(liveEl, accumulatedContent);
@@ -637,9 +675,34 @@ const AIService = (function() {
                 AIRenderer.scrollToBottom(false);
               }
             }
-          },
-          abortController.signal
+          };
+
+        result = await window.OpenRouterAPI.sendMessageStreaming(
+          userMessage,
+          historyForAPI,
+          handleStreamingChunk,
+          abortController.signal,
+          { grounding: groundingEnabled }
         );
+
+        if (
+          groundingEnabled
+          && !result.success
+          && !result.aborted
+          && !accumulatedContent
+        ) {
+          showError(getTranslation('aiGroundingFallback'));
+          syncGroundingFlag(false);
+          setLoadingStatus(getTranslation('aiThinking'));
+
+          result = await window.OpenRouterAPI.sendMessageStreaming(
+            userMessage,
+            historyForAPI,
+            handleStreamingChunk,
+            abortController.signal,
+            { grounding: false }
+          );
+        }
 
         if (accumulatedContent && !result.aborted) {
           syncContentToStore(accumulatedContent);
@@ -837,6 +900,10 @@ const AIService = (function() {
 
     if (elements.topicsList) {
       elements.topicsList.addEventListener('keydown', handleTopicsKeydown);
+    }
+
+    if (typeof AIRenderer.initWebGroundingControl === 'function') {
+      AIRenderer.initWebGroundingControl();
     }
 
     const modal = document.getElementById('ai-chat-modal');
