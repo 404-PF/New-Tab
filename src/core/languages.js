@@ -89,6 +89,7 @@ const translations = {
     recentSearches: 'Recent searches',
     clearSearchHistory: 'Clear history',
     enableSearchHistory: 'Enable search history',
+    searchSuggestionsAriaLabel: 'Search suggestions',
     newApp: 'New',
     feedback: 'Feedback',
     settings: 'Settings',
