@@ -476,7 +476,7 @@ describe('OpenRouter web grounding (#707)', () => {
     const previousChromeStored = (await chrome.storage.local.get(storageKey))[storageKey];
 
     try {
-      chrome.storage.local.set({ [storageKey]: 'false' });
+      await chrome.storage.local.set({ [storageKey]: 'false' });
       localStorage.setItem(storageKey, 'false');
 
       expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(false);
