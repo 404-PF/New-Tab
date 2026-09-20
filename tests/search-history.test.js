@@ -152,13 +152,16 @@ describe('search history', () => {
 
   it('places suggestions outside the search bar below the provider row', () => {
     recordSearchHistory('alpha');
-    focusSearchInput();
+    const input = focusSearchInput();
 
     const wrapper = document.querySelector('.search-bar-wrapper');
     const panel = document.querySelector('.search-history-panel');
+    const list = document.getElementById('search-suggestions-list');
 
     expect(panel.parentElement).toBe(wrapper);
     expect(wrapper.lastElementChild).toBe(panel);
+    expect(input.getAttribute('aria-controls')).toBe('search-suggestions-list');
+    expect(list.getAttribute('data-i18n-aria-label')).toBe('searchSuggestionsAriaLabel');
   });
 
   it('stores recent searches newest-first without duplicates', () => {
@@ -192,6 +195,16 @@ describe('search history', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
     expect(document.querySelector('.search-history-panel').hidden).toBe(true);
+
+    const arrowDown = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true
+    });
+    input.dispatchEvent(arrowDown);
+
+    expect(arrowDown.defaultPrevented).toBe(false);
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
   });
 
   it('keeps app grid links clickable while suggestions are open', () => {
@@ -398,16 +411,59 @@ describe('search history', () => {
     openSpy.mockRestore();
   });
 
+  it('preserves the resolved provider when selecting a bang suggestion by click', () => {
+    const openSpy = vi.spyOn(window, 'open');
+    window.saveActiveProvider('google');
+    recordSearchHistory('einstein');
+
+    const input = focusSearchInput();
+    input.value = '!w ein';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const suggestion = document.querySelector('.search-history-item');
+    expect(suggestion).not.toBeNull();
+    suggestion.click();
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy.mock.calls[0][0]).toContain('w/index.php?search=');
+    expect(openSpy.mock.calls[0][0]).toContain(encodeURIComponent('einstein'));
+    expect(window.loadActiveProvider()).toBe('google');
+
+    openSpy.mockRestore();
+  });
+
+  it('preserves the resolved provider when selecting a bang suggestion by keyboard', () => {
+    const openSpy = vi.spyOn(window, 'open');
+    window.saveActiveProvider('google');
+    recordSearchHistory('einstein');
+
+    const input = focusSearchInput();
+    input.value = '!w ein';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy.mock.calls[0][0]).toContain('w/index.php?search=');
+    expect(openSpy.mock.calls[0][0]).toContain(encodeURIComponent('einstein'));
+    expect(window.loadActiveProvider()).toBe('google');
+
+    openSpy.mockRestore();
+  });
+
   it('supports custom single-letter bang codes', () => {
     const openSpy = vi.spyOn(window, 'open');
-    const customId = window.addCustomProvider('Kagi', 'https://kagi.com/search?q={query}');
-    window.saveActiveProvider(customId);
+    window.addCustomProvider('Kagi', 'https://kagi.com/search?q={query}');
+    window.saveActiveProvider('google');
 
     runSearch('!k hello');
 
     expect(openSpy).toHaveBeenCalledTimes(1);
     expect(openSpy.mock.calls[0][0]).toContain('kagi.com/search?q=');
     expect(openSpy.mock.calls[0][0]).toContain(encodeURIComponent('hello'));
+    expect(openSpy.mock.calls[0][0]).not.toContain(encodeURIComponent('!k hello'));
+    expect(window.loadActiveProvider()).toBe('google');
 
     openSpy.mockRestore();
   });
