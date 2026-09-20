@@ -507,6 +507,15 @@ const OpenRouterAPI = (function() {
     return sendMessageStreaming(query, []);
   }
 
+  if (globalThis.chrome?.storage?.onChanged?.addListener) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if ((areaName === 'local' || areaName === 'sync') &&
+          Object.prototype.hasOwnProperty.call(changes || {}, GROUNDING_STORAGE_KEY)) {
+        webGroundingEnabled = null;
+      }
+    });
+  }
+
   // ============== Public API ==============
 
   return {

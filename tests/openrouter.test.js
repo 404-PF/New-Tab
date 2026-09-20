@@ -469,7 +469,16 @@ describe('OpenRouter web grounding (#707)', () => {
     expect(body).not.toHaveProperty('plugins');
   });
 
+  it('refreshes the cached grounding preference after an external storage change', () => {
+    expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(true);
+
+    chrome.storage.local.set({ aiGroundWithWeb: 'false' });
+
+    expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(false);
+  });
+
   it('keeps the requested grounding value in memory when persistence fails', () => {
+    const previous = OpenRouterAPI.isWebGroundingEnabled();
     const setItem = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
       throw new Error('storage unavailable');
     });
@@ -479,7 +488,7 @@ describe('OpenRouter web grounding (#707)', () => {
       expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(false);
     } finally {
       setItem.mockRestore();
-      OpenRouterAPI.setWebGroundingEnabled(true);
+      OpenRouterAPI.setWebGroundingEnabled(previous);
     }
   });
 });
