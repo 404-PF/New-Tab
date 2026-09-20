@@ -85,10 +85,13 @@ describe('Search providers - storage', () => {
     expect(loadCustomProviders()).toEqual([]);
   });
 
-  it('loadCustomProviders returns parsed array', () => {
-    const custom = [{ id: 'custom_1', name: 'Test', url: 'https://test.com/search?q={query}', code: 't' }];
+  it('loadCustomProviders preserves legacy providers without bang codes', () => {
+    const custom = [{ id: 'custom_1', name: 'Google', url: 'https://test.com/search?q={query}' }];
     localStorage.setItem('customSearchProviders', JSON.stringify(custom));
+    localStorage.setItem('searchProvider', 'custom_1');
+
     expect(loadCustomProviders()).toEqual(custom);
+    expect(loadActiveProvider()).toBe('custom_1');
   });
 
   it('loadCustomProviders returns empty array on invalid JSON', () => {
@@ -257,7 +260,7 @@ describe('Search providers - backup integration', () => {
       data: {
         searchProvider: 'bing',
         customSearchProviders: [
-          { id: 'custom_1', name: 'MyCustom', url: 'https://example.com/?q={query}' }
+          { id: 'custom_1', name: 'Google', url: 'https://example.com/?q={query}' }
         ]
       }
     };
