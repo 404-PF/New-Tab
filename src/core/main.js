@@ -467,14 +467,15 @@ function isValidCustomProvider(provider, seenIds, seenBangCodes) {
   }
   if (RESERVED_PROVIDER_IDS.indexOf(provider.id) !== -1) return false;
 
-  const code = getCustomProviderCode(provider);
-  if (!code || Object.prototype.hasOwnProperty.call(SEARCH_BANGS, code)) return false;
+  const hasStoredCode = Object.prototype.hasOwnProperty.call(provider, 'code');
+  const code = hasStoredCode ? getCustomProviderCode(provider) : '';
+  if (hasStoredCode && (!code || Object.prototype.hasOwnProperty.call(SEARCH_BANGS, code))) return false;
 
   if (seenIds) {
     if (seenIds[provider.id]) return false;
     seenIds[provider.id] = true;
   }
-  if (seenBangCodes) {
+  if (seenBangCodes && hasStoredCode) {
     if (seenBangCodes[code]) return false;
     seenBangCodes[code] = true;
   }
@@ -610,10 +611,10 @@ function parseRemoteSearchSuggestions(providerId, payload, query) {
       else add(item);
     });
   } else if (providerId === 'bing') {
-    const results = payload && payload.AS && Array.isArray(payload.AS.Results) ? payload.AS.Results : [];
+    const results = Array.isArray(payload?.AS?.Results) ? payload.AS.Results : [];
     results.forEach((result) => {
-      const suggests = result && Array.isArray(result.Suggests) ? result.Suggests : [];
-      suggests.forEach((item) => add(item && item.Txt));
+      const suggests = Array.isArray(result?.Suggests) ? result.Suggests : [];
+      suggests.forEach((item) => add(item?.Txt));
     });
   } else if (providerId === 'duckduckgo' && Array.isArray(payload)) {
     payload.forEach((item) => add(item && item.phrase));
@@ -1078,7 +1079,7 @@ function renderSearchSuggestions(suggestions, providerId = activeProviderId) {
   }
 
   searchHistoryClearBtn.textContent = t('clearSearchHistory');
-  searchHistoryListEl.setAttribute('aria-label', t('searchSuggestionsAriaLabel') || 'Search suggestions');
+  searchHistoryListEl.setAttribute('aria-label', t('searchSuggestionsAriaLabel'));
   searchHistoryListEl.innerHTML = '';
   searchSuggestionItems = suggestions.slice(0, SEARCH_SUGGESTION_LIMIT).map((item) => ({
     text: typeof item === 'string' ? item : (item && item.text) || '',
