@@ -458,7 +458,7 @@ function isValidProviderUrl(url) {
   }
 }
 
-function isValidCustomProvider(provider, seenIds) {
+function isValidCustomProvider(provider, seenIds, seenBangCodes) {
   if (!provider || typeof provider !== 'object' ||
     typeof provider.id !== 'string' || !provider.id.trim() ||
     typeof provider.name !== 'string' || !provider.name.trim() ||
@@ -466,9 +466,17 @@ function isValidCustomProvider(provider, seenIds) {
     return false;
   }
   if (RESERVED_PROVIDER_IDS.indexOf(provider.id) !== -1) return false;
+
+  const code = getCustomProviderCode(provider);
+  if (!code || Object.prototype.hasOwnProperty.call(SEARCH_BANGS, code)) return false;
+
   if (seenIds) {
     if (seenIds[provider.id]) return false;
     seenIds[provider.id] = true;
+  }
+  if (seenBangCodes) {
+    if (seenBangCodes[code]) return false;
+    seenBangCodes[code] = true;
   }
   return true;
 }
@@ -480,7 +488,8 @@ function loadCustomProviders() {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     const seenIds = {};
-    return parsed.filter(function (p) { return isValidCustomProvider(p, seenIds); });
+    const seenBangCodes = {};
+    return parsed.filter(function (p) { return isValidCustomProvider(p, seenIds, seenBangCodes); });
   } catch (e) {
     console.warn('Failed to read custom providers:', e);
     return [];
@@ -500,7 +509,28 @@ function addCustomProvider(name, url) {
   const id = 'custom_' + Date.now();
   const providers = loadCustomProviders();
   const normalizedName = name.trim();
-  const code = getCustomProviderCode({ name: normalizedName });
+  const usedCodes = new Set(Object.keys(SEARCH_BANGS));
+  providers.forEach(function (provider) {
+    const code = getCustomProviderCode(provider);
+    if (code) usedCodes.add(code);
+  });
+
+  const codeCandidates = [];
+  const addCodeCandidate = function (candidate) {
+    if (/^[a-z0-9]$/i.test(candidate) && !codeCandidates.includes(candidate)) {
+      codeCandidates.push(candidate.toLowerCase());
+    }
+  };
+  for (const char of normalizedName.toLowerCase()) {
+    addCodeCandidate(char);
+  }
+  for (const char of 'abcdefghijklmnopqrstuvwxyz0123456789') {
+    addCodeCandidate(char);
+  }
+
+  const code = codeCandidates.find(function (candidate) { return !usedCodes.has(candidate); });
+  if (!code) return false;
+
   providers.push({ id: id, name: normalizedName, url: url, code: code });
   saveCustomProviders(providers);
   renderCustomProviderButtons();
@@ -715,8 +745,6 @@ function updateSearchSuggestionSelection(index) {
   if (!searchHistoryListEl || !searchInputElement) return;
 
   const items = Array.from(searchHistoryListEl.querySelectorAll('.search-history-item'));
-  searchSuggestionItems = items.map((item) => item.textContent || '');
-
   items.forEach((item, itemIndex) => {
     const selected = itemIndex === index;
     item.classList.toggle('is-selected', selected);
@@ -794,7 +822,7 @@ function scheduleSearchSuggestionsFetch() {
     ? searchHistory.filter((item) => item.toLowerCase().includes(effectiveQuery.toLowerCase()))
     : searchHistory;
 
-  renderSearchSuggestions(localSuggestions);
+  renderSearchSuggestions(localSuggestions, resolved.providerId);
 
   if (!effectiveQuery || navigator.onLine === false || !resolved.providerId) {
     return;
@@ -831,7 +859,7 @@ function scheduleSearchSuggestionsFetch() {
       return;
     }
 
-    renderSearchSuggestions(mergeSearchSuggestions(latestLocalSuggestions, remoteSuggestions));
+    renderSearchSuggestions(mergeSearchSuggestions(latestLocalSuggestions, remoteSuggestions), latestResolved.providerId);
     searchSuggestionRequestController = null;
   }, SEARCH_SUGGESTION_DEBOUNCE_MS);
 }
@@ -943,7 +971,7 @@ function ensureSearchHistoryPanel() {
         <span class="search-history-title"></span>
         <button type="button" class="search-history-clear-btn"></button>
       </div>
-      <div class="search-history-list" id="search-suggestions-list" role="listbox" aria-label="Search suggestions"></div>
+      <div class="search-history-list" id="search-suggestions-list" role="listbox" data-i18n-aria-label="searchSuggestionsAriaLabel"></div>
     `;
 
     searchHistoryListEl = searchHistoryPanel.querySelector('.search-history-list');
@@ -972,6 +1000,7 @@ function hideSearchHistorySuggestions() {
     searchHistoryPanel.hidden = true;
   }
 
+  searchSuggestionItems = [];
   resetSearchSuggestionSelection();
 
   if (searchInputElement) {
@@ -979,9 +1008,10 @@ function hideSearchHistorySuggestions() {
   }
 }
 
-function executeSearch(query) {
+function executeSearch(query, providerIdOverride = null) {
   clearSearchValidationFeedback();
   const resolved = resolveSearchQuery(query);
+  const providerId = providerIdOverride || resolved.providerId;
 
   if (!resolved.query) {
     return;
@@ -1001,21 +1031,27 @@ function executeSearch(query) {
     }
   }
 
-  runDefaultSearch(resolved.query, null, resolved.providerId);
+  runDefaultSearch(resolved.query, null, providerId);
 }
 
-function selectSearchHistorySuggestion(query) {
+function selectSearchHistorySuggestion(suggestion) {
   if (!searchInputElement) {
     return;
   }
 
-  searchInputElement.value = query;
+  const suggestionText = typeof suggestion === 'string' ? suggestion : (suggestion && suggestion.text);
+  const providerId = typeof suggestion === 'object' && suggestion ? suggestion.providerId : null;
+  if (!suggestionText) {
+    return;
+  }
+
+  searchInputElement.value = suggestionText;
   hideSearchHistorySuggestions();
   searchInputElement.focus();
-  executeSearch(query);
+  executeSearch(suggestionText, providerId);
 }
 
-function renderSearchSuggestions(suggestions) {
+function renderSearchSuggestions(suggestions, providerId = activeProviderId) {
   if (!searchInputElement) {
     return;
   }
@@ -1035,15 +1071,19 @@ function renderSearchSuggestions(suggestions) {
     return;
   }
 
-  const t = window.i18n ? window.i18n.t : (key) => key;
+  const t = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t : (key) => key;
   const title = panel.querySelector('.search-history-title');
   if (title) {
     title.textContent = t('recentSearches');
   }
 
   searchHistoryClearBtn.textContent = t('clearSearchHistory');
+  searchHistoryListEl.setAttribute('aria-label', t('searchSuggestionsAriaLabel') || 'Search suggestions');
   searchHistoryListEl.innerHTML = '';
-  searchSuggestionItems = suggestions.slice(0, SEARCH_SUGGESTION_LIMIT);
+  searchSuggestionItems = suggestions.slice(0, SEARCH_SUGGESTION_LIMIT).map((item) => ({
+    text: typeof item === 'string' ? item : (item && item.text) || '',
+    providerId: typeof item === 'object' && item && item.providerId ? item.providerId : providerId
+  }));
 
   searchSuggestionItems.forEach((item, index) => {
     const suggestionBtn = document.createElement('button');
@@ -1052,7 +1092,7 @@ function renderSearchSuggestions(suggestions) {
     suggestionBtn.id = 'search-suggestion-item-' + index;
     suggestionBtn.setAttribute('role', 'option');
     suggestionBtn.setAttribute('aria-selected', 'false');
-    suggestionBtn.textContent = item;
+    suggestionBtn.textContent = item.text;
     suggestionBtn.addEventListener('mousedown', (event) => {
       event.preventDefault();
     });
@@ -1079,7 +1119,7 @@ function renderSearchHistorySuggestions() {
     ? searchHistory.filter((item) => item.toLowerCase().includes(resolved.query.toLowerCase()))
     : searchHistory;
 
-  renderSearchSuggestions(suggestions);
+  renderSearchSuggestions(suggestions, resolved.providerId);
   scheduleSearchSuggestionsFetch();
 }
 
@@ -1166,7 +1206,7 @@ function initSearchEngine() {
   searchInputElement.setAttribute('role', 'combobox');
   searchInputElement.setAttribute('aria-autocomplete', 'list');
   searchInputElement.setAttribute('aria-expanded', 'false');
-  searchInputElement.setAttribute('aria-controls', 'search-history-panel');
+  searchInputElement.setAttribute('aria-controls', 'search-suggestions-list');
 
   const searchHistoryEnabledSetting = document.getElementById('search-history-enabled-setting');
   if (searchHistoryEnabledSetting) {
@@ -1316,6 +1356,8 @@ window.loadActiveProvider = loadActiveProvider;
 window.saveActiveProvider = saveActiveProvider;
 window.loadCustomProviders = loadCustomProviders;
 window.saveCustomProviders = saveCustomProviders;
+window.SEARCH_BANGS = SEARCH_BANGS;
+window.getCustomProviderCode = getCustomProviderCode;
 window.addCustomProvider = addCustomProvider;
 window.removeCustomProvider = removeCustomProvider;
 window.getAllProviders = getAllProviders;
