@@ -469,12 +469,32 @@ describe('OpenRouter web grounding (#707)', () => {
     expect(body).not.toHaveProperty('plugins');
   });
 
-  it('refreshes the cached grounding preference after an external storage change', () => {
-    expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(true);
+  it('refreshes the cached grounding preference after an external storage change', async () => {
+    const storageKey = OpenRouterAPI.groundingStorageKey;
+    const previous = OpenRouterAPI.isWebGroundingEnabled();
+    const previousStored = localStorage.getItem(storageKey);
+    const previousChromeStored = (await chrome.storage.local.get(storageKey))[storageKey];
 
-    chrome.storage.local.set({ aiGroundWithWeb: 'false' });
+    try {
+      chrome.storage.local.set({ [storageKey]: 'false' });
+      localStorage.setItem(storageKey, 'false');
 
-    expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(false);
+      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(false);
+    } finally {
+      if (previousChromeStored === undefined) {
+        await chrome.storage.local.remove(storageKey);
+      } else {
+        await chrome.storage.local.set({ [storageKey]: previousChromeStored });
+      }
+
+      OpenRouterAPI.setWebGroundingEnabled(previous);
+
+      if (previousStored === null) {
+        localStorage.removeItem(storageKey);
+      } else {
+        localStorage.setItem(storageKey, previousStored);
+      }
+    }
   });
 
   it('keeps the requested grounding value in memory when persistence fails', () => {
