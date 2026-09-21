@@ -211,23 +211,25 @@
     if (!RECURRENCE_VALUES.includes(recurrence)) {
       return currentDueDate;
     }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    let base;
-    if (currentDueDate) {
-      base = parseLocalDate(currentDueDate);
-      base.setHours(0, 0, 0, 0);
-      if (base < today) base = new Date(today);
-    } else {
-      base = new Date(today);
-    }
-    if (recurrence === 'daily') {
-      base.setDate(base.getDate() + 1);
-    } else if (recurrence === 'weekly') {
-      base.setDate(base.getDate() + 7);
-    } else if (recurrence === 'monthly') {
-      navigateMonthSafe(base, 1);
-    }
+    const base = currentDueDate ? parseLocalDate(currentDueDate) : new Date(today);
+    base.setHours(0, 0, 0, 0);
+
+    // Advance from the scheduled due date so late completion does not move
+    // the recurrence anchor to the completion date. Keep advancing until the
+    // next occurrence is strictly in the future.
+    do {
+      if (recurrence === 'daily') {
+        base.setDate(base.getDate() + 1);
+      } else if (recurrence === 'weekly') {
+        base.setDate(base.getDate() + 7);
+      } else if (recurrence === 'monthly') {
+        navigateMonthSafe(base, 1);
+      }
+    } while (base <= today);
+
     return formatDateISO(base);
   }
 
