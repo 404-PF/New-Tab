@@ -139,15 +139,14 @@
 
   function getModalOpener(modal, def) {
     const previous = modalState.get(modal.id);
+    const fallback = def.fallbackOpener ? document.querySelector(def.fallbackOpener) : null;
     if (previous?.opener?.isConnected) return previous.opener;
     if (pendingModalOpener?.isConnected) return pendingModalOpener;
+    if (fallback && document.activeElement === fallback) return fallback;
     if (document.activeElement && document.activeElement !== document.body && !modal.contains(document.activeElement)) {
       return document.activeElement;
     }
-    if (def.fallbackOpener) {
-      const fallback = document.querySelector(def.fallbackOpener);
-      if (fallback) return fallback;
-    }
+    if (fallback) return fallback;
     return lastFocusedElement?.isConnected ? lastFocusedElement : null;
   }
 
@@ -325,15 +324,18 @@
   }
 
   function getGridColumns(container, cells) {
-    const template = window.getComputedStyle(container).gridTemplateColumns || '';
-    const explicitColumns = template.trim().split(/\s+/).filter(Boolean).length;
-    if (explicitColumns > 1) return explicitColumns;
-
     if (cells.length > 1) {
       const firstTop = cells[0].getBoundingClientRect().top;
-      const columns = cells.findIndex(cell => cell.getBoundingClientRect().top > firstTop);
+      const columns = cells.findIndex(cell => Math.abs(cell.getBoundingClientRect().top - firstTop) > 2);
       if (columns > 0) return columns;
     }
+
+    const template = window.getComputedStyle(container).gridTemplateColumns || '';
+    const repeatMatch = template.match(/repeat\\(\\s*(\\d+)\\s*,/);
+    if (repeatMatch) return Number(repeatMatch[1]);
+
+    const explicitColumns = template.trim().split(/\\s+/).filter(Boolean).length;
+    if (explicitColumns > 1) return explicitColumns;
 
     return container.id === 'app-grid' ? 4 : 4;
   }
@@ -528,6 +530,9 @@
       }
 
       const sourceLabel = getCellLabel(picked);
+      const focusId = moved && container.id === 'app-grid' && cell.classList.contains('folder-icon')
+        ? targetId
+        : sourceId;
       picked.classList.remove('keyboard-picked-up');
       picked.setAttribute('aria-grabbed', 'false');
       getGridCells(container).forEach(item => item.removeAttribute('aria-dropeffect'));
@@ -542,9 +547,9 @@
       }
 
       requestAnimationFrame(() => {
-        let movedElement = document.getElementById(sourceId);
+        let movedElement = document.getElementById(focusId);
         if (container.id === 'folder-popup-apps') {
-          movedElement = document.getElementById('popup-' + sourceId.replace(/^popup-/, ''));
+          movedElement = document.getElementById('popup-' + focusId.replace(/^popup-/, ''));
         }
         if (movedElement) movedElement.focus({ preventScroll: true });
       });
