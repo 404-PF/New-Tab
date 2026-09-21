@@ -173,6 +173,79 @@ describe('Weather widget', () => {
     }
   });
 
+  it('does not use a fresh auto-location cache after the user moves', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
+    localStorage.setItem('weatherCache', JSON.stringify({
+      lat: 37.7749,
+      lon: -122.4194,
+      data: mockWeatherData,
+      timestamp: Date.now(),
+      locationMode: 'auto',
+      manualCity: '',
+      locationName: 'Location A'
+    }));
+
+    mockGeolocation({ latitude: 34.0522, longitude: -118.2437 });
+
+    const originalFetch = global.fetch;
+    let capturedUrl;
+    global.fetch = async (url) => {
+      capturedUrl = url;
+      return { ok: true, json: async () => mockWeatherData };
+    };
+
+    try {
+      await window.WeatherWidget.refresh();
+
+      const urlObj = new URL(capturedUrl);
+      expect(urlObj.searchParams.get('latitude')).toBe('34.0522');
+      expect(urlObj.searchParams.get('longitude')).toBe('-118.2437');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('uses a fresh auto-location cache within the coordinate tolerance', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
+    localStorage.setItem('weatherCache', JSON.stringify({
+      lat: 37.7749,
+      lon: -122.4194,
+      data: {
+        ...mockWeatherData,
+        current: {
+          ...mockWeatherData.current,
+          temperature_2m: 19
+        }
+      },
+      timestamp: Date.now(),
+      locationMode: 'auto',
+      manualCity: '',
+      locationName: 'Location A'
+    }));
+
+    mockGeolocation({ latitude: 37.8044, longitude: -122.4194 });
+
+    const originalFetch = global.fetch;
+    let fetchCalled = false;
+    global.fetch = async () => {
+      fetchCalled = true;
+      return { ok: true, json: async () => mockWeatherData };
+    };
+
+    try {
+      await window.WeatherWidget.refresh();
+
+      expect(fetchCalled).toBe(false);
+      expect(document.querySelector('.weather-temp').textContent).toContain('19');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it('re-reads weather cache after storage changes', async () => {
     localStorage.setItem('weatherEnabled', 'true');
     localStorage.setItem('weatherUnit', 'celsius');
