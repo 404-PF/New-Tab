@@ -258,8 +258,12 @@ describe('OpenRouter streaming resilience (#714)', () => {
       }));
 
       const promise = OpenRouterAPI.sendMessageStreaming('hello');
-      await Promise.resolve();
-      await Promise.resolve();
+
+      // Fetch/stream setup crosses promise boundaries; wait for the observable
+      // read to start instead of depending on a fixed microtask count.
+      for (let attempts = 0; attempts < 10 && !readStarted; attempts += 1) {
+        await Promise.resolve();
+      }
       expect(readStarted).toBe(true);
 
       await vi.advanceTimersByTimeAsync(100);
