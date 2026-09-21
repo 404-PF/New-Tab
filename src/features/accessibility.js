@@ -49,10 +49,6 @@
     return false;
   }
 
-  function getModalDefinition(element) {
-    return MODAL_DEFINITIONS.find(def => def.id === element?.id) || null;
-  }
-
   function getFocusableElements(container) {
     if (!container) return [];
     return Array.from(container.querySelectorAll(
@@ -397,8 +393,7 @@
     if (currentIndex === -1) return;
 
     const columns = getGridColumns(container, cells);
-    let targetIndex = absoluteIndex;
-    if (targetIndex === null) targetIndex = currentIndex + delta;
+    let targetIndex = absoluteIndex === null ? currentIndex + delta : absoluteIndex;
     if (targetIndex < 0) targetIndex = 0;
     if (targetIndex >= cells.length) targetIndex = cells.length - 1;
 
@@ -575,16 +570,6 @@
       clearKeyboardPick(container);
       announce('Move cancelled.');
     }
-  }
-
-  function handleGridFocus(event) {
-    const cell = event.target.closest?.('.app-icon');
-    if (!cell) return;
-    const container = cell.parentElement;
-    if (!container || (container.id !== 'app-grid' && container.id !== 'folder-popup-apps')) return;
-    getGridCells(container).forEach(item => {
-      item.tabIndex = item === cell ? 0 : -1;
-    });
   }
 
   function refreshGrid() {
