@@ -1,45 +1,12 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { injectScript } from './helpers/inject-script.js';
+import { installFlappyBirdTestEnvironment } from './helpers/flappy-bird-test-env.js';
 
 const FEATURES_CSS_PATH = resolve(process.cwd(), 'css/features.css');
 
-const canvasContext = new Proxy({
-  createLinearGradient: () => ({ addColorStop() {} }),
-  createRadialGradient: () => ({ addColorStop() {} }),
-  drawImage() {},
-  fillRect() {},
-  strokeRect() {},
-  clearRect() {},
-  beginPath() {},
-  closePath() {},
-  arc() {},
-  ellipse() {},
-  moveTo() {},
-  lineTo() {},
-  fill() {},
-  stroke() {},
-  save() {},
-  restore() {},
-  translate() {},
-  fillText() {}
-}, {
-  get(target, property) {
-    if (!(property in target)) {
-      target[property] = () => {};
-    }
-    return target[property];
-  }
-});
-
 beforeAll(() => {
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(canvasContext);
-  vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1);
-  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
-  injectScript('src/features/games/shared.js');
-  injectScript('src/features/games/game-registry.js');
-  injectScript('src/features/games/flappy-bird.js');
+  installFlappyBirdTestEnvironment(vi);
 });
 
 afterEach(() => {
@@ -104,7 +71,7 @@ function mountFlappyModalView() {
   hub.append(header, gameContainer);
   document.body.appendChild(hub);
 
-  window.GameRegistry.get('flappy-bird').init(gameContainer);
+  expect(window.GameRegistry.launch('flappy-bird')).toBe(true);
 
   return {
     hub,
@@ -116,6 +83,9 @@ function mountFlappyModalView() {
 }
 
 describe('Flappy Bird modal layout (#741)', () => {
+  // JSDOM resolves CSS selectors and computed declarations but does not perform
+  // browser layout, so this suite verifies mounted DOM/style containment rather
+  // than pixel-level bounding-box scaling.
   it('applies the scoped viewport rule to the mounted Flappy Bird DOM', () => {
     const css = readFileSync(FEATURES_CSS_PATH, 'utf-8');
     installRelevantStyles(css);
@@ -127,12 +97,31 @@ describe('Flappy Bird modal layout (#741)', () => {
     expect(stage.parentElement).toBe(gameContainer);
     expect(stage.closest('.games-hub-content')).toBe(hub);
     expect(gameContainer.id).toBe('games-game-container');
+    expect(window.GameRegistry.getCurrentGame()).toBe(window.GameRegistry.get('flappy-bird'));
 
     const hubStyle = window.getComputedStyle(hub);
     expect(hubStyle.display).toBe('flex');
     expect(hubStyle.flexDirection).toBe('column');
     expect(hubStyle.minHeight).toBe('0px');
     expect(hubStyle.overflow).toBe('hidden');
+
+    const containerStyle = window.getComputedStyle(gameContainer);
+    expect(containerStyle.display).toBe('flex');
+    expect(containerStyle.flex).toBe('1 1 auto');
+    expect(containerStyle.minHeight).toBe('0px');
+    expect(containerStyle.overflow).toBe('hidden');
+
+    const stageStyle = window.getComputedStyle(stage);
+    expect(stageStyle.display).toBe('flex');
+    expect(stageStyle.flex).toBe('1 1 auto');
+    expect(stageStyle.minHeight).toBe('0px');
+    expect(stageStyle.alignItems).toBe('center');
+    expect(stageStyle.justifyContent).toBe('center');
+
+    const canvasStyle = window.getComputedStyle(canvas);
+    expect(canvasStyle.maxWidth).toBe('100%');
+    expect(canvasStyle.maxHeight).toBe('100%');
+    expect(canvasStyle.boxSizing).toBe('border-box');
   });
 
   it('keeps the hub scrolling rule for non-Flappy content', () => {
