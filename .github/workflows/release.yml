@@ -20,7 +20,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-${{ inputs.release_tag || github.ref_name }}
+  group: release-${{ github.event.inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -28,18 +28,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate manual release tag
-        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != ''
         env:
-          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
+          RELEASE_TAG_INPUT: ${{ github.event.inputs.release_tag }}
         run: |
           set -euo pipefail
           [[ "$RELEASE_TAG_INPUT" == v* ]] || { echo "::error::Tag $RELEASE_TAG_INPUT must start with v"; exit 1; }
 
       - name: Verify manual repair target release exists
-        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
+          RELEASE_TAG_INPUT: ${{ github.event.inputs.release_tag }}
         run: |
           set -euo pipefail
           gh release view "$RELEASE_TAG_INPUT" --repo "$GITHUB_REPOSITORY" >/dev/null
@@ -48,12 +48,12 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
-          ref: ${{ inputs.release_tag && format('refs/tags/{0}', inputs.release_tag) || github.ref }}
+          ref: ${{ github.event.inputs.release_tag && format('refs/tags/{0}', github.event.inputs.release_tag) || github.ref }}
 
       - name: Validate version tag
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
         env:
-          RELEASE_TAG_INPUT: ${{ inputs.release_tag || '' }}
+          RELEASE_TAG_INPUT: ${{ github.event.inputs.release_tag || '' }}
         run: |
           set -euo pipefail
           if [ -n "$RELEASE_TAG_INPUT" ]; then
@@ -113,10 +113,10 @@ jobs:
           echo "✓ Tag $TAG validated"
 
       - name: Validate What's New entry
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
         shell: bash
         env:
-          RELEASE_TAG_INPUT: ${{ inputs.release_tag || '' }}
+          RELEASE_TAG_INPUT: ${{ github.event.inputs.release_tag || '' }}
         run: |
           set -euo pipefail
           if [ -n "$RELEASE_TAG_INPUT" ]; then
@@ -166,11 +166,11 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Lint
-        if: github.event_name != 'workflow_dispatch' || inputs.release_tag == ''
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.release_tag == ''
         run: npm run lint
 
       - name: Run tests
-        if: github.event_name != 'workflow_dispatch' || inputs.release_tag == ''
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.release_tag == ''
         run: npm test
 
       # The extension is entirely static (vanilla HTML/CSS/JS with no
@@ -216,8 +216,8 @@ jobs:
           path: new-tab.zip
 
       - name: Upload Release Assets
-        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
-          tag_name: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+          tag_name: ${{ github.event.inputs.release_tag || github.event.release.tag_name || github.ref_name }}
           files: new-tab.zip
