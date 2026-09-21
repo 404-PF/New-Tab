@@ -22,6 +22,13 @@
   // MAINTENANCE: whenever version.js / manifest.json is bumped for a release,
   // add a new entry here (or the modal falls back to RELEASE_NOTES_FALLBACK).
   const RELEASE_NOTES = {
+    '0.5.1': [
+      'Added search suggestions with bang shortcuts and keyboard provider switching',
+      'Added web-grounded AI answers with cited sources',
+      'Added todo due times with timed reminders and minute-accurate overdue states',
+      'Kept todos, notes, and AI data in sync across open tabs',
+      'Blocked unsafe custom app URL schemes'
+    ],
     '0.5.0': [
       'Added a built-in Games hub with Snake, 2048, Memory Match, and Flappy Bird',
       'Added a Pomodoro focus timer with configurable work and break durations',
