@@ -69,7 +69,7 @@ jobs:
           fi
           LOCK_PACKAGES_VERSION="$(jq -r '.packages."".version' package-lock.json)"
           if [ "$LOCK_PACKAGES_VERSION" != "null" ] && [ "$LOCK_PACKAGES_VERSION" != "$VERSION" ]; then
-            echo "::error::package-lock.json packages.\"\".version $LOCK_PACKAGES_VERSION does not match tag $TAG"
+            echo "::error::package-lock.json packages.\"".version $LOCK_PACKAGES_VERSION does not match tag $TAG"
             exit 1
           fi
           git fetch origin main --depth=1 || true
@@ -81,7 +81,20 @@ jobs:
           fi
           echo "✓ Tag $TAG validated"
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - name: Validate What's New entry
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if ! grep -Fq "'$VERSION':" src/features/release-notes.js && ! grep -Fq "\"$VERSION\":" src/features/release-notes.js; then
+            echo "::error::src/features/release-notes.js has no What's New entry for v$VERSION"
+            echo "Add a RELEASE_NOTES entry before tagging this release."
+            exit 1
+          fi
+          echo "✓ Found What's New entry for v$VERSION"
+
+      - uses: actions/setup-node@49933ea5288caece8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
