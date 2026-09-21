@@ -1,13 +1,13 @@
 ---
 name: prepare-release
-description: 'Bump display version to user-provided version and push tag. No changelog, no GitHub Release.'
+description: 'Bump display version to user-provided version and push tag. Update bundled What's New notes before tagging.'
 user-invocable: true
 argument-hint: '[version] e.g. 1.2.0'
 ---
 
 # Prepare Release
 
-Bumps `manifest.json` + `package.json` to version provided by user (`src/core/version.js` reads manifest for `version-display`) and pushes `vX.Y.Z` tag.
+Bumps `manifest.json` + `package.json` to the version provided by the user, updates the bundled What's New entry for that version, and pushes the `vX.Y.Z` tag. No GitHub Release is created by this skill.
 
 ## Procedure
 
@@ -53,7 +53,25 @@ Update all version files — must stay in sync, show diff, confirm:
 - `package.json` `"version": "$VERSION"`
 - `package-lock.json` `"version": "$VERSION"` (run `npm install --package-lock-only` if needed to sync lockfile)
 
-### 3. Commit
+### 3. Update What's New
+
+Before committing or tagging, add a `RELEASE_NOTES` entry in `src/features/release-notes.js` for `$VERSION`.
+
+- The key must exactly match `$VERSION` (no leading `v`)
+- Add 3–8 concise, user-facing highlights from the release
+- Keep each highlight short enough for the modal
+- Do not add fixes or internal maintenance details unless they are meaningful to users
+- Keep the newest release entry at the top of `RELEASE_NOTES`
+
+Show the diff and verify the new version key is present:
+
+```bash
+grep -nF "'$VERSION':" src/features/release-notes.js
+```
+
+The release workflow also validates this entry before packaging.
+
+### 4. Commit
 
 Verify only intended files will be committed:
 
@@ -65,18 +83,18 @@ if [ -n "$(git diff --cached --name-only)" ]; then
   exit 1
 fi
 git status --porcelain
-git add manifest.json package.json package-lock.json
-git diff --cached --name-only  # should list only version files
-# verify only version files are staged
+git add manifest.json package.json package-lock.json src/features/release-notes.js
+git diff --cached --name-only  # should list only version/release-note files
+# verify only release files are staged
 for f in $(git diff --cached --name-only); do
-  case "$f" in manifest.json|package.json|package-lock.json) ;;
+  case "$f" in manifest.json|package.json|package-lock.json|src/features/release-notes.js) ;;
     *) echo "Unexpected staged file: $f" >&2; exit 1;;
   esac
 done
-git commit -m "chore: release v$VERSION" manifest.json package.json package-lock.json
+git commit -m "chore: release v$VERSION" manifest.json package.json package-lock.json src/features/release-notes.js
 ```
 
-### 4. Tag & Push
+### 5. Tag & Push
 
 ```bash
 test "$(git branch --show-current)" = "main" || { echo "Release must be prepared from main" >&2; exit 1; }
@@ -87,5 +105,6 @@ git push origin HEAD --follow-tags
 ## Checklist
 
 - [ ] Version from user, valid semver, tag not exists
-- [ ] manifest.json + package.json synced (and package-lock.json if present)
+- [ ] manifest.json + package.json + package-lock.json synced
+- [ ] src/features/release-notes.js contains the matching version entry
 - [ ] Tag pushed
