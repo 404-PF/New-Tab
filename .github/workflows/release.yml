@@ -10,12 +10,17 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release tag to package and attach new-tab.zip to'
+        required: false
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.release_tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -25,12 +30,19 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Validate version tag
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        env:
+          RELEASE_TAG_INPUT: ${{ inputs.release_tag || '' }}
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF#refs/tags/}"
+          if [ -n "$RELEASE_TAG_INPUT" ]; then
+            TAG="$RELEASE_TAG_INPUT"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
           VERSION="${TAG#v}"
           echo "Validating tag $TAG -> version $VERSION"
           if ! printf '%s' "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){0,3}$'; then
@@ -82,11 +94,17 @@ jobs:
           echo "✓ Tag $TAG validated"
 
       - name: Validate What's New entry
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         shell: bash
+        env:
+          RELEASE_TAG_INPUT: ${{ inputs.release_tag || '' }}
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [ -n "$RELEASE_TAG_INPUT" ]; then
+            VERSION="${RELEASE_TAG_INPUT#v}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
           VERSION="$VERSION" node <<'NODE'
           const fs = require('node:fs');
           const vm = require('node:vm');
@@ -127,6 +145,16 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
+
+      - name: Verify manual repair target release exists
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG_INPUT" --repo "$GITHUB_REPOSITORY" >/dev/null
+          echo "✓ Existing release $RELEASE_TAG_INPUT found"
 
       - name: Lint
         run: npm run lint
@@ -177,7 +205,8 @@ jobs:
           path: new-tab.zip
 
       - name: Upload Release Assets
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
+          tag_name: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
           files: new-tab.zip
