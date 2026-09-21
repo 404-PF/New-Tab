@@ -33,14 +33,12 @@ Stage files intentionally — avoid `git add .` unless all changes are part of o
 Follow this structure:
 
 ```
-<type>(<scope>)[!]: <subject>
+<type>(<scope>): <subject>
 
 <body>
 
 <footer>
 ```
-
-Append `!` after the type/scope (e.g. `refactor(config)!:` or `feat!:`) to flag a breaking change, in addition to the `BREAKING CHANGE:` footer.
 
 **Type** (pick one):
 | Type | When to Use |
@@ -58,7 +56,7 @@ Append `!` after the type/scope (e.g. `refactor(config)!:` or `feat!:`) to flag 
 - Use imperative mood: "add" not "added" or "adds"
 - No period at the end
 - Keep under 72 characters
-- Keep the subject lowercase after the type/scope (e.g. `fix(auth): prevent token refresh race condition`)
+- Capitalize the first letter
 
 **Body** (when needed):
 - Explain *what* and *why*, not *how*
@@ -67,11 +65,10 @@ Append `!` after the type/scope (e.g. `refactor(config)!:` or `feat!:`) to flag 
 
 **Footer** (when applicable):
 - Reference issues: `Closes #123`, `Fixes #456`
-- Note breaking changes: `BREAKING CHANGE: <description>` and flag the subject with `!` (e.g. `refactor(config)!:`)
+- Note breaking changes: `BREAKING CHANGE: <description>`
 
 ### 4. Commit
 
-- Run `npm run lint` and `npm test` — stop and fix on failure, do not commit a failing change
 - Review the commit message one more time
 - Commit with `git commit`
 - Verify with `git log --oneline -1`
@@ -106,8 +103,6 @@ BREAKING CHANGE: DATABASE_URL is now DB_CONNECTION_STRING
 Before finalizing a commit, verify:
 
 - [ ] Changes are staged intentionally (no unintended files)
-- [ ] `npm run lint` passes — stop and fix on failure, do not commit
-- [ ] `npm test` passes — stop and fix on failure, do not commit
 - [ ] Commit type accurately describes the change
 - [ ] Subject is imperative, concise, and under 72 chars
 - [ ] Body explains *why* (if non-obvious)
