@@ -1,6 +1,6 @@
 ---
 name: prepare-release
-description: 'Bump display version to user-provided version and push tag. Update bundled What's New notes before tagging.'
+description: "Bump display version to user-provided version and push tag. Update bundled What's New notes before tagging."
 user-invocable: true
 argument-hint: '[version] e.g. 1.2.0'
 ---
@@ -66,7 +66,7 @@ Before committing or tagging, add a `RELEASE_NOTES` entry in `src/features/relea
 Show the diff and verify the new version key is present:
 
 ```bash
-grep -nF "'$VERSION':" src/features/release-notes.js
+grep -nF "'$VERSION':" src/features/release-notes.js || { echo "Missing RELEASE_NOTES entry for $VERSION" >&2; exit 1; }
 ```
 
 The release workflow also validates this entry before packaging.

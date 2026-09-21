@@ -23,7 +23,7 @@
   // add a new entry here (or the modal falls back to RELEASE_NOTES_FALLBACK).
   const RELEASE_NOTES = {
     '0.5.0': [
-      'Added a built-in Games hub with Snake, 2048, and Memory Match',
+      'Added a built-in Games hub with Snake, 2048, Memory Match, and Flappy Bird',
       'Added a Pomodoro focus timer with configurable work and break durations',
       'Added focus-session statistics with weekly breakdowns and heatmaps',
       'Added support for multiple time zone clocks',

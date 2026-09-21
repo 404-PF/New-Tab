@@ -76,31 +76,22 @@ describe('ReleaseNotes', () => {
     expect(document.querySelector('.release-notes-modal')).toBeNull();
   });
 
-  it('renders bundled notes for the upgraded version', () => {
-    localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.4.6');
-    window.releaseNotes.detectAndShow();
-    const modal = document.querySelector('.release-notes-modal');
-    expect(modal.querySelector('.release-notes-list li').textContent).toContain('Redesigned the Background tab');
-  });
+  [
+    ['0.4.7', '0.4.6', 'Redesigned the Background tab'],
+    ['0.4.8', '0.4.7', 'focus-mode layout'],
+    ['0.5.0', '0.4.9', 'Flappy Bird']
+  ].forEach(([version, previousVersion, expectedNote]) => {
+    it(`renders bundled notes for the ${version} release`, () => {
+      window.CURRENT_VERSION = version;
+      localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, previousVersion);
+      const result = window.releaseNotes.detectAndShow();
+      const modal = document.querySelector('.release-notes-modal');
 
-  it('renders bundled notes for the 0.4.8 release', () => {
-    window.CURRENT_VERSION = '0.4.8';
-    localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.4.7');
-    const result = window.releaseNotes.detectAndShow();
-    const modal = document.querySelector('.release-notes-modal');
-    expect(result).toBe('shown');
-    expect(modal.querySelector('.release-notes-list li').textContent).toContain('focus-mode layout');
-    expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe('0.4.8');
-  });
-
-  it('renders bundled notes for the 0.5.0 release', () => {
-    window.CURRENT_VERSION = '0.5.0';
-    localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.4.9');
-    const result = window.releaseNotes.detectAndShow();
-    const modal = document.querySelector('.release-notes-modal');
-    expect(result).toBe('shown');
-    expect(modal.querySelector('.release-notes-list li').textContent).toContain('built-in Games hub');
-    expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe('0.5.0');
+      expect(result).toBe('shown');
+      expect(modal).not.toBeNull();
+      expect(modal.querySelector('.release-notes-list li').textContent).toContain(expectedNote);
+      expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe(version);
+    });
   });
 
   it('handles versions without bundled notes without throwing', () => {
