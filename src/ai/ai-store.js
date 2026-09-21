@@ -205,15 +205,6 @@ const AIStore = (function() {
     return fallbackState;
   }
 
-  function commitSavedState(nextConversations, nextCurrentConversationId, saveGeneration) {
-    if (saveGeneration !== saveSequence) {
-      return;
-    }
-
-    state.conversations = nextConversations;
-    state.currentConversationId = nextCurrentConversationId;
-  }
-
   function reportSaveFailure(error, rollbackState, saveGeneration) {
     const isLatestSave = saveGeneration === saveSequence;
     if (isLatestSave && rollbackState) {
@@ -298,7 +289,8 @@ const AIStore = (function() {
         );
       }
 
-      commitSavedState(nextConversations, nextCurrentConversationId, saveGeneration);
+      // State is normalized before the transaction starts. Keep the live
+      // conversation objects intact while committing the persisted snapshot.
       return true;
     };
 
@@ -374,40 +366,58 @@ const AIStore = (function() {
   }
 
   let saveSequence = 0;
-  let saveQueue = Promise.resolve();
+  let saveQueue = null;
 
   function enqueueSave(saveTransaction) {
-    const queuedSave = saveQueue.then(saveTransaction, saveTransaction);
-    saveQueue = queuedSave.then(
-      () => undefined,
-      () => undefined
+    const run = () => {
+      try {
+        return Promise.resolve(saveTransaction());
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    };
+
+    // Start the first transaction immediately so fire-and-forget recovery saves
+    // update the storage bridge in the same turn. Later saves remain serialized.
+    const queuedSave = saveQueue ? saveQueue.then(run, run) : run();
+    saveQueue = queuedSave;
+    queuedSave.then(
+      () => {
+        if (saveQueue === queuedSave) saveQueue = null;
+      },
+      () => {
+        if (saveQueue === queuedSave) saveQueue = null;
+      }
     );
     return queuedSave;
   }
 
   function saveConversations(previousState = createSaveSnapshot()) {
     const saveGeneration = ++saveSequence;
-    const nextState = createSaveSnapshot();
 
-    if (nextState.conversations.length > MAX_CONVERSATIONS) {
-      const kept = nextState.conversations.slice(0, MAX_CONVERSATIONS);
-      const active = nextState.conversations.find(
-        conversation => conversation.id === nextState.currentConversationId
+    // Apply state normalization synchronously so callers observe the same
+    // state that will be persisted, while retaining the existing conversation
+    // object identities for in-flight requests and UI references.
+    if (state.conversations.length > MAX_CONVERSATIONS) {
+      const kept = state.conversations.slice(0, MAX_CONVERSATIONS);
+      const active = state.conversations.find(
+        conversation => conversation.id === state.currentConversationId
       );
       if (active && !kept.some(conversation => conversation.id === active.id)) {
         kept[kept.length - 1] = active;
       }
-      nextState.conversations = kept;
+      state.conversations.splice(0, state.conversations.length, ...kept);
     }
 
-    if (!nextState.conversations.some(
-      conversation => conversation.id === nextState.currentConversationId
+    if (!state.conversations.some(
+      conversation => conversation.id === state.currentConversationId
     )) {
-      nextState.currentConversationId = nextState.conversations[0]
-        ? nextState.conversations[0].id
+      state.currentConversationId = state.conversations[0]
+        ? state.conversations[0].id
         : null;
     }
 
+    const nextState = createSaveSnapshot();
     const saveTransaction = () => saveConversationsTransaction(
       nextState.conversations,
       nextState.currentConversationId,

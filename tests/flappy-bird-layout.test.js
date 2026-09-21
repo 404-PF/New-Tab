@@ -64,6 +64,10 @@ function installRelevantStyles(css) {
 }
 
 function mountFlappyModalView() {
+  // A previous game instance can survive across test files/workers. Tear it
+  // down without serializing so launch() cannot short-circuit on the same game.
+  window.GameRegistry?.destroyCurrent?.({ serialize: false });
+
   const hub = document.createElement('div');
   hub.className = 'games-hub-content ' + FLAPPY_LAYOUT_TEST_CLASS;
 
