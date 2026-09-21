@@ -61,15 +61,9 @@ Before creating the PR, present:
 
 ### 5. Create the Pull Request
 
-Prefer **GitHub MCP tools** (`mcp_github_mcp_se_create_pull_request`) to create the PR. If MCP tools are unavailable or fail, fall back to **`gh` CLI** in the terminal — avoid shell interpolation of the generated title/body (they derive from commit messages and may contain `"`, `` ` ``, or `$(...)`); write the body through a unique private file and pass metadata as separate quoted args:
-
+Prefer **GitHub MCP tools** (`mcp_github_mcp_se_create_pull_request`) to create the PR. If MCP tools are unavailable or fail, fall back to **`gh` CLI** in the terminal:
 ```bash
-tmp=$(mktemp -t pr-body-XXXXXX.md) && trap 'rm -f "$tmp"' EXIT
-printf '%s' "$body" > "$tmp"
-gh pr create --base "$base" --head "$head" --title "$title" --body-file "$tmp"
-# draft mode: add --draft when the user requested Draft (omit for ready-for-review):
-#   gh pr create --base "$base" --head "$head" --title "$title" --body-file "$tmp" --draft
-# never interpolate title/body into a double-quoted shell string; body stays in file, metadata as separate quoted args
+gh pr create --base <base> --head <head> --title "<title>" --body "<body>"
 ```
 
 Set the following:
