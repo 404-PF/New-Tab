@@ -413,6 +413,39 @@ describe('Todo utilities', () => {
     expect(isOverdue(today)).toBe(false);
   });
 
+  it('getNextDueDate preserves the weekly anchor after a late completion', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 23)); // Wednesday, Sep 23, 2026
+
+    try {
+      expect(getNextDueDate('2026-09-21', 'weekly')).toBe('2026-09-28');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('getNextDueDate catches up overdue daily recurrences without rebasing them to today', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 23)); // Wednesday, Sep 23, 2026
+
+    try {
+      expect(getNextDueDate('2026-09-20', 'daily')).toBe('2026-09-24');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('getNextDueDate preserves the monthly recurrence anchor after a late completion', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 5)); // Sep 5, 2026
+
+    try {
+      expect(getNextDueDate('2026-07-31', 'monthly')).toBe('2026-09-30');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('isOverdue returns true for past date', () => {
     expect(isOverdue('2000-01-01')).toBe(true);
   });
