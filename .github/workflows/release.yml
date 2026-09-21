@@ -20,13 +20,21 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-${{ inputs.release_tag || github.ref }}
+  group: release-${{ inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   package:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate manual release tag
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        env:
+          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG_INPUT" == v* ]] || { echo "::error::Tag $RELEASE_TAG_INPUT must start with v"; exit 1; }
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
@@ -39,6 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "$RELEASE_TAG_INPUT" ]; then
+            [[ "$RELEASE_TAG_INPUT" == v* ]] || { echo "::error::Tag $RELEASE_TAG_INPUT must start with v"; exit 1; }
             TAG="$RELEASE_TAG_INPUT"
           else
             TAG="${GITHUB_REF#refs/tags/}"
