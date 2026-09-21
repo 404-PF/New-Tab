@@ -183,6 +183,19 @@
 
     if (typeof def.close === 'function') {
       def.close();
+    } else {
+      const cancelButtonIds = {
+        'rename-app-modal': 'rename-app-cancel',
+        'thumbnail-app-modal': 'thumbnail-app-cancel',
+        'delete-app-modal': 'delete-app-cancel'
+      };
+      const cancelButton = cancelButtonIds[def.id]
+        ? modal.querySelector('#' + cancelButtonIds[def.id])
+        : modal.querySelector('.ai-confirm-cancel');
+
+      if (cancelButton && typeof cancelButton.click === 'function') {
+        cancelButton.click();
+      }
     }
 
     if (def.nativeDialog && modal.open && typeof modal.close === 'function') {
