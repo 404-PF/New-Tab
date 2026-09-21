@@ -4,6 +4,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { installFlappyBirdTestEnvironment } from './helpers/flappy-bird-test-env.js';
 
 const FEATURES_CSS_PATH = resolve(process.cwd(), 'css/features.css');
+const FLAPPY_SCOPE_SELECTOR = '.games-hub-content:has(.games-flappy-stage)';
+const FLAPPY_LAYOUT_TEST_CLASS = 'flappy-layout-test';
 
 beforeAll(() => {
   installFlappyBirdTestEnvironment(vi);
@@ -44,23 +46,26 @@ function expectDeclaration(ruleBody, property, expected) {
 function installRelevantStyles(css) {
   const selectors = [
     '.games-hub-content',
-    '.games-hub-content:has(.games-flappy-stage)',
-    '.games-hub-content:has(.games-flappy-stage) #games-game-container',
-    '.games-hub-content:has(.games-flappy-stage) .games-flappy-stage',
-    '.games-hub-content:has(.games-flappy-stage) .games-flappy-canvas'
+    FLAPPY_SCOPE_SELECTOR,
+    FLAPPY_SCOPE_SELECTOR + ' #games-game-container',
+    FLAPPY_SCOPE_SELECTOR + ' .games-flappy-stage',
+    FLAPPY_SCOPE_SELECTOR + ' .games-flappy-canvas'
   ];
 
   const style = document.createElement('style');
   style.dataset.flappyLayoutTest = 'true';
   style.textContent = selectors
-    .map((selector) => selector + ' { ' + getRuleBody(css, selector) + ' }')
+    .map((selector) => {
+      const testSelector = selector.replace(FLAPPY_SCOPE_SELECTOR, '.games-hub-content.' + FLAPPY_LAYOUT_TEST_CLASS);
+      return testSelector + ' { ' + getRuleBody(css, selector) + ' }';
+    })
     .join('\n');
   document.head.appendChild(style);
 }
 
 function mountFlappyModalView() {
   const hub = document.createElement('div');
-  hub.className = 'games-hub-content';
+  hub.className = 'games-hub-content ' + FLAPPY_LAYOUT_TEST_CLASS;
 
   const header = document.createElement('div');
   header.className = 'games-game-header';
@@ -83,9 +88,11 @@ function mountFlappyModalView() {
 }
 
 describe('Flappy Bird modal layout (#741)', () => {
-  // JSDOM resolves CSS selectors and computed declarations but does not perform
-  // browser layout, so this suite verifies mounted DOM/style containment rather
-  // than pixel-level bounding-box scaling.
+  // JSDOM 26.1.0 does not match :has() selectors, so injected test styles
+  // replace the production ancestor scope with a test-only class. The
+  // declaration test below still verifies the production selectors directly.
+  // JSDOM also does not perform browser layout, so this suite verifies mounted
+  // DOM/style containment rather than pixel-level bounding-box scaling.
   it('applies the scoped viewport rule to the mounted Flappy Bird DOM', () => {
     const css = readFileSync(FEATURES_CSS_PATH, 'utf-8');
     installRelevantStyles(css);
