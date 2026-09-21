@@ -146,11 +146,10 @@ describe('Accessibility - filters and calendars', () => {
   });
 
   it('adds selected and disabled state to calendar days', () => {
-    const calendar = document.createElement('div');
-    calendar.id = 'a11y-test-calendar';
+    const calendar = document.getElementById('calendar-days');
     calendar.innerHTML =
       '<div class="calendar-day other-month" data-date="2026-08-31">31</div>' +
-      '<div class="calendar-day today selected" data-date="2026-09-22">22</div>';
+      '<div class="calendar-day selected" data-date="2026-09-22">22</div>';
     document.body.appendChild(calendar);
 
     window.Accessibility.refreshCalendars();
