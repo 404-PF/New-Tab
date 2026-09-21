@@ -225,6 +225,37 @@ async function cacheAppIcon(appData) {
   }
 }
 
+function getAppGridSaveErrorMessage() {
+  const fallback = 'Failed to save app changes. Your last action was not saved.';
+  if (!window.i18n || typeof window.i18n.t !== 'function') {
+    return fallback;
+  }
+
+  const message = window.i18n.t('appGridSaveError');
+  return message && message !== 'appGridSaveError' ? message : fallback;
+}
+
+function showAddAppSaveError() {
+  const message = getAppGridSaveErrorMessage();
+  if (typeof window.showToast === 'function') {
+    window.showToast(message, 'error');
+    return;
+  }
+
+  const { validationMessage, addAppUrlInput } = getAddAppElements();
+  if (validationMessage) {
+    validationMessage.textContent = message;
+    validationMessage.classList.add('show', 'malformed');
+    validationMessage.classList.remove('undetectable', 'duplicate');
+    if (addAppUrlInput) {
+      addAppUrlInput.focus();
+    }
+    return;
+  }
+
+  console.warn(message);
+}
+
 async function saveCustomApp(appData) {
   const appToSave = await cacheAppIcon(appData);
   if (window.AppGridState && window.AppGridState.hasAppWithUrl(appToSave.url)) {
@@ -232,6 +263,7 @@ async function saveCustomApp(appData) {
     return;
   }
   if (!window.AppGridState.addApp(appToSave)) {
+    showAddAppSaveError();
     return;
   }
   if (window.renderCustomApps) {
