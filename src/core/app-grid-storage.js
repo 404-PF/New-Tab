@@ -138,7 +138,7 @@ function normalizeCustomAppUrlFallback(url) {
   }
 }
 
-function normalizeCustomAppUrl(url) {
+function normalizeCustomAppUrlLocal(url) {
   if (typeof window.normalizeCustomAppUrl === 'function') {
     return window.normalizeCustomAppUrl(url);
   }
@@ -147,7 +147,7 @@ function normalizeCustomAppUrl(url) {
 
 window.__normalizeAppUrlForCheck = function (trimmed) {
   if (!trimmed || trimmed.startsWith('/')) return trimmed;
-  return normalizeCustomAppUrl(trimmed) || trimmed;
+  return normalizeCustomAppUrlLocal(trimmed) || trimmed;
 };
 
 /**
@@ -169,7 +169,7 @@ function migrateCustomAppUrls(apps) {
       continue;
     }
 
-    const normalizedUrl = normalizeCustomAppUrl(originalUrl);
+    const normalizedUrl = normalizeCustomAppUrlLocal(originalUrl);
     if (normalizedUrl === null) {
       // Keep the app record but replace attacker-controlled destinations with a
       // harmless no-op so stale appOrder/folder references remain valid.
@@ -213,7 +213,7 @@ const AppGridStorage = {
       for (const app of apps) {
         if (!app || typeof app !== 'object' || !Object.prototype.hasOwnProperty.call(app, 'url')) continue;
         if (typeof app.url !== 'string') return false;
-        const normalizedUrl = normalizeCustomAppUrl(app.url);
+        const normalizedUrl = normalizeCustomAppUrlLocal(app.url);
         if (normalizedUrl === null) return false;
         app.url = normalizedUrl;
       }
