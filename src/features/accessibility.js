@@ -32,6 +32,7 @@
   let listAnnouncementTimer = null;
   let lastFilterAnnouncementAt = 0;
   let initialized = false;
+  const MODAL_MENU_ACTIONS = new Set(['rename-app', 'move-to-folder', 'change-thumbnail', 'delete-app']);
 
   function isVisible(element) {
     if (!element || !element.isConnected) return false;
@@ -233,6 +234,16 @@
       }
 
       if (open) currentlyOpen.push(def.id);
+    });
+
+    modalState.forEach((state, id) => {
+      if (currentlyOpen.includes(id)) return;
+      if (document.getElementById(id)) return;
+      modalState.delete(id);
+      modalStack = modalStack.filter(stackId => stackId !== id);
+      if (state.opener?.isConnected && !state.opener.closest('[inert]') && isVisible(state.opener)) {
+        requestAnimationFrame(() => state.opener.focus({ preventScroll: true }));
+      }
     });
 
     const top = getTopOpenModal();
@@ -509,6 +520,8 @@
       } else if (cell.classList.contains('folder-icon')) {
         if (picked.classList.contains('custom-app')) {
           moved = !!window.AppGridState?.moveAppToFolder?.(targetId, sourceId);
+        } else if (picked.classList.contains('folder-icon')) {
+          moved = reorderInAppGrid(sourceId, targetId);
         }
       } else {
         moved = reorderInAppGrid(sourceId, targetId);
@@ -672,6 +685,7 @@
 
     const visibleItems = items.filter(isVisible);
     const isOpen = menu.style.display !== 'none' && (menu.classList.contains('visible') || document.body.classList.contains('context-menu-open'));
+    menu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
     if (isOpen && visibleItems.length) {
       requestAnimationFrame(() => visibleItems[0].focus({ preventScroll: true }));
     }
@@ -733,8 +747,12 @@
 
   function handleDocumentClickCapture(event) {
     const menuItem = event.target.closest?.('#app-context-menu .context-menu-item');
-    if (menuItem) {
+    if (menuItem && MODAL_MENU_ACTIONS.has(menuItem.id)) {
       pendingModalOpener = contextMenuOpener?.isConnected ? contextMenuOpener : lastFocusedElement;
+      const opener = pendingModalOpener;
+      setTimeout(() => {
+        if (pendingModalOpener === opener) pendingModalOpener = null;
+      }, 0);
     }
 
     const pill = event.target.closest?.('.filter-pill');
