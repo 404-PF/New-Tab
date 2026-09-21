@@ -81,7 +81,46 @@ jobs:
           fi
           echo "✓ Tag $TAG validated"
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - name: Validate What's New entry
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          VERSION="$VERSION" node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+
+          const source = fs.readFileSync('src/features/release-notes.js', 'utf8');
+          const match = source.match(/const RELEASE_NOTES\s*=\s*(\{[\s\S]*?\n\s*\});/);
+          if (!match) {
+            console.error("::error::Could not locate RELEASE_NOTES in src/features/release-notes.js");
+            process.exit(1);
+          }
+
+          let releaseNotes;
+          try {
+            releaseNotes = vm.runInNewContext(`(${match[1]})`);
+          } catch (error) {
+            console.error(`::error::Could not parse RELEASE_NOTES: ${error.message}`);
+            process.exit(1);
+          }
+
+          const version = process.env.VERSION;
+          if (
+            !Object.prototype.hasOwnProperty.call(releaseNotes, version) ||
+            !Array.isArray(releaseNotes[version]) ||
+            releaseNotes[version].length === 0
+          ) {
+            console.error(`::error::src/features/release-notes.js has no RELEASE_NOTES array entry for v${version}`);
+            console.error("Add a RELEASE_NOTES entry before tagging this release.");
+            process.exit(1);
+          }
+
+          console.log(`✓ Found What's New entry for v${version}`);
+          NODE
+
+      - uses: actions/setup-node@49933ea5288caece8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'

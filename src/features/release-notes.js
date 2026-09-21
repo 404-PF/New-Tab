@@ -22,6 +22,13 @@
   // MAINTENANCE: whenever version.js / manifest.json is bumped for a release,
   // add a new entry here (or the modal falls back to RELEASE_NOTES_FALLBACK).
   const RELEASE_NOTES = {
+    '0.5.0': [
+      'Added a built-in Games hub with Snake, 2048, Memory Match, and Flappy Bird',
+      'Added a Pomodoro focus timer with configurable work and break durations',
+      'Added focus-session statistics with weekly breakdowns and heatmaps',
+      'Added support for multiple time zone clocks',
+      'Added an hourly weather forecast with rain probabilities'
+    ],
     '0.4.8': [
       'Added a focus-mode layout and shortcut',
       'Added configurable eye-care break reminders',
