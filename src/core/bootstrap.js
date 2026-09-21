@@ -99,7 +99,8 @@
     'src/features/background-rotation.js',
     'src/features/shortcuts.js',
     'src/features/auto-theme.js',
-    'src/features/games/games-app.js'
+    'src/features/games/games-app.js',
+    'src/features/accessibility.js'
   ];
 
   function loadScript(source) {
