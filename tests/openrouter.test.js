@@ -235,7 +235,10 @@ describe('OpenRouter streaming resilience (#714)', () => {
     vi.useFakeTimers();
     const originalMaxRetries = OpenRouterAPI.config.maxRetries;
     const originalTimeout = OpenRouterAPI.config.requestTimeout;
-    let readStarted = false;
+    let resolveReadStarted;
+    const readStartedPromise = new Promise(resolve => {
+      resolveReadStarted = resolve;
+    });
 
     try {
       OpenRouterAPI.config.maxRetries = 0;
@@ -246,7 +249,7 @@ describe('OpenRouter streaming resilience (#714)', () => {
         body: {
           getReader: () => ({
             read: vi.fn(() => {
-              readStarted = true;
+              resolveReadStarted();
               return new Promise((_resolve, reject) => {
                 options.signal.addEventListener('abort', () => {
                   reject(new Error('aborted'));
@@ -261,10 +264,7 @@ describe('OpenRouter streaming resilience (#714)', () => {
 
       // Fetch/stream setup crosses promise boundaries; wait for the observable
       // read to start instead of depending on a fixed microtask count.
-      for (let attempts = 0; attempts < 10 && !readStarted; attempts += 1) {
-        await Promise.resolve();
-      }
-      expect(readStarted).toBe(true);
+      await readStartedPromise;
 
       await vi.advanceTimersByTimeAsync(100);
       const result = await promise;
