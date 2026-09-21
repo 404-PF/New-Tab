@@ -166,9 +166,11 @@ jobs:
           echo "✓ Existing release $RELEASE_TAG_INPUT found"
 
       - name: Lint
+        if: github.event_name != 'workflow_dispatch' || inputs.release_tag == ''
         run: npm run lint
 
       - name: Run tests
+        if: github.event_name != 'workflow_dispatch' || inputs.release_tag == ''
         run: npm test
 
       # The extension is entirely static (vanilla HTML/CSS/JS with no
