@@ -1,6 +1,6 @@
 import { injectScript } from './inject-script.js';
 
-const canvasContext = new Proxy({
+const canvasContext = {
   createLinearGradient: () => ({ addColorStop() {} }),
   createRadialGradient: () => ({ addColorStop() {} }),
   drawImage() {},
@@ -19,14 +19,7 @@ const canvasContext = new Proxy({
   restore() {},
   translate() {},
   fillText() {}
-}, {
-  get(target, property) {
-    if (!(property in target)) {
-      target[property] = () => {};
-    }
-    return target[property];
-  }
-});
+};
 
 export function installFlappyBirdTestEnvironment(vi) {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(canvasContext);
