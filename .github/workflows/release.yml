@@ -35,6 +35,16 @@ jobs:
           set -euo pipefail
           [[ "$RELEASE_TAG_INPUT" == v* ]] || { echo "::error::Tag $RELEASE_TAG_INPUT must start with v"; exit 1; }
 
+      - name: Verify manual repair target release exists
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG_INPUT" --repo "$GITHUB_REPOSITORY" >/dev/null
+          echo "✓ Existing release $RELEASE_TAG_INPUT found"
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
@@ -154,16 +164,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
-
-      - name: Verify manual repair target release exists
-        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
-        run: |
-          set -euo pipefail
-          gh release view "$RELEASE_TAG_INPUT" --repo "$GITHUB_REPOSITORY" >/dev/null
-          echo "✓ Existing release $RELEASE_TAG_INPUT found"
 
       - name: Lint
         if: github.event_name != 'workflow_dispatch' || inputs.release_tag == ''
