@@ -96,7 +96,15 @@ describe('Accessibility - app grid keyboard interaction', () => {
       grid.appendChild(cell);
     });
 
+    const addApp = document.createElement('a');
+    addApp.id = 'new-app';
+    addApp.href = '#';
+    addApp.className = 'app-icon default-app';
+    addApp.textContent = 'Add app';
+    grid.appendChild(addApp);
+
     window.Accessibility.refreshGrid();
+    expect(addApp.getAttribute('role')).toBeNull();
 
     expect(grid.getAttribute('role')).toBe('grid');
     const cells = [...grid.querySelectorAll('.app-icon')];
@@ -150,8 +158,7 @@ describe('Accessibility - filters and calendars', () => {
     calendar.innerHTML =
       '<div class="calendar-day other-month" data-date="2026-08-31">31</div>' +
       '<div class="calendar-day selected" data-date="2026-09-22">22</div>';
-    document.body.appendChild(calendar);
-
+    
     window.Accessibility.refreshCalendars();
 
     const days = calendar.querySelectorAll('.calendar-day');
