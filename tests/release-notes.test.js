@@ -93,6 +93,16 @@ describe('ReleaseNotes', () => {
     expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe('0.4.8');
   });
 
+  it('renders bundled notes for the 0.5.0 release', () => {
+    window.CURRENT_VERSION = '0.5.0';
+    localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.4.9');
+    const result = window.releaseNotes.detectAndShow();
+    const modal = document.querySelector('.release-notes-modal');
+    expect(result).toBe('shown');
+    expect(modal.querySelector('.release-notes-list li').textContent).toContain('built-in Games hub');
+    expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe('0.5.0');
+  });
+
   it('handles versions without bundled notes without throwing', () => {
     window.CURRENT_VERSION = '9.9.9';
     localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.4.7');
