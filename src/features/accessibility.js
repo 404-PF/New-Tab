@@ -331,10 +331,10 @@
     }
 
     const template = window.getComputedStyle(container).gridTemplateColumns || '';
-    const repeatMatch = template.match(/repeat\\(\\s*(\\d+)\\s*,/);
+    const repeatMatch = template.match(/repeat\(\s*(\d+)\s*,/);
     if (repeatMatch) return Number(repeatMatch[1]);
 
-    const explicitColumns = template.trim().split(/\\s+/).filter(Boolean).length;
+    const explicitColumns = template.trim().split(/\s+/).filter(Boolean).length;
     if (explicitColumns > 1) return explicitColumns;
 
     return container.id === 'app-grid' ? 4 : 4;
