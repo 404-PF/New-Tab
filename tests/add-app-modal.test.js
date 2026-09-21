@@ -190,6 +190,41 @@ describe('Add app modal quick add', () => {
     expect(window.renderCustomApps).toHaveBeenCalledTimes(1);
   });
 
+  it('shows a localized save error and keeps the form open when saving fails', async () => {
+    const newAppBtn = document.getElementById('new-app');
+    const addAppModal = document.getElementById('add-app-modal');
+    const addAppUrlInput = document.getElementById('add-app-url');
+    const addAppConfirm = document.getElementById('add-app-confirm');
+    const originalAddApp = window.AppGridState.addApp;
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+
+    try {
+      window.AppGridState.addApp = vi.fn(() => false);
+      window.showToast = showToast;
+
+      window.initAddAppModal();
+      newAppBtn.click();
+      addAppUrlInput.value = 'example.com';
+      addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(addAppConfirm.disabled).toBe(false);
+
+      addAppConfirm.click();
+      await flushMicrotasks();
+
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save app changes. Your last action was not saved.',
+        'error'
+      );
+      expect(addAppModal.classList.contains('modal-open')).toBe(true);
+      expect(addAppUrlInput.value).toBe('example.com');
+      expect(window.renderCustomApps).not.toHaveBeenCalled();
+    } finally {
+      window.AppGridState.addApp = originalAddApp;
+      window.showToast = originalShowToast;
+    }
+  });
+
   it('prevents adding the same quick-add app twice on rapid double-click', async () => {
     renderDefaultAppsList();
 
