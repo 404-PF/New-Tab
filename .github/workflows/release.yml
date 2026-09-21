@@ -118,7 +118,7 @@ jobs:
           }
 
           console.log(`✓ Found What's New entry for v${version}`);
-NODE
+          NODE
 
       - uses: actions/setup-node@49933ea5288caece8642d1e84afbd3f7d6820020 # v4
         with:
