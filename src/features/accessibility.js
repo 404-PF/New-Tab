@@ -329,7 +329,11 @@
 
   function getGridCells(container) {
     if (!container) return [];
-    return Array.from(container.children).filter(child => child.classList?.contains('app-icon'));
+    return Array.from(container.children).filter(child =>
+      child.classList?.contains('app-icon') &&
+      child.id !== 'new-app' &&
+      child.id !== 'add-app'
+    );
   }
 
   function getGridColumns(container, cells) {
