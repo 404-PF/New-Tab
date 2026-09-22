@@ -145,14 +145,19 @@
     return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
+  function isValidCoordinates(lat, lon) {
+    return Number.isFinite(lat) && Number.isFinite(lon)
+      && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+  }
+
   function isCacheMatchingSettings(cache, currentLocation = null) {
     if (!cache) return false;
     const locationMode = WeatherStorage.loadLocationMode();
     const manualCity = WeatherStorage.loadManualCity();
     if (cache.locationMode !== locationMode) return false;
     if (locationMode === 'auto') {
-      if (cache.lat === undefined || cache.lon === undefined) return false;
-      if (!currentLocation || typeof currentLocation.lat !== 'number' || typeof currentLocation.lon !== 'number') {
+      if (!isValidCoordinates(cache.lat, cache.lon)) return false;
+      if (!currentLocation || !isValidCoordinates(currentLocation.lat, currentLocation.lon)) {
         return false;
       }
       return getDistanceKm(cache.lat, cache.lon, currentLocation.lat, currentLocation.lon)
@@ -382,35 +387,37 @@
     const locationMode = WeatherStorage.loadLocationMode();
     const manualCity = WeatherStorage.loadManualCity();
 
-    // Auto-location cache entries must be checked against a fresh geolocation
-    // reading before they can be accepted. Reuse that reading for the fetch
-    // when the cache does not match.
-    const cache = WeatherStorage.loadCache();
-    let location = null;
-    let locationError = null;
-    if (!force && cache && isCacheValid(cache)) {
-      if (locationMode === 'auto') {
-        try {
-          location = await getLocation();
-        } catch (e) {
-          locationError = e;
-        }
-      }
-      if (isCacheMatchingSettings(cache, location)) {
-        renderWeather(cache.data, cache.locationName, unit);
-        return;
-      }
-    }
-
+    // Reserve the refresh slot before any awaited cache validation so a manual
+    // refresh cannot race with an in-flight geolocation read.
     if (isRefreshing) {
       if (force) pendingRefresh = true;
       return;
     }
     isRefreshing = true;
     pendingRefresh = false;
-    renderLoading();
 
     try {
+      // Auto-location cache entries must be checked against a fresh geolocation
+      // reading before they can be accepted. Reuse that reading for the fetch
+      // when the cache does not match.
+      const cache = WeatherStorage.loadCache();
+      let location = null;
+      let locationError = null;
+      if (!force && cache && isCacheValid(cache)) {
+        if (locationMode === 'auto') {
+          try {
+            location = await getLocation();
+          } catch (e) {
+            locationError = e;
+          }
+        }
+        if (isCacheMatchingSettings(cache, location)) {
+          renderWeather(cache.data, cache.locationName, unit);
+          return;
+        }
+      }
+
+      renderLoading();
       if (locationMode === 'manual') {
         if (!manualCity.trim()) {
           renderError(t('weatherEnterCity'));
@@ -571,7 +578,10 @@
           b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         });
         const cache = WeatherStorage.loadCache();
-        if (cache && cache.data && isCacheMatchingSettings(cache)) {
+        const cachedLocation = cache
+          ? { lat: cache.lat, lon: cache.lon }
+          : null;
+        if (cache && cache.data && isCacheMatchingSettings(cache, cachedLocation)) {
           if (WeatherStorage.loadEnabled()) {
             renderWeather(cache.data, cache.locationName, value);
           }
