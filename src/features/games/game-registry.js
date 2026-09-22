@@ -301,9 +301,10 @@
   // save store (used when init() failed mid-mount and the game cannot report
   // trustworthy state).
   function destroyCurrent(options) {
-    if (!currentGame) return;
+    if (!currentGame) return false;
+    let saveResult = true;
     if (options?.serialize !== false) {
-      serializeCurrent();
+      saveResult = serializeCurrent();
     }
     try {
       currentGame.destroy();
@@ -313,6 +314,7 @@
     const container = document.getElementById('games-game-container');
     if (container) container.innerHTML = '';
     currentGame = null;
+    return saveResult;
   }
 
   function backToHub() {

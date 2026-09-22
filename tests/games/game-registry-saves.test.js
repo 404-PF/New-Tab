@@ -104,12 +104,12 @@ describe('GameRegistry saves (#646)', () => {
       throw new Error('storage unavailable');
     });
     try {
-      window.GameRegistry.destroyCurrent();
+      expect(window.GameRegistry.destroyCurrent()).toBe(false);
+      expect(setItemSpy).toHaveBeenCalledWith('games_saves', expect.any(String));
     } finally {
       setItemSpy.mockRestore();
     }
 
-    expect(setItemSpy).toHaveBeenCalledWith('games_saves', expect.any(String));
     expect(window.GameRegistry.hasSave('failed-save-game')).toBe(false);
     expect(window.GameRegistry.getSave('failed-save-game')).toBeNull();
   });
