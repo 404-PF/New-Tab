@@ -129,7 +129,8 @@
 
     Array.from(document.body.children).forEach(child => {
       const containsActiveModal = child === activeModal || child.contains(activeModal);
-      if (containsActiveModal) {
+      const isLiveRegion = child.id === 'accessibility-live-region';
+      if (containsActiveModal || isLiveRegion) {
         backgroundState.delete(child);
         child.inert = false;
         child.removeAttribute('inert');
@@ -396,9 +397,7 @@
   function setGridSemantics(container) {
     if (!container) return;
     container.setAttribute('role', 'grid');
-    if (!container.getAttribute('aria-label')) {
-      container.setAttribute('aria-label', translate('apps', 'Apps'));
-    }
+    container.setAttribute('aria-label', translate('apps', 'Apps'));
 
     const cells = getGridCells(container);
     if (cells.length === 0) return;
