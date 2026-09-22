@@ -669,15 +669,15 @@
     "description": "State announced for a selected calendar day"
   },
   "accessibilityPickedUp": {
-    "message": "{name} sélectionné pour le déplacement.",
+    "message": "{name} sélectionnée pour le déplacement.",
     "description": "Announcement when an app is picked up for keyboard reordering"
   },
   "accessibilityMoved": {
-    "message": "{name} déplacé.",
+    "message": "{name} déplacée.",
     "description": "Announcement when an app is moved by keyboard reordering"
   },
   "accessibilityNotMoved": {
-    "message": "{name} n’a pas été déplacé.",
+    "message": "{name} n’a pas été déplacée.",
     "description": "Announcement when an app cannot be moved"
   },
   "accessibilityMoveCancelled": {
