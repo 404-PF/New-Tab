@@ -424,7 +424,10 @@ describe('Todo utilities', () => {
     }
   });
 
-  it('getNextDueDate catches up overdue daily recurrences without rebasing them to today', () => {
+  // Daily advancement: the anchored result and the old rebase-to-today result
+  // always coincide (today+1), so this documents an invariant; the weekly and
+  // monthly cases cover the de-anchoring behavior that this PR changes.
+  it('getNextDueDate returns today+1 for an overdue daily recurrence', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 23)); // Wednesday, Sep 23, 2026
 
@@ -435,12 +438,23 @@ describe('Todo utilities', () => {
     }
   });
 
-  it('getNextDueDate preserves the monthly recurrence anchor after a late completion', () => {
+  it('getNextDueDate advances a future weekly due date by one interval', () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 8, 5)); // Sep 5, 2026
+    vi.setSystemTime(new Date(2026, 8, 23)); // Wednesday, Sep 23, 2026
 
     try {
-      expect(getNextDueDate('2026-07-31', 'monthly')).toBe('2026-09-30');
+      expect(getNextDueDate('2026-09-30', 'weekly')).toBe('2026-10-07');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('getNextDueDate preserves the monthly day-of-month anchor across a short month', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 2, 5)); // March 5, 2026
+
+    try {
+      expect(getNextDueDate('2026-01-31', 'monthly')).toBe('2026-03-31');
     } finally {
       vi.useRealTimers();
     }
