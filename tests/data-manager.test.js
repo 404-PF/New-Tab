@@ -15,6 +15,29 @@ describe('DataManager backup validation', () => {
     expect(window.DataManager.validateImportData({ version: 2, data: {} }).valid).toBe(false);
   });
 
+  it('validates the complete app folder shape', () => {
+    const validFolder = { id: 'folder-1', name: 'Test', apps: ['app-1'] };
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      appFolders: [validFolder]
+    } })).toEqual({ valid: true });
+
+    const invalidFolders = [
+      { id: 'folder-1', name: 'Test' },
+      { id: 'folder-1', name: 'Test', apps: null },
+      { id: 'folder-1', name: 'Test', apps: {} },
+      { id: 'folder-1', name: 'Test', apps: 'not-an-array' },
+      { id: 'folder-1', name: 'Test', apps: [123] },
+      { id: 'folder-1', name: 'Test', apps: [''] },
+      { id: '', name: 'Test', apps: [] },
+      { id: 'folder-1', apps: [] }
+    ];
+
+    invalidFolders.forEach((folder) => {
+      expect(window.DataManager.validateImportData({ version: 1, data: {
+        appFolders: [folder]
+      } }).valid).toBe(false);
+    });
+  });
   it('rejects unsupported, duplicate, and over-capacity time zones', () => {
     const supported = window.POPULAR_ZONES.slice(0, 6).map(zone => zone.id);
     expect(window.DataManager.validateImportData({ version: 1, data: {
