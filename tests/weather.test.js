@@ -219,6 +219,18 @@ describe('Weather widget', () => {
     };
   }
 
+  function createWeatherDataWithTemperature(temperature) {
+    return {
+      ...mockWeatherData,
+      current: {
+        ...mockWeatherData.current,
+        temperature_2m: temperature
+      }
+    };
+  }
+
+
+
   it('does not use a fresh auto-location cache after the user moves', async () => {
     configureAutoWeather({
       currentCoordinates: { latitude: 34.0522, longitude: -118.2437 }
@@ -239,15 +251,8 @@ describe('Weather widget', () => {
   });
 
   it('uses a fresh auto-location cache within the coordinate tolerance', async () => {
-    const cachedData = {
-      ...mockWeatherData,
-      current: {
-        ...mockWeatherData.current,
-        temperature_2m: 19
-      }
-    };
     configureAutoWeather({
-      cacheData: cachedData,
+      cacheData: createWeatherDataWithTemperature(19),
       currentCoordinates: { latitude: 37.8044, longitude: -122.4194 }
     });
 
@@ -285,14 +290,7 @@ describe('Weather widget', () => {
   });
 
   it('does not use a fresh auto-location cache when geolocation fails', async () => {
-    const cachedData = {
-      ...mockWeatherData,
-      current: {
-        ...mockWeatherData.current,
-        temperature_2m: 19
-      }
-    };
-    configureAutoWeather({ cacheData: cachedData });
+    configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
     mockGeolocationError();
 
     let fetchCalled = false;
@@ -336,18 +334,13 @@ describe('Weather widget', () => {
     };
     configureAutoWeather({ cacheData: cachedData });
 
-    const originalFetch = global.fetch;
     global.fetch = async () => {
       throw new Error('Network unavailable');
     };
 
-    try {
-      await window.WeatherWidget.refresh(true);
+    await window.WeatherWidget.refresh(true);
 
-      expect(document.querySelector('.weather-temp').textContent).toContain('19');
-    } finally {
-      global.fetch = originalFetch;
-    }
+    expect(document.querySelector('.weather-temp').textContent).toContain('19');
   });
 
   it('re-reads weather cache after storage changes', async () => {
