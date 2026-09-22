@@ -40,6 +40,16 @@ beforeAll(() => {
   injectScript('src/core/utils.js');
   // weather.js depends on the shared WeatherUtils module
   injectScript('src/features/weather-utils.js');
+
+  const unitGroup = document.createElement('div');
+  unitGroup.className = 'weather-choice-group';
+  unitGroup.dataset.weatherChoice = 'unit';
+  unitGroup.innerHTML = `
+    <button type="button" class="weather-choice-button active" data-value="celsius" aria-pressed="true"></button>
+    <button type="button" class="weather-choice-button" data-value="fahrenheit" aria-pressed="false"></button>
+  `;
+  document.body.appendChild(unitGroup);
+
   injectScript('src/features/weather.js');
 });
 
@@ -53,6 +63,11 @@ beforeEach(() => {
     widget.style.display = 'none';
     widget.className = 'weather-widget';
   }
+  document.querySelectorAll('[data-weather-choice="unit"] .weather-choice-button').forEach((btn) => {
+    const isCelsius = btn.dataset.value === 'celsius';
+    btn.classList.toggle('active', isCelsius);
+    btn.setAttribute('aria-pressed', isCelsius ? 'true' : 'false');
+  });
 });
 
 afterEach(() => {
@@ -286,6 +301,34 @@ describe('Weather widget', () => {
     expect(capturedUrl).toBeDefined();
     expect(new URL(capturedUrl).searchParams.get('latitude')).toBe('37.8693');
     expect(new URL(capturedUrl).searchParams.get('longitude')).toBe('-122.4194');
+  });
+
+  it('force-refreshes weather when changing units in auto-location mode', async () => {
+    configureAutoWeather({
+      cacheData: createWeatherDataWithTemperature(19),
+      currentCoordinates: { latitude: 34.0522, longitude: -118.2437 }
+    });
+
+    let capturedUrl;
+    installWeatherFetch({
+      onCall: (url) => {
+        capturedUrl = url;
+      }
+    });
+
+    const fahrenheitButton = document.querySelector(
+      '[data-weather-choice="unit"] [data-value="fahrenheit"]'
+    );
+    expect(fahrenheitButton).not.toBeNull();
+
+    fahrenheitButton.click();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(capturedUrl).toBeDefined();
+    const urlObj = new URL(capturedUrl);
+    expect(urlObj.searchParams.get('latitude')).toBe('34.0522');
+    expect(urlObj.searchParams.get('longitude')).toBe('-118.2437');
+    expect(localStorage.getItem('weatherUnit')).toBe('fahrenheit');
   });
 
   it('does not use a fresh auto-location cache when geolocation fails', async () => {
