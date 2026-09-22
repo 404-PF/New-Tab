@@ -396,13 +396,15 @@
     isRefreshing = true;
     pendingRefresh = false;
 
+    let cache = null;
+    let location = null;
+    let locationError = null;
+
     try {
       // Auto-location cache entries must be checked against a fresh geolocation
       // reading before they can be accepted. Reuse that reading for the fetch
       // when the cache does not match.
-      const cache = WeatherStorage.loadCache();
-      let location = null;
-      let locationError = null;
+      cache = WeatherStorage.loadCache();
       if (!force && cache && isCacheValid(cache)) {
         if (locationMode === 'auto') {
           try {
