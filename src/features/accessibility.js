@@ -13,11 +13,11 @@
     { id: 'import-todos-dialog', openClass: 'ai-confirm-open' },
     { id: 'data-import-dialog', openClass: 'ai-confirm-open' },
     { id: 'ai-chat-modal', openClass: 'ai-modal-open', close: () => window.AIService?.close?.() },
-    { id: 'settings-modal', openClass: 'modal-open', label: 'Settings', fallbackOpener: '#settings-app' },
+    { id: 'settings-modal', openClass: 'modal-open', labelKey: 'settings', fallbackOpener: '#settings-app' },
     { id: 'weather-app-modal', openClass: 'modal-open', close: () => window.WeatherApp?.close?.() },
     { id: 'games-app-modal', nativeDialog: true, close: () => window.GamesApp?.close?.() },
     { id: 'folder-popup', bodyClass: 'folder-popup-open', display: 'flex', close: () => window.AppFolders?.closeFolderPopup?.() },
-    { id: 'move-to-folder-selector', display: 'flex', label: 'Move to Folder' }
+    { id: 'move-to-folder-selector', display: 'flex' }
   ];
 
   const modalState = new Map();
@@ -27,6 +27,7 @@
   let pendingModalOpener = null;
   let contextMenuOpener = null;
   let keyboardContextMenuOpen = false;
+  let contextMenuWasOpen = false;
   let observer = null;
   let liveRegion = null;
   let listAnnouncementTimer = null;
@@ -34,10 +35,32 @@
   let initialized = false;
   const MODAL_MENU_ACTIONS = new Set(['rename-app', 'move-to-folder', 'change-thumbnail', 'delete-app']);
 
+  function translate(key, fallback, replacements) {
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const translated = window.i18n.t(key, replacements);
+      if (translated && translated !== key) return translated;
+    }
+
+    let message = fallback;
+    if (replacements && typeof replacements === 'object') {
+      Object.entries(replacements).forEach(([placeholder, value]) => {
+        message = message.replaceAll('{' + placeholder + '}', value);
+      });
+    }
+    return message;
+  }
+
   function isVisible(element) {
     if (!element || !element.isConnected) return false;
-    const style = window.getComputedStyle(element);
-    return style.display !== 'none' && style.visibility !== 'hidden';
+
+    let current = element;
+    while (current) {
+      const style = window.getComputedStyle(current);
+      if (style.display === 'none' || style.visibility === 'hidden') return false;
+      current = current.parentElement;
+    }
+
+    return true;
   }
 
   function isModalOpen(def, element) {
@@ -62,7 +85,7 @@
   }
 
   function getModalLabelElement(modal, def) {
-    if (def?.label) {
+    if (def?.labelKey) {
       let label = modal.querySelector('[data-accessibility-modal-label]');
       if (!label) {
         label = document.createElement('span');
@@ -70,7 +93,7 @@
         label.setAttribute('data-accessibility-modal-label', '');
         modal.prepend(label);
       }
-      label.textContent = def.label;
+      label.textContent = translate(def.labelKey, def.labelKey);
       if (!label.id) label.id = modal.id + '-accessibility-label';
       return label;
     }
@@ -102,8 +125,12 @@
   }
 
   function setBackgroundInert(activeModal) {
-    document.body.children && Array.from(document.body.children).forEach(child => {
-      if (child === activeModal) {
+    if (!activeModal) return;
+
+    Array.from(document.body.children).forEach(child => {
+      const containsActiveModal = child === activeModal || child.contains(activeModal);
+      if (containsActiveModal) {
+        backgroundState.delete(child);
         child.inert = false;
         child.removeAttribute('inert');
         return;
@@ -221,6 +248,8 @@
 
   function syncModals() {
     const currentlyOpen = [];
+    const closedOpeners = [];
+
     MODAL_DEFINITIONS.forEach(def => {
       const modal = document.getElementById(def.id);
       if (!modal) return;
@@ -235,10 +264,7 @@
       } else if (!open && previous?.open) {
         modalState.delete(def.id);
         modalStack = modalStack.filter(id => id !== def.id);
-
-        if (previous.opener?.isConnected && !previous.opener.closest('[inert]') && isVisible(previous.opener)) {
-          requestAnimationFrame(() => previous.opener.focus({ preventScroll: true }));
-        }
+        closedOpeners.push(previous.opener);
       }
 
       if (open) currentlyOpen.push(def.id);
@@ -249,9 +275,7 @@
       if (document.getElementById(id)) return;
       modalState.delete(id);
       modalStack = modalStack.filter(stackId => stackId !== id);
-      if (state.opener?.isConnected && !state.opener.closest('[inert]') && isVisible(state.opener)) {
-        requestAnimationFrame(() => state.opener.focus({ preventScroll: true }));
-      }
+      closedOpeners.push(state.opener);
     });
 
     const top = getTopOpenModal();
@@ -262,6 +286,20 @@
     }
 
     modalStack = modalStack.filter(id => currentlyOpen.includes(id));
+
+    const opener = closedOpeners.reverse().find(element =>
+      element?.isConnected &&
+      !element.closest('[inert]') &&
+      isVisible(element)
+    );
+
+    if (opener) {
+      requestAnimationFrame(() => {
+        if (!opener.closest('[inert]') && isVisible(opener)) {
+          opener.focus({ preventScroll: true });
+        }
+      });
+    }
   }
 
   function handleModalKeydown(event) {
@@ -279,11 +317,8 @@
 
       event.preventDefault();
       event.stopPropagation();
-      const state = modalState.get(modal.id);
       closeModalElement(modal, top.def);
-      if (state?.opener?.isConnected) {
-        requestAnimationFrame(() => state.opener.focus({ preventScroll: true }));
-      }
+      syncModals();
       return;
     }
 
@@ -350,19 +385,19 @@
     const explicitColumns = template.trim().split(/\s+/).filter(Boolean).length;
     if (explicitColumns > 1) return explicitColumns;
 
-    return container.id === 'app-grid' ? 4 : 4;
+    return 0;
   }
 
   function getCellLabel(cell) {
     const label = cell.querySelector('.app-name')?.textContent?.trim();
-    return label || cell.getAttribute('title') || cell.id || 'App';
+    return label || cell.getAttribute('title') || cell.id || translate('accessibilityApp', 'App');
   }
 
   function setGridSemantics(container) {
     if (!container) return;
     container.setAttribute('role', 'grid');
     if (!container.getAttribute('aria-label')) {
-      container.setAttribute('aria-label', 'Apps');
+      container.setAttribute('aria-label', translate('apps', 'Apps'));
     }
 
     const cells = getGridCells(container);
@@ -455,7 +490,13 @@
   }
 
   function announceMove(name, action) {
-    announce(name + ' ' + action + '.');
+    const messages = {
+      'picked up': ['accessibilityPickedUp', '{name} picked up.'],
+      moved: ['accessibilityMoved', '{name} moved.'],
+      'not moved': ['accessibilityNotMoved', '{name} was not moved.']
+    };
+    const entry = messages[action] || messages['not moved'];
+    announce(translate(entry[0], entry[1], { name: name }));
   }
 
   function handleGridKeydown(event) {
@@ -464,7 +505,8 @@
     const container = cell.parentElement;
     if (!container || (container.id !== 'app-grid' && container.id !== 'folder-popup-apps')) return;
 
-    if (event.key === 'F10' && event.shiftKey || event.key === 'ContextMenu') {
+    const hasContextMenu = cell.classList.contains('custom-app') || cell.classList.contains('folder-icon');
+    if ((event.key === 'F10' && event.shiftKey || event.key === 'ContextMenu') && hasContextMenu) {
       event.preventDefault();
       contextMenuOpener = cell;
       keyboardContextMenuOpen = true;
@@ -489,14 +531,11 @@
       moveGridFocus(container, cell, 1);
       return;
     }
-    if (event.key === 'ArrowUp') {
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      const columns = getGridColumns(container, getGridCells(container));
+      if (!columns) return;
       event.preventDefault();
-      moveGridFocus(container, cell, -getGridColumns(container, getGridCells(container)));
-      return;
-    }
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      moveGridFocus(container, cell, getGridColumns(container, getGridCells(container)));
+      moveGridFocus(container, cell, event.key === 'ArrowUp' ? -columns : columns);
       return;
     }
     if (event.key === 'Home') {
@@ -572,8 +611,23 @@
     if (event.key === 'Escape' && picked) {
       event.preventDefault();
       clearKeyboardPick(container);
-      announce('Move cancelled.');
+      announce(translate('accessibilityMoveCancelled', 'Move cancelled.'));
     }
+  }
+
+  function handleGridFocus(event) {
+    const cell = event.target.closest?.('.app-icon');
+    if (!cell) return;
+
+    const container = cell.parentElement;
+    if (!container || (container.id !== 'app-grid' && container.id !== 'folder-popup-apps')) return;
+
+    const cells = getGridCells(container);
+    if (!cells.includes(cell)) return;
+
+    cells.forEach(item => {
+      item.tabIndex = item === cell ? 0 : -1;
+    });
   }
 
   function refreshGrid() {
@@ -591,13 +645,13 @@
     if (!pill) return;
     const label = pill.querySelector('.filter-label')?.textContent?.trim() || pill.textContent.trim();
     lastFilterAnnouncementAt = Date.now();
-    announce('Filter: ' + label + '.');
+    announce(translate('accessibilityFilter', 'Filter: {label}.', { label: label }));
   }
 
   function refreshCalendarContainer(container) {
     if (!container) return;
     container.setAttribute('role', 'grid');
-    container.setAttribute('aria-label', 'Calendar');
+    container.setAttribute('aria-label', translate('accessibilityCalendar', 'Calendar'));
 
     const days = Array.from(container.querySelectorAll('.calendar-day'));
     const enabledDays = days.filter(day => !day.classList.contains('other-month'));
@@ -623,8 +677,8 @@
           });
         }
       }
-      if (day.classList.contains('today')) label += ', today';
-      if (isSelected) label += ', selected';
+      if (day.classList.contains('today')) label += ', ' + translate('today', 'today');
+      if (isSelected) label += ', ' + translate('accessibilitySelected', 'selected');
       day.setAttribute('aria-label', label);
       day.tabIndex = day === selectedDay && !isDisabled ? 0 : -1;
     });
@@ -659,7 +713,11 @@
     else if (event.key === 'ArrowUp') targetIndex = index - 7;
     else if (event.key === 'ArrowDown') targetIndex = index + 7;
     else if (event.key === 'Home') targetIndex = days.findIndex(item => !item.classList.contains('other-month'));
-    else if (event.key === 'End') targetIndex = days.length - 1;
+    else if (event.key === 'End') {
+      targetIndex = days.reduce((lastIndex, item, itemIndex) =>
+        item.classList.contains('other-month') ? lastIndex : itemIndex
+      , -1);
+    }
     else return;
 
     event.preventDefault();
@@ -681,7 +739,7 @@
     if (!menu) return;
 
     menu.setAttribute('role', 'menu');
-    menu.setAttribute('aria-label', 'App actions');
+    menu.setAttribute('aria-label', translate('accessibilityAppActions', 'App actions'));
 
     const items = Array.from(menu.querySelectorAll('.context-menu-item'));
     items.forEach(item => {
@@ -690,10 +748,25 @@
     });
 
     const visibleItems = items.filter(isVisible);
-    const isOpen = menu.style.display !== 'none' && (menu.classList.contains('visible') || document.body.classList.contains('context-menu-open'));
+    const isOpen = menu.style.display !== 'none' &&
+      (menu.classList.contains('visible') || document.body.classList.contains('context-menu-open'));
     menu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-    if (isOpen && visibleItems.length) {
-      requestAnimationFrame(() => visibleItems[0].focus({ preventScroll: true }));
+
+    if (!isOpen) {
+      contextMenuWasOpen = false;
+      return;
+    }
+
+    if (!contextMenuWasOpen && visibleItems.length) {
+      contextMenuWasOpen = true;
+      requestAnimationFrame(() => {
+        const currentMenu = document.getElementById('app-context-menu');
+        if (!currentMenu || currentMenu.style.display === 'none' || !document.body.classList.contains('context-menu-open')) {
+          return;
+        }
+        const firstItem = Array.from(currentMenu.querySelectorAll('.context-menu-item')).filter(isVisible)[0];
+        firstItem?.focus({ preventScroll: true });
+      });
     }
   }
 
@@ -708,6 +781,7 @@
     }
 
     keyboardContextMenuOpen = false;
+    contextMenuWasOpen = false;
   }
 
   function handleContextMenuKeydown(event) {
@@ -787,28 +861,74 @@
     announce('Todo list updated. ' + count + (count === 1 ? ' item shown.' : ' items shown.'));
   }
 
+  function nodeMatchesOrContains(node, selector) {
+    if (!(node instanceof Element)) return false;
+    return node.matches(selector) || Boolean(node.querySelector(selector));
+  }
+
+  function recordTouchesSelector(record, selector) {
+    if (record.target instanceof Element) {
+      if (record.target.matches(selector) || record.target.closest(selector)) return true;
+    }
+    if (record.type !== 'childList') return false;
+
+    return Array.from(record.addedNodes).concat(Array.from(record.removedNodes)).some(node =>
+      nodeMatchesOrContains(node, selector)
+    );
+  }
+
+  function recordTouchesModal(record) {
+    const modalSelector = MODAL_DEFINITIONS.map(def => '#' + def.id).join(', ');
+    if (record.target instanceof Element) {
+      if (record.target.matches(modalSelector) || record.target.closest(modalSelector)) return true;
+    }
+    if (record.type === 'attributes' && record.target === document.body && record.attributeName === 'class') {
+      return true;
+    }
+    if (record.type !== 'childList') return false;
+
+    return Array.from(record.addedNodes).concat(Array.from(record.removedNodes)).some(node =>
+      nodeMatchesOrContains(node, modalSelector)
+    );
+  }
+
   function observeDom() {
     observer = new MutationObserver(records => {
-      const relevant = records.some(record => {
-        if (record.type === 'childList') return true;
-        if (record.type === 'attributes') return ['class', 'style', 'open'].includes(record.attributeName);
-        return false;
+      let shouldSyncModals = false;
+      let shouldRefreshGrid = false;
+      let shouldRefreshFilters = false;
+      let shouldRefreshCalendars = false;
+      let shouldRefreshContextMenu = false;
+      let shouldAnnounceTodoList = false;
+
+      records.forEach(record => {
+        if (record.type === 'attributes') {
+          if (recordTouchesModal(record)) shouldSyncModals = true;
+          if (recordTouchesSelector(record, '#app-grid, #folder-popup-apps')) shouldRefreshGrid = true;
+          if (recordTouchesSelector(record, '.filter-pill')) shouldRefreshFilters = true;
+          if (recordTouchesSelector(record, '#calendar-days, .inline-calendar-days')) shouldRefreshCalendars = true;
+          if (recordTouchesSelector(record, '#app-context-menu') ||
+              (record.target === document.body && record.attributeName === 'class')) {
+            shouldRefreshContextMenu = true;
+          }
+          if (recordTouchesSelector(record, '#todo-list')) shouldAnnounceTodoList = true;
+        } else if (record.type === 'childList') {
+          if (recordTouchesModal(record)) shouldSyncModals = true;
+          if (recordTouchesSelector(record, '#app-grid, #folder-popup-apps')) shouldRefreshGrid = true;
+          if (recordTouchesSelector(record, '.filter-pill')) shouldRefreshFilters = true;
+          if (recordTouchesSelector(record, '#calendar-days, .inline-calendar-days')) shouldRefreshCalendars = true;
+          if (recordTouchesSelector(record, '#app-context-menu')) shouldRefreshContextMenu = true;
+          if (recordTouchesSelector(record, '#todo-list')) shouldAnnounceTodoList = true;
+        }
       });
-      if (!relevant) return;
 
-      syncModals();
-      refreshGrid();
-      refreshFilterPills();
-      refreshCalendars();
-      refreshContextMenu();
+      if (shouldSyncModals) syncModals();
+      if (shouldRefreshGrid) refreshGrid();
+      if (shouldRefreshFilters) refreshFilterPills();
+      if (shouldRefreshCalendars) refreshCalendars();
+      if (shouldRefreshContextMenu) refreshContextMenu();
 
-      if (records.some(record => {
-        const target = record.target;
-        return target instanceof HTMLElement && (
-          target.id === 'todo-list' ||
-          target.closest?.('#todo-list')
-        );
-      })) {
+      if (shouldAnnounceTodoList) {
         clearTimeout(listAnnouncementTimer);
         listAnnouncementTimer = setTimeout(announceTodoListMutation, 100);
       }
@@ -836,6 +956,7 @@
     document.addEventListener('keydown', handleCalendarKeydown, true);
     document.addEventListener('keydown', handleContextMenuKeydown, true);
     document.addEventListener('focusin', handleDocumentFocus, true);
+    document.addEventListener('focusin', handleGridFocus, true);
     document.addEventListener('click', handleDocumentClickCapture, true);
     document.addEventListener('contextmenu', handleContextMenuCapture, true);
 
