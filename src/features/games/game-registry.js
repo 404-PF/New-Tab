@@ -128,10 +128,12 @@
       localStorage.setItem(SAVES_KEY, serialized);
       savesCache = saves;
       savesCacheRaw = serialized;
+      return true;
     } catch (e) {
       console.warn('Failed to save games_saves:', e);
       savesCache = null;
       savesCacheRaw = undefined;
+      return false;
     }
   }
 
@@ -141,8 +143,7 @@
     if (!gameId) return false;
     const saves = loadSaves();
     saves[gameId] = { state: state, savedAt: Date.now() };
-    saveSaves(saves);
-    return true;
+    return saveSaves(saves);
   }
 
   // A well-formed envelope carries a restorable snapshot: an object (the
