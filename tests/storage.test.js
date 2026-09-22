@@ -152,6 +152,7 @@ describe('storage bridge', () => {
               resolveGet = () => callback({ ...persisted });
             },
             set(items, callback) {
+              Object.assign(persisted, items);
               callback?.();
               return Promise.resolve();
             },
@@ -160,6 +161,7 @@ describe('storage bridge', () => {
               return Promise.resolve();
             },
             clear(callback) {
+              Object.keys(persisted).forEach((key) => delete persisted[key]);
               callback?.();
               return Promise.resolve();
             }
@@ -190,7 +192,8 @@ describe('storage bridge', () => {
       });
       expect(typeof failureEvent.detail.generation).toBe('number');
       expect(dom.window.localStorage.getItem('todos')).toBe(persisted.todos);
-      expect(persisted.todos).toBe('[{"text":"keep me"}]');
+      const stored = await dom.window.chrome.storage.local.get('todos');
+      expect(stored.todos).toBe(persisted.todos);
     } finally {
       dom.window.close();
     }
@@ -204,8 +207,7 @@ describe('storage bridge', () => {
 
     try {
       let resolveGet;
-      let removeCallback;
-      let setCallback;
+      const removeCallbacks = [];
 
       dom.window.chrome = {
         runtime: { lastError: null },
@@ -220,11 +222,11 @@ describe('storage bridge', () => {
               resolveGet = () => callback({ todos: 'original' });
             },
             set(items, callback) {
-              setCallback = callback;
+              callback?.();
               return Promise.resolve();
             },
             remove(keys, callback) {
-              removeCallback = callback;
+              removeCallbacks.push(callback);
               return Promise.resolve();
             },
             clear(callback) {
@@ -240,15 +242,141 @@ describe('storage bridge', () => {
       await dom.window.__storageBridgeReady;
 
       dom.window.localStorage.removeItem('todos');
-      dom.window.localStorage.setItem('todos', 'newer');
+      dom.window.localStorage.removeItem('todos');
 
+      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+
+      dom.window.chrome.runtime.lastError = { message: 'late remove failure' };
+      removeCallbacks[0]?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+
+      removeCallbacks[1]?.();
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('does not restore an old value after a clear invalidates a pending remove', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let removeCallback;
+      let clearCallback;
+      const persisted = { todos: 'original', language: 'en' };
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ ...persisted });
+            },
+            set(items, callback) {
+              Object.assign(persisted, items);
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallback = callback;
+              return Promise.resolve();
+            },
+            clear(callback) {
+              clearCallback = callback;
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.removeItem('todos');
+      dom.window.localStorage.clear();
+
+      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+      expect(dom.window.localStorage.length).toBe(0);
+
+      clearCallback?.();
       dom.window.chrome.runtime.lastError = { message: 'late remove failure' };
       removeCallback?.();
       dom.window.chrome.runtime.lastError = null;
 
-      expect(dom.window.localStorage.getItem('todos')).toBe('newer');
+      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+      expect(await dom.window.chrome.storage.local.get('todos')).toEqual({});
+    } finally {
+      dom.window.close();
+    }
+  });
 
-      setCallback?.();
+  it('restores the original value when repeated removes both fail', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      const removeCallbacks = [];
+      const persisted = { todos: 'original' };
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ ...persisted });
+            },
+            set(items, callback) {
+              Object.assign(persisted, items);
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallbacks.push(callback);
+              return Promise.resolve();
+            },
+            clear(callback) {
+              Object.keys(persisted).forEach((key) => delete persisted[key]);
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.removeItem('todos');
+      dom.window.localStorage.removeItem('todos');
+
+      dom.window.chrome.runtime.lastError = { message: 'both removes failed' };
+      removeCallbacks[1]?.();
+      removeCallbacks[0]?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      expect(dom.window.localStorage.getItem('todos')).toBe('original');
+      const stored = await dom.window.chrome.storage.local.get('todos');
+      expect(stored.todos).toBe('original');
     } finally {
       dom.window.close();
     }
