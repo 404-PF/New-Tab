@@ -219,7 +219,7 @@
       }
       const persistentVal = pickPersistentFields(key, val);
       if (persistentVal !== null) {
-        data[key] = persistentVal;
+        data[key] = sanitizeExportValue(key, persistentVal);
       }
     });
 
@@ -303,6 +303,26 @@
     return true;
   }
 
+  function isValidFolderEntry(folder) {
+    if (typeof folder !== 'object' || folder === null || Array.isArray(folder)) return false;
+    if (typeof folder.id !== 'string' || folder.id.trim() === '') return false;
+    if (typeof folder.name !== 'string' || folder.name.trim() === '') return false;
+    if (!Array.isArray(folder.apps)) return false;
+    const seenAppIds = new Set();
+    return folder.apps.every(function (appId) {
+      if (typeof appId !== 'string' || appId.trim() === '' || seenAppIds.has(appId)) return false;
+      seenAppIds.add(appId);
+      return true;
+    });
+  }
+
+  function sanitizeExportValue(key, value) {
+    if (key === 'appFolders' && Array.isArray(value)) {
+      return value.filter(isValidFolderEntry);
+    }
+    return value;
+  }
+
   const EXPECTED_SHAPES = {
     theme: function (v) { return typeof v === 'string'; },
     language: function (v) { return typeof v === 'string'; },
@@ -355,7 +375,7 @@
     notesEnabled: function (v) { return typeof v === 'boolean'; },
     appOrder: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
     customApps: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
-    appFolders: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
+    appFolders: function (v) { return Array.isArray(v) && v.every(isValidFolderEntry); },
     openAppsInNewTab: function (v) { return typeof v === 'boolean'; },
     iconSize: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     appsButtonCurvature: function (v) { return typeof v === 'string' || typeof v === 'number'; },

@@ -14,7 +14,7 @@
   }
 
   function getFolderAppData(folder) {
-    if (!folder || !folder.apps) return [];
+    if (!folder || !Array.isArray(folder.apps)) return [];
     const customApps = window.AppGridState.getCustomApps();
     const defaultApps = window.defaultApps || [];
     const allApps = [...defaultApps, ...customApps];

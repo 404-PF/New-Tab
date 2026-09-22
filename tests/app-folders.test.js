@@ -292,6 +292,34 @@ describe('AppFolders UI', () => {
     });
   });
 
+  describe('getFolderAppData', () => {
+    it('returns an empty list for malformed app collections without throwing', () => {
+      const malformedFolders = [
+        { id: 'folder-1', name: 'Missing apps' },
+        { id: 'folder-2', name: 'Null apps', apps: null },
+        { id: 'folder-3', name: 'Object apps', apps: {} },
+        { id: 'folder-4', name: 'String apps', apps: 'not-an-array' },
+        { id: 'folder-5', name: 'Number apps', apps: 123 },
+        { id: 'folder-6', name: 'Junk apps', apps: [123, '  '] }
+      ];
+
+      malformedFolders.forEach((folder) => {
+        expect(() => window.AppFolders.getFolderAppData(folder)).not.toThrow();
+        expect(window.AppFolders.getFolderAppData(folder)).toEqual([]);
+      });
+    });
+
+    it('resolves valid app ids to app records', () => {
+      const apps = window.AppFolders.getFolderAppData({
+        id: 'folder-6',
+        name: 'Valid apps',
+        apps: ['settings-app']
+      });
+
+      expect(apps).toHaveLength(1);
+      expect(apps[0].id).toBe('settings-app');
+    });
+  });
   describe('getFolders / getFolder', () => {
     it('getFolders returns folders from state', () => {
       AppGridState.createFolder('F1', []);
