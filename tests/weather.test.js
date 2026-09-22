@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 // Helper to mock geolocation
 let originalGeolocation;
+let originalFetch;
+let unitGroup;
 
 function mockGeolocation({ latitude, longitude }) {
-  originalGeolocation = navigator.geolocation;
   navigator.geolocation = {
     getCurrentPosition: (success) => {
       success({
@@ -14,6 +15,14 @@ function mockGeolocation({ latitude, longitude }) {
           longitude
         }
       });
+    }
+  };
+}
+
+function mockGeolocationError(error = new Error('Geolocation failed')) {
+  navigator.geolocation = {
+    getCurrentPosition: (_success, failure) => {
+      failure(error);
     }
   };
 }
@@ -32,10 +41,22 @@ beforeAll(() => {
   injectScript('src/core/utils.js');
   // weather.js depends on the shared WeatherUtils module
   injectScript('src/features/weather-utils.js');
+
+  unitGroup = document.createElement('div');
+  unitGroup.className = 'weather-choice-group';
+  unitGroup.dataset.weatherChoice = 'unit';
+  unitGroup.innerHTML = `
+    <button type="button" class="weather-choice-button active" data-value="celsius" aria-pressed="true"></button>
+    <button type="button" class="weather-choice-button" data-value="fahrenheit" aria-pressed="false"></button>
+  `;
+  document.body.appendChild(unitGroup);
+
   injectScript('src/features/weather.js');
 });
 
 beforeEach(() => {
+  originalGeolocation = navigator.geolocation;
+  originalFetch = global.fetch;
   localStorage.clear();
   const widget = document.getElementById('weather-widget');
   if (widget) {
@@ -43,15 +64,27 @@ beforeEach(() => {
     widget.style.display = 'none';
     widget.className = 'weather-widget';
   }
+  document.querySelectorAll('[data-weather-choice="unit"] .weather-choice-button').forEach((btn) => {
+    const isCelsius = btn.dataset.value === 'celsius';
+    btn.classList.toggle('active', isCelsius);
+    btn.setAttribute('aria-pressed', isCelsius ? 'true' : 'false');
+  });
 });
 
 afterEach(() => {
+  global.fetch = originalFetch;
+  originalFetch = undefined;
   if (originalGeolocation !== undefined) {
     navigator.geolocation = originalGeolocation;
   } else {
     delete navigator.geolocation;
   }
   originalGeolocation = undefined;
+});
+
+afterAll(() => {
+  unitGroup?.remove();
+  unitGroup = undefined;
 });
 
 describe('Weather widget', () => {
@@ -171,6 +204,184 @@ describe('Weather widget', () => {
     } finally {
       global.fetch = originalFetch;
     }
+  });
+
+  const DEFAULT_AUTO_COORDINATES = {
+    latitude: 37.7749,
+    longitude: -122.4194
+  };
+
+  function configureAutoWeather({
+    cacheData = mockWeatherData,
+    cacheCoordinates = DEFAULT_AUTO_COORDINATES,
+    currentCoordinates = DEFAULT_AUTO_COORDINATES,
+    locationName = 'Location A'
+  } = {}) {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
+    localStorage.setItem('weatherCache', JSON.stringify({
+      lat: cacheCoordinates.latitude,
+      lon: cacheCoordinates.longitude,
+      data: cacheData,
+      timestamp: Date.now(),
+      locationMode: 'auto',
+      manualCity: '',
+      locationName
+    }));
+    mockGeolocation(currentCoordinates);
+  }
+
+  function installWeatherFetch({ data = mockWeatherData, onCall = () => {} } = {}) {
+    global.fetch = async (url) => {
+      onCall(url);
+      return { ok: true, json: async () => data };
+    };
+  }
+
+  function createWeatherDataWithTemperature(temperature) {
+    return {
+      ...mockWeatherData,
+      current: {
+        ...mockWeatherData.current,
+        temperature_2m: temperature
+      }
+    };
+  }
+
+
+
+  it('does not use a fresh auto-location cache after the user moves', async () => {
+    configureAutoWeather({
+      currentCoordinates: { latitude: 34.0522, longitude: -118.2437 }
+    });
+
+    let capturedUrl;
+    installWeatherFetch({
+      onCall: (url) => {
+        capturedUrl = url;
+      }
+    });
+
+    await window.WeatherWidget.refresh();
+
+    const urlObj = new URL(capturedUrl);
+    expect(urlObj.searchParams.get('latitude')).toBe('34.0522');
+    expect(urlObj.searchParams.get('longitude')).toBe('-118.2437');
+  });
+
+  it('uses a fresh auto-location cache within the coordinate tolerance', async () => {
+    configureAutoWeather({
+      cacheData: createWeatherDataWithTemperature(19),
+      currentCoordinates: { latitude: 37.8044, longitude: -122.4194 }
+    });
+
+    let fetchCalled = false;
+    installWeatherFetch({
+      onCall: () => {
+        fetchCalled = true;
+      }
+    });
+
+    await window.WeatherWidget.refresh();
+
+    expect(fetchCalled).toBe(false);
+    expect(document.querySelector('.weather-temp').textContent).toContain('19');
+  });
+
+  it('rejects a fresh auto-location cache just beyond the coordinate tolerance', async () => {
+    // ~10.50 km north of the cached latitude, just beyond the 10 km limit.
+    configureAutoWeather({
+      currentCoordinates: { latitude: 37.8693, longitude: -122.4194 }
+    });
+
+    let capturedUrl;
+    installWeatherFetch({
+      onCall: (url) => {
+        capturedUrl = url;
+      }
+    });
+
+    await window.WeatherWidget.refresh();
+
+    expect(capturedUrl).toBeDefined();
+    expect(new URL(capturedUrl).searchParams.get('latitude')).toBe('37.8693');
+    expect(new URL(capturedUrl).searchParams.get('longitude')).toBe('-122.4194');
+  });
+
+  it('force-refreshes weather when changing units in auto-location mode', async () => {
+    configureAutoWeather({
+      cacheData: createWeatherDataWithTemperature(19),
+      currentCoordinates: { latitude: 34.0522, longitude: -118.2437 }
+    });
+
+    let capturedUrl;
+    installWeatherFetch({
+      onCall: (url) => {
+        capturedUrl = url;
+      }
+    });
+
+    const fahrenheitButton = document.querySelector(
+      '[data-weather-choice="unit"] [data-value="fahrenheit"]'
+    );
+    expect(fahrenheitButton).not.toBeNull();
+
+    fahrenheitButton.click();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(capturedUrl).toBeDefined();
+    const urlObj = new URL(capturedUrl);
+    expect(urlObj.searchParams.get('latitude')).toBe('34.0522');
+    expect(urlObj.searchParams.get('longitude')).toBe('-118.2437');
+    expect(localStorage.getItem('weatherUnit')).toBe('fahrenheit');
+  });
+
+  it('does not use a fresh auto-location cache when geolocation fails', async () => {
+    configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
+    mockGeolocationError();
+
+    let fetchCalled = false;
+    installWeatherFetch({
+      onCall: () => {
+        fetchCalled = true;
+      }
+    });
+
+    await window.WeatherWidget.refresh();
+
+    expect(fetchCalled).toBe(false);
+    expect(document.querySelector('.weather-temp')).toBeNull();
+    expect(document.querySelector('.weather-error')).not.toBeNull();
+  });
+
+  it('does not trust an auto-location cache with invalid coordinates', async () => {
+    configureAutoWeather({
+      cacheCoordinates: { latitude: null, longitude: -122.4194 }
+    });
+
+    let fetchCalled = false;
+    installWeatherFetch({
+      onCall: () => {
+        fetchCalled = true;
+      }
+    });
+
+    await window.WeatherWidget.refresh();
+
+    expect(fetchCalled).toBe(true);
+  });
+
+  it('falls back to matching auto-location cache when the weather fetch fails', async () => {
+    configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
+
+    global.fetch = async () => {
+      throw new Error('Network unavailable');
+    };
+
+    await window.WeatherWidget.refresh(true);
+
+    expect(document.querySelector('.weather-temp').textContent).toContain('19');
   });
 
   it('re-reads weather cache after storage changes', async () => {
