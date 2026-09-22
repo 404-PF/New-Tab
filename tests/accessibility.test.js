@@ -8,6 +8,13 @@ beforeEach(() => {
   document.body.className = '';
   document.querySelectorAll('#a11y-test-app-grid, #a11y-test-modal, #a11y-opener').forEach(el => el.remove());
 
+  let grid = document.getElementById('app-grid');
+  if (!grid) {
+    grid = document.createElement('div');
+    grid.id = 'app-grid';
+    document.body.appendChild(grid);
+  }
+
   const settingsModal = document.getElementById('settings-modal');
   if (settingsModal) {
     settingsModal.className = '';
@@ -53,7 +60,7 @@ describe('Accessibility - modal semantics and focus management', () => {
     const last = document.getElementById('settings-last');
 
     last.focus();
-    document.dispatchEvent(new KeyboardEvent('keydown', {
+    last.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'Tab',
       bubbles: true,
       cancelable: true
@@ -61,7 +68,7 @@ describe('Accessibility - modal semantics and focus management', () => {
     expect(document.activeElement).toBe(first);
 
     first.focus();
-    document.dispatchEvent(new KeyboardEvent('keydown', {
+    first.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'Tab',
       shiftKey: true,
       bubbles: true,
@@ -69,7 +76,7 @@ describe('Accessibility - modal semantics and focus management', () => {
     }));
     expect(document.activeElement).toBe(last);
 
-    document.dispatchEvent(new KeyboardEvent('keydown', {
+    first.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'Escape',
       bubbles: true,
       cancelable: true
@@ -107,33 +114,40 @@ describe('Accessibility - app grid keyboard interaction', () => {
     expect(addApp.getAttribute('role')).toBeNull();
 
     expect(grid.getAttribute('role')).toBe('grid');
-    const cells = [...grid.querySelectorAll('.app-icon')];
+    const cells = [...grid.querySelectorAll('.app-icon')].filter(cell => cell.id !== 'new-app');
     expect(cells.every(cell => cell.getAttribute('role') === 'gridcell')).toBe(true);
     expect(cells.filter(cell => cell.tabIndex === 0)).toHaveLength(1);
 
     cells[0].focus();
-    document.dispatchEvent(new KeyboardEvent('keydown', {
+    cells[0].dispatchEvent(new KeyboardEvent('keydown', {
       key: 'ArrowRight',
       bubbles: true,
       cancelable: true
     }));
     expect(document.activeElement).toBe(cells[1]);
 
-    document.dispatchEvent(new KeyboardEvent('keydown', {
+    cells[1].dispatchEvent(new KeyboardEvent('keydown', {
       key: ' ',
       bubbles: true,
       cancelable: true
     }));
     expect(cells[1].getAttribute('aria-grabbed')).toBe('true');
 
-    document.dispatchEvent(new KeyboardEvent('keydown', {
+    cells[1].dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true
+    }));
+    expect(document.activeElement).toBe(cells[2]);
+
+    cells[2].dispatchEvent(new KeyboardEvent('keydown', {
       key: 'Enter',
       bubbles: true,
       cancelable: true
     }));
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    expect(window.AppGridState.reorder).toHaveBeenCalledWith('app-2', 1);
+    expect(window.AppGridState.reorder).toHaveBeenCalledWith('app-2', 2);
     expect(cells[1].getAttribute('aria-grabbed')).toBe('false');
   });
 });
