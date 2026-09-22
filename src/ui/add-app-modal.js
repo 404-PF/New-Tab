@@ -225,6 +225,27 @@ async function cacheAppIcon(appData) {
   }
 }
 
+function showAddAppSaveError() {
+  const message = window.getAppGridSaveErrorMessage();
+  if (typeof window.showToast === 'function') {
+    window.showToast(message, 'error');
+    return;
+  }
+
+  const { validationMessage, addAppUrlInput } = getAddAppElements();
+  if (validationMessage) {
+    validationMessage.textContent = message;
+    validationMessage.classList.add('show', 'malformed');
+    validationMessage.classList.remove('undetectable', 'duplicate');
+    if (addAppUrlInput) {
+      addAppUrlInput.focus();
+    }
+    return;
+  }
+
+  console.warn(message);
+}
+
 async function saveCustomApp(appData) {
   const appToSave = await cacheAppIcon(appData);
   if (window.AppGridState && window.AppGridState.hasAppWithUrl(appToSave.url)) {
@@ -232,6 +253,7 @@ async function saveCustomApp(appData) {
     return;
   }
   if (!window.AppGridState.addApp(appToSave)) {
+    showAddAppSaveError();
     return;
   }
   if (window.renderCustomApps) {
