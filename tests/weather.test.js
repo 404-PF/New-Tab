@@ -182,28 +182,52 @@ describe('Weather widget', () => {
     }
   });
 
-  it('does not use a fresh auto-location cache after the user moves', async () => {
+  const DEFAULT_AUTO_COORDINATES = {
+    latitude: 37.7749,
+    longitude: -122.4194
+  };
+
+  function configureAutoWeather({
+    cacheData = mockWeatherData,
+    cacheCoordinates = DEFAULT_AUTO_COORDINATES,
+    currentCoordinates = DEFAULT_AUTO_COORDINATES,
+    locationName = 'Location A'
+  } = {}) {
     localStorage.setItem('weatherEnabled', 'true');
     localStorage.setItem('weatherUnit', 'celsius');
     localStorage.setItem('weatherLocationMode', 'auto');
     localStorage.setItem('weatherCache', JSON.stringify({
-      lat: 37.7749,
-      lon: -122.4194,
-      data: mockWeatherData,
+      lat: cacheCoordinates.latitude,
+      lon: cacheCoordinates.longitude,
+      data: cacheData,
       timestamp: Date.now(),
       locationMode: 'auto',
       manualCity: '',
-      locationName: 'Location A'
+      locationName
     }));
+    mockGeolocation(currentCoordinates);
+  }
 
-    mockGeolocation({ latitude: 34.0522, longitude: -118.2437 });
-
+  function installWeatherFetch({ data = mockWeatherData, onCall = () => {} } = {}) {
     const originalFetch = global.fetch;
-    let capturedUrl;
     global.fetch = async (url) => {
-      capturedUrl = url;
-      return { ok: true, json: async () => mockWeatherData };
+      onCall(url);
+      return { ok: true, json: async () => data };
     };
+    return originalFetch;
+  }
+
+    it('does not use a fresh auto-location cache after the user moves', async () => {
+    configureAutoWeather({
+      currentCoordinates: { latitude: 34.0522, longitude: -118.2437 }
+    });
+
+    let capturedUrl;
+    const originalFetch = installWeatherFetch({
+      onCall: (url) => {
+        capturedUrl = url;
+      }
+    });
 
     try {
       await window.WeatherWidget.refresh();
@@ -217,33 +241,24 @@ describe('Weather widget', () => {
   });
 
   it('uses a fresh auto-location cache within the coordinate tolerance', async () => {
-    localStorage.setItem('weatherEnabled', 'true');
-    localStorage.setItem('weatherUnit', 'celsius');
-    localStorage.setItem('weatherLocationMode', 'auto');
-    localStorage.setItem('weatherCache', JSON.stringify({
-      lat: 37.7749,
-      lon: -122.4194,
-      data: {
-        ...mockWeatherData,
-        current: {
-          ...mockWeatherData.current,
-          temperature_2m: 19
-        }
-      },
-      timestamp: Date.now(),
-      locationMode: 'auto',
-      manualCity: '',
-      locationName: 'Location A'
-    }));
-
-    mockGeolocation({ latitude: 37.8044, longitude: -122.4194 });
-
-    const originalFetch = global.fetch;
-    let fetchCalled = false;
-    global.fetch = async () => {
-      fetchCalled = true;
-      return { ok: true, json: async () => mockWeatherData };
+    const cachedData = {
+      ...mockWeatherData,
+      current: {
+        ...mockWeatherData.current,
+        temperature_2m: 19
+      }
     };
+    configureAutoWeather({
+      cacheData: cachedData,
+      currentCoordinates: { latitude: 37.8044, longitude: -122.4194 }
+    });
+
+    let fetchCalled = false;
+    const originalFetch = installWeatherFetch({
+      onCall: () => {
+        fetchCalled = true;
+      }
+    });
 
     try {
       await window.WeatherWidget.refresh();
@@ -256,28 +271,17 @@ describe('Weather widget', () => {
   });
 
   it('rejects a fresh auto-location cache just beyond the coordinate tolerance', async () => {
-    localStorage.setItem('weatherEnabled', 'true');
-    localStorage.setItem('weatherUnit', 'celsius');
-    localStorage.setItem('weatherLocationMode', 'auto');
-    localStorage.setItem('weatherCache', JSON.stringify({
-      lat: 37.7749,
-      lon: -122.4194,
-      data: mockWeatherData,
-      timestamp: Date.now(),
-      locationMode: 'auto',
-      manualCity: '',
-      locationName: 'Location A'
-    }));
-
     // ~10.50 km north of the cached latitude, just beyond the 10 km limit.
-    mockGeolocation({ latitude: 37.8693, longitude: -122.4194 });
+    configureAutoWeather({
+      currentCoordinates: { latitude: 37.8693, longitude: -122.4194 }
+    });
 
-    const originalFetch = global.fetch;
     let capturedUrl;
-    global.fetch = async (url) => {
-      capturedUrl = url;
-      return { ok: true, json: async () => mockWeatherData };
-    };
+    const originalFetch = installWeatherFetch({
+      onCall: (url) => {
+        capturedUrl = url;
+      }
+    });
 
     try {
       await window.WeatherWidget.refresh();
@@ -292,33 +296,22 @@ describe('Weather widget', () => {
 
 
   it('does not use a fresh auto-location cache when geolocation fails', async () => {
-    localStorage.setItem('weatherEnabled', 'true');
-    localStorage.setItem('weatherUnit', 'celsius');
-    localStorage.setItem('weatherLocationMode', 'auto');
-    localStorage.setItem('weatherCache', JSON.stringify({
-      lat: 37.7749,
-      lon: -122.4194,
-      data: {
-        ...mockWeatherData,
-        current: {
-          ...mockWeatherData.current,
-          temperature_2m: 19
-        }
-      },
-      timestamp: Date.now(),
-      locationMode: 'auto',
-      manualCity: '',
-      locationName: 'Location A'
-    }));
-
+    const cachedData = {
+      ...mockWeatherData,
+      current: {
+        ...mockWeatherData.current,
+        temperature_2m: 19
+      }
+    };
+    configureAutoWeather({ cacheData: cachedData });
     mockGeolocationError();
 
-    const originalFetch = global.fetch;
     let fetchCalled = false;
-    global.fetch = async () => {
-      fetchCalled = true;
-      return { ok: true, json: async () => mockWeatherData };
-    };
+    const originalFetch = installWeatherFetch({
+      onCall: () => {
+        fetchCalled = true;
+      }
+    });
 
     try {
       await window.WeatherWidget.refresh();
@@ -332,32 +325,45 @@ describe('Weather widget', () => {
   });
 
   it('does not trust an auto-location cache with invalid coordinates', async () => {
-    localStorage.setItem('weatherEnabled', 'true');
-    localStorage.setItem('weatherUnit', 'celsius');
-    localStorage.setItem('weatherLocationMode', 'auto');
-    localStorage.setItem('weatherCache', JSON.stringify({
-      lat: null,
-      lon: -122.4194,
-      data: mockWeatherData,
-      timestamp: Date.now(),
-      locationMode: 'auto',
-      manualCity: '',
-      locationName: 'Invalid cache'
-    }));
+    configureAutoWeather({
+      cacheCoordinates: { latitude: null, longitude: -122.4194 }
+    });
 
-    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
-
-    const originalFetch = global.fetch;
     let fetchCalled = false;
-    global.fetch = async () => {
-      fetchCalled = true;
-      return { ok: true, json: async () => mockWeatherData };
-    };
+    const originalFetch = installWeatherFetch({
+      onCall: () => {
+        fetchCalled = true;
+      }
+    });
 
     try {
       await window.WeatherWidget.refresh();
 
       expect(fetchCalled).toBe(true);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('falls back to matching auto-location cache when the weather fetch fails', async () => {
+    const cachedData = {
+      ...mockWeatherData,
+      current: {
+        ...mockWeatherData.current,
+        temperature_2m: 19
+      }
+    };
+    configureAutoWeather({ cacheData: cachedData });
+
+    const originalFetch = global.fetch;
+    global.fetch = async () => {
+      throw new Error('Network unavailable');
+    };
+
+    try {
+      await window.WeatherWidget.refresh(true);
+
+      expect(document.querySelector('.weather-temp').textContent).toContain('19');
     } finally {
       global.fetch = originalFetch;
     }
