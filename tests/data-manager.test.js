@@ -22,19 +22,33 @@ describe('DataManager backup validation', () => {
     } })).toEqual({ valid: true });
 
     const invalidFolders = [
+      null,
+      'folder-1',
+      [],
       { id: 'folder-1', name: 'Test' },
       { id: 'folder-1', name: 'Test', apps: null },
       { id: 'folder-1', name: 'Test', apps: {} },
       { id: 'folder-1', name: 'Test', apps: 'not-an-array' },
       { id: 'folder-1', name: 'Test', apps: [123] },
       { id: 'folder-1', name: 'Test', apps: [''] },
+      { id: 'folder-1', name: 'Test', apps: ['  ', 'app-1'] },
+      { id: 'folder-1', name: 'Test', apps: ['app-1', 'app-1'] },
       { id: '', name: 'Test', apps: [] },
+      { id: '   ', name: 'Test', apps: [] },
+      { id: 'folder-1', name: '  ', apps: [] },
       { id: 'folder-1', apps: [] }
     ];
 
     invalidFolders.forEach((folder) => {
       expect(window.DataManager.validateImportData({ version: 1, data: {
         appFolders: [folder]
+      } }).valid).toBe(false);
+    });
+
+    const invalidFolderCollections = [null, {}, 'not-an-array'];
+    invalidFolderCollections.forEach((folders) => {
+      expect(window.DataManager.validateImportData({ version: 1, data: {
+        appFolders: folders
       } }).valid).toBe(false);
     });
   });
@@ -57,6 +71,42 @@ describe('DataManager backup validation', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('appOrder');
     expect(window.DataManager.EXPORT_KEYS).toContain('ai_conversations');
     expect(window.DataManager.EXPORT_KEYS).not.toContain('searchHistory');
+  });
+
+  it('sanitizes malformed stored app folders in exports', async () => {
+    localStorage.setItem('appFolders', JSON.stringify([
+      { id: 'folder-1', name: 'Valid', apps: ['app-1'] },
+      { id: 'folder-2', name: 'Missing apps' },
+      { id: 'folder-3', name: 'Duplicate apps', apps: ['app-1', 'app-1'] }
+    ]));
+
+    const origCreateObjectURL = URL.createObjectURL;
+    const origRevokeObjectURL = URL.revokeObjectURL;
+    let capturedJson = null;
+    URL.createObjectURL = (blob) => {
+      const reader = new FileReader();
+      reader.onload = () => { capturedJson = reader.result; };
+      reader.readAsText(blob);
+      return 'blob:mock-url';
+    };
+    URL.revokeObjectURL = () => {};
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    try {
+      window.DataManager.exportAllData();
+      await vi.waitFor(() => expect(capturedJson).not.toBeNull());
+
+      const exported = JSON.parse(capturedJson);
+      expect(exported.data.appFolders).toEqual([
+        { id: 'folder-1', name: 'Valid', apps: ['app-1'] }
+      ]);
+      expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+    } finally {
+      clickSpy.mockRestore();
+      URL.createObjectURL = origCreateObjectURL;
+      URL.revokeObjectURL = origRevokeObjectURL;
+      document.querySelectorAll('.toast-notification').forEach(el => el.remove());
+    }
   });
 
   it('shows an error instead of exporting when custom background metadata fails to load', async () => {
