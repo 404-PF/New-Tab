@@ -4570,17 +4570,17 @@ const ACCESSIBILITY_TRANSLATIONS = {
     accessibilityTodoListUpdatedOne: 'Todo list updated. {count} item shown.'
   },
   zh: {
-    accessibilityCalendar: '日历',
-    accessibilityApp: '应用',
-    accessibilityAppActions: '应用操作',
-    accessibilitySelected: '已选中',
-    accessibilityPickedUp: '{name} 已拾起。',
-    accessibilityMoved: '{name} 已移动。',
-    accessibilityNotMoved: '{name} 未移动。',
-    accessibilityMoveCancelled: '已取消移动。',
-    accessibilityFilter: '筛选：{label}。',
-    accessibilityTodoListUpdated: '待办清单已更新。已显示 {count} 项。',
-    accessibilityTodoListUpdatedOne: '待办清单已更新。已显示 {count} 项。'
+    accessibilityCalendar: '日曆',
+    accessibilityApp: '應用程式',
+    accessibilityAppActions: '應用程式操作',
+    accessibilitySelected: '已選取',
+    accessibilityPickedUp: '{name} 已選為移動對象。',
+    accessibilityMoved: '{name} 已移動。',
+    accessibilityNotMoved: '{name} 未移動。',
+    accessibilityMoveCancelled: '已取消移動。',
+    accessibilityFilter: '篩選：{label}。',
+    accessibilityTodoListUpdated: '待辦清單已更新。已顯示 {count} 項。',
+    accessibilityTodoListUpdatedOne: '待辦清單已更新。已顯示 {count} 項。'
   },
   ja: {
     accessibilityCalendar: 'カレンダー',
