@@ -222,6 +222,9 @@ function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, lea
   return { skip: false, warnedUpdated: false, notifiedKey, dueDisplay };
 }
 
+/**
+ * Evaluates due todos and records a reminder only after notification creation succeeds.
+ */
 async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime) {
   let updated = false;
   let warnedUpdated = false;
@@ -278,6 +281,9 @@ async function runReminderCheck(todosJson, options = {}) {
   }
 }
 
+/**
+ * Creates a todo reminder notification and reports whether creation succeeded.
+ */
 async function showTodoNotification(todo, dueDisplay) {
   const id = 'todo_reminder_' + todo.id;
   try {
