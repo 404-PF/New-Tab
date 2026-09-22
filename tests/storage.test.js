@@ -128,6 +128,132 @@ describe('storage bridge', () => {
     }
   });
 
+  it('rolls back a failed synchronous remove and reports the storage error', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let removeCallback;
+      const persisted = { todos: '[{"text":"keep me"}]' };
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ ...persisted });
+            },
+            set(items, callback) {
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallback = callback;
+              return Promise.resolve();
+            },
+            clear(callback) {
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      const failurePromise = new Promise((resolveFailure) => {
+        dom.window.addEventListener('storageBridgeWriteError', resolveFailure, { once: true });
+      });
+
+      dom.window.localStorage.removeItem('todos');
+      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+
+      dom.window.chrome.runtime.lastError = { message: 'storage unavailable' };
+      removeCallback?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      const failureEvent = await failurePromise;
+      expect(failureEvent.detail).toMatchObject({
+        key: 'todos',
+        message: 'storage unavailable',
+        operation: 'remove'
+      });
+      expect(typeof failureEvent.detail.generation).toBe('number');
+      expect(dom.window.localStorage.getItem('todos')).toBe(persisted.todos);
+      expect(persisted.todos).toBe('[{"text":"keep me"}]');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('does not let a late remove failure overwrite a newer write', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let removeCallback;
+      let setCallback;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ todos: 'original' });
+            },
+            set(items, callback) {
+              setCallback = callback;
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallback = callback;
+              return Promise.resolve();
+            },
+            clear(callback) {
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.removeItem('todos');
+      dom.window.localStorage.setItem('todos', 'newer');
+
+      dom.window.chrome.runtime.lastError = { message: 'late remove failure' };
+      removeCallback?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      expect(dom.window.localStorage.getItem('todos')).toBe('newer');
+
+      setCallback?.();
+    } finally {
+      dom.window.close();
+    }
+  });
+
   it('reflects direct chrome.storage.local writes back into localStorage', async () => {
     await chrome.storage.local.set({ language: 'zh' });
 

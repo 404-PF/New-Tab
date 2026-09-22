@@ -471,20 +471,55 @@
     );
   }
 
-  function persistRemove(key) {
+  function persistRemove(key, hadPreviousValue, previousValue) {
     const storageArea = getStorageArea();
     if (!storageArea) {
-      return;
+      return false;
     }
+
+    const generation = ++writeSequence;
+    pendingWriteGenerations.set(key, generation);
 
     try {
       storageArea.remove(key, () => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          console.warn(`Failed to remove ${key} from chrome.storage:`, chrome.runtime.lastError.message);
+        const lastError = chrome.runtime?.lastError;
+
+        if (lastError) {
+          const message = lastError?.message ? lastError.message : String(lastError);
+          console.warn(`Failed to remove ${key} from chrome.storage:`, message);
+          reportStorageWriteError(key, lastError, {
+            operation: 'remove',
+            generation
+          });
+
+          if (pendingWriteGenerations.get(key) === generation &&
+              !cache.has(key) &&
+              hadPreviousValue) {
+            cache.set(key, previousValue);
+            trackHydrationMutation(key, previousValue);
+          }
+        }
+
+        if (pendingWriteGenerations.get(key) === generation) {
+          pendingWriteGenerations.delete(key);
         }
       });
+      return true;
     } catch (error) {
       console.warn(`Failed to remove ${key} from chrome.storage:`, error);
+      reportStorageWriteError(key, error, {
+        operation: 'remove',
+        generation
+      });
+
+      if (pendingWriteGenerations.get(key) === generation) {
+        if (!cache.has(key) && hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        }
+        pendingWriteGenerations.delete(key);
+      }
+      return false;
     }
   }
 
@@ -594,6 +629,8 @@
     },
 
     removeItem(key) {
+      const hadPreviousValue = cache.has(key);
+      const previousValue = cache.get(key);
       cache.delete(key);
       trackHydrationMutation(key, null);
 
@@ -602,7 +639,7 @@
         return;
       }
 
-      persistRemove(key);
+      persistRemove(key, hadPreviousValue, previousValue);
     },
 
     clear() {
