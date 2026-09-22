@@ -216,6 +216,7 @@
     today.setHours(0, 0, 0, 0);
     const base = currentDueDate ? parseLocalDate(currentDueDate) : new Date(today);
     base.setHours(0, 0, 0, 0);
+    const monthlyAnchorDay = recurrence === 'monthly' ? base.getDate() : null;
 
     // Advance from the scheduled due date so late completion does not move
     // the recurrence anchor to the completion date. Keep advancing until the
@@ -226,19 +227,18 @@
       } else if (recurrence === 'weekly') {
         base.setDate(base.getDate() + 7);
       } else if (recurrence === 'monthly') {
-        navigateMonthSafe(base, 1);
+        navigateMonthSafe(base, 1, monthlyAnchorDay);
       }
     } while (base <= today);
 
     return formatDateISO(base);
   }
 
-  function navigateMonthSafe(date, delta) {
-    const day = date.getDate();
+  function navigateMonthSafe(date, delta, anchorDay = date.getDate()) {
     date.setDate(1);
     date.setMonth(date.getMonth() + delta);
     const lastDayOfTargetMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-    date.setDate(Math.min(day, lastDayOfTargetMonth));
+    date.setDate(Math.min(anchorDay, lastDayOfTargetMonth));
     return date;
   }
 
