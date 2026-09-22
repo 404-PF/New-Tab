@@ -225,18 +225,8 @@ async function cacheAppIcon(appData) {
   }
 }
 
-function getAppGridSaveErrorMessage() {
-  const fallback = 'Failed to save app changes. Your last action was not saved.';
-  if (!window.i18n || typeof window.i18n.t !== 'function') {
-    return fallback;
-  }
-
-  const message = window.i18n.t('appGridSaveError');
-  return message && message !== 'appGridSaveError' ? message : fallback;
-}
-
 function showAddAppSaveError() {
-  const message = getAppGridSaveErrorMessage();
+  const message = window.getAppGridSaveErrorMessage();
   if (typeof window.showToast === 'function') {
     window.showToast(message, 'error');
     return;
