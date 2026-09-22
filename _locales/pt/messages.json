@@ -651,5 +651,49 @@
   },
   "searchSuggestionsAriaLabel": {
     "message": "Sugestões de pesquisa"
+  },
+  "accessibilityCalendar": {
+    "message": "Calendário",
+    "description": "Accessible label for calendar widgets"
+  },
+  "accessibilityApp": {
+    "message": "Aplicativo",
+    "description": "Accessible fallback label for an app cell"
+  },
+  "accessibilityAppActions": {
+    "message": "Ações do aplicativo",
+    "description": "Accessible label for the app context menu"
+  },
+  "accessibilitySelected": {
+    "message": "selecionado",
+    "description": "State announced for a selected calendar day"
+  },
+  "accessibilityPickedUp": {
+    "message": "{name} selecionado para mover.",
+    "description": "Announcement when an app is picked up for keyboard reordering"
+  },
+  "accessibilityMoved": {
+    "message": "{name} movido.",
+    "description": "Announcement when an app is moved by keyboard reordering"
+  },
+  "accessibilityNotMoved": {
+    "message": "{name} não foi movido.",
+    "description": "Announcement when an app cannot be moved"
+  },
+  "accessibilityMoveCancelled": {
+    "message": "Movimentação cancelada.",
+    "description": "Announcement when keyboard reordering is cancelled"
+  },
+  "accessibilityFilter": {
+    "message": "Filtro: {label}.",
+    "description": "Announcement when a todo filter changes"
+  },
+  "accessibilityTodoListUpdated": {
+    "message": "Lista de tarefas atualizada. {count} itens exibidos.",
+    "description": "Announcement after the todo list is updated"
+  },
+  "accessibilityTodoListUpdatedOne": {
+    "message": "Lista de tarefas atualizada. {count} item exibido.",
+    "description": "Singular announcement after the todo list is updated"
   }
 }
