@@ -222,6 +222,9 @@ function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, lea
   return { skip: false, warnedUpdated: false, notifiedKey, dueDisplay };
 }
 
+/**
+ * Evaluates due todos and records a reminder only after notification creation succeeds.
+ */
 async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime) {
   let updated = false;
   let warnedUpdated = false;
@@ -230,7 +233,8 @@ async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, lead
     const candidate = getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, leadTime);
     if (candidate.warnedUpdated) warnedUpdated = true;
     if (candidate.skip) continue;
-    await showTodoNotification(todo, candidate.dueDisplay);
+    const notificationCreated = await showTodoNotification(todo, candidate.dueDisplay);
+    if (!notificationCreated) continue;
     notified[candidate.notifiedKey] = Date.now();
     updated = true;
   }
@@ -277,6 +281,9 @@ async function runReminderCheck(todosJson, options = {}) {
   }
 }
 
+/**
+ * Creates a todo reminder notification and reports whether creation succeeded.
+ */
 async function showTodoNotification(todo, dueDisplay) {
   const id = 'todo_reminder_' + todo.id;
   try {
@@ -286,8 +293,10 @@ async function showTodoNotification(todo, dueDisplay) {
       title: chrome.i18n.getMessage('todoReminderTitle'),
       message: chrome.i18n.getMessage('todoReminderMessage', [todo.text, dueDisplay])
     });
+    return true;
   } catch (e) {
     console.warn('Failed to create todo reminder notification:', e);
+    return false;
   }
 }
 
