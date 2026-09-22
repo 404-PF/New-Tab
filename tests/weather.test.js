@@ -3,6 +3,7 @@ import { injectScript } from './helpers/inject-script.js';
 
 // Helper to mock geolocation
 let originalGeolocation;
+let originalFetch;
 
 function mockGeolocation({ latitude, longitude }) {
   originalGeolocation = navigator.geolocation;
@@ -45,6 +46,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  originalFetch = global.fetch;
   localStorage.clear();
   const widget = document.getElementById('weather-widget');
   if (widget) {
@@ -55,6 +57,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  global.fetch = originalFetch;
+  originalFetch = undefined;
   if (originalGeolocation !== undefined) {
     navigator.geolocation = originalGeolocation;
   } else {
@@ -209,35 +213,29 @@ describe('Weather widget', () => {
   }
 
   function installWeatherFetch({ data = mockWeatherData, onCall = () => {} } = {}) {
-    const originalFetch = global.fetch;
     global.fetch = async (url) => {
       onCall(url);
       return { ok: true, json: async () => data };
     };
-    return originalFetch;
   }
 
-    it('does not use a fresh auto-location cache after the user moves', async () => {
+  it('does not use a fresh auto-location cache after the user moves', async () => {
     configureAutoWeather({
       currentCoordinates: { latitude: 34.0522, longitude: -118.2437 }
     });
 
     let capturedUrl;
-    const originalFetch = installWeatherFetch({
+    installWeatherFetch({
       onCall: (url) => {
         capturedUrl = url;
       }
     });
 
-    try {
-      await window.WeatherWidget.refresh();
+    await window.WeatherWidget.refresh();
 
-      const urlObj = new URL(capturedUrl);
-      expect(urlObj.searchParams.get('latitude')).toBe('34.0522');
-      expect(urlObj.searchParams.get('longitude')).toBe('-118.2437');
-    } finally {
-      global.fetch = originalFetch;
-    }
+    const urlObj = new URL(capturedUrl);
+    expect(urlObj.searchParams.get('latitude')).toBe('34.0522');
+    expect(urlObj.searchParams.get('longitude')).toBe('-118.2437');
   });
 
   it('uses a fresh auto-location cache within the coordinate tolerance', async () => {
@@ -254,20 +252,16 @@ describe('Weather widget', () => {
     });
 
     let fetchCalled = false;
-    const originalFetch = installWeatherFetch({
+    installWeatherFetch({
       onCall: () => {
         fetchCalled = true;
       }
     });
 
-    try {
-      await window.WeatherWidget.refresh();
+    await window.WeatherWidget.refresh();
 
-      expect(fetchCalled).toBe(false);
-      expect(document.querySelector('.weather-temp').textContent).toContain('19');
-    } finally {
-      global.fetch = originalFetch;
-    }
+    expect(fetchCalled).toBe(false);
+    expect(document.querySelector('.weather-temp').textContent).toContain('19');
   });
 
   it('rejects a fresh auto-location cache just beyond the coordinate tolerance', async () => {
@@ -277,23 +271,18 @@ describe('Weather widget', () => {
     });
 
     let capturedUrl;
-    const originalFetch = installWeatherFetch({
+    installWeatherFetch({
       onCall: (url) => {
         capturedUrl = url;
       }
     });
 
-    try {
-      await window.WeatherWidget.refresh();
+    await window.WeatherWidget.refresh();
 
-      expect(capturedUrl).toBeDefined();
-      expect(new URL(capturedUrl).searchParams.get('latitude')).toBe('37.8693');
-      expect(new URL(capturedUrl).searchParams.get('longitude')).toBe('-122.4194');
-    } finally {
-      global.fetch = originalFetch;
-    }
+    expect(capturedUrl).toBeDefined();
+    expect(new URL(capturedUrl).searchParams.get('latitude')).toBe('37.8693');
+    expect(new URL(capturedUrl).searchParams.get('longitude')).toBe('-122.4194');
   });
-
 
   it('does not use a fresh auto-location cache when geolocation fails', async () => {
     const cachedData = {
@@ -307,21 +296,17 @@ describe('Weather widget', () => {
     mockGeolocationError();
 
     let fetchCalled = false;
-    const originalFetch = installWeatherFetch({
+    installWeatherFetch({
       onCall: () => {
         fetchCalled = true;
       }
     });
 
-    try {
-      await window.WeatherWidget.refresh();
+    await window.WeatherWidget.refresh();
 
-      expect(fetchCalled).toBe(false);
-      expect(document.querySelector('.weather-temp')).toBeNull();
-      expect(document.querySelector('.weather-error')).not.toBeNull();
-    } finally {
-      global.fetch = originalFetch;
-    }
+    expect(fetchCalled).toBe(false);
+    expect(document.querySelector('.weather-temp')).toBeNull();
+    expect(document.querySelector('.weather-error')).not.toBeNull();
   });
 
   it('does not trust an auto-location cache with invalid coordinates', async () => {
@@ -330,19 +315,15 @@ describe('Weather widget', () => {
     });
 
     let fetchCalled = false;
-    const originalFetch = installWeatherFetch({
+    installWeatherFetch({
       onCall: () => {
         fetchCalled = true;
       }
     });
 
-    try {
-      await window.WeatherWidget.refresh();
+    await window.WeatherWidget.refresh();
 
-      expect(fetchCalled).toBe(true);
-    } finally {
-      global.fetch = originalFetch;
-    }
+    expect(fetchCalled).toBe(true);
   });
 
   it('falls back to matching auto-location cache when the weather fetch fails', async () => {
