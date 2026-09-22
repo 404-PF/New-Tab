@@ -586,7 +586,18 @@ globalThis.window.i18n = {
       gamesLevel: 'Level',
       gamesPlay: 'Play',
       gamesContinue: 'Continue',
-      gamesSaved: 'Saved'
+      gamesSaved: 'Saved',
+      accessibilityCalendar: 'Calendar',
+      accessibilityApp: 'App',
+      accessibilityAppActions: 'App actions',
+      accessibilitySelected: 'selected',
+      accessibilityPickedUp: '{name} picked up.',
+      accessibilityMoved: '{name} moved.',
+      accessibilityNotMoved: '{name} was not moved.',
+      accessibilityMoveCancelled: 'Move cancelled.',
+      accessibilityFilter: 'Filter: {label}.',
+      accessibilityTodoListUpdated: 'Todo list updated. {count} items shown.',
+      accessibilityTodoListUpdatedOne: 'Todo list updated. {count} item shown.'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
