@@ -653,47 +653,47 @@
     "message": "搜尋建議"
   },
   "accessibilityCalendar": {
-    "message": "日历",
+    "message": "日曆",
     "description": "Accessibility label or announcement"
   },
   "accessibilityApp": {
-    "message": "应用",
+    "message": "應用程式",
     "description": "Accessibility label or announcement"
   },
   "accessibilityAppActions": {
-    "message": "应用操作",
+    "message": "應用程式操作",
     "description": "Accessibility label or announcement"
   },
   "accessibilitySelected": {
-    "message": "已选中",
+    "message": "已選取",
     "description": "Accessibility label or announcement"
   },
   "accessibilityPickedUp": {
-    "message": "{name} 已拾起。",
+    "message": "{name} 已選為移動對象。",
     "description": "Accessibility label or announcement"
   },
   "accessibilityMoved": {
-    "message": "{name} 已移动。",
+    "message": "{name} 已移動。",
     "description": "Accessibility label or announcement"
   },
   "accessibilityNotMoved": {
-    "message": "{name} 未移动。",
+    "message": "{name} 未移動。",
     "description": "Accessibility label or announcement"
   },
   "accessibilityMoveCancelled": {
-    "message": "已取消移动。",
+    "message": "已取消移動。",
     "description": "Accessibility label or announcement"
   },
   "accessibilityFilter": {
-    "message": "筛选：{label}。",
+    "message": "篩選：{label}。",
     "description": "Accessibility label or announcement"
   },
   "accessibilityTodoListUpdated": {
-    "message": "待办清单已更新。已显示 {count} 项。",
+    "message": "待辦清單已更新。已顯示 {count} 項。",
     "description": "Accessibility label or announcement"
   },
   "accessibilityTodoListUpdatedOne": {
-    "message": "待办清单已更新。已显示 {count} 项。",
+    "message": "待辦清單已更新。已顯示 {count} 項。",
     "description": "Accessibility label or announcement"
   }
 }
