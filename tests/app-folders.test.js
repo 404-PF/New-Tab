@@ -299,7 +299,8 @@ describe('AppFolders UI', () => {
         { id: 'folder-2', name: 'Null apps', apps: null },
         { id: 'folder-3', name: 'Object apps', apps: {} },
         { id: 'folder-4', name: 'String apps', apps: 'not-an-array' },
-        { id: 'folder-5', name: 'Number apps', apps: 123 }
+        { id: 'folder-5', name: 'Number apps', apps: 123 },
+        { id: 'folder-6', name: 'Junk apps', apps: [123, '  '] }
       ];
 
       malformedFolders.forEach((folder) => {
