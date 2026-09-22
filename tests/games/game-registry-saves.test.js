@@ -70,7 +70,7 @@ describe('GameRegistry saves (#646)', () => {
     ensureContainer();
     window.GameRegistry.launch('save-game');
     game.setSnapshot({ level: 7 });
-    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.destroyCurrent()).toBe(true);
 
     expect(window.GameRegistry.hasSave('save-game')).toBe(true);
     const raw = JSON.parse(localStorage.getItem('games_saves'));
