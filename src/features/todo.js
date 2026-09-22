@@ -218,8 +218,6 @@
     const base = currentDueDate ? parseLocalDate(currentDueDate) : new Date(today);
     base.setHours(0, 0, 0, 0);
     const monthlyAnchorDay = recurrence === 'monthly' ? base.getDate() : null;
-    let nextDueTimestamp = base.getTime();
-
     // Advance from the scheduled due date so late completion does not move
     // the recurrence anchor to the completion date. Keep advancing until the
     // next occurrence is strictly in the future.
@@ -231,8 +229,7 @@
       } else if (recurrence === 'monthly') {
         navigateMonthSafe(base, 1, monthlyAnchorDay);
       }
-      nextDueTimestamp = base.getTime();
-    } while (nextDueTimestamp <= todayTimestamp);
+    } while (base.getTime() <= todayTimestamp);
 
     return formatDateISO(base);
   }
