@@ -1863,10 +1863,10 @@ describe('Service worker checkReminders', () => {
     await expect(checkReminders()).resolves.toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith('Failed to create todo reminder notification:', expect.any(Error));
 
-    // No notification was created (rejected), but still marked as notified to prevent retry-spam
+    // No notification was created, so the reminder stays unmarked and retryable.
     expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
     const data = await new Promise(resolve => chrome.storage.local.get('todoReminderNotified', resolve));
-    expect(data.todoReminderNotified).toHaveProperty('t1_2026-05-20');
+    expect(data.todoReminderNotified).toEqual({});
 
     createSpy.mockRestore();
     warnSpy.mockRestore();
