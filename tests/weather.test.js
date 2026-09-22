@@ -6,7 +6,6 @@ let originalGeolocation;
 let originalFetch;
 
 function mockGeolocation({ latitude, longitude }) {
-  originalGeolocation = navigator.geolocation;
   navigator.geolocation = {
     getCurrentPosition: (success) => {
       success({
@@ -20,7 +19,6 @@ function mockGeolocation({ latitude, longitude }) {
 }
 
 function mockGeolocationError(error = new Error('Geolocation failed')) {
-  originalGeolocation = navigator.geolocation;
   navigator.geolocation = {
     getCurrentPosition: (_success, failure) => {
       failure(error);
@@ -46,6 +44,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  originalGeolocation = navigator.geolocation;
   originalFetch = global.fetch;
   localStorage.clear();
   const widget = document.getElementById('weather-widget');
@@ -325,14 +324,7 @@ describe('Weather widget', () => {
   });
 
   it('falls back to matching auto-location cache when the weather fetch fails', async () => {
-    const cachedData = {
-      ...mockWeatherData,
-      current: {
-        ...mockWeatherData.current,
-        temperature_2m: 19
-      }
-    };
-    configureAutoWeather({ cacheData: cachedData });
+    configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
 
     global.fetch = async () => {
       throw new Error('Network unavailable');
