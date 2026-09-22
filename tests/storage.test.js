@@ -199,6 +199,72 @@ describe('storage bridge', () => {
     }
   });
 
+  it('does not restore a shared remove snapshot after an earlier remove succeeds', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      const removeCallbacks = [];
+      const persisted = { todos: 'original' };
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ ...persisted });
+            },
+            set(items, callback) {
+              Object.assign(persisted, items);
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallbacks.push(() => {
+                if (!dom.window.chrome.runtime.lastError) {
+                  delete persisted[keys];
+                }
+                callback?.();
+              });
+              return Promise.resolve();
+            },
+            clear(callback) {
+              Object.keys(persisted).forEach((key) => delete persisted[key]);
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.removeItem('todos');
+      dom.window.localStorage.removeItem('todos');
+
+      removeCallbacks[0]?.();
+
+      dom.window.chrome.runtime.lastError = { message: 'late remove failure' };
+      removeCallbacks[1]?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+      expect(await dom.window.chrome.storage.local.get('todos')).toEqual({});
+    } finally {
+      dom.window.close();
+    }
+  });
+
   it('does not let a late remove failure overwrite a newer write', async () => {
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
       url: 'https://example.com',
