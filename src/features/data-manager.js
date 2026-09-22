@@ -219,7 +219,7 @@
       }
       const persistentVal = pickPersistentFields(key, val);
       if (persistentVal !== null) {
-        data[key] = persistentVal;
+        data[key] = sanitizeExportValue(key, persistentVal);
       }
     });
 
@@ -308,10 +308,21 @@
     if (typeof folder.id !== 'string' || folder.id.trim() === '') return false;
     if (typeof folder.name !== 'string' || folder.name.trim() === '') return false;
     if (!Array.isArray(folder.apps)) return false;
+    const seenAppIds = new Set();
     return folder.apps.every(function (appId) {
-      return typeof appId === 'string' && appId.trim() !== '';
+      if (typeof appId !== 'string' || appId.trim() === '' || seenAppIds.has(appId)) return false;
+      seenAppIds.add(appId);
+      return true;
     });
   }
+
+  function sanitizeExportValue(key, value) {
+    if (key === 'appFolders' && Array.isArray(value)) {
+      return value.filter(isValidFolderEntry);
+    }
+    return value;
+  }
+
   const EXPECTED_SHAPES = {
     theme: function (v) { return typeof v === 'string'; },
     language: function (v) { return typeof v === 'string'; },
