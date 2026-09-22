@@ -858,7 +858,11 @@
     const list = document.getElementById('todo-list');
     if (!list) return;
     const count = list.querySelectorAll('.todo-item').length;
-    announce('Todo list updated. ' + count + (count === 1 ? ' item shown.' : ' items shown.'));
+    const key = count === 1 ? 'accessibilityTodoListUpdatedOne' : 'accessibilityTodoListUpdated';
+    const fallback = count === 1
+      ? 'Todo list updated. {count} item shown.'
+      : 'Todo list updated. {count} items shown.';
+    announce(translate(key, fallback, { count: count }));
   }
 
   function nodeMatchesOrContains(node, selector) {
