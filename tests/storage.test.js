@@ -293,6 +293,7 @@ describe('storage bridge', () => {
             },
             clear(callback) {
               clearCallback = callback;
+              Object.keys(persisted).forEach((key) => delete persisted[key]);
               return Promise.resolve();
             }
           }
