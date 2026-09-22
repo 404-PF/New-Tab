@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 // Helper to mock geolocation
 let originalGeolocation;
 let originalFetch;
+let unitGroup;
 
 function mockGeolocation({ latitude, longitude }) {
   navigator.geolocation = {
@@ -41,7 +42,7 @@ beforeAll(() => {
   // weather.js depends on the shared WeatherUtils module
   injectScript('src/features/weather-utils.js');
 
-  const unitGroup = document.createElement('div');
+  unitGroup = document.createElement('div');
   unitGroup.className = 'weather-choice-group';
   unitGroup.dataset.weatherChoice = 'unit';
   unitGroup.innerHTML = `
@@ -79,6 +80,11 @@ afterEach(() => {
     delete navigator.geolocation;
   }
   originalGeolocation = undefined;
+});
+
+afterAll(() => {
+  unitGroup?.remove();
+  unitGroup = undefined;
 });
 
 describe('Weather widget', () => {
