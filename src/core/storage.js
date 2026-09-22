@@ -479,7 +479,12 @@
       return existingSnapshot;
     }
 
-    const snapshot = { hadPreviousValue, previousValue };
+    const snapshot = {
+      hadPreviousValue,
+      previousValue,
+      invalidated: false,
+      pendingGenerations: new Set()
+    };
     pendingRemoveRollbackSnapshots.set(key, snapshot);
     return snapshot;
   }
@@ -493,48 +498,55 @@
     const rollbackSnapshot = getRemoveRollbackSnapshot(key, hadPreviousValue, previousValue);
     const generation = ++writeSequence;
     pendingWriteGenerations.set(key, generation);
+    rollbackSnapshot.pendingGenerations.add(generation);
 
-    try {
-      storageArea.remove(key, () => {
-        const lastError = chrome.runtime?.lastError;
+    const finishRemove = (error) => {
+      const isActiveSnapshot = pendingRemoveRollbackSnapshots.get(key) === rollbackSnapshot;
 
-        if (lastError) {
-          const message = lastError?.message ? lastError.message : String(lastError);
+      if (isActiveSnapshot) {
+        if (error) {
+          const message = error?.message ? error.message : String(error);
           console.warn('Failed to remove ' + key + ' from chrome.storage:', message);
-          reportStorageWriteError(key, lastError, {
+          reportStorageWriteError(key, error, {
             operation: 'remove',
             generation
           });
 
-          if (pendingWriteGenerations.get(key) === generation &&
+          if (!rollbackSnapshot.invalidated &&
+              pendingWriteGenerations.get(key) === generation &&
               !cache.has(key) &&
               rollbackSnapshot.hadPreviousValue) {
             cache.set(key, rollbackSnapshot.previousValue);
             trackHydrationMutation(key, rollbackSnapshot.previousValue);
           }
+        } else {
+          rollbackSnapshot.invalidated = true;
+
+          if (rollbackSnapshot.hadPreviousValue &&
+              cache.get(key) === rollbackSnapshot.previousValue) {
+            cache.delete(key);
+            trackHydrationMutation(key, null);
+          }
         }
 
-        if (pendingWriteGenerations.get(key) === generation) {
-          pendingWriteGenerations.delete(key);
+        rollbackSnapshot.pendingGenerations.delete(generation);
+        if (rollbackSnapshot.pendingGenerations.size === 0) {
           pendingRemoveRollbackSnapshots.delete(key);
         }
+      }
+
+      if (pendingWriteGenerations.get(key) === generation) {
+        pendingWriteGenerations.delete(key);
+      }
+    };
+
+    try {
+      storageArea.remove(key, () => {
+        finishRemove(chrome.runtime?.lastError || null);
       });
       return true;
     } catch (error) {
-      console.warn('Failed to remove ' + key + ' from chrome.storage:', error);
-      reportStorageWriteError(key, error, {
-        operation: 'remove',
-        generation
-      });
-
-      if (pendingWriteGenerations.get(key) === generation) {
-        if (!cache.has(key) && rollbackSnapshot.hadPreviousValue) {
-          cache.set(key, rollbackSnapshot.previousValue);
-          trackHydrationMutation(key, rollbackSnapshot.previousValue);
-        }
-        pendingWriteGenerations.delete(key);
-        pendingRemoveRollbackSnapshots.delete(key);
-      }
+      finishRemove(error);
       return false;
     }
   }
