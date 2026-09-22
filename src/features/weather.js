@@ -580,10 +580,11 @@
           b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         });
         const cache = WeatherStorage.loadCache();
-        const cachedLocation = cache
-          ? { lat: cache.lat, lon: cache.lon }
-          : null;
-        if (cache && cache.data && isCacheMatchingSettings(cache, cachedLocation)) {
+        if (WeatherStorage.loadLocationMode() === 'auto') {
+          refreshWeather(true);
+          return;
+        }
+        if (cache && cache.data && isCacheMatchingSettings(cache)) {
           if (WeatherStorage.loadEnabled()) {
             renderWeather(cache.data, cache.locationName, value);
           }
