@@ -651,5 +651,49 @@
   },
   "searchSuggestionsAriaLabel": {
     "message": "搜索建议"
+  },
+  "accessibilityCalendar": {
+    "message": "日历",
+    "description": "Accessibility label or announcement"
+  },
+  "accessibilityApp": {
+    "message": "应用",
+    "description": "Accessibility label or announcement"
+  },
+  "accessibilityAppActions": {
+    "message": "应用操作",
+    "description": "Accessibility label or announcement"
+  },
+  "accessibilitySelected": {
+    "message": "已选中",
+    "description": "Accessibility label or announcement"
+  },
+  "accessibilityPickedUp": {
+    "message": "{name} 已拾起。",
+    "description": "Accessibility label or announcement"
+  },
+  "accessibilityMoved": {
+    "message": "{name} 已移动。",
+    "description": "Accessibility label or announcement"
+  },
+  "accessibilityNotMoved": {
+    "message": "{name} 未移动。",
+    "description": "Accessibility label or announcement"
+  },
+  "accessibilityMoveCancelled": {
+    "message": "已取消移动。",
+    "description": "Accessibility label or announcement"
+  },
+  "accessibilityFilter": {
+    "message": "筛选：{label}。",
+    "description": "Accessibility label or announcement"
+  },
+  "accessibilityTodoListUpdated": {
+    "message": "待办清单已更新。已显示 {count} 项。",
+    "description": "Accessibility label or announcement"
+  },
+  "accessibilityTodoListUpdatedOne": {
+    "message": "待办清单已更新。已显示 {count} 项。",
+    "description": "Accessibility label or announcement"
   }
 }

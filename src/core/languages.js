@@ -4555,6 +4555,130 @@ function getSupportedLanguages() {
   return SUPPORTED_LANGUAGES;
 }
 
+const ACCESSIBILITY_TRANSLATIONS = {
+  en: {
+    accessibilityCalendar: 'Calendar',
+    accessibilityApp: 'App',
+    accessibilityAppActions: 'App actions',
+    accessibilitySelected: 'selected',
+    accessibilityPickedUp: '{name} picked up.',
+    accessibilityMoved: '{name} moved.',
+    accessibilityNotMoved: '{name} was not moved.',
+    accessibilityMoveCancelled: 'Move cancelled.',
+    accessibilityFilter: 'Filter: {label}.',
+    accessibilityTodoListUpdated: 'Todo list updated. {count} items shown.',
+    accessibilityTodoListUpdatedOne: 'Todo list updated. {count} item shown.'
+  },
+  zh: {
+    accessibilityCalendar: '日曆',
+    accessibilityApp: '應用程式',
+    accessibilityAppActions: '應用程式操作',
+    accessibilitySelected: '已選取',
+    accessibilityPickedUp: '{name} 已選為移動對象。',
+    accessibilityMoved: '{name} 已移動。',
+    accessibilityNotMoved: '{name} 未移動。',
+    accessibilityMoveCancelled: '已取消移動。',
+    accessibilityFilter: '篩選：{label}。',
+    accessibilityTodoListUpdated: '待辦清單已更新。已顯示 {count} 項。',
+    accessibilityTodoListUpdatedOne: '待辦清單已更新。已顯示 {count} 項。'
+  },
+  ja: {
+    accessibilityCalendar: 'カレンダー',
+    accessibilityApp: 'アプリ',
+    accessibilityAppActions: 'アプリの操作',
+    accessibilitySelected: '選択済み',
+    accessibilityPickedUp: '{name} を移動対象にしました。',
+    accessibilityMoved: '{name} を移動しました。',
+    accessibilityNotMoved: '{name} は移動されませんでした。',
+    accessibilityMoveCancelled: '移動をキャンセルしました。',
+    accessibilityFilter: 'フィルター：{label}。',
+    accessibilityTodoListUpdated: 'ToDoリストを更新しました。{count}件を表示しています。',
+    accessibilityTodoListUpdatedOne: 'ToDoリストを更新しました。{count}件を表示しています。'
+  },
+  ko: {
+    accessibilityCalendar: '캘린더',
+    accessibilityApp: '앱',
+    accessibilityAppActions: '앱 작업',
+    accessibilitySelected: '선택됨',
+    accessibilityPickedUp: '{name}을(를) 이동 대상으로 선택했습니다.',
+    accessibilityMoved: '{name}을(를) 이동했습니다.',
+    accessibilityNotMoved: '{name}을(를) 이동하지 못했습니다.',
+    accessibilityMoveCancelled: '이동을 취소했습니다.',
+    accessibilityFilter: '필터: {label}.',
+    accessibilityTodoListUpdated: '할 일 목록이 업데이트되었습니다. {count}개 항목을 표시합니다.',
+    accessibilityTodoListUpdatedOne: '할 일 목록이 업데이트되었습니다. {count}개 항목을 표시합니다.'
+  },
+  es: {
+    accessibilityCalendar: 'Calendario',
+    accessibilityApp: 'Aplicación',
+    accessibilityAppActions: 'Acciones de la aplicación',
+    accessibilitySelected: 'seleccionado',
+    accessibilityPickedUp: '{name} seleccionado para mover.',
+    accessibilityMoved: '{name} movido.',
+    accessibilityNotMoved: '{name} no se movió.',
+    accessibilityMoveCancelled: 'Movimiento cancelado.',
+    accessibilityFilter: 'Filtro: {label}.',
+    accessibilityTodoListUpdated: 'Lista de tareas actualizada. Se muestran {count} elementos.',
+    accessibilityTodoListUpdatedOne: 'Lista de tareas actualizada. Se muestra {count} elemento.'
+  },
+  fr: {
+    accessibilityCalendar: 'Calendrier',
+    accessibilityApp: 'Application',
+    accessibilityAppActions: 'Actions de l’application',
+    accessibilitySelected: 'sélectionné',
+    accessibilityPickedUp: '{name} sélectionnée pour le déplacement.',
+    accessibilityMoved: '{name} déplacée.',
+    accessibilityNotMoved: '{name} n’a pas été déplacée.',
+    accessibilityMoveCancelled: 'Déplacement annulé.',
+    accessibilityFilter: 'Filtre : {label}.',
+    accessibilityTodoListUpdated: 'Liste de tâches mise à jour. {count} éléments affichés.',
+    accessibilityTodoListUpdatedOne: 'Liste de tâches mise à jour. {count} élément affiché.'
+  },
+  de: {
+    accessibilityCalendar: 'Kalender',
+    accessibilityApp: 'App',
+    accessibilityAppActions: 'App-Aktionen',
+    accessibilitySelected: 'ausgewählt',
+    accessibilityPickedUp: '{name} zum Verschieben ausgewählt.',
+    accessibilityMoved: '{name} verschoben.',
+    accessibilityNotMoved: '{name} wurde nicht verschoben.',
+    accessibilityMoveCancelled: 'Verschieben abgebrochen.',
+    accessibilityFilter: 'Filter: {label}.',
+    accessibilityTodoListUpdated: 'Aufgabenliste aktualisiert. {count} Elemente angezeigt.',
+    accessibilityTodoListUpdatedOne: 'Aufgabenliste aktualisiert. {count} Element angezeigt.'
+  },
+  pt: {
+    accessibilityCalendar: 'Calendário',
+    accessibilityApp: 'Aplicativo',
+    accessibilityAppActions: 'Ações do aplicativo',
+    accessibilitySelected: 'selecionado',
+    accessibilityPickedUp: '{name} selecionado para mover.',
+    accessibilityMoved: '{name} movido.',
+    accessibilityNotMoved: '{name} não foi movido.',
+    accessibilityMoveCancelled: 'Movimentação cancelada.',
+    accessibilityFilter: 'Filtro: {label}.',
+    accessibilityTodoListUpdated: 'Lista de tarefas atualizada. {count} itens exibidos.',
+    accessibilityTodoListUpdatedOne: 'Lista de tarefas atualizada. {count} item exibido.'
+  },
+  ru: {
+    accessibilityCalendar: 'Календарь',
+    accessibilityApp: 'Приложение',
+    accessibilityAppActions: 'Действия с приложением',
+    accessibilitySelected: 'выбрано',
+    accessibilityPickedUp: '{name} выбрано для перемещения.',
+    accessibilityMoved: '{name} перемещено.',
+    accessibilityNotMoved: '{name} не перемещено.',
+    accessibilityMoveCancelled: 'Перемещение отменено.',
+    accessibilityFilter: 'Фильтр: {label}.',
+    accessibilityTodoListUpdated: 'Список задач обновлён. Показано элементов: {count}.',
+    accessibilityTodoListUpdatedOne: 'Список задач обновлён. Показан элемент: {count}.'
+  }
+};
+
+Object.entries(ACCESSIBILITY_TRANSLATIONS).forEach(([code, values]) => {
+  Object.assign(translations[code], values);
+});
+
 // Current language
 let currentLanguage = 'en';
 

@@ -651,5 +651,49 @@
   },
   "searchSuggestionsAriaLabel": {
     "message": "검색 제안"
+  },
+  "accessibilityCalendar": {
+    "message": "캘린더",
+    "description": "Accessible label for calendar widgets"
+  },
+  "accessibilityApp": {
+    "message": "앱",
+    "description": "Accessible fallback label for an app cell"
+  },
+  "accessibilityAppActions": {
+    "message": "앱 작업",
+    "description": "Accessible label for the app context menu"
+  },
+  "accessibilitySelected": {
+    "message": "선택됨",
+    "description": "State announced for a selected calendar day"
+  },
+  "accessibilityPickedUp": {
+    "message": "{name}을(를) 이동 대상으로 선택했습니다.",
+    "description": "Announcement when an app is picked up for keyboard reordering"
+  },
+  "accessibilityMoved": {
+    "message": "{name}을(를) 이동했습니다.",
+    "description": "Announcement when an app is moved by keyboard reordering"
+  },
+  "accessibilityNotMoved": {
+    "message": "{name}을(를) 이동하지 못했습니다.",
+    "description": "Announcement when an app cannot be moved"
+  },
+  "accessibilityMoveCancelled": {
+    "message": "이동을 취소했습니다.",
+    "description": "Announcement when keyboard reordering is cancelled"
+  },
+  "accessibilityFilter": {
+    "message": "필터: {label}.",
+    "description": "Announcement when a todo filter changes"
+  },
+  "accessibilityTodoListUpdated": {
+    "message": "할 일 목록이 업데이트되었습니다. {count}개 항목을 표시합니다.",
+    "description": "Announcement after the todo list is updated"
+  },
+  "accessibilityTodoListUpdatedOne": {
+    "message": "할 일 목록이 업데이트되었습니다. {count}개 항목을 표시합니다.",
+    "description": "Singular announcement after the todo list is updated"
   }
 }
