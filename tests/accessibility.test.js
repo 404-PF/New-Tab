@@ -35,6 +35,9 @@ afterEach(() => {
   const settingsModal = document.getElementById('settings-modal');
   if (settingsModal) settingsModal.className = '';
   window.Accessibility.refresh();
+
+  const grid = document.getElementById('app-grid');
+  if (grid) grid.remove();
 });
 
 describe('Accessibility - modal semantics and focus management', () => {
@@ -90,6 +93,47 @@ describe('Accessibility - modal semantics and focus management', () => {
 });
 
 describe('Accessibility - app grid keyboard interaction', () => {
+  it('refreshes the translated grid label', () => {
+    const grid = document.getElementById('app-grid');
+    const app = document.createElement('a');
+    app.id = 'app-1';
+    app.href = '#';
+    app.className = 'app-icon custom-app';
+    app.innerHTML = '<span class="app-name">App 1</span>';
+    grid.appendChild(app);
+
+    const originalT = window.i18n.t;
+    try {
+      window.i18n.t = (key, replacements) => {
+        if (key === 'apps') return 'Applications';
+        return originalT.call(window.i18n, key, replacements);
+      };
+      window.Accessibility.refreshGrid();
+      expect(grid.getAttribute('aria-label')).toBe('Applications');
+
+      window.i18n.t = (key, replacements) => {
+        if (key === 'apps') return 'Anwendungen';
+        return originalT.call(window.i18n, key, replacements);
+      };
+      window.Accessibility.refreshGrid();
+      expect(grid.getAttribute('aria-label')).toBe('Anwendungen');
+    } finally {
+      window.i18n.t = originalT;
+    }
+  });
+
+  it('keeps the live region accessible while a modal is open', () => {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.add('modal-open');
+
+    window.Accessibility.refresh();
+
+    const liveRegion = document.getElementById('accessibility-live-region');
+    expect(liveRegion).toBeTruthy();
+    expect(liveRegion.inert).toBe(false);
+    expect(liveRegion.hasAttribute('inert')).toBe(false);
+  });
+
   it('adds grid semantics, roving tabindex, arrow navigation, and keyboard reorder', async () => {
     const grid = document.getElementById('app-grid');
     grid.innerHTML = '';
