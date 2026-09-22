@@ -203,7 +203,10 @@ describe('service worker todo reminders', () => {
     expect(notification.message).toContain('due');
   });
 
-  it('does not mark a reminder as notified when notification creation fails', async () => {
+  /**
+   * Verifies that a failed reminder notification remains retryable.
+   */
+  async function verifyReminderRetryAfterNotificationFailure() {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
 
@@ -217,8 +220,7 @@ describe('service worker todo reminders', () => {
     });
 
     const createSpy = vi.spyOn(chrome.notifications, 'create')
-      .mockRejectedValueOnce(new Error('Permission denied'))
-      .mockResolvedValueOnce('todo_reminder_retry');
+      .mockRejectedValueOnce(new Error('Permission denied'));
 
     try {
       await checkReminders();
@@ -240,7 +242,9 @@ describe('service worker todo reminders', () => {
     } finally {
       createSpy.mockRestore();
     }
-  });
+  }
+
+  it('does not mark a reminder as notified when notification creation fails', verifyReminderRetryAfterNotificationFailure);
 
   it('fires a reminder at due time with "At due time" (leadTime = 0)', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
