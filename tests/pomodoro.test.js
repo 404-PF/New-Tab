@@ -71,8 +71,9 @@ describe('Pomodoro pause -> reset/skip regression (issue #626)', () => {
       expect(pausedState.paused).toBe(true);
 
       document.querySelector('.pomodoro-reset-btn').click();
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let index = 0; index < 8; index++) {
+        await Promise.resolve();
+      }
 
       const afterReset = JSON.parse(localStorage.getItem('pomodoro_state'));
       expect(afterReset.paused).toBe(false);
@@ -101,8 +102,9 @@ describe('Pomodoro pause -> reset/skip regression (issue #626)', () => {
       expect(pausedState.phase).toBe('work');
 
       document.querySelector('.pomodoro-skip-btn').click();
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let index = 0; index < 8; index++) {
+        await Promise.resolve();
+      }
 
       const afterSkip = JSON.parse(localStorage.getItem('pomodoro_state'));
       expect(afterSkip.paused).toBe(false);
@@ -304,9 +306,9 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
     const tabA = createTab(sharedStorage, locks, 'tab-a', intervalsA);
     const tabB = createTab(sharedStorage, locks, 'tab-b', intervalsB);
 
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let index = 0; index < 8; index++) {
+      await Promise.resolve();
+    }
 
     const persisted = JSON.parse(sharedStorage.getItem('pomodoro_state'));
     const activeIntervals = [
