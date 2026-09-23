@@ -405,12 +405,16 @@
     games_enabled: function (v) { return typeof v === 'boolean'; },
     ai_conversations: function (v) {
       if (!Array.isArray(v)) return false;
-      return v.every(function (item) {
-        if (typeof item !== 'object' || item === null || typeof item.id !== 'string') return false;
-        if (!Array.isArray(item.messages)) return false;
-        return item.messages.every(function (msg) {
-          if (typeof msg !== 'object' || msg === null) return false;
-          if (msg.id !== undefined && msg.id !== null && typeof msg.id !== 'string') return false;
+      return v.every(function (conversation) {
+        if (typeof conversation !== 'object' || conversation === null) return false;
+        if (typeof conversation.id !== 'string' || !conversation.id) return false;
+        if (typeof conversation.title !== 'string') return false;
+        if (!Array.isArray(conversation.messages)) return false;
+        if (typeof conversation.createdAt !== 'number' || typeof conversation.updatedAt !== 'number') return false;
+        return conversation.messages.every(function (message) {
+          if (typeof message !== 'object' || message === null) return false;
+          if (typeof message.role !== 'string' || typeof message.content !== 'string') return false;
+          if (message.id !== undefined && message.id !== null && typeof message.id !== 'string') return false;
           return true;
         });
       });
