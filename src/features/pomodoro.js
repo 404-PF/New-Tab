@@ -202,7 +202,7 @@
         console.warn('Pomodoro leadership requires the Web Locks API.');
         _warnedAboutLeadershipLocks = true;
       }
-      return Promise.resolve(null);
+      return Promise.resolve().then(callback);
     }
 
     return locks.request(LEADERSHIP_LOCK_NAME, callback);
@@ -435,14 +435,14 @@
     }
   }
 
-  function advancePhase() {
+  function advancePhase(opts) {
     const nextPhase = getNextPhase();
     state.phase = nextPhase;
     state.timeRemaining = getPhaseDuration(nextPhase);
     state.deadline = Date.now() + state.timeRemaining * 1000;
     state.ownerId = TAB_ID;
     state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-    saveTimerState();
+    if (!opts || opts.persist !== false) saveTimerState();
     updateWidget();
   }
 
@@ -457,7 +457,7 @@
     } else {
       notifyBreakComplete(i18n);
     }
-    advancePhase();
+    advancePhase(opts);
   }
 
   function completePhase(opts) {
@@ -597,17 +597,16 @@
       _isLeader = true;
       stopCoordinationInterval();
 
-      completePhase({ record: false });
+      completePhase({ record: false, persist: false });
       if (wasPaused) {
         state.paused = false;
         state.pauseReason = null;
         state.deadline = Date.now() + state.timeRemaining * 1000;
         state.ownerId = TAB_ID;
         state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-        await saveTimerStateAsync();
-        updateWidget();
       }
       await saveTimerStateAsync();
+      updateWidget();
       startInterval();
       return true;
     });
