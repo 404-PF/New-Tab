@@ -521,17 +521,22 @@
     state.pauseReason = null;
     state.ownerId = TAB_ID;
     state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-    _isLeader = true;
+    _isLeader = false;
 
     createTimerWidget();
     updateWidget();
     saveTimerState();
-    startCoordinationInterval();
-    startInterval();
 
-    void withLeadershipLock(async function () {
-      if (epoch !== _stateEpoch || !state.active || state.todoId !== todoId || !_isLeader) return false;
+    return withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active || state.todoId !== todoId) return false;
+
+      _isLeader = true;
       await saveTimerStateAsync();
+      if (epoch !== _stateEpoch || !state.active || state.todoId !== todoId) return false;
+
+      stopCoordinationInterval();
+      startInterval();
+      updateWidget();
       return true;
     });
   }
