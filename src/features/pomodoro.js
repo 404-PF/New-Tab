@@ -47,6 +47,7 @@
   let _leadershipClaimPromise = null;
   let _warnedAboutLeadershipLocks = false;
   let _isCompletingPhase = false;
+  let _stateEpoch = 0;
 
   function loadSettings() {
     try {
@@ -365,11 +366,13 @@
 
   function tick() {
     if (!state.active || state.paused || !_isLeader) return;
+    const epoch = _stateEpoch;
 
     return withLeadershipLock(async function () {
-      if (!state.active || state.paused || !_isLeader) return false;
+      if (epoch !== _stateEpoch || !state.active || state.paused || !_isLeader) return false;
 
       const persisted = await loadTimerStateAsync();
+      if (epoch !== _stateEpoch || !state.active || state.paused || !_isLeader) return false;
       if (!persisted?.active || persisted.ownerId !== TAB_ID) {
         applyTimerState(persisted);
         return false;
@@ -485,30 +488,7 @@
     }
   }
 
-  function startTimer(todoId) {
-    if (!loadSettings().enabled) return;
-
-    stopTimer();
-
-    state.active = true;
-    state.phase = PHASES.WORK;
-    state.todoId = todoId;
-    state.timeRemaining = getPhaseDuration(PHASES.WORK);
-    state.deadline = Date.now() + state.timeRemaining * 1000;
-    state.paused = false;
-    state.pauseReason = null;
-    state.ownerId = TAB_ID;
-    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-    _isLeader = true;
-
-    createTimerWidget();
-    updateWidget();
-    saveTimerState();
-    startCoordinationInterval();
-    startInterval();
-  }
-
-  function stopTimer() {
+  function resetTimerStateLocally() {
     state.active = false;
     state.phase = PHASES.WORK;
     state.todoId = null;
@@ -526,11 +506,55 @@
     updateWidget();
   }
 
+  function startTimer(todoId) {
+    if (!loadSettings().enabled) return;
+
+    const epoch = ++_stateEpoch;
+    resetTimerStateLocally();
+
+    state.active = true;
+    state.phase = PHASES.WORK;
+    state.todoId = todoId;
+    state.timeRemaining = getPhaseDuration(PHASES.WORK);
+    state.deadline = Date.now() + state.timeRemaining * 1000;
+    state.paused = false;
+    state.pauseReason = null;
+    state.ownerId = TAB_ID;
+    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+    _isLeader = true;
+
+    createTimerWidget();
+    updateWidget();
+    saveTimerState();
+    startCoordinationInterval();
+    startInterval();
+
+    void withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active || state.todoId !== todoId || !_isLeader) return false;
+      await saveTimerStateAsync();
+      return true;
+    });
+  }
+
+  function stopTimer() {
+    const epoch = ++_stateEpoch;
+    resetTimerStateLocally();
+
+    void withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch) return false;
+      await saveTimerStateAsync();
+      return true;
+    });
+  }
+
   async function togglePause() {
     if (!state.active) return false;
+    const epoch = _stateEpoch;
 
     const changed = await withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active) return false;
       const persisted = await loadTimerStateAsync();
+      if (epoch !== _stateEpoch || !state.active) return false;
       if (!persisted?.active) {
         return false;
       }
@@ -578,9 +602,12 @@
 
   async function skipPhase() {
     if (!state.active) return false;
+    const epoch = _stateEpoch;
 
     const changed = await withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active) return false;
       const persisted = await loadTimerStateAsync();
+      if (epoch !== _stateEpoch || !state.active) return false;
       if (!persisted?.active) {
         return false;
       }
@@ -684,9 +711,12 @@
 
   function claimLeadership(allowPaused) {
     if (_leadershipClaimPromise) return _leadershipClaimPromise;
+    const epoch = _stateEpoch;
 
     _leadershipClaimPromise = withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch) return false;
       const persisted = await loadTimerStateAsync();
+      if (epoch !== _stateEpoch) return false;
       if (!persisted?.active || (persisted.paused && !allowPaused)) return false;
 
       const leaseIsActive = persisted.ownerId && persisted.ownerId !== TAB_ID &&
@@ -816,9 +846,12 @@
 
   async function resetCurrentPhase() {
     if (!state.active) return false;
+    const epoch = _stateEpoch;
 
     const changed = await withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active) return false;
       const persisted = await loadTimerStateAsync();
+      if (epoch !== _stateEpoch || !state.active) return false;
       if (!persisted?.active) {
         return false;
       }
@@ -864,9 +897,12 @@
 
     document.addEventListener('visibilitychange', function () {
       if (!state.active || !_isLeader) return;
+      const epoch = _stateEpoch;
 
       void withLeadershipLock(async function () {
+        if (epoch !== _stateEpoch || !state.active || !_isLeader) return false;
         const persisted = await loadTimerStateAsync();
+        if (epoch !== _stateEpoch || !state.active || !_isLeader) return false;
         if (!persisted?.active || persisted.ownerId !== TAB_ID) {
           applyTimerState(persisted);
           return false;
@@ -925,10 +961,17 @@
     if (state.active) {
       const newDuration = getPhaseDuration(state.phase);
       if (newDuration !== previousDuration) {
+        const epoch = ++_stateEpoch;
         state.timeRemaining = newDuration;
         state.deadline = Date.now() + newDuration * 1000;
         saveTimerState();
         updateWidget();
+
+        void withLeadershipLock(async function () {
+          if (epoch !== _stateEpoch || !state.active) return false;
+          await saveTimerStateAsync();
+          return true;
+        });
       }
     }
   }
