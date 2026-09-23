@@ -128,17 +128,21 @@
     try {
       const raw = localStorage.getItem(key);
       if (raw === null || raw === undefined) return null;
-      // Detect JSON-encoded values (arrays, objects, booleans stored as JSON)
+      // Check the expected shape before interpreting container-looking strings.
+      // Scalar string settings must remain strings even when they begin with '[' or '{'.
+      const validator = EXPECTED_SHAPES[key];
+      const shouldBeString = validator && validator('') === true;
+      if (shouldBeString) {
+        return raw;
+      }
+
+      // Detect JSON-encoded values (arrays, objects stored as JSON)
       if (typeof raw === 'string' && raw.charAt(0) === '[') {
         return parseJsonSafe(raw, []);
       }
       if (typeof raw === 'string' && raw.charAt(0) === '{') {
         return parseJsonSafe(raw, {});
       }
-
-      // Check if this key should remain a string based on EXPECTED_SHAPES
-      const validator = EXPECTED_SHAPES[key];
-      const shouldBeString = validator && validator('') === true;
 
       // Only apply scalar parsing to non-string types
       if (!shouldBeString) {
