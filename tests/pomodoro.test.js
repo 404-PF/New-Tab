@@ -79,7 +79,7 @@ describe('Pomodoro pause -> reset/skip regression (issue #626)', () => {
       expect(afterReset.paused).toBe(false);
       expect(afterReset.timeRemaining).toBe(25 * 60);
 
-      vi.advanceTimersByTime(2100);
+      await vi.advanceTimersByTimeAsync(2100);
 
       const afterTick = JSON.parse(localStorage.getItem('pomodoro_state'));
       expect(afterTick.timeRemaining).toBeLessThan(25 * 60);
@@ -111,7 +111,7 @@ describe('Pomodoro pause -> reset/skip regression (issue #626)', () => {
       expect(afterSkip.phase).toBe('shortBreak');
       expect(afterSkip.timeRemaining).toBe(5 * 60);
 
-      vi.advanceTimersByTime(2100);
+      await vi.advanceTimersByTimeAsync(2100);
 
       const afterTick = JSON.parse(localStorage.getItem('pomodoro_state'));
       expect(afterTick.timeRemaining).toBeLessThan(5 * 60);
@@ -276,6 +276,14 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
     return dom;
   }
 
+  async function waitForSettledLeader(sharedStorage) {
+    return vi.waitFor(() => {
+      const persisted = JSON.parse(sharedStorage.getItem('pomodoro_state'));
+      expect(['pomodoro-tab-a', 'pomodoro-tab-b']).toContain(persisted?.ownerId);
+      return persisted;
+    });
+  }
+
   it('serializes two contenders so exactly one starts a leader interval', async () => {
     const sharedStorage = createSharedStorage();
     const locks = createLockManager();
@@ -306,11 +314,7 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
     const tabA = createTab(sharedStorage, locks, 'tab-a', intervalsA);
     const tabB = createTab(sharedStorage, locks, 'tab-b', intervalsB);
 
-    for (let index = 0; index < 8; index++) {
-      await Promise.resolve();
-    }
-
-    const persisted = JSON.parse(sharedStorage.getItem('pomodoro_state'));
+    const persisted = await waitForSettledLeader(sharedStorage);
     const activeIntervals = [
       ...intervalsA.filter(interval => !interval.destroyed).map(() => 'tab-a'),
       ...intervalsB.filter(interval => !interval.destroyed).map(() => 'tab-b')
