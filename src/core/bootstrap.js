@@ -72,6 +72,7 @@
     'src/features/pomodoro.js',
     'src/features/pomodoro-stats.js',
     'src/ui/settings.js',
+    'src/ai/conversation-validator.js',
     'src/features/data-manager.js',
     'src/features/context-menu.js',
     'src/features/app-folders.js',
