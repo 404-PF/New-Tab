@@ -404,20 +404,7 @@
     },
     games_enabled: function (v) { return typeof v === 'boolean'; },
     ai_conversations: function (v) {
-      if (!Array.isArray(v)) return false;
-      return v.every(function (conversation) {
-        if (typeof conversation !== 'object' || conversation === null) return false;
-        if (typeof conversation.id !== 'string' || !conversation.id) return false;
-        if (typeof conversation.title !== 'string') return false;
-        if (!Array.isArray(conversation.messages)) return false;
-        if (typeof conversation.createdAt !== 'number' || typeof conversation.updatedAt !== 'number') return false;
-        return conversation.messages.every(function (message) {
-          if (typeof message !== 'object' || message === null) return false;
-          if (typeof message.role !== 'string' || typeof message.content !== 'string') return false;
-          if (message.id !== undefined && message.id !== null && typeof message.id !== 'string') return false;
-          return true;
-        });
-      });
+      return Array.isArray(v) && v.every(window.isValidConversation);
     },
     ai_current_conversation_id: function (v) { return typeof v === 'string'; },
     updateCheckEnabled: function (v) { return typeof v === 'boolean'; },

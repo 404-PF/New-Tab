@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  injectScript('src/ai/conversation-validator.js');
   injectScript('src/ai/ai-store.js');
 });
 

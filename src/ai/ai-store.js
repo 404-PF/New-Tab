@@ -49,24 +49,7 @@ const AIStore = (function() {
     };
   }
 
-  function isValidConversation(conversation) {
-    return Boolean(
-      conversation &&
-      typeof conversation === 'object' &&
-      typeof conversation.id === 'string' &&
-      conversation.id &&
-      typeof conversation.title === 'string' &&
-      Array.isArray(conversation.messages) &&
-      conversation.messages.every(message =>
-        message &&
-        typeof message === 'object' &&
-        typeof message.role === 'string' &&
-        typeof message.content === 'string'
-      ) &&
-      typeof conversation.createdAt === 'number' &&
-      typeof conversation.updatedAt === 'number'
-    );
-  }
+  const isValidConversation = window.isValidConversation;
 
   function recoverConversations() {
     const previousState = createSaveSnapshot();
