@@ -109,6 +109,38 @@ describe('DataManager backup validation', () => {
     }
   });
 
+  it('preserves scalar strings that begin with JSON container characters during export', async () => {
+    localStorage.setItem('theme', '[Home');
+    localStorage.setItem('weatherManualCity', '{Home');
+
+    const origCreateObjectURL = URL.createObjectURL;
+    const origRevokeObjectURL = URL.revokeObjectURL;
+    let capturedJson = null;
+    URL.createObjectURL = (blob) => {
+      const reader = new FileReader();
+      reader.onload = () => { capturedJson = reader.result; };
+      reader.readAsText(blob);
+      return 'blob:mock-url';
+    };
+    URL.revokeObjectURL = () => {};
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    try {
+      window.DataManager.exportAllData();
+      await vi.waitFor(() => expect(capturedJson).not.toBeNull());
+
+      const exported = JSON.parse(capturedJson);
+      expect(exported.data.theme).toBe('[Home');
+      expect(exported.data.weatherManualCity).toBe('{Home');
+      expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+    } finally {
+      clickSpy.mockRestore();
+      URL.createObjectURL = origCreateObjectURL;
+      URL.revokeObjectURL = origRevokeObjectURL;
+      document.querySelectorAll('.toast-notification').forEach(el => el.remove());
+    }
+  });
+
   it('shows an error instead of exporting when custom background metadata fails to load', async () => {
     const customBackgroundsDescriptor = Object.getOwnPropertyDescriptor(window, '_customBackgrounds');
     window._customBackgrounds = {
