@@ -6,6 +6,32 @@ beforeAll(() => {
 });
 
 describe('DataManager backup validation', () => {
+
+  async function exportDataForTest() {
+    const origCreateObjectURL = URL.createObjectURL;
+    const origRevokeObjectURL = URL.revokeObjectURL;
+    let capturedJson = null;
+    URL.createObjectURL = (blob) => {
+      const reader = new FileReader();
+      reader.onload = () => { capturedJson = reader.result; };
+      reader.readAsText(blob);
+      return 'blob:mock-url';
+    };
+    URL.revokeObjectURL = () => {};
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    try {
+      window.DataManager.exportAllData();
+      await vi.waitFor(() => expect(capturedJson).not.toBeNull());
+      return JSON.parse(capturedJson);
+    } finally {
+      clickSpy.mockRestore();
+      URL.createObjectURL = origCreateObjectURL;
+      URL.revokeObjectURL = origRevokeObjectURL;
+      document.querySelectorAll('.toast-notification').forEach(el => el.remove());
+    }
+  }
+
   it('accepts supported settings and rejects disallowed or malformed data', () => {
     expect(window.DataManager.validateImportData({ version: 1, data: {
       theme: 'dark', todos: [{ id: 'todo-1' }], customApps: [{ id: 'app-1' }]
@@ -80,33 +106,23 @@ describe('DataManager backup validation', () => {
       { id: 'folder-3', name: 'Duplicate apps', apps: ['app-1', 'app-1'] }
     ]));
 
-    const origCreateObjectURL = URL.createObjectURL;
-    const origRevokeObjectURL = URL.revokeObjectURL;
-    let capturedJson = null;
-    URL.createObjectURL = (blob) => {
-      const reader = new FileReader();
-      reader.onload = () => { capturedJson = reader.result; };
-      reader.readAsText(blob);
-      return 'blob:mock-url';
-    };
-    URL.revokeObjectURL = () => {};
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const exported = await exportDataForTest();
 
-    try {
-      window.DataManager.exportAllData();
-      await vi.waitFor(() => expect(capturedJson).not.toBeNull());
+    expect(exported.data.appFolders).toEqual([
+      { id: 'folder-1', name: 'Valid', apps: ['app-1'] }
+    ]);
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+  });
 
-      const exported = JSON.parse(capturedJson);
-      expect(exported.data.appFolders).toEqual([
-        { id: 'folder-1', name: 'Valid', apps: ['app-1'] }
-      ]);
-      expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
-    } finally {
-      clickSpy.mockRestore();
-      URL.createObjectURL = origCreateObjectURL;
-      URL.revokeObjectURL = origRevokeObjectURL;
-      document.querySelectorAll('.toast-notification').forEach(el => el.remove());
-    }
+  it('preserves scalar strings that begin with JSON container characters during export', async () => {
+    localStorage.setItem('theme', '[Home');
+    localStorage.setItem('weatherManualCity', '{Home');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.theme).toBe('[Home');
+    expect(exported.data.weatherManualCity).toBe('{Home');
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
   });
 
   it('shows an error instead of exporting when custom background metadata fails to load', async () => {
