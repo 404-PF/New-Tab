@@ -149,7 +149,12 @@ describe('storage bridge', () => {
           },
           local: {
             get(keys, callback) {
-              resolveGet = () => callback({ ...persisted });
+              const snapshot = { ...persisted };
+              if (callback) {
+                resolveGet = () => callback(snapshot);
+                return;
+              }
+              return Promise.resolve(snapshot);
             },
             set(items, callback) {
               Object.assign(persisted, items);
@@ -220,7 +225,12 @@ describe('storage bridge', () => {
           },
           local: {
             get(keys, callback) {
-              resolveGet = () => callback({ ...persisted });
+              const snapshot = { ...persisted };
+              if (callback) {
+                resolveGet = () => callback(snapshot);
+                return;
+              }
+              return Promise.resolve(snapshot);
             },
             set(items, callback) {
               Object.assign(persisted, items);
@@ -265,7 +275,7 @@ describe('storage bridge', () => {
     }
   });
 
-  it('does not let a late remove failure overwrite a newer write', async () => {
+  it('reports a late remove failure after a newer write without rolling back the newer value', async () => {
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
       url: 'https://example.com',
       runScripts: 'dangerously'
@@ -273,7 +283,7 @@ describe('storage bridge', () => {
 
     try {
       let resolveGet;
-      const removeCallbacks = [];
+      let removeCallback;
 
       dom.window.chrome = {
         runtime: { lastError: null },
@@ -292,7 +302,74 @@ describe('storage bridge', () => {
               return Promise.resolve();
             },
             remove(keys, callback) {
-              removeCallbacks.push(callback);
+              removeCallback = callback;
+              return Promise.resolve();
+            },
+            clear(callback) {
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      const failurePromise = new Promise((resolveFailure) => {
+        dom.window.addEventListener('storageBridgeWriteError', resolveFailure, { once: true });
+      });
+
+      dom.window.localStorage.removeItem('todos');
+      dom.window.localStorage.setItem('todos', 'newer');
+
+      dom.window.chrome.runtime.lastError = { message: 'late remove failure' };
+      removeCallback?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      const failureEvent = await failurePromise;
+      expect(failureEvent.detail).toMatchObject({
+        key: 'todos',
+        message: 'late remove failure',
+        operation: 'remove'
+      });
+      expect(typeof failureEvent.detail.generation).toBe('number');
+      expect(dom.window.localStorage.getItem('todos')).toBe('newer');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('preserves a cross-context value that matches the remove rollback snapshot', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let changeListener;
+      let removeCallback;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener(listener) { changeListener = listener; },
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ todos: 'original' });
+            },
+            set(items, callback) {
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallback = callback;
               return Promise.resolve();
             },
             clear(callback) {
@@ -308,17 +385,11 @@ describe('storage bridge', () => {
       await dom.window.__storageBridgeReady;
 
       dom.window.localStorage.removeItem('todos');
-      dom.window.localStorage.removeItem('todos');
+      changeListener({ todos: { oldValue: null, newValue: 'original' } }, 'local');
 
-      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+      removeCallback?.();
 
-      dom.window.chrome.runtime.lastError = { message: 'late remove failure' };
-      removeCallbacks[0]?.();
-      dom.window.chrome.runtime.lastError = null;
-
-      expect(dom.window.localStorage.getItem('todos')).toBeNull();
-
-      removeCallbacks[1]?.();
+      expect(dom.window.localStorage.getItem('todos')).toBe('original');
     } finally {
       dom.window.close();
     }
@@ -346,7 +417,12 @@ describe('storage bridge', () => {
           },
           local: {
             get(keys, callback) {
-              resolveGet = () => callback({ ...persisted });
+              const snapshot = { ...persisted };
+              if (callback) {
+                resolveGet = () => callback(snapshot);
+                return;
+              }
+              return Promise.resolve(snapshot);
             },
             set(items, callback) {
               Object.assign(persisted, items);
@@ -409,7 +485,12 @@ describe('storage bridge', () => {
           },
           local: {
             get(keys, callback) {
-              resolveGet = () => callback({ ...persisted });
+              const snapshot = { ...persisted };
+              if (callback) {
+                resolveGet = () => callback(snapshot);
+                return;
+              }
+              return Promise.resolve(snapshot);
             },
             set(items, callback) {
               Object.assign(persisted, items);
