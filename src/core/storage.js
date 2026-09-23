@@ -13,6 +13,7 @@
   let writeSequence = 0;
   const pendingWriteGenerations = new Map();
   const pendingRemoveRollbackSnapshots = new Map();
+  const rollbackCacheOwners = new Map();
   const storageReady = new Promise((resolve) => {
     resolveStorageBridge = resolve;
   });
@@ -288,12 +289,14 @@
         }
 
         if (!change || change.newValue === null || typeof change.newValue === 'undefined') {
+          rollbackCacheOwners.delete(key);
           cache.delete(key);
           trackHydrationMutation(key, null);
           changed = true;
           return;
         }
 
+        rollbackCacheOwners.delete(key);
         cache.set(key, String(change.newValue));
         trackHydrationMutation(key, change.newValue);
         changed = true;
@@ -312,6 +315,7 @@
     }
 
     pendingRemoveRollbackSnapshots.delete(key);
+    rollbackCacheOwners.delete(key);
     const generation = ++writeSequence;
     pendingWriteGenerations.set(key, generation);
 
@@ -503,35 +507,42 @@
     const finishRemove = (error) => {
       const isActiveSnapshot = pendingRemoveRollbackSnapshots.get(key) === rollbackSnapshot;
 
-      if (isActiveSnapshot) {
-        if (error) {
-          const message = error?.message ? error.message : String(error);
-          console.warn('Failed to remove ' + key + ' from chrome.storage:', message);
-          reportStorageWriteError(key, error, {
-            operation: 'remove',
-            generation
-          });
+      if (error) {
+        const message = error?.message ? error.message : String(error);
+        console.warn('Failed to remove ' + key + ' from chrome.storage:', message);
+        reportStorageWriteError(key, error, {
+          operation: 'remove',
+          generation
+        });
 
-          if (!rollbackSnapshot.invalidated &&
-              pendingWriteGenerations.get(key) === generation &&
-              !cache.has(key) &&
-              rollbackSnapshot.hadPreviousValue) {
-            cache.set(key, rollbackSnapshot.previousValue);
-            trackHydrationMutation(key, rollbackSnapshot.previousValue);
-          }
-        } else {
-          rollbackSnapshot.invalidated = true;
-
-          if (rollbackSnapshot.hadPreviousValue &&
-              cache.get(key) === rollbackSnapshot.previousValue) {
-            cache.delete(key);
-            trackHydrationMutation(key, null);
-          }
+        if (isActiveSnapshot &&
+            !rollbackSnapshot.invalidated &&
+            pendingWriteGenerations.get(key) === generation &&
+            !cache.has(key) &&
+            rollbackSnapshot.hadPreviousValue) {
+          cache.set(key, rollbackSnapshot.previousValue);
+          rollbackCacheOwners.set(key, { snapshot: rollbackSnapshot, generation });
+          trackHydrationMutation(key, rollbackSnapshot.previousValue);
         }
+      } else if (isActiveSnapshot) {
+        rollbackSnapshot.invalidated = true;
 
+        const rollbackOwner = rollbackCacheOwners.get(key);
+        if (rollbackSnapshot.hadPreviousValue &&
+            rollbackOwner?.snapshot === rollbackSnapshot) {
+          cache.delete(key);
+          rollbackCacheOwners.delete(key);
+          trackHydrationMutation(key, null);
+        }
+      }
+
+      if (isActiveSnapshot) {
         rollbackSnapshot.pendingGenerations.delete(generation);
         if (rollbackSnapshot.pendingGenerations.size === 0) {
           pendingRemoveRollbackSnapshots.delete(key);
+          if (rollbackCacheOwners.get(key)?.snapshot === rollbackSnapshot) {
+            rollbackCacheOwners.delete(key);
+          }
         }
       }
 
@@ -583,6 +594,7 @@
     setItem(key, value) {
       const stringValue = String(value);
       const hadPreviousValue = cache.has(key);
+      rollbackCacheOwners.delete(key);
       const previousValue = cache.get(key);
       cache.set(key, stringValue);
       trackHydrationMutation(key, stringValue);
@@ -617,6 +629,7 @@
     setItemAsync(key, value) {
       const stringValue = String(value);
       const hadPreviousValue = cache.has(key);
+      rollbackCacheOwners.delete(key);
       const previousValue = cache.get(key);
       cache.set(key, stringValue);
       trackHydrationMutation(key, stringValue);
@@ -641,6 +654,7 @@
     removeItemAsync(key) {
       const hadPreviousValue = cache.has(key);
       const previousValue = cache.get(key);
+      rollbackCacheOwners.delete(key);
       cache.delete(key);
       trackHydrationMutation(key, null);
 
@@ -659,6 +673,7 @@
     removeItem(key) {
       const hadPreviousValue = cache.has(key);
       const previousValue = cache.get(key);
+      rollbackCacheOwners.delete(key);
       cache.delete(key);
       trackHydrationMutation(key, null);
 
@@ -673,6 +688,7 @@
     clear() {
       pendingWriteGenerations.clear();
       pendingRemoveRollbackSnapshots.clear();
+      rollbackCacheOwners.clear();
       cache.clear();
       if (hydrationStarted && !hydrationFinished) {
         hydrationClearRequested = true;
