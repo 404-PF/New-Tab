@@ -70,12 +70,9 @@ describe('Pomodoro pause -> reset/skip regression (issue #626)', () => {
       const pausedState = JSON.parse(localStorage.getItem('pomodoro_state'));
       expect(pausedState.paused).toBe(true);
 
-      await window.resetPomodoroForTest?.();
-      if (!window.resetPomodoroForTest) {
-        document.querySelector('.pomodoro-reset-btn').click();
-        await Promise.resolve();
-        await Promise.resolve();
-      }
+      document.querySelector('.pomodoro-reset-btn').click();
+      await Promise.resolve();
+      await Promise.resolve();
 
       const afterReset = JSON.parse(localStorage.getItem('pomodoro_state'));
       expect(afterReset.paused).toBe(false);
