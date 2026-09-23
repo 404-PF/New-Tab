@@ -15,6 +15,42 @@ describe('DataManager backup validation', () => {
     expect(window.DataManager.validateImportData({ version: 2, data: {} }).valid).toBe(false);
   });
 
+  it('requires AIStore-compatible AI conversation fields', () => {
+    const validConversation = {
+      id: 'conv-1',
+      title: 'Test conversation',
+      messages: [{ role: 'user', content: 'Hello' }],
+      createdAt: 1700000000000,
+      updatedAt: 1700000001000
+    };
+
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: { ai_conversations: [validConversation] }
+    })).toEqual({ valid: true });
+
+    const invalidConversations = [
+      ['missing title', { ...validConversation, title: undefined }],
+      ['invalid message role', {
+        ...validConversation,
+        messages: [{ role: 123, content: 'Hello' }]
+      }],
+      ['invalid message content', {
+        ...validConversation,
+        messages: [{ role: 'user', content: null }]
+      }],
+      ['missing createdAt', { ...validConversation, createdAt: undefined }],
+      ['invalid updatedAt', { ...validConversation, updatedAt: '1700000001000' }]
+    ];
+
+    invalidConversations.forEach(([, conversation]) => {
+      expect(window.DataManager.validateImportData({
+        version: 1,
+        data: { ai_conversations: [conversation] }
+      }).valid).toBe(false);
+    });
+  });
+
   it('validates the complete app folder shape', () => {
     const validFolder = { id: 'folder-1', name: 'Test', apps: ['app-1'] };
     expect(window.DataManager.validateImportData({ version: 1, data: {
