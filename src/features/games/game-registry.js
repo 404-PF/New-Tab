@@ -128,10 +128,12 @@
       localStorage.setItem(SAVES_KEY, serialized);
       savesCache = saves;
       savesCacheRaw = serialized;
+      return true;
     } catch (e) {
       console.warn('Failed to save games_saves:', e);
       savesCache = null;
       savesCacheRaw = undefined;
+      return false;
     }
   }
 
@@ -141,8 +143,7 @@
     if (!gameId) return false;
     const saves = loadSaves();
     saves[gameId] = { state: state, savedAt: Date.now() };
-    saveSaves(saves);
-    return true;
+    return saveSaves(saves);
   }
 
   // A well-formed envelope carries a restorable snapshot: an object (the
@@ -300,9 +301,10 @@
   // save store (used when init() failed mid-mount and the game cannot report
   // trustworthy state).
   function destroyCurrent(options) {
-    if (!currentGame) return;
+    if (!currentGame) return false;
+    let saveResult = true;
     if (options?.serialize !== false) {
-      serializeCurrent();
+      saveResult = serializeCurrent();
     }
     try {
       currentGame.destroy();
@@ -312,6 +314,7 @@
     const container = document.getElementById('games-game-container');
     if (container) container.innerHTML = '';
     currentGame = null;
+    return saveResult;
   }
 
   function backToHub() {

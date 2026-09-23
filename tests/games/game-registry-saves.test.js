@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
 
 beforeAll(() => {
@@ -70,7 +70,7 @@ describe('GameRegistry saves (#646)', () => {
     ensureContainer();
     window.GameRegistry.launch('save-game');
     game.setSnapshot({ level: 7 });
-    window.GameRegistry.destroyCurrent();
+    expect(window.GameRegistry.destroyCurrent()).toBe(true);
 
     expect(window.GameRegistry.hasSave('save-game')).toBe(true);
     const raw = JSON.parse(localStorage.getItem('games_saves'));
@@ -93,6 +93,25 @@ describe('GameRegistry saves (#646)', () => {
     // A launch after clearing starts fresh.
     window.GameRegistry.launch('save-game');
     expect(game.initArgs().savedState).toBeUndefined();
+  });
+
+  it('reports failed persistence when the saves storage write throws', () => {
+    registerSaveableGame('failed-save-game', { snapshot: { checkpoint: true } });
+    ensureContainer();
+    window.GameRegistry.launch('failed-save-game');
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+    try {
+      expect(window.GameRegistry.destroyCurrent()).toBe(false);
+      expect(setItemSpy).toHaveBeenCalledWith('games_saves', expect.any(String));
+    } finally {
+      setItemSpy.mockRestore();
+    }
+
+    expect(window.GameRegistry.hasSave('failed-save-game')).toBe(false);
+    expect(window.GameRegistry.getSave('failed-save-game')).toBeNull();
   });
 
   it('keeps separate snapshots per game', () => {
