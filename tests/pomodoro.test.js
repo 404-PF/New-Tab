@@ -135,6 +135,27 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
       },
       clear() {
         values.clear();
+      },
+      snapshot() {
+        return new Map(values);
+      }
+    };
+  }
+
+  function createTabStorage(sharedStorage) {
+    const values = sharedStorage.snapshot();
+    return {
+      getItem(key) {
+        return values.has(key) ? values.get(key) : null;
+      },
+      setItem(key, value) {
+        values.set(key, String(value));
+      },
+      removeItem(key) {
+        values.delete(key);
+      },
+      clear() {
+        values.clear();
       }
     };
   }
@@ -177,9 +198,10 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
     header.className = 'todo-header';
     window.document.body.appendChild(header);
 
+    const localStorage = createTabStorage(sharedStorage);
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
-      value: sharedStorage
+      value: localStorage
     });
     Object.defineProperty(window.navigator, 'locks', {
       configurable: true,
@@ -208,10 +230,29 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
         create() {}
       },
       storage: {
+        local: {
+          get(key, callback) {
+            const result = {};
+            const value = sharedStorage.getItem(key);
+            if (value !== null) {
+              result[key] = value;
+            }
+            if (callback) callback(result);
+            return Promise.resolve(result);
+          },
+          set(items, callback) {
+            Object.entries(items).forEach(([key, value]) => {
+              sharedStorage.setItem(key, value);
+            });
+            if (callback) callback();
+            return Promise.resolve();
+          }
+        },
         onChanged: {
           addListener() {}
         }
-      }
+      },
+      runtime: {}
     };
     window.setInterval = function () {
       return { noop: true };
