@@ -20,7 +20,11 @@ describe('DataManager backup validation', () => {
     const validConversation = {
       id: 'conv-1',
       title: 'Test conversation',
-      messages: [{ role: 'user', content: 'Hello' }],
+      messages: [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi there' },
+        { role: 'system', content: 'Be concise' }
+      ],
       createdAt: 1700000000000,
       updatedAt: 1700000001000
     };
@@ -35,11 +39,17 @@ describe('DataManager backup validation', () => {
       ['empty id', { ...validConversation, id: '' }],
       ['invalid id', { ...validConversation, id: 123 }],
       ['missing title', { ...validConversation, title: undefined }],
+      ['empty title', { ...validConversation, title: '' }],
+      ['whitespace title', { ...validConversation, title: '   ' }],
       ['invalid title', { ...validConversation, title: 123 }],
       ['invalid messages collection', { ...validConversation, messages: {} }],
-      ['invalid message role', {
+      ['invalid message role type', {
         ...validConversation,
         messages: [{ role: 123, content: 'Hello' }]
+      }],
+      ['unsupported message role', {
+        ...validConversation,
+        messages: [{ role: 'tool', content: 'Hello' }]
       }],
       ['invalid message content', {
         ...validConversation,
@@ -52,7 +62,9 @@ describe('DataManager backup validation', () => {
       ['missing createdAt', { ...validConversation, createdAt: undefined }],
       ['invalid createdAt', { ...validConversation, createdAt: '1700000000000' }],
       ['missing updatedAt', { ...validConversation, updatedAt: undefined }],
-      ['invalid updatedAt', { ...validConversation, updatedAt: '1700000001000' }]
+      ['invalid updatedAt', { ...validConversation, updatedAt: '1700000001000' }],
+      ['infinite createdAt', { ...validConversation, createdAt: Infinity }],
+      ['negative infinite updatedAt', { ...validConversation, updatedAt: -Infinity }]
     ];
 
     invalidConversations.forEach(([caseName, conversation]) => {
