@@ -277,11 +277,14 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
   }
 
   async function waitForSettledLeader(sharedStorage) {
+    let previousOwner = null;
     return vi.waitFor(() => {
       const persisted = JSON.parse(sharedStorage.getItem('pomodoro_state'));
       expect(['pomodoro-tab-a', 'pomodoro-tab-b']).toContain(persisted?.ownerId);
+      expect(persisted.ownerId).toBe(previousOwner ?? persisted.ownerId);
+      previousOwner = persisted.ownerId;
       return persisted;
-    });
+    }, { interval: 0 });
   }
 
   it('serializes two contenders so exactly one starts a leader interval', async () => {
