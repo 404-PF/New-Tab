@@ -8,14 +8,19 @@
       typeof conversation.id === 'string' &&
       conversation.id &&
       typeof conversation.title === 'string' &&
+      conversation.title.trim() &&
       Array.isArray(conversation.messages) &&
       conversation.messages.every(function (message) {
         if (!message || typeof message !== 'object') return false;
-        if (typeof message.role !== 'string' || typeof message.content !== 'string') return false;
+        if (
+          typeof message.role !== 'string' ||
+          ['user', 'assistant', 'system'].indexOf(message.role) === -1 ||
+          typeof message.content !== 'string'
+        ) return false;
         return message.id === undefined || message.id === null || typeof message.id === 'string';
       }) &&
-      typeof conversation.createdAt === 'number' &&
-      typeof conversation.updatedAt === 'number'
+      Number.isFinite(conversation.createdAt) &&
+      Number.isFinite(conversation.updatedAt)
     );
   }
 
