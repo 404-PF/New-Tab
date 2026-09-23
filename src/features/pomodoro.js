@@ -76,11 +76,10 @@
     }
   }
 
-  function loadTimerState() {
+  function parseTimerState(raw) {
     try {
-      const raw = localStorage.getItem(TIMER_STATE_KEY);
       if (!raw) return null;
-      const parsed = JSON.parse(raw);
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (parsed?.active && typeof parsed.timeRemaining === 'number') {
         if (!parsed.deadline) {
           parsed.deadline = Date.now() + parsed.timeRemaining * 1000;
@@ -88,9 +87,46 @@
         return parsed;
       }
     } catch (error) {
-      console.warn('Failed to load Pomodoro timer state from localStorage:', error);
+      console.warn('Failed to parse Pomodoro timer state:', error);
     }
     return null;
+  }
+
+  function loadTimerState() {
+    try {
+      return parseTimerState(localStorage.getItem(TIMER_STATE_KEY));
+    } catch (error) {
+      console.warn('Failed to load Pomodoro timer state from localStorage:', error);
+      return null;
+    }
+  }
+
+  function loadTimerStateAsync() {
+    const storageArea = globalThis.chrome?.storage?.local;
+    if (!storageArea || typeof storageArea.get !== 'function') {
+      return Promise.resolve(loadTimerState());
+    }
+
+    return new Promise(function (resolve) {
+      let settled = false;
+      const finish = function (items) {
+        if (settled) return;
+        settled = true;
+        const raw = items ? items[TIMER_STATE_KEY] : null;
+        resolve(parseTimerState(raw));
+      };
+
+      try {
+        const maybePromise = storageArea.get(TIMER_STATE_KEY, finish);
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          maybePromise.then(finish).catch(function () {
+            finish(null);
+          });
+        }
+      } catch (_error) {
+        finish(null);
+      }
+    });
   }
 
   function saveTimerState() {
@@ -99,6 +135,56 @@
     } catch (error) {
       console.warn('Failed to save Pomodoro timer state to localStorage:', error);
     }
+  }
+
+  function saveTimerStateAsync() {
+    const serialized = JSON.stringify(state);
+    if (typeof localStorage.setItemAsync === 'function') {
+      return localStorage.setItemAsync(TIMER_STATE_KEY, serialized)
+        .then(function (result) {
+          return result !== false;
+        });
+    }
+
+    const storageArea = globalThis.chrome?.storage?.local;
+    if (!storageArea || typeof storageArea.set !== 'function') {
+      try {
+        localStorage.setItem(TIMER_STATE_KEY, serialized);
+        return Promise.resolve(true);
+      } catch (error) {
+        console.warn('Failed to save Pomodoro timer state to localStorage:', error);
+        return Promise.resolve(false);
+      }
+    }
+
+    return new Promise(function (resolve) {
+      let settled = false;
+      const finish = function (success) {
+        if (settled) return;
+        settled = true;
+        try {
+          localStorage.setItem(TIMER_STATE_KEY, serialized);
+        } catch (error) {
+          console.warn('Failed to update Pomodoro timer cache:', error);
+        }
+        resolve(success);
+      };
+
+      try {
+        const maybePromise = storageArea.set({ [TIMER_STATE_KEY]: serialized }, function () {
+          finish(!globalThis.chrome.runtime?.lastError);
+        });
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          maybePromise.then(function () {
+            finish(true);
+          }).catch(function () {
+            finish(false);
+          });
+        }
+      } catch (_error) {
+        finish(false);
+      }
+    });
   }
 
   function clearTimerState() {
@@ -280,10 +366,10 @@
   function tick() {
     if (!state.active || state.paused || !_isLeader) return;
 
-    return withLeadershipLock(function () {
+    return withLeadershipLock(async function () {
       if (!state.active || state.paused || !_isLeader) return false;
 
-      const persisted = loadTimerState();
+      const persisted = await loadTimerStateAsync();
       if (!persisted?.active || persisted.ownerId !== TAB_ID) {
         applyTimerState(persisted);
         return false;
@@ -302,12 +388,13 @@
 
       if (state.timeRemaining <= 0) {
         completePhase();
+        await saveTimerStateAsync();
         return true;
       }
 
       state.ownerId = TAB_ID;
       state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-      saveTimerState();
+      await saveTimerStateAsync();
       updateWidget();
       return true;
     });
@@ -442,8 +529,8 @@
   async function togglePause() {
     if (!state.active) return false;
 
-    const changed = await withLeadershipLock(function () {
-      const persisted = loadTimerState();
+    const changed = await withLeadershipLock(async function () {
+      const persisted = await loadTimerStateAsync();
       if (!persisted?.active) {
         return false;
       }
@@ -466,7 +553,7 @@
         state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
         _isLeader = true;
         stopCoordinationInterval();
-        saveTimerState();
+        await saveTimerStateAsync();
         startInterval();
       } else {
         state.paused = true;
@@ -479,7 +566,7 @@
         state.ownerLeaseExpiresAt = 0;
         _isLeader = false;
         stopInterval();
-        saveTimerState();
+        await saveTimerStateAsync();
       }
 
       updateWidget();
@@ -492,8 +579,8 @@
   async function skipPhase() {
     if (!state.active) return false;
 
-    const changed = await withLeadershipLock(function () {
-      const persisted = loadTimerState();
+    const changed = await withLeadershipLock(async function () {
+      const persisted = await loadTimerStateAsync();
       if (!persisted?.active) {
         return false;
       }
@@ -517,9 +604,10 @@
         state.deadline = Date.now() + state.timeRemaining * 1000;
         state.ownerId = TAB_ID;
         state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-        saveTimerState();
+        await saveTimerStateAsync();
         updateWidget();
       }
+      await saveTimerStateAsync();
       startInterval();
       return true;
     });
@@ -598,8 +686,8 @@
   function claimLeadership(allowPaused) {
     if (_leadershipClaimPromise) return _leadershipClaimPromise;
 
-    _leadershipClaimPromise = withLeadershipLock(function () {
-      const persisted = loadTimerState();
+    _leadershipClaimPromise = withLeadershipLock(async function () {
+      const persisted = await loadTimerStateAsync();
       if (!persisted?.active || (persisted.paused && !allowPaused)) return false;
 
       const leaseIsActive = persisted.ownerId && persisted.ownerId !== TAB_ID &&
@@ -616,7 +704,7 @@
       state.ownerId = TAB_ID;
       state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
       _isLeader = true;
-      if (!(allowPaused && persisted.paused)) saveTimerState();
+      if (!(allowPaused && persisted.paused)) await saveTimerStateAsync();
       updateWidget();
       stopCoordinationInterval();
       startInterval();
@@ -730,8 +818,8 @@
   async function resetCurrentPhase() {
     if (!state.active) return false;
 
-    const changed = await withLeadershipLock(function () {
-      const persisted = loadTimerState();
+    const changed = await withLeadershipLock(async function () {
+      const persisted = await loadTimerStateAsync();
       if (!persisted?.active) {
         return false;
       }
@@ -752,7 +840,7 @@
       state.pauseReason = null;
       state.ownerId = TAB_ID;
       state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-      saveTimerState();
+      await saveTimerStateAsync();
       updateWidget();
       startInterval();
       return true;
@@ -778,8 +866,8 @@
     document.addEventListener('visibilitychange', function () {
       if (!state.active || !_isLeader) return;
 
-      void withLeadershipLock(function () {
-        const persisted = loadTimerState();
+      void withLeadershipLock(async function () {
+        const persisted = await loadTimerStateAsync();
         if (!persisted?.active || persisted.ownerId !== TAB_ID) {
           applyTimerState(persisted);
           return false;
@@ -796,7 +884,7 @@
           state.ownerId = TAB_ID;
           state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
           stopInterval();
-          saveTimerState();
+          await saveTimerStateAsync();
           updateWidget();
         } else if (!document.hidden && state.paused && state.pauseReason === 'visibility') {
           state.paused = false;
@@ -804,7 +892,7 @@
           state.deadline = Date.now() + state.timeRemaining * 1000;
           state.ownerId = TAB_ID;
           state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-          saveTimerState();
+          await saveTimerStateAsync();
           updateWidget();
           startInterval();
         }
