@@ -2,6 +2,7 @@ import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/features/timezone-clocks.js');
+  injectScript('src/ai/conversation-validator.js');
   injectScript('src/features/data-manager.js');
 });
 
@@ -30,7 +31,12 @@ describe('DataManager backup validation', () => {
     })).toEqual({ valid: true });
 
     const invalidConversations = [
+      ['missing id', { ...validConversation, id: undefined }],
+      ['empty id', { ...validConversation, id: '' }],
+      ['invalid id', { ...validConversation, id: 123 }],
       ['missing title', { ...validConversation, title: undefined }],
+      ['invalid title', { ...validConversation, title: 123 }],
+      ['invalid messages collection', { ...validConversation, messages: {} }],
       ['invalid message role', {
         ...validConversation,
         messages: [{ role: 123, content: 'Hello' }]
@@ -39,15 +45,24 @@ describe('DataManager backup validation', () => {
         ...validConversation,
         messages: [{ role: 'user', content: null }]
       }],
+      ['invalid message id', {
+        ...validConversation,
+        messages: [{ id: 123, role: 'user', content: 'Hello' }]
+      }],
       ['missing createdAt', { ...validConversation, createdAt: undefined }],
+      ['invalid createdAt', { ...validConversation, createdAt: '1700000000000' }],
+      ['missing updatedAt', { ...validConversation, updatedAt: undefined }],
       ['invalid updatedAt', { ...validConversation, updatedAt: '1700000001000' }]
     ];
 
-    invalidConversations.forEach(([, conversation]) => {
-      expect(window.DataManager.validateImportData({
-        version: 1,
-        data: { ai_conversations: [conversation] }
-      }).valid).toBe(false);
+    invalidConversations.forEach(([caseName, conversation]) => {
+      expect(
+        window.DataManager.validateImportData({
+          version: 1,
+          data: { ai_conversations: [conversation] }
+        }).valid,
+        caseName
+      ).toBe(false);
     });
   });
 
