@@ -1,9 +1,19 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
+import { JSDOM } from 'jsdom';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  Object.defineProperty(navigator, 'locks', {
+    configurable: true,
+    value: {
+      request(name, callback) {
+        return Promise.resolve().then(() => callback({ name }));
+      }
+    }
+  });
+
   const header = document.createElement('div');
   header.className = 'todo-header';
   document.body.appendChild(header);
@@ -49,18 +59,23 @@ describe('Pomodoro duration persistence', () => {
 });
 
 describe('Pomodoro pause -> reset/skip regression (issue #626)', () => {
-  it('reset on a paused timer resumes countdown', () => {
+  it('reset on a paused timer resumes countdown', async () => {
     vi.useFakeTimers();
     const prevVI = window.VisibilityInterval;
     window.VisibilityInterval = null;
     try {
       window.savePomodoroDurations({ enabled: true, workDuration: 25, shortBreakDuration: 5, longBreakDuration: 15 });
       window.startPomodoro('todo-1');
-      window.togglePomodoroPause();
+      await window.togglePomodoroPause();
       const pausedState = JSON.parse(localStorage.getItem('pomodoro_state'));
       expect(pausedState.paused).toBe(true);
 
-      document.querySelector('.pomodoro-reset-btn').click();
+      await window.resetPomodoroForTest?.();
+      if (!window.resetPomodoroForTest) {
+        document.querySelector('.pomodoro-reset-btn').click();
+        await Promise.resolve();
+        await Promise.resolve();
+      }
 
       const afterReset = JSON.parse(localStorage.getItem('pomodoro_state'));
       expect(afterReset.paused).toBe(false);
@@ -76,19 +91,21 @@ describe('Pomodoro pause -> reset/skip regression (issue #626)', () => {
     }
   });
 
-  it('skip on a paused timer resumes countdown on next phase', () => {
+  it('skip on a paused timer resumes countdown on next phase', async () => {
     vi.useFakeTimers();
     const prevVI = window.VisibilityInterval;
     window.VisibilityInterval = null;
     try {
       window.savePomodoroDurations({ enabled: true, workDuration: 25, shortBreakDuration: 5, longBreakDuration: 15 });
       window.startPomodoro('todo-1');
-      window.togglePomodoroPause();
+      await window.togglePomodoroPause();
       const pausedState = JSON.parse(localStorage.getItem('pomodoro_state'));
       expect(pausedState.paused).toBe(true);
       expect(pausedState.phase).toBe('work');
 
       document.querySelector('.pomodoro-skip-btn').click();
+      await Promise.resolve();
+      await Promise.resolve();
 
       const afterSkip = JSON.parse(localStorage.getItem('pomodoro_state'));
       expect(afterSkip.paused).toBe(false);
@@ -103,5 +120,167 @@ describe('Pomodoro pause -> reset/skip regression (issue #626)', () => {
       window.VisibilityInterval = prevVI;
       vi.useRealTimers();
     }
+  });
+});
+
+describe('Pomodoro leadership election regression (issue #763)', () => {
+  function createSharedStorage() {
+    const values = new Map();
+    return {
+      getItem(key) {
+        return values.has(key) ? values.get(key) : null;
+      },
+      setItem(key, value) {
+        values.set(key, String(value));
+      },
+      removeItem(key) {
+        values.delete(key);
+      },
+      clear() {
+        values.clear();
+      }
+    };
+  }
+
+  function createLockManager() {
+    let locked = false;
+    const queue = [];
+
+    async function pump() {
+      if (locked || queue.length === 0) return;
+      locked = true;
+      const { callback, resolve, reject } = queue.shift();
+      try {
+        resolve(await callback({ name: 'pomodoro-leadership' }));
+      } catch (error) {
+        reject(error);
+      } finally {
+        locked = false;
+        void pump();
+      }
+    }
+
+    return {
+      request(_name, callback) {
+        return new Promise((resolve, reject) => {
+          queue.push({ callback, resolve, reject });
+          void pump();
+        });
+      }
+    };
+  }
+
+  function createTab(sharedStorage, locks, tabId, intervals) {
+    const dom = new JSDOM('<!doctype html><body></body>', {
+      runScripts: 'outside-only',
+      url: 'https://new-tab.test/'
+    });
+    const { window } = dom;
+    const header = window.document.createElement('div');
+    header.className = 'todo-header';
+    window.document.body.appendChild(header);
+
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: sharedStorage
+    });
+    Object.defineProperty(window.navigator, 'locks', {
+      configurable: true,
+      value: locks
+    });
+    Object.defineProperty(window, 'crypto', {
+      configurable: true,
+      value: {
+        randomUUID() {
+          return tabId;
+        },
+        getRandomValues(bytes) {
+          bytes.fill(1);
+          return bytes;
+        }
+      }
+    });
+
+    window.i18n = {
+      t(key) {
+        return key;
+      }
+    };
+    window.chrome = {
+      notifications: {
+        create() {}
+      },
+      storage: {
+        onChanged: {
+          addListener() {}
+        }
+      }
+    };
+    window.setInterval = function () {
+      return { noop: true };
+    };
+    window.clearInterval = function () {};
+    window.VisibilityInterval = class {
+      constructor(callback) {
+        this.callback = callback;
+        this.destroyed = false;
+        intervals.push(this);
+      }
+
+      destroy() {
+        this.destroyed = true;
+      }
+    };
+
+    injectScript('src/features/pomodoro.js', dom.getInternalVMContext());
+    return dom;
+  }
+
+  it('serializes two contenders so exactly one starts a leader interval', async () => {
+    const sharedStorage = createSharedStorage();
+    const locks = createLockManager();
+    const intervalsA = [];
+    const intervalsB = [];
+    const now = Date.now();
+
+    sharedStorage.setItem('pomodoro', JSON.stringify({
+      enabled: true,
+      workDuration: 25,
+      shortBreakDuration: 5,
+      longBreakDuration: 15,
+      sessionsBeforeLongBreak: 4
+    }));
+    sharedStorage.setItem('pomodoro_state', JSON.stringify({
+      active: true,
+      phase: 'work',
+      todoId: 'todo-1',
+      timeRemaining: 120,
+      deadline: now + 120000,
+      sessionsCompleted: 0,
+      paused: false,
+      pauseReason: null,
+      ownerId: 'expired-tab',
+      ownerLeaseExpiresAt: now - 1
+    }));
+
+    const tabA = createTab(sharedStorage, locks, 'tab-a', intervalsA);
+    const tabB = createTab(sharedStorage, locks, 'tab-b', intervalsB);
+
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const persisted = JSON.parse(sharedStorage.getItem('pomodoro_state'));
+    const activeIntervals = [
+      ...intervalsA.filter(interval => !interval.destroyed).map(() => 'tab-a'),
+      ...intervalsB.filter(interval => !interval.destroyed).map(() => 'tab-b')
+    ];
+
+    expect(activeIntervals).toHaveLength(1);
+    expect(persisted.ownerId).toBe('pomodoro-' + activeIntervals[0]);
+    expect(['pomodoro-tab-a', 'pomodoro-tab-b']).toContain(persisted.ownerId);
+
+    tabA.window.close();
+    tabB.window.close();
   });
 });
