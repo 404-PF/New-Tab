@@ -281,8 +281,12 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
     return vi.waitFor(() => {
       const persisted = JSON.parse(sharedStorage.getItem('pomodoro_state'));
       expect(['pomodoro-tab-a', 'pomodoro-tab-b']).toContain(persisted?.ownerId);
-      expect(persisted.ownerId).toBe(previousOwner ?? persisted.ownerId);
-      previousOwner = persisted.ownerId;
+      const ownerId = persisted.ownerId;
+      if (previousOwner === null) {
+        previousOwner = ownerId;
+        throw new Error('Leadership owner is still settling');
+      }
+      expect(ownerId).toBe(previousOwner);
       return persisted;
     }, { interval: 0 });
   }
