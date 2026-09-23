@@ -12,6 +12,8 @@
   const STORAGE_WRITE_ERROR_EVENT = 'storageBridgeWriteError';
   let writeSequence = 0;
   const pendingWriteGenerations = new Map();
+  const pendingRemoveRollbackSnapshots = new Map();
+  const rollbackCacheOwners = new Map();
   const storageReady = new Promise((resolve) => {
     resolveStorageBridge = resolve;
   });
@@ -287,12 +289,14 @@
         }
 
         if (!change || change.newValue === null || typeof change.newValue === 'undefined') {
+          rollbackCacheOwners.delete(key);
           cache.delete(key);
           trackHydrationMutation(key, null);
           changed = true;
           return;
         }
 
+        rollbackCacheOwners.delete(key);
         cache.set(key, String(change.newValue));
         trackHydrationMutation(key, change.newValue);
         changed = true;
@@ -310,6 +314,8 @@
       return false;
     }
 
+    pendingRemoveRollbackSnapshots.delete(key);
+    rollbackCacheOwners.delete(key);
     const generation = ++writeSequence;
     pendingWriteGenerations.set(key, generation);
 
@@ -471,20 +477,88 @@
     );
   }
 
-  function persistRemove(key) {
+  function getRemoveRollbackSnapshot(key, hadPreviousValue, previousValue) {
+    const existingSnapshot = pendingRemoveRollbackSnapshots.get(key);
+    if (existingSnapshot) {
+      return existingSnapshot;
+    }
+
+    const snapshot = {
+      hadPreviousValue,
+      previousValue,
+      invalidated: false,
+      pendingGenerations: new Set()
+    };
+    pendingRemoveRollbackSnapshots.set(key, snapshot);
+    return snapshot;
+  }
+
+  function persistRemove(key, hadPreviousValue, previousValue) {
     const storageArea = getStorageArea();
     if (!storageArea) {
-      return;
+      return false;
     }
+
+    const rollbackSnapshot = getRemoveRollbackSnapshot(key, hadPreviousValue, previousValue);
+    const generation = ++writeSequence;
+    pendingWriteGenerations.set(key, generation);
+    rollbackSnapshot.pendingGenerations.add(generation);
+
+    const finishRemove = (error) => {
+      const isActiveSnapshot = pendingRemoveRollbackSnapshots.get(key) === rollbackSnapshot;
+
+      if (error) {
+        const message = error?.message ? error.message : String(error);
+        console.warn('Failed to remove ' + key + ' from chrome.storage:', message);
+        reportStorageWriteError(key, error, {
+          operation: 'remove',
+          generation
+        });
+
+        if (isActiveSnapshot &&
+            !rollbackSnapshot.invalidated &&
+            pendingWriteGenerations.get(key) === generation &&
+            !cache.has(key) &&
+            rollbackSnapshot.hadPreviousValue) {
+          cache.set(key, rollbackSnapshot.previousValue);
+          rollbackCacheOwners.set(key, { snapshot: rollbackSnapshot, generation });
+          trackHydrationMutation(key, rollbackSnapshot.previousValue);
+        }
+      } else if (isActiveSnapshot) {
+        rollbackSnapshot.invalidated = true;
+
+        const rollbackOwner = rollbackCacheOwners.get(key);
+        if (rollbackSnapshot.hadPreviousValue &&
+            rollbackOwner?.snapshot === rollbackSnapshot) {
+          cache.delete(key);
+          rollbackCacheOwners.delete(key);
+          trackHydrationMutation(key, null);
+        }
+      }
+
+      if (isActiveSnapshot) {
+        rollbackSnapshot.pendingGenerations.delete(generation);
+        if (rollbackSnapshot.pendingGenerations.size === 0) {
+          pendingRemoveRollbackSnapshots.delete(key);
+          if (rollbackCacheOwners.get(key)?.snapshot === rollbackSnapshot) {
+            rollbackCacheOwners.delete(key);
+          }
+        }
+      }
+
+      if (pendingWriteGenerations.get(key) === generation) {
+        pendingWriteGenerations.delete(key);
+      }
+    };
 
     try {
       storageArea.remove(key, () => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          console.warn(`Failed to remove ${key} from chrome.storage:`, chrome.runtime.lastError.message);
-        }
+        finishRemove(chrome.runtime?.lastError || null);
       });
+      return true;
     } catch (error) {
-      console.warn(`Failed to remove ${key} from chrome.storage:`, error);
+      finishRemove(error);
+      return false;
     }
   }
 
@@ -520,6 +594,7 @@
     setItem(key, value) {
       const stringValue = String(value);
       const hadPreviousValue = cache.has(key);
+      rollbackCacheOwners.delete(key);
       const previousValue = cache.get(key);
       cache.set(key, stringValue);
       trackHydrationMutation(key, stringValue);
@@ -554,6 +629,7 @@
     setItemAsync(key, value) {
       const stringValue = String(value);
       const hadPreviousValue = cache.has(key);
+      rollbackCacheOwners.delete(key);
       const previousValue = cache.get(key);
       cache.set(key, stringValue);
       trackHydrationMutation(key, stringValue);
@@ -578,6 +654,7 @@
     removeItemAsync(key) {
       const hadPreviousValue = cache.has(key);
       const previousValue = cache.get(key);
+      rollbackCacheOwners.delete(key);
       cache.delete(key);
       trackHydrationMutation(key, null);
 
@@ -594,6 +671,9 @@
     },
 
     removeItem(key) {
+      const hadPreviousValue = cache.has(key);
+      const previousValue = cache.get(key);
+      rollbackCacheOwners.delete(key);
       cache.delete(key);
       trackHydrationMutation(key, null);
 
@@ -602,10 +682,13 @@
         return;
       }
 
-      persistRemove(key);
+      persistRemove(key, hadPreviousValue, previousValue);
     },
 
     clear() {
+      pendingWriteGenerations.clear();
+      pendingRemoveRollbackSnapshots.clear();
+      rollbackCacheOwners.clear();
       cache.clear();
       if (hydrationStarted && !hydrationFinished) {
         hydrationClearRequested = true;

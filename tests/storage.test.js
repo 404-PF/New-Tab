@@ -128,6 +128,408 @@ describe('storage bridge', () => {
     }
   });
 
+  it('rolls back a failed synchronous remove and reports the storage error', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let removeCallback;
+      const persisted = { todos: '[{"text":"keep me"}]' };
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              const snapshot = { ...persisted };
+              if (callback) {
+                resolveGet = () => callback(snapshot);
+                return;
+              }
+              return Promise.resolve(snapshot);
+            },
+            set(items, callback) {
+              Object.assign(persisted, items);
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallback = callback;
+              return Promise.resolve();
+            },
+            clear(callback) {
+              Object.keys(persisted).forEach((key) => delete persisted[key]);
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      const failurePromise = new Promise((resolveFailure) => {
+        dom.window.addEventListener('storageBridgeWriteError', resolveFailure, { once: true });
+      });
+
+      dom.window.localStorage.removeItem('todos');
+      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+
+      dom.window.chrome.runtime.lastError = { message: 'storage unavailable' };
+      removeCallback?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      const failureEvent = await failurePromise;
+      expect(failureEvent.detail).toMatchObject({
+        key: 'todos',
+        message: 'storage unavailable',
+        operation: 'remove'
+      });
+      expect(typeof failureEvent.detail.generation).toBe('number');
+      expect(dom.window.localStorage.getItem('todos')).toBe(persisted.todos);
+      const stored = await dom.window.chrome.storage.local.get('todos');
+      expect(stored.todos).toBe(persisted.todos);
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('does not restore a shared remove snapshot after an earlier remove succeeds', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      const removeCallbacks = [];
+      const persisted = { todos: 'original' };
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              const snapshot = { ...persisted };
+              if (callback) {
+                resolveGet = () => callback(snapshot);
+                return;
+              }
+              return Promise.resolve(snapshot);
+            },
+            set(items, callback) {
+              Object.assign(persisted, items);
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallbacks.push(() => {
+                if (!dom.window.chrome.runtime.lastError) {
+                  delete persisted[keys];
+                }
+                callback?.();
+              });
+              return Promise.resolve();
+            },
+            clear(callback) {
+              Object.keys(persisted).forEach((key) => delete persisted[key]);
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.removeItem('todos');
+      dom.window.localStorage.removeItem('todos');
+
+      removeCallbacks[0]?.();
+
+      dom.window.chrome.runtime.lastError = { message: 'late remove failure' };
+      removeCallbacks[1]?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+      expect(await dom.window.chrome.storage.local.get('todos')).toEqual({});
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('reports a late remove failure after a newer write without rolling back the newer value', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let removeCallback;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ todos: 'original' });
+            },
+            set(items, callback) {
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallback = callback;
+              return Promise.resolve();
+            },
+            clear(callback) {
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      const failurePromise = new Promise((resolveFailure) => {
+        dom.window.addEventListener('storageBridgeWriteError', resolveFailure, { once: true });
+      });
+
+      dom.window.localStorage.removeItem('todos');
+      dom.window.localStorage.setItem('todos', 'newer');
+
+      dom.window.chrome.runtime.lastError = { message: 'late remove failure' };
+      removeCallback?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      const failureEvent = await failurePromise;
+      expect(failureEvent.detail).toMatchObject({
+        key: 'todos',
+        message: 'late remove failure',
+        operation: 'remove'
+      });
+      expect(typeof failureEvent.detail.generation).toBe('number');
+      expect(dom.window.localStorage.getItem('todos')).toBe('newer');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('preserves a cross-context value that matches the remove rollback snapshot', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let changeListener;
+      let removeCallback;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener(listener) { changeListener = listener; },
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              resolveGet = () => callback({ todos: 'original' });
+            },
+            set(items, callback) {
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallback = callback;
+              return Promise.resolve();
+            },
+            clear(callback) {
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.removeItem('todos');
+      changeListener({ todos: { oldValue: null, newValue: 'original' } }, 'local');
+
+      removeCallback?.();
+
+      expect(dom.window.localStorage.getItem('todos')).toBe('original');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('does not restore an old value after a clear invalidates a pending remove', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      let removeCallback;
+      let clearCallback;
+      const persisted = { todos: 'original', language: 'en' };
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              const snapshot = { ...persisted };
+              if (callback) {
+                resolveGet = () => callback(snapshot);
+                return;
+              }
+              return Promise.resolve(snapshot);
+            },
+            set(items, callback) {
+              Object.assign(persisted, items);
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallback = callback;
+              return Promise.resolve();
+            },
+            clear(callback) {
+              clearCallback = callback;
+              Object.keys(persisted).forEach((key) => delete persisted[key]);
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.removeItem('todos');
+      dom.window.localStorage.clear();
+
+      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+      expect(dom.window.localStorage.length).toBe(0);
+
+      clearCallback?.();
+      dom.window.chrome.runtime.lastError = { message: 'late remove failure' };
+      removeCallback?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      expect(dom.window.localStorage.getItem('todos')).toBeNull();
+      expect(await dom.window.chrome.storage.local.get('todos')).toEqual({});
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('restores the original value when repeated removes both fail', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let resolveGet;
+      const removeCallbacks = [];
+      const persisted = { todos: 'original' };
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(keys, callback) {
+              const snapshot = { ...persisted };
+              if (callback) {
+                resolveGet = () => callback(snapshot);
+                return;
+              }
+              return Promise.resolve(snapshot);
+            },
+            set(items, callback) {
+              Object.assign(persisted, items);
+              callback?.();
+              return Promise.resolve();
+            },
+            remove(keys, callback) {
+              removeCallbacks.push(callback);
+              return Promise.resolve();
+            },
+            clear(callback) {
+              Object.keys(persisted).forEach((key) => delete persisted[key]);
+              callback?.();
+              return Promise.resolve();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+      resolveGet();
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.removeItem('todos');
+      dom.window.localStorage.removeItem('todos');
+
+      dom.window.chrome.runtime.lastError = { message: 'both removes failed' };
+      removeCallbacks[1]?.();
+      removeCallbacks[0]?.();
+      dom.window.chrome.runtime.lastError = null;
+
+      expect(dom.window.localStorage.getItem('todos')).toBe('original');
+      const stored = await dom.window.chrome.storage.local.get('todos');
+      expect(stored.todos).toBe('original');
+    } finally {
+      dom.window.close();
+    }
+  });
+
   it('reflects direct chrome.storage.local writes back into localStorage', async () => {
     await chrome.storage.local.set({ language: 'zh' });
 
