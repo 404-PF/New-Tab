@@ -14,6 +14,8 @@
   const pendingWriteGenerations = new Map();
   const pendingRemoveRollbackSnapshots = new Map();
   const rollbackCacheOwners = new Map();
+  const latestMutationGenerations = new Map();
+  const pendingClearOperations = new Map();
   const storageReady = new Promise((resolve) => {
     resolveStorageBridge = resolve;
   });
@@ -260,6 +262,123 @@
     }
   }
 
+  function beginMutationGeneration(key) {
+    const generation = ++writeSequence;
+    const previousGeneration = latestMutationGenerations.get(key);
+    latestMutationGenerations.set(key, generation);
+    return { generation, previousGeneration };
+  }
+
+  function reconcileMutationGeneration(key, generation, previousGeneration) {
+    if (latestMutationGenerations.get(key) !== generation) {
+      return;
+    }
+
+    if (typeof previousGeneration === 'number') {
+      latestMutationGenerations.set(key, previousGeneration);
+    } else {
+      latestMutationGenerations.delete(key);
+    }
+  }
+
+  function cleanupMutationGeneration(key, generation) {
+    if (latestMutationGenerations.get(key) !== generation) {
+      return;
+    }
+
+    if (pendingClearOperations.size === 0) {
+      latestMutationGenerations.delete(key);
+    }
+  }
+
+  function beginClearOperation(snapshot) {
+    const generation = ++writeSequence;
+    pendingClearOperations.set(generation, {
+      generation,
+      snapshot,
+      state: 'pending',
+      timeoutId: null,
+      error: null
+    });
+    return generation;
+  }
+
+  function settleClearOperation(generation, state, error) {
+    const operation = pendingClearOperations.get(generation);
+    if (!operation || operation.state !== 'pending') {
+      return;
+    }
+
+    if (operation.timeoutId !== null) {
+      clearTimeout(operation.timeoutId);
+      operation.timeoutId = null;
+    }
+
+    operation.state = state;
+    if (state === 'failed') {
+      operation.error = error;
+      reportStorageWriteError(null, error, {
+        operation: 'clear',
+        generation
+      });
+    }
+
+    finalizeClearOperations();
+  }
+
+  function finalizeClearOperations() {
+    const operations = Array.from(pendingClearOperations.values());
+    if (operations.some((operation) => operation.state === 'pending')) {
+      return;
+    }
+
+    const successfulClear = operations.some((operation) => operation.state === 'succeeded');
+    if (!successfulClear) {
+      const failedOperations = operations
+        .filter((operation) => operation.state === 'failed')
+        .sort((left, right) => left.generation - right.generation);
+
+      if (failedOperations.length > 0) {
+        const hasPendingNewerMutation = Array.from(pendingWriteGenerations.values())
+          .some((mutationGeneration) => mutationGeneration > failedOperations[0].generation);
+
+        if (hasPendingNewerMutation) {
+          return;
+        }
+
+        const restoredSnapshot = {};
+        failedOperations.forEach((failedOperation) => {
+          Object.keys(failedOperation.snapshot).forEach((key) => {
+            const mutationGeneration = latestMutationGenerations.get(key);
+            if (typeof mutationGeneration === 'number' && mutationGeneration > failedOperation.generation) {
+              return;
+            }
+
+            restoredSnapshot[key] = failedOperation.snapshot[key];
+            cache.set(key, failedOperation.snapshot[key]);
+          });
+        });
+
+        writeNativeSnapshot(snapshotToObjectWithSnapshot(restoredSnapshot));
+      }
+
+      if (hydrationStarted && hydrationClearRequested) {
+        hydrationClearRequested = false;
+      }
+    }
+
+    pendingClearOperations.clear();
+    latestMutationGenerations.clear();
+  }
+
+  function snapshotToObjectWithSnapshot(overlay) {
+    const snapshot = snapshotToObject();
+    Object.keys(overlay).forEach((key) => {
+      snapshot[key] = overlay[key];
+    });
+    return snapshot;
+  }
+
   function subscribeToChromeStorageChanges() {
     if (!globalThis.chrome || !chrome.storage || !chrome.storage.onChanged || typeof chrome.storage.onChanged.addListener !== 'function') {
       return;
@@ -288,11 +407,14 @@
           }
         }
 
+        const mutation = beginMutationGeneration(key);
+
         if (!change || change.newValue === null || typeof change.newValue === 'undefined') {
           rollbackCacheOwners.delete(key);
           cache.delete(key);
           trackHydrationMutation(key, null);
           changed = true;
+          cleanupMutationGeneration(key, mutation.generation);
           return;
         }
 
@@ -316,7 +438,8 @@
 
     pendingRemoveRollbackSnapshots.delete(key);
     rollbackCacheOwners.delete(key);
-    const generation = ++writeSequence;
+    const mutation = beginMutationGeneration(key);
+    const { generation, previousGeneration } = mutation;
     pendingWriteGenerations.set(key, generation);
 
     try {
@@ -337,26 +460,42 @@
               cache.delete(key);
               trackHydrationMutation(key, null);
             }
+            reconcileMutationGeneration(key, generation, previousGeneration);
           }
         }
+
         if (pendingWriteGenerations.get(key) === generation) {
           pendingWriteGenerations.delete(key);
         }
+        cleanupMutationGeneration(key, generation);
+        finalizeClearOperations();
       });
       return true;
     } catch (error) {
       console.warn(`Failed to persist ${key} to chrome.storage:`, error);
       reportStorageWriteError(key, error, { generation, value });
+
       if (pendingWriteGenerations.get(key) === generation) {
         pendingWriteGenerations.delete(key);
+        if (hadPreviousValue) {
+          cache.set(key, previousValue);
+          trackHydrationMutation(key, previousValue);
+        } else {
+          cache.delete(key);
+          trackHydrationMutation(key, null);
+        }
+        reconcileMutationGeneration(key, generation, previousGeneration);
       }
+      cleanupMutationGeneration(key, generation);
+      finalizeClearOperations();
       return false;
     }
   }
 
 
   function persistAsyncOperation(key, startOperation, onFailure) {
-    const generation = ++writeSequence;
+    const mutation = beginMutationGeneration(key);
+    const { generation, previousGeneration } = mutation;
     pendingWriteGenerations.set(key, generation);
 
     let resolveOperation;
@@ -383,29 +522,34 @@
       let failureError = null;
       try {
         onFailure(error, generation);
+        reconcileMutationGeneration(key, generation, previousGeneration);
       } catch (handlerError) {
         failureError = handlerError;
       } finally {
         if (pendingWriteGenerations.get(key) === generation) {
           pendingWriteGenerations.delete(key);
         }
+        cleanupMutationGeneration(key, generation);
       }
       return failureError ? Promise.reject(failureError) : Promise.resolve(false);
     }
 
     return operationPromise.catch(error => {
       onFailure(error, generation);
+      reconcileMutationGeneration(key, generation, previousGeneration);
       return false;
     }).finally(() => {
       if (pendingWriteGenerations.get(key) === generation) {
         pendingWriteGenerations.delete(key);
       }
+      cleanupMutationGeneration(key, generation);
     });
   }
 
   function persistSetAsync(key, value, hadPreviousValue, previousValue) {
     const storageArea = getStorageArea();
     if (!storageArea) {
+      const mutation = beginMutationGeneration(key);
       if (cache.get(key) === value) {
         if (hadPreviousValue) {
           cache.set(key, previousValue);
@@ -415,6 +559,8 @@
           trackHydrationMutation(key, null);
         }
       }
+      reconcileMutationGeneration(key, mutation.generation, mutation.previousGeneration);
+      cleanupMutationGeneration(key, mutation.generation);
       return Promise.resolve(false);
     }
 
@@ -445,12 +591,13 @@
   function persistRemoveAsync(key, hadPreviousValue, previousValue) {
     const storageArea = getStorageArea();
     if (!storageArea) {
-      if (!hadPreviousValue || !cache.has(key)) {
-        return Promise.resolve(false);
+      const mutation = beginMutationGeneration(key);
+      if (hadPreviousValue && !cache.has(key)) {
+        cache.set(key, previousValue);
+        trackHydrationMutation(key, previousValue);
       }
-
-      cache.set(key, previousValue);
-      trackHydrationMutation(key, previousValue);
+      reconcileMutationGeneration(key, mutation.generation, mutation.previousGeneration);
+      cleanupMutationGeneration(key, mutation.generation);
       return Promise.resolve(false);
     }
 
@@ -549,6 +696,7 @@
       if (pendingWriteGenerations.get(key) === generation) {
         pendingWriteGenerations.delete(key);
       }
+      finalizeClearOperations();
     };
 
     try {
@@ -562,20 +710,49 @@
     }
   }
 
-  function persistClear() {
+  function persistClear(generation) {
     const storageArea = getStorageArea();
     if (!storageArea) {
+      settleClearOperation(generation, 'succeeded');
+      return;
+    }
+
+    if (!pendingClearOperations.has(generation)) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      settleClearOperation(
+        generation,
+        'failed',
+        new Error(
+          `chrome.storage.local.clear() did not respond within ${STORAGE_BRIDGE_TIMEOUT_MS / 1000} s`
+        )
+      );
+    }, STORAGE_BRIDGE_TIMEOUT_MS);
+    const operation = pendingClearOperations.get(generation);
+    if (operation) {
+      operation.timeoutId = timeoutId;
+    } else {
+      clearTimeout(timeoutId);
       return;
     }
 
     try {
       storageArea.clear(() => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          console.warn('Failed to clear chrome.storage:', chrome.runtime.lastError.message);
+        const lastError = chrome.runtime?.lastError;
+
+        if (lastError) {
+          console.warn('Failed to clear chrome.storage:', lastError.message);
+          settleClearOperation(generation, 'failed', lastError);
+          return;
         }
+
+        settleClearOperation(generation, 'succeeded');
       });
     } catch (error) {
       console.warn('Failed to clear chrome.storage:', error);
+      settleClearOperation(generation, 'failed', error);
     }
   }
   const storageBridge = {
@@ -600,6 +777,7 @@
       trackHydrationMutation(key, stringValue);
 
       if (!getStorageArea()) {
+        const mutation = beginMutationGeneration(key);
         const persisted = writeNativeSnapshot(snapshotToObject(), key);
         if (!persisted) {
           if (hadPreviousValue) {
@@ -609,6 +787,9 @@
             cache.delete(key);
             trackHydrationMutation(key, null);
           }
+          reconcileMutationGeneration(key, mutation.generation, mutation.previousGeneration);
+        } else {
+          cleanupMutationGeneration(key, mutation.generation);
         }
         return persisted;
       }
@@ -635,6 +816,7 @@
       trackHydrationMutation(key, stringValue);
 
       if (!getStorageArea()) {
+        const mutation = beginMutationGeneration(key);
         const persisted = writeNativeSnapshot(snapshotToObject(), key);
         if (!persisted) {
           if (hadPreviousValue) {
@@ -644,6 +826,9 @@
             cache.delete(key);
             trackHydrationMutation(key, null);
           }
+          reconcileMutationGeneration(key, mutation.generation, mutation.previousGeneration);
+        } else {
+          cleanupMutationGeneration(key, mutation.generation);
         }
         return Promise.resolve(persisted);
       }
@@ -659,10 +844,16 @@
       trackHydrationMutation(key, null);
 
       if (!getStorageArea()) {
+        const mutation = beginMutationGeneration(key);
         const persisted = writeNativeSnapshot(snapshotToObject(), key);
-        if (!persisted && hadPreviousValue) {
-          cache.set(key, previousValue);
-          trackHydrationMutation(key, previousValue);
+        if (!persisted) {
+          if (hadPreviousValue) {
+            cache.set(key, previousValue);
+            trackHydrationMutation(key, previousValue);
+          }
+          reconcileMutationGeneration(key, mutation.generation, mutation.previousGeneration);
+        } else {
+          cleanupMutationGeneration(key, mutation.generation);
         }
         return Promise.resolve(persisted);
       }
@@ -678,7 +869,17 @@
       trackHydrationMutation(key, null);
 
       if (!getStorageArea()) {
-        writeNativeSnapshot(snapshotToObject());
+        const mutation = beginMutationGeneration(key);
+        const persisted = writeNativeSnapshot(snapshotToObject());
+        if (!persisted) {
+          if (hadPreviousValue) {
+            cache.set(key, previousValue);
+            trackHydrationMutation(key, previousValue);
+          }
+          reconcileMutationGeneration(key, mutation.generation, mutation.previousGeneration);
+        } else {
+          cleanupMutationGeneration(key, mutation.generation);
+        }
         return;
       }
 
@@ -686,6 +887,9 @@
     },
 
     clear() {
+      const snapshot = snapshotToObject();
+      const generation = beginClearOperation(snapshot);
+
       pendingWriteGenerations.clear();
       pendingRemoveRollbackSnapshots.clear();
       rollbackCacheOwners.clear();
@@ -696,11 +900,29 @@
       }
 
       if (!getStorageArea()) {
-        writeNativeSnapshot({});
+        if (!writeNativeSnapshot({})) {
+          settleClearOperation(
+            generation,
+            'failed',
+            new Error('Failed to clear native localStorage mirror')
+          );
+          return;
+        }
+
+        settleClearOperation(generation, 'succeeded');
         return;
       }
 
-      persistClear();
+      if (!writeNativeSnapshot({})) {
+        settleClearOperation(
+          generation,
+          'failed',
+          new Error('Failed to clear native localStorage mirror')
+        );
+        return;
+      }
+
+      persistClear(generation);
     },
 
     key(index) {
