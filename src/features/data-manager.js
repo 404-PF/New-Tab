@@ -316,6 +316,11 @@
     });
   }
 
+  function isValidAIConversation(conversation) {
+    return typeof window.isValidConversation === 'function' &&
+      window.isValidConversation(conversation);
+  }
+
   function sanitizeExportValue(key, value) {
     if (key === 'appFolders' && Array.isArray(value)) {
       return value.filter(isValidFolderEntry);
@@ -404,7 +409,7 @@
     },
     games_enabled: function (v) { return typeof v === 'boolean'; },
     ai_conversations: function (v) {
-      return Array.isArray(v) && v.every(window.isValidConversation);
+      return Array.isArray(v) && v.every(isValidAIConversation);
     },
     ai_current_conversation_id: function (v) { return typeof v === 'string'; },
     updateCheckEnabled: function (v) { return typeof v === 'boolean'; },
