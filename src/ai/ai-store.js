@@ -49,7 +49,10 @@ const AIStore = (function() {
     };
   }
 
-  const isValidConversation = window.isValidConversation;
+  function isValidConversation(conversation) {
+    return typeof window.isValidConversation === 'function' &&
+      window.isValidConversation(conversation);
+  }
 
   function recoverConversations() {
     const previousState = createSaveSnapshot();
