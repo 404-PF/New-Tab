@@ -316,6 +316,7 @@
     });
   }
 
+  /** Validates an AI conversation before accepting it from backup data. */
   function isValidAIConversation(conversation) {
     return typeof window.isValidConversation === 'function' &&
       window.isValidConversation(conversation);
@@ -408,6 +409,7 @@
         typeof v.browserNotification === 'boolean';
     },
     games_enabled: function (v) { return typeof v === 'boolean'; },
+    /** Validates the persisted AI conversation collection in a backup. */
     ai_conversations: function (v) {
       return Array.isArray(v) && v.every(isValidAIConversation);
     },
