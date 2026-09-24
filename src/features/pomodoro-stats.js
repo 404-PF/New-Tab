@@ -36,7 +36,14 @@
     }
   }
   function write(data) {
-    const serialized = JSON.stringify(data);
+    let serialized;
+    try {
+      serialized = JSON.stringify(data);
+    } catch (err) {
+      console.warn('Failed to save pomodoro stats:', err);
+      return false;
+    }
+
     if (typeof localStorage.setItemAsync === 'function') {
       try {
         return Promise.resolve(localStorage.setItemAsync(KEY, serialized))
