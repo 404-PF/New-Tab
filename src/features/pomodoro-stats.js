@@ -44,22 +44,18 @@
       return false;
     }
 
-    if (typeof localStorage.setItemAsync === 'function') {
-      try {
-        return Promise.resolve(localStorage.setItemAsync(KEY, serialized))
+    try {
+      const storage = globalThis.localStorage;
+      if (storage && typeof storage.setItemAsync === 'function') {
+        return Promise.resolve(storage.setItemAsync(KEY, serialized))
           .then(persisted => persisted !== false)
           .catch((err) => {
             console.warn('Failed to save pomodoro stats:', err);
             return false;
           });
-      } catch (err) {
-        console.warn('Failed to save pomodoro stats:', err);
-        return false;
       }
-    }
 
-    try {
-      return localStorage.setItem(KEY, serialized) !== false;
+      return storage.setItem(KEY, serialized) !== false;
     } catch (err) {
       console.warn('Failed to save pomodoro stats:', err);
       return false;
@@ -354,8 +350,13 @@
       const v = data.days[k];
       if (typeof v === 'number') { data.days[k] = { sessions: v, minutes: 0 }; changed = true; }
     }
-    if (changed) write(data);
-    return changed;
+    if (!changed) return false;
+
+    const persisted = write(data);
+    if (persisted && typeof persisted.then === 'function') {
+      return persisted.then(success => success);
+    }
+    return persisted;
   };
   // Export 30-day window as CSV for external analysis.
   window.exportPomodoroStatsCsv = function () {
