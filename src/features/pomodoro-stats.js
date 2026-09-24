@@ -36,8 +36,30 @@
     }
   }
   function write(data) {
-    try { localStorage.setItem(KEY, JSON.stringify(data)); }
-    catch (err) { console.warn('Failed to save pomodoro stats:', err); }
+    let serialized;
+    try {
+      serialized = JSON.stringify(data);
+    } catch (err) {
+      console.warn('Failed to save pomodoro stats:', err);
+      return false;
+    }
+
+    try {
+      const storage = globalThis.localStorage;
+      if (storage && typeof storage.setItemAsync === 'function') {
+        return Promise.resolve(storage.setItemAsync(KEY, serialized))
+          .then(persisted => persisted !== false)
+          .catch((err) => {
+            console.warn('Failed to save pomodoro stats:', err);
+            return false;
+          });
+      }
+
+      return storage.setItem(KEY, serialized) !== false;
+    } catch (err) {
+      console.warn('Failed to save pomodoro stats:', err);
+      return false;
+    }
   }
   function enabled() {
     try { return localStorage.getItem('pomodoroStatsEnabled') === 'true'; }
@@ -61,10 +83,17 @@
       const prev = typeof map[tid] === 'number' && Number.isFinite(map[tid]) ? Math.max(0, map[tid]) : 0;
       map[tid] = prev + mins;
     }
-    write(store);
-    paint();
-    try { window.dispatchEvent(new CustomEvent('pomodoroStatsUpdated', { detail: { date: iso, sessions: cur.sessions, minutes: cur.minutes, todoId: tid } })); }
-    catch { /* ignore environments without CustomEvent */ }
+    const persisted = write(store);
+    const finishRecord = (success) => {
+      if (!success) return false;
+      paint();
+      try { window.dispatchEvent(new CustomEvent('pomodoroStatsUpdated', { detail: { date: iso, sessions: cur.sessions, minutes: cur.minutes, todoId: tid } })); }
+      catch { /* ignore environments without CustomEvent */ }
+      return true;
+    };
+    return persisted && typeof persisted.then === 'function'
+      ? persisted.then(finishRecord)
+      : finishRecord(persisted);
   }
   function sessionsToday() { return coerceEntry(read().days[todayISO()]).sessions; }
   function minutesToday() { return coerceEntry(read().days[todayISO()]).minutes; }
@@ -158,7 +187,17 @@
     if (btn) btn.style.display = on ? '' : 'none';
     if (on) paint();
   }
-  function wipe() { write({ days: {}, byDateTodos: {} }); paint(); }
+  function wipe() {
+    const persisted = write({ days: {}, byDateTodos: {} });
+    const finishWipe = (success) => {
+      if (!success) return false;
+      paint();
+      return true;
+    };
+    return persisted && typeof persisted.then === 'function'
+      ? persisted.then(finishWipe)
+      : finishWipe(persisted);
+  }
   function boot() {
     syncVisibility();
     const btn = document.getElementById('pomodoro-stats-toggle');
@@ -311,8 +350,13 @@
       const v = data.days[k];
       if (typeof v === 'number') { data.days[k] = { sessions: v, minutes: 0 }; changed = true; }
     }
-    if (changed) write(data);
-    return changed;
+    if (!changed) return false;
+
+    const persisted = write(data);
+    if (persisted && typeof persisted.then === 'function') {
+      return persisted.then(success => success);
+    }
+    return persisted;
   };
   // Export 30-day window as CSV for external analysis.
   window.exportPomodoroStatsCsv = function () {
