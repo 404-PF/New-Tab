@@ -36,9 +36,23 @@
     }
   }
   function write(data) {
+    const serialized = JSON.stringify(data);
+    if (typeof localStorage.setItemAsync === 'function') {
+      try {
+        return Promise.resolve(localStorage.setItemAsync(KEY, serialized))
+          .then(persisted => persisted !== false)
+          .catch((err) => {
+            console.warn('Failed to save pomodoro stats:', err);
+            return false;
+          });
+      } catch (err) {
+        console.warn('Failed to save pomodoro stats:', err);
+        return false;
+      }
+    }
+
     try {
-      localStorage.setItem(KEY, JSON.stringify(data));
-      return true;
+      return localStorage.setItem(KEY, serialized) !== false;
     } catch (err) {
       console.warn('Failed to save pomodoro stats:', err);
       return false;
@@ -66,11 +80,17 @@
       const prev = typeof map[tid] === 'number' && Number.isFinite(map[tid]) ? Math.max(0, map[tid]) : 0;
       map[tid] = prev + mins;
     }
-    if (!write(store)) return false;
-    paint();
-    try { window.dispatchEvent(new CustomEvent('pomodoroStatsUpdated', { detail: { date: iso, sessions: cur.sessions, minutes: cur.minutes, todoId: tid } })); }
-    catch { /* ignore environments without CustomEvent */ }
-    return true;
+    const persisted = write(store);
+    const finishRecord = (success) => {
+      if (!success) return false;
+      paint();
+      try { window.dispatchEvent(new CustomEvent('pomodoroStatsUpdated', { detail: { date: iso, sessions: cur.sessions, minutes: cur.minutes, todoId: tid } })); }
+      catch { /* ignore environments without CustomEvent */ }
+      return true;
+    };
+    return persisted && typeof persisted.then === 'function'
+      ? persisted.then(finishRecord)
+      : finishRecord(persisted);
   }
   function sessionsToday() { return coerceEntry(read().days[todayISO()]).sessions; }
   function minutesToday() { return coerceEntry(read().days[todayISO()]).minutes; }
@@ -165,9 +185,15 @@
     if (on) paint();
   }
   function wipe() {
-    if (!write({ days: {}, byDateTodos: {} })) return false;
-    paint();
-    return true;
+    const persisted = write({ days: {}, byDateTodos: {} });
+    const finishWipe = (success) => {
+      if (!success) return false;
+      paint();
+      return true;
+    };
+    return persisted && typeof persisted.then === 'function'
+      ? persisted.then(finishWipe)
+      : finishWipe(persisted);
   }
   function boot() {
     syncVisibility();
