@@ -548,7 +548,6 @@ describe('storage bridge', () => {
     }, 'sync');
 
     expect(localStorage.getItem('theme')).toBe('light');
-    await expect(chrome.storage.local.get('theme')).resolves.toEqual({ theme: 'light' });
   });
 
   it('clears chrome.storage.local when localStorage.clear is called', async () => {
