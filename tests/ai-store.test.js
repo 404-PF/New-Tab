@@ -95,6 +95,45 @@ describe('AIStore conversation recovery (#458)', () => {
     );
   });
 
+  it('preserves conversations when the validator is unavailable', () => {
+    const storedConversations = [{
+      id: 'conv-stored',
+      title: 'Stored topic',
+      messages: [],
+      createdAt: 1,
+      updatedAt: 2
+    }];
+    const existingConversation = {
+      id: 'conv-existing',
+      title: 'Existing topic',
+      messages: [],
+      createdAt: 3,
+      updatedAt: 4
+    };
+
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(storedConversations)
+    );
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-stored');
+    AIStore.state.conversations = [existingConversation];
+    AIStore.state.currentConversationId = existingConversation.id;
+
+    const validator = window.isValidConversation;
+    try {
+      window.isValidConversation = undefined;
+      AIStore.loadConversations();
+
+      expect(AIStore.state.conversations).toEqual([existingConversation]);
+      expect(AIStore.state.currentConversationId).toBe(existingConversation.id);
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations))
+        .toBe(JSON.stringify(storedConversations));
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-stored');
+    } finally {
+      window.isValidConversation = validator;
+    }
+  });
+
   it('keeps valid stored conversations, assigns ids to messages, and selects the saved current ID', () => {
     const conversations = [{
       id: 'conv-1',
