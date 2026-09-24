@@ -1,4 +1,5 @@
 // src/ai/conversation-validator.js - Shared AI conversation shape validation
+// Keep import and runtime validation in one place so their accepted shape stays aligned.
 
 (function () {
   const VALID_MESSAGE_ROLES = ['user', 'assistant', 'system'];
