@@ -14,7 +14,7 @@
         if (!message || typeof message !== 'object') return false;
         if (
           typeof message.role !== 'string' ||
-          ['user', 'assistant', 'system'].indexOf(message.role) === -1 ||
+          !['user', 'assistant', 'system'].includes(message.role) ||
           typeof message.content !== 'string'
         ) return false;
         return message.id === undefined || message.id === null || typeof message.id === 'string';
