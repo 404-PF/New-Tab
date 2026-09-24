@@ -385,7 +385,7 @@
     }
 
     chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName !== 'local' && areaName !== 'sync') {
+      if (areaName !== 'local') {
         return;
       }
 
