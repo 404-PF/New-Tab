@@ -506,7 +506,9 @@ const AIService = (function() {
       hasAbortController: AIStore.state.abortController !== null
     });
 
-    if (!userMessage || AIStore.state.isLoading) {
+    const normalizedUserMessage = typeof userMessage === 'string' ? userMessage.trim() : '';
+
+    if (!normalizedUserMessage || AIStore.state.isLoading) {
       console.log('[AI Debug] sendMessage returning early - isLoading:', AIStore.state.isLoading);
       if (AIStore.state.isLoading) {
         showError(getTranslation('aiRequestInProgress') || 'A request is already in progress. Please wait for it to complete.');
@@ -519,7 +521,7 @@ const AIService = (function() {
       && window.OpenRouterAPI.isWebGroundingEnabled();
     const userMsg = {
       role: 'user',
-      content: userMessage.trim(),
+      content: normalizedUserMessage,
       timestamp: Date.now()
     };
 
