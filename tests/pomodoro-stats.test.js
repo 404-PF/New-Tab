@@ -24,10 +24,19 @@ describe('Pomodoro stats persistence', () => {
   it('savePomodoroStats persists to localStorage', () => {
     const today = getToday();
     const stats = { days: { [today]: { sessions: 2, minutes: 50 } }, byDateTodos: {} };
-    savePomodoroStats(stats);
+    expect(savePomodoroStats(stats)).toBe(true);
     const loaded = loadPomodoroStats();
     expect(loaded.days[today].sessions).toBe(2);
     expect(loaded.days[today].minutes).toBe(50);
+  });
+
+  it('savePomodoroStats reports false when persistence fails', () => {
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('quota exceeded');
+    });
+    expect(savePomodoroStats({ days: {}, byDateTodos: {} })).toBe(false);
+    spy.mockRestore();
+    expect(loadPomodoroStats()).toEqual({ days: {}, byDateTodos: {} });
   });
 
   it('loadPomodoroStats handles corrupted data gracefully', () => {
@@ -90,7 +99,7 @@ describe('Pomodoro stats recording', () => {
     const handler = () => { updated = true; };
     window.addEventListener('pomodoroStatsUpdated', handler);
 
-    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementationOnce(() => {
       throw new Error('quota exceeded');
     });
     const result = recordPomodoroSession({ minutes: 25 });
@@ -118,7 +127,7 @@ describe('Pomodoro stats recording', () => {
     expect(todayEl.textContent).toBe('2');
     const heatmapBefore = heatmap.innerHTML;
 
-    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementationOnce(() => {
       throw new Error('quota exceeded');
     });
     const result = clearPomodoroStats();
