@@ -498,6 +498,10 @@ const AIService = (function() {
     }
   }
 
+  /**
+   * Sends a user message after trimming and rejecting blank input.
+   * @param {string} userMessage The message text to send.
+   */
   async function sendMessage(userMessage) {
     console.log('[AI Debug] sendMessage called - State:', {
       hasMessage: !!userMessage,
