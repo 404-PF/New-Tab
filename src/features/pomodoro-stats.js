@@ -36,8 +36,13 @@
     }
   }
   function write(data) {
-    try { localStorage.setItem(KEY, JSON.stringify(data)); }
-    catch (err) { console.warn('Failed to save pomodoro stats:', err); }
+    try {
+      localStorage.setItem(KEY, JSON.stringify(data));
+      return true;
+    } catch (err) {
+      console.warn('Failed to save pomodoro stats:', err);
+      return false;
+    }
   }
   function enabled() {
     try { return localStorage.getItem('pomodoroStatsEnabled') === 'true'; }
@@ -61,10 +66,11 @@
       const prev = typeof map[tid] === 'number' && Number.isFinite(map[tid]) ? Math.max(0, map[tid]) : 0;
       map[tid] = prev + mins;
     }
-    write(store);
+    if (!write(store)) return false;
     paint();
     try { window.dispatchEvent(new CustomEvent('pomodoroStatsUpdated', { detail: { date: iso, sessions: cur.sessions, minutes: cur.minutes, todoId: tid } })); }
     catch { /* ignore environments without CustomEvent */ }
+    return true;
   }
   function sessionsToday() { return coerceEntry(read().days[todayISO()]).sessions; }
   function minutesToday() { return coerceEntry(read().days[todayISO()]).minutes; }
@@ -158,7 +164,11 @@
     if (btn) btn.style.display = on ? '' : 'none';
     if (on) paint();
   }
-  function wipe() { write({ days: {}, byDateTodos: {} }); paint(); }
+  function wipe() {
+    if (!write({ days: {}, byDateTodos: {} })) return false;
+    paint();
+    return true;
+  }
   function boot() {
     syncVisibility();
     const btn = document.getElementById('pomodoro-stats-toggle');
