@@ -525,7 +525,6 @@
 
     createTimerWidget();
     updateWidget();
-    saveTimerState();
 
     return withLeadershipLock(async function () {
       if (epoch !== _stateEpoch || !state.active || state.todoId !== todoId) return false;
