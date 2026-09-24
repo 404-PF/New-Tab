@@ -69,14 +69,13 @@ const AIStore = (function() {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.conversations);
       const conversations = stored ? JSON.parse(stored) : [];
-      const validator = window.isValidConversation;
 
-      if (typeof validator !== 'function') {
+      if (typeof window.isValidConversation !== 'function') {
         console.warn('AI conversation validator is unavailable; preserving stored conversations');
         return;
       }
 
-      if (!Array.isArray(conversations) || !conversations.every(validator)) {
+      if (!Array.isArray(conversations) || !conversations.every(isValidConversation)) {
         recoverConversations();
         return;
       }
