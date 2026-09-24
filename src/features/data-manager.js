@@ -318,8 +318,9 @@
 
   /** Validates an AI conversation before accepting it from backup data. */
   function isValidAIConversation(conversation) {
-    return typeof window.isValidConversation === 'function' &&
-      window.isValidConversation(conversation);
+    const validator = window.isValidConversation;
+    if (typeof validator !== 'function') return false;
+    return validator(conversation);
   }
 
   function sanitizeExportValue(key, value) {
