@@ -1,6 +1,8 @@
 // src/ai/conversation-validator.js - Shared AI conversation shape validation
 
 (function () {
+  const VALID_MESSAGE_ROLES = ['user', 'assistant', 'system'];
+
   function isValidConversation(conversation) {
     return Boolean(
       conversation &&
@@ -14,7 +16,7 @@
         if (!message || typeof message !== 'object') return false;
         if (
           typeof message.role !== 'string' ||
-          !['user', 'assistant', 'system'].includes(message.role) ||
+          !VALID_MESSAGE_ROLES.includes(message.role) ||
           typeof message.content !== 'string'
         ) return false;
         return message.id === undefined || message.id === null || typeof message.id === 'string';
