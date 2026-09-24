@@ -4,6 +4,7 @@
 (function () {
   const VALID_MESSAGE_ROLES = ['user', 'assistant', 'system'];
 
+  /** Validates the persisted shape of a single AI conversation message. */
   function isValidMessage(message) {
     if (!message || typeof message !== 'object') return false;
     if (typeof message.role !== 'string') return false;
@@ -15,6 +16,7 @@
       typeof message.id === 'string';
   }
 
+  /** Validates the persisted AI conversation shape used by runtime and imports. */
   function isValidConversation(conversation) {
     if (!conversation || typeof conversation !== 'object') return false;
     if (typeof conversation.id !== 'string' || !conversation.id) return false;
