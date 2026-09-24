@@ -124,6 +124,26 @@ describe('OpenRouterAPI.validateInput control character rejection (#422)', () =>
   });
 });
 
+describe('AIService message normalization', () => {
+  it('does not persist whitespace-only user messages', async () => {
+    const conversation = {
+      id: 'conv-whitespace',
+      title: 'Whitespace',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    OpenRouterAPI.sendMessageStreaming = vi.fn();
+
+    await AIService.sendMessage(' \t \n ');
+
+    expect(conversation.messages).toEqual([]);
+    expect(OpenRouterAPI.sendMessageStreaming).not.toHaveBeenCalled();
+  });
+});
+
 describe('AIService error path length guard (#282)', () => {
   it('does not pop messages when the API returns a non-success result on a 0-message conversation', async () => {
     // Seed an empty conversation
