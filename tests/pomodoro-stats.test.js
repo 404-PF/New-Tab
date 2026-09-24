@@ -128,7 +128,7 @@ describe('Pomodoro stats recording', () => {
   it('does not paint or dispatch before asynchronous persistence succeeds', async () => {
     localStorage.setItem('pomodoroStatsEnabled', 'true');
     const today = getToday();
-    savePomodoroStats({
+    await savePomodoroStats({
       days: { [today]: { sessions: 2, minutes: 50 } },
       byDateTodos: {}
     });
@@ -166,6 +166,50 @@ describe('Pomodoro stats recording', () => {
     expect(loadPomodoroStats().days[today]).toEqual({ sessions: 2, minutes: 50 });
   });
 
+  it('paints and dispatches after asynchronous persistence succeeds', async () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    const today = getToday();
+    await savePomodoroStats({
+      days: { [today]: { sessions: 2, minutes: 50 } },
+      byDateTodos: {}
+    });
+
+    renderPomodoroStats();
+    const todayEl = document.getElementById('pomodoro-stats-today');
+    expect(todayEl.textContent).toBe('2');
+
+    let updated = false;
+    const handler = () => { updated = true; };
+    window.addEventListener('pomodoroStatsUpdated', handler);
+
+    const original = localStorage.setItemAsync;
+    let resolveWrite;
+    localStorage.setItemAsync = vi.fn((key, value) => new Promise(resolve => {
+      resolveWrite = (success) => {
+        if (success) localStorage.setItem(key, value);
+        resolve(success);
+      };
+    }));
+
+    try {
+      const resultPromise = recordPomodoroSession({ minutes: 25 });
+      expect(resultPromise).toBeInstanceOf(Promise);
+      expect(todayEl.textContent).toBe('2');
+      expect(updated).toBe(false);
+
+      resolveWrite(true);
+      expect(await resultPromise).toBe(true);
+      expect(todayEl.textContent).toBe('3');
+      expect(updated).toBe(true);
+    } finally {
+      window.removeEventListener('pomodoroStatsUpdated', handler);
+      if (original) localStorage.setItemAsync = original;
+      else delete localStorage.setItemAsync;
+    }
+
+    expect(loadPomodoroStats().days[today]).toEqual({ sessions: 3, minutes: 75 });
+  });
+
   it('returns false and leaves rendered data unchanged when clearing fails', () => {
     localStorage.setItem('pomodoroStatsEnabled', 'true');
     const today = getToday();
@@ -195,7 +239,7 @@ describe('Pomodoro stats recording', () => {
   it('leaves rendered data unchanged when asynchronous clearing fails', async () => {
     localStorage.setItem('pomodoroStatsEnabled', 'true');
     const today = getToday();
-    savePomodoroStats({
+    await savePomodoroStats({
       days: { [today]: { sessions: 2, minutes: 50 } },
       byDateTodos: {}
     });
