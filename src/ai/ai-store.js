@@ -51,8 +51,9 @@ const AIStore = (function() {
 
   /** Delegates persisted conversation validation to the shared validator. */
   function isValidConversation(conversation) {
-    return typeof window.isValidConversation === 'function' &&
-      window.isValidConversation(conversation);
+    const validator = window.isValidConversation;
+    if (typeof validator !== 'function') return false;
+    return validator(conversation);
   }
 
   function recoverConversations() {
