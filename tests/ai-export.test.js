@@ -48,6 +48,7 @@ beforeAll(() => {
   injectScript('src/ai/offline-mode.js');
   injectScript('src/ai/openrouter.js');
   injectScript('src/ai/ai-renderer.js');
+  injectScript('src/ai/conversation-validator.js');
   injectScript('src/ai/ai-store.js');
   injectScript('src/ai/ai-service.js');
 });

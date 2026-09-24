@@ -320,6 +320,13 @@
     });
   }
 
+  /** Validates an AI conversation before accepting it from backup data. */
+  function isValidAIConversation(conversation) {
+    const validator = window.isValidConversation;
+    if (typeof validator !== 'function') return false;
+    return validator(conversation);
+  }
+
   function sanitizeExportValue(key, value) {
     if (key === 'appFolders' && Array.isArray(value)) {
       return value.filter(isValidFolderEntry);
@@ -407,17 +414,9 @@
         typeof v.browserNotification === 'boolean';
     },
     games_enabled: function (v) { return typeof v === 'boolean'; },
+    /** Validates the persisted AI conversation collection in a backup. */
     ai_conversations: function (v) {
-      if (!Array.isArray(v)) return false;
-      return v.every(function (item) {
-        if (typeof item !== 'object' || item === null || typeof item.id !== 'string') return false;
-        if (!Array.isArray(item.messages)) return false;
-        return item.messages.every(function (msg) {
-          if (typeof msg !== 'object' || msg === null) return false;
-          if (msg.id !== undefined && msg.id !== null && typeof msg.id !== 'string') return false;
-          return true;
-        });
-      });
+      return Array.isArray(v) && v.every(isValidAIConversation);
     },
     ai_current_conversation_id: function (v) { return typeof v === 'string'; },
     updateCheckEnabled: function (v) { return typeof v === 'boolean'; },

@@ -2,6 +2,7 @@ import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/features/timezone-clocks.js');
+  injectScript('src/ai/conversation-validator.js');
   injectScript('src/features/data-manager.js');
 });
 
@@ -39,6 +40,68 @@ describe('DataManager backup validation', () => {
     expect(window.DataManager.validateImportData({ version: 1, data: { dangerous: true } }).valid).toBe(false);
     expect(window.DataManager.validateImportData({ version: 1, data: { todos: [{}] } }).valid).toBe(false);
     expect(window.DataManager.validateImportData({ version: 2, data: {} }).valid).toBe(false);
+  });
+
+  it('requires AIStore-compatible AI conversation fields', () => {
+    const validConversation = {
+      id: 'conv-1',
+      title: 'Test conversation',
+      messages: [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi there' },
+        { role: 'system', content: 'Be concise' }
+      ],
+      createdAt: 1700000000000,
+      updatedAt: 1700000001000
+    };
+
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: { ai_conversations: [validConversation] }
+    })).toEqual({ valid: true });
+
+    const invalidConversations = [
+      ['missing id', { ...validConversation, id: undefined }],
+      ['empty id', { ...validConversation, id: '' }],
+      ['invalid id', { ...validConversation, id: 123 }],
+      ['missing title', { ...validConversation, title: undefined }],
+      ['empty title', { ...validConversation, title: '' }],
+      ['whitespace title', { ...validConversation, title: '   ' }],
+      ['invalid title', { ...validConversation, title: 123 }],
+      ['invalid messages collection', { ...validConversation, messages: {} }],
+      ['invalid message role type', {
+        ...validConversation,
+        messages: [{ role: 123, content: 'Hello' }]
+      }],
+      ['unsupported message role', {
+        ...validConversation,
+        messages: [{ role: 'tool', content: 'Hello' }]
+      }],
+      ['invalid message content', {
+        ...validConversation,
+        messages: [{ role: 'user', content: null }]
+      }],
+      ['invalid message id', {
+        ...validConversation,
+        messages: [{ id: 123, role: 'user', content: 'Hello' }]
+      }],
+      ['missing createdAt', { ...validConversation, createdAt: undefined }],
+      ['invalid createdAt', { ...validConversation, createdAt: '1700000000000' }],
+      ['missing updatedAt', { ...validConversation, updatedAt: undefined }],
+      ['invalid updatedAt', { ...validConversation, updatedAt: '1700000001000' }],
+      ['infinite createdAt', { ...validConversation, createdAt: Infinity }],
+      ['negative infinite updatedAt', { ...validConversation, updatedAt: -Infinity }]
+    ];
+
+    invalidConversations.forEach(([caseName, conversation]) => {
+      expect(
+        window.DataManager.validateImportData({
+          version: 1,
+          data: { ai_conversations: [conversation] }
+        }).valid,
+        caseName
+      ).toBe(false);
+    });
   });
 
   it('validates the complete app folder shape', () => {

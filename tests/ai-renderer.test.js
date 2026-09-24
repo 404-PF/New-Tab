@@ -28,6 +28,7 @@ const stubElements = () => {
 
 beforeAll(() => {
   stubElements();
+  injectScript('src/ai/conversation-validator.js');
   injectScript('src/ai/ai-store.js');
   injectScript('src/ai/markdown-parser.js');
   injectScript('src/ai/ai-renderer.js');

@@ -52,6 +52,7 @@ beforeAll(() => {
   injectScript('src/ai/offline-mode.js');
   injectScript('src/ai/openrouter.js');
   injectScript('src/ai/ai-renderer.js');
+  injectScript('src/ai/conversation-validator.js');
   injectScript('src/ai/ai-store.js');
   injectScript('src/ai/ai-service.js');
 });
@@ -120,6 +121,26 @@ describe('OpenRouterAPI.validateInput control character rejection (#422)', () =>
     const longMessage = 'a'.repeat(2001);
     const result = OpenRouterAPI.validateInput(longMessage);
     expect(result.valid).toBe(false);
+  });
+});
+
+describe('AIService message normalization', () => {
+  it('does not persist whitespace-only user messages', async () => {
+    const conversation = {
+      id: 'conv-whitespace',
+      title: 'Whitespace',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    OpenRouterAPI.sendMessageStreaming = vi.fn();
+
+    await AIService.sendMessage(' \t \n ');
+
+    expect(conversation.messages).toEqual([]);
+    expect(OpenRouterAPI.sendMessageStreaming).not.toHaveBeenCalled();
   });
 });
 

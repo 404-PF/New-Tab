@@ -49,23 +49,11 @@ const AIStore = (function() {
     };
   }
 
+  /** Delegates persisted conversation validation to the shared validator. */
   function isValidConversation(conversation) {
-    return Boolean(
-      conversation &&
-      typeof conversation === 'object' &&
-      typeof conversation.id === 'string' &&
-      conversation.id &&
-      typeof conversation.title === 'string' &&
-      Array.isArray(conversation.messages) &&
-      conversation.messages.every(message =>
-        message &&
-        typeof message === 'object' &&
-        typeof message.role === 'string' &&
-        typeof message.content === 'string'
-      ) &&
-      typeof conversation.createdAt === 'number' &&
-      typeof conversation.updatedAt === 'number'
-    );
+    const validator = window.isValidConversation;
+    if (typeof validator !== 'function') return false;
+    return validator(conversation);
   }
 
   function recoverConversations() {
@@ -76,10 +64,16 @@ const AIStore = (function() {
     saveConversationsSafely(previousState);
   }
 
+  /** Loads persisted conversations without recovering when the validator is unavailable. */
   function loadConversations() {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.conversations);
       const conversations = stored ? JSON.parse(stored) : [];
+
+      if (typeof window.isValidConversation !== 'function') {
+        console.warn('AI conversation validator is unavailable; preserving stored conversations');
+        return;
+      }
 
       if (!Array.isArray(conversations) || !conversations.every(isValidConversation)) {
         recoverConversations();
