@@ -119,9 +119,12 @@ describe('AIStore conversation recovery (#458)', () => {
     AIStore.state.conversations = [existingConversation];
     AIStore.state.currentConversationId = existingConversation.id;
 
-    const validator = window.isValidConversation;
+    const validatorDescriptor = Object.getOwnPropertyDescriptor(window, 'isValidConversation');
     try {
-      delete window.isValidConversation;
+      Object.defineProperty(window, 'isValidConversation', {
+        ...validatorDescriptor,
+        value: undefined
+      });
       AIStore.loadConversations();
 
       expect(AIStore.state.conversations).toEqual([existingConversation]);
@@ -130,7 +133,7 @@ describe('AIStore conversation recovery (#458)', () => {
         .toBe(JSON.stringify(storedConversations));
       expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-stored');
     } finally {
-      window.isValidConversation = validator;
+      Object.defineProperty(window, 'isValidConversation', validatorDescriptor);
     }
   });
 
