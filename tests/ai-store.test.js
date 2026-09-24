@@ -119,9 +119,8 @@ describe('AIStore conversation recovery (#458)', () => {
     AIStore.state.conversations = [existingConversation];
     AIStore.state.currentConversationId = existingConversation.id;
 
-    const validator = window.isValidConversation;
     try {
-      window.isValidConversation = undefined;
+      vi.stubGlobal('isValidConversation', null);
       AIStore.loadConversations();
 
       expect(AIStore.state.conversations).toEqual([existingConversation]);
@@ -130,7 +129,7 @@ describe('AIStore conversation recovery (#458)', () => {
         .toBe(JSON.stringify(storedConversations));
       expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-stored');
     } finally {
-      window.isValidConversation = validator;
+      vi.unstubAllGlobals();
     }
   });
 
