@@ -536,6 +536,21 @@ describe('storage bridge', () => {
     expect(localStorage.getItem('language')).toBe('zh');
   });
 
+  it('ignores chrome.storage.sync changes', async () => {
+    await chrome.storage.local.set({ theme: 'light' });
+    expect(localStorage.getItem('theme')).toBe('light');
+
+    chrome.storage.onChanged._emit({
+      theme: {
+        oldValue: undefined,
+        newValue: 'dark'
+      }
+    }, 'sync');
+
+    expect(localStorage.getItem('theme')).toBe('light');
+    await expect(chrome.storage.local.get('theme')).resolves.toEqual({ theme: 'light' });
+  });
+
   it('clears chrome.storage.local when localStorage.clear is called', async () => {
     localStorage.setItem('language', 'zh');
     localStorage.clear();
