@@ -74,6 +74,62 @@ describe('Pomodoro stats recording', () => {
     expect(stats.days[getToday()]).toBeUndefined();
   });
 
+  it('returns false and does not dispatch when persistence fails', () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    const today = getToday();
+    savePomodoroStats({
+      days: { [today]: { sessions: 2, minutes: 50 } },
+      byDateTodos: {}
+    });
+
+    renderPomodoroStats();
+    const todayEl = document.getElementById('pomodoro-stats-today');
+    expect(todayEl.textContent).toBe('2');
+
+    let updated = false;
+    const handler = () => { updated = true; };
+    window.addEventListener('pomodoroStatsUpdated', handler);
+
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+      throw new Error('quota exceeded');
+    });
+    const result = recordPomodoroSession({ minutes: 25 });
+
+    window.removeEventListener('pomodoroStatsUpdated', handler);
+    spy.mockRestore();
+
+    expect(result).toBe(false);
+    expect(loadPomodoroStats().days[today]).toEqual({ sessions: 2, minutes: 50 });
+    expect(todayEl.textContent).toBe('2');
+    expect(updated).toBe(false);
+  });
+
+  it('returns false and leaves rendered data unchanged when clearing fails', () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    const today = getToday();
+    savePomodoroStats({
+      days: { [today]: { sessions: 2, minutes: 50 } },
+      byDateTodos: {}
+    });
+    renderPomodoroStats();
+
+    const todayEl = document.getElementById('pomodoro-stats-today');
+    const heatmap = document.getElementById('pomodoro-stats-heatmap');
+    expect(todayEl.textContent).toBe('2');
+    expect(heatmap.querySelectorAll('.heatmap-cell[data-level="1"]').length).toBeGreaterThan(0);
+
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+      throw new Error('quota exceeded');
+    });
+    const result = clearPomodoroStats();
+    spy.mockRestore();
+
+    expect(result).toBe(false);
+    expect(loadPomodoroStats().days[today]).toEqual({ sessions: 2, minutes: 50 });
+    expect(todayEl.textContent).toBe('2');
+    expect(heatmap.querySelectorAll('.heatmap-cell[data-level="1"]').length).toBeGreaterThan(0);
+  });
+
   it('records byDateTodos attribution when todoId provided', () => {
     localStorage.setItem('pomodoroStatsEnabled', 'true');
     recordPomodoroSession({ minutes: 25, todoId: 'todo-123' });
