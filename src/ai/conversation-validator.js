@@ -2,7 +2,7 @@
 // Keep import and runtime validation in one place so their accepted shape stays aligned.
 
 (function () {
-  const VALID_MESSAGE_ROLES = ['user', 'assistant', 'system'];
+  const VALID_MESSAGE_ROLES = new Set(['user', 'assistant', 'system']);
 
   function isValidConversation(conversation) {
     return Boolean(
@@ -17,7 +17,7 @@
         if (!message || typeof message !== 'object') return false;
         if (
           typeof message.role !== 'string' ||
-          !VALID_MESSAGE_ROLES.includes(message.role) ||
+          !VALID_MESSAGE_ROLES.has(message.role) ||
           typeof message.content !== 'string'
         ) return false;
         return message.id === undefined || message.id === null || typeof message.id === 'string';
