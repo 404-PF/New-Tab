@@ -49,6 +49,7 @@ const AIStore = (function() {
     };
   }
 
+  /** Delegates persisted conversation validation to the shared validator. */
   function isValidConversation(conversation) {
     return typeof window.isValidConversation === 'function' &&
       window.isValidConversation(conversation);
@@ -62,6 +63,7 @@ const AIStore = (function() {
     saveConversationsSafely(previousState);
   }
 
+  /** Loads persisted conversations without recovering when the validator is unavailable. */
   function loadConversations() {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.conversations);
