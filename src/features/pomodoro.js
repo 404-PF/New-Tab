@@ -6,6 +6,7 @@
   const STORAGE_KEY = 'pomodoro';
   const TIMER_STATE_KEY = STORAGE_KEY + '_state';
   const LEASE_DURATION_MS = 5000;
+  const LEADERSHIP_LOCK_NAME = 'pomodoro-leadership';
   function generateTabId() {
     if (typeof crypto.randomUUID === 'function') {
       return 'pomodoro-' + crypto.randomUUID();
@@ -43,7 +44,10 @@
   let _timerInterval = null;
   let _coordinationInterval = null;
   let _isLeader = false;
+  let _leadershipClaimPromise = null;
+  let _warnedAboutLeadershipLocks = false;
   let _isCompletingPhase = false;
+  let _stateEpoch = 0;
 
   function loadSettings() {
     try {
@@ -73,11 +77,10 @@
     }
   }
 
-  function loadTimerState() {
+  function parseTimerState(raw) {
     try {
-      const raw = localStorage.getItem(TIMER_STATE_KEY);
       if (!raw) return null;
-      const parsed = JSON.parse(raw);
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (parsed?.active && typeof parsed.timeRemaining === 'number') {
         if (!parsed.deadline) {
           parsed.deadline = Date.now() + parsed.timeRemaining * 1000;
@@ -85,9 +88,46 @@
         return parsed;
       }
     } catch (error) {
-      console.warn('Failed to load Pomodoro timer state from localStorage:', error);
+      console.warn('Failed to parse Pomodoro timer state:', error);
     }
     return null;
+  }
+
+  function loadTimerState() {
+    try {
+      return parseTimerState(localStorage.getItem(TIMER_STATE_KEY));
+    } catch (error) {
+      console.warn('Failed to load Pomodoro timer state from localStorage:', error);
+      return null;
+    }
+  }
+
+  function loadTimerStateAsync() {
+    const storageArea = globalThis.chrome?.storage?.local;
+    if (!storageArea || typeof storageArea.get !== 'function') {
+      return Promise.resolve(loadTimerState());
+    }
+
+    return new Promise(function (resolve) {
+      let settled = false;
+      const finish = function (items) {
+        if (settled) return;
+        settled = true;
+        const raw = items ? items[TIMER_STATE_KEY] : null;
+        resolve(parseTimerState(raw));
+      };
+
+      try {
+        const maybePromise = storageArea.get(TIMER_STATE_KEY, finish);
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          maybePromise.then(finish).catch(function () {
+            finish(null);
+          });
+        }
+      } catch (_error) {
+        finish(null);
+      }
+    });
   }
 
   function saveTimerState() {
@@ -98,12 +138,75 @@
     }
   }
 
+  function saveTimerStateAsync() {
+    const serialized = JSON.stringify(state);
+    if (typeof localStorage.setItemAsync === 'function') {
+      return localStorage.setItemAsync(TIMER_STATE_KEY, serialized)
+        .then(function (result) {
+          return result !== false;
+        });
+    }
+
+    const storageArea = globalThis.chrome?.storage?.local;
+    if (!storageArea || typeof storageArea.set !== 'function') {
+      try {
+        localStorage.setItem(TIMER_STATE_KEY, serialized);
+        return Promise.resolve(true);
+      } catch (error) {
+        console.warn('Failed to save Pomodoro timer state to localStorage:', error);
+        return Promise.resolve(false);
+      }
+    }
+
+    return new Promise(function (resolve) {
+      let settled = false;
+      const finish = function (success) {
+        if (settled) return;
+        settled = true;
+        try {
+          localStorage.setItem(TIMER_STATE_KEY, serialized);
+        } catch (error) {
+          console.warn('Failed to update Pomodoro timer cache:', error);
+        }
+        resolve(success);
+      };
+
+      try {
+        const maybePromise = storageArea.set({ [TIMER_STATE_KEY]: serialized }, function () {
+          finish(!globalThis.chrome.runtime?.lastError);
+        });
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          maybePromise.then(function () {
+            finish(true);
+          }).catch(function () {
+            finish(false);
+          });
+        }
+      } catch (_error) {
+        finish(false);
+      }
+    });
+  }
+
   function clearTimerState() {
     try {
       localStorage.removeItem(TIMER_STATE_KEY);
     } catch (error) {
       console.warn('Failed to clear Pomodoro timer state from localStorage:', error);
     }
+  }
+
+  function withLeadershipLock(callback) {
+    const locks = typeof navigator !== 'undefined' ? navigator.locks : null;
+    if (!locks || typeof locks.request !== 'function') {
+      if (!_warnedAboutLeadershipLocks) {
+        console.warn('Pomodoro leadership requires the Web Locks API.');
+        _warnedAboutLeadershipLocks = true;
+      }
+      return Promise.resolve().then(callback);
+    }
+
+    return locks.request(LEADERSHIP_LOCK_NAME, callback);
   }
 
   function updateFocusButtons() {
@@ -263,22 +366,41 @@
 
   function tick() {
     if (!state.active || state.paused || !_isLeader) return;
+    const epoch = _stateEpoch;
 
-    if (state.deadline) {
-      state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
-    } else {
-      state.timeRemaining--;
-    }
+    return withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active || state.paused || !_isLeader) return false;
 
-    if (state.timeRemaining <= 0) {
-      completePhase();
-      return;
-    }
+      const persisted = await loadTimerStateAsync();
+      if (epoch !== _stateEpoch || !state.active || state.paused || !_isLeader) return false;
+      if (!persisted?.active || persisted.ownerId !== TAB_ID) {
+        applyTimerState(persisted);
+        return false;
+      }
 
-    state.ownerId = TAB_ID;
-    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-    saveTimerState();
-    updateWidget();
+      state = persisted;
+      if (!state.deadline && state.timeRemaining > 0 && !state.paused) {
+        state.deadline = Date.now() + state.timeRemaining * 1000;
+      }
+
+      if (state.deadline) {
+        state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
+      } else {
+        state.timeRemaining--;
+      }
+
+      if (state.timeRemaining <= 0) {
+        completePhase();
+        await saveTimerStateAsync();
+        return true;
+      }
+
+      state.ownerId = TAB_ID;
+      state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+      await saveTimerStateAsync();
+      updateWidget();
+      return true;
+    });
   }
 
   function getWorkNotificationBody(i18n, todoText) {
@@ -316,14 +438,14 @@
     }
   }
 
-  function advancePhase() {
+  function advancePhase(opts) {
     const nextPhase = getNextPhase();
     state.phase = nextPhase;
     state.timeRemaining = getPhaseDuration(nextPhase);
     state.deadline = Date.now() + state.timeRemaining * 1000;
     state.ownerId = TAB_ID;
     state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-    saveTimerState();
+    if (!opts || opts.persist !== false) saveTimerState();
     updateWidget();
   }
 
@@ -338,7 +460,7 @@
     } else {
       notifyBreakComplete(i18n);
     }
-    advancePhase();
+    advancePhase(opts);
   }
 
   function completePhase(opts) {
@@ -366,30 +488,7 @@
     }
   }
 
-  function startTimer(todoId) {
-    if (!loadSettings().enabled) return;
-
-    stopTimer();
-
-    state.active = true;
-    state.phase = PHASES.WORK;
-    state.todoId = todoId;
-    state.timeRemaining = getPhaseDuration(PHASES.WORK);
-    state.deadline = Date.now() + state.timeRemaining * 1000;
-    state.paused = false;
-    state.pauseReason = null;
-    state.ownerId = TAB_ID;
-    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-    _isLeader = true;
-
-    createTimerWidget();
-    updateWidget();
-    saveTimerState();
-    startCoordinationInterval();
-    startInterval();
-  }
-
-  function stopTimer() {
+  function resetTimerStateLocally() {
     state.active = false;
     state.phase = PHASES.WORK;
     state.todoId = null;
@@ -407,51 +506,143 @@
     updateWidget();
   }
 
-  function togglePause() {
-    if (!state.active) return;
+  function startTimer(todoId) {
+    if (!loadSettings().enabled) return;
 
-    if (state.paused) {
-      if (!claimLeadership(true)) return;
-      state.paused = false;
-      state.pauseReason = null;
-      if (state.timeRemaining > 0) {
-        state.deadline = Date.now() + state.timeRemaining * 1000;
-      }
-      state.ownerId = TAB_ID;
-      state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-      startInterval();
-    } else {
-      state.paused = true;
-      if (state.deadline) {
-        state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
-      }
-      state.deadline = 0;
-      state.pauseReason = 'manual';
-      state.ownerId = null;
-      state.ownerLeaseExpiresAt = 0;
-      _isLeader = false;
-      stopInterval();
-    }
+    const epoch = ++_stateEpoch;
+    resetTimerStateLocally();
 
-    saveTimerState();
+    state.active = true;
+    state.phase = PHASES.WORK;
+    state.todoId = todoId;
+    state.timeRemaining = getPhaseDuration(PHASES.WORK);
+    state.deadline = Date.now() + state.timeRemaining * 1000;
+    state.paused = false;
+    state.pauseReason = null;
+    state.ownerId = TAB_ID;
+    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+    _isLeader = false;
+
+    createTimerWidget();
     updateWidget();
+
+    return withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active || state.todoId !== todoId) return false;
+
+      _isLeader = true;
+      await saveTimerStateAsync();
+      if (epoch !== _stateEpoch || !state.active || state.todoId !== todoId) return false;
+
+      stopCoordinationInterval();
+      startInterval();
+      updateWidget();
+      return true;
+    });
   }
 
-  function skipPhase() {
-    if (!state.active) return;
-    if (!_isLeader && !claimLeadership(true)) return;
-    const wasPaused = state.paused;
-    completePhase({ record: false });
-    if (wasPaused) {
-      state.paused = false;
-      state.pauseReason = null;
-      state.deadline = Date.now() + state.timeRemaining * 1000;
-      state.ownerId = TAB_ID;
-      state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-      saveTimerState();
+  function stopTimer() {
+    const epoch = ++_stateEpoch;
+    resetTimerStateLocally();
+
+    void withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch) return false;
+      await saveTimerStateAsync();
+      return true;
+    });
+  }
+
+  async function togglePause() {
+    if (!state.active) return false;
+    const epoch = _stateEpoch;
+
+    const changed = await withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active) return false;
+      const persisted = await loadTimerStateAsync();
+      if (epoch !== _stateEpoch || !state.active) return false;
+      if (!persisted?.active) {
+        return false;
+      }
+
+      const leaseIsActive = persisted.ownerId && persisted.ownerId !== TAB_ID &&
+        persisted.ownerLeaseExpiresAt > Date.now();
+      if (leaseIsActive) {
+        applyTimerState(persisted);
+        return false;
+      }
+
+      state = persisted;
+      if (state.paused) {
+        state.paused = false;
+        state.pauseReason = null;
+        if (state.timeRemaining > 0) {
+          state.deadline = Date.now() + state.timeRemaining * 1000;
+        }
+        state.ownerId = TAB_ID;
+        state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+        _isLeader = true;
+        stopCoordinationInterval();
+        await saveTimerStateAsync();
+        startInterval();
+      } else {
+        state.paused = true;
+        if (state.deadline) {
+          state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
+        }
+        state.deadline = 0;
+        state.pauseReason = 'manual';
+        state.ownerId = null;
+        state.ownerLeaseExpiresAt = 0;
+        _isLeader = false;
+        stopInterval();
+        await saveTimerStateAsync();
+      }
+
       updateWidget();
-    }
-    startInterval();
+      return true;
+    });
+
+    return changed === true;
+  }
+
+  async function skipPhase() {
+    if (!state.active) return false;
+    const epoch = _stateEpoch;
+
+    const changed = await withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active) return false;
+      const persisted = await loadTimerStateAsync();
+      if (epoch !== _stateEpoch || !state.active) return false;
+      if (!persisted?.active) {
+        return false;
+      }
+
+      const leaseIsActive = persisted.ownerId && persisted.ownerId !== TAB_ID &&
+        persisted.ownerLeaseExpiresAt > Date.now();
+      if (leaseIsActive) {
+        applyTimerState(persisted);
+        return false;
+      }
+
+      const wasPaused = persisted.paused;
+      state = persisted;
+      _isLeader = true;
+      stopCoordinationInterval();
+
+      completePhase({ record: false, persist: false });
+      if (wasPaused) {
+        state.paused = false;
+        state.pauseReason = null;
+        state.deadline = Date.now() + state.timeRemaining * 1000;
+        state.ownerId = TAB_ID;
+        state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+      }
+      await saveTimerStateAsync();
+      updateWidget();
+      startInterval();
+      return true;
+    });
+
+    return changed === true;
   }
 
   function startInterval() {
@@ -523,31 +714,44 @@
   }
 
   function claimLeadership(allowPaused) {
-    const persisted = loadTimerState();
-    if (!persisted?.active || (persisted.paused && !allowPaused)) return false;
+    if (_leadershipClaimPromise) return _leadershipClaimPromise;
+    const epoch = _stateEpoch;
 
-    const leaseIsActive = persisted.ownerId && persisted.ownerId !== TAB_ID &&
-      persisted.ownerLeaseExpiresAt > Date.now();
-    if (leaseIsActive) {
-      applyTimerState(persisted);
-      return false;
-    }
+    _leadershipClaimPromise = withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch) return false;
+      const persisted = await loadTimerStateAsync();
+      if (epoch !== _stateEpoch) return false;
+      if (!persisted?.active || (persisted.paused && !allowPaused)) return false;
 
-    state = persisted;
-    if (!state.deadline && state.timeRemaining > 0 && !state.paused) {
-      state.deadline = Date.now() + state.timeRemaining * 1000;
-    }
-    state.ownerId = TAB_ID;
-    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-    _isLeader = true;
-    if (!(allowPaused && persisted.paused)) saveTimerState();
-    updateWidget();
-    stopCoordinationInterval();
-    startInterval();
-    return true;
+      const leaseIsActive = persisted.ownerId && persisted.ownerId !== TAB_ID &&
+        persisted.ownerLeaseExpiresAt > Date.now();
+      if (leaseIsActive) {
+        applyTimerState(persisted);
+        return false;
+      }
+
+      state = persisted;
+      if (!state.deadline && state.timeRemaining > 0 && !state.paused) {
+        state.deadline = Date.now() + state.timeRemaining * 1000;
+      }
+      state.ownerId = TAB_ID;
+      state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+      _isLeader = true;
+      if (!(allowPaused && persisted.paused)) await saveTimerStateAsync();
+      updateWidget();
+      stopCoordinationInterval();
+      startInterval();
+      return true;
+    }).then(function (result) {
+      return result === true;
+    }).finally(function () {
+      _leadershipClaimPromise = null;
+    });
+
+    return _leadershipClaimPromise;
   }
 
-  function reconcileTimerState() {
+  async function reconcileTimerState() {
     if (_isLeader) return;
     const persisted = loadTimerState();
     if (!persisted) {
@@ -562,7 +766,7 @@
       return;
     }
     if (!_isLeader && persisted.active && !persisted.paused) {
-      claimLeadership();
+      await claimLeadership();
       return;
     }
     applyTimerState(persisted);
@@ -644,19 +848,41 @@
     }
   }
 
-  function resetCurrentPhase() {
-    if (!state.active) return;
-    if (!_isLeader && !claimLeadership(true)) return;
+  async function resetCurrentPhase() {
+    if (!state.active) return false;
+    const epoch = _stateEpoch;
 
-    state.timeRemaining = getPhaseDuration(state.phase);
-    state.deadline = Date.now() + state.timeRemaining * 1000;
-    state.paused = false;
-    state.pauseReason = null;
-    state.ownerId = TAB_ID;
-    state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-    saveTimerState();
-    updateWidget();
-    startInterval();
+    const changed = await withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active) return false;
+      const persisted = await loadTimerStateAsync();
+      if (epoch !== _stateEpoch || !state.active) return false;
+      if (!persisted?.active) {
+        return false;
+      }
+
+      const leaseIsActive = persisted.ownerId && persisted.ownerId !== TAB_ID &&
+        persisted.ownerLeaseExpiresAt > Date.now();
+      if (leaseIsActive) {
+        applyTimerState(persisted);
+        return false;
+      }
+
+      state = persisted;
+      _isLeader = true;
+      stopCoordinationInterval();
+      state.timeRemaining = getPhaseDuration(state.phase);
+      state.deadline = Date.now() + state.timeRemaining * 1000;
+      state.paused = false;
+      state.pauseReason = null;
+      state.ownerId = TAB_ID;
+      state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+      await saveTimerStateAsync();
+      updateWidget();
+      startInterval();
+      return true;
+    });
+
+    return changed === true;
   }
 
   function initPomodoro() {
@@ -675,29 +901,42 @@
 
     document.addEventListener('visibilitychange', function () {
       if (!state.active || !_isLeader) return;
+      const epoch = _stateEpoch;
 
-      if (document.hidden && !state.paused) {
-        if (state.deadline) {
-          state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
+      void withLeadershipLock(async function () {
+        if (epoch !== _stateEpoch || !state.active || !_isLeader) return false;
+        const persisted = await loadTimerStateAsync();
+        if (epoch !== _stateEpoch || !state.active || !_isLeader) return false;
+        if (!persisted?.active || persisted.ownerId !== TAB_ID) {
+          applyTimerState(persisted);
+          return false;
         }
-        state.deadline = 0;
-        state.paused = true;
-        state.pauseReason = 'visibility';
-        state.ownerId = TAB_ID;
-        state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-        stopInterval();
-        saveTimerState();
-        updateWidget();
-      } else if (!document.hidden && state.paused && state.pauseReason === 'visibility') {
-        state.paused = false;
-        state.pauseReason = null;
-        state.deadline = Date.now() + state.timeRemaining * 1000;
-        state.ownerId = TAB_ID;
-        state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
-        saveTimerState();
-        updateWidget();
-        startInterval();
-      }
+
+        state = persisted;
+        if (document.hidden && !state.paused) {
+          if (state.deadline) {
+            state.timeRemaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
+          }
+          state.deadline = 0;
+          state.paused = true;
+          state.pauseReason = 'visibility';
+          state.ownerId = TAB_ID;
+          state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+          stopInterval();
+          await saveTimerStateAsync();
+          updateWidget();
+        } else if (!document.hidden && state.paused && state.pauseReason === 'visibility') {
+          state.paused = false;
+          state.pauseReason = null;
+          state.deadline = Date.now() + state.timeRemaining * 1000;
+          state.ownerId = TAB_ID;
+          state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
+          await saveTimerStateAsync();
+          updateWidget();
+          startInterval();
+        }
+        return true;
+      });
     });
 
     document.addEventListener('click', handleTodoClick);
@@ -726,10 +965,17 @@
     if (state.active) {
       const newDuration = getPhaseDuration(state.phase);
       if (newDuration !== previousDuration) {
+        const epoch = ++_stateEpoch;
         state.timeRemaining = newDuration;
         state.deadline = Date.now() + newDuration * 1000;
         saveTimerState();
         updateWidget();
+
+        void withLeadershipLock(async function () {
+          if (epoch !== _stateEpoch || !state.active) return false;
+          await saveTimerStateAsync();
+          return true;
+        });
       }
     }
   }
