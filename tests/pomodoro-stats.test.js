@@ -116,7 +116,7 @@ describe('Pomodoro stats recording', () => {
     const todayEl = document.getElementById('pomodoro-stats-today');
     const heatmap = document.getElementById('pomodoro-stats-heatmap');
     expect(todayEl.textContent).toBe('2');
-    expect(heatmap.querySelectorAll('.heatmap-cell[data-level="1"]').length).toBeGreaterThan(0);
+    const heatmapBefore = heatmap.innerHTML;
 
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
       throw new Error('quota exceeded');
@@ -127,7 +127,7 @@ describe('Pomodoro stats recording', () => {
     expect(result).toBe(false);
     expect(loadPomodoroStats().days[today]).toEqual({ sessions: 2, minutes: 50 });
     expect(todayEl.textContent).toBe('2');
-    expect(heatmap.querySelectorAll('.heatmap-cell[data-level="1"]').length).toBeGreaterThan(0);
+    expect(heatmap.innerHTML).toBe(heatmapBefore);
   });
 
   it('records byDateTodos attribution when todoId provided', () => {
