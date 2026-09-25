@@ -42,17 +42,26 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Run OpenCode triage
-        uses: anomalyco/opencode/github@545f51d26cc39a907d2867492d498d9607ea5fa4 # v1.18.32
+      - name: Install OpenCode
         env:
+          OPENCODE_VERSION: 2.0.7
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/ca27d3328fcd0d470588149c902a963452f1abaf/install |
+            bash -s -- --version "$OPENCODE_VERSION" --no-modify-path
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+
+      - name: Run OpenCode triage
+        env:
+          TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENCODE_CONFIG_CONTENT: >-
             {"permission":{"*":"deny","read":"allow","glob":"allow","grep":"allow","list":"allow"}}
-        with:
-          model: opencode/mimo-v2.6-flash-free
-          use_github_token: true
-          prompt: |
+          MODEL: opencode/mimo-v2.6-flash-free
+          USE_GITHUB_TOKEN: true
+          SHARE: false
+          PROMPT: |
             You are an automated GitHub issue triage agent.
 
             Triage issue #${{ github.event.issue.number }} in ${{ github.repository }}.
@@ -125,6 +134,7 @@ jobs:
 
             Do not include a JSON code block, commands, or instructions to change
             labels.
+        run: opencode github run
 
       - name: Apply validated priority label
         env:
