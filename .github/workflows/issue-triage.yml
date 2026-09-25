@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
   issues: write
 
 concurrency:
@@ -46,11 +45,13 @@ jobs:
       - name: Run OpenCode triage
         uses: anomalyco/opencode/github@545f51d26cc39a907d2867492d498d9607ea5fa4 # v1.18.32
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENCODE_CONFIG_CONTENT: >-
             {"permission":{"*":"deny","read":"allow","glob":"allow","grep":"allow","list":"allow"}}
         with:
           model: opencode/mimo-v2.6-flash-free
+          use_github_token: true
           prompt: |
             You are an automated GitHub issue triage agent.
 
@@ -137,7 +138,7 @@ jobs:
             gh issue view "$ISSUE_NUMBER"               --repo "$GH_REPO"               --json comments               --jq '
                 [
                   .comments[]
-                  | select(.author.login == "opencode-agent[bot]")
+                  | select(.author.login == "github-actions[bot]")
                 ]
                 | last
                 | .body // ""
@@ -146,8 +147,12 @@ jobs:
 
           priority="$(
             printf '%s\n' "$triage_comment" |
-              sed -nE 's/^\*\*Priority:\*\* `(p1|p2|p3)`$/\1/p' |
-              head -n 1
+              sed -E ':a;N;$!ba;s/\*\*Priority:\*\*[[:space:]]*\n[[:space:]]*/**Priority:** /' |
+              sed -nE '/^[[:space:]]*\*\*Priority:\*\*[[:space:]]*(\*\*)?`?(p1|p2|p3)`?(\*\*)?[[:space:].]*$/{
+                s//\2/
+                p
+                q
+              }'
           )"
 
           case "$priority" in
