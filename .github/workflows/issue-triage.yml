@@ -144,13 +144,14 @@ Do not include a JSON code block, commands, or instructions to change labels.
 PROMPT
 
       - name: Run OpenCode triage
+        id: post-triage-comment
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENCODE_CONFIG_CONTENT: >-
-            {"permission":{"*":"deny","read":"allow","glob":"allow","grep":"allow","list":"allow"}}
+            {"permissions":[{"action":"*","resource":"*","effect":"deny"},{"action":"read","resource":"*","effect":"allow"},{"action":"glob","resource":"*","effect":"allow"},{"action":"grep","resource":"*","effect":"allow"}]}
           MODEL: opencode/mimo-v2.6-flash-free
         run: |
           set -euo pipefail
@@ -164,27 +165,30 @@ PROMPT
             exit 1
           fi
 
-          printf '%s\n' "$triage_comment" |
-            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body-file -
+          triage_comment_id="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER/comments" --method POST --field body="$triage_comment" --jq '.id')"
+
+          if [ -z "$triage_comment_id" ]; then
+            echo "::error::GitHub did not return the created triage comment ID."
+            exit 1
+          fi
+
+          echo "comment_id=$triage_comment_id" >> "$GITHUB_OUTPUT"
 
       - name: Apply validated priority label
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
+          TRIAGE_COMMENT_ID: ${{ steps.post-triage-comment.outputs.comment_id }}
         run: |
           set -euo pipefail
 
-          triage_comment="$(
-            gh issue view "$ISSUE_NUMBER"               --repo "$GH_REPO"               --json comments               --jq '
-                [
-                  .comments[]
-                  | select(.author.login == "github-actions[bot]")
-                ]
-                | last
-                | .body // ""
-              '
-          )"
+          if [ -z "$TRIAGE_COMMENT_ID" ]; then
+            echo "::error::Missing triage comment ID from the OpenCode triage step."
+            exit 1
+          fi
+
+          triage_comment="$(gh api "repos/$GH_REPO/issues/comments/$TRIAGE_COMMENT_ID" --jq '.body')"
 
           priority="$(
             printf '%s\n' "$triage_comment" |
