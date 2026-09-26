@@ -153,7 +153,7 @@ PROMPT
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENCODE_CONFIG_CONTENT: >-
             {"permissions":[{"action":"*","resource":"*","effect":"deny"},{"action":"read","resource":"*","effect":"allow"},{"action":"glob","resource":"*","effect":"allow"},{"action":"grep","resource":"*","effect":"allow"}]}
-          MODEL: opencode/mimo-v2.6-flash-free
+          MODEL: opencode/gemini-3.8-flash
         run: |
           set -euo pipefail
 
@@ -166,7 +166,7 @@ PROMPT
             exit 1
           fi
 
-          triage_comment_id="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER/comments" --method POST --field body="$triage_comment" --jq '.id')"
+          triage_comment_id="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER/comments" --method POST --raw-field body="$triage_comment" --jq '.id')"
 
           if [ -z "$triage_comment_id" ]; then
             echo "::error::GitHub did not return the created triage comment ID."
