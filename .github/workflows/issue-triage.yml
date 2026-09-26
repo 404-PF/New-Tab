@@ -152,8 +152,55 @@ PROMPT
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENCODE_CONFIG_CONTENT: >-
-            {"permissions":[{"action":"*","resource":"*","effect":"deny"},{"action":"read","resource":"*","effect":"allow"},{"action":"glob","resource":"*","effect":"allow"},{"action":"grep","resource":"*","effect":"allow"}]}
-          MODEL: opencode/gemini-3.8-flash
+            {"permissions":[
+              {"action":"read","resource":"*","effect":"deny"},
+              {"action":"read","resource":"*.js","effect":"allow"},
+              {"action":"read","resource":"*.html","effect":"allow"},
+              {"action":"read","resource":"*.css","effect":"allow"},
+              {"action":"read","resource":"*.json","effect":"allow"},
+              {"action":"read","resource":"*.md","effect":"allow"},
+              {"action":"read","resource":"*.yml","effect":"allow"},
+              {"action":"read","resource":"*.yaml","effect":"allow"},
+              {"action":"read","resource":"*.txt","effect":"allow"},
+              {"action":"read","resource":"*.xml","effect":"allow"},
+              {"action":"read","resource":"*.svg","effect":"allow"},
+              {"action":"read","resource":"LICENSE","effect":"allow"},
+              {"action":"read","resource":".gitignore","effect":"allow"},
+              {"action":"read","resource":".nvmrc","effect":"allow"},
+              {"action":"read","resource":"*.env","effect":"deny"},
+              {"action":"read","resource":"*.env.*","effect":"deny"},
+              {"action":"read","resource":"*.pem","effect":"deny"},
+              {"action":"read","resource":"*.key","effect":"deny"},
+              {"action":"read","resource":"*.p12","effect":"deny"},
+              {"action":"read","resource":"*.pfx","effect":"deny"},
+              {"action":"read","resource":"*.crt","effect":"deny"},
+              {"action":"read","resource":"*.cer","effect":"deny"},
+              {"action":"read","resource":"*.der","effect":"deny"},
+              {"action":"read","resource":".npmrc","effect":"deny"},
+              {"action":"read","resource":".pypirc","effect":"deny"},
+              {"action":"read","resource":".netrc","effect":"deny"},
+              {"action":"read","resource":"**/*secret*","effect":"deny"},
+              {"action":"read","resource":"**/*credential*","effect":"deny"},
+              {"action":"read","resource":"**/secrets/**","effect":"deny"},
+              {"action":"read","resource":"**/credentials/**","effect":"deny"},
+              {"action":"glob","resource":"*","effect":"deny"},
+              {"action":"glob","resource":"**/*.js","effect":"allow"},
+              {"action":"glob","resource":"**/*.html","effect":"allow"},
+              {"action":"glob","resource":"**/*.css","effect":"allow"},
+              {"action":"glob","resource":"**/*.json","effect":"allow"},
+              {"action":"glob","resource":"**/*.md","effect":"allow"},
+              {"action":"glob","resource":"**/*.yml","effect":"allow"},
+              {"action":"glob","resource":"**/*.yaml","effect":"allow"},
+              {"action":"glob","resource":"**/*.txt","effect":"allow"},
+              {"action":"glob","resource":"**/*.xml","effect":"allow"},
+              {"action":"glob","resource":"**/*.svg","effect":"allow"},
+              {"action":"glob","resource":"**/*secret*","effect":"deny"},
+              {"action":"glob","resource":"**/*credential*","effect":"deny"},
+              {"action":"glob","resource":"**/secrets/**","effect":"deny"},
+              {"action":"glob","resource":"**/credentials/**","effect":"deny"},
+              {"action":"grep","resource":"*","effect":"deny"}
+            ]}
+          MODEL: opencode/mimo-v2.6-flash-free
         run: |
           set -euo pipefail
 
