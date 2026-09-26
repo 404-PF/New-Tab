@@ -56,6 +56,15 @@ jobs:
           printf '%s  %s\n' "$OPENCODE_INSTALLER_SHA256" "$installer_path" | sha256sum --check --strict
 
           bash "$installer_path" --version "$OPENCODE_VERSION" --no-modify-path
+
+          installed_version="$("$HOME/.opencode/bin/opencode" --version 2>/dev/null || true)"
+          installed_version="${installed_version##* }"
+          installed_version="${installed_version#v}"
+          if [ "$installed_version" != "$OPENCODE_VERSION" ]; then
+            echo "::error::Installed OpenCode version '$installed_version' does not match expected '$OPENCODE_VERSION'."
+            exit 1
+          fi
+
           rm -f "$installer_path"
           echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
 
