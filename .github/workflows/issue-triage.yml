@@ -81,6 +81,7 @@ SECURITY AND SCOPE
 - Do not create branches or pull requests.
 - Do not close, reopen, label, or otherwise mutate the issue.
 - Your response will be posted automatically as an issue comment, and a separate deterministic workflow step parses only the Priority line and applies exactly one of p1, p2, or p3.
+- This workflow triages priority only. Existing non-priority labels are preserved and are not changed by OpenCode.
 
 PRIORITY LABELS
 
@@ -134,7 +135,7 @@ Return exactly this Markdown structure:
 
 **Summary:** ...
 
-**Labels:** existing labels preserved
+**Labels:** existing non-priority labels preserved; priority is determined by the Priority field above
 
 **Rationale:** ...
 
@@ -190,15 +191,20 @@ PROMPT
 
           triage_comment="$(gh api "repos/$GH_REPO/issues/comments/$TRIAGE_COMMENT_ID" --jq '.body')"
 
-          priority="$(
+          priority_matches="$(
             printf '%s\n' "$triage_comment" |
               sed -E ':a;N;$!ba;s/\*\*Priority:\*\*[[:space:]]*\n[[:space:]]*/**Priority:** /' |
-              sed -nE '/^[[:space:]]*\*\*Priority:\*\*[[:space:]]*(\*\*)?`?(p1|p2|p3)`?(\*\*)?[[:space:].]*$/{
-                s//\2/
-                p
-                q
-              }'
-          )"
+              sed -nE 's/^[[:space:]]*\*\*Priority:\*\*[[:space:]]*(\*\*)?`?(p1|p2|p3)`?(\*\*)?[[:space:].]*$/\2/p'
+          )
+
+          priority_count="$(printf '%s\n' "$priority_matches" | awk 'NF { count++ } END { print count + 0 }')"
+
+          if [ "$priority_count" -ne 1 ]; then
+            echo "::error::OpenCode must return exactly one unambiguous priority decision (p1, p2, or p3); found $priority_count."
+            exit 1
+          fi
+
+          priority="$priority_matches"
 
           case "$priority" in
             p1|p2|p3)
