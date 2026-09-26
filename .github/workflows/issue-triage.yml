@@ -45,10 +45,18 @@ jobs:
       - name: Install OpenCode
         env:
           OPENCODE_VERSION: 2.0.7
+          OPENCODE_INSTALLER_SHA256: bc70dd317fd12ef09350cdb1667e55e19f9e7b3d2897d3a1b750b165ae579d87
         run: |
           set -euo pipefail
-          curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/ca27d3328fcd0d470588149c902a963452f1abaf/install |
-            bash -s -- --version "$OPENCODE_VERSION" --no-modify-path
+
+          installer_url="https://raw.githubusercontent.com/anomalyco/opencode/ca27d3328fcd0d470588149c902a963452f1abaf/install"
+          installer_path="$RUNNER_TEMP/opencode-install"
+
+          curl --proto '=https' --proto-redir '=https' -fsSL "$installer_url" -o "$installer_path"
+          printf '%s  %s\n' "$OPENCODE_INSTALLER_SHA256" "$installer_path" | sha256sum --check --strict
+
+          bash "$installer_path" --version "$OPENCODE_VERSION" --no-modify-path
+          rm -f "$installer_path"
           echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
 
       - name: Run OpenCode triage
