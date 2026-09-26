@@ -156,7 +156,7 @@ PROMPT
           set -euo pipefail
 
           triage_comment="$(
-            docker run --rm               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/tmp/opencode-prompt.md,readonly"               --workdir /workspace               --env OPENCODE_API_KEY               --env OPENCODE_CONFIG_CONTENT               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run -m "$MODEL" "$(cat /tmp/opencode-prompt.md)"
+            docker run --rm               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/tmp/opencode-prompt.md,readonly"               --workdir /workspace               --env OPENCODE_API_KEY               --env OPENCODE_CONFIG_CONTENT               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run -m "$MODEL" "$(cat "$RUNNER_TEMP/opencode-prompt.md")"
           )"
 
           if [ -z "$triage_comment" ]; then
