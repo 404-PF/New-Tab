@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          issue_context="$(
+          issue_context="$( 
             gh issue view "$ISSUE_NUMBER"               --repo "$GH_REPO"               --json title,body,author,createdAt,comments               --jq '
                 [
                   "<issue>",
@@ -153,6 +153,7 @@ PROMPT
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENCODE_CONFIG_CONTENT: >-
             {"permissions":[
+              {"action":"*","resource":"*","effect":"deny"},
               {"action":"read","resource":"*","effect":"deny"},
               {"action":"read","resource":"**/*.js","effect":"allow"},
               {"action":"read","resource":"**/*.html","effect":"allow"},
@@ -216,7 +217,7 @@ PROMPT
         run: |
           set -euo pipefail
 
-          triage_comment="$(
+          triage_comment="$( 
             docker run --rm               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/tmp/opencode-prompt.md,readonly"               --workdir /workspace               --env OPENCODE_API_KEY               --env OPENCODE_CONFIG_CONTENT               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run -m "$MODEL" "$(cat "$RUNNER_TEMP/opencode-prompt.md")"
           )"
 
@@ -250,11 +251,11 @@ PROMPT
 
           triage_comment="$(gh api "repos/$GH_REPO/issues/comments/$TRIAGE_COMMENT_ID" --jq '.body')"
 
-          priority_matches="$(
+          priority_matches="$( 
             printf '%s\n' "$triage_comment" |
               sed -E ':a;N;$!ba;s/\*\*Priority:\*\*[[:space:]]*\n[[:space:]]*/**Priority:** /' |
               sed -nE 's/^[[:space:]]*\*\*Priority:\*\*[[:space:]]*(\*\*)?`?(p1|p2|p3)`?(\*\*)?[[:space:].]*$/\2/p'
-          )
+          )"
 
           priority_count="$(printf '%s\n' "$priority_matches" | awk 'NF { count++ } END { print count + 0 }')"
 
@@ -274,7 +275,7 @@ PROMPT
               ;;
           esac
 
-          current_priorities="$(
+          current_priorities="$( 
             gh issue view "$ISSUE_NUMBER"               --repo "$GH_REPO"               --json labels               --jq '
                 .labels[].name
                 | select(. == "p1" or . == "p2" or . == "p3")
@@ -298,7 +299,7 @@ PROMPT
         run: |
           set -euo pipefail
 
-          priority_count="$(
+          priority_count="$( 
             gh issue view "$ISSUE_NUMBER"               --repo "$GH_REPO"               --json labels               --jq '
                 [
                   .labels[].name
@@ -313,7 +314,7 @@ PROMPT
             exit 1
           fi
 
-          priority="$(
+          priority="$( 
             gh issue view "$ISSUE_NUMBER"               --repo "$GH_REPO"               --json labels               --jq '
                 .labels[].name
                 | select(. == "p1" or . == "p2" or . == "p3")
