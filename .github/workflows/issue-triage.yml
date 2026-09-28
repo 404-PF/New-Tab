@@ -39,13 +39,17 @@ jobs:
           fi
 
           issue_number="$(
-            gh issue list               --repo "$GH_REPO"               --state open               --limit 1000               --json number,createdAt,labels               --jq '
-                map(select(
-                  ([.labels[].name]
-                    | map(select(. == "p1" or . == "p2" or . == "p3"))
-                    | length) == 0
-                ))
-                | sort_by(.createdAt)
+            gh api --paginate --slurp \
+              "repos/$GH_REPO/issues?state=open&per_page=100" \
+              --jq '
+                add
+                | map(select(.pull_request == null))
+                | map(select(
+                    ([.labels[].name]
+                      | map(select(. == "p1" or . == "p2" or . == "p3"))
+                      | length) == 0
+                  ))
+                | sort_by(.created_at)
                 | .[0].number // empty
               '
           )"
