@@ -9,7 +9,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: issue-triage-${{ github.event.issue.number }}
+  group: issue-triage-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
