@@ -3,11 +3,16 @@ name: Issue Triage
 on:
   issues:
     types: [opened]
+  schedule:
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: read
   issues: write
 
+# GitHub concurrency keeps issue bursts from starting many model runners.
+# Because a concurrency group retains only one pending run, the scheduled
+# fallback below drains any open issues that were skipped from a burst.
 concurrency:
   group: issue-triage-${{ github.repository }}
   cancel-in-progress: false
@@ -18,7 +23,44 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Select issue to triage
+        id: select-issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ISSUE_NUMBER: ${{ steps.select-issue.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "issues" ]; then
+            printf 'issue_number=%s\n' "$EVENT_ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          issue_number="$(
+            gh issue list               --repo "$GH_REPO"               --state open               --limit 1000               --json number,createdAt,labels               --jq '
+                map(select(
+                  ([.labels[].name]
+                    | map(select(. == "p1" or . == "p2" or . == "p3"))
+                    | length) == 0
+                ))
+                | sort_by(.createdAt)
+                | .[0].number // empty
+              '
+          )"
+
+          if [ -z "$issue_number" ]; then
+            echo "No open issues are missing p1/p2/p3; nothing to triage."
+            printf 'issue_number=\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Selected open issue #$issue_number for scheduled fallback triage."
+          printf 'issue_number=%s\n' "$issue_number" >> "$GITHUB_OUTPUT"
+
       - name: Verify required priority labels exist
+        if: steps.select-issue.outputs.issue_number != ''
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -37,16 +79,18 @@ jobs:
           echo "Required priority labels p1, p2 and p3 exist."
 
       - name: Checkout repository
+        if: steps.select-issue.outputs.issue_number != ''
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 1
           persist-credentials: false
 
       - name: Prepare OpenCode triage prompt
+        if: steps.select-issue.outputs.issue_number != ''
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ steps.select-issue.outputs.issue_number }}
         run: |
           set -euo pipefail
 
@@ -145,11 +189,12 @@ Do not include a JSON code block, commands, or instructions to change labels.
 PROMPT
 
       - name: Run OpenCode triage
+        if: steps.select-issue.outputs.issue_number != ''
         id: post-triage-comment
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ steps.select-issue.outputs.issue_number }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENCODE_CONFIG_CONTENT: >-
             {"permissions":[
@@ -236,10 +281,11 @@ PROMPT
           echo "comment_id=$triage_comment_id" >> "$GITHUB_OUTPUT"
 
       - name: Apply validated priority label
+        if: steps.select-issue.outputs.issue_number != ''
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ steps.select-issue.outputs.issue_number }}
           TRIAGE_COMMENT_ID: ${{ steps.post-triage-comment.outputs.comment_id }}
         run: |
           set -euo pipefail
@@ -292,10 +338,11 @@ PROMPT
           echo "Applied validated priority label $priority to issue #$ISSUE_NUMBER."
 
       - name: Verify final priority label state
+        if: steps.select-issue.outputs.issue_number != ''
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ steps.select-issue.outputs.issue_number }}
         run: |
           set -euo pipefail
 
