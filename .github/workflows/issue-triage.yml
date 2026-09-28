@@ -29,7 +29,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
-          EVENT_ISSUE_NUMBER: ${{ steps.select-issue.outputs.issue_number }}
+          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -euo pipefail
 
