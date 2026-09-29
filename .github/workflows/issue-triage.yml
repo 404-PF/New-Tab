@@ -260,8 +260,23 @@ PROMPT
               {"action":"glob","resource":"**/*credential*","effect":"deny"},
               {"action":"glob","resource":"**/secrets/**","effect":"deny"},
               {"action":"glob","resource":"**/credentials/**","effect":"deny"},
-              {"action":"grep","resource":"*","effect":"deny"},
-              {"action":"grep","resource":"*","effect":"allow"}
+              {"action":"grep","resource":"*","effect":"allow"},
+              {"action":"grep","resource":"**/*.env","effect":"deny"},
+              {"action":"grep","resource":"**/*.env.*","effect":"deny"},
+              {"action":"grep","resource":"**/*.pem","effect":"deny"},
+              {"action":"grep","resource":"**/*.key","effect":"deny"},
+              {"action":"grep","resource":"**/*.p12","effect":"deny"},
+              {"action":"grep","resource":"**/*.pfx","effect":"deny"},
+              {"action":"grep","resource":"**/*.crt","effect":"deny"},
+              {"action":"grep","resource":"**/*.cer","effect":"deny"},
+              {"action":"grep","resource":"**/*.der","effect":"deny"},
+              {"action":"grep","resource":"**/.npmrc","effect":"deny"},
+              {"action":"grep","resource":"**/.pypirc","effect":"deny"},
+              {"action":"grep","resource":"**/.netrc","effect":"deny"},
+              {"action":"grep","resource":"**/*secret*","effect":"deny"},
+              {"action":"grep","resource":"**/*credential*","effect":"deny"},
+              {"action":"grep","resource":"**/secrets/**","effect":"deny"},
+              {"action":"grep","resource":"**/credentials/**","effect":"deny"}
             ]}
           # Operational dependency: the free MiMo model is intentionally used here.
           # Its availability is an accepted dependency; a failed run is retried by the
