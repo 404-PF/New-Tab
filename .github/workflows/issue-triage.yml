@@ -42,8 +42,7 @@ jobs:
             gh api --paginate --slurp \
               "repos/$GH_REPO/issues?state=open&per_page=100" \
               --jq '
-                add
-                | map(select(.pull_request == null))
+                map(select(.pull_request == null))
                 | map(select(
                     ([.labels[].name]
                       | map(select(. == "p1" or . == "p2" or . == "p3"))
