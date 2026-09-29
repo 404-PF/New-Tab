@@ -192,6 +192,92 @@ Return exactly this Markdown structure:
 Do not include a JSON code block, commands, or instructions to change labels.
 PROMPT
 
+      - name: Prepare OpenCode security config
+        if: steps.select-issue.outputs.issue_number != ''
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$RUNNER_TEMP/opencode-config"
+
+          cat > "$RUNNER_TEMP/opencode-config/opencode.json" <<'CONFIG'
+{"permissions":[
+  {"action":"*","resource":"*","effect":"deny"},
+  {"action":"read","resource":"*","effect":"deny"},
+  {"action":"read","resource":"**/*.js","effect":"allow"},
+  {"action":"read","resource":"**/*.html","effect":"allow"},
+  {"action":"read","resource":"**/*.css","effect":"allow"},
+  {"action":"read","resource":"**/*.json","effect":"allow"},
+  {"action":"read","resource":"**/*.md","effect":"allow"},
+  {"action":"read","resource":"**/*.yml","effect":"allow"},
+  {"action":"read","resource":"**/*.yaml","effect":"allow"},
+  {"action":"read","resource":"**/*.txt","effect":"allow"},
+  {"action":"read","resource":"**/*.xml","effect":"allow"},
+  {"action":"read","resource":"**/*.svg","effect":"allow"},
+  {"action":"read","resource":"LICENSE","effect":"allow"},
+  {"action":"read","resource":".gitignore","effect":"allow"},
+  {"action":"read","resource":".nvmrc","effect":"allow"},
+  {"action":"read","resource":"**/*.env","effect":"deny"},
+  {"action":"read","resource":"**/*.env.*","effect":"deny"},
+  {"action":"read","resource":"**/*.pem","effect":"deny"},
+  {"action":"read","resource":"**/*.key","effect":"deny"},
+  {"action":"read","resource":"**/*.p12","effect":"deny"},
+  {"action":"read","resource":"**/*.pfx","effect":"deny"},
+  {"action":"read","resource":"**/*.crt","effect":"deny"},
+  {"action":"read","resource":"**/*.cer","effect":"deny"},
+  {"action":"read","resource":"**/*.der","effect":"deny"},
+  {"action":"read","resource":"**/.npmrc","effect":"deny"},
+  {"action":"read","resource":"**/.pypirc","effect":"deny"},
+  {"action":"read","resource":"**/.netrc","effect":"deny"},
+  {"action":"read","resource":"**/*secret*","effect":"deny"},
+  {"action":"read","resource":"**/*credential*","effect":"deny"},
+  {"action":"read","resource":"**/secrets/**","effect":"deny"},
+  {"action":"read","resource":"**/credentials/**","effect":"deny"},
+  {"action":"glob","resource":"*","effect":"deny"},
+  {"action":"glob","resource":"**/*.js","effect":"allow"},
+  {"action":"glob","resource":"**/*.html","effect":"allow"},
+  {"action":"glob","resource":"**/*.css","effect":"allow"},
+  {"action":"glob","resource":"**/*.json","effect":"allow"},
+  {"action":"glob","resource":"**/*.md","effect":"allow"},
+  {"action":"glob","resource":"**/*.yml","effect":"allow"},
+  {"action":"glob","resource":"**/*.yaml","effect":"allow"},
+  {"action":"glob","resource":"**/*.txt","effect":"allow"},
+  {"action":"glob","resource":"**/*.xml","effect":"allow"},
+  {"action":"glob","resource":"**/*.svg","effect":"allow"},
+  {"action":"glob","resource":"**/*.env","effect":"deny"},
+  {"action":"glob","resource":"**/*.env.*","effect":"deny"},
+  {"action":"glob","resource":"**/*.pem","effect":"deny"},
+  {"action":"glob","resource":"**/*.key","effect":"deny"},
+  {"action":"glob","resource":"**/*.p12","effect":"deny"},
+  {"action":"glob","resource":"**/*.pfx","effect":"deny"},
+  {"action":"glob","resource":"**/*.crt","effect":"deny"},
+  {"action":"glob","resource":"**/*.cer","effect":"deny"},
+  {"action":"glob","resource":"**/*.der","effect":"deny"},
+  {"action":"glob","resource":"**/.npmrc","effect":"deny"},
+  {"action":"glob","resource":"**/.pypirc","effect":"deny"},
+  {"action":"glob","resource":"**/.netrc","effect":"deny"},
+  {"action":"glob","resource":"**/*secret*","effect":"deny"},
+  {"action":"glob","resource":"**/*credential*","effect":"deny"},
+  {"action":"glob","resource":"**/secrets/**","effect":"deny"},
+  {"action":"glob","resource":"**/credentials/**","effect":"deny"}
+]}
+CONFIG
+
+      - name: Verify OpenCode security config
+        if: steps.select-issue.outputs.issue_number != ''
+        run: |
+          set -euo pipefail
+
+          docker run --rm             --user 0:0             --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"             --entrypoint opencode             ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05             debug config > "$RUNNER_TEMP/opencode-debug-config.json"
+
+          jq -e '
+            ([.permissions[] | select(.action == "*" and .resource == "*" and .effect == "deny")] | length) == 1
+            and ([.permissions[] | select(.action == "grep")] | length) == 0
+            and ([.permissions[] | select(.action == "read" and .resource == "**/*.env" and .effect == "deny")] | length) == 1
+            and ([.permissions[] | select(.action == "glob" and .resource == "**/*.env" and .effect == "deny")] | length) == 1
+          ' "$RUNNER_TEMP/opencode-debug-config.json" >/dev/null
+
+          echo "OpenCode v2.0.7 loaded the deny-all policy, without grep access, and with sensitive-file read/glob denies."
+
       - name: Run OpenCode triage
         if: steps.select-issue.outputs.issue_number != ''
         id: post-triage-comment
@@ -200,85 +286,8 @@ PROMPT
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ steps.select-issue.outputs.issue_number }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          OPENCODE_CONFIG_CONTENT: >-
-            {"permissions":[
-              {"action":"*","resource":"*","effect":"deny"},
-              {"action":"read","resource":"*","effect":"deny"},
-              {"action":"read","resource":"**/*.js","effect":"allow"},
-              {"action":"read","resource":"**/*.html","effect":"allow"},
-              {"action":"read","resource":"**/*.css","effect":"allow"},
-              {"action":"read","resource":"**/*.json","effect":"allow"},
-              {"action":"read","resource":"**/*.md","effect":"allow"},
-              {"action":"read","resource":"**/*.yml","effect":"allow"},
-              {"action":"read","resource":"**/*.yaml","effect":"allow"},
-              {"action":"read","resource":"**/*.txt","effect":"allow"},
-              {"action":"read","resource":"**/*.xml","effect":"allow"},
-              {"action":"read","resource":"**/*.svg","effect":"allow"},
-              {"action":"read","resource":"LICENSE","effect":"allow"},
-              {"action":"read","resource":".gitignore","effect":"allow"},
-              {"action":"read","resource":".nvmrc","effect":"allow"},
-              {"action":"read","resource":"**/*.env","effect":"deny"},
-              {"action":"read","resource":"**/*.env.*","effect":"deny"},
-              {"action":"read","resource":"**/*.pem","effect":"deny"},
-              {"action":"read","resource":"**/*.key","effect":"deny"},
-              {"action":"read","resource":"**/*.p12","effect":"deny"},
-              {"action":"read","resource":"**/*.pfx","effect":"deny"},
-              {"action":"read","resource":"**/*.crt","effect":"deny"},
-              {"action":"read","resource":"**/*.cer","effect":"deny"},
-              {"action":"read","resource":"**/*.der","effect":"deny"},
-              {"action":"read","resource":"**/.npmrc","effect":"deny"},
-              {"action":"read","resource":"**/.pypirc","effect":"deny"},
-              {"action":"read","resource":"**/.netrc","effect":"deny"},
-              {"action":"read","resource":"**/*secret*","effect":"deny"},
-              {"action":"read","resource":"**/*credential*","effect":"deny"},
-              {"action":"read","resource":"**/secrets/**","effect":"deny"},
-              {"action":"read","resource":"**/credentials/**","effect":"deny"},
-              {"action":"glob","resource":"*","effect":"deny"},
-              {"action":"glob","resource":"**/*.js","effect":"allow"},
-              {"action":"glob","resource":"**/*.html","effect":"allow"},
-              {"action":"glob","resource":"**/*.css","effect":"allow"},
-              {"action":"glob","resource":"**/*.json","effect":"allow"},
-              {"action":"glob","resource":"**/*.md","effect":"allow"},
-              {"action":"glob","resource":"**/*.yml","effect":"allow"},
-              {"action":"glob","resource":"**/*.yaml","effect":"allow"},
-              {"action":"glob","resource":"**/*.txt","effect":"allow"},
-              {"action":"glob","resource":"**/*.xml","effect":"allow"},
-              {"action":"glob","resource":"**/*.svg","effect":"allow"},
-              {"action":"glob","resource":"**/*.env","effect":"deny"},
-              {"action":"glob","resource":"**/*.env.*","effect":"deny"},
-              {"action":"glob","resource":"**/*.pem","effect":"deny"},
-              {"action":"glob","resource":"**/*.key","effect":"deny"},
-              {"action":"glob","resource":"**/*.p12","effect":"deny"},
-              {"action":"glob","resource":"**/*.pfx","effect":"deny"},
-              {"action":"glob","resource":"**/*.crt","effect":"deny"},
-              {"action":"glob","resource":"**/*.cer","effect":"deny"},
-              {"action":"glob","resource":"**/*.der","effect":"deny"},
-              {"action":"glob","resource":"**/.npmrc","effect":"deny"},
-              {"action":"glob","resource":"**/.pypirc","effect":"deny"},
-              {"action":"glob","resource":"**/.netrc","effect":"deny"},
-              {"action":"glob","resource":"**/*secret*","effect":"deny"},
-              {"action":"glob","resource":"**/*credential*","effect":"deny"},
-              {"action":"glob","resource":"**/secrets/**","effect":"deny"},
-              {"action":"glob","resource":"**/credentials/**","effect":"deny"},
-              {"action":"grep","resource":"*","effect":"allow"},
-              {"action":"grep","resource":"**/*.env","effect":"deny"},
-              {"action":"grep","resource":"**/*.env.*","effect":"deny"},
-              {"action":"grep","resource":"**/*.pem","effect":"deny"},
-              {"action":"grep","resource":"**/*.key","effect":"deny"},
-              {"action":"grep","resource":"**/*.p12","effect":"deny"},
-              {"action":"grep","resource":"**/*.pfx","effect":"deny"},
-              {"action":"grep","resource":"**/*.crt","effect":"deny"},
-              {"action":"grep","resource":"**/*.cer","effect":"deny"},
-              {"action":"grep","resource":"**/*.der","effect":"deny"},
-              {"action":"grep","resource":"**/.npmrc","effect":"deny"},
-              {"action":"grep","resource":"**/.pypirc","effect":"deny"},
-              {"action":"grep","resource":"**/.netrc","effect":"deny"},
-              {"action":"grep","resource":"**/*secret*","effect":"deny"},
-              {"action":"grep","resource":"**/*credential*","effect":"deny"},
-              {"action":"grep","resource":"**/secrets/**","effect":"deny"},
-              {"action":"grep","resource":"**/credentials/**","effect":"deny"}
-            ]}
-          # Operational dependency: the free MiMo model is intentionally used here.
+          # The v2.0.7 image ignores OPENCODE_CONFIG_CONTENT, so the security
+          # policy is written to the container's global config directory below.
           # Its availability is an accepted dependency; a failed run is retried by the
           # scheduled fallback on the next eligible issue-triage cycle.
           MODEL: opencode/mimo-v2.6-flash-free
@@ -286,7 +295,7 @@ PROMPT
           set -euo pipefail
 
           triage_comment="$(
-            docker run --rm               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/tmp/opencode-prompt.md,readonly"               --workdir /workspace               --env OPENCODE_API_KEY               --env OPENCODE_CONFIG_CONTENT               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run -m "$MODEL" "$(cat "$RUNNER_TEMP/opencode-prompt.md")"
+            docker run --rm               --user 0:0               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/tmp/opencode-prompt.md,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"               --workdir /workspace               --env HOME=/root               --env OPENCODE_API_KEY               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run -m "$MODEL" "$(cat "$RUNNER_TEMP/opencode-prompt.md")"
           )"
 
           if [ -z "$triage_comment" ]; then
