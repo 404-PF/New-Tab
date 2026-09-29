@@ -267,7 +267,7 @@ CONFIG
         run: |
           set -euo pipefail
 
-          docker run --rm             --user 0:0             --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"             --entrypoint opencode             ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05             debug config > "$RUNNER_TEMP/opencode-debug-config.json"
+          docker run --rm             --user 0:0             --env HOME=/root             --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"             --entrypoint opencode             ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05             debug config > "$RUNNER_TEMP/opencode-debug-config.json"
 
           jq -e '
             ([.permissions[] | select(.action == "*" and .resource == "*" and .effect == "deny")] | length) == 1
