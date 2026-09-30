@@ -7,6 +7,7 @@ on:
     - cron: "*/15 * * * *"
 
 permissions:
+  actions: read
   contents: read
   issues: write
 
@@ -66,25 +67,42 @@ jobs:
                 --workflow issue-triage.yml \
                 --event issues \
                 --limit 20 \
-                --json databaseId,createdAt
+                --json databaseId \
+                --jq '.[].databaseId'
             )"
 
-            last_opened_run_created_at="$(
-              printf '%s' "$recent_issues_runs" |
-                jq -r --arg run_id "$GITHUB_RUN_ID" '
-                  [
-                    .[]
-                    | select((.databaseId | tostring) != $run_id)
-                  ]
-                  | .[0].createdAt // empty
-                '
-            )"
+            last_model_run_started_at=""
+            while IFS= read -r run_id; do
+              if [ -z "$run_id" ] || [ "$run_id" = "$GITHUB_RUN_ID" ]; then
+                continue
+              fi
 
-            if [ -n "$last_opened_run_created_at" ]; then
+              model_run_started_at="$(
+                gh run view "$run_id" \
+                  --repo "$GH_REPO" \
+                  --json jobs \
+                  --jq '
+                    [
+                      .jobs[].steps[]
+                      | select(.name == "Run OpenCode triage")
+                      | .startedAt
+                    ]
+                    | map(select(. != null))
+                    | .[0] // empty
+                  '
+              )"
+
+              if [ -n "$model_run_started_at" ]; then
+                last_model_run_started_at="$model_run_started_at"
+                break
+              fi
+            done <<< "$recent_issues_runs"
+
+            if [ -n "$last_model_run_started_at" ]; then
               now_epoch="$(date +%s)"
-              last_opened_run_epoch="$(date -d "$last_opened_run_created_at" +%s)"
+              last_model_run_epoch="$(date -d "$last_model_run_started_at" +%s)"
 
-              if [ "$((now_epoch - last_opened_run_epoch))" -lt 300 ]; then
+              if [ "$((now_epoch - last_model_run_epoch))" -lt 300 ]; then
                 echo "Automated issue triage is rate-limited to one issue-opened model run every 5 minutes; the scheduled fallback will drain the backlog."
                 printf 'issue_number=\n' >> "$GITHUB_OUTPUT"
                 exit 0
