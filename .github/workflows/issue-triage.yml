@@ -28,12 +28,69 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          EVENT_NAME: \${{ github.event_name }}
+          EVENT_ISSUE_NUMBER: \${{ github.event.issue.number }}
+          GITHUB_RUN_ID: \${{ github.run_id }}
         run: |
           set -euo pipefail
 
           if [ "$EVENT_NAME" = "issues" ]; then
+            if [ -z "$EVENT_ISSUE_NUMBER" ]; then
+              echo "No issue number was provided by the issues event; nothing to triage."
+              printf 'issue_number=\n' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            event_priority_count="$(
+              gh issue view "$EVENT_ISSUE_NUMBER" \
+                --repo "$GH_REPO" \
+                --json labels \
+                --jq '
+                  [
+                    .labels[].name
+                    | select(. == "p1" or . == "p2" or . == "p3")
+                  ]
+                  | length
+                '
+            )"
+
+            if [ "$event_priority_count" -eq 1 ]; then
+              echo "Issue #$EVENT_ISSUE_NUMBER already has exactly one priority label; skipping model triage."
+              printf 'issue_number=\n' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            recent_issues_runs="$(
+              gh run list \
+                --repo "$GH_REPO" \
+                --workflow issue-triage.yml \
+                --event issues \
+                --limit 20 \
+                --json databaseId,createdAt
+            )"
+
+            last_opened_run_created_at="$(
+              printf '%s' "$recent_issues_runs" |
+                jq -r --arg run_id "$GITHUB_RUN_ID" '
+                  [
+                    .[]
+                    | select((.databaseId | tostring) != $run_id)
+                  ]
+                  | .[0].createdAt // empty
+                '
+            )"
+
+            if [ -n "$last_opened_run_created_at" ]; then
+              now_epoch="$(date +%s)"
+              last_opened_run_epoch="$(date -d "$last_opened_run_created_at" +%s)"
+
+              if [ "$((now_epoch - last_opened_run_epoch))" -lt 300 ]; then
+                echo "Automated issue triage is rate-limited to one issue-opened model run every 5 minutes; the scheduled fallback will drain the backlog."
+                printf 'issue_number=\n' >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+
             printf 'issue_number=%s\n' "$EVENT_ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -47,7 +104,7 @@ jobs:
                 | map(select(
                     ([.labels[].name]
                       | map(select(. == "p1" or . == "p2" or . == "p3"))
-                      | length) == 0
+                      | length) != 1
                   ))
                 | sort_by(.created_at)
                 | .[0].number // empty
@@ -55,7 +112,7 @@ jobs:
           )"
 
           if [ -z "$issue_number" ]; then
-            echo "No open issues are missing p1/p2/p3; nothing to triage."
+            echo "No open issues are missing exactly one p1/p2/p3; nothing to triage."
             printf 'issue_number=\n' >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -295,7 +352,7 @@ CONFIG
           set -euo pipefail
 
           triage_comment="$(
-            docker run --rm               --user 0:0               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/tmp/opencode-prompt.md,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"               --workdir /workspace               --env HOME=/root               --env OPENCODE_API_KEY               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run -m "$MODEL" "$(cat "$RUNNER_TEMP/opencode-prompt.md")"
+            docker run --rm               --user 0:0               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/tmp/opencode-prompt.md,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"               --workdir /workspace               --env HOME=/root               --env OPENCODE_API_KEY               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run -m "$MODEL" -f /tmp/opencode-prompt.md "Follow the attached issue-triage prompt exactly."
           )"
 
           if [ -z "$triage_comment" ]; then
