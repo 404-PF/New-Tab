@@ -365,13 +365,32 @@ CONFIG
           # policy is written to the container's global config directory below.
           # Its availability is an accepted dependency; a failed run is retried by the
           # scheduled fallback on the next eligible issue-triage cycle.
-          MODEL: opencode/mimo-v2.6-flash-free
+          # Use paid OpenCode Zen models here because the current free-tier entitlement
+          # path has an upstream compatibility issue with some restricted tool configs.
+          PRIMARY_MODEL: opencode/minimax-m2.7
+          FALLBACK_MODEL: opencode/minimax-m2.5
         run: |
           set -euo pipefail
 
-          triage_comment="$(
-            docker run --rm               --user 0:0               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/tmp/opencode-prompt.md,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"               --workdir /workspace               --env HOME=/root               --env OPENCODE_API_KEY               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run -m "$MODEL" -f /tmp/opencode-prompt.md "Follow the attached issue-triage prompt exactly."
-          )"
+          run_opencode() {
+            local model="$1"
+            local output_file="$2"
+
+            docker run --rm               --user 0:0               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/tmp/opencode-prompt.md,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"               --workdir /workspace               --env HOME=/root               --env OPENCODE_API_KEY               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run -m "$model" -f /tmp/opencode-prompt.md "Follow the attached issue-triage prompt exactly." > "$output_file"
+          }
+
+          triage_comment_file="$RUNNER_TEMP/opencode-triage-comment.md"
+
+          echo "Running OpenCode triage with $PRIMARY_MODEL."
+          if ! run_opencode "$PRIMARY_MODEL" "$triage_comment_file"; then
+            echo "::warning::OpenCode $PRIMARY_MODEL failed; retrying with $FALLBACK_MODEL."
+            if ! run_opencode "$FALLBACK_MODEL" "$triage_comment_file"; then
+              echo "::error::OpenCode triage failed with both configured models."
+              exit 1
+            fi
+          fi
+
+          triage_comment="$(cat "$triage_comment_file")"
 
           if [ -z "$triage_comment" ]; then
             echo "::error::OpenCode returned an empty triage response."
