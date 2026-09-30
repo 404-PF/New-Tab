@@ -382,9 +382,11 @@ CONFIG
           triage_comment_file="$RUNNER_TEMP/opencode-triage-comment.md"
 
           echo "Running OpenCode triage with $PRIMARY_MODEL."
-          if ! run_opencode "$PRIMARY_MODEL" "$triage_comment_file"; then
-            echo "::warning::OpenCode $PRIMARY_MODEL failed; retrying with $FALLBACK_MODEL."
-            if ! run_opencode "$FALLBACK_MODEL" "$triage_comment_file"; then
+          if ! run_opencode "$PRIMARY_MODEL" "$triage_comment_file" ||
+             [ ! -s "$triage_comment_file" ]; then
+            echo "::warning::OpenCode $PRIMARY_MODEL failed or returned an empty response; retrying with $FALLBACK_MODEL."
+            if ! run_opencode "$FALLBACK_MODEL" "$triage_comment_file" ||
+               [ ! -s "$triage_comment_file" ]; then
               echo "::error::OpenCode triage failed with both configured models."
               exit 1
             fi
