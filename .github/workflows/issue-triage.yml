@@ -21,7 +21,7 @@ concurrency:
 jobs:
   triage:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
 
     steps:
       - name: Select issue to triage
@@ -113,7 +113,31 @@ jobs:
             exit 0
           fi
 
-          issue_number="$(
+          failure_cutoff="$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)"
+          issue_number=""
+
+          while IFS= read -r candidate_issue_number; do
+            if [ -z "$candidate_issue_number" ]; then
+              continue
+            fi
+
+            recent_failure_count="$(
+              gh api --paginate --slurp \
+                "repos/$GH_REPO/issues/$candidate_issue_number/comments?per_page=100" \
+                --jq 'add
+                  | map(select(.body | contains("<!-- issue-triage:failure:v1 -->")))
+                  | map(select(.created_at >= "'"$failure_cutoff"'"))
+                  | length'
+            )"
+
+            if [ "$recent_failure_count" -ge 3 ]; then
+              echo "Skipping issue #$candidate_issue_number after $recent_failure_count triage failures in the last 24 hours."
+              continue
+            fi
+
+            issue_number="$candidate_issue_number"
+            break
+          done < <(
             gh api --paginate --slurp \
               "repos/$GH_REPO/issues?state=open&per_page=100" \
               --jq '
@@ -125,9 +149,9 @@ jobs:
                       | length) != 1
                   ))
                 | sort_by(.created_at)
-                | .[0].number // empty
+                | .[].number
               '
-          )"
+          )
 
           if [ -z "$issue_number" ]; then
             echo "No open issues are missing exactly one p1/p2/p3; nothing to triage."
@@ -275,67 +299,89 @@ PROMPT
           mkdir -p "$RUNNER_TEMP/opencode-config"
 
           cat > "$RUNNER_TEMP/opencode-config/opencode.json" <<'CONFIG'
-{"permissions":[
-  {"action":"*","resource":"*","effect":"deny"},
-  {"action":"read","resource":"*","effect":"deny"},
-  {"action":"read","resource":"**/*.js","effect":"allow"},
-  {"action":"read","resource":"**/*.html","effect":"allow"},
-  {"action":"read","resource":"**/*.css","effect":"allow"},
-  {"action":"read","resource":"**/*.json","effect":"allow"},
-  {"action":"read","resource":"**/*.md","effect":"allow"},
-  {"action":"read","resource":"**/*.yml","effect":"allow"},
-  {"action":"read","resource":"**/*.yaml","effect":"allow"},
-  {"action":"read","resource":"**/*.txt","effect":"allow"},
-  {"action":"read","resource":"**/*.xml","effect":"allow"},
-  {"action":"read","resource":"**/*.svg","effect":"allow"},
-  {"action":"read","resource":"LICENSE","effect":"allow"},
-  {"action":"read","resource":".gitignore","effect":"allow"},
-  {"action":"read","resource":".nvmrc","effect":"allow"},
-  {"action":"read","resource":"**/*.env","effect":"deny"},
-  {"action":"read","resource":"**/*.env.*","effect":"deny"},
-  {"action":"read","resource":"**/*.pem","effect":"deny"},
-  {"action":"read","resource":"**/*.key","effect":"deny"},
-  {"action":"read","resource":"**/*.p12","effect":"deny"},
-  {"action":"read","resource":"**/*.pfx","effect":"deny"},
-  {"action":"read","resource":"**/*.crt","effect":"deny"},
-  {"action":"read","resource":"**/*.cer","effect":"deny"},
-  {"action":"read","resource":"**/*.der","effect":"deny"},
-  {"action":"read","resource":"**/.npmrc","effect":"deny"},
-  {"action":"read","resource":"**/.pypirc","effect":"deny"},
-  {"action":"read","resource":"**/.netrc","effect":"deny"},
-  {"action":"read","resource":"**/*secret*","effect":"deny"},
-  {"action":"read","resource":"**/*credential*","effect":"deny"},
-  {"action":"read","resource":"**/secrets/**","effect":"deny"},
-  {"action":"read","resource":"**/credentials/**","effect":"deny"},
-  {"action":"glob","resource":"*","effect":"deny"},
-  {"action":"glob","resource":"**/*.js","effect":"allow"},
-  {"action":"glob","resource":"**/*.html","effect":"allow"},
-  {"action":"glob","resource":"**/*.css","effect":"allow"},
-  {"action":"glob","resource":"**/*.json","effect":"allow"},
-  {"action":"glob","resource":"**/*.md","effect":"allow"},
-  {"action":"glob","resource":"**/*.yml","effect":"allow"},
-  {"action":"glob","resource":"**/*.yaml","effect":"allow"},
-  {"action":"glob","resource":"**/*.txt","effect":"allow"},
-  {"action":"glob","resource":"**/*.xml","effect":"allow"},
-  {"action":"glob","resource":"**/*.svg","effect":"allow"},
-  {"action":"glob","resource":"**/*.env","effect":"deny"},
-  {"action":"glob","resource":"**/*.env.*","effect":"deny"},
-  {"action":"glob","resource":"**/*.pem","effect":"deny"},
-  {"action":"glob","resource":"**/*.key","effect":"deny"},
-  {"action":"glob","resource":"**/*.p12","effect":"deny"},
-  {"action":"glob","resource":"**/*.pfx","effect":"deny"},
-  {"action":"glob","resource":"**/*.crt","effect":"deny"},
-  {"action":"glob","resource":"**/*.cer","effect":"deny"},
-  {"action":"glob","resource":"**/*.der","effect":"deny"},
-  {"action":"glob","resource":"**/.npmrc","effect":"deny"},
-  {"action":"glob","resource":"**/.pypirc","effect":"deny"},
-  {"action":"glob","resource":"**/.netrc","effect":"deny"},
-  {"action":"glob","resource":"**/*secret*","effect":"deny"},
-  {"action":"glob","resource":"**/*credential*","effect":"deny"},
-  {"action":"glob","resource":"**/secrets/**","effect":"deny"},
-  {"action":"glob","resource":"**/credentials/**","effect":"deny"}
-]}
-CONFIG
+{
+  "default_agent": "triage",
+  "agents": {
+    "triage": {
+      "description": "Automated issue triage without repository or network mutation",
+      "mode": "primary",
+      "system": "You are an automated issue triage agent. Only inspect repository files and the attached issue context. Never edit files, run shell commands, launch subagents, use web or network tools, or change repository or issue state.",
+      "permissions": [
+        {"action":"*","resource":"*","effect":"deny"},
+        {"action":"read","resource":"**/*.js","effect":"allow"},
+        {"action":"read","resource":"**/*.html","effect":"allow"},
+        {"action":"read","resource":"**/*.css","effect":"allow"},
+        {"action":"read","resource":"**/*.json","effect":"allow"},
+        {"action":"read","resource":"**/*.md","effect":"allow"},
+        {"action":"read","resource":"**/*.yml","effect":"allow"},
+        {"action":"read","resource":"**/*.yaml","effect":"allow"},
+        {"action":"read","resource":"**/*.txt","effect":"allow"},
+        {"action":"read","resource":"**/*.xml","effect":"allow"},
+        {"action":"read","resource":"**/*.svg","effect":"allow"},
+        {"action":"read","resource":"LICENSE","effect":"allow"},
+        {"action":"read","resource":".gitignore","effect":"allow"},
+        {"action":"read","resource":".nvmrc","effect":"allow"},
+        {"action":"read","resource":".opencode-triage-prompt.md","effect":"allow"},
+        {"action":"read","resource":"**/*.env","effect":"deny"},
+        {"action":"read","resource":"**/*.env.*","effect":"deny"},
+        {"action":"read","resource":"**/*.pem","effect":"deny"},
+        {"action":"read","resource":"**/*.key","effect":"deny"},
+        {"action":"read","resource":"**/*.p12","effect":"deny"},
+        {"action":"read","resource":"**/*.pfx","effect":"deny"},
+        {"action":"read","resource":"**/*.crt","effect":"deny"},
+        {"action":"read","resource":"**/*.cer","effect":"deny"},
+        {"action":"read","resource":"**/*.der","effect":"deny"},
+        {"action":"read","resource":"**/.npmrc","effect":"deny"},
+        {"action":"read","resource":"**/.pypirc","effect":"deny"},
+        {"action":"read","resource":"**/.netrc","effect":"deny"},
+        {"action":"read","resource":"**/*secret*","effect":"deny"},
+        {"action":"read","resource":"**/*credential*","effect":"deny"},
+        {"action":"read","resource":"**/secrets/**","effect":"deny"},
+        {"action":"read","resource":"**/credentials/**","effect":"deny"},
+        {"action":"glob","resource":"**/*.js","effect":"allow"},
+        {"action":"glob","resource":"**/*.html","effect":"allow"},
+        {"action":"glob","resource":"**/*.css","effect":"allow"},
+        {"action":"glob","resource":"**/*.json","effect":"allow"},
+        {"action":"glob","resource":"**/*.md","effect":"allow"},
+        {"action":"glob","resource":"**/*.yml","effect":"allow"},
+        {"action":"glob","resource":"**/*.yaml","effect":"allow"},
+        {"action":"glob","resource":"**/*.txt","effect":"allow"},
+        {"action":"glob","resource":"**/*.xml","effect":"allow"},
+        {"action":"glob","resource":"**/*.svg","effect":"allow"},
+        {"action":"glob","resource":".opencode-triage-prompt.md","effect":"allow"},
+        {"action":"glob","resource":"**/*.env","effect":"deny"},
+        {"action":"glob","resource":"**/*.env.*","effect":"deny"},
+        {"action":"glob","resource":"**/*.pem","effect":"deny"},
+        {"action":"glob","resource":"**/*.key","effect":"deny"},
+        {"action":"glob","resource":"**/*.p12","effect":"deny"},
+        {"action":"glob","resource":"**/*.pfx","effect":"deny"},
+        {"action":"glob","resource":"**/*.crt","effect":"deny"},
+        {"action":"glob","resource":"**/*.cer","effect":"deny"},
+        {"action":"glob","resource":"**/*.der","effect":"deny"},
+        {"action":"glob","resource":"**/.npmrc","effect":"deny"},
+        {"action":"glob","resource":"**/.pypirc","effect":"deny"},
+        {"action":"glob","resource":"**/.netrc","effect":"deny"},
+        {"action":"glob","resource":"**/*secret*","effect":"deny"},
+        {"action":"glob","resource":"**/*credential*","effect":"deny"},
+        {"action":"glob","resource":"**/secrets/**","effect":"deny"},
+        {"action":"glob","resource":"**/credentials/**","effect":"deny"},
+        {"action":"grep","resource":"*","effect":"deny"},
+        {"action":"shell","resource":"*","effect":"deny"},
+        {"action":"edit","resource":"*","effect":"deny"},
+        {"action":"subagent","resource":"*","effect":"deny"},
+        {"action":"webfetch","resource":"*","effect":"deny"},
+        {"action":"websearch","resource":"*","effect":"deny"},
+        {"action":"skill","resource":"*","effect":"deny"},
+        {"action":"question","resource":"*","effect":"deny"},
+        {"action":"execute","resource":"*","effect":"deny"}
+      ]
+    }
+  },
+  "permissions": [
+    {"action":"*","resource":"*","effect":"deny"}
+  ]
+}
+CONFIGCONFIG
 
       - name: Verify OpenCode security config
         if: steps.select-issue.outputs.issue_number != ''
@@ -345,13 +391,23 @@ CONFIG
           docker run --rm             --user 0:0             --env HOME=/root             --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"             --entrypoint opencode             ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05             debug config > "$RUNNER_TEMP/opencode-debug-config.json"
 
           jq -e '
-            ([.permissions[] | select(.action == "*" and .resource == "*" and .effect == "deny")] | length) == 1
-            and ([.permissions[] | select(.action == "grep")] | length) == 0
-            and ([.permissions[] | select(.action == "read" and .resource == "**/*.env" and .effect == "deny")] | length) == 1
-            and ([.permissions[] | select(.action == "glob" and .resource == "**/*.env" and .effect == "deny")] | length) == 1
+            .default_agent == "triage"
+            and ([.permissions[] | select(.action == "*" and .resource == "*" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "*" and .resource == "*" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "grep" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "shell" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "edit" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "subagent" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "webfetch" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "websearch" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "execute" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "read" and .resource == "**/*.env" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "glob" and .resource == "**/*.env" and .effect == "deny")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "read" and .resource == "**/*.js" and .effect == "allow")] | length) == 1
+            and ([.agents.triage.permissions[] | select(.action == "glob" and .resource == "**/*.js" and .effect == "allow")] | length) == 1
           ' "$RUNNER_TEMP/opencode-debug-config.json" >/dev/null
 
-          echo "OpenCode v2.0.7 loaded the deny-all policy, without grep access, and with sensitive-file read/glob denies."
+          echo "OpenCode v2.0.7 loaded the triage agent with explicit read/glob access and shell/edit/subagent/network/grep execution denied."
 
       - name: Run OpenCode triage
         if: steps.select-issue.outputs.issue_number != ''
@@ -376,7 +432,7 @@ CONFIG
             local model="$1"
             local output_file="$2"
 
-            docker run --rm               --user 0:0               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/tmp/opencode-prompt.md,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"               --workdir /workspace               --env HOME=/root               --env OPENCODE_API_KEY               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run -m "$model" -f /tmp/opencode-prompt.md "Follow the attached issue-triage prompt exactly." > "$output_file"
+            timeout --signal=TERM --kill-after=30s 4m docker run --rm               --user 0:0               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-prompt.md,dst=/workspace/.opencode-triage-prompt.md,readonly"               --mount "type=bind,src=$RUNNER_TEMP/opencode-config,dst=/root/.config/opencode,readonly"               --workdir /workspace               --env HOME=/root               --env OPENCODE_API_KEY               --entrypoint opencode               ghcr.io/anomalyco/opencode:2.0.7@sha256:d2c7ddda8142b47942426972fcee07f56ecde762ac7f528c5e53c2f957aabc05               run --agent triage -m "$model" -f /workspace/.opencode-triage-prompt.md "Follow the attached issue-triage prompt exactly." > "$output_file"
           }
 
           triage_comment_file="$RUNNER_TEMP/opencode-triage-comment.md"
@@ -409,6 +465,7 @@ CONFIG
           echo "comment_id=$triage_comment_id" >> "$GITHUB_OUTPUT"
 
       - name: Apply validated priority label
+        id: apply-priority-label
         if: steps.select-issue.outputs.issue_number != ''
         env:
           GH_TOKEN: ${{ github.token }}
@@ -466,6 +523,7 @@ CONFIG
           echo "Applied validated priority label $priority to issue #$ISSUE_NUMBER."
 
       - name: Verify final priority label state
+        id: verify-priority-label
         if: steps.select-issue.outputs.issue_number != ''
         env:
           GH_TOKEN: ${{ github.token }}
@@ -497,3 +555,23 @@ CONFIG
           )"
 
           echo "Issue #$ISSUE_NUMBER is triaged as $priority."
+
+
+      - name: Record failed triage attempt
+        if: >-
+          ${{ failure()
+            && steps.select-issue.outputs.issue_number != ''
+            && (steps.post-triage-comment.outcome == 'failure'
+              || steps.apply-priority-label.outcome == 'failure'
+              || steps.verify-priority-label.outcome == 'failure') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.select-issue.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+
+          gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER/comments" \
+            --method POST \
+            --raw-field body='<!-- issue-triage:failure:v1 -->
+Automated issue triage attempt failed. Scheduled triage will quarantine this issue after 3 failures in 24 hours so newer issues can proceed.'
