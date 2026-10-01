@@ -381,7 +381,7 @@ PROMPT
     {"action":"*","resource":"*","effect":"deny"}
   ]
 }
-CONFIGCONFIG
+CONFIG
 
       - name: Verify OpenCode security config
         if: steps.select-issue.outputs.issue_number != ''
