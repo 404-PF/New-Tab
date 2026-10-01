@@ -116,28 +116,7 @@ jobs:
           failure_cutoff="$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)"
           issue_number=""
 
-          while IFS= read -r candidate_issue_number; do
-            if [ -z "$candidate_issue_number" ]; then
-              continue
-            fi
-
-            recent_failure_count="$(
-              gh api --paginate --slurp \
-                "repos/$GH_REPO/issues/$candidate_issue_number/comments?per_page=100" \
-                --jq 'add
-                  | map(select(.body | contains("<!-- issue-triage:failure:v1 -->")))
-                  | map(select(.created_at >= "'"$failure_cutoff"'"))
-                  | length'
-            )"
-
-            if [ "$recent_failure_count" -ge 3 ]; then
-              echo "Skipping issue #$candidate_issue_number after $recent_failure_count triage failures in the last 24 hours."
-              continue
-            fi
-
-            issue_number="$candidate_issue_number"
-            break
-          done < <(
+          candidate_issue_numbers="$(
             gh api --paginate --slurp \
               "repos/$GH_REPO/issues?state=open&per_page=100" \
               --jq '
@@ -151,7 +130,30 @@ jobs:
                 | sort_by(.created_at)
                 | .[].number
               '
-          )
+          )"
+
+          while IFS= read -r candidate_issue_number; do
+            if [ -z "$candidate_issue_number" ]; then
+              continue
+            fi
+
+            recent_failure_count="$(
+              gh api --paginate --slurp \
+                "repos/$GH_REPO/issues/$candidate_issue_number/comments?per_page=100" \
+                --jq 'add
+                  | map(select(.user.login == "github-actions[bot]" and (.body | contains("<!-- issue-triage:failure:v1 -->"))))
+                  | map(select(.created_at >= "'"$failure_cutoff"'"))
+                  | length'
+            )"
+
+            if [ "$recent_failure_count" -ge 3 ]; then
+              echo "Skipping issue #$candidate_issue_number after $recent_failure_count triage failures in the last 24 hours."
+              continue
+            fi
+
+            issue_number="$candidate_issue_number"
+            break
+          done <<< "$candidate_issue_numbers"
 
           if [ -z "$issue_number" ]; then
             echo "No open issues are missing exactly one p1/p2/p3; nothing to triage."
