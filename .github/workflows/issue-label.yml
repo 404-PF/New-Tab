@@ -3,9 +3,15 @@ name: issue-label
 on:
   issues:
     types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to (re)label'
+        required: true
+        type: number
 
 concurrency:
-  group: issue-label-${{ github.event.issue.number }}
+  group: issue-label-${{ github.event.issue.number || inputs.issue_number }}
   cancel-in-progress: true
 
 jobs:
@@ -37,7 +43,7 @@ jobs:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
           LABELS: ${{ steps.labels.outputs.list }}
           # The model can only read this issue and add labels. No comments, no file edits, no web.
           OPENCODE_PERMISSION: >-
