@@ -51,6 +51,7 @@ jobs:
           COMMENT_ID: ${{ github.event.comment.id }}
           AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
         run: |
+          set -euo pipefail
           first_line="$(printf '%s' "$COMMENT_BODY" | head -n 1 | sed -e 's/[[:space:]]*$//')"
           case "$first_line" in
             /triage|/triage[[:space:]]*) ;;

@@ -51,6 +51,7 @@ jobs:
           COMMENT_ID: ${{ github.event.comment.id }}
           AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
         run: |
+          set -euo pipefail
           first_line="$(printf '%s' "$COMMENT_BODY" | head -n 1 | sed -e 's/[[:space:]]*$//')"
           case "$first_line" in
             /label|/label[[:space:]]*) ;;
@@ -99,10 +100,12 @@ jobs:
         if: github.event_name != 'issue_comment' || steps.gate.outputs.proceed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
+          set -euo pipefail
           {
             echo 'list<<LABELS_EOF_7f3a9c2e'
-            gh label list --repo "$GITHUB_REPOSITORY" --limit 100 --json name,description \
+            gh label list --repo "$GH_REPO" --limit 100 --json name,description \
               --jq '.[] | "- \(.name): \(.description)"'
             echo 'LABELS_EOF_7f3a9c2e'
           } >> "$GITHUB_OUTPUT"
