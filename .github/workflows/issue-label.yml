@@ -71,13 +71,12 @@ jobs:
           fi
 
           if [ "$AUTHORIZED" != true ]; then
-            echo 'User not authorized, adding eyes reaction and exiting.'
-            gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content='eyes' >/dev/null || true
+            echo 'User not authorized, exiting.'
             echo 'proceed=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content='+1' >/dev/null || true
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content='eyes' >/dev/null || true
           echo 'proceed=true' >> "$GITHUB_OUTPUT"
 
       - name: Install OpenCode
