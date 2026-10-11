@@ -52,7 +52,10 @@ jobs:
           AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
         run: |
           set -euo pipefail
-          first_line="$(printf '%s' "$COMMENT_BODY" | head -n 1 | sed -e 's/[[:space:]]*$//')"
+          # NOTE: do not use head here. head exits after line 1, so a large
+          # COMMENT_BODY makes printf receive SIGPIPE and pipefail aborts the
+          # gate. sed -n without q drains the input instead.
+          first_line="$(printf '%s' "$COMMENT_BODY" | sed -n '1s/[[:space:]]*$//p')"
           case "$first_line" in
             /triage|/triage[[:space:]]*) ;;
             *)
