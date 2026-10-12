@@ -155,12 +155,20 @@ jobs:
           # and only returns a draft; the Post step publishes exactly once.
           # ISSUE_FILE lives inside the workspace so the read tool needs no
           # external_directory access; deny it explicitly.
+          # NOTE: bash must stay "ask" (not "deny"): the OpenCode Zen free tier
+          # rejects free models with 403 ("can only be used from within OpenCode")
+          # when bash or read is denied because the tool is removed from the
+          # request. "ask" keeps the tool listed (gate passes) while headless
+          # `opencode run` auto-rejects any actual bash attempt, so isolation holds.
           OPENCODE_PERMISSION: >-
             {
               "edit": "deny",
               "webfetch": "deny",
               "external_directory": "deny",
-              "bash": { "*": "deny" }
+              "bash": { "*": "ask" },
+              "read": "allow",
+              "glob": "allow",
+              "grep": "allow"
             }
         run: |
           set -euo pipefail
