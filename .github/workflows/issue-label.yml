@@ -143,12 +143,22 @@ jobs:
           # ISSUE_FILE lives inside the workspace so the read tool needs no
           # external_directory access; deny it explicitly for consistency
           # with issue-triage.yml.
+          # NOTE: bash must keep allow entries (not "*": "deny" alone).
+          # OpenCode's free-tier gate rejects requests whose tools array lacks
+          # bash ("free tier can only be used from within OpenCode"), so a
+          # fully-denied bash breaks every run. The prompt below still forbids
+          # gh usage; these allows only keep the bash tool present. GH_TOKEN is
+          # absent here, so even a prompt-disobeying gh write would fail auth.
           OPENCODE_PERMISSION: >-
             {
               "edit": "deny",
               "webfetch": "deny",
               "external_directory": "deny",
-              "bash": { "*": "deny" }
+              "bash": {
+                "*": "deny",
+                "gh issue view *": "allow",
+                "gh issue edit *": "allow"
+              }
             }
         run: |
           set -euo pipefail
