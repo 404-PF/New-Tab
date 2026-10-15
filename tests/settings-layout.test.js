@@ -111,6 +111,9 @@ describe('Background readability overlay (#709)', () => {
     expect(css).toMatch(/\.bg-overlay-blur-media \.background-thumbnail\.clearing\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\);/);
     expect(css).toMatch(/\.bg-overlay-blur-media \.background-interactive\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\)\s*saturate\(1\.08\)\s*contrast\(1\.04\);[^}]*transform:\s*scale\(1\.05\);/);
     expect(css).toMatch(/filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*transform:\s*translate3d\(0,\s*0,\s*0\)\s*scale\(1\.05\);/);
+    expect(css).toMatch(/\.background-video\.active\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\);/);
+    expect(css).toMatch(/:has\(\.background-video\.active\[data-reduced-motion-paused="true"\]\):has\(\.background-thumbnail\.hidden\)/);
+    expect(css).not.toMatch(/\.background-video\.active:not\(\[data-reduced-motion-paused="true"\]\)\s*\{/);
     expect(css).not.toMatch(/\.background-overlay\s*\{[^}]*transition:/);
 
     const reduced = css.match(/@media \(prefers-reduced-motion: reduce\) \{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/);

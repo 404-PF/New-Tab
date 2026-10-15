@@ -180,9 +180,104 @@ const BG_OVERLAY_TRANSLATION_KEYS = [
   'bgOverlayReset'
 ];
 
+const BG_OVERLAY_EXPECTED = {
+  en: {
+    bgOverlay: 'Readability',
+    bgOverlayDesc: 'Dim, blur, or tint the background so text stays readable',
+    bgOverlayDim: 'Dim',
+    bgOverlayBlur: 'Blur',
+    bgOverlayTint: 'Tint',
+    bgOverlayTintStrength: 'Tint strength',
+    bgOverlayReset: 'Reset overlay'
+  },
+  zh: {
+    bgOverlay: '可读性',
+    bgOverlayDesc: '调暗、模糊或着色背景，让文字更清晰',
+    bgOverlayDim: '调暗',
+    bgOverlayBlur: '模糊',
+    bgOverlayTint: '着色',
+    bgOverlayTintStrength: '着色强度',
+    bgOverlayReset: '重置叠加层'
+  },
+  ja: {
+    bgOverlay: '読みやすさ',
+    bgOverlayDesc: '背景を暗く、ぼかし、または色付けして文字を読みやすくします',
+    bgOverlayDim: '暗さ',
+    bgOverlayBlur: 'ぼかし',
+    bgOverlayTint: '色付け',
+    bgOverlayTintStrength: '色の強さ',
+    bgOverlayReset: 'オーバーレイをリセット'
+  },
+  ko: {
+    bgOverlay: '가독성',
+    bgOverlayDesc: '배경을 어둡게 하거나 흐리게 하거나 색을 더해 글자를 읽기 쉽게 합니다',
+    bgOverlayDim: '어둡기',
+    bgOverlayBlur: '흐림',
+    bgOverlayTint: '색조',
+    bgOverlayTintStrength: '색조 강도',
+    bgOverlayReset: '오버레이 초기화'
+  },
+  es: {
+    bgOverlay: 'Legibilidad',
+    bgOverlayDesc: 'Oscurece, desenfoca o tiñe el fondo para que el texto se lea mejor',
+    bgOverlayDim: 'Oscurecer',
+    bgOverlayBlur: 'Desenfoque',
+    bgOverlayTint: 'Tinte',
+    bgOverlayTintStrength: 'Intensidad del tinte',
+    bgOverlayReset: 'Restablecer superposición'
+  },
+  fr: {
+    bgOverlay: 'Lisibilité',
+    bgOverlayDesc: 'Assombrissez, floutez ou teintez l\'arrière-plan pour garder le texte lisible',
+    bgOverlayDim: 'Assombrir',
+    bgOverlayBlur: 'Flou',
+    bgOverlayTint: 'Teinte',
+    bgOverlayTintStrength: 'Intensité de la teinte',
+    bgOverlayReset: 'Réinitialiser le calque'
+  },
+  de: {
+    bgOverlay: 'Lesbarkeit',
+    bgOverlayDesc: 'Hintergrund abdunkeln, weichzeichnen oder einfärben, damit Text lesbar bleibt',
+    bgOverlayDim: 'Abdunkeln',
+    bgOverlayBlur: 'Weichzeichnen',
+    bgOverlayTint: 'Farbton',
+    bgOverlayTintStrength: 'Farbstärke',
+    bgOverlayReset: 'Overlay zurücksetzen'
+  },
+  pt: {
+    bgOverlay: 'Legibilidade',
+    bgOverlayDesc: 'Escureça, desfoque ou tinja o fundo para o texto continuar legível',
+    bgOverlayDim: 'Escurecer',
+    bgOverlayBlur: 'Desfoque',
+    bgOverlayTint: 'Tonalidade',
+    bgOverlayTintStrength: 'Intensidade da tonalidade',
+    bgOverlayReset: 'Redefinir sobreposição'
+  },
+  ru: {
+    bgOverlay: 'Читаемость',
+    bgOverlayDesc: 'Затемните, размойте или подкрасьте фон, чтобы текст оставался читаемым',
+    bgOverlayDim: 'Затемнение',
+    bgOverlayBlur: 'Размытие',
+    bgOverlayTint: 'Оттенок',
+    bgOverlayTintStrength: 'Сила оттенка',
+    bgOverlayReset: 'Сбросить наложение'
+  }
+};
+
 describe('Background overlay translations', () => {
   it('defines every overlay string in each supported language', () => {
-    expectTranslationKeys(BG_OVERLAY_TRANSLATION_KEYS, { differFromEnglish: true });
+    const languages = window.i18n.getSupportedLanguages();
+
+    languages.forEach(({ code }) => {
+      const localeTranslations = window.i18n.getTranslations(code);
+      const expected = BG_OVERLAY_EXPECTED[code];
+      expect(expected, code).toBeTypeOf('object');
+
+      BG_OVERLAY_TRANSLATION_KEYS.forEach((key) => {
+        expect(localeTranslations[key], `${code}:${key}`).toBe(expected[key]);
+        expect(expected[key].trim(), `${code}:${key}`).not.toBe('');
+      });
+    });
   });
 });
 

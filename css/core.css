@@ -181,7 +181,11 @@
    clearing, its filter eases to the overlay blur instead of 0, so the
    fade does not go sharp. The interactive canvas keeps its saturate and
    contrast and adds the same blur and scale while that class is set.
-   Reduced-motion video stays on the thumbnail, so it keeps the backdrop. */
+   Reduced-motion playback that is still showing the thumbnail keeps
+   backdrop-filter. A video that is already .active and then paused for
+   reduced motion stays on screen, so it keeps the direct blur. Backdrop
+   blur turns off for that paused video only once the thumbnail is hidden,
+   because backdrop-filter does not sample the video frame. */
 .background-container.bg-overlay-blur-media .background-full,
 .background-container.bg-overlay-blur-media .background-transition-overlay {
   filter: blur(var(--bg-overlay-blur));
@@ -203,12 +207,15 @@
   transform: scale(1.05);
 }
 
-.background-container.bg-overlay-blur-media:not(.video-fallback):not(.video-error) .background-video.active:not([data-reduced-motion-paused="true"]) {
+.background-container.bg-overlay-blur-media:not(.video-fallback):not(.video-error) .background-video.active {
   filter: blur(var(--bg-overlay-blur));
   transform: translate3d(0, 0, 0) scale(1.05);
 }
 
-.background-container.bg-overlay-blur-media:not(.video-fallback):not(.video-error):has(.background-video.active:not([data-reduced-motion-paused="true"])) .background-overlay {
+.background-container.bg-overlay-blur-media:not(.video-fallback):not(.video-error):is(
+  :has(.background-video.active:not([data-reduced-motion-paused="true"])),
+  :has(.background-video.active[data-reduced-motion-paused="true"]):has(.background-thumbnail.hidden)
+) .background-overlay {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
