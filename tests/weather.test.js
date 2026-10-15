@@ -459,10 +459,14 @@ describe('Weather widget', () => {
     window.addEventListener('weatherCacheUpdated', onCacheUpdated);
     try {
       await window.WeatherWidget.refresh(true);
+      // The widget must leave its loading state before persistence settles.
+      expect(document.querySelector('.weather-loading')).toBeNull();
+      expect(document.querySelector('.weather-temp').textContent).toContain('22');
+      if (typeof restore === 'function') restore();
+      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(onCacheUpdated).toHaveBeenCalledTimes(eventCount);
       const stored = JSON.parse(localStorage.getItem('weatherCache'));
       expect(stored.data.current.temperature_2m).toBe(storedTemperature);
-      expect(document.querySelector('.weather-temp').textContent).toContain('22');
     } finally {
       window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
       if (typeof restore === 'function') restore();
@@ -479,21 +483,25 @@ describe('Weather widget', () => {
       storedTemperature: 19,
       installFailure() {
         const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+        let pendingCallback = null;
         chrome.storage.local.set = (items, callback) => {
           if (!Object.prototype.hasOwnProperty.call(items, 'weatherCache')) {
             return originalSet(items, callback);
           }
-          setTimeout(() => {
-            chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
-            try {
-              if (typeof callback === 'function') callback();
-            } finally {
-              chrome.runtime.lastError = null;
-            }
-          }, 0);
+          pendingCallback = callback;
           return Promise.resolve();
         };
         return () => {
+          if (typeof pendingCallback === 'function') {
+            const callback = pendingCallback;
+            pendingCallback = null;
+            chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+            try {
+              callback();
+            } finally {
+              chrome.runtime.lastError = null;
+            }
+          }
           chrome.storage.local.set = originalSet;
         };
       }

@@ -490,7 +490,13 @@
         locationName: locationDisplay
       };
 
-      await WeatherStorage.saveCache(newCache);
+      // Persistence can outlive this refresh. Render the fetched data now so a
+      // chrome.storage callback that never arrives cannot leave the widget
+      // loading or hold isRefreshing. saveCache still dispatches
+      // weatherCacheUpdated only after the write is known to have succeeded.
+      WeatherStorage.saveCache(newCache).catch((error) => {
+        console.warn('Failed to write weather cache:', error);
+      });
       renderWeather(weatherData, newCache.locationName, unit);
     } catch (e) {
       console.error('Weather refresh failed:', e);
