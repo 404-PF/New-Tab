@@ -135,7 +135,9 @@
       // Check the expected shape before interpreting container-looking strings.
       // Scalar string settings must remain strings even when they begin with '[' or '{'.
       const validator = EXPECTED_SHAPES[key];
-      const shouldBeString = validator && validator('') === true;
+      // validator('') is true for free-form strings. bgTint is still a string,
+      // but its shape check rejects anything that is not #rrggbb, including ''.
+      const shouldBeString = Boolean(validator) && (validator('') === true || key === 'bgTint');
       if (shouldBeString) {
         return raw;
       }

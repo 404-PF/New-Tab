@@ -1,5 +1,30 @@
 import { injectScript } from './helpers/inject-script.js';
 
+async function exportDataForTest() {
+  const origCreateObjectURL = URL.createObjectURL;
+  const origRevokeObjectURL = URL.revokeObjectURL;
+  let capturedJson = null;
+  URL.createObjectURL = (blob) => {
+    const reader = new FileReader();
+    reader.onload = () => { capturedJson = reader.result; };
+    reader.readAsText(blob);
+    return 'blob:mock-url';
+  };
+  URL.revokeObjectURL = () => {};
+  const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+  try {
+    window.DataManager.exportAllData();
+    await vi.waitFor(() => expect(capturedJson).not.toBeNull());
+    return JSON.parse(capturedJson);
+  } finally {
+    clickSpy.mockRestore();
+    URL.createObjectURL = origCreateObjectURL;
+    URL.revokeObjectURL = origRevokeObjectURL;
+    document.querySelectorAll('.toast-notification').forEach(el => el.remove());
+  }
+}
+
 beforeAll(() => {
   injectScript('src/features/timezone-clocks.js');
   injectScript('src/ai/conversation-validator.js');
@@ -7,31 +32,6 @@ beforeAll(() => {
 });
 
 describe('DataManager backup validation', () => {
-
-  async function exportDataForTest() {
-    const origCreateObjectURL = URL.createObjectURL;
-    const origRevokeObjectURL = URL.revokeObjectURL;
-    let capturedJson = null;
-    URL.createObjectURL = (blob) => {
-      const reader = new FileReader();
-      reader.onload = () => { capturedJson = reader.result; };
-      reader.readAsText(blob);
-      return 'blob:mock-url';
-    };
-    URL.revokeObjectURL = () => {};
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-
-    try {
-      window.DataManager.exportAllData();
-      await vi.waitFor(() => expect(capturedJson).not.toBeNull());
-      return JSON.parse(capturedJson);
-    } finally {
-      clickSpy.mockRestore();
-      URL.createObjectURL = origCreateObjectURL;
-      URL.revokeObjectURL = origRevokeObjectURL;
-      document.querySelectorAll('.toast-notification').forEach(el => el.remove());
-    }
-  }
 
   it('accepts supported settings and rejects disallowed or malformed data', () => {
     expect(window.DataManager.validateImportData({ version: 1, data: {
@@ -391,31 +391,6 @@ describe('DataManager eye-care/games/search-history settings', () => {
 });
 
 describe('DataManager background overlay settings', () => {
-  async function exportDataForTest() {
-    const origCreateObjectURL = URL.createObjectURL;
-    const origRevokeObjectURL = URL.revokeObjectURL;
-    let capturedJson = null;
-    URL.createObjectURL = (blob) => {
-      const reader = new FileReader();
-      reader.onload = () => { capturedJson = reader.result; };
-      reader.readAsText(blob);
-      return 'blob:mock-url';
-    };
-    URL.revokeObjectURL = () => {};
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-
-    try {
-      window.DataManager.exportAllData();
-      await vi.waitFor(() => expect(capturedJson).not.toBeNull());
-      return JSON.parse(capturedJson);
-    } finally {
-      clickSpy.mockRestore();
-      URL.createObjectURL = origCreateObjectURL;
-      URL.revokeObjectURL = origRevokeObjectURL;
-      document.querySelectorAll('.toast-notification').forEach(el => el.remove());
-    }
-  }
-
   it('exports overlay numbers and bgTint as a string', async () => {
     localStorage.setItem('bgOverlayOpacity', '40');
     localStorage.setItem('bgOverlayBlur', '6');
@@ -432,6 +407,15 @@ describe('DataManager background overlay settings', () => {
     expect(typeof exported.data.bgOverlayBlur).toBe('number');
     expect(typeof exported.data.bgTintStrength).toBe('number');
     expect(typeof exported.data.bgTint).toBe('string');
+  });
+
+  it('keeps a container-looking bgTint as a string on export', async () => {
+    localStorage.setItem('bgTint', '["#112233"]');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.bgTint).toBe('["#112233"]');
+    expect(window.DataManager.validateImportData(exported).valid).toBe(false);
   });
 
   it('accepts a valid overlay backup and an older backup without overlay keys', () => {

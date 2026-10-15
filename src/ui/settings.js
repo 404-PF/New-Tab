@@ -86,7 +86,7 @@ const BG_OVERLAY_DEFAULTS = {
 function readClampedOverlayInt(key, fallback, min, max) {
   const raw = localStorage.getItem(key);
   if (raw === null) return fallback;
-  const parsed = parseInt(raw, 10);
+  const parsed = /^-?\d+$/.test(raw) ? Number(raw) : NaN;
   const normalized = Number.isFinite(parsed)
     ? Math.min(max, Math.max(min, parsed))
     : fallback;
@@ -117,9 +117,9 @@ function loadBgOverlaySettings() {
 }
 
 function overlayTintToRgba(hex, strength) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const r = Number.parseInt(hex.slice(1, 3), 16);
+  const g = Number.parseInt(hex.slice(3, 5), 16);
+  const b = Number.parseInt(hex.slice(5, 7), 16);
   return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + (strength / 100) + ')';
 }
 

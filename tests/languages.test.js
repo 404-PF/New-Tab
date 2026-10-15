@@ -1,6 +1,25 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
+function expectTranslationKeys(keys, options) {
+  const differFromEnglish = Boolean(options && options.differFromEnglish);
+  const languages = window.i18n.getSupportedLanguages();
+  const english = differFromEnglish ? window.i18n.getTranslations('en') : null;
+
+  languages.forEach(({ code }) => {
+    const localeTranslations = window.i18n.getTranslations(code);
+
+    keys.forEach((key) => {
+      expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
+      expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
+      expect(localeTranslations[key].trim(), `${code}:${key}`).not.toBe('');
+      if (differFromEnglish && code !== 'en') {
+        expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
+      }
+    });
+  });
+}
+
 const SEARCH_TRANSLATION_KEYS = [
   'searchWith',
   'searchProviderGoogle',
@@ -141,37 +160,13 @@ describe('AI translations', () => {
   // back to English when a locale lacks the key, which would hide a stale
   // non-English entry behind a passing assertion.
   it('defines every AI string in each supported language', () => {
-    const languages = window.i18n.getSupportedLanguages();
-    const english = window.i18n.getTranslations('en');
-
-    languages.forEach(({ code }) => {
-      const localeTranslations = window.i18n.getTranslations(code);
-
-      AI_TRANSLATION_KEYS.forEach((key) => {
-        expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
-        expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
-        expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
-        if (code !== 'en') {
-          expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
-        }
-      });
-    });
+    expectTranslationKeys(AI_TRANSLATION_KEYS, { differFromEnglish: true });
   });
 });
 
 describe('Games translations', () => {
   it('defines every games string in each supported language', () => {
-    const languages = window.i18n.getSupportedLanguages();
-
-    languages.forEach(({ code }) => {
-      const localeTranslations = window.i18n.getTranslations(code);
-
-      GAMES_TRANSLATION_KEYS.forEach((key) => {
-        expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
-        expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
-        expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
-      });
-    });
+    expectTranslationKeys(GAMES_TRANSLATION_KEYS);
   });
 });
 
@@ -187,21 +182,7 @@ const BG_OVERLAY_TRANSLATION_KEYS = [
 
 describe('Background overlay translations', () => {
   it('defines every overlay string in each supported language', () => {
-    const languages = window.i18n.getSupportedLanguages();
-    const english = window.i18n.getTranslations('en');
-
-    languages.forEach(({ code }) => {
-      const localeTranslations = window.i18n.getTranslations(code);
-
-      BG_OVERLAY_TRANSLATION_KEYS.forEach((key) => {
-        expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
-        expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
-        expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
-        if (code !== 'en') {
-          expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
-        }
-      });
-    });
+    expectTranslationKeys(BG_OVERLAY_TRANSLATION_KEYS, { differFromEnglish: true });
   });
 });
 

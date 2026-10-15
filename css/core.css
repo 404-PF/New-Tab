@@ -177,7 +177,10 @@
    sharp copy of the previous image and sits above #bg-full, so it gets the
    same blur and scale; otherwise the old image flashes sharp while it fades.
    While the full image is still loading and no snapshot is showing, the
-   thumbnail keeps its own blur and the backdrop path.
+   thumbnail keeps its own blur and the backdrop path. Once it starts
+   clearing, its filter eases to the overlay blur instead of 0, so the
+   fade does not go sharp. The interactive canvas keeps its saturate and
+   contrast and adds the same blur and scale while that class is set.
    Reduced-motion video stays on the thumbnail, so it keeps the backdrop. */
 .background-container.bg-overlay-blur-media .background-full,
 .background-container.bg-overlay-blur-media .background-transition-overlay {
@@ -189,6 +192,15 @@
 .background-container.bg-overlay-blur-media:has(.background-transition-overlay.active) .background-overlay {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+.background-container.bg-overlay-blur-media .background-thumbnail.clearing {
+  filter: blur(var(--bg-overlay-blur));
+}
+
+.background-container.bg-overlay-blur-media .background-interactive {
+  filter: blur(var(--bg-overlay-blur)) saturate(1.08) contrast(1.04);
+  transform: scale(1.05);
 }
 
 .background-container.bg-overlay-blur-media:not(.video-fallback):not(.video-error) .background-video.active:not([data-reduced-motion-paused="true"]) {

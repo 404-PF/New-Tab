@@ -1350,6 +1350,16 @@ describe('Background overlay settings', () => {
     expect(localStorage.getItem('bgOverlayOpacity')).toBe('80');
   });
 
+  it('replaces partial slider strings with the default instead of truncating them', () => {
+    localStorage.setItem('bgOverlayBlur', '12px');
+    localStorage.setItem('bgOverlayOpacity', '40.8');
+    const settings = loadBgOverlaySettings();
+    expect(settings.blur).toBe(0);
+    expect(settings.opacity).toBe(0);
+    expect(localStorage.getItem('bgOverlayBlur')).toBe('0');
+    expect(localStorage.getItem('bgOverlayOpacity')).toBe('0');
+  });
+
   it('caps blur at 12px and tint strength at 50', () => {
     localStorage.setItem('bgOverlayBlur', '99');
     localStorage.setItem('bgTintStrength', '80');
