@@ -18,6 +18,10 @@
   "dataImportLateWriteFailure": {
     "message": "Einige importierte Daten konnten nach Abschluss des Imports nicht gespeichert werden."
   },
+  "shortcutSaveError": {
+    "message": "Tastenkombinationen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.",
     "description": "Error shown when custom backgrounds cannot be listed"

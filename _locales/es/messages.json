@@ -18,6 +18,10 @@
   "dataImportLateWriteFailure": {
     "message": "Algunos datos importados no se pudieron guardar después de finalizar la importación."
   },
+  "shortcutSaveError": {
+    "message": "No se pudieron guardar los cambios de los atajos. La última acción no se guardó.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.",
     "description": "Error shown when custom backgrounds cannot be listed"

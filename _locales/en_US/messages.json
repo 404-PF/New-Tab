@@ -18,6 +18,10 @@
   "dataImportLateWriteFailure": {
     "message": "Some imported data failed to save after the import finished."
   },
+  "shortcutSaveError": {
+    "message": "Failed to save shortcut changes. Your last action was not saved.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "Failed to load custom backgrounds. Please try again.",
     "description": "Error shown when custom backgrounds cannot be listed"
