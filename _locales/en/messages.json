@@ -11,6 +11,13 @@
     "message": "Failed to save app changes. Your last action was not saved.",
     "description": "Error shown when app grid changes cannot be persisted"
   },
+  "searchProviderSaveError": {
+    "message": "Failed to save search provider changes. Your last action was not saved.",
+    "description": "Error shown when custom search provider changes cannot be persisted"
+  },
+  "dataImportLateWriteFailure": {
+    "message": "Some imported data failed to save after the import finished."
+  },
   "shortcutSaveError": {
     "message": "Failed to save shortcut changes. Your last action was not saved.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
