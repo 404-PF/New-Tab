@@ -13,11 +13,8 @@ on:
 # Concurrency is declared on the implement job, not here. A workflow-level
 # group is taken before the permission gate runs, so a read-only MEMBER or
 # COLLABORATOR "/implement" comment would cancel an authorized run. The implement
-# job joins group issue-resolve-<number> only after authorize sets
+# job joins group issue-implement-<number> only after authorize sets
 # proceed=true (workflow_dispatch, OWNER, or a user the gate authorizes).
-# The group name stays issue-resolve across this rename. Concurrency groups
-# are repository-wide, so a new name would not cancel an in-flight pre-rename
-# run of the same issue.
 
 jobs:
   authorize:
@@ -120,16 +117,15 @@ jobs:
     # cancel an authorized implement that is already running.
     if: needs.authorize.result == 'success' && needs.authorize.outputs.proceed == 'true'
     concurrency:
-      # Trusted runs (proceed=true) share issue-resolve-<number>. The key is
-      # unchanged from the /resolve workflow so a later workflow_dispatch,
-      # OWNER, or gate-authorized user still cancels an in-flight pre-rename
+      # Trusted runs (proceed=true) share issue-implement-<number>, so a later
+      # workflow_dispatch, OWNER, or gate-authorized user cancels the earlier
       # run instead of racing on the fix branch. Any other result gets a
       # per-run group: a denied comment must not join the issue group, even
       # if this job is queued before its if condition skips it.
       group: >-
         ${{ (needs.authorize.outputs.proceed == 'true'
-          && format('issue-resolve-{0}', github.event.issue.number || github.event.inputs.issue_number))
-          || format('issue-resolve-unauthorized-{0}', github.run_id) }}
+          && format('issue-implement-{0}', github.event.issue.number || github.event.inputs.issue_number))
+          || format('issue-implement-unauthorized-{0}', github.run_id) }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -159,14 +155,11 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      # Pin the version and pass --ignore-scripts (Sonar S8543 and S6505).
-      # opencode-ai's postinstall selects the native binary, so run that
-      # script explicitly. Skipping it makes `opencode run` exit 1.
+      # NOTE: do NOT add --ignore-scripts here. opencode-ai ships a JS wrapper
+      # whose postinstall selects the native binary; with --ignore-scripts the
+      # wrapper exits 1 and every run fails at `opencode run`.
       - name: Install OpenCode
-        run: |
-          set -euo pipefail
-          npm install -g --ignore-scripts opencode-ai@1.19.0
-          node "$(npm root -g)/opencode-ai/postinstall.mjs"
+        run: npm install -g opencode-ai
 
       - name: Fetch issue context
         id: context
