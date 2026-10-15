@@ -127,14 +127,27 @@ jobs:
           && format('issue-implement-{0}', github.event.issue.number || github.event.inputs.issue_number))
           || format('issue-implement-unauthorized-{0}', github.run_id) }}
       cancel-in-progress: true
+    # Name pinned so the single-entry matrix below doesn't rename the job.
+    name: implement
+    # Single source for the job timeout: timeout-minutes cannot read env,
+    # but it can read matrix, and the failure report reads the same value.
+    strategy:
+      matrix:
+        job-timeout-minutes: [50]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: ${{ matrix.job-timeout-minutes }}
     permissions:
       contents: write
       issues: write
       pull-requests: write
 
     steps:
+      # Record when the job started so the failure report can tell a
+      # job-level timeout apart from a run superseded by a newer one
+      # (concurrency cancel-in-progress). Both show up as cancelled().
+      - name: Record job start time
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
       # Implement edits repo content (unlike label/triage), but keep the same
       # credential isolation: persist-credentials:false keeps GITHUB_TOKEN out
       # of .git/config so the OpenCode agent cannot read it from the checkout
@@ -214,8 +227,9 @@ jobs:
 
       - name: Implement fix with OpenCode
         id: implement
-        # Below the 30-minute job timeout so the failure report still runs.
-        timeout-minutes: 25
+        # Below the 50-minute job timeout so lint, tests, the PR step, and
+        # the failure report still have time to run.
+        timeout-minutes: 40
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GH_REPO: ${{ github.repository }}
@@ -442,7 +456,21 @@ jobs:
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          JOB_TIMEOUT_MINUTES: ${{ matrix.job-timeout-minutes }}
         run: |
           set -euo pipefail
+          # A step timeout fails its step, so failure() covers it. A cancelled
+          # job is either a job-level timeout (report it) or a run superseded
+          # by a newer one via concurrency cancel-in-progress (stay silent).
+          # Only a job that ran to within 2 minutes of its timeout counts as
+          # timed out; earlier cancellations are supersession or manual.
+          if [ "$JOB_STATUS" = 'cancelled' ]; then
+            elapsed=$(( $(date +%s) - ${JOB_STARTED_AT:-0} ))
+            if [ -z "${JOB_STARTED_AT:-}" ] || [ "$elapsed" -lt $(( (JOB_TIMEOUT_MINUTES - 2) * 60 )) ]; then
+              echo "Run cancelled after ${elapsed}s (superseded or cancelled manually); not reporting."
+              exit 0
+            fi
+          fi
           gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
             --body "Issue implementation failed or timed out. See the workflow run: $RUN_URL"
