@@ -15,6 +15,9 @@
     "message": "Impossible d’enregistrer les modifications du moteur de recherche. Votre dernière action n’a pas été enregistrée.",
     "description": "Error shown when custom search provider changes cannot be persisted"
   },
+  "dataImportLateWriteFailure": {
+    "message": "Certaines données importées n’ont pas pu être enregistrées après la fin de l’importation."
+  },
   "customBackgroundsLoadError": {
     "message": "Impossible de charger les arrière-plans personnalisés. Veuillez réessayer.",
     "description": "Error shown when custom backgrounds cannot be listed"

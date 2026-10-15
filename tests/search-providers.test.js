@@ -605,6 +605,27 @@ describe('Search providers - settings UI', () => {
     }
   });
 
+  it('logs an exception from the remove success handler and still re-enables the button', async () => {
+    await addCustomProvider('Throws', 'https://throws.com/search?q={query}');
+    window.renderCustomSearchProvidersList();
+    const list = document.getElementById('custom-search-providers-list');
+    const removeBtn = list.querySelector('.custom-search-provider-remove');
+    const originalRefresh = window.refreshProviderBar;
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    window.refreshProviderBar = () => { throw new Error('render failed'); };
+    try {
+      removeBtn.click();
+      expect(removeBtn.disabled).toBe(true);
+      await flushAsyncUI();
+
+      expect(removeBtn.disabled).toBe(false);
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('custom search provider removal'), expect.any(Error));
+    } finally {
+      window.refreshProviderBar = originalRefresh;
+      errorSpy.mockRestore();
+    }
+  });
+
   it('disables the Remove button while its save is in flight', async () => {
     await addCustomProvider('Pending', 'https://pending.com/search?q={query}');
     window.renderCustomSearchProvidersList();

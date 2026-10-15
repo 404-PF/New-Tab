@@ -15,6 +15,9 @@
     "message": "Não foi possível salvar as alterações do mecanismo de busca. Sua última ação não foi salva.",
     "description": "Error shown when custom search provider changes cannot be persisted"
   },
+  "dataImportLateWriteFailure": {
+    "message": "Alguns dados importados não puderam ser salvos após a conclusão da importação."
+  },
   "customBackgroundsLoadError": {
     "message": "Não foi possível carregar os planos de fundo personalizados. Tente novamente.",
     "description": "Error shown when custom backgrounds cannot be listed"

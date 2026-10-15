@@ -15,6 +15,9 @@
     "message": "Failed to save search provider changes. Your last action was not saved.",
     "description": "Error shown when custom search provider changes cannot be persisted"
   },
+  "dataImportLateWriteFailure": {
+    "message": "Some imported data failed to save after the import finished."
+  },
   "customBackgroundsLoadError": {
     "message": "Failed to load custom backgrounds. Please try again.",
     "description": "Error shown when custom backgrounds cannot be listed"

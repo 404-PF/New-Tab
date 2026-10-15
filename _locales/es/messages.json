@@ -15,6 +15,9 @@
     "message": "No se pudieron guardar los cambios del proveedor de búsqueda. La última acción no se guardó.",
     "description": "Error shown when custom search provider changes cannot be persisted"
   },
+  "dataImportLateWriteFailure": {
+    "message": "Algunos datos importados no se pudieron guardar después de finalizar la importación."
+  },
   "customBackgroundsLoadError": {
     "message": "No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.",
     "description": "Error shown when custom backgrounds cannot be listed"

@@ -15,6 +15,9 @@
     "message": "検索プロバイダーの変更を保存できませんでした。直前の操作は保存されていません。",
     "description": "Error shown when custom search provider changes cannot be persisted"
   },
+  "dataImportLateWriteFailure": {
+    "message": "インポート完了後に、一部のインポートデータを保存できませんでした。"
+  },
   "customBackgroundsLoadError": {
     "message": "カスタム背景を読み込めませんでした。もう一度お試しください。",
     "description": "Error shown when custom backgrounds cannot be listed"

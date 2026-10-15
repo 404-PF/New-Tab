@@ -441,10 +441,10 @@ describe('DataManager eye-care/games/search-history settings', () => {
       const lateToast = await vi.waitFor(() => {
         expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('failed after the import had already reported'))).toBe(true);
         const el = document.querySelector('.toast-notification.toast-warning');
-        expect(el).not.toBeNull();
+        expect(el?.textContent).toBe('Some imported data failed to save after the import finished.');
         return el;
       });
-      expect(lateToast.textContent).toBe(result.text);
+      expect(lateToast.textContent).toBe('Some imported data failed to save after the import finished.');
     } finally {
       area.set = originalSet;
       delete window.DataManager.importWriteTimeoutMs;

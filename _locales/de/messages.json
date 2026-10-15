@@ -15,6 +15,9 @@
     "message": "Änderungen an Suchanbietern konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
     "description": "Error shown when custom search provider changes cannot be persisted"
   },
+  "dataImportLateWriteFailure": {
+    "message": "Einige importierte Daten konnten nach Abschluss des Imports nicht gespeichert werden."
+  },
   "customBackgroundsLoadError": {
     "message": "Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.",
     "description": "Error shown when custom backgrounds cannot be listed"

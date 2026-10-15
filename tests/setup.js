@@ -580,6 +580,7 @@ globalThis.window.i18n = {
       searchProviderRemoveLabel: 'Remove {name}',
       searchProviderInvalidName: 'Enter a name for the search provider.',
       searchProviderInvalidUrl: 'Enter a valid URL with {query} and http(s).',
+      dataImportLateWriteFailure: 'Some imported data failed to save after the import finished.',
       searchProviderSaveError: 'Failed to save search provider changes. Your last action was not saved.',
       searchProviderNameAriaLabel: 'Provider name',
       searchProviderUrlAriaLabel: 'Search URL template',

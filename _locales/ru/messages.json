@@ -15,6 +15,9 @@
     "message": "Не удалось сохранить изменения поисковых провайдеров. Последнее действие не было сохранено.",
     "description": "Error shown when custom search provider changes cannot be persisted"
   },
+  "dataImportLateWriteFailure": {
+    "message": "Некоторые импортированные данные не удалось сохранить после завершения импорта."
+  },
   "customBackgroundsLoadError": {
     "message": "Не удалось загрузить пользовательские фоны. Повторите попытку.",
     "description": "Error shown when custom backgrounds cannot be listed"

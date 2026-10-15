@@ -108,7 +108,7 @@ describe('Search provider translations', () => {
 
 describe('Search provider save error translation', () => {
   it('defines a localized searchProviderSaveError for every supported language', () => {
-    expectTranslationKeys(['searchProviderSaveError'], { differFromEnglish: true });
+    expectTranslationKeys(['searchProviderSaveError', 'dataImportLateWriteFailure'], { differFromEnglish: true });
   });
 });
 

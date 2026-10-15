@@ -15,6 +15,9 @@
     "message": "검색 공급자 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
     "description": "Error shown when custom search provider changes cannot be persisted"
   },
+  "dataImportLateWriteFailure": {
+    "message": "가져오기가 끝난 후 일부 가져온 데이터를 저장하지 못했습니다."
+  },
   "customBackgroundsLoadError": {
     "message": "사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.",
     "description": "Error shown when custom backgrounds cannot be listed"

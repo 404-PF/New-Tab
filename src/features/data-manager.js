@@ -222,7 +222,7 @@
         // The import already reported after the timeout; these failures
         // arrived later, so tell the user again instead of only logging.
         console.warn('[data-manager] ' + failed + ' import write(s) failed after the import had already reported');
-        showToast(t('dataImportPartialSuccess', 'Import completed with some errors.'), 'warning');
+        showToast(t('dataImportLateWriteFailure', 'Some imported data failed to save after the import finished.'), 'warning');
       }
       return failed === 0;
     });
