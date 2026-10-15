@@ -77,21 +77,38 @@
 
   function saveShortcuts(shortcuts) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(shortcuts));
+      const result = localStorage.setItem(STORAGE_KEY, JSON.stringify(shortcuts));
+      return result !== false;
     } catch (e) {
       console.warn('Failed to save shortcuts:', STORAGE_KEY, e);
+      return false;
+    }
+  }
+
+  function showShortcutSaveError() {
+    const message = t('shortcutSaveError');
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+    } else {
+      console.warn(message);
     }
   }
 
   function resetShortcuts() {
     if (rebindingAction) cancelRebinding();
+    let persisted;
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      const result = localStorage.removeItem(STORAGE_KEY);
+      persisted = result !== false;
     } catch (e) {
       console.warn('Failed to reset shortcuts:', STORAGE_KEY, e);
+      persisted = false;
     }
     activeShortcuts = loadShortcuts();
     renderShortcutsSection();
+    if (!persisted) {
+      showShortcutSaveError();
+    }
   }
 
   function formatCombo(e) {
@@ -378,6 +395,8 @@
       const modifiers = ['Control', 'Shift', 'Alt', 'Meta'];
       if (modifiers.includes(e.key)) return;
 
+      const previousShortcuts = Object.assign({}, activeShortcuts);
+
       // If another action already uses this combo, swap bindings
       for (const otherAction in activeShortcuts) {
         if (otherAction !== action && activeShortcuts[otherAction] === combo) {
@@ -387,8 +406,14 @@
       }
 
       activeShortcuts[action] = combo;
-      saveShortcuts(activeShortcuts);
+      const persisted = saveShortcuts(activeShortcuts);
+      if (!persisted) {
+        activeShortcuts = previousShortcuts;
+      }
       renderShortcutsSection();
+      if (!persisted) {
+        showShortcutSaveError();
+      }
 
       rebindingAction = null;
       document.removeEventListener('keydown', rebindingKeyHandler, true);
@@ -407,6 +432,19 @@
     }
     renderShortcutsSection();
   }
+
+  window.addEventListener('storageBridgeWriteError', function (event) {
+    const detail = event && event.detail;
+    if (!detail || detail.key !== STORAGE_KEY) return;
+
+    setTimeout(function () {
+      const persisted = loadShortcuts();
+      if (JSON.stringify(persisted) === JSON.stringify(activeShortcuts)) return;
+      activeShortcuts = persisted;
+      renderShortcutsSection();
+      showShortcutSaveError();
+    });
+  });
 
   function initShortcuts() {
     if (initialized) return;

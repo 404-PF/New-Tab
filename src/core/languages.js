@@ -499,6 +499,7 @@ const translations = {
     shortcutToggleNotes: 'Toggle Notes',
     shortcutCloseModal: 'Close Modal / Dialog',
     shortcutPressAKey: 'Press a key...',
+    shortcutSaveError: 'Failed to save shortcut changes. Your last action was not saved.',
 
     // Shortcuts settings tab
     shortcuts: 'Shortcuts',
@@ -1026,6 +1027,7 @@ const translations = {
     shortcutToggleNotes: '切换便签',
     shortcutCloseModal: '关闭对话框',
     shortcutPressAKey: '按下按键...',
+    shortcutSaveError: '无法保存快捷键更改。您上次的操作未被保存。',
 
     // Shortcuts settings tab
     shortcuts: '快捷键',
@@ -1494,6 +1496,7 @@ const translations = {
     shortcutToggleNotes: 'メモ切替',
     shortcutCloseModal: 'モーダルを閉じる',
     shortcutPressAKey: 'キーを押してください...',
+    shortcutSaveError: 'ショートカットの変更を保存できませんでした。直前の操作は保存されていません。',
 
     // Shortcuts settings tab
     shortcuts: 'ショートカット',
@@ -1961,6 +1964,7 @@ const translations = {
     shortcutToggleNotes: '메모 전환',
     shortcutCloseModal: '모달 닫기',
     shortcutPressAKey: '키를 누르세요...',
+    shortcutSaveError: '단축키 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
 
     // Shortcuts settings tab
     shortcuts: '단축키',
@@ -2416,6 +2420,7 @@ const translations = {
     shortcutToggleNotes: 'Alternar notas',
     shortcutCloseModal: 'Cerrar modal',
     shortcutPressAKey: 'Presiona una tecla...',
+    shortcutSaveError: 'No se pudieron guardar los cambios de los atajos. La última acción no se guardó.',
 
     // Shortcuts settings tab
     shortcuts: 'Atajos',
@@ -2883,6 +2888,7 @@ const translations = {
     shortcutToggleNotes: 'Basculer notes',
     shortcutCloseModal: 'Fermer modal',
     shortcutPressAKey: 'Appuyez sur une touche...',
+    shortcutSaveError: 'Impossible d’enregistrer les modifications des raccourcis. Votre dernière action n’a pas été enregistrée.',
 
     // Shortcuts settings tab
     shortcuts: 'Raccourcis',
@@ -3350,6 +3356,7 @@ const translations = {
     shortcutToggleNotes: 'Notizen umschalten',
     shortcutCloseModal: 'Modal schließen',
     shortcutPressAKey: 'Taste drücken...',
+    shortcutSaveError: 'Tastenkombinationen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.',
 
     // Shortcuts settings tab
     shortcuts: 'Tastenkürzel',
@@ -3817,6 +3824,7 @@ const translations = {
     shortcutToggleNotes: 'Alternar notas',
     shortcutCloseModal: 'Fechar modal',
     shortcutPressAKey: 'Pressione uma tecla...',
+    shortcutSaveError: 'Não foi possível salvar as alterações de atalhos. Sua última ação não foi salva.',
 
     // Shortcuts settings tab
     shortcuts: 'Atalhos',
@@ -4284,6 +4292,7 @@ const translations = {
     shortcutToggleNotes: 'Переключить заметки',
     shortcutCloseModal: 'Закрыть модальное окно',
     shortcutPressAKey: 'Нажмите клавишу...',
+    shortcutSaveError: 'Не удалось сохранить изменения горячих клавиш. Последнее действие не было сохранено.',
 
     // Shortcuts settings tab
     shortcuts: 'Ярлыки',

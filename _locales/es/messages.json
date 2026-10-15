@@ -11,6 +11,10 @@
     "message": "No se pudieron guardar los cambios de las aplicaciones. La última acción no se guardó.",
     "description": "Error shown when app grid changes cannot be persisted"
   },
+  "shortcutSaveError": {
+    "message": "No se pudieron guardar los cambios de los atajos. La última acción no se guardó.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.",
     "description": "Error shown when custom backgrounds cannot be listed"

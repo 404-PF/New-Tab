@@ -421,3 +421,154 @@ describe('Shortcuts - modal closing priority', () => {
     expect(settingsModal.classList.contains('modal-open')).toBe(false);
   });
 });
+
+describe('Shortcuts - save failure handling', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save shortcut changes. Your last action was not saved.';
+  let container;
+  let originalShowToast;
+  let showToast;
+
+  beforeEach(() => {
+    container = document.getElementById('shortcuts-options');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+    }
+    Shortcuts.renderShortcutsSection();
+    originalShowToast = window.showToast;
+    showToast = vi.fn();
+    window.showToast = showToast;
+  });
+
+  afterEach(() => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    window.showToast = originalShowToast;
+    Shortcuts.reset();
+  });
+
+  it('save reports success and failure', () => {
+    expect(Shortcuts.save({ focusSearch: 'Ctrl+K' })).toBe(true);
+
+    const falseSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => false);
+    try {
+      expect(Shortcuts.save({ focusSearch: 'Ctrl+K' })).toBe(false);
+    } finally {
+      falseSpy.mockRestore();
+    }
+
+    const throwSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('quota exceeded');
+    });
+    try {
+      expect(Shortcuts.save({ focusSearch: 'Ctrl+K' })).toBe(false);
+    } finally {
+      throwSpy.mockRestore();
+    }
+  });
+
+  it('reverts the swap and reports an error when the save fails', () => {
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => false);
+
+    try {
+      const btn = container.querySelector('[data-action="focusSearch"]');
+      btn.click();
+
+      document.dispatchEvent(new KeyboardEvent('keydown', {
+        key: ',',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true
+      }));
+
+      expect(showToast).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+
+      expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('/');
+      expect(container.querySelector('[data-action="openSettings"]').textContent).toBe('Ctrl+,');
+
+      const saved = Shortcuts.load();
+      expect(saved.focusSearch).toBe('/');
+      expect(saved.openSettings).toBe('Ctrl+,');
+
+      const modal = document.getElementById('settings-modal');
+      modal.classList.remove('modal-open');
+      document.dispatchEvent(new KeyboardEvent('keydown', {
+        key: ',',
+        ctrlKey: true,
+        bubbles: true
+      }));
+      expect(modal.classList.contains('modal-open')).toBe(true);
+      modal.classList.remove('modal-open');
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
+
+  it('re-syncs the previous binding after an asynchronous bridge write failure', async () => {
+    const originalSet = chrome.storage.local.set;
+    chrome.storage.local.set = (items, callback) => {
+      chrome.runtime.lastError = { message: 'quota exceeded' };
+      callback();
+      chrome.runtime.lastError = null;
+      return Promise.resolve();
+    };
+
+    try {
+      const btn = container.querySelector('[data-action="openSettings"]');
+      btn.click();
+
+      document.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Q',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true
+      }));
+
+      expect(container.querySelector('[data-action="openSettings"]').textContent).toBe('Ctrl+Q');
+      expect(showToast).not.toHaveBeenCalled();
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(container.querySelector('[data-action="openSettings"]').textContent).toBe('Ctrl+,');
+      expect(Shortcuts.load().openSettings).toBe('Ctrl+,');
+      expect(showToast).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+
+      const modal = document.getElementById('settings-modal');
+      modal.classList.remove('modal-open');
+      document.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Q',
+        ctrlKey: true,
+        bubbles: true
+      }));
+      expect(modal.classList.contains('modal-open')).toBe(false);
+      document.dispatchEvent(new KeyboardEvent('keydown', {
+        key: ',',
+        ctrlKey: true,
+        bubbles: true
+      }));
+      expect(modal.classList.contains('modal-open')).toBe(true);
+      modal.classList.remove('modal-open');
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+  });
+
+  it('reports an error and keeps the saved binding when reset fails', () => {
+    localStorage.setItem('customShortcuts', JSON.stringify({ focusSearch: 'X' }));
+    Shortcuts.renderShortcutsSection();
+
+    const removeItemSpy = vi.spyOn(localStorage, 'removeItem').mockImplementation(() => false);
+    try {
+      Shortcuts.reset();
+
+      expect(showToast).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+      expect(Shortcuts.load().focusSearch).toBe('X');
+      expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('X');
+    } finally {
+      removeItemSpy.mockRestore();
+    }
+  });
+});
