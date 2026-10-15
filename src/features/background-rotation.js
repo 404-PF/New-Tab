@@ -144,6 +144,9 @@
     if (typeof window.applyBg === 'function') {
       window.applyBg();
     }
+    if (typeof window.applyBgOverlaySettings === 'function') {
+      window.applyBgOverlaySettings();
+    }
   }
 
   function startRotation() {

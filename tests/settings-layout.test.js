@@ -50,3 +50,70 @@ describe('Settings layout stability (#512)', () => {
     expect(mq[0]).toMatch(/\.settings-body\s*\{[^}]*height:\s*min\(720px, calc\(85vh - 20px\)\)[^}]*max-height:\s*min\(720px, calc\(85vh - 20px\)\)/);
   });
 });
+
+describe('Background readability overlay (#709)', () => {
+  it('places the overlay after the transition snapshot inside the background container', () => {
+    const html = readFileSync(HTML_PATH, 'utf-8');
+    const parsedHtml = document.implementation.createHTMLDocument('New Tab');
+    parsedHtml.documentElement.innerHTML = html;
+    const container = parsedHtml.getElementById('background-container');
+    const overlay = parsedHtml.getElementById('bg-overlay');
+    const transition = parsedHtml.getElementById('bg-transition-overlay');
+
+    expect(container).not.toBeNull();
+    expect(overlay).not.toBeNull();
+    expect(overlay.getAttribute('aria-hidden')).toBe('true');
+    expect(overlay.classList.contains('background-overlay')).toBe(true);
+    expect(container.contains(overlay)).toBe(true);
+    expect(container.lastElementChild).toBe(overlay);
+    expect(transition.compareDocumentPosition(overlay) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('places the readability controls between playback and rotation', () => {
+    const html = readFileSync(HTML_PATH, 'utf-8');
+    const parsedHtml = document.implementation.createHTMLDocument('New Tab');
+    parsedHtml.documentElement.innerHTML = html;
+    const section = parsedHtml.getElementById('bg-overlay-section');
+    const rotation = parsedHtml.getElementById('bg-rotation-section');
+    const playback = parsedHtml.querySelector('#bg-live-section .bg-playback-controls');
+    const controlIds = [
+      'bg-overlay-dim',
+      'bg-overlay-blur',
+      'bg-tint-strength',
+      'bg-tint-color',
+      'bg-overlay-reset',
+      'bg-overlay-dim-value',
+      'bg-overlay-blur-value',
+      'bg-tint-strength-value',
+    ];
+
+    expect(section).not.toBeNull();
+    expect(playback.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(section.compareDocumentPosition(rotation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    controlIds.forEach((id) => {
+      const control = parsedHtml.getElementById(id);
+      expect(control, id).not.toBeNull();
+      expect(section.contains(control), id).toBe(true);
+    });
+    ['bg-overlay-dim', 'bg-overlay-blur', 'bg-tint-strength', 'bg-tint-color', 'bg-overlay-reset'].forEach((id) => {
+      expect(parsedHtml.getElementById(id).closest('.setting-card'), id).not.toBeNull();
+    });
+  });
+
+  it('styles the overlay, reduced motion, the video blur fallback, and light-theme ranges', () => {
+    const css = readFileSync(CORE_CSS_PATH, 'utf-8');
+
+    expect(css).toMatch(/\.background-container\s*\{[^}]*--bg-overlay-opacity:\s*0;/);
+    expect(css).toMatch(/\.background-overlay\s*\{[^}]*z-index:\s*5;[^}]*pointer-events:\s*none;[^}]*backdrop-filter:\s*blur\(var\(--bg-overlay-blur\)\);/);
+    expect(css).toMatch(/\.background-overlay\.inactive\s*\{[^}]*display:\s*none;/);
+    expect(css).toMatch(/filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*transform:\s*translate3d\(0,\s*0,\s*0\)\s*scale\(1\.05\);/);
+    expect(css).not.toMatch(/\.background-overlay\s*\{[^}]*transition:[^;]*backdrop-filter/);
+
+    const reduced = css.match(/@media \(prefers-reduced-motion: reduce\) \{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/);
+    expect(reduced).toBeTruthy();
+    expect(reduced[0]).toMatch(/\.background-overlay\s*\{[^}]*transition:\s*none;/);
+    expect(css).toMatch(/body\.light-theme #bg-overlay-section input\[type="range"\]/);
+    expect(css).not.toMatch(/body\.simple-mode[^{]*\.background-overlay/);
+    expect(css).not.toMatch(/data-focus-mode[^{]*\.background-overlay/);
+  });
+});

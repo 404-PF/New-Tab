@@ -411,3 +411,41 @@ describe('Background rotation with custom backgrounds', () => {
     expect(localStorage.getItem('homepageBg')).toBe('Built-in BG');
   });
 });
+
+describe('Background rotation overlay', () => {
+  it('keeps the readability overlay intact after an advance', () => {
+    const container = document.getElementById('background-container');
+    const overlay = document.createElement('div');
+    overlay.id = 'bg-overlay';
+    overlay.className = 'background-overlay';
+    container.appendChild(overlay);
+    container.style.setProperty('--bg-overlay-opacity', '0.4');
+    container.style.setProperty('--bg-overlay-blur', '4px');
+    container.style.setProperty('--bg-tint', 'rgba(255, 0, 0, 0.2)');
+
+    window._backgrounds = [
+      { id: 'Test BG 1', title: 'Test BG 1', thumb: 'thumb1.jpg', url: 'img1.jpg' },
+      { id: 'Test BG 2', title: 'Test BG 2', thumb: 'thumb2.jpg', url: 'img2.jpg' },
+    ];
+    const order = [];
+    window.applyBg = vi.fn(() => { order.push('applyBg'); });
+    window.applyBgOverlaySettings = vi.fn(() => { order.push('overlay'); });
+
+    try {
+      BackgroundRotation.advance();
+
+      expect(document.getElementById('bg-overlay')).toBe(overlay);
+      expect(overlay.className).toBe('background-overlay');
+      expect(container.style.getPropertyValue('--bg-overlay-opacity')).toBe('0.4');
+      expect(container.style.getPropertyValue('--bg-overlay-blur')).toBe('4px');
+      expect(container.style.getPropertyValue('--bg-tint')).toBe('rgba(255, 0, 0, 0.2)');
+      expect(order).toEqual(['applyBg', 'overlay']);
+    } finally {
+      overlay.remove();
+      container.style.removeProperty('--bg-overlay-opacity');
+      container.style.removeProperty('--bg-overlay-blur');
+      container.style.removeProperty('--bg-tint');
+      delete window.applyBgOverlaySettings;
+    }
+  });
+});

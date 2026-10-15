@@ -175,6 +175,36 @@ describe('Games translations', () => {
   });
 });
 
+const BG_OVERLAY_TRANSLATION_KEYS = [
+  'bgOverlay',
+  'bgOverlayDesc',
+  'bgOverlayDim',
+  'bgOverlayBlur',
+  'bgOverlayTint',
+  'bgOverlayTintStrength',
+  'bgOverlayReset'
+];
+
+describe('Background overlay translations', () => {
+  it('defines every overlay string in each supported language', () => {
+    const languages = window.i18n.getSupportedLanguages();
+    const english = window.i18n.getTranslations('en');
+
+    languages.forEach(({ code }) => {
+      const localeTranslations = window.i18n.getTranslations(code);
+
+      BG_OVERLAY_TRANSLATION_KEYS.forEach((key) => {
+        expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
+        expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
+        expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
+        if (code !== 'en') {
+          expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
+        }
+      });
+    });
+  });
+});
+
 describe('App grid context menu translations', () => {
   it('defines the sort action label for all supported languages', () => {
     // getTranslation silently falls back to the English string when a locale

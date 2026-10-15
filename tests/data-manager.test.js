@@ -389,3 +389,98 @@ describe('DataManager eye-care/games/search-history settings', () => {
     }
   });
 });
+
+describe('DataManager background overlay settings', () => {
+  async function exportDataForTest() {
+    const origCreateObjectURL = URL.createObjectURL;
+    const origRevokeObjectURL = URL.revokeObjectURL;
+    let capturedJson = null;
+    URL.createObjectURL = (blob) => {
+      const reader = new FileReader();
+      reader.onload = () => { capturedJson = reader.result; };
+      reader.readAsText(blob);
+      return 'blob:mock-url';
+    };
+    URL.revokeObjectURL = () => {};
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    try {
+      window.DataManager.exportAllData();
+      await vi.waitFor(() => expect(capturedJson).not.toBeNull());
+      return JSON.parse(capturedJson);
+    } finally {
+      clickSpy.mockRestore();
+      URL.createObjectURL = origCreateObjectURL;
+      URL.revokeObjectURL = origRevokeObjectURL;
+      document.querySelectorAll('.toast-notification').forEach(el => el.remove());
+    }
+  }
+
+  it('exports overlay numbers and bgTint as a string', async () => {
+    localStorage.setItem('bgOverlayOpacity', '40');
+    localStorage.setItem('bgOverlayBlur', '6');
+    localStorage.setItem('bgTint', '#aabbcc');
+    localStorage.setItem('bgTintStrength', '25');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.bgOverlayOpacity).toBe(40);
+    expect(exported.data.bgOverlayBlur).toBe(6);
+    expect(exported.data.bgTintStrength).toBe(25);
+    expect(exported.data.bgTint).toBe('#aabbcc');
+    expect(typeof exported.data.bgOverlayOpacity).toBe('number');
+    expect(typeof exported.data.bgOverlayBlur).toBe('number');
+    expect(typeof exported.data.bgTintStrength).toBe('number');
+    expect(typeof exported.data.bgTint).toBe('string');
+  });
+
+  it('accepts a valid overlay backup and an older backup without overlay keys', () => {
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: {
+        bgOverlayOpacity: 40,
+        bgOverlayBlur: 12,
+        bgTint: '#AABBCC',
+        bgTintStrength: 0,
+      }
+    })).toEqual({ valid: true });
+
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: { theme: 'dark', homepageBg: 'Beach', videoAutoplay: true }
+    })).toEqual({ valid: true });
+  });
+
+  it('rejects out-of-range overlay values and a non-string tint', () => {
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: { bgOverlayOpacity: 81 }
+    }).valid).toBe(false);
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: { bgOverlayOpacity: -1 }
+    }).valid).toBe(false);
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: { bgOverlayBlur: 13 }
+    }).valid).toBe(false);
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: { bgTintStrength: 51 }
+    }).valid).toBe(false);
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: { bgOverlayOpacity: '40' }
+    }).valid).toBe(false);
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: { bgTint: 112233 }
+    }).valid).toBe(false);
+    expect(window.DataManager.validateImportData({
+      version: 1,
+      data: { bgTint: '#fff' }
+    }).valid).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.bgTint('#112233')).toBe(true);
+    expect(typeof window.DataManager.EXPECTED_SHAPES.bgTint('#112233')).toBe('boolean');
+  });
+});

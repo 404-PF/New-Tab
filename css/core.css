@@ -57,6 +57,9 @@
   height: 100vh;
   z-index: -1;
   overflow: hidden;
+  --bg-overlay-opacity: 0;
+  --bg-overlay-blur: 0px;
+  --bg-tint: rgba(0, 0, 0, 0);
 }
 
 /* Thumbnail layer (blurred, shown immediately) */
@@ -138,6 +141,46 @@
 
 .background-transition-overlay.active {
   opacity: 1;
+}
+
+/* Readability overlay: dim and tint are layered backgrounds; blur is a
+   backdrop-filter. It sits above thumbnail (2), the transition snapshot (3),
+   and the interactive canvas (4). Simple mode and focus mode only hide
+   foreground widgets, so this layer stays in place for those modes too.
+   Blur is not transitioned — animating backdrop-filter is expensive and
+   fights the video fallback below. */
+.background-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background-image:
+    linear-gradient(var(--bg-tint), var(--bg-tint)),
+    linear-gradient(rgba(0, 0, 0, var(--bg-overlay-opacity)), rgba(0, 0, 0, var(--bg-overlay-opacity)));
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: blur(var(--bg-overlay-blur));
+  backdrop-filter: blur(var(--bg-overlay-blur));
+  transition: background-image 0.2s ease;
+}
+
+.background-overlay.inactive {
+  display: none;
+}
+
+/* backdrop-filter does not sample hardware-composited video. When a video is
+   actually showing, blur that layer directly and drop the backdrop blur so
+   the two do not stack. video-fallback / video-error show a still image, and
+   reduced-motion keeps the thumbnail, so those keep the backdrop path. */
+.background-container.bg-overlay-blur-media:not(.video-fallback):not(.video-error) .background-video.active:not([data-reduced-motion-paused="true"]) {
+  filter: blur(var(--bg-overlay-blur));
+  transform: translate3d(0, 0, 0) scale(1.05);
+}
+
+.background-container.bg-overlay-blur-media:not(.video-fallback):not(.video-error):has(.background-video.active:not([data-reduced-motion-paused="true"])) .background-overlay {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Hide thumbnail after full image is visible */
@@ -249,7 +292,8 @@
     transition: none;
     animation: none;
   }
-  .background-transition-overlay {
+  .background-transition-overlay,
+  .background-overlay {
     transition: none;
   }
   /* Disable entrance animations for reduced motion */
@@ -1552,6 +1596,105 @@ body.light-theme .bg-loading-spinner {
   height: 16px;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+/* Readability sliders. The generic settings range rule paints a padded text
+   field; these overrides restore a track + thumb and cover light theme. */
+#bg-overlay-section .setting-card .setting-content {
+  align-items: center;
+}
+
+#bg-overlay-section .bg-overlay-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 140px;
+}
+
+#bg-overlay-section input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  height: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: rgba(107, 114, 128, 0.35);
+  box-shadow: none;
+  outline: none;
+  cursor: pointer;
+}
+
+#bg-overlay-section input[type="range"]:focus {
+  box-shadow: none;
+}
+
+#bg-overlay-section input[type="range"]:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
+}
+
+#bg-overlay-section input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.4);
+}
+
+#bg-overlay-section input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.4);
+}
+
+#bg-overlay-section input[type="range"]::-moz-range-track {
+  height: 8px;
+  border: none;
+  border-radius: 5px;
+  background: rgba(107, 114, 128, 0.35);
+}
+
+#bg-overlay-section .bg-overlay-range output {
+  min-width: 3.2em;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--settings-text-color);
+}
+
+body.light-theme #bg-overlay-section input[type="range"] {
+  background: #d1d5db;
+  border: none;
+  color: #1f2937;
+}
+
+body.light-theme #bg-overlay-section input[type="range"]::-moz-range-track {
+  background: #d1d5db;
+}
+
+body.light-theme #bg-overlay-section input[type="range"]::-webkit-slider-thumb {
+  border-color: #ffffff;
+}
+
+body.light-theme #bg-overlay-section input[type="range"]::-moz-range-thumb {
+  border-color: #ffffff;
+}
+
+body.light-theme #bg-overlay-section .bg-overlay-range output {
+  color: #1f2937;
 }
 
 /* Background rotation picker */
