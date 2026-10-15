@@ -93,7 +93,10 @@
         label.setAttribute('data-accessibility-modal-label', '');
         modal.prepend(label);
       }
-      label.textContent = translate(def.labelKey, def.labelKey);
+      const labelText = translate(def.labelKey, def.labelKey);
+      // Assigning textContent always mutates, and the DOM observer calls
+      // syncModals again. Skip the write when the label is already correct.
+      if (label.textContent !== labelText) label.textContent = labelText;
       if (!label.id) label.id = modal.id + '-accessibility-label';
       return label;
     }
@@ -111,7 +114,8 @@
       label.setAttribute('data-accessibility-modal-label', '');
       modal.prepend(label);
     }
-    label.textContent = modal.title || modal.id.replace(/-/g, ' ');
+    const fallbackLabel = modal.title || modal.id.replace(/-/g, ' ');
+    if (label.textContent !== fallbackLabel) label.textContent = fallbackLabel;
     if (!label.id) label.id = modal.id + '-accessibility-label';
     return label;
   }

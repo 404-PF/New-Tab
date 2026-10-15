@@ -84,11 +84,11 @@ describe('Accessibility - modal semantics and focus management', () => {
       bubbles: true,
       cancelable: true
     }));
-    await new Promise(resolve => setTimeout(resolve, 0));
-
     expect(modal.classList.contains('modal-open')).toBe(false);
     expect(opener.hasAttribute('inert')).toBe(false);
-    expect(document.activeElement).toBe(opener);
+    // Focus is restored in requestAnimationFrame. jsdom flushes that on a
+    // timer, so wait for the opener instead of sleeping a fixed interval.
+    await vi.waitFor(() => expect(document.activeElement).toBe(opener));
   });
 });
 
