@@ -15,6 +15,10 @@
     "message": "Não foi possível salvar as estatísticas do jogo. Sua última pontuação não foi salva.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "shortcutSaveError": {
+    "message": "Não foi possível salvar as alterações de atalhos. Sua última ação não foi salva.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "Não foi possível carregar os planos de fundo personalizados. Tente novamente.",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -26,6 +30,10 @@
   "customBackgroundDeleteError": {
     "message": "Não foi possível excluir o plano de fundo personalizado. Tente novamente.",
     "description": "Error shown when a custom background cannot be deleted"
+  },
+  "onboardingSaveError": {
+    "message": "Não foi possível salvar a conclusão do onboarding. Seu progresso foi mantido para você poder tentar novamente.",
+    "description": "Error shown when onboarding completion cannot be persisted"
   },
   "name": {
     "message": "New Tab",
@@ -140,6 +148,10 @@
   "bgRotationNext": {
     "message": "Próximo fundo",
     "description": "Button to manually advance to next background"
+  },
+  "bgRotationSaveError": {
+    "message": "Não foi possível salvar as configurações de rotação de fundo. Sua última ação não foi salva.",
+    "description": "Error shown when background rotation settings cannot be persisted"
   },
   "uploadBackground": {
     "message": "Carregar plano de fundo",

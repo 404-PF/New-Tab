@@ -15,6 +15,10 @@
     "message": "Failed to save game statistics. Your latest score was not saved.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "shortcutSaveError": {
+    "message": "Failed to save shortcut changes. Your last action was not saved.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "Failed to load custom backgrounds. Please try again.",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -26,6 +30,10 @@
   "customBackgroundDeleteError": {
     "message": "Failed to delete the custom background. Please try again.",
     "description": "Error shown when a custom background cannot be deleted"
+  },
+  "onboardingSaveError": {
+    "message": "Failed to save onboarding completion. Your progress was kept so you can retry.",
+    "description": "Error shown when onboarding completion cannot be persisted"
   },
   "name": {
     "message": "New Tab",
@@ -194,6 +202,10 @@
   "bgRotationNext": {
     "message": "Next Background",
     "description": "Button to manually advance to next background"
+  },
+  "bgRotationSaveError": {
+    "message": "Failed to save background rotation settings. Your last action was not saved.",
+    "description": "Error shown when background rotation settings cannot be persisted"
   },
   "uploadBackground": {
     "message": "Upload Background",

@@ -15,6 +15,10 @@
     "message": "无法保存游戏数据。您最新的成绩未被保存。",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "shortcutSaveError": {
+    "message": "无法保存快捷键更改。您上次的操作未被保存。",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "无法加载自定义背景。请重试。",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -26,6 +30,10 @@
   "customBackgroundDeleteError": {
     "message": "无法删除自定义背景。请重试。",
     "description": "Error shown when a custom background cannot be deleted"
+  },
+  "onboardingSaveError": {
+    "message": "无法保存新手引导的完成状态。您的进度已保留，可以重试。",
+    "description": "Error shown when onboarding completion cannot be persisted"
   },
   "name": {
     "message": "新标签页",
@@ -140,6 +148,10 @@
   "bgRotationNext": {
     "message": "下一个背景",
     "description": "Button to manually advance to next background"
+  },
+  "bgRotationSaveError": {
+    "message": "无法保存背景轮换设置。您上次的操作未被保存。",
+    "description": "Error shown when background rotation settings cannot be persisted"
   },
   "uploadBackground": {
     "message": "上传背景",

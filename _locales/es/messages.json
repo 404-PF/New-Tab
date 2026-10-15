@@ -15,6 +15,10 @@
     "message": "No se pudieron guardar las estadísticas del juego. Tu última puntuación no se guardó.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "shortcutSaveError": {
+    "message": "No se pudieron guardar los cambios de los atajos. La última acción no se guardó.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -26,6 +30,10 @@
   "customBackgroundDeleteError": {
     "message": "No se pudo eliminar el fondo personalizado. Inténtalo de nuevo.",
     "description": "Error shown when a custom background cannot be deleted"
+  },
+  "onboardingSaveError": {
+    "message": "No se pudo guardar la finalización del tour de introducción. Tu progreso se conservó para que puedas reintentarlo.",
+    "description": "Error shown when onboarding completion cannot be persisted"
   },
   "name": {
     "message": "New Tab",
@@ -140,6 +148,10 @@
   "bgRotationNext": {
     "message": "Siguiente fondo",
     "description": "Button to manually advance to next background"
+  },
+  "bgRotationSaveError": {
+    "message": "No se pudieron guardar los ajustes de rotación de fondo. La última acción no se guardó.",
+    "description": "Error shown when background rotation settings cannot be persisted"
   },
   "uploadBackground": {
     "message": "Subir fondo",

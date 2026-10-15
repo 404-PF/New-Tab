@@ -15,6 +15,10 @@
     "message": "게임 통계를 저장하지 못했습니다. 최근 점수가 저장되지 않았습니다.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "shortcutSaveError": {
+    "message": "단축키 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -26,6 +30,10 @@
   "customBackgroundDeleteError": {
     "message": "사용자 지정 배경을 삭제하지 못했습니다. 다시 시도해 주세요.",
     "description": "Error shown when a custom background cannot be deleted"
+  },
+  "onboardingSaveError": {
+    "message": "온보딩 완료를 저장하지 못했습니다. 진행 상황이 그대로 유지되어 다시 시도할 수 있습니다.",
+    "description": "Error shown when onboarding completion cannot be persisted"
   },
   "name": {
     "message": "New Tab",
@@ -140,6 +148,10 @@
   "bgRotationNext": {
     "message": "다음 배경",
     "description": "Button to manually advance to next background"
+  },
+  "bgRotationSaveError": {
+    "message": "배경 회전 설정을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
+    "description": "Error shown when background rotation settings cannot be persisted"
   },
   "uploadBackground": {
     "message": "배경 업로드",

@@ -15,6 +15,10 @@
     "message": "ゲーム統計を保存できませんでした。直前のスコアは保存されていません。",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "shortcutSaveError": {
+    "message": "ショートカットの変更を保存できませんでした。直前の操作は保存されていません。",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "カスタム背景を読み込めませんでした。もう一度お試しください。",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -26,6 +30,10 @@
   "customBackgroundDeleteError": {
     "message": "カスタム背景を削除できませんでした。もう一度お試しください。",
     "description": "Error shown when a custom background cannot be deleted"
+  },
+  "onboardingSaveError": {
+    "message": "オンボーディングの完了を保存できませんでした。進行状況は保持されているため、再試行できます。",
+    "description": "Error shown when onboarding completion cannot be persisted"
   },
   "name": {
     "message": "New Tab",
@@ -140,6 +148,10 @@
   "bgRotationNext": {
     "message": "次の背景",
     "description": "Button to manually advance to next background"
+  },
+  "bgRotationSaveError": {
+    "message": "背景ローテーションの設定を保存できませんでした。直前の操作は保存されていません。",
+    "description": "Error shown when background rotation settings cannot be persisted"
   },
   "uploadBackground": {
     "message": "背景をアップロード",

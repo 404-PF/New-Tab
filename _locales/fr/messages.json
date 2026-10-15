@@ -15,6 +15,10 @@
     "message": "Impossible d’enregistrer les statistiques de jeu. Votre dernier score n’a pas été enregistré.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "shortcutSaveError": {
+    "message": "Impossible d’enregistrer les modifications des raccourcis. Votre dernière action n’a pas été enregistrée.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "Impossible de charger les arrière-plans personnalisés. Veuillez réessayer.",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -26,6 +30,10 @@
   "customBackgroundDeleteError": {
     "message": "Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.",
     "description": "Error shown when a custom background cannot be deleted"
+  },
+  "onboardingSaveError": {
+    "message": "Impossible d’enregistrer la fin de la visite de bienvenue. Votre progression a été conservée, vous pouvez réessayer.",
+    "description": "Error shown when onboarding completion cannot be persisted"
   },
   "name": {
     "message": "New Tab",
@@ -140,6 +148,10 @@
   "bgRotationNext": {
     "message": "Arrière-plan suivant",
     "description": "Button to manually advance to next background"
+  },
+  "bgRotationSaveError": {
+    "message": "Impossible d’enregistrer les paramètres de rotation d’arrière-plan. Votre dernière action n’a pas été enregistrée.",
+    "description": "Error shown when background rotation settings cannot be persisted"
   },
   "uploadBackground": {
     "message": "Importer un arrière-plan",

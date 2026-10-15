@@ -15,6 +15,10 @@
     "message": "Spielstatistiken konnten nicht gespeichert werden. Dein letzter Punktestand wurde nicht gespeichert.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "shortcutSaveError": {
+    "message": "Tastenkombinationen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -26,6 +30,10 @@
   "customBackgroundDeleteError": {
     "message": "Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.",
     "description": "Error shown when a custom background cannot be deleted"
+  },
+  "onboardingSaveError": {
+    "message": "Der Onboarding-Abschluss konnte nicht gespeichert werden. Dein Fortschritt wurde behalten, du kannst es erneut versuchen.",
+    "description": "Error shown when onboarding completion cannot be persisted"
   },
   "name": {
     "message": "New Tab",
@@ -140,6 +148,10 @@
   "bgRotationNext": {
     "message": "Nächster Hintergrund",
     "description": "Button to manually advance to next background"
+  },
+  "bgRotationSaveError": {
+    "message": "Hintergrundrotations-Einstellungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
+    "description": "Error shown when background rotation settings cannot be persisted"
   },
   "uploadBackground": {
     "message": "Hintergrund hochladen",

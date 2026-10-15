@@ -241,6 +241,7 @@ const translations = {
     bgRotationPicker: 'Select backgrounds to rotate',
     bgRotationUploads: 'Your uploads',
     bgRotationNext: 'Next Background',
+    bgRotationSaveError: 'Failed to save background rotation settings. Your last action was not saved.',
     rotationOptions: 'Options',
 
     // Apps settings
@@ -485,6 +486,7 @@ const translations = {
     onboardingSettingsContent: 'Click the gear icon to access extensive customization options for themes, styling, and more.',
     onboardingCompleteTitle: 'You\'re All Set! ✨',
     onboardingCompleteContent: 'You now know the basics of New-Tab. Explore the settings to make it truly yours. You can always restart this tour from Settings > About.',
+    onboardingSaveError: 'Failed to save onboarding completion. Your progress was kept so you can retry.',
 
     // Onboarding navigation
     previous: 'Previous',
@@ -500,6 +502,7 @@ const translations = {
     shortcutToggleNotes: 'Toggle Notes',
     shortcutCloseModal: 'Close Modal / Dialog',
     shortcutPressAKey: 'Press a key...',
+    shortcutSaveError: 'Failed to save shortcut changes. Your last action was not saved.',
 
     // Shortcuts settings tab
     shortcuts: 'Shortcuts',
@@ -775,6 +778,7 @@ const translations = {
     bgRotationPicker: '选择要轮播的背景',
     bgRotationUploads: '上传的背景',
     bgRotationNext: '下一个背景',
+    bgRotationSaveError: '无法保存背景轮换设置。您上次的操作未被保存。',
     rotationOptions: '选项',
 
     // Apps settings
@@ -1013,6 +1017,7 @@ const translations = {
     onboardingSettingsContent: '点击齿轮图标访问主题、样式等方面的广泛自定义选项。',
     onboardingCompleteTitle: '您已准备就绪！✨',
     onboardingCompleteContent: '您现在知道了 New-Tab 的基础知识。探索设置以使其真正属于您。您可以随时从设置 > 关于中重新启动此之旅。',
+    onboardingSaveError: '无法保存新手引导的完成状态。您的进度已保留，可以重试。',
 
     // Onboarding navigation
     previous: '上一步',
@@ -1028,6 +1033,7 @@ const translations = {
     shortcutToggleNotes: '切换便签',
     shortcutCloseModal: '关闭对话框',
     shortcutPressAKey: '按下按键...',
+    shortcutSaveError: '无法保存快捷键更改。您上次的操作未被保存。',
 
     // Shortcuts settings tab
     shortcuts: '快捷键',
@@ -1283,6 +1289,7 @@ const translations = {
     bgRotationPicker: 'ローテーションする背景を選択',
     bgRotationUploads: 'アップロードした背景',
     bgRotationNext: '次の背景',
+    bgRotationSaveError: '背景ローテーションの設定を保存できませんでした。直前の操作は保存されていません。',
     rotationOptions: 'オプション',
     appsSettings: 'アプリ',
     appGridSaveError: 'アプリの変更を保存できませんでした。直前の操作は保存されていません。',
@@ -1484,6 +1491,7 @@ const translations = {
     onboardingSettingsContent: '歯車アイコンをクリックして、テーマやスタイルなどの詳細設定にアクセス。',
     onboardingCompleteTitle: '準備完了！✨',
     onboardingCompleteContent: 'New-Tabの基本を学びました。設定を探索して自分だけのタブに。設定 > についてからツアーを再開できます。',
+    onboardingSaveError: 'オンボーディングの完了を保存できませんでした。進行状況は保持されているため、再試行できます。',
     previous: '前へ',
     next: '次へ',
     finish: '完了',
@@ -1497,6 +1505,7 @@ const translations = {
     shortcutToggleNotes: 'メモ切替',
     shortcutCloseModal: 'モーダルを閉じる',
     shortcutPressAKey: 'キーを押してください...',
+    shortcutSaveError: 'ショートカットの変更を保存できませんでした。直前の操作は保存されていません。',
 
     // Shortcuts settings tab
     shortcuts: 'ショートカット',
@@ -1751,6 +1760,7 @@ const translations = {
     bgRotationPicker: '회전할 배경 선택',
     bgRotationUploads: '업로드한 배경',
     bgRotationNext: '다음 배경',
+    bgRotationSaveError: '배경 회전 설정을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
     rotationOptions: '옵션',
     appsSettings: '앱',
     appGridSaveError: '앱 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
@@ -1952,6 +1962,7 @@ const translations = {
     onboardingSettingsContent: '기어 아이콘을 클릭하여 테마, 스타일 등 다양한 사용자 정의 옵션에 액세스하세요.',
     onboardingCompleteTitle: '모든 준비 완료! ✨',
     onboardingCompleteContent: '이제 New-Tab의 기본을 알게 되었습니다. 설정을 탐색하여 나만의 탭으로 만들어보세요. 설정 > 정보에서 언제든지 투어를 다시 시작할 수 있습니다.',
+    onboardingSaveError: '온보딩 완료를 저장하지 못했습니다. 진행 상황이 그대로 유지되어 다시 시도할 수 있습니다.',
     previous: '이전',
     next: '다음',
     finish: '완료',
@@ -1965,6 +1976,7 @@ const translations = {
     shortcutToggleNotes: '메모 전환',
     shortcutCloseModal: '모달 닫기',
     shortcutPressAKey: '키를 누르세요...',
+    shortcutSaveError: '단축키 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
 
     // Shortcuts settings tab
     shortcuts: '단축키',
@@ -2207,6 +2219,7 @@ const translations = {
     bgRotationPicker: 'Seleccionar fondos para rotar',
     bgRotationUploads: 'Tus subidas',
     bgRotationNext: 'Siguiente fondo',
+    bgRotationSaveError: 'No se pudieron guardar los ajustes de rotación de fondo. La última acción no se guardó.',
     rotationOptions: 'Opciones',
     appsSettings: 'Aplicaciones',
     appGridSaveError: 'No se pudieron guardar los cambios de las aplicaciones. La última acción no se guardó.',
@@ -2408,6 +2421,7 @@ const translations = {
     onboardingSettingsContent: 'Haz clic en el icono de engranaje para acceder a amplias opciones de personalización de temas, estilos y más.',
     onboardingCompleteTitle: '¡Todo listo! ✨',
     onboardingCompleteContent: 'Ya conoces los conceptos básicos de New-Tab. Explora los ajustes para hacerlo verdaderamente tuyo. Siempre puedes reiniciar este tour desde Ajustes > Acerca de.',
+    onboardingSaveError: 'No se pudo guardar la finalización del tour de introducción. Tu progreso se conservó para que puedas reintentarlo.',
     previous: 'Anterior',
     next: 'Siguiente',
     finish: 'Finalizar',
@@ -2421,6 +2435,7 @@ const translations = {
     shortcutToggleNotes: 'Alternar notas',
     shortcutCloseModal: 'Cerrar modal',
     shortcutPressAKey: 'Presiona una tecla...',
+    shortcutSaveError: 'No se pudieron guardar los cambios de los atajos. La última acción no se guardó.',
 
     // Shortcuts settings tab
     shortcuts: 'Atajos',
@@ -2675,6 +2690,7 @@ const translations = {
     bgRotationPicker: 'Sélectionner les arrière-plans à tourner',
     bgRotationUploads: 'Vos importations',
     bgRotationNext: 'Arrière-plan suivant',
+    bgRotationSaveError: 'Impossible d’enregistrer les paramètres de rotation d’arrière-plan. Votre dernière action n’a pas été enregistrée.',
     rotationOptions: 'Options',
     appsSettings: 'Applications',
     appGridSaveError: 'Impossible d’enregistrer les modifications des applications. Votre dernière action n’a pas été enregistrée.',
@@ -2876,6 +2892,7 @@ const translations = {
     onboardingSettingsContent: 'Cliquez sur l\'icône d\'engrenage pour accéder à de nombreuses options de personnalisation des thèmes, styles et plus encore.',
     onboardingCompleteTitle: 'Vous êtes prêt ! ✨',
     onboardingCompleteContent: 'Vous connaissez maintenant les bases de New-Tab. Explorez les paramètres pour le rendre vraiment vôtre. Vous pouvez toujours redémarrer cette visite depuis Paramètres > À propos.',
+    onboardingSaveError: 'Impossible d’enregistrer la fin de la visite de bienvenue. Votre progression a été conservée, vous pouvez réessayer.',
     previous: 'Précédent',
     next: 'Suivant',
     finish: 'Terminer',
@@ -2889,6 +2906,7 @@ const translations = {
     shortcutToggleNotes: 'Basculer notes',
     shortcutCloseModal: 'Fermer modal',
     shortcutPressAKey: 'Appuyez sur une touche...',
+    shortcutSaveError: 'Impossible d’enregistrer les modifications des raccourcis. Votre dernière action n’a pas été enregistrée.',
 
     // Shortcuts settings tab
     shortcuts: 'Raccourcis',
@@ -3143,6 +3161,7 @@ const translations = {
     bgRotationPicker: 'Hintergründe zum Rotieren auswählen',
     bgRotationUploads: 'Deine Uploads',
     bgRotationNext: 'Nächster Hintergrund',
+    bgRotationSaveError: 'Hintergrundrotations-Einstellungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.',
     rotationOptions: 'Optionen',
     appsSettings: 'Apps',
     appGridSaveError: 'App-Änderungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.',
@@ -3344,6 +3363,7 @@ const translations = {
     onboardingSettingsContent: 'Klicke auf das Zahnradsymbol, um umfangreiche Anpassungsoptionen für Themen, Styling und mehr zu erhalten.',
     onboardingCompleteTitle: 'Du bist bereit! ✨',
     onboardingCompleteContent: 'Du kennst jetzt die Grundlagen von New-Tab. Erkunde die Einstellungen, um es wirklich zu deinem zu machen. Du kannst diese Tour jederzeit über Einstellungen > Über neu starten.',
+    onboardingSaveError: 'Der Onboarding-Abschluss konnte nicht gespeichert werden. Dein Fortschritt wurde behalten, du kannst es erneut versuchen.',
     previous: 'Zurück',
     next: 'Weiter',
     finish: 'Fertigstellen',
@@ -3357,6 +3377,7 @@ const translations = {
     shortcutToggleNotes: 'Notizen umschalten',
     shortcutCloseModal: 'Modal schließen',
     shortcutPressAKey: 'Taste drücken...',
+    shortcutSaveError: 'Tastenkombinationen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.',
 
     // Shortcuts settings tab
     shortcuts: 'Tastenkürzel',
@@ -3611,6 +3632,7 @@ const translations = {
     bgRotationPicker: 'Selecionar fundos para rotacionar',
     bgRotationUploads: 'Seus envios',
     bgRotationNext: 'Próximo fundo',
+    bgRotationSaveError: 'Não foi possível salvar as configurações de rotação de fundo. Sua última ação não foi salva.',
     rotationOptions: 'Opções',
     appsSettings: 'Aplicativos',
     appGridSaveError: 'Não foi possível salvar as alterações dos aplicativos. Sua última ação não foi salva.',
@@ -3812,6 +3834,7 @@ const translations = {
     onboardingSettingsContent: 'Clique no ícone de engrenagem para acessar opções abrangentes de personalização de temas, estilos e muito mais.',
     onboardingCompleteTitle: 'Tudo pronto! ✨',
     onboardingCompleteContent: 'Agora você conhece os conceitos básicos do New-Tab. Explore as configurações para torná-lo verdadeiramente seu. Você pode sempre reiniciar este tour em Configurações > Sobre.',
+    onboardingSaveError: 'Não foi possível salvar a conclusão do onboarding. Seu progresso foi mantido para você poder tentar novamente.',
     previous: 'Anterior',
     next: 'Próximo',
     finish: 'Concluir',
@@ -3825,6 +3848,7 @@ const translations = {
     shortcutToggleNotes: 'Alternar notas',
     shortcutCloseModal: 'Fechar modal',
     shortcutPressAKey: 'Pressione uma tecla...',
+    shortcutSaveError: 'Não foi possível salvar as alterações de atalhos. Sua última ação não foi salva.',
 
     // Shortcuts settings tab
     shortcuts: 'Atalhos',
@@ -4079,6 +4103,7 @@ const translations = {
     bgRotationPicker: 'Выберите фоны для смены',
     bgRotationUploads: 'Ваши загрузки',
     bgRotationNext: 'Следующий фон',
+    bgRotationSaveError: 'Не удалось сохранить настройки смены фона. Последнее действие не было сохранено.',
     rotationOptions: 'Параметры',
     appsSettings: 'Приложения',
     appGridSaveError: 'Не удалось сохранить изменения приложений. Последнее действие не было сохранено.',
@@ -4280,6 +4305,7 @@ const translations = {
     onboardingSettingsContent: 'Нажмите на значок шестерёнки для доступа к обширным опциям настройки тем, стилей и многого другого.',
     onboardingCompleteTitle: 'Вы готовы! ✨',
     onboardingCompleteContent: 'Теперь вы знаете основы New-Tab. Исследуйте настройки, чтобы сделать его действительно своим. Вы всегда можете перезапустить этот тур из Настроек > О проекте.',
+    onboardingSaveError: 'Не удалось сохранить завершение обучения. Ваш прогресс сохранён, вы можете повторить попытку.',
     previous: 'Назад',
     next: 'Далее',
     finish: 'Завершить',
@@ -4293,6 +4319,7 @@ const translations = {
     shortcutToggleNotes: 'Переключить заметки',
     shortcutCloseModal: 'Закрыть модальное окно',
     shortcutPressAKey: 'Нажмите клавишу...',
+    shortcutSaveError: 'Не удалось сохранить изменения горячих клавиш. Последнее действие не было сохранено.',
 
     // Shortcuts settings tab
     shortcuts: 'Ярлыки',

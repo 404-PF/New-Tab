@@ -36,11 +36,78 @@ class OnboardingTour {
     return localStorage.getItem('onboardingCompleted') === 'true';
   }
 
-  // Mark onboarding as completed
-  markCompleted() {
-    localStorage.setItem('onboardingCompleted', 'true');
+  // Report that the completion marker could not be persisted
+  _reportCompletionSaveError(error) {
+    if (error) {
+      console.warn('Failed to persist onboarding completion:', error);
+    }
+
+    const fallback = 'Failed to save onboarding completion. Your progress was kept so you can retry.';
+    let message = fallback;
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const translated = window.i18n.t('onboardingSaveError');
+      if (translated && translated !== 'onboardingSaveError') {
+        message = translated;
+      }
+    }
+
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+    } else {
+      console.warn(message);
+    }
+  }
+
+  // Clear the resume step once the completion marker is confirmed persisted
+  _finalizeCompletion() {
     localStorage.removeItem('onboardingStep');
     this.completed = true;
+    return true;
+  }
+
+  // Mark onboarding as completed. Returns a Promise resolving to whether the
+  // completion marker was persisted.
+  // The saved resume step is only cleared after the write is confirmed, so a
+  // failed write keeps onboardingStep for resume instead of erasing it.
+  markCompleted() {
+    if (typeof localStorage.setItemAsync === 'function') {
+      let write;
+      try {
+        write = localStorage.setItemAsync('onboardingCompleted', 'true');
+      } catch (error) {
+        this._reportCompletionSaveError(error);
+        return Promise.resolve(false);
+      }
+
+      return Promise.resolve(write).then(
+        (persisted) => {
+          if (persisted === false) {
+            this._reportCompletionSaveError();
+            return false;
+          }
+          return this._finalizeCompletion();
+        },
+        (error) => {
+          this._reportCompletionSaveError(error);
+          return false;
+        }
+      );
+    }
+
+    let persisted;
+    try {
+      persisted = localStorage.setItem('onboardingCompleted', 'true') !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (error) {
+      this._reportCompletionSaveError(error);
+      return Promise.resolve(false);
+    }
+
+    if (!persisted) {
+      this._reportCompletionSaveError();
+      return Promise.resolve(false);
+    }
+
+    return Promise.resolve(this._finalizeCompletion());
   }
 
   // Reset onboarding (for settings restart)
@@ -250,7 +317,7 @@ class OnboardingTour {
     // Click outside to advance (for non-action steps)
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay && !this.steps[this.currentStep].waitForAction) {
-        this.nextStep();
+        void this.nextStep();
       }
     });
   }
@@ -594,7 +661,7 @@ class OnboardingTour {
       localStorage.setItem('onboardingStep', String(this.currentStep));
       this.showStep();
     } else {
-      this.end(true);
+      return this.end(true);
     }
   }
 
@@ -659,8 +726,9 @@ class OnboardingTour {
       });
       this._themeChangeHandler = null;
     }
+    let completionResult;
     if (completed) {
-      this.markCompleted();
+      completionResult = this.markCompleted();
     } else {
       this._dismissedThisSession = true;
       const existingRaw = localStorage.getItem('onboardingStep');
@@ -683,6 +751,8 @@ class OnboardingTour {
         this._endTimeout = null;
       }, 300);
     }
+
+    return completionResult;
   }
 }
 
