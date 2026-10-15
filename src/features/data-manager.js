@@ -174,18 +174,49 @@
     }
   }
 
+  // Writes made during an import. The storage bridge accepts writes
+  // optimistically and can still fail asynchronously (chrome.storage
+  // runtime.lastError), so applyData waits for these results before it
+  // reports success.
+  let pendingImportWrites = null;
+
+  function trackImportWrite(key, promise) {
+    if (!pendingImportWrites) return;
+    pendingImportWrites.push(Promise.resolve(promise).then(function (ok) {
+      if (ok === false) {
+        console.warn('[data-manager] Storage write was not persisted for key "' + key + '"');
+      }
+      return ok !== false;
+    }, function (err) {
+      console.warn('[data-manager] Failed to persist key "' + key + '":', err);
+      return false;
+    }));
+  }
+
   function writeStorage(key, value) {
     try {
-      let result;
       if (value === null || value === undefined) {
-        localStorage.removeItem(key);
+        if (typeof localStorage.removeItemAsync === 'function') {
+          trackImportWrite(key, localStorage.removeItemAsync(key));
+        } else {
+          localStorage.removeItem(key);
+        }
+        // removeItem reports nothing; confirm the key is really gone.
+        if (localStorage.getItem(key) !== null) {
+          throw new Error('Storage removal was not accepted for key "' + key + '"');
+        }
         return;
-      } else if (typeof value === 'string') {
-        result = localStorage.setItem(key, value);
-      } else {
-        result = localStorage.setItem(key, JSON.stringify(value));
       }
-      if (result === false) {
+
+      const serialized = typeof value === 'string' ? value : JSON.stringify(value);
+      if (typeof localStorage.setItemAsync === 'function') {
+        trackImportWrite(key, localStorage.setItemAsync(key, serialized));
+        if (localStorage.getItem(key) !== serialized) {
+          throw new Error('Storage write was not accepted for key "' + key + '"');
+        }
+        return;
+      }
+      if (localStorage.setItem(key, serialized) === false) {
         throw new Error('Storage write was not accepted for key "' + key + '"');
       }
     } catch (err) {
@@ -581,6 +612,7 @@
     const applyData = function (mode) {
       const keys = Object.keys(importedData);
       let count = 0;
+      pendingImportWrites = [];
 
       // In replace mode, clear any EXPORT_KEYS not present in importedData
       let hasWriteErrors = false;
@@ -816,6 +848,17 @@
         }
       });
 
+      const importWrites = pendingImportWrites;
+      pendingImportWrites = null;
+      return Promise.all(importWrites).then(function (results) {
+        if (results.indexOf(false) !== -1) {
+          hasWriteErrors = true;
+        }
+        finishImport(mode, count, hasWriteErrors);
+      });
+    };
+
+    const finishImport = function (mode, count, hasWriteErrors) {
       // Update todo reminders after import
       if (typeof window.scheduleTodoReminderCheck === 'function') {
         window.scheduleTodoReminderCheck();

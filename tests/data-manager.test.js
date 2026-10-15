@@ -279,6 +279,14 @@ describe('DataManager eye-care/games/search-history settings', () => {
         return dialog;
       });
       document.getElementById(mode === 'replace' ? 'data-import-replace-btn' : 'data-import-merge-btn').click();
+      // applyData waits for the storage bridge to confirm every write before
+      // it reports the outcome, so wait for the result toast.
+      const toast = await vi.waitFor(() => {
+        const el = document.querySelector('.toast-notification');
+        expect(el).not.toBeNull();
+        return el;
+      });
+      return { type: toast.classList.contains('toast-warning') ? 'warning' : 'success', text: toast.textContent };
     } finally {
       if (descriptor) {
         Object.defineProperty(fileInput, 'files', descriptor);
@@ -349,19 +357,75 @@ describe('DataManager eye-care/games/search-history settings', () => {
     expect(localStorage.getItem('eyeCareReminder')).toBeNull();
   });
 
-  it('surfaces rejected restore writes instead of silently accepting them', async () => {
-    const originalSetItem = localStorage.setItem;
-    const warnSpy = vi.spyOn(console, 'warn');
-    localStorage.setItem = () => false;
+  function failBridgeWritesFor(key, mode) {
+    const area = chrome.storage.local;
+    const originalSet = area.set;
+    const originalRemove = area.remove;
+    const fail = function (keys, callback, original) {
+      const list = Array.isArray(keys) ? keys : (typeof keys === 'string' ? [keys] : Object.keys(keys));
+      if (list.indexOf(key) === -1) return original.call(area, keys, callback);
+      if (mode === 'sync') throw new Error('QUOTA_BYTES quota exceeded');
+      setTimeout(() => {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        try {
+          if (typeof callback === 'function') callback();
+        } finally {
+          chrome.runtime.lastError = null;
+        }
+      }, 0);
+      return undefined;
+    };
+    area.set = (items, callback) => fail(items, callback, originalSet);
+    area.remove = (keys, callback) => fail(keys, callback, originalRemove);
+    return () => {
+      area.set = originalSet;
+      area.remove = originalRemove;
+    };
+  }
+
+  it('reports a partial import when a restore write fails synchronously', async () => {
+    const restore = failBridgeWritesFor('theme', 'sync');
     try {
-      await importBackup({ theme: 'dark' }, 'replace');
+      const result = await importBackup({ theme: 'dark' }, 'replace');
 
       expect(localStorage.getItem('theme')).toBeNull();
-      expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('[data-manager] Failed to write key "theme"'))).toBe(true);
+      expect(result.type).toBe('warning');
     } finally {
-      localStorage.setItem = originalSetItem;
-      warnSpy.mockRestore();
+      restore();
     }
+  });
+
+  it('reports a partial import when a restore write fails asynchronously', async () => {
+    localStorage.setItem('theme', 'light');
+    const restore = failBridgeWritesFor('theme', 'async');
+    try {
+      const result = await importBackup({ theme: 'dark' }, 'replace');
+
+      expect(localStorage.getItem('theme')).toBe('light');
+      expect(result.type).toBe('warning');
+    } finally {
+      restore();
+    }
+  });
+
+  it('reports a partial import when a replace-mode removal fails', async () => {
+    localStorage.setItem('games_enabled', 'true');
+    const restore = failBridgeWritesFor('games_enabled', 'async');
+    try {
+      const result = await importBackup({ theme: 'dark' }, 'replace');
+
+      expect(localStorage.getItem('games_enabled')).toBe('true');
+      expect(result.type).toBe('warning');
+    } finally {
+      restore();
+    }
+  });
+
+  it('reports success when every restore write persists', async () => {
+    const result = await importBackup({ theme: 'dark' }, 'replace');
+
+    expect(localStorage.getItem('theme')).toBe('dark');
+    expect(result.type).toBe('success');
   });
 
   it('round-trips the new settings through export and re-validation', async () => {

@@ -526,8 +526,11 @@ function saveCustomProvidersAsync(providers) {
   }
 }
 
+// Always returns a Promise. It resolves to the new provider id on success,
+// null when the input is invalid (or no shortcut code is free), and false
+// when the storage write fails.
 function addCustomProvider(name, url) {
-  if (typeof name !== 'string' || !name.trim() || !isValidProviderUrl(url)) return false;
+  if (typeof name !== 'string' || !name.trim() || !isValidProviderUrl(url)) return Promise.resolve(null);
   const id = 'custom_' + Date.now();
   const providers = loadCustomProviders();
   const normalizedName = name.trim();
@@ -551,7 +554,7 @@ function addCustomProvider(name, url) {
   }
 
   const code = codeCandidates.find(function (candidate) { return !usedCodes.has(candidate); });
-  if (!code) return false;
+  if (!code) return Promise.resolve(null);
 
   providers.push({ id: id, name: normalizedName, url: url, code: code });
   return saveCustomProvidersAsync(providers).then(function (saved) {

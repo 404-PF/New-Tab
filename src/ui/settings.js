@@ -1825,17 +1825,17 @@ function initCustomSearchProvidersSettings() {
       return;
     }
 
-      const result = window.addCustomProvider(name, url);
-
-    if (result === false) {
-      // addCustomProvider returns false on validation failure; the name was
-      // already checked above, so only the URL can still be invalid here.
-      showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
-      urlInput.focus();
-      return;
-    }
-
-    Promise.resolve(result).then(function (savedId) {
+    // Disable the button while the write is in flight so a second click
+    // cannot queue a duplicate provider.
+    addBtn.disabled = true;
+    Promise.resolve(window.addCustomProvider(name, url)).then(function (savedId) {
+      if (savedId === null) {
+        // Validation failure; the name was already checked above, so only
+        // the URL can still be invalid here.
+        showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
+        urlInput.focus();
+        return;
+      }
       if (!savedId) {
         showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
         renderCustomProvidersList();
@@ -1850,6 +1850,12 @@ function initCustomSearchProvidersSettings() {
       }
       renderCustomProvidersList();
       nameInput.focus();
+    }, function (error) {
+      console.warn('Failed to add custom search provider:', error);
+      showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
+      renderCustomProvidersList();
+    }).finally(function () {
+      addBtn.disabled = false;
     });
   }
 

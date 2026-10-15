@@ -133,12 +133,18 @@ describe('Search providers - custom providers', () => {
     expect(loadCustomProviders().map((provider) => provider.id)).toEqual(['custom_1']);
   });
 
-  it('addCustomProvider returns false for missing name', () => {
-    expect(addCustomProvider('', 'https://test.com/search?q={query}')).toBe(false);
+  it('addCustomProvider resolves null for missing name', async () => {
+    await expect(addCustomProvider('', 'https://test.com/search?q={query}')).resolves.toBeNull();
   });
 
-  it('addCustomProvider returns false for missing {query} in url', () => {
-    expect(addCustomProvider('Test', 'https://test.com/search')).toBe(false);
+  it('addCustomProvider always returns a Promise, even for invalid input', () => {
+    const result = addCustomProvider('', 'https://test.com/search?q={query}');
+    expect(result).toBeInstanceOf(Promise);
+    return result;
+  });
+
+  it('addCustomProvider resolves null for missing {query} in url', async () => {
+    await expect(addCustomProvider('Test', 'https://test.com/search')).resolves.toBeNull();
   });
 
   it('removeCustomProvider removes a custom provider', async () => {
@@ -532,6 +538,47 @@ describe('Search providers - settings UI', () => {
       chrome.storage.local.set = originalSet;
       chrome.runtime.lastError = null;
     }
+  });
+
+  it('disables the Add button while the save is in flight', async () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+
+    const originalSet = chrome.storage.local.set;
+    let setCallback;
+    chrome.storage.local.set = (items, callback) => { setCallback = callback; };
+    try {
+      nameInput.value = 'Kagi';
+      urlInput.value = 'https://kagi.com/search?q={query}';
+      addBtn.click();
+      expect(addBtn.disabled).toBe(true);
+
+      setCallback();
+      await flushAsyncUI();
+
+      expect(addBtn.disabled).toBe(false);
+      expect(loadCustomProviders().length).toBe(1);
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+  });
+
+  it('shows the invalid URL message when addCustomProvider rejects the URL', async () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+
+    nameInput.value = 'FTP';
+    urlInput.value = 'ftp://example.com/search?q={query}';
+    addBtn.click();
+    await flushAsyncUI();
+
+    expect(feedback.textContent).toBe('Enter a valid URL with {query} and http(s).');
+    expect(feedback.classList.contains('error')).toBe(true);
+    expect(addBtn.disabled).toBe(false);
+    expect(loadCustomProviders().length).toBe(0);
   });
 
   it('shows an error and keeps the provider when the remove write fails', async () => {
