@@ -121,10 +121,30 @@
       }
     },
 
-    saveCache(cacheData) {
-      _safeSet(CACHE_KEY, JSON.stringify(cacheData));
-      // Dispatch custom event for same-tab listeners (storage events only fire in other tabs)
-      window.dispatchEvent(new CustomEvent('weatherCacheUpdated'));
+    async saveCache(cacheData) {
+      const payload = JSON.stringify(cacheData);
+      // localStorage.setItem (and the bridge's setItem) return before
+      // chrome.storage.local.set is known to have succeeded. A later failure
+      // rolls the cache back, so same-tab listeners must not be told the cache
+      // changed until the asynchronous write result is in. Fall back to the
+      // synchronous write when the bridge helper is absent.
+      let saved;
+      if (typeof localStorage.setItemAsync === 'function') {
+        try {
+          const result = await localStorage.setItemAsync(CACHE_KEY, payload);
+          saved = result !== false;
+        } catch (error) {
+          console.warn('Failed to write weather cache:', error);
+          saved = false;
+        }
+      } else {
+        saved = _safeSet(CACHE_KEY, payload);
+      }
+
+      if (saved) {
+        window.dispatchEvent(new CustomEvent('weatherCacheUpdated'));
+      }
+      return saved;
     }
   };
 
@@ -470,7 +490,13 @@
         locationName: locationDisplay
       };
 
-      WeatherStorage.saveCache(newCache);
+      // Persistence can outlive this refresh. Render the fetched data now so a
+      // chrome.storage callback that never arrives cannot leave the widget
+      // loading or hold isRefreshing. saveCache still dispatches
+      // weatherCacheUpdated only after the write is known to have succeeded.
+      WeatherStorage.saveCache(newCache).catch((error) => {
+        console.warn('Failed to write weather cache:', error);
+      });
       renderWeather(weatherData, newCache.locationName, unit);
     } catch (e) {
       console.error('Weather refresh failed:', e);
