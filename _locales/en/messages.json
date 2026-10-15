@@ -27,6 +27,10 @@
     "message": "Failed to delete the custom background. Please try again.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "onboardingSaveError": {
+    "message": "Failed to save onboarding completion. Your progress was kept so you can retry.",
+    "description": "Error shown when onboarding completion cannot be persisted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"

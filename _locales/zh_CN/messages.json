@@ -27,6 +27,10 @@
     "message": "无法删除自定义背景。请重试。",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "onboardingSaveError": {
+    "message": "无法保存新手引导的完成状态。您的进度已保留，可以重试。",
+    "description": "Error shown when onboarding completion cannot be persisted"
+  },
   "name": {
     "message": "新标签页",
     "description": "The name of the extension"
