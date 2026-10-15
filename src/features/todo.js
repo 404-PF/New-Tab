@@ -761,6 +761,16 @@
         todo.dueTime = null;
         needsMigration = true;
       }
+      if (todo.dueDate !== null && todo.dueDate !== undefined &&
+          (typeof todo.dueDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(todo.dueDate))) {
+        // A malformed stored dueDate (non-string or not YYYY-MM-DD) crashes
+        // parseLocalDate during the initial render, which used to abort
+        // initTodoModule before the date picker was bound (issue #810).
+        // Drop it the same way the import validator does.
+        todo.dueDate = null;
+        todo.dueTime = null;
+        needsMigration = true;
+      }
     });
 
     if (needsMigration) {
@@ -2456,7 +2466,7 @@ class CustomDatePicker {
 
     // Click outside to close
     document.addEventListener('click', (e) => {
-      if (this.isOpen && !this.trigger.contains(e.target) && !this.calendar.contains(e.target)) {
+      if (this.isOpen && !this.trigger?.contains(e.target) && !this.calendar?.contains(e.target)) {
         this.closeCalendar();
       }
     });
@@ -2480,7 +2490,7 @@ class CustomDatePicker {
       this.isOpen = true;
       this.calendar.classList.add('visible');
       this.renderCalendar();
-      this.trigger.classList.add('selected');
+      this.trigger?.classList.add('selected');
     }
   }
 
@@ -2488,7 +2498,7 @@ class CustomDatePicker {
     if (this.calendar) {
       this.isOpen = false;
       this.calendar.classList.remove('visible');
-      this.trigger.classList.remove('selected');
+      this.trigger?.classList.remove('selected');
     }
   }
 
@@ -2620,7 +2630,14 @@ window.addEventListener('languageChanged', () => {
 });
 
 function initTodoModule() {
-  initTodo();
+  // Bind the date picker independently of the rest of the todo module so a
+  // failure inside initTodo()'s load/render path cannot leave the due-date
+  // trigger without a click listener (issue #810).
+  try {
+    initTodo();
+  } catch (err) {
+    console.warn('Todo module failed to initialize:', err);
+  }
   initCustomDatePicker();
   syncDueTimeInputState();
 }
