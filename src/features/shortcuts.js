@@ -94,21 +94,43 @@
     }
   }
 
+  // Resolves to whether the reset was persisted. The storage bridge's sync
+  // removeItem() returns undefined and restores the value later if
+  // chrome.storage fails, so prefer removeItemAsync() and check its result.
   function resetShortcuts() {
     if (rebindingAction) cancelRebinding();
-    let persisted;
-    try {
-      const result = localStorage.removeItem(STORAGE_KEY);
-      persisted = result !== false; // NOSONAR - the storage bridge may return false while native Storage#removeItem returns void.
-    } catch (e) {
+    const finish = (persisted) => {
+      // On failure the bridge has already restored the stored value, so reloading rolls back.
+      activeShortcuts = loadShortcuts();
+      renderShortcutsSection();
+      if (!persisted) {
+        showShortcutSaveError();
+      }
+      return persisted;
+    };
+
+    const fail = (e) => {
       console.warn('Failed to reset shortcuts:', STORAGE_KEY, e);
-      persisted = false;
+      return finish(false);
+    };
+
+    if (typeof localStorage.removeItemAsync === 'function') {
+      let pending;
+      try {
+        pending = localStorage.removeItemAsync(STORAGE_KEY);
+      } catch (e) {
+        return Promise.resolve(fail(e));
+      }
+      return Promise.resolve(pending).then((result) => finish(result === true), fail);
     }
-    activeShortcuts = loadShortcuts();
-    renderShortcutsSection();
-    if (!persisted) {
-      showShortcutSaveError();
+
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      return Promise.resolve(fail(e));
     }
+    // A later chrome.storage restore is handled by the storageBridgeWriteError listener.
+    return Promise.resolve(finish(localStorage.getItem(STORAGE_KEY) === null));
   }
 
   function formatCombo(e) {

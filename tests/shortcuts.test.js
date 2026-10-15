@@ -555,20 +555,63 @@ describe('Shortcuts - save failure handling', () => {
     }
   });
 
-  it('reports an error and keeps the saved binding when reset fails', () => {
+  it('reports an error and keeps the saved binding when the chrome.storage remove fails', async () => {
     localStorage.setItem('customShortcuts', JSON.stringify({ focusSearch: 'X' }));
     Shortcuts.renderShortcutsSection();
 
-    const removeItemSpy = vi.spyOn(localStorage, 'removeItem').mockImplementation(() => false);
-    try {
-      Shortcuts.reset();
+    const originalRemove = chrome.storage.local.remove;
+    chrome.storage.local.remove = (keys, callback) => {
+      chrome.runtime.lastError = { message: 'quota exceeded' };
+      if (callback) callback();
+      chrome.runtime.lastError = null;
+      return Promise.resolve();
+    };
 
+    try {
+      const result = await Shortcuts.reset();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(result).toBe(false);
       expect(showToast).toHaveBeenCalledTimes(1);
       expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
       expect(Shortcuts.load().focusSearch).toBe('X');
       expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('X');
     } finally {
-      removeItemSpy.mockRestore();
+      chrome.storage.local.remove = originalRemove;
+    }
+  });
+
+  it('resets to defaults without an error when the remove succeeds', async () => {
+    localStorage.setItem('customShortcuts', JSON.stringify({ focusSearch: 'X' }));
+    Shortcuts.renderShortcutsSection();
+
+    const result = await Shortcuts.reset();
+
+    expect(result).toBe(true);
+    expect(showToast).not.toHaveBeenCalled();
+    expect(localStorage.getItem('customShortcuts')).toBeNull();
+    expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('/');
+  });
+
+  it('treats a key that survives a sync removeItem as a failed reset', async () => {
+    localStorage.setItem('customShortcuts', JSON.stringify({ focusSearch: 'X' }));
+    Shortcuts.renderShortcutsSection();
+
+    const originalRemoveItemAsync = localStorage.removeItemAsync;
+    const originalRemoveItem = localStorage.removeItem;
+    localStorage.removeItemAsync = undefined;
+    // Mirrors the bridge: removeItem returns undefined, and here the value is not removed.
+    localStorage.removeItem = vi.fn(() => undefined);
+
+    try {
+      const result = await Shortcuts.reset();
+
+      expect(result).toBe(false);
+      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+      expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('X');
+    } finally {
+      localStorage.removeItemAsync = originalRemoveItemAsync;
+      localStorage.removeItem = originalRemoveItem;
     }
   });
 });
