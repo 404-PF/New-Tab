@@ -27,6 +27,10 @@
     "message": "Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "onboardingSaveError": {
+    "message": "Der Onboarding-Abschluss konnte nicht gespeichert werden. Dein Fortschritt wurde behalten, du kannst es erneut versuchen.",
+    "description": "Error shown when onboarding completion cannot be persisted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"

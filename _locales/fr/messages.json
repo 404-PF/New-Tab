@@ -27,6 +27,10 @@
     "message": "Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "onboardingSaveError": {
+    "message": "Impossible d’enregistrer la fin de la visite de bienvenue. Votre progression a été conservée, vous pouvez réessayer.",
+    "description": "Error shown when onboarding completion cannot be persisted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"

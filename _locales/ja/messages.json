@@ -27,6 +27,10 @@
     "message": "カスタム背景を削除できませんでした。もう一度お試しください。",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "onboardingSaveError": {
+    "message": "オンボーディングの完了を保存できませんでした。進行状況は保持されているため、再試行できます。",
+    "description": "Error shown when onboarding completion cannot be persisted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
