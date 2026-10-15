@@ -90,6 +90,34 @@ describe('Accessibility - modal semantics and focus management', () => {
     // timer, so wait for the opener instead of sleeping a fixed interval.
     await vi.waitFor(() => expect(document.activeElement).toBe(opener));
   });
+
+  it('does not mutate a modal label that is already correct', async () => {
+    const observeStableLabel = async (modal) => {
+      window.Accessibility.refresh();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const label = modal.querySelector('[data-accessibility-modal-label]');
+      expect(label).not.toBeNull();
+
+      const mutations = [];
+      const observer = new MutationObserver(records => mutations.push(...records));
+      observer.observe(label, { childList: true });
+      window.Accessibility.refresh();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      observer.disconnect();
+      expect(mutations).toHaveLength(0);
+    };
+
+    await observeStableLabel(document.getElementById('settings-modal'));
+
+    const fallbackModal = document.createElement('div');
+    fallbackModal.id = 'add-app-modal';
+    document.body.appendChild(fallbackModal);
+    try {
+      await observeStableLabel(fallbackModal);
+    } finally {
+      fallbackModal.remove();
+    }
+  });
 });
 
 describe('Accessibility - app grid keyboard interaction', () => {
