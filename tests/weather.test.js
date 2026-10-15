@@ -448,4 +448,50 @@ describe('Weather widget', () => {
       window.i18n.t = originalT;
     }
   });
+
+  it('dispatches weatherCacheUpdated when the cache write succeeds', async () => {
+    configureAutoWeather({
+      cacheData: createWeatherDataWithTemperature(19)
+    });
+    installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
+
+    const onCacheUpdated = vi.fn();
+    window.addEventListener('weatherCacheUpdated', onCacheUpdated);
+    try {
+      await window.WeatherWidget.refresh(true);
+
+      expect(onCacheUpdated).toHaveBeenCalledTimes(1);
+      const stored = JSON.parse(localStorage.getItem('weatherCache'));
+      expect(stored.data.current.temperature_2m).toBe(22);
+    } finally {
+      window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
+    }
+  });
+
+  it('does not dispatch weatherCacheUpdated when the cache write fails', async () => {
+    configureAutoWeather({
+      cacheData: createWeatherDataWithTemperature(19)
+    });
+    installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
+
+    const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota exceeded', 'QuotaExceededError');
+    });
+    const onCacheUpdated = vi.fn();
+    window.addEventListener('weatherCacheUpdated', onCacheUpdated);
+    try {
+      await window.WeatherWidget.refresh(true);
+
+      // The failed write must not be broadcast as a cache update.
+      expect(onCacheUpdated).not.toHaveBeenCalled();
+      // The widget still renders the fresh in-memory data...
+      expect(document.querySelector('.weather-temp').textContent).toContain('22');
+      // ...while storage keeps the previous cache value.
+      const stored = JSON.parse(localStorage.getItem('weatherCache'));
+      expect(stored.data.current.temperature_2m).toBe(19);
+    } finally {
+      window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
+      setItem.mockRestore();
+    }
+  });
 });
