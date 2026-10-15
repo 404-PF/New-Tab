@@ -686,6 +686,38 @@ describe('Background rotation save failures', () => {
     expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 
+  it.each([
+    ['null', null],
+    ['an empty saved selection', '[]'],
+  ])('treats %s as "all backgrounds" when comparing the picker', async (_label, stored) => {
+    if (stored === null) {
+      localStorage.removeItem('bgRotationSelection');
+    } else {
+      localStorage.setItem('bgRotationSelection', stored);
+    }
+    BackgroundRotation.renderPicker();
+    const checkboxes = pickerContainer.querySelectorAll('input[type="checkbox"]');
+    expect(Array.from(checkboxes).every((cb) => cb.checked)).toBe(true);
+
+    const raiseSelectionError = async () => {
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+        detail: { key: 'bgRotationSelection', message: 'Failed to persist' },
+      }));
+      await flushDeferredFailureSync();
+    };
+
+    // Picker matches storage (everything selected): nothing to roll back.
+    await raiseSelectionError();
+    expect(showToast).not.toHaveBeenCalled();
+
+    // Picker is ahead of storage: resync to all-checked and report once.
+    checkboxes[1].checked = false;
+    await raiseSelectionError();
+    expect(showToast).toHaveBeenCalledTimes(1);
+    const restored = pickerContainer.querySelectorAll('input[type="checkbox"]');
+    expect(Array.from(restored).every((cb) => cb.checked)).toBe(true);
+  });
+
   it('ignores bridge write errors for unrelated keys', async () => {
     window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
       detail: { key: 'theme' },
