@@ -303,12 +303,36 @@ jobs:
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # User-owned fine-grained PAT (Contents + Pull requests read/write).
+          # Pushing and opening the PR as the user, not github-actions[bot],
+          # lets CI and review bots run on the PR. Only this step sees it; it
+          # is never exported to OpenCode or the lint/test steps.
+          PR_TOKEN: ${{ secrets.PR_TOKEN }}
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
           LINT_OUTCOME: ${{ steps.lint.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
         run: |
           set -euo pipefail
+          if [ -z "${PR_TOKEN:-}" ]; then
+            echo '::error::PR_TOKEN secret is not set; add a fine-grained PAT with Contents+Pull requests read/write'
+            exit 1
+          fi
+          # Authenticate git through an http.extraheader supplied via
+          # GIT_CONFIG_* env vars on the individual commands: nothing is
+          # written to .git/config, no token appears in a URL or argv, and
+          # checkout used persist-credentials:false so no stale header
+          # competes. The base64 value is masked before any use.
+          PR_AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PR_TOKEN" | base64 -w0)"
+          echo "::add-mask::$(printf 'x-access-token:%s' "$PR_TOKEN" | base64 -w0)"
+          # Hooks are disabled so repo (model-editable) hooks never run while
+          # the token is available.
+          git_pr() {
+            GIT_CONFIG_COUNT=2 \
+              GIT_CONFIG_KEY_0='http.https://github.com/.extraheader' GIT_CONFIG_VALUE_0="$PR_AUTH_HEADER" \
+              GIT_CONFIG_KEY_1='credential.helper' GIT_CONFIG_VALUE_1='' \
+              git -c core.hooksPath=/dev/null "$@"
+          }
           # Fetch issue context always writes .tmp/issue-context.json and
           # .tmp/triage-comment.md inside the workspace so OpenCode can read
           # them. Those files are not part of the fix. Drop them from the
@@ -331,7 +355,7 @@ jobs:
             *) PREFIX='fix' ;;
           esac
           BRANCH="$PREFIX/$ISSUE_NUMBER-$SLUG"
-          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+          if git_pr ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
             BRANCH="$BRANCH-r$GITHUB_RUN_ID"
           fi
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
@@ -349,9 +373,8 @@ jobs:
             echo "::error::Diff looks like it contains secret material; refusing to push."
             exit 1
           fi
-          git commit -m "$PREFIX: implement #$ISSUE_NUMBER $TITLE" -m "Fixes #$ISSUE_NUMBER"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git"
-          git push -u origin "$BRANCH"
+          git -c core.hooksPath=/dev/null commit -m "$PREFIX: implement #$ISSUE_NUMBER $TITLE" -m "Fixes #$ISSUE_NUMBER"
+          git_pr push -u origin "$BRANCH"
 
           mkdir -p "$GITHUB_WORKSPACE/.tmp"
           {
@@ -364,7 +387,8 @@ jobs:
             echo ''
             echo 'Validation failures (if any above) do not block this PR; reviewers please check CI.'
           } > "$GITHUB_WORKSPACE/.tmp/pr-body.md"
-          PR_URL="$(gh pr create --repo "$GH_REPO" --base main --head "$BRANCH" \
+          # Open the PR as the token owner; GITHUB_TOKEN stays for the rest.
+          PR_URL="$(GH_TOKEN="$PR_TOKEN" gh pr create --repo "$GH_REPO" --base main --head "$BRANCH" \
             --title "$PREFIX: implement #$ISSUE_NUMBER $TITLE" \
             --body-file "$GITHUB_WORKSPACE/.tmp/pr-body.md")"
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
