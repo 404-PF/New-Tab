@@ -145,6 +145,10 @@
     "message": "下一个背景",
     "description": "Button to manually advance to next background"
   },
+  "bgRotationSaveError": {
+    "message": "无法保存背景轮换设置。您上次的操作未被保存。",
+    "description": "Error shown when background rotation settings cannot be persisted"
+  },
   "uploadBackground": {
     "message": "上传背景",
     "description": "Tooltip for the upload background image button"

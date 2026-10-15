@@ -439,6 +439,7 @@ globalThis.window.i18n = {
       bgRotationNext: 'Next Background',
       appGridSaveError: 'Failed to save app changes. Your last action was not saved.',
       shortcutSaveError: 'Failed to save shortcut changes. Your last action was not saved.',
+      bgRotationSaveError: 'Failed to save background rotation settings. Your last action was not saved.',
       onboardingSaveError: 'Failed to save onboarding completion. Your progress was kept so you can retry.',
       iconStyle: 'Icon Style',
       iconStyleDesc: 'Choose the shape and appearance of your app icons',

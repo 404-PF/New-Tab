@@ -430,3 +430,301 @@ describe('Background rotation overlay', () => {
     }
   });
 });
+
+describe('Background rotation save failures', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save background rotation settings. Your last action was not saved.';
+  const flushDeferredFailureSync = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  let toggle;
+  let intervalSelect;
+  let optionsEl;
+  let pickerWrap;
+  let pickerContainer;
+  let showToast;
+
+  let restoreStorageSet = null;
+
+  // Fail writes for one key through the real storage bridge. 'sync' makes
+  // chrome.storage.local.set throw, so the bridge both dispatches
+  // storageBridgeWriteError and returns false from setItem. 'async' reports
+  // runtime.lastError from the set callback, after which the bridge rolls
+  // its cache back and dispatches the event.
+  function failWritesFor(key, mode = 'sync') {
+    const area = chrome.storage.local;
+    const originalSet = area.set;
+    area.set = function (items, callback) {
+      if (!Object.prototype.hasOwnProperty.call(items, key)) {
+        return originalSet.call(area, items, callback);
+      }
+      if (mode === 'sync') {
+        throw new Error('QUOTA_BYTES quota exceeded');
+      }
+      setTimeout(() => {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        try {
+          if (typeof callback === 'function') callback();
+        } finally {
+          chrome.runtime.lastError = null;
+        }
+      }, 0);
+      return undefined;
+    };
+    restoreStorageSet = () => { area.set = originalSet; };
+  }
+
+  beforeEach(() => {
+    window._backgrounds = [
+      { id: 'BG Alpha', title: 'BG Alpha', thumb: 'a.jpg', url: 'a-full.jpg' },
+      { id: 'BG Beta', title: 'BG Beta', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    localStorage.setItem('bgRotationEnabled', 'false');
+    localStorage.setItem('bgRotationInterval', '30min');
+    localStorage.removeItem('bgRotationSelection');
+
+    optionsEl = document.createElement('div');
+    optionsEl.id = 'bg-rotation-options';
+    pickerWrap = document.createElement('div');
+    pickerWrap.id = 'bg-rotation-picker-wrap';
+    toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.id = 'bg-rotation-toggle';
+    intervalSelect = document.createElement('select');
+    intervalSelect.id = 'bg-rotation-interval';
+    ['5min', '15min', '30min', '1hour', 'hourly', 'daily'].forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      intervalSelect.appendChild(option);
+    });
+    pickerContainer = document.createElement('div');
+    pickerContainer.id = 'bg-rotation-picker';
+    document.body.append(optionsEl, pickerWrap, toggle, intervalSelect, pickerContainer);
+
+    showToast = vi.fn();
+    window.showToast = showToast;
+
+    BackgroundRotation.initUI();
+  });
+
+  afterEach(async () => {
+    // Let deferred failure handlers from this test run before teardown so
+    // they cannot fire during the next test.
+    await flushDeferredFailureSync();
+    [optionsEl, pickerWrap, toggle, intervalSelect, pickerContainer].forEach((el) => {
+      if (el) el.remove();
+    });
+    delete window.showToast;
+    if (restoreStorageSet) {
+      restoreStorageSet();
+      restoreStorageSet = null;
+    }
+  });
+
+  it('persists and applies a successful enable toggle without error feedback', () => {
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+
+    expect(localStorage.getItem('bgRotationEnabled')).toBe('true');
+    expect(BackgroundRotation.isEnabled()).toBe(true);
+    expect(optionsEl.hidden).toBe(false);
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it('reverts the toggle and shows feedback when the enable write fails', () => {
+    failWritesFor('bgRotationEnabled');
+
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+
+    expect(BackgroundRotation.isEnabled()).toBe(false);
+    expect(toggle.checked).toBe(false);
+    expect(optionsEl.hidden).toBe(true);
+    expect(pickerWrap.hidden).toBe(true);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('shows exactly one toast and restarts once for a sync bridge failure', async () => {
+    const OriginalVisibilityInterval = window.VisibilityInterval;
+    const VisibilityIntervalMock = vi.fn(function () {
+      return { destroy: vi.fn() };
+    });
+    localStorage.setItem('bgRotationEnabled', 'true');
+    toggle.checked = true;
+    window.VisibilityInterval = VisibilityIntervalMock;
+    failWritesFor('bgRotationInterval');
+
+    try {
+      intervalSelect.value = '5min';
+      intervalSelect.dispatchEvent(new Event('change'));
+      await flushDeferredFailureSync();
+
+      expect(intervalSelect.value).toBe('30min');
+      expect(showToast).toHaveBeenCalledTimes(1);
+      expect(VisibilityIntervalMock).toHaveBeenCalledTimes(1);
+    } finally {
+      window.VisibilityInterval = OriginalVisibilityInterval;
+    }
+  });
+
+  it('does not start the rotation timer when the enable write fails', () => {
+    const OriginalVisibilityInterval = window.VisibilityInterval;
+    const VisibilityIntervalMock = vi.fn(function () {
+      return { destroy: vi.fn() };
+    });
+    window.VisibilityInterval = VisibilityIntervalMock;
+    failWritesFor('bgRotationEnabled');
+
+    try {
+      toggle.checked = true;
+      toggle.dispatchEvent(new Event('change'));
+
+      expect(VisibilityIntervalMock).not.toHaveBeenCalled();
+    } finally {
+      window.VisibilityInterval = OriginalVisibilityInterval;
+    }
+  });
+
+  it('reverts the interval select and keeps persisted cadence when the interval write fails', () => {
+    localStorage.setItem('bgRotationEnabled', 'true');
+    intervalSelect.value = '30min';
+    failWritesFor('bgRotationInterval');
+
+    intervalSelect.value = '5min';
+    intervalSelect.dispatchEvent(new Event('change'));
+
+    expect(BackgroundRotation.getInterval()).toBe('30min');
+    expect(intervalSelect.value).toBe('30min');
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('rolls the interval back with one toast after an async bridge failure', async () => {
+    localStorage.setItem('bgRotationEnabled', 'true');
+    toggle.checked = true;
+    failWritesFor('bgRotationInterval', 'async');
+
+    intervalSelect.value = '5min';
+    intervalSelect.dispatchEvent(new Event('change'));
+    expect(showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(BackgroundRotation.getInterval()).toBe('30min');
+    expect(intervalSelect.value).toBe('30min');
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores picker checkboxes when the selection write fails', () => {
+    localStorage.setItem('bgRotationSelection', JSON.stringify(['BG Alpha']));
+    BackgroundRotation.renderPicker();
+
+    const checkboxes = pickerContainer.querySelectorAll('input[type="checkbox"]');
+    const betaCheckbox = checkboxes[1];
+    betaCheckbox.checked = true;
+    failWritesFor('bgRotationSelection');
+
+    betaCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(BackgroundRotation.getSelection()).toEqual(['BG Alpha']);
+    const restored = pickerContainer.querySelectorAll('input[type="checkbox"]');
+    expect(restored[0].checked).toBe(true);
+    expect(restored[1].checked).toBe(false);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('restores the picker with one toast after an async selection failure', async () => {
+    localStorage.setItem('bgRotationSelection', JSON.stringify(['BG Alpha']));
+    BackgroundRotation.renderPicker();
+    failWritesFor('bgRotationSelection', 'async');
+
+    const betaCheckbox = pickerContainer.querySelectorAll('input[type="checkbox"]')[1];
+    betaCheckbox.checked = true;
+    betaCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(BackgroundRotation.getSelection()).toEqual(['BG Alpha']);
+    const restored = pickerContainer.querySelectorAll('input[type="checkbox"]');
+    expect(restored[0].checked).toBe(true);
+    expect(restored[1].checked).toBe(false);
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays silent when a bridge error arrives but nothing was rolled back', async () => {
+    const OriginalVisibilityInterval = window.VisibilityInterval;
+    const VisibilityIntervalMock = vi.fn(function () {
+      return { destroy: vi.fn() };
+    });
+    localStorage.setItem('bgRotationEnabled', 'true');
+    toggle.checked = true;
+    window.VisibilityInterval = VisibilityIntervalMock;
+
+    try {
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+        detail: { key: 'bgRotationInterval', message: 'superseded' },
+      }));
+      await flushDeferredFailureSync();
+
+      expect(showToast).not.toHaveBeenCalled();
+      expect(VisibilityIntervalMock).not.toHaveBeenCalled();
+    } finally {
+      window.VisibilityInterval = OriginalVisibilityInterval;
+    }
+  });
+
+  it('rolls the toggle back to persisted state after an async bridge write error', async () => {
+    localStorage.setItem('bgRotationEnabled', 'true');
+    toggle.checked = false;
+
+    window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+      detail: { key: 'bgRotationEnabled', message: 'Failed to persist' },
+    }));
+    await flushDeferredFailureSync();
+
+    expect(BackgroundRotation.isEnabled()).toBe(true);
+    expect(toggle.checked).toBe(true);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it.each([
+    ['null', null],
+    ['an empty saved selection', '[]'],
+  ])('treats %s as "all backgrounds" when comparing the picker', async (_label, stored) => {
+    if (stored === null) {
+      localStorage.removeItem('bgRotationSelection');
+    } else {
+      localStorage.setItem('bgRotationSelection', stored);
+    }
+    BackgroundRotation.renderPicker();
+    const checkboxes = pickerContainer.querySelectorAll('input[type="checkbox"]');
+    expect(Array.from(checkboxes).every((cb) => cb.checked)).toBe(true);
+
+    const raiseSelectionError = async () => {
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+        detail: { key: 'bgRotationSelection', message: 'Failed to persist' },
+      }));
+      await flushDeferredFailureSync();
+    };
+
+    // Picker matches storage (everything selected): nothing to roll back.
+    await raiseSelectionError();
+    expect(showToast).not.toHaveBeenCalled();
+
+    // Picker is ahead of storage: resync to all-checked and report once.
+    checkboxes[1].checked = false;
+    await raiseSelectionError();
+    expect(showToast).toHaveBeenCalledTimes(1);
+    const restored = pickerContainer.querySelectorAll('input[type="checkbox"]');
+    expect(Array.from(restored).every((cb) => cb.checked)).toBe(true);
+  });
+
+  it('ignores bridge write errors for unrelated keys', async () => {
+    window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+      detail: { key: 'theme' },
+    }));
+    window.dispatchEvent(new CustomEvent('storageBridgeWriteError'));
+    await flushDeferredFailureSync();
+
+    expect(showToast).not.toHaveBeenCalled();
+  });
+});
