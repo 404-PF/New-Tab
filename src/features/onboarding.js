@@ -66,7 +66,7 @@ class OnboardingTour {
   }
 
   // Mark onboarding as completed. Returns a Promise resolving to whether the
-  // completion marker was persisted (a boolean when the sync fallback is used).
+  // completion marker was persisted.
   // The saved resume step is only cleared after the write is confirmed, so a
   // failed write keeps onboardingStep for resume instead of erasing it.
   markCompleted() {
@@ -96,18 +96,18 @@ class OnboardingTour {
 
     let persisted;
     try {
-      persisted = localStorage.setItem('onboardingCompleted', 'true') !== false;
+      persisted = localStorage.setItem('onboardingCompleted', 'true') !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (error) {
       this._reportCompletionSaveError(error);
-      return false;
+      return Promise.resolve(false);
     }
 
     if (!persisted) {
       this._reportCompletionSaveError();
-      return false;
+      return Promise.resolve(false);
     }
 
-    return this._finalizeCompletion();
+    return Promise.resolve(this._finalizeCompletion());
   }
 
   // Reset onboarding (for settings restart)
@@ -317,7 +317,7 @@ class OnboardingTour {
     // Click outside to advance (for non-action steps)
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay && !this.steps[this.currentStep].waitForAction) {
-        this.nextStep();
+        void this.nextStep();
       }
     });
   }

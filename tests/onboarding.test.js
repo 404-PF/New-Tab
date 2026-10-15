@@ -563,7 +563,7 @@ describe('Completion persistence failures', () => {
     }
   });
 
-  it('markCompleted keeps saved step when the sync fallback write throws', () => {
+  it('markCompleted keeps saved step when the sync fallback write throws', async () => {
     const originalSetItemAsync = localStorage.setItemAsync;
     const originalSetItem = localStorage.setItem;
     const originalShowToast = window.showToast;
@@ -577,7 +577,7 @@ describe('Completion persistence failures', () => {
     window.showToast = showToast;
 
     try {
-      const result = window.onboardingTour.markCompleted();
+      const result = await window.onboardingTour.markCompleted();
 
       expect(result).toBe(false);
       expect(localStorage.getItem('onboardingStep')).toBe('3');
