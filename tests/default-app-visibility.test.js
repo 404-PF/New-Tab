@@ -218,5 +218,42 @@ describe('default app context menu hide action', () => {
 
     expect(AppGridState.isDefaultHidden('settings-app')).toBe(false);
     expect(hideItem.style.display).toBe('none');
+    expect(menu.style.display).toBe('none');
+  });
+});
+
+describe('default app visibility review fixes', () => {
+  it('ignores protected or unknown ids in stored or imported hidden lists', () => {
+    localStorage.setItem('hiddenDefaultApps', JSON.stringify(['settings-app', 'games-app', 'not-an-app', 'weather-app']));
+
+    expect(AppGridState.getHiddenDefaultApps()).toEqual(['weather-app']);
+    expect(AppGridState.isDefaultHidden('settings-app')).toBe(false);
+    expect(AppGridState.isDefaultHidden('games-app')).toBe(false);
+  });
+
+  it('restores a foldered app into its folder without duplicating it in the grid order', () => {
+    localStorage.setItem('appOrder', JSON.stringify(['ai-app', 'folder-1', 'settings-app']));
+    localStorage.setItem('appFolders', JSON.stringify([{ id: 'folder-1', name: 'F', apps: ['weather-app', 'feedback-app'] }]));
+
+    expect(AppGridState.hideDefaultApp('weather-app')).toBe(true);
+    expect(AppGridState.showDefaultApp('weather-app')).toBe(true);
+
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'folder-1', 'settings-app']);
+    expect(AppGridState.getFolders()[0].apps).toEqual(['weather-app', 'feedback-app']);
+  });
+
+  it('does not show a hidden built-in app inside its folder', () => {
+    window.escapeHtml = window.escapeHtml || ((s) => String(s));
+    injectScript('src/features/app-folders.js');
+    const folder = { id: 'folder-2', name: 'F', apps: ['weather-app', 'feedback-app'] };
+    localStorage.setItem('appFolders', JSON.stringify([folder]));
+
+    const before = window.AppFolders.createFolderIconElement(folder);
+    expect(before.querySelectorAll('.folder-preview-icon').length).toBe(2);
+
+    expect(AppGridState.hideDefaultApp('weather-app')).toBe(true);
+
+    const after = window.AppFolders.createFolderIconElement(folder);
+    expect(after.querySelectorAll('.folder-preview-icon').length).toBe(1);
   });
 });

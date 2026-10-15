@@ -2148,8 +2148,11 @@ body.light-theme .bg-rotation-next-btn:hover {
   gap: 10px;
 }
 
-.default-app-visibility-option {
+.settings-section .default-app-visibility-option {
   display: flex;
+  flex-direction: row;
+  margin-bottom: 0;
+  font-weight: normal;
   align-items: center;
   gap: 10px;
   font-size: 13px;

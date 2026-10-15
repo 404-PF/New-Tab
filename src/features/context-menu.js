@@ -110,7 +110,7 @@ addHover(deleteItem);
 const hideDefaultItem = document.createElement('div');
 hideDefaultItem.id = 'hide-default-app';
 hideDefaultItem.className = 'context-menu-item context-menu-default-item';
-hideDefaultItem.setAttribute('data-i18n', 'hideDefaultApp');
+hideDefaultItem.dataset.i18n = 'hideDefaultApp';
 hideDefaultItem.textContent = 'Hide from Grid';
 addHover(hideDefaultItem);
 

@@ -16,7 +16,10 @@
   function getFolderAppData(folder) {
     if (!folder || !Array.isArray(folder.apps)) return [];
     const customApps = window.AppGridState.getCustomApps();
-    const defaultApps = window.defaultApps || [];
+    // Hidden built-ins stay listed in folder.apps (so restoring puts them
+    // back in place) but are not shown in the folder preview or popup.
+    const hiddenIds = new Set(window.AppGridState.getHiddenDefaultApps?.() || []);
+    const defaultApps = (window.defaultApps || []).filter(app => !hiddenIds.has(app.id));
     const allApps = [...defaultApps, ...customApps];
     const appMap = Object.fromEntries(allApps.map(a => [a.id, a]));
     return folder.apps.map(id => appMap[id]).filter(Boolean);

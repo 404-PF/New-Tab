@@ -203,8 +203,11 @@ const AppGridState = {
   // Built-in apps are hidden, never deleted: the frozen window.defaultApps
   // definitions survive so updates, resets, and recovery keep working.
 
+  // Only hideable built-ins count as hidden: a stored or imported list that
+  // names Settings or Games (or an unknown id) must never remove them.
   getHiddenDefaultApps() {
-    return window.AppGridStorage ? window.AppGridStorage.loadHiddenDefaultApps() : [];
+    const stored = window.AppGridStorage ? window.AppGridStorage.loadHiddenDefaultApps() : [];
+    return stored.filter(id => this.canHideDefaultApp(id));
   },
 
   saveHiddenDefaultApps(ids) {
@@ -277,7 +280,9 @@ const AppGridState = {
     const savedHidden = this.updateHiddenDefaultApps((hidden) => hidden.filter(hid => hid !== id));
     if (!savedHidden) return false;
 
-    if (Array.isArray(this.getOrder())) {
+    // A foldered app reappears inside its folder, not as a duplicate grid tile.
+    const inFolder = this.getFolders().some(folder => Array.isArray(folder.apps) && folder.apps.includes(id));
+    if (!inFolder && Array.isArray(this.getOrder())) {
       const savedOrder = this.updateOrder((order) => {
         if (!order.includes(id)) order.push(id);
         return order;

@@ -369,7 +369,7 @@ function initDefaultAppVisibilitySettings() {
 document.addEventListener('change', function (event) {
   const target = event.target;
   if (!target || target.type !== 'checkbox' || !target.dataset.appId) return;
-  if (typeof target.closest === 'function' && !target.closest('#default-app-visibility-list')) return;
+  if (!target.closest?.('#default-app-visibility-list')) return;
   window.AppGridState.setDefaultAppHidden(target.dataset.appId, !target.checked);
   renderAllApps();
 });

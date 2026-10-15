@@ -13,6 +13,8 @@ function expectTranslationKeys(keys, options) {
       expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
       expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
       expect(localeTranslations[key].trim(), `${code}:${key}`).not.toBe('');
+      // A locale that echoes the key name has no real translation.
+      expect(localeTranslations[key], `${code}:${key}`).not.toBe(key);
       if (differFromEnglish && code !== 'en') {
         expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
       }
