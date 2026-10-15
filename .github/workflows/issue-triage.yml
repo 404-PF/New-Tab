@@ -166,7 +166,7 @@ jobs:
 
       - name: Generate triage draft with OpenCode
         id: generate
-        # Below the 10-minute job timeout so the failure report still runs.
+        # Below the 15-minute job timeout so the failure report still runs.
         timeout-minutes: 12
         if: (github.event_name != 'issue_comment' || steps.gate.outputs.proceed == 'true') && steps.idempotency.outputs.skip != 'true'
         env:
