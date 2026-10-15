@@ -468,15 +468,28 @@ describe('Weather widget', () => {
     }
   });
 
-  it('does not dispatch weatherCacheUpdated when the cache write fails', async () => {
+  it('does not dispatch weatherCacheUpdated when the bridged cache write fails', async () => {
     configureAutoWeather({
       cacheData: createWeatherDataWithTemperature(19)
     });
     installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
 
-    const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
-      throw new DOMException('quota exceeded', 'QuotaExceededError');
-    });
+    const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+    chrome.storage.local.set = (items, callback) => {
+      if (!Object.prototype.hasOwnProperty.call(items, 'weatherCache')) {
+        return originalSet(items, callback);
+      }
+      setTimeout(() => {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        try {
+          if (typeof callback === 'function') callback();
+        } finally {
+          chrome.runtime.lastError = null;
+        }
+      }, 0);
+      return Promise.resolve();
+    };
+
     const onCacheUpdated = vi.fn();
     window.addEventListener('weatherCacheUpdated', onCacheUpdated);
     try {
@@ -491,7 +504,38 @@ describe('Weather widget', () => {
       expect(stored.data.current.temperature_2m).toBe(19);
     } finally {
       window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
+      chrome.storage.local.set = originalSet;
+    }
+  });
+
+  it('does not dispatch weatherCacheUpdated when the native cache write throws', async () => {
+    configureAutoWeather({
+      cacheData: createWeatherDataWithTemperature(19)
+    });
+    installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
+
+    const originalSetItemAsync = localStorage.setItemAsync;
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    delete localStorage.setItemAsync;
+    const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+      if (key === 'weatherCache') {
+        throw new DOMException('quota exceeded', 'QuotaExceededError');
+      }
+      return originalSetItem(key, value);
+    });
+    const onCacheUpdated = vi.fn();
+    window.addEventListener('weatherCacheUpdated', onCacheUpdated);
+    try {
+      await window.WeatherWidget.refresh(true);
+
+      expect(onCacheUpdated).not.toHaveBeenCalled();
+      expect(document.querySelector('.weather-temp').textContent).toContain('22');
+      const stored = JSON.parse(localStorage.getItem('weatherCache'));
+      expect(stored.data.current.temperature_2m).toBe(19);
+    } finally {
+      window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
       setItem.mockRestore();
+      localStorage.setItemAsync = originalSetItemAsync;
     }
   });
 });
