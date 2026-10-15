@@ -92,11 +92,12 @@ describe('Accessibility - modal semantics and focus management', () => {
   });
 
   it('does not mutate a modal label that is already correct', async () => {
-    const observeStableLabel = async (modal) => {
+    const observeStableLabel = async (modal, expectedText) => {
       window.Accessibility.refresh();
       await new Promise(resolve => setTimeout(resolve, 0));
       const label = modal.querySelector('[data-accessibility-modal-label]');
       expect(label).not.toBeNull();
+      expect(label.textContent).toBe(expectedText);
 
       const mutations = [];
       const observer = new MutationObserver(records => mutations.push(...records));
@@ -105,15 +106,16 @@ describe('Accessibility - modal semantics and focus management', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
       observer.disconnect();
       expect(mutations).toHaveLength(0);
+      expect(label.textContent).toBe(expectedText);
     };
 
-    await observeStableLabel(document.getElementById('settings-modal'));
+    await observeStableLabel(document.getElementById('settings-modal'), 'settings');
 
     const fallbackModal = document.createElement('div');
     fallbackModal.id = 'add-app-modal';
     document.body.appendChild(fallbackModal);
     try {
-      await observeStableLabel(fallbackModal);
+      await observeStableLabel(fallbackModal, 'add app modal');
     } finally {
       fallbackModal.remove();
     }
