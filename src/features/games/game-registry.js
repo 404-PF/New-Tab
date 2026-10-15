@@ -257,13 +257,32 @@
     return registeredGames[id] || null;
   }
 
+  // Stats writes are serialized so each one is confirmed (or rolled back by
+  // the storage bridge) before the next starts. Otherwise two overlapping
+  // failed writes could leave the bridge restoring the first rejected value.
+  // Queued updates are kept as deltas and merged onto the confirmed stats at
+  // write time; reads overlay them so callers still see their own updates.
+  let pendingStatsUpdates = [];
+  let statsWriteChain = Promise.resolve();
+  let statsWritesInFlight = 0;
+
+  function viewStats() {
+    const base = loadStats();
+    if (pendingStatsUpdates.length === 0) return base;
+    const view = { ...base };
+    pendingStatsUpdates.forEach((entry) => {
+      view[entry.id] = { ...view[entry.id], ...entry.updates };
+    });
+    return view;
+  }
+
   function getStats(id) {
-    const all = loadStats();
+    const all = viewStats();
     return all[id] || {};
   }
 
   function getAllStats() {
-    return loadStats();
+    return viewStats();
   }
 
   function getAllSaves() {
@@ -271,11 +290,26 @@
   }
 
   function updateStats(id, updates) {
-    // Copy before mutating: loadStats() hands back the live cache object, and
-    // a failed write below must leave that cache at its previous state.
-    const all = { ...loadStats() };
-    all[id] = { ...all[id], ...updates };
-    return saveStats(all);
+    const entry = { id, updates: { ...updates } };
+    pendingStatsUpdates.push(entry);
+
+    const run = () => {
+      // Copy before mutating: loadStats() hands back the live cache object, and
+      // a failed write must leave that cache at its previous state.
+      const all = { ...loadStats() };
+      all[id] = { ...all[id], ...entry.updates };
+      return saveStats(all).then((saved) => {
+        pendingStatsUpdates = pendingStatsUpdates.filter((pending) => pending !== entry);
+        return saved;
+      });
+    };
+
+    const write = statsWritesInFlight === 0 ? run() : statsWriteChain.then(run);
+    statsWritesInFlight += 1;
+    statsWriteChain = write.then(() => {
+      statsWritesInFlight -= 1;
+    });
+    return write;
   }
 
   // ===================== Lifecycle =====================
@@ -459,6 +493,9 @@
     launchOrder = [];
     statsCache = null;
     statsCacheRaw = undefined;
+    pendingStatsUpdates = [];
+    statsWriteChain = Promise.resolve();
+    statsWritesInFlight = 0;
     mruCache = null;
     mruCacheRaw = undefined;
     savesCache = null;

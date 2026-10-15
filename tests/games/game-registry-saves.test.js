@@ -329,6 +329,56 @@ describe('GameRegistry stats persistence (#783)', () => {
     expect(showToast).toHaveBeenCalledTimes(1);
   });
 
+  it('does not resurrect a rejected score when two overlapping writes both fail', async () => {
+    await window.GameRegistry.updateStats('race-game', { highScore: 1 });
+
+    const restore = failChromeSet();
+    try {
+      const first = window.GameRegistry.updateStats('race-game', { highScore: 100 });
+      const second = window.GameRegistry.updateStats('race-game', { gamesPlayed: 7 });
+      // Callers still see their optimistic updates while writes are pending.
+      expect(window.GameRegistry.getStats('race-game')).toEqual({ highScore: 100, gamesPlayed: 7 });
+
+      await expect(first).resolves.toBe(false);
+      await expect(second).resolves.toBe(false);
+    } finally {
+      restore();
+    }
+
+    expect(window.GameRegistry.getStats('race-game')).toEqual({ highScore: 1 });
+    expect(JSON.parse(localStorage.getItem('games_stats'))['race-game']).toEqual({ highScore: 1 });
+    expect(showToast).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a later write that succeeds after an earlier queued write fails', async () => {
+    await window.GameRegistry.updateStats('race-ok-game', { highScore: 1 });
+
+    const originalSet = chrome.storage.local.set;
+    let calls = 0;
+    chrome.storage.local.set = (items, callback) => {
+      calls += 1;
+      if (calls === 1) {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        if (callback) callback();
+        chrome.runtime.lastError = null;
+        return Promise.resolve();
+      }
+      return originalSet.call(chrome.storage.local, items, callback);
+    };
+    try {
+      const first = window.GameRegistry.updateStats('race-ok-game', { highScore: 100 });
+      const second = window.GameRegistry.updateStats('race-ok-game', { gamesPlayed: 2 });
+      await expect(first).resolves.toBe(false);
+      await expect(second).resolves.toBe(true);
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+
+    // The rejected high score is not carried into the later successful write.
+    expect(window.GameRegistry.getStats('race-ok-game')).toEqual({ highScore: 1, gamesPlayed: 2 });
+    expect(JSON.parse(localStorage.getItem('games_stats'))['race-ok-game']).toEqual({ highScore: 1, gamesPlayed: 2 });
+  });
+
   it('treats a setItemAsync result of false as a failed save', async () => {
     await window.GameRegistry.updateStats('stats-false-game', { highScore: 3 });
     const spy = vi.spyOn(localStorage, 'setItemAsync').mockResolvedValue(false);
