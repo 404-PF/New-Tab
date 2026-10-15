@@ -15,6 +15,13 @@
     "message": "无法保存游戏数据。您最新的成绩未被保存。",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "searchProviderSaveError": {
+    "message": "无法保存搜索提供商的更改。您上次的操作未被保存。",
+    "description": "Error shown when custom search provider changes cannot be persisted"
+  },
+  "dataImportLateWriteFailure": {
+    "message": "导入完成后，部分导入的数据未能保存。"
+  },
   "shortcutSaveError": {
     "message": "无法保存快捷键更改。您上次的操作未被保存。",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"

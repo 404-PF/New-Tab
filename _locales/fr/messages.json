@@ -15,6 +15,13 @@
     "message": "Impossible d’enregistrer les statistiques de jeu. Votre dernier score n’a pas été enregistré.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "searchProviderSaveError": {
+    "message": "Impossible d’enregistrer les modifications du moteur de recherche. Votre dernière action n’a pas été enregistrée.",
+    "description": "Error shown when custom search provider changes cannot be persisted"
+  },
+  "dataImportLateWriteFailure": {
+    "message": "Certaines données importées n’ont pas pu être enregistrées après la fin de l’importation."
+  },
   "shortcutSaveError": {
     "message": "Impossible d’enregistrer les modifications des raccourcis. Votre dernière action n’a pas été enregistrée.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"

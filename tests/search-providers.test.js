@@ -22,6 +22,8 @@ const SEARCH_BAR_HTML = `
   </div>
 `;
 
+const flushAsyncUI = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 beforeAll(() => {
   window.VisibilityInterval = class {
     constructor() {}
@@ -101,8 +103,8 @@ describe('Search providers - storage', () => {
 });
 
 describe('Search providers - custom providers', () => {
-  it('addCustomProvider adds a provider and returns its id', () => {
-    const id = addCustomProvider('Test Search', 'https://test.com/search?q={query}');
+  it('addCustomProvider adds a provider and returns its id', async () => {
+    const id = await addCustomProvider('Test Search', 'https://test.com/search?q={query}');
     expect(id).toBeTruthy();
     expect(id.startsWith('custom_')).toBe(true);
 
@@ -112,8 +114,8 @@ describe('Search providers - custom providers', () => {
     expect(custom[0].url).toBe('https://test.com/search?q={query}');
   });
 
-  it('allocates a custom bang code that does not collide with built-ins', () => {
-    const id = addCustomProvider('Google Search', 'https://google.example/search?q={query}');
+  it('allocates a custom bang code that does not collide with built-ins', async () => {
+    const id = await addCustomProvider('Google Search', 'https://google.example/search?q={query}');
     const provider = loadCustomProviders().find((item) => item.id === id);
 
     expect(provider).toBeDefined();
@@ -131,28 +133,105 @@ describe('Search providers - custom providers', () => {
     expect(loadCustomProviders().map((provider) => provider.id)).toEqual(['custom_1']);
   });
 
-  it('addCustomProvider returns false for missing name', () => {
-    expect(addCustomProvider('', 'https://test.com/search?q={query}')).toBe(false);
+  it('addCustomProvider resolves null for missing name', async () => {
+    await expect(addCustomProvider('', 'https://test.com/search?q={query}')).resolves.toBeNull();
   });
 
-  it('addCustomProvider returns false for missing {query} in url', () => {
-    expect(addCustomProvider('Test', 'https://test.com/search')).toBe(false);
+  it('addCustomProvider always returns a Promise, even for invalid input', () => {
+    const result = addCustomProvider('', 'https://test.com/search?q={query}');
+    expect(result).toBeInstanceOf(Promise);
+    return result;
   });
 
-  it('removeCustomProvider removes a custom provider', () => {
-    const id = addCustomProvider('To Remove', 'https://remove.com/search?q={query}');
+  it('addCustomProvider resolves null for missing {query} in url', async () => {
+    await expect(addCustomProvider('Test', 'https://test.com/search')).resolves.toBeNull();
+  });
+
+  it('removeCustomProvider removes a custom provider', async () => {
+    const id = await addCustomProvider('To Remove', 'https://remove.com/search?q={query}');
     expect(loadCustomProviders().length).toBe(1);
 
-    removeCustomProvider(id);
+    await removeCustomProvider(id);
     expect(loadCustomProviders().length).toBe(0);
   });
 
-  it('removeCustomProvider switches to google if removed provider was active', () => {
-    const id = addCustomProvider('Active Custom', 'https://active.com/search?q={query}');
+  it('removeCustomProvider switches to google if removed provider was active', async () => {
+    const id = await addCustomProvider('Active Custom', 'https://active.com/search?q={query}');
     saveActiveProvider(id);
 
-    removeCustomProvider(id);
+    await removeCustomProvider(id);
     expect(loadActiveProvider()).toBe('google');
+  });
+});
+
+describe('Search providers - persistence failures', () => {
+  it('saveCustomProviders returns false when the bridge rejects the write', () => {
+    const originalSetItem = localStorage.setItem;
+    localStorage.setItem = () => false;
+    try {
+      expect(saveCustomProviders([])).toBe(false);
+    } finally {
+      localStorage.setItem = originalSetItem;
+    }
+  });
+
+  it('addCustomProvider resolves false and keeps the previous list when the storage write throws', async () => {
+    const originalSet = chrome.storage.local.set;
+    chrome.storage.local.set = () => { throw new Error('sync storage failure'); };
+    try {
+      const result = addCustomProvider('Sync Fail', 'https://sync-fail.com/search?q={query}');
+      await expect(result).resolves.toBe(false);
+      expect(loadCustomProviders()).toEqual([]);
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+  });
+
+  it('addCustomProvider resolves false and keeps the previous list when the async write fails', async () => {
+    const originalSet = chrome.storage.local.set;
+    let setCallback;
+    chrome.storage.local.set = (items, callback) => { setCallback = callback; };
+    try {
+      const result = addCustomProvider('Async Fail', 'https://async-fail.com/search?q={query}');
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      setCallback();
+      chrome.runtime.lastError = null;
+      await expect(result).resolves.toBe(false);
+      expect(loadCustomProviders()).toEqual([]);
+    } finally {
+      chrome.storage.local.set = originalSet;
+      chrome.runtime.lastError = null;
+    }
+  });
+
+  it('removeCustomProvider resolves false and keeps the provider when the storage write throws', async () => {
+    const id = await addCustomProvider('Keep Me', 'https://keep.com/search?q={query}');
+    const originalSet = chrome.storage.local.set;
+    chrome.storage.local.set = () => { throw new Error('sync storage failure'); };
+    try {
+      await expect(removeCustomProvider(id)).resolves.toBe(false);
+      expect(loadCustomProviders().map((p) => p.id)).toEqual([id]);
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+  });
+
+  it('removeCustomProvider resolves false and keeps the provider when the async write fails', async () => {
+    const id = await addCustomProvider('Keep Me Too', 'https://keep2.com/search?q={query}');
+    const originalSet = chrome.storage.local.set;
+    let setCallback;
+    chrome.storage.local.set = (items, callback) => { setCallback = callback; };
+    try {
+      const result = removeCustomProvider(id);
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      setCallback();
+      chrome.runtime.lastError = null;
+      await expect(result).resolves.toBe(false);
+      expect(loadCustomProviders().map((p) => p.id)).toEqual([id]);
+    } finally {
+      chrome.storage.local.set = originalSet;
+      chrome.runtime.lastError = null;
+    }
   });
 });
 
@@ -169,8 +248,8 @@ describe('Search providers - URL generation', () => {
     expect(url).toBe('https://www.google.com/search?q=cats%20%26%20dogs');
   });
 
-  it('getActiveProviderUrl works for custom providers', () => {
-    addCustomProvider('Custom', 'https://custom.com/find?q={query}');
+  it('getActiveProviderUrl works for custom providers', async () => {
+    await addCustomProvider('Custom', 'https://custom.com/find?q={query}');
     const custom = loadCustomProviders();
     saveActiveProvider(custom[0].id);
 
@@ -194,8 +273,8 @@ describe('Search providers - getAllProviders', () => {
     expect(all.youtube).toBeDefined();
   });
 
-  it('includes custom providers', () => {
-    addCustomProvider('MyCustom', 'https://my.com/search?q={query}');
+  it('includes custom providers', async () => {
+    await addCustomProvider('MyCustom', 'https://my.com/search?q={query}');
     const all = getAllProviders();
     const custom = loadCustomProviders();
     expect(all[custom[0].id]).toBeDefined();
@@ -334,7 +413,7 @@ describe('Search providers - settings UI', () => {
     expect(empty.style.display).not.toBe('none');
   });
 
-  it('adds a custom provider via the settings form and shows it in the list and bar', () => {
+  it('adds a custom provider via the settings form and shows it in the list and bar', async () => {
     const nameInput = document.getElementById('custom-search-provider-name');
     const urlInput = document.getElementById('custom-search-provider-url');
     const addBtn = document.getElementById('custom-search-provider-add-btn');
@@ -345,6 +424,7 @@ describe('Search providers - settings UI', () => {
     nameInput.value = 'Kagi';
     urlInput.value = 'https://kagi.com/search?q={query}';
     addBtn.click();
+    await flushAsyncUI();
 
     expect(feedback.textContent).toBe('');
     expect(loadCustomProviders().length).toBe(1);
@@ -394,8 +474,8 @@ describe('Search providers - settings UI', () => {
     expect(loadCustomProviders().length).toBe(0);
   });
 
-  it('removes a custom provider via the settings list and updates the bar', () => {
-    addCustomProvider('ToRemove', 'https://remove.com/search?q={query}');
+  it('removes a custom provider via the settings list and updates the bar', async () => {
+    await addCustomProvider('ToRemove', 'https://remove.com/search?q={query}');
     window.renderCustomSearchProvidersList();
     window.refreshProviderBar();
 
@@ -405,6 +485,7 @@ describe('Search providers - settings UI', () => {
     const removeBtn = list.querySelector('.custom-search-provider-remove');
     expect(removeBtn).not.toBeNull();
     removeBtn.click();
+    await flushAsyncUI();
 
     expect(loadCustomProviders().length).toBe(0);
     expect(list.children.length).toBe(0);
@@ -426,6 +507,197 @@ describe('Search providers - settings UI', () => {
     nameInput.value = 'New';
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
     expect(feedback.textContent).toBe('');
+  });
+
+  it('shows an error and keeps the previous list when the add write fails', async () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const list = document.getElementById('custom-search-providers-list');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+
+    const originalSet = chrome.storage.local.set;
+    let setCallback;
+    chrome.storage.local.set = (items, callback) => { setCallback = callback; };
+    try {
+      nameInput.value = 'Kagi';
+      urlInput.value = 'https://kagi.com/search?q={query}';
+      addBtn.click();
+
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      setCallback();
+      chrome.runtime.lastError = null;
+      await flushAsyncUI();
+
+      expect(feedback.textContent).toBe('Failed to save search provider changes. Your last action was not saved.');
+      expect(feedback.classList.contains('error')).toBe(true);
+      expect(loadCustomProviders().length).toBe(0);
+      expect(list.children.length).toBe(0);
+      expect(document.querySelector('.search-provider-custom')).toBeNull();
+    } finally {
+      chrome.storage.local.set = originalSet;
+      chrome.runtime.lastError = null;
+    }
+  });
+
+  it('disables the Add button while the save is in flight', async () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+
+    const originalSet = chrome.storage.local.set;
+    let setCallback;
+    chrome.storage.local.set = (items, callback) => { setCallback = callback; };
+    try {
+      nameInput.value = 'Kagi';
+      urlInput.value = 'https://kagi.com/search?q={query}';
+      addBtn.click();
+      expect(addBtn.disabled).toBe(true);
+
+      setCallback();
+      await flushAsyncUI();
+
+      expect(addBtn.disabled).toBe(false);
+      expect(loadCustomProviders().length).toBe(1);
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+  });
+
+  it('re-enables the Add button when addCustomProvider throws synchronously', async () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+    const original = window.addCustomProvider;
+    window.addCustomProvider = () => { throw new Error('boom'); };
+    try {
+      nameInput.value = 'Kagi';
+      urlInput.value = 'https://kagi.com/search?q={query}';
+      addBtn.click();
+      await flushAsyncUI();
+
+      expect(addBtn.disabled).toBe(false);
+      expect(feedback.textContent).toBe('Failed to save search provider changes. Your last action was not saved.');
+    } finally {
+      window.addCustomProvider = original;
+    }
+  });
+
+  it('logs an exception from the add success handler and still re-enables the button', async () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const originalRefresh = window.refreshProviderBar;
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    window.refreshProviderBar = () => { throw new Error('render failed'); };
+    try {
+      nameInput.value = 'Kagi';
+      urlInput.value = 'https://kagi.com/search?q={query}';
+      addBtn.click();
+      await flushAsyncUI();
+
+      expect(addBtn.disabled).toBe(false);
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('custom search provider add'), expect.any(Error));
+    } finally {
+      window.refreshProviderBar = originalRefresh;
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('logs an exception from the remove success handler and still re-enables the button', async () => {
+    await addCustomProvider('Throws', 'https://throws.com/search?q={query}');
+    window.renderCustomSearchProvidersList();
+    const list = document.getElementById('custom-search-providers-list');
+    const removeBtn = list.querySelector('.custom-search-provider-remove');
+    const originalRefresh = window.refreshProviderBar;
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    window.refreshProviderBar = () => { throw new Error('render failed'); };
+    try {
+      removeBtn.click();
+      expect(removeBtn.disabled).toBe(true);
+      await flushAsyncUI();
+
+      expect(removeBtn.disabled).toBe(false);
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('custom search provider removal'), expect.any(Error));
+    } finally {
+      window.refreshProviderBar = originalRefresh;
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('disables the Remove button while its save is in flight', async () => {
+    await addCustomProvider('Pending', 'https://pending.com/search?q={query}');
+    window.renderCustomSearchProvidersList();
+    const list = document.getElementById('custom-search-providers-list');
+    const removeBtn = list.querySelector('.custom-search-provider-remove');
+
+    const originalSet = chrome.storage.local.set;
+    let setCallback;
+    let setCalls = 0;
+    chrome.storage.local.set = (items, callback) => { setCalls += 1; setCallback = callback; };
+    try {
+      removeBtn.click();
+      expect(removeBtn.disabled).toBe(true);
+      await flushAsyncUI();
+      removeBtn.click();
+      expect(setCalls).toBe(1);
+
+      setCallback();
+      await flushAsyncUI();
+
+      expect(loadCustomProviders().length).toBe(0);
+      expect(list.children.length).toBe(0);
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+  });
+
+  it('shows the invalid URL message when addCustomProvider rejects the URL', async () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+
+    nameInput.value = 'FTP';
+    urlInput.value = 'ftp://example.com/search?q={query}';
+    addBtn.click();
+    await flushAsyncUI();
+
+    expect(feedback.textContent).toBe('Enter a valid URL with {query} and http(s).');
+    expect(feedback.classList.contains('error')).toBe(true);
+    expect(addBtn.disabled).toBe(false);
+    expect(loadCustomProviders().length).toBe(0);
+  });
+
+  it('shows an error and keeps the provider when the remove write fails', async () => {
+    const id = await addCustomProvider('Stays Put', 'https://stays.com/search?q={query}');
+    window.renderCustomSearchProvidersList();
+    window.refreshProviderBar();
+
+    const list = document.getElementById('custom-search-providers-list');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+    expect(list.children.length).toBe(1);
+
+    const originalSet = chrome.storage.local.set;
+    let setCallback;
+    chrome.storage.local.set = (items, callback) => { setCallback = callback; };
+    try {
+      list.querySelector('.custom-search-provider-remove').click();
+
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      setCallback();
+      chrome.runtime.lastError = null;
+      await flushAsyncUI();
+
+      expect(feedback.textContent).toBe('Failed to save search provider changes. Your last action was not saved.');
+      expect(feedback.classList.contains('error')).toBe(true);
+      expect(loadCustomProviders().map((p) => p.id)).toEqual([id]);
+      expect(list.children.length).toBe(1);
+    } finally {
+      chrome.storage.local.set = originalSet;
+      chrome.runtime.lastError = null;
+    }
   });
 });
 

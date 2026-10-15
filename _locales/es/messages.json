@@ -15,6 +15,13 @@
     "message": "No se pudieron guardar las estadísticas del juego. Tu última puntuación no se guardó.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "searchProviderSaveError": {
+    "message": "No se pudieron guardar los cambios del proveedor de búsqueda. La última acción no se guardó.",
+    "description": "Error shown when custom search provider changes cannot be persisted"
+  },
+  "dataImportLateWriteFailure": {
+    "message": "Algunos datos importados no se pudieron guardar después de finalizar la importación."
+  },
   "shortcutSaveError": {
     "message": "No se pudieron guardar los cambios de los atajos. La última acción no se guardó.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"

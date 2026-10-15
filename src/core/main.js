@@ -497,16 +497,45 @@ function loadCustomProviders() {
   }
 }
 
+// The storage bridge's setItem returns false when it rejects a write; the
+// native Storage API returns undefined. Treat only an explicit false as
+// failure.
+function isWriteAccepted(result) {
+  return result !== false;
+}
+
 function saveCustomProviders(providers) {
   try {
-    localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, JSON.stringify(providers));
+    return isWriteAccepted(localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, JSON.stringify(providers)));
   } catch (e) {
     console.warn('Failed to save custom providers:', e);
+    return false;
   }
 }
 
+function saveCustomProvidersAsync(providers) {
+  const serialized = JSON.stringify(providers);
+  try {
+    if (typeof localStorage.setItemAsync === 'function') {
+      return localStorage.setItemAsync(CUSTOM_PROVIDERS_STORAGE_KEY, serialized)
+        .then(isWriteAccepted)
+        .catch(function (e) {
+          console.warn('Failed to save custom providers:', e);
+          return false;
+        });
+    }
+    return Promise.resolve(isWriteAccepted(localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, serialized)));
+  } catch (e) {
+    console.warn('Failed to save custom providers:', e);
+    return Promise.resolve(false);
+  }
+}
+
+// Always returns a Promise. It resolves to the new provider id on success,
+// null when the input is invalid (or no shortcut code is free), and false
+// when the storage write fails.
 function addCustomProvider(name, url) {
-  if (typeof name !== 'string' || !name.trim() || !isValidProviderUrl(url)) return false;
+  if (typeof name !== 'string' || !name.trim() || !isValidProviderUrl(url)) return Promise.resolve(null);
   const id = 'custom_' + Date.now();
   const providers = loadCustomProviders();
   const normalizedName = name.trim();
@@ -530,22 +559,27 @@ function addCustomProvider(name, url) {
   }
 
   const code = codeCandidates.find(function (candidate) { return !usedCodes.has(candidate); });
-  if (!code) return false;
+  if (!code) return Promise.resolve(null);
 
   providers.push({ id: id, name: normalizedName, url: url, code: code });
-  saveCustomProviders(providers);
-  renderCustomProviderButtons();
-  return id;
+  return saveCustomProvidersAsync(providers).then(function (saved) {
+    if (!saved) return false;
+    renderCustomProviderButtons();
+    return id;
+  });
 }
 
 function removeCustomProvider(id) {
   const providers = loadCustomProviders().filter(function (p) { return p.id !== id; });
-  saveCustomProviders(providers);
-  if (activeProviderId === id) {
-    saveActiveProvider('google');
-    updateProviderSelection();
-  }
-  renderCustomProviderButtons();
+  return saveCustomProvidersAsync(providers).then(function (saved) {
+    if (!saved) return false;
+    if (activeProviderId === id) {
+      saveActiveProvider('google');
+      updateProviderSelection();
+    }
+    renderCustomProviderButtons();
+    return true;
+  });
 }
 
 function getAllProviders() {

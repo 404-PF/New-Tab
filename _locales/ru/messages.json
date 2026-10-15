@@ -15,6 +15,13 @@
     "message": "Не удалось сохранить статистику игры. Ваш последний результат не был сохранён.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "searchProviderSaveError": {
+    "message": "Не удалось сохранить изменения поисковых провайдеров. Последнее действие не было сохранено.",
+    "description": "Error shown when custom search provider changes cannot be persisted"
+  },
+  "dataImportLateWriteFailure": {
+    "message": "Некоторые импортированные данные не удалось сохранить после завершения импорта."
+  },
   "shortcutSaveError": {
     "message": "Не удалось сохранить изменения горячих клавиш. Последнее действие не было сохранено.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"

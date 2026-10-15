@@ -15,6 +15,13 @@
     "message": "게임 통계를 저장하지 못했습니다. 최근 점수가 저장되지 않았습니다.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "searchProviderSaveError": {
+    "message": "검색 공급자 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
+    "description": "Error shown when custom search provider changes cannot be persisted"
+  },
+  "dataImportLateWriteFailure": {
+    "message": "가져오기가 끝난 후 일부 가져온 데이터를 저장하지 못했습니다."
+  },
   "shortcutSaveError": {
     "message": "단축키 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
