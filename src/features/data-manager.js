@@ -174,18 +174,130 @@
     }
   }
 
-  function writeStorage(key, value) {
+  // Bridge setItem returns false on a rejected write; native returns undefined.
+  function isWriteAccepted(result) {
+    return result !== false;
+  }
+
+  // Each import collects the results of its own writes. The storage bridge
+  // accepts writes optimistically and can still fail asynchronously
+  // (chrome.storage runtime.lastError), so applyData waits for these results
+  // before it reports success.
+  function trackImportWrite(pendingWrites, key, promise) {
+    if (!pendingWrites) return;
+    pendingWrites.push(Promise.resolve(promise).then(function (ok) {
+      if (!isWriteAccepted(ok)) {
+        console.warn('[data-manager] Storage write was not persisted for key "' + key + '"');
+      }
+      return isWriteAccepted(ok);
+    }, function (err) {
+      console.warn('[data-manager] Failed to persist key "' + key + '":', err);
+      return false;
+    }));
+  }
+
+  // If a chrome.storage callback never fires, stop waiting after this long
+  // and report the import as partial so the UI still refreshes.
+  const DEFAULT_IMPORT_WRITE_TIMEOUT_MS = 10000;
+
+  function getImportWriteTimeoutMs() {
+    const configured = window.DataManager && window.DataManager.importWriteTimeoutMs;
+    return typeof configured === 'number' && configured >= 0 ? configured : DEFAULT_IMPORT_WRITE_TIMEOUT_MS;
+  }
+
+  function waitForImportWrites(pendingWrites) {
+    if (pendingWrites.length === 0) return Promise.resolve(true);
+    let timer = null;
+    let timedOut = false;
+    const timeout = new Promise(function (resolve) {
+      timer = setTimeout(function () {
+        timedOut = true;
+        console.warn('[data-manager] Timed out waiting for import writes to persist');
+        resolve(false);
+      }, getImportWriteTimeoutMs());
+    });
+    const all = Promise.all(pendingWrites).then(function (results) {
+      const failed = results.filter(function (ok) { return !ok; }).length;
+      if (timedOut && failed > 0) {
+        // The import already reported after the timeout; these failures
+        // arrived later, so tell the user again instead of only logging.
+        console.warn('[data-manager] ' + failed + ' import write(s) failed after the import had already reported');
+        showToast(t('dataImportLateWriteFailure', 'Some imported data failed to save after the import finished.'), 'warning');
+      }
+      return failed === 0;
+    });
+    return Promise.race([all, timeout]).then(function (allPersisted) {
+      clearTimeout(timer);
+      return allPersisted;
+    });
+  }
+
+  function writeStorage(key, value, pendingWrites) {
     try {
       if (value === null || value === undefined) {
-        localStorage.removeItem(key);
-      } else if (typeof value === 'string') {
-        localStorage.setItem(key, value);
-      } else {
-        localStorage.setItem(key, JSON.stringify(value));
+        if (typeof localStorage.removeItemAsync === 'function') {
+          trackImportWrite(pendingWrites, key, localStorage.removeItemAsync(key));
+        } else {
+          localStorage.removeItem(key);
+        }
+        // removeItem reports nothing; confirm the key is really gone.
+        if (localStorage.getItem(key) !== null) {
+          throw new Error('Storage removal was not accepted for key "' + key + '"');
+        }
+        return;
+      }
+
+      const serialized = typeof value === 'string' ? value : JSON.stringify(value);
+      if (typeof localStorage.setItemAsync === 'function') {
+        trackImportWrite(pendingWrites, key, localStorage.setItemAsync(key, serialized));
+        if (localStorage.getItem(key) !== serialized) {
+          throw new Error('Storage write was not accepted for key "' + key + '"');
+        }
+        return;
+      }
+      if (!isWriteAccepted(localStorage.setItem(key, serialized))) {
+        throw new Error('Storage write was not accepted for key "' + key + '"');
       }
     } catch (err) {
       console.warn('[data-manager] Failed to write key "' + key + '":', err);
       throw err;
+    }
+  }
+
+  function finishImport(mode, count, hasWriteErrors) {
+    // Update todo reminders after import
+    if (typeof window.scheduleTodoReminderCheck === 'function') {
+      window.scheduleTodoReminderCheck();
+    }
+
+    // Refresh the UI
+    if (typeof window.initSettings === 'function') {
+      window.initSettings();
+    }
+
+    // Refresh timezone views after merge/replace
+    if (typeof window.renderExtraClocks === 'function') {
+      window.renderExtraClocks();
+    }
+    if (typeof window.renderTimezoneCurrentList === 'function') {
+      window.renderTimezoneCurrentList();
+    }
+
+    // Reinitialize the search provider bar so imported providers/selection take effect live
+    if (typeof window.refreshProviderBar === 'function') {
+      window.refreshProviderBar();
+    }
+    if (typeof window.renderCustomSearchProvidersList === 'function') {
+      window.renderCustomSearchProvidersList();
+    }
+
+    if (hasWriteErrors) {
+      showToast(t('dataImportPartialSuccess', 'Import completed with some errors.'), 'warning');
+    } else {
+      const msg = mode === 'merge'
+        ? t('dataImportMergeSuccess', 'Merged {count} settings successfully.').replace('{count}', count)
+        : t('dataImportReplaceSuccess', 'Replaced all settings with imported data.');
+      showToast(msg, 'success');
     }
   }
 
@@ -576,6 +688,7 @@
     const applyData = function (mode) {
       const keys = Object.keys(importedData);
       let count = 0;
+      const pendingWrites = [];
 
       // In replace mode, clear any EXPORT_KEYS not present in importedData
       let hasWriteErrors = false;
@@ -583,7 +696,7 @@
         const keysToRemove = EXPORT_KEYS.filter(function (k) { return !(k in importedData); });
         keysToRemove.forEach(function (key) {
           try {
-            writeStorage(key, null);
+            writeStorage(key, null, pendingWrites);
           } catch (err) {
             hasWriteErrors = true;
             console.warn('[data-manager] Failed to remove key "' + key + '" during replace:', err);
@@ -623,7 +736,7 @@
                   }
                 });
                 if (added > 0) {
-                  writeStorage(key, existing);
+                  writeStorage(key, existing, pendingWrites);
                   count++;
                 }
               } else if (key === 'appOrder') {
@@ -640,7 +753,7 @@
                   }
                 });
                 if (addedOrder > 0) {
-                  writeStorage(key, currentOrder);
+                  writeStorage(key, currentOrder, pendingWrites);
                   count++;
                 }
               } else if (key === 'customApps') {
@@ -659,7 +772,7 @@
                   }
                 });
                 if (addedApps > 0) {
-                  writeStorage(key, currentApps);
+                  writeStorage(key, currentApps, pendingWrites);
                   count++;
                 }
               } else if (key === 'appFolders') {
@@ -678,7 +791,7 @@
                   }
                 });
                 if (addedFolders > 0) {
-                  writeStorage(key, currentFolders);
+                  writeStorage(key, currentFolders, pendingWrites);
                   count++;
                 }
               } else if (key === 'ai_conversations') {
@@ -697,7 +810,7 @@
                   }
                 });
                 if (addedConvs > 0) {
-                  writeStorage(key, currentConvs);
+                  writeStorage(key, currentConvs, pendingWrites);
                   count++;
                 }
               } else if (key === 'extraTimeZones') {
@@ -716,7 +829,7 @@
                   seenZones[zoneId] = true;
                   mergedZones.push(zoneId);
                 });
-                writeStorage(key, mergedZones);
+                writeStorage(key, mergedZones, pendingWrites);
                 count++;
               } else {
                 // Generic array merge (concatenate unique)
@@ -734,7 +847,7 @@
                     seen[id] = true;
                   }
                 });
-                writeStorage(key, merged);
+                writeStorage(key, merged, pendingWrites);
                 count++;
               }
             } else if (typeof incoming === 'object' && incoming !== null && !Array.isArray(incoming)) {
@@ -749,7 +862,7 @@
                   mergedDays[date] = Math.max(localCount, incomingCount);
                 });
                 currentObj.days = mergedDays;
-                writeStorage(key, currentObj);
+                writeStorage(key, currentObj, pendingWrites);
               } else if (key === 'pomodoroStats') {
                 const merged = Object.assign({}, currentObj);
                 if (currentObj.days || incoming.days) {
@@ -790,19 +903,19 @@
                 Object.keys(incoming).forEach(function (k) {
                   if (k !== 'days' && k !== 'byDateTodos') merged[k] = incoming[k];
                 });
-                writeStorage(key, merged);
+                writeStorage(key, merged, pendingWrites);
               } else {
-                writeStorage(key, Object.assign(currentObj, incoming));
+                writeStorage(key, Object.assign(currentObj, incoming), pendingWrites);
               }
               count++;
             } else {
               // Scalar: overwrite
-              writeStorage(key, incoming);
+              writeStorage(key, incoming, pendingWrites);
               count++;
             }
           } else {
             // Replace: overwrite directly
-            writeStorage(key, importedValue);
+            writeStorage(key, importedValue, pendingWrites);
             count++;
           }
         } catch (err) {
@@ -811,49 +924,19 @@
         }
       });
 
-      // Update todo reminders after import
-      if (typeof window.scheduleTodoReminderCheck === 'function') {
-        window.scheduleTodoReminderCheck();
-      }
-
-      // Refresh the UI
-      if (typeof window.initSettings === 'function') {
-        window.initSettings();
-      }
-
-      // Refresh timezone views after merge/replace
-      if (typeof window.renderExtraClocks === 'function') {
-        window.renderExtraClocks();
-      }
-      if (typeof window.renderTimezoneCurrentList === 'function') {
-        window.renderTimezoneCurrentList();
-      }
-
-      // Reinitialize the search provider bar so imported providers/selection take effect live
-      if (typeof window.refreshProviderBar === 'function') {
-        window.refreshProviderBar();
-      }
-      if (typeof window.renderCustomSearchProvidersList === 'function') {
-        window.renderCustomSearchProvidersList();
-      }
-
-      if (hasWriteErrors) {
-        showToast(t('dataImportPartialSuccess', 'Import completed with some errors.'), 'warning');
-      } else {
-        const msg = mode === 'merge'
-          ? t('dataImportMergeSuccess', 'Merged {count} settings successfully.').replace('{count}', count)
-          : t('dataImportReplaceSuccess', 'Replaced all settings with imported data.');
-        showToast(msg, 'success');
-      }
+      return waitForImportWrites(pendingWrites).then(function (allPersisted) {
+        finishImport(mode, count, hasWriteErrors || !allPersisted);
+      });
     };
 
+
     const handleMerge = function () {
-      applyData('merge');
+      void applyData('merge');
       hideDialog();
     };
 
     const handleReplace = function () {
-      applyData('replace');
+      void applyData('replace');
       hideDialog();
     };
 

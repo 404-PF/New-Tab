@@ -106,6 +106,12 @@ describe('Search provider translations', () => {
 });
 
 
+describe('Search provider save error translation', () => {
+  it('defines a localized searchProviderSaveError for every supported language', () => {
+    expectTranslationKeys(['searchProviderSaveError', 'dataImportLateWriteFailure'], { differFromEnglish: true });
+  });
+});
+
 describe('Pomodoro translations', () => {
   it('falls back to English for every supported language', () => {
     const languages = window.i18n.getSupportedLanguages();

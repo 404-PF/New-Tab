@@ -279,6 +279,14 @@ describe('DataManager eye-care/games/search-history settings', () => {
         return dialog;
       });
       document.getElementById(mode === 'replace' ? 'data-import-replace-btn' : 'data-import-merge-btn').click();
+      // applyData waits for the storage bridge to confirm every write before
+      // it reports the outcome, so wait for the result toast.
+      const toast = await vi.waitFor(() => {
+        const el = document.querySelector('.toast-notification');
+        expect(el).not.toBeNull();
+        return el;
+      });
+      return { type: toast.classList.contains('toast-warning') ? 'warning' : 'success', text: toast.textContent };
     } finally {
       if (descriptor) {
         Object.defineProperty(fileInput, 'files', descriptor);
@@ -347,6 +355,120 @@ describe('DataManager eye-care/games/search-history settings', () => {
     expect(localStorage.getItem('games_enabled')).toBeNull();
     expect(localStorage.getItem('searchHistoryEnabled')).toBeNull();
     expect(localStorage.getItem('eyeCareReminder')).toBeNull();
+  });
+
+  function failBridgeWritesFor(key, mode) {
+    const area = chrome.storage.local;
+    const originalSet = area.set;
+    const originalRemove = area.remove;
+    const fail = function (keys, callback, original) {
+      const list = Array.isArray(keys) ? keys : (typeof keys === 'string' ? [keys] : Object.keys(keys));
+      if (list.indexOf(key) === -1) return original.call(area, keys, callback);
+      if (mode === 'sync') throw new Error('QUOTA_BYTES quota exceeded');
+      setTimeout(() => {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        try {
+          if (typeof callback === 'function') callback();
+        } finally {
+          chrome.runtime.lastError = null;
+        }
+      }, 0);
+      return undefined;
+    };
+    area.set = (items, callback) => fail(items, callback, originalSet);
+    area.remove = (keys, callback) => fail(keys, callback, originalRemove);
+    return () => {
+      area.set = originalSet;
+      area.remove = originalRemove;
+    };
+  }
+
+  it.each([
+    ['a restore write fails synchronously', 'theme', 'sync', null, 'theme', null],
+    ['a restore write fails asynchronously', 'theme', 'async', 'light', 'theme', 'light'],
+    ['a replace-mode removal fails', 'games_enabled', 'async', 'true', 'games_enabled', 'true']
+  ])('reports a partial import when %s', async (_label, failKey, mode, seed, checkKey, expected) => {
+    if (seed !== null) localStorage.setItem(failKey, seed);
+    const restore = failBridgeWritesFor(failKey, mode);
+    try {
+      const result = await importBackup({ theme: 'dark' }, 'replace');
+
+      expect(localStorage.getItem(checkKey)).toBe(expected);
+      expect(result.type).toBe('warning');
+    } finally {
+      restore();
+    }
+  });
+
+  it('finishes the import with a warning when a storage callback never fires', async () => {
+    const area = chrome.storage.local;
+    const originalSet = area.set;
+    area.set = (items, callback) => {
+      if (Object.prototype.hasOwnProperty.call(items, 'theme')) return undefined; // never calls back
+      return originalSet.call(area, items, callback);
+    };
+    window.DataManager.importWriteTimeoutMs = 20;
+    try {
+      const result = await importBackup({ theme: 'dark' }, 'replace');
+      expect(result.type).toBe('warning');
+    } finally {
+      area.set = originalSet;
+      delete window.DataManager.importWriteTimeoutMs;
+    }
+  });
+
+  it('warns again when a write fails after the import timed out and reported', async () => {
+    const area = chrome.storage.local;
+    const originalSet = area.set;
+    area.set = (items, callback) => {
+      if (!Object.prototype.hasOwnProperty.call(items, 'theme')) return originalSet.call(area, items, callback);
+      setTimeout(() => {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        try {
+          callback();
+        } finally {
+          chrome.runtime.lastError = null;
+        }
+      }, 100);
+      return undefined;
+    };
+    window.DataManager.importWriteTimeoutMs = 20;
+    const warnSpy = vi.spyOn(console, 'warn');
+    try {
+      const result = await importBackup({ theme: 'dark' }, 'replace');
+      expect(result.type).toBe('warning');
+
+      const lateToast = await vi.waitFor(() => {
+        expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('failed after the import had already reported'))).toBe(true);
+        const el = document.querySelector('.toast-notification.toast-warning');
+        expect(el?.textContent).toBe('Some imported data failed to save after the import finished.');
+        return el;
+      });
+      expect(lateToast.textContent).toBe('Some imported data failed to save after the import finished.');
+    } finally {
+      area.set = originalSet;
+      delete window.DataManager.importWriteTimeoutMs;
+      warnSpy.mockRestore();
+      document.querySelectorAll('.toast-notification').forEach((el) => el.remove());
+    }
+  });
+
+  it('keeps write results separate for each import', async () => {
+    const restore = failBridgeWritesFor('theme', 'async');
+    try {
+      expect((await importBackup({ theme: 'dark' }, 'replace')).type).toBe('warning');
+    } finally {
+      restore();
+    }
+    // A failure in the previous import must not leak into this one.
+    expect((await importBackup({ theme: 'dark' }, 'replace')).type).toBe('success');
+  });
+
+  it('reports success when every restore write persists', async () => {
+    const result = await importBackup({ theme: 'dark' }, 'replace');
+
+    expect(localStorage.getItem('theme')).toBe('dark');
+    expect(result.type).toBe('success');
   });
 
   it('round-trips the new settings through export and re-validation', async () => {
