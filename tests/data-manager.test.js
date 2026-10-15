@@ -383,38 +383,17 @@ describe('DataManager eye-care/games/search-history settings', () => {
     };
   }
 
-  it('reports a partial import when a restore write fails synchronously', async () => {
-    const restore = failBridgeWritesFor('theme', 'sync');
+  it.each([
+    ['a restore write fails synchronously', 'theme', 'sync', null, 'theme', null],
+    ['a restore write fails asynchronously', 'theme', 'async', 'light', 'theme', 'light'],
+    ['a replace-mode removal fails', 'games_enabled', 'async', 'true', 'games_enabled', 'true']
+  ])('reports a partial import when %s', async (_label, failKey, mode, seed, checkKey, expected) => {
+    if (seed !== null) localStorage.setItem(failKey, seed);
+    const restore = failBridgeWritesFor(failKey, mode);
     try {
       const result = await importBackup({ theme: 'dark' }, 'replace');
 
-      expect(localStorage.getItem('theme')).toBeNull();
-      expect(result.type).toBe('warning');
-    } finally {
-      restore();
-    }
-  });
-
-  it('reports a partial import when a restore write fails asynchronously', async () => {
-    localStorage.setItem('theme', 'light');
-    const restore = failBridgeWritesFor('theme', 'async');
-    try {
-      const result = await importBackup({ theme: 'dark' }, 'replace');
-
-      expect(localStorage.getItem('theme')).toBe('light');
-      expect(result.type).toBe('warning');
-    } finally {
-      restore();
-    }
-  });
-
-  it('reports a partial import when a replace-mode removal fails', async () => {
-    localStorage.setItem('games_enabled', 'true');
-    const restore = failBridgeWritesFor('games_enabled', 'async');
-    try {
-      const result = await importBackup({ theme: 'dark' }, 'replace');
-
-      expect(localStorage.getItem('games_enabled')).toBe('true');
+      expect(localStorage.getItem(checkKey)).toBe(expected);
       expect(result.type).toBe('warning');
     } finally {
       restore();

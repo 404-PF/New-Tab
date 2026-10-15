@@ -183,14 +183,19 @@
   function trackImportWrite(key, promise) {
     if (!pendingImportWrites) return;
     pendingImportWrites.push(Promise.resolve(promise).then(function (ok) {
-      if (ok === false) {
+      if (!isWriteAccepted(ok)) {
         console.warn('[data-manager] Storage write was not persisted for key "' + key + '"');
       }
-      return ok !== false;
+      return isWriteAccepted(ok);
     }, function (err) {
       console.warn('[data-manager] Failed to persist key "' + key + '":', err);
       return false;
     }));
+  }
+
+  // Bridge setItem returns false on a rejected write; native returns undefined.
+  function isWriteAccepted(result) {
+    return result !== false;
   }
 
   function writeStorage(key, value) {
@@ -216,12 +221,49 @@
         }
         return;
       }
-      if (localStorage.setItem(key, serialized) === false) {
+      if (!isWriteAccepted(localStorage.setItem(key, serialized))) {
         throw new Error('Storage write was not accepted for key "' + key + '"');
       }
     } catch (err) {
       console.warn('[data-manager] Failed to write key "' + key + '":', err);
       throw err;
+    }
+  }
+
+  function finishImport(mode, count, hasWriteErrors) {
+    // Update todo reminders after import
+    if (typeof window.scheduleTodoReminderCheck === 'function') {
+      window.scheduleTodoReminderCheck();
+    }
+
+    // Refresh the UI
+    if (typeof window.initSettings === 'function') {
+      window.initSettings();
+    }
+
+    // Refresh timezone views after merge/replace
+    if (typeof window.renderExtraClocks === 'function') {
+      window.renderExtraClocks();
+    }
+    if (typeof window.renderTimezoneCurrentList === 'function') {
+      window.renderTimezoneCurrentList();
+    }
+
+    // Reinitialize the search provider bar so imported providers/selection take effect live
+    if (typeof window.refreshProviderBar === 'function') {
+      window.refreshProviderBar();
+    }
+    if (typeof window.renderCustomSearchProvidersList === 'function') {
+      window.renderCustomSearchProvidersList();
+    }
+
+    if (hasWriteErrors) {
+      showToast(t('dataImportPartialSuccess', 'Import completed with some errors.'), 'warning');
+    } else {
+      const msg = mode === 'merge'
+        ? t('dataImportMergeSuccess', 'Merged {count} settings successfully.').replace('{count}', count)
+        : t('dataImportReplaceSuccess', 'Replaced all settings with imported data.');
+      showToast(msg, 'success');
     }
   }
 
@@ -851,57 +893,21 @@
       const importWrites = pendingImportWrites;
       pendingImportWrites = null;
       return Promise.all(importWrites).then(function (results) {
-        if (results.indexOf(false) !== -1) {
+        if (results.includes(false)) {
           hasWriteErrors = true;
         }
         finishImport(mode, count, hasWriteErrors);
       });
     };
 
-    const finishImport = function (mode, count, hasWriteErrors) {
-      // Update todo reminders after import
-      if (typeof window.scheduleTodoReminderCheck === 'function') {
-        window.scheduleTodoReminderCheck();
-      }
-
-      // Refresh the UI
-      if (typeof window.initSettings === 'function') {
-        window.initSettings();
-      }
-
-      // Refresh timezone views after merge/replace
-      if (typeof window.renderExtraClocks === 'function') {
-        window.renderExtraClocks();
-      }
-      if (typeof window.renderTimezoneCurrentList === 'function') {
-        window.renderTimezoneCurrentList();
-      }
-
-      // Reinitialize the search provider bar so imported providers/selection take effect live
-      if (typeof window.refreshProviderBar === 'function') {
-        window.refreshProviderBar();
-      }
-      if (typeof window.renderCustomSearchProvidersList === 'function') {
-        window.renderCustomSearchProvidersList();
-      }
-
-      if (hasWriteErrors) {
-        showToast(t('dataImportPartialSuccess', 'Import completed with some errors.'), 'warning');
-      } else {
-        const msg = mode === 'merge'
-          ? t('dataImportMergeSuccess', 'Merged {count} settings successfully.').replace('{count}', count)
-          : t('dataImportReplaceSuccess', 'Replaced all settings with imported data.');
-        showToast(msg, 'success');
-      }
-    };
 
     const handleMerge = function () {
-      applyData('merge');
+      void applyData('merge');
       hideDialog();
     };
 
     const handleReplace = function () {
-      applyData('replace');
+      void applyData('replace');
       hideDialog();
     };
 

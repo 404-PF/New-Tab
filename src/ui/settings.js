@@ -1828,6 +1828,9 @@ function initCustomSearchProvidersSettings() {
     // Disable the button while the write is in flight so a second click
     // cannot queue a duplicate provider.
     addBtn.disabled = true;
+    const reenableAdd = function () {
+      addBtn.disabled = false;
+    };
     Promise.resolve(window.addCustomProvider(name, url)).then(function (savedId) {
       if (savedId === null) {
         // Validation failure; the name was already checked above, so only
@@ -1854,9 +1857,7 @@ function initCustomSearchProvidersSettings() {
       console.warn('Failed to add custom search provider:', error);
       showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
       renderCustomProvidersList();
-    }).finally(function () {
-      addBtn.disabled = false;
-    });
+    }).then(reenableAdd, reenableAdd);
   }
 
   function handleRemove(providerId) {
