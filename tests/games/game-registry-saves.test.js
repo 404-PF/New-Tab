@@ -274,3 +274,83 @@ describe('Save envelope hardening (review #654 round 2)', () => {
     expect(window.GameRegistry.getSave('primitive-state-game').state).toEqual({ n: 1 });
   });
 });
+
+describe('GameRegistry stats persistence (#783)', () => {
+  function restoreShowToast(original) {
+    if (original === undefined) {
+      delete window.showToast;
+    } else {
+      window.showToast = original;
+    }
+  }
+
+  it('keeps the previous stats and notifies the user when the storage bridge rejects the write', () => {
+    expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 10, gamesPlayed: 1 })).toBe(true);
+
+    // Bridge-rejected write: setItem returns false without throwing (the
+    // bridge has already rolled the persisted value back).
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => false);
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+    try {
+      expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 999, gamesPlayed: 2 })).toBe(false);
+    } finally {
+      setItemSpy.mockRestore();
+      restoreShowToast(originalShowToast);
+    }
+
+    // Neither the in-memory cache nor the persisted value reflects the
+    // failed write, so the phantom high score cannot appear or survive.
+    expect(window.GameRegistry.getStats('stats-fail-game')).toEqual({ highScore: 10, gamesPlayed: 1 });
+    expect(JSON.parse(localStorage.getItem('games_stats'))['stats-fail-game']).toEqual({ highScore: 10, gamesPlayed: 1 });
+
+    // The failure surfaced to the user via an error toast.
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(expect.any(String), 'error');
+    expect(showToast.mock.calls[0][0]).not.toBe('');
+
+    // A later successful write still lands.
+    expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 20 })).toBe(true);
+    expect(window.GameRegistry.getStats('stats-fail-game').highScore).toBe(20);
+  });
+
+  it('reports failed persistence when the stats storage write throws', () => {
+    expect(window.GameRegistry.updateStats('stats-throw-game', { highScore: 5 })).toBe(true);
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+    const originalShowToast = window.showToast;
+    window.showToast = () => {};
+    try {
+      expect(window.GameRegistry.updateStats('stats-throw-game', { highScore: 42 })).toBe(false);
+    } finally {
+      setItemSpy.mockRestore();
+      restoreShowToast(originalShowToast);
+    }
+
+    // The cache was invalidated; the next read re-serves the persisted value.
+    expect(window.GameRegistry.getStats('stats-throw-game').highScore).toBe(5);
+    expect(JSON.parse(localStorage.getItem('games_stats'))['stats-throw-game'].highScore).toBe(5);
+  });
+
+  it('gamesHelpers.updateStatsWith surfaces a failed stats write', () => {
+    expect(window.GameRegistry.updateStats('helper-game', { highScore: 1 })).toBe(true);
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => false);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      window.gamesHelpers.updateStatsWith('helper-game', function (stats) {
+        return { highScore: (stats.highScore || 0) + 1 };
+      });
+      const warnings = warnSpy.mock.calls.map((call) => call.join(' '));
+      expect(warnings.some((message) => message.includes('updateStatsWith'))).toBe(true);
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+
+    expect(window.GameRegistry.getStats('helper-game').highScore).toBe(1);
+  });
+});

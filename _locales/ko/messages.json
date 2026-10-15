@@ -11,6 +11,10 @@
     "message": "앱 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
     "description": "Error shown when app grid changes cannot be persisted"
   },
+  "gameStatsSaveError": {
+    "message": "게임 통계를 저장하지 못했습니다. 최근 점수가 저장되지 않았습니다.",
+    "description": "Error shown when game statistics cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.",
     "description": "Error shown when custom backgrounds cannot be listed"

@@ -11,6 +11,10 @@
     "message": "App-Änderungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
     "description": "Error shown when app grid changes cannot be persisted"
   },
+  "gameStatsSaveError": {
+    "message": "Spielstatistiken konnten nicht gespeichert werden. Dein letzter Punktestand wurde nicht gespeichert.",
+    "description": "Error shown when game statistics cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.",
     "description": "Error shown when custom backgrounds cannot be listed"

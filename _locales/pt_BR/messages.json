@@ -11,6 +11,10 @@
     "message": "Não foi possível salvar as alterações dos aplicativos. Sua última ação não foi salva.",
     "description": "Error shown when app grid changes cannot be persisted"
   },
+  "gameStatsSaveError": {
+    "message": "Não foi possível salvar as estatísticas do jogo. Sua última pontuação não foi salva.",
+    "description": "Error shown when game statistics cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "Não foi possível carregar os planos de fundo personalizados. Tente novamente.",
     "description": "Error shown when custom backgrounds cannot be listed"

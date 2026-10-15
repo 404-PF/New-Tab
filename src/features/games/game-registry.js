@@ -4,6 +4,7 @@
   'use strict';
 
   const STATS_KEY = 'games_stats';
+  const STATS_SAVE_ERROR_FALLBACK = 'Failed to save game statistics. Your latest score was not saved.';
   const MRU_KEY = 'games_recently_played';
   const SAVES_KEY = 'games_saves';
   const MAX_MRU = 20;
@@ -47,16 +48,40 @@
     }
   }
 
+  function showStatsSaveError() {
+    let message = STATS_SAVE_ERROR_FALLBACK;
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const translated = window.i18n.t('gameStatsSaveError');
+      if (translated && translated !== 'gameStatsSaveError') message = translated;
+    }
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+      return;
+    }
+    console.warn(message);
+  }
+
   function saveStats(stats) {
     try {
       const serialized = JSON.stringify(stats);
-      localStorage.setItem(STATS_KEY, serialized);
+      // The storage bridge returns false (and rolls back) when a
+      // chrome.storage.local write fails; a native Storage#setItem returns
+      // void on success, so only an explicit false is a failure.
+      const result = localStorage.setItem(STATS_KEY, serialized);
+      if (result === false) {
+        console.warn('Failed to save games_stats: storage rejected the write');
+        showStatsSaveError();
+        return false;
+      }
       statsCache = stats;
       statsCacheRaw = serialized;
+      return true;
     } catch (e) {
       console.warn('Failed to save games_stats:', e);
       statsCache = null;
       statsCacheRaw = undefined;
+      showStatsSaveError();
+      return false;
     }
   }
 
@@ -221,9 +246,11 @@
   }
 
   function updateStats(id, updates) {
-    const all = loadStats();
+    // Copy before mutating: loadStats() hands back the live cache object, and
+    // a failed write below must leave that cache at its previous state.
+    const all = { ...loadStats() };
     all[id] = { ...all[id], ...updates };
-    saveStats(all);
+    return saveStats(all);
   }
 
   // ===================== Lifecycle =====================
