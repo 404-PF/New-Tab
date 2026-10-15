@@ -21,8 +21,15 @@ concurrency:
 
 jobs:
   label:
+    # Name pinned so the single-entry matrix below doesn't rename the job.
+    name: label
+    # Single source for the job timeout: timeout-minutes cannot read env,
+    # but it can read matrix, and the failure report reads the same value.
+    strategy:
+      matrix:
+        job-timeout-minutes: [10]
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: ${{ matrix.job-timeout-minutes }}
     permissions:
       contents: read
       issues: write
@@ -289,18 +296,17 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           JOB_STATUS: ${{ job.status }}
-          # Keep in sync with this job's timeout-minutes.
-          JOB_TIMEOUT_MINUTES: '10'
+          JOB_TIMEOUT_MINUTES: ${{ matrix.job-timeout-minutes }}
         run: |
           set -euo pipefail
           # A step timeout fails its step, so failure() covers it. A cancelled
           # job is either a job-level timeout (report it) or a run superseded
           # by a newer one via concurrency cancel-in-progress (stay silent).
-          # Only a job that ran to within a minute of its timeout counts as
+          # Only a job that ran to within 2 minutes of its timeout counts as
           # timed out; earlier cancellations are supersession or manual.
           if [ "$JOB_STATUS" = 'cancelled' ]; then
             elapsed=$(( $(date +%s) - ${JOB_STARTED_AT:-0} ))
-            if [ -z "${JOB_STARTED_AT:-}" ] || [ "$elapsed" -lt $(( (JOB_TIMEOUT_MINUTES - 1) * 60 )) ]; then
+            if [ -z "${JOB_STARTED_AT:-}" ] || [ "$elapsed" -lt $(( (JOB_TIMEOUT_MINUTES - 2) * 60 )) ]; then
               echo "Run cancelled after ${elapsed}s (superseded or cancelled manually); not reporting."
               exit 0
             fi
