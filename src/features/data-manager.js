@@ -282,12 +282,14 @@
     const year = Number(parts[0]);
     const month = Number(parts[1]);
     const day = Number(parts[2]);
-    // Round-trip the calendar components in the local date domain so the
-    // check never passes through UTC (local midnight shifts back a day in
-    // positive UTC offsets). Mirrors window.parseLocalDate in todo.js.
-    const d = new Date(year, month - 1, day);
+    // Compare calendar components in UTC. A local Date rejects real keys:
+    // local midnight shifts to the previous day in positive UTC offsets,
+    // Pacific/Apia has no civil 2011-12-30, and years 0000-0099 are mapped
+    // to 1900-1999. setUTCFullYear applies the parsed year as-is.
+    const d = new Date(Date.UTC(year, month - 1, day));
+    d.setUTCFullYear(year, month - 1, day);
     if (Number.isNaN(d.getTime())) return false;
-    return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
   }
 
   function isNonNegativeInteger(n) {

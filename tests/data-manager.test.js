@@ -472,33 +472,81 @@ describe('DataManager background overlay settings', () => {
 describe('DataManager pomodoroStats date keys (issue #764)', () => {
   const ORIGINAL_TZ = process.env.TZ;
 
-  beforeAll(() => {
-    // Pin a positive UTC offset: the old validator round-tripped local
-    // midnight through toISOString(), shifting the date back one day and
-    // rejecting every valid pomodoroStats date key.
-    process.env.TZ = 'Australia/Melbourne';
-  });
+  function useTimeZone(zone) {
+    process.env.TZ = zone;
+  }
 
-  afterAll(() => {
+  function restoreTimeZone() {
     if (ORIGINAL_TZ === undefined) delete process.env.TZ;
     else process.env.TZ = ORIGINAL_TZ;
+  }
+
+  afterEach(() => {
+    restoreTimeZone();
   });
 
-  it('accepts valid calendar date keys in a positive UTC offset', () => {
+  // Positive UTC offsets report a negative getTimezoneOffset(). Assert the
+  // exact offset so a no-op TZ assignment (still UTC) fails the test.
+  function expectOffset(zone, instant, expectedOffset) {
+    useTimeZone(zone);
+    expect(new Date(instant).getTimezoneOffset(), zone).toBe(expectedOffset);
+    expect(expectedOffset).toBeLessThan(0);
+  }
+
+  function expectValidPomodoroDate(key) {
     expect(window.DataManager.validateImportData({ version: 1, data: {
       pomodoroStats: {
-        days: { '2026-09-22': { sessions: 1, minutes: 25 }, '2026-12-31': 3 },
-        byDateTodos: { '2026-09-22': { 'todo-1': 25 }, '2026-01-01': {} }
+        days: { [key]: { sessions: 1, minutes: 25 } },
+        byDateTodos: { [key]: { 'todo-1': 25 } }
       }
-    } })).toEqual({ valid: true });
-    expect(window.DataManager.EXPECTED_SHAPES.pomodoroStats({
-      days: { '2026-09-22': { sessions: 1, minutes: 25 } },
-      byDateTodos: { '2026-09-22': { 'todo-1': 25 } }
-    })).toBe(true);
+    } }).valid, key).toBe(true);
+  }
+
+  it('accepts calendar dates in Australia/Melbourne, including its UTC+11 season', () => {
+    expectOffset('Australia/Melbourne', '2026-09-22T00:00:00Z', -600);
+    // September is AEST (UTC+10). The old local-midnight toISOString()
+    // round-trip still moves this key to the previous UTC day.
+    expect(new Date('2026-09-22T00:00:00').toISOString().slice(0, 10)).not.toBe('2026-09-22');
+    expectValidPomodoroDate('2026-09-22');
+    expectValidPomodoroDate('2026-12-31');
+    expectValidPomodoroDate('2026-01-01');
+
+    expectOffset('Australia/Melbourne', '2026-01-15T00:00:00Z', -660);
+    expect(new Date('2026-01-15T00:00:00').toISOString().slice(0, 10)).not.toBe('2026-01-15');
+    expectValidPomodoroDate('2026-01-15');
   });
 
-  it('still rejects impossible and malformed date keys', () => {
-    const badKeys = ['2026-02-30', '2026-00-10', '2026-13-01', '2026-9-2', '2026-09-2', ''];
+  it('accepts calendar dates in a fixed UTC+11 zone and a fixed UTC+14 zone', () => {
+    expectOffset('Pacific/Guadalcanal', '2026-09-22T00:00:00Z', -660);
+    expect(new Date('2026-09-22T00:00:00').toISOString().slice(0, 10)).not.toBe('2026-09-22');
+    expectValidPomodoroDate('2026-09-22');
+    expectValidPomodoroDate('2024-02-29');
+    expectValidPomodoroDate('2000-02-29');
+
+    expectOffset('Pacific/Kiritimati', '2026-09-22T00:00:00Z', -840);
+    expect(new Date('2026-09-22T00:00:00').toISOString().slice(0, 10)).not.toBe('2026-09-22');
+    expectValidPomodoroDate('2026-09-22');
+    expectValidPomodoroDate('0000-02-29');
+    expectValidPomodoroDate('0001-01-01');
+    expectValidPomodoroDate('0099-12-31');
+  });
+
+  it('accepts the civil day Pacific/Apia skipped when it moved to UTC+14', () => {
+    useTimeZone('Pacific/Apia');
+    expect(new Date().getTimezoneOffset()).toBeLessThan(0);
+    const skipped = new Date(2011, 11, 30);
+    expect(skipped.getFullYear()).toBe(2011);
+    expect(skipped.getMonth()).toBe(11);
+    expect(skipped.getDate()).toBe(31);
+    expectValidPomodoroDate('2011-12-30');
+  });
+
+  it('still rejects impossible and malformed date keys in UTC+14', () => {
+    expectOffset('Pacific/Kiritimati', '2026-09-22T00:00:00Z', -840);
+    const badKeys = [
+      '2026-02-30', '2026-02-29', '2023-02-29', '1900-02-29', '0000-02-30',
+      '2026-00-10', '2026-13-01', '2026-9-2', '2026-09-2', ''
+    ];
     badKeys.forEach((key) => {
       expect(window.DataManager.validateImportData({ version: 1, data: {
         pomodoroStats: { days: { [key]: { sessions: 1, minutes: 25 } } }
@@ -510,6 +558,7 @@ describe('DataManager pomodoroStats date keys (issue #764)', () => {
   });
 
   it('rejects invalid day entry values regardless of key validity', () => {
+    expectOffset('Pacific/Guadalcanal', '2026-09-22T00:00:00Z', -660);
     expect(window.DataManager.EXPECTED_SHAPES.pomodoroStats({
       days: { '2026-09-22': -1 }
     })).toBe(false);
