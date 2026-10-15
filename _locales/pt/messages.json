@@ -23,6 +23,10 @@
     "message": "Não foi possível excluir o plano de fundo personalizado. Tente novamente.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "onboardingSaveError": {
+    "message": "Não foi possível salvar a conclusão do onboarding. Seu progresso foi mantido para você poder tentar novamente.",
+    "description": "Error shown when onboarding completion cannot be persisted"
+  },
   "name": {
     "message": "New Tab",
     "description": "The name of the extension"
