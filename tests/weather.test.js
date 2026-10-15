@@ -427,6 +427,57 @@ describe('Weather widget', () => {
     }
   });
 
+  it('dispatches weatherCacheUpdated after a successful cache write', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
+
+    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
+    installWeatherFetch();
+
+    let eventCount = 0;
+    const onCacheUpdated = () => { eventCount += 1; };
+    window.addEventListener('weatherCacheUpdated', onCacheUpdated);
+
+    try {
+      await window.WeatherWidget.refresh(true);
+
+      expect(eventCount).toBe(1);
+      expect(localStorage.getItem('weatherCache')).not.toBeNull();
+    } finally {
+      window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
+    }
+  });
+
+  it('does not dispatch weatherCacheUpdated when the cache write fails', async () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherLocationMode', 'auto');
+
+    mockGeolocation({ latitude: 37.7749, longitude: -122.4194 });
+    installWeatherFetch();
+
+    const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota exceeded', 'QuotaExceededError');
+    });
+
+    let eventCount = 0;
+    const onCacheUpdated = () => { eventCount += 1; };
+    window.addEventListener('weatherCacheUpdated', onCacheUpdated);
+
+    try {
+      await window.WeatherWidget.refresh(true);
+
+      expect(eventCount).toBe(0);
+      expect(localStorage.getItem('weatherCache')).toBeNull();
+      // The widget still renders the fresh in-memory data
+      expect(document.querySelector('.weather-temp')).not.toBeNull();
+    } finally {
+      window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
+      setItem.mockRestore();
+    }
+  });
+
   it('escapes HTML in error messages', async () => {
     localStorage.setItem('weatherEnabled', 'true');
     localStorage.setItem('weatherUnit', 'celsius');

@@ -122,9 +122,14 @@
     },
 
     saveCache(cacheData) {
-      _safeSet(CACHE_KEY, JSON.stringify(cacheData));
-      // Dispatch custom event for same-tab listeners (storage events only fire in other tabs)
-      window.dispatchEvent(new CustomEvent('weatherCacheUpdated'));
+      const saved = _safeSet(CACHE_KEY, JSON.stringify(cacheData));
+      // Dispatch custom event for same-tab listeners (storage events only fire
+      // in other tabs) — only after a successful write, since listeners re-read
+      // the cache from storage and would otherwise render a stale value.
+      if (saved) {
+        window.dispatchEvent(new CustomEvent('weatherCacheUpdated'));
+      }
+      return saved;
     }
   };
 
