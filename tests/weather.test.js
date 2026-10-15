@@ -449,93 +449,76 @@ describe('Weather widget', () => {
     }
   });
 
-  it('dispatches weatherCacheUpdated when the cache write succeeds', async () => {
+  async function expectPersistedCacheEvent({ installFailure, eventCount, storedTemperature }) {
     configureAutoWeather({
       cacheData: createWeatherDataWithTemperature(19)
     });
     installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
-
+    const restore = typeof installFailure === 'function' ? installFailure() : null;
     const onCacheUpdated = vi.fn();
     window.addEventListener('weatherCacheUpdated', onCacheUpdated);
     try {
       await window.WeatherWidget.refresh(true);
-
-      expect(onCacheUpdated).toHaveBeenCalledTimes(1);
+      expect(onCacheUpdated).toHaveBeenCalledTimes(eventCount);
       const stored = JSON.parse(localStorage.getItem('weatherCache'));
-      expect(stored.data.current.temperature_2m).toBe(22);
+      expect(stored.data.current.temperature_2m).toBe(storedTemperature);
+      expect(document.querySelector('.weather-temp').textContent).toContain('22');
     } finally {
       window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
+      if (typeof restore === 'function') restore();
     }
+  }
+
+  it('dispatches weatherCacheUpdated when the cache write succeeds', async () => {
+    await expectPersistedCacheEvent({ eventCount: 1, storedTemperature: 22 });
   });
 
   it('does not dispatch weatherCacheUpdated when the bridged cache write fails', async () => {
-    configureAutoWeather({
-      cacheData: createWeatherDataWithTemperature(19)
-    });
-    installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
-
-    const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
-    chrome.storage.local.set = (items, callback) => {
-      if (!Object.prototype.hasOwnProperty.call(items, 'weatherCache')) {
-        return originalSet(items, callback);
+    await expectPersistedCacheEvent({
+      eventCount: 0,
+      storedTemperature: 19,
+      installFailure() {
+        const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+        chrome.storage.local.set = (items, callback) => {
+          if (!Object.prototype.hasOwnProperty.call(items, 'weatherCache')) {
+            return originalSet(items, callback);
+          }
+          setTimeout(() => {
+            chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+            try {
+              if (typeof callback === 'function') callback();
+            } finally {
+              chrome.runtime.lastError = null;
+            }
+          }, 0);
+          return Promise.resolve();
+        };
+        return () => {
+          chrome.storage.local.set = originalSet;
+        };
       }
-      setTimeout(() => {
-        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
-        try {
-          if (typeof callback === 'function') callback();
-        } finally {
-          chrome.runtime.lastError = null;
-        }
-      }, 0);
-      return Promise.resolve();
-    };
-
-    const onCacheUpdated = vi.fn();
-    window.addEventListener('weatherCacheUpdated', onCacheUpdated);
-    try {
-      await window.WeatherWidget.refresh(true);
-
-      // The failed write must not be broadcast as a cache update.
-      expect(onCacheUpdated).not.toHaveBeenCalled();
-      // The widget still renders the fresh in-memory data...
-      expect(document.querySelector('.weather-temp').textContent).toContain('22');
-      // ...while storage keeps the previous cache value.
-      const stored = JSON.parse(localStorage.getItem('weatherCache'));
-      expect(stored.data.current.temperature_2m).toBe(19);
-    } finally {
-      window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
-      chrome.storage.local.set = originalSet;
-    }
+    });
   });
 
   it('does not dispatch weatherCacheUpdated when the native cache write throws', async () => {
-    configureAutoWeather({
-      cacheData: createWeatherDataWithTemperature(19)
-    });
-    installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
-
-    const originalSetItemAsync = localStorage.setItemAsync;
-    const originalSetItem = localStorage.setItem.bind(localStorage);
-    delete localStorage.setItemAsync;
-    const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
-      if (key === 'weatherCache') {
-        throw new DOMException('quota exceeded', 'QuotaExceededError');
+    await expectPersistedCacheEvent({
+      eventCount: 0,
+      storedTemperature: 19,
+      installFailure() {
+        const originalSetItemAsync = localStorage.setItemAsync;
+        const originalSetItem = localStorage.setItem.bind(localStorage);
+        delete localStorage.setItemAsync;
+        const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+          if (key === 'weatherCache') {
+            throw new DOMException('quota exceeded', 'QuotaExceededError');
+          }
+          return originalSetItem(key, value);
+        });
+        return () => {
+          setItem.mockRestore();
+          localStorage.setItemAsync = originalSetItemAsync;
+        };
       }
-      return originalSetItem(key, value);
     });
-    const onCacheUpdated = vi.fn();
-    window.addEventListener('weatherCacheUpdated', onCacheUpdated);
-    try {
-      await window.WeatherWidget.refresh(true);
-
-      expect(onCacheUpdated).not.toHaveBeenCalled();
-      expect(document.querySelector('.weather-temp').textContent).toContain('22');
-      const stored = JSON.parse(localStorage.getItem('weatherCache'));
-      expect(stored.data.current.temperature_2m).toBe(19);
-    } finally {
-      window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
-      setItem.mockRestore();
-      localStorage.setItemAsync = originalSetItemAsync;
-    }
   });
 });
