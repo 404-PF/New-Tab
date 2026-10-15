@@ -1,7 +1,7 @@
 // src/core/app-grid-storage.js
 // Shared persistence helpers for custom app state.
 
-const APP_GRID_STORAGE_KEYS = new Set(['appOrder', 'customApps', 'appFolders']);
+const APP_GRID_STORAGE_KEYS = new Set(['appOrder', 'customApps', 'appFolders', 'hiddenDefaultApps']);
 const APP_GRID_SAVE_ERROR_FALLBACK = 'Failed to save app changes. Your last action was not saved.';
 function getAppGridSaveErrorMessage() {
   if (!window.i18n || typeof window.i18n.t !== 'function') {
@@ -227,6 +227,14 @@ const AppGridStorage = {
 
   saveFolders(folders) {
     return writeJson('appFolders', folders);
+  },
+
+  loadHiddenDefaultApps() {
+    return readJsonArray('hiddenDefaultApps', [], 'hiddenDefaultApps', '[]');
+  },
+
+  saveHiddenDefaultApps(ids) {
+    return writeJson('hiddenDefaultApps', ids);
   }
 };
 

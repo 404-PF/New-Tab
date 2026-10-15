@@ -1,4 +1,4 @@
-// src/features/context-menu.js - Right-click context menu for custom apps
+// src/features/context-menu.js - Right-click context menu for custom and default apps
 
 (function () {
   'use strict';
@@ -106,6 +106,14 @@ deleteItem.setAttribute('data-i18n', 'deleteApp');
 deleteItem.textContent = 'Delete';
 addHover(deleteItem);
 
+// Default-app items (for hideable .app-icon.default-app)
+const hideDefaultItem = document.createElement('div');
+hideDefaultItem.id = 'hide-default-app';
+hideDefaultItem.className = 'context-menu-item context-menu-default-item';
+hideDefaultItem.setAttribute('data-i18n', 'hideDefaultApp');
+hideDefaultItem.textContent = 'Hide from Grid';
+addHover(hideDefaultItem);
+
 // Folder items (for folder-icon)
 const renameFolderItem = document.createElement('div');
 renameFolderItem.id = 'rename-folder';
@@ -141,6 +149,7 @@ contextMenu.appendChild(moveToFolderItem);
 contextMenu.appendChild(removeFromFolderItem);
 contextMenu.appendChild(changeThumbnailItem);
 contextMenu.appendChild(deleteItem);
+contextMenu.appendChild(hideDefaultItem);
 contextMenu.appendChild(renameFolderItem);
 contextMenu.appendChild(deleteFolderItem);
 contextMenu.appendChild(createFolderItem);
@@ -148,23 +157,27 @@ contextMenu.appendChild(sortAlphabeticallyItem);
 document.body.appendChild(contextMenu);
 
 // Track which context triggered the menu
-let contextMenuTrigger = null; // 'custom-app', 'folder-icon', 'grid'
+let contextMenuTrigger = null; // 'custom-app', 'default-app', 'folder-icon', 'grid'
 
 // Helper to show/hide context menu sections
 function setContextMenuItems(trigger) {
   contextMenuTrigger = trigger;
   const appItems = contextMenu.querySelectorAll('.context-menu-app-item');
+  const defaultAppItems = contextMenu.querySelectorAll('.context-menu-default-item');
   const folderAppItems = contextMenu.querySelectorAll('.context-menu-folder-app-item');
   const folderItems = contextMenu.querySelectorAll('.context-menu-folder-item');
   const gridItems = contextMenu.querySelectorAll('.context-menu-grid-item');
 
   appItems.forEach(el => el.style.display = 'none');
+  defaultAppItems.forEach(el => el.style.display = 'none');
   folderAppItems.forEach(el => el.style.display = 'none');
   folderItems.forEach(el => el.style.display = 'none');
   gridItems.forEach(el => el.style.display = 'none');
 
   if (trigger === 'custom-app') {
     appItems.forEach(el => el.style.display = 'block');
+  } else if (trigger === 'default-app') {
+    defaultAppItems.forEach(el => el.style.display = 'block');
   } else if (trigger === 'folder-app') {
     folderAppItems.forEach(el => el.style.display = 'block');
   } else if (trigger === 'folder-icon') {
@@ -217,6 +230,17 @@ document.addEventListener('contextmenu', function (e) {
     e.preventDefault();
     contextTargetId = customAppIcon.id;
     setContextMenuItems('custom-app');
+    positionContextMenu(e);
+    return;
+  }
+
+  // Right-click on a hideable built-in app. Settings is the guaranteed
+  // restore path and Games has its own toggle, so neither gets this menu.
+  const defaultAppIcon = e.target.closest('.app-icon.default-app');
+  if (defaultAppIcon && window.AppGridState.canHideDefaultApp(defaultAppIcon.id)) {
+    e.preventDefault();
+    contextTargetId = defaultAppIcon.id;
+    setContextMenuItems('default-app');
     positionContextMenu(e);
     return;
   }
@@ -353,6 +377,16 @@ document.getElementById('sort-alphabetically').addEventListener('click', functio
   if (sortable && window.AppGridState.sortAlphabetically()) {
     if (typeof window.renderAllApps === 'function') window.renderAllApps();
   }
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
+});
+
+// Hide a built-in app from the grid (restorable via Settings > Apps)
+document.getElementById('hide-default-app').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'default-app') return;
+  if (!contextTargetId) return;
+  window.AppGridState.hideDefaultApp(contextTargetId);
+  if (typeof window.renderAllApps === 'function') window.renderAllApps();
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');
 });

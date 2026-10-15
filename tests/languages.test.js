@@ -309,3 +309,15 @@ describe('App grid context menu translations', () => {
     });
   });
 });
+
+const DEFAULT_APP_VISIBILITY_TRANSLATION_KEYS = [
+  'hideDefaultApp',
+  'visibleApps',
+  'visibleAppsDesc'
+];
+
+describe('Default app visibility translations', () => {
+  it('defines every built-in app visibility string in each supported language', () => {
+    expectTranslationKeys(DEFAULT_APP_VISIBILITY_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
