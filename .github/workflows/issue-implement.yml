@@ -186,8 +186,10 @@ jobs:
             "$CONTEXT_DIR/issue-raw.json" > "$CONTEXT_DIR/issue-context.json"
           # Readable Markdown copy for OpenCode. Its read/grep tools fail on
           # single-line JSON records over 64 KiB and jq is blocked inside the
-          # agent, so render the context here, one field per line.
+          # agent, so render the context here, one field per line. wrap splits
+          # any line longer than 4000 characters so no record nears the limit.
           jq -r '
+            def wrap: (. // "") | split("\n") | map(if length > 4000 then ([range(0; length; 4000) as $i | .[$i:$i + 4000]] | join("\n")) else . end) | join("\n");
             "# Issue #\(.number): \(.title)",
             "",
             "- Number: \(.number)",
@@ -197,16 +199,16 @@ jobs:
             "",
             "## Body",
             "",
-            (if ((.body // "") | length) > 0 then .body else "_No description provided._" end),
+            (if ((.body // "") | length) > 0 then (.body | wrap) else "_No description provided._" end),
             "",
             "## Comments (\((.comments // []) | length))",
-            ((.comments // [])[] | "", "### @\(.author.login // "unknown") on \(.createdAt // "unknown date")", "", (.body // ""))
+            ((.comments // [])[] | "", "### @\(.author.login // "unknown") on \(.createdAt // "unknown date")", "", (.body | wrap))
           ' "$CONTEXT_DIR/issue-raw.json" > "$CONTEXT_DIR/issue-context.md"
           # Promote the issue-triage comment (marker <!-- issue-triage -->) to
           # its own file so the implement step weights it alongside the
           # title/body and the rest of the discussion.
           jq -r '[.comments[] | select((.body // "") | contains("<!-- issue-triage -->"))] | last | .body // empty' \
-            "$GITHUB_WORKSPACE/.tmp/issue-context.json" > "$GITHUB_WORKSPACE/.tmp/triage-comment.md" || true
+            "$CONTEXT_DIR/issue-raw.json" > "$GITHUB_WORKSPACE/.tmp/triage-comment.md" || true
           echo "issue-file=$GITHUB_WORKSPACE/.tmp/issue-context.md" >> "$GITHUB_OUTPUT"
           echo "triage-file=$GITHUB_WORKSPACE/.tmp/triage-comment.md" >> "$GITHUB_OUTPUT"
 
@@ -274,6 +276,10 @@ jobs:
           - Keep changes minimal and focused on the issue; do not refactor unrelated code.
           - Do NOT run any gh commands (commit/push/issue/PR). Leave all changes uncommitted in the workspace.
           OPENCODE_PROMPT_EOF_7f3a9c2e
+          # Cap the maintainer hint so the rendered prompt stays well under the
+          # per-argument size limit of opencode run.
+          COMMENT_BODY="${COMMENT_BODY:0:4000}"
+          export COMMENT_BODY
           # shellcheck disable=SC2016 # literal variable list for envsubst
           envsubst '${GH_REPO} ${ISSUE_NUMBER} ${ISSUE_FILE} ${TRIAGE_FILE} ${COMMENT_BODY}' < "$PROMPT_TEMPLATE" > "$PROMPT_FILE"
           opencode run --model opencode/mimo-v2.6-flash-free "$(cat "$PROMPT_FILE")"
