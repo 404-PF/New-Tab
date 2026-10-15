@@ -78,7 +78,7 @@
   function saveShortcuts(shortcuts) {
     try {
       const result = localStorage.setItem(STORAGE_KEY, JSON.stringify(shortcuts));
-      return result !== false;
+      return result !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (e) {
       console.warn('Failed to save shortcuts:', STORAGE_KEY, e);
       return false;
@@ -99,7 +99,7 @@
     let persisted;
     try {
       const result = localStorage.removeItem(STORAGE_KEY);
-      persisted = result !== false;
+      persisted = result !== false; // NOSONAR - the storage bridge may return false while native Storage#removeItem returns void.
     } catch (e) {
       console.warn('Failed to reset shortcuts:', STORAGE_KEY, e);
       persisted = false;
@@ -395,7 +395,7 @@
       const modifiers = ['Control', 'Shift', 'Alt', 'Meta'];
       if (modifiers.includes(e.key)) return;
 
-      const previousShortcuts = Object.assign({}, activeShortcuts);
+      const previousShortcuts = { ...activeShortcuts };
 
       // If another action already uses this combo, swap bindings
       for (const otherAction in activeShortcuts) {
@@ -434,8 +434,7 @@
   }
 
   window.addEventListener('storageBridgeWriteError', function (event) {
-    const detail = event && event.detail;
-    if (!detail || detail.key !== STORAGE_KEY) return;
+    if (event?.detail?.key !== STORAGE_KEY) return;
 
     setTimeout(function () {
       const persisted = loadShortcuts();
