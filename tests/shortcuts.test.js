@@ -593,7 +593,34 @@ describe('Shortcuts - save failure handling', () => {
     expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('/');
   });
 
-  it('resolves false and toasts once when finishing the reset throws', async () => {
+  it('still toasts once when the remove fails and the rollback render throws', async () => {
+    const originalRemove = chrome.storage.local.remove;
+    chrome.storage.local.remove = (keys, callback) => {
+      chrome.runtime.lastError = { message: 'quota exceeded' };
+      if (callback) callback();
+      chrome.runtime.lastError = null;
+      return Promise.resolve();
+    };
+    const renderSpy = vi.spyOn(document, 'getElementById').mockImplementation(() => {
+      throw new Error('render exploded');
+    });
+
+    try {
+      const result = await Shortcuts.reset();
+      renderSpy.mockRestore();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(result).toBe(false);
+      expect(showToast).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    } finally {
+      renderSpy.mockRestore();
+      chrome.storage.local.remove = originalRemove;
+    }
+  });
+
+  it('resolves true without a toast when the reset is saved but the render throws', async () => {
+    localStorage.setItem('customShortcuts', JSON.stringify({ focusSearch: 'X' }));
     const renderSpy = vi.spyOn(document, 'getElementById').mockImplementation(() => {
       throw new Error('render exploded');
     });
@@ -601,9 +628,9 @@ describe('Shortcuts - save failure handling', () => {
     try {
       const result = await Shortcuts.reset();
 
-      expect(result).toBe(false);
-      expect(showToast).toHaveBeenCalledTimes(1);
-      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+      expect(result).toBe(true);
+      expect(showToast).not.toHaveBeenCalled();
+      expect(localStorage.getItem('customShortcuts')).toBeNull();
     } finally {
       renderSpy.mockRestore();
     }
