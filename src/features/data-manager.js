@@ -278,9 +278,16 @@
 
   function isValidISODate(key) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
-    const d = new Date(key + 'T00:00:00');
+    const parts = key.split('-');
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    // Round-trip the calendar components in the local date domain so the
+    // check never passes through UTC (local midnight shifts back a day in
+    // positive UTC offsets). Mirrors window.parseLocalDate in todo.js.
+    const d = new Date(year, month - 1, day);
     if (Number.isNaN(d.getTime())) return false;
-    return d.toISOString().slice(0, 10) === key;
+    return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
   }
 
   function isNonNegativeInteger(n) {

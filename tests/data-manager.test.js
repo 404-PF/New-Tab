@@ -468,3 +468,53 @@ describe('DataManager background overlay settings', () => {
     expect(typeof window.DataManager.EXPECTED_SHAPES.bgTint('#112233')).toBe('boolean');
   });
 });
+
+describe('DataManager pomodoroStats date keys (issue #764)', () => {
+  const ORIGINAL_TZ = process.env.TZ;
+
+  beforeAll(() => {
+    // Pin a positive UTC offset: the old validator round-tripped local
+    // midnight through toISOString(), shifting the date back one day and
+    // rejecting every valid pomodoroStats date key.
+    process.env.TZ = 'Australia/Melbourne';
+  });
+
+  afterAll(() => {
+    if (ORIGINAL_TZ === undefined) delete process.env.TZ;
+    else process.env.TZ = ORIGINAL_TZ;
+  });
+
+  it('accepts valid calendar date keys in a positive UTC offset', () => {
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      pomodoroStats: {
+        days: { '2026-09-22': { sessions: 1, minutes: 25 }, '2026-12-31': 3 },
+        byDateTodos: { '2026-09-22': { 'todo-1': 25 }, '2026-01-01': {} }
+      }
+    } })).toEqual({ valid: true });
+    expect(window.DataManager.EXPECTED_SHAPES.pomodoroStats({
+      days: { '2026-09-22': { sessions: 1, minutes: 25 } },
+      byDateTodos: { '2026-09-22': { 'todo-1': 25 } }
+    })).toBe(true);
+  });
+
+  it('still rejects impossible and malformed date keys', () => {
+    const badKeys = ['2026-02-30', '2026-00-10', '2026-13-01', '2026-9-2', '2026-09-2', ''];
+    badKeys.forEach((key) => {
+      expect(window.DataManager.validateImportData({ version: 1, data: {
+        pomodoroStats: { days: { [key]: { sessions: 1, minutes: 25 } } }
+      } }).valid, `days key ${key}`).toBe(false);
+      expect(window.DataManager.validateImportData({ version: 1, data: {
+        pomodoroStats: { days: {}, byDateTodos: { [key]: { 'todo-1': 25 } } }
+      } }).valid, `byDateTodos key ${key}`).toBe(false);
+    });
+  });
+
+  it('rejects invalid day entry values regardless of key validity', () => {
+    expect(window.DataManager.EXPECTED_SHAPES.pomodoroStats({
+      days: { '2026-09-22': -1 }
+    })).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.pomodoroStats({
+      days: { '2026-09-22': { sessions: -1, minutes: 25 } }
+    })).toBe(false);
+  });
+});
