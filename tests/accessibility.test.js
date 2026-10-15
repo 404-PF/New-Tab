@@ -84,11 +84,41 @@ describe('Accessibility - modal semantics and focus management', () => {
       bubbles: true,
       cancelable: true
     }));
-    await new Promise(resolve => setTimeout(resolve, 0));
-
     expect(modal.classList.contains('modal-open')).toBe(false);
     expect(opener.hasAttribute('inert')).toBe(false);
-    expect(document.activeElement).toBe(opener);
+    // Focus is restored in requestAnimationFrame. jsdom flushes that on a
+    // timer, so wait for the opener instead of sleeping a fixed interval.
+    await vi.waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+
+  it('does not mutate a modal label that is already correct', async () => {
+    const observeStableLabel = async (modal, expectedText) => {
+      window.Accessibility.refresh();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const label = modal.querySelector('[data-accessibility-modal-label]');
+      expect(label).not.toBeNull();
+      expect(label.textContent).toBe(expectedText);
+
+      const mutations = [];
+      const observer = new MutationObserver(records => mutations.push(...records));
+      observer.observe(label, { childList: true });
+      window.Accessibility.refresh();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      observer.disconnect();
+      expect(mutations).toHaveLength(0);
+      expect(label.textContent).toBe(expectedText);
+    };
+
+    await observeStableLabel(document.getElementById('settings-modal'), 'settings');
+
+    const fallbackModal = document.createElement('div');
+    fallbackModal.id = 'add-app-modal';
+    document.body.appendChild(fallbackModal);
+    try {
+      await observeStableLabel(fallbackModal, 'add app modal');
+    } finally {
+      fallbackModal.remove();
+    }
   });
 });
 
