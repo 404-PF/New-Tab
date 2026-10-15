@@ -155,11 +155,51 @@ describe('Background rotation scheduling', () => {
       expect(VisibilityIntervalMock).toHaveBeenCalledWith(
         expect.any(Function),
         60 * 60 * 1000,
+        false,
         false
       );
     } finally {
       BackgroundRotation.stop();
       window.VisibilityInterval = OriginalVisibilityInterval;
+    }
+  });
+
+  it('does not rotate on visibility resume, only after the configured interval', () => {
+    vi.useFakeTimers();
+
+    const originalHiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
+    window.applyBg = vi.fn();
+
+    try {
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      BackgroundRotation.start();
+
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      vi.advanceTimersByTime(20 * 60 * 1000);
+      expect(window.applyBg).not.toHaveBeenCalled();
+
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      // Returning to the tab must not advance the background immediately.
+      expect(window.applyBg).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(10 * 60 * 1000);
+      expect(window.applyBg).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(20 * 60 * 1000);
+      expect(window.applyBg).toHaveBeenCalledOnce();
+    } finally {
+      BackgroundRotation.stop();
+
+      if (originalHiddenDescriptor) {
+        Object.defineProperty(document, 'hidden', originalHiddenDescriptor);
+      } else {
+        delete document.hidden;
+      }
+      vi.useRealTimers();
     }
   });
 });
