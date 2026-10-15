@@ -137,6 +137,10 @@
     "message": "Arrière-plan suivant",
     "description": "Button to manually advance to next background"
   },
+  "bgRotationSaveError": {
+    "message": "Impossible d’enregistrer les paramètres de rotation d’arrière-plan. Votre dernière action n’a pas été enregistrée.",
+    "description": "Error shown when background rotation settings cannot be persisted"
+  },
   "uploadBackground": {
     "message": "Importer un arrière-plan",
     "description": "Tooltip for the upload background image button"

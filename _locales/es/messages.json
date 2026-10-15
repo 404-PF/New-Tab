@@ -137,6 +137,10 @@
     "message": "Siguiente fondo",
     "description": "Button to manually advance to next background"
   },
+  "bgRotationSaveError": {
+    "message": "No se pudieron guardar los ajustes de rotación de fondo. La última acción no se guardó.",
+    "description": "Error shown when background rotation settings cannot be persisted"
+  },
   "uploadBackground": {
     "message": "Subir fondo",
     "description": "Tooltip for the upload background image button"

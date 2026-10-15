@@ -16,6 +16,13 @@
     'daily': 24 * 60 * 60 * 1000,
   };
 
+  const ROTATION_STORAGE_KEYS = new Set([
+    ROTATION_ENABLED_KEY,
+    ROTATION_INTERVAL_KEY,
+    ROTATION_SELECTION_KEY,
+  ]);
+  const ROTATION_SAVE_ERROR_FALLBACK = 'Failed to save background rotation settings. Your last action was not saved.';
+
   let rotationTimer = null;
 
   function loadEnabled() {
@@ -51,16 +58,49 @@
     }
   }
 
+  function getRotationSaveErrorMessage() {
+    if (!window.i18n || typeof window.i18n.t !== 'function') {
+      return ROTATION_SAVE_ERROR_FALLBACK;
+    }
+
+    const message = window.i18n.t('bgRotationSaveError');
+    return message && message !== 'bgRotationSaveError' ? message : ROTATION_SAVE_ERROR_FALLBACK;
+  }
+
+  function showRotationSaveError() {
+    const message = getRotationSaveErrorMessage();
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+      return;
+    }
+    console.warn(message);
+  }
+
   function saveEnabled(value) {
-    localStorage.setItem(ROTATION_ENABLED_KEY, value ? 'true' : 'false');
+    try {
+      return localStorage.setItem(ROTATION_ENABLED_KEY, value ? 'true' : 'false') !== false;
+    } catch (err) {
+      console.warn('saveEnabled localStorage error:', err);
+      return false;
+    }
   }
 
   function saveInterval(value) {
-    localStorage.setItem(ROTATION_INTERVAL_KEY, value);
+    try {
+      return localStorage.setItem(ROTATION_INTERVAL_KEY, value) !== false;
+    } catch (err) {
+      console.warn('saveInterval localStorage error:', err);
+      return false;
+    }
   }
 
   function saveSelection(ids) {
-    localStorage.setItem(ROTATION_SELECTION_KEY, JSON.stringify(ids));
+    try {
+      return localStorage.setItem(ROTATION_SELECTION_KEY, JSON.stringify(ids)) !== false;
+    } catch (err) {
+      console.warn('saveSelection localStorage error:', err);
+      return false;
+    }
   }
 
   function getAllBackgrounds() {
@@ -210,6 +250,40 @@
     }
   }
 
+  function syncRotationUI() {
+    const toggle = document.getElementById('bg-rotation-toggle');
+    const intervalSelect = document.getElementById('bg-rotation-interval');
+    const optionsEl = document.getElementById('bg-rotation-options');
+    const pickerWrap = document.getElementById('bg-rotation-picker-wrap');
+
+    if (toggle) {
+      toggle.checked = loadEnabled();
+      if (optionsEl) optionsEl.hidden = !toggle.checked;
+      if (pickerWrap) pickerWrap.hidden = !toggle.checked;
+    }
+    if (intervalSelect) {
+      intervalSelect.value = loadInterval();
+    }
+    renderBackgroundPicker();
+  }
+
+  function handleRotationSaveFailure() {
+    syncRotationUI();
+    applyRotation();
+    showRotationSaveError();
+  }
+
+  // Async bridge failures: persistSet() optimistically returns true and only
+  // reports runtime.lastError here, after which the bridge rolls its cache
+  // back. Defer the UI/timer resync so it reads the rolled-back state.
+  window.addEventListener('storageBridgeWriteError', function (event) {
+    const key = event.detail && event.detail.key;
+    if (!ROTATION_STORAGE_KEYS.has(key)) {
+      return;
+    }
+    setTimeout(handleRotationSaveFailure, 0);
+  });
+
   function renderBackgroundPicker() {
     const container = document.getElementById('bg-rotation-picker');
     if (!container) return;
@@ -279,7 +353,10 @@
     if (toggle) {
       toggle.checked = loadEnabled();
       toggle.addEventListener('change', function () {
-        saveEnabled(toggle.checked);
+        if (!saveEnabled(toggle.checked)) {
+          handleRotationSaveFailure();
+          return;
+        }
         if (optionsEl) optionsEl.hidden = !toggle.checked;
         if (pickerWrap) pickerWrap.hidden = !toggle.checked;
         applyRotation();
@@ -292,7 +369,10 @@
     if (intervalSelect) {
       intervalSelect.value = loadInterval();
       intervalSelect.addEventListener('change', function () {
-        saveInterval(intervalSelect.value);
+        if (!saveInterval(intervalSelect.value)) {
+          handleRotationSaveFailure();
+          return;
+        }
         if (loadEnabled()) startRotation();
       });
     }
@@ -312,7 +392,10 @@
           checkboxes.forEach(function (cb) {
             if (cb.checked) selected.push(cb.value);
           });
-          saveSelection(selected);
+          if (!saveSelection(selected)) {
+            handleRotationSaveFailure();
+            return;
+          }
           if (loadEnabled()) startRotation();
         }
       });

@@ -438,6 +438,7 @@ globalThis.window.i18n = {
       bgRotationPicker: 'Select backgrounds to rotate',
       bgRotationNext: 'Next Background',
       appGridSaveError: 'Failed to save app changes. Your last action was not saved.',
+      bgRotationSaveError: 'Failed to save background rotation settings. Your last action was not saved.',
       iconStyle: 'Icon Style',
       iconStyleDesc: 'Choose the shape and appearance of your app icons',
       iconSize: 'Icon Size',
