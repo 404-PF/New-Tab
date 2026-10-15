@@ -12,7 +12,7 @@
     "description": "Error shown when app grid changes cannot be persisted"
   },
   "gameStatsSaveError": {
-    "message": "无法保存游戏数据。您最新的成绩未被保存。",
+    "message": "無法保存遊戲資料。您最新的成績未被保存。",
     "description": "Error shown when game statistics cannot be persisted"
   },
   "shortcutSaveError": {

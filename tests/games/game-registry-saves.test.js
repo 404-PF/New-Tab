@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
 
 beforeAll(() => {
@@ -276,81 +276,104 @@ describe('Save envelope hardening (review #654 round 2)', () => {
 });
 
 describe('GameRegistry stats persistence (#783)', () => {
-  function restoreShowToast(original) {
-    if (original === undefined) {
+  let originalShowToast;
+  let showToast;
+
+  beforeEach(() => {
+    originalShowToast = window.showToast;
+    showToast = vi.fn();
+    window.showToast = showToast;
+  });
+
+  afterEach(() => {
+    if (originalShowToast === undefined) {
       delete window.showToast;
     } else {
-      window.showToast = original;
+      window.showToast = originalShowToast;
     }
+  });
+
+  // Real bridge path: chrome.storage.local.set reports failure via lastError,
+  // so setItemAsync() rejects after the bridge rolls its cache back.
+  function failChromeSet() {
+    const originalSet = chrome.storage.local.set;
+    chrome.storage.local.set = (items, callback) => {
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      if (callback) callback();
+      chrome.runtime.lastError = null;
+      return Promise.resolve();
+    };
+    return () => {
+      chrome.storage.local.set = originalSet;
+    };
   }
 
-  it('keeps the previous stats and notifies the user when the storage bridge rejects the write', () => {
-    expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 10, gamesPlayed: 1 })).toBe(true);
+  it('rolls back and toasts once when the async chrome.storage write fails', async () => {
+    await expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 10, gamesPlayed: 1 })).resolves.toBe(true);
 
-    // Bridge-rejected write: setItem returns false without throwing (the
-    // bridge has already rolled the persisted value back).
-    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => false);
-    const originalShowToast = window.showToast;
-    const showToast = vi.fn();
-    window.showToast = showToast;
+    const restore = failChromeSet();
     try {
-      expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 999, gamesPlayed: 2 })).toBe(false);
+      await expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 999, gamesPlayed: 2 })).resolves.toBe(false);
     } finally {
-      setItemSpy.mockRestore();
-      restoreShowToast(originalShowToast);
+      restore();
     }
 
-    // Neither the in-memory cache nor the persisted value reflects the
-    // failed write, so the phantom high score cannot appear or survive.
     expect(window.GameRegistry.getStats('stats-fail-game')).toEqual({ highScore: 10, gamesPlayed: 1 });
     expect(JSON.parse(localStorage.getItem('games_stats'))['stats-fail-game']).toEqual({ highScore: 10, gamesPlayed: 1 });
-
-    // The failure surfaced to the user via an error toast.
     expect(showToast).toHaveBeenCalledTimes(1);
-    expect(showToast).toHaveBeenCalledWith(expect.any(String), 'error');
-    expect(showToast.mock.calls[0][0]).not.toBe('');
+    expect(showToast).toHaveBeenCalledWith('Failed to save game statistics. Your latest score was not saved.', 'error');
 
     // A later successful write still lands.
-    expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 20 })).toBe(true);
+    await expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 20 })).resolves.toBe(true);
     expect(window.GameRegistry.getStats('stats-fail-game').highScore).toBe(20);
+    expect(showToast).toHaveBeenCalledTimes(1);
   });
 
-  it('reports failed persistence when the stats storage write throws', () => {
-    expect(window.GameRegistry.updateStats('stats-throw-game', { highScore: 5 })).toBe(true);
+  it('treats a setItemAsync result of false as a failed save', async () => {
+    await window.GameRegistry.updateStats('stats-false-game', { highScore: 3 });
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockResolvedValue(false);
+    try {
+      await expect(window.GameRegistry.updateStats('stats-false-game', { highScore: 50 })).resolves.toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(window.GameRegistry.getStats('stats-false-game').highScore).toBe(3);
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
 
-    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+  it('reports failed persistence when the stats storage write throws', async () => {
+    await window.GameRegistry.updateStats('stats-throw-game', { highScore: 5 });
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockImplementation(() => {
       throw new Error('storage unavailable');
     });
-    const originalShowToast = window.showToast;
-    window.showToast = () => {};
     try {
-      expect(window.GameRegistry.updateStats('stats-throw-game', { highScore: 42 })).toBe(false);
+      await expect(window.GameRegistry.updateStats('stats-throw-game', { highScore: 42 })).resolves.toBe(false);
     } finally {
-      setItemSpy.mockRestore();
-      restoreShowToast(originalShowToast);
+      spy.mockRestore();
     }
-
-    // The cache was invalidated; the next read re-serves the persisted value.
     expect(window.GameRegistry.getStats('stats-throw-game').highScore).toBe(5);
     expect(JSON.parse(localStorage.getItem('games_stats'))['stats-throw-game'].highScore).toBe(5);
+    expect(showToast).toHaveBeenCalledTimes(1);
   });
 
-  it('gamesHelpers.updateStatsWith surfaces a failed stats write', () => {
-    expect(window.GameRegistry.updateStats('helper-game', { highScore: 1 })).toBe(true);
+  it('gamesHelpers.updateStatsWith surfaces a failed async stats write', async () => {
+    await window.GameRegistry.updateStats('helper-game', { highScore: 1 });
 
-    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => false);
+    const restore = failChromeSet();
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       window.gamesHelpers.updateStatsWith('helper-game', function (stats) {
         return { highScore: (stats.highScore || 0) + 1 };
       });
+      await new Promise((resolve) => setTimeout(resolve, 0));
       const warnings = warnSpy.mock.calls.map((call) => call.join(' '));
       expect(warnings.some((message) => message.includes('updateStatsWith'))).toBe(true);
     } finally {
-      setItemSpy.mockRestore();
+      restore();
       warnSpy.mockRestore();
     }
 
     expect(window.GameRegistry.getStats('helper-game').highScore).toBe(1);
+    expect(showToast).toHaveBeenCalledTimes(1);
   });
 });

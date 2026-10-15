@@ -184,10 +184,13 @@
     try {
       const stats = window.GameRegistry.getStats(gameId) || {};
       const updates = fn(stats) || {};
-      const saved = window.GameRegistry.updateStats(gameId, updates);
-      if (saved === false) {
-        console.warn('gamesHelpers.updateStatsWith: failed to persist stats for', gameId);
-      }
+      Promise.resolve(window.GameRegistry.updateStats(gameId, updates)).then((saved) => {
+        if (!saved) {
+          console.warn('gamesHelpers.updateStatsWith: failed to persist stats for', gameId);
+        }
+      }, (e) => {
+        console.warn('gamesHelpers.updateStatsWith error', e);
+      });
     } catch (e) {
       console.warn('gamesHelpers.updateStatsWith error', e);
     }

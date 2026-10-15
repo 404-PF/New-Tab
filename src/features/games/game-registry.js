@@ -61,28 +61,53 @@
     console.warn(message);
   }
 
+  function failStatsSave(error) {
+    console.warn('Failed to save games_stats:', error || 'storage rejected the write');
+    // Drop the cache so the next read re-serves the value the storage bridge
+    // rolled back to, not the rejected stats.
+    statsCache = null;
+    statsCacheRaw = undefined;
+    showStatsSaveError();
+    return false;
+  }
+
+  // Resolves to whether the stats were persisted. The storage bridge's sync
+  // setItem() accepts chrome.storage writes optimistically and reports
+  // failures later, so use setItemAsync() and check its result.
   function saveStats(stats) {
+    let serialized;
     try {
-      const serialized = JSON.stringify(stats);
-      // The storage bridge returns false (and rolls back) when a
-      // chrome.storage.local write fails; a native Storage#setItem returns
-      // void on success, so only an explicit false is a failure.
-      const result = localStorage.setItem(STATS_KEY, serialized);
-      if (result === false) {
-        console.warn('Failed to save games_stats: storage rejected the write');
-        showStatsSaveError();
-        return false;
+      serialized = JSON.stringify(stats);
+    } catch (e) {
+      return Promise.resolve(failStatsSave(e));
+    }
+
+    if (typeof localStorage.setItemAsync === 'function') {
+      let pending;
+      try {
+        pending = localStorage.setItemAsync(STATS_KEY, serialized);
+      } catch (e) {
+        return Promise.resolve(failStatsSave(e));
       }
+      // The bridge updated its cache synchronously; mirror that until the
+      // write settles.
       statsCache = stats;
       statsCacheRaw = serialized;
-      return true;
-    } catch (e) {
-      console.warn('Failed to save games_stats:', e);
-      statsCache = null;
-      statsCacheRaw = undefined;
-      showStatsSaveError();
-      return false;
+      return Promise.resolve(pending).then(
+        (persisted) => (persisted === true ? true : failStatsSave()),
+        failStatsSave
+      );
     }
+
+    try {
+      // Native Storage#setItem returns void and throws on failure.
+      localStorage.setItem(STATS_KEY, serialized);
+    } catch (e) {
+      return Promise.resolve(failStatsSave(e));
+    }
+    statsCache = stats;
+    statsCacheRaw = serialized;
+    return Promise.resolve(true);
   }
 
   function loadMRU() {
