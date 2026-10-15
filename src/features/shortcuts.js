@@ -152,14 +152,9 @@
       } catch (e) {
         return Promise.resolve(settle(() => fail(e)));
       }
-      return Promise.resolve(pending)
-        .then((result) => finish(result === true), fail)
-        .catch((e) => {
-          // Never leak an unhandled rejection from the click handler.
-          console.warn('Failed to reset shortcuts:', STORAGE_KEY, e);
-          reportFailure();
-          return false;
-        });
+      // finish() and fail() catch their own render/toast errors, so this chain
+      // cannot reject and the click handler never sees an unhandled rejection.
+      return Promise.resolve(pending).then((result) => finish(result === true), fail);
     }
 
     try {
