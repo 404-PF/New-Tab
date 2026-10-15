@@ -195,6 +195,10 @@
     "message": "Next Background",
     "description": "Button to manually advance to next background"
   },
+  "bgRotationSaveError": {
+    "message": "Failed to save background rotation settings. Your last action was not saved.",
+    "description": "Error shown when background rotation settings cannot be persisted"
+  },
   "uploadBackground": {
     "message": "Upload Background",
     "description": "Tooltip for the upload background image button"

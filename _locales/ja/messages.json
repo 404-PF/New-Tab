@@ -141,6 +141,10 @@
     "message": "次の背景",
     "description": "Button to manually advance to next background"
   },
+  "bgRotationSaveError": {
+    "message": "背景ローテーションの設定を保存できませんでした。直前の操作は保存されていません。",
+    "description": "Error shown when background rotation settings cannot be persisted"
+  },
   "uploadBackground": {
     "message": "背景をアップロード",
     "description": "Tooltip for the upload background image button"

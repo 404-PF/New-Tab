@@ -141,6 +141,10 @@
     "message": "Следующий фон",
     "description": "Button to manually advance to next background"
   },
+  "bgRotationSaveError": {
+    "message": "Не удалось сохранить настройки смены фона. Последнее действие не было сохранено.",
+    "description": "Error shown when background rotation settings cannot be persisted"
+  },
   "uploadBackground": {
     "message": "Загрузить фон",
     "description": "Tooltip for the upload background image button"

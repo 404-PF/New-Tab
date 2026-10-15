@@ -141,6 +141,10 @@
     "message": "다음 배경",
     "description": "Button to manually advance to next background"
   },
+  "bgRotationSaveError": {
+    "message": "배경 회전 설정을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
+    "description": "Error shown when background rotation settings cannot be persisted"
+  },
   "uploadBackground": {
     "message": "배경 업로드",
     "description": "Tooltip for the upload background image button"
