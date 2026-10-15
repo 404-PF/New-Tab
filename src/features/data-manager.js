@@ -278,9 +278,18 @@
 
   function isValidISODate(key) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
-    const d = new Date(key + 'T00:00:00');
+    const parts = key.split('-');
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    // Compare calendar components in UTC. A local Date rejects real keys:
+    // local midnight shifts to the previous day in positive UTC offsets,
+    // Pacific/Apia has no civil 2011-12-30, and years 0000-0099 are mapped
+    // to 1900-1999. setUTCFullYear applies the parsed year as-is.
+    const d = new Date(Date.UTC(year, month - 1, day));
+    d.setUTCFullYear(year, month - 1, day);
     if (Number.isNaN(d.getTime())) return false;
-    return d.toISOString().slice(0, 10) === key;
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
   }
 
   function isNonNegativeInteger(n) {
