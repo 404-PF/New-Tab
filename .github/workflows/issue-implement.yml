@@ -313,7 +313,7 @@ jobs:
             echo "::error::Diff looks like it contains secret material; refusing to push."
             exit 1
           fi
-          git commit -m "implement #$ISSUE_NUMBER $TITLE" -m "Fixes #$ISSUE_NUMBER"
+          git commit -m "$PREFIX: implement #$ISSUE_NUMBER $TITLE" -m "Fixes #$ISSUE_NUMBER"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git"
           git push -u origin "$BRANCH"
 
@@ -329,7 +329,7 @@ jobs:
             echo 'Validation failures (if any above) do not block this PR; reviewers please check CI.'
           } > "$GITHUB_WORKSPACE/.tmp/pr-body.md"
           PR_URL="$(gh pr create --repo "$GH_REPO" --base main --head "$BRANCH" \
-            --title "implement #$ISSUE_NUMBER $TITLE" \
+            --title "$PREFIX: implement #$ISSUE_NUMBER $TITLE" \
             --body-file "$GITHUB_WORKSPACE/.tmp/pr-body.md")"
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
           echo "Opened $PR_URL"
