@@ -318,20 +318,34 @@ jobs:
             echo '::error::PR_TOKEN secret is not set; add a fine-grained PAT with Contents+Pull requests read/write'
             exit 1
           fi
+          # Keep the token as a plain shell variable only, so no child process
+          # (git, sed, gh issue view) inherits it.
+          export -n PR_TOKEN
+          # The OpenCode and npm phases could have edited .git/config or
+          # added hooks. Disable hooks for EVERY git command in this step via
+          # env config (highest precedence), and fail closed if local config
+          # carries keys that could redirect or leak authenticated traffic.
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0='core.hooksPath' GIT_CONFIG_VALUE_0='/dev/null'
+          if git config --local --name-only --get-regexp '^(url\.|http\.|credential\.|include\.|includeif\.|remote\.|core\.(sshcommand|askpass|gitproxy|fsmonitor|hookspath))' \
+            | grep -vxE 'remote\.origin\.(url|fetch)'; then
+            echo '::error::Unexpected git config in the workspace; refusing to use PR_TOKEN.'
+            exit 1
+          fi
+          # Push to an explicit canonical URL, never to a mutable remote.
+          REPO_URL="https://github.com/${GH_REPO}.git"
           # Authenticate git through an http.extraheader supplied via
-          # GIT_CONFIG_* env vars on the individual commands: nothing is
-          # written to .git/config, no token appears in a URL or argv, and
-          # checkout used persist-credentials:false so no stale header
+          # GIT_CONFIG_* env vars on the two network commands only: nothing is
+          # written to .git/config and no token appears in a URL or argv.
+          # checkout used persist-credentials:false, so no stale header
           # competes. The base64 value is masked before any use.
-          PR_AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PR_TOKEN" | base64 -w0)"
-          echo "::add-mask::$(printf 'x-access-token:%s' "$PR_TOKEN" | base64 -w0)"
-          # Hooks are disabled so repo (model-editable) hooks never run while
-          # the token is available.
+          PR_AUTH_B64="$(printf 'x-access-token:%s' "$PR_TOKEN" | base64 -w0)"
+          echo "::add-mask::$PR_AUTH_B64"
           git_pr() {
-            GIT_CONFIG_COUNT=2 \
-              GIT_CONFIG_KEY_0='http.https://github.com/.extraheader' GIT_CONFIG_VALUE_0="$PR_AUTH_HEADER" \
-              GIT_CONFIG_KEY_1='credential.helper' GIT_CONFIG_VALUE_1='' \
-              git -c core.hooksPath=/dev/null "$@"
+            GIT_CONFIG_COUNT=3 \
+              GIT_CONFIG_KEY_0='core.hooksPath' GIT_CONFIG_VALUE_0='/dev/null' \
+              GIT_CONFIG_KEY_1='http.https://github.com/.extraheader' GIT_CONFIG_VALUE_1="AUTHORIZATION: basic $PR_AUTH_B64" \
+              GIT_CONFIG_KEY_2='credential.helper' GIT_CONFIG_VALUE_2='' \
+              git "$@"
           }
           # Fetch issue context always writes .tmp/issue-context.json and
           # .tmp/triage-comment.md inside the workspace so OpenCode can read
@@ -355,7 +369,7 @@ jobs:
             *) PREFIX='fix' ;;
           esac
           BRANCH="$PREFIX/$ISSUE_NUMBER-$SLUG"
-          if git_pr ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+          if git_pr ls-remote --exit-code --heads "$REPO_URL" "$BRANCH" >/dev/null 2>&1; then
             BRANCH="$BRANCH-r$GITHUB_RUN_ID"
           fi
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
@@ -374,7 +388,7 @@ jobs:
             exit 1
           fi
           git -c core.hooksPath=/dev/null commit -m "$PREFIX: implement #$ISSUE_NUMBER $TITLE" -m "Fixes #$ISSUE_NUMBER"
-          git_pr push -u origin "$BRANCH"
+          git_pr push "$REPO_URL" "HEAD:refs/heads/$BRANCH"
 
           mkdir -p "$GITHUB_WORKSPACE/.tmp"
           {
