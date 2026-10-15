@@ -1873,6 +1873,10 @@ function initCustomSearchProvidersSettings() {
         window.refreshProviderBar();
       }
       renderCustomProvidersList();
+    }, function (error) {
+      console.warn('Failed to remove custom search provider:', error);
+      showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
+      renderCustomProvidersList();
     });
   }
 
