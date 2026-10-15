@@ -1818,8 +1818,8 @@ function initCustomSearchProvidersSettings() {
   function handleAdd() {
     // Enter in the inputs bypasses the disabled button; ignore it too.
     if (addBtn.disabled) return;
-      const name = nameInput.value.trim();
-      const url = urlInput.value.trim();
+    const name = nameInput.value.trim();
+    const url = urlInput.value.trim();
 
     if (!name) {
       showFeedback(t('searchProviderInvalidName', 'Enter a name for the search provider.'), 'error');
