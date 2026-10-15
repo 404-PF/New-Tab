@@ -57,6 +57,9 @@
   height: 100vh;
   z-index: -1;
   overflow: hidden;
+  --bg-overlay-opacity: 0;
+  --bg-overlay-blur: 0px;
+  --bg-tint: rgba(0, 0, 0, 0);
 }
 
 /* Thumbnail layer (blurred, shown immediately) */
@@ -138,6 +141,83 @@
 
 .background-transition-overlay.active {
   opacity: 1;
+}
+
+/* Readability overlay: dim and tint are layered backgrounds; blur is a
+   backdrop-filter until a visible photo or video can be blurred directly.
+   It sits above thumbnail (2), the transition snapshot (3), and the
+   interactive canvas (4). Simple mode and focus mode only hide foreground
+   widgets, so this layer stays in place for those modes too.
+   Gradient stops do not interpolate, so this layer has no transition. */
+.background-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background-image:
+    linear-gradient(var(--bg-tint), var(--bg-tint)),
+    linear-gradient(rgba(0, 0, 0, var(--bg-overlay-opacity)), rgba(0, 0, 0, var(--bg-overlay-opacity)));
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: blur(var(--bg-overlay-blur));
+  backdrop-filter: blur(var(--bg-overlay-blur));
+}
+
+.background-overlay.inactive {
+  display: none;
+}
+
+/* backdrop-filter does not sample hardware-composited video, and blurring
+   the overlay leaves a halo at the viewport edge. Blur the visible pixels
+   directly and scale them past the edges. Drop the backdrop blur for that
+   same layer so the two do not stack.
+   Photos use #bg-full once it has .loaded. video-fallback / video-error
+   show that still, so they take this path too. The crossfade snapshot is a
+   sharp copy of the previous image and sits above #bg-full, so it gets the
+   same blur and scale; otherwise the old image flashes sharp while it fades.
+   While the full image is still loading and no snapshot is showing, the
+   thumbnail keeps its own blur and the backdrop path. Once it starts
+   clearing, its filter eases to the overlay blur instead of 0, so the
+   fade does not go sharp. The interactive canvas keeps its saturate and
+   contrast and adds the same blur and scale while that class is set.
+   Reduced-motion playback that is still showing the thumbnail keeps
+   backdrop-filter. A video that is already .active and then paused for
+   reduced motion stays on screen, so it keeps the direct blur. Backdrop
+   blur turns off for that paused video only once the thumbnail is hidden,
+   because backdrop-filter does not sample the video frame. */
+.background-container.bg-overlay-blur-media .background-full,
+.background-container.bg-overlay-blur-media .background-transition-overlay {
+  filter: blur(var(--bg-overlay-blur));
+  transform: scale(1.05);
+}
+
+.background-container.bg-overlay-blur-media:has(.background-full.loaded) .background-overlay,
+.background-container.bg-overlay-blur-media:has(.background-transition-overlay.active) .background-overlay {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.background-container.bg-overlay-blur-media .background-thumbnail.clearing {
+  filter: blur(var(--bg-overlay-blur));
+}
+
+.background-container.bg-overlay-blur-media .background-interactive {
+  filter: blur(var(--bg-overlay-blur)) saturate(1.08) contrast(1.04);
+  transform: scale(1.05);
+}
+
+.background-container.bg-overlay-blur-media:not(.video-fallback):not(.video-error) .background-video.active {
+  filter: blur(var(--bg-overlay-blur));
+  transform: translate3d(0, 0, 0) scale(1.05);
+}
+
+.background-container.bg-overlay-blur-media:not(.video-fallback):not(.video-error):is(
+  :has(.background-video.active:not([data-reduced-motion-paused="true"])),
+  :has(.background-video.active[data-reduced-motion-paused="true"]):has(.background-thumbnail.hidden)
+) .background-overlay {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Hide thumbnail after full image is visible */
@@ -1552,6 +1632,105 @@ body.light-theme .bg-loading-spinner {
   height: 16px;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+/* Readability sliders. The generic settings range rule paints a padded text
+   field; these overrides restore a track + thumb and cover light theme. */
+#bg-overlay-section .setting-card .setting-content {
+  align-items: center;
+}
+
+#bg-overlay-section .bg-overlay-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 140px;
+}
+
+#bg-overlay-section input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  height: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: rgba(107, 114, 128, 0.35);
+  box-shadow: none;
+  outline: none;
+  cursor: pointer;
+}
+
+#bg-overlay-section input[type="range"]:focus {
+  box-shadow: none;
+}
+
+#bg-overlay-section input[type="range"]:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
+}
+
+#bg-overlay-section input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.4);
+}
+
+#bg-overlay-section input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.4);
+}
+
+#bg-overlay-section input[type="range"]::-moz-range-track {
+  height: 8px;
+  border: none;
+  border-radius: 5px;
+  background: rgba(107, 114, 128, 0.35);
+}
+
+#bg-overlay-section .bg-overlay-range output {
+  min-width: 3.2em;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--settings-text-color);
+}
+
+body.light-theme #bg-overlay-section input[type="range"] {
+  background: #d1d5db;
+  border: none;
+  color: #1f2937;
+}
+
+body.light-theme #bg-overlay-section input[type="range"]::-moz-range-track {
+  background: #d1d5db;
+}
+
+body.light-theme #bg-overlay-section input[type="range"]::-webkit-slider-thumb {
+  border-color: #ffffff;
+}
+
+body.light-theme #bg-overlay-section input[type="range"]::-moz-range-thumb {
+  border-color: #ffffff;
+}
+
+body.light-theme #bg-overlay-section .bg-overlay-range output {
+  color: #1f2937;
 }
 
 /* Background rotation picker */

@@ -67,6 +67,125 @@ function applyVideoPlaybackSettings() {
   if (pauseHiddenCheckbox) pauseHiddenCheckbox.checked = loadVideoPauseHidden();
 }
 
+// Background readability overlay. Stored integers are the slider units
+// (dim 0-80, blur 0-12px, tint strength 0-50). CSS vars are the computed
+// visual values: opacity 0-0.8, blur in px, and an rgba tint.
+const BG_OVERLAY_OPACITY_KEY = 'bgOverlayOpacity';
+const BG_OVERLAY_BLUR_KEY = 'bgOverlayBlur';
+const BG_TINT_KEY = 'bgTint';
+const BG_TINT_STRENGTH_KEY = 'bgTintStrength';
+const BG_TINT_HEX_RE = /^#[0-9a-f]{6}$/;
+
+const BG_OVERLAY_DEFAULTS = {
+  opacity: 0,
+  blur: 0,
+  tint: '#000000',
+  tintStrength: 0,
+};
+
+function readClampedOverlayInt(key, fallback, min, max) {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return fallback;
+  const parsed = /^-?\d+$/.test(raw) ? Number(raw) : NaN;
+  const normalized = Number.isFinite(parsed)
+    ? Math.min(max, Math.max(min, parsed))
+    : fallback;
+  if (String(normalized) !== raw) {
+    localStorage.setItem(key, String(normalized));
+  }
+  return normalized;
+}
+
+function readOverlayTint() {
+  const raw = localStorage.getItem(BG_TINT_KEY);
+  if (raw === null) return BG_OVERLAY_DEFAULTS.tint;
+  const trimmed = raw.trim().toLowerCase();
+  const normalized = BG_TINT_HEX_RE.test(trimmed) ? trimmed : BG_OVERLAY_DEFAULTS.tint;
+  if (normalized !== raw) {
+    localStorage.setItem(BG_TINT_KEY, normalized);
+  }
+  return normalized;
+}
+
+function loadBgOverlaySettings() {
+  return {
+    opacity: readClampedOverlayInt(BG_OVERLAY_OPACITY_KEY, BG_OVERLAY_DEFAULTS.opacity, 0, 80),
+    blur: readClampedOverlayInt(BG_OVERLAY_BLUR_KEY, BG_OVERLAY_DEFAULTS.blur, 0, 12),
+    tint: readOverlayTint(),
+    tintStrength: readClampedOverlayInt(BG_TINT_STRENGTH_KEY, BG_OVERLAY_DEFAULTS.tintStrength, 0, 50),
+  };
+}
+
+function overlayTintToRgba(hex, strength) {
+  const r = Number.parseInt(hex.slice(1, 3), 16);
+  const g = Number.parseInt(hex.slice(3, 5), 16);
+  const b = Number.parseInt(hex.slice(5, 7), 16);
+  return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + (strength / 100) + ')';
+}
+
+function applyBgOverlaySettings() {
+  const settings = loadBgOverlaySettings();
+  const container = document.getElementById('background-container');
+  const overlay = document.getElementById('bg-overlay');
+  const inactive = settings.opacity === 0 && settings.blur === 0 && settings.tintStrength === 0;
+
+  if (container) {
+    container.style.setProperty('--bg-overlay-opacity', String(settings.opacity / 100));
+    container.style.setProperty('--bg-overlay-blur', settings.blur + 'px');
+    container.style.setProperty('--bg-tint', overlayTintToRgba(settings.tint, settings.tintStrength));
+    container.classList.toggle('bg-overlay-blur-media', settings.blur > 0);
+  }
+
+  if (overlay) {
+    overlay.classList.toggle('inactive', inactive);
+  }
+
+  const dimInput = document.getElementById('bg-overlay-dim');
+  const blurInput = document.getElementById('bg-overlay-blur');
+  const strengthInput = document.getElementById('bg-tint-strength');
+  const colorInput = document.getElementById('bg-tint-color');
+  const dimOutput = document.getElementById('bg-overlay-dim-value');
+  const blurOutput = document.getElementById('bg-overlay-blur-value');
+  const strengthOutput = document.getElementById('bg-tint-strength-value');
+
+  if (dimInput) dimInput.value = String(settings.opacity);
+  if (blurInput) blurInput.value = String(settings.blur);
+  if (strengthInput) strengthInput.value = String(settings.tintStrength);
+  if (colorInput && colorInput.value !== settings.tint) colorInput.value = settings.tint;
+  if (dimOutput) dimOutput.textContent = settings.opacity + '%';
+  if (blurOutput) blurOutput.textContent = settings.blur + 'px';
+  if (strengthOutput) strengthOutput.textContent = settings.tintStrength + '%';
+}
+
+function bindBgOverlayInput(input, key) {
+  if (!input || input.dataset.overlayBound === 'true') return;
+  input.dataset.overlayBound = 'true';
+  input.addEventListener('input', function () {
+    localStorage.setItem(key, input.value);
+    applyBgOverlaySettings();
+  });
+}
+
+function initBgOverlaySettings() {
+  bindBgOverlayInput(document.getElementById('bg-overlay-dim'), BG_OVERLAY_OPACITY_KEY);
+  bindBgOverlayInput(document.getElementById('bg-overlay-blur'), BG_OVERLAY_BLUR_KEY);
+  bindBgOverlayInput(document.getElementById('bg-tint-strength'), BG_TINT_STRENGTH_KEY);
+  bindBgOverlayInput(document.getElementById('bg-tint-color'), BG_TINT_KEY);
+
+  const resetBtn = document.getElementById('bg-overlay-reset');
+  if (resetBtn && resetBtn.dataset.overlayBound !== 'true') {
+    resetBtn.dataset.overlayBound = 'true';
+    resetBtn.addEventListener('click', function () {
+      localStorage.removeItem(BG_OVERLAY_OPACITY_KEY);
+      localStorage.removeItem(BG_OVERLAY_BLUR_KEY);
+      localStorage.removeItem(BG_TINT_KEY);
+      localStorage.removeItem(BG_TINT_STRENGTH_KEY);
+      applyBgOverlaySettings();
+      if (window.initModernColorPickers) window.initModernColorPickers();
+    });
+  }
+}
+
 // Check if browser supports video
 function supportsVideo() {
   const video = document.createElement('video');
@@ -335,6 +454,8 @@ function stopBackground() {
   }
 
   if (containerEl) {
+    // Leave readability classes alone: .inactive lives on #bg-overlay, and
+    // .bg-overlay-blur-media tracks the blur slider rather than the media.
     containerEl.classList.remove('video-fallback', 'video-error');
   }
 
@@ -2094,6 +2215,8 @@ function initSettings() {
   applyGamesEnabled();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
+  applyBgOverlaySettings();
+  initBgOverlaySettings();
   if (window.WeatherWidget && window.WeatherWidget.applySettings) {
     window.WeatherWidget.applySettings();
   }
@@ -2135,6 +2258,9 @@ window.loadVideoAutoplay = loadVideoAutoplay;
 window.loadVideoMuted = loadVideoMuted;
 window.loadVideoPauseHidden = loadVideoPauseHidden;
 window.applyVideoPlaybackSettings = applyVideoPlaybackSettings;
+window.loadBgOverlaySettings = loadBgOverlaySettings;
+window.applyBgOverlaySettings = applyBgOverlaySettings;
+window.initBgOverlaySettings = initBgOverlaySettings;
 window.clearBackgroundTransitionTimeout = clearBackgroundTransitionTimeout;
 window.safePause = safePause;
 window.safeLoad = safeLoad;

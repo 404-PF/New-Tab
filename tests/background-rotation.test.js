@@ -411,3 +411,22 @@ describe('Background rotation with custom backgrounds', () => {
     expect(localStorage.getItem('homepageBg')).toBe('Built-in BG');
   });
 });
+
+describe('Background rotation overlay', () => {
+  it('reapplies overlay settings after applyBg', () => {
+    window._backgrounds = [
+      { id: 'Test BG 1', title: 'Test BG 1', thumb: 'thumb1.jpg', url: 'img1.jpg' },
+      { id: 'Test BG 2', title: 'Test BG 2', thumb: 'thumb2.jpg', url: 'img2.jpg' },
+    ];
+    const order = [];
+    window.applyBg = vi.fn(() => { order.push('applyBg'); });
+    window.applyBgOverlaySettings = vi.fn(() => { order.push('overlay'); });
+
+    try {
+      BackgroundRotation.advance();
+      expect(order).toEqual(['applyBg', 'overlay']);
+    } finally {
+      delete window.applyBgOverlaySettings;
+    }
+  });
+});

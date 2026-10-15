@@ -1,6 +1,25 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
+function expectTranslationKeys(keys, options) {
+  const differFromEnglish = Boolean(options && options.differFromEnglish);
+  const languages = window.i18n.getSupportedLanguages();
+  const english = differFromEnglish ? window.i18n.getTranslations('en') : null;
+
+  languages.forEach(({ code }) => {
+    const localeTranslations = window.i18n.getTranslations(code);
+
+    keys.forEach((key) => {
+      expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
+      expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
+      expect(localeTranslations[key].trim(), `${code}:${key}`).not.toBe('');
+      if (differFromEnglish && code !== 'en') {
+        expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
+      }
+    });
+  });
+}
+
 const SEARCH_TRANSLATION_KEYS = [
   'searchWith',
   'searchProviderGoogle',
@@ -141,35 +160,122 @@ describe('AI translations', () => {
   // back to English when a locale lacks the key, which would hide a stale
   // non-English entry behind a passing assertion.
   it('defines every AI string in each supported language', () => {
-    const languages = window.i18n.getSupportedLanguages();
-    const english = window.i18n.getTranslations('en');
-
-    languages.forEach(({ code }) => {
-      const localeTranslations = window.i18n.getTranslations(code);
-
-      AI_TRANSLATION_KEYS.forEach((key) => {
-        expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
-        expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
-        expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
-        if (code !== 'en') {
-          expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
-        }
-      });
-    });
+    expectTranslationKeys(AI_TRANSLATION_KEYS, { differFromEnglish: true });
   });
 });
 
 describe('Games translations', () => {
   it('defines every games string in each supported language', () => {
+    expectTranslationKeys(GAMES_TRANSLATION_KEYS);
+  });
+});
+
+const BG_OVERLAY_TRANSLATION_KEYS = [
+  'bgOverlay',
+  'bgOverlayDesc',
+  'bgOverlayDim',
+  'bgOverlayBlur',
+  'bgOverlayTint',
+  'bgOverlayTintStrength',
+  'bgOverlayReset'
+];
+
+const BG_OVERLAY_EXPECTED = {
+  en: {
+    bgOverlay: 'Readability',
+    bgOverlayDesc: 'Dim, blur, or tint the background so text stays readable',
+    bgOverlayDim: 'Dim',
+    bgOverlayBlur: 'Blur',
+    bgOverlayTint: 'Tint',
+    bgOverlayTintStrength: 'Tint strength',
+    bgOverlayReset: 'Reset overlay'
+  },
+  zh: {
+    bgOverlay: '可读性',
+    bgOverlayDesc: '调暗、模糊或着色背景，让文字更清晰',
+    bgOverlayDim: '调暗',
+    bgOverlayBlur: '模糊',
+    bgOverlayTint: '着色',
+    bgOverlayTintStrength: '着色强度',
+    bgOverlayReset: '重置叠加层'
+  },
+  ja: {
+    bgOverlay: '読みやすさ',
+    bgOverlayDesc: '背景を暗く、ぼかし、または色付けして文字を読みやすくします',
+    bgOverlayDim: '暗さ',
+    bgOverlayBlur: 'ぼかし',
+    bgOverlayTint: '色付け',
+    bgOverlayTintStrength: '色の強さ',
+    bgOverlayReset: 'オーバーレイをリセット'
+  },
+  ko: {
+    bgOverlay: '가독성',
+    bgOverlayDesc: '배경을 어둡게 하거나 흐리게 하거나 색을 더해 글자를 읽기 쉽게 합니다',
+    bgOverlayDim: '어둡기',
+    bgOverlayBlur: '흐림',
+    bgOverlayTint: '색조',
+    bgOverlayTintStrength: '색조 강도',
+    bgOverlayReset: '오버레이 초기화'
+  },
+  es: {
+    bgOverlay: 'Legibilidad',
+    bgOverlayDesc: 'Oscurece, desenfoca o tiñe el fondo para que el texto se lea mejor',
+    bgOverlayDim: 'Oscurecer',
+    bgOverlayBlur: 'Desenfoque',
+    bgOverlayTint: 'Tinte',
+    bgOverlayTintStrength: 'Intensidad del tinte',
+    bgOverlayReset: 'Restablecer superposición'
+  },
+  fr: {
+    bgOverlay: 'Lisibilité',
+    bgOverlayDesc: 'Assombrissez, floutez ou teintez l\'arrière-plan pour garder le texte lisible',
+    bgOverlayDim: 'Assombrir',
+    bgOverlayBlur: 'Flou',
+    bgOverlayTint: 'Teinte',
+    bgOverlayTintStrength: 'Intensité de la teinte',
+    bgOverlayReset: 'Réinitialiser le calque'
+  },
+  de: {
+    bgOverlay: 'Lesbarkeit',
+    bgOverlayDesc: 'Hintergrund abdunkeln, weichzeichnen oder einfärben, damit Text lesbar bleibt',
+    bgOverlayDim: 'Abdunkeln',
+    bgOverlayBlur: 'Weichzeichnen',
+    bgOverlayTint: 'Farbton',
+    bgOverlayTintStrength: 'Farbstärke',
+    bgOverlayReset: 'Overlay zurücksetzen'
+  },
+  pt: {
+    bgOverlay: 'Legibilidade',
+    bgOverlayDesc: 'Escureça, desfoque ou tinja o fundo para o texto continuar legível',
+    bgOverlayDim: 'Escurecer',
+    bgOverlayBlur: 'Desfoque',
+    bgOverlayTint: 'Tonalidade',
+    bgOverlayTintStrength: 'Intensidade da tonalidade',
+    bgOverlayReset: 'Redefinir sobreposição'
+  },
+  ru: {
+    bgOverlay: 'Читаемость',
+    bgOverlayDesc: 'Затемните, размойте или подкрасьте фон, чтобы текст оставался читаемым',
+    bgOverlayDim: 'Затемнение',
+    bgOverlayBlur: 'Размытие',
+    bgOverlayTint: 'Оттенок',
+    bgOverlayTintStrength: 'Сила оттенка',
+    bgOverlayReset: 'Сбросить наложение'
+  }
+};
+
+describe('Background overlay translations', () => {
+  it('defines every overlay string in each supported language', () => {
     const languages = window.i18n.getSupportedLanguages();
 
     languages.forEach(({ code }) => {
       const localeTranslations = window.i18n.getTranslations(code);
+      const expected = BG_OVERLAY_EXPECTED[code];
+      expect(expected, code).toBeTypeOf('object');
 
-      GAMES_TRANSLATION_KEYS.forEach((key) => {
-        expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
-        expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
-        expect(localeTranslations[key], `${code}:${key}`).not.toBe('');
+      BG_OVERLAY_TRANSLATION_KEYS.forEach((key) => {
+        expect(localeTranslations[key], `${code}:${key}`).toBe(expected[key]);
+        expect(expected[key].trim(), `${code}:${key}`).not.toBe('');
       });
     });
   });

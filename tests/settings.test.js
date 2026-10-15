@@ -1274,3 +1274,226 @@ describe('Manual update check button', () => {
     }
   });
 });
+
+describe('Background overlay settings', () => {
+  beforeAll(() => {
+    const container = document.getElementById('background-container');
+    if (!document.getElementById('bg-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.id = 'bg-overlay';
+      overlay.className = 'background-overlay';
+      container.appendChild(overlay);
+    }
+
+    function ensureRange(id, min, max) {
+      if (document.getElementById(id)) return;
+      const input = document.createElement('input');
+      input.type = 'range';
+      input.id = id;
+      input.min = String(min);
+      input.max = String(max);
+      input.step = '1';
+      document.body.appendChild(input);
+    }
+
+    function ensureOutput(id) {
+      if (document.getElementById(id)) return;
+      const output = document.createElement('output');
+      output.id = id;
+      document.body.appendChild(output);
+    }
+
+    ensureRange('bg-overlay-dim', 0, 80);
+    ensureRange('bg-overlay-blur', 0, 12);
+    ensureRange('bg-tint-strength', 0, 50);
+    ensureOutput('bg-overlay-dim-value');
+    ensureOutput('bg-overlay-blur-value');
+    ensureOutput('bg-tint-strength-value');
+
+    if (!document.getElementById('bg-tint-color')) {
+      const color = document.createElement('input');
+      color.type = 'color';
+      color.id = 'bg-tint-color';
+      document.body.appendChild(color);
+    }
+
+    if (!document.getElementById('bg-overlay-reset')) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.id = 'bg-overlay-reset';
+      document.body.appendChild(button);
+    }
+
+    initBgOverlaySettings();
+  });
+
+  it('loadBgOverlaySettings returns defaults and does not write missing keys', () => {
+    expect(loadBgOverlaySettings()).toEqual({
+      opacity: 0,
+      blur: 0,
+      tint: '#000000',
+      tintStrength: 0,
+    });
+    expect(localStorage.getItem('bgOverlayOpacity')).toBeNull();
+    expect(localStorage.getItem('bgOverlayBlur')).toBeNull();
+    expect(localStorage.getItem('bgTint')).toBeNull();
+    expect(localStorage.getItem('bgTintStrength')).toBeNull();
+  });
+
+  it('clamps dim below 0 to 0 and above 80 to 80', () => {
+    localStorage.setItem('bgOverlayOpacity', '-5');
+    expect(loadBgOverlaySettings().opacity).toBe(0);
+    expect(localStorage.getItem('bgOverlayOpacity')).toBe('0');
+
+    localStorage.setItem('bgOverlayOpacity', '200');
+    expect(loadBgOverlaySettings().opacity).toBe(80);
+    expect(localStorage.getItem('bgOverlayOpacity')).toBe('80');
+  });
+
+  it('replaces partial slider strings with the default instead of truncating them', () => {
+    localStorage.setItem('bgOverlayBlur', '12px');
+    localStorage.setItem('bgOverlayOpacity', '40.8');
+    const settings = loadBgOverlaySettings();
+    expect(settings.blur).toBe(0);
+    expect(settings.opacity).toBe(0);
+    expect(localStorage.getItem('bgOverlayBlur')).toBe('0');
+    expect(localStorage.getItem('bgOverlayOpacity')).toBe('0');
+  });
+
+  it('caps blur at 12px and tint strength at 50', () => {
+    localStorage.setItem('bgOverlayBlur', '99');
+    localStorage.setItem('bgTintStrength', '80');
+    const settings = loadBgOverlaySettings();
+    expect(settings.blur).toBe(12);
+    expect(settings.tintStrength).toBe(50);
+    expect(localStorage.getItem('bgOverlayBlur')).toBe('12');
+    expect(localStorage.getItem('bgTintStrength')).toBe('50');
+
+    localStorage.setItem('bgOverlayBlur', '-3');
+    expect(loadBgOverlaySettings().blur).toBe(0);
+    expect(localStorage.getItem('bgOverlayBlur')).toBe('0');
+  });
+
+  it('replaces a bad tint hex with #000000', () => {
+    localStorage.setItem('bgTint', 'red');
+    expect(loadBgOverlaySettings().tint).toBe('#000000');
+    expect(localStorage.getItem('bgTint')).toBe('#000000');
+
+    localStorage.setItem('bgTint', '#abc');
+    expect(loadBgOverlaySettings().tint).toBe('#000000');
+
+    localStorage.setItem('bgTint', '#AABBCC');
+    expect(loadBgOverlaySettings().tint).toBe('#aabbcc');
+    expect(localStorage.getItem('bgTint')).toBe('#aabbcc');
+  });
+
+  it('sets css vars and the inactive class', () => {
+    const container = document.getElementById('background-container');
+    const overlay = document.getElementById('bg-overlay');
+
+    applyBgOverlaySettings();
+    expect(container.style.getPropertyValue('--bg-overlay-opacity')).toBe('0');
+    expect(container.style.getPropertyValue('--bg-overlay-blur')).toBe('0px');
+    expect(container.style.getPropertyValue('--bg-tint')).toBe('rgba(0, 0, 0, 0)');
+    expect(overlay.classList.contains('inactive')).toBe(true);
+    expect(container.classList.contains('bg-overlay-blur-media')).toBe(false);
+    expect(document.getElementById('bg-overlay-dim-value').textContent).toBe('0%');
+
+    localStorage.setItem('bgOverlayOpacity', '40');
+    localStorage.setItem('bgOverlayBlur', '6');
+    localStorage.setItem('bgTint', '#112233');
+    localStorage.setItem('bgTintStrength', '25');
+    applyBgOverlaySettings();
+
+    expect(container.style.getPropertyValue('--bg-overlay-opacity')).toBe('0.4');
+    expect(container.style.getPropertyValue('--bg-overlay-blur')).toBe('6px');
+    expect(container.style.getPropertyValue('--bg-tint')).toBe('rgba(17, 34, 51, 0.25)');
+    expect(overlay.classList.contains('inactive')).toBe(false);
+    expect(container.classList.contains('bg-overlay-blur-media')).toBe(true);
+    expect(document.getElementById('bg-overlay-dim').value).toBe('40');
+    expect(document.getElementById('bg-overlay-blur-value').textContent).toBe('6px');
+    expect(document.getElementById('bg-tint-strength-value').textContent).toBe('25%');
+    expect(document.getElementById('bg-tint-color').value).toBe('#112233');
+  });
+
+  it('persists slider input', () => {
+    const dim = document.getElementById('bg-overlay-dim');
+    dim.value = '55';
+    dim.dispatchEvent(new Event('input'));
+    expect(localStorage.getItem('bgOverlayOpacity')).toBe('55');
+    expect(document.getElementById('bg-overlay-dim-value').textContent).toBe('55%');
+    expect(document.getElementById('bg-overlay').classList.contains('inactive')).toBe(false);
+  });
+
+  it('reset removes the keys and restores defaults', () => {
+    localStorage.setItem('bgOverlayOpacity', '40');
+    localStorage.setItem('bgOverlayBlur', '4');
+    localStorage.setItem('bgTint', '#ff00aa');
+    localStorage.setItem('bgTintStrength', '20');
+    applyBgOverlaySettings();
+
+    document.getElementById('bg-overlay-reset').click();
+
+    expect(localStorage.getItem('bgOverlayOpacity')).toBeNull();
+    expect(localStorage.getItem('bgOverlayBlur')).toBeNull();
+    expect(localStorage.getItem('bgTint')).toBeNull();
+    expect(localStorage.getItem('bgTintStrength')).toBeNull();
+    expect(loadBgOverlaySettings()).toEqual({
+      opacity: 0,
+      blur: 0,
+      tint: '#000000',
+      tintStrength: 0,
+    });
+    expect(document.getElementById('bg-overlay').classList.contains('inactive')).toBe(true);
+    expect(document.getElementById('background-container').classList.contains('bg-overlay-blur-media')).toBe(false);
+  });
+
+  it('stopBackground does not clear overlay inactive or blur-media classes', () => {
+    const container = document.getElementById('background-container');
+    const overlay = document.getElementById('bg-overlay');
+    overlay.classList.add('inactive');
+    container.classList.add('bg-overlay-blur-media', 'video-fallback', 'video-error');
+
+    stopBackground();
+
+    expect(overlay.classList.contains('inactive')).toBe(true);
+    expect(container.classList.contains('bg-overlay-blur-media')).toBe(true);
+    expect(container.classList.contains('video-fallback')).toBe(false);
+    expect(container.classList.contains('video-error')).toBe(false);
+  });
+
+  it('applyBgOverlaySettings is safe when the settings controls are missing', () => {
+    const ids = [
+      'bg-overlay-dim',
+      'bg-overlay-blur',
+      'bg-tint-strength',
+      'bg-tint-color',
+      'bg-overlay-reset',
+      'bg-overlay-dim-value',
+      'bg-overlay-blur-value',
+      'bg-tint-strength-value',
+    ];
+    const removed = ids.map((id) => {
+      const el = document.getElementById(id);
+      const parent = el.parentNode;
+      parent.removeChild(el);
+      return { el, parent };
+    });
+
+    expect(() => applyBgOverlaySettings()).not.toThrow();
+
+    removed.forEach(({ el, parent }) => parent.appendChild(el));
+  });
+
+  it('applyBgOverlaySettings is safe when the background nodes are missing', () => {
+    const container = document.getElementById('background-container');
+    const overlay = document.getElementById('bg-overlay');
+    const containerParent = container.parentNode;
+    containerParent.removeChild(container);
+
+    expect(() => applyBgOverlaySettings()).not.toThrow();
+
+    containerParent.appendChild(container);
+    if (!container.contains(overlay)) container.appendChild(overlay);
+  });
+});

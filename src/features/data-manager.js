@@ -26,6 +26,10 @@
     'videoAutoplay',
     'videoMuted',
     'videoPauseHidden',
+    'bgOverlayOpacity',
+    'bgOverlayBlur',
+    'bgTint',
+    'bgTintStrength',
     'bgRotationEnabled',
     'bgRotationInterval',
     'bgRotationSelection',
@@ -131,7 +135,9 @@
       // Check the expected shape before interpreting container-looking strings.
       // Scalar string settings must remain strings even when they begin with '[' or '{'.
       const validator = EXPECTED_SHAPES[key];
-      const shouldBeString = validator && validator('') === true;
+      // validator('') is true for free-form strings. bgTint is still a string,
+      // but its shape check rejects anything that is not #rrggbb, including ''.
+      const shouldBeString = Boolean(validator) && (validator('') === true || key === 'bgTint');
       if (shouldBeString) {
         return raw;
       }
@@ -362,6 +368,10 @@
     videoAutoplay: function (v) { return typeof v === 'boolean'; },
     videoMuted: function (v) { return typeof v === 'boolean'; },
     videoPauseHidden: function (v) { return typeof v === 'boolean'; },
+    bgOverlayOpacity: function (v) { return integerInRange(v, 0, 80); },
+    bgOverlayBlur: function (v) { return integerInRange(v, 0, 12); },
+    bgTint: function (v) { return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v); },
+    bgTintStrength: function (v) { return integerInRange(v, 0, 50); },
     bgRotationEnabled: function (v) { return typeof v === 'boolean'; },
     bgRotationInterval: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     bgRotationSelection: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
