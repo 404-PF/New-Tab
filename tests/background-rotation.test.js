@@ -442,11 +442,34 @@ describe('Background rotation save failures', () => {
   let pickerContainer;
   let showToast;
 
-  function failWritesFor(key) {
-    const nativeSetItem = localStorage.setItem.bind(localStorage);
-    vi.spyOn(localStorage, 'setItem').mockImplementation((storageKey, value) => (
-      storageKey === key ? false : nativeSetItem(storageKey, value)
-    ));
+  let restoreStorageSet = null;
+
+  // Fail writes for one key through the real storage bridge. 'sync' makes
+  // chrome.storage.local.set throw, so the bridge both dispatches
+  // storageBridgeWriteError and returns false from setItem. 'async' reports
+  // runtime.lastError from the set callback, after which the bridge rolls
+  // its cache back and dispatches the event.
+  function failWritesFor(key, mode = 'sync') {
+    const area = chrome.storage.local;
+    const originalSet = area.set;
+    area.set = function (items, callback) {
+      if (!Object.prototype.hasOwnProperty.call(items, key)) {
+        return originalSet.call(area, items, callback);
+      }
+      if (mode === 'sync') {
+        throw new Error('QUOTA_BYTES quota exceeded');
+      }
+      setTimeout(() => {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        try {
+          if (typeof callback === 'function') callback();
+        } finally {
+          chrome.runtime.lastError = null;
+        }
+      }, 0);
+      return undefined;
+    };
+    restoreStorageSet = () => { area.set = originalSet; };
   }
 
   beforeEach(() => {
@@ -482,11 +505,18 @@ describe('Background rotation save failures', () => {
     BackgroundRotation.initUI();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Let deferred failure handlers from this test run before teardown so
+    // they cannot fire during the next test.
+    await flushDeferredFailureSync();
     [optionsEl, pickerWrap, toggle, intervalSelect, pickerContainer].forEach((el) => {
       if (el) el.remove();
     });
     delete window.showToast;
+    if (restoreStorageSet) {
+      restoreStorageSet();
+      restoreStorageSet = null;
+    }
   });
 
   it('persists and applies a successful enable toggle without error feedback', () => {
@@ -510,6 +540,29 @@ describe('Background rotation save failures', () => {
     expect(optionsEl.hidden).toBe(true);
     expect(pickerWrap.hidden).toBe(true);
     expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('shows exactly one toast and restarts once for a sync bridge failure', async () => {
+    const OriginalVisibilityInterval = window.VisibilityInterval;
+    const VisibilityIntervalMock = vi.fn(function () {
+      return { destroy: vi.fn() };
+    });
+    localStorage.setItem('bgRotationEnabled', 'true');
+    toggle.checked = true;
+    window.VisibilityInterval = VisibilityIntervalMock;
+    failWritesFor('bgRotationInterval');
+
+    try {
+      intervalSelect.value = '5min';
+      intervalSelect.dispatchEvent(new Event('change'));
+      await flushDeferredFailureSync();
+
+      expect(intervalSelect.value).toBe('30min');
+      expect(showToast).toHaveBeenCalledTimes(1);
+      expect(VisibilityIntervalMock).toHaveBeenCalledTimes(1);
+    } finally {
+      window.VisibilityInterval = OriginalVisibilityInterval;
+    }
   });
 
   it('does not start the rotation timer when the enable write fails', () => {
@@ -543,6 +596,23 @@ describe('Background rotation save failures', () => {
     expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 
+  it('rolls the interval back with one toast after an async bridge failure', async () => {
+    localStorage.setItem('bgRotationEnabled', 'true');
+    toggle.checked = true;
+    failWritesFor('bgRotationInterval', 'async');
+
+    intervalSelect.value = '5min';
+    intervalSelect.dispatchEvent(new Event('change'));
+    expect(showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(BackgroundRotation.getInterval()).toBe('30min');
+    expect(intervalSelect.value).toBe('30min');
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
   it('restores picker checkboxes when the selection write fails', () => {
     localStorage.setItem('bgRotationSelection', JSON.stringify(['BG Alpha']));
     BackgroundRotation.renderPicker();
@@ -559,6 +629,47 @@ describe('Background rotation save failures', () => {
     expect(restored[0].checked).toBe(true);
     expect(restored[1].checked).toBe(false);
     expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('restores the picker with one toast after an async selection failure', async () => {
+    localStorage.setItem('bgRotationSelection', JSON.stringify(['BG Alpha']));
+    BackgroundRotation.renderPicker();
+    failWritesFor('bgRotationSelection', 'async');
+
+    const betaCheckbox = pickerContainer.querySelectorAll('input[type="checkbox"]')[1];
+    betaCheckbox.checked = true;
+    betaCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(BackgroundRotation.getSelection()).toEqual(['BG Alpha']);
+    const restored = pickerContainer.querySelectorAll('input[type="checkbox"]');
+    expect(restored[0].checked).toBe(true);
+    expect(restored[1].checked).toBe(false);
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays silent when a bridge error arrives but nothing was rolled back', async () => {
+    const OriginalVisibilityInterval = window.VisibilityInterval;
+    const VisibilityIntervalMock = vi.fn(function () {
+      return { destroy: vi.fn() };
+    });
+    localStorage.setItem('bgRotationEnabled', 'true');
+    toggle.checked = true;
+    window.VisibilityInterval = VisibilityIntervalMock;
+
+    try {
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+        detail: { key: 'bgRotationInterval', message: 'superseded' },
+      }));
+      await flushDeferredFailureSync();
+
+      expect(showToast).not.toHaveBeenCalled();
+      expect(VisibilityIntervalMock).not.toHaveBeenCalled();
+    } finally {
+      window.VisibilityInterval = OriginalVisibilityInterval;
+    }
   });
 
   it('rolls the toggle back to persisted state after an async bridge write error', async () => {

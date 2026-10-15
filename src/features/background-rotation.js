@@ -267,7 +267,47 @@
     renderBackgroundPicker();
   }
 
+  function getEffectiveSelection(selection) {
+    return selection || getAllBackgrounds().map(function (bg) { return bg.id; });
+  }
+
+  // True when a rotation control shows a value that differs from storage,
+  // i.e. a failed write left the UI ahead of the persisted state.
+  function rotationUIDiffersFromStorage() {
+    const toggle = document.getElementById('bg-rotation-toggle');
+    if (toggle && toggle.checked !== loadEnabled()) return true;
+
+    const intervalSelect = document.getElementById('bg-rotation-interval');
+    if (intervalSelect && intervalSelect.value !== loadInterval()) return true;
+
+    const picker = document.getElementById('bg-rotation-picker');
+    if (picker) {
+      const shown = [];
+      const rendered = new Set();
+      picker.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+        rendered.add(cb.value);
+        if (cb.checked) shown.push(cb.value);
+      });
+      const stored = getEffectiveSelection(loadSelection()).filter(function (id) {
+        return rendered.has(id);
+      });
+      if (shown.length !== stored.length) return true;
+      for (let i = 0; i < shown.length; i += 1) {
+        if (stored.indexOf(shown[i]) === -1) return true;
+      }
+    }
+    return false;
+  }
+
+  // A synchronous bridge failure both dispatches storageBridgeWriteError and
+  // makes setItem return false, so this can be reached twice for one failed
+  // write. Only act when the UI is actually out of sync with storage: the
+  // first call resyncs, the second finds nothing to do. This also keeps a
+  // superseded async failure (no rollback happened) silent.
   function handleRotationSaveFailure() {
+    if (!rotationUIDiffersFromStorage()) {
+      return;
+    }
     syncRotationUI();
     applyRotation();
     showRotationSaveError();
