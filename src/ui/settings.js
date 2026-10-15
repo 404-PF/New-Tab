@@ -1804,6 +1804,16 @@ function initCustomSearchProvidersSettings() {
     });
   }
 
+  const SEARCH_PROVIDER_SAVE_ERROR_FALLBACK = 'Failed to save search provider changes. Your last action was not saved.';
+
+  // Log an unexpected exception from a provider success/failure handler so
+  // it is not silently swallowed by the final re-enable step.
+  function logProviderHandlerError(action) {
+    return function (error) {
+      console.error('Unexpected error while handling custom search provider ' + action + ':', error);
+    };
+  }
+
   // Run a provider API call now (so storage writes start synchronously) but
   // turn a synchronous throw into a rejected Promise, so the caller's
   // rejection handler and button re-enable still run.
@@ -1855,7 +1865,7 @@ function initCustomSearchProvidersSettings() {
         return;
       }
       if (!savedId) {
-        showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
+        showFeedback(t('searchProviderSaveError', SEARCH_PROVIDER_SAVE_ERROR_FALLBACK), 'error');
         renderCustomProvidersList();
         return;
       }
@@ -1870,9 +1880,9 @@ function initCustomSearchProvidersSettings() {
       nameInput.focus();
     }, function (error) {
       console.warn('Failed to add custom search provider:', error);
-      showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
+      showFeedback(t('searchProviderSaveError', SEARCH_PROVIDER_SAVE_ERROR_FALLBACK), 'error');
       renderCustomProvidersList();
-    }).then(reenableAdd, reenableAdd);
+    }).catch(logProviderHandlerError('add')).then(reenableAdd, reenableAdd);
   }
 
   function handleRemove(providerId, removeBtn) {
@@ -1888,7 +1898,7 @@ function initCustomSearchProvidersSettings() {
       return window.removeCustomProvider(providerId);
     }).then(function (removed) {
       if (!removed) {
-        showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
+        showFeedback(t('searchProviderSaveError', SEARCH_PROVIDER_SAVE_ERROR_FALLBACK), 'error');
         renderCustomProvidersList();
         return;
       }
@@ -1899,9 +1909,9 @@ function initCustomSearchProvidersSettings() {
       renderCustomProvidersList();
     }, function (error) {
       console.warn('Failed to remove custom search provider:', error);
-      showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
+      showFeedback(t('searchProviderSaveError', SEARCH_PROVIDER_SAVE_ERROR_FALLBACK), 'error');
       renderCustomProvidersList();
-    }).then(reenableRemove, reenableRemove);
+    }).catch(logProviderHandlerError('removal')).then(reenableRemove, reenableRemove);
   }
 
   addBtn.addEventListener('click', handleAdd);

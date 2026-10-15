@@ -584,6 +584,27 @@ describe('Search providers - settings UI', () => {
     }
   });
 
+  it('logs an exception from the add success handler and still re-enables the button', async () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const originalRefresh = window.refreshProviderBar;
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    window.refreshProviderBar = () => { throw new Error('render failed'); };
+    try {
+      nameInput.value = 'Kagi';
+      urlInput.value = 'https://kagi.com/search?q={query}';
+      addBtn.click();
+      await flushAsyncUI();
+
+      expect(addBtn.disabled).toBe(false);
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('custom search provider add'), expect.any(Error));
+    } finally {
+      window.refreshProviderBar = originalRefresh;
+      errorSpy.mockRestore();
+    }
+  });
+
   it('disables the Remove button while its save is in flight', async () => {
     await addCustomProvider('Pending', 'https://pending.com/search?q={query}');
     window.renderCustomSearchProvidersList();

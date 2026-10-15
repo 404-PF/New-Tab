@@ -417,6 +417,42 @@ describe('DataManager eye-care/games/search-history settings', () => {
     }
   });
 
+  it('warns again when a write fails after the import timed out and reported', async () => {
+    const area = chrome.storage.local;
+    const originalSet = area.set;
+    area.set = (items, callback) => {
+      if (!Object.prototype.hasOwnProperty.call(items, 'theme')) return originalSet.call(area, items, callback);
+      setTimeout(() => {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        try {
+          callback();
+        } finally {
+          chrome.runtime.lastError = null;
+        }
+      }, 100);
+      return undefined;
+    };
+    window.DataManager.importWriteTimeoutMs = 20;
+    const warnSpy = vi.spyOn(console, 'warn');
+    try {
+      const result = await importBackup({ theme: 'dark' }, 'replace');
+      expect(result.type).toBe('warning');
+
+      const lateToast = await vi.waitFor(() => {
+        expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('failed after the import had already reported'))).toBe(true);
+        const el = document.querySelector('.toast-notification.toast-warning');
+        expect(el).not.toBeNull();
+        return el;
+      });
+      expect(lateToast.textContent).toBe(result.text);
+    } finally {
+      area.set = originalSet;
+      delete window.DataManager.importWriteTimeoutMs;
+      warnSpy.mockRestore();
+      document.querySelectorAll('.toast-notification').forEach((el) => el.remove());
+    }
+  });
+
   it('keeps write results separate for each import', async () => {
     const restore = failBridgeWritesFor('theme', 'async');
     try {

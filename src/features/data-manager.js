@@ -208,14 +208,23 @@
   function waitForImportWrites(pendingWrites) {
     if (pendingWrites.length === 0) return Promise.resolve(true);
     let timer = null;
+    let timedOut = false;
     const timeout = new Promise(function (resolve) {
       timer = setTimeout(function () {
+        timedOut = true;
         console.warn('[data-manager] Timed out waiting for import writes to persist');
         resolve(false);
       }, getImportWriteTimeoutMs());
     });
     const all = Promise.all(pendingWrites).then(function (results) {
-      return !results.includes(false);
+      const failed = results.filter(function (ok) { return !ok; }).length;
+      if (timedOut && failed > 0) {
+        // The import already reported after the timeout; these failures
+        // arrived later, so tell the user again instead of only logging.
+        console.warn('[data-manager] ' + failed + ' import write(s) failed after the import had already reported');
+        showToast(t('dataImportPartialSuccess', 'Import completed with some errors.'), 'warning');
+      }
+      return failed === 0;
     });
     return Promise.race([all, timeout]).then(function (allPersisted) {
       clearTimeout(timer);
