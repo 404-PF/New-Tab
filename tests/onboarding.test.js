@@ -22,9 +22,9 @@ describe('OnboardingTour class', () => {
     expect(window.onboardingTour.isCompleted()).toBe(true);
   });
 
-  it('markCompleted sets flag and clears saved step', () => {
+  it('markCompleted sets flag and clears saved step', async () => {
     localStorage.setItem('onboardingStep', '3');
-    window.onboardingTour.markCompleted();
+    await window.onboardingTour.markCompleted();
     expect(localStorage.getItem('onboardingCompleted')).toBe('true');
     expect(localStorage.getItem('onboardingStep')).toBeNull();
     expect(window.onboardingTour.completed).toBe(true);
@@ -80,11 +80,11 @@ describe('Progress saving on navigation', () => {
     expect(window.onboardingTour.completed).toBe(false);
   });
 
-  it('end(true) marks completed and clears saved step', () => {
+  it('end(true) marks completed and clears saved step', async () => {
     localStorage.setItem('onboardingStep', '9');
     window.onboardingTour.isActive = true;
     window.onboardingTour.completed = false;
-    window.onboardingTour.end(true);
+    await window.onboardingTour.end(true);
     expect(localStorage.getItem('onboardingCompleted')).toBe('true');
     expect(localStorage.getItem('onboardingStep')).toBeNull();
     expect(window.onboardingTour.completed).toBe(true);
@@ -110,11 +110,11 @@ describe('Progress saving on navigation', () => {
     expect(tour.completed).toBe(false);
   });
 
-  it('nextStep on last step calls end(true)', () => {
+  it('nextStep on last step calls end(true)', async () => {
     window.onboardingTour.currentStep = window.onboardingTour.steps.length - 1;
     window.onboardingTour.isActive = true;
     window.onboardingTour.completed = false;
-    window.onboardingTour.nextStep();
+    await window.onboardingTour.nextStep();
     expect(localStorage.getItem('onboardingCompleted')).toBe('true');
     expect(localStorage.getItem('onboardingStep')).toBeNull();
   });
@@ -463,5 +463,131 @@ describe('Timeout cleanup', () => {
     radio.dispatchEvent(new Event('change'));
     tour.end(false);
     expect(tour._actionTimeouts).toEqual([]);
+  });
+});
+
+describe('Completion persistence failures', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save onboarding completion. Your progress was kept so you can retry.';
+
+  function restoreSetItemAsync(original) {
+    if (original) localStorage.setItemAsync = original;
+    else delete localStorage.setItemAsync;
+  }
+
+  function restoreShowToast(original) {
+    if (original) window.showToast = original;
+    else delete window.showToast;
+  }
+
+  it('markCompleted keeps saved step and shows a toast when setItemAsync reports failure', async () => {
+    const originalSetItemAsync = localStorage.setItemAsync;
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    localStorage.setItemAsync = vi.fn().mockResolvedValue(false);
+    window.showToast = showToast;
+
+    try {
+      localStorage.setItem('onboardingStep', '9');
+      const result = await window.onboardingTour.markCompleted();
+
+      expect(result).toBe(false);
+      expect(localStorage.getItem('onboardingStep')).toBe('9');
+      expect(window.onboardingTour.isCompleted()).toBe(false);
+      expect(window.onboardingTour.completed).toBe(false);
+      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    } finally {
+      restoreSetItemAsync(originalSetItemAsync);
+      restoreShowToast(originalShowToast);
+    }
+  });
+
+  it('markCompleted keeps saved step when chrome.storage.local.set fails asynchronously', async () => {
+    const originalSet = chrome.storage.local.set;
+    localStorage.setItem('onboardingStep', '9');
+
+    // The bridge accepts the completion write optimistically, then surfaces
+    // the asynchronous chrome.storage.local.set failure via lastError.
+    chrome.storage.local.set = (items, callback) => {
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      if (callback) callback();
+      chrome.runtime.lastError = null;
+      return Promise.resolve();
+    };
+
+    try {
+      const result = await window.onboardingTour.markCompleted();
+
+      expect(result).toBe(false);
+      expect(localStorage.getItem('onboardingStep')).toBe('9');
+      expect(window.onboardingTour.isCompleted()).toBe(false);
+      expect(window.onboardingTour.completed).toBe(false);
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+  });
+
+  it('end(true) leaves the tour resumable when the completion write fails', async () => {
+    const originalSetItemAsync = localStorage.setItemAsync;
+    localStorage.setItemAsync = vi.fn().mockResolvedValue(false);
+
+    try {
+      localStorage.setItem('onboardingStep', '9');
+      window.onboardingTour.isActive = true;
+      window.onboardingTour.completed = false;
+      await window.onboardingTour.end(true);
+
+      expect(localStorage.getItem('onboardingStep')).toBe('9');
+      expect(window.onboardingTour.isCompleted()).toBe(false);
+      expect(window.onboardingTour.completed).toBe(false);
+      expect(window.onboardingTour.isActive).toBe(false);
+      expect(window.onboardingTour._resolveSavedStep()).toBe(9);
+    } finally {
+      restoreSetItemAsync(originalSetItemAsync);
+    }
+  });
+
+  it('markCompleted falls back to sync setItem when setItemAsync is unavailable', async () => {
+    const originalSetItemAsync = localStorage.setItemAsync;
+    delete localStorage.setItemAsync;
+
+    try {
+      localStorage.setItem('onboardingStep', '3');
+      const result = await window.onboardingTour.markCompleted();
+
+      expect(result).toBe(true);
+      expect(localStorage.getItem('onboardingCompleted')).toBe('true');
+      expect(localStorage.getItem('onboardingStep')).toBeNull();
+      expect(window.onboardingTour.completed).toBe(true);
+    } finally {
+      restoreSetItemAsync(originalSetItemAsync);
+    }
+  });
+
+  it('markCompleted keeps saved step when the sync fallback write throws', () => {
+    const originalSetItemAsync = localStorage.setItemAsync;
+    const originalSetItem = localStorage.setItem;
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+
+    localStorage.setItem('onboardingStep', '3');
+    delete localStorage.setItemAsync;
+    localStorage.setItem = vi.fn(() => {
+      throw new Error('quota exceeded');
+    });
+    window.showToast = showToast;
+
+    try {
+      const result = window.onboardingTour.markCompleted();
+
+      expect(result).toBe(false);
+      expect(localStorage.getItem('onboardingStep')).toBe('3');
+      expect(window.onboardingTour.isCompleted()).toBe(false);
+      expect(window.onboardingTour.completed).toBe(false);
+      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    } finally {
+      restoreSetItemAsync(originalSetItemAsync);
+      localStorage.setItem = originalSetItem;
+      restoreShowToast(originalShowToast);
+    }
   });
 });
