@@ -106,12 +106,15 @@ describe('Background readability overlay (#709)', () => {
     expect(css).toMatch(/\.background-container\s*\{[^}]*--bg-overlay-opacity:\s*0;/);
     expect(css).toMatch(/\.background-overlay\s*\{[^}]*z-index:\s*5;[^}]*pointer-events:\s*none;[^}]*backdrop-filter:\s*blur\(var\(--bg-overlay-blur\)\);/);
     expect(css).toMatch(/\.background-overlay\.inactive\s*\{[^}]*display:\s*none;/);
+    expect(css).toMatch(/\.bg-overlay-blur-media \.background-full\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*transform:\s*scale\(1\.05\);/);
+    expect(css).toMatch(/\.bg-overlay-blur-media:has\(\.background-full\.loaded\) \.background-overlay\s*\{[^}]*backdrop-filter:\s*none;/);
     expect(css).toMatch(/filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*transform:\s*translate3d\(0,\s*0,\s*0\)\s*scale\(1\.05\);/);
-    expect(css).not.toMatch(/\.background-overlay\s*\{[^}]*transition:[^;]*backdrop-filter/);
+    expect(css).not.toMatch(/\.background-overlay\s*\{[^}]*transition:/);
 
     const reduced = css.match(/@media \(prefers-reduced-motion: reduce\) \{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/);
     expect(reduced).toBeTruthy();
-    expect(reduced[0]).toMatch(/\.background-overlay\s*\{[^}]*transition:\s*none;/);
+    expect(reduced[0]).toMatch(/\.background-transition-overlay\s*\{[^}]*transition:\s*none;/);
+    expect(reduced[0]).not.toMatch(/\.background-overlay/);
     expect(css).toMatch(/body\.light-theme #bg-overlay-section input\[type="range"\]/);
     expect(css).not.toMatch(/body\.simple-mode[^{]*\.background-overlay/);
     expect(css).not.toMatch(/data-focus-mode[^{]*\.background-overlay/);

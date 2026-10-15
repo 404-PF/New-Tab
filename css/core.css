@@ -144,11 +144,11 @@
 }
 
 /* Readability overlay: dim and tint are layered backgrounds; blur is a
-   backdrop-filter. It sits above thumbnail (2), the transition snapshot (3),
-   and the interactive canvas (4). Simple mode and focus mode only hide
-   foreground widgets, so this layer stays in place for those modes too.
-   Blur is not transitioned — animating backdrop-filter is expensive and
-   fights the video fallback below. */
+   backdrop-filter until a visible photo or video can be blurred directly.
+   It sits above thumbnail (2), the transition snapshot (3), and the
+   interactive canvas (4). Simple mode and focus mode only hide foreground
+   widgets, so this layer stays in place for those modes too.
+   Gradient stops do not interpolate, so this layer has no transition. */
 .background-overlay {
   position: absolute;
   inset: 0;
@@ -162,17 +162,30 @@
   background-repeat: no-repeat;
   -webkit-backdrop-filter: blur(var(--bg-overlay-blur));
   backdrop-filter: blur(var(--bg-overlay-blur));
-  transition: background-image 0.2s ease;
 }
 
 .background-overlay.inactive {
   display: none;
 }
 
-/* backdrop-filter does not sample hardware-composited video. When a video is
-   actually showing, blur that layer directly and drop the backdrop blur so
-   the two do not stack. video-fallback / video-error show a still image, and
-   reduced-motion keeps the thumbnail, so those keep the backdrop path. */
+/* backdrop-filter does not sample hardware-composited video, and blurring
+   the overlay leaves a halo at the viewport edge. Blur the visible pixels
+   directly and scale them past the edges. Drop the backdrop blur for that
+   same layer so the two do not stack.
+   Photos use #bg-full once it has .loaded. video-fallback / video-error
+   show that still, so they take this path too. While the full image is
+   still loading, the thumbnail keeps its own blur and the backdrop path.
+   Reduced-motion video stays on the thumbnail, so it keeps the backdrop. */
+.background-container.bg-overlay-blur-media .background-full {
+  filter: blur(var(--bg-overlay-blur));
+  transform: scale(1.05);
+}
+
+.background-container.bg-overlay-blur-media:has(.background-full.loaded) .background-overlay {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 .background-container.bg-overlay-blur-media:not(.video-fallback):not(.video-error) .background-video.active:not([data-reduced-motion-paused="true"]) {
   filter: blur(var(--bg-overlay-blur));
   transform: translate3d(0, 0, 0) scale(1.05);
@@ -292,8 +305,7 @@
     transition: none;
     animation: none;
   }
-  .background-transition-overlay,
-  .background-overlay {
+  .background-transition-overlay {
     transition: none;
   }
   /* Disable entrance animations for reduced motion */
