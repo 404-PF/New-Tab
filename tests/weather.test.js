@@ -448,4 +448,85 @@ describe('Weather widget', () => {
       window.i18n.t = originalT;
     }
   });
+
+  async function expectPersistedCacheEvent({ installFailure, eventCount, storedTemperature }) {
+    configureAutoWeather({
+      cacheData: createWeatherDataWithTemperature(19)
+    });
+    installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
+    const restore = typeof installFailure === 'function' ? installFailure() : null;
+    const onCacheUpdated = vi.fn();
+    window.addEventListener('weatherCacheUpdated', onCacheUpdated);
+    try {
+      await window.WeatherWidget.refresh(true);
+      // The widget must leave its loading state before persistence settles.
+      expect(document.querySelector('.weather-loading')).toBeNull();
+      expect(document.querySelector('.weather-temp').textContent).toContain('22');
+      if (typeof restore === 'function') restore();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(onCacheUpdated).toHaveBeenCalledTimes(eventCount);
+      const stored = JSON.parse(localStorage.getItem('weatherCache'));
+      expect(stored.data.current.temperature_2m).toBe(storedTemperature);
+    } finally {
+      window.removeEventListener('weatherCacheUpdated', onCacheUpdated);
+      if (typeof restore === 'function') restore();
+    }
+  }
+
+  it('dispatches weatherCacheUpdated when the cache write succeeds', async () => {
+    await expectPersistedCacheEvent({ eventCount: 1, storedTemperature: 22 });
+  });
+
+  it('does not dispatch weatherCacheUpdated when the bridged cache write fails', async () => {
+    await expectPersistedCacheEvent({
+      eventCount: 0,
+      storedTemperature: 19,
+      installFailure() {
+        const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+        let pendingCallback = null;
+        chrome.storage.local.set = (items, callback) => {
+          if (!Object.prototype.hasOwnProperty.call(items, 'weatherCache')) {
+            return originalSet(items, callback);
+          }
+          pendingCallback = callback;
+          return Promise.resolve();
+        };
+        return () => {
+          if (typeof pendingCallback === 'function') {
+            const callback = pendingCallback;
+            pendingCallback = null;
+            chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+            try {
+              callback();
+            } finally {
+              chrome.runtime.lastError = null;
+            }
+          }
+          chrome.storage.local.set = originalSet;
+        };
+      }
+    });
+  });
+
+  it('does not dispatch weatherCacheUpdated when the native cache write throws', async () => {
+    await expectPersistedCacheEvent({
+      eventCount: 0,
+      storedTemperature: 19,
+      installFailure() {
+        const originalSetItemAsync = localStorage.setItemAsync;
+        const originalSetItem = localStorage.setItem.bind(localStorage);
+        delete localStorage.setItemAsync;
+        const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+          if (key === 'weatherCache') {
+            throw new DOMException('quota exceeded', 'QuotaExceededError');
+          }
+          return originalSetItem(key, value);
+        });
+        return () => {
+          setItem.mockRestore();
+          localStorage.setItemAsync = originalSetItemAsync;
+        };
+      }
+    });
+  });
 });
