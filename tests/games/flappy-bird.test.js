@@ -236,6 +236,50 @@ describe('Flappy Bird persistence and terminal state', () => {
     container.remove();
   });
 
+  it('records the finished run score even when the queued stats write runs after a reset', async () => {
+    const container = makeContainer();
+    startWithSpace();
+
+    const baseState = getGame().serialize();
+    const withScore = (n) => ({
+      ...baseState,
+      score: n,
+      speed: window.__flappyBirdTest.speedForScore(n)
+    });
+    expect(window.__flappyBirdTest.applyRestoredState(withScore(7))).toBe(true);
+
+    // Hold an earlier stats write in flight so the game-over write is queued.
+    const originalSet = chrome.storage.local.set;
+    let release;
+    chrome.storage.local.set = (items, callback) => {
+      chrome.storage.local.set = originalSet;
+      release = () => originalSet.call(chrome.storage.local, items, callback);
+      return Promise.resolve();
+    };
+    const blocker = window.GameRegistry.updateStats('blocker-game', { gamesPlayed: 1 });
+
+    try {
+      window.__flappyBirdTest.forceGameOver();
+      // A new run resets the live score before the queued write runs.
+      expect(window.__flappyBirdTest.applyRestoredState(withScore(0))).toBe(true);
+      release();
+      await blocker;
+      for (let i = 0; i < 5; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+
+    expect(JSON.parse(localStorage.getItem('games_stats'))['flappy-bird']).toEqual({
+      highScore: 7,
+      gamesPlayed: 1
+    });
+
+    getGame().destroy();
+    container.remove();
+  });
+
   it('does not start or resume an un-started ready screen', () => {
     const container = makeContainer();
 

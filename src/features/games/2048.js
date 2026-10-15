@@ -343,10 +343,12 @@
   // ===================== Stats =====================
 
   function saveStats() {
+    // Snapshot run values now: the updater may run later, after a reset.
+    const finalScore = score;
     window.gamesHelpers?.updateStatsWith?.('2048', function (stats) {
       const highScore = stats.highScore || 0;
       return {
-        highScore: Math.max(highScore, score),
+        highScore: Math.max(highScore, finalScore),
         gamesPlayed: (stats.gamesPlayed || 0) + 1
       };
     });
