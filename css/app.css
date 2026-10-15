@@ -220,20 +220,10 @@ body.light-theme .progress-text {
   background: rgba(76, 175, 80, 0.9);
 }
 
-body.light-theme .todo-stats-toggle {
-  background: rgba(0, 0, 0, 0.05);
-  color: rgba(0, 0, 0, 0.5);
-}
-
 body.light-theme .todo-stats-toggle:hover,
 body.light-theme .todo-stats-toggle.active {
   background: rgba(33, 150, 243, 0.12);
   color: #003b73;
-}
-
-body.light-theme .todo-stats-panel {
-  background: rgba(0, 0, 0, 0.03);
-  border-color: rgba(0, 0, 0, 0.08);
 }
 
 body.light-theme .todo-stats-title {
@@ -248,11 +238,6 @@ body.light-theme .todo-stats-clear {
 body.light-theme .todo-stats-clear:hover {
   background: rgba(244, 67, 54, 0.08);
   color: #d32f2f;
-}
-
-body.light-theme .todo-stat-card {
-  background: rgba(0, 0, 0, 0.03);
-  border-color: rgba(0, 0, 0, 0.06);
 }
 
 body.light-theme .todo-stat-value {
@@ -2368,12 +2353,9 @@ body.light-theme .toast-notification.toast-info {
   }
 }
 
-/* Light theme adjustments */
-body.light-theme .todo-section {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(0, 0, 0, 0.08);
-}
-
+/* Light theme adjustments.
+   Frosted-glass surfaces for todo/notes live in css/glass.css (loaded last);
+   only non-surface color/interaction overrides belong here. */
 body.light-theme .todo-title {
   color: #1f2937;
   text-shadow: none;
@@ -2386,11 +2368,6 @@ body.light-theme .todo-title {
 body.light-theme .progress-text {
   color: #1f2937;
   text-shadow: none;
-}
-
-body.light-theme .todo-input-container {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(0, 0, 0, 0.1);
 }
 
 body.light-theme #todo-input {
@@ -2437,11 +2414,6 @@ body.light-theme .bulk-btn.danger:hover {
 
 body.light-theme #selected-count {
   color: rgba(31, 41, 55, 0.7);
-}
-
-body.light-theme .todo-item {
-  background: rgba(255, 255, 255, 0.8);
-  border-color: rgba(0, 0, 0, 0.05);
 }
 
 body.light-theme .todo-item:hover {
@@ -5659,12 +5631,6 @@ body.light-theme .notes-search-icon {
   color: rgba(100, 116, 139, 0.6);
 }
 
-body.light-theme .notes-search-input {
-  background: rgba(15, 23, 42, 0.04);
-  border-color: rgba(15, 23, 42, 0.12);
-  color: #1e293b; /* NOSONAR - transparent bg blends over light page, contrast is sufficient */
-}
-
 body.light-theme .notes-search-input::placeholder {
   color: rgba(100, 116, 139, 0.5);
 }
@@ -5747,34 +5713,10 @@ body.light-theme .notes-search-input:focus {
   margin: 0;
 }
 
-/* Light theme notes */
+/* Light theme notes.
+   Frosted surfaces (section panel, add button, note items, search input)
+   are owned by css/glass.css; keep only color/status overrides here. */
 body.light-theme .notes-title {
-  color: #1e293b;
-}
-
-body.light-theme .notes-add-btn {
-  border-color: #cbd5e1;
-  background: #e2e8f0;
-  color: #475569;
-}
-
-body.light-theme .notes-add-btn:hover {
-  background: #cbd5e1;
-  border-color: #94a3b8;
-  color: #0f172a;
-}
-
-body.light-theme .note-item {
-  background: rgba(15, 23, 42, 0.04);
-  border-color: rgba(15, 23, 42, 0.1);
-}
-
-body.light-theme .note-item:hover {
-  background: rgba(15, 23, 42, 0.07);
-  border-color: rgba(15, 23, 42, 0.15);
-}
-
-body.light-theme .note-textarea {
   color: #1e293b;
 }
 

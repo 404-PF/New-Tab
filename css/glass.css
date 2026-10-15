@@ -182,7 +182,8 @@ body.light-theme :is(
   .thumbnail-app-input-wrapper input,
   .todo-edit-field input,
   .todo-edit-field select,
-  .weather-city-inline input
+  .weather-city-inline input,
+  .notes-search-input
 ) {
   background: var(--glass-control);
   border-color: var(--glass-border-subtle);
@@ -383,6 +384,10 @@ body.light-theme .note-tag-btn.has-tag {
   background: rgba(99, 102, 241, 0.16);
   border-color: rgba(99, 102, 241, 0.48);
   color: #020617;
+}
+
+body.light-theme .note-grip {
+  color: rgba(15, 23, 42, 0.35);
 }
 
 body.light-theme :is(
