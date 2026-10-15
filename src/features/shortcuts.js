@@ -77,21 +77,93 @@
 
   function saveShortcuts(shortcuts) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(shortcuts));
+      const result = localStorage.setItem(STORAGE_KEY, JSON.stringify(shortcuts));
+      return result !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (e) {
       console.warn('Failed to save shortcuts:', STORAGE_KEY, e);
+      return false;
     }
   }
 
+  // Pass a per-operation state object to show the toast at most once per operation.
+  function showShortcutSaveError(state) {
+    if (state) {
+      if (state.toastShown) return;
+      state.toastShown = true;
+    }
+    const message = t('shortcutSaveError');
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+    } else {
+      console.warn(message);
+    }
+  }
+
+  // Resolves to whether the reset was persisted. The storage bridge's sync
+  // removeItem() returns undefined and restores the value later if
+  // chrome.storage fails, so prefer removeItemAsync() and check its result.
   function resetShortcuts() {
     if (rebindingAction) cancelRebinding();
+    const toastState = { toastShown: false };
+
+    const reportFailure = () => {
+      try {
+        showShortcutSaveError(toastState);
+      } catch (e) {
+        console.warn('Failed to show shortcut save error:', e);
+      }
+    };
+
+    // A refresh/render error must not change the persistence outcome: when the
+    // reset was saved it still resolves true without the "not saved" toast.
+    const finish = (persisted) => {
+      try {
+        // On failure the bridge has already restored the stored value, so reloading rolls back.
+        activeShortcuts = loadShortcuts();
+        renderShortcutsSection();
+      } catch (e) {
+        console.warn('Failed to refresh shortcuts after reset:', STORAGE_KEY, e);
+      }
+      if (!persisted) {
+        reportFailure();
+      }
+      return persisted;
+    };
+
+    const fail = (e) => {
+      console.warn('Failed to reset shortcuts:', STORAGE_KEY, e);
+      return finish(false);
+    };
+
+    const settle = (run) => {
+      try {
+        return run();
+      } catch (e) {
+        console.warn('Failed to reset shortcuts:', STORAGE_KEY, e);
+        reportFailure();
+        return false;
+      }
+    };
+
+    if (typeof localStorage.removeItemAsync === 'function') {
+      let pending;
+      try {
+        pending = localStorage.removeItemAsync(STORAGE_KEY);
+      } catch (e) {
+        return Promise.resolve(settle(() => fail(e)));
+      }
+      // finish() and fail() catch their own render/toast errors, so this chain
+      // cannot reject and the click handler never sees an unhandled rejection.
+      return Promise.resolve(pending).then((result) => finish(result === true), fail);
+    }
+
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (e) {
-      console.warn('Failed to reset shortcuts:', STORAGE_KEY, e);
+      return Promise.resolve(settle(() => fail(e)));
     }
-    activeShortcuts = loadShortcuts();
-    renderShortcutsSection();
+    // A later chrome.storage restore is handled by the storageBridgeWriteError listener.
+    return Promise.resolve(settle(() => finish(localStorage.getItem(STORAGE_KEY) === null)));
   }
 
   function formatCombo(e) {
@@ -378,6 +450,8 @@
       const modifiers = ['Control', 'Shift', 'Alt', 'Meta'];
       if (modifiers.includes(e.key)) return;
 
+      const previousShortcuts = { ...activeShortcuts };
+
       // If another action already uses this combo, swap bindings
       for (const otherAction in activeShortcuts) {
         if (otherAction !== action && activeShortcuts[otherAction] === combo) {
@@ -387,8 +461,14 @@
       }
 
       activeShortcuts[action] = combo;
-      saveShortcuts(activeShortcuts);
+      const persisted = saveShortcuts(activeShortcuts);
+      if (!persisted) {
+        activeShortcuts = previousShortcuts;
+      }
       renderShortcutsSection();
+      if (!persisted) {
+        showShortcutSaveError();
+      }
 
       rebindingAction = null;
       document.removeEventListener('keydown', rebindingKeyHandler, true);
@@ -407,6 +487,18 @@
     }
     renderShortcutsSection();
   }
+
+  window.addEventListener('storageBridgeWriteError', function (event) {
+    if (event?.detail?.key !== STORAGE_KEY) return;
+
+    setTimeout(function () {
+      const persisted = loadShortcuts();
+      if (JSON.stringify(persisted) === JSON.stringify(activeShortcuts)) return;
+      activeShortcuts = persisted;
+      renderShortcutsSection();
+      showShortcutSaveError();
+    });
+  });
 
   function initShortcuts() {
     if (initialized) return;

@@ -11,6 +11,10 @@
     "message": "Não foi possível salvar as alterações dos aplicativos. Sua última ação não foi salva.",
     "description": "Error shown when app grid changes cannot be persisted"
   },
+  "shortcutSaveError": {
+    "message": "Não foi possível salvar as alterações de atalhos. Sua última ação não foi salva.",
+    "description": "Error shown when keyboard shortcut changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "Não foi possível carregar os planos de fundo personalizados. Tente novamente.",
     "description": "Error shown when custom backgrounds cannot be listed"
