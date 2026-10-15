@@ -398,8 +398,7 @@ jobs:
       - name: Report implementation failure on issue
         if: >-
           (failure() || cancelled()) &&
-          (github.event_name == 'workflow_dispatch' ||
-           (github.event_name == 'issue_comment'))
+          (github.event_name == 'workflow_dispatch' || github.event_name == 'issue_comment')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
