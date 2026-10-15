@@ -158,6 +158,14 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
         run: |
           set -euo pipefail
+          # gh issue view accepts a pull request number. issue_comment runs are
+          # already limited to issues; workflow_dispatch is not, so reject a PR
+          # before writing context or starting the agent.
+          is_pull_request="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq 'has("pull_request")')"
+          if [ "$is_pull_request" = 'true' ]; then
+            echo "::error::Expected an issue number, not a pull request."
+            exit 1
+          fi
           mkdir -p "$GITHUB_WORKSPACE/.tmp"
           gh issue view "$ISSUE_NUMBER" --repo "$GH_REPO" --json title,body,labels,comments \
             --jq '{title, body, labels: [.labels[].name], comments: [.comments[] | {author: .author.login, body}]}' \
@@ -270,12 +278,6 @@ jobs:
           fi
           echo 'has_changes=true' >> "$GITHUB_OUTPUT"
 
-          # Fail closed if the diff appears to contain leaked secret material.
-          if git diff | grep -Eq 'ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]+|sk-(ant|live)-[A-Za-z0-9-]+|xox[bap]-|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----'; then
-            echo "::error::Diff looks like it contains secret material; refusing to push."
-            exit 1
-          fi
-
           TITLE="$(gh issue view "$ISSUE_NUMBER" --repo "$GH_REPO" --json title --jq .title)"
           LABELS="$(gh issue view "$ISSUE_NUMBER" --repo "$GH_REPO" --json labels --jq '[.labels[].name] | join(",")')"
           SLUG="$(printf '%s' "$TITLE" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9][^a-z0-9]*/-/g' -e 's/^-\+//' -e 's/-\+$//' | cut -c1-40 | sed -e 's/-\+$//')"
@@ -296,6 +298,13 @@ jobs:
           # Same exclude as the status check. git add -A without it would commit
           # the context files. pr-body.md is written under .tmp after commit.
           git add -A -- . ':(exclude).tmp'
+          # Scan the staged diff, which includes new files. grep -E reads the
+          # whole stream; grep -q would exit on the first match, SIGPIPE git
+          # diff, and pipefail would treat a real match as no match.
+          if git diff --cached | grep -E 'ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]+|sk-(ant|live)-[A-Za-z0-9-]+|xox[bap]-|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----' >/dev/null; then
+            echo "::error::Diff looks like it contains secret material; refusing to push."
+            exit 1
+          fi
           git commit -m "$PREFIX: resolve #$ISSUE_NUMBER $TITLE" -m "Fixes #$ISSUE_NUMBER"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git"
           git push -u origin "$BRANCH"
