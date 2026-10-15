@@ -174,15 +174,18 @@
     }
   }
 
-  // Writes made during an import. The storage bridge accepts writes
-  // optimistically and can still fail asynchronously (chrome.storage
-  // runtime.lastError), so applyData waits for these results before it
-  // reports success.
-  let pendingImportWrites = null;
+  // Bridge setItem returns false on a rejected write; native returns undefined.
+  function isWriteAccepted(result) {
+    return result !== false;
+  }
 
-  function trackImportWrite(key, promise) {
-    if (!pendingImportWrites) return;
-    pendingImportWrites.push(Promise.resolve(promise).then(function (ok) {
+  // Each import collects the results of its own writes. The storage bridge
+  // accepts writes optimistically and can still fail asynchronously
+  // (chrome.storage runtime.lastError), so applyData waits for these results
+  // before it reports success.
+  function trackImportWrite(pendingWrites, key, promise) {
+    if (!pendingWrites) return;
+    pendingWrites.push(Promise.resolve(promise).then(function (ok) {
       if (!isWriteAccepted(ok)) {
         console.warn('[data-manager] Storage write was not persisted for key "' + key + '"');
       }
@@ -193,16 +196,38 @@
     }));
   }
 
-  // Bridge setItem returns false on a rejected write; native returns undefined.
-  function isWriteAccepted(result) {
-    return result !== false;
+  // If a chrome.storage callback never fires, stop waiting after this long
+  // and report the import as partial so the UI still refreshes.
+  const DEFAULT_IMPORT_WRITE_TIMEOUT_MS = 10000;
+
+  function getImportWriteTimeoutMs() {
+    const configured = window.DataManager && window.DataManager.importWriteTimeoutMs;
+    return typeof configured === 'number' && configured >= 0 ? configured : DEFAULT_IMPORT_WRITE_TIMEOUT_MS;
   }
 
-  function writeStorage(key, value) {
+  function waitForImportWrites(pendingWrites) {
+    if (pendingWrites.length === 0) return Promise.resolve(true);
+    let timer = null;
+    const timeout = new Promise(function (resolve) {
+      timer = setTimeout(function () {
+        console.warn('[data-manager] Timed out waiting for import writes to persist');
+        resolve(false);
+      }, getImportWriteTimeoutMs());
+    });
+    const all = Promise.all(pendingWrites).then(function (results) {
+      return !results.includes(false);
+    });
+    return Promise.race([all, timeout]).then(function (allPersisted) {
+      clearTimeout(timer);
+      return allPersisted;
+    });
+  }
+
+  function writeStorage(key, value, pendingWrites) {
     try {
       if (value === null || value === undefined) {
         if (typeof localStorage.removeItemAsync === 'function') {
-          trackImportWrite(key, localStorage.removeItemAsync(key));
+          trackImportWrite(pendingWrites, key, localStorage.removeItemAsync(key));
         } else {
           localStorage.removeItem(key);
         }
@@ -215,7 +240,7 @@
 
       const serialized = typeof value === 'string' ? value : JSON.stringify(value);
       if (typeof localStorage.setItemAsync === 'function') {
-        trackImportWrite(key, localStorage.setItemAsync(key, serialized));
+        trackImportWrite(pendingWrites, key, localStorage.setItemAsync(key, serialized));
         if (localStorage.getItem(key) !== serialized) {
           throw new Error('Storage write was not accepted for key "' + key + '"');
         }
@@ -654,7 +679,7 @@
     const applyData = function (mode) {
       const keys = Object.keys(importedData);
       let count = 0;
-      pendingImportWrites = [];
+      const pendingWrites = [];
 
       // In replace mode, clear any EXPORT_KEYS not present in importedData
       let hasWriteErrors = false;
@@ -662,7 +687,7 @@
         const keysToRemove = EXPORT_KEYS.filter(function (k) { return !(k in importedData); });
         keysToRemove.forEach(function (key) {
           try {
-            writeStorage(key, null);
+            writeStorage(key, null, pendingWrites);
           } catch (err) {
             hasWriteErrors = true;
             console.warn('[data-manager] Failed to remove key "' + key + '" during replace:', err);
@@ -702,7 +727,7 @@
                   }
                 });
                 if (added > 0) {
-                  writeStorage(key, existing);
+                  writeStorage(key, existing, pendingWrites);
                   count++;
                 }
               } else if (key === 'appOrder') {
@@ -719,7 +744,7 @@
                   }
                 });
                 if (addedOrder > 0) {
-                  writeStorage(key, currentOrder);
+                  writeStorage(key, currentOrder, pendingWrites);
                   count++;
                 }
               } else if (key === 'customApps') {
@@ -738,7 +763,7 @@
                   }
                 });
                 if (addedApps > 0) {
-                  writeStorage(key, currentApps);
+                  writeStorage(key, currentApps, pendingWrites);
                   count++;
                 }
               } else if (key === 'appFolders') {
@@ -757,7 +782,7 @@
                   }
                 });
                 if (addedFolders > 0) {
-                  writeStorage(key, currentFolders);
+                  writeStorage(key, currentFolders, pendingWrites);
                   count++;
                 }
               } else if (key === 'ai_conversations') {
@@ -776,7 +801,7 @@
                   }
                 });
                 if (addedConvs > 0) {
-                  writeStorage(key, currentConvs);
+                  writeStorage(key, currentConvs, pendingWrites);
                   count++;
                 }
               } else if (key === 'extraTimeZones') {
@@ -795,7 +820,7 @@
                   seenZones[zoneId] = true;
                   mergedZones.push(zoneId);
                 });
-                writeStorage(key, mergedZones);
+                writeStorage(key, mergedZones, pendingWrites);
                 count++;
               } else {
                 // Generic array merge (concatenate unique)
@@ -813,7 +838,7 @@
                     seen[id] = true;
                   }
                 });
-                writeStorage(key, merged);
+                writeStorage(key, merged, pendingWrites);
                 count++;
               }
             } else if (typeof incoming === 'object' && incoming !== null && !Array.isArray(incoming)) {
@@ -828,7 +853,7 @@
                   mergedDays[date] = Math.max(localCount, incomingCount);
                 });
                 currentObj.days = mergedDays;
-                writeStorage(key, currentObj);
+                writeStorage(key, currentObj, pendingWrites);
               } else if (key === 'pomodoroStats') {
                 const merged = Object.assign({}, currentObj);
                 if (currentObj.days || incoming.days) {
@@ -869,19 +894,19 @@
                 Object.keys(incoming).forEach(function (k) {
                   if (k !== 'days' && k !== 'byDateTodos') merged[k] = incoming[k];
                 });
-                writeStorage(key, merged);
+                writeStorage(key, merged, pendingWrites);
               } else {
-                writeStorage(key, Object.assign(currentObj, incoming));
+                writeStorage(key, Object.assign(currentObj, incoming), pendingWrites);
               }
               count++;
             } else {
               // Scalar: overwrite
-              writeStorage(key, incoming);
+              writeStorage(key, incoming, pendingWrites);
               count++;
             }
           } else {
             // Replace: overwrite directly
-            writeStorage(key, importedValue);
+            writeStorage(key, importedValue, pendingWrites);
             count++;
           }
         } catch (err) {
@@ -890,13 +915,8 @@
         }
       });
 
-      const importWrites = pendingImportWrites;
-      pendingImportWrites = null;
-      return Promise.all(importWrites).then(function (results) {
-        if (results.includes(false)) {
-          hasWriteErrors = true;
-        }
-        finishImport(mode, count, hasWriteErrors);
+      return waitForImportWrites(pendingWrites).then(function (allPersisted) {
+        finishImport(mode, count, hasWriteErrors || !allPersisted);
       });
     };
 

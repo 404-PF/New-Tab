@@ -1804,7 +1804,20 @@ function initCustomSearchProvidersSettings() {
     });
   }
 
+  // Run a provider API call now (so storage writes start synchronously) but
+  // turn a synchronous throw into a rejected Promise, so the caller's
+  // rejection handler and button re-enable still run.
+  function callProviderApi(fn) {
+    try {
+      return Promise.resolve(fn());
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
   function handleAdd() {
+    // Enter in the inputs bypasses the disabled button; ignore it too.
+    if (addBtn.disabled) return;
       const name = nameInput.value.trim();
       const url = urlInput.value.trim();
 
@@ -1831,7 +1844,9 @@ function initCustomSearchProvidersSettings() {
     const reenableAdd = function () {
       addBtn.disabled = false;
     };
-    Promise.resolve(window.addCustomProvider(name, url)).then(function (savedId) {
+    callProviderApi(function () {
+      return window.addCustomProvider(name, url);
+    }).then(function (savedId) {
       if (savedId === null) {
         // Validation failure; the name was already checked above, so only
         // the URL can still be invalid here.
@@ -1860,9 +1875,18 @@ function initCustomSearchProvidersSettings() {
     }).then(reenableAdd, reenableAdd);
   }
 
-  function handleRemove(providerId) {
+  function handleRemove(providerId, removeBtn) {
     if (typeof window.removeCustomProvider !== 'function') return;
-    Promise.resolve(window.removeCustomProvider(providerId)).then(function (removed) {
+    // Disable the button while the save is in flight so repeated clicks
+    // cannot queue duplicate removals. The list re-renders afterwards; the
+    // reset below covers a button that survives the re-render.
+    if (removeBtn) removeBtn.disabled = true;
+    const reenableRemove = function () {
+      if (removeBtn) removeBtn.disabled = false;
+    };
+    callProviderApi(function () {
+      return window.removeCustomProvider(providerId);
+    }).then(function (removed) {
       if (!removed) {
         showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
         renderCustomProvidersList();
@@ -1877,7 +1901,7 @@ function initCustomSearchProvidersSettings() {
       console.warn('Failed to remove custom search provider:', error);
       showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
       renderCustomProvidersList();
-    });
+    }).then(reenableRemove, reenableRemove);
   }
 
   addBtn.addEventListener('click', handleAdd);
@@ -1893,9 +1917,10 @@ function initCustomSearchProvidersSettings() {
   });
 
   listEl.addEventListener('click', function (e) {
-    const providerId = e.target.closest('.custom-search-provider-remove')?.dataset.providerId;
-    if (!providerId) return;
-    handleRemove(providerId);
+    const removeBtn = e.target.closest('.custom-search-provider-remove');
+    const providerId = removeBtn?.dataset.providerId;
+    if (!providerId || removeBtn.disabled) return;
+    handleRemove(providerId, removeBtn);
   });
 
   // Expose for import refresh and re-render after language change

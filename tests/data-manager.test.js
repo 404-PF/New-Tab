@@ -400,6 +400,34 @@ describe('DataManager eye-care/games/search-history settings', () => {
     }
   });
 
+  it('finishes the import with a warning when a storage callback never fires', async () => {
+    const area = chrome.storage.local;
+    const originalSet = area.set;
+    area.set = (items, callback) => {
+      if (Object.prototype.hasOwnProperty.call(items, 'theme')) return undefined; // never calls back
+      return originalSet.call(area, items, callback);
+    };
+    window.DataManager.importWriteTimeoutMs = 20;
+    try {
+      const result = await importBackup({ theme: 'dark' }, 'replace');
+      expect(result.type).toBe('warning');
+    } finally {
+      area.set = originalSet;
+      delete window.DataManager.importWriteTimeoutMs;
+    }
+  });
+
+  it('keeps write results separate for each import', async () => {
+    const restore = failBridgeWritesFor('theme', 'async');
+    try {
+      expect((await importBackup({ theme: 'dark' }, 'replace')).type).toBe('warning');
+    } finally {
+      restore();
+    }
+    // A failure in the previous import must not leak into this one.
+    expect((await importBackup({ theme: 'dark' }, 'replace')).type).toBe('success');
+  });
+
   it('reports success when every restore write persists', async () => {
     const result = await importBackup({ theme: 'dark' }, 'replace');
 

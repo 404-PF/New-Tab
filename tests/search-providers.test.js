@@ -564,6 +564,53 @@ describe('Search providers - settings UI', () => {
     }
   });
 
+  it('re-enables the Add button when addCustomProvider throws synchronously', async () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+    const original = window.addCustomProvider;
+    window.addCustomProvider = () => { throw new Error('boom'); };
+    try {
+      nameInput.value = 'Kagi';
+      urlInput.value = 'https://kagi.com/search?q={query}';
+      addBtn.click();
+      await flushAsyncUI();
+
+      expect(addBtn.disabled).toBe(false);
+      expect(feedback.textContent).toBe('Failed to save search provider changes. Your last action was not saved.');
+    } finally {
+      window.addCustomProvider = original;
+    }
+  });
+
+  it('disables the Remove button while its save is in flight', async () => {
+    await addCustomProvider('Pending', 'https://pending.com/search?q={query}');
+    window.renderCustomSearchProvidersList();
+    const list = document.getElementById('custom-search-providers-list');
+    const removeBtn = list.querySelector('.custom-search-provider-remove');
+
+    const originalSet = chrome.storage.local.set;
+    let setCallback;
+    let setCalls = 0;
+    chrome.storage.local.set = (items, callback) => { setCalls += 1; setCallback = callback; };
+    try {
+      removeBtn.click();
+      expect(removeBtn.disabled).toBe(true);
+      await flushAsyncUI();
+      removeBtn.click();
+      expect(setCalls).toBe(1);
+
+      setCallback();
+      await flushAsyncUI();
+
+      expect(loadCustomProviders().length).toBe(0);
+      expect(list.children.length).toBe(0);
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+  });
+
   it('shows the invalid URL message when addCustomProvider rejects the URL', async () => {
     const nameInput = document.getElementById('custom-search-provider-name');
     const urlInput = document.getElementById('custom-search-provider-url');
