@@ -173,15 +173,20 @@
    directly and scale them past the edges. Drop the backdrop blur for that
    same layer so the two do not stack.
    Photos use #bg-full once it has .loaded. video-fallback / video-error
-   show that still, so they take this path too. While the full image is
-   still loading, the thumbnail keeps its own blur and the backdrop path.
+   show that still, so they take this path too. The crossfade snapshot is a
+   sharp copy of the previous image and sits above #bg-full, so it gets the
+   same blur and scale; otherwise the old image flashes sharp while it fades.
+   While the full image is still loading and no snapshot is showing, the
+   thumbnail keeps its own blur and the backdrop path.
    Reduced-motion video stays on the thumbnail, so it keeps the backdrop. */
-.background-container.bg-overlay-blur-media .background-full {
+.background-container.bg-overlay-blur-media .background-full,
+.background-container.bg-overlay-blur-media .background-transition-overlay {
   filter: blur(var(--bg-overlay-blur));
   transform: scale(1.05);
 }
 
-.background-container.bg-overlay-blur-media:has(.background-full.loaded) .background-overlay {
+.background-container.bg-overlay-blur-media:has(.background-full.loaded) .background-overlay,
+.background-container.bg-overlay-blur-media:has(.background-transition-overlay.active) .background-overlay {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }

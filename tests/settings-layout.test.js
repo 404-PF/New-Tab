@@ -100,14 +100,14 @@ describe('Background readability overlay (#709)', () => {
     });
   });
 
-  it('styles the overlay, reduced motion, the video blur fallback, and light-theme ranges', () => {
+  it('styles the overlay, the crossfade snapshot, reduced motion, the video blur fallback, and light-theme ranges', () => {
     const css = readFileSync(CORE_CSS_PATH, 'utf-8');
 
     expect(css).toMatch(/\.background-container\s*\{[^}]*--bg-overlay-opacity:\s*0;/);
     expect(css).toMatch(/\.background-overlay\s*\{[^}]*z-index:\s*5;[^}]*pointer-events:\s*none;[^}]*backdrop-filter:\s*blur\(var\(--bg-overlay-blur\)\);/);
     expect(css).toMatch(/\.background-overlay\.inactive\s*\{[^}]*display:\s*none;/);
-    expect(css).toMatch(/\.bg-overlay-blur-media \.background-full\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*transform:\s*scale\(1\.05\);/);
-    expect(css).toMatch(/\.bg-overlay-blur-media:has\(\.background-full\.loaded\) \.background-overlay\s*\{[^}]*backdrop-filter:\s*none;/);
+    expect(css).toMatch(/\.bg-overlay-blur-media \.background-full,[\s\S]*?\.bg-overlay-blur-media \.background-transition-overlay\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*transform:\s*scale\(1\.05\);/);
+    expect(css).toMatch(/\.bg-overlay-blur-media:has\(\.background-full\.loaded\) \.background-overlay,[\s\S]*?\.bg-overlay-blur-media:has\(\.background-transition-overlay\.active\) \.background-overlay\s*\{[^}]*backdrop-filter:\s*none;/);
     expect(css).toMatch(/filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*transform:\s*translate3d\(0,\s*0,\s*0\)\s*scale\(1\.05\);/);
     expect(css).not.toMatch(/\.background-overlay\s*\{[^}]*transition:/);
 
