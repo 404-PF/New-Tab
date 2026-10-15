@@ -41,6 +41,12 @@ jobs:
       )
 
     steps:
+      # Record when the job started so the failure report can tell a
+      # job-level timeout apart from a run superseded by a newer one
+      # (concurrency cancel-in-progress). Both show up as cancelled().
+      - name: Record job start time
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Check /label command and permission
         id: gate
         if: github.event_name == 'issue_comment'
@@ -282,7 +288,22 @@ jobs:
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          # Keep in sync with this job's timeout-minutes.
+          JOB_TIMEOUT_MINUTES: '10'
         run: |
           set -euo pipefail
+          # A step timeout fails its step, so failure() covers it. A cancelled
+          # job is either a job-level timeout (report it) or a run superseded
+          # by a newer one via concurrency cancel-in-progress (stay silent).
+          # Only a job that ran to within a minute of its timeout counts as
+          # timed out; earlier cancellations are supersession or manual.
+          if [ "$JOB_STATUS" = 'cancelled' ]; then
+            elapsed=$(( $(date +%s) - ${JOB_STARTED_AT:-0} ))
+            if [ -z "${JOB_STARTED_AT:-}" ] || [ "$elapsed" -lt $(( (JOB_TIMEOUT_MINUTES - 1) * 60 )) ]; then
+              echo "Run cancelled after ${elapsed}s (superseded or cancelled manually); not reporting."
+              exit 0
+            fi
+          fi
           gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
             --body "Issue labeling failed or timed out. See the workflow run: $RUN_URL"
