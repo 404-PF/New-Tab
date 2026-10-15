@@ -76,9 +76,15 @@
     console.warn(message);
   }
 
+  // The storage bridge's setItem returns false for a rejected write; the
+  // native Storage API returns undefined. Only an explicit false is a failure.
+  function isWriteAccepted(result) {
+    return result !== false;
+  }
+
   function saveEnabled(value) {
     try {
-      return localStorage.setItem(ROTATION_ENABLED_KEY, value ? 'true' : 'false') !== false;
+      return isWriteAccepted(localStorage.setItem(ROTATION_ENABLED_KEY, value ? 'true' : 'false'));
     } catch (err) {
       console.warn('saveEnabled localStorage error:', err);
       return false;
@@ -87,7 +93,7 @@
 
   function saveInterval(value) {
     try {
-      return localStorage.setItem(ROTATION_INTERVAL_KEY, value) !== false;
+      return isWriteAccepted(localStorage.setItem(ROTATION_INTERVAL_KEY, value));
     } catch (err) {
       console.warn('saveInterval localStorage error:', err);
       return false;
@@ -96,7 +102,7 @@
 
   function saveSelection(ids) {
     try {
-      return localStorage.setItem(ROTATION_SELECTION_KEY, JSON.stringify(ids)) !== false;
+      return isWriteAccepted(localStorage.setItem(ROTATION_SELECTION_KEY, JSON.stringify(ids)));
     } catch (err) {
       console.warn('saveSelection localStorage error:', err);
       return false;
@@ -292,8 +298,8 @@
         return rendered.has(id);
       });
       if (shown.length !== stored.length) return true;
-      for (let i = 0; i < shown.length; i += 1) {
-        if (stored.indexOf(shown[i]) === -1) return true;
+      for (const id of shown) {
+        if (!stored.includes(id)) return true;
       }
     }
     return false;
@@ -317,7 +323,7 @@
   // reports runtime.lastError here, after which the bridge rolls its cache
   // back. Defer the UI/timer resync so it reads the rolled-back state.
   window.addEventListener('storageBridgeWriteError', function (event) {
-    const key = event.detail && event.detail.key;
+    const key = event.detail?.key;
     if (!ROTATION_STORAGE_KEYS.has(key)) {
       return;
     }
