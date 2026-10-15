@@ -11,6 +11,10 @@
     "message": "Failed to save app changes. Your last action was not saved.",
     "description": "Error shown when app grid changes cannot be persisted"
   },
+  "searchProviderSaveError": {
+    "message": "Failed to save search provider changes. Your last action was not saved.",
+    "description": "Error shown when custom search provider changes cannot be persisted"
+  },
   "customBackgroundsLoadError": {
     "message": "Failed to load custom backgrounds. Please try again.",
     "description": "Error shown when custom backgrounds cannot be listed"

@@ -499,9 +499,30 @@ function loadCustomProviders() {
 
 function saveCustomProviders(providers) {
   try {
-    localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, JSON.stringify(providers));
+    const result = localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, JSON.stringify(providers));
+    return result !== false;
   } catch (e) {
     console.warn('Failed to save custom providers:', e);
+    return false;
+  }
+}
+
+function saveCustomProvidersAsync(providers) {
+  const serialized = JSON.stringify(providers);
+  try {
+    if (typeof localStorage.setItemAsync === 'function') {
+      return localStorage.setItemAsync(CUSTOM_PROVIDERS_STORAGE_KEY, serialized)
+        .then(function (result) { return result !== false; })
+        .catch(function (e) {
+          console.warn('Failed to save custom providers:', e);
+          return false;
+        });
+    }
+    const result = localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, serialized);
+    return Promise.resolve(result !== false);
+  } catch (e) {
+    console.warn('Failed to save custom providers:', e);
+    return Promise.resolve(false);
   }
 }
 
@@ -533,19 +554,24 @@ function addCustomProvider(name, url) {
   if (!code) return false;
 
   providers.push({ id: id, name: normalizedName, url: url, code: code });
-  saveCustomProviders(providers);
-  renderCustomProviderButtons();
-  return id;
+  return saveCustomProvidersAsync(providers).then(function (saved) {
+    if (!saved) return false;
+    renderCustomProviderButtons();
+    return id;
+  });
 }
 
 function removeCustomProvider(id) {
   const providers = loadCustomProviders().filter(function (p) { return p.id !== id; });
-  saveCustomProviders(providers);
-  if (activeProviderId === id) {
-    saveActiveProvider('google');
-    updateProviderSelection();
-  }
-  renderCustomProviderButtons();
+  return saveCustomProvidersAsync(providers).then(function (saved) {
+    if (!saved) return false;
+    if (activeProviderId === id) {
+      saveActiveProvider('google');
+      updateProviderSelection();
+    }
+    renderCustomProviderButtons();
+    return true;
+  });
 }
 
 function getAllProviders() {

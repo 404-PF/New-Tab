@@ -349,6 +349,21 @@ describe('DataManager eye-care/games/search-history settings', () => {
     expect(localStorage.getItem('eyeCareReminder')).toBeNull();
   });
 
+  it('surfaces rejected restore writes instead of silently accepting them', async () => {
+    const originalSetItem = localStorage.setItem;
+    const warnSpy = vi.spyOn(console, 'warn');
+    localStorage.setItem = () => false;
+    try {
+      await importBackup({ theme: 'dark' }, 'replace');
+
+      expect(localStorage.getItem('theme')).toBeNull();
+      expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('[data-manager] Failed to write key "theme"'))).toBe(true);
+    } finally {
+      localStorage.setItem = originalSetItem;
+      warnSpy.mockRestore();
+    }
+  });
+
   it('round-trips the new settings through export and re-validation', async () => {
     localStorage.setItem('theme', 'dark');
     localStorage.setItem('eyeCareReminder', JSON.stringify(EYE_CARE_STORED_STATE));

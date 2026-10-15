@@ -1827,7 +1827,7 @@ function initCustomSearchProvidersSettings() {
 
       const result = window.addCustomProvider(name, url);
 
-    if (!result) {
+    if (result === false) {
       // addCustomProvider returns false on validation failure; the name was
       // already checked above, so only the URL can still be invalid here.
       showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
@@ -1835,24 +1835,38 @@ function initCustomSearchProvidersSettings() {
       return;
     }
 
-    nameInput.value = '';
-    urlInput.value = '';
-    clearFeedback();
-    if (typeof window.refreshProviderBar === 'function') {
-      window.refreshProviderBar();
-    }
-    renderCustomProvidersList();
-    nameInput.focus();
+    Promise.resolve(result).then(function (savedId) {
+      if (!savedId) {
+        showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
+        renderCustomProvidersList();
+        return;
+      }
+
+      nameInput.value = '';
+      urlInput.value = '';
+      clearFeedback();
+      if (typeof window.refreshProviderBar === 'function') {
+        window.refreshProviderBar();
+      }
+      renderCustomProvidersList();
+      nameInput.focus();
+    });
   }
 
   function handleRemove(providerId) {
     if (typeof window.removeCustomProvider !== 'function') return;
-    window.removeCustomProvider(providerId);
-    clearFeedback();
-    if (typeof window.refreshProviderBar === 'function') {
-      window.refreshProviderBar();
-    }
-    renderCustomProvidersList();
+    Promise.resolve(window.removeCustomProvider(providerId)).then(function (removed) {
+      if (!removed) {
+        showFeedback(t('searchProviderSaveError', 'Failed to save search provider changes. Your last action was not saved.'), 'error');
+        renderCustomProvidersList();
+        return;
+      }
+      clearFeedback();
+      if (typeof window.refreshProviderBar === 'function') {
+        window.refreshProviderBar();
+      }
+      renderCustomProvidersList();
+    });
   }
 
   addBtn.addEventListener('click', handleAdd);

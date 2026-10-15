@@ -578,6 +578,7 @@ globalThis.window.i18n = {
       searchProviderRemoveLabel: 'Remove {name}',
       searchProviderInvalidName: 'Enter a name for the search provider.',
       searchProviderInvalidUrl: 'Enter a valid URL with {query} and http(s).',
+      searchProviderSaveError: 'Failed to save search provider changes. Your last action was not saved.',
       searchProviderNameAriaLabel: 'Provider name',
       searchProviderUrlAriaLabel: 'Search URL template',
       removeTimezone: 'Remove',

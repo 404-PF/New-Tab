@@ -176,12 +176,17 @@
 
   function writeStorage(key, value) {
     try {
+      let result;
       if (value === null || value === undefined) {
         localStorage.removeItem(key);
+        return;
       } else if (typeof value === 'string') {
-        localStorage.setItem(key, value);
+        result = localStorage.setItem(key, value);
       } else {
-        localStorage.setItem(key, JSON.stringify(value));
+        result = localStorage.setItem(key, JSON.stringify(value));
+      }
+      if (result === false) {
+        throw new Error('Storage write was not accepted for key "' + key + '"');
       }
     } catch (err) {
       console.warn('[data-manager] Failed to write key "' + key + '":', err);
