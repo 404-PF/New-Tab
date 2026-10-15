@@ -144,6 +144,17 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      # The implement prompt runs npm run lint and npm test. On a clean runner
+      # eslint and vitest are missing until this install. Keep the step
+      # secret-free: no GH_TOKEN and no OPENCODE_API_KEY.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
       # NOTE: do NOT add --ignore-scripts here. opencode-ai ships a JS wrapper
       # whose postinstall selects the native binary; with --ignore-scripts the
       # wrapper exits 1 and every run fails at `opencode run`.
@@ -237,11 +248,8 @@ jobs:
           OPENCODE_PROMPT_EOF_7f3a9c2e
           )"
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-
+      # The agent may edit package.json or the lockfile. Install again so
+      # Lint and Run tests use that tree rather than the pre-agent install.
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
