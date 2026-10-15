@@ -127,12 +127,15 @@
   }
 
   function saveStats(time) {
+    // Snapshot run values now: the updater may run later, after a reset.
+    const finalMoves = moves;
+    const finalTime = Number.parseFloat(time);
     window.gamesHelpers?.updateStatsWith?.('memory', function (stats) {
       const bestMoves = stats.bestMoves || Infinity;
       const bestTime = stats.bestTime || Infinity;
       return {
-        bestMoves: Math.min(bestMoves, moves),
-        bestTime: Math.min(bestTime, Number.parseFloat(time)),
+        bestMoves: Math.min(bestMoves, finalMoves),
+        bestTime: Math.min(bestTime, finalTime),
         gamesPlayed: (stats.gamesPlayed || 0) + 1
       };
     });

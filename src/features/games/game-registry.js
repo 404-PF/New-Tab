@@ -4,6 +4,7 @@
   'use strict';
 
   const STATS_KEY = 'games_stats';
+  const STATS_SAVE_ERROR_FALLBACK = 'Failed to save game statistics. Your latest score was not saved.';
   const MRU_KEY = 'games_recently_played';
   const SAVES_KEY = 'games_saves';
   const MAX_MRU = 20;
@@ -47,17 +48,73 @@
     }
   }
 
+  // Coalesce bursts: several failed writes in quick succession show one toast.
+  const STATS_TOAST_COALESCE_MS = 2000;
+  let lastStatsToastAt = -Infinity;
+
+  function showStatsSaveError() {
+    const now = Date.now();
+    if (now - lastStatsToastAt < STATS_TOAST_COALESCE_MS) return;
+    lastStatsToastAt = now;
+    let message = STATS_SAVE_ERROR_FALLBACK;
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const translated = window.i18n.t('gameStatsSaveError');
+      if (translated && translated !== 'gameStatsSaveError') message = translated;
+    }
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+      return;
+    }
+    console.warn(message);
+  }
+
+  function failStatsSave(error) {
+    console.warn('Failed to save games_stats:', error || 'storage rejected the write');
+    // Drop the cache so the next read re-serves the value the storage bridge
+    // rolled back to, not the rejected stats.
+    statsCache = null;
+    statsCacheRaw = undefined;
+    showStatsSaveError();
+    return false;
+  }
+
+  // Resolves to whether the stats were persisted. The storage bridge's sync
+  // setItem() accepts chrome.storage writes optimistically and reports
+  // failures later, so use setItemAsync() and check its result.
   function saveStats(stats) {
+    let serialized;
     try {
-      const serialized = JSON.stringify(stats);
-      localStorage.setItem(STATS_KEY, serialized);
+      serialized = JSON.stringify(stats);
+    } catch (e) {
+      return Promise.resolve(failStatsSave(e));
+    }
+
+    if (typeof localStorage.setItemAsync === 'function') {
+      let pending;
+      try {
+        pending = localStorage.setItemAsync(STATS_KEY, serialized);
+      } catch (e) {
+        return Promise.resolve(failStatsSave(e));
+      }
+      // The bridge updated its cache synchronously; mirror that until the
+      // write settles.
       statsCache = stats;
       statsCacheRaw = serialized;
-    } catch (e) {
-      console.warn('Failed to save games_stats:', e);
-      statsCache = null;
-      statsCacheRaw = undefined;
+      return Promise.resolve(pending).then(
+        (persisted) => (persisted === true ? true : failStatsSave()),
+        failStatsSave
+      );
     }
+
+    try {
+      // Native Storage#setItem returns void and throws on failure.
+      localStorage.setItem(STATS_KEY, serialized);
+    } catch (e) {
+      return Promise.resolve(failStatsSave(e));
+    }
+    statsCache = stats;
+    statsCacheRaw = serialized;
+    return Promise.resolve(true);
   }
 
   function loadMRU() {
@@ -207,23 +264,88 @@
     return registeredGames[id] || null;
   }
 
+  // Stats writes are serialized so each one is confirmed (or rolled back by
+  // the storage bridge) before the next starts. Each queued write carries an
+  // updater that is applied to the *stored* stats when that write runs, so a
+  // write is never derived from another write's unconfirmed (possibly later
+  // rejected) values. Reads overlay queued updaters for an optimistic view;
+  // the write in flight is already reflected in the bridge's cache.
+  let pendingStatsUpdates = [];
+  let statsWriteChain = Promise.resolve();
+  let statsWritesInFlight = 0;
+
+  function toUpdater(updates) {
+    if (typeof updates === 'function') return updates;
+    const delta = { ...updates };
+    return () => delta;
+  }
+
+  function applyUpdater(all, entry) {
+    const current = all[entry.id] || {};
+    const result = entry.updater({ ...current });
+    return { ...current, ...(result && typeof result === 'object' ? result : {}) };
+  }
+
+  function viewStats() {
+    const base = loadStats();
+    const queued = pendingStatsUpdates.filter((entry) => !entry.started);
+    if (queued.length === 0) return base;
+    const view = { ...base };
+    queued.forEach((entry) => {
+      try {
+        view[entry.id] = applyUpdater(view, entry);
+      } catch (e) {
+        console.warn('Failed to preview pending games_stats update:', e);
+      }
+    });
+    return view;
+  }
+
   function getStats(id) {
-    const all = loadStats();
+    const all = viewStats();
     return all[id] || {};
   }
 
   function getAllStats() {
-    return loadStats();
+    return viewStats();
   }
 
   function getAllSaves() {
     return loadSaves();
   }
 
+  // `updates` is either a partial stats object or an updater function
+  // (storedStats) => partial stats. Resolves to whether the write persisted.
   function updateStats(id, updates) {
-    const all = loadStats();
-    all[id] = { ...all[id], ...updates };
-    saveStats(all);
+    const entry = { id, updater: toUpdater(updates), started: false };
+    pendingStatsUpdates.push(entry);
+
+    const settle = (saved) => {
+      pendingStatsUpdates = pendingStatsUpdates.filter((pending) => pending !== entry);
+      return saved;
+    };
+
+    const run = () => {
+      entry.started = true;
+      let all;
+      try {
+        // Stored state only: earlier writes have settled, and failures have
+        // already been rolled back by the bridge.
+        all = { ...loadStats() };
+        all[id] = applyUpdater(all, entry);
+      } catch (e) {
+        return Promise.resolve(settle(failStatsSave(e)));
+      }
+      return saveStats(all).then(settle);
+    };
+
+    const write = statsWritesInFlight === 0 ? run() : statsWriteChain.then(run);
+    statsWritesInFlight += 1;
+    statsWriteChain = write.then(
+      () => { statsWritesInFlight -= 1; },
+      () => { statsWritesInFlight -= 1; }
+    );
+    return write;
   }
 
   // ===================== Lifecycle =====================
@@ -407,6 +529,10 @@
     launchOrder = [];
     statsCache = null;
     statsCacheRaw = undefined;
+    pendingStatsUpdates = [];
+    statsWriteChain = Promise.resolve();
+    statsWritesInFlight = 0;
+    lastStatsToastAt = -Infinity;
     mruCache = null;
     mruCacheRaw = undefined;
     savesCache = null;

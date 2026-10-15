@@ -215,14 +215,14 @@
       rotationTimer = setTimeout(function () {
         advanceBackground();
         rotationTimer = window.VisibilityInterval
-          ? new window.VisibilityInterval(function () { advanceBackground(); }, intervalMs, false)
+          ? new window.VisibilityInterval(function () { advanceBackground(); }, intervalMs, false, false)
           : setInterval(function () { advanceBackground(); }, intervalMs);
       }, initialDelay);
     } else {
       if (window.VisibilityInterval) {
         rotationTimer = new window.VisibilityInterval(function () {
           advanceBackground();
-        }, intervalMs, false);
+        }, intervalMs, false, false);
       } else {
         rotationTimer = setInterval(function () {
           advanceBackground();

@@ -524,6 +524,47 @@ describe('VisibilityInterval', () => {
       }
     });
   });
+
+  it('does not invoke the callback immediately on resume when runOnResume is false', () => {
+    vi.useFakeTimers();
+
+    const originalHiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
+    const callback = vi.fn();
+    let interval;
+
+    try {
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      interval = new VisibilityInterval(callback, 1000, false, false);
+
+      expect(callback).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1000);
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      // Resume restarts the interval without an immediate sync call.
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(1000);
+      expect(callback).toHaveBeenCalledTimes(2);
+    } finally {
+      if (interval && typeof interval.destroy === 'function') {
+        interval.destroy();
+      }
+
+      if (originalHiddenDescriptor) {
+        Object.defineProperty(document, 'hidden', originalHiddenDescriptor);
+      } else {
+        delete document.hidden;
+      }
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('visibilityManager', () => {
