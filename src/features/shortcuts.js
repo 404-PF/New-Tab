@@ -121,7 +121,25 @@
       } catch (e) {
         return Promise.resolve(fail(e));
       }
-      return Promise.resolve(pending).then((result) => finish(result === true), fail);
+      let failed = false;
+      return Promise.resolve(pending)
+        .then((result) => finish(result === true), (e) => {
+          failed = true;
+          return fail(e);
+        })
+        .catch((e) => {
+          // finish() itself threw (e.g. while rendering); never leak an unhandled
+          // rejection from the click handler, and show the toast at most once.
+          console.warn('Failed to reset shortcuts:', STORAGE_KEY, e);
+          if (!failed) {
+            try {
+              showShortcutSaveError();
+            } catch (toastError) {
+              console.warn('Failed to show shortcut save error:', toastError);
+            }
+          }
+          return false;
+        });
     }
 
     try {

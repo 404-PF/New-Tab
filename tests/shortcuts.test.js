@@ -593,6 +593,54 @@ describe('Shortcuts - save failure handling', () => {
     expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('/');
   });
 
+  it('resolves false and toasts once when finishing the reset throws', async () => {
+    const renderSpy = vi.spyOn(document, 'getElementById').mockImplementation(() => {
+      throw new Error('render exploded');
+    });
+
+    try {
+      const result = await Shortcuts.reset();
+
+      expect(result).toBe(false);
+      expect(showToast).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    } finally {
+      renderSpy.mockRestore();
+    }
+  });
+
+  it('rolls back and toasts once when the localStorage fallback in removeItemAsync fails', async () => {
+    localStorage.setItem('customShortcuts', JSON.stringify({ focusSearch: 'X' }));
+    Shortcuts.renderShortcutsSection();
+
+    const originalLocal = chrome.storage.local;
+    chrome.storage.local = undefined;
+    // The bridge mirrors to the native Storage when chrome.storage.local is absent.
+    const nativeSetItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('native quota exceeded');
+    });
+    const nativeRemoveItem = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('native storage unavailable');
+    });
+
+    try {
+      const result = await Shortcuts.reset();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(nativeSetItem.mock.calls.length + nativeRemoveItem.mock.calls.length).toBeGreaterThan(0);
+      expect(result).toBe(false);
+      expect(localStorage.getItem('customShortcuts')).toBe(JSON.stringify({ focusSearch: 'X' }));
+      expect(Shortcuts.load().focusSearch).toBe('X');
+      expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('X');
+      expect(showToast).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    } finally {
+      nativeSetItem.mockRestore();
+      nativeRemoveItem.mockRestore();
+      chrome.storage.local = originalLocal;
+    }
+  });
+
   it('treats a key that survives a sync removeItem as a failed reset', async () => {
     localStorage.setItem('customShortcuts', JSON.stringify({ focusSearch: 'X' }));
     Shortcuts.renderShortcutsSection();
