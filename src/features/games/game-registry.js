@@ -48,7 +48,14 @@
     }
   }
 
+  // Coalesce bursts: several failed writes in quick succession show one toast.
+  const STATS_TOAST_COALESCE_MS = 2000;
+  let lastStatsToastAt = -Infinity;
+
   function showStatsSaveError() {
+    const now = Date.now();
+    if (now - lastStatsToastAt < STATS_TOAST_COALESCE_MS) return;
+    lastStatsToastAt = now;
     let message = STATS_SAVE_ERROR_FALLBACK;
     if (window.i18n && typeof window.i18n.t === 'function') {
       const translated = window.i18n.t('gameStatsSaveError');
@@ -258,20 +265,38 @@
   }
 
   // Stats writes are serialized so each one is confirmed (or rolled back by
-  // the storage bridge) before the next starts. Otherwise two overlapping
-  // failed writes could leave the bridge restoring the first rejected value.
-  // Queued updates are kept as deltas and merged onto the confirmed stats at
-  // write time; reads overlay them so callers still see their own updates.
+  // the storage bridge) before the next starts. Each queued write carries an
+  // updater that is applied to the *stored* stats when that write runs, so a
+  // write is never derived from another write's unconfirmed (possibly later
+  // rejected) values. Reads overlay queued updaters for an optimistic view;
+  // the write in flight is already reflected in the bridge's cache.
   let pendingStatsUpdates = [];
   let statsWriteChain = Promise.resolve();
   let statsWritesInFlight = 0;
 
+  function toUpdater(updates) {
+    if (typeof updates === 'function') return updates;
+    const delta = { ...updates };
+    return () => delta;
+  }
+
+  function applyUpdater(all, entry) {
+    const current = all[entry.id] || {};
+    const result = entry.updater({ ...current });
+    return { ...current, ...(result && typeof result === 'object' ? result : {}) };
+  }
+
   function viewStats() {
     const base = loadStats();
-    if (pendingStatsUpdates.length === 0) return base;
+    const queued = pendingStatsUpdates.filter((entry) => !entry.started);
+    if (queued.length === 0) return base;
     const view = { ...base };
-    pendingStatsUpdates.forEach((entry) => {
-      view[entry.id] = { ...view[entry.id], ...entry.updates };
+    queued.forEach((entry) => {
+      try {
+        view[entry.id] = applyUpdater(view, entry);
+      } catch (e) {
+        console.warn('Failed to preview pending games_stats update:', e);
+      }
     });
     return view;
   }
@@ -289,26 +314,37 @@
     return loadSaves();
   }
 
+  // `updates` is either a partial stats object or an updater function
+  // (storedStats) => partial stats. Resolves to whether the write persisted.
   function updateStats(id, updates) {
-    const entry = { id, updates: { ...updates } };
+    const entry = { id, updater: toUpdater(updates), started: false };
     pendingStatsUpdates.push(entry);
 
+    const settle = (saved) => {
+      pendingStatsUpdates = pendingStatsUpdates.filter((pending) => pending !== entry);
+      return saved;
+    };
+
     const run = () => {
-      // Copy before mutating: loadStats() hands back the live cache object, and
-      // a failed write must leave that cache at its previous state.
-      const all = { ...loadStats() };
-      all[id] = { ...all[id], ...entry.updates };
-      return saveStats(all).then((saved) => {
-        pendingStatsUpdates = pendingStatsUpdates.filter((pending) => pending !== entry);
-        return saved;
-      });
+      entry.started = true;
+      let all;
+      try {
+        // Stored state only: earlier writes have settled, and failures have
+        // already been rolled back by the bridge.
+        all = { ...loadStats() };
+        all[id] = applyUpdater(all, entry);
+      } catch (e) {
+        return Promise.resolve(settle(failStatsSave(e)));
+      }
+      return saveStats(all).then(settle);
     };
 
     const write = statsWritesInFlight === 0 ? run() : statsWriteChain.then(run);
     statsWritesInFlight += 1;
-    statsWriteChain = write.then(() => {
-      statsWritesInFlight -= 1;
-    });
+    statsWriteChain = write.then(
+      () => { statsWritesInFlight -= 1; },
+      () => { statsWritesInFlight -= 1; }
+    );
     return write;
   }
 
@@ -496,6 +532,7 @@
     pendingStatsUpdates = [];
     statsWriteChain = Promise.resolve();
     statsWritesInFlight = 0;
+    lastStatsToastAt = -Infinity;
     mruCache = null;
     mruCacheRaw = undefined;
     savesCache = null;

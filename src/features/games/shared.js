@@ -182,9 +182,9 @@
   window.gamesHelpers.updateStatsWith = function (gameId, fn) {
     if (!window.GameRegistry || typeof fn !== 'function') return;
     try {
-      const stats = window.GameRegistry.getStats(gameId) || {};
-      const updates = fn(stats) || {};
-      Promise.resolve(window.GameRegistry.updateStats(gameId, updates)).then((saved) => {
+      // Pass the updater itself so it runs against the stored stats at write
+      // time, never against another write's unconfirmed values.
+      Promise.resolve(window.GameRegistry.updateStats(gameId, (stats) => fn(stats || {}) || {})).then((saved) => {
         if (!saved) {
           console.warn('gamesHelpers.updateStatsWith: failed to persist stats for', gameId);
         }

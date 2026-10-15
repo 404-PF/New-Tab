@@ -347,7 +347,8 @@ describe('GameRegistry stats persistence (#783)', () => {
 
     expect(window.GameRegistry.getStats('race-game')).toEqual({ highScore: 1 });
     expect(JSON.parse(localStorage.getItem('games_stats'))['race-game']).toEqual({ highScore: 1 });
-    expect(showToast).toHaveBeenCalledTimes(2);
+    // Both failures happen in one burst, so the toast is coalesced.
+    expect(showToast).toHaveBeenCalledTimes(1);
   });
 
   it('keeps a later write that succeeds after an earlier queued write fails', async () => {
@@ -377,6 +378,80 @@ describe('GameRegistry stats persistence (#783)', () => {
     // The rejected high score is not carried into the later successful write.
     expect(window.GameRegistry.getStats('race-ok-game')).toEqual({ highScore: 1, gamesPlayed: 2 });
     expect(JSON.parse(localStorage.getItem('games_stats'))['race-ok-game']).toEqual({ highScore: 1, gamesPlayed: 2 });
+  });
+
+  function failFirstChromeSet() {
+    const originalSet = chrome.storage.local.set;
+    let calls = 0;
+    chrome.storage.local.set = (items, callback) => {
+      calls += 1;
+      if (calls === 1) {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        if (callback) callback();
+        chrome.runtime.lastError = null;
+        return Promise.resolve();
+      }
+      return originalSet.call(chrome.storage.local, items, callback);
+    };
+    return () => {
+      chrome.storage.local.set = originalSet;
+    };
+  }
+
+  it('never persists a rejected score through a later updateStatsWith write on the same key', async () => {
+    await window.GameRegistry.updateStats('same-key-game', { highScore: 1, gamesPlayed: 1 });
+
+    const updater = (score) => (stats) => ({
+      highScore: Math.max(stats.highScore || 0, score),
+      gamesPlayed: (stats.gamesPlayed || 0) + 1
+    });
+
+    const restore = failFirstChromeSet();
+    try {
+      window.gamesHelpers.updateStatsWith('same-key-game', updater(100));
+      window.gamesHelpers.updateStatsWith('same-key-game', updater(5));
+      for (let i = 0; i < 5; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    } finally {
+      restore();
+    }
+
+    // Write 1 (highScore 100) was rejected; write 2 applies only its own
+    // updater to the stored stats.
+    const stored = JSON.parse(localStorage.getItem('games_stats'))['same-key-game'];
+    expect(stored).toEqual({ highScore: 5, gamesPlayed: 2 });
+    expect(window.GameRegistry.getStats('same-key-game')).toEqual({ highScore: 5, gamesPlayed: 2 });
+  });
+
+  it('cleans up after a synchronous updater throw and keeps later queued writes running', async () => {
+    await window.GameRegistry.updateStats('throw-queue-game', { highScore: 1 });
+
+    const inFlight = window.GameRegistry.updateStats('throw-queue-game', { gamesPlayed: 1 });
+    const throwing = window.GameRegistry.updateStats('throw-queue-game', () => {
+      throw new Error('updater exploded');
+    });
+    const later = window.GameRegistry.updateStats('throw-queue-game', { highScore: 9 });
+
+    await expect(inFlight).resolves.toBe(true);
+    await expect(throwing).resolves.toBe(false);
+    await expect(later).resolves.toBe(true);
+
+    expect(window.GameRegistry.getStats('throw-queue-game')).toEqual({ highScore: 9, gamesPlayed: 1 });
+    expect(JSON.parse(localStorage.getItem('games_stats'))['throw-queue-game']).toEqual({ highScore: 9, gamesPlayed: 1 });
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces a burst of failed stats writes into a single toast', async () => {
+    const restore = failChromeSet();
+    try {
+      const writes = [1, 2, 3].map((n) => window.GameRegistry.updateStats('burst-game', { highScore: n }));
+      await expect(Promise.all(writes)).resolves.toEqual([false, false, false]);
+    } finally {
+      restore();
+    }
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(window.GameRegistry.getStats('burst-game')).toEqual({});
   });
 
   it('treats a setItemAsync result of false as a failed save', async () => {
