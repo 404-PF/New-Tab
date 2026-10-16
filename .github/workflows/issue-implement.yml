@@ -321,20 +321,20 @@ jobs:
           # Pushing and opening the PR as the user, not github-actions[bot],
           # lets CI and review bots run on the PR. Only this step sees it; it
           # is never exported to OpenCode or the lint/test steps.
-          PR_TOKEN: ${{ secrets.PR_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
           LINT_OUTCOME: ${{ steps.lint.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
         run: |
           set -euo pipefail
-          if [ -z "${PR_TOKEN:-}" ]; then
-            echo '::error::PR_TOKEN secret is not set; add a fine-grained PAT with Contents+Pull requests read/write'
+          if [ -z "${GH_PAT:-}" ]; then
+            echo '::error::GH_PAT secret is not set; add a fine-grained PAT with Contents+Pull requests read/write'
             exit 1
           fi
           # Keep the token as a plain shell variable only, so no child process
           # (git, sed, gh issue view) inherits it.
-          export -n PR_TOKEN
+          export -n GH_PAT
           # The OpenCode and npm phases could have edited .git/config or
           # added hooks. Disable hooks for EVERY git command in this step via
           # env config (highest precedence), and fail closed if local config
@@ -342,7 +342,7 @@ jobs:
           export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0='core.hooksPath' GIT_CONFIG_VALUE_0='/dev/null'
           if git config --local --name-only --get-regexp '^(url\.|http\.|credential\.|include\.|includeif\.|remote\.|core\.(sshcommand|askpass|gitproxy|fsmonitor|hookspath))' \
             | grep -vxE 'remote\.origin\.(url|fetch)'; then
-            echo '::error::Unexpected git config in the workspace; refusing to use PR_TOKEN.'
+            echo '::error::Unexpected git config in the workspace; refusing to use GH_PAT.'
             exit 1
           fi
           # Push to an explicit canonical URL, never to a mutable remote.
@@ -352,7 +352,7 @@ jobs:
           # written to .git/config and no token appears in a URL or argv.
           # checkout used persist-credentials:false, so no stale header
           # competes. The base64 value is masked before any use.
-          PR_AUTH_B64="$(printf 'x-access-token:%s' "$PR_TOKEN" | base64 -w0)"
+          PR_AUTH_B64="$(printf 'x-access-token:%s' "$GH_PAT" | base64 -w0)"
           echo "::add-mask::$PR_AUTH_B64"
           git_pr() {
             GIT_CONFIG_COUNT=3 \
@@ -416,7 +416,7 @@ jobs:
             echo 'Validation failures (if any above) do not block this PR; reviewers please check CI.'
           } > "$GITHUB_WORKSPACE/.tmp/pr-body.md"
           # Open the PR as the token owner; GITHUB_TOKEN stays for the rest.
-          PR_URL="$(GH_TOKEN="$PR_TOKEN" gh pr create --repo "$GH_REPO" --base main --head "$BRANCH" \
+          PR_URL="$(GH_TOKEN="$GH_PAT" gh pr create --repo "$GH_REPO" --base main --head "$BRANCH" \
             --title "$PREFIX: implement #$ISSUE_NUMBER $TITLE" \
             --body-file "$GITHUB_WORKSPACE/.tmp/pr-body.md")"
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"

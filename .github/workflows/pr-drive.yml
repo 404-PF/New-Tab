@@ -56,11 +56,11 @@ jobs:
           # collaborator permissions, so without this every non-owner would be
           # denied. This job never runs the agent, and the drive job does not
           # receive this env.
-          PR_TOKEN: ${{ secrets.PR_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           set -euo pipefail
           # Keep the PAT a plain shell variable; only the one gh call gets it.
-          export -n PR_TOKEN
+          export -n GH_PAT
           # sed -n without q drains the input (head would SIGPIPE printf).
           first_line="$(printf '%s' "$COMMENT_BODY" | sed -n '1s/[[:space:]]*$//p')"
           case "$first_line" in
@@ -74,14 +74,14 @@ jobs:
 
           # OWNER is trusted via the event payload. MEMBER/COLLABORATOR (job
           # if pre-filter) must also have admin/maintain/write, looked up with
-          # PR_TOKEN; triage is deliberately NOT enough because /drive pushes
-          # code. A missing PR_TOKEN or failed lookup denies (fail closed).
+          # GH_PAT; triage is deliberately NOT enough because /drive pushes
+          # code. A missing GH_PAT or failed lookup denies (fail closed).
           AUTHORIZED=false
           if [ "$AUTHOR_ASSOCIATION" = 'OWNER' ]; then
             AUTHORIZED=true
-          elif [ -z "${PR_TOKEN:-}" ]; then
-            echo 'PR_TOKEN is not set; cannot verify non-owner permission, denying /drive request.'
-          elif PERMISSION="$(GH_TOKEN="$PR_TOKEN" gh api "repos/$GITHUB_REPOSITORY/collaborators/$COMMENT_AUTHOR/permission" --jq .permission 2>/dev/null)"; then
+          elif [ -z "${GH_PAT:-}" ]; then
+            echo 'GH_PAT is not set; cannot verify non-owner permission, denying /drive request.'
+          elif PERMISSION="$(GH_TOKEN="$GH_PAT" gh api "repos/$GITHUB_REPOSITORY/collaborators/$COMMENT_AUTHOR/permission" --jq .permission 2>/dev/null)"; then
             echo "Permission for $COMMENT_AUTHOR: $PERMISSION"
             case "$PERMISSION" in
               admin|maintain|write) AUTHORIZED=true ;;
@@ -294,7 +294,7 @@ jobs:
           echo "Unresolved threads: $(jq length "$CTX/threads.json"); failing check sections: $FAILING_CHECKS"
 
       # The round loop. Only OPENCODE_API_KEY is in this step's env: no
-      # GITHUB_TOKEN, no PR_TOKEN. Commits from a rebase stay local; the push
+      # GITHUB_TOKEN, no GH_PAT. Commits from a rebase stay local; the push
       # step below publishes them.
       - name: Drive rounds with OpenCode
         id: loop
@@ -550,7 +550,7 @@ jobs:
             echo "test=$TEST"
           } >> "$GITHUB_OUTPUT"
 
-      # PR_TOKEN is only in this step and the thread step. Agent edits are
+      # GH_PAT is only in this step and the thread step. Agent edits are
       # committed here as the PAT owner. Push is a plain fast-forward, or
       # --force-with-lease against the head SHA fetched at the start when the
       # branch was rebased.
@@ -560,25 +560,25 @@ jobs:
         env:
           # User-owned fine-grained PAT: Contents read/write (plus Workflows to
           # push .github edits) and Pull requests read/write for the thread step.
-          PR_TOKEN: ${{ secrets.PR_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
           REBASED: ${{ steps.loop.outputs.rebased }}
           ROUNDS: ${{ steps.loop.outputs.rounds }}
         run: |
           set -euo pipefail
-          if [ -z "${PR_TOKEN:-}" ]; then
-            echo '::error::PR_TOKEN secret is not set; add a fine-grained PAT with Contents and Pull requests read/write.'
+          if [ -z "${GH_PAT:-}" ]; then
+            echo '::error::GH_PAT secret is not set; add a fine-grained PAT with Contents and Pull requests read/write.'
             exit 1
           fi
-          export -n PR_TOKEN
+          export -n GH_PAT
           export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0='core.hooksPath' GIT_CONFIG_VALUE_0='/dev/null'
           if git config --local --name-only --get-regexp '^(url\.|http\.|credential\.|include\.|includeif\.|remote\.|core\.(sshcommand|askpass|gitproxy|fsmonitor|hookspath))' \
             | grep -vxE 'remote\.origin\.(url|fetch)'; then
-            echo '::error::Unexpected git config in the workspace; refusing to use PR_TOKEN.'
+            echo '::error::Unexpected git config in the workspace; refusing to use GH_PAT.'
             exit 1
           fi
           REPO_URL="https://github.com/${GH_REPO}.git"
-          PR_AUTH_B64="$(printf 'x-access-token:%s' "$PR_TOKEN" | base64 -w0)"
+          PR_AUTH_B64="$(printf 'x-access-token:%s' "$GH_PAT" | base64 -w0)"
           echo "::add-mask::$PR_AUTH_B64"
           git_pr() {
             GIT_CONFIG_COUNT=3 \
@@ -595,7 +595,7 @@ jobs:
           if ! git diff --cached --quiet; then
             # Commit as the PAT owner. gh is a separate process; the token goes
             # only into its environment for this one call.
-            USER_JSON="$(GH_TOKEN="$PR_TOKEN" gh api user)"
+            USER_JSON="$(GH_TOKEN="$GH_PAT" gh api user)"
             LOGIN="$(jq -r .login <<<"$USER_JSON")"
             UID_NUM="$(jq -r .id <<<"$USER_JSON")"
             EMAIL="$(jq -r '.email // empty' <<<"$USER_JSON")"
@@ -627,10 +627,10 @@ jobs:
         id: threads
         if: steps.push.outcome == 'success'
         env:
-          PR_TOKEN: ${{ secrets.PR_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           set -euo pipefail
-          export -n PR_TOKEN
+          export -n GH_PAT
           CTX="$GITHUB_WORKSPACE/.tmp"
           ADDRESSED="$CTX/addressed.tsv"
           RESOLVED=0
@@ -646,7 +646,7 @@ jobs:
               jq -e --arg id "$id" 'any(.[]; .id == $id)' "$CTX/threads.json" >/dev/null || { echo "Skipping unknown thread id."; continue; }
               jq -n --arg q "$QUERY" --arg id "$id" --arg body "Addressed by /drive: ${reply:0:1000}" \
                 '{query: $q, variables: {id: $id, body: $body}}' > "$CTX/thread-req.json"
-              if GH_TOKEN="$PR_TOKEN" gh api graphql --input "$CTX/thread-req.json" >/dev/null; then
+              if GH_TOKEN="$GH_PAT" gh api graphql --input "$CTX/thread-req.json" >/dev/null; then
                 RESOLVED=$((RESOLVED + 1))
               else
                 echo "::warning::Failed to reply/resolve thread $id."
