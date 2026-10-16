@@ -99,15 +99,22 @@ class UpdateChecker {
     }
 
     const normalizedVersion = version.trim().replace(/^v/i, '');
-    const match = normalizedVersion.match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/);
+    const match = normalizedVersion.match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/);
 
     if (!match) {
       return null;
     }
 
+    const coreParts = [match[1], match[2], match[3], match[4]]
+      .filter((part) => part !== undefined)
+      .map(Number);
+    while (coreParts.length < 3) {
+      coreParts.push(0);
+    }
+
     return {
-      coreParts: [Number(match[1]), Number(match[2]), Number(match[3])],
-      prereleaseParts: match[4] ? match[4].split('.') : []
+      coreParts,
+      prereleaseParts: match[5] ? match[5].split('.') : []
     };
   }
 
@@ -179,6 +186,7 @@ class UpdateChecker {
     if (!this.shouldCheck()) return null;
 
     const latestRelease = await this.fetchLatestRelease();
+    this.setLastCheckTime();
     if (!latestRelease) return null;
 
     const comparison = this.compareVersions(latestRelease.version, this.currentVersion);
@@ -189,8 +197,6 @@ class UpdateChecker {
       });
       return null;
     }
-
-    this.setLastCheckTime();
 
     if (comparison > 0) {
       // New version available
