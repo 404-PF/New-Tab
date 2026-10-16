@@ -199,8 +199,7 @@ jobs:
                 "gh *": "deny",
                 "ls *": "allow",
                 "wc *": "allow",
-                "date": "allow",
-                "date *": "allow"
+                "date -u": "allow"
               }
             }
         run: |
@@ -325,24 +324,26 @@ jobs:
           # are skipped; every complete line is still considered. A whole-file
           # JSON array is accepted as a fallback.
           raw = []
+          # Read bytes and decode each line on its own, so a multibyte
+          # character cut by a timeout only loses that one line.
           try:
-              with open(proposed_path, encoding='utf-8') as fh:
-                  text = fh.read()
+              with open(proposed_path, 'rb') as fh:
+                  data = fh.read()
           except OSError:
-              text = ''
+              data = b''
               print('::warning::proposed-issues.jsonl is missing; nothing to file.')
           try:
-              whole = json.loads(text) if text.strip().startswith('[') else None
+              whole = json.loads(data.decode('utf-8')) if data.strip().startswith(b'[') else None
           except ValueError:
               whole = None
           if isinstance(whole, list):
               raw = whole
           else:
-              for n, ln in enumerate(text.splitlines(), 1):
+              for n, ln in enumerate(data.splitlines(), 1):
                   if not ln.strip():
                       continue
                   try:
-                      raw.append(json.loads(ln))
+                      raw.append(json.loads(ln.decode('utf-8')))
                   except ValueError:
                       print(f'Skipping unparseable line {n} of the proposals file.')
 
