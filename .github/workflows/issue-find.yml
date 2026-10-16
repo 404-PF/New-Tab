@@ -95,8 +95,12 @@ jobs:
           # 6-hour cooldown from the newest issue carrying the marker. Manual
           # dispatch overrides it.
           if [ "$EVENT_NAME" != 'workflow_dispatch' ]; then
-            LAST="$(gh api "repos/$GH_REPO/issues?state=all&sort=created&direction=desc&per_page=100" \
-              --jq "[.[] | select(.pull_request == null) | select((.body // \"\") | contains(\"$MARKER\"))][0].created_at // empty")"
+            # GraphQL issues() with no states filter covers every state and
+            # never includes PRs.
+            # shellcheck disable=SC2016 # GraphQL variables, not shell
+            LAST="$(gh api graphql -F owner="${GH_REPO%%/*}" -F name="${GH_REPO#*/}" \
+              -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { issues(first: 100, orderBy: {field: CREATED_AT, direction: DESC}) { nodes { createdAt body } } } }' \
+              | jq -r --arg m "$MARKER" '[.data.repository.issues.nodes[] | select((.body // "") | contains($m))][0].createdAt // empty')"
             if [ -n "$LAST" ]; then
               AGE=$(( $(date +%s) - $(date -d "$LAST" +%s) ))
               [ "$AGE" -ge "$COOLDOWN_SECONDS" ] || skip "Cooldown: last issue-find issue was filed $((AGE / 60)) min ago."
@@ -154,8 +158,8 @@ jobs:
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/.tmp" "$RUNNER_TEMP/issue-find"
           STATE="$RUNNER_TEMP/issue-find"
-          gh issue list --repo "$GH_REPO" --state open --limit 500 --json number,title > "$STATE/open.json"
-          gh issue list --repo "$GH_REPO" --state closed --limit 200 --json number,title > "$STATE/closed.json"
+          gh issue list --repo "$GH_REPO" --state open --limit 1000 --json number,title > "$STATE/open.json"
+          gh issue list --repo "$GH_REPO" --state closed --limit 1000 --json number,title > "$STATE/closed.json"
           jq -s 'add | map(.title)' "$STATE/open.json" "$STATE/closed.json" > "$STATE/existing-titles.json"
           gh label list --repo "$GH_REPO" --limit 200 --json name --jq '[.[].name]' > "$STATE/labels.json"
           {
@@ -300,6 +304,8 @@ jobs:
               lines = committed(f)
               if lines is None:
                   return f'evidence file not in repo: {f}'
+              if line < 1 or line > len(lines):
+                  return f'evidence line {line} out of range for {f} ({len(lines)} lines)'
               s = norm(snip)
               if len(s) < 4:
                   return 'snippet too short'
