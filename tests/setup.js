@@ -645,6 +645,16 @@ document.body.appendChild(createStubElement('div', 'calendar-days'));
 document.body.appendChild(createStubElement('button', 'prev-month'));
 document.body.appendChild(createStubElement('button', 'next-month'));
 
+// Custom date picker stubs (issue #810): without these, CustomDatePicker
+// binds with a null trigger and no click listener is ever attached.
+document.body.appendChild(createStubElement('button', 'date-picker-trigger'));
+document.body.appendChild(createStubElement('span', 'selected-date-text'));
+document.body.appendChild(createStubElement('input', 'todo-due-date'));
+document.body.appendChild(createStubElement('input', 'todo-due-time'));
+document.body.appendChild(createStubElement('div', 'custom-calendar'));
+document.body.appendChild(createStubElement('button', 'clear-date'));
+document.body.appendChild(createStubElement('button', 'today-date'));
+
 // Search provider bar stub
 const providerBar = document.createElement('div');
 providerBar.id = 'search-provider-bar';

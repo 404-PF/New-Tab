@@ -158,6 +158,15 @@
   }
 
   // Parse a YYYY-MM-DD date string as a local-time Date (avoids UTC shift).
+  // A YYYY-MM-DD string that is also a real calendar date (rejects 2026-02-31,
+  // which Date would silently roll over to March).
+  function isValidDueDateString(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+  }
+
   function parseLocalDate(dateString) {
     const [year, month, day] = dateString.split('-').map(Number);
     return new Date(year, month - 1, day);
@@ -758,6 +767,16 @@
         needsMigration = true;
       }
       if (todo.dueTime && !todo.dueDate) {
+        todo.dueTime = null;
+        needsMigration = true;
+      }
+      if (todo.dueDate !== null && todo.dueDate !== undefined && !isValidDueDateString(todo.dueDate)) {
+        // A malformed stored dueDate (non-string, not YYYY-MM-DD, or not a
+        // real calendar date such as 2026-02-31) crashes or misdates
+        // parseLocalDate during the initial render, which used to abort
+        // initTodoModule before the date picker was bound (issue #810).
+        // Drop it the same way the import validator does.
+        todo.dueDate = null;
         todo.dueTime = null;
         needsMigration = true;
       }
@@ -2202,10 +2221,7 @@ function validateTodoData(data) {
     // with DUE_DATE_PATTERN and parseDueDate there). An empty string is present
     // but malformed, so reject it too; an absent date is null/undefined.
     if (item.dueDate !== null && item.dueDate !== undefined) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(item.dueDate)) return false;
-      const [year, month, day] = item.dueDate.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+      if (!isValidDueDateString(item.dueDate)) return false;
     }
     if (item.dueTime !== undefined && item.dueTime !== null && typeof item.dueTime !== 'string') return false;
     if (item.dueTime !== null && item.dueTime !== undefined) {
@@ -2456,7 +2472,7 @@ class CustomDatePicker {
 
     // Click outside to close
     document.addEventListener('click', (e) => {
-      if (this.isOpen && !this.trigger.contains(e.target) && !this.calendar.contains(e.target)) {
+      if (this.isOpen && !this.trigger?.contains(e.target) && !this.calendar?.contains(e.target)) {
         this.closeCalendar();
       }
     });
@@ -2480,7 +2496,7 @@ class CustomDatePicker {
       this.isOpen = true;
       this.calendar.classList.add('visible');
       this.renderCalendar();
-      this.trigger.classList.add('selected');
+      this.trigger?.classList.add('selected');
     }
   }
 
@@ -2488,7 +2504,7 @@ class CustomDatePicker {
     if (this.calendar) {
       this.isOpen = false;
       this.calendar.classList.remove('visible');
-      this.trigger.classList.remove('selected');
+      this.trigger?.classList.remove('selected');
     }
   }
 
@@ -2620,7 +2636,14 @@ window.addEventListener('languageChanged', () => {
 });
 
 function initTodoModule() {
-  initTodo();
+  // Bind the date picker independently of the rest of the todo module so a
+  // failure inside initTodo()'s load/render path cannot leave the due-date
+  // trigger without a click listener (issue #810).
+  try {
+    initTodo();
+  } catch (err) {
+    console.warn('Todo module failed to initialize:', err);
+  }
   initCustomDatePicker();
   syncDueTimeInputState();
 }

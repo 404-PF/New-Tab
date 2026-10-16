@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { injectScript } from './helpers/inject-script.js';
@@ -2505,5 +2505,169 @@ describe('Date picker month navigation', () => {
     picker = document.querySelector('.inline-date-picker');
     expect(picker.querySelector('.inline-calendar-month').textContent).toBe('February');
     expect(picker.querySelector('.inline-calendar-year').textContent).toBe('2026');
+  });
+});
+
+describe('Custom date picker open/close (issue #810)', () => {
+  const pickerIds = [
+    'date-picker-trigger', 'selected-date-text', 'todo-due-date', 'todo-due-time',
+    'custom-calendar', 'calendar-month', 'calendar-year', 'calendar-days',
+    'prev-month', 'next-month', 'clear-date', 'today-date'
+  ];
+  let removedStubs = [];
+  let pickerWrapper = null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15)); // Sep 15, 2026
+
+    // Swap the flat setup.js stubs for a nested tree mirroring New-Tab.html so
+    // trigger/calendar containment behaves like the real page (issue #810).
+    removedStubs = pickerIds
+      .map((id) => document.getElementById(id))
+      .filter(Boolean);
+    removedStubs.forEach((el) => el.remove());
+
+    pickerWrapper = document.createElement('div');
+    pickerWrapper.className = 'custom-date-picker';
+    pickerWrapper.innerHTML = `
+      <button type="button" id="date-picker-trigger" class="date-picker-trigger">
+        <span id="selected-date-text">Due Date</span>
+      </button>
+      <input type="hidden" id="todo-due-date" />
+      <div id="custom-calendar" class="custom-calendar">
+        <button type="button" id="prev-month"></button>
+        <span id="calendar-month"></span>
+        <span id="calendar-year"></span>
+        <button type="button" id="next-month"></button>
+        <div id="calendar-days"></div>
+        <button type="button" id="clear-date">Clear</button>
+        <button type="button" id="today-date">Today</button>
+      </div>
+      <input type="time" id="todo-due-time" disabled />
+    `;
+    document.body.appendChild(pickerWrapper);
+    window.initCustomDatePicker();
+  });
+
+  afterEach(() => {
+    pickerWrapper?.remove();
+    pickerWrapper = null;
+    removedStubs.forEach((el) => document.body.appendChild(el));
+    removedStubs = [];
+    vi.useRealTimers();
+  });
+
+  const getTrigger = () => document.getElementById('date-picker-trigger');
+  const getCalendar = () => document.getElementById('custom-calendar');
+  const click = (el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  it('clicking the due-date trigger opens the calendar and a second click closes it', () => {
+    const trigger = getTrigger();
+    const calendar = getCalendar();
+
+    click(trigger);
+    expect(calendar.classList.contains('visible')).toBe(true);
+    expect(trigger.classList.contains('selected')).toBe(true);
+    expect(document.getElementById('calendar-month').textContent).toBe('September');
+    expect(document.querySelectorAll('#calendar-days .calendar-day')).toHaveLength(42);
+
+    click(trigger);
+    expect(calendar.classList.contains('visible')).toBe(false);
+    expect(trigger.classList.contains('selected')).toBe(false);
+  });
+
+  it('Enter and Space on the trigger are not intercepted before native activation', () => {
+    const trigger = getTrigger();
+    const calendar = getCalendar();
+
+    ['Enter', ' '].forEach((key) => {
+      const keyEvent = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      trigger.dispatchEvent(keyEvent);
+      expect(keyEvent.defaultPrevented).toBe(false);
+    });
+
+    // jsdom does not synthesize click from key activation; simulate the
+    // browser's native button activation that would follow.
+    click(trigger);
+    expect(calendar.classList.contains('visible')).toBe(true);
+  });
+
+  it('selecting a day writes YYYY-MM-DD to the hidden input, updates the label, and closes', () => {
+    click(getTrigger());
+
+    const day = Array.from(document.querySelectorAll('#calendar-days .calendar-day'))
+      .find((el) => !el.classList.contains('other-month') && el.textContent === '15');
+    expect(day).toBeTruthy();
+    click(day);
+
+    expect(document.getElementById('todo-due-date').value).toBe('2026-09-15');
+    expect(document.getElementById('selected-date-text').textContent).toContain('Sep');
+    expect(getCalendar().classList.contains('visible')).toBe(false);
+  });
+
+  it('Today and Clear buttons set and reset the due date', () => {
+    click(getTrigger());
+    click(document.getElementById('today-date'));
+    expect(document.getElementById('todo-due-date').value).toBe('2026-09-15');
+    expect(getCalendar().classList.contains('visible')).toBe(false);
+
+    click(getTrigger());
+    click(document.getElementById('clear-date'));
+    expect(document.getElementById('todo-due-date').value).toBe('');
+    expect(document.getElementById('selected-date-text').textContent).toBe('Due Date');
+    expect(getCalendar().classList.contains('visible')).toBe(false);
+  });
+
+  it('calendar stays open on inside clicks and closes on outside clicks', () => {
+    const calendar = getCalendar();
+
+    click(getTrigger());
+    expect(calendar.classList.contains('visible')).toBe(true);
+
+    click(calendar);
+    expect(calendar.classList.contains('visible')).toBe(true);
+
+    click(document.body);
+    expect(calendar.classList.contains('visible')).toBe(false);
+  });
+
+  it('malformed stored dueDate no longer blocks initTodo or the picker', () => {
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'num', text: 'Numeric date', completed: false, dueDate: 20261015, createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'slash', text: 'Slash date', completed: false, dueDate: '12/31/2026', dueTime: '09:00', createdAt: '2026-01-01T00:00:00.000Z' }
+    ]));
+
+    // Before the fix this threw inside renderTodos -> isOverdue ->
+    // parseLocalDate and aborted initTodoModule before the picker was bound.
+    expect(() => initTodo()).not.toThrow();
+
+    const stored = loadTodos();
+    expect(stored).toHaveLength(2);
+    expect(stored[0].dueDate).toBeNull();
+    expect(stored[1].dueDate).toBeNull();
+    expect(stored[1].dueTime).toBeNull();
+
+    // The trigger still works after a dirty-data init.
+    click(getTrigger());
+    expect(getCalendar().classList.contains('visible')).toBe(true);
+  });
+
+  it('drops calendar-invalid stored due dates during migration but keeps real ones', () => {
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'feb31', text: 'Impossible date', completed: false, dueDate: '2026-02-31', dueTime: '09:00', createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'month13', text: 'Bad month', completed: false, dueDate: '2026-13-01', createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'leap', text: 'Leap day', completed: false, dueDate: '2028-02-29', dueTime: '10:30', createdAt: '2026-01-01T00:00:00.000Z' }
+    ]));
+
+    expect(() => initTodo()).not.toThrow();
+
+    const stored = loadTodos();
+    const byId = Object.fromEntries(stored.map((todo) => [todo.id, todo]));
+    expect(byId.feb31.dueDate).toBeNull();
+    expect(byId.feb31.dueTime).toBeNull();
+    expect(byId.month13.dueDate).toBeNull();
+    expect(byId.leap.dueDate).toBe('2028-02-29');
+    expect(byId.leap.dueTime).toBe('10:30');
   });
 });
