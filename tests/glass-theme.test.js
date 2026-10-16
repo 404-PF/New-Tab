@@ -185,8 +185,8 @@ describe('Light-theme frosted panel contrast', () => {
     const rule = css.match(/body\.light-theme \.notes-empty\s*\{([^}]*)\}/);
     expect(rule).not.toBeNull();
     expect(rule[1]).toMatch(/color:\s*var\(--glass-text-primary\)/);
-    const muted = css.match(/body\.light-theme :is\(([^)]*)\)\s*\{\s*color:\s*var\(--glass-text-muted\)/);
-    expect(muted).not.toBeNull();
-    expect(muted[1]).not.toMatch(/\.notes-empty/);
+    const mutedGroups = [...css.matchAll(/body\.light-theme :is\(([^)]*)\)\s*\{\s*color:\s*var\(--glass-text-muted\)/g)];
+    expect(mutedGroups.length).toBeGreaterThan(0);
+    mutedGroups.forEach((group) => expect(group[1]).not.toMatch(/\.notes-empty/));
   });
 });
