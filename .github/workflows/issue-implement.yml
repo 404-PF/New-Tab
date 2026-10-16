@@ -227,7 +227,7 @@ jobs:
 
       - name: Implement fix with OpenCode
         id: implement
-        # Below the 50-minute job timeout so lint, tests, the PR step, and
+        # Below the 120-minute job timeout so lint, tests, the PR step, and
         # the failure report still have time to run.
         timeout-minutes: 110
         env:
