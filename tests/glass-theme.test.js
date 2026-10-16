@@ -5,6 +5,14 @@ const GLASS_CSS_PATH = resolve(process.cwd(), 'css/glass.css');
 const APP_CSS_PATH = resolve(process.cwd(), 'css/app.css');
 const STYLE_CSS_PATH = resolve(process.cwd(), 'style.css');
 
+function channel(c) {
+  const s = c / 255;
+  return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+}
+function luminance([r, g, b]) {
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
 describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
   it('loads glass.css after app.css so light glass wins equal-specificity rules', () => {
     const style = readFileSync(STYLE_CSS_PATH, 'utf-8');
@@ -56,6 +64,36 @@ describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
     expect(lightweight).toBeTruthy();
     expect(lightweight[0]).toMatch(/background:\s*var\(--glass-surface-subtle\)/);
     expect(lightweight[0]).toMatch(/border-color:\s*var\(--glass-border-subtle\)/);
+    expect(lightweight[0]).toMatch(
+      /backdrop-filter:\s*blur\(var\(--glass-blur-card\)\)\s*saturate\(var\(--glass-saturate\)\)/
+    );
+    expect(lightweight[0]).toMatch(
+      /-webkit-backdrop-filter:\s*blur\(var\(--glass-blur-card\)\)/
+    );
+    expect(css).toMatch(
+      /^\s+backdrop-filter: blur\(var\(--glass-blur-card\)\) saturate\(var\(--glass-saturate\)\);$/m
+    );
+  });
+
+  it('mirrors the dark theme blur radii on light panels and cards', () => {
+    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
+    const appCss = readFileSync(APP_CSS_PATH, 'utf-8');
+
+    const darkPanelBlur = appCss.match(
+      /\.todo-section\s*\{[^}]*backdrop-filter:\s*blur\((\d+px)\)/
+    );
+    const darkCardBlur = appCss.match(
+      /\.todo-item\s*\{[^}]*backdrop-filter:\s*blur\((\d+px)\)/
+    );
+    const panelBlur = css.match(/--glass-blur:\s*(\d+px)/);
+    const cardBlur = css.match(/--glass-blur-card:\s*(\d+px)/);
+
+    expect(darkPanelBlur).not.toBeNull();
+    expect(darkCardBlur).not.toBeNull();
+    expect(panelBlur).not.toBeNull();
+    expect(cardBlur).not.toBeNull();
+    expect(panelBlur[1]).toBe(darkPanelBlur[1]);
+    expect(cardBlur[1]).toBe(darkCardBlur[1]);
   });
 
   it('styles light-theme notes inner controls (search, tag pills, add button, grip)', () => {
@@ -70,6 +108,9 @@ describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
 
     expect(css).toMatch(/body\.light-theme \.notes-section\s*\{[\s\S]*?radial-gradient[\s\S]*?var\(--glass-surface\)/);
     expect(css).toMatch(/body\.light-theme \.note-item\s*\{[^}]*background:\s*rgba\(255, 255, 255, 0\.42\)/);
+    expect(css).toMatch(
+      /body\.light-theme \.note-item\s*\{[^}]*backdrop-filter:\s*blur\(var\(--glass-blur-card\)\)/
+    );
     expect(css).toMatch(/body\.light-theme :is\(\.note-tag-filter-btn, \.note-tag-suggestion\)\s*\{/);
     expect(css).toMatch(/body\.light-theme \.note-grip\s*\{[^}]*color:\s*rgba\(15, 23, 42, 0\.5\)/);
   });
@@ -101,14 +142,6 @@ describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
 });
 
 describe('Light-theme note grip contrast', () => {
-  function channel(c) {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  }
-  function luminance([r, g, b]) {
-    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-  }
-
   it('keeps the drag-handle dots at 3:1 or better against a white note card', () => {
     const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
     const match = css.match(
@@ -128,5 +161,22 @@ describe('Light-theme notes search focus indicator', () => {
     const rule = css.match(/body\.light-theme \.notes-search-input:focus-visible,[\s\S]*?\{([\s\S]*?)\}/);
     expect(rule).not.toBeNull();
     expect(rule[1]).toMatch(/outline:\s*2px solid/);
+  });
+});
+
+describe('Light-theme frosted panel contrast', () => {
+  it('keeps primary text at WCAG AA against the frosted panel surface', () => {
+    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
+
+    const surface = css.match(
+      /@supports \(backdrop-filter: blur\(1px\)\)[\s\S]*?body\.light-theme\s*\{[\s\S]*?--glass-surface:\s*rgba\(255, 255, 255, ([\d.]+)\)/
+    );
+    expect(surface).not.toBeNull();
+    expect(css).toMatch(/--glass-text-primary:\s*#0f172a/);
+
+    const blended = 255 * Number(surface[1]);
+    const contrast =
+      (luminance([blended, blended, blended]) + 0.05) / (luminance([15, 23, 42]) + 0.05);
+    expect(contrast).toBeGreaterThanOrEqual(4.5);
   });
 });

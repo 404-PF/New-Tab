@@ -25,7 +25,8 @@
   --glass-focus-ring: 0 0 0 3px rgba(33, 150, 243, 0.3);
   --glass-danger-ring: 0 0 0 3px rgba(244, 67, 54, 0.22);
   --glass-overlay: rgba(2, 6, 23, 0.48);
-  --glass-blur: 18px;
+  --glass-blur: 20px;
+  --glass-blur-card: 15px;
   --glass-overlay-blur: 10px;
   --glass-saturate: 135%;
   --glass-radius-md: 16px;
@@ -213,6 +214,8 @@ body.light-theme :is(
 ) {
   background: var(--glass-surface-subtle);
   border-color: var(--glass-border-subtle);
+  -webkit-backdrop-filter: blur(var(--glass-blur-card)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-card)) saturate(var(--glass-saturate));
 }
 
 body.light-theme :is(.settings-menu, .ai-chat-sidebar) {
@@ -345,6 +348,8 @@ body.light-theme .notes-add-btn {
 body.light-theme .note-item {
   background: rgba(255, 255, 255, 0.42);
   border-color: rgba(15, 23, 42, 0.1);
+  -webkit-backdrop-filter: blur(var(--glass-blur-card)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-card)) saturate(var(--glass-saturate));
   box-shadow:
     0 4px 14px rgba(15, 23, 42, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.58);
