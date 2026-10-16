@@ -71,7 +71,7 @@ describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
     expect(css).toMatch(/body\.light-theme \.notes-section\s*\{[\s\S]*?radial-gradient[\s\S]*?var\(--glass-surface\)/);
     expect(css).toMatch(/body\.light-theme \.note-item\s*\{[^}]*background:\s*rgba\(255, 255, 255, 0\.42\)/);
     expect(css).toMatch(/body\.light-theme :is\(\.note-tag-filter-btn, \.note-tag-suggestion\)\s*\{/);
-    expect(css).toMatch(/body\.light-theme \.note-grip\s*\{[^}]*color:\s*rgba\(15, 23, 42, 0\.35\)/);
+    expect(css).toMatch(/body\.light-theme \.note-grip\s*\{[^}]*color:\s*rgba\(15, 23, 42, 0\.5\)/);
   });
 
   it('keeps dark-theme base todo/notes rules untouched in app.css', () => {
@@ -97,5 +97,27 @@ describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
     expect(appCss).not.toMatch(/body\.light-theme \.notes-add-btn\s*\{/);
     expect(appCss).not.toMatch(/body\.light-theme \.note-item\s*\{/);
     expect(appCss).not.toMatch(/body\.light-theme \.notes-search-input\s*\{/);
+  });
+});
+
+describe('Light-theme note grip contrast', () => {
+  function channel(c) {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  }
+  function luminance([r, g, b]) {
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  }
+
+  it('keeps the drag-handle dots at 3:1 or better against a white note card', () => {
+    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
+    const match = css.match(
+      /body\.light-theme \.note-grip\s*\{\s*color:\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/
+    );
+    expect(match).not.toBeNull();
+    const [r, g, b, a] = match.slice(1).map(Number);
+    const blended = [r, g, b].map((c) => c * a + 255 * (1 - a));
+    const contrast = (1.05) / (luminance(blended) + 0.05);
+    expect(contrast).toBeGreaterThanOrEqual(3);
   });
 });
