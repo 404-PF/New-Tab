@@ -2416,14 +2416,6 @@ body.light-theme #selected-count {
   color: rgba(31, 41, 55, 0.7);
 }
 
-body.light-theme .todo-item:hover {
-  border-color: rgba(31, 41, 55, 0.12);
-}
-
-body.light-theme .todo-item.completed {
-  background: rgba(76, 175, 80, 0.05);
-}
-
 body.light-theme .todo-item.overdue {
   background: rgba(255, 82, 82, 0.05);
   border-color: rgba(255, 82, 82, 0.2);
@@ -5633,11 +5625,6 @@ body.light-theme .notes-search-icon {
 
 body.light-theme .notes-search-input::placeholder {
   color: rgba(100, 116, 139, 0.5);
-}
-
-body.light-theme .notes-search-input:focus {
-  background: rgba(15, 23, 42, 0.07);
-  border-color: rgba(99, 102, 241, 0.35);
 }
 
 
