@@ -279,6 +279,7 @@ body.light-theme :is(
 body.light-theme button:focus-visible,
 body.light-theme select:focus-visible,
 body.light-theme textarea:not(.note-textarea):focus-visible,
+body.light-theme .notes-search-input:focus-visible,
 body.light-theme :is(
   .settings-section select,
   .todo-edit-field select

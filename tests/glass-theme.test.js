@@ -121,3 +121,12 @@ describe('Light-theme note grip contrast', () => {
     expect(contrast).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe('Light-theme notes search focus indicator', () => {
+  it('gives the notes search input an explicit focus-visible outline', () => {
+    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
+    const rule = css.match(/body\.light-theme \.notes-search-input:focus-visible,[\s\S]*?\{([\s\S]*?)\}/);
+    expect(rule).not.toBeNull();
+    expect(rule[1]).toMatch(/outline:\s*2px solid/);
+  });
+});
