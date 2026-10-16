@@ -52,8 +52,15 @@ jobs:
           COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
           COMMENT_ID: ${{ github.event.comment.id }}
           AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+          # Used ONLY for the permission lookup below. GITHUB_TOKEN cannot read
+          # collaborator permissions, so without this every non-owner would be
+          # denied. This job never runs the agent, and the drive job does not
+          # receive this env.
+          PR_TOKEN: ${{ secrets.PR_TOKEN }}
         run: |
           set -euo pipefail
+          # Keep the PAT a plain shell variable; only the one gh call gets it.
+          export -n PR_TOKEN
           # sed -n without q drains the input (head would SIGPIPE printf).
           first_line="$(printf '%s' "$COMMENT_BODY" | sed -n '1s/[[:space:]]*$//p')"
           case "$first_line" in
@@ -65,13 +72,16 @@ jobs:
               ;;
           esac
 
-          # OWNER is trusted via the event payload. Anyone else needs
-          # admin/maintain/write; triage is deliberately NOT enough because
-          # /drive pushes code. A failed lookup denies (fail closed).
+          # OWNER is trusted via the event payload. MEMBER/COLLABORATOR (job
+          # if pre-filter) must also have admin/maintain/write, looked up with
+          # PR_TOKEN; triage is deliberately NOT enough because /drive pushes
+          # code. A missing PR_TOKEN or failed lookup denies (fail closed).
           AUTHORIZED=false
           if [ "$AUTHOR_ASSOCIATION" = 'OWNER' ]; then
             AUTHORIZED=true
-          elif PERMISSION="$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$COMMENT_AUTHOR/permission" --jq .permission 2>/dev/null)"; then
+          elif [ -z "${PR_TOKEN:-}" ]; then
+            echo 'PR_TOKEN is not set; cannot verify non-owner permission, denying /drive request.'
+          elif PERMISSION="$(GH_TOKEN="$PR_TOKEN" gh api "repos/$GITHUB_REPOSITORY/collaborators/$COMMENT_AUTHOR/permission" --jq .permission 2>/dev/null)"; then
             echo "Permission for $COMMENT_AUTHOR: $PERMISSION"
             case "$PERMISSION" in
               admin|maintain|write) AUTHORIZED=true ;;
@@ -493,7 +503,11 @@ jobs:
                 REBASE_STATE=conflict
                 break
               fi
-              git add -A  # .tmp is in .git/info/exclude
+              # Explicit .tmp exclusion. git add exits 1 here only to warn that
+              # .tmp is also ignored via .git/info/exclude (it still stages
+              # everything else); a real staging failure surfaces at
+              # rebase --continue below.
+              git add -A -- . ':(exclude).tmp' 2>/dev/null || true
               if GIT_EDITOR=true git rebase --continue >/dev/null 2>&1; then
                 rebase_in_progress || REBASE_STATE=clean
                 continue
