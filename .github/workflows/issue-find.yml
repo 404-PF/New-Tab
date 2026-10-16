@@ -120,7 +120,7 @@ jobs:
     # but it can read matrix, and the failure report reads the same value.
     strategy:
       matrix:
-        job-timeout-minutes: [45]
+        job-timeout-minutes: [75]
     runs-on: ubuntu-latest
     timeout-minutes: ${{ matrix.job-timeout-minutes }}
     permissions:
@@ -174,9 +174,14 @@ jobs:
           jq -r 'join(", ")' "$STATE/labels.json" > "$STATE/labels.txt"
           echo "LABELS_LIST=$(cat "$STATE/labels.txt")" >> "$GITHUB_ENV"
 
+      # 60 minutes, below the 75-minute job timeout so validation, filing,
+      # and the reports still run. continue-on-error lets partial proposals
+      # saved before a timeout or crash still be validated and filed; the
+      # agent failure is reported by "Report agent failure" below.
       - name: Find issues with OpenCode
         id: agent
-        timeout-minutes: 30
+        timeout-minutes: 60
+        continue-on-error: true
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GH_REPO: ${{ github.repository }}
@@ -193,17 +198,23 @@ jobs:
                 "git *": "deny",
                 "gh *": "deny",
                 "ls *": "allow",
-                "wc *": "allow"
+                "wc *": "allow",
+                "date": "allow",
+                "date *": "allow"
               }
             }
         run: |
           set -euo pipefail
-          export OUTPUT_FILE="$GITHUB_WORKSPACE/.tmp/proposed-issues.json"
+          export OUTPUT_FILE="$GITHUB_WORKSPACE/.tmp/proposed-issues.jsonl"
+          AGENT_STARTED_AT="$(date -u '+%Y-%m-%d %H:%M UTC')"
+          export AGENT_STARTED_AT
           export EXISTING_FILE="$GITHUB_WORKSPACE/.tmp/existing-issues.md"
           # Ask for a few extra; the validator drops weak ones and caps at TO_FILE.
           PROPOSE_MAX=$(( TO_FILE + 3 ))
           export PROPOSE_MAX TO_FILE GH_REPO LABELS_LIST
-          rm -f "$OUTPUT_FILE"
+          # Start empty so a timeout before the first proposal leaves a valid
+          # (empty) file.
+          : > "$OUTPUT_FILE"
           # Quoted heredoc: bash expands nothing in it. envsubst fills only the
           # listed placeholders and does not re-scan substituted values.
           PROMPT_TEMPLATE="$GITHUB_WORKSPACE/.tmp/find-prompt.md.tmpl"
@@ -219,31 +230,25 @@ jobs:
           - No style nits, no speculative refactors, no duplicates of existing issues.
           - Labels must come only from: ${LABELS_LIST}
           - Prefer targeted read/glob/grep calls over broad repo-wide greps. Do NOT run git or gh. Do NOT edit any file other than the output file.
-          - ALWAYS write the output file, even if it is an empty array.
 
-          Write ${OUTPUT_FILE} as a JSON array, nothing else:
-          [
-            {
-              "title": "Short, specific issue title",
-              "body": "Markdown: what is wrong, why it matters, how to reproduce or verify, suggested fix.",
-              "labels": ["bug"],
-              "evidence": [
-                {"file": "src/features/todo.js", "line": 42, "snippet": "exact line text"}
-              ]
-            }
-          ]
+          Saving (important; the run can be cut off at any time):
+          - ${OUTPUT_FILE} is JSON Lines: exactly one complete JSON object per line, no array, no commas between lines, no other text.
+          - The MOMENT you confirm a proposal, save it: rewrite the file with every line it already has plus the new object as one more line. Never leave a partial line; keep the file valid after every save. Do not wait until the end.
+          - Time budget: you started at ${AGENT_STARTED_AT}. Check the time with `date -u` now and then. After about 40 minutes, stop investigating, make sure every confirmed proposal is saved, and finish.
+
+          Each line looks like this (on ONE line):
+          {"title": "Short, specific issue title", "body": "Markdown: what is wrong, why it matters, how to reproduce or verify, suggested fix.", "labels": ["bug"], "evidence": [{"file": "src/features/todo.js", "line": 42, "snippet": "exact line text"}]}
           OPENCODE_PROMPT_EOF_7f3a9c2e
           # shellcheck disable=SC2016 # literal variable list for envsubst
-          envsubst '${GH_REPO} ${EXISTING_FILE} ${PROPOSE_MAX} ${LABELS_LIST} ${OUTPUT_FILE}' < "$PROMPT_TEMPLATE" > "$PROMPT_FILE"
-          opencode run --model opencode/mimo-v2.6-flash-free "$(cat "$PROMPT_FILE")" || echo '::warning::opencode exited non-zero.'
-          [ -f "$OUTPUT_FILE" ] || echo '[]' > "$OUTPUT_FILE"
+          envsubst '${GH_REPO} ${EXISTING_FILE} ${PROPOSE_MAX} ${LABELS_LIST} ${OUTPUT_FILE} ${AGENT_STARTED_AT}' < "$PROMPT_TEMPLATE" > "$PROMPT_FILE"
+          opencode run --model opencode/mimo-v2.6-flash-free "$(cat "$PROMPT_FILE")"
 
       # Token-free. Evidence is checked against the committed tree (git show
       # HEAD:file), not the working tree the agent could have edited.
       - name: Validate proposed issues
         id: validate
         env:
-          PROPOSED: ${{ github.workspace }}/.tmp/proposed-issues.json
+          PROPOSED: ${{ github.workspace }}/.tmp/proposed-issues.jsonl
           STATE_DIR: ${{ runner.temp }}/issue-find
         run: |
           set -euo pipefail
@@ -315,10 +320,31 @@ jobs:
               ev['file'] = f
               return None
 
-          raw = load(proposed_path, None)
-          if not isinstance(raw, list):
-              print('::warning::proposed-issues.json is missing or not a JSON array; nothing to file.')
-              raw = []
+          # JSON Lines, saved incrementally by the agent. A missing file, blank
+          # lines, or a truncated/garbled line (e.g. from a timeout mid-write)
+          # are skipped; every complete line is still considered. A whole-file
+          # JSON array is accepted as a fallback.
+          raw = []
+          try:
+              with open(proposed_path, encoding='utf-8') as fh:
+                  text = fh.read()
+          except OSError:
+              text = ''
+              print('::warning::proposed-issues.jsonl is missing; nothing to file.')
+          try:
+              whole = json.loads(text) if text.strip().startswith('[') else None
+          except ValueError:
+              whole = None
+          if isinstance(whole, list):
+              raw = whole
+          else:
+              for n, ln in enumerate(text.splitlines(), 1):
+                  if not ln.strip():
+                      continue
+                  try:
+                      raw.append(json.loads(ln))
+                  except ValueError:
+                      print(f'Skipping unparseable line {n} of the proposals file.')
 
           accepted, rejected = [], []
           for i, item in enumerate(raw):
@@ -426,10 +452,28 @@ jobs:
           done
           echo "Created $CREATED issue(s)."
 
+      # The agent step is continue-on-error so partial results get filed.
+      # Report its timeout/failure here, after filing, and fail the job.
+      - name: Report agent failure
+        id: agent_report
+        if: always() && steps.agent.outcome == 'failure'
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          FILED: ${{ steps.validate.outputs.count }}
+        run: |
+          echo "::error::issue-find agent step failed or timed out; ${FILED:-0} validated proposal(s) were still processed. See $RUN_URL"
+          {
+            echo '## issue-find agent failed or timed out'
+            echo "Partial results: ${FILED:-0} validated proposal(s) were processed."
+            echo "See the workflow run: $RUN_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       # Same near-timeout rule as issue-triage/issue-implement, but reported to
       # the run summary and as an error annotation instead of an issue comment.
+      # Skipped when Report agent failure already reported this run.
       - name: Report failure
-        if: failure() || cancelled()
+        if: (failure() || cancelled()) && steps.agent_report.outcome != 'failure'
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           JOB_STATUS: ${{ job.status }}
