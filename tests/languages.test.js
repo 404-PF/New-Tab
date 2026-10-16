@@ -13,6 +13,8 @@ function expectTranslationKeys(keys, options) {
       expect(localeTranslations, `${code}:${key}`).toHaveProperty(key);
       expect(localeTranslations[key], `${code}:${key}`).toBeTypeOf('string');
       expect(localeTranslations[key].trim(), `${code}:${key}`).not.toBe('');
+      // A locale that echoes the key name has no real translation.
+      expect(localeTranslations[key], `${code}:${key}`).not.toBe(key);
       if (differFromEnglish && code !== 'en') {
         expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
       }
@@ -307,5 +309,17 @@ describe('App grid context menu translations', () => {
         expect(label, `${code}:sortAlphabetically`).not.toBe(englishLabel);
       }
     });
+  });
+});
+
+const DEFAULT_APP_VISIBILITY_TRANSLATION_KEYS = [
+  'hideDefaultApp',
+  'visibleApps',
+  'visibleAppsDesc'
+];
+
+describe('Default app visibility translations', () => {
+  it('defines every built-in app visibility string in each supported language', () => {
+    expectTranslationKeys(DEFAULT_APP_VISIBILITY_TRANSLATION_KEYS, { differFromEnglish: true });
   });
 });
