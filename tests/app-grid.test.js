@@ -901,6 +901,35 @@ describe('renderAllApps order validation', () => {
       }
     }
   });
+
+  it('does not resurrect a hidden default app during order repair (#787)', () => {
+    // A hidden default must stay hidden even when the order is missing or
+    // invalid and the repair pass rebuilds it from the default definitions.
+    expect(AppGridState.hideDefaultApp('weather-app')).toBe(true);
+    AppGridStorage.saveOrder(null);
+
+    window.renderAllApps();
+
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'games-app', 'feedback-app', 'settings-app']);
+    expect(document.getElementById('weather-app')).toBeNull();
+  });
+
+  it('excludes hidden default apps from the grid and restores them on show (#787)', () => {
+    window.renderAllApps();
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app', 'games-app', 'feedback-app', 'settings-app']);
+
+    expect(AppGridState.hideDefaultApp('feedback-app')).toBe(true);
+    window.renderAllApps();
+
+    expect(document.getElementById('feedback-app')).toBeNull();
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app', 'games-app', 'settings-app']);
+
+    expect(AppGridState.showDefaultApp('feedback-app')).toBe(true);
+    window.renderAllApps();
+
+    expect(document.getElementById('feedback-app')).not.toBeNull();
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app', 'games-app', 'settings-app', 'feedback-app']);
+  });
 });
 
 describe('__appGridState', () => {

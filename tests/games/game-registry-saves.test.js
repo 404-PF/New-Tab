@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
 
 beforeAll(() => {
@@ -272,5 +272,233 @@ describe('Save envelope hardening (review #654 round 2)', () => {
     window.GameRegistry.launch('primitive-state-game');
     window.GameRegistry.destroyCurrent();
     expect(window.GameRegistry.getSave('primitive-state-game').state).toEqual({ n: 1 });
+  });
+});
+
+describe('GameRegistry stats persistence (#783)', () => {
+  let originalShowToast;
+  let showToast;
+
+  beforeEach(() => {
+    originalShowToast = window.showToast;
+    showToast = vi.fn();
+    window.showToast = showToast;
+  });
+
+  afterEach(() => {
+    if (originalShowToast === undefined) {
+      delete window.showToast;
+    } else {
+      window.showToast = originalShowToast;
+    }
+  });
+
+  // Real bridge path: chrome.storage.local.set reports failure via lastError,
+  // so setItemAsync() rejects after the bridge rolls its cache back.
+  function failChromeSet() {
+    const originalSet = chrome.storage.local.set;
+    chrome.storage.local.set = (items, callback) => {
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      if (callback) callback();
+      chrome.runtime.lastError = null;
+      return Promise.resolve();
+    };
+    return () => {
+      chrome.storage.local.set = originalSet;
+    };
+  }
+
+  it('rolls back and toasts once when the async chrome.storage write fails', async () => {
+    await expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 10, gamesPlayed: 1 })).resolves.toBe(true);
+
+    const restore = failChromeSet();
+    try {
+      await expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 999, gamesPlayed: 2 })).resolves.toBe(false);
+    } finally {
+      restore();
+    }
+
+    expect(window.GameRegistry.getStats('stats-fail-game')).toEqual({ highScore: 10, gamesPlayed: 1 });
+    expect(JSON.parse(localStorage.getItem('games_stats'))['stats-fail-game']).toEqual({ highScore: 10, gamesPlayed: 1 });
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith('Failed to save game statistics. Your latest score was not saved.', 'error');
+
+    // A later successful write still lands.
+    await expect(window.GameRegistry.updateStats('stats-fail-game', { highScore: 20 })).resolves.toBe(true);
+    expect(window.GameRegistry.getStats('stats-fail-game').highScore).toBe(20);
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not resurrect a rejected score when two overlapping writes both fail', async () => {
+    await window.GameRegistry.updateStats('race-game', { highScore: 1 });
+
+    const restore = failChromeSet();
+    try {
+      const first = window.GameRegistry.updateStats('race-game', { highScore: 100 });
+      const second = window.GameRegistry.updateStats('race-game', { gamesPlayed: 7 });
+      // Callers still see their optimistic updates while writes are pending.
+      expect(window.GameRegistry.getStats('race-game')).toEqual({ highScore: 100, gamesPlayed: 7 });
+
+      await expect(first).resolves.toBe(false);
+      await expect(second).resolves.toBe(false);
+    } finally {
+      restore();
+    }
+
+    expect(window.GameRegistry.getStats('race-game')).toEqual({ highScore: 1 });
+    expect(JSON.parse(localStorage.getItem('games_stats'))['race-game']).toEqual({ highScore: 1 });
+    // Both failures happen in one burst, so the toast is coalesced.
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a later write that succeeds after an earlier queued write fails', async () => {
+    await window.GameRegistry.updateStats('race-ok-game', { highScore: 1 });
+
+    const originalSet = chrome.storage.local.set;
+    let calls = 0;
+    chrome.storage.local.set = (items, callback) => {
+      calls += 1;
+      if (calls === 1) {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        if (callback) callback();
+        chrome.runtime.lastError = null;
+        return Promise.resolve();
+      }
+      return originalSet.call(chrome.storage.local, items, callback);
+    };
+    try {
+      const first = window.GameRegistry.updateStats('race-ok-game', { highScore: 100 });
+      const second = window.GameRegistry.updateStats('race-ok-game', { gamesPlayed: 2 });
+      await expect(first).resolves.toBe(false);
+      await expect(second).resolves.toBe(true);
+    } finally {
+      chrome.storage.local.set = originalSet;
+    }
+
+    // The rejected high score is not carried into the later successful write.
+    expect(window.GameRegistry.getStats('race-ok-game')).toEqual({ highScore: 1, gamesPlayed: 2 });
+    expect(JSON.parse(localStorage.getItem('games_stats'))['race-ok-game']).toEqual({ highScore: 1, gamesPlayed: 2 });
+  });
+
+  function failFirstChromeSet() {
+    const originalSet = chrome.storage.local.set;
+    let calls = 0;
+    chrome.storage.local.set = (items, callback) => {
+      calls += 1;
+      if (calls === 1) {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        if (callback) callback();
+        chrome.runtime.lastError = null;
+        return Promise.resolve();
+      }
+      return originalSet.call(chrome.storage.local, items, callback);
+    };
+    return () => {
+      chrome.storage.local.set = originalSet;
+    };
+  }
+
+  it('never persists a rejected score through a later updateStatsWith write on the same key', async () => {
+    await window.GameRegistry.updateStats('same-key-game', { highScore: 1, gamesPlayed: 1 });
+
+    const updater = (score) => (stats) => ({
+      highScore: Math.max(stats.highScore || 0, score),
+      gamesPlayed: (stats.gamesPlayed || 0) + 1
+    });
+
+    const restore = failFirstChromeSet();
+    try {
+      window.gamesHelpers.updateStatsWith('same-key-game', updater(100));
+      window.gamesHelpers.updateStatsWith('same-key-game', updater(5));
+      for (let i = 0; i < 5; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    } finally {
+      restore();
+    }
+
+    // Write 1 (highScore 100) was rejected; write 2 applies only its own
+    // updater to the stored stats.
+    const stored = JSON.parse(localStorage.getItem('games_stats'))['same-key-game'];
+    expect(stored).toEqual({ highScore: 5, gamesPlayed: 2 });
+    expect(window.GameRegistry.getStats('same-key-game')).toEqual({ highScore: 5, gamesPlayed: 2 });
+  });
+
+  it('cleans up after a synchronous updater throw and keeps later queued writes running', async () => {
+    await window.GameRegistry.updateStats('throw-queue-game', { highScore: 1 });
+
+    const inFlight = window.GameRegistry.updateStats('throw-queue-game', { gamesPlayed: 1 });
+    const throwing = window.GameRegistry.updateStats('throw-queue-game', () => {
+      throw new Error('updater exploded');
+    });
+    const later = window.GameRegistry.updateStats('throw-queue-game', { highScore: 9 });
+
+    await expect(inFlight).resolves.toBe(true);
+    await expect(throwing).resolves.toBe(false);
+    await expect(later).resolves.toBe(true);
+
+    expect(window.GameRegistry.getStats('throw-queue-game')).toEqual({ highScore: 9, gamesPlayed: 1 });
+    expect(JSON.parse(localStorage.getItem('games_stats'))['throw-queue-game']).toEqual({ highScore: 9, gamesPlayed: 1 });
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces a burst of failed stats writes into a single toast', async () => {
+    const restore = failChromeSet();
+    try {
+      const writes = [1, 2, 3].map((n) => window.GameRegistry.updateStats('burst-game', { highScore: n }));
+      await expect(Promise.all(writes)).resolves.toEqual([false, false, false]);
+    } finally {
+      restore();
+    }
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(window.GameRegistry.getStats('burst-game')).toEqual({});
+  });
+
+  it('treats a setItemAsync result of false as a failed save', async () => {
+    await window.GameRegistry.updateStats('stats-false-game', { highScore: 3 });
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockResolvedValue(false);
+    try {
+      await expect(window.GameRegistry.updateStats('stats-false-game', { highScore: 50 })).resolves.toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(window.GameRegistry.getStats('stats-false-game').highScore).toBe(3);
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports failed persistence when the stats storage write throws', async () => {
+    await window.GameRegistry.updateStats('stats-throw-game', { highScore: 5 });
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+    try {
+      await expect(window.GameRegistry.updateStats('stats-throw-game', { highScore: 42 })).resolves.toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(window.GameRegistry.getStats('stats-throw-game').highScore).toBe(5);
+    expect(JSON.parse(localStorage.getItem('games_stats'))['stats-throw-game'].highScore).toBe(5);
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('gamesHelpers.updateStatsWith surfaces a failed async stats write', async () => {
+    await window.GameRegistry.updateStats('helper-game', { highScore: 1 });
+
+    const restore = failChromeSet();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      window.gamesHelpers.updateStatsWith('helper-game', function (stats) {
+        return { highScore: (stats.highScore || 0) + 1 };
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const warnings = warnSpy.mock.calls.map((call) => call.join(' '));
+      expect(warnings.some((message) => message.includes('updateStatsWith'))).toBe(true);
+    } finally {
+      restore();
+      warnSpy.mockRestore();
+    }
+
+    expect(window.GameRegistry.getStats('helper-game').highScore).toBe(1);
+    expect(showToast).toHaveBeenCalledTimes(1);
   });
 });

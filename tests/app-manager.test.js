@@ -13,6 +13,14 @@ beforeAll(() => {
     saveOrder: order => localStorage.setItem('appOrder', JSON.stringify(order)),
     getCustomApps: () => JSON.parse(localStorage.getItem('customApps') || '[]'),
     getFolders: () => [],
+    getHiddenDefaultApps: () => JSON.parse(localStorage.getItem('hiddenDefaultApps') || '[]'),
+    canHideDefaultApp: id => id !== 'settings-app' && id !== 'games-app',
+    isDefaultHidden: id => JSON.parse(localStorage.getItem('hiddenDefaultApps') || '[]').includes(id),
+    setDefaultAppHidden: (id, hidden) => {
+      const list = JSON.parse(localStorage.getItem('hiddenDefaultApps') || '[]');
+      const next = hidden ? [...new Set([...list, id])] : list.filter(item => item !== id);
+      localStorage.setItem('hiddenDefaultApps', JSON.stringify(next));
+    },
     getAppDisplayName: app => {
       if (app.nameKey && window.i18n && typeof window.i18n.t === 'function') {
         return window.i18n.t(app.nameKey);
@@ -63,5 +71,47 @@ describe('app manager', () => {
 
     expect(document.getElementById('ai-app').getAttribute('href')).toBe('#');
     expect(document.getElementById('unsafe-custom').getAttribute('href')).toBe('#');
+  });
+
+  it('filters hidden built-in apps out of the rendered grid and order', () => {
+    localStorage.setItem('hiddenDefaultApps', JSON.stringify(['weather-app']));
+
+    window.renderAllApps();
+
+    expect(document.getElementById('weather-app')).toBeNull();
+    expect(document.getElementById('ai-app')).not.toBeNull();
+    expect(JSON.parse(localStorage.getItem('appOrder'))).not.toContain('weather-app');
+  });
+
+  it('renders built-in visibility checkboxes and toggles hidden state from Settings > Apps', () => {
+    const container = document.createElement('div');
+    container.id = 'default-app-visibility-list';
+    document.body.appendChild(container);
+
+    try {
+      window.renderAllApps();
+
+      const appIds = Array.from(container.querySelectorAll('input[type="checkbox"]'))
+        .map(checkbox => checkbox.dataset.appId);
+      expect(appIds).toEqual(['ai-app', 'weather-app', 'feedback-app']);
+
+      const weatherCheckbox = container.querySelector('[data-app-id="weather-app"]');
+      weatherCheckbox.checked = false;
+      weatherCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(JSON.parse(localStorage.getItem('hiddenDefaultApps'))).toEqual(['weather-app']);
+      expect(document.getElementById('weather-app')).toBeNull();
+
+      const rebuiltCheckbox = container.querySelector('[data-app-id="weather-app"]');
+      expect(rebuiltCheckbox.checked).toBe(false);
+
+      rebuiltCheckbox.checked = true;
+      rebuiltCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(JSON.parse(localStorage.getItem('hiddenDefaultApps'))).toEqual([]);
+      expect(document.getElementById('weather-app')).not.toBeNull();
+    } finally {
+      container.remove();
+    }
   });
 });

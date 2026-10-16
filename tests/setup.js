@@ -438,6 +438,7 @@ globalThis.window.i18n = {
       bgRotationPicker: 'Select backgrounds to rotate',
       bgRotationNext: 'Next Background',
       appGridSaveError: 'Failed to save app changes. Your last action was not saved.',
+      gameStatsSaveError: 'Failed to save game statistics. Your latest score was not saved.',
       shortcutSaveError: 'Failed to save shortcut changes. Your last action was not saved.',
       bgRotationSaveError: 'Failed to save background rotation settings. Your last action was not saved.',
       onboardingSaveError: 'Failed to save onboarding completion. Your progress was kept so you can retry.',

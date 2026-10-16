@@ -477,11 +477,13 @@
     spawnDeathParticles();
     shakeUntil = reducedMotion() ? 0 : nowMs() + DEATH_ANIMATION_MS;
 
+    // Snapshot run values now: the updater may run later, after a reset.
+    const finalScore = score;
     window.gamesHelpers?.updateStatsWith?.('flappy-bird', function (stats) {
       const highScore = Number.isSafeInteger(stats.highScore) ? stats.highScore : 0;
       const gamesPlayed = Number.isSafeInteger(stats.gamesPlayed) ? stats.gamesPlayed : 0;
       return {
-        highScore: Math.max(highScore, score),
+        highScore: Math.max(highScore, finalScore),
         gamesPlayed: gamesPlayed + 1
       };
     });

@@ -199,6 +199,107 @@ const AppGridState = {
     return true;
   },
 
+  // --- Default app visibility ---
+  // Built-in apps are hidden, never deleted: the frozen window.defaultApps
+  // definitions survive so updates, resets, and recovery keep working.
+
+  // Only hideable built-ins count as hidden: a stored or imported list that
+  // names Settings or Games (or an unknown id) must never remove them.
+  getHiddenDefaultApps() {
+    const stored = window.AppGridStorage ? window.AppGridStorage.loadHiddenDefaultApps() : [];
+    return stored.filter(id => this.canHideDefaultApp(id));
+  },
+
+  saveHiddenDefaultApps(ids) {
+    return window.AppGridStorage ? window.AppGridStorage.saveHiddenDefaultApps(ids) : false;
+  },
+
+  updateHiddenDefaultApps(updater) {
+    if (!window.AppGridStorage || typeof updater !== 'function') {
+      return null;
+    }
+
+    const latestHidden = this.getHiddenDefaultApps().slice();
+    const nextHidden = updater(latestHidden);
+
+    if (!Array.isArray(nextHidden)) {
+      return null;
+    }
+
+    if (!this.saveHiddenDefaultApps(nextHidden)) {
+      return null;
+    }
+    return nextHidden;
+  },
+
+  isDefaultAppId(id) {
+    return (window.defaultApps || []).some(app => app.id === id);
+  },
+
+  isDefaultHidden(id) {
+    return this.getHiddenDefaultApps().includes(id);
+  },
+
+  // Games has its own dedicated toggle in General settings, and Settings is
+  // the guaranteed restore path for hidden apps, so neither may be hidden
+  // through the generic mechanism's UI.
+  canHideDefaultApp(id) {
+    return this.isDefaultAppId(id) && id !== 'settings-app' && id !== 'games-app';
+  },
+
+  hideDefaultApp(id) {
+    if (!this.canHideDefaultApp(id)) return false;
+    if (this.isDefaultHidden(id)) return true;
+
+    const previousHidden = this.getHiddenDefaultApps();
+    const savedHidden = this.updateHiddenDefaultApps((hidden) => {
+      if (!hidden.includes(id)) hidden.push(id);
+      return hidden;
+    });
+    if (!savedHidden) return false;
+
+    // A null order means the grid has not been persisted yet; the render
+    // repair path builds the order from the visible defaults instead.
+    if (Array.isArray(this.getOrder())) {
+      const savedOrder = this.updateOrder((order) => order.filter(oid => oid !== id));
+      if (!savedOrder) {
+        this.saveHiddenDefaultApps(previousHidden);
+        return false;
+      }
+    }
+
+    return true;
+  },
+
+  showDefaultApp(id) {
+    if (!this.isDefaultAppId(id)) return false;
+
+    const previousHidden = this.getHiddenDefaultApps();
+    if (!previousHidden.includes(id)) return true;
+
+    const savedHidden = this.updateHiddenDefaultApps((hidden) => hidden.filter(hid => hid !== id));
+    if (!savedHidden) return false;
+
+    // A foldered app reappears inside its folder, not as a duplicate grid tile.
+    const inFolder = this.getFolders().some(folder => Array.isArray(folder.apps) && folder.apps.includes(id));
+    if (!inFolder && Array.isArray(this.getOrder())) {
+      const savedOrder = this.updateOrder((order) => {
+        if (!order.includes(id)) order.push(id);
+        return order;
+      });
+      if (!savedOrder) {
+        this.saveHiddenDefaultApps(previousHidden);
+        return false;
+      }
+    }
+
+    return true;
+  },
+
+  setDefaultAppHidden(id, hidden) {
+    return hidden ? this.hideDefaultApp(id) : this.showDefaultApp(id);
+  },
+
   // --- Folder operations ---
 
   generateFolderId() {

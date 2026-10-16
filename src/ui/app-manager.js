@@ -25,8 +25,10 @@ window.defaultApps = Object.freeze(defaultApps);
 
 // Get all apps data
 const getAllAppData = () => {
+  const hiddenIds = new Set(window.AppGridState.getHiddenDefaultApps());
+  const visibleDefaults = defaultApps.filter(app => !hiddenIds.has(app.id));
   const customApps = loadCustomApps().map(app => ({ ...app, className: 'custom-app' }));
-  return [...defaultApps, ...customApps];
+  return [...visibleDefaults, ...customApps];
 };
 
 /**
@@ -167,6 +169,9 @@ function renderAllApps() {
   if (typeof window.applyGamesEnabled === 'function') {
     window.applyGamesEnabled();
   }
+  // Keep the Settings > Apps built-in visibility checkboxes in sync with
+  // whatever hid or restored an app (context menu, import, etc.).
+  renderDefaultAppVisibilityList();
   window.__appGridState.setPhase('rendered');
 }
 
@@ -326,6 +331,50 @@ curvatureRadios.forEach((radio) => {
 applyCurvature();
 
 window.onDomReady(initIconSize);
+
+// Built-in app visibility (Settings > Apps). The checkboxes are generated
+// from the hideable default apps so the list stays in lockstep with the
+// frozen defaultApps definitions and their translated names.
+function renderDefaultAppVisibilityList() {
+  const container = document.getElementById('default-app-visibility-list');
+  if (!container) return;
+
+  container.textContent = '';
+  defaultApps.forEach(app => {
+    if (!window.AppGridState.canHideDefaultApp(app.id)) return;
+
+    const label = document.createElement('label');
+    label.className = 'default-app-visibility-option';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.dataset.appId = app.id;
+    checkbox.checked = !window.AppGridState.isDefaultHidden(app.id);
+
+    const name = document.createElement('span');
+    name.textContent = window.AppGridState.getAppDisplayName(app);
+
+    label.appendChild(checkbox);
+    label.appendChild(name);
+    container.appendChild(label);
+  });
+}
+
+function initDefaultAppVisibilitySettings() {
+  renderDefaultAppVisibilityList();
+}
+
+// Delegated at document level so it works no matter when the container is
+// created (it is populated dynamically on every grid render).
+document.addEventListener('change', function (event) {
+  const target = event.target;
+  if (target?.type !== 'checkbox' || !target.dataset.appId) return;
+  if (!target.closest?.('#default-app-visibility-list')) return;
+  window.AppGridState.setDefaultAppHidden(target.dataset.appId, !target.checked);
+  renderAllApps();
+});
+
+window.onDomReady(initDefaultAppVisibilitySettings);
 
 // Attach settings app click handler
 function attachSettingsAppHandler() {
