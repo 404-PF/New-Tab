@@ -179,4 +179,14 @@ describe('Light-theme frosted panel contrast', () => {
       (luminance([blended, blended, blended]) + 0.05) / (luminance([15, 23, 42]) + 0.05);
     expect(contrast).toBeGreaterThanOrEqual(4.5);
   });
+
+  it('uses the primary text color for the light-theme empty-notes text', () => {
+    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
+    const rule = css.match(/body\.light-theme \.notes-empty\s*\{([^}]*)\}/);
+    expect(rule).not.toBeNull();
+    expect(rule[1]).toMatch(/color:\s*var\(--glass-text-primary\)/);
+    const muted = css.match(/body\.light-theme :is\(([^)]*)\)\s*\{\s*color:\s*var\(--glass-text-muted\)/);
+    expect(muted).not.toBeNull();
+    expect(muted[1]).not.toMatch(/\.notes-empty/);
+  });
 });

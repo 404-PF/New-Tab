@@ -483,8 +483,13 @@ body.light-theme :is(
   .todo-due-date.empty,
   .calendar-day.other-month,
   .inline-calendar-days .calendar-day.other-month,
-  .todo-subtask-progress,
-  .notes-empty
+  .todo-subtask-progress
 ) {
   color: var(--glass-text-muted);
+}
+
+/* Empty-notes text sits on the frosted surface over any background, so it
+   uses the primary text color to stay at WCAG AA contrast. */
+body.light-theme .notes-empty {
+  color: var(--glass-text-primary);
 }
