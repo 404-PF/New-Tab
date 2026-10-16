@@ -158,8 +158,11 @@ describe('DataManager backup validation', () => {
   });
   it('lists only supported persistent keys in exports', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('appOrder');
+    expect(window.DataManager.EXPORT_KEYS).toContain('hiddenDefaultApps');
     expect(window.DataManager.EXPORT_KEYS).toContain('ai_conversations');
     expect(window.DataManager.EXPORT_KEYS).not.toContain('searchHistory');
+    expect(window.DataManager.EXPECTED_SHAPES.hiddenDefaultApps(['weather-app'])).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.hiddenDefaultApps([{ id: 'weather-app' }])).toBe(false);
   });
 
   it('sanitizes malformed stored app folders in exports', async () => {

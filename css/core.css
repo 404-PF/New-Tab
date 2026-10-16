@@ -2142,6 +2142,29 @@ body.light-theme .bg-rotation-next-btn:hover {
   line-height: 1.4;
 }
 
+.default-app-visibility-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-section .default-app-visibility-option {
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 0;
+  font-weight: normal;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--settings-text-color);
+  cursor: pointer;
+}
+
+.default-app-visibility-option input[type="checkbox"] {
+  margin: 0;
+  flex-shrink: 0;
+}
+
 .general-options,
 .clock-options,
 .date-options,
