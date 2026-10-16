@@ -45,7 +45,7 @@ describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
     // Several shared :is() groups contain an ID, which gives every member
     // ID-level specificity and would override the dark-mirror block.
     const widgets = /^\s*\.(todo-section|notes-section|todo-input-container|todo-item|note-item|notes-add-btn|notes-search-input|filter-pill|todo-stats-toggle)(\.active)?,?\s*$/m;
-    const groups = [...css.matchAll(/body\.light-theme :is\(([^{]*?)\)[^{]*\{/g)];
+    const groups = [...css.matchAll(/body\.light-theme :is\(((?:[^()]|\([^()]*\))*)\)[^{]*\{/g)];
     expect(groups.length).toBeGreaterThan(0);
     groups.forEach((group) => expect(group[1]).not.toMatch(widgets));
   });

@@ -425,8 +425,7 @@ body.light-theme :is(
   color: var(--glass-text-muted);
 }
 
-/* Empty-notes text sits on the frosted surface over any background, so it
-   uses the primary text color to stay at WCAG AA contrast. */
+/* Empty-notes text uses the primary light-theme text color. */
 body.light-theme .notes-empty {
   color: var(--glass-text-primary);
 }
@@ -467,9 +466,27 @@ body.light-theme .todo-item {
   backdrop-filter: blur(15px);
 }
 
+body.light-theme .filter-pill {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.light-theme .filter-pill:hover {
+  background: rgba(33, 150, 243, 0.15);
+  border-color: rgba(33, 150, 243, 0.3);
+}
+
 body.light-theme .filter-pill.active {
   background: rgba(33, 150, 243, 0.25);
   border: 1px solid rgba(33, 150, 243, 0.5);
+}
+
+body.light-theme .filter-badge {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+body.light-theme .filter-pill.active .filter-badge {
+  background: rgba(33, 150, 243, 0.3);
 }
 
 body.light-theme .notes-add-btn {
@@ -477,11 +494,24 @@ body.light-theme .notes-add-btn {
   border: 1px dashed rgba(148, 163, 184, 0.3);
   border-radius: 10px;
   box-shadow: none;
+  color: var(--glass-text-primary);
+}
+
+body.light-theme .notes-add-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(148, 163, 184, 0.5);
+  color: var(--glass-text-primary);
 }
 
 body.light-theme .notes-search-input {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(148, 163, 184, 0.15);
+  color: var(--glass-text-primary);
+}
+
+body.light-theme .notes-search-input:focus {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(99, 102, 241, 0.4);
 }
 
 body.light-theme .note-item {
@@ -490,4 +520,21 @@ body.light-theme .note-item {
   box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+body.light-theme .note-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+body.light-theme .todo-item:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+body.light-theme .todo-item.completed {
+  background: rgba(33, 150, 243, 0.05);
+}
+
+body.light-theme .todo-item.overdue {
+  border-color: rgba(255, 82, 82, 0.3);
 }
