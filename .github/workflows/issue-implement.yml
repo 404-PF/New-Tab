@@ -133,7 +133,7 @@ jobs:
     # but it can read matrix, and the failure report reads the same value.
     strategy:
       matrix:
-        job-timeout-minutes: [50]
+        job-timeout-minutes: [120]
     runs-on: ubuntu-latest
     timeout-minutes: ${{ matrix.job-timeout-minutes }}
     permissions:
@@ -227,9 +227,9 @@ jobs:
 
       - name: Implement fix with OpenCode
         id: implement
-        # Below the 50-minute job timeout so lint, tests, the PR step, and
-        # the failure report still have time to run.
-        timeout-minutes: 40
+        # 20 minutes below the 120-minute job timeout so setup, lint, tests,
+        # the PR step, and the failure report still have time to run.
+        timeout-minutes: 100
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GH_REPO: ${{ github.repository }}
