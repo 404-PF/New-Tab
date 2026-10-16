@@ -133,7 +133,7 @@ jobs:
     # but it can read matrix, and the failure report reads the same value.
     strategy:
       matrix:
-        job-timeout-minutes: [50]
+        job-timeout-minutes: [120]
     runs-on: ubuntu-latest
     timeout-minutes: ${{ matrix.job-timeout-minutes }}
     permissions:
