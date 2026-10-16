@@ -2652,4 +2652,22 @@ describe('Custom date picker open/close (issue #810)', () => {
     click(getTrigger());
     expect(getCalendar().classList.contains('visible')).toBe(true);
   });
+
+  it('drops calendar-invalid stored due dates during migration but keeps real ones', () => {
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'feb31', text: 'Impossible date', completed: false, dueDate: '2026-02-31', dueTime: '09:00', createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'month13', text: 'Bad month', completed: false, dueDate: '2026-13-01', createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'leap', text: 'Leap day', completed: false, dueDate: '2028-02-29', dueTime: '10:30', createdAt: '2026-01-01T00:00:00.000Z' }
+    ]));
+
+    expect(() => initTodo()).not.toThrow();
+
+    const stored = loadTodos();
+    const byId = Object.fromEntries(stored.map((todo) => [todo.id, todo]));
+    expect(byId.feb31.dueDate).toBeNull();
+    expect(byId.feb31.dueTime).toBeNull();
+    expect(byId.month13.dueDate).toBeNull();
+    expect(byId.leap.dueDate).toBe('2028-02-29');
+    expect(byId.leap.dueTime).toBe('10:30');
+  });
 });
