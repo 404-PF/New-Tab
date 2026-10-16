@@ -89,8 +89,6 @@ body.light-theme {
 body.light-theme :is(
   .search-bar,
   .icon,
-  .todo-section,
-  .notes-section,
   .weather-widget,
   .focus-mode-indicator,
   #motto-container,
@@ -158,12 +156,8 @@ body.light-theme :is(
 
 /* Nested cards and controls share the same lower-level surface. */
 body.light-theme :is(
-  .todo-input-container,
   .ai-chat-input-container,
   .ai-topics-search,
-  .notes-add-btn,
-  .todo-stats-toggle,
-  .filter-pill,
   .quick-action-btn,
   .search-provider-btn,
   .selected-engine,
@@ -183,22 +177,15 @@ body.light-theme :is(
   .thumbnail-app-input-wrapper input,
   .todo-edit-field input,
   .todo-edit-field select,
-  .weather-city-inline input,
-  .notes-search-input
+  .weather-city-inline input
 ) {
   background: var(--glass-control);
   border-color: var(--glass-border-subtle);
   color: var(--glass-text-primary);
 }
 
-body.light-theme :is(.todo-input-container, .ai-chat-input-container) {
-  border: 1px solid var(--glass-border);
-}
-
 /* Lightweight cards avoid unrelated opaque blocks in lists and settings. */
 body.light-theme :is(
-  .todo-item,
-  .note-item,
   .todo-stat-card,
   .weather-app-detail-card,
   .weather-app-forecast-day,
@@ -230,8 +217,6 @@ body.light-theme :is(.settings-menu, .ai-chat-sidebar) {
 body.light-theme :is(
   .search-bar,
   .icon,
-  .todo-section,
-  .notes-section,
   .weather-widget,
   .focus-mode-indicator,
   #motto-container,
@@ -247,11 +232,8 @@ body.light-theme :is(
   .search-provider-btn,
   .selected-engine,
   .settings-menu-item,
-  .filter-pill,
   .quick-action-btn,
-  .todo-stats-toggle,
   .todo-stats-clear,
-  .notes-add-btn,
   .date-picker-trigger,
   .calendar-nav-btn,
   .calendar-btn.secondary,
@@ -267,8 +249,6 @@ body.light-theme :is(
 }
 
 body.light-theme :is(
-  .filter-pill.active,
-  .todo-stats-toggle.active,
   .settings-menu-item.selected,
   .weather-choice-button.active,
   .size-choice-button.active,
@@ -322,49 +302,6 @@ body.light-theme :is(.app-icon.drag-over .icon, .app-icon.folder-icon.drag-over-
 
 body.light-theme :is(.app-icon.folder-icon.drag-over-folder-rejected .icon, .delete-app-preview) {
   border-color: rgba(244, 67, 54, 0.52);
-}
-
-/* Notes get a softer, layered backfill so the scratchpad feels intentional
-   without becoming another opaque block over the background. */
-body.light-theme .notes-section {
-  padding: 16px 18px 18px;
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at 100% 0, rgba(96, 165, 250, 0.16), transparent 34%),
-    radial-gradient(circle at 0 100%, rgba(167, 139, 250, 0.12), transparent 38%),
-    var(--glass-surface);
-  background-clip: padding-box;
-}
-
-body.light-theme .notes-title {
-  letter-spacing: 0.2px;
-}
-
-body.light-theme .notes-add-btn {
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-
-body.light-theme .note-item {
-  background: rgba(255, 255, 255, 0.42);
-  border-color: rgba(15, 23, 42, 0.1);
-  -webkit-backdrop-filter: blur(var(--glass-blur-card)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur-card)) saturate(var(--glass-saturate));
-  box-shadow:
-    0 4px 14px rgba(15, 23, 42, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.58);
-}
-
-body.light-theme .note-item:hover,
-body.light-theme .note-item:focus-within {
-  background: rgba(255, 255, 255, 0.58);
-  border-color: var(--glass-border-hover);
-  box-shadow: var(--glass-shadow-hover);
-  transform: translateY(-1px);
-}
-
-body.light-theme .notes-tag-filter {
-  padding: 2px 0 4px;
 }
 
 body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion) {
@@ -492,4 +429,65 @@ body.light-theme :is(
    uses the primary text color to stay at WCAG AA contrast. */
 body.light-theme .notes-empty {
   color: var(--glass-text-primary);
+}
+
+/* #809: Todo and Notes in the light theme use the exact dark-theme glass
+   (surface tint, blur, saturation, border, shadow, radius). Only text
+   colours keep their light-theme values for readability. These values
+   mirror the dark-theme base rules in app.css; keep them in sync. The
+   shared light glass groups above deliberately exclude these widgets:
+   several of those :is() lists contain an ID, which gives every member
+   ID-level specificity and would override this block. */
+body.light-theme .todo-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+body.light-theme .notes-section {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.light-theme .todo-input-container {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.light-theme .todo-item {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(15px);
+}
+
+body.light-theme .filter-pill.active {
+  background: rgba(33, 150, 243, 0.25);
+  border: 1px solid rgba(33, 150, 243, 0.5);
+}
+
+body.light-theme .notes-add-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+body.light-theme .notes-search-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+body.light-theme .note-item {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }

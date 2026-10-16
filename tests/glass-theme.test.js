@@ -40,39 +40,51 @@ describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
     );
   });
 
-  it('styles the light-theme todo and notes panel surfaces with frosted glass', () => {
+  it('keeps Todo and Notes widgets out of the shared light glass groups', () => {
     const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
-
-    const primary = css.match(
-      /body\.light-theme :is\(\s*\.search-bar,[\s\S]*?\.todo-section,[\s\S]*?\.notes-section,[\s\S]*?\)\s*\{[\s\S]*?\}/
-    );
-    expect(primary).toBeTruthy();
-    expect(primary[0]).toMatch(/background:\s*var\(--glass-surface\)/);
-    expect(primary[0]).toMatch(/border:\s*1px solid var\(--glass-border\)/);
-    expect(primary[0]).toMatch(/box-shadow:\s*var\(--glass-shadow\)/);
-    expect(primary[0]).toMatch(
-      /backdrop-filter:\s*blur\(var\(--glass-blur\)\)\s*saturate\(var\(--glass-saturate\)\)/
-    );
+    // Several shared :is() groups contain an ID, which gives every member
+    // ID-level specificity and would override the dark-mirror block.
+    const widgets = /^\s*\.(todo-section|notes-section|todo-input-container|todo-item|note-item|notes-add-btn|notes-search-input|filter-pill|todo-stats-toggle)(\.active)?,?\s*$/m;
+    const groups = [...css.matchAll(/body\.light-theme :is\(([^{]*?)\)[^{]*\{/g)];
+    expect(groups.length).toBeGreaterThan(0);
+    groups.forEach((group) => expect(group[1]).not.toMatch(widgets));
   });
 
-  it('styles light-theme todo and note list items as lightweight glass cards', () => {
+  it('gives light-theme Todo and Notes the exact dark-theme glass surfaces', () => {
     const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
-
-    const lightweight = css.match(
-      /body\.light-theme :is\(\s*\.todo-item,\s*\.note-item,[\s\S]*?\)\s*\{[\s\S]*?\}/
-    );
-    expect(lightweight).toBeTruthy();
-    expect(lightweight[0]).toMatch(/background:\s*var\(--glass-surface-subtle\)/);
-    expect(lightweight[0]).toMatch(/border-color:\s*var\(--glass-border-subtle\)/);
-    expect(lightweight[0]).toMatch(
-      /backdrop-filter:\s*blur\(var\(--glass-blur-card\)\)\s*saturate\(var\(--glass-saturate\)\)/
-    );
-    expect(lightweight[0]).toMatch(
-      /-webkit-backdrop-filter:\s*blur\(var\(--glass-blur-card\)\)/
-    );
-    expect(css).toMatch(
-      /^\s+backdrop-filter: blur\(var\(--glass-blur-card\)\) saturate\(var\(--glass-saturate\)\);$/m
-    );
+    const appCss = readFileSync(APP_CSS_PATH, 'utf-8');
+    const escape = (sel) => sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const decls = (block) =>
+      Object.fromEntries(
+        block
+          .split(';')
+          .map((d) => d.split(':'))
+          .filter((p) => p.length >= 2)
+          .map(([k, ...v]) => [k.trim(), v.join(':').trim()])
+      );
+    const pairs = [
+      '.todo-section',
+      '.todo-input-container',
+      '.todo-item',
+      '.notes-add-btn',
+      '.notes-search-input',
+      '.note-item',
+    ];
+    pairs.forEach((sel) => {
+      const dark = appCss.match(new RegExp(`^${escape(sel)}\\s*\\{([^}]*)\\}`, 'm'));
+      const light = css.match(new RegExp(`^body\\.light-theme ${escape(sel)}\\s*\\{([^}]*)\\}`, 'm'));
+      expect(dark, sel).not.toBeNull();
+      expect(light, sel).not.toBeNull();
+      const d = decls(dark[1]);
+      const l = decls(light[1]);
+      ['background', 'border', 'border-radius', 'box-shadow', 'backdrop-filter'].forEach((prop) => {
+        if (d[prop] !== undefined && l[prop] !== undefined) {
+          expect(l[prop], `${sel} ${prop}`).toBe(d[prop]);
+        }
+      });
+    });
+    // The dark Notes panel has no surface of its own.
+    expect(css).toMatch(/^body\.light-theme \.notes-section\s*\{[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/m);
   });
 
   it('mirrors the dark theme blur radii on light panels and cards', () => {
@@ -96,21 +108,8 @@ describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
     expect(cardBlur[1]).toBe(darkCardBlur[1]);
   });
 
-  it('styles light-theme notes inner controls (search, tag pills, add button, grip)', () => {
+  it('keeps light-theme note tag pills and grip styled', () => {
     const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
-
-    const nested = css.match(
-      /body\.light-theme :is\(\s*\.todo-input-container,[\s\S]*?\.notes-search-input\s*\)\s*\{[\s\S]*?\}/
-    );
-    expect(nested).toBeTruthy();
-    expect(nested[0]).toMatch(/background:\s*var\(--glass-control\)/);
-    expect(nested[0]).toMatch(/color:\s*var\(--glass-text-primary\)/);
-
-    expect(css).toMatch(/body\.light-theme \.notes-section\s*\{[\s\S]*?radial-gradient[\s\S]*?var\(--glass-surface\)/);
-    expect(css).toMatch(/body\.light-theme \.note-item\s*\{[^}]*background:\s*rgba\(255, 255, 255, 0\.42\)/);
-    expect(css).toMatch(
-      /body\.light-theme \.note-item\s*\{[^}]*backdrop-filter:\s*blur\(var\(--glass-blur-card\)\)/
-    );
     expect(css).toMatch(/body\.light-theme :is\(\.note-tag-filter-btn, \.note-tag-suggestion\)\s*\{/);
     expect(css).toMatch(/body\.light-theme \.note-grip\s*\{[^}]*color:\s*rgba\(15, 23, 42, 0\.5\)/);
   });
