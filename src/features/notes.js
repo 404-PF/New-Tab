@@ -7,7 +7,8 @@
 
   const elements = {};
 
-  const debounceTimers = {};
+  // Null-prototype so note ids such as "__proto__" are stored as own keys.
+  const debounceTimers = Object.create(null);
 
   const notePreviewModes = {};
 

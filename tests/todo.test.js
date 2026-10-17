@@ -2682,14 +2682,26 @@ describe('Todo import refresh (issue #824)', () => {
       { id: 'imported-1', text: 'Imported todo', completed: false, createdAt: '2026-01-01T00:00:00.000Z' }
     ]));
 
+    const addBtn = document.getElementById('add-todo-btn');
+    const input = document.getElementById('todo-input');
+    const btnSpy = vi.spyOn(addBtn, 'addEventListener');
+    const inputSpy = vi.spyOn(input, 'addEventListener');
+
     reloadTodosState();
+
+    // The refresh must not re-bind listeners the way initTodo does.
+    expect(btnSpy).not.toHaveBeenCalled();
+    expect(inputSpy).not.toHaveBeenCalled();
+    btnSpy.mockRestore();
+    inputSpy.mockRestore();
 
     expect(loadTodos()).toHaveLength(1);
     expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
     expect(document.querySelector('.todo-text')?.textContent).toBe('Imported todo');
+    // applyFilters() also refreshes the derived filter counts.
+    expect(document.getElementById('badge-all').textContent).toBe('1');
 
-    // The refresh must not re-bind listeners the way initTodo does: the
-    // add button still creates exactly one todo per click.
+    // The add button still creates exactly one todo per click.
     document.getElementById('todo-input').value = 'After reload';
     document.getElementById('add-todo-btn').click();
     expect(loadTodos()).toHaveLength(2);

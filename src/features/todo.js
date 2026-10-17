@@ -88,8 +88,8 @@
   function reloadTodosState() {
     todos = loadTodos();
     migrateTodos();
-    filterTodos();
-    renderTodos();
+    // applyFilters also refreshes the progress ring, counts and filter pills.
+    applyFilters();
   }
 
   function createReminderAlarmFallback() {
