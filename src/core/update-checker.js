@@ -473,6 +473,9 @@ class UpdateChecker {
   // Show manual check result. When i18nKey is provided, rebuilds re-render the
   // text via formatMessage so a languageChanged refresh re-translates it.
   showManualCheckResult(message, i18nKey = null, replacements = {}) {
+    // A new result gets a fresh window; drop the previous result's timer so
+    // its remaining time is not carried over.
+    this._clearTimedAutoHide('manualCheckResult');
     this._manualCheckResultState = {
       message,
       key: i18nKey || null,

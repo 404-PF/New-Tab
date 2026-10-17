@@ -177,6 +177,22 @@ describe('UpdateChecker', () => {
       }
     });
 
+    it('gives a second manual-check result a fresh five-second window', () => {
+      vi.useFakeTimers();
+      try {
+        checker.showManualCheckResult('first');
+        vi.advanceTimersByTime(4000);
+        checker.showManualCheckResult('second');
+
+        vi.advanceTimersByTime(4900);
+        expect(document.querySelector('.manual-check-result')?.textContent).toBe('second');
+        vi.advanceTimersByTime(100);
+        expect(document.querySelector('.manual-check-result')).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('does not resurrect a result once its auto-hide window has expired', () => {
       vi.useFakeTimers();
       try {
