@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
+import { failStorageWritesFor } from './helpers/storage-write-failures.js';
 
 beforeAll(() => {
   injectScript('src/ai/conversation-validator.js');
@@ -334,6 +335,67 @@ describe('AIStore persistence atomicity (#716)', () => {
       } else {
         window.showToast = originalShowToast;
       }
+    }
+  });
+});
+
+describe('AIStore synchronous fallback write failures (#823)', () => {
+  it('treats a rejected sync fallback write as a failed save', async () => {
+    const conversation = {
+      id: 'conv-1',
+      title: 'Topic',
+      messages: [{ id: 'm1', role: 'user', content: 'Hello' }],
+      createdAt: 1,
+      updatedAt: 1
+    };
+    // Rollback restores the last persisted state, so seed it first.
+    localStorage.setItem(AIStore.STORAGE_KEYS.conversations, JSON.stringify([conversation]));
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-1');
+    const persistedBefore = localStorage.getItem(AIStore.STORAGE_KEYS.conversations);
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = 'conv-1';
+    const previousState = AIStore.createSaveSnapshot();
+    AIStore.state.conversations = [
+      { ...conversation, id: 'conv-2', title: 'Unsaved' },
+      conversation
+    ];
+    AIStore.state.currentConversationId = 'conv-2';
+
+    const originalSetItemAsync = localStorage.setItemAsync;
+    delete localStorage.setItemAsync;
+
+    const restoreStorageSet = failStorageWritesFor(AIStore.STORAGE_KEYS.conversations, 'sync');
+
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      expect(await AIStore.saveConversations(previousState)).toBe(false);
+      expect(AIStore.state.conversations).toEqual([conversation]);
+      expect(AIStore.state.currentConversationId).toBe('conv-1');
+      // The failed save leaves storage at its pre-save value.
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations)).toBe(persistedBefore);
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save conversations. Your last action was not saved.',
+        'error'
+      );
+    } finally {
+      restoreStorageSet();
+      if (typeof originalSetItemAsync === 'undefined') {
+        delete localStorage.setItemAsync;
+      } else {
+        localStorage.setItemAsync = originalSetItemAsync;
+      }
+      if (typeof originalShowToast === 'undefined') {
+        delete window.showToast;
+      } else {
+        window.showToast = originalShowToast;
+      }
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
     }
   });
 });

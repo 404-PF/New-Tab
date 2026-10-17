@@ -74,13 +74,27 @@
   // Save todos to localStorage
   function saveTodos(todos) {
     try {
-      localStorage.setItem('todos', JSON.stringify(todos));
-      return true;
+      const result = localStorage.setItem('todos', JSON.stringify(todos));
+      return result !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (error) {
       console.warn('Failed to save todos to localStorage:', error);
       return false;
     }
   }
+
+  window.addEventListener('storageBridgeWriteError', (event) => {
+    if (event?.detail?.key !== 'todos') return;
+
+    setTimeout(() => {
+      const persisted = loadTodos();
+      if (JSON.stringify(persisted) === JSON.stringify(todos)) return;
+      todos = persisted;
+      applyFilters();
+      // Resync reminders so the service worker drops the rolled-back todos.
+      scheduleTodoReminderCheck();
+      showTodoSaveError();
+    }, 0);
+  });
 
   // Re-read todos from storage and re-render without re-binding listeners.
   // The settings import flow (issue #824) calls this instead of initTodo(),

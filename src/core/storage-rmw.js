@@ -304,6 +304,8 @@
     if (result !== false) { // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
       lastLocalValues.set(key, candidateRaw);
     }
+
+    return result;
   }
 
   storage.getItem = wrappedGetItem;

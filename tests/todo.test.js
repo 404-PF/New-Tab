@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { injectScript } from './helpers/inject-script.js';
+import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
 beforeAll(() => {
   injectScript('src/core/dom-ready.js');
@@ -2669,6 +2670,75 @@ describe('Custom date picker open/close (issue #810)', () => {
     expect(byId.month13.dueDate).toBeNull();
     expect(byId.leap.dueDate).toBe('2028-02-29');
     expect(byId.leap.dueTime).toBe('10:30');
+  });
+});
+
+describe('Todo storage bridge write failures', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save todo changes. Your last action was not saved.';
+
+  let restoreStorageSet = null;
+  let warnSpy = null;
+
+  function failWritesFor(key, mode = 'sync') {
+    restoreStorageSet = failStorageWritesFor(key, mode);
+  }
+
+  afterEach(async () => {
+    await flushDeferredFailureSync();
+    if (restoreStorageSet) {
+      restoreStorageSet();
+      restoreStorageSet = null;
+    }
+    if (warnSpy) {
+      warnSpy.mockRestore();
+      warnSpy = null;
+    }
+  });
+
+  it('saveTodos reports a synchronously rejected bridge write as a failure', () => {
+    addTodo('Keep me');
+    failWritesFor('todos', 'sync');
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(saveTodos([{ id: 'rejected', text: 'Rejected' }])).toBe(false);
+    expect(loadTodos().map((todo) => todo.text)).toEqual(['Keep me']);
+  });
+
+  it('rolls back and toasts once when a rejected write also dispatches the error event', async () => {
+    addTodo('Keep me');
+    failWritesFor('todos', 'sync');
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const todoId = loadTodos()[0].id;
+    deleteTodo(todoId);
+
+    const toast = document.querySelector('.toast-notification');
+    expect(toast?.textContent).toContain(SAVE_ERROR_MESSAGE);
+    expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+
+    await flushDeferredFailureSync();
+
+    expect(document.querySelector('.toast-notification')).toBe(toast);
+    expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+    expect(loadTodos().map((todo) => todo.text)).toEqual(['Keep me']);
+  });
+
+  it('reverts in-memory todos and toasts when an async bridge write fails', async () => {
+    addTodo('First');
+    failWritesFor('todos', 'async');
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    addTodo('Ghost');
+    expect(document.querySelectorAll('.todo-item')).toHaveLength(2);
+    expect(loadTodos()).toHaveLength(2);
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(loadTodos().map((todo) => todo.text)).toEqual(['First']);
+    expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+    expect(document.querySelector('.todo-text')?.textContent).toBe('First');
+    expect(document.querySelector('.toast-notification')?.textContent).toContain(SAVE_ERROR_MESSAGE);
   });
 });
 

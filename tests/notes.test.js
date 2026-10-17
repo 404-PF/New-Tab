@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
+import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
 function getNotes() {
   try {
@@ -1150,5 +1151,108 @@ describe('Notes markdown preview', () => {
 
       expect(getNotes()).toHaveLength(0);
     });
+  });
+});
+
+describe('Notes storage bridge write failures', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save note. Your changes were not saved.';
+
+  let restoreStorageSet = null;
+  let warnSpy = null;
+  let showToast = null;
+
+  function failWritesFor(key, mode = 'sync') {
+    restoreStorageSet = failStorageWritesFor(key, mode);
+  }
+
+  beforeEach(() => {
+    showToast = vi.fn();
+    window.showToast = showToast;
+  });
+
+  afterEach(async () => {
+    await flushDeferredFailureSync();
+    if (restoreStorageSet) {
+      restoreStorageSet();
+      restoreStorageSet = null;
+    }
+    if (warnSpy) {
+      warnSpy.mockRestore();
+      warnSpy = null;
+    }
+    delete window.showToast;
+    showToast = null;
+  });
+
+  it('rolls back a note mutation and reports once when the bridge rejects synchronously', async () => {
+    const note = { id: '1', text: 'Keep me', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+    setNotes([note]);
+    initNotes();
+
+    failWritesFor('notes', 'sync');
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    deleteNote('1');
+
+    expect(getNotes()).toHaveLength(1);
+    expect(document.querySelectorAll('.note-item')).toHaveLength(1);
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+
+    await flushDeferredFailureSync();
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(document.querySelectorAll('.note-item')).toHaveLength(1);
+  });
+
+  it('defers async failure recovery until pending debounced saves drain', async () => {
+    setNotes([
+      { id: '1', text: 'Saved', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: '2', text: 'Other', tag: '', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]);
+    initNotes();
+
+    failWritesFor('notes', 'async');
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    updateNoteText('1', 'Unsaved edit');
+    // An emptied textarea schedules a debounce that never saves.
+    const other = document.querySelectorAll('.note-textarea')[1];
+    other.value = '';
+    other.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // The async failure has fired, but the 500 ms debounce is still pending,
+    // so recovery must not have run yet.
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    expect(showToast).not.toHaveBeenCalled();
+    expect(getFilteredNotes().find((note) => note.id === '1').text).toBe('Unsaved edit');
+
+    await vi.waitFor(() => {
+      expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    }, { timeout: 2000 });
+    expect(getNotes().find((note) => note.id === '1').text).toBe('Saved');
+  });
+
+  it('reverts an unsaved note edit and reports when an async bridge write fails', async () => {
+    const note = { id: '1', text: 'Saved', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+    setNotes([note]);
+    initNotes();
+
+    failWritesFor('notes', 'async');
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    updateNoteText('1', 'Unsaved edit');
+    expect(getFilteredNotes()[0].text).toBe('Unsaved edit');
+    expect(JSON.parse(localStorage.getItem('notes'))[0].text).toBe('Unsaved edit');
+    expect(showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(getFilteredNotes()[0].text).toBe('Saved');
+    expect(document.querySelector('.note-textarea').value).toBe('Saved');
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 });
