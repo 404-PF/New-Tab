@@ -716,6 +716,9 @@ describe('DataManager focus-mode and auto-theme settings (issue #838)', () => {
     expect(window.DataManager.EXPECTED_SHAPES.autoThemeLightTime('')).toBe(false);
     expect(window.DataManager.EXPECTED_SHAPES.autoThemeLightTime('noon')).toBe(false);
     expect(window.DataManager.EXPECTED_SHAPES.autoThemeLightTime('24:00')).toBe(false);
+    // type="time" inputs require a two-digit hour; 7:00 would be cleared.
+    expect(window.DataManager.EXPECTED_SHAPES.autoThemeLightTime('7:00')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.autoThemeDarkTime('9:30')).toBe(false);
     expect(window.DataManager.EXPECTED_SHAPES.autoThemeDarkTime('19:60')).toBe(false);
 
     expect(window.DataManager.validateImportData({ version: 1, data: {
@@ -738,6 +741,17 @@ describe('DataManager focus-mode and auto-theme settings (issue #838)', () => {
     expect(exported.data.autoTheme).toBe(false);
     expect(exported.data.autoThemeLightTime).toBe('08:15');
     expect(exported.data.autoThemeDarkTime).toBe('21:45');
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+  });
+
+  it('omits auto-theme time keys whose stored value is empty', async () => {
+    localStorage.setItem('autoThemeLightTime', '');
+    localStorage.setItem('autoThemeDarkTime', '');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.autoThemeLightTime).toBeUndefined();
+    expect(exported.data.autoThemeDarkTime).toBeUndefined();
     expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
   });
 

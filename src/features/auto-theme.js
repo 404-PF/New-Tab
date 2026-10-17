@@ -275,7 +275,9 @@
 
     if (loadEnabled()) {
       disableManualRadios();
-      lastScheduledTheme = null;
+      // Keep lastScheduledTheme so checkAndApply only switches the theme when
+      // the imported schedule actually crossed a boundary; a manual override
+      // survives an import that does not change the current scheduled theme.
       checkAndApply();
       startInterval();
     } else {

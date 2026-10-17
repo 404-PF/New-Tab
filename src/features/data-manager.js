@@ -368,6 +368,11 @@
       if (val === null) {
         return;
       }
+      // A cleared time input stores ''; skip so the backup stays importable
+      // (the import validator rejects empty schedule values).
+      if (val === '' && (key === 'autoThemeLightTime' || key === 'autoThemeDarkTime')) {
+        return;
+      }
       const persistentVal = pickPersistentFields(key, val);
       if (persistentVal !== null) {
         data[key] = sanitizeExportValue(key, persistentVal);
@@ -614,10 +619,12 @@
     },
     focusMode: function (v) { return typeof v === 'boolean'; },
     autoTheme: function (v) { return typeof v === 'boolean'; },
-    // HH:MM as produced by the time inputs; rejects '' so an empty schedule
-    // never round-trips (the 07:00/19:00 defaults would replace it anyway).
-    autoThemeLightTime: function (v) { return typeof v === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(v); },
-    autoThemeDarkTime: function (v) { return typeof v === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(v); }
+    // HH:MM as produced by the time inputs (two-digit hour, since
+    // type="time" clears a single-digit value like 7:00); rejects '' so an
+    // empty schedule never round-trips (the 07:00/19:00 defaults would
+    // replace it anyway).
+    autoThemeLightTime: function (v) { return typeof v === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v); },
+    autoThemeDarkTime: function (v) { return typeof v === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v); }
   };
 
   function validateImportData(data) {
