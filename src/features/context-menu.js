@@ -70,40 +70,48 @@ function addHover(el) {
   el.addEventListener('mouseleave', () => el.classList.remove('hover'));
 }
 
+// The startup applyLanguage() pass runs while settings.js is evaluated, which
+// happens before this file loads — so labels set only in HTML/hardcoded text
+// would stay English until the next language switch. Translate at creation
+// time; the data-i18n attributes still cover later language-switch passes.
+function translateLabel(key, fallback) {
+  return window.i18n && window.i18n.t ? window.i18n.t(key) : fallback;
+}
+
 // App items (for custom-app)
 const renameItem = document.createElement('div');
 renameItem.id = 'rename-app';
 renameItem.className = 'context-menu-item context-menu-app-item';
 renameItem.setAttribute('data-i18n', 'renameApp');
-renameItem.textContent = 'Rename';
+renameItem.textContent = translateLabel('renameApp', 'Rename');
 addHover(renameItem);
 
 const moveToFolderItem = document.createElement('div');
 moveToFolderItem.id = 'move-to-folder';
 moveToFolderItem.className = 'context-menu-item context-menu-app-item';
 moveToFolderItem.setAttribute('data-i18n', 'moveToFolder');
-moveToFolderItem.textContent = 'Move to Folder';
+moveToFolderItem.textContent = translateLabel('moveToFolder', 'Move to Folder');
 addHover(moveToFolderItem);
 
 const removeFromFolderItem = document.createElement('div');
 removeFromFolderItem.id = 'remove-from-folder';
 removeFromFolderItem.className = 'context-menu-item context-menu-folder-app-item';
 removeFromFolderItem.setAttribute('data-i18n', 'removeFromFolder');
-removeFromFolderItem.textContent = 'Remove from Folder';
+removeFromFolderItem.textContent = translateLabel('removeFromFolder', 'Remove from Folder');
 addHover(removeFromFolderItem);
 
 const changeThumbnailItem = document.createElement('div');
 changeThumbnailItem.id = 'change-thumbnail';
 changeThumbnailItem.className = 'context-menu-item context-menu-app-item';
 changeThumbnailItem.setAttribute('data-i18n', 'changeThumbnail');
-changeThumbnailItem.textContent = 'Change Thumbnail';
+changeThumbnailItem.textContent = translateLabel('changeThumbnail', 'Change Thumbnail');
 addHover(changeThumbnailItem);
 
 const deleteItem = document.createElement('div');
 deleteItem.id = 'delete-app';
 deleteItem.className = 'context-menu-item delete-item context-menu-app-item';
 deleteItem.setAttribute('data-i18n', 'deleteApp');
-deleteItem.textContent = 'Delete';
+deleteItem.textContent = translateLabel('deleteApp', 'Delete');
 addHover(deleteItem);
 
 // Default-app items (for hideable .app-icon.default-app)
@@ -111,7 +119,7 @@ const hideDefaultItem = document.createElement('div');
 hideDefaultItem.id = 'hide-default-app';
 hideDefaultItem.className = 'context-menu-item context-menu-default-item';
 hideDefaultItem.dataset.i18n = 'hideDefaultApp';
-hideDefaultItem.textContent = 'Hide from Grid';
+hideDefaultItem.textContent = translateLabel('hideDefaultApp', 'Hide from Grid');
 addHover(hideDefaultItem);
 
 // Folder items (for folder-icon)
@@ -119,14 +127,14 @@ const renameFolderItem = document.createElement('div');
 renameFolderItem.id = 'rename-folder';
 renameFolderItem.className = 'context-menu-item context-menu-folder-item';
 renameFolderItem.setAttribute('data-i18n', 'renameFolder');
-renameFolderItem.textContent = 'Rename Folder';
+renameFolderItem.textContent = translateLabel('renameFolder', 'Rename Folder');
 addHover(renameFolderItem);
 
 const deleteFolderItem = document.createElement('div');
 deleteFolderItem.id = 'delete-folder';
 deleteFolderItem.className = 'context-menu-item delete-item context-menu-folder-item';
 deleteFolderItem.setAttribute('data-i18n', 'deleteFolder');
-deleteFolderItem.textContent = 'Delete Folder';
+deleteFolderItem.textContent = translateLabel('deleteFolder', 'Delete Folder');
 addHover(deleteFolderItem);
 
 // Grid items (for empty grid space)
@@ -134,14 +142,14 @@ const createFolderItem = document.createElement('div');
 createFolderItem.id = 'create-folder';
 createFolderItem.className = 'context-menu-item context-menu-grid-item';
 createFolderItem.setAttribute('data-i18n', 'createFolder');
-createFolderItem.textContent = 'Create Folder';
+createFolderItem.textContent = translateLabel('createFolder', 'Create Folder');
 addHover(createFolderItem);
 
 const sortAlphabeticallyItem = document.createElement('div');
 sortAlphabeticallyItem.id = 'sort-alphabetically';
 sortAlphabeticallyItem.className = 'context-menu-item context-menu-grid-item';
 sortAlphabeticallyItem.dataset.i18n = 'sortAlphabetically';
-sortAlphabeticallyItem.textContent = 'Sort Alphabetically';
+sortAlphabeticallyItem.textContent = translateLabel('sortAlphabetically', 'Sort Alphabetically');
 addHover(sortAlphabeticallyItem);
 
 contextMenu.appendChild(renameItem);
