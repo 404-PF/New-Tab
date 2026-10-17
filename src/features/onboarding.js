@@ -779,14 +779,23 @@ function isTourReady() {
   return window.appGridReady === true && checkRequiredElements();
 }
 
-// Auto-start for new users
-document.addEventListener('DOMContentLoaded', () => {
+// Auto-start for new users.
+// bootstrap.js loads scripts after the DOM is already ready, so a
+// DOMContentLoaded listener would never fire (see update-checker.js).
+// Use onDomReady, which calls directly when the document is not loading,
+// so the retry loop and appGridReady listener are registered in the real
+// extension path too.
+window.onDomReady(() => {
   // Wait for all elements to be ready
   let attempts = 0;
   const maxAttempts = 50; // 5 seconds max wait
   let checkTimeout = null;
 
   const checkAndStart = () => {
+    // Another auto-start path (e.g. the load fallback) already launched
+    // the tour; stop instead of polling or logging a stale skip warning.
+    if (onboardingTour.isActive) return;
+
     // Skip if tab is not visible
     if (window.visibilityManager && !window.visibilityManager.isVisible) {
       // Wait for visibility to resume checking
