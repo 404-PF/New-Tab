@@ -430,6 +430,15 @@
     });
   }
 
+  // Callback-style chrome.storage returns undefined; a promise-returning
+  // implementation may reject without invoking the callback. Rejection-only
+  // normalisation: success still settles through the callback, which reports
+  // chrome.runtime.lastError, and every settle path is idempotent, so a
+  // callback that fires after a rejection is ignored.
+  function observeStorageRejection(result, onRejection) {
+    Promise.resolve(result).catch(onRejection);
+  }
+
   function persistSet(key, value, hadPreviousValue, previousValue) {
     const storageArea = getStorageArea();
     if (!storageArea) {
@@ -496,9 +505,7 @@
       finalizeClearOperations();
       return false;
     }
-    // Callback-style chrome.storage returns undefined; a promise-returning
-    // implementation may reject without invoking the callback.
-    Promise.resolve(result).catch(finishSet);
+    observeStorageRejection(result, finishSet);
     return true;
   }
 
@@ -545,14 +552,7 @@
       return failureError ? Promise.reject(failureError) : Promise.resolve(false);
     }
 
-    // Callback-style chrome.storage returns undefined; a promise-returning
-    // implementation may reject without ever invoking the callback. Without
-    // this a promise-only rejection leaves the operation pending forever, with
-    // the optimistic cache at the failed value. Success still settles through
-    // the callback, which reports chrome.runtime.lastError.
-    Promise.resolve(result).catch(function (error) {
-      rejectOperation(error);
-    });
+    observeStorageRejection(result, rejectOperation);
 
     return operationPromise.catch(error => {
       onFailure(error, generation);
@@ -735,7 +735,7 @@
       settleRemove(error);
       return false;
     }
-    Promise.resolve(result).catch(settleRemove);
+    observeStorageRejection(result, settleRemove);
     return true;
   }
 
@@ -785,8 +785,7 @@
       settleClearOperation(generation, 'failed', error);
       return;
     }
-    // settleClearOperation ignores operations that already settled.
-    Promise.resolve(result).catch((error) => {
+    observeStorageRejection(result, (error) => {
       console.warn('Failed to clear chrome.storage:', error);
       settleClearOperation(generation, 'failed', error);
     });
