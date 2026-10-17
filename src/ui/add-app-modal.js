@@ -72,12 +72,23 @@ function getAddAppElements() {
   return addAppElementsCache;
 }
 
+// Mirrors the storage sanitizer so the confirm button is only enabled for
+// URLs AppGridState.addApp will accept (unsafe schemes such as javascript:
+// are rejected there).
+function isStorableAppUrl(url) {
+  if (typeof window.normalizeCustomAppUrl !== 'function') return true;
+  return !!window.normalizeCustomAppUrl(url);
+}
+
 function normalizeAppUrl(url) {
   const trimmed = String(url || '').trim();
   if (!trimmed || trimmed.startsWith('/')) return trimmed ? trimmed : 'https://' + trimmed;
   if (typeof window.__normalizeAppUrlForCheck === 'function') {
     const checked = window.__normalizeAppUrlForCheck(trimmed);
     if (checked && checked !== trimmed) return checked;
+    // Backslash-authority input (for example "\\\\host/path") must never be
+    // promoted to an https URL; storage rejects it.
+    if (trimmed.startsWith('\\')) return trimmed;
     if (typeof window.normalizeCustomAppUrl === 'function') {
       if (window.normalizeCustomAppUrl(trimmed)) return trimmed;
       const candidate = 'https://' + trimmed;
@@ -425,7 +436,10 @@ function updatePreview() {
     validationIcon.classList.toggle('invalid', !isValid);
   }
 
-  const isCreatable = isValid || validation.status === 'undetectable';
+  // Only enable confirm for input the storage sanitizer will accept, using
+  // the same URL createAppData() stores.
+  const isCreatable = (isValid || validation.status === 'undetectable') &&
+    isStorableAppUrl(normalizeAppUrl(url));
   const isDuplicate = isCreatable && window.AppGridState && window.AppGridState.hasAppWithUrl(fullUrl);
 
   if (validationMessage) {

@@ -349,6 +349,29 @@ describe('Add app modal undetectable URLs', () => {
     expect(window.AppGridState.getCustomApps()).toHaveLength(0);
   });
 
+  it.each([
+    ['javascript:alert(1)'],
+    ['\\\\attacker.example/path']
+  ])('keeps the confirm button disabled for unsafe input %s', async (value) => {
+    const newAppBtn = document.getElementById('new-app');
+    const addAppUrlInput = document.getElementById('add-app-url');
+    const addAppConfirm = document.getElementById('add-app-confirm');
+
+    window.initAddAppModal();
+    newAppBtn.click();
+
+    addAppUrlInput.value = value;
+    addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(addAppConfirm.disabled).toBe(true);
+    expect(document.getElementById('preview-url')?.textContent || '').not.toMatch(/^https:\/\/\\/);
+
+    pressEnter(addAppUrlInput);
+    await flushMicrotasks();
+
+    expect(window.AppGridState.getCustomApps()).toHaveLength(0);
+  });
+
   it('keeps the confirm button disabled for empty input', () => {
     const newAppBtn = document.getElementById('new-app');
     const addAppUrlInput = document.getElementById('add-app-url');
