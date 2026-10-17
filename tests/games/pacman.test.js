@@ -1,55 +1,48 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
-import { installPacmanTestEnvironment } from '../helpers/pacman-test-env.js';
+import {
+  installPacmanTestEnvironment,
+  mountPacman,
+  dispatchKey,
+  resetGamesHub
+} from '../helpers/pacman-test-env.js';
 
 beforeAll(() => {
   installPacmanTestEnvironment(vi);
 });
 
-beforeEach(() => {
-  if (window.GameRegistry?.getCurrentGame?.()) {
-    window.GameRegistry.destroyCurrent();
-  }
-  localStorage.clear();
-  document.body.innerHTML = '';
-});
+beforeEach(resetGamesHub);
 
 afterAll(() => {
   vi.restoreAllMocks();
   document.body.innerHTML = '';
 });
 
-function getGame() {
-  return window.GameRegistry.get('pacman');
-}
+const getGame = () => window.GameRegistry.get('pacman');
+const makeContainer = mountPacman;
+const startWithSpace = () => dispatchKey('Space');
+const pressKey = dispatchKey;
 
-function makeContainer() {
-  const container = document.createElement('div');
-  document.body.appendChild(container);
-  getGame().init(container);
-  return container;
-}
-
-function startWithSpace() {
-  document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
-}
-
-function pressKey(code, target) {
-  (target || document).dispatchEvent(new KeyboardEvent('keydown', { code, key: code, bubbles: true }));
+// Put Pac-Man and the first ghost on the same tile and advance one tick.
+function collideWithGhost() {
+  window.__pacmanTest.setPositions({
+    pacman: { x: 6, y: 13, dir: 'left' },
+    ghosts: [{ x: 6, y: 13, inHouse: false, eaten: false }]
+  });
+  window.__pacmanTest.tick(0.01);
 }
 
 describe('Pac-Man registration and ready state', () => {
   it('registers with the GameRegistry contract', () => {
     const game = getGame();
-    expect(game).not.toBeNull();
-    expect(game.id).toBe('pacman');
-    expect(game.name).toBe('gamesPacman');
-    expect(game.description).toBe('gamesPacmanDesc');
-    expect(game.icon).toBe('👻');
-    expect(typeof game.init).toBe('function');
-    expect(typeof game.destroy).toBe('function');
-    expect(typeof game.pause).toBe('function');
-    expect(typeof game.resume).toBe('function');
-    expect(typeof game.serialize).toBe('function');
+    expect(game).toMatchObject({
+      id: 'pacman',
+      name: 'gamesPacman',
+      description: 'gamesPacmanDesc',
+      icon: '👻'
+    });
+    ['init', 'destroy', 'pause', 'resume', 'serialize'].forEach((method) => {
+      expect(game[method], method).toBeTypeOf('function');
+    });
   });
 
   it('renders behind the shared ready screen and does not start until Space', () => {
@@ -93,6 +86,16 @@ describe('Pac-Man maze validation', () => {
     const noDotsResult = d.validateMazeData(noDots);
     expect(noDotsResult.ok).toBe(false);
     expect(noDotsResult.errors.join(' ')).toContain('at least one dot');
+
+    // A maze with dots but no power pellets is malformed.
+    const noPellets = Array.from({ length: 22 }, (_r, r) =>
+      Array.from({ length: 19 }, (_c, c) => (r === 0 || r === 21 || c === 0 || c === 18) ? '#' : '.')
+    );
+    noPellets[8][9] = 'D';
+    noPellets[9][9] = 'H';
+    const noPelletsResult = d.validateMazeData(noPellets.map((row) => row.join('')));
+    expect(noPelletsResult.ok).toBe(false);
+    expect(noPelletsResult.errors.join(' ')).toContain('power pellet');
 
     // Full-size corridor maze with a sealed single-tile pocket.
     const pocket = Array.from({ length: 22 }, (_r, r) =>
@@ -309,11 +312,7 @@ describe('Pac-Man scoring, ghosts, and lives', () => {
     const container = makeContainer();
     startWithSpace();
 
-    window.__pacmanTest.setPositions({
-      pacman: { x: 6, y: 13, dir: 'left' },
-      ghosts: [{ x: 6, y: 13, inHouse: false, eaten: false }]
-    });
-    window.__pacmanTest.tick(0.01);
+    collideWithGhost();
 
     const state = window.__pacmanTest.getState();
     expect(state.lives).toBe(2);
@@ -328,19 +327,11 @@ describe('Pac-Man scoring, ghosts, and lives', () => {
     const container = makeContainer();
     startWithSpace();
 
-    window.__pacmanTest.setPositions({
-      pacman: { x: 6, y: 13, dir: 'left' },
-      ghosts: [{ x: 6, y: 13, inHouse: false, eaten: false }]
-    });
-    window.__pacmanTest.tick(0.01);
+    collideWithGhost();
     expect(window.__pacmanTest.getState().lives).toBe(2);
 
     // Collision during the respawn window must not cost another life.
-    window.__pacmanTest.setPositions({
-      pacman: { x: 6, y: 13, dir: 'left' },
-      ghosts: [{ x: 6, y: 13, inHouse: false, eaten: false }]
-    });
-    window.__pacmanTest.tick(0.01);
+    collideWithGhost();
     expect(window.__pacmanTest.getState().lives).toBe(2);
 
     getGame().destroy();
@@ -394,11 +385,7 @@ describe('Pac-Man scoring, ghosts, and lives', () => {
       'pacman': { state: saved, savedAt: 1 }
     }));
 
-    window.__pacmanTest.setPositions({
-      pacman: { x: 6, y: 13, dir: 'left' },
-      ghosts: [{ x: 6, y: 13, inHouse: false, eaten: false }]
-    });
-    window.__pacmanTest.tick(0.01);
+    collideWithGhost();
 
     const state = window.__pacmanTest.getState();
     expect(state.gameOver).toBe(true);
@@ -441,6 +428,35 @@ describe('Pac-Man save and restore', () => {
     expect(window.__pacmanTest.getState().started).toBe(false);
     expect(container.querySelector('.games-ready-start').textContent).toBe('Continue');
     expect(getGame().serialize()).toBeNull();
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('restores the queued turns saved with a snapshot', () => {
+    const container = makeContainer();
+    startWithSpace();
+    window.__pacmanTest.tick(0.25);
+    const saved = getGame().serialize();
+    saved.pacman.queuedDirs = ['up'];
+
+    expect(window.__pacmanTest.applyRestoredState(saved)).toBe(true);
+    expect(window.__pacmanTest.getState().queuedDirs).toEqual(['up']);
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('rejects corrupt endpoints on an entity saved at a tile centre', () => {
+    const container = makeContainer();
+    startWithSpace();
+    const saved = getGame().serialize();
+    const { x, y } = window.__pacmanTest.constants.pacmanSpawn;
+    saved.pacman = { ...saved.pacman, x, y, a: { x, y }, b: { x: 0, y: 0 } };
+    expect(window.__pacmanTest.validateSavedState(saved)).toBe(false);
+
+    saved.pacman = { ...saved.pacman, a: { x: 0.5, y }, b: null };
+    expect(window.__pacmanTest.validateSavedState(saved)).toBe(false);
 
     getGame().destroy();
     container.remove();

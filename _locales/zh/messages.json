@@ -519,7 +519,7 @@
     "description": "Flappy Bird game controls"
   },
   "gamesPacman": {
-    "message": "Pac-Man",
+    "message": "吃豆人",
     "description": "Pac-Man game name"
   },
   "gamesPacmanDesc": {

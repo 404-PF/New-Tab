@@ -4653,19 +4653,19 @@ const pacmanTranslations = {
     gamesLives: 'Lives'
   },
   zh: {
-    gamesPacman: 'Pac-Man',
+    gamesPacman: '吃豆人',
     gamesPacmanDesc: 'Pac-Man 迷宮遊戲。吃掉所有豆子並躲避鬼怪！',
     gamesPacmanControls: '方向鍵或 WASD 移動，空格鍵暫停',
     gamesLives: '生命'
   },
   ja: {
-    gamesPacman: 'Pac-Man',
+    gamesPacman: 'パックマン',
     gamesPacmanDesc: 'Pac-Manの迷路ゲーム。すべてのドットを食べてゴーストを避けよう！',
     gamesPacmanControls: '矢印キーまたはWASDで移動、スペースで一時停止',
     gamesLives: '残機'
   },
   ko: {
-    gamesPacman: 'Pac-Man',
+    gamesPacman: '팩맨',
     gamesPacmanDesc: 'Pac-Man 미로 게임. 모든 점을 먹고 유령을 피하세요!',
     gamesPacmanControls: '방향키 또는 WASD로 이동, 스페이스바로 일시정지',
     gamesLives: '남은 목숨'

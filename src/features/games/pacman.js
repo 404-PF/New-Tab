@@ -104,8 +104,7 @@
   let instructionsEl = null;
   let bgCache = null;
   let readyScreen = null;
-  let stateOverlay = null;
-  let stateOverlayKind = null;
+  const stateOverlay = window.gamesHelpers.createStateOverlay('games-pacman-overlay');
 
   let grid = [];
   let gridRows = 0;
@@ -133,19 +132,7 @@
   let touchActive = false;
   let touchStart = null;
 
-  const t = window.gamesHelpers?.t || function (key) {
-    return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key;
-  };
-
-  function tr(key) {
-    return t(key) || key;
-  }
-
-  function nowMs() {
-    return (typeof window.performance === 'object' && typeof window.performance.now === 'function')
-      ? window.performance.now()
-      : Date.now();
-  }
+  const { tr, nowMs } = window.gamesHelpers;
 
   function reducedMotion() {
     return !!window.prefersReducedMotion?.();
@@ -250,6 +237,7 @@
     if (doorCount !== 1) errors.push('maze must contain exactly one ghost-house door');
     if (houseCount === 0) errors.push('maze must contain a ghost house');
     if (dotCount + pelletCount - (spawnDot ? 1 : 0) <= 0) errors.push('maze must contain at least one dot');
+    if (pelletCount === 0) errors.push('maze must contain at least one power pellet');
 
     // BFS over pacman-walkable tiles from spawn (door and house excluded).
     if (!errors.some(function (e) { return e.indexOf('spawn') !== -1; })) {
@@ -437,6 +425,22 @@
     return dist > 8 ? p : GHOST_DEFS[index].corner;
   }
 
+  // Direction from the pool whose next tile is nearest the target
+  // (squared distance; ties keep the earlier direction).
+  function closestDirection(pool, from, target) {
+    let best = pool[0];
+    let bestDist = Infinity;
+    for (const dir of pool) {
+      const dx = from.x + DIR_DELTA[dir].x - target.x;
+      const dy = from.y + DIR_DELTA[dir].y - target.y;
+      if (dx * dx + dy * dy < bestDist) {
+        bestDist = dx * dx + dy * dy;
+        best = dir;
+      }
+    }
+    return best;
+  }
+
   function pickDirToward(from, target, currentDir, allowHouse) {
     let pool = DIR_ORDER.filter(function (dir) {
       return dir !== OPPOSITE[currentDir] && canWalkGhost(from, dir, allowHouse);
@@ -445,18 +449,7 @@
       pool = DIR_ORDER.filter(function (dir) { return canWalkGhost(from, dir, allowHouse); });
     }
     if (pool.length === 0) return null;
-    let best = pool[0];
-    let bestDist = Infinity;
-    pool.forEach(function (dir) {
-      const nx = from.x + DIR_DELTA[dir].x;
-      const ny = from.y + DIR_DELTA[dir].y;
-      const dist = (nx - target.x) * (nx - target.x) + (ny - target.y) * (ny - target.y);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = dir;
-      }
-    });
-    return best;
+    return closestDirection(pool, from, target);
   }
 
   function ghostChooseNext(ghost) {
@@ -508,18 +501,7 @@
       target = chaseTarget(ghost.index);
     }
 
-    let best = pool[0];
-    let bestDist = Infinity;
-    pool.forEach(function (dir) {
-      const nx = from.x + DIR_DELTA[dir].x;
-      const ny = from.y + DIR_DELTA[dir].y;
-      const dist = (nx - target.x) * (nx - target.x) + (ny - target.y) * (ny - target.y);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = dir;
-      }
-    });
-    return applyNext(ghost, from, best);
+    return applyNext(ghost, from, closestDirection(pool, from, target));
   }
 
   function ghostSpeed(ghost) {
@@ -642,18 +624,10 @@
     paused = false;
     manualPause = false;
     stopAnimation();
-    const finalScore = score;
-    window.gamesHelpers?.updateStatsWith?.('pacman', function (stats) {
-      const highScore = Number.isSafeInteger(stats.highScore) ? stats.highScore : 0;
-      const gamesPlayed = Number.isSafeInteger(stats.gamesPlayed) ? stats.gamesPlayed : 0;
-      return {
-        highScore: Math.max(highScore, finalScore),
-        gamesPlayed: gamesPlayed + 1
-      };
-    });
+    window.gamesHelpers.recordRunResult('pacman', score);
     window.GameRegistry?.clearSave?.('pacman');
     updateScoreHud();
-    draw(nowMs());
+    draw();
   }
 
   function checkCollisions() {
@@ -868,60 +842,38 @@
       '  ·  ' + tr('gamesLives') + ': ' + Math.max(0, lives);
   }
 
-  function clearStateOverlay() {
-    if (stateOverlay) {
-      stateOverlay.remove();
-      stateOverlay = null;
-    }
-    stateOverlayKind = null;
+  function stateOverlayOptions(kind) {
+    if (kind === 'paused') return { text: tr('gamesPaused') };
+    return {
+      text: tr('gamesGameOver'),
+      statsHtml: tr('gamesScore') + ': ' + score,
+      sub: tr('gamesPressSpace')
+    };
   }
 
   function syncStateOverlay() {
-    if (!stage) return;
-    const kind = gameOver ? 'game-over' : (paused ? 'paused' : null);
-    if (kind === stateOverlayKind) return;
-    clearStateOverlay();
-    if (kind === 'game-over') {
-      stateOverlay = window.gamesHelpers?.renderDOMOverlay?.(stage, {
-        className: 'games-pacman-overlay',
-        text: tr('gamesGameOver'),
-        statsHtml: tr('gamesScore') + ': ' + score,
-        sub: tr('gamesPressSpace')
-      }) || null;
-      stateOverlayKind = kind;
-    } else if (kind === 'paused') {
-      stateOverlay = window.gamesHelpers?.renderDOMOverlay?.(stage, {
-        className: 'games-pacman-overlay',
-        text: tr('gamesPaused')
-      }) || null;
-      stateOverlayKind = kind;
-    }
+    let kind = null;
+    if (gameOver) kind = 'game-over';
+    else if (paused) kind = 'paused';
+    stateOverlay.sync(stage, kind, stateOverlayOptions);
   }
 
   // ===================== Animation loop =====================
 
   function stopAnimation() {
-    if (rafId !== null && typeof window.cancelAnimationFrame === 'function') {
-      window.cancelAnimationFrame(rafId);
-    }
+    if (rafId !== null) window.cancelAnimationFrame?.(rafId);
     rafId = null;
   }
 
   function frame(timestamp) {
-    if (!started || paused || gameOver) {
-      rafId = null;
-      return;
-    }
-    const elapsed = Math.max(0, timestamp - lastFrameAt);
+    rafId = null;
+    if (!started || paused || gameOver) return;
+    // Clamp the step to 50 ms so a stalled tab cannot tunnel through walls.
+    update(Math.min(Math.max(0, timestamp - lastFrameAt) / 1000, 0.05));
     lastFrameAt = timestamp;
-    const dt = Math.min(elapsed / 1000, 0.05);
-    update(dt);
-    if (!gameOver) {
-      draw(timestamp);
-      rafId = window.requestAnimationFrame(frame);
-    } else {
-      rafId = null;
-    }
+    if (gameOver) return;
+    draw();
+    rafId = window.requestAnimationFrame(frame);
   }
 
   function startAnimation() {
@@ -933,6 +885,16 @@
 
   // ===================== Save / restore =====================
 
+  function isValidEndpoint(point, allowHouse) {
+    return !!point && typeof point === 'object' &&
+      Number.isInteger(point.x) && Number.isInteger(point.y) &&
+      isGhostWalkable(point.x, point.y, allowHouse);
+  }
+
+  function areAdjacent(p, q) {
+    return Math.abs(p.x - q.x) + Math.abs(p.y - q.y) === 1;
+  }
+
   function validateEntityPosition(value, allowHouse) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     if (!isFiniteNumber(value.x) || !isFiniteNumber(value.y)) return false;
@@ -943,15 +905,19 @@
     if (!isGhostWalkable(cx, cy, allowHouse)) return false;
     const fx = Math.abs(value.x - cx);
     const fy = Math.abs(value.y - cy);
-    if (fx < 1e-6 && fy < 1e-6) return true;
+    if (fx < 1e-6 && fy < 1e-6) {
+      // At a tile centre the endpoints are optional, but restoration trusts
+      // them for movement, so any that are present must be valid too.
+      const hasA = value.a !== null && value.a !== undefined;
+      const hasB = value.b !== null && value.b !== undefined;
+      if (!hasA && !hasB) return true;
+      if (!isValidEndpoint(value.a, allowHouse)) return false;
+      if (!hasB) return true;
+      return isValidEndpoint(value.b, allowHouse) && areAdjacent(value.a, value.b);
+    }
     // Mid-corridor: exactly one axis fractional, endpoints walkable and adjacent.
-    if (!value.a || !value.b || typeof value.a !== 'object' || typeof value.b !== 'object') return false;
-    if (!Number.isInteger(value.a.x) || !Number.isInteger(value.a.y)) return false;
-    if (!Number.isInteger(value.b.x) || !Number.isInteger(value.b.y)) return false;
-    if (!isGhostWalkable(value.a.x, value.a.y, allowHouse)) return false;
-    if (!isGhostWalkable(value.b.x, value.b.y, allowHouse)) return false;
-    const adjacent = Math.abs(value.a.x - value.b.x) + Math.abs(value.a.y - value.b.y) === 1;
-    if (!adjacent) return false;
+    if (!isValidEndpoint(value.a, allowHouse) || !isValidEndpoint(value.b, allowHouse)) return false;
+    if (!areAdjacent(value.a, value.b)) return false;
     const minX = Math.min(value.a.x, value.b.x);
     const maxX = Math.max(value.a.x, value.b.x);
     const minY = Math.min(value.a.y, value.b.y);
@@ -1051,7 +1017,8 @@
       a: savedState.pacman.a ? { x: savedState.pacman.a.x, y: savedState.pacman.a.y } : { x: Math.round(savedState.pacman.x), y: Math.round(savedState.pacman.y) },
       b: savedState.pacman.b ? { x: savedState.pacman.b.x, y: savedState.pacman.b.y } : null
     };
-    queue = [];
+    // Keep the turns queued at save time so Continue resumes the same move.
+    queue = Array.isArray(savedState.pacman.queuedDirs) ? savedState.pacman.queuedDirs.slice() : [];
     ghosts = savedState.ghosts.map(function (ghost, i) {
       return {
         index: i,
@@ -1110,18 +1077,10 @@
   // ===================== Input =====================
 
   function handleKeydown(e) {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
-      return;
-    }
-    if (!started) return;
+    if (!started || window.gamesHelpers.isEditableTarget(e.target)) return;
 
     if (gameOver) {
-      if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
-        window.gamesHelpers.handleRestartSpace(e, resetAndStart);
-      } else if (e.code === 'Space') {
-        e.preventDefault();
-        resetAndStart();
-      }
+      window.gamesHelpers.handleRestartSpace(e, resetAndStart);
       return;
     }
 
@@ -1133,7 +1092,7 @@
         paused = true;
         manualPause = true;
         stopAnimation();
-        draw(nowMs());
+        draw();
       }
       return;
     }
@@ -1180,7 +1139,7 @@
     paused = false;
     manualPause = false;
     updateScoreHud();
-    draw(nowMs());
+    draw();
     startAnimation();
     try { canvas?.focus(); } catch (_e) { /* ignore */ }
   }
@@ -1190,7 +1149,7 @@
     manualPause = false;
     paused = false;
     startAnimation();
-    draw(nowMs());
+    draw();
   }
 
   function init(containerEl, savedState) {
@@ -1241,34 +1200,33 @@
     }
 
     updateScoreHud();
-    draw(nowMs());
+    draw();
 
-    document.addEventListener('keydown', handleKeydown);
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
-    canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
+    toggleInputListeners(true);
+    readyScreen = window.gamesHelpers.createReadyScreen(stage, {
+      text: tr('gamesReady'),
+      sub: tr('gamesReadyStart'),
+      buttonText: tr(restoredRun ? 'gamesContinue' : 'gamesStart'),
+      onStart: restoredRun ? continueRestoredRun : resetAndStart
+    });
+    if (!readyScreen) resetAndStart();
+  }
 
-    if (typeof window.gamesHelpers?.createReadyScreen === 'function') {
-      readyScreen = window.gamesHelpers.createReadyScreen(stage, {
-        text: tr('gamesReady'),
-        sub: tr('gamesReadyStart'),
-        buttonText: restoredRun ? tr('gamesContinue') : tr('gamesStart'),
-        onStart: function () {
-          if (restoredRun) {
-            started = true;
-            paused = false;
-            manualPause = false;
-            lastFrameAt = nowMs();
-            draw(lastFrameAt);
-            startAnimation();
-            try { canvas.focus(); } catch (_e) { /* ignore */ }
-          } else {
-            resetAndStart();
-          }
-        }
-      });
-    } else {
-      resetAndStart();
-    }
+  function continueRestoredRun() {
+    started = true;
+    paused = false;
+    manualPause = false;
+    draw();
+    startAnimation();
+    try { canvas.focus(); } catch (_e) { /* ignore */ }
+  }
+
+  function toggleInputListeners(on) {
+    const method = on ? 'addEventListener' : 'removeEventListener';
+    document[method]('keydown', handleKeydown);
+    if (!canvas) return;
+    canvas[method]('touchstart', handleTouchStart, { passive: true });
+    canvas[method]('touchend', handleTouchEnd, { passive: true });
   }
 
   function destroy() {
@@ -1279,13 +1237,9 @@
 
     started = false;
     stopAnimation();
-    clearStateOverlay();
+    stateOverlay.clear();
 
-    document.removeEventListener('keydown', handleKeydown);
-    if (canvas) {
-      canvas.removeEventListener('touchstart', handleTouchStart);
-      canvas.removeEventListener('touchend', handleTouchEnd);
-    }
+    toggleInputListeners(false);
 
     if (container) container.innerHTML = '';
 
@@ -1310,14 +1264,14 @@
     if (!paused) manualPause = false;
     paused = true;
     stopAnimation();
-    draw(nowMs());
+    draw();
   }
 
   function resume() {
     if (!started || gameOver || manualPause) return;
     paused = false;
     startAnimation();
-    draw(nowMs());
+    draw();
   }
 
   window.GameRegistry?.register({
@@ -1343,7 +1297,7 @@
       // screen is gating `started`, so specs can drive update() directly.
       if (!started && !gameOver) started = true;
       update(dt);
-      draw(nowMs());
+      draw();
     },
     setPositions: function (positions) {
       if (positions.pacman && pacman) {
