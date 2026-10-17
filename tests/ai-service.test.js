@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 // ------------------------------------------------------------------
@@ -756,6 +756,19 @@ describe('Reopening AI chat mid-stream (#616)', () => {
   });
 });
 describe('AIService error path targets correct conversation (#617)', () => {
+  // These tests drive one pending request at a time. With web grounding on,
+  // a failed pre-stream request is retried ungrounded (#739), and that retry
+  // would wait on a promise these mocks never settle. Grounding fallback has
+  // its own coverage below, so run these with grounding off.
+  let originalIsWebGroundingEnabled;
+  beforeEach(() => {
+    originalIsWebGroundingEnabled = OpenRouterAPI.isWebGroundingEnabled;
+    OpenRouterAPI.isWebGroundingEnabled = () => false;
+  });
+  afterEach(() => {
+    OpenRouterAPI.isWebGroundingEnabled = originalIsWebGroundingEnabled;
+  });
+
   it('removes the failed pair from the original conversation after switching mid-request', async () => {
     const convA = {
       id: 'conv_A',

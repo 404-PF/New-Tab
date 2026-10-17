@@ -21,21 +21,44 @@ describe('Pomodoro stats persistence', () => {
     expect(stats).toEqual({ days: {}, byDateTodos: {} });
   });
 
-  it('savePomodoroStats persists to localStorage', () => {
+  it('savePomodoroStats persists to localStorage', async () => {
     const today = getToday();
     const stats = { days: { [today]: { sessions: 2, minutes: 50 } }, byDateTodos: {} };
-    expect(savePomodoroStats(stats)).toBe(true);
+    // The storage bridge exposes setItemAsync, so the save resolves to the result.
+    expect(await savePomodoroStats(stats)).toBe(true);
     const loaded = loadPomodoroStats();
     expect(loaded.days[today].sessions).toBe(2);
     expect(loaded.days[today].minutes).toBe(50);
   });
 
-  it('savePomodoroStats reports false when persistence fails', () => {
+  it('savePomodoroStats reports false when persistence throws', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockImplementation(() => {
+      throw new Error('quota exceeded');
+    });
+    try {
+      expect(await savePomodoroStats({ days: {}, byDateTodos: {} })).toBe(false);
+    } finally {
+      spy.mockRestore();
+      warnSpy.mockRestore();
+    }
+    expect(loadPomodoroStats()).toEqual({ days: {}, byDateTodos: {} });
+  });
+
+  it('savePomodoroStats reports false when synchronous setItem throws without the bridge', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const original = localStorage.setItemAsync;
+    delete localStorage.setItemAsync;
     const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
       throw new Error('quota exceeded');
     });
-    expect(savePomodoroStats({ days: {}, byDateTodos: {} })).toBe(false);
-    spy.mockRestore();
+    try {
+      expect(savePomodoroStats({ days: {}, byDateTodos: {} })).toBe(false);
+    } finally {
+      spy.mockRestore();
+      if (original) localStorage.setItemAsync = original;
+      warnSpy.mockRestore();
+    }
     expect(loadPomodoroStats()).toEqual({ days: {}, byDateTodos: {} });
   });
 
@@ -95,7 +118,7 @@ describe('Pomodoro stats recording', () => {
     expect(stats.days[getToday()]).toBeUndefined();
   });
 
-  it('returns false and does not dispatch when persistence fails', () => {
+  it('returns false and does not dispatch when persistence fails', async () => {
     localStorage.setItem('pomodoroStatsEnabled', 'true');
     const today = getToday();
     savePomodoroStats({
@@ -111,13 +134,18 @@ describe('Pomodoro stats recording', () => {
     const handler = () => { updated = true; };
     window.addEventListener('pomodoroStatsUpdated', handler);
 
-    const spy = vi.spyOn(localStorage, 'setItem').mockImplementationOnce(() => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockImplementationOnce(() => {
       throw new Error('quota exceeded');
     });
-    const result = recordPomodoroSession({ minutes: 25 });
-
-    window.removeEventListener('pomodoroStatsUpdated', handler);
-    spy.mockRestore();
+    let result;
+    try {
+      result = await recordPomodoroSession({ minutes: 25 });
+    } finally {
+      window.removeEventListener('pomodoroStatsUpdated', handler);
+      spy.mockRestore();
+      warnSpy.mockRestore();
+    }
 
     expect(result).toBe(false);
     expect(loadPomodoroStats().days[today]).toEqual({ sessions: 2, minutes: 50 });
@@ -210,7 +238,7 @@ describe('Pomodoro stats recording', () => {
     expect(loadPomodoroStats().days[today]).toEqual({ sessions: 3, minutes: 75 });
   });
 
-  it('returns false and leaves rendered data unchanged when clearing fails', () => {
+  it('returns false and leaves rendered data unchanged when clearing fails', async () => {
     localStorage.setItem('pomodoroStatsEnabled', 'true');
     const today = getToday();
     savePomodoroStats({
@@ -224,11 +252,17 @@ describe('Pomodoro stats recording', () => {
     expect(todayEl.textContent).toBe('2');
     const heatmapBefore = heatmap.innerHTML;
 
-    const spy = vi.spyOn(localStorage, 'setItem').mockImplementationOnce(() => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockImplementationOnce(() => {
       throw new Error('quota exceeded');
     });
-    const result = clearPomodoroStats();
-    spy.mockRestore();
+    let result;
+    try {
+      result = await clearPomodoroStats();
+    } finally {
+      spy.mockRestore();
+      warnSpy.mockRestore();
+    }
 
     expect(result).toBe(false);
     expect(loadPomodoroStats().days[today]).toEqual({ sessions: 2, minutes: 50 });
@@ -395,13 +429,17 @@ describe('Pomodoro completion event', () => {
     expect(getPomodoroSessionsToday()).toBe(before + 1);
   });
 
-  it('dispatches pomodoroStatsUpdated when session recorded', () => {
+  it('dispatches pomodoroStatsUpdated when session recorded', async () => {
     localStorage.setItem('pomodoroStatsEnabled', 'true');
     let updated = false;
     const handler = () => { updated = true; };
     window.addEventListener('pomodoroStatsUpdated', handler);
-    recordPomodoroSession({ minutes: 25 });
-    window.removeEventListener('pomodoroStatsUpdated', handler);
+    try {
+      // The event fires once the asynchronous bridge write is confirmed.
+      await recordPomodoroSession({ minutes: 25 });
+    } finally {
+      window.removeEventListener('pomodoroStatsUpdated', handler);
+    }
     expect(updated).toBe(true);
   });
 });
