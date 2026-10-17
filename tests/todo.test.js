@@ -2671,3 +2671,53 @@ describe('Custom date picker open/close (issue #810)', () => {
     expect(byId.leap.dueTime).toBe('10:30');
   });
 });
+
+describe('Todo import refresh (issue #824)', () => {
+  it('reloadTodosState re-reads storage and re-renders without re-binding listeners', () => {
+    addTodo('Existing todo');
+    expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+
+    // Simulate a settings import replacing the stored list.
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'imported-1', text: 'Imported todo', completed: false, createdAt: '2026-01-01T00:00:00.000Z' }
+    ]));
+
+    const addBtn = document.getElementById('add-todo-btn');
+    const input = document.getElementById('todo-input');
+    const btnSpy = vi.spyOn(addBtn, 'addEventListener');
+    const inputSpy = vi.spyOn(input, 'addEventListener');
+
+    reloadTodosState();
+
+    // The refresh must not re-bind listeners the way initTodo does.
+    expect(btnSpy).not.toHaveBeenCalled();
+    expect(inputSpy).not.toHaveBeenCalled();
+    btnSpy.mockRestore();
+    inputSpy.mockRestore();
+
+    expect(loadTodos()).toHaveLength(1);
+    expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+    expect(document.querySelector('.todo-text')?.textContent).toBe('Imported todo');
+    // applyFilters() also refreshes the derived filter counts.
+    expect(document.getElementById('badge-all').textContent).toBe('1');
+
+    // The add button still creates exactly one todo per click.
+    document.getElementById('todo-input').value = 'After reload';
+    document.getElementById('add-todo-btn').click();
+    expect(loadTodos()).toHaveLength(2);
+    expect(document.querySelectorAll('.todo-item')).toHaveLength(2);
+  });
+
+  it('reloadTodosState migrates imported todos missing legacy fields', () => {
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'legacy', text: 'Legacy todo', completed: true, createdAt: '2026-01-01T00:00:00.000Z' }
+    ]));
+
+    reloadTodosState();
+
+    const stored = loadTodos();
+    expect(stored[0].completedAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(stored[0].recurrence).toBeNull();
+    expect(stored[0].dueTime).toBeNull();
+  });
+});
