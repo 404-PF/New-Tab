@@ -552,11 +552,11 @@
     const epoch = ++_stateEpoch;
     resetTimerStateLocally();
 
-    void withLeadershipLock(async function () {
+    return runTimerAction('stop', withLeadershipLock(async function () {
       if (epoch !== _stateEpoch) return false;
       await saveTimerStateAsync();
       return true;
-    });
+    }));
   }
 
   async function togglePause() {

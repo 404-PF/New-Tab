@@ -80,4 +80,23 @@ describe('Pomodoro click handlers surface async failures', () => {
 
     expect(errorSpy).toHaveBeenCalledWith('Pomodoro start action failed:', expect.any(Error));
   });
+
+  it('logs a failed stop action from the active todo focus button', async () => {
+    window.savePomodoroDurations({ enabled: true, workDuration: 25 });
+    window.startPomodoro('todo-3');
+    await flush();
+    const btn = document.createElement('button');
+    btn.className = 'todo-focus-btn';
+    btn.dataset.todoId = 'todo-3';
+    document.body.appendChild(btn);
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    rejectLocks = true;
+    btn.click();
+    await flush();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    btn.remove();
+
+    expect(errorSpy).toHaveBeenCalledWith('Pomodoro stop action failed:', expect.any(Error));
+  });
 });
