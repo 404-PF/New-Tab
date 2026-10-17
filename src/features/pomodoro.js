@@ -117,16 +117,21 @@
         resolve(parseTimerState(raw));
       };
 
+      let result;
       try {
-        const maybePromise = storageArea.get(TIMER_STATE_KEY, finish);
-        if (maybePromise && typeof maybePromise.then === 'function') {
-          maybePromise.then(finish).catch(function () {
-            finish(null);
-          });
-        }
+        result = storageArea.get(TIMER_STATE_KEY, finish);
       } catch (_error) {
         finish(null);
+        return;
       }
+      // Callback-style storage areas return undefined; promise-style ones
+      // resolve with the items. Normalise both without a Promise-in-boolean.
+      Promise.resolve(result).then(function (items) {
+        if (items !== undefined) finish(items);
+      }).catch(function (error) {
+        console.warn('Failed to load Pomodoro timer state from chrome.storage:', error);
+        finish(null);
+      });
     });
   }
 
@@ -171,20 +176,23 @@
         resolve(success);
       };
 
+      let result;
       try {
-        const maybePromise = storageArea.set({ [TIMER_STATE_KEY]: serialized }, function () {
+        result = storageArea.set({ [TIMER_STATE_KEY]: serialized }, function () {
           finish(!globalThis.chrome.runtime?.lastError);
         });
-        if (maybePromise && typeof maybePromise.then === 'function') {
-          maybePromise.then(function () {
-            finish(true);
-          }).catch(function () {
-            finish(false);
-          });
-        }
       } catch (_error) {
         finish(false);
+        return;
       }
+      // A promise-style storage area settles the returned promise; a
+      // callback-style one returns undefined and settles via the callback.
+      Promise.resolve(result).then(function () {
+        if (result !== undefined) finish(true);
+      }).catch(function (error) {
+        console.warn('Failed to save Pomodoro timer state to chrome.storage:', error);
+        finish(false);
+      });
     });
   }
 
@@ -826,26 +834,34 @@
       if (state.active && state.todoId === todoId) {
         stopTimer();
       } else {
-        startTimer(todoId);
+        runTimerAction('start', startTimer(todoId));
       }
     }
+  }
+
+  // Click handlers cannot await, so surface failures of the async timer
+  // actions instead of leaving them as unhandled rejections.
+  function runTimerAction(name, maybePromise) {
+    return Promise.resolve(maybePromise).catch(function (error) {
+      console.error(`Pomodoro ${name} action failed:`, error);
+      return false;
+    });
   }
 
   function handleWidgetClick(e) {
     const pauseBtn = e.target.closest('.pomodoro-pause-btn');
     if (pauseBtn) {
-      togglePause();
-      return;
+      return runTimerAction('pause', togglePause());
     }
     const skipBtn = e.target.closest('.pomodoro-skip-btn');
     if (skipBtn) {
-      skipPhase();
-      return;
+      return runTimerAction('skip', skipPhase());
     }
     const resetBtn = e.target.closest('.pomodoro-reset-btn');
     if (resetBtn) {
-      resetCurrentPhase();
+      return runTimerAction('reset', resetCurrentPhase());
     }
+    return undefined;
   }
 
   async function resetCurrentPhase() {

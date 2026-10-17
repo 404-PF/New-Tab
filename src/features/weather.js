@@ -607,7 +607,9 @@
         });
         const cache = WeatherStorage.loadCache();
         if (WeatherStorage.loadLocationMode() === 'auto') {
-          refreshWeather(true);
+          refreshWeather(true).catch(function (error) {
+            console.error('Failed to refresh weather after unit change:', error);
+          });
           return;
         }
         if (cache && cache.data && isCacheMatchingSettings(cache)) {

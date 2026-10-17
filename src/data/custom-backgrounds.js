@@ -876,6 +876,8 @@
       }).catch(function (error) {
         showBackgroundError('customBackgroundDeleteError', 'Failed to delete the custom background. Please try again.', error);
       });
+    }).catch(function (error) {
+      showBackgroundError('customBackgroundDeleteError', 'Failed to delete the custom background. Please try again.', error);
     });
   });
 
