@@ -56,15 +56,19 @@ const OfflineMode = (function() {
       km: { m: 1000, cm: 100000, mm: 1000000, mi: 0.621371, ft: 3280.84, in: 39370.1, yd: 1093.61 },
       m: { km: 0.001, cm: 100, mm: 1000, mi: 0.000621371, ft: 3.28084, in: 39.3701, yd: 1.09361 },
       cm: { km: 0.00001, m: 0.01, mm: 10, mi: 0.00000621371, ft: 0.0328084, in: 0.393701, yd: 0.0109361 },
+      mm: { km: 0.000001, m: 0.001, cm: 0.1, mi: 0.000000621371, ft: 0.00328084, in: 0.0393701, yd: 0.00109361 },
       mi: { km: 1.60934, m: 1609.34, cm: 160934, mm: 1609340, ft: 5280, in: 63360, yd: 1760 },
       ft: { km: 0.0003048, m: 0.3048, cm: 30.48, mm: 304.8, mi: 0.000189394, in: 12, yd: 0.333333 },
-      in: { km: 0.0000254, m: 0.0254, cm: 2.54, mm: 25.4, mi: 0.0000157828, ft: 0.0833333, yd: 0.0277778 }
+      in: { km: 0.0000254, m: 0.0254, cm: 2.54, mm: 25.4, mi: 0.0000157828, ft: 0.0833333, yd: 0.0277778 },
+      yd: { km: 0.0009144, m: 0.9144, cm: 91.44, mm: 914.4, mi: 0.000568182, ft: 3, in: 36 }
     },
     weight: {
       kg: { g: 1000, mg: 1000000, lb: 2.20462, oz: 35.274, ton: 0.00110231 },
       g: { kg: 0.001, mg: 1000, lb: 0.00220462, oz: 0.035274, ton: 0.00000110231 },
+      mg: { kg: 0.000001, g: 0.001, lb: 0.00000220462, oz: 0.000035274, ton: 0.00000000110231 },
       lb: { kg: 0.453592, g: 453.592, mg: 453592, oz: 16, ton: 0.0005 },
-      oz: { kg: 0.0283495, g: 28.3495, mg: 28349.5, lb: 0.0625, ton: 0.00003125 }
+      oz: { kg: 0.0283495, g: 28.3495, mg: 28349.5, lb: 0.0625, ton: 0.00003125 },
+      ton: { kg: 907.18474, g: 907184.74, mg: 907184740, lb: 2000, oz: 32000 }
     },
     temperature: {
       C: { F: (c) => c * 9/5 + 32, K: (c) => c + 273.15 },
@@ -109,7 +113,7 @@ const OfflineMode = (function() {
     // Capabilities
     'offline': 'Yes, I\'m currently in offline mode! I can still help with:\n\n• Math calculations\n• Unit conversions\n• Basic facts\n• Time and date\n• General conversation',
     'online': 'I\'m currently in offline mode, but I can switch to online mode when the API is available. I\'ll automatically reconnect!',
-    'network error': 'It looks like there was a network issue connecting to the AI service. I\'m using offline mode to continue helping you. The AI will reconnect automatically when the network is available.'
+    'network error': 'It looks like there was a network issue connecting to the AI service. I\'m using offline mode to continue helping you. The AI will reconnect automatically.'
   };
 
   // Knowledge base - pattern to response mapping (Chinese)
@@ -320,7 +324,7 @@ const OfflineMode = (function() {
   /**
    * Parse and perform unit conversion
    * @param {string} input - Conversion query
-   * @returns {string} Result or null if invalid
+   * @returns {string|Object|null} Result, conversion error, or null for other queries
    */
   function parseConversion(input) {
     // Pattern: "5 km to miles" or "100 fahrenheit to celsius" or Chinese "5 公里 to 英里"
@@ -376,7 +380,7 @@ const OfflineMode = (function() {
         let result;
         
         // Temperature conversion
-        if (CONVERSIONS.temperature[from] && CONVERSIONS.temperature[from][to]) {
+        if (Object.hasOwn(CONVERSIONS.temperature, from) && Object.hasOwn(CONVERSIONS.temperature[from], to)) {
           const convertFn = CONVERSIONS.temperature[from][to];
           result = convertFn(value);
           result = Math.round(result * 100) / 100;
@@ -384,14 +388,15 @@ const OfflineMode = (function() {
         }
         
         // Length/weight conversion
-        const category = Object.keys(CONVERSIONS).find(cat => 
-          CONVERSIONS[cat][from] && CONVERSIONS[cat][from][to]
+        const category = Object.keys(CONVERSIONS).find(cat =>
+          Object.hasOwn(CONVERSIONS[cat], from) && Object.hasOwn(CONVERSIONS[cat][from], to)
         );
-        
+
         if (category) {
           const factor = CONVERSIONS[category][from][to];
           result = value * factor;
-          result = Math.round(result * 10000) / 10000;
+          const rounded = Math.round(result * 10000) / 10000;
+          result = rounded === 0 && result !== 0 ? Number(result.toPrecision(3)) : rounded;
           return `${value} ${from} = ${result} ${to}`;
         }
         
@@ -399,10 +404,36 @@ const OfflineMode = (function() {
         const errorMsg = lang === 'zh' 
           ? `抱歉，我无法从 ${match[2]} 转换到 ${match[3]}。`
           : `Sorry, I can't convert from ${fromUnit} to ${toUnit}.`;
-        return errorMsg;
+        return { error: errorMsg };
       }
     }
-    
+
+    // Cross-category conversion: the input looks like a conversion query and the
+    // source unit is known, but the target unit lives in a different category.
+    // Only fire when the source unit is actually defined — otherwise let the
+    // knowledge base handle ordinary text like "5 days to go".
+    const genericMatch = input.match(/^(-?\d+\.?\d*)\s*([a-z一-鿿]+)\s+(?:to|in|->|转换|换算)\s+([a-z一-鿿]+)$/i);
+    if (genericMatch) {
+      let fromUnit = genericMatch[2].toLowerCase();
+      let toUnit = genericMatch[3].toLowerCase();
+      if (chineseUnitMap[fromUnit]) fromUnit = chineseUnitMap[fromUnit];
+      if (chineseUnitMap[toUnit]) toUnit = chineseUnitMap[toUnit];
+      const unitMap = {
+        'celsius': 'C', 'c': 'C',
+        'fahrenheit': 'F', 'f': 'F',
+        'kelvin': 'K', 'k': 'K'
+      };
+      const from = unitMap[fromUnit] || fromUnit;
+      const fromCategory = Object.keys(CONVERSIONS).find(cat => Object.hasOwn(CONVERSIONS[cat], from));
+      if (fromCategory) {
+        const lang = getCurrentLanguage();
+        const errorMsg = lang === 'zh'
+          ? `抱歉，我无法从 ${genericMatch[2]} 转换到 ${genericMatch[3]}。`
+          : `Sorry, I can't convert from ${fromUnit} to ${toUnit}.`;
+        return { error: errorMsg };
+      }
+    }
+
     return null;
   }
 
@@ -453,6 +484,14 @@ const OfflineMode = (function() {
     // Try unit conversion
     const conversionResult = parseConversion(trimmed);
     if (conversionResult) {
+      if (typeof conversionResult === 'object') {
+        return {
+          success: false,
+          content: conversionResult.error,
+          error: conversionResult.error,
+          mode: 'offline'
+        };
+      }
       return {
         success: true,
         content: conversionResult,
