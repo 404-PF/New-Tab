@@ -1,8 +1,16 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
+// The instance injected here stays registered for the whole file; the
+// auto-start describe below keeps it inert (see its beforeEach).
+let persistedInstance;
+
 beforeAll(() => {
+  // dom-ready.js must load before onboarding.js: the auto-start engine
+  // registers through window.onDomReady, exactly as bootstrap.js orders it.
+  injectScript('src/core/dom-ready.js');
   injectScript('src/features/onboarding.js');
+  persistedInstance = window.onboardingTour;
 });
 
 beforeEach(() => {
@@ -159,7 +167,7 @@ describe('Resume behavior', () => {
     expect(tour.isCompleted()).toBe(false);
     expect(tour._dismissedThisSession).toBe(true);
     // Just checking the guard flags; _tryStart would be blocked by
-    // the check in the auto-start callers (DOMContentLoaded / load handlers)
+    // the check in the auto-start callers (onDomReady / load handlers)
   });
 
   it('_dismissedThisSession is false after start() for restart', () => {
@@ -246,7 +254,7 @@ describe('Saved step detection in auto-start', () => {
     localStorage.setItem('onboardingCompleted', 'true');
     localStorage.setItem('onboardingStep', '3');
     expect(window.onboardingTour.isCompleted()).toBe(true);
-    // Auto-start callers (DOMContentLoaded / load handlers) check
+    // Auto-start callers (onDomReady / load handlers) check
     // isCompleted() before calling _tryStart(), so this guard
     // correctly prevents resuming a previously completed tour.
   });
@@ -589,5 +597,199 @@ describe('Completion persistence failures', () => {
       localStorage.setItem = originalSetItem;
       restoreShowToast(originalShowToast);
     }
+  });
+});
+
+describe('Auto-start registration timing', () => {
+  // isTourReady() requires these elements to have non-zero dimensions;
+  // jsdom reports 0 for offsetWidth/offsetHeight unless stubbed.
+  const REQUIRED_ELEMENTS = [
+    { selector: '#clock', id: 'clock' },
+    { selector: '#date', id: 'date' },
+    { selector: '.search-bar', className: 'search-bar' },
+    { selector: '#app-grid', id: 'app-grid' },
+    { selector: '#motto-container', id: 'motto-container' }
+  ];
+
+  function stubRequiredElements() {
+    REQUIRED_ELEMENTS.forEach(({ selector, id, className }) => {
+      let element = document.querySelector(selector);
+      if (!element) {
+        element = document.createElement('div');
+        if (id) {
+          element.id = id;
+        } else {
+          element.className = className;
+        }
+        element.setAttribute('data-onboarding-stub', 'true');
+        document.body.appendChild(element);
+      }
+      Object.defineProperty(element, 'offsetWidth', { value: 100, configurable: true });
+      Object.defineProperty(element, 'offsetHeight', { value: 100, configurable: true });
+    });
+  }
+
+  let pendingListeners;
+
+  beforeEach(() => {
+    pendingListeners = [];
+    // The instance injected by the file-level beforeAll keeps its listeners
+    // registered for the whole file; mark it dismissed so its retry chain
+    // and handlers can never start a tour during these tests.
+    persistedInstance._dismissedThisSession = true;
+  });
+
+  afterEach(() => {
+    pendingListeners.forEach(([type, listener]) => {
+      window.removeEventListener(type, listener);
+      document.removeEventListener(type, listener);
+    });
+    pendingListeners = [];
+    window.onboardingTour.reset();
+    document.querySelectorAll('[data-onboarding-stub]').forEach((element) => element.remove());
+    ['date', 'motto-container'].forEach((id) => {
+      const element = document.getElementById(id);
+      if (element) {
+        delete element.offsetWidth;
+        delete element.offsetHeight;
+      }
+    });
+    delete window.appGridReady;
+    delete window.visibilityManager;
+    if (vi.isFakeTimers()) vi.clearAllTimers();
+    vi.restoreAllMocks();
+  });
+
+  // Inject a fresh onboarding.js while recording every listener it registers,
+  // so this test's instance can be fully detached afterwards.
+  function injectOnboarding() {
+    const windowSpy = vi.spyOn(window, 'addEventListener');
+    const documentSpy = vi.spyOn(document, 'addEventListener');
+    injectScript('src/features/onboarding.js');
+    const windowCalls = windowSpy.mock.calls.map((call) => [call[0], call[1]]);
+    const documentCalls = documentSpy.mock.calls.map((call) => [call[0], call[1]]);
+    windowSpy.mockRestore();
+    documentSpy.mockRestore();
+    windowCalls.forEach((call) => pendingListeners.push(call));
+    documentCalls.forEach((call) => pendingListeners.push(call));
+    return { windowCalls, documentCalls };
+  }
+
+  it('registers the auto-start engine immediately when scripts run after DOM ready', () => {
+    // jsdom mirrors the real extension: bootstrap.js injects scripts after
+    // DOMContentLoaded has already fired.
+    expect(document.readyState).not.toBe('loading');
+    const timersBefore = vi.getTimerCount();
+    const { windowCalls, documentCalls } = injectOnboarding();
+
+    const windowTypes = windowCalls.map(([type]) => type);
+    expect(windowTypes).toContain('appGridReady');
+    expect(windowTypes).toContain('beforeunload');
+    expect(windowTypes).toContain('load');
+    // Regression guard for issue #840: registration must not hang off a
+    // DOMContentLoaded listener that bootstrap-loaded scripts never observe.
+    expect(documentCalls.map(([type]) => type)).not.toContain('DOMContentLoaded');
+    // The 50-attempt retry loop is armed with its initial 500 ms timeout.
+    expect(vi.getTimerCount()).toBeGreaterThan(timersBefore);
+  });
+
+  it('defers auto-start registration until DOMContentLoaded while the document is loading', () => {
+    const ownDescriptor = Object.getOwnPropertyDescriptor(document, 'readyState');
+    Object.defineProperty(document, 'readyState', { configurable: true, get: () => 'loading' });
+    const windowSpy = vi.spyOn(window, 'addEventListener');
+    const documentSpy = vi.spyOn(document, 'addEventListener');
+    try {
+      injectScript('src/features/onboarding.js');
+
+      expect(documentSpy.mock.calls.map((call) => call[0])).toContain('DOMContentLoaded');
+      expect(windowSpy.mock.calls.map((call) => call[0])).not.toContain('appGridReady');
+
+      document.dispatchEvent(new Event('DOMContentLoaded'));
+
+      const windowTypes = windowSpy.mock.calls.map((call) => call[0]);
+      expect(windowTypes).toContain('appGridReady');
+      expect(windowTypes).toContain('beforeunload');
+    } finally {
+      // Record every listener registered by this injection (including any
+      // added during the DOMContentLoaded dispatch) for afterEach cleanup.
+      windowSpy.mock.calls.forEach((call) => pendingListeners.push([call[0], call[1]]));
+      documentSpy.mock.calls.forEach((call) => pendingListeners.push([call[0], call[1]]));
+      windowSpy.mockRestore();
+      documentSpy.mockRestore();
+      if (ownDescriptor) {
+        Object.defineProperty(document, 'readyState', ownDescriptor);
+      } else {
+        delete document.readyState;
+      }
+    }
+  });
+
+  it('starts the tour when appGridReady fires after load + 1000 ms', () => {
+    injectOnboarding();
+    const tour = window.onboardingTour;
+    stubRequiredElements();
+
+    window.dispatchEvent(new Event('load'));
+    vi.advanceTimersByTime(1100);
+
+    // The one-shot load fallback has given up; the retry loop has not.
+    expect(tour.isActive).toBe(false);
+
+    // Grid finishes rendering after the fallback window closed.
+    window.appGridReady = true;
+    window.dispatchEvent(new Event('appGridReady'));
+
+    expect(tour.isActive).toBe(true);
+    expect(tour.overlay).not.toBeNull();
+  });
+
+  it('does not start twice when the load fallback fires after the ready path already started', () => {
+    injectOnboarding();
+    const tour = window.onboardingTour;
+    stubRequiredElements();
+    window.appGridReady = true;
+
+    const tryStartSpy = vi.spyOn(tour, '_tryStart');
+    window.dispatchEvent(new Event('load'));
+
+    vi.advanceTimersByTime(600); // ready path's initial check runs at 500 ms
+    expect(tour.isActive).toBe(true);
+    expect(tryStartSpy).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(5000); // load fallback (1000 ms) + retry window
+    expect(tryStartSpy).toHaveBeenCalledTimes(1);
+
+    // A late duplicate appGridReady dispatch must not restart the tour.
+    window.dispatchEvent(new Event('appGridReady'));
+    expect(tryStartSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not start while the tab is hidden and starts once visible', () => {
+    injectOnboarding();
+    const tour = window.onboardingTour;
+    stubRequiredElements();
+    window.appGridReady = true;
+
+    const visibilitySubscribers = [];
+    window.visibilityManager = {
+      isVisible: false,
+      onChange(callback) {
+        visibilitySubscribers.push(callback);
+        return () => {
+          const index = visibilitySubscribers.indexOf(callback);
+          if (index > -1) visibilitySubscribers.splice(index, 1);
+        };
+      }
+    };
+
+    vi.advanceTimersByTime(2000);
+    expect(tour.isActive).toBe(false);
+    expect(visibilitySubscribers.length).toBeGreaterThan(0);
+
+    window.visibilityManager.isVisible = true;
+    visibilitySubscribers.slice().forEach((callback) => callback(true));
+
+    expect(tour.isActive).toBe(true);
+    expect(visibilitySubscribers).toHaveLength(0);
   });
 });
