@@ -442,36 +442,43 @@
     const { generation, previousGeneration } = mutation;
     pendingWriteGenerations.set(key, generation);
 
-    try {
-      storageArea.set({ [key]: value }, () => {
-        const lastError = chrome.runtime?.lastError;
+    let settled = false;
+    const finishSet = (lastError) => {
+      if (settled) return;
+      settled = true;
 
-        if (lastError) {
-          const message = lastError?.message ? lastError.message : String(lastError);
-          console.warn(`Failed to persist ${key} to chrome.storage:`, message);
-          reportStorageWriteError(key, lastError, { generation, value });
+      if (lastError) {
+        const message = lastError?.message ? lastError.message : String(lastError);
+        console.warn(`Failed to persist ${key} to chrome.storage:`, message);
+        reportStorageWriteError(key, lastError, { generation, value });
 
-          if (pendingWriteGenerations.get(key) === generation &&
-              cache.get(key) === value) {
-            if (hadPreviousValue) {
-              cache.set(key, previousValue);
-              trackHydrationMutation(key, previousValue);
-            } else {
-              cache.delete(key);
-              trackHydrationMutation(key, null);
-            }
-            reconcileMutationGeneration(key, generation, previousGeneration);
+        if (pendingWriteGenerations.get(key) === generation &&
+            cache.get(key) === value) {
+          if (hadPreviousValue) {
+            cache.set(key, previousValue);
+            trackHydrationMutation(key, previousValue);
+          } else {
+            cache.delete(key);
+            trackHydrationMutation(key, null);
           }
+          reconcileMutationGeneration(key, generation, previousGeneration);
         }
+      }
 
-        if (pendingWriteGenerations.get(key) === generation) {
-          pendingWriteGenerations.delete(key);
-        }
-        cleanupMutationGeneration(key, generation);
-        finalizeClearOperations();
+      if (pendingWriteGenerations.get(key) === generation) {
+        pendingWriteGenerations.delete(key);
+      }
+      cleanupMutationGeneration(key, generation);
+      finalizeClearOperations();
+    };
+
+    let result;
+    try {
+      result = storageArea.set({ [key]: value }, () => {
+        finishSet(chrome.runtime?.lastError || null);
       });
-      return true;
     } catch (error) {
+      settled = true;
       console.warn(`Failed to persist ${key} to chrome.storage:`, error);
       reportStorageWriteError(key, error, { generation, value });
 
@@ -490,6 +497,10 @@
       finalizeClearOperations();
       return false;
     }
+    // Callback-style chrome.storage returns undefined; a promise-returning
+    // implementation may reject without invoking the callback.
+    Promise.resolve(result).catch(finishSet);
+    return true;
   }
 
 
@@ -699,15 +710,24 @@
       finalizeClearOperations();
     };
 
-    try {
-      storageArea.remove(key, () => {
-        finishRemove(chrome.runtime?.lastError || null);
-      });
-      return true;
-    } catch (error) {
+    let removeSettled = false;
+    const settleRemove = (error) => {
+      if (removeSettled) return;
+      removeSettled = true;
       finishRemove(error);
+    };
+
+    let result;
+    try {
+      result = storageArea.remove(key, () => {
+        settleRemove(chrome.runtime?.lastError || null);
+      });
+    } catch (error) {
+      settleRemove(error);
       return false;
     }
+    Promise.resolve(result).catch(settleRemove);
+    return true;
   }
 
   function persistClear(generation) {
@@ -738,8 +758,9 @@
       return;
     }
 
+    let result;
     try {
-      storageArea.clear(() => {
+      result = storageArea.clear(() => {
         const lastError = chrome.runtime?.lastError;
 
         if (lastError) {
@@ -753,7 +774,13 @@
     } catch (error) {
       console.warn('Failed to clear chrome.storage:', error);
       settleClearOperation(generation, 'failed', error);
+      return;
     }
+    // settleClearOperation ignores operations that already settled.
+    Promise.resolve(result).catch((error) => {
+      console.warn('Failed to clear chrome.storage:', error);
+      settleClearOperation(generation, 'failed', error);
+    });
   }
   const storageBridge = {
     get length() {
