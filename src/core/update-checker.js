@@ -12,6 +12,8 @@ class UpdateChecker {
     this._manualCheckUnsubscribe = null; // Track manual-check notification visibility unsubscribe
     this._manualCheckResultTimeoutId = null; // Track manual-check-result auto-hide timeout
     this._manualCheckResultUnsubscribe = null; // Track manual-check-result visibility unsubscribe
+    this._manualCheckResultGetRemaining = null; // Visible time left on the manual-check-result timer
+    this._manualCheckResultState = null; // Last inline About result: { message, key, replacements, remaining }
   }
 
   hasCurrentVersion() {
@@ -210,6 +212,7 @@ class UpdateChecker {
   _clearTimedAutoHide(stateKey) {
     const timeoutKey = `_${stateKey}TimeoutId`;
     const unsubscribeKey = `_${stateKey}Unsubscribe`;
+    this[`_${stateKey}GetRemaining`] = null;
     if (this[timeoutKey]) {
       clearTimeout(this[timeoutKey]);
       this[timeoutKey] = null;
@@ -311,15 +314,20 @@ class UpdateChecker {
       };
 
       this[unsubscribeKey] = window.visibilityManager.onChange(onVisibilityChange);
+      // Remaining visible time; paused while the tab is hidden.
+      this[`_${stateKey}GetRemaining`] = () =>
+        this[timeoutKey] ? remaining - (Date.now() - startTime) : remaining;
 
       if (window.visibilityManager.isVisible) {
         this[timeoutKey] = setTimeout(hide, remaining);
       }
     } else {
+      const startTime = Date.now();
       this[timeoutKey] = setTimeout(() => {
         clear();
         callback();
       }, delay);
+      this[`_${stateKey}GetRemaining`] = () => delay - (Date.now() - startTime);
     }
   }
 
@@ -419,7 +427,7 @@ class UpdateChecker {
     if (!this.hasCurrentVersion()) {
       const message = this.t('updateChecksBrowserOnly');
       this.showManualCheckNotification(message, 'info');
-      this.showManualCheckResult(message);
+      this.showManualCheckResult(message, 'updateChecksBrowserOnly');
       return;
     }
 
@@ -429,7 +437,7 @@ class UpdateChecker {
     if (!latestRelease) {
       const errorMessage = this.t('updateCheckFailed');
       this.showManualCheckNotification(errorMessage, 'error');
-      this.showManualCheckResult(errorMessage);
+      this.showManualCheckResult(errorMessage, 'updateCheckFailed');
       return;
     }
 
@@ -441,7 +449,7 @@ class UpdateChecker {
         currentVersion: this.currentVersion
       });
       this.showManualCheckNotification(message, 'warning');
-      this.showManualCheckResult(message);
+      this.showManualCheckResult(message, 'updateCheckUnsupportedVersion');
       return;
     }
 
@@ -450,39 +458,76 @@ class UpdateChecker {
       this.showUpdateNotification(latestRelease);
       const message = this.formatMessage('updateManualNewVersion', { version: latestRelease.version });
       this.showManualCheckNotification(message, 'success');
-      this.showManualCheckResult(message);
+      this.showManualCheckResult(message, 'updateManualNewVersion', { version: latestRelease.version });
     } else if (comparison < 0) {
       // Development version
-      const message = this.formatMessage('updateManualDevelopmentVersion', {
+      const replacements = {
         currentVersion: this.currentVersion,
         latestVersion: latestRelease.version
-      });
+      };
+      const message = this.formatMessage('updateManualDevelopmentVersion', replacements);
       this.showManualCheckNotification(message, 'warning');
-      this.showManualCheckResult(message);
+      this.showManualCheckResult(message, 'updateManualDevelopmentVersion', replacements);
     } else {
       // Up to date
       const message = this.t('updateManualLatestVersion');
       this.showManualCheckNotification(message, 'success');
-      this.showManualCheckResult(message);
+      this.showManualCheckResult(message, 'updateManualLatestVersion');
     }
   }
 
-  // Show manual check result
-  showManualCheckResult(message) {
-    // Remove existing result
+  // Show manual check result. When i18nKey is provided, rebuilds re-render the
+  // text via formatMessage so a languageChanged refresh re-translates it.
+  showManualCheckResult(message, i18nKey = null, replacements = {}) {
+    // A new result gets a fresh window; drop the previous result's timer so
+    // its remaining time is not carried over.
+    this._clearTimedAutoHide('manualCheckResult');
+    this._manualCheckResultState = {
+      message,
+      key: i18nKey || null,
+      replacements: replacements || {},
+      remaining: 5000
+    };
+    this.renderManualCheckResult();
+  }
+
+  // Re-append the stored manual check result after an About-section rebuild,
+  // preserving the remaining auto-hide window instead of restarting it
+  renderManualCheckResult() {
+    const state = this._manualCheckResultState;
+    if (!state) return;
+
+    // Carry over the visible time left on the running timer, so time spent
+    // in a background tab (when the timer is paused) does not count.
+    const getRemaining = this._manualCheckResultGetRemaining;
+    if (getRemaining) state.remaining = getRemaining();
+
+    this._clearTimedAutoHide('manualCheckResult');
     const existing = document.querySelector('.manual-check-result');
     if (existing) existing.remove();
 
+    if (state.remaining <= 0) {
+      this._manualCheckResultState = null;
+      return;
+    }
+
+    const aboutSection = document.querySelector('.settings-section[data-section="about"]');
+    if (!aboutSection) return;
+
     const result = document.createElement('div');
     result.className = 'manual-check-result';
-    result.textContent = message;
+    result.textContent = state.key ? this.formatMessage(state.key, state.replacements) : state.message;
+    aboutSection.appendChild(result);
 
-    // Add to about section
-    const aboutSection = document.querySelector('.settings-section[data-section="about"]');
-    if (aboutSection) {
-      aboutSection.appendChild(result);
-      this._scheduleManualCheckResultAutoHide(() => result.remove(), 5000);
-    }
+    this._scheduleManualCheckResultAutoHide(() => this.hideManualCheckResult(), state.remaining);
+  }
+
+  // Hide manual check result and drop its stored state
+  hideManualCheckResult() {
+    this._clearTimedAutoHide('manualCheckResult');
+    this._manualCheckResultState = null;
+    const existing = document.querySelector('.manual-check-result');
+    if (existing) existing.remove();
   }
 
   // Schedule auto-hide for manual check result (separate timer tracking)
