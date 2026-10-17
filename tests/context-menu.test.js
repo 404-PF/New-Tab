@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 const createElement = (tag, id) => {
@@ -243,6 +243,78 @@ describe('context menu previews', () => {
       } else {
         window.renderAllApps = originalRenderAllApps;
       }
+    }
+  });
+});
+
+describe('context menu i18n labels', () => {
+  const MENU_ITEM_I18N_KEYS = {
+    'rename-app': 'renameApp',
+    'move-to-folder': 'moveToFolder',
+    'remove-from-folder': 'removeFromFolder',
+    'change-thumbnail': 'changeThumbnail',
+    'delete-app': 'deleteApp',
+    'hide-default-app': 'hideDefaultApp',
+    'rename-folder': 'renameFolder',
+    'delete-folder': 'deleteFolder',
+    'create-folder': 'createFolder',
+    'sort-alphabetically': 'sortAlphabetically'
+  };
+
+  const removeExistingMenu = () => {
+    const existingMenu = document.getElementById('app-context-menu');
+    if (existingMenu) existingMenu.remove();
+  };
+
+  beforeAll(() => {
+    injectScript('src/core/dom-ready.js');
+    injectScript('src/core/languages.js');
+
+    // Mirror the startup order: settings.js applies the saved language while
+    // it is evaluated, before context-menu.js creates its menu items.
+    window.i18n.applyLanguage('de');
+
+    removeExistingMenu();
+    injectScript('src/features/context-menu.js');
+  });
+
+  afterAll(() => {
+    try {
+      window.i18n.applyLanguage('en');
+    } catch (e) {
+      void e;
+    }
+  });
+
+  it('translates menu labels at creation under a startup-like language', () => {
+    // t() silently falls back to English when a locale omits a key, and the
+    // menu builds its labels with the same t() call — so assert the German
+    // entry itself, which a missing translation would leave undefined.
+    const englishLabels = window.i18n.getTranslations('en');
+    const germanLabels = window.i18n.getTranslations('de');
+
+    Object.entries(MENU_ITEM_I18N_KEYS).forEach(([id, key]) => {
+      const germanLabel = germanLabels[key];
+      expect(germanLabel, id).toBeTypeOf('string');
+      expect(germanLabel.trim(), id).not.toBe('');
+      expect(germanLabel, id).not.toBe(englishLabels[key]);
+      expect(document.getElementById(id).textContent, id).toBe(germanLabel);
+    });
+    expect(document.getElementById('rename-app').textContent).toBe('Umbenennen');
+  });
+
+  it('falls back to English when window.i18n is unavailable', () => {
+    removeExistingMenu();
+
+    const originalI18n = window.i18n;
+    try {
+      window.i18n = undefined;
+      injectScript('src/features/context-menu.js');
+      expect(document.getElementById('rename-app').textContent).toBe('Rename');
+      expect(document.getElementById('move-to-folder').textContent).toBe('Move to Folder');
+      expect(document.getElementById('sort-alphabetically').textContent).toBe('Sort Alphabetically');
+    } finally {
+      window.i18n = originalI18n;
     }
   });
 });
