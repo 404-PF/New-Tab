@@ -287,10 +287,19 @@ describe('context menu i18n labels', () => {
   });
 
   it('translates menu labels at creation under a startup-like language', () => {
+    // t() silently falls back to English when a locale omits a key, and the
+    // menu builds its labels with the same t() call — so assert the German
+    // entry itself, which a missing translation would leave undefined.
+    const englishLabels = window.i18n.getTranslations('en');
+    const germanLabels = window.i18n.getTranslations('de');
+
     Object.entries(MENU_ITEM_I18N_KEYS).forEach(([id, key]) => {
-      expect(document.getElementById(id).textContent, id).toBe(window.i18n.t(key));
+      const germanLabel = germanLabels[key];
+      expect(germanLabel, id).toBeTypeOf('string');
+      expect(germanLabel.trim(), id).not.toBe('');
+      expect(germanLabel, id).not.toBe(englishLabels[key]);
+      expect(document.getElementById(id).textContent, id).toBe(germanLabel);
     });
-    expect(document.getElementById('rename-app').textContent).not.toBe('Rename');
     expect(document.getElementById('rename-app').textContent).toBe('Umbenennen');
   });
 
