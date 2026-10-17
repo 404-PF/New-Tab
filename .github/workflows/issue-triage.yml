@@ -193,19 +193,17 @@ jobs:
           # and only returns a draft; the Post step publishes exactly once.
           # ISSUE_FILE lives inside the workspace so the read tool needs no
           # external_directory access; deny it explicitly.
-          # NOTE: bash must keep allow entries (not "*": "deny" alone).
-          # OpenCode's free-tier gate rejects requests whose tools array lacks
-          # bash ("free tier can only be used from within OpenCode"), so a
-          # fully-denied bash breaks every run. The prompt below still forbids
-          # gh usage; these allows only keep the bash tool present. GH_TOKEN is
-          # absent here, so even a prompt-disobeying gh write would fail auth.
+          # OpenCode's free-tier gate rejects requests whose tools omit bash.
+          # A catch-all deny can remove the tool even when specific commands
+          # are allowed, so default to ask and retain the explicit command rules.
+          # GH_TOKEN is absent here, so shell commands cannot publish directly.
           OPENCODE_PERMISSION: >-
             {
               "edit": "deny",
               "webfetch": "deny",
               "external_directory": "deny",
               "bash": {
-                "*": "deny",
+                "*": "ask",
                 "gh issue *": "deny",
                 "gh label *": "deny",
                 "gh issue view ${{ github.event.issue.number || github.event.inputs.issue_number }} --json title,body,labels,comments": "allow",

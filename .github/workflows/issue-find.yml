@@ -186,15 +186,15 @@ jobs:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GH_REPO: ${{ github.repository }}
           # No GitHub token here. The agent may only write files in the
-          # workspace; git and gh are denied. bash keeps allow entries because
-          # OpenCode's free tier rejects requests whose tools lack bash.
+          # workspace; git and gh are denied. Avoid a catch-all bash deny
+          # because OpenCode's free-tier gate can omit the tool from requests.
           OPENCODE_PERMISSION: >-
             {
               "edit": "allow",
               "webfetch": "deny",
               "external_directory": "deny",
               "bash": {
-                "*": "deny",
+                "*": "ask",
                 "git *": "deny",
                 "gh *": "deny",
                 "ls *": "allow",

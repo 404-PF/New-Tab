@@ -242,20 +242,17 @@ jobs:
           # commits, pushes, and opens the PR exactly once.
           # ISSUE_FILE and TRIAGE_FILE live inside the workspace so the read
           # tool needs no external_directory access; deny it explicitly.
-          # NOTE: bash must keep allow entries (not "*": "deny" alone).
-          # OpenCode's free-tier gate rejects requests whose tools array lacks
-          # bash ("free tier can only be used from within OpenCode"), so a
-          # fully-denied bash breaks every run. The prompt below still forbids
-          # gh usage; these allows only keep the bash tool present for
-          # lint/test. GH_TOKEN is absent here, so even a prompt-disobeying
-          # gh write would fail auth.
+          # OpenCode's free-tier gate rejects requests whose tools omit bash.
+          # Use ask as the default instead of a catch-all deny; lint/test commands
+          # remain explicitly allowed, and GitHub CLI remains denied.
+          # GH_TOKEN is absent here, so this step cannot publish changes directly.
           OPENCODE_PERMISSION: >-
             {
               "edit": "allow",
               "webfetch": "deny",
               "external_directory": "deny",
               "bash": {
-                "*": "deny",
+                "*": "ask",
                 "gh *": "deny",
                 "npm *": "allow",
                 "npx *": "allow",

@@ -307,15 +307,16 @@ jobs:
           # Stop starting rounds when less than this many minutes remain.
           ROUND_RESERVE_MINUTES: '35'
           ROUND_MINUTES: '30'
-          # bash keeps allow entries so OpenCode's free tier accepts the
-          # request; git and gh are denied, and no token is present anyway.
+          # Avoid a catch-all bash deny because OpenCode's free-tier gate can
+          # omit the tool from requests. Unlisted commands require approval;
+          # git and gh remain denied, and no token is present anyway.
           OPENCODE_PERMISSION: >-
             {
               "edit": "allow",
               "webfetch": "deny",
               "external_directory": "deny",
               "bash": {
-                "*": "deny",
+                "*": "ask",
                 "git *": "deny",
                 "gh *": "deny",
                 "npm *": "allow",
