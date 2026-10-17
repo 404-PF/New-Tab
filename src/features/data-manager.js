@@ -266,9 +266,17 @@
   }
 
   function finishImport(mode, count, hasWriteErrors) {
-    // Update todo reminders after import
-    if (typeof window.scheduleTodoReminderCheck === 'function') {
-      window.scheduleTodoReminderCheck();
+    // Reload in-memory todo state and re-render the todo list, notes
+    // scratchpad, and app grid so imported data appears without a tab
+    // reload (issue #824).
+    if (typeof window.reloadTodosState === 'function') {
+      window.reloadTodosState();
+    }
+    if (typeof window.initNotes === 'function') {
+      window.initNotes();
+    }
+    if (typeof window.renderAllApps === 'function') {
+      window.renderAllApps();
     }
 
     // Refresh the UI
@@ -290,6 +298,12 @@
     }
     if (typeof window.renderCustomSearchProvidersList === 'function') {
       window.renderCustomSearchProvidersList();
+    }
+
+    // Schedule todo reminders last so the service-worker payload is built
+    // from the freshly reloaded todos, not the pre-import in-memory array.
+    if (typeof window.scheduleTodoReminderCheck === 'function') {
+      window.scheduleTodoReminderCheck();
     }
 
     if (hasWriteErrors) {
@@ -688,6 +702,12 @@
     };
 
     const applyData = function (mode) {
+      // Discard in-flight debounced note saves so a pre-import edit cannot
+      // overwrite the notes written by this backup (issue #824).
+      if (typeof window.cancelPendingNoteSaves === 'function') {
+        window.cancelPendingNoteSaves();
+      }
+
       const keys = Object.keys(importedData);
       let count = 0;
       const pendingWrites = [];

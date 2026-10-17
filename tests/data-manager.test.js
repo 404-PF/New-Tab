@@ -31,6 +31,43 @@ beforeAll(() => {
   injectScript('src/features/data-manager.js');
 });
 
+async function importBackup(data, mode) {
+  const fileInput = document.getElementById('data-import-file');
+  const descriptor = Object.getOwnPropertyDescriptor(fileInput, 'files');
+  Object.defineProperty(fileInput, 'files', {
+    value: [new File([JSON.stringify({ version: 1, data })], 'backup.json', { type: 'application/json' })],
+    configurable: true
+  });
+
+  try {
+    fileInput.dispatchEvent(new Event('change'));
+
+    // Re-query inside the wait: showImportDialog clones/replaces the dialog
+    // node when the FileReader finishes, so pre-dispatch references go stale.
+    await vi.waitFor(() => {
+      const dialog = document.getElementById('data-import-dialog');
+      expect(dialog.classList.contains('ai-confirm-open')).toBe(true);
+      return dialog;
+    });
+    document.getElementById(mode === 'replace' ? 'data-import-replace-btn' : 'data-import-merge-btn').click();
+    // applyData waits for the storage bridge to confirm every write before
+    // it reports the outcome, so wait for the result toast.
+    const toast = await vi.waitFor(() => {
+      const el = document.querySelector('.toast-notification');
+      expect(el).not.toBeNull();
+      return el;
+    });
+    return { type: toast.classList.contains('toast-warning') ? 'warning' : 'success', text: toast.textContent };
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(fileInput, 'files', descriptor);
+    } else {
+      delete fileInput.files;
+    }
+    document.querySelectorAll('.toast-notification').forEach(el => el.remove());
+  }
+}
+
 describe('DataManager backup validation', () => {
 
   it('accepts supported settings and rejects disallowed or malformed data', () => {
@@ -262,43 +299,6 @@ describe('DataManager eye-care/games/search-history settings', () => {
       eyeCareReminder: { ...EYE_CARE_SETTINGS, intervalMinutes: 25 }
     } }).valid).toBe(false);
   });
-
-  async function importBackup(data, mode) {
-    const fileInput = document.getElementById('data-import-file');
-    const descriptor = Object.getOwnPropertyDescriptor(fileInput, 'files');
-    Object.defineProperty(fileInput, 'files', {
-      value: [new File([JSON.stringify({ version: 1, data })], 'backup.json', { type: 'application/json' })],
-      configurable: true
-    });
-
-    try {
-      fileInput.dispatchEvent(new Event('change'));
-
-      // Re-query inside the wait: showImportDialog clones/replaces the dialog
-      // node when the FileReader finishes, so pre-dispatch references go stale.
-      await vi.waitFor(() => {
-        const dialog = document.getElementById('data-import-dialog');
-        expect(dialog.classList.contains('ai-confirm-open')).toBe(true);
-        return dialog;
-      });
-      document.getElementById(mode === 'replace' ? 'data-import-replace-btn' : 'data-import-merge-btn').click();
-      // applyData waits for the storage bridge to confirm every write before
-      // it reports the outcome, so wait for the result toast.
-      const toast = await vi.waitFor(() => {
-        const el = document.querySelector('.toast-notification');
-        expect(el).not.toBeNull();
-        return el;
-      });
-      return { type: toast.classList.contains('toast-warning') ? 'warning' : 'success', text: toast.textContent };
-    } finally {
-      if (descriptor) {
-        Object.defineProperty(fileInput, 'files', descriptor);
-      } else {
-        delete fileInput.files;
-      }
-      document.querySelectorAll('.toast-notification').forEach(el => el.remove());
-    }
-  }
 
   it('shallow-merges eye-care settings without touching runtime fields', async () => {
     const existingState = {
@@ -690,5 +690,78 @@ describe('DataManager pomodoroStats date keys (issue #764)', () => {
     expect(window.DataManager.EXPECTED_SHAPES.pomodoroStats({
       days: { '2026-09-22': { sessions: -1, minutes: 25 } }
     })).toBe(false);
+  });
+});
+
+describe('DataManager import refresh (issue #824)', () => {
+  function withSpiedRefreshHooks(names) {
+    const spies = {};
+    const originals = {};
+    names.forEach((name) => {
+      originals[name] = window[name];
+      spies[name] = vi.fn();
+      window[name] = spies[name];
+    });
+    return {
+      spies,
+      restore() {
+        names.forEach((name) => {
+          if (originals[name] === undefined) delete window[name];
+          else window[name] = originals[name];
+        });
+      }
+    };
+  }
+
+  it('reloads todos, notes, and the app grid after import, before reminder scheduling', async () => {
+    const hooks = withSpiedRefreshHooks([
+      'reloadTodosState',
+      'initNotes',
+      'renderAllApps',
+      'scheduleTodoReminderCheck'
+    ]);
+    try {
+      const importedTodos = [
+        { id: 'todo-imported', text: 'Imported todo', completed: false, createdAt: '2026-01-01T00:00:00.000Z' }
+      ];
+      const result = await importBackup({
+        todos: importedTodos,
+        notes: [{ id: 'note-1', text: 'Imported note', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }],
+        customApps: [{ id: 'app-1', name: 'Imported', url: 'https://example.com' }]
+      }, 'merge');
+
+      expect(result.type).toBe('success');
+      // The backup really reached storage.
+      expect(JSON.parse(localStorage.getItem('todos'))).toEqual(importedTodos);
+
+      // Post-import refresh hooks all ran exactly once.
+      expect(hooks.spies.reloadTodosState).toHaveBeenCalledTimes(1);
+      expect(hooks.spies.initNotes).toHaveBeenCalledTimes(1);
+      expect(hooks.spies.renderAllApps).toHaveBeenCalledTimes(1);
+      expect(hooks.spies.scheduleTodoReminderCheck).toHaveBeenCalledTimes(1);
+
+      // Todo state must be reloaded before the reminder payload is built,
+      // otherwise the service worker receives the stale pre-import array.
+      expect(hooks.spies.reloadTodosState.mock.invocationCallOrder[0])
+        .toBeLessThan(hooks.spies.scheduleTodoReminderCheck.mock.invocationCallOrder[0]);
+    } finally {
+      hooks.restore();
+    }
+  });
+
+  it('cancels pending note saves before writing the backup', async () => {
+    const hooks = withSpiedRefreshHooks(['cancelPendingNoteSaves', 'reloadTodosState']);
+    try {
+      const result = await importBackup({ theme: 'dark' }, 'replace');
+
+      expect(result.type).toBe('success');
+      expect(hooks.spies.cancelPendingNoteSaves).toHaveBeenCalledTimes(1);
+      // applyData cancels pending saves before its writes; finishImport runs
+      // after them, so the cancel must be ordered first.
+      expect(hooks.spies.cancelPendingNoteSaves.mock.invocationCallOrder[0])
+        .toBeLessThan(hooks.spies.reloadTodosState.mock.invocationCallOrder[0]);
+    } finally {
+      hooks.restore();
+    }
   });
 });
