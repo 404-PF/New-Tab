@@ -4539,6 +4539,137 @@ body.light-theme .games-flappy-canvas {
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
 }
 
+/* ==================== Pac-Man ==================== */
+
+.games-pacman-stage {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.games-pacman-canvas {
+  display: block;
+  width: min(380px, 82vw);
+  height: auto;
+  margin: 0 auto;
+  border: 2px solid rgba(78, 205, 196, 0.28);
+  border-radius: 10px;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3), 0 0 28px rgba(78, 205, 196, 0.12);
+  outline: none;
+  touch-action: manipulation;
+}
+
+.games-pacman-canvas:focus-visible {
+  box-shadow:
+    0 10px 36px rgba(0, 0, 0, 0.3),
+    0 0 0 2px rgba(78, 205, 196, 0.65),
+    0 0 28px rgba(78, 205, 196, 0.16);
+}
+
+.games-pacman-score {
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.games-pacman-instructions {
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+/* Keep Pac-Man contained inside the modal viewport without changing hub scrolling. */
+.games-hub-content:has(.games-pacman-stage) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.games-hub-content:has(.games-pacman-stage) .games-game-header {
+  flex: 0 0 auto;
+  padding: 4px 0 8px;
+}
+
+.games-hub-content:has(.games-pacman-stage) #games-game-container {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.games-hub-content:has(.games-pacman-stage) .games-pacman-stage {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  width: min(380px, 100%);
+  min-width: 0;
+  min-height: 0;
+}
+
+.games-hub-content:has(.games-pacman-stage) .games-pacman-canvas {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+}
+
+.games-hub-content:has(.games-pacman-stage) .games-pacman-score {
+  flex: 0 0 auto;
+  padding: 4px 0;
+}
+
+.games-hub-content:has(.games-pacman-stage) .games-pacman-instructions {
+  flex: 0 0 auto;
+  padding: 4px 0 2px;
+}
+
+.games-pacman-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px;
+  text-align: center;
+  background: rgba(8, 10, 24, 0.62);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.games-pacman-overlay-text {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--games-text-primary);
+}
+
+.games-pacman-overlay-stats {
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--games-text-primary);
+}
+
+.games-pacman-overlay-sub {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--games-text-secondary);
+}
+
+body.light-theme .games-pacman-canvas {
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+}
+
 /* ==================== 2048 ==================== */
 
 .games-2048-board {

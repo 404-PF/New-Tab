@@ -518,6 +518,22 @@
     "message": "Pressione ↑ / W ou toque/clique para bater as asas; Espaço pausa/retoma",
     "description": "Flappy Bird game controls"
   },
+  "gamesPacman": {
+    "message": "Pac-Man",
+    "description": "Pac-Man game name"
+  },
+  "gamesPacmanDesc": {
+    "message": "Jogo de labirinto Pac-Man. Coma todos os pontos e fuja dos fantasmas!",
+    "description": "Pac-Man game description"
+  },
+  "gamesPacmanControls": {
+    "message": "Setas ou WASD para mover, espaço para pausar",
+    "description": "Pac-Man game controls"
+  },
+  "gamesLives": {
+    "message": "Vidas",
+    "description": "Lives remaining label shown in game HUDs"
+  },
   "searchProviders": {
     "message": "Provedores de pesquisa",
     "description": "Title for the custom search providers settings card"

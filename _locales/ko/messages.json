@@ -518,6 +518,22 @@
     "message": "↑ / W 또는 탭/클릭으로 비행; Space로 일시정지/재개",
     "description": "Flappy Bird game controls"
   },
+  "gamesPacman": {
+    "message": "Pac-Man",
+    "description": "Pac-Man game name"
+  },
+  "gamesPacmanDesc": {
+    "message": "Pac-Man 미로 게임. 모든 점을 먹고 유령을 피하세요!",
+    "description": "Pac-Man game description"
+  },
+  "gamesPacmanControls": {
+    "message": "방향키 또는 WASD로 이동, 스페이스바로 일시정지",
+    "description": "Pac-Man game controls"
+  },
+  "gamesLives": {
+    "message": "남은 목숨",
+    "description": "Lives remaining label shown in game HUDs"
+  },
   "searchProviders": {
     "message": "검색 공급자",
     "description": "Title for the custom search providers settings card"

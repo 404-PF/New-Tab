@@ -518,6 +518,22 @@
     "message": "按 ↑ / W 或点击/触摸拍翅；空格暂停/继续",
     "description": "Flappy Bird game controls"
   },
+  "gamesPacman": {
+    "message": "Pac-Man",
+    "description": "Pac-Man game name"
+  },
+  "gamesPacmanDesc": {
+    "message": "Pac-Man 游戏。吃掉所有豆子并躲避幽灵！",
+    "description": "Pac-Man game description"
+  },
+  "gamesPacmanControls": {
+    "message": "方向键或 WASD 移动，空格键暂停",
+    "description": "Pac-Man game controls"
+  },
+  "gamesLives": {
+    "message": "生命",
+    "description": "Lives remaining label shown in game HUDs"
+  },
   "searchProviders": {
     "message": "搜索引擎",
     "description": "Title for the custom search providers settings card"

@@ -15,7 +15,8 @@
     'src/features/games/snake.js',
     'src/features/games/2048.js',
     'src/features/games/memory.js',
-    'src/features/games/flappy-bird.js'
+    'src/features/games/flappy-bird.js',
+    'src/features/games/pacman.js'
   ];
 
   let gamesLoadPromise = null;
@@ -35,7 +36,7 @@
   function ensureGamesLoaded() {
     if (gamesLoaded) return Promise.resolve();
     if (gamesLoadPromise) return gamesLoadPromise;
-    if (window.GameRegistry && window.gamesHelpers && typeof window.GameRegistry.get === 'function' && window.GameRegistry.get('snake') && window.GameRegistry.get('2048') && window.GameRegistry.get('memory') && window.GameRegistry.get('flappy-bird')) {
+    if (window.GameRegistry && window.gamesHelpers && typeof window.GameRegistry.get === 'function' && window.GameRegistry.get('snake') && window.GameRegistry.get('2048') && window.GameRegistry.get('memory') && window.GameRegistry.get('flappy-bird') && window.GameRegistry.get('pacman')) {
       gamesLoaded = true;
       return Promise.resolve();
     }
