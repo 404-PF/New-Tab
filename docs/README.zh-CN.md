@@ -22,7 +22,7 @@ Chrome Web Store 文案：[en-US](CHROME-WEB-STORE.en-US.md) | [zh-CN](CHROME-WE
 
 ## 🎮 游戏
 
-可选的游戏中心包含 Snake、2048、记忆配对和 Flappy Bird。每款游戏共用相同的弹窗外壳、准备/继续流程、暂停处理、本地最高分以及跨会话保存/恢复功能。
+可选的游戏中心包含 Snake、2048、记忆配对、Flappy Bird 和 Pac-Man。每款游戏共用相同的弹窗外壳、准备/继续流程、暂停处理、本地最高分以及跨会话保存/恢复功能。
 
 ## 🚀 安装方式
 推荐安装方式：

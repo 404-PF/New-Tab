@@ -41,7 +41,11 @@ const GAMES_ALL_TRANSLATION_KEYS = GAMES_TRANSLATION_KEYS.concat([
   'gamesStart',
   'gamesFlappyBird',
   'gamesFlappyBirdDesc',
-  'gamesFlappyBirdControls'
+  'gamesFlappyBirdControls',
+  'gamesPacman',
+  'gamesPacmanDesc',
+  'gamesPacmanControls',
+  'gamesLives'
 ]);
 
 function createNoteTagTranslations(
@@ -4638,6 +4642,87 @@ const flappyBirdTranslations = {
 Object.keys(flappyBirdTranslations).forEach(function (language) {
   if (translations[language]) {
     Object.assign(translations[language], flappyBirdTranslations[language]);
+  }
+});
+
+const pacmanTranslations = {
+  en: {
+    gamesPacman: 'Pac-Man',
+    gamesPacmanDesc: 'Pac-Man maze game. Eat every dot and dodge the ghosts!',
+    gamesPacmanControls: 'Arrow keys or WASD to move, Space to pause',
+    gamesLives: 'Lives'
+  },
+  zh: {
+    gamesPacman: '吃豆人',
+    gamesPacmanDesc: 'Pac-Man 迷宮遊戲。吃掉所有豆子並躲避鬼怪！',
+    gamesPacmanControls: '方向鍵或 WASD 移動，空格鍵暫停',
+    gamesLives: '生命'
+  },
+  ja: {
+    gamesPacman: 'パックマン',
+    gamesPacmanDesc: 'Pac-Manの迷路ゲーム。すべてのドットを食べてゴーストを避けよう！',
+    gamesPacmanControls: '矢印キーまたはWASDで移動、スペースで一時停止',
+    gamesLives: '残機'
+  },
+  ko: {
+    gamesPacman: '팩맨',
+    gamesPacmanDesc: 'Pac-Man 미로 게임. 모든 점을 먹고 유령을 피하세요!',
+    gamesPacmanControls: '방향키 또는 WASD로 이동, 스페이스바로 일시정지',
+    gamesLives: '남은 목숨'
+  },
+  es: {
+    gamesPacman: 'Pac-Man',
+    gamesPacmanDesc: 'Juego de laberinto Pac-Man. ¡Come todos los puntos y esquiva a los fantasmas!',
+    gamesPacmanControls: 'Flechas o WASD para mover, espacio para pausar',
+    gamesLives: 'Vidas'
+  },
+  fr: {
+    gamesPacman: 'Pac-Man',
+    gamesPacmanDesc: 'Jeu de labyrinthe Pac-Man. Mangez tous les points et évitez les fantômes !',
+    gamesPacmanControls: 'Flèches ou ZQSD pour se déplacer, espace pour pause',
+    gamesLives: 'Vies'
+  },
+  de: {
+    gamesPacman: 'Pac-Man',
+    gamesPacmanDesc: 'Pac-Man-Labyrinth. Iss alle Punkte und meide die Geister!',
+    gamesPacmanControls: 'Pfeile oder WASD zum Steuern, Leertaste zum Pausieren',
+    gamesLives: 'Leben'
+  },
+  pt: {
+    gamesPacman: 'Pac-Man',
+    gamesPacmanDesc: 'Jogo de labirinto Pac-Man. Coma todos os pontos e fuja dos fantasmas!',
+    gamesPacmanControls: 'Setas ou WASD para mover, espaço para pausar',
+    gamesLives: 'Vidas'
+  },
+  ru: {
+    gamesPacman: 'Pac-Man',
+    gamesPacmanDesc: 'Лабиринт Pac-Man. Съешьте все точки и избегайте призраков!',
+    gamesPacmanControls: 'Стрелки или WASD для движения, пробел для паузы',
+    gamesLives: 'Жизни'
+  },
+  en_US: {
+    gamesPacman: 'Pac-Man',
+    gamesPacmanDesc: 'Pac-Man maze game. Eat every dot and dodge the ghosts!',
+    gamesPacmanControls: 'Arrow keys or WASD to move, Space to pause',
+    gamesLives: 'Lives'
+  },
+  pt_BR: {
+    gamesPacman: 'Pac-Man',
+    gamesPacmanDesc: 'Jogo de labirinto Pac-Man. Coma todos os pontos e fuja dos fantasmas!',
+    gamesPacmanControls: 'Setas ou WASD para mover, espaço para pausar',
+    gamesLives: 'Vidas'
+  },
+  zh_CN: {
+    gamesPacman: 'Pac-Man',
+    gamesPacmanDesc: 'Pac-Man 游戏。吃掉所有豆子并躲避幽灵！',
+    gamesPacmanControls: '方向键或 WASD 移动，空格键暂停',
+    gamesLives: '生命'
+  }
+};
+
+Object.keys(pacmanTranslations).forEach(function (language) {
+  if (translations[language]) {
+    Object.assign(translations[language], pacmanTranslations[language]);
   }
 });
 

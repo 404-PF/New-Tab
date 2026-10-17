@@ -4407,8 +4407,12 @@ body.light-theme .games-hub-card-desc {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 24px rgba(78, 205, 196, 0.12);
 }
 
-/* ==================== Flappy Bird ==================== */
+/* ==================== Flappy Bird and Pac-Man ==================== */
 
+/* The two canvas games share one stage, layout and overlay; only the canvas
+   width (and Flappy Bird's click-to-flap cursor) differ. */
+
+.games-pacman-stage,
 .games-flappy-stage {
   position: relative;
   width: fit-content;
@@ -4418,6 +4422,7 @@ body.light-theme .games-hub-card-desc {
   border-radius: 10px;
 }
 
+.games-pacman-canvas,
 .games-flappy-canvas {
   display: block;
   width: min(360px, 82vw);
@@ -4426,11 +4431,11 @@ body.light-theme .games-hub-card-desc {
   border: 2px solid rgba(78, 205, 196, 0.28);
   border-radius: 10px;
   box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3), 0 0 28px rgba(78, 205, 196, 0.12);
-  cursor: pointer;
   outline: none;
   touch-action: manipulation;
 }
 
+.games-pacman-canvas:focus-visible,
 .games-flappy-canvas:focus-visible {
   box-shadow:
     0 10px 36px rgba(0, 0, 0, 0.3),
@@ -4438,6 +4443,7 @@ body.light-theme .games-hub-card-desc {
     0 0 28px rgba(78, 205, 196, 0.16);
 }
 
+.games-pacman-score,
 .games-flappy-score {
   line-height: 1.35;
   white-space: nowrap;
@@ -4445,12 +4451,14 @@ body.light-theme .games-hub-card-desc {
   text-overflow: ellipsis;
 }
 
+.games-pacman-instructions,
 .games-flappy-instructions {
   max-width: 360px;
   margin: 0 auto;
 }
 
-/* Keep Flappy Bird contained inside the modal viewport without changing hub scrolling. */
+/* Keep canvas games contained inside the modal viewport without changing hub scrolling. */
+.games-hub-content:has(.games-pacman-stage),
 .games-hub-content:has(.games-flappy-stage) {
   display: flex;
   flex-direction: column;
@@ -4458,11 +4466,13 @@ body.light-theme .games-hub-card-desc {
   overflow: hidden;
 }
 
+.games-hub-content:has(.games-pacman-stage) .games-game-header,
 .games-hub-content:has(.games-flappy-stage) .games-game-header {
   flex: 0 0 auto;
   padding: 4px 0 8px;
 }
 
+.games-hub-content:has(.games-pacman-stage) #games-game-container,
 .games-hub-content:has(.games-flappy-stage) #games-game-container {
   display: flex;
   flex: 1 1 auto;
@@ -4472,6 +4482,7 @@ body.light-theme .games-hub-card-desc {
   overflow: hidden;
 }
 
+.games-hub-content:has(.games-pacman-stage) .games-pacman-stage,
 .games-hub-content:has(.games-flappy-stage) .games-flappy-stage {
   display: flex;
   flex: 1 1 auto;
@@ -4482,6 +4493,7 @@ body.light-theme .games-hub-card-desc {
   min-height: 0;
 }
 
+.games-hub-content:has(.games-pacman-stage) .games-pacman-canvas,
 .games-hub-content:has(.games-flappy-stage) .games-flappy-canvas {
   width: auto;
   height: auto;
@@ -4490,16 +4502,19 @@ body.light-theme .games-hub-card-desc {
   box-sizing: border-box;
 }
 
+.games-hub-content:has(.games-pacman-stage) .games-pacman-score,
 .games-hub-content:has(.games-flappy-stage) .games-flappy-score {
   flex: 0 0 auto;
   padding: 4px 0;
 }
 
+.games-hub-content:has(.games-pacman-stage) .games-pacman-instructions,
 .games-hub-content:has(.games-flappy-stage) .games-flappy-instructions {
   flex: 0 0 auto;
   padding: 4px 0 2px;
 }
 
+.games-pacman-overlay,
 .games-flappy-overlay {
   position: absolute;
   inset: 0;
@@ -4516,27 +4531,54 @@ body.light-theme .games-hub-card-desc {
   pointer-events: none;
 }
 
+.games-pacman-overlay-text,
 .games-flappy-overlay-text {
   font-size: 1.8rem;
   font-weight: 800;
   color: var(--games-text-primary);
 }
 
+.games-pacman-overlay-stats,
 .games-flappy-overlay-stats {
   font-size: 1rem;
   font-weight: 650;
   color: var(--games-text-primary);
 }
 
+.games-pacman-overlay-sub,
 .games-flappy-overlay-sub {
   margin-top: 4px;
   font-size: 0.85rem;
   color: var(--games-text-secondary);
 }
 
+body.light-theme .games-pacman-canvas,
 body.light-theme .games-flappy-canvas {
   border-color: rgba(15, 23, 42, 0.14);
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+}
+
+body.light-theme .games-pacman-canvas:focus-visible,
+body.light-theme .games-flappy-canvas:focus-visible {
+  box-shadow:
+    0 10px 28px rgba(15, 23, 42, 0.12),
+    0 0 0 2px rgba(13, 148, 136, 0.75);
+}
+
+.games-flappy-canvas {
+  cursor: pointer;
+}
+
+.games-pacman-canvas {
+  width: min(380px, 82vw);
+}
+
+.games-pacman-instructions {
+  max-width: 380px;
+}
+
+.games-hub-content:has(.games-pacman-stage) .games-pacman-stage {
+  width: min(380px, 100%);
 }
 
 /* ==================== 2048 ==================== */

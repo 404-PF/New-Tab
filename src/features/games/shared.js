@@ -24,6 +24,44 @@
     };
   }
 
+  // Translate a key, falling back to the key itself when it has no message.
+  window.gamesHelpers.tr = function (key) {
+    return window.gamesHelpers.t(key) || key;
+  };
+
+  // High-resolution timestamp with a Date.now() fallback.
+  window.gamesHelpers.nowMs = function () {
+    const perf = window.performance;
+    return perf && typeof perf.now === 'function' ? perf.now() : Date.now();
+  };
+
+  // True when a key event targets a text field, so games ignore the key.
+  window.gamesHelpers.isEditableTarget = function (target) {
+    if (!target) return false;
+    return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || !!target.isContentEditable;
+  };
+
+  // Keep at most one state overlay (for example paused or game over) on a
+  // stage. sync(stage, kind, optionsFor) re-renders only when kind changes;
+  // optionsFor(kind) returns renderDOMOverlay options. A null kind clears it.
+  window.gamesHelpers.createStateOverlay = function (className) {
+    let overlayEl = null;
+    let shownKind = null;
+    function clear() {
+      if (overlayEl) overlayEl.remove();
+      overlayEl = null;
+      shownKind = null;
+    }
+    function sync(stageEl, kind, optionsFor) {
+      if (kind === shownKind) return;
+      clear();
+      if (!stageEl || !kind) return;
+      overlayEl = window.gamesHelpers.renderDOMOverlay(stageEl, { className, ...optionsFor(kind) });
+      shownKind = kind;
+    }
+    return { sync, clear };
+  };
+
   // Render a simple DOM overlay inside a given parent element.
   // options: { className, text, sub, statsHtml }
   window.gamesHelpers.renderDOMOverlay = function (parentEl, options) {
@@ -168,14 +206,20 @@
 
   // Key handling helper for restarting on Space when gameOver
   window.gamesHelpers.handleRestartSpace = function (ev, resetFn) {
-    if (!ev) return;
-    if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA' || ev.target.isContentEditable)) {
-      return;
-    }
+    if (!ev || window.gamesHelpers.isEditableTarget(ev.target)) return;
     if (ev.code === 'Space') {
       try { ev.preventDefault(); } catch (e) { /* ignore */ }
       if (typeof resetFn === 'function') resetFn();
     }
+  };
+
+  // Record a finished run: bump gamesPlayed and keep the best score.
+  window.gamesHelpers.recordRunResult = function (gameId, finalScore) {
+    window.gamesHelpers.updateStatsWith(gameId, function (stats) {
+      const best = Number.isSafeInteger(stats.highScore) ? stats.highScore : 0;
+      const played = Number.isSafeInteger(stats.gamesPlayed) ? stats.gamesPlayed : 0;
+      return { highScore: Math.max(best, finalScore), gamesPlayed: played + 1 };
+    });
   };
 
   // Wrapper to make updating stats less repetitive. fn receives current stats and should return updates.
