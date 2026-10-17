@@ -22,6 +22,13 @@
   // MAINTENANCE: whenever version.js / manifest.json is bumped for a release,
   // add a new entry here (or the modal falls back to RELEASE_NOTES_FALLBACK).
   const RELEASE_NOTES = {
+    '0.5.2': [
+      'Added a Pac-Man maze game to the Games hub',
+      'Added dim, blur, and tint background overlays for readability',
+      'Applied glassmorphism styling to Todo and Notes in the light theme',
+      'Added the option to delete apps straight from the row',
+      'Fixed saves that reported success after storage failures'
+    ],
     '0.5.1': [
       'Added search suggestions with bang shortcuts and keyboard provider switching',
       'Added web-grounded AI answers with cited sources',
