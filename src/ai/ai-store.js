@@ -212,39 +212,54 @@ const AIStore = (function() {
     return false;
   }
 
-  function handleSaveFailure(
-    error,
-    conversationsWritten,
-    persistedConversations,
-    rollbackState,
-    saveGeneration
-  ) {
-    const reportFailure = () => reportSaveFailure(error, rollbackState, saveGeneration);
-
-    if (!conversationsWritten) {
-      return reportFailure();
-    }
-
-    let rollbackResult;
+  // Restore one key to its pre-save value. Resolves (or returns) true when the
+  // rollback was accepted; never throws.
+  function rollbackStorageValue(key, value) {
+    let result;
     try {
-      rollbackResult = restoreStorageValue(STORAGE_KEYS.conversations, persistedConversations);
-    } catch (rollbackError) {
-      console.error('Failed to roll back conversations after save failure:', rollbackError);
-      return reportFailure();
+      result = restoreStorageValue(key, value);
+    } catch (error) {
+      console.error('Failed to roll back ' + key + ' after save failure:', error);
+      return false;
     }
-
     return settlePersistence(
-      rollbackResult,
+      result,
       restored => {
         if (restored === false) {
-          console.error('Failed to roll back conversations after save failure');
+          console.error('Failed to roll back ' + key + ' after save failure');
         }
-        return reportFailure();
+        return restored !== false;
       },
-      rollbackError => {
-        console.error('Failed to roll back conversations after save failure:', rollbackError);
-        return reportFailure();
+      error => {
+        console.error('Failed to roll back ' + key + ' after save failure:', error);
+        return false;
       }
+    );
+  }
+
+  // Roll back every key in `written` to its persisted value, then report.
+  function handleSaveFailure(error, written, persistedValues, rollbackState, saveGeneration) {
+    const reportFailure = () => reportSaveFailure(error, rollbackState, saveGeneration);
+    const rollbacks = written.map(key => rollbackStorageValue(key, persistedValues[key]));
+    if (rollbacks.some(isPromiseLike)) {
+      return Promise.all(rollbacks).then(reportFailure, reportFailure);
+    }
+    return reportFailure();
+  }
+
+  // Persist one key and describe the outcome as { ok, error } (synchronously
+  // for native storage, as a promise for the async storage bridge).
+  function writeOutcome(key, value) {
+    let result;
+    try {
+      result = persistStorageValue(key, value);
+    } catch (error) {
+      return { ok: false, error };
+    }
+    return settlePersistence(
+      result,
+      success => ({ ok: success !== false }),
+      error => ({ ok: false, error })
     );
   }
 
@@ -254,108 +269,56 @@ const AIStore = (function() {
     previousState,
     saveGeneration
   ) {
-    let persistedConversations;
-    let persistedCurrentConversationId;
+    const persistedValues = {};
 
     try {
-      persistedConversations = localStorage.getItem(STORAGE_KEYS.conversations);
-      persistedCurrentConversationId = localStorage.getItem(STORAGE_KEYS.currentId);
+      persistedValues[STORAGE_KEYS.conversations] = localStorage.getItem(STORAGE_KEYS.conversations);
+      persistedValues[STORAGE_KEYS.currentId] = localStorage.getItem(STORAGE_KEYS.currentId);
     } catch (error) {
       return reportSaveFailure(error, previousState, saveGeneration);
     }
 
     const rollbackState = getPersistedStateSnapshot(
-      persistedConversations,
-      persistedCurrentConversationId,
+      persistedValues[STORAGE_KEYS.conversations],
+      persistedValues[STORAGE_KEYS.currentId],
       previousState
     );
-    let conversationsWritten = false;
 
-    const handleCurrentIdWrite = success => {
-      if (!success) {
-        return handleSaveFailure(
-          new Error('Current conversation storage write was rejected'),
-          conversationsWritten,
-          persistedConversations,
-          rollbackState,
-          saveGeneration
-        );
-      }
-
-      // State is normalized before the transaction starts. Keep the live
-      // conversation objects intact while committing the persisted snapshot.
-      return true;
-    };
-
-    const handleConversationsWrite = success => {
-      if (!success) {
-        return handleSaveFailure(
-          new Error('Conversation storage write was rejected'),
-          conversationsWritten,
-          persistedConversations,
-          rollbackState,
-          saveGeneration
-        );
-      }
-
-      conversationsWritten = true;
-
-      let currentIdWrite;
-      try {
-        currentIdWrite = persistStorageValue(
-          STORAGE_KEYS.currentId,
-          nextCurrentConversationId
-        );
-      } catch (error) {
-        return handleSaveFailure(
-          error,
-          conversationsWritten,
-          persistedConversations,
-          rollbackState,
-          saveGeneration
-        );
-      }
-
-      return settlePersistence(
-        currentIdWrite,
-        handleCurrentIdWrite,
-        error => handleSaveFailure(
-          error,
-          conversationsWritten,
-          persistedConversations,
-          rollbackState,
-          saveGeneration
-        )
-      );
-    };
-
-    let conversationsWrite;
-    try {
-      conversationsWrite = persistStorageValue(
-        STORAGE_KEYS.conversations,
-        JSON.stringify(nextConversations)
-      );
-    } catch (error) {
+    const conversationsOutcome = writeOutcome(
+      STORAGE_KEYS.conversations,
+      JSON.stringify(nextConversations)
+    );
+    if (!isPromiseLike(conversationsOutcome) && !conversationsOutcome.ok) {
       return handleSaveFailure(
-        error,
-        conversationsWritten,
-        persistedConversations,
+        conversationsOutcome.error || new Error('Conversation storage write was rejected'),
+        [],
+        persistedValues,
         rollbackState,
         saveGeneration
       );
     }
 
-    return settlePersistence(
-      conversationsWrite,
-      handleConversationsWrite,
-      error => handleSaveFailure(
-        error,
-        conversationsWritten,
-        persistedConversations,
-        rollbackState,
-        saveGeneration
-      )
-    );
+    // Write the current id in the same turn as the conversations (#458), so
+    // the storage bridge never holds new conversations with a stale id. If
+    // either write fails, roll back the one that succeeded (#716).
+    const currentIdOutcome = writeOutcome(STORAGE_KEYS.currentId, nextCurrentConversationId);
+
+    const finish = (conversations, currentId) => {
+      if (conversations.ok && currentId.ok) return true;
+      const error = conversations.ok
+        ? currentId.error || new Error('Current conversation storage write was rejected')
+        : conversations.error || new Error('Conversation storage write was rejected');
+      const written = [];
+      if (conversations.ok) written.push(STORAGE_KEYS.conversations);
+      if (currentId.ok) written.push(STORAGE_KEYS.currentId);
+      return handleSaveFailure(error, written, persistedValues, rollbackState, saveGeneration);
+    };
+
+    if (isPromiseLike(conversationsOutcome) || isPromiseLike(currentIdOutcome)) {
+      return Promise.all([conversationsOutcome, currentIdOutcome])
+        .then(([conversations, currentId]) => finish(conversations, currentId));
+    }
+    return finish(conversationsOutcome, currentIdOutcome);
   }
 
   let saveSequence = 0;

@@ -277,7 +277,10 @@ describe('AIStore persistence atomicity (#716)', () => {
       JSON.stringify(previousConversations)
     );
     localStorage.setItem(AIStore.STORAGE_KEYS.currentId, previousCurrentConversationId);
-    AIStore.state.conversations = previousConversations;
+    // Give the store its own array: saveConversations() trims live state in
+    // place to keep conversation object identities (#752), which would
+    // otherwise also trim this expected fixture.
+    AIStore.state.conversations = previousConversations.map(conversation => ({ ...conversation }));
     AIStore.state.currentConversationId = previousCurrentConversationId;
 
     const previousState = AIStore.createSaveSnapshot();
