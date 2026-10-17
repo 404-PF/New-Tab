@@ -42,48 +42,44 @@ async function flush() {
   for (let i = 0; i < 5; i++) await Promise.resolve();
 }
 
+// Shared shape for every rejection case: run the write, then assert the
+// optimistic cache rolled back and exactly one write-failure event fired.
+// Returns whatever the write case resolved to so callers can add checks.
+async function expectRolledBackAndReported(operation, write) {
+  const dom = await createHarness();
+  try {
+    const events = [];
+    dom.window.addEventListener('storageBridgeWriteError', (event) => events.push(event.detail));
+
+    const writeResult = await write(dom.window);
+
+    expect(dom.window.localStorage.getItem('testKey')).toBe('initial');
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ key: 'testKey', operation });
+    return writeResult;
+  } finally {
+    dom.window.close();
+  }
+}
+
 describe('storage bridge promise rejections', () => {
   it('rolls back and reports a set whose promise rejects without a callback', async () => {
-    const dom = await createHarness();
-    try {
-      const events = [];
-      dom.window.addEventListener('storageBridgeWriteError', (event) => events.push(event.detail));
-
-      expect(dom.window.localStorage.setItem('testKey', 'next')).toBe(true);
+    await expectRolledBackAndReported('set', async (win) => {
+      expect(win.localStorage.setItem('testKey', 'next')).toBe(true);
       await flush();
-
-      expect(dom.window.localStorage.getItem('testKey')).toBe('initial');
-      expect(events).toHaveLength(1);
-      expect(events[0]).toMatchObject({ key: 'testKey', operation: 'set' });
-    } finally {
-      dom.window.close();
-    }
+    });
   });
 
   it('restores and reports a remove whose promise rejects without a callback', async () => {
-    const dom = await createHarness();
-    try {
-      const events = [];
-      dom.window.addEventListener('storageBridgeWriteError', (event) => events.push(event.detail));
-
-      dom.window.localStorage.removeItem('testKey');
+    await expectRolledBackAndReported('remove', async (win) => {
+      win.localStorage.removeItem('testKey');
       await flush();
-
-      expect(dom.window.localStorage.getItem('testKey')).toBe('initial');
-      expect(events).toHaveLength(1);
-      expect(events[0]).toMatchObject({ key: 'testKey', operation: 'remove' });
-    } finally {
-      dom.window.close();
-    }
+    });
   });
 
   it('settles setItemAsync false and rolls back when the set promise rejects without a callback', async () => {
-    const dom = await createHarness();
-    try {
-      const events = [];
-      dom.window.addEventListener('storageBridgeWriteError', (event) => events.push(event.detail));
-
-      const writePromise = dom.window.localStorage.setItemAsync('testKey', 'next');
+    await expectRolledBackAndReported('set', async (win) => {
+      const writePromise = win.localStorage.setItemAsync('testKey', 'next');
       // Pre-fix the operation promise never settles when a promise-only
       // storage rejects without invoking the callback, so race it against a
       // timeout to fail fast instead of hanging the suite.
@@ -94,14 +90,8 @@ describe('storage bridge promise rejections', () => {
         ),
         new Promise((resolve) => setTimeout(() => resolve({ settled: false }), 100))
       ]);
-
       expect(outcome).toMatchObject({ settled: true });
       expect(outcome.value).toBe(false);
-      expect(dom.window.localStorage.getItem('testKey')).toBe('initial');
-      expect(events).toHaveLength(1);
-      expect(events[0]).toMatchObject({ key: 'testKey', operation: 'set' });
-    } finally {
-      dom.window.close();
-    }
+    });
   });
 });
