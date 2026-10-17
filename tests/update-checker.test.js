@@ -101,6 +101,10 @@ describe('UpdateChecker', () => {
   });
 
   describe('checkForUpdates attempt recording', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     it('records the attempt when the fetch fails and throttles the next check', async () => {
       checker.setLastCheckTime(0);
       vi.spyOn(checker, 'fetchLatestRelease').mockResolvedValue(null);
@@ -176,6 +180,43 @@ describe('UpdateChecker', () => {
 
       expect(checker.getUpdateStatus()).not.toBe('neverChecked');
       expect(checker.getUpdateStatus()).toBe('lastCheckedLessThanHour');
+    });
+  });
+
+  describe('manualCheck attempt recording', () => {
+    beforeEach(() => {
+      vi.spyOn(checker, 'hasCurrentVersion').mockReturnValue(true);
+      vi.spyOn(checker, 'showManualCheckNotification').mockImplementation(() => {});
+      vi.spyOn(checker, 'showManualCheckResult').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('records the attempt when the manual fetch fails', async () => {
+      checker.setLastCheckTime(0);
+      vi.spyOn(checker, 'fetchLatestRelease').mockResolvedValue(null);
+
+      await checker.manualCheck();
+
+      expect(checker.getLastCheckTime()).toBeGreaterThan(0);
+      expect(checker.shouldCheck()).toBe(false);
+      expect(checker.getUpdateStatus()).not.toBe('neverChecked');
+    });
+
+    it('records the attempt when the manual check cannot compare versions', async () => {
+      checker.setLastCheckTime(0);
+      vi.spyOn(checker, 'fetchLatestRelease').mockResolvedValue({
+        version: 'not-a-version',
+        url: 'https://example.com'
+      });
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await checker.manualCheck();
+
+      expect(checker.getLastCheckTime()).toBeGreaterThan(0);
+      expect(checker.shouldCheck()).toBe(false);
     });
   });
 

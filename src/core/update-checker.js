@@ -424,6 +424,8 @@ class UpdateChecker {
     }
 
     const latestRelease = await this.fetchLatestRelease();
+    // Record the attempt even when the fetch or version comparison fails (#825).
+    this.setLastCheckTime();
     if (!latestRelease) {
       const errorMessage = this.t('updateCheckFailed');
       this.showManualCheckNotification(errorMessage, 'error');
@@ -442,8 +444,6 @@ class UpdateChecker {
       this.showManualCheckResult(message);
       return;
     }
-
-    this.setLastCheckTime();
 
     if (comparison > 0) {
       // New version available - show both update notification and manual check notification
