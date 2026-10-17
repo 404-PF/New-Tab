@@ -2217,6 +2217,12 @@ function initAboutSection() {
         window.onboardingTour.start();
       });
     }
+
+    // The innerHTML rebuild above wipes any inline manual-check result; ask the
+    // checker to re-append it while its auto-hide window is still valid
+    if (window.updateChecker && typeof window.updateChecker.renderManualCheckResult === 'function') {
+      window.updateChecker.renderManualCheckResult();
+    }
   }
 }
 

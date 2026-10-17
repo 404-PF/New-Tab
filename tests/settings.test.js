@@ -7,6 +7,9 @@ beforeAll(() => {
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');
   injectScript('src/ui/settings.js');
+  injectScript('src/core/dom-ready.js');
+  injectScript('src/core/utils.js');
+  injectScript('src/core/update-checker.js');
 });
 
 describe('Background settings', () => {
@@ -1271,6 +1274,63 @@ describe('Manual update check button', () => {
     } finally {
       window.updateChecker = originalUpdateChecker;
       consoleErrorSpy.mockRestore();
+    }
+  });
+
+  it('keeps the inline manual-check result visible after the post-check refresh', async () => {
+    if (!document.querySelector('.settings-section[data-section="about"]')) {
+      const el = document.createElement('section');
+      el.className = 'settings-section';
+      el.setAttribute('data-section', 'about');
+      document.body.appendChild(el);
+    }
+    const aboutSection = document.querySelector('.settings-section[data-section="about"]');
+    document.querySelectorAll('.manual-check-result, .manual-check-notification')
+      .forEach(el => el.remove());
+
+    const originalFetch = window.fetch;
+    window.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        tag_name: 'v1.0.0',
+        html_url: 'https://example.com/release',
+        published_at: '2026-01-01T00:00:00Z',
+        body: ''
+      })
+    });
+
+    vi.useFakeTimers();
+
+    try {
+      window.updateChecker.currentVersion = '1.0.0';
+      window.updateChecker._manualCheckResultState = null;
+
+      window.initAboutSection();
+
+      const button = document.getElementById('manual-update-check');
+      expect(button).not.toBeNull();
+
+      button.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const shown = document.querySelector('.manual-check-result');
+      expect(shown).not.toBeNull();
+      expect(shown.parentElement).toBe(aboutSection);
+
+      // settings.js schedules initAboutSection() 100 ms after the check
+      await vi.advanceTimersByTimeAsync(100);
+
+      const restored = document.querySelector('.manual-check-result');
+      expect(restored).not.toBeNull();
+      expect(restored.parentElement).toBe(aboutSection);
+
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(document.querySelector('.manual-check-result')).toBeNull();
+    } finally {
+      window.fetch = originalFetch;
+      vi.useRealTimers();
+      window.updateChecker.hideManualCheckResult();
+      window.updateChecker.hideManualCheckNotification();
     }
   });
 });

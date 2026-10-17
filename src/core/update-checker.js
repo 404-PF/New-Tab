@@ -12,6 +12,7 @@ class UpdateChecker {
     this._manualCheckUnsubscribe = null; // Track manual-check notification visibility unsubscribe
     this._manualCheckResultTimeoutId = null; // Track manual-check-result auto-hide timeout
     this._manualCheckResultUnsubscribe = null; // Track manual-check-result visibility unsubscribe
+    this._manualCheckResultState = null; // Last inline About result: { message, key, replacements, shownAt }
   }
 
   hasCurrentVersion() {
@@ -413,7 +414,7 @@ class UpdateChecker {
     if (!this.hasCurrentVersion()) {
       const message = this.t('updateChecksBrowserOnly');
       this.showManualCheckNotification(message, 'info');
-      this.showManualCheckResult(message);
+      this.showManualCheckResult(message, 'updateChecksBrowserOnly');
       return;
     }
 
@@ -421,7 +422,7 @@ class UpdateChecker {
     if (!latestRelease) {
       const errorMessage = this.t('updateCheckFailed');
       this.showManualCheckNotification(errorMessage, 'error');
-      this.showManualCheckResult(errorMessage);
+      this.showManualCheckResult(errorMessage, 'updateCheckFailed');
       return;
     }
 
@@ -433,7 +434,7 @@ class UpdateChecker {
         currentVersion: this.currentVersion
       });
       this.showManualCheckNotification(message, 'warning');
-      this.showManualCheckResult(message);
+      this.showManualCheckResult(message, 'updateCheckUnsupportedVersion');
       return;
     }
 
@@ -444,39 +445,69 @@ class UpdateChecker {
       this.showUpdateNotification(latestRelease);
       const message = this.formatMessage('updateManualNewVersion', { version: latestRelease.version });
       this.showManualCheckNotification(message, 'success');
-      this.showManualCheckResult(message);
+      this.showManualCheckResult(message, 'updateManualNewVersion', { version: latestRelease.version });
     } else if (comparison < 0) {
       // Development version
-      const message = this.formatMessage('updateManualDevelopmentVersion', {
+      const replacements = {
         currentVersion: this.currentVersion,
         latestVersion: latestRelease.version
-      });
+      };
+      const message = this.formatMessage('updateManualDevelopmentVersion', replacements);
       this.showManualCheckNotification(message, 'warning');
-      this.showManualCheckResult(message);
+      this.showManualCheckResult(message, 'updateManualDevelopmentVersion', replacements);
     } else {
       // Up to date
       const message = this.t('updateManualLatestVersion');
       this.showManualCheckNotification(message, 'success');
-      this.showManualCheckResult(message);
+      this.showManualCheckResult(message, 'updateManualLatestVersion');
     }
   }
 
-  // Show manual check result
-  showManualCheckResult(message) {
-    // Remove existing result
+  // Show manual check result. When i18nKey is provided, rebuilds re-render the
+  // text via formatMessage so a languageChanged refresh re-translates it.
+  showManualCheckResult(message, i18nKey = null, replacements = {}) {
+    this._manualCheckResultState = {
+      message,
+      key: i18nKey || null,
+      replacements: replacements || {},
+      shownAt: Date.now()
+    };
+    this.renderManualCheckResult();
+  }
+
+  // Re-append the stored manual check result after an About-section rebuild,
+  // preserving the remaining auto-hide window instead of restarting it
+  renderManualCheckResult() {
+    const state = this._manualCheckResultState;
+    if (!state) return;
+
+    this._clearTimedAutoHide('manualCheckResult');
     const existing = document.querySelector('.manual-check-result');
     if (existing) existing.remove();
 
+    const elapsed = Date.now() - state.shownAt;
+    if (elapsed >= 5000) {
+      this._manualCheckResultState = null;
+      return;
+    }
+
+    const aboutSection = document.querySelector('.settings-section[data-section="about"]');
+    if (!aboutSection) return;
+
     const result = document.createElement('div');
     result.className = 'manual-check-result';
-    result.textContent = message;
+    result.textContent = state.key ? this.formatMessage(state.key, state.replacements) : state.message;
+    aboutSection.appendChild(result);
 
-    // Add to about section
-    const aboutSection = document.querySelector('.settings-section[data-section="about"]');
-    if (aboutSection) {
-      aboutSection.appendChild(result);
-      this._scheduleManualCheckResultAutoHide(() => result.remove(), 5000);
-    }
+    this._scheduleManualCheckResultAutoHide(() => this.hideManualCheckResult(), 5000 - elapsed);
+  }
+
+  // Hide manual check result and drop its stored state
+  hideManualCheckResult() {
+    this._clearTimedAutoHide('manualCheckResult');
+    this._manualCheckResultState = null;
+    const existing = document.querySelector('.manual-check-result');
+    if (existing) existing.remove();
   }
 
   // Schedule auto-hide for manual check result (separate timer tracking)
