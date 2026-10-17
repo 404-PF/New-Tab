@@ -24,6 +24,32 @@ describe('OfflineMode', () => {
     }
   });
 
+  it.each([
+    ['5 mm to cm', '5 mm = 0.5 cm'],
+    ['10 yd to m', '10 yd = 9.144 m'],
+    ['1 mg to g', '1 mg = 0.001 g'],
+    ['1 ton to kg', '1 ton = 907.1847 kg'],
+    ['5 毫米 to 厘米', '5 mm = 0.5 cm'],
+    ['10 码 to 米', '10 yd = 9.144 m'],
+    ['1 毫克 to 克', '1 mg = 0.001 g'],
+    ['1 吨 to 千克', '1 ton = 907.1847 kg'],
+    ['100 F to C', '100°F = 37.78°C']
+  ])('converts %s offline', (query, content) => {
+    expect(OfflineMode.getResponse(query)).toEqual({ success: true, content, mode: 'offline' });
+  });
+
+  it('reports unsupported conversion pairs as failures with a useful error', () => {
+    const result = OfflineMode.getResponse('5 km to kg');
+    expect(result).toMatchObject({ success: false, mode: 'offline' });
+    expect(result.error).toContain('can\'t convert from km to kg');
+    expect(result.content).toBe(result.error);
+  });
+
+  it('keeps non-conversion queries available to the knowledge base', () => {
+    expect(OfflineMode.parseConversion('help')).toBeNull();
+    expect(OfflineMode.getResponse('help').content).toContain('offline');
+  });
+
   it('uses the platform CSPRNG when selecting a fact', () => {
     const getRandomValues = vi.fn(values => {
       values[0] = 0;
