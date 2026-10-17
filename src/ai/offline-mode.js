@@ -329,7 +329,7 @@ const OfflineMode = (function() {
   function parseConversion(input) {
     const match = input.match(/^(-?\d+(?:\.\d*)?)\s*([a-z\u4e00-\u9fff]+)\s+(?:to|in|->|转换|换算)\s+([a-z\u4e00-\u9fff]+)$/i);
     if (!match) return null;
-    
+
     const unitMap = {
       '公里': 'km', '千米': 'km',
       '米': 'm',
