@@ -23,11 +23,15 @@ export function installPacmanTestEnvironment(vi) {
   });
 }
 
-// Mount Pac-Man into a fresh container attached to the document.
+let mountedGame = null;
+
+// Mount Pac-Man into a fresh container attached to the document. Direct
+// init() bypasses the registry, so remember the game for resetGamesHub().
 export function mountPacman() {
   const container = document.createElement('div');
   document.body.appendChild(container);
-  window.GameRegistry.get('pacman').init(container);
+  mountedGame = window.GameRegistry.get('pacman');
+  mountedGame.init(container);
   return container;
 }
 
@@ -38,6 +42,9 @@ export function dispatchKey(code, target = document) {
 
 // Tear down whatever game is mounted and reset storage and the DOM.
 export function resetGamesHub() {
+  // destroy() is idempotent, so this is safe after a test destroyed it itself.
+  mountedGame?.destroy();
+  mountedGame = null;
   window.GameRegistry?.destroyCurrent?.();
   localStorage.clear();
   document.body.innerHTML = '';
