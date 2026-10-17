@@ -45,7 +45,7 @@
     }
   }
 
-  function migrateNotes(data) {
+  function migrateNotes(data, { persist = true } = {}) {
     let changed = false;
     const orders = data.map(note => note?.order);
     const hasInvalidOrder = orders.some(order => !Number.isFinite(order));
@@ -76,7 +76,7 @@
       return n;
     });
     migrated.sort((a, b) => a.order - b.order);
-    if (changed) {
+    if (changed && persist) {
       saveNotes(migrated);
     }
     return migrated;
@@ -93,7 +93,7 @@
   function saveNotes(data) {
     try {
       const result = localStorage.setItem('notes', JSON.stringify(data));
-      if (result !== false) return true;
+      if (result !== false) return true; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
       console.warn('Storage bridge rejected the notes write');
     } catch (error) {
       console.warn('Failed to save notes to localStorage:', error);
@@ -107,7 +107,8 @@
       const raw = localStorage.getItem('notes');
       if (!raw) return [];
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : null;
+      // Re-apply the order/tag repairs from loadNotes without writing back.
+      return Array.isArray(parsed) ? migrateNotes(parsed, { persist: false }) : null;
     } catch (error) {
       console.warn('Failed to read notes for storage error recovery:', error);
       return null;
@@ -117,15 +118,21 @@
   window.addEventListener('storageBridgeWriteError', (event) => {
     if (event?.detail?.key !== 'notes') return;
 
-    setTimeout(() => {
-      if (Object.keys(debounceTimers).length > 0) return;
+    const recover = () => {
+      // Wait for pending debounced saves to drain instead of dropping the
+      // only failure notification for this write.
+      if (Object.keys(debounceTimers).length > 0) {
+        setTimeout(recover, 50);
+        return;
+      }
       const persisted = readPersistedNotes();
       if (persisted === null) return;
       if (JSON.stringify(persisted) === JSON.stringify(notes)) return;
       notes = persisted;
       renderNotes();
       showNotesSaveError();
-    }, 0);
+    };
+    setTimeout(recover, 0);
   });
 
   function generateNoteId() {

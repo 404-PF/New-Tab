@@ -145,7 +145,7 @@ const AIStore = (function() {
     }
 
     try {
-      return localStorage.setItem(key, value) !== false;
+      return localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (error) {
       console.warn('Failed to persist conversation storage value:', error);
       return false;

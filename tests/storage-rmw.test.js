@@ -285,7 +285,8 @@ describe('rejected storage bridge writes', () => {
   it('returns the bridge result for target keys so callers see rejected writes', () => {
     const persisted = new Map([
       ['todos', '[]'],
-      ['notes', '[]']
+      ['notes', '[]'],
+      ['ai_conversations', '[]']
     ]);
     let rejectWrites = false;
     const fakeStorage = {
@@ -302,15 +303,20 @@ describe('rejected storage bridge writes', () => {
     injectScript('src/core/storage-rmw.js', context);
     context.localStorage.getItem('todos');
     context.localStorage.getItem('notes');
+    context.localStorage.getItem('ai_conversations');
 
     rejectWrites = true;
     expect(context.localStorage.setItem('todos', JSON.stringify([{ id: 'todo-1' }]))).toBe(false);
     expect(context.localStorage.setItem('notes', JSON.stringify([{ id: 'note-1' }]))).toBe(false);
     expect(persisted.get('todos')).toBe('[]');
+    expect(context.localStorage.setItem('ai_conversations', JSON.stringify([{ id: 'conv-1' }]))).toBe(false);
     expect(persisted.get('notes')).toBe('[]');
+    expect(persisted.get('ai_conversations')).toBe('[]');
 
     rejectWrites = false;
     expect(context.localStorage.setItem('todos', JSON.stringify([{ id: 'todo-1' }]))).toBe(true);
     expect(persisted.get('todos')).toBe(JSON.stringify([{ id: 'todo-1' }]));
+    expect(context.localStorage.setItem('ai_conversations', JSON.stringify([{ id: 'conv-1' }]))).toBe(true);
+    expect(persisted.get('ai_conversations')).toBe(JSON.stringify([{ id: 'conv-1' }]));
   });
 });

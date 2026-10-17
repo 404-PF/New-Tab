@@ -75,7 +75,7 @@
   function saveTodos(todos) {
     try {
       const result = localStorage.setItem('todos', JSON.stringify(todos));
-      return result !== false;
+      return result !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (error) {
       console.warn('Failed to save todos to localStorage:', error);
       return false;
@@ -90,6 +90,8 @@
       if (JSON.stringify(persisted) === JSON.stringify(todos)) return;
       todos = persisted;
       applyFilters();
+      // Resync reminders so the service worker drops the rolled-back todos.
+      scheduleTodoReminderCheck();
       showTodoSaveError();
     }, 0);
   });

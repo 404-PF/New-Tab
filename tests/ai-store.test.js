@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
+import { failStorageWritesFor } from './helpers/storage-write-failures.js';
 
 beforeAll(() => {
   injectScript('src/ai/conversation-validator.js');
@@ -347,21 +348,23 @@ describe('AIStore synchronous fallback write failures (#823)', () => {
       createdAt: 1,
       updatedAt: 1
     };
+    // Rollback restores the last persisted state, so seed it first.
+    localStorage.setItem(AIStore.STORAGE_KEYS.conversations, JSON.stringify([conversation]));
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-1');
+    const persistedBefore = localStorage.getItem(AIStore.STORAGE_KEYS.conversations);
     AIStore.state.conversations = [conversation];
     AIStore.state.currentConversationId = 'conv-1';
     const previousState = AIStore.createSaveSnapshot();
+    AIStore.state.conversations = [
+      { ...conversation, id: 'conv-2', title: 'Unsaved' },
+      conversation
+    ];
+    AIStore.state.currentConversationId = 'conv-2';
 
     const originalSetItemAsync = localStorage.setItemAsync;
     delete localStorage.setItemAsync;
 
-    const area = chrome.storage.local;
-    const originalSet = area.set;
-    area.set = function (items, callback) {
-      if (Object.prototype.hasOwnProperty.call(items, AIStore.STORAGE_KEYS.conversations)) {
-        throw new Error('QUOTA_BYTES quota exceeded');
-      }
-      return originalSet.call(area, items, callback);
-    };
+    const restoreStorageSet = failStorageWritesFor(AIStore.STORAGE_KEYS.conversations, 'sync');
 
     const originalShowToast = window.showToast;
     const showToast = vi.fn();
@@ -372,12 +375,15 @@ describe('AIStore synchronous fallback write failures (#823)', () => {
     try {
       expect(await AIStore.saveConversations(previousState)).toBe(false);
       expect(AIStore.state.conversations).toEqual([conversation]);
+      expect(AIStore.state.currentConversationId).toBe('conv-1');
+      // The failed save leaves storage at its pre-save value.
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations)).toBe(persistedBefore);
       expect(showToast).toHaveBeenCalledWith(
         'Failed to save conversations. Your last action was not saved.',
         'error'
       );
     } finally {
-      area.set = originalSet;
+      restoreStorageSet();
       if (typeof originalSetItemAsync === 'undefined') {
         delete localStorage.setItemAsync;
       } else {
