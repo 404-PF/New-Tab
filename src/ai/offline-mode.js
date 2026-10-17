@@ -327,16 +327,10 @@ const OfflineMode = (function() {
    * @returns {string|Object|null} Result, conversion error, or null for other queries
    */
   function parseConversion(input) {
-    // Pattern: "5 km to miles" or "100 fahrenheit to celsius" or Chinese "5 公里 to 英里"
-    const patterns = [
-      /^(-?\d+\.?\d*)\s*(km|m|cm|mm|ft|in|mi|yd|公里|千米|米|厘米|毫米|英里|英尺|英寸|码)\s+(?:to|in|->|转换|换算)\s+(km|m|cm|mm|ft|in|mi|yd|公里|千米|米|厘米|毫米|英里|英尺|英寸|码)$/i,
-      /^(-?\d+\.?\d*)\s*(kg|g|mg|lb|oz|ton|千克|克|毫克|磅|盎司|吨)\s+(?:to|in|->|转换|换算)\s+(kg|g|mg|lb|oz|ton|千克|克|毫克|磅|盎司|吨)$/i,
-      /^(-?\d+\.?\d*)\s*(celsius|c|fahrenheit|f|kelvin|k|摄氏度|华氏度|开尔文|摄|华|开)\s+(?:to|in|->|转换|换算)\s+(celsius|c|fahrenheit|f|kelvin|k|摄氏度|华氏度|开尔文|摄|华|开)$/i,
-      /^(-?\d+\.?\d*)\s*([a-z\u4e00-\u9fff]+)\s+(?:to|in|->|转换|换算)\s+([a-z\u4e00-\u9fff]+)$/i
-    ];
+    const match = input.match(/^(-?\d+(?:\.\d*)?)\s*([a-z\u4e00-\u9fff]+)\s+(?:to|in|->|转换|换算)\s+([a-z\u4e00-\u9fff]+)$/i);
+    if (!match) return null;
     
-    // Chinese unit name mappings
-    const chineseUnitMap = {
+    const unitMap = {
       '公里': 'km', '千米': 'km',
       '米': 'm',
       '厘米': 'cm',
@@ -353,62 +347,39 @@ const OfflineMode = (function() {
       '吨': 'ton',
       '摄氏度': 'C', '摄': 'C',
       '华氏度': 'F', '华': 'F',
-      '开尔文': 'K', '开': 'K'
+      '开尔文': 'K', '开': 'K',
+      'celsius': 'C', 'c': 'C',
+      'fahrenheit': 'F', 'f': 'F',
+      'kelvin': 'K', 'k': 'K'
     };
-    
-    for (const pattern of patterns) {
-      const match = input.match(pattern);
-      if (match) {
-        const value = parseFloat(match[1]);
-        let fromUnit = match[2].toLowerCase();
-        let toUnit = match[3].toLowerCase();
-        
-        // Convert Chinese units to English
-        if (chineseUnitMap[fromUnit]) fromUnit = chineseUnitMap[fromUnit];
-        if (chineseUnitMap[toUnit]) toUnit = chineseUnitMap[toUnit];
-        
-        // Normalize unit names
-        const unitMap = {
-          'celsius': 'C', 'c': 'C',
-          'fahrenheit': 'F', 'f': 'F',
-          'kelvin': 'K', 'k': 'K'
-        };
-        
-        const from = unitMap[fromUnit] || fromUnit;
-        const to = unitMap[toUnit] || toUnit;
-        
-        // Check if conversion is valid
-        let result;
-        
-        // Temperature conversion
-        if (CONVERSIONS.temperature[from] && CONVERSIONS.temperature[from][to]) {
-          const convertFn = CONVERSIONS.temperature[from][to];
-          result = convertFn(value);
-          result = Math.round(result * 100) / 100;
-          return `${value}°${from.toUpperCase()} = ${result}°${to.toUpperCase()}`;
-        }
-        
-        // Length/weight conversion
-        const category = Object.keys(CONVERSIONS).find(cat => 
-          CONVERSIONS[cat][from] && CONVERSIONS[cat][from][to]
-        );
-        
-        if (category) {
-          const factor = CONVERSIONS[category][from][to];
-          result = value * factor;
-          result = Math.round(result * 10000) / 10000;
-          return `${value} ${from} = ${result} ${to}`;
-        }
-        
-        const lang = getCurrentLanguage();
-        const errorMsg = lang === 'zh' 
-          ? `抱歉，我无法从 ${match[2]} 转换到 ${match[3]}。`
-          : `Sorry, I can't convert from ${fromUnit} to ${toUnit}.`;
-        return { error: errorMsg };
-      }
+
+    const value = parseFloat(match[1]);
+    const fromUnit = match[2].toLowerCase();
+    const toUnit = match[3].toLowerCase();
+    const from = Object.hasOwn(unitMap, fromUnit) ? unitMap[fromUnit] : fromUnit;
+    const to = Object.hasOwn(unitMap, toUnit) ? unitMap[toUnit] : toUnit;
+    const knownUnit = unit => Object.values(CONVERSIONS).some(units => Object.hasOwn(units, unit));
+    if (!knownUnit(from) || !knownUnit(to)) return null;
+
+    if (Object.hasOwn(CONVERSIONS.temperature, from) && Object.hasOwn(CONVERSIONS.temperature[from], to)) {
+      const result = Math.round(CONVERSIONS.temperature[from][to](value) * 100) / 100;
+      return `${value}°${from.toUpperCase()} = ${result}°${to.toUpperCase()}`;
     }
-    
-    return null;
+
+    const category = Object.keys(CONVERSIONS).find(cat =>
+      Object.hasOwn(CONVERSIONS[cat], from) && Object.hasOwn(CONVERSIONS[cat][from], to)
+    );
+    if (category) {
+      let result = value * CONVERSIONS[category][from][to];
+      // Keep small non-zero results while preserving the usual four-decimal display.
+      result = Math.abs(result) < 0.0001 ? Number(result.toPrecision(6)) : Math.round(result * 10000) / 10000;
+      return `${value} ${from} = ${result} ${to}`;
+    }
+
+    const errorMsg = getCurrentLanguage() === 'zh'
+      ? `抱歉，我无法从 ${match[2]} 转换到 ${match[3]}。`
+      : `Sorry, I can't convert from ${fromUnit} to ${toUnit}.`;
+    return { error: errorMsg };
   }
 
   /**
