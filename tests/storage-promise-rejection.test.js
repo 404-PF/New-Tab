@@ -76,4 +76,32 @@ describe('storage bridge promise rejections', () => {
       dom.window.close();
     }
   });
+
+  it('settles setItemAsync false and rolls back when the set promise rejects without a callback', async () => {
+    const dom = await createHarness();
+    try {
+      const events = [];
+      dom.window.addEventListener('storageBridgeWriteError', (event) => events.push(event.detail));
+
+      const writePromise = dom.window.localStorage.setItemAsync('testKey', 'next');
+      // Pre-fix the operation promise never settles when a promise-only
+      // storage rejects without invoking the callback, so race it against a
+      // timeout to fail fast instead of hanging the suite.
+      const outcome = await Promise.race([
+        writePromise.then(
+          (value) => ({ settled: true, value }),
+          () => ({ settled: true, rejected: true })
+        ),
+        new Promise((resolve) => setTimeout(() => resolve({ settled: false }), 100))
+      ]);
+
+      expect(outcome).toMatchObject({ settled: true });
+      expect(outcome.value).toBe(false);
+      expect(dom.window.localStorage.getItem('testKey')).toBe('initial');
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({ key: 'testKey', operation: 'set' });
+    } finally {
+      dom.window.close();
+    }
+  });
 });

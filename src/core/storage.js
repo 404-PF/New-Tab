@@ -478,7 +478,6 @@
         finishSet(chrome.runtime?.lastError || null);
       });
     } catch (error) {
-      settled = true;
       console.warn(`Failed to persist ${key} to chrome.storage:`, error);
       reportStorageWriteError(key, error, { generation, value });
 
@@ -516,8 +515,9 @@
       rejectOperation = reject;
     });
 
+    let result;
     try {
-      startOperation(() => {
+      result = startOperation(() => {
         const lastError = chrome.runtime?.lastError;
         if (lastError) {
           rejectOperation(lastError);
@@ -544,6 +544,15 @@
       }
       return failureError ? Promise.reject(failureError) : Promise.resolve(false);
     }
+
+    // Callback-style chrome.storage returns undefined; a promise-returning
+    // implementation may reject without ever invoking the callback. Without
+    // this a promise-only rejection leaves the operation pending forever, with
+    // the optimistic cache at the failed value. Success still settles through
+    // the callback, which reports chrome.runtime.lastError.
+    Promise.resolve(result).catch(function (error) {
+      rejectOperation(error);
+    });
 
     return operationPromise.catch(error => {
       onFailure(error, generation);

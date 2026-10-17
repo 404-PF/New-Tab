@@ -919,7 +919,7 @@
       if (!state.active || !_isLeader) return;
       const epoch = _stateEpoch;
 
-      void withLeadershipLock(async function () {
+      runTimerAction('visibilitychange', withLeadershipLock(async function () {
         if (epoch !== _stateEpoch || !state.active || !_isLeader) return false;
         const persisted = await loadTimerStateAsync();
         if (epoch !== _stateEpoch || !state.active || !_isLeader) return false;
@@ -952,7 +952,7 @@
           startInterval();
         }
         return true;
-      });
+      }));
     });
 
     document.addEventListener('click', handleTodoClick);
@@ -987,11 +987,11 @@
         saveTimerState();
         updateWidget();
 
-        void withLeadershipLock(async function () {
+        runTimerAction('saveDurations', withLeadershipLock(async function () {
           if (epoch !== _stateEpoch || !state.active) return false;
           await saveTimerStateAsync();
           return true;
-        });
+        }));
       }
     }
   }
