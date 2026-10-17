@@ -146,17 +146,27 @@ describe('AIRenderer copy failure notification (#839)', () => {
       configurable: true
     });
 
-    AIRenderer.initCopyButtons();
-    container.querySelector('.ai-message-copy').click();
+    const localizedCopyFailed = 'No se pudo copiar el texto. Selecciona y copia manualmente.';
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => (key === 'copyFailed' ? localizedCopyFailed : originalT(key));
 
-    await vi.waitFor(() => {
-      expect(document.querySelector('.ai-copy-error-notification')).not.toBeNull();
-    });
+    try {
+      AIRenderer.initCopyButtons();
+      container.querySelector('.ai-message-copy').click();
 
-    const notification = document.querySelector('.ai-copy-error-notification');
-    expect(notification.textContent).toBe('Failed to copy text. Please select and copy manually.');
+      await vi.waitFor(() => {
+        expect(document.querySelector('.ai-copy-error-notification')).not.toBeNull();
+      });
 
-    notification.remove();
-    container.replaceChildren();
+      const notification = document.querySelector('.ai-copy-error-notification');
+      expect(notification.textContent).toBe(localizedCopyFailed);
+
+      notification.remove();
+    } finally {
+      window.i18n.t = originalT;
+      const leftover = document.querySelector('.ai-copy-error-notification');
+      if (leftover) leftover.remove();
+      container.replaceChildren();
+    }
   });
 });
