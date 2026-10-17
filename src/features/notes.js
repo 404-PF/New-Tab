@@ -84,10 +84,11 @@
   }
 
   function showNotesSaveError() {
+    const message = window.i18n ? window.i18n.t('notesSaveError') : 'Failed to save note. Your changes were not saved.';
     if (typeof showToast === 'function') {
-      showToast('Failed to save note. Your changes were not saved.', 'error');
+      showToast(message, 'error');
     } else {
-      console.warn('showToast unavailable: Failed to save note. Your changes were not saved.');
+      console.warn('showToast unavailable: ' + message);
     }
   }
 

@@ -129,3 +129,34 @@ describe('AIRenderer grounded source rendering (#707)', () => {
       .toBe('https://example.com/article');
   });
 });
+
+describe('AIRenderer copy failure notification (#839)', () => {
+  it('shows the copyFailed translation when the clipboard write fails', async () => {
+    const container = document.getElementById('ai-chat-container');
+    container.innerHTML =
+      '<div class="ai-message-content">' +
+      '<div class="ai-message-text">hello world</div>' +
+      '<button type="button" class="ai-message-copy"><span class="copy-text">Copy</span></button>' +
+      '</div>';
+    const messageText = container.querySelector('.ai-message-text');
+    Object.defineProperty(messageText, 'innerText', { value: 'hello world', configurable: true });
+
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true
+    });
+
+    AIRenderer.initCopyButtons();
+    container.querySelector('.ai-message-copy').click();
+
+    await vi.waitFor(() => {
+      expect(document.querySelector('.ai-copy-error-notification')).not.toBeNull();
+    });
+
+    const notification = document.querySelector('.ai-copy-error-notification');
+    expect(notification.textContent).toBe('Failed to copy text. Please select and copy manually.');
+
+    notification.remove();
+    container.replaceChildren();
+  });
+});

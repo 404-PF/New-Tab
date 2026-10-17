@@ -5,7 +5,8 @@ const AIRenderer = (function() {
   const TRANSLATION_FALLBACKS = {
     aiGroundWithWeb: 'Ground with web',
     aiGroundWithWebDescription: 'Use live web results for current answers.',
-    aiSources: 'Sources'
+    aiSources: 'Sources',
+    copyFailed: 'Failed to copy text. Please select and copy manually.'
   };
   const topicsListRenderState = {
     listEl: null,
@@ -742,7 +743,7 @@ const AIRenderer = (function() {
       document.body.appendChild(notification);
     }
 
-    notification.textContent = 'Failed to copy text. Please select and copy manually.';
+    notification.textContent = getTranslation('copyFailed');
     notification.classList.add('visible');
 
     setTimeout(() => {

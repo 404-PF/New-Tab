@@ -114,6 +114,12 @@ describe('Search provider save error translation', () => {
   });
 });
 
+describe('Storage/copy failure translations', () => {
+  it('defines localized notesSaveError, todoSaveError and copyFailed for every supported language', () => {
+    expectTranslationKeys(['notesSaveError', 'todoSaveError', 'copyFailed'], { differFromEnglish: true });
+  });
+});
+
 describe('Pomodoro translations', () => {
   it('falls back to English for every supported language', () => {
     const languages = window.i18n.getSupportedLanguages();
