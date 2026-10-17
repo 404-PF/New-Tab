@@ -391,7 +391,7 @@
 
   // Fire-and-forget refresh for UI event handlers, which cannot await.
   function refreshWeatherSafely() {
-    return refreshWeather(true).catch(function (error) {
+    refreshWeather(true).catch(function (error) {
       console.error('Failed to refresh weather:', error);
     });
   }

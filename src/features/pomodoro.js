@@ -552,7 +552,7 @@
     const epoch = ++_stateEpoch;
     resetTimerStateLocally();
 
-    return runTimerAction('stop', withLeadershipLock(async function () {
+    runTimerAction('stop', withLeadershipLock(async function () {
       if (epoch !== _stateEpoch) return false;
       await saveTimerStateAsync();
       return true;
@@ -842,26 +842,26 @@
   // Click handlers cannot await, so surface failures of the async timer
   // actions instead of leaving them as unhandled rejections.
   function runTimerAction(name, maybePromise) {
-    return Promise.resolve(maybePromise).catch(function (error) {
+    Promise.resolve(maybePromise).catch(function (error) {
       console.error(`Pomodoro ${name} action failed:`, error);
-      return false;
     });
   }
 
   function handleWidgetClick(e) {
     const pauseBtn = e.target.closest('.pomodoro-pause-btn');
     if (pauseBtn) {
-      return runTimerAction('pause', togglePause());
+      runTimerAction('pause', togglePause());
+      return;
     }
     const skipBtn = e.target.closest('.pomodoro-skip-btn');
     if (skipBtn) {
-      return runTimerAction('skip', skipPhase());
+      runTimerAction('skip', skipPhase());
+      return;
     }
     const resetBtn = e.target.closest('.pomodoro-reset-btn');
     if (resetBtn) {
-      return runTimerAction('reset', resetCurrentPhase());
+      runTimerAction('reset', resetCurrentPhase());
     }
-    return undefined;
   }
 
   async function resetCurrentPhase() {

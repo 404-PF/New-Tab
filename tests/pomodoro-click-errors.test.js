@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
-// Regression for the SonarCloud S9383 findings in pomodoro.js: the click
+// Regression for the SonarCloud S9383 findings in pomodoro.js. The click
 // handlers fired async timer actions without handling rejections, so a
-// failing Web Locks request surfaced as an unhandled promise rejection.
+// failing Web Locks request became an unhandled promise rejection.
 
 let rejectLocks = false;
 
@@ -36,6 +36,39 @@ afterEach(() => {
 
 async function flush() {
   for (let i = 0; i < 10; i++) await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function createFocusButton(todoId) {
+  const btn = document.createElement('button');
+  btn.className = 'todo-focus-btn';
+  btn.dataset.todoId = todoId;
+  document.body.appendChild(btn);
+  return btn;
+}
+
+async function expectClickLogsFailure(action, { startTodoId, getTarget }) {
+  window.savePomodoroDurations({ enabled: true, workDuration: 25 });
+  if (startTodoId) {
+    window.startPomodoro(startTodoId);
+    await flush();
+  }
+
+  const target = getTarget();
+  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const unhandled = vi.fn();
+  process.on('unhandledRejection', unhandled);
+  try {
+    rejectLocks = true;
+    target.click();
+    await flush();
+  } finally {
+    process.off('unhandledRejection', unhandled);
+    if (target.classList.contains('todo-focus-btn')) target.remove();
+  }
+
+  expect(unhandled).not.toHaveBeenCalled();
+  expect(errorSpy).toHaveBeenCalledWith(`Pomodoro ${action} action failed:`, expect.any(Error));
 }
 
 describe('Pomodoro click handlers surface async failures', () => {
@@ -43,60 +76,18 @@ describe('Pomodoro click handlers surface async failures', () => {
     ['pause', '.pomodoro-pause-btn'],
     ['skip', '.pomodoro-skip-btn'],
     ['reset', '.pomodoro-reset-btn']
-  ])('logs a failed %s action instead of leaving an unhandled rejection', async (name, selector) => {
-    window.savePomodoroDurations({ enabled: true, workDuration: 25 });
-    window.startPomodoro('todo-1');
-    await flush();
+  ])('logs a failed %s widget action', (action, selector) =>
+    expectClickLogsFailure(action, {
+      startTodoId: 'todo-1',
+      getTarget: () => document.querySelector(selector)
+    }));
 
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const unhandled = vi.fn();
-    process.on('unhandledRejection', unhandled);
-    try {
-      rejectLocks = true;
-      document.querySelector(selector).click();
-      await flush();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    } finally {
-      process.off('unhandledRejection', unhandled);
-    }
+  it('logs a failed start action from a todo focus button', () =>
+    expectClickLogsFailure('start', { getTarget: () => createFocusButton('todo-2') }));
 
-    expect(unhandled).not.toHaveBeenCalled();
-    expect(errorSpy).toHaveBeenCalledWith(`Pomodoro ${name} action failed:`, expect.any(Error));
-  });
-
-  it('logs a failed start action from a todo focus button', async () => {
-    window.savePomodoroDurations({ enabled: true, workDuration: 25 });
-    const btn = document.createElement('button');
-    btn.className = 'todo-focus-btn';
-    btn.dataset.todoId = 'todo-2';
-    document.body.appendChild(btn);
-
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    rejectLocks = true;
-    btn.click();
-    await flush();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    btn.remove();
-
-    expect(errorSpy).toHaveBeenCalledWith('Pomodoro start action failed:', expect.any(Error));
-  });
-
-  it('logs a failed stop action from the active todo focus button', async () => {
-    window.savePomodoroDurations({ enabled: true, workDuration: 25 });
-    window.startPomodoro('todo-3');
-    await flush();
-    const btn = document.createElement('button');
-    btn.className = 'todo-focus-btn';
-    btn.dataset.todoId = 'todo-3';
-    document.body.appendChild(btn);
-
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    rejectLocks = true;
-    btn.click();
-    await flush();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    btn.remove();
-
-    expect(errorSpy).toHaveBeenCalledWith('Pomodoro stop action failed:', expect.any(Error));
-  });
+  it('logs a failed stop action from the active todo focus button', () =>
+    expectClickLogsFailure('stop', {
+      startTodoId: 'todo-3',
+      getTarget: () => createFocusButton('todo-3')
+    }));
 });
