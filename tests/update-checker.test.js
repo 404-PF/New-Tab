@@ -137,6 +137,46 @@ describe('UpdateChecker', () => {
       }
     });
 
+    it('does not count hidden-tab time against the result window on rebuild', () => {
+      vi.useFakeTimers();
+      const originalVisibilityManager = window.visibilityManager;
+      const listeners = new Set();
+      window.visibilityManager = {
+        isVisible: true,
+        onChange(fn) {
+          listeners.add(fn);
+          return () => listeners.delete(fn);
+        }
+      };
+      const setVisible = (visible) => {
+        window.visibilityManager.isVisible = visible;
+        [...listeners].forEach(fn => fn(visible));
+      };
+      try {
+        checker.showManualCheckResult('done');
+        vi.advanceTimersByTime(1000);
+
+        // Background the tab for 10 s; the auto-hide timer pauses
+        setVisible(false);
+        vi.advanceTimersByTime(10000);
+        setVisible(true);
+
+        aboutSection.innerHTML = '';
+        checker.renderManualCheckResult();
+        expect(document.querySelector('.manual-check-result')).not.toBeNull();
+
+        // 4 s of visible time remain
+        vi.advanceTimersByTime(3900);
+        expect(document.querySelector('.manual-check-result')).not.toBeNull();
+        vi.advanceTimersByTime(100);
+        expect(document.querySelector('.manual-check-result')).toBeNull();
+      } finally {
+        checker.hideManualCheckResult();
+        window.visibilityManager = originalVisibilityManager;
+        vi.useRealTimers();
+      }
+    });
+
     it('does not resurrect a result once its auto-hide window has expired', () => {
       vi.useFakeTimers();
       try {

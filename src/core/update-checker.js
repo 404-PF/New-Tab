@@ -12,7 +12,8 @@ class UpdateChecker {
     this._manualCheckUnsubscribe = null; // Track manual-check notification visibility unsubscribe
     this._manualCheckResultTimeoutId = null; // Track manual-check-result auto-hide timeout
     this._manualCheckResultUnsubscribe = null; // Track manual-check-result visibility unsubscribe
-    this._manualCheckResultState = null; // Last inline About result: { message, key, replacements, shownAt }
+    this._manualCheckResultGetRemaining = null; // Visible time left on the manual-check-result timer
+    this._manualCheckResultState = null; // Last inline About result: { message, key, replacements, remaining }
   }
 
   hasCurrentVersion() {
@@ -205,6 +206,7 @@ class UpdateChecker {
   _clearTimedAutoHide(stateKey) {
     const timeoutKey = `_${stateKey}TimeoutId`;
     const unsubscribeKey = `_${stateKey}Unsubscribe`;
+    this[`_${stateKey}GetRemaining`] = null;
     if (this[timeoutKey]) {
       clearTimeout(this[timeoutKey]);
       this[timeoutKey] = null;
@@ -306,15 +308,20 @@ class UpdateChecker {
       };
 
       this[unsubscribeKey] = window.visibilityManager.onChange(onVisibilityChange);
+      // Remaining visible time; paused while the tab is hidden.
+      this[`_${stateKey}GetRemaining`] = () =>
+        this[timeoutKey] ? remaining - (Date.now() - startTime) : remaining;
 
       if (window.visibilityManager.isVisible) {
         this[timeoutKey] = setTimeout(hide, remaining);
       }
     } else {
+      const startTime = Date.now();
       this[timeoutKey] = setTimeout(() => {
         clear();
         callback();
       }, delay);
+      this[`_${stateKey}GetRemaining`] = () => delay - (Date.now() - startTime);
     }
   }
 
@@ -470,7 +477,7 @@ class UpdateChecker {
       message,
       key: i18nKey || null,
       replacements: replacements || {},
-      shownAt: Date.now()
+      remaining: 5000
     };
     this.renderManualCheckResult();
   }
@@ -481,12 +488,16 @@ class UpdateChecker {
     const state = this._manualCheckResultState;
     if (!state) return;
 
+    // Carry over the visible time left on the running timer, so time spent
+    // in a background tab (when the timer is paused) does not count.
+    const getRemaining = this._manualCheckResultGetRemaining;
+    if (getRemaining) state.remaining = getRemaining();
+
     this._clearTimedAutoHide('manualCheckResult');
     const existing = document.querySelector('.manual-check-result');
     if (existing) existing.remove();
 
-    const elapsed = Date.now() - state.shownAt;
-    if (elapsed >= 5000) {
+    if (state.remaining <= 0) {
       this._manualCheckResultState = null;
       return;
     }
@@ -499,7 +510,7 @@ class UpdateChecker {
     result.textContent = state.key ? this.formatMessage(state.key, state.replacements) : state.message;
     aboutSection.appendChild(result);
 
-    this._scheduleManualCheckResultAutoHide(() => this.hideManualCheckResult(), 5000 - elapsed);
+    this._scheduleManualCheckResultAutoHide(() => this.hideManualCheckResult(), state.remaining);
   }
 
   // Hide manual check result and drop its stored state

@@ -1300,6 +1300,7 @@ describe('Manual update check button', () => {
     });
 
     vi.useFakeTimers();
+    const originalCurrentVersion = window.updateChecker.currentVersion;
 
     try {
       window.updateChecker.currentVersion = '1.0.0';
@@ -1329,6 +1330,7 @@ describe('Manual update check button', () => {
     } finally {
       window.fetch = originalFetch;
       vi.useRealTimers();
+      window.updateChecker.currentVersion = originalCurrentVersion;
       window.updateChecker.hideManualCheckResult();
       window.updateChecker.hideManualCheckNotification();
     }
