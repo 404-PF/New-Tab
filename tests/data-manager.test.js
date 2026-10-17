@@ -694,6 +694,122 @@ describe('DataManager pomodoroStats date keys (issue #764)', () => {
   });
 });
 
+describe('DataManager focus-mode and auto-theme settings (issue #838)', () => {
+  it('includes focus mode and auto-theme keys in the export allowlist', () => {
+    expect(window.DataManager.EXPORT_KEYS).toContain('focusMode');
+    expect(window.DataManager.EXPORT_KEYS).toContain('autoTheme');
+    expect(window.DataManager.EXPORT_KEYS).toContain('autoThemeLightTime');
+    expect(window.DataManager.EXPORT_KEYS).toContain('autoThemeDarkTime');
+  });
+
+  it('validates the shape of the new keys', () => {
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      focusMode: true, autoTheme: false, autoThemeLightTime: '07:00', autoThemeDarkTime: '19:30'
+    } })).toEqual({ valid: true });
+
+    expect(window.DataManager.EXPECTED_SHAPES.focusMode(true)).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.autoTheme(false)).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.autoThemeLightTime('08:15')).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.autoThemeDarkTime('23:59')).toBe(true);
+
+    expect(window.DataManager.EXPECTED_SHAPES.focusMode('true')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.autoTheme('false')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.autoThemeLightTime('')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.autoThemeLightTime('noon')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.autoThemeLightTime('24:00')).toBe(false);
+    // type="time" inputs require a two-digit hour; 7:00 would be cleared.
+    expect(window.DataManager.EXPECTED_SHAPES.autoThemeLightTime('7:00')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.autoThemeDarkTime('9:30')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.autoThemeDarkTime('19:60')).toBe(false);
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      focusMode: 'true'
+    } }).valid).toBe(false);
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      autoThemeLightTime: 'noon'
+    } }).valid).toBe(false);
+  });
+
+  it('exports focus-mode and auto-theme settings as booleans and time strings', async () => {
+    localStorage.setItem('focusMode', 'true');
+    localStorage.setItem('autoTheme', 'false');
+    localStorage.setItem('autoThemeLightTime', '08:15');
+    localStorage.setItem('autoThemeDarkTime', '21:45');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.focusMode).toBe(true);
+    expect(exported.data.autoTheme).toBe(false);
+    expect(exported.data.autoThemeLightTime).toBe('08:15');
+    expect(exported.data.autoThemeDarkTime).toBe('21:45');
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+  });
+
+  it('omits auto-theme time keys whose stored value is empty', async () => {
+    localStorage.setItem('autoThemeLightTime', '');
+    localStorage.setItem('autoThemeDarkTime', '');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.autoThemeLightTime).toBeUndefined();
+    expect(exported.data.autoThemeDarkTime).toBeUndefined();
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+  });
+
+  it('imports the new keys into storage in merge mode', async () => {
+    localStorage.setItem('autoTheme', 'true');
+    localStorage.setItem('autoThemeLightTime', '06:00');
+
+    const result = await importBackup({
+      focusMode: true,
+      autoTheme: false,
+      autoThemeLightTime: '09:00',
+      autoThemeDarkTime: '20:00'
+    }, 'merge');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('focusMode')).toBe('true');
+    expect(localStorage.getItem('autoTheme')).toBe('false');
+    expect(localStorage.getItem('autoThemeLightTime')).toBe('09:00');
+    expect(localStorage.getItem('autoThemeDarkTime')).toBe('20:00');
+  });
+
+  it('clears the keys in replace mode when the backup omits them', async () => {
+    localStorage.setItem('focusMode', 'true');
+    localStorage.setItem('autoTheme', 'true');
+    localStorage.setItem('autoThemeLightTime', '06:00');
+    localStorage.setItem('autoThemeDarkTime', '22:00');
+
+    await importBackup({ theme: 'dark' }, 'replace');
+
+    expect(localStorage.getItem('focusMode')).toBeNull();
+    expect(localStorage.getItem('autoTheme')).toBeNull();
+    expect(localStorage.getItem('autoThemeLightTime')).toBeNull();
+    expect(localStorage.getItem('autoThemeDarkTime')).toBeNull();
+  });
+
+  it('invokes the live-apply hooks for focus mode and auto-theme after import', async () => {
+    const originalApplyFocusMode = window.applyFocusMode;
+    const originalRefreshAutoTheme = window.refreshAutoTheme;
+    const applyFocusMode = vi.fn();
+    const refreshAutoTheme = vi.fn();
+    window.applyFocusMode = applyFocusMode;
+    window.refreshAutoTheme = refreshAutoTheme;
+    try {
+      const result = await importBackup({ focusMode: true, autoTheme: false }, 'merge');
+
+      expect(result.type).toBe('success');
+      expect(applyFocusMode).toHaveBeenCalledTimes(1);
+      expect(refreshAutoTheme).toHaveBeenCalledTimes(1);
+    } finally {
+      if (originalApplyFocusMode === undefined) delete window.applyFocusMode;
+      else window.applyFocusMode = originalApplyFocusMode;
+      if (originalRefreshAutoTheme === undefined) delete window.refreshAutoTheme;
+      else window.refreshAutoTheme = originalRefreshAutoTheme;
+    }
+  });
+});
+
 describe('DataManager import refresh (issue #824)', () => {
   function withSpiedRefreshHooks(names) {
     const spies = {};

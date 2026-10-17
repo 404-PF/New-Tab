@@ -255,8 +255,43 @@
     document.addEventListener('change', onManualThemeChange, true);
   }
 
+  // Re-read the persisted keys and re-sync the toggle, time inputs, radios,
+  // and scheduler. Used by data-manager after a settings import (issue #838)
+  // because init() is a one-shot guarded no-op once initialized.
+  function refresh() {
+    if (!isInitialized) {
+      init();
+      return;
+    }
+    const toggle = document.getElementById('auto-theme-toggle');
+    const lightInput = document.getElementById('auto-theme-light-time');
+    const darkInput = document.getElementById('auto-theme-dark-time');
+    if (!toggle) return;
+
+    toggle.checked = loadEnabled();
+    if (lightInput) lightInput.value = loadLightTime();
+    if (darkInput) darkInput.value = loadDarkTime();
+    updateTimesVisibility();
+
+    if (loadEnabled()) {
+      disableManualRadios();
+      // Keep lastScheduledTheme so checkAndApply only switches the theme when
+      // the imported schedule actually crossed a boundary; a manual override
+      // survives an import that does not change the current scheduled theme.
+      checkAndApply();
+      startInterval();
+    } else {
+      stopInterval();
+      lastScheduledTheme = null;
+      enableManualRadios();
+    }
+  }
+
   // Expose for settings.js to call after initSettings
   window.initAutoTheme = init;
+
+  // Expose for data-manager to re-apply imported auto-theme settings live
+  window.refreshAutoTheme = refresh;
 
   // Also auto-init when DOM is ready
   if (document.readyState === 'loading') {

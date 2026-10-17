@@ -65,7 +65,11 @@
     'updateCheckEnabled',
     'searchProvider',
     'searchHistoryEnabled',
-    'customSearchProviders'
+    'customSearchProviders',
+    'focusMode',
+    'autoTheme',
+    'autoThemeLightTime',
+    'autoThemeDarkTime'
   ];
 
   // Object keys whose storage entries mix persistent settings with transient
@@ -306,6 +310,16 @@
       window.renderCustomSearchProvidersList();
     }
 
+    // Re-apply focus mode and re-sync auto-theme so the imported values take
+    // effect without a tab reload (issue #838). refreshAutoTheme also stops
+    // the scheduler when a replace-mode import cleared the autoTheme key.
+    if (typeof window.applyFocusMode === 'function') {
+      window.applyFocusMode();
+    }
+    if (typeof window.refreshAutoTheme === 'function') {
+      window.refreshAutoTheme();
+    }
+
     // Schedule todo reminders last so the service-worker payload is built
     // from the freshly reloaded todos, not the pre-import in-memory array.
     if (typeof window.scheduleTodoReminderCheck === 'function') {
@@ -358,6 +372,11 @@
         return;
       }
       if (val === null) {
+        return;
+      }
+      // A cleared time input stores ''; skip so the backup stays importable
+      // (the import validator rejects empty schedule values).
+      if (val === '' && (key === 'autoThemeLightTime' || key === 'autoThemeDarkTime')) {
         return;
       }
       const persistentVal = pickPersistentFields(key, val);
@@ -603,7 +622,15 @@
           return false;
         }
       });
-    }
+    },
+    focusMode: function (v) { return typeof v === 'boolean'; },
+    autoTheme: function (v) { return typeof v === 'boolean'; },
+    // HH:MM as produced by the time inputs (two-digit hour, since
+    // type="time" clears a single-digit value like 7:00); rejects '' so an
+    // empty schedule never round-trips (the 07:00/19:00 defaults would
+    // replace it anyway).
+    autoThemeLightTime: function (v) { return typeof v === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v); },
+    autoThemeDarkTime: function (v) { return typeof v === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v); }
   };
 
   function validateImportData(data) {
