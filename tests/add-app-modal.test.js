@@ -242,3 +242,124 @@ describe('Add app modal quick add', () => {
     expect(googleApps).toHaveLength(1);
   });
 });
+
+describe('Add app modal undetectable URLs', () => {
+  function pressEnter(input) {
+    input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+  }
+
+  it('enables the confirm button for a non-empty undetectable URL', () => {
+    const newAppBtn = document.getElementById('new-app');
+    const addAppUrlInput = document.getElementById('add-app-url');
+    const addAppConfirm = document.getElementById('add-app-confirm');
+
+    window.initAddAppModal();
+    newAppBtn.click();
+
+    addAppUrlInput.value = 'mywiki';
+    addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(addAppConfirm.disabled).toBe(false);
+  });
+
+  it('creates the app when pressing Enter with an undetectable URL', async () => {
+    const newAppBtn = document.getElementById('new-app');
+    const addAppUrlInput = document.getElementById('add-app-url');
+
+    window.initAddAppModal();
+    newAppBtn.click();
+
+    addAppUrlInput.value = 'mywiki';
+    addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+    pressEnter(addAppUrlInput);
+
+    await flushMicrotasks();
+
+    expect(window.AppGridState.getCustomApps()).toHaveLength(1);
+    expect(window.AppGridState.getCustomApps()[0]).toMatchObject({
+      url: 'https://mywiki',
+      name: 'Mywiki'
+    });
+    expect(window.renderCustomApps).toHaveBeenCalled();
+  });
+
+  it('creates the app when clicking confirm with an undetectable URL', async () => {
+    const newAppBtn = document.getElementById('new-app');
+    const addAppUrlInput = document.getElementById('add-app-url');
+    const addAppConfirm = document.getElementById('add-app-confirm');
+
+    window.initAddAppModal();
+    newAppBtn.click();
+
+    addAppUrlInput.value = 'mywiki';
+    addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+    addAppConfirm.click();
+
+    await flushMicrotasks();
+
+    expect(window.AppGridState.getCustomApps()).toHaveLength(1);
+    expect(window.AppGridState.getCustomApps()[0]).toMatchObject({
+      url: 'https://mywiki'
+    });
+  });
+
+  it('blocks duplicate undetectable URLs', async () => {
+    const newAppBtn = document.getElementById('new-app');
+    const addAppUrlInput = document.getElementById('add-app-url');
+    const addAppConfirm = document.getElementById('add-app-confirm');
+
+    window.AppGridState.addApp({
+      id: 'custom-app-mywiki',
+      name: 'Mywiki',
+      url: 'https://mywiki',
+      icon: ''
+    });
+
+    window.initAddAppModal();
+    newAppBtn.click();
+
+    addAppUrlInput.value = 'mywiki';
+    addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(addAppConfirm.disabled).toBe(true);
+
+    pressEnter(addAppUrlInput);
+    await flushMicrotasks();
+
+    expect(window.AppGridState.getCustomApps()).toHaveLength(1);
+    expect(window.renderCustomApps).not.toHaveBeenCalled();
+  });
+
+  it('keeps the confirm button disabled for malformed URLs', async () => {
+    const newAppBtn = document.getElementById('new-app');
+    const addAppUrlInput = document.getElementById('add-app-url');
+    const addAppConfirm = document.getElementById('add-app-confirm');
+
+    window.initAddAppModal();
+    newAppBtn.click();
+
+    addAppUrlInput.value = 'http://';
+    addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(addAppConfirm.disabled).toBe(true);
+
+    pressEnter(addAppUrlInput);
+    await flushMicrotasks();
+
+    expect(window.AppGridState.getCustomApps()).toHaveLength(0);
+  });
+
+  it('keeps the confirm button disabled for empty input', () => {
+    const newAppBtn = document.getElementById('new-app');
+    const addAppUrlInput = document.getElementById('add-app-url');
+    const addAppConfirm = document.getElementById('add-app-confirm');
+
+    window.initAddAppModal();
+    newAppBtn.click();
+
+    addAppUrlInput.value = '';
+    addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(addAppConfirm.disabled).toBe(true);
+  });
+});
