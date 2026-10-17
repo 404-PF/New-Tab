@@ -787,6 +787,12 @@ describe('DataManager import refresh (issue #824)', () => {
       expect(document.body.classList.contains('simple-mode')).toBe(true);
       expect(checkbox.checked).toBe(true);
 
+      document.body.setAttribute('data-focus-mode', 'true');
+      const focusEnable = await importBackup({ simpleMode: true }, 'replace');
+      expect(focusEnable.type).toBe('success');
+      expect(document.body.classList.contains('simple-mode')).toBe(false);
+      expect(checkbox.checked).toBe(true);
+
       // Reverse direction: importing simpleMode false turns the UI back off.
       const disable = await importBackup({ simpleMode: false }, 'replace');
       expect(disable.type).toBe('success');
@@ -796,6 +802,7 @@ describe('DataManager import refresh (issue #824)', () => {
     } finally {
       checkbox.remove();
       document.body.classList.remove('simple-mode');
+      document.body.removeAttribute('data-focus-mode');
       localStorage.removeItem('simpleMode');
     }
   });
