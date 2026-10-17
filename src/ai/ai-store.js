@@ -284,10 +284,14 @@ const AIStore = (function() {
       previousState
     );
 
-    const conversationsOutcome = writeOutcome(
-      STORAGE_KEYS.conversations,
-      JSON.stringify(nextConversations)
-    );
+    let serializedConversations;
+    try {
+      serializedConversations = JSON.stringify(nextConversations);
+    } catch (error) {
+      return handleSaveFailure(error, [], persistedValues, rollbackState, saveGeneration);
+    }
+
+    const conversationsOutcome = writeOutcome(STORAGE_KEYS.conversations, serializedConversations);
     if (!isPromiseLike(conversationsOutcome) && !conversationsOutcome.ok) {
       return handleSaveFailure(
         conversationsOutcome.error || new Error('Conversation storage write was rejected'),
