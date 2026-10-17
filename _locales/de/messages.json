@@ -518,6 +518,22 @@
     "message": "↑ / W oder Tippen/Klicken zum Flattern; Leertaste pausiert/setzt fort",
     "description": "Flappy Bird game controls"
   },
+  "gamesPacman": {
+    "message": "Pac-Man",
+    "description": "Pac-Man game name"
+  },
+  "gamesPacmanDesc": {
+    "message": "Pac-Man-Labyrinth. Iss alle Punkte und meide die Geister!",
+    "description": "Pac-Man game description"
+  },
+  "gamesPacmanControls": {
+    "message": "Pfeile oder WASD zum Steuern, Leertaste zum Pausieren",
+    "description": "Pac-Man game controls"
+  },
+  "gamesLives": {
+    "message": "Leben",
+    "description": "Lives remaining label shown in game HUDs"
+  },
   "searchProviders": {
     "message": "Suchanbieter",
     "description": "Title for the custom search providers settings card"

@@ -22,7 +22,7 @@ A personalized new tab extension for Chromium-based browsers. It replaces the de
 
 ## 🎮 Games
 
-The optional Games hub includes Snake, 2048, Memory Match, and Flappy Bird. Each game shares the same modal shell, ready/continue flow, pause handling, local high scores, and cross-session save/restore.
+The optional Games hub includes Snake, 2048, Memory Match, Flappy Bird, and Pac-Man. Each game shares the same modal shell, ready/continue flow, pause handling, local high scores, and cross-session save/restore.
 
 ## 🚀 Installation
 Recommended install methods:

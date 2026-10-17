@@ -518,6 +518,22 @@
     "message": "Нажимайте ↑ / W или касайтесь/кликайте для взмаха; Пробел ставит на паузу/продолжает",
     "description": "Flappy Bird game controls"
   },
+  "gamesPacman": {
+    "message": "Pac-Man",
+    "description": "Pac-Man game name"
+  },
+  "gamesPacmanDesc": {
+    "message": "Лабиринт Pac-Man. Съешьте все точки и избегайте призраков!",
+    "description": "Pac-Man game description"
+  },
+  "gamesPacmanControls": {
+    "message": "Стрелки или WASD для движения, пробел для паузы",
+    "description": "Pac-Man game controls"
+  },
+  "gamesLives": {
+    "message": "Жизни",
+    "description": "Lives remaining label shown in game HUDs"
+  },
   "searchProviders": {
     "message": "Поисковые системы",
     "description": "Title for the custom search providers settings card"

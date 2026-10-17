@@ -518,6 +518,22 @@
     "message": "↑ / W ou toucher/cliquer pour battre des ailes ; espace met en pause/reprend",
     "description": "Flappy Bird game controls"
   },
+  "gamesPacman": {
+    "message": "Pac-Man",
+    "description": "Pac-Man game name"
+  },
+  "gamesPacmanDesc": {
+    "message": "Jeu de labyrinthe Pac-Man. Mangez tous les points et évitez les fantômes !",
+    "description": "Pac-Man game description"
+  },
+  "gamesPacmanControls": {
+    "message": "Flèches ou ZQSD pour se déplacer, espace pour pause",
+    "description": "Pac-Man game controls"
+  },
+  "gamesLives": {
+    "message": "Vies",
+    "description": "Lives remaining label shown in game HUDs"
+  },
   "searchProviders": {
     "message": "Moteurs de recherche",
     "description": "Title for the custom search providers settings card"
