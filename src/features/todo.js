@@ -74,13 +74,25 @@
   // Save todos to localStorage
   function saveTodos(todos) {
     try {
-      localStorage.setItem('todos', JSON.stringify(todos));
-      return true;
+      const result = localStorage.setItem('todos', JSON.stringify(todos));
+      return result !== false;
     } catch (error) {
       console.warn('Failed to save todos to localStorage:', error);
       return false;
     }
   }
+
+  window.addEventListener('storageBridgeWriteError', (event) => {
+    if (event?.detail?.key !== 'todos') return;
+
+    setTimeout(() => {
+      const persisted = loadTodos();
+      if (JSON.stringify(persisted) === JSON.stringify(todos)) return;
+      todos = persisted;
+      applyFilters();
+      showTodoSaveError();
+    }, 0);
+  });
 
   function createReminderAlarmFallback() {
     try {

@@ -145,8 +145,7 @@ const AIStore = (function() {
     }
 
     try {
-      localStorage.setItem(key, value);
-      return true;
+      return localStorage.setItem(key, value) !== false;
     } catch (error) {
       console.warn('Failed to persist conversation storage value:', error);
       return false;

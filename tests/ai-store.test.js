@@ -337,3 +337,59 @@ describe('AIStore persistence atomicity (#716)', () => {
     }
   });
 });
+
+describe('AIStore synchronous fallback write failures (#823)', () => {
+  it('treats a rejected sync fallback write as a failed save', async () => {
+    const conversation = {
+      id: 'conv-1',
+      title: 'Topic',
+      messages: [{ id: 'm1', role: 'user', content: 'Hello' }],
+      createdAt: 1,
+      updatedAt: 1
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = 'conv-1';
+    const previousState = AIStore.createSaveSnapshot();
+
+    const originalSetItemAsync = localStorage.setItemAsync;
+    delete localStorage.setItemAsync;
+
+    const area = chrome.storage.local;
+    const originalSet = area.set;
+    area.set = function (items, callback) {
+      if (Object.prototype.hasOwnProperty.call(items, AIStore.STORAGE_KEYS.conversations)) {
+        throw new Error('QUOTA_BYTES quota exceeded');
+      }
+      return originalSet.call(area, items, callback);
+    };
+
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      expect(await AIStore.saveConversations(previousState)).toBe(false);
+      expect(AIStore.state.conversations).toEqual([conversation]);
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save conversations. Your last action was not saved.',
+        'error'
+      );
+    } finally {
+      area.set = originalSet;
+      if (typeof originalSetItemAsync === 'undefined') {
+        delete localStorage.setItemAsync;
+      } else {
+        localStorage.setItemAsync = originalSetItemAsync;
+      }
+      if (typeof originalShowToast === 'undefined') {
+        delete window.showToast;
+      } else {
+        window.showToast = originalShowToast;
+      }
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+});

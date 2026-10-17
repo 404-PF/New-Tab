@@ -1122,3 +1122,102 @@ describe('Notes markdown preview', () => {
     });
   });
 });
+
+describe('Notes storage bridge write failures', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save note. Your changes were not saved.';
+  const flushDeferredFailureSync = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  let restoreStorageSet = null;
+  let warnSpy = null;
+  let showToast = null;
+
+  // Fail writes for one key through the real storage bridge. 'sync' makes
+  // chrome.storage.local.set throw, so the bridge both dispatches
+  // storageBridgeWriteError and returns false from setItem. 'async' reports
+  // runtime.lastError from the set callback, after which the bridge rolls
+  // its cache back and dispatches the event.
+  function failWritesFor(key, mode = 'sync') {
+    const area = chrome.storage.local;
+    const originalSet = area.set;
+    area.set = function (items, callback) {
+      if (!Object.prototype.hasOwnProperty.call(items, key)) {
+        return originalSet.call(area, items, callback);
+      }
+      if (mode === 'sync') {
+        throw new Error('QUOTA_BYTES quota exceeded');
+      }
+      setTimeout(() => {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        try {
+          if (typeof callback === 'function') callback();
+        } finally {
+          chrome.runtime.lastError = null;
+        }
+      }, 0);
+      return undefined;
+    };
+    restoreStorageSet = () => { area.set = originalSet; };
+  }
+
+  beforeEach(() => {
+    showToast = vi.fn();
+    window.showToast = showToast;
+  });
+
+  afterEach(async () => {
+    await flushDeferredFailureSync();
+    if (restoreStorageSet) {
+      restoreStorageSet();
+      restoreStorageSet = null;
+    }
+    if (warnSpy) {
+      warnSpy.mockRestore();
+      warnSpy = null;
+    }
+    delete window.showToast;
+    showToast = null;
+  });
+
+  it('rolls back a note mutation and reports once when the bridge rejects synchronously', async () => {
+    const note = { id: '1', text: 'Keep me', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+    setNotes([note]);
+    initNotes();
+
+    failWritesFor('notes', 'sync');
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    deleteNote('1');
+
+    expect(getNotes()).toHaveLength(1);
+    expect(document.querySelectorAll('.note-item')).toHaveLength(1);
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+
+    await flushDeferredFailureSync();
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(document.querySelectorAll('.note-item')).toHaveLength(1);
+  });
+
+  it('reverts an unsaved note edit and reports when an async bridge write fails', async () => {
+    const note = { id: '1', text: 'Saved', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+    setNotes([note]);
+    initNotes();
+
+    failWritesFor('notes', 'async');
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    updateNoteText('1', 'Unsaved edit');
+    expect(getFilteredNotes()[0].text).toBe('Unsaved edit');
+    expect(JSON.parse(localStorage.getItem('notes'))[0].text).toBe('Unsaved edit');
+    expect(showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(getFilteredNotes()[0].text).toBe('Saved');
+    expect(document.querySelector('.note-textarea').value).toBe('Saved');
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+});

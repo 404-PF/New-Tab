@@ -92,14 +92,41 @@
 
   function saveNotes(data) {
     try {
-      localStorage.setItem('notes', JSON.stringify(data));
-      return true;
+      const result = localStorage.setItem('notes', JSON.stringify(data));
+      if (result !== false) return true;
+      console.warn('Storage bridge rejected the notes write');
     } catch (error) {
       console.warn('Failed to save notes to localStorage:', error);
-      showNotesSaveError();
-      return false;
+    }
+    showNotesSaveError();
+    return false;
+  }
+
+  function readPersistedNotes() {
+    try {
+      const raw = localStorage.getItem('notes');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch (error) {
+      console.warn('Failed to read notes for storage error recovery:', error);
+      return null;
     }
   }
+
+  window.addEventListener('storageBridgeWriteError', (event) => {
+    if (event?.detail?.key !== 'notes') return;
+
+    setTimeout(() => {
+      if (Object.keys(debounceTimers).length > 0) return;
+      const persisted = readPersistedNotes();
+      if (persisted === null) return;
+      if (JSON.stringify(persisted) === JSON.stringify(notes)) return;
+      notes = persisted;
+      renderNotes();
+      showNotesSaveError();
+    }, 0);
+  });
 
   function generateNoteId() {
     if (typeof crypto.randomUUID === 'function') {

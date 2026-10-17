@@ -281,4 +281,36 @@ describe('rejected storage bridge writes', () => {
 
     expect(merged[0].tag).toBe('external-edit');
   });
+
+  it('returns the bridge result for target keys so callers see rejected writes', () => {
+    const persisted = new Map([
+      ['todos', '[]'],
+      ['notes', '[]']
+    ]);
+    let rejectWrites = false;
+    const fakeStorage = {
+      getItem(key) {
+        return persisted.has(key) ? persisted.get(key) : null;
+      },
+      setItem(key, value) {
+        if (rejectWrites) return false;
+        persisted.set(key, String(value));
+        return true;
+      }
+    };
+    const context = vm.createContext({ localStorage: fakeStorage, console });
+    injectScript('src/core/storage-rmw.js', context);
+    context.localStorage.getItem('todos');
+    context.localStorage.getItem('notes');
+
+    rejectWrites = true;
+    expect(context.localStorage.setItem('todos', JSON.stringify([{ id: 'todo-1' }]))).toBe(false);
+    expect(context.localStorage.setItem('notes', JSON.stringify([{ id: 'note-1' }]))).toBe(false);
+    expect(persisted.get('todos')).toBe('[]');
+    expect(persisted.get('notes')).toBe('[]');
+
+    rejectWrites = false;
+    expect(context.localStorage.setItem('todos', JSON.stringify([{ id: 'todo-1' }]))).toBe(true);
+    expect(persisted.get('todos')).toBe(JSON.stringify([{ id: 'todo-1' }]));
+  });
 });
