@@ -173,7 +173,7 @@
   }
 
   function showTodoSaveError() {
-    showToast('Failed to save todo changes. Your last action was not saved.', 'error');
+    showToast(window.i18n ? window.i18n.t('todoSaveError') : 'Failed to save todo changes. Your last action was not saved.', 'error');
   }
 
   // Format date as local ISO string (YYYY-MM-DD)
