@@ -7,7 +7,8 @@
 
   const elements = {};
 
-  const debounceTimers = {};
+  // Null-prototype so note ids such as "__proto__" are stored as own keys.
+  const debounceTimers = Object.create(null);
 
   const notePreviewModes = {};
 
@@ -381,6 +382,16 @@
           deleteNote(id);
         }
       }
+    });
+  }
+
+  // Drop in-flight debounced saves without persisting them. The settings
+  // import flow calls this before writing the backup (issue #824) so a
+  // pre-import edit cannot overwrite imported notes when its timer fires.
+  function cancelPendingNoteSaves() {
+    Object.keys(debounceTimers).forEach(id => {
+      clearTimeout(debounceTimers[id]);
+      delete debounceTimers[id];
     });
   }
 
@@ -1028,6 +1039,7 @@ try {
   window.getFilteredNotes = getFilteredNotes;
   window.setNotesSearchQuery = setSearchQuery;
   window.getNotesSearchQuery = getSearchQuery;
+  window.cancelPendingNoteSaves = cancelPendingNoteSaves;
 } catch {
   // ignore
 }
