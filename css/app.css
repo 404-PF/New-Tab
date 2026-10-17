@@ -75,14 +75,6 @@
   color: #ffffff;
 }
 
-body.light-theme .progress-ring-bg {
-  stroke: rgba(0, 0, 0, 0.1);
-}
-
-body.light-theme .progress-text {
-  color: #1f2937;
-}
-
 /* Todo Stats Panel */
 .todo-stats-toggle {
   display: flex;
@@ -220,36 +212,10 @@ body.light-theme .progress-text {
   background: rgba(76, 175, 80, 0.9);
 }
 
-body.light-theme .todo-stats-toggle:hover,
-body.light-theme .todo-stats-toggle.active {
+body.light-theme .todo-stats-toggle:hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)),
+body.light-theme .todo-stats-toggle.active:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(33, 150, 243, 0.12);
   color: #003b73;
-}
-
-body.light-theme .todo-stats-title {
-  color: #1f2937;
-}
-
-body.light-theme .todo-stats-clear {
-  border-color: rgba(0, 0, 0, 0.12);
-  color: rgba(0, 0, 0, 0.5);
-}
-
-body.light-theme .todo-stats-clear:hover {
-  background: rgba(244, 67, 54, 0.08);
-  color: #d32f2f;
-}
-
-body.light-theme .todo-stat-value {
-  color: #0d47a1;
-}
-
-body.light-theme .todo-stat-label {
-  color: rgba(0, 0, 0, 0.5);
-}
-
-body.light-theme .todo-heatmap-label {
-  color: rgba(0, 0, 0, 0.5);
 }
 
 body.light-theme .heatmap-cell[data-level="0"] {
@@ -274,11 +240,6 @@ body.light-theme .heatmap-cell[data-level="3"] {
   .todo-stats-clear {
     transition: none;
   }
-}
-
-body.light-theme .todo-count {
-  background: rgba(33, 150, 243, 0.15);
-  color: #1976d2;
 }
 
 .todo-title {
@@ -314,8 +275,6 @@ body.light-theme .todo-count {
 .todo-input-container:focus-within {
   background: rgba(255, 255, 255, 0.12);
   transform: translateY(-2px);
-}
-body:not(.light-theme) .todo-input-container:focus-within {
   border-color: rgba(33, 150, 243, 0.3);
   box-shadow: 0 8px 32px rgba(33, 150, 243, 0.15);
 }
@@ -655,16 +614,6 @@ body:not(.light-theme) .todo-input-container:focus-within {
   border-color: rgba(33, 150, 243, 0.4);
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
 }
-body.light-theme .todo-due-time-input {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: #1f2937;
-  color-scheme: light;
-}
-body.light-theme .todo-due-time-input:focus {
-  border-color: rgba(33, 150, 243, 0.4);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
-}
 body.light-theme .inline-due-time {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.1);
@@ -683,44 +632,9 @@ body.light-theme .inline-time-row {
 }
 
 /* Light theme adjustments for custom date picker */
-body.light-theme .date-picker-trigger {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: #1f2937;
-}
-
-body.light-theme .date-picker-trigger:hover {
-  background: rgba(33, 150, 243, 0.08);
-  border-color: rgba(33, 150, 243, 0.3);
-}
-
 body.light-theme .date-picker-trigger.selected {
   background: rgba(33, 150, 243, 0.1);
   border-color: rgba(33, 150, 243, 0.4);
-}
-
-body.light-theme .custom-calendar {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-}
-
-body.light-theme .calendar-nav-btn {
-  background: rgba(0, 0, 0, 0.05);
-  color: #1f2937;
-}
-
-body.light-theme .calendar-nav-btn:hover {
-  background: rgba(33, 150, 243, 0.15);
-  color: #2196f3;
-}
-
-body.light-theme .calendar-title span {
-  color: #1f2937;
-}
-
-body.light-theme .calendar-weekdays span {
-  color: rgba(31, 41, 55, 0.6);
 }
 
 body.light-theme .calendar-day {
@@ -738,17 +652,6 @@ body.light-theme .calendar-day.today {
 
 body.light-theme .calendar-day.other-month {
   color: rgba(31, 41, 55, 0.3);
-}
-
-body.light-theme .calendar-btn.secondary {
-  background: rgba(0, 0, 0, 0.05);
-  color: #1f2937;
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-body.light-theme .calendar-btn.secondary:hover {
-  background: rgba(0, 0, 0, 0.1);
-  border-color: rgba(0, 0, 0, 0.2);
 }
 
 /* Mobile responsive adjustments */
@@ -917,55 +820,6 @@ body.light-theme .calendar-btn.secondary:hover {
 }
 
 /* Light theme for filters */
-body.light-theme .filter-pill {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: rgba(31, 41, 55, 0.7);
-}
-
-body.light-theme .filter-pill:hover {
-  background: rgba(33, 150, 243, 0.1);
-  border-color: rgba(33, 150, 243, 0.3);
-  color: #1976d2;
-}
-
-body.light-theme .filter-pill.active {
-  background: rgba(33, 150, 243, 0.15);
-  border-color: rgba(33, 150, 243, 0.4);
-  color: #1976d2;
-}
-
-body.light-theme .filter-badge {
-  background: rgba(0, 0, 0, 0.08);
-}
-
-body.light-theme .filter-pill.active .filter-badge {
-  background: rgba(33, 150, 243, 0.2);
-  color: #1976d2;
-}
-
-body.light-theme .quick-action-btn {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: rgba(31, 41, 55, 0.7);
-}
-
-body.light-theme .quick-action-btn:hover {
-  background: rgba(33, 150, 243, 0.15);
-  border-color: rgba(33, 150, 243, 0.3);
-  color: #1976d2;
-}
-
-body.light-theme .quick-action-btn.danger:hover {
-  background: rgba(220, 53, 69, 0.15);
-  border-color: rgba(220, 53, 69, 0.3);
-  color: #dc3545;
-}
-
-body.light-theme .quick-action-btn.danger {
-  color: #dc3545;
-}
-
 .filter-group {
   display: flex;
   gap: 12px;
@@ -978,10 +832,6 @@ body.light-theme .quick-action-btn.danger {
   background: rgba(255, 255, 255, 0.15);
   margin: 0 4px;
   flex-shrink: 0;
-}
-
-body.light-theme .filter-divider {
-  background: rgba(0, 0, 0, 0.12);
 }
 
 /* Priority selector (add-todo input area) */
@@ -1013,14 +863,6 @@ body.light-theme .filter-divider {
 
 .priority-selector-btn.active {
   background: rgba(255, 255, 255, 0.18);
-}
-
-body.light-theme .priority-selector-btn:hover {
-  background: rgba(0, 0, 0, 0.08);
-}
-
-body.light-theme .priority-selector-btn.active {
-  background: rgba(0, 0, 0, 0.12);
 }
 
 .priority-dot {
@@ -1064,12 +906,6 @@ body.light-theme .priority-selector-btn.active {
   color: #4caf50;
 }
 
-body.light-theme .todo-priority-badge.priority-high {
-  background: rgba(244, 67, 54, 0.15);
-  color: #d32f2f;
-}
-
-
 /* Recurrence badge beside due date */
 .todo-recurrence-badge {
   display: inline-flex;
@@ -1104,23 +940,23 @@ body.light-theme .todo-priority-badge.priority-high {
 .todo-due-date.has-recurrence {
   gap: 6px;
 }
-body.light-theme .todo-recurrence-badge {
+body.light-theme .todo-recurrence-badge:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: #e3f2fd;
   border-color: #90caf9;
   color: #0d47a1;
 }
-body.light-theme .todo-recurrence-badge.recurrence-weekly {
+body.light-theme .todo-recurrence-badge.recurrence-weekly:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: #f3e5f5;
   border-color: #ce93d8;
   color: #4a148c;
 }
-body.light-theme .todo-recurrence-badge.recurrence-monthly {
+body.light-theme .todo-recurrence-badge.recurrence-monthly:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: #e0f2f1;
   border-color: #80cbc4;
   color: #004d40;
 }
 
-body.light-theme .todo-priority-badge.priority-low {
+body.light-theme .todo-priority-badge.priority-low:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(76, 175, 80, 0.15);
   color: #2e7d32;
 }
@@ -1157,7 +993,7 @@ body.light-theme .todo-priority-badge.priority-low {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
-body.light-theme .todo-edit-content {
+body.light-theme .todo-edit-content:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.1);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
@@ -1176,7 +1012,7 @@ body.light-theme .todo-edit-content {
   font-size: 18px;
 }
 
-body.light-theme .todo-edit-header h3 {
+body.light-theme .todo-edit-header h3:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: #1f2937;
 }
 
@@ -1196,11 +1032,11 @@ body.light-theme .todo-edit-header h3 {
   color: #ffffff;
 }
 
-body.light-theme .todo-edit-close {
+body.light-theme .todo-edit-close:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(31, 41, 55, 0.6);
 }
 
-body.light-theme .todo-edit-close:hover {
+body.light-theme .todo-edit-close:hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(0, 0, 0, 0.06);
   color: #1f2937;
 }
@@ -1222,7 +1058,7 @@ body.light-theme .todo-edit-close:hover {
   font-weight: 500;
 }
 
-body.light-theme .todo-edit-body label {
+body.light-theme .todo-edit-body label:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(31, 41, 55, 0.7);
 }
 
@@ -1244,8 +1080,8 @@ body.light-theme .todo-edit-body label {
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
 }
 
-body.light-theme .todo-edit-body input,
-body.light-theme .todo-edit-body select {
+body.light-theme .todo-edit-body input:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)),
+body.light-theme .todo-edit-body select:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.12);
   color: #1f2937;
@@ -1273,7 +1109,7 @@ body.light-theme .todo-edit-body select {
   font-weight: 500;
 }
 
-body.light-theme .todo-edit-subtasks-section label {
+body.light-theme .todo-edit-subtasks-section label:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(31, 41, 55, 0.7);
 }
 
@@ -1415,13 +1251,13 @@ body.light-theme .edit-subtask-delete:hover {
   color: rgba(255, 255, 255, 0.3);
 }
 
-body.light-theme .todo-edit-subtask-input {
+body.light-theme .todo-edit-subtask-input:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.12);
   color: #1f2937;
 }
 
-body.light-theme .todo-edit-subtask-input::placeholder {
+body.light-theme .todo-edit-subtask-input:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *))::placeholder {
   color: rgba(31, 41, 55, 0.35);
 }
 
@@ -1447,7 +1283,7 @@ body.light-theme .todo-edit-subtask-input::placeholder {
   background: rgba(255, 255, 255, 0.04);
 }
 
-body.light-theme .todo-subtask-item:hover {
+body.light-theme .todo-subtask-item:hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(0, 0, 0, 0.03);
 }
 
@@ -1474,11 +1310,11 @@ body.light-theme .todo-subtask-item:hover {
   color: #4caf50;
 }
 
-body.light-theme .todo-subtask-checkbox .subtask-unchecked {
+body.light-theme .todo-subtask-checkbox .subtask-unchecked:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(31, 41, 55, 0.3);
 }
 
-body.light-theme .todo-subtask-checkbox .subtask-checked {
+body.light-theme .todo-subtask-checkbox .subtask-checked:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: #16a34a;
 }
 
@@ -1496,7 +1332,7 @@ body.light-theme .todo-subtask-checkbox .subtask-checked {
   opacity: 0.45;
 }
 
-body.light-theme .todo-subtask-text {
+body.light-theme .todo-subtask-text:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(31, 41, 55, 0.7);
 }
 
@@ -1529,11 +1365,11 @@ body.light-theme .todo-subtask-text {
   height: 12px;
 }
 
-body.light-theme .todo-subtask-delete {
+body.light-theme .todo-subtask-delete:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(31, 41, 55, 0.2);
 }
 
-body.light-theme .todo-subtask-delete:hover {
+body.light-theme .todo-subtask-delete:hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: #dc2626;
   background: rgba(220, 38, 38, 0.08);
 }
@@ -1550,7 +1386,7 @@ body.light-theme .todo-subtask-delete:hover {
   white-space: nowrap;
 }
 
-body.light-theme .todo-subtask-progress {
+body.light-theme .todo-subtask-progress:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(31, 41, 55, 0.5);
   background: rgba(0, 0, 0, 0.06);
 }
@@ -1692,16 +1528,8 @@ body.light-theme .todo-subtask-progress {
 }
 
 /* Light theme bullet styles */
-body.light-theme .todo-bullet .bullet-unchecked {
-  color: rgba(31, 41, 55, 0.4);
-}
-
-body.light-theme .todo-bullet:hover .bullet-unchecked {
+body.light-theme .todo-bullet:hover .bullet-unchecked:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: #1976d2;
-}
-
-body.light-theme .todo-bullet .bullet-checked {
-  color: #16a34a;
 }
 
 .todo-item:hover {
@@ -2356,34 +2184,6 @@ body.light-theme .toast-notification.toast-info {
 /* Light theme adjustments.
    Frosted-glass surfaces for todo/notes live in css/glass.css (loaded last);
    only non-surface color/interaction overrides belong here. */
-body.light-theme .todo-title {
-  color: #1f2937;
-  text-shadow: none;
-  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-body.light-theme .progress-text {
-  color: #1f2937;
-  text-shadow: none;
-}
-
-body.light-theme #todo-input {
-  color: #1f2937;
-}
-
-body.light-theme #todo-input::placeholder {
-  color: rgba(31, 41, 55, 0.5);
-}
-
-body.light-theme #todo-due-date {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: #1f2937;
-}
-
 body.light-theme #filter-status {
   background: rgba(255, 255, 255, 0.9);
   border-color: rgba(0, 0, 0, 0.1);
@@ -2416,104 +2216,39 @@ body.light-theme #selected-count {
   color: rgba(31, 41, 55, 0.7);
 }
 
-body.light-theme .todo-item.overdue {
-  background: rgba(255, 82, 82, 0.05);
-  border-color: rgba(255, 82, 82, 0.2);
-}
-
-body.light-theme .todo-text {
-  color: #1f2937;
-}
-
-body.light-theme .todo-meta {
+body.light-theme .todo-meta:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(31, 41, 55, 0.6);
 }
 
-body.light-theme .todo-due-date.overdue {
-  color: #dc3545;
-}
-
-body.light-theme .todo-due-date {
-  color: #4b5563;
-}
-
-body.light-theme .todo-due-date svg {
-  color: #6b7280;
-}
-
-body.light-theme .todo-due-date.clickable {
-  color: #4b5563;
-}
-
-body.light-theme .todo-due-date.clickable:hover {
-  background: rgba(33, 150, 243, 0.1);
-}
-
-body.light-theme .todo-due-date.empty {
-  color: #9ca3af;
-}
-
-body.light-theme .todo-due-date.empty:hover {
-  background: rgba(33, 150, 243, 0.08);
-}
-
 /* Light theme for todo date button */
-body.light-theme .todo-date-btn {
+body.light-theme .todo-date-btn:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(0, 0, 0, 0.05);
   border-color: rgba(0, 0, 0, 0.1);
   color: rgba(31, 41, 55, 0.6);
 }
 
-body.light-theme .todo-date-btn:hover {
+body.light-theme .todo-date-btn:hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(33, 150, 243, 0.1);
   border-color: rgba(33, 150, 243, 0.3);
   color: #2196f3;
 }
 
-body.light-theme .todo-date-btn.has-date {
+body.light-theme .todo-date-btn.has-date:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(31, 41, 55, 0.8);
 }
 
-body.light-theme .todo-date-btn.overdue {
+body.light-theme .todo-date-btn.overdue:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: #dc3545;
   border-color: rgba(220, 53, 69, 0.3);
 }
 
-body.light-theme .todo-date-btn.overdue:hover {
+body.light-theme .todo-date-btn.overdue:hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(220, 53, 69, 0.1);
   border-color: rgba(220, 53, 69, 0.5);
 }
 
-body.light-theme .todo-edit-btn:hover {
-  background: rgba(33, 150, 243, 0.25);
-}
-
-body.light-theme .todo-delete-btn:hover {
-  background: rgba(220, 53, 69, 0.25);
-}
-
 /* Light theme - make todo actions always visible (not hidden until hover) */
-body.light-theme .todo-actions {
-  opacity: 1;
-}
-
 /* Light theme - visible button colors (non-hover state) */
-body.light-theme .todo-edit-btn {
-  color: rgba(55, 65, 81, 0.6);
-}
-
-body.light-theme .todo-delete-btn {
-  color: rgba(55, 65, 81, 0.5);
-}
-
-body.light-theme .empty-state {
-  color: rgba(31, 41, 55, 0.6);
-}
-
-body.light-theme .empty-icon {
-  opacity: 0.3;
-}
-
 /* Mobile responsive */
 @media (max-width: 768px) {
   .todo-section {
@@ -3094,43 +2829,43 @@ body.light-theme .progress-dot.active {
 }
 
 /* Light theme for todo edit modal */
-body.light-theme #todo-edit-modal {
+body.light-theme #todo-edit-modal:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(0, 0, 0, 0.3);
 }
 
-body.light-theme #todo-edit-modal > .todo-edit-modal-content {
+body.light-theme #todo-edit-modal > .todo-edit-modal-content:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(255, 255, 255, 0.98);
   border-color: rgba(0, 0, 0, 0.1);
 }
 
-body.light-theme .todo-edit-header {
+body.light-theme .todo-edit-header:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   border-bottom-color: rgba(0, 0, 0, 0.1);
 }
 
-body.light-theme .todo-edit-header h3 {
+body.light-theme .todo-edit-header h3:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: #1f2937;
 }
 
-body.light-theme .todo-edit-close-btn {
+body.light-theme .todo-edit-close-btn:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(55, 65, 81, 0.6);
 }
 
-body.light-theme .todo-edit-close-btn:hover {
+body.light-theme .todo-edit-close-btn:hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(0, 0, 0, 0.05);
   color: rgba(55, 65, 81, 0.9);
 }
 
-body.light-theme .todo-edit-field label {
+body.light-theme .todo-edit-field label:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   color: rgba(55, 65, 81, 0.8);
 }
 
-body.light-theme .todo-edit-field input[type="text"] {
+body.light-theme .todo-edit-field input[type="text"]:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: rgba(255, 255, 255, 0.95);
   border-color: rgba(0, 0, 0, 0.1);
   color: #1f2937;
 }
 
-body.light-theme .todo-edit-field input[type="text"]:focus {
+body.light-theme .todo-edit-field input[type="text"]:focus:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   border-color: #2196f3;
   background: rgba(255, 255, 255, 1);
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
@@ -5421,9 +5156,6 @@ body.simple-mode .date {
   font-size: 0.75em;
   position: relative;
 }
-body.light-theme .note-tag-btn {
-  color: #64748b;
-}
 .note-tag-wrapper {
   position: relative;
   flex-shrink: 0;
@@ -5465,7 +5197,7 @@ body.light-theme .note-tag-btn {
 .note-item.tag-picker-open {
   z-index: 1;
 }
-body.light-theme .note-tag-picker {
+body.light-theme .note-tag-picker:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.1);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
@@ -5482,7 +5214,7 @@ body.light-theme .note-tag-picker {
   outline: none;
   box-sizing: border-box;
 }
-body.light-theme .note-tag-input {
+body.light-theme .note-tag-input:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: #f1f5f9;
   border-color: #cbd5e1;
   color: #1e293b;
@@ -5490,7 +5222,7 @@ body.light-theme .note-tag-input {
 .note-tag-input:focus {
   border-color: #475569;
 }
-body.light-theme .note-tag-input:focus {
+body.light-theme .note-tag-input:focus:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   border-color: #cbd5e1;
 }
 
@@ -5530,19 +5262,19 @@ body.light-theme .note-tag-input:focus {
   border-color: #818cf8;
   color: #fff;
 }
-body.light-theme .note-tag-suggestion,
-body.light-theme .note-tag-filter-btn {
+body.light-theme .note-tag-suggestion:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)),
+body.light-theme .note-tag-filter-btn:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: #e2e8f0;
   border-color: #cbd5e1;
   color: #334155;
 }
-body.light-theme .note-tag-suggestion:hover,
-body.light-theme .note-tag-filter-btn:hover {
+body.light-theme .note-tag-suggestion:hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)),
+body.light-theme .note-tag-filter-btn:hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: #c7d2fe;
   color: #312e81;
 }
-body.light-theme .note-tag-suggestion.active,
-body.light-theme .note-tag-filter-btn.active {
+body.light-theme .note-tag-suggestion.active:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)),
+body.light-theme .note-tag-filter-btn.active:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: #a5b4fc;
   border-color: #6366f1;
   color: #312e81;
@@ -5619,15 +5351,6 @@ body.light-theme .note-tag-filter-btn.active {
   display: none;
 }
 
-body.light-theme .notes-search-icon {
-  color: rgba(100, 116, 139, 0.6);
-}
-
-body.light-theme .notes-search-input::placeholder {
-  color: rgba(100, 116, 139, 0.5);
-}
-
-
 .note-textarea {
   flex: 1;
   min-height: 28px;
@@ -5703,27 +5426,6 @@ body.light-theme .notes-search-input::placeholder {
 /* Light theme notes.
    Frosted surfaces (section panel, add button, note items, search input)
    are owned by css/glass.css; keep only color/status overrides here. */
-body.light-theme .notes-title {
-  color: #1e293b;
-}
-
-body.light-theme .note-textarea::placeholder {
-  color: rgba(100, 116, 139, 0.5);
-}
-
-body.light-theme .note-delete-btn {
-  color: rgba(100, 116, 139, 0.4);
-}
-
-body.light-theme .note-delete-btn:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-body.light-theme .notes-empty {
-  color: rgba(100, 116, 139, 0.5);
-}
-
 .note-preview-btn {
   display: flex;
   align-items: center;
@@ -5791,25 +5493,8 @@ body.light-theme .notes-empty {
   margin: 0 0 8px 0;
 }
 
-body.light-theme .note-preview {
-  color: #1e293b;
-}
-
-body.light-theme .note-preview-btn {
-  color: rgba(100, 116, 139, 0.4);
-}
-
-body.light-theme .note-preview-btn:hover {
-  background: #c7d2fe;
-  color: #312e81;
-}
-
 body.simple-mode .notes-section {
   display: none !important;
-}
-
-body.light-theme .notes-empty-icon svg {
-  opacity: 0.3;
 }
 
 @media (hover: none) {
@@ -5819,7 +5504,6 @@ body.light-theme .notes-empty-icon svg {
     opacity: 1;
   }
 }
-
 
 /* Web grounding controls and cited source links */
 .ai-grounding-toggle {
