@@ -1221,6 +1221,13 @@ describe('Notes storage bridge write failures', () => {
     other.value = '';
     other.dispatchEvent(new Event('input', { bubbles: true }));
 
+    // The async failure has fired, but the 500 ms debounce is still pending,
+    // so recovery must not have run yet.
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    expect(showToast).not.toHaveBeenCalled();
+    expect(getFilteredNotes().find((note) => note.id === '1').text).toBe('Unsaved edit');
+
     await vi.waitFor(() => {
       expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
     }, { timeout: 2000 });
