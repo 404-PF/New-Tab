@@ -407,7 +407,8 @@ body.light-theme :is(
   color: var(--glass-text-primary);
 }
 
-body.light-theme :is(input:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *))::placeholder, textarea:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *))::placeholder) {
+body.light-theme input:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *))::placeholder,
+body.light-theme textarea:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *))::placeholder {
   color: var(--glass-text-placeholder);
   opacity: 1;
 }

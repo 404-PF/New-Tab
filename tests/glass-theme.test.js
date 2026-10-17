@@ -160,7 +160,8 @@ describe('Light-theme Todo and Notes parity with the dark theme (#809)', () => {
     [
       'body.light-theme button:focus-visible',
       'body.light-theme select:focus-visible',
-      'body.light-theme :is(input',
+      'body.light-theme input',
+      'body.light-theme textarea',
     ].forEach((prefix) => {
       const matching = parts.filter((p) => p.startsWith(prefix));
       expect(matching.length, prefix).toBeGreaterThan(0);
@@ -171,7 +172,11 @@ describe('Light-theme Todo and Notes parity with the dark theme (#809)', () => {
   it('places the zero-specificity exclusion before any pseudo-element', () => {
     themedSelectors()
       .filter(({ part }) => part.includes('::'))
-      .forEach(({ part }) => expect(part, part).not.toMatch(/::[\w-]+(\([^)]*\))?:where/));
+      .forEach(({ part }) => {
+        expect(part, part).not.toMatch(/::[\w-]+(\([^)]*\))?:where/);
+        // Pseudo-elements are invalid inside :is()/:where() and drop the rule.
+        expect(part, part).not.toMatch(/:(is|where)\([^)]*::/);
+      });
   });
 
   it('has no dark-only or light-only Todo/Notes overrides left', () => {
