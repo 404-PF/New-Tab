@@ -284,6 +284,12 @@
       window.initSettings();
     }
 
+    // Re-apply simple mode so the imported simpleMode flag toggles the body
+    // class and header checkbox without a tab reload (issue #837).
+    if (typeof window.applySimpleMode === 'function') {
+      window.applySimpleMode();
+    }
+
     // Refresh timezone views after merge/replace
     if (typeof window.renderExtraClocks === 'function') {
       window.renderExtraClocks();

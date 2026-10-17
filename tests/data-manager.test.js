@@ -29,6 +29,7 @@ beforeAll(() => {
   injectScript('src/features/timezone-clocks.js');
   injectScript('src/ai/conversation-validator.js');
   injectScript('src/features/data-manager.js');
+  injectScript('src/features/simple-mode.js');
 });
 
 async function importBackup(data, mode) {
@@ -718,6 +719,7 @@ describe('DataManager import refresh (issue #824)', () => {
       'reloadTodosState',
       'initNotes',
       'renderAllApps',
+      'applySimpleMode',
       'scheduleTodoReminderCheck'
     ]);
     try {
@@ -738,6 +740,7 @@ describe('DataManager import refresh (issue #824)', () => {
       expect(hooks.spies.reloadTodosState).toHaveBeenCalledTimes(1);
       expect(hooks.spies.initNotes).toHaveBeenCalledTimes(1);
       expect(hooks.spies.renderAllApps).toHaveBeenCalledTimes(1);
+      expect(hooks.spies.applySimpleMode).toHaveBeenCalledTimes(1);
       expect(hooks.spies.scheduleTodoReminderCheck).toHaveBeenCalledTimes(1);
 
       // Todo state must be reloaded before the reminder payload is built,
@@ -762,6 +765,45 @@ describe('DataManager import refresh (issue #824)', () => {
         .toBeLessThan(hooks.spies.reloadTodosState.mock.invocationCallOrder[0]);
     } finally {
       hooks.restore();
+    }
+  });
+
+  it('applies the imported simpleMode flag to the live UI without a reload (issue #837)', async () => {
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'simple-mode-checkbox';
+    document.body.appendChild(checkbox);
+    try {
+      // Start from simple mode off.
+      localStorage.setItem('simpleMode', 'false');
+      window.applySimpleMode();
+      expect(document.body.classList.contains('simple-mode')).toBe(false);
+      expect(checkbox.checked).toBe(false);
+
+      const enable = await importBackup({ simpleMode: true }, 'replace');
+      expect(enable.type).toBe('success');
+      expect(localStorage.getItem('simpleMode')).toBe('true');
+      // The body class and header checkbox reflect the import immediately.
+      expect(document.body.classList.contains('simple-mode')).toBe(true);
+      expect(checkbox.checked).toBe(true);
+
+      document.body.setAttribute('data-focus-mode', 'true');
+      const focusEnable = await importBackup({ simpleMode: true }, 'replace');
+      expect(focusEnable.type).toBe('success');
+      expect(document.body.classList.contains('simple-mode')).toBe(false);
+      expect(checkbox.checked).toBe(true);
+
+      // Reverse direction: importing simpleMode false turns the UI back off.
+      const disable = await importBackup({ simpleMode: false }, 'replace');
+      expect(disable.type).toBe('success');
+      expect(localStorage.getItem('simpleMode')).toBe('false');
+      expect(document.body.classList.contains('simple-mode')).toBe(false);
+      expect(checkbox.checked).toBe(false);
+    } finally {
+      checkbox.remove();
+      document.body.classList.remove('simple-mode');
+      document.body.removeAttribute('data-focus-mode');
+      localStorage.removeItem('simpleMode');
     }
   });
 });
