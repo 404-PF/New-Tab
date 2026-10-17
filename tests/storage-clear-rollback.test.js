@@ -427,20 +427,30 @@ describe('storage bridge clear rollback', () => {
       { storageAvailable: false }
     );
 
+    let restoreRemoveItem = () => {};
+
     try {
       const failures = [];
       harness.dom.window.addEventListener('storageBridgeWriteError', (event) => {
         failures.push(event.detail);
       });
 
-      const originalRemoveItem = harness.nativeStorage.removeItem.bind(harness.nativeStorage);
+      // Storage has a named-property setter, so assigning
+      // `nativeStorage.removeItem = fn` would store a "removeItem" item
+      // instead of replacing the method. Patch the harness window's
+      // Storage.prototype so the injected failure actually happens.
+      const storagePrototype = harness.dom.window.Storage.prototype;
+      const originalRemoveItem = storagePrototype.removeItem;
       let shouldFail = true;
-      harness.nativeStorage.removeItem = (key) => {
+      storagePrototype.removeItem = function removeItem(key) {
         if (shouldFail) {
           shouldFail = false;
           throw new Error(NATIVE_CLEAR_ERROR);
         }
-        originalRemoveItem(key);
+        return originalRemoveItem.call(this, key);
+      };
+      restoreRemoveItem = () => {
+        storagePrototype.removeItem = originalRemoveItem;
       };
 
       harness.dom.window.localStorage.clear();
@@ -456,6 +466,7 @@ describe('storage bridge clear rollback', () => {
       expect(harness.dom.window.localStorage.getItem('language')).toBe('zh');
       expect(harness.store).toEqual({ theme: 'light', language: 'zh' });
     } finally {
+      restoreRemoveItem();
       harness.dom.window.close();
     }
   });

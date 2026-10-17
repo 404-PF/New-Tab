@@ -277,7 +277,10 @@ describe('AIStore persistence atomicity (#716)', () => {
       JSON.stringify(previousConversations)
     );
     localStorage.setItem(AIStore.STORAGE_KEYS.currentId, previousCurrentConversationId);
-    AIStore.state.conversations = previousConversations;
+    // Give the store its own array: saveConversations() trims live state in
+    // place to keep conversation object identities (#752), which would
+    // otherwise also trim this expected fixture.
+    AIStore.state.conversations = previousConversations.map(conversation => ({ ...conversation }));
     AIStore.state.currentConversationId = previousCurrentConversationId;
 
     const previousState = AIStore.createSaveSnapshot();
@@ -395,6 +398,59 @@ describe('AIStore synchronous fallback write failures (#823)', () => {
         window.showToast = originalShowToast;
       }
       warnSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+});
+
+describe('AIStore serialization failures', () => {
+  it('rolls back and reports a save whose conversations cannot be serialized', async () => {
+    const conversation = {
+      id: 'conv-1',
+      title: 'Topic',
+      messages: [{ id: 'm1', role: 'user', content: 'Hello' }],
+      createdAt: 1,
+      updatedAt: 1
+    };
+    localStorage.setItem(AIStore.STORAGE_KEYS.conversations, JSON.stringify([conversation]));
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-1');
+    const persistedBefore = localStorage.getItem(AIStore.STORAGE_KEYS.conversations);
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = 'conv-1';
+    const previousState = AIStore.createSaveSnapshot();
+
+    const unserializable = {
+      ...conversation,
+      id: 'conv-2',
+      title: 'Unsaved',
+      toJSON() {
+        throw new Error('cannot serialize');
+      }
+    };
+    AIStore.state.conversations = [unserializable, conversation];
+    AIStore.state.currentConversationId = 'conv-2';
+
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      expect(await AIStore.saveConversations(previousState)).toBe(false);
+      expect(AIStore.state.conversations).toEqual([conversation]);
+      expect(AIStore.state.currentConversationId).toBe('conv-1');
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations)).toBe(persistedBefore);
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-1');
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save conversations. Your last action was not saved.',
+        'error'
+      );
+    } finally {
+      if (typeof originalShowToast === 'undefined') {
+        delete window.showToast;
+      } else {
+        window.showToast = originalShowToast;
+      }
       errorSpy.mockRestore();
     }
   });

@@ -68,6 +68,13 @@ function mountFlappyModalView() {
   // down without serializing so launch() cannot short-circuit on the same game.
   window.GameRegistry?.destroyCurrent?.({ serialize: false });
 
+  // tests/setup.js stubs a global #games-game-container. GameRegistry.launch()
+  // resolves the container with getElementById, so on the first test of this
+  // file it mounted into that stub instead of the container built below. In
+  // the app, games-app.js creates exactly one container per launch, so drop
+  // any stale copy to mirror that.
+  document.querySelectorAll('#games-game-container').forEach((element) => element.remove());
+
   const hub = document.createElement('div');
   hub.className = 'games-hub-content ' + FLAPPY_LAYOUT_TEST_CLASS;
 
@@ -110,22 +117,25 @@ describe('Flappy Bird modal layout (#741)', () => {
     expect(gameContainer.id).toBe('games-game-container');
     expect(window.GameRegistry.getCurrentGame()).toBe(window.GameRegistry.get('flappy-bird'));
 
+    // JSDOM's getComputedStyle returns the cascaded declaration rather than a
+    // browser-resolved length, so `min-height: 0` reads back as '0' (an
+    // unstyled element reports ''), matching the declarations pinned below.
     const hubStyle = window.getComputedStyle(hub);
     expect(hubStyle.display).toBe('flex');
     expect(hubStyle.flexDirection).toBe('column');
-    expect(hubStyle.minHeight).toBe('0px');
+    expect(hubStyle.minHeight).toBe('0');
     expect(hubStyle.overflow).toBe('hidden');
 
     const containerStyle = window.getComputedStyle(gameContainer);
     expect(containerStyle.display).toBe('flex');
     expect(containerStyle.flex).toBe('1 1 auto');
-    expect(containerStyle.minHeight).toBe('0px');
+    expect(containerStyle.minHeight).toBe('0');
     expect(containerStyle.overflow).toBe('hidden');
 
     const stageStyle = window.getComputedStyle(stage);
     expect(stageStyle.display).toBe('flex');
     expect(stageStyle.flex).toBe('1 1 auto');
-    expect(stageStyle.minHeight).toBe('0px');
+    expect(stageStyle.minHeight).toBe('0');
     expect(stageStyle.alignItems).toBe('center');
     expect(stageStyle.justifyContent).toBe('center');
 
