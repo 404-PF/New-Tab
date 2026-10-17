@@ -434,9 +434,13 @@
   // implementation may reject without invoking the callback. Rejection-only
   // normalisation: success still settles through the callback, which reports
   // chrome.runtime.lastError, and every settle path is idempotent, so a
-  // callback that fires after a rejection is ignored.
+  // callback that fires after a rejection is ignored. A falsy rejection
+  // reason would read as "no error" at the settle handlers, so normalise it
+  // to an Error and fail closed.
   function observeStorageRejection(result, onRejection) {
-    Promise.resolve(result).catch(onRejection);
+    Promise.resolve(result).catch((error) => {
+      onRejection(error || new Error('chrome.storage operation rejected without a reason'));
+    });
   }
 
   function persistSet(key, value, hadPreviousValue, previousValue) {
