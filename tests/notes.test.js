@@ -258,6 +258,35 @@ describe('Notes flushPendingSaves', () => {
   });
 });
 
+describe('Notes cancelPendingNoteSaves (issue #824)', () => {
+  it('drops a pending debounced save so it cannot overwrite imported notes', () => {
+    setNotes([{
+      id: '1',
+      text: 'Original',
+      tag: '',
+      order: 0,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    }]);
+    initNotes();
+
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const ta = document.querySelector('.note-textarea');
+      expect(ta).not.toBeNull();
+      ta.value = 'Unsaved edit';
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+
+      cancelPendingNoteSaves();
+      vi.advanceTimersByTime(600);
+
+      expect(getNotes()[0].text).toBe('Original');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('Notes rollback on save failure', () => {
   it('updateNoteText rolls back and re-renders on save failure', () => {
     addNote();

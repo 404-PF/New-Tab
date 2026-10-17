@@ -384,6 +384,16 @@
     });
   }
 
+  // Drop in-flight debounced saves without persisting them. The settings
+  // import flow calls this before writing the backup (issue #824) so a
+  // pre-import edit cannot overwrite imported notes when its timer fires.
+  function cancelPendingNoteSaves() {
+    Object.keys(debounceTimers).forEach(id => {
+      clearTimeout(debounceTimers[id]);
+      delete debounceTimers[id];
+    });
+  }
+
   function addNote() {
     if (_activeSearchQuery) {
       setSearchQuery('');
@@ -1028,6 +1038,7 @@ try {
   window.getFilteredNotes = getFilteredNotes;
   window.setNotesSearchQuery = setSearchQuery;
   window.getNotesSearchQuery = getSearchQuery;
+  window.cancelPendingNoteSaves = cancelPendingNoteSaves;
 } catch {
   // ignore
 }

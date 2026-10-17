@@ -82,6 +82,16 @@
     }
   }
 
+  // Re-read todos from storage and re-render without re-binding listeners.
+  // The settings import flow (issue #824) calls this instead of initTodo(),
+  // which would double-fire the add/filter handlers it re-attaches.
+  function reloadTodosState() {
+    todos = loadTodos();
+    migrateTodos();
+    filterTodos();
+    renderTodos();
+  }
+
   function createReminderAlarmFallback() {
     try {
       if (chrome.alarms) {
@@ -2663,6 +2673,7 @@ try {
   window.initTodo = initTodo;
   window.initCustomDatePicker = initCustomDatePicker;
   window.renderTodos = renderTodos;
+  window.reloadTodosState = reloadTodosState;
   window.filterTodos = filterTodos;
   window.handleFilterPillClick = handleFilterPillClick;
   window.validateTodoData = validateTodoData;
