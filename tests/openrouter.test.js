@@ -144,7 +144,7 @@ describe('OpenRouter streaming resilience (#714)', () => {
     }
   });
 
-  it('does not retry when an active stream times out after partial content', async () => {
+  it('does not retry when a stream stalls after partial content', async () => {
     vi.useFakeTimers();
     const originalMaxRetries = OpenRouterAPI.config.maxRetries;
     const originalTimeout = OpenRouterAPI.config.requestTimeout;
@@ -189,7 +189,66 @@ describe('OpenRouter streaming resilience (#714)', () => {
 
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
       expect(chunks).toEqual(['Partial']);
-      expect(result).toMatchObject({ success: false, error: 'Network error occurred' });
+      expect(result).toMatchObject({
+        success: false,
+        error: 'Network error occurred',
+        partialContent: 'Partial'
+      });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.requestTimeout = originalTimeout;
+      vi.useRealTimers();
+    }
+  });
+
+  it('completes an actively streaming response that outlives the request timeout (#843)', async () => {
+    vi.useFakeTimers();
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalTimeout = OpenRouterAPI.config.requestTimeout;
+    const encoder = new TextEncoder();
+    const parts = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'];
+
+    try {
+      OpenRouterAPI.config.maxRetries = 0;
+      OpenRouterAPI.config.requestTimeout = 100;
+
+      let index = 0;
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: vi.fn(() => {
+              if (index >= parts.length) {
+                return Promise.resolve({ done: true, value: undefined });
+              }
+
+              const part = parts[index++];
+              // Each read takes 40ms, so the stream spans 200ms total — twice
+              // requestTimeout — but no single gap reaches the idle deadline,
+              // which must keep re-arming as chunks arrive.
+              return new Promise(resolve => {
+                setTimeout(() => {
+                  resolve({
+                    done: false,
+                    value: encoder.encode(`data: {"choices":[{"delta":{"content":"${part}"}}]}\n`)
+                  });
+                }, 40);
+              });
+            }),
+            cancel: vi.fn().mockResolvedValue(undefined)
+          })
+        }
+      });
+
+      const chunks = [];
+      const promise = OpenRouterAPI.sendMessageStreaming('hello', [], chunk => chunks.push(chunk));
+      await vi.advanceTimersByTimeAsync(400);
+      const result = await promise;
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(globalThis.fetch.mock.calls[0][1].signal.aborted).toBe(false);
+      expect(chunks).toEqual(parts);
+      expect(result).toMatchObject({ success: true, content: parts.join('') });
     } finally {
       OpenRouterAPI.config.maxRetries = originalMaxRetries;
       OpenRouterAPI.config.requestTimeout = originalTimeout;

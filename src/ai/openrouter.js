@@ -330,9 +330,20 @@ const OpenRouterAPI = (function() {
       let reader;
       let timeoutId = null;
 
+      // Idle-timeout semantics (#843): the timer is armed before fetch and
+      // re-armed after every successful stream read, so a healthy long stream
+      // that keeps delivering chunks is never aborted, while hung requests and
+      // stalled reads still fail within CONFIG.requestTimeout.
+      const resetTimeout = () => {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+        timeoutId = setTimeout(() => requestState.controller.abort(), CONFIG.requestTimeout);
+      };
+
       try {
         requestState = createRequestSignal(signal);
-        timeoutId = setTimeout(() => requestState.controller.abort(), CONFIG.requestTimeout);
+        resetTimeout();
 
         const fetchOptions = {
           method: 'POST',
@@ -401,6 +412,7 @@ const OpenRouterAPI = (function() {
           // Read the stream
           while (true) {
             const { done, value } = await reader.read();
+            resetTimeout();
             if (done) break;
 
             // Decode the chunk
@@ -452,7 +464,8 @@ const OpenRouterAPI = (function() {
 
         // Internal timeout and other transport errors are retryable when no
         // content has been delivered yet. Retrying a partially streamed answer
-        // would duplicate content in the caller, so surface that failure.
+        // would duplicate content in the caller, so surface that failure and
+        // return the already-streamed text via partialContent.
         if (!fullContent) {
           if (attempt < CONFIG.maxRetries) {
             retryableFailure = true;
@@ -467,7 +480,8 @@ const OpenRouterAPI = (function() {
           console.error('OpenRouter streaming request failed after partial response:', e);
           return {
             success: false,
-            error: getTranslation('aiNetworkError')
+            error: getTranslation('aiNetworkError'),
+            partialContent: fullContent
           };
         }
       } finally {
