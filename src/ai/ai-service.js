@@ -765,8 +765,33 @@ const AIService = (function() {
         // streaming class.
         renderConversationUI();
       } else {
-        showError(result.error);
-        removeFailedMessages(targetConversationId, targetUserId, targetAssistantId);
+        const failedPartialContent = result.partialContent || accumulatedContent || '';
+
+        if (failedPartialContent) {
+          // The stream failed after content was already delivered: keep the
+          // partial answer as the finalized assistant message instead of
+          // deleting it (#843).
+          showError(result.error);
+
+          if (assistantMsg?.isStreaming) {
+            syncStreamingFlag(false);
+            syncContentToStore(failedPartialContent);
+          }
+
+          {
+            const liveEl = getLiveStreamingEl();
+            const copyBtn = liveEl?.querySelector('.ai-message-copy');
+            if (copyBtn) {
+              copyBtn.dataset.content = failedPartialContent.replace(/<[^>]*>/g, '').trim();
+            }
+          }
+
+          rerenderOnSaveFailure(AIStore.saveConversations());
+          renderConversationUI();
+        } else {
+          showError(result.error);
+          removeFailedMessages(targetConversationId, targetUserId, targetAssistantId);
+        }
       }
     } catch (error) {
       if (error.name === 'AbortError' || AIStore.state.abortController === null) {

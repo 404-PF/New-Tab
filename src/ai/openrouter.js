@@ -17,7 +17,8 @@ const OpenRouterAPI = (function() {
     maxTokens: 4096,
     maxRetries: 2,
     retryDelay: 1000,
-    requestTimeout: 15000
+    requestTimeout: 15000,
+    maxStreamDuration: 300000
   };
 
   /**
@@ -329,11 +330,14 @@ const OpenRouterAPI = (function() {
       let requestState = null;
       let reader;
       let timeoutId = null;
+      let deadlineId = null;
 
       // Idle-timeout semantics (#843): the timer is armed before fetch and
       // re-armed after every successful stream read, so a healthy long stream
       // that keeps delivering chunks is never aborted, while hung requests and
-      // stalled reads still fail within CONFIG.requestTimeout.
+      // stalled reads still fail within CONFIG.requestTimeout. A separate
+      // absolute deadline caps the total stream duration so a slow-but-alive
+      // stream cannot run indefinitely.
       const resetTimeout = () => {
         if (timeoutId !== null) {
           clearTimeout(timeoutId);
@@ -344,6 +348,7 @@ const OpenRouterAPI = (function() {
       try {
         requestState = createRequestSignal(signal);
         resetTimeout();
+        deadlineId = setTimeout(() => requestState.controller.abort(), CONFIG.maxStreamDuration);
 
         const fetchOptions = {
           method: 'POST',
@@ -487,6 +492,9 @@ const OpenRouterAPI = (function() {
       } finally {
         if (timeoutId !== null) {
           clearTimeout(timeoutId);
+        }
+        if (deadlineId !== null) {
+          clearTimeout(deadlineId);
         }
         if (requestState) {
           requestState.cleanup();

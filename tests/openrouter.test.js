@@ -256,6 +256,63 @@ describe('OpenRouter streaming resilience (#714)', () => {
     }
   });
 
+  it('aborts a slow-but-alive stream once the absolute deadline elapses (#843)', async () => {
+    vi.useFakeTimers();
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalTimeout = OpenRouterAPI.config.requestTimeout;
+    const originalMaxStreamDuration = OpenRouterAPI.config.maxStreamDuration;
+    const encoder = new TextEncoder();
+
+    try {
+      OpenRouterAPI.config.maxRetries = 0;
+      OpenRouterAPI.config.requestTimeout = 50;
+      OpenRouterAPI.config.maxStreamDuration = 200;
+
+      globalThis.fetch = vi.fn((_url, options) => Promise.resolve({
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: vi.fn(() => new Promise((resolve, reject) => {
+              // Every 40ms chunk keeps the idle timeout re-arming, so only the
+              // absolute deadline can stop this stream.
+              const timer = setTimeout(() => {
+                resolve({
+                  done: false,
+                  value: encoder.encode('data: {"choices":[{"delta":{"content":"tick"}}]}\n')
+                });
+              }, 40);
+              options.signal.addEventListener('abort', () => {
+                clearTimeout(timer);
+                reject(new Error('aborted'));
+              }, { once: true });
+            })),
+            cancel: vi.fn().mockResolvedValue(undefined)
+          })
+        }
+      }));
+
+      const chunks = [];
+      const promise = OpenRouterAPI.sendMessageStreaming('hello', [], chunk => chunks.push(chunk));
+      await vi.advanceTimersByTimeAsync(400);
+      const result = await promise;
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(globalThis.fetch.mock.calls[0][1].signal.aborted).toBe(true);
+      expect(chunks.length).toBeGreaterThan(0);
+      expect(result).toMatchObject({
+        success: false,
+        error: 'Network error occurred',
+        partialContent: chunks.join('')
+      });
+      expect(result.aborted).not.toBe(true);
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.requestTimeout = originalTimeout;
+      OpenRouterAPI.config.maxStreamDuration = originalMaxStreamDuration;
+      vi.useRealTimers();
+    }
+  });
+
   it('cancels during retry backoff without starting another fetch', async () => {
     vi.useFakeTimers();
     const originalMaxRetries = OpenRouterAPI.config.maxRetries;
