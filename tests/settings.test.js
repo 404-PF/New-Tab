@@ -1251,6 +1251,7 @@ describe('Manual update check button', () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const manualCheck = vi.fn().mockRejectedValue(new Error('network'));
 
+    vi.useFakeTimers();
     try {
       window.updateChecker = {
         getUpdateStatus: () => ({ status: 'idle' }),
@@ -1266,12 +1267,17 @@ describe('Manual update check button', () => {
       button.click();
 
       // Allow the async handler (including the rejected promise) to settle.
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await vi.advanceTimersByTimeAsync(0);
 
       expect(button.disabled).toBe(false);
       expect(button.textContent).toBe('Check Now');
       expect(manualCheck).toHaveBeenCalled();
+
+      // Flush the 100 ms post-check initAboutSection refresh so it cannot
+      // fire after the test environment is torn down.
+      await vi.advanceTimersByTimeAsync(100);
     } finally {
+      vi.useRealTimers();
       window.updateChecker = originalUpdateChecker;
       consoleErrorSpy.mockRestore();
     }

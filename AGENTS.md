@@ -19,7 +19,7 @@ Chrome/Edge manifest v3 new-tab page. Vanilla JS, no bundler, no transpile step.
 | Lint | `npm run lint` |
 | Auto-fix lint | `npm run lint:fix` |
 
-CI (`.github/workflows/release.yml`) runs `npm ci --ignore-scripts` → `npm run lint` → `npm test` in that order. Do the same locally before opening a PR.
+CI runs `npm ci --ignore-scripts` → `npm run lint` → `npm test` in that order: `.github/workflows/ci.yml` on every `pull_request` and `push` to `main` (single required-check job `test`), and `.github/workflows/release.yml` on version tags/releases. Do the same locally before opening a PR.
 
 Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 
