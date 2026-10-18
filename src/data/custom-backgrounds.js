@@ -876,6 +876,9 @@
       }).catch(function (error) {
         showBackgroundError('customBackgroundDeleteError', 'Failed to delete the custom background. Please try again.', error);
       });
+    }).catch(function (dialogError) {
+      // Only the confirmation dialog failed; the background was not deleted.
+      showBackgroundError('customBackgroundDeleteError', 'Failed to open the delete confirmation dialog. Please try again.', dialogError);
     });
   });
 
