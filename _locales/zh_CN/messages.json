@@ -618,6 +618,22 @@
     "message": "重复",
     "description": "Label"
   },
+  "todoEditTitle": {
+    "message": "编辑待办",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "文本",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "优先级",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "保存",
+    "description": "Label for save buttons in dialogs"
+  },
   "recurrenceNone": {
     "message": "无",
     "description": "No recurrence"

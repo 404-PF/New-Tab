@@ -618,6 +618,22 @@
     "message": "반복",
     "description": "Label"
   },
+  "todoEditTitle": {
+    "message": "할 일 편집",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "텍스트",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "우선순위",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "저장",
+    "description": "Label for save buttons in dialogs"
+  },
   "recurrenceNone": {
     "message": "없음",
     "description": "No recurrence"

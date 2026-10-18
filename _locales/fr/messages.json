@@ -618,6 +618,22 @@
     "message": "Répéter",
     "description": "Label"
   },
+  "todoEditTitle": {
+    "message": "Modifier la tâche",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "Texte",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "Priorité",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "Enregistrer",
+    "description": "Label for save buttons in dialogs"
+  },
   "recurrenceNone": {
     "message": "Aucune",
     "description": "No recurrence"

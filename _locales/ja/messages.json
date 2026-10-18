@@ -618,6 +618,22 @@
     "message": "繰り返し",
     "description": "Label"
   },
+  "todoEditTitle": {
+    "message": "Todoを編集",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "テキスト",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "優先度",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "保存",
+    "description": "Label for save buttons in dialogs"
+  },
   "recurrenceNone": {
     "message": "なし",
     "description": "No recurrence"

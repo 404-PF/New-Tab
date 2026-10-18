@@ -148,10 +148,12 @@ const translations = {
     renameAppTitle: 'Rename App',
     renameAppDescription: 'Enter a new name for this app',
     enterAppName: 'App name',
+    changeThumbnailTitle: 'Change Thumbnail',
     changeThumbnailDescription: 'Enter an image URL for the app icon',
     enterIconUrl: 'https://example.com/icon.png',
     deleteAppTitle: 'Delete App?',
     deleteAppMessage: 'This app will be permanently removed from your list.',
+    delete: 'Delete',
 
     // URL Validation messages
     validationPleaseEnter: 'Please enter a URL or search query',
