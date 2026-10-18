@@ -340,6 +340,106 @@ describe('AIStore persistence atomicity (#716)', () => {
       }
     }
   });
+
+  it('issues the currentId write and rolls it back on a bridge-reported first-write failure (#835)', async () => {
+    const previousConversations = Array.from(
+      { length: AIStore.MAX_CONVERSATIONS + 5 },
+      (_, index) => ({
+        id: `conv-${index}`,
+        title: `Conversation ${index}`,
+        messages: [],
+        createdAt: index,
+        updatedAt: index
+      })
+    );
+    const previousCurrentConversationId = `conv-${AIStore.MAX_CONVERSATIONS + 2}`;
+
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(previousConversations)
+    );
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, previousCurrentConversationId);
+    // Give the store its own array: saveConversations() trims live state in
+    // place to keep conversation object identities (#752), which would
+    // otherwise also trim this expected fixture.
+    AIStore.state.conversations = previousConversations.map(conversation => ({ ...conversation }));
+    AIStore.state.currentConversationId = previousCurrentConversationId;
+
+    const previousState = AIStore.createSaveSnapshot();
+    const originalSetItemAsync = localStorage.setItemAsync;
+    const setItemKeys = [];
+
+    localStorage.setItemAsync = vi.fn((key, value) => {
+      setItemKeys.push(key);
+
+      if (setItemKeys.length === 1) {
+        window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+          detail: {
+            key,
+            message: 'QUOTA_BYTES quota exceeded',
+            operation: 'set',
+            value
+          }
+        }));
+        return Promise.resolve(false);
+      }
+
+      localStorage.setItem(key, value);
+      return Promise.resolve(true);
+    });
+
+    const bridgeWriteErrors = [];
+    const onBridgeWriteError = event => bridgeWriteErrors.push(event.detail);
+    window.addEventListener('storageBridgeWriteError', onBridgeWriteError);
+
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+
+    try {
+      expect(await AIStore.saveConversations(previousState)).toBe(false);
+
+      // The current id write is issued in the same turn as the failed
+      // conversations write (#835), then the succeeded key is rolled back.
+      expect(localStorage.setItemAsync).toHaveBeenCalledTimes(3);
+      expect(setItemKeys).toEqual([
+        AIStore.STORAGE_KEYS.conversations,
+        AIStore.STORAGE_KEYS.currentId,
+        AIStore.STORAGE_KEYS.currentId
+      ]);
+      expect(bridgeWriteErrors).toHaveLength(1);
+      expect(bridgeWriteErrors[0]).toMatchObject({
+        key: AIStore.STORAGE_KEYS.conversations,
+        operation: 'set'
+      });
+
+      expect(AIStore.state.conversations).toEqual(previousConversations);
+      expect(AIStore.state.conversations).toHaveLength(AIStore.MAX_CONVERSATIONS + 5);
+      expect(AIStore.state.currentConversationId).toBe(previousCurrentConversationId);
+      expect(JSON.parse(
+        localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+      )).toEqual(previousConversations);
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe(
+        previousCurrentConversationId
+      );
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save conversations. Your last action was not saved.',
+        'error'
+      );
+    } finally {
+      window.removeEventListener('storageBridgeWriteError', onBridgeWriteError);
+      if (typeof originalSetItemAsync === 'undefined') {
+        delete localStorage.setItemAsync;
+      } else {
+        localStorage.setItemAsync = originalSetItemAsync;
+      }
+      if (typeof originalShowToast === 'undefined') {
+        delete window.showToast;
+      } else {
+        window.showToast = originalShowToast;
+      }
+    }
+  });
 });
 
 describe('AIStore synchronous fallback write failures (#823)', () => {
