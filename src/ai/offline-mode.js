@@ -327,7 +327,7 @@ const OfflineMode = (function() {
    * @returns {string|Object|null} Result, conversion error, or null for other queries
    */
   function parseConversion(input) {
-    const match = input.match(/^(-?\d+(?:\.\d*)?)\s*([a-z\u4e00-\u9fff]+)\s+(?:to|in|->|转换|换算)\s+([a-z\u4e00-\u9fff]+)$/i);
+    const match = /^(-?\d+(?:\.\d*)?)\s*([a-z\u4e00-\u9fff]+)\s+(?:to|in|->|转换|换算)\s+([a-z\u4e00-\u9fff]+)$/i.exec(input);
     if (!match) return null;
 
     const unitMap = {
@@ -358,8 +358,9 @@ const OfflineMode = (function() {
     const toUnit = match[3].toLowerCase();
     const from = Object.hasOwn(unitMap, fromUnit) ? unitMap[fromUnit] : fromUnit;
     const to = Object.hasOwn(unitMap, toUnit) ? unitMap[toUnit] : toUnit;
-    const knownUnit = unit => Object.values(CONVERSIONS).some(units => Object.hasOwn(units, unit));
-    if (!knownUnit(from) || !knownUnit(to)) return null;
+    // Unknown sources can still match the knowledge base; unknown targets are conversion errors.
+    const knownSource = Object.values(CONVERSIONS).some(units => Object.hasOwn(units, from));
+    if (!knownSource) return null;
 
     if (Object.hasOwn(CONVERSIONS.temperature, from) && Object.hasOwn(CONVERSIONS.temperature[from], to)) {
       const result = Math.round(CONVERSIONS.temperature[from][to](value) * 100) / 100;

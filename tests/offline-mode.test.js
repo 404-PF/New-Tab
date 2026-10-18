@@ -40,11 +40,17 @@ describe('OfflineMode', () => {
     expect(OfflineMode.getResponse(query)).toEqual({ success: true, content, mode: 'offline' });
   });
 
-  it('reports unsupported conversion pairs as failures with a useful error', () => {
-    const result = OfflineMode.getResponse('5 km to kg');
+  it.each([
+    ['5 km to kg', 'km', 'kg'],
+    ['5 km to constructor', 'km', 'constructor'],
+    ['5 km to unknown', 'km', 'unknown'],
+    ['5 公里 to unknown', '公里', 'unknown']
+  ])('reports %s as a failure with a useful error', (query, from, to) => {
+    const result = OfflineMode.getResponse(query);
     expect(result).toMatchObject({ success: false, mode: 'offline' });
-    expect(result.error).toContain('can\'t convert from km to kg');
+    expect(result.error).toContain(`can't convert from ${from} to ${to}`);
     expect(result.content).toBe(result.error);
+    expect(result.content).not.toContain('NaN');
   });
 
   it('keeps non-conversion queries available to the knowledge base', () => {
@@ -52,13 +58,18 @@ describe('OfflineMode', () => {
     expect(OfflineMode.getResponse('help').content).toContain('offline');
   });
 
-  it.each(['5 days to go', '3 people in room', '5 km to constructor', '5 constructor to kg'])(
+  it.each(['3 people in room', '5 constructor to kg'])(
     'leaves %s to the ordinary fallback', query => {
       expect(OfflineMode.parseConversion(query)).toBeNull();
       expect(OfflineMode.getResponse(query)).toMatchObject({ success: true, mode: 'offline' });
-      expect(OfflineMode.getResponse(query).content).not.toContain('NaN');
+      expect(OfflineMode.getResponse(query).content).toContain('couldn\'t process that specific request');
     }
   );
+
+  it('preserves existing knowledge-base matching for unknown source units', () => {
+    expect(OfflineMode.parseConversion('5 days to go')).toBeNull();
+    expect(OfflineMode.getResponse('5 days to go')).toEqual(OfflineMode.getResponse('day'));
+  });
 
   it('uses the platform CSPRNG when selecting a fact', () => {
     const getRandomValues = vi.fn(values => {
