@@ -559,29 +559,39 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
   });
 
   it('still removes both messages when a failure delivers no partial content', async () => {
-    const conversation = {
-      id: 'conv_fail_clean',
-      title: 'FailClean',
-      messages: [
-        { role: 'user', content: 'previous', timestamp: Date.now() }
-      ],
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    AIStore.state.conversations = [conversation];
-    AIStore.state.currentConversationId = conversation.id;
+    // Run with web grounding off so the failure does not take the
+    // ungrounded retry path (#739): this test checks only the
+    // no-partial-content removal behavior.
+    const originalIsWebGroundingEnabled = OpenRouterAPI.isWebGroundingEnabled;
+    OpenRouterAPI.isWebGroundingEnabled = () => false;
 
-    OpenRouterAPI.sendMessageStreaming = async () => ({
-      success: false,
-      error: 'Network error occurred'
-    });
+    try {
+      const conversation = {
+        id: 'conv_fail_clean',
+        title: 'FailClean',
+        messages: [
+          { role: 'user', content: 'previous', timestamp: Date.now() }
+        ],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      AIStore.state.conversations = [conversation];
+      AIStore.state.currentConversationId = conversation.id;
 
-    await AIService.sendMessage('hello');
+      OpenRouterAPI.sendMessageStreaming = async () => ({
+        success: false,
+        error: 'Network error occurred'
+      });
 
-    // No partial content: the user/assistant pair added for this request
-    // is removed as before.
-    expect(conversation.messages).toHaveLength(1);
-    expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'previous' });
+      await AIService.sendMessage('hello');
+
+      // No partial content: the user/assistant pair added for this request
+      // is removed as before.
+      expect(conversation.messages).toHaveLength(1);
+      expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'previous' });
+    } finally {
+      OpenRouterAPI.isWebGroundingEnabled = originalIsWebGroundingEnabled;
+    }
   });
 
   it('keeps partial offline content when a new message starts right after stop', async () => {
