@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
 
 function expectTranslationKeys(keys, options) {
@@ -327,5 +329,51 @@ const DEFAULT_APP_VISIBILITY_TRANSLATION_KEYS = [
 describe('Default app visibility translations', () => {
   it('defines every built-in app visibility string in each supported language', () => {
     expectTranslationKeys(DEFAULT_APP_VISIBILITY_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
+
+// Keys backing the AI conversation-delete confirmation buttons and the
+// Rename App / Change Thumbnail / Delete App / Edit Todo modals (issue #845).
+const APP_MODAL_TRANSLATION_KEYS = [
+  'renameAppTitle',
+  'renameAppDescription',
+  'enterAppName',
+  'changeThumbnailDescription',
+  'enterIconUrl',
+  'deleteAppTitle',
+  'deleteAppMessage',
+  'todoEditTitle',
+  'todoEditText',
+  'todoEditPriority',
+  'todoSubtasks',
+  'todoAddSubtask',
+  'save',
+  'playbackControls'
+];
+
+describe('App and todo modal translations', () => {
+  it('defines every dialog string in each supported language', () => {
+    // Assert getTranslations() directly: t() falls back to English (or echoes
+    // the key), which would hide a missing entry behind a passing assertion.
+    expectTranslationKeys(APP_MODAL_TRANSLATION_KEYS);
+  });
+});
+
+describe('New-Tab.html i18n key completeness', () => {
+  it('resolves every data-i18n key used in New-Tab.html in the en dictionary', () => {
+    const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
+    const keys = [...html.matchAll(/data-i18n(?:-placeholder|-title|-aria-label)?="([^"]+)"/g)]
+      .map((match) => match[1]);
+
+    expect(keys.length).toBeGreaterThan(0);
+
+    const english = window.i18n.getTranslations('en');
+    [...new Set(keys)].sort().forEach((key) => {
+      expect(english, `en:${key}`).toHaveProperty(key);
+      expect(english[key], `en:${key}`).toBeTypeOf('string');
+      expect(english[key].trim(), `en:${key}`).not.toBe('');
+      // A dictionary entry equal to the key name is a missing translation.
+      expect(english[key], `en:${key}`).not.toBe(key);
+    });
   });
 });
