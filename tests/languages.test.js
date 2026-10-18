@@ -138,16 +138,11 @@ describe('Pomodoro translations', () => {
 });
 
 describe('Custom background error translations', () => {
+  // Inspect getTranslations() directly rather than t(): t() silently falls
+  // back to the English string when a locale omits the key, so a missing
+  // customBackgroundDialogError entry would still pass a t()-based check.
   it('defines every error message for all supported languages', () => {
-    const languages = window.i18n.getSupportedLanguages();
-
-    languages.forEach(({ code }) => {
-      window.i18n.applyLanguage(code);
-
-      CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS.forEach((key) => {
-        expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
-      });
-    });
+    expectTranslationKeys(CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS);
   });
 });
 
