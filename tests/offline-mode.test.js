@@ -24,6 +24,53 @@ describe('OfflineMode', () => {
     }
   });
 
+  it.each([
+    ['5 mm to cm', '5 mm = 0.5 cm'],
+    ['10 yd to m', '10 yd = 9.144 m'],
+    ['1 mg to g', '1 mg = 0.001 g'],
+    ['1 ton to kg', '1 ton = 907.1847 kg'],
+    ['5 毫米 to 厘米', '5 mm = 0.5 cm'],
+    ['10 码 to 米', '10 yd = 9.144 m'],
+    ['1 毫克 to 克', '1 mg = 0.001 g'],
+    ['1 吨 to 千克', '1 ton = 907.1847 kg'],
+    ['1 mm to km', '1 mm = 0.000001 km'],
+    ['1 mg to ton', '1 mg = 1.10231e-9 ton'],
+    ['100 F to C', '100°F = 37.78°C']
+  ])('converts %s offline', (query, content) => {
+    expect(OfflineMode.getResponse(query)).toEqual({ success: true, content, mode: 'offline' });
+  });
+
+  it.each([
+    ['5 km to kg', 'km', 'kg'],
+    ['5 km to constructor', 'km', 'constructor'],
+    ['5 km to unknown', 'km', 'unknown'],
+    ['5 公里 to unknown', '公里', 'unknown']
+  ])('reports %s as a failure with a useful error', (query, from, to) => {
+    const result = OfflineMode.getResponse(query);
+    expect(result).toMatchObject({ success: false, mode: 'offline' });
+    expect(result.error).toContain(`can't convert from ${from} to ${to}`);
+    expect(result.content).toBe(result.error);
+    expect(result.content).not.toContain('NaN');
+  });
+
+  it('keeps non-conversion queries available to the knowledge base', () => {
+    expect(OfflineMode.parseConversion('help')).toBeNull();
+    expect(OfflineMode.getResponse('help').content).toContain('offline');
+  });
+
+  it.each(['3 people in room', '5 constructor to kg'])(
+    'leaves %s to the ordinary fallback', query => {
+      expect(OfflineMode.parseConversion(query)).toBeNull();
+      expect(OfflineMode.getResponse(query)).toMatchObject({ success: true, mode: 'offline' });
+      expect(OfflineMode.getResponse(query).content).toContain('couldn\'t process that specific request');
+    }
+  );
+
+  it('preserves existing knowledge-base matching for unknown source units', () => {
+    expect(OfflineMode.parseConversion('5 days to go')).toBeNull();
+    expect(OfflineMode.getResponse('5 days to go')).toEqual(OfflineMode.getResponse('day'));
+  });
+
   it('uses the platform CSPRNG when selecting a fact', () => {
     const getRandomValues = vi.fn(values => {
       values[0] = 0;
