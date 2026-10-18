@@ -389,8 +389,8 @@
     return `${Math.abs(lat).toFixed(2)}°${ns}, ${Math.abs(lon).toFixed(2)}°${ew}`;
   }
 
-  // Fire-and-forget refresh for UI event handlers, which cannot await. Without
-  // this the returned promise would be unhandled on a network or storage failure.
+  // Fire-and-forget refresh for UI event handlers, which cannot await. Network and
+  // storage errors are caught inside refreshWeather; this logs anything that escapes it.
   function refreshWeatherSafely(force = false) {
     refreshWeather(force).catch(function (error) {
       console.error('Failed to refresh weather:', error);

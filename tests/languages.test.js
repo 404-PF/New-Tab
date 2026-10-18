@@ -46,7 +46,8 @@ const POMODORO_TRANSLATION_KEYS = [
 const CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS = [
   'customBackgroundsLoadError',
   'customBackgroundLoadError',
-  'customBackgroundDeleteError'
+  'customBackgroundDeleteError',
+  'customBackgroundDialogError'
 ];
 
 const ROTATION_UPLOADS_TRANSLATION_KEYS = [

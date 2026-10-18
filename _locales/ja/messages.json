@@ -38,6 +38,10 @@
     "message": "カスタム背景を削除できませんでした。もう一度お試しください。",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "customBackgroundDialogError": {
+    "message": "削除の確認ダイアログを開けませんでした。もう一度お試しください。",
+    "description": "Error shown when the delete confirmation dialog cannot be opened"
+  },
   "onboardingSaveError": {
     "message": "オンボーディングの完了を保存できませんでした。進行状況は保持されているため、再試行できます。",
     "description": "Error shown when onboarding completion cannot be persisted"

@@ -125,15 +125,18 @@
         return;
       }
       // A callback-style storage area returns undefined and settles through the
-      // callback above; a promise-style one resolves with the items. Normalise
-      // both without testing a promise in a boolean conditional. A promise that
-      // resolves with undefined and no callback is treated as "no saved state".
-      Promise.resolve(result).then(function (items) {
-        finish(items);
-      }).catch(function (error) {
-        console.warn('Failed to load Pomodoro timer state from chrome.storage:', error);
-        finish(null);
-      });
+      // callback above; only a promise-style return value settles here. Racing
+      // Promise.resolve(undefined) against the callback would let "no saved
+      // state" win before the asynchronous read returns its items, so the
+      // promise path is guarded the same way saveTimerStateAsync's is.
+      if (result !== undefined) {
+        Promise.resolve(result).then(function (items) {
+          finish(items);
+        }).catch(function (error) {
+          console.warn('Failed to load Pomodoro timer state from chrome.storage:', error);
+          finish(null);
+        });
+      }
     });
   }
 
@@ -832,12 +835,17 @@
   }
 
   // Click handlers cannot await, so surface failures of the async timer actions
-  // instead of leaving them as unhandled rejections. The action runs synchronously
-  // exactly as a bare call would; only the returned promise is wrapped.
+  // instead of leaving them as unhandled rejections. The action still runs
+  // synchronously at call time; a synchronous throw or a rejected returned
+  // promise is logged instead of escaping the handler unobserved.
   function runTimerAction(name, action) {
-    Promise.resolve(action()).catch(function (error) {
+    try {
+      Promise.resolve(action()).catch(function (error) {
+        console.error(`Pomodoro ${name} action failed:`, error);
+      });
+    } catch (error) {
       console.error(`Pomodoro ${name} action failed:`, error);
-    });
+    }
   }
 
   function handleTodoClick(e) {
@@ -846,7 +854,7 @@
       e.stopPropagation();
       const todoId = focusBtn.dataset.todoId;
       if (state.active && state.todoId === todoId) {
-        runTimerAction('stop', () => stopTimer());
+        stopTimer();
       } else {
         runTimerAction('start', () => startTimer(todoId));
       }

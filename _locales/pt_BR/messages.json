@@ -38,6 +38,10 @@
     "message": "Não foi possível excluir o plano de fundo personalizado. Tente novamente.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "customBackgroundDialogError": {
+    "message": "Não foi possível abrir o diálogo de confirmação de exclusão. Tente novamente.",
+    "description": "Error shown when the delete confirmation dialog cannot be opened"
+  },
   "onboardingSaveError": {
     "message": "Não foi possível salvar a conclusão do onboarding. Seu progresso foi mantido para você poder tentar novamente.",
     "description": "Error shown when onboarding completion cannot be persisted"

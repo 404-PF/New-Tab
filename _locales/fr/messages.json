@@ -38,6 +38,10 @@
     "message": "Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "customBackgroundDialogError": {
+    "message": "Impossible d’ouvrir la boîte de dialogue de confirmation de suppression. Veuillez réessayer.",
+    "description": "Error shown when the delete confirmation dialog cannot be opened"
+  },
   "onboardingSaveError": {
     "message": "Impossible d’enregistrer la fin de la visite de bienvenue. Votre progression a été conservée, vous pouvez réessayer.",
     "description": "Error shown when onboarding completion cannot be persisted"
