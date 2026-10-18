@@ -332,9 +332,14 @@ describe('Default app visibility translations', () => {
   });
 });
 
-// Keys backing the AI conversation-delete confirmation buttons and the
+// Keys backing the AI conversation-delete confirmation dialog and the
 // Rename App / Change Thumbnail / Delete App / Edit Todo modals (issue #845).
 const APP_MODAL_TRANSLATION_KEYS = [
+  'aiDeleteConfirmTitle',
+  'aiDeleteConfirmMessage',
+  'cancel',
+  'deleteApp',
+  'changeThumbnail',
   'renameAppTitle',
   'renameAppDescription',
   'enterAppName',
