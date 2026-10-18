@@ -15,7 +15,10 @@ describe('PR/push CI runs lint and the test suite (#846)', () => {
 
   it('triggers on every pull request and on pushes to main', () => {
     expect(ci).toMatch(/^on:\n {2}pull_request:\n {2}push:\n {4}branches:\n {6}- main$/m);
-    expect(ci).not.toMatch(/branches:\n\s+- (?!\s*main\b)\S/);
+
+    const branchesBlock = ci.match(/^ {4}branches:\n((?: {6}- .*\n?)*)/m);
+    expect(branchesBlock).not.toBeNull();
+    expect(branchesBlock[1].split('\n').map((line) => line.trim()).filter(Boolean)).toEqual(['- main']);
   });
 
   it('runs exactly npm ci --ignore-scripts, npm run lint, npm test in order', () => {
