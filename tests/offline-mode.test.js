@@ -45,4 +45,36 @@ describe('OfflineMode', () => {
     expect(OfflineMode.getResponse('5/0').content).toContain('division by zero');
     expect(OfflineMode.getResponse('0 / 0').content).toContain('division by zero');
   });
+
+  it('does not match the greeting key inside ordinary prose', () => {
+    const proseInputs = ['which option is better', 'something', 'highlight', 'this is a test'];
+
+    proseInputs.forEach(input => {
+      const result = OfflineMode.getResponse(input);
+      expect(result).toMatchObject({ success: true, mode: 'offline' });
+      expect(result.content).not.toContain('Hi there!');
+      expect(result.content).toContain('couldn\'t process');
+      expect(OfflineMode.matchPattern(input).matched).toBe(false);
+    });
+  });
+
+  it('still greets on exact greeting keys', () => {
+    expect(OfflineMode.getResponse('hi').content).toContain('Hi there!');
+    expect(OfflineMode.getResponse('HI').content).toContain('Hi there!');
+    expect(OfflineMode.getResponse('hello').content).toContain('Hello!');
+  });
+
+  it('still partial-matches Chinese keys when the active language is zh', () => {
+    const originalI18n = window.i18n;
+    window.i18n = { ...(originalI18n || {}), currentLanguage: () => 'zh' };
+
+    try {
+      const help = OfflineMode.getResponse('请帮助我');
+      expect(help).toMatchObject({ success: true, mode: 'offline' });
+      expect(help.content).toContain('以下是我能帮助的');
+      expect(OfflineMode.getResponse('现在几点了').content).toContain('现在是');
+    } finally {
+      window.i18n = originalI18n;
+    }
+  });
 });

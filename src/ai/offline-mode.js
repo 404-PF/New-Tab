@@ -228,7 +228,7 @@ const OfflineMode = (function() {
         };
       }
       // Also check Chinese keys
-      if (input.trim().includes(key) && key.length > 1) {
+      if (!/^[a-z0-9 ]+$/i.test(key) && input.trim().includes(key) && key.length > 1) {
         const response = knowledgeBase[key];
         return {
           matched: true,
