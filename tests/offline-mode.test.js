@@ -47,7 +47,7 @@ describe('OfflineMode', () => {
   });
 
   it('does not match the greeting key inside ordinary prose', () => {
-    const proseInputs = ['which option is better', 'something', 'highlight', 'this is a test'];
+    const proseInputs = ['which option is better', 'something', 'highlight', 'this is a test', 'they', 'today', 'update'];
 
     proseInputs.forEach(input => {
       const result = OfflineMode.getResponse(input);

@@ -220,15 +220,17 @@ const OfflineMode = (function() {
     
     // Partial match - check if any key is contained in input
     for (const key in knowledgeBase) {
-      if (lowerInput.includes(key) && key.length > 2) {
-        const response = knowledgeBase[key];
-        return {
-          matched: true,
-          response: typeof response === 'function' ? response() : response
-        };
-      }
-      // Also check Chinese keys
-      if (!/^[a-z0-9 ]+$/i.test(key) && input.trim().includes(key) && key.length > 1) {
+      if (/^[a-z0-9 ]+$/i.test(key)) {
+        // English keys: match on word boundaries so "hey" doesn't fire on "they"
+        if (key.length > 2 && new RegExp(`\\b${key}\\b`).test(lowerInput)) {
+          const response = knowledgeBase[key];
+          return {
+            matched: true,
+            response: typeof response === 'function' ? response() : response
+          };
+        }
+      } else if (input.trim().includes(key) && key.length > 1) {
+        // Chinese keys: substring match
         const response = knowledgeBase[key];
         return {
           matched: true,
