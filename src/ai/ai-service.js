@@ -738,7 +738,7 @@ const AIService = (function() {
           const liveEl = getLiveStreamingEl();
           const copyBtn = liveEl?.querySelector('.ai-message-copy');
           if (copyBtn && accumulatedContent) {
-            copyBtn.dataset.content = accumulatedContent.replace(/<[^>]*>/g, '').trim();
+            copyBtn.dataset.content = accumulatedContent.replace(/<[^<>]*>/g, '').trim();
           }
         }
 
@@ -754,7 +754,7 @@ const AIService = (function() {
           const liveEl = getLiveStreamingEl();
           const copyBtn = liveEl?.querySelector('.ai-message-copy');
           if (copyBtn && accumulatedContent) {
-            copyBtn.dataset.content = accumulatedContent.replace(/<[^>]*>/g, '').trim();
+            copyBtn.dataset.content = accumulatedContent.replace(/<[^<>]*>/g, '').trim();
           }
         }
 
@@ -782,7 +782,7 @@ const AIService = (function() {
             const liveEl = getLiveStreamingEl();
             const copyBtn = liveEl?.querySelector('.ai-message-copy');
             if (copyBtn) {
-              copyBtn.dataset.content = failedPartialContent.replace(/<[^>]*>/g, '').trim();
+              copyBtn.dataset.content = failedPartialContent.replace(/<[^<>]*>/g, '').trim();
             }
           }
 
