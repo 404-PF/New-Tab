@@ -366,27 +366,17 @@ describe('AIStore persistence atomicity (#716)', () => {
     AIStore.state.currentConversationId = previousCurrentConversationId;
 
     const previousState = AIStore.createSaveSnapshot();
+    AIStore.state.currentConversationId = 'conv-0';
+
     const originalSetItemAsync = localStorage.setItemAsync;
     const setItemKeys = [];
 
     localStorage.setItemAsync = vi.fn((key, value) => {
       setItemKeys.push(key);
-
-      if (setItemKeys.length === 1) {
-        window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
-          detail: {
-            key,
-            message: 'QUOTA_BYTES quota exceeded',
-            operation: 'set',
-            value
-          }
-        }));
-        return Promise.resolve(false);
-      }
-
-      localStorage.setItem(key, value);
-      return Promise.resolve(true);
+      return originalSetItemAsync(key, value);
     });
+
+    const restoreStorageSet = failStorageWritesFor(AIStore.STORAGE_KEYS.conversations, 'async');
 
     const bridgeWriteErrors = [];
     const onBridgeWriteError = event => bridgeWriteErrors.push(event.detail);
@@ -397,7 +387,13 @@ describe('AIStore persistence atomicity (#716)', () => {
     window.showToast = showToast;
 
     try {
-      expect(await AIStore.saveConversations(previousState)).toBe(false);
+      const save = AIStore.saveConversations(previousState);
+
+      expect(setItemKeys).toEqual([
+        AIStore.STORAGE_KEYS.conversations,
+        AIStore.STORAGE_KEYS.currentId
+      ]);
+      expect(await save).toBe(false);
 
       // The current id write is issued in the same turn as the failed
       // conversations write (#835), then the succeeded key is rolled back.
@@ -410,6 +406,7 @@ describe('AIStore persistence atomicity (#716)', () => {
       expect(bridgeWriteErrors).toHaveLength(1);
       expect(bridgeWriteErrors[0]).toMatchObject({
         key: AIStore.STORAGE_KEYS.conversations,
+        message: 'QUOTA_BYTES quota exceeded',
         operation: 'set'
       });
 
@@ -427,6 +424,7 @@ describe('AIStore persistence atomicity (#716)', () => {
         'error'
       );
     } finally {
+      restoreStorageSet();
       window.removeEventListener('storageBridgeWriteError', onBridgeWriteError);
       if (typeof originalSetItemAsync === 'undefined') {
         delete localStorage.setItemAsync;
