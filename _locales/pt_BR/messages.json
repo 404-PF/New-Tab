@@ -618,6 +618,22 @@
     "message": "Repetir",
     "description": "Label"
   },
+  "todoEditTitle": {
+    "message": "Editar tarefa",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "Texto",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "Prioridade",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "Salvar",
+    "description": "Label for save buttons in dialogs"
+  },
   "recurrenceNone": {
     "message": "Nenhum",
     "description": "No recurrence"

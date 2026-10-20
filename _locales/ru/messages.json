@@ -618,6 +618,22 @@
     "message": "Повтор",
     "description": "Label"
   },
+  "todoEditTitle": {
+    "message": "Редактировать дело",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "Текст",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "Приоритет",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "Сохранить",
+    "description": "Label for save buttons in dialogs"
+  },
   "recurrenceNone": {
     "message": "Нет",
     "description": "No recurrence"

@@ -618,6 +618,22 @@
     "message": "Wiederholen",
     "description": "Label"
   },
+  "todoEditTitle": {
+    "message": "Aufgabe bearbeiten",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "Text",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "Priorität",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "Speichern",
+    "description": "Label for save buttons in dialogs"
+  },
   "recurrenceNone": {
     "message": "Keine",
     "description": "No recurrence"
