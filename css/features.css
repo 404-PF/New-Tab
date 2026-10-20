@@ -1825,6 +1825,23 @@ body.light-theme .eye-care-reminder-btn-secondary {
   color: #0f172a;
 }
 
+/* While the eye-care reminder is visible, push the shared top-middle pop-up
+   anchor below it so the reminder (z-index 5001) cannot cover toast, update,
+   or manual-check text during the break. */
+body:has(.eye-care-reminder:not([hidden])) .toast-notification,
+body:has(.eye-care-reminder:not([hidden])) .update-notification,
+body:has(.eye-care-reminder:not([hidden])) .manual-check-notification {
+  top: 160px;
+}
+
+@media (max-width: 640px) {
+  body:has(.eye-care-reminder:not([hidden])) .toast-notification,
+  body:has(.eye-care-reminder:not([hidden])) .update-notification,
+  body:has(.eye-care-reminder:not([hidden])) .manual-check-notification {
+    top: 220px;
+  }
+}
+
 @media (max-width: 640px) {
   .eye-care-reminder-content {
     flex-wrap: wrap;

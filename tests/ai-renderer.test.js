@@ -156,10 +156,10 @@ describe('AIRenderer copy failure notification (#839)', () => {
       container.querySelector('.ai-message-copy').click();
 
       await vi.waitFor(() => {
-        expect(document.querySelector('.toast-notification')).not.toBeNull();
+        expect(document.querySelector('.toast-notification.toast-error')).not.toBeNull();
       });
 
-      const notification = document.querySelector('.toast-notification');
+      const notification = document.querySelector('.toast-notification.toast-error');
       expect(notification.textContent).toBe(localizedCopyFailed);
 
       notification.remove();

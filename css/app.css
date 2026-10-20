@@ -1893,6 +1893,7 @@ body.light-theme .todo-bullet:hover .bullet-unchecked:where(:not(.todo-section, 
 .toast-notification.toast-warning {
   background: rgba(255, 152, 0, 0.95);
   border-color: rgba(255, 152, 0, 0.4);
+  color: #1f2937;
 }
 
 /* Light theme adjustments for inline date picker */
@@ -1980,7 +1981,7 @@ body.light-theme .toast-notification.toast-info {
 
 body.light-theme .toast-notification.toast-warning {
   background: rgba(255, 152, 0, 0.95);
-  color: white;
+  color: #1f2937;
 }
 
 /* Mobile responsive adjustments for inline date picker */

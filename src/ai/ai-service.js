@@ -49,6 +49,14 @@ const AIService = (function() {
     );
   }
 
+  function showToast(message, type) {
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, type);
+      return;
+    }
+    console.warn('[ai-service] showToast unavailable; message dropped:', message);
+  }
+
   function downloadMarkdownFile(filename, content) {
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -64,32 +72,32 @@ const AIService = (function() {
   function exportConversation(conversationId) {
     const exported = AIStore.exportConversation(conversationId);
     if (!exported) {
-      window.showToast(getTranslation('aiExportError'), 'error');
+      showToast(getTranslation('aiExportError'), 'error');
       return;
     }
 
     try {
       downloadMarkdownFile(exported.filename, exported.content);
-      window.showToast(getTranslation('aiExportSuccess'), 'success');
+      showToast(getTranslation('aiExportSuccess'), 'success');
     } catch (error) {
       console.error('Failed to export conversation:', error);
-      window.showToast(getTranslation('aiExportError'), 'error');
+      showToast(getTranslation('aiExportError'), 'error');
     }
   }
 
   function exportAllConversations() {
     const exported = AIStore.exportAllConversations();
     if (!exported) {
-      window.showToast(getTranslation('aiExportError'), 'error');
+      showToast(getTranslation('aiExportError'), 'error');
       return;
     }
 
     try {
       downloadMarkdownFile(exported.filename, exported.content);
-      window.showToast(getTranslation('aiExportAllSuccess'), 'success');
+      showToast(getTranslation('aiExportAllSuccess'), 'success');
     } catch (error) {
       console.error('Failed to export conversations:', error);
-      window.showToast(getTranslation('aiExportError'), 'error');
+      showToast(getTranslation('aiExportError'), 'error');
     }
   }
 
