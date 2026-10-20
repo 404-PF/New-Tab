@@ -67,11 +67,13 @@
   };
 
   // True when a keydown event should be skipped entirely: OS auto-repeat
-  // (holding a key would otherwise flood the game with moves) and keys typed
-  // into editable elements (#876).
+  // (holding a key would otherwise flood the game with moves), modified
+  // shortcuts (Ctrl/Cmd/Alt combos belong to the browser, so Ctrl+S must
+  // not be queued as a move or suppressed via preventDefault), and keys
+  // typed into editable elements (#876).
   window.gamesHelpers.shouldIgnoreKey = function (e) {
     if (!e) return true;
-    if (e.repeat) return true;
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return true;
     return window.gamesHelpers.isEditableTarget(e.target);
   };
 

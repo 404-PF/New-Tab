@@ -518,8 +518,25 @@
     draw(nowMs());
   }
 
+  // The shared key helpers are optional so a standalone or partial load still
+  // runs; fall back to the local editable-target and direction checks the
+  // handler used before #876 centralized them.
+  function shouldIgnoreKey(e) {
+    if (window.gamesHelpers && typeof window.gamesHelpers.shouldIgnoreKey === 'function') {
+      return window.gamesHelpers.shouldIgnoreKey(e);
+    }
+    return !e || !!(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable));
+  }
+
+  function isUpKey(e) {
+    if (window.gamesHelpers && typeof window.gamesHelpers.parseDirection === 'function') {
+      return window.gamesHelpers.parseDirection(e) === 'up';
+    }
+    return !!e && (e.code === 'ArrowUp' || e.code === 'KeyW' || e.key === 'w' || e.key === 'W');
+  }
+
   function handleKeydown(e) {
-    if (window.gamesHelpers.shouldIgnoreKey(e)) return;
+    if (shouldIgnoreKey(e)) return;
     if (!started) return;
 
     if (gameOver) {
@@ -545,7 +562,7 @@
       return;
     }
 
-    if (window.gamesHelpers.parseDirection(e) === 'up') {
+    if (isUpKey(e)) {
       e.preventDefault();
       flap();
     }

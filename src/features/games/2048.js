@@ -223,6 +223,9 @@
   // needed here.
   function serialize() {
     if (!started || gameOver) return null;
+    // Apply keys still buffered for the next animation frame so the saved
+    // run reflects every move the player already made (#876).
+    flushQueuedMoves();
     return {
       board: board.map(function (row) { return row.slice(); }),
       score: score,
@@ -283,14 +286,17 @@
   // The keydown handler only buffers a direction; a requestAnimationFrame
   // callback drains one buffered move, so hammering arrows can no longer
   // queue several DOM updates inside a single frame (#876).
+  function cancelMoveFrame() {
+    if (moveFrame === null) return;
+    if (typeof window.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(moveFrame);
+    }
+    moveFrame = null;
+  }
+
   function clearQueuedMoves() {
     queuedMoves = [];
-    if (moveFrame !== null) {
-      if (typeof window.cancelAnimationFrame === 'function') {
-        window.cancelAnimationFrame(moveFrame);
-      }
-      moveFrame = null;
-    }
+    cancelMoveFrame();
   }
 
   function queueMove(dir) {
@@ -301,6 +307,15 @@
     }
   }
 
+  function applyMove(dir) {
+    let moved;
+    if (dir === 'left') moved = moveLeft();
+    else if (dir === 'right') moved = moveRight();
+    else if (dir === 'up') moved = moveUp();
+    else moved = moveDown();
+    afterMove(moved);
+  }
+
   function applyQueuedMove() {
     moveFrame = null;
     const dir = queuedMoves.shift();
@@ -308,14 +323,19 @@
       queuedMoves = [];
       return;
     }
-    let moved;
-    if (dir === 'left') moved = moveLeft();
-    else if (dir === 'right') moved = moveRight();
-    else if (dir === 'up') moved = moveUp();
-    else moved = moveDown();
-    afterMove(moved);
+    applyMove(dir);
     if (!gameOver && queuedMoves.length > 0) {
       moveFrame = window.requestAnimationFrame(applyQueuedMove);
+    }
+  }
+
+  // Drain the buffer synchronously so a snapshot taken on a visibilitychange
+  // or pagehide serialization cannot drop a key whose animation frame has
+  // not run yet (#876).
+  function flushQueuedMoves() {
+    cancelMoveFrame();
+    while (!gameOver && queuedMoves.length > 0) {
+      applyMove(queuedMoves.shift());
     }
   }
 

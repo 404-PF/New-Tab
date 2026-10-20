@@ -202,6 +202,12 @@ describe('gamesHelpers.shouldIgnoreKey (#876)', () => {
     expect(window.gamesHelpers.shouldIgnoreKey({ repeat: false, target: document.body })).toBe(false);
   });
 
+  it('filters modified shortcuts so Ctrl/Cmd/Alt combos stay with the browser', () => {
+    expect(window.gamesHelpers.shouldIgnoreKey({ repeat: false, ctrlKey: true, target: document.body })).toBe(true);
+    expect(window.gamesHelpers.shouldIgnoreKey({ repeat: false, metaKey: true, target: document.body })).toBe(true);
+    expect(window.gamesHelpers.shouldIgnoreKey({ repeat: false, altKey: true, target: document.body })).toBe(true);
+  });
+
   it('filters keys typed into editable targets', () => {
     const input = document.createElement('input');
     const textarea = document.createElement('textarea');

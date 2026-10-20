@@ -211,7 +211,13 @@
   // ===================== Input =====================
 
   function handleKeydown(e) {
-    if (window.gamesHelpers.shouldIgnoreKey(e)) return;
+    // The shared key helper is optional so a standalone or partial load still
+    // runs; fall back to the local editable-target check used before #876.
+    if (window.gamesHelpers && typeof window.gamesHelpers.shouldIgnoreKey === 'function') {
+      if (window.gamesHelpers.shouldIgnoreKey(e)) return;
+    } else if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+      return;
+    }
 
     if (gameOver) {
       if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {

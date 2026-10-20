@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
+import { expectNoStackedKeydownListeners } from '../helpers/keydown-listener-tally.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
@@ -446,9 +447,12 @@ describe('Snake frame-driven input (#876)', () => {
 
   it('advances logic on animation frames instead of setInterval', () => {
     vi.useFakeTimers();
-    const setIntervalSpy = vi.spyOn(window, 'setInterval');
-    const { container, game } = startGame();
+    let container = null;
+    let game = null;
+    let setIntervalSpy = null;
     try {
+      setIntervalSpy = vi.spyOn(window, 'setInterval');
+      ({ container, game } = startGame());
       // The game loop is rAF-driven: starting and playing never touches
       // setInterval, so timer drift/coalescing cannot delay a queued turn.
       expect(setIntervalSpy).not.toHaveBeenCalled();
@@ -462,17 +466,19 @@ describe('Snake frame-driven input (#876)', () => {
 
       expect(setIntervalSpy).not.toHaveBeenCalled();
     } finally {
-      setIntervalSpy.mockRestore();
+      if (setIntervalSpy) setIntervalSpy.mockRestore();
       vi.useRealTimers();
-      game.destroy();
-      container.remove();
+      if (game) game.destroy();
+      if (container) container.remove();
     }
   });
 
   it('ignores OS auto-repeat but applies a real WASD press on the next frames', () => {
     vi.useFakeTimers();
-    const { container, game } = startGame();
+    let container = null;
+    let game = null;
     try {
+      ({ container, game } = startGame());
       // Auto-repeats are dropped instead of flooding the turn queue.
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp', repeat: true }));
       vi.advanceTimersByTime(300);
@@ -484,37 +490,14 @@ describe('Snake frame-driven input (#876)', () => {
       expect(game.serialize().direction).toBe('up');
     } finally {
       vi.useRealTimers();
-      game.destroy();
-      container.remove();
+      if (game) game.destroy();
+      if (container) container.remove();
     }
   });
 
   it('does not stack keydown listeners between consecutive plays', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
-    const game = window.GameRegistry.get('snake');
-
-    let keydownListeners = 0;
-    const origAdd = document.addEventListener;
-    const origRemove = document.removeEventListener;
-    document.addEventListener = function (type, listener, options) {
-      if (type === 'keydown') keydownListeners++;
-      return origAdd.call(document, type, listener, options);
-    };
-    document.removeEventListener = function (type, listener, options) {
-      if (type === 'keydown') keydownListeners--;
-      return origRemove.call(document, type, listener, options);
-    };
-    try {
-      for (let i = 0; i < 3; i++) {
-        game.init(container);
-        game.destroy();
-        expect(keydownListeners).toBe(0);
-      }
-    } finally {
-      document.addEventListener = origAdd;
-      document.removeEventListener = origRemove;
-      container.remove();
-    }
+    expectNoStackedKeydownListeners(window.GameRegistry.get('snake'), container);
   });
 });

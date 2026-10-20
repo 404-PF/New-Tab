@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
+import { expectNoStackedKeydownListeners } from '../helpers/keydown-listener-tally.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
@@ -502,23 +503,30 @@ describe('2048 responsive input (#876)', () => {
       won: false
     });
 
+    // serialize() flushes keys still buffered for the next frame (#876), so
+    // the buffering assertions read the rendered cells instead.
+    const boardEl = container.querySelector('.games-2048-board');
+    const cellTexts = () => Array.from(boardEl.querySelectorAll('.games-2048-cell')).map(c => c.textContent);
+
     try {
-      const start = game.serialize().board;
+      const start = cellTexts();
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
 
       // Moves are buffered, not applied synchronously in the keydown handler.
-      expect(game.serialize().board).toEqual(start);
+      expect(cellTexts()).toEqual(start);
 
       // One frame drains exactly one move: the tile slides left and one
       // deterministic random tile spawns (secureRandom mocked to 0).
       await flushFrame();
-      expect(game.serialize().board).toEqual([
-        [2, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]
-      ]);
+      expect(cellTexts()).toEqual(['2', '2', ...Array(14).fill('')]);
 
       // The next buffered move runs on the following frame.
+      await flushFrame();
+      expect(cellTexts()).toEqual(['4', '2', ...Array(14).fill('')]);
+
+      // The final buffered move is a no-op slide; the flushed snapshot agrees.
       await flushFrame();
       expect(game.serialize().board).toEqual([
         [4, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]
@@ -533,29 +541,6 @@ describe('2048 responsive input (#876)', () => {
   it('does not stack keydown listeners between consecutive plays', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
-    const game = window.GameRegistry.get('2048');
-
-    let keydownListeners = 0;
-    const origAdd = document.addEventListener;
-    const origRemove = document.removeEventListener;
-    document.addEventListener = function (type, listener, options) {
-      if (type === 'keydown') keydownListeners++;
-      return origAdd.call(document, type, listener, options);
-    };
-    document.removeEventListener = function (type, listener, options) {
-      if (type === 'keydown') keydownListeners--;
-      return origRemove.call(document, type, listener, options);
-    };
-    try {
-      for (let i = 0; i < 3; i++) {
-        game.init(container);
-        game.destroy();
-        expect(keydownListeners).toBe(0);
-      }
-    } finally {
-      document.addEventListener = origAdd;
-      document.removeEventListener = origRemove;
-      container.remove();
-    }
+    expectNoStackedKeydownListeners(window.GameRegistry.get('2048'), container);
   });
 });

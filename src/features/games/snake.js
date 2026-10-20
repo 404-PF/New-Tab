@@ -271,10 +271,11 @@
   // ===================== Game Loop (#876) =====================
   // Logic runs on a requestAnimationFrame fixed-step accumulator instead of
   // setInterval: timer wakes drift or coalesce (background tabs, OS
-  // throttling), which made a queued turn land one tick late. Ticks now fire
-  // on frame boundaries, so input is applied on the next animation frame.
-  // Rendering keeps its own interpolation loop; draw() still runs from tick()
-  // when that loop is off (reduced motion, paused).
+  // throttling), which made a queued turn land one tick late. Ticks fire
+  // when the accumulator crosses tickMs, so a queued turn is applied on the
+  // next tick, at most one tick interval after the key press. Rendering
+  // keeps its own interpolation loop; draw() still runs from tick() when
+  // that loop is off (reduced motion, paused).
 
   function stepLogic(frameAt) {
     if (logicFrame === null) return;
@@ -626,6 +627,15 @@
   // ===================== Input =====================
 
   function handleKeydown(e) {
+    if (window.gamesHelpers.isEditableTarget(e.target)) return;
+
+    // Swallow the browser default (page scroll) for game control keys even
+    // when the event itself is dropped below: a held arrow or Space key
+    // would otherwise scroll the page behind the game (#876).
+    if (!e.ctrlKey && !e.metaKey && !e.altKey &&
+        (window.gamesHelpers.parseDirection(e) || e.code === 'Space')) {
+      e.preventDefault();
+    }
     if (window.gamesHelpers.shouldIgnoreKey(e)) return;
 
     // Ignore all steering until the player has started the run.
