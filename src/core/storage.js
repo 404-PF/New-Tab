@@ -13,6 +13,9 @@
   let writeSequence = 0;
   const pendingWriteGenerations = new Map();
   const pendingRemoveRollbackSnapshots = new Map();
+  // Keys that have already reported a failed sync write, so the callback-reported
+  // and promise-rejection-reported paths cannot both roll the same write back.
+  const setRollbacks = new Map();
   const rollbackCacheOwners = new Map();
   const latestMutationGenerations = new Map();
   const pendingClearOperations = new Map();
@@ -430,6 +433,48 @@
     });
   }
 
+  // chrome.storage's callback API reports failures through chrome.runtime.lastError
+  // inside the callback, which every caller below already handles. A
+  // promise-returning implementation can instead reject without invoking the
+  // callback at all, so the returned promise must still be observed or it becomes
+  // an unhandled rejection. This attaches the rejection handler only — success
+  // still settles through the callback path, so no behaviour changes there.
+  function observeStorageRejection(result, onRejection) {
+    Promise.resolve(result).catch(onRejection);
+  }
+
+  // Shared failure side of a sync set: report, roll the optimistic cache back to
+  // the previous value, and clear the pending bookkeeping. Guarded so the
+  // callback-reported and rejection-reported paths cannot both run.
+  function rollbackSet(key, error, mutation, value, hadPreviousValue, previousValue) {
+    const { generation, previousGeneration } = mutation;
+    if (setRollbacks.get(key) === generation) {
+      return;
+    }
+    setRollbacks.set(key, generation);
+
+    const message = error?.message ? error.message : String(error);
+    console.warn(`Failed to persist ${key} to chrome.storage:`, message);
+    reportStorageWriteError(key, error, { generation, value });
+
+    if (pendingWriteGenerations.get(key) === generation && cache.get(key) === value) {
+      if (hadPreviousValue) {
+        cache.set(key, previousValue);
+        trackHydrationMutation(key, previousValue);
+      } else {
+        cache.delete(key);
+        trackHydrationMutation(key, null);
+      }
+      reconcileMutationGeneration(key, generation, previousGeneration);
+    }
+
+    if (pendingWriteGenerations.get(key) === generation) {
+      pendingWriteGenerations.delete(key);
+    }
+    cleanupMutationGeneration(key, generation);
+    finalizeClearOperations();
+  }
+
   function persistSet(key, value, hadPreviousValue, previousValue) {
     const storageArea = getStorageArea();
     if (!storageArea) {
@@ -438,30 +483,16 @@
 
     pendingRemoveRollbackSnapshots.delete(key);
     rollbackCacheOwners.delete(key);
+    setRollbacks.delete(key);
     const mutation = beginMutationGeneration(key);
-    const { generation, previousGeneration } = mutation;
+    const { generation } = mutation;
     pendingWriteGenerations.set(key, generation);
 
     try {
-      storageArea.set({ [key]: value }, () => {
-        const lastError = chrome.runtime?.lastError;
-
-        if (lastError) {
-          const message = lastError?.message ? lastError.message : String(lastError);
-          console.warn(`Failed to persist ${key} to chrome.storage:`, message);
-          reportStorageWriteError(key, lastError, { generation, value });
-
-          if (pendingWriteGenerations.get(key) === generation &&
-              cache.get(key) === value) {
-            if (hadPreviousValue) {
-              cache.set(key, previousValue);
-              trackHydrationMutation(key, previousValue);
-            } else {
-              cache.delete(key);
-              trackHydrationMutation(key, null);
-            }
-            reconcileMutationGeneration(key, generation, previousGeneration);
-          }
+      const result = storageArea.set({ [key]: value }, () => {
+        if (chrome.runtime?.lastError) {
+          rollbackSet(key, chrome.runtime.lastError, mutation, value, hadPreviousValue, previousValue);
+          return;
         }
 
         if (pendingWriteGenerations.get(key) === generation) {
@@ -470,24 +501,12 @@
         cleanupMutationGeneration(key, generation);
         finalizeClearOperations();
       });
+      observeStorageRejection(result, (error) => {
+        rollbackSet(key, error, mutation, value, hadPreviousValue, previousValue);
+      });
       return true;
     } catch (error) {
-      console.warn(`Failed to persist ${key} to chrome.storage:`, error);
-      reportStorageWriteError(key, error, { generation, value });
-
-      if (pendingWriteGenerations.get(key) === generation) {
-        pendingWriteGenerations.delete(key);
-        if (hadPreviousValue) {
-          cache.set(key, previousValue);
-          trackHydrationMutation(key, previousValue);
-        } else {
-          cache.delete(key);
-          trackHydrationMutation(key, null);
-        }
-        reconcileMutationGeneration(key, generation, previousGeneration);
-      }
-      cleanupMutationGeneration(key, generation);
-      finalizeClearOperations();
+      rollbackSet(key, error, mutation, value, hadPreviousValue, previousValue);
       return false;
     }
   }
@@ -506,7 +525,7 @@
     });
 
     try {
-      startOperation(() => {
+      const result = startOperation(() => {
         const lastError = chrome.runtime?.lastError;
         if (lastError) {
           rejectOperation(lastError);
@@ -515,6 +534,7 @@
 
         resolveOperation(true);
       });
+      observeStorageRejection(result, rejectOperation);
     } catch (error) {
       // chrome.storage threw synchronously: roll back the optimistic cache
       // update synchronously so fire-and-forget callers never observe the
@@ -651,7 +671,7 @@
     pendingWriteGenerations.set(key, generation);
     rollbackSnapshot.pendingGenerations.add(generation);
 
-    const finishRemove = (error) => {
+    const settleRemove = (error) => {
       const isActiveSnapshot = pendingRemoveRollbackSnapshots.get(key) === rollbackSnapshot;
 
       if (error) {
@@ -699,10 +719,22 @@
       finalizeClearOperations();
     };
 
+    // settle-once: the callback, a synchronous throw, and a promise rejection can
+    // all report, but only the first one drives the rollback.
+    let removeSettled = false;
+    const finishRemove = (error) => {
+      if (removeSettled) {
+        return;
+      }
+      removeSettled = true;
+      settleRemove(error);
+    };
+
     try {
-      storageArea.remove(key, () => {
+      const result = storageArea.remove(key, () => {
         finishRemove(chrome.runtime?.lastError || null);
       });
+      observeStorageRejection(result, finishRemove);
       return true;
     } catch (error) {
       finishRemove(error);
@@ -739,7 +771,7 @@
     }
 
     try {
-      storageArea.clear(() => {
+      const result = storageArea.clear(() => {
         const lastError = chrome.runtime?.lastError;
 
         if (lastError) {
@@ -749,6 +781,10 @@
         }
 
         settleClearOperation(generation, 'succeeded');
+      });
+      observeStorageRejection(result, (error) => {
+        console.warn('Failed to clear chrome.storage:', error);
+        settleClearOperation(generation, 'failed', error);
       });
     } catch (error) {
       console.warn('Failed to clear chrome.storage:', error);

@@ -38,6 +38,10 @@
     "message": "Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "customBackgroundDialogError": {
+    "message": "Der Bestätigungsdialog zum Löschen konnte nicht geöffnet werden. Bitte versuche es erneut.",
+    "description": "Error shown when the delete confirmation dialog cannot be opened"
+  },
   "onboardingSaveError": {
     "message": "Der Onboarding-Abschluss konnte nicht gespeichert werden. Dein Fortschritt wurde behalten, du kannst es erneut versuchen.",
     "description": "Error shown when onboarding completion cannot be persisted"
@@ -613,6 +617,22 @@
   "todoEditRecurrence": {
     "message": "Wiederholen",
     "description": "Label"
+  },
+  "todoEditTitle": {
+    "message": "Aufgabe bearbeiten",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "Text",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "Priorität",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "Speichern",
+    "description": "Label for save buttons in dialogs"
   },
   "recurrenceNone": {
     "message": "Keine",

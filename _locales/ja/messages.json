@@ -38,6 +38,10 @@
     "message": "カスタム背景を削除できませんでした。もう一度お試しください。",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "customBackgroundDialogError": {
+    "message": "削除の確認ダイアログを開けませんでした。もう一度お試しください。",
+    "description": "Error shown when the delete confirmation dialog cannot be opened"
+  },
   "onboardingSaveError": {
     "message": "オンボーディングの完了を保存できませんでした。進行状況は保持されているため、再試行できます。",
     "description": "Error shown when onboarding completion cannot be persisted"
@@ -613,6 +617,22 @@
   "todoEditRecurrence": {
     "message": "繰り返し",
     "description": "Label"
+  },
+  "todoEditTitle": {
+    "message": "Todoを編集",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "テキスト",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "優先度",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "保存",
+    "description": "Label for save buttons in dialogs"
   },
   "recurrenceNone": {
     "message": "なし",

@@ -38,6 +38,10 @@
     "message": "No se pudo eliminar el fondo personalizado. Inténtalo de nuevo.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "customBackgroundDialogError": {
+    "message": "No se pudo abrir el diálogo de confirmación de eliminación. Inténtalo de nuevo.",
+    "description": "Error shown when the delete confirmation dialog cannot be opened"
+  },
   "onboardingSaveError": {
     "message": "No se pudo guardar la finalización del tour de introducción. Tu progreso se conservó para que puedas reintentarlo.",
     "description": "Error shown when onboarding completion cannot be persisted"
@@ -613,6 +617,22 @@
   "todoEditRecurrence": {
     "message": "Repetir",
     "description": "Label"
+  },
+  "todoEditTitle": {
+    "message": "Editar tarea",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "Texto",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "Prioridad",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "Guardar",
+    "description": "Label for save buttons in dialogs"
   },
   "recurrenceNone": {
     "message": "Ninguna",

@@ -38,6 +38,10 @@
     "message": "Não foi possível excluir o plano de fundo personalizado. Tente novamente.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "customBackgroundDialogError": {
+    "message": "Não foi possível abrir o diálogo de confirmação de exclusão. Tente novamente.",
+    "description": "Error shown when the delete confirmation dialog cannot be opened"
+  },
   "onboardingSaveError": {
     "message": "Não foi possível salvar a conclusão do onboarding. Seu progresso foi mantido para você poder tentar novamente.",
     "description": "Error shown when onboarding completion cannot be persisted"
@@ -613,6 +617,22 @@
   "todoEditRecurrence": {
     "message": "Repetir",
     "description": "Label"
+  },
+  "todoEditTitle": {
+    "message": "Editar tarefa",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "Texto",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "Prioridade",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "Salvar",
+    "description": "Label for save buttons in dialogs"
   },
   "recurrenceNone": {
     "message": "Nenhum",

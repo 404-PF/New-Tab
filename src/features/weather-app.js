@@ -452,7 +452,9 @@
 
     // Trigger a refresh via the widget so data stays fresh
     if (window.WeatherWidget && window.WeatherWidget.refresh) {
-      window.WeatherWidget.refresh(false);
+      window.WeatherWidget.refresh(false).catch(function (error) {
+        console.error('Failed to refresh weather:', error);
+      });
     }
   }
 

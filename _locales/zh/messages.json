@@ -38,6 +38,10 @@
     "message": "无法删除自定义背景。请重试。",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "customBackgroundDialogError": {
+    "message": "无法打开删除确认对话框。请重试。",
+    "description": "Error shown when the delete confirmation dialog cannot be opened"
+  },
   "onboardingSaveError": {
     "message": "无法保存新手引导的完成状态。您的进度已保留，可以重试。",
     "description": "Error shown when onboarding completion cannot be persisted"
@@ -613,6 +617,22 @@
   "todoEditRecurrence": {
     "message": "重复",
     "description": "Label"
+  },
+  "todoEditTitle": {
+    "message": "编辑待办",
+    "description": "Title for the edit todo dialog"
+  },
+  "todoEditText": {
+    "message": "文本",
+    "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditPriority": {
+    "message": "优先级",
+    "description": "Label for the priority selector in the edit dialog"
+  },
+  "save": {
+    "message": "保存",
+    "description": "Label for save buttons in dialogs"
   },
   "recurrenceNone": {
     "message": "无",
