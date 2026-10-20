@@ -168,6 +168,64 @@ describe('AIStore conversation recovery (#458)', () => {
   });
 });
 
+describe('AIStore stale streaming flag recovery (#865)', () => {
+  it('clears a persisted isStreaming flag in state and in storage on load', () => {
+    const conversations = [{
+      id: 'conv-stream',
+      title: 'Interrupted answer',
+      messages: [
+        { id: 'm-user', role: 'user', content: 'Write a long answer', timestamp: 1 },
+        { id: 'm-assistant', role: 'assistant', content: 'Partial answer', timestamp: 2, isStreaming: true }
+      ],
+      createdAt: 1,
+      updatedAt: 2
+    }];
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(conversations)
+    );
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-stream');
+
+    AIStore.loadConversations();
+
+    const loadedMessage = AIStore.state.conversations[0].messages[1];
+    expect(loadedMessage.role).toBe('assistant');
+    expect(loadedMessage.content).toBe('Partial answer');
+    expect(loadedMessage.isStreaming).toBe(false);
+
+    const persisted = JSON.parse(
+      localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+    );
+    expect(persisted[0].messages[1].isStreaming).toBe(false);
+    expect(persisted[0].messages[1].content).toBe('Partial answer');
+    expect(persisted).toEqual(AIStore.state.conversations);
+  });
+
+  it('leaves messages without a stale flag untouched', () => {
+    const conversations = [{
+      id: 'conv-plain',
+      title: 'Normal topic',
+      messages: [
+        { id: 'm1', role: 'user', content: 'Hello' },
+        { id: 'm2', role: 'assistant', content: 'Hi there', timestamp: 2 }
+      ],
+      createdAt: 1,
+      updatedAt: 2
+    }];
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(conversations)
+    );
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-plain');
+    const storedBefore = localStorage.getItem(AIStore.STORAGE_KEYS.conversations);
+
+    AIStore.loadConversations();
+
+    expect(AIStore.state.conversations[0].messages[1].isStreaming).toBeUndefined();
+    expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations)).toBe(storedBefore);
+  });
+});
+
 describe('AIStore conversation cap (#586)', () => {
   function buildConversations(count) {
     // Newest conversations live at the front, mirroring createNewChat's unshift.

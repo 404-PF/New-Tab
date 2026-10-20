@@ -84,11 +84,19 @@ const AIStore = (function() {
 
       // Ensure every message has a stable id so the renderer can update
       // individual messages in place instead of rebuilding the whole list.
+      // A request interrupted mid-stream persists isStreaming: true and no
+      // live request owns it after a restart, so clear that transient flag
+      // instead of letting the renderer show a stuck streaming bubble (#865).
+      let clearedStreamingFlag = false;
       state.conversations.forEach(conversation => {
         if (Array.isArray(conversation.messages)) {
           conversation.messages.forEach(message => {
             if (!message.id) {
               message.id = generateId();
+            }
+            if (message.isStreaming) {
+              message.isStreaming = false;
+              clearedStreamingFlag = true;
             }
           });
         }
@@ -106,6 +114,13 @@ const AIStore = (function() {
         state.conversations.push(newConversation);
         state.currentConversationId = newConversation.id;
         saveConversationsSafely(previousState);
+      }
+
+      // Heal storage too, so the stale flag cannot resurface in exports or
+      // save rollbacks (#865). A cleared flag implies at least one message,
+      // so the empty-state branch above cannot have fired in this pass.
+      if (clearedStreamingFlag) {
+        saveConversationsSafely();
       }
     } catch (error) {
       console.warn('Failed to load conversations:', error);
