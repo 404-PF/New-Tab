@@ -11,6 +11,9 @@ beforeEach(() => {
   localStorage.clear();
   AIStore.state.conversations = [];
   AIStore.state.currentConversationId = null;
+  AIStore.state.isStreaming = false;
+  AIStore.state.isLoading = false;
+  AIStore.state.abortController = null;
 });
 
 describe('AIStore conversation identifiers', () => {
@@ -169,7 +172,7 @@ describe('AIStore conversation recovery (#458)', () => {
 });
 
 describe('AIStore stale streaming flag recovery (#865)', () => {
-  it('clears a persisted isStreaming flag in state and in storage on load', () => {
+  it('clears a persisted isStreaming flag in state and in storage on load', async () => {
     const conversations = [{
       id: 'conv-stream',
       title: 'Interrupted answer',
@@ -186,7 +189,9 @@ describe('AIStore stale streaming flag recovery (#865)', () => {
     );
     localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-stream');
 
-    AIStore.loadConversations();
+    // Await the healing write so the assertions below observe the settled
+    // bridge state, not the optimistic cache write.
+    await AIStore.loadConversations();
 
     const loadedMessage = AIStore.state.conversations[0].messages[1];
     expect(loadedMessage.role).toBe('assistant');
@@ -199,6 +204,10 @@ describe('AIStore stale streaming flag recovery (#865)', () => {
     expect(persisted[0].messages[1].isStreaming).toBe(false);
     expect(persisted[0].messages[1].content).toBe('Partial answer');
     expect(persisted).toEqual(AIStore.state.conversations);
+
+    const stored = await chrome.storage.local.get(AIStore.STORAGE_KEYS.conversations);
+    expect(JSON.parse(stored[AIStore.STORAGE_KEYS.conversations])[0].messages[1])
+      .toMatchObject({ content: 'Partial answer', isStreaming: false });
   });
 
   it('leaves messages without a stale flag untouched', () => {
@@ -223,6 +232,81 @@ describe('AIStore stale streaming flag recovery (#865)', () => {
 
     expect(AIStore.state.conversations[0].messages[1].isStreaming).toBeUndefined();
     expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations)).toBe(storedBefore);
+  });
+
+  it('keeps the cleared flag in memory when the healing save fails', async () => {
+    const conversations = [{
+      id: 'conv-stream',
+      title: 'Interrupted answer',
+      messages: [
+        { id: 'm-user', role: 'user', content: 'Write a long answer', timestamp: 1 },
+        { id: 'm-assistant', role: 'assistant', content: 'Partial answer', timestamp: 2, isStreaming: true }
+      ],
+      createdAt: 1,
+      updatedAt: 2
+    }];
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(conversations)
+    );
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-stream');
+
+    const restoreStorageSet = failStorageWritesFor(AIStore.STORAGE_KEYS.conversations, 'async');
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      expect(await AIStore.loadConversations()).toBe(false);
+
+      // The failed write rolls storage back to the stale snapshot, but the
+      // runtime state must stay normalized so the UI never shows a stuck
+      // streaming bubble (#865).
+      expect(AIStore.state.conversations[0].messages[1].isStreaming).toBe(false);
+      expect(JSON.parse(
+        localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+      )[0].messages[1].isStreaming).toBe(true);
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save conversations. Your last action was not saved.',
+        'error'
+      );
+    } finally {
+      restoreStorageSet();
+      if (typeof originalShowToast === 'undefined') {
+        delete window.showToast;
+      } else {
+        window.showToast = originalShowToast;
+      }
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('preserves a streaming flag owned by a live request on reload', () => {
+    const conversations = [{
+      id: 'conv-live',
+      title: 'Streaming answer',
+      messages: [
+        { id: 'm-user', role: 'user', content: 'Write a long answer', timestamp: 1 },
+        { id: 'm-assistant', role: 'assistant', content: 'Partial answer', timestamp: 2, isStreaming: true }
+      ],
+      createdAt: 1,
+      updatedAt: 2
+    }];
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(conversations)
+    );
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-live');
+    AIStore.state.isStreaming = true;
+
+    // openModal() reloads while a request is in flight; the flag the request
+    // still owns must survive, and no healing write may be issued (#865).
+    expect(AIStore.loadConversations()).toBeUndefined();
+    expect(AIStore.state.conversations[0].messages[1].isStreaming).toBe(true);
+    expect(JSON.parse(
+      localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+    )[0].messages[1].isStreaming).toBe(true);
   });
 });
 

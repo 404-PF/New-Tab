@@ -64,7 +64,52 @@ const AIStore = (function() {
     saveConversationsSafely(previousState);
   }
 
-  /** Loads persisted conversations without recovering when the validator is unavailable. */
+  // A request in flight owns its assistant message's isStreaming flag, and
+  // loadConversations() also runs mid-request (openModal reloads), so only
+  // flags no live request can still settle are stale (#865).
+  function clearUnownedStreamingFlags() {
+    if (state.isStreaming || state.isLoading || state.abortController !== null) {
+      return false;
+    }
+
+    let cleared = false;
+    state.conversations.forEach(conversation => {
+      if (!Array.isArray(conversation.messages)) return;
+      conversation.messages.forEach(message => {
+        if (message.isStreaming) {
+          message.isStreaming = false;
+          cleared = true;
+        }
+      });
+    });
+    return cleared;
+  }
+
+  // Persist the cleared flags. A failed save rolls runtime state back to the
+  // persisted snapshot that still carries them, so re-apply the cleanup after
+  // any failure: the live UI must never show a stuck streaming bubble (#865).
+  function healStoredStreamingFlags() {
+    const result = saveConversations();
+    const keepFlagsCleared = success => {
+      if (success === false) {
+        clearUnownedStreamingFlags();
+      }
+      return success;
+    };
+
+    if (isPromiseLike(result)) {
+      return result.then(keepFlagsCleared, error => {
+        console.error('Unexpected conversation save rejection:', error);
+        clearUnownedStreamingFlags();
+        return false;
+      });
+    }
+    return keepFlagsCleared(result);
+  }
+
+  /** Loads persisted conversations without recovering when the validator is unavailable.
+   *  Returns the healing storage write when stale streaming flags were cleared,
+   *  so callers can await the settlement. */
   function loadConversations() {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.conversations);
@@ -84,23 +129,20 @@ const AIStore = (function() {
 
       // Ensure every message has a stable id so the renderer can update
       // individual messages in place instead of rebuilding the whole list.
-      // A request interrupted mid-stream persists isStreaming: true and no
-      // live request owns it after a restart, so clear that transient flag
-      // instead of letting the renderer show a stuck streaming bubble (#865).
-      let clearedStreamingFlag = false;
       state.conversations.forEach(conversation => {
         if (Array.isArray(conversation.messages)) {
           conversation.messages.forEach(message => {
             if (!message.id) {
               message.id = generateId();
             }
-            if (message.isStreaming) {
-              message.isStreaming = false;
-              clearedStreamingFlag = true;
-            }
           });
         }
       });
+
+      // A request interrupted mid-stream persists isStreaming: true and no
+      // live request owns it after a restart, so clear that transient flag
+      // instead of letting the renderer show a stuck streaming bubble (#865).
+      const clearedStreamingFlag = clearUnownedStreamingFlags();
 
       const currentId = localStorage.getItem(STORAGE_KEYS.currentId);
 
@@ -120,7 +162,7 @@ const AIStore = (function() {
       // save rollbacks (#865). A cleared flag implies at least one message,
       // so the empty-state branch above cannot have fired in this pass.
       if (clearedStreamingFlag) {
-        saveConversationsSafely();
+        return healStoredStreamingFlags();
       }
     } catch (error) {
       console.warn('Failed to load conversations:', error);
