@@ -282,6 +282,24 @@ describe('Search providers - getAllProviders', () => {
   });
 });
 
+describe('Search providers - remote suggestion parsing', () => {
+  it('parses DuckDuckGo type=list payload [query, [strings]]', () => {
+    const suggestions = parseRemoteSearchSuggestions('duckduckgo', ['query', ['suggestion one', 'suggestion two']], 'query');
+    expect(suggestions).toEqual(['suggestion one', 'suggestion two']);
+  });
+
+  it('drops the echoed query from DuckDuckGo suggestions', () => {
+    const suggestions = parseRemoteSearchSuggestions('duckduckgo', ['cats', ['cats', 'cats and dogs']], 'cats');
+    expect(suggestions).toEqual(['cats and dogs']);
+  });
+
+  it('returns [] for DuckDuckGo payloads without a suggestions array', () => {
+    expect(parseRemoteSearchSuggestions('duckduckgo', ['query'], 'query')).toEqual([]);
+    expect(parseRemoteSearchSuggestions('duckduckgo', ['query', 'not-an-array'], 'query')).toEqual([]);
+    expect(parseRemoteSearchSuggestions('duckduckgo', null, 'query')).toEqual([]);
+  });
+});
+
 describe('Search providers - UI selection', () => {
   it('updateProviderSelection toggles active class on provider buttons', () => {
     saveActiveProvider('bing');

@@ -645,7 +645,8 @@ function parseRemoteSearchSuggestions(providerId, payload, query) {
       suggests.forEach((item) => add(item?.Txt));
     });
   } else if (providerId === 'duckduckgo' && Array.isArray(payload)) {
-    payload.forEach((item) => add(item && item.phrase));
+    const duckduckgoSuggestions = Array.isArray(payload[1]) ? payload[1] : [];
+    duckduckgoSuggestions.forEach(add);
   } else if (providerId === 'wikipedia' && Array.isArray(payload)) {
     const wikipediaSuggestions = Array.isArray(payload[1]) ? payload[1] : [];
     wikipediaSuggestions.forEach(add);
