@@ -15,7 +15,9 @@ describe('issue-milestone assigns closest [v*.*.*] milestone (#880)', () => {
   });
 
   it('grants issues: write and nothing more', () => {
-    expect(milestone).toMatch(/permissions:\n {6}contents: read\n {6}issues: write/);
+    // Anchored to the following steps: key so extra scopes cannot slip in
+    // after issues: write while still matching.
+    expect(milestone).toMatch(/permissions:\n {6}contents: read\n {6}issues: write\n {4}steps:/);
   });
 
   it('serializes runs in a shared group so concurrent opens re-read counts', () => {
@@ -23,6 +25,9 @@ describe('issue-milestone assigns closest [v*.*.*] milestone (#880)', () => {
     // count before either writes; one shared group serializes assignment.
     expect(milestone).toMatch(/concurrency:\n {2}group: issue-milestone\n {2}cancel-in-progress: false/);
     expect(milestone).not.toMatch(/group: issue-milestone-/);
+    // queue: max keeps every waiting run; the default single-slot queue
+    // would drop issue events that arrive during a burst.
+    expect(milestone).toMatch(/\n {2}queue: max\n/);
   });
 
   it('skips bot-created issues and issues that already have a milestone', () => {
@@ -36,6 +41,9 @@ describe('issue-milestone assigns closest [v*.*.*] milestone (#880)', () => {
     // jq regex source in the workflow file (shell-escaped backslashes).
     expect(milestone).toContain('test("^v[0-9]+\\\\.[0-9]+\\\\.[0-9]+$")');
     expect(milestone).toContain('sort_by(.title | ltrimstr("v") | split(".") | map(tonumber))');
+    // --slurp flattens paginated pages into one array before the jq queries.
+    expect(milestone).toMatch(/gh api --paginate --slurp "repos\/\$GH_REPO\/milestones\?state=all&per_page=100"/);
+    expect(milestone).toContain('[.[][] | select(');
   });
 
   it('resolves closest as the lowest still-open version', () => {
@@ -46,11 +54,17 @@ describe('issue-milestone assigns closest [v*.*.*] milestone (#880)', () => {
     expect(milestone).toMatch(/MILESTONE_LIMIT: 30/);
     expect(milestone).toMatch(/open_issues \+ \.closed_issues/);
     expect(milestone).toMatch(/-ge "\$MILESTONE_LIMIT"/);
-    // Overflow bumps one patch segment, e.g. v0.5.3 -> v0.5.4.
+    // Overflow bumps one patch segment, e.g. v0.5.3 -> v0.5.4, and keeps
+    // advancing while the next title is itself already full.
     expect(milestone).toMatch(/\.\[2\] = \(\(\.\[2\] \| tonumber\) \+ 1 \| tostring\)/);
+    expect(milestone).toMatch(/while \[ "\$TOTAL" -ge "\$MILESTONE_LIMIT" \]; do/);
   });
 
   it('creates the next milestone on demand when it does not exist', () => {
+    // Only open milestones are reused; a closed one with the same title is
+    // reopened instead of being assigned to as-is.
+    expect(milestone).toMatch(/select\(\.title == \$t and \.state == "open"\)/);
+    expect(milestone).toMatch(/Reopening closed milestone/);
     expect(milestone).toMatch(/Creating milestone \$TITLE/);
     expect(milestone).toMatch(/gh api "repos\/\$GH_REPO\/milestones" -f title="\$TITLE" -f state=open --jq \.number/);
   });

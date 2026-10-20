@@ -21,10 +21,13 @@ on:
 # One shared group (not per-issue): concurrent opens must serialize so each
 # run re-reads milestone counts after earlier assignments and rolls over
 # correctly once a milestone hits the 30-issue cap. cancel-in-progress is
-# false so a queued run waits instead of being cancelled.
+# false so a queued run waits instead of being cancelled, and queue: max
+# makes every waiting run stay queued instead of letting each new issue
+# event replace the single pending run and silently drop assignments.
 concurrency:
   group: issue-milestone
   cancel-in-progress: false
+  queue: max
 
 jobs:
   milestone:
@@ -64,8 +67,10 @@ jobs:
           FILE="$RUNNER_TEMP/milestones.json"
           # Milestone titles are untrusted data: keep only strict v*.*.*
           # titles, sorted ascending as semver.
-          gh api --paginate "repos/$GH_REPO/milestones?state=all&per_page=100" \
-            --jq '[.[] | select(.title | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(.title | ltrimstr("v") | split(".") | map(tonumber))' \
+          # --slurp flattens paginated responses into one array so the jq
+          # queries below see every milestone even past the first 100.
+          gh api --paginate --slurp "repos/$GH_REPO/milestones?state=all&per_page=100" \
+            --jq '[.[][] | select(.title | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(.title | ltrimstr("v") | split(".") | map(tonumber))' \
             > "$FILE"
 
           # Closest = lowest still-open version. With nothing open, continue
@@ -83,14 +88,28 @@ jobs:
           # Count is read from the just-fetched list at assignment time; the
           # shared concurrency group above keeps concurrent runs from both
           # landing on a milestone that hits the cap between read and write.
+          # Keep advancing while the target already holds >= 30 issues: a
+          # bumped title may itself be full. A title that is absent from the
+          # list counts as 0, which ends the loop.
           TOTAL="$(jq -r --arg t "$TITLE" 'map(select(.title == $t)) | first | (.open_issues + .closed_issues) // 0' "$FILE")"
-          if [ "$TOTAL" -ge "$MILESTONE_LIMIT" ]; then
+          while [ "$TOTAL" -ge "$MILESTONE_LIMIT" ]; do
+            echo "Milestone is full ($TOTAL >= $MILESTONE_LIMIT); rolling over."
             TITLE="$(bump "$TITLE")"
-            echo "Milestone is full ($TOTAL >= $MILESTONE_LIMIT); rolling over to $TITLE."
-          fi
+            TOTAL="$(jq -r --arg t "$TITLE" 'map(select(.title == $t)) | first | (.open_issues + .closed_issues) // 0' "$FILE")"
+          done
 
-          # Create the (possibly bumped) title when it does not exist yet.
-          NUMBER="$(jq -r --arg t "$TITLE" 'map(select(.title == $t)) | first | .number // empty' "$FILE")"
+          # Reuse only an *open* milestone: a closed one with the same title
+          # is reopened rather than assigned to as-is, and the title is
+          # created when nothing carries it yet.
+          NUMBER="$(jq -r --arg t "$TITLE" 'map(select(.title == $t and .state == "open")) | first | .number // empty' "$FILE")"
+          if [ -z "$NUMBER" ]; then
+            CLOSED="$(jq -r --arg t "$TITLE" 'map(select(.title == $t and .state == "closed")) | first | .number // empty' "$FILE")"
+            if [ -n "$CLOSED" ]; then
+              echo "Reopening closed milestone $TITLE (#$CLOSED)."
+              gh api -X PATCH "repos/$GH_REPO/milestones/$CLOSED" -f state=open >/dev/null
+              NUMBER="$CLOSED"
+            fi
+          fi
           if [ -z "$NUMBER" ]; then
             echo "Creating milestone $TITLE."
             NUMBER="$(gh api "repos/$GH_REPO/milestones" -f title="$TITLE" -f state=open --jq .number)"
