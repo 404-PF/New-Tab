@@ -58,7 +58,7 @@ describe('OfflineMode', () => {
     expect(OfflineMode.getResponse('help').content).toContain('offline');
   });
 
-  it.each(['3 people in room', '5 constructor to kg'])(
+  it.each(['3 people in room', '5 constructor to kg', '5 days to go'])(
     'leaves %s to the ordinary fallback', query => {
       expect(OfflineMode.parseConversion(query)).toBeNull();
       expect(OfflineMode.getResponse(query)).toMatchObject({ success: true, mode: 'offline' });
@@ -66,9 +66,9 @@ describe('OfflineMode', () => {
     }
   );
 
-  it('preserves existing knowledge-base matching for unknown source units', () => {
-    expect(OfflineMode.parseConversion('5 days to go')).toBeNull();
-    expect(OfflineMode.getResponse('5 days to go')).toEqual(OfflineMode.getResponse('day'));
+  it('still matches knowledge-base keys in unknown-source unit queries', () => {
+    expect(OfflineMode.parseConversion('5 day to go')).toBeNull();
+    expect(OfflineMode.getResponse('5 day to go')).toEqual(OfflineMode.getResponse('day'));
   });
 
   it('uses the platform CSPRNG when selecting a fact', () => {
