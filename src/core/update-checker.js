@@ -350,22 +350,16 @@ class UpdateChecker {
     const notification = document.createElement('div');
     notification.className = 'manual-check-notification';
 
+    // Only the icon varies by result type; the shell look comes from the
+    // shared top-middle pop-up styles in css/app.css (#877).
     let icon = 'ℹ️';
-    let bgColor = 'rgba(33, 150, 243, 0.1)';
-    let borderColor = 'rgba(33, 150, 243, 0.3)';
 
     if (type === 'success') {
       icon = '✅';
-      bgColor = 'rgba(34, 197, 94, 0.1)';
-      borderColor = 'rgba(34, 197, 94, 0.3)';
     } else if (type === 'warning') {
       icon = '⚠️';
-      bgColor = 'rgba(251, 191, 36, 0.1)';
-      borderColor = 'rgba(251, 191, 36, 0.3)';
     } else if (type === 'error') {
       icon = '❌';
-      bgColor = 'rgba(239, 68, 68, 0.1)';
-      borderColor = 'rgba(239, 68, 68, 0.3)';
     }
 
     notification.innerHTML = `
@@ -381,16 +375,6 @@ class UpdateChecker {
         </div>
       </div>
     `;
-
-    // Apply theme-specific colors
-    const isLightTheme = document.body.classList.contains('light-theme');
-    if (isLightTheme) {
-      notification.style.background = bgColor.replace('0.1', '0.05').replace('0.3', '0.2');
-      notification.style.borderColor = borderColor.replace('0.3', '0.2');
-    } else {
-      notification.style.background = bgColor;
-      notification.style.borderColor = borderColor;
-    }
 
     document.body.appendChild(notification);
 
