@@ -232,6 +232,50 @@
     "message": "Delete subtask",
     "description": "Tooltip for the subtask delete button"
   },
+  "todoEditTitle": {
+    "message": "Edit Todo",
+    "description": "Title of the todo edit modal"
+  },
+  "todoEditText": {
+    "message": "Text",
+    "description": "Label for the todo text field in the edit modal"
+  },
+  "todoEditPriority": {
+    "message": "Priority",
+    "description": "Label for the priority select in the todo edit modal"
+  },
+  "save": {
+    "message": "Save",
+    "description": "Button label to save changes in the todo edit, rename app, and change thumbnail modals"
+  },
+  "renameAppTitle": {
+    "message": "Rename App",
+    "description": "Title of the rename app modal"
+  },
+  "renameAppDescription": {
+    "message": "Enter a new name for this app",
+    "description": "Description shown in the rename app modal"
+  },
+  "enterAppName": {
+    "message": "App name",
+    "description": "Placeholder for the rename app name input"
+  },
+  "changeThumbnailDescription": {
+    "message": "Enter an image URL for the app icon",
+    "description": "Description shown in the change thumbnail modal"
+  },
+  "enterIconUrl": {
+    "message": "https://example.com/icon.png",
+    "description": "Placeholder for the app icon image URL input"
+  },
+  "deleteAppTitle": {
+    "message": "Delete App?",
+    "description": "Title of the delete app confirmation modal"
+  },
+  "deleteAppMessage": {
+    "message": "This app will be permanently removed from your list.",
+    "description": "Message shown in the delete app confirmation modal"
+  },
   "playbackControls": {
     "message": "Playback",
     "description": "Sub-header for video playback controls in the Live Background section"
