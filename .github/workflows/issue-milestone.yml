@@ -1,0 +1,114 @@
+name: issue-milestone
+
+# Assigns the closest open [v*.*.*] milestone to every newly opened issue
+# (#880). "Closest" is the lowest still-open version; titles that do not match
+# v*.*.* are ignored. When that milestone already holds >= 30 issues
+# (open + closed) at assignment time, the next patch milestone is assigned
+# instead, created on demand if it does not exist yet (v0.5.3 full ->
+# v0.5.4). Bot-created issues are skipped on purpose: bots do not triage, so
+# a milestone would never be acted on and would only churn the cap count.
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to assign a milestone to'
+        required: true
+        type: number
+
+# One shared group (not per-issue): concurrent opens must serialize so each
+# run re-reads milestone counts after earlier assignments and rolls over
+# correctly once a milestone hits the 30-issue cap. cancel-in-progress is
+# false so a queued run waits instead of being cancelled.
+concurrency:
+  group: issue-milestone
+  cancel-in-progress: false
+
+jobs:
+  milestone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Assign closest milestone
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+          ISSUE_USER_TYPE: ${{ github.event.issue.user.type }}
+          MILESTONE_LIMIT: 30
+        run: |
+          set -euo pipefail
+
+          if [ "$ISSUE_USER_TYPE" = 'Bot' ]; then
+            echo 'Bot-created issue; skipping milestone assignment.'
+            exit 0
+          fi
+
+          # Idempotency: never overwrite a milestone a human already set.
+          CURRENT="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq '.milestone.number // 0')"
+          if [ "$CURRENT" != '0' ]; then
+            echo "Issue #$ISSUE_NUMBER already has milestone #$CURRENT; skipping."
+            exit 0
+          fi
+
+          bump() {
+            jq -rn --arg t "$1" \
+              '$t | ltrimstr("v") | split(".") | .[2] = ((.[2] | tonumber) + 1 | tostring) | "v" + join(".")'
+          }
+
+          FILE="$RUNNER_TEMP/milestones.json"
+          # Milestone titles are untrusted data: keep only strict v*.*.*
+          # titles, sorted ascending as semver.
+          gh api --paginate "repos/$GH_REPO/milestones?state=all&per_page=100" \
+            --jq '[.[] | select(.title | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(.title | ltrimstr("v") | split(".") | map(tonumber))' \
+            > "$FILE"
+
+          # Closest = lowest still-open version. With nothing open, continue
+          # the chain from the highest known version.
+          TITLE="$(jq -r 'map(select(.state == "open")) | first | .title // empty' "$FILE")"
+          if [ -z "$TITLE" ]; then
+            [ "$(jq 'length' "$FILE")" -gt 0 ] || {
+              echo '::error::No v*.*.* milestone exists; nothing to be closest to.'
+              exit 1
+            }
+            TITLE="$(bump "$(jq -r 'last | .title' "$FILE")")"
+            echo "No open milestone; continuing with $TITLE."
+          fi
+
+          # Count is read from the just-fetched list at assignment time; the
+          # shared concurrency group above keeps concurrent runs from both
+          # landing on a milestone that hits the cap between read and write.
+          TOTAL="$(jq -r --arg t "$TITLE" 'map(select(.title == $t)) | first | (.open_issues + .closed_issues) // 0' "$FILE")"
+          if [ "$TOTAL" -ge "$MILESTONE_LIMIT" ]; then
+            TITLE="$(bump "$TITLE")"
+            echo "Milestone is full ($TOTAL >= $MILESTONE_LIMIT); rolling over to $TITLE."
+          fi
+
+          # Create the (possibly bumped) title when it does not exist yet.
+          NUMBER="$(jq -r --arg t "$TITLE" 'map(select(.title == $t)) | first | .number // empty' "$FILE")"
+          if [ -z "$NUMBER" ]; then
+            echo "Creating milestone $TITLE."
+            NUMBER="$(gh api "repos/$GH_REPO/milestones" -f title="$TITLE" -f state=open --jq .number)"
+          fi
+
+          gh api -X PATCH "repos/$GH_REPO/issues/$ISSUE_NUMBER" -F milestone="$NUMBER" >/dev/null
+          echo "Assigned $TITLE (#$NUMBER) to issue #$ISSUE_NUMBER."
+
+      # Tell the requester when a run they explicitly asked for fails.
+      # issues.opened stays silent to avoid noise on new issues.
+      - name: Report milestone failure on issue
+        if: failure() && github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
+            --body "Issue milestone assignment failed. See the workflow run: $RUN_URL"
