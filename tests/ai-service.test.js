@@ -513,6 +513,87 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
     expect(lastMsg.content).toBe('Partial thought');
   });
 
+  it('keeps partialContent as the finalized assistant message when a stream fails mid-answer (#843)', async () => {
+    const conversation = {
+      id: 'conv_partial_fail',
+      title: 'PartialFail',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+
+    let onChunkCallback = null;
+    let resolveRequest = null;
+    OpenRouterAPI.sendMessageStreaming = async (userMessage, history, onChunk) => {
+      onChunkCallback = onChunk;
+      return new Promise(resolve => {
+        resolveRequest = resolve;
+      });
+    };
+
+    const sendPromise = AIService.sendMessage('hello');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    onChunkCallback('Partial answer');
+
+    // A mid-stream timeout surfaces the already-streamed text via
+    // partialContent instead of aborting the caller's signal
+    resolveRequest({
+      success: false,
+      error: 'Network error occurred',
+      partialContent: 'Partial answer'
+    });
+    await sendPromise;
+
+    // Both messages must be kept, with the assistant message finalized
+    expect(conversation.messages).toHaveLength(2);
+    const lastMsg = conversation.messages[1];
+    expect(lastMsg.role).toBe('assistant');
+    expect(lastMsg.isStreaming).toBe(false);
+    expect(lastMsg.content).toBe('Partial answer');
+
+    // The partial content must survive a reload from storage
+    const saved = JSON.parse(localStorage.getItem('ai_conversations'));
+    expect(saved[0].messages[1].content).toBe('Partial answer');
+  });
+
+  it('still removes both messages when a failure delivers no partial content', async () => {
+    // Run with web grounding off so the failure does not take the
+    // ungrounded retry path (#739): this test checks only the
+    // no-partial-content removal behavior.
+    const originalIsWebGroundingEnabled = OpenRouterAPI.isWebGroundingEnabled;
+    OpenRouterAPI.isWebGroundingEnabled = () => false;
+
+    try {
+      const conversation = {
+        id: 'conv_fail_clean',
+        title: 'FailClean',
+        messages: [
+          { role: 'user', content: 'previous', timestamp: Date.now() }
+        ],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      AIStore.state.conversations = [conversation];
+      AIStore.state.currentConversationId = conversation.id;
+
+      OpenRouterAPI.sendMessageStreaming = async () => ({
+        success: false,
+        error: 'Network error occurred'
+      });
+
+      await AIService.sendMessage('hello');
+
+      // No partial content: the user/assistant pair added for this request
+      // is removed as before.
+      expect(conversation.messages).toHaveLength(1);
+      expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'previous' });
+    } finally {
+      OpenRouterAPI.isWebGroundingEnabled = originalIsWebGroundingEnabled;
+    }
+  });
+
   it('keeps partial offline content when a new message starts right after stop', async () => {
     const conversation = {
       id: 'conv_offline_race',
