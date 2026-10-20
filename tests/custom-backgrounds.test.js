@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 const MAIN_STORE = 'customBackgrounds';
@@ -350,6 +351,93 @@ describe('custom backgrounds database upgrade', () => {
       expect(harness.records.length).toBe(1);
     } finally {
       harness.restore();
+    }
+  });
+});
+
+describe('custom backgrounds delete confirmation errors', () => {
+  const deleteRecord = {
+    id: 'custom_delete_1',
+    title: 'Photo marked for deletion',
+    type: 'image',
+    data: new Blob(['fake'], { type: 'image/jpeg' }),
+    thumb: 'data:image/jpeg;base64,delete1'
+  };
+
+  // Injects the module, seeds one background, stubs window.showToast, and
+  // attaches a delete button so the document-level delete handler fires.
+  // restore() undoes all of it; each test also restores its own mock first.
+  function primeDeleteHarness() {
+    const harness = loadWithIndexedDB([deleteRecord]);
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+
+    const button = document.createElement('button');
+    button.className = 'custom-bg-delete-btn';
+    button.setAttribute('data-bg-id', deleteRecord.id);
+    document.body.appendChild(button);
+
+    return {
+      harness,
+      showToast,
+      button,
+      restore() {
+        button.remove();
+        document.querySelectorAll('.bg-confirm-dialog').forEach((el) => el.remove());
+        if (originalShowToast === undefined) {
+          delete window.showToast;
+        } else {
+          window.showToast = originalShowToast;
+        }
+        harness.restore();
+      }
+    };
+  }
+
+  it('reports the dialog error key when the confirmation dialog fails to open', async () => {
+    const ctx = primeDeleteHarness();
+    const originalCreateElement = document.createElement;
+    // The dialog promise only rejects if building it throws inside the
+    // executor, so fail element creation while the click runs.
+    document.createElement = () => {
+      throw new Error('confirmation dialog failed to open');
+    };
+
+    try {
+      ctx.button.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(ctx.showToast).toHaveBeenCalledWith('customBackgroundDialogError', 'error');
+      // The dialog never opened, so deletion must not have started.
+      expect(ctx.harness.records.map((bg) => bg.id)).toEqual([deleteRecord.id]);
+    } finally {
+      document.createElement = originalCreateElement;
+      ctx.restore();
+    }
+  });
+
+  it('reports the delete error key when reading the active background fails after confirmation', async () => {
+    const ctx = primeDeleteHarness();
+    const originalGetItem = localStorage.getItem;
+    localStorage.getItem = () => {
+      throw new Error('active background read failed');
+    };
+
+    try {
+      ctx.button.click();
+
+      const confirmButton = document.querySelector('.bg-confirm-delete');
+      expect(confirmButton).not.toBeNull();
+      confirmButton.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(ctx.showToast).toHaveBeenCalledWith('customBackgroundDeleteError', 'error');
+      // The read failed before deletion began, so the record survives.
+      expect(ctx.harness.records.map((bg) => bg.id)).toEqual([deleteRecord.id]);
+    } finally {
+      localStorage.getItem = originalGetItem;
+      ctx.restore();
     }
   });
 });
