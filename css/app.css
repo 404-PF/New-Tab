@@ -13,6 +13,14 @@
   position: relative;
 }
 
+/* backdrop-filter above makes .todo-section a stacking context, which scopes
+   the date pickers' z-index inside the section. While a picker popup is open,
+   lift the whole section above fixed layers (motto at 1999, footers at 2000)
+   so the popup occludes everything beneath it (issue #855). */
+.todo-section:has(.custom-calendar.visible, .inline-date-picker.visible) {
+  z-index: 2001;
+}
+
 .todo-header {
   display: flex;
   justify-content: space-between;
@@ -364,7 +372,9 @@ body.light-theme .heatmap-cell[data-level="3"] {
   left: 0;
   right: 0;
   margin-bottom: 8px;
-  background: rgba(0, 0, 0, 0.9);
+  /* Opaque surface so the app grid and wallpaper cannot bleed through the
+     popup; backdrop-filter stays as a progressive enhancement (issue #855). */
+  background: #141414;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -635,6 +645,45 @@ body.light-theme .inline-time-row {
 body.light-theme .date-picker-trigger.selected {
   background: rgba(33, 150, 243, 0.1);
   border-color: rgba(33, 150, 243, 0.4);
+}
+
+/* Opaque light surface lives here, not in glass.css, whose :not(.todo-section …)
+   guard excludes this subtree from the shared light glass cascade (issue #855). */
+body.light-theme .custom-calendar {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .calendar-nav-btn {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1f2937;
+}
+
+body.light-theme .calendar-nav-btn:hover {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+
+body.light-theme .calendar-title span {
+  color: #1f2937;
+}
+
+body.light-theme .calendar-weekdays span {
+  color: rgba(31, 41, 55, 0.6);
+}
+
+body.light-theme .calendar-btn.secondary {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1f2937;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .calendar-btn.secondary:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 body.light-theme .calendar-day {
@@ -1636,7 +1685,8 @@ body.light-theme .todo-bullet:hover .bullet-unchecked:where(:not(.todo-section, 
   top: 100%;
   left: 0;
   margin-top: 8px;
-  background: rgba(0, 0, 0, 0.95);
+  /* Opaque surface, matching .custom-calendar (issue #855). */
+  background: #141414;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
