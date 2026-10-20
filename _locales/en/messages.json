@@ -675,7 +675,7 @@
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "Arrow keys to merge tiles",
+    "message": "Arrow keys or WASD to merge tiles",
     "description": "2048 game controls"
   },
   "gamesMemory": {

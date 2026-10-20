@@ -495,7 +495,7 @@
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "Стрелки для объединения блоков",
+    "message": "Стрелки или WASD для объединения блоков",
     "description": "2048 game controls"
   },
   "gamesMemory": {

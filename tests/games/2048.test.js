@@ -13,6 +13,12 @@ beforeEach(() => {
   document.querySelectorAll('.games-score-display, .games-2048-board, .games-ready-overlay, .games-instructions').forEach(el => el.remove());
 });
 
+// Resolves after the next animation frame, once any move buffered by the
+// keydown handler (#876) has been drained.
+function flushFrame() {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
 describe('2048 Game', () => {
   it('registers with GameRegistry', () => {
     const game = window.GameRegistry.get('2048');
@@ -266,15 +272,17 @@ describe('2048 cross-session saves (#646)', () => {
   }
 
   // Launch through the registry, start, and make moves until the board
-  // changes from its initial render.
-  function playUntilBoardChanged() {
+  // changes from its initial render. Moves are buffered per frame (#876), so
+  // each keydown is followed by a flush before the board is compared.
+  async function playUntilBoardChanged() {
     const container = ensureContainer();
     expect(window.GameRegistry.launch('2048')).toBe(true);
     document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
     const boardBefore = container.querySelector('.games-2048-board').innerHTML;
     for (let i = 0; i < 4; i++) {
       const dirs = ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'];
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: dirs[i] }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: dirs[i], code: dirs[i] }));
+      await flushFrame();
       if (container.querySelector('.games-2048-board').innerHTML !== boardBefore) return true;
     }
     return false;
@@ -285,9 +293,9 @@ describe('2048 cross-session saves (#646)', () => {
       .forEach(el => el.remove());
   });
 
-  it('persists the board on destroyCurrent and restores it on the next init', () => {
+  it('persists the board on destroyCurrent and restores it on the next init', async () => {
     const container = ensureContainer();
-    if (!playUntilBoardChanged()) {
+    if (!(await playUntilBoardChanged())) {
       window.GameRegistry.destroyCurrent();
       container.remove();
       return; // extremely unlikely with random tiles; nothing to assert
@@ -450,5 +458,104 @@ describe('2048 save validation round 2 (review #654)', () => {
 
     game.destroy();
     container.remove();
+  });
+});
+
+describe('2048 responsive input (#876)', () => {
+  it('accepts WASD keys and ignores OS auto-repeat', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    // A restored run starts immediately, skipping the ready screen.
+    game.init(container, {
+      board: [[0, 0, 0, 0], [0, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 0,
+      won: false
+    });
+    const boardEl = container.querySelector('.games-2048-board');
+    const before = boardEl.innerHTML;
+
+    // Auto-repeat is dropped: S would slide the tile down if it registered.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS', repeat: true }));
+    await flushFrame();
+    expect(boardEl.innerHTML).toBe(before);
+
+    // A real W press moves up (parsed from e.code, like Snake and Pac-Man).
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', code: 'KeyW' }));
+    await flushFrame();
+    expect(boardEl.innerHTML).not.toBe(before);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('buffers rapid keys to at most one board update per frame', async () => {
+    const randomSpy = vi.spyOn(window.GameRegistry, 'secureRandom').mockReturnValue(0);
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    game.init(container, {
+      board: [[0, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 0,
+      won: false
+    });
+
+    try {
+      const start = game.serialize().board;
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+
+      // Moves are buffered, not applied synchronously in the keydown handler.
+      expect(game.serialize().board).toEqual(start);
+
+      // One frame drains exactly one move: the tile slides left and one
+      // deterministic random tile spawns (secureRandom mocked to 0).
+      await flushFrame();
+      expect(game.serialize().board).toEqual([
+        [2, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]
+      ]);
+
+      // The next buffered move runs on the following frame.
+      await flushFrame();
+      expect(game.serialize().board).toEqual([
+        [4, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]
+      ]);
+    } finally {
+      randomSpy.mockRestore();
+      game.destroy();
+      container.remove();
+    }
+  });
+
+  it('does not stack keydown listeners between consecutive plays', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    let keydownListeners = 0;
+    const origAdd = document.addEventListener;
+    const origRemove = document.removeEventListener;
+    document.addEventListener = function (type, listener, options) {
+      if (type === 'keydown') keydownListeners++;
+      return origAdd.call(document, type, listener, options);
+    };
+    document.removeEventListener = function (type, listener, options) {
+      if (type === 'keydown') keydownListeners--;
+      return origRemove.call(document, type, listener, options);
+    };
+    try {
+      for (let i = 0; i < 3; i++) {
+        game.init(container);
+        game.destroy();
+        expect(keydownListeners).toBe(0);
+      }
+    } finally {
+      document.addEventListener = origAdd;
+      document.removeEventListener = origRemove;
+      container.remove();
+    }
   });
 });

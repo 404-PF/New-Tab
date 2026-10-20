@@ -495,7 +495,7 @@
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "矢印キーでブロックを合体",
+    "message": "矢印キーまたはWASDでブロックを合体",
     "description": "2048 game controls"
   },
   "gamesMemory": {

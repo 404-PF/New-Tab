@@ -206,6 +206,17 @@ describe('Pac-Man input and movement', () => {
     container.remove();
   });
 
+  it('ignores OS auto-repeated direction keys (#876)', () => {
+    const container = makeContainer();
+    startWithSpace();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', key: 'KeyW', repeat: true, bubbles: true }));
+    expect(window.__pacmanTest.getState().queuedDirs).toEqual([]);
+
+    getGame().destroy();
+    container.remove();
+  });
+
   it('pauses with Space and resume() is a no-op while manually paused', () => {
     const container = makeContainer();
     startWithSpace();

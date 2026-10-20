@@ -41,6 +41,40 @@
     return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || !!target.isContentEditable;
   };
 
+  // Steering directions resolved from KeyboardEvent.code, which is based on
+  // the physical key position and therefore layout-independent (the WASD
+  // block steers the same on QWERTY, AZERTY, Dvorak, ...).
+  const CODE_TO_DIRECTION = {
+    ArrowUp: 'up', KeyW: 'up',
+    ArrowDown: 'down', KeyS: 'down',
+    ArrowLeft: 'left', KeyA: 'left',
+    ArrowRight: 'right', KeyD: 'right'
+  };
+  // Fallback for events that carry only `key` (synthetic events, older
+  // callers); e.code always wins when present.
+  const KEY_TO_DIRECTION = {
+    ArrowUp: 'up', w: 'up', W: 'up',
+    ArrowDown: 'down', s: 'down', S: 'down',
+    ArrowLeft: 'left', a: 'left', A: 'left',
+    ArrowRight: 'right', d: 'right', D: 'right'
+  };
+
+  // Resolve a steering direction ('up' | 'down' | 'left' | 'right') from a
+  // keydown event, or null when the key is not a direction key (#876).
+  window.gamesHelpers.parseDirection = function (e) {
+    if (!e) return null;
+    return CODE_TO_DIRECTION[e.code] || KEY_TO_DIRECTION[e.key] || null;
+  };
+
+  // True when a keydown event should be skipped entirely: OS auto-repeat
+  // (holding a key would otherwise flood the game with moves) and keys typed
+  // into editable elements (#876).
+  window.gamesHelpers.shouldIgnoreKey = function (e) {
+    if (!e) return true;
+    if (e.repeat) return true;
+    return window.gamesHelpers.isEditableTarget(e.target);
+  };
+
   // Keep at most one state overlay (for example paused or game over) on a
   // stage. sync(stage, kind, optionsFor) re-renders only when kind changes;
   // optionsFor(kind) returns renderDOMOverlay options. A null kind clears it.

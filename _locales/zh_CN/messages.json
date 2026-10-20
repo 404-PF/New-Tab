@@ -495,7 +495,7 @@
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "方向键合并方块",
+    "message": "方向键或 WASD 合并方块",
     "description": "2048 game controls"
   },
   "gamesMemory": {

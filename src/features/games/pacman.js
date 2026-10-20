@@ -34,16 +34,6 @@
     right: { x: 1, y: 0 }
   };
   const OPPOSITE = { up: 'down', down: 'up', left: 'right', right: 'left' };
-  const KEY_TO_DIR = {
-    ArrowUp: 'up',
-    KeyW: 'up',
-    ArrowDown: 'down',
-    KeyS: 'down',
-    ArrowLeft: 'left',
-    KeyA: 'left',
-    ArrowRight: 'right',
-    KeyD: 'right'
-  };
   const SCATTER_MS = 7000;
   const CHASE_MS = 20000;
   const MODE_SEQUENCE = [
@@ -1077,7 +1067,7 @@
   // ===================== Input =====================
 
   function handleKeydown(e) {
-    if (!started || window.gamesHelpers.isEditableTarget(e.target)) return;
+    if (!started || window.gamesHelpers.shouldIgnoreKey(e)) return;
 
     if (gameOver) {
       window.gamesHelpers.handleRestartSpace(e, resetAndStart);
@@ -1097,7 +1087,7 @@
       return;
     }
 
-    const dir = KEY_TO_DIR[e.code];
+    const dir = window.gamesHelpers.parseDirection(e);
     if (dir) {
       e.preventDefault();
       queueTurn(dir);

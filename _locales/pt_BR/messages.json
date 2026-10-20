@@ -495,7 +495,7 @@
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "Setas para juntar blocos",
+    "message": "Setas ou WASD para juntar blocos",
     "description": "2048 game controls"
   },
   "gamesMemory": {

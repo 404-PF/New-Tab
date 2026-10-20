@@ -495,7 +495,7 @@
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "방향키로 블록 합치기",
+    "message": "방향키 또는 WASD로 블록 합치기",
     "description": "2048 game controls"
   },
   "gamesMemory": {

@@ -123,6 +123,21 @@ describe('Flappy Bird input and lifecycle', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp', key: 'ArrowUp' }));
     expect(window.__flappyBirdTest.getState().started).toBe(false);
   });
+
+  it('flaps on the W code and ignores OS auto-repeat (#876)', () => {
+    const container = makeContainer();
+    startWithSpace();
+
+    const before = window.__flappyBirdTest.getState();
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', key: 'w', repeat: true }));
+    expect(window.__flappyBirdTest.getState().bird.vy).toBe(before.bird.vy);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', key: 'w' }));
+    expect(window.__flappyBirdTest.getState().bird.vy).toBeLessThan(before.bird.vy);
+
+    getGame().destroy();
+    container.remove();
+  });
 });
 
 describe('Flappy Bird save and restore', () => {

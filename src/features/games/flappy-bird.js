@@ -519,9 +519,7 @@
   }
 
   function handleKeydown(e) {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
-      return;
-    }
+    if (window.gamesHelpers.shouldIgnoreKey(e)) return;
     if (!started) return;
 
     if (gameOver) {
@@ -547,7 +545,7 @@
       return;
     }
 
-    if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.key === 'w' || e.key === 'W') {
+    if (window.gamesHelpers.parseDirection(e) === 'up') {
       e.preventDefault();
       flap();
     }

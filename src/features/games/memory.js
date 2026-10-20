@@ -211,9 +211,7 @@
   // ===================== Input =====================
 
   function handleKeydown(e) {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
-      return;
-    }
+    if (window.gamesHelpers.shouldIgnoreKey(e)) return;
 
     if (gameOver) {
       if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {

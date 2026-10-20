@@ -160,3 +160,60 @@ describe('gamesHelpers.createReadyScreen', () => {
     parent.remove();
   });
 });
+
+describe('gamesHelpers.parseDirection (#876)', () => {
+  it('resolves arrows and WASD via e.code so steering is layout-independent', () => {
+    const parse = window.gamesHelpers.parseDirection;
+    expect(parse({ code: 'ArrowUp', key: 'ArrowUp' })).toBe('up');
+    expect(parse({ code: 'ArrowDown', key: 'ArrowDown' })).toBe('down');
+    expect(parse({ code: 'ArrowLeft', key: 'ArrowLeft' })).toBe('left');
+    expect(parse({ code: 'ArrowRight', key: 'ArrowRight' })).toBe('right');
+    expect(parse({ code: 'KeyW' })).toBe('up');
+    expect(parse({ code: 'KeyS' })).toBe('down');
+    expect(parse({ code: 'KeyA' })).toBe('left');
+    expect(parse({ code: 'KeyD' })).toBe('right');
+    // The physical code wins over a layout-specific key label (e.g. KeyW is
+    // the "Z" key on AZERTY but must still steer up).
+    expect(parse({ code: 'KeyW', key: 'z' })).toBe('up');
+    expect(parse({ code: 'ArrowUp', key: 'NoBody' })).toBe('up');
+  });
+
+  it('falls back to e.key when e.code is missing (synthetic events)', () => {
+    const parse = window.gamesHelpers.parseDirection;
+    expect(parse({ key: 'ArrowLeft', code: '' })).toBe('left');
+    expect(parse({ key: 'w' })).toBe('up');
+    expect(parse({ key: 'D' })).toBe('right');
+    expect(parse({ key: 's' })).toBe('down');
+  });
+
+  it('returns null for non-direction keys and missing events', () => {
+    const parse = window.gamesHelpers.parseDirection;
+    expect(parse({ code: 'Space', key: ' ' })).toBeNull();
+    expect(parse({ code: 'Enter', key: 'Enter' })).toBeNull();
+    expect(parse({ code: 'KeyQ', key: 'q' })).toBeNull();
+    expect(parse(null)).toBeNull();
+    expect(parse(undefined)).toBeNull();
+  });
+});
+
+describe('gamesHelpers.shouldIgnoreKey (#876)', () => {
+  it('filters OS key auto-repeat', () => {
+    expect(window.gamesHelpers.shouldIgnoreKey({ repeat: true, target: document.body })).toBe(true);
+    expect(window.gamesHelpers.shouldIgnoreKey({ repeat: false, target: document.body })).toBe(false);
+  });
+
+  it('filters keys typed into editable targets', () => {
+    const input = document.createElement('input');
+    const textarea = document.createElement('textarea');
+    const div = document.createElement('div');
+    div.isContentEditable = true;
+    expect(window.gamesHelpers.shouldIgnoreKey({ repeat: false, target: input })).toBe(true);
+    expect(window.gamesHelpers.shouldIgnoreKey({ repeat: false, target: textarea })).toBe(true);
+    expect(window.gamesHelpers.shouldIgnoreKey({ repeat: false, target: div })).toBe(true);
+  });
+
+  it('treats a missing event as ignorable', () => {
+    expect(window.gamesHelpers.shouldIgnoreKey(null)).toBe(true);
+    expect(window.gamesHelpers.shouldIgnoreKey(undefined)).toBe(true);
+  });
+});
