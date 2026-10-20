@@ -988,3 +988,66 @@ describe('AIService web grounding fallback (#707)', () => {
       .toContain('Web search is unavailable');
   });
 });
+
+describe('Offline chat Object.prototype key inputs (#864)', () => {
+  const seedConversation = () => {
+    const conversation = {
+      id: 'conv_proto_keys',
+      title: 'ProtoKeys',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    document.getElementById('ai-chat-error').style.display = 'none';
+    return conversation;
+  };
+
+  it('streams the fallback reply without deleting the sent message', async () => {
+    const conversation = seedConversation();
+
+    window.dispatchEvent(new Event('offline'));
+    expect(NetworkDetector.getStatus().isOffline).toBe(true);
+
+    try {
+      await AIService.sendMessage('constructor');
+
+      expect(conversation.messages).toHaveLength(2);
+      expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'constructor' });
+      const assistant = conversation.messages[1];
+      expect(assistant.role).toBe('assistant');
+      expect(assistant.isStreaming).toBe(false);
+      expect(typeof assistant.content).toBe('string');
+      expect(assistant.content).toContain('couldn\'t process');
+      expect(document.getElementById('ai-chat-error').style.display).not.toBe('block');
+    } finally {
+      window.dispatchEvent(new Event('online'));
+    }
+  });
+
+  it('keeps the sent message when a malformed offline reply cannot render', async () => {
+    const conversation = seedConversation();
+
+    window.dispatchEvent(new Event('offline'));
+    expect(NetworkDetector.getStatus().isOffline).toBe(true);
+    const originalGetResponse = OfflineMode.getResponse;
+    OfflineMode.getResponse = () => ({ success: true, content: {} });
+
+    try {
+      await AIService.sendMessage('constructor');
+
+      expect(conversation.messages).toHaveLength(2);
+      expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'constructor' });
+      const assistant = conversation.messages[1];
+      expect(assistant.role).toBe('assistant');
+      expect(assistant.isStreaming).toBe(false);
+      expect(typeof assistant.content).toBe('string');
+      expect(assistant.content.trim().length).toBeGreaterThan(0);
+      expect(document.getElementById('ai-chat-error').style.display).not.toBe('block');
+    } finally {
+      OfflineMode.getResponse = originalGetResponse;
+      window.dispatchEvent(new Event('online'));
+    }
+  });
+});
