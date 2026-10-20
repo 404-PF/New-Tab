@@ -38,6 +38,10 @@
     "message": "Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "customBackgroundDialogError": {
+    "message": "Der Bestätigungsdialog zum Löschen konnte nicht geöffnet werden. Bitte versuche es erneut.",
+    "description": "Error shown when the delete confirmation dialog cannot be opened"
+  },
   "onboardingSaveError": {
     "message": "Der Onboarding-Abschluss konnte nicht gespeichert werden. Dein Fortschritt wurde behalten, du kannst es erneut versuchen.",
     "description": "Error shown when onboarding completion cannot be persisted"

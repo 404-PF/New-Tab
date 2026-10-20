@@ -389,6 +389,14 @@
     return `${Math.abs(lat).toFixed(2)}°${ns}, ${Math.abs(lon).toFixed(2)}°${ew}`;
   }
 
+  // Fire-and-forget refresh for UI event handlers, which cannot await. Network and
+  // storage errors are caught inside refreshWeather; this logs anything that escapes it.
+  function refreshWeatherSafely(force = false) {
+    refreshWeather(force).catch(function (error) {
+      console.error('Failed to refresh weather:', error);
+    });
+  }
+
   async function refreshWeather(force = false) {
     if (!WeatherStorage.loadEnabled()) {
       hideWidget();
@@ -511,7 +519,7 @@
       isRefreshing = false;
       if (pendingRefresh) {
         pendingRefresh = false;
-        refreshWeather(true);
+        refreshWeatherSafely(true);
       }
     }
   }
@@ -531,7 +539,7 @@
     }
 
     // Refresh weather
-    refreshWeather();
+    refreshWeatherSafely();
   }
 
   // ===================== Settings Integration =====================
@@ -607,7 +615,7 @@
         });
         const cache = WeatherStorage.loadCache();
         if (WeatherStorage.loadLocationMode() === 'auto') {
-          refreshWeather(true);
+          refreshWeatherSafely(true);
           return;
         }
         if (cache && cache.data && isCacheMatchingSettings(cache)) {
@@ -615,7 +623,7 @@
             renderWeather(cache.data, cache.locationName, value);
           }
         } else {
-          refreshWeather(true);
+          refreshWeatherSafely(true);
         }
       });
     }
@@ -636,7 +644,7 @@
         });
         const manualGroup = document.getElementById('weather-manual-group');
         if (manualGroup) manualGroup.style.display = value === 'manual' ? 'block' : 'none';
-        refreshWeather(true);
+        refreshWeatherSafely(true);
       });
     }
 
@@ -647,20 +655,20 @@
           const trimmed = this.value.trim();
           if (trimmed === WeatherStorage.loadManualCity()) return;
           WeatherStorage.saveManualCity(trimmed);
-          refreshWeather(true);
+          refreshWeatherSafely(true);
         }
       });
       manualInput.addEventListener('blur', function() {
         const trimmed = this.value.trim();
         if (trimmed === WeatherStorage.loadManualCity()) return;
         WeatherStorage.saveManualCity(trimmed);
-        refreshWeather(true);
+        refreshWeatherSafely(true);
       });
     }
 
     if (refreshBtn) {
       refreshBtn.addEventListener('click', function() {
-        refreshWeather(true);
+        refreshWeatherSafely(true);
       });
     }
   }
@@ -673,7 +681,7 @@
   window.addEventListener('languageChanged', function() {
     if (!WeatherStorage.loadEnabled()) return;
     if (isRefreshing) { pendingRefresh = true; return; }
-    refreshWeather(true);
+    refreshWeatherSafely(true);
   });
 
   // ===================== Initialization =====================

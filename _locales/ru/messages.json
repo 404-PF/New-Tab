@@ -38,6 +38,10 @@
     "message": "Не удалось удалить пользовательский фон. Повторите попытку.",
     "description": "Error shown when a custom background cannot be deleted"
   },
+  "customBackgroundDialogError": {
+    "message": "Не удалось открыть диалог подтверждения удаления. Повторите попытку.",
+    "description": "Error shown when the delete confirmation dialog cannot be opened"
+  },
   "onboardingSaveError": {
     "message": "Не удалось сохранить завершение обучения. Ваш прогресс сохранён, вы можете повторить попытку.",
     "description": "Error shown when onboarding completion cannot be persisted"

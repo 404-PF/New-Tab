@@ -4640,15 +4640,15 @@ const translations = {
 };
 
 const customBackgroundErrorTranslations = {
-  en: ['Failed to load custom backgrounds. Please try again.', 'Failed to load the custom background. Please try again.', 'Failed to delete the custom background. Please try again.'],
-  zh: ['无法加载自定义背景。请重试。', '无法加载该自定义背景。请重试。', '无法删除自定义背景。请重试。'],
-  ja: ['カスタム背景を読み込めませんでした。もう一度お試しください。', 'このカスタム背景を読み込めませんでした。もう一度お試しください。', 'カスタム背景を削除できませんでした。もう一度お試しください。'],
-  ko: ['사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.', '이 사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.', '사용자 지정 배경을 삭제하지 못했습니다. 다시 시도해 주세요.'],
-  es: ['No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.', 'No se pudo cargar el fondo personalizado. Inténtalo de nuevo.', 'No se pudo eliminar el fondo personalizado. Inténtalo de nuevo.'],
-  fr: ['Impossible de charger les arrière-plans personnalisés. Veuillez réessayer.', 'Impossible de charger l’arrière-plan personnalisé. Veuillez réessayer.', 'Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.'],
-  de: ['Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.', 'Der benutzerdefinierte Hintergrund konnte nicht geladen werden. Bitte versuche es erneut.', 'Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.'],
-  pt: ['Não foi possível carregar os planos de fundo personalizados. Tente novamente.', 'Não foi possível carregar o plano de fundo personalizado. Tente novamente.', 'Não foi possível excluir o plano de fundo personalizado. Tente novamente.'],
-  ru: ['Не удалось загрузить пользовательские фоны. Повторите попытку.', 'Не удалось загрузить пользовательский фон. Повторите попытку.', 'Не удалось удалить пользовательский фон. Повторите попытку.']
+  en: ['Failed to load custom backgrounds. Please try again.', 'Failed to load the custom background. Please try again.', 'Failed to delete the custom background. Please try again.', 'Failed to open the delete confirmation dialog. Please try again.'],
+  zh: ['无法加载自定义背景。请重试。', '无法加载该自定义背景。请重试。', '无法删除自定义背景。请重试。', '无法打开删除确认对话框。请重试。'],
+  ja: ['カスタム背景を読み込めませんでした。もう一度お試しください。', 'このカスタム背景を読み込めませんでした。もう一度お試しください。', 'カスタム背景を削除できませんでした。もう一度お試しください。', '削除の確認ダイアログを開けませんでした。もう一度お試しください。'],
+  ko: ['사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.', '이 사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.', '사용자 지정 배경을 삭제하지 못했습니다. 다시 시도해 주세요.', '삭제 확인 대화 상자를 열지 못했습니다. 다시 시도해 주세요.'],
+  es: ['No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.', 'No se pudo cargar el fondo personalizado. Inténtalo de nuevo.', 'No se pudo eliminar el fondo personalizado. Inténtalo de nuevo.', 'No se pudo abrir el diálogo de confirmación de eliminación. Inténtalo de nuevo.'],
+  fr: ['Impossible de charger les arrière-plans personnalisés. Veuillez réessayer.', 'Impossible de charger l’arrière-plan personnalisé. Veuillez réessayer.', 'Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.', 'Impossible d’ouvrir la boîte de dialogue de confirmation de suppression. Veuillez réessayer.'],
+  de: ['Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.', 'Der benutzerdefinierte Hintergrund konnte nicht geladen werden. Bitte versuche es erneut.', 'Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.', 'Der Bestätigungsdialog zum Löschen konnte nicht geöffnet werden. Bitte versuche es erneut.'],
+  pt: ['Não foi possível carregar os planos de fundo personalizados. Tente novamente.', 'Não foi possível carregar o plano de fundo personalizado. Tente novamente.', 'Não foi possível excluir o plano de fundo personalizado. Tente novamente.', 'Não foi possível abrir o diálogo de confirmação de exclusão. Tente novamente.'],
+  ru: ['Не удалось загрузить пользовательские фоны. Повторите попытку.', 'Не удалось загрузить пользовательский фон. Повторите попытку.', 'Не удалось удалить пользовательский фон. Повторите попытку.', 'Не удалось открыть диалог подтверждения удаления. Повторите попытку.']
 };
 
 Object.keys(customBackgroundErrorTranslations).forEach(function (language) {
@@ -4657,6 +4657,7 @@ Object.keys(customBackgroundErrorTranslations).forEach(function (language) {
   target.customBackgroundsLoadError = messages[0];
   target.customBackgroundLoadError = messages[1];
   target.customBackgroundDeleteError = messages[2];
+  target.customBackgroundDialogError = messages[3];
 });
 
 // The AI export strings are defined here rather than inline in each per-locale

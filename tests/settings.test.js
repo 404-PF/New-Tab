@@ -1274,7 +1274,8 @@ describe('Manual update check button', () => {
       expect(manualCheck).toHaveBeenCalled();
 
       // Flush the 100 ms post-check initAboutSection refresh so it cannot
-      // fire after the test environment is torn down.
+      // fire after the test environment is torn down. Fake timers are active,
+      // so advance them rather than awaiting a real timeout.
       await vi.advanceTimersByTimeAsync(100);
     } finally {
       vi.useRealTimers();

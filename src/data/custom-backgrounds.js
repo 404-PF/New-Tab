@@ -853,9 +853,16 @@
     showConfirmDialog('Delete Background', 'This custom background will be permanently removed.').then(function (confirmed) {
       if (!confirmed) return;
 
-      const currentBg = localStorage.getItem('homepageBg');
+      let currentBg = null;
+      try {
+        currentBg = localStorage.getItem('homepageBg');
+      } catch (storageError) {
+        // The dialog opened; this is a post-confirmation failure before deletion started.
+        showBackgroundError('customBackgroundDeleteError', 'Failed to delete the custom background. Please try again.', storageError);
+        return;
+      }
 
-      deleteCustomBackground(bgId).then(function () {
+      return deleteCustomBackground(bgId).then(function () {
         revokeBlobUrl(bgId);
 
         // If the deleted background was active, reset to a random built-in background
@@ -876,6 +883,9 @@
       }).catch(function (error) {
         showBackgroundError('customBackgroundDeleteError', 'Failed to delete the custom background. Please try again.', error);
       });
+    }).catch(function (dialogError) {
+      // Only the confirmation dialog failed; the background was not deleted.
+      showBackgroundError('customBackgroundDialogError', 'Failed to open the delete confirmation dialog. Please try again.', dialogError);
     });
   });
 
