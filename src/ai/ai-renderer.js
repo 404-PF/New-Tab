@@ -735,20 +735,11 @@ const AIRenderer = (function() {
   }
 
   function showCopyError() {
-    let notification = document.querySelector('.ai-copy-error-notification');
-
-    if (!notification) {
-      notification = document.createElement('div');
-      notification.className = 'ai-copy-error-notification';
-      document.body.appendChild(notification);
+    if (typeof window.showToast === 'function') {
+      window.showToast(getTranslation('copyFailed'), 'error', { duration: 3000 });
+      return;
     }
-
-    notification.textContent = getTranslation('copyFailed');
-    notification.classList.add('visible');
-
-    setTimeout(() => {
-      notification.classList.remove('visible');
-    }, 3000);
+    console.warn('[ai-renderer] showToast unavailable; copy feedback dropped');
   }
 
   function isAtBottom() {

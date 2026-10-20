@@ -728,61 +728,6 @@ body.light-theme .upload-bg-btn:hover {
   }
 }
 
-/* Copy Motto Notification */
-.copy-notification {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 15px;
-  font-size: 14px;
-  font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  z-index: 4000;
-  opacity: 0;
-  transform: translateX(-50%) translateY(-10px);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  pointer-events: none;
-}
-
-.copy-notification.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  animation: notificationBounce 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes notificationBounce {
-  0% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-15px) scale(0.85);
-  }
-  30% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1.05);
-  }
-  60% {
-    transform: translateX(-50%) translateY(0) scale(0.98);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
-  }
-}
-
-/* Light theme for copy notification */
-body.light-theme .copy-notification {
-  background: rgba(255, 255, 255, 0.95);
-  color: #1f2937;
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
-
 .context-menu-item {
   padding: 12px 16px;
   cursor: pointer;
@@ -1588,11 +1533,12 @@ body.light-theme .about-cards .setting-card a:hover {
   color: #1565c0;
 }
 
-/* Update Notification Styles */
+/* Update Notification Styles — top-middle, matching all other in-app pop-ups */
 .update-notification {
   position: fixed;
   top: 20px;
-  right: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   max-width: 400px;
   background: rgba(0, 0, 0, 0.9);
   backdrop-filter: blur(16px);
@@ -1668,19 +1614,20 @@ body.light-theme .about-cards .setting-card a:hover {
 @keyframes updateNotificationSlideIn {
   from {
     opacity: 0;
-    transform: translateX(100%) scale(0.9);
+    transform: translate(-50%, -24px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translate(-50%, 0) scale(1);
   }
 }
 
-/* Manual Check Notification Styles */
+/* Manual Check Notification Styles — top-middle, matching all other in-app pop-ups */
 .manual-check-notification {
   position: fixed;
   top: 20px;
-  right: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   max-width: 350px;
   background: rgba(33, 150, 243, 0.1);
   backdrop-filter: blur(16px);
@@ -1743,8 +1690,8 @@ body.light-theme .about-cards .setting-card a:hover {
 
 .eye-care-reminder {
   position: fixed;
+  top: 24px;
   left: 50%;
-  bottom: 24px;
   transform: translateX(-50%);
   width: min(560px, calc(100vw - 32px));
   z-index: 5001;
@@ -1754,7 +1701,7 @@ body.light-theme .about-cards .setting-card a:hover {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   box-shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
-  animation: eye-care-reminder-slide-up 0.35s ease;
+  animation: eye-care-reminder-slide-down 0.35s ease;
 }
 
 .eye-care-reminder-content {
@@ -1840,10 +1787,10 @@ body.light-theme .about-cards .setting-card a:hover {
   color: #fff;
 }
 
-@keyframes eye-care-reminder-slide-up {
+@keyframes eye-care-reminder-slide-down {
   from {
     opacity: 0;
-    transform: translate(-50%, 16px);
+    transform: translate(-50%, -16px);
   }
   to {
     opacity: 1;
@@ -1878,6 +1825,23 @@ body.light-theme .eye-care-reminder-btn-secondary {
   color: #0f172a;
 }
 
+/* While the eye-care reminder is visible, push the shared top-middle pop-up
+   anchor below it so the reminder (z-index 5001) cannot cover toast, update,
+   or manual-check text during the break. */
+body:has(.eye-care-reminder:not([hidden])) .toast-notification,
+body:has(.eye-care-reminder:not([hidden])) .update-notification,
+body:has(.eye-care-reminder:not([hidden])) .manual-check-notification {
+  top: 160px;
+}
+
+@media (max-width: 640px) {
+  body:has(.eye-care-reminder:not([hidden])) .toast-notification,
+  body:has(.eye-care-reminder:not([hidden])) .update-notification,
+  body:has(.eye-care-reminder:not([hidden])) .manual-check-notification {
+    top: 220px;
+  }
+}
+
 @media (max-width: 640px) {
   .eye-care-reminder-content {
     flex-wrap: wrap;
@@ -1901,11 +1865,11 @@ body.light-theme .eye-care-reminder-btn-secondary {
 @keyframes manualCheckNotificationSlideIn {
   from {
     opacity: 0;
-    transform: translateX(100%) scale(0.9);
+    transform: translate(-50%, -20px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translate(-50%, 0) scale(1);
   }
 }
 

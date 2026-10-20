@@ -454,10 +454,12 @@ class UpdateChecker {
     }
 
     if (comparison > 0) {
-      // New version available - show both update notification and manual check notification
+      // New version available: show the update notification plus the inline
+      // About result. Skip the separate manual-check popup — it shares the
+      // same top-middle anchor as the update notification and would be
+      // hidden beneath it.
       this.showUpdateNotification(latestRelease);
       const message = this.formatMessage('updateManualNewVersion', { version: latestRelease.version });
-      this.showManualCheckNotification(message, 'success');
       this.showManualCheckResult(message, 'updateManualNewVersion', { version: latestRelease.version });
     } else if (comparison < 0) {
       // Development version

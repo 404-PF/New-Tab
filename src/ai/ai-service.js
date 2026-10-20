@@ -50,18 +50,11 @@ const AIService = (function() {
   }
 
   function showToast(message, type) {
-    const existing = document.querySelector('.toast-notification');
-    if (existing) existing.remove();
-    const toast = document.createElement('div');
-    toast.className = 'toast-notification';
-    if (type) toast.classList.add('toast-' + type);
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('show'));
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => toast.remove(), 300);
-    }, 2000);
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, type);
+      return;
+    }
+    console.warn('[ai-service] showToast unavailable; message dropped:', message);
   }
 
   function downloadMarkdownFile(filename, content) {

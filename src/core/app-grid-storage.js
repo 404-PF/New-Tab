@@ -15,36 +15,13 @@ function getAppGridSaveErrorMessage() {
 function showAppGridSaveError() {
   const message = getAppGridSaveErrorMessage();
   if (typeof window.showToast === 'function') {
-    window.showToast(message, 'error');
+    window.showToast(message, 'error', { duration: 3000 });
     return;
   }
 
-  const container = document.body || document.documentElement;
-  if (!container) {
-    console.warn(message);
-    return;
-  }
-
-  const existingToast = document.querySelector('.toast-notification');
-  if (existingToast) existingToast.remove();
-
-  const toast = document.createElement('div');
-  toast.className = 'toast-notification toast-error';
-  toast.setAttribute('role', 'alert');
-  toast.textContent = message;
-  container.appendChild(toast);
-
-  const revealToast = () => toast.classList.add('show');
-  if (typeof window.requestAnimationFrame === 'function') {
-    window.requestAnimationFrame(revealToast);
-  } else {
-    revealToast();
-  }
-
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  // toast.js failed to load; degrade to a console warning instead of
+  // duplicating the toast DOM construction here.
+  console.warn('[app-grid-storage] Save error suppressed (showToast unavailable):', message);
 }
 
 window.addEventListener('storageBridgeWriteError', (event) => {

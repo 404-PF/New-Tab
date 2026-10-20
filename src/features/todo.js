@@ -1738,37 +1738,6 @@ function showDateUpdateFeedback(dueDateElement, oldDate, newDate, oldTime, newTi
   showToast(message);
 }
 
-// Show toast notification
-function showToast(message, type = '') {
-  // Remove existing toast if any
-  const existingToast = document.querySelector('.toast-notification');
-  if (existingToast) {
-    existingToast.remove();
-  }
-
-  const toast = document.createElement('div');
-  toast.className = 'toast-notification';
-  if (type) {
-    toast.classList.add('toast-' + type);
-  }
-  toast.textContent = message;
-
-  document.body.appendChild(toast);
-
-  // Trigger animation
-  requestAnimationFrame(() => {
-    toast.classList.add('show');
-  });
-
-  // Remove after 2 seconds
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => {
-      toast.remove();
-    }, 300);
-  }, 2000);
-}
-
 // Close inline date picker
 function closeInlineDatePicker(pickerContainer) {
   if (!pickerContainer || !pickerContainer.parentNode) return;
@@ -2705,7 +2674,6 @@ try {
   window.parseDueTime = parseDueTime;
   window.DUE_TIME_PATTERN = DUE_TIME_PATTERN;
   window.syncDueTimeInputState = syncDueTimeInputState;
-  window.showToast = showToast;
   window.currentFilters = currentFilters;
   window.getSelectedPriority = getSelectedPriority;
   window.addSubtask = addSubtask;

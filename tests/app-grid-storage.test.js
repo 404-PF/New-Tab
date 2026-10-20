@@ -1,6 +1,8 @@
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  // toast.js provides window.showToast for app-grid-storage's save errors.
+  injectScript('src/core/toast.js');
   injectScript('src/core/app-grid-storage.js');
 });
 

@@ -223,18 +223,12 @@ function showCopyNotification(success) {
   const successText = window.i18n ? window.i18n.t('copyMottoCopied') : 'Copied';
   const failureText = window.i18n ? window.i18n.t('copyMottoFailed') : 'Failed to copy';
 
-  let notification = document.querySelector('.copy-notification');
-  if (!notification) {
-    notification = document.createElement('div');
-    notification.className = 'copy-notification';
-    document.body.appendChild(notification);
+  if (typeof window.showToast === 'function') {
+    window.showToast(success ? successText : failureText, success ? 'success' : 'error', { duration: 3000 });
+    return;
   }
 
-  notification.textContent = success ? successText : failureText;
-  notification.classList.add('show');
-  setTimeout(() => {
-    notification.classList.remove('show');
-  }, 3000);
+  console.warn('[main] showToast unavailable; copy motto feedback dropped');
 }
 
 function setupCopyMotto() {

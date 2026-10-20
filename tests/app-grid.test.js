@@ -52,7 +52,8 @@ describe('AppGridStorage', () => {
       expect(showToast).toHaveBeenCalledTimes(3);
       expect(showToast).toHaveBeenCalledWith(
         'Failed to save app changes. Your last action was not saved.',
-        'error'
+        'error',
+        { duration: 3000 }
       );
       expect(warnSpy).toHaveBeenCalledTimes(3);
     } finally {
@@ -94,7 +95,8 @@ describe('AppGridStorage', () => {
       expect(showToast).toHaveBeenCalledOnce();
       expect(showToast).toHaveBeenCalledWith(
         'Failed to save app changes. Your last action was not saved.',
-        'error'
+        'error',
+        { duration: 3000 }
       );
     } finally {
       window.showToast = originalShowToast;
