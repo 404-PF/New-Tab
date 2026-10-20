@@ -1848,12 +1848,12 @@ body.light-theme .todo-bullet:hover .bullet-unchecked:where(:not(.todo-section, 
   transform: translateY(0);
 }
 
-/* Toast Notification Styles */
+/* Toast Notification Styles — all in-app pop-ups are anchored top-middle */
 .toast-notification {
   position: fixed;
-  bottom: 20px;
+  top: 20px;
   left: 50%;
-  transform: translateX(-50%) translateY(20px);
+  transform: translateX(-50%) translateY(-20px);
   background: rgba(0, 0, 0, 0.9);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -1888,6 +1888,11 @@ body.light-theme .todo-bullet:hover .bullet-unchecked:where(:not(.todo-section, 
 .toast-notification.toast-info {
   background: rgba(33, 150, 243, 0.95);
   border-color: rgba(33, 150, 243, 0.4);
+}
+
+.toast-notification.toast-warning {
+  background: rgba(255, 152, 0, 0.95);
+  border-color: rgba(255, 152, 0, 0.4);
 }
 
 /* Light theme adjustments for inline date picker */
@@ -1970,6 +1975,11 @@ body.light-theme .toast-notification.toast-success {
 
 body.light-theme .toast-notification.toast-info {
   background: rgba(33, 150, 243, 0.95);
+  color: white;
+}
+
+body.light-theme .toast-notification.toast-warning {
+  background: rgba(255, 152, 0, 0.95);
   color: white;
 }
 
@@ -3692,41 +3702,6 @@ body.light-theme .ai-message-copy.copy-error {
   background: rgba(239, 68, 68, 0.15);
   border-color: rgba(239, 68, 68, 0.3);
   color: #dc2626;
-}
-
-/* Copy Error Notification */
-.ai-copy-error-notification {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(239, 68, 68, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
-  z-index: 4000;
-  opacity: 0;
-  transform: translateX(-50%) translateY(-10px);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  pointer-events: none;
-}
-
-.ai-copy-error-notification.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* Light theme for copy error notification */
-body.light-theme .ai-copy-error-notification {
-  background: rgba(220, 38, 38, 0.95);
-  color: white;
-  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.25);
 }
 
 .ai-message-streaming::after {

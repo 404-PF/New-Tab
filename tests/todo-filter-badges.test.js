@@ -15,7 +15,7 @@ afterEach(() => {
   try { window.i18n.applyLanguage('en'); } catch (e) { void e; }
   localStorage.clear();
   document.body.innerHTML = '';
-  document.querySelectorAll('.toast-notification, .copy-notification, .search-validation-feedback, .inline-date-picker').forEach(el => el.remove());
+  document.querySelectorAll('.toast-notification, .search-validation-feedback, .inline-date-picker').forEach(el => el.remove());
 });
 
 function filterPillsHtml() {

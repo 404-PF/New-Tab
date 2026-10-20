@@ -871,7 +871,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
-  document.querySelectorAll('.toast-notification, .copy-notification, .search-validation-feedback, .inline-date-picker')
+  document.querySelectorAll('.toast-notification, .search-validation-feedback, .inline-date-picker')
     .forEach(el => el.remove());
 });
 

@@ -7,6 +7,8 @@ import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storag
 beforeAll(() => {
   injectScript('src/core/dom-ready.js');
   injectScript('src/core/utils.js');
+  // toast.js provides window.showToast for todo save-error notifications.
+  injectScript('src/core/toast.js');
   injectScript('src/features/todo.js');
 });
 

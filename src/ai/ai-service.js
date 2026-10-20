@@ -49,21 +49,6 @@ const AIService = (function() {
     );
   }
 
-  function showToast(message, type) {
-    const existing = document.querySelector('.toast-notification');
-    if (existing) existing.remove();
-    const toast = document.createElement('div');
-    toast.className = 'toast-notification';
-    if (type) toast.classList.add('toast-' + type);
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('show'));
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => toast.remove(), 300);
-    }, 2000);
-  }
-
   function downloadMarkdownFile(filename, content) {
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -79,32 +64,32 @@ const AIService = (function() {
   function exportConversation(conversationId) {
     const exported = AIStore.exportConversation(conversationId);
     if (!exported) {
-      showToast(getTranslation('aiExportError'), 'error');
+      window.showToast(getTranslation('aiExportError'), 'error');
       return;
     }
 
     try {
       downloadMarkdownFile(exported.filename, exported.content);
-      showToast(getTranslation('aiExportSuccess'), 'success');
+      window.showToast(getTranslation('aiExportSuccess'), 'success');
     } catch (error) {
       console.error('Failed to export conversation:', error);
-      showToast(getTranslation('aiExportError'), 'error');
+      window.showToast(getTranslation('aiExportError'), 'error');
     }
   }
 
   function exportAllConversations() {
     const exported = AIStore.exportAllConversations();
     if (!exported) {
-      showToast(getTranslation('aiExportError'), 'error');
+      window.showToast(getTranslation('aiExportError'), 'error');
       return;
     }
 
     try {
       downloadMarkdownFile(exported.filename, exported.content);
-      showToast(getTranslation('aiExportAllSuccess'), 'success');
+      window.showToast(getTranslation('aiExportAllSuccess'), 'success');
     } catch (error) {
       console.error('Failed to export conversations:', error);
-      showToast(getTranslation('aiExportError'), 'error');
+      window.showToast(getTranslation('aiExportError'), 'error');
     }
   }
 

@@ -26,6 +26,7 @@ async function exportDataForTest() {
 }
 
 beforeAll(() => {
+  injectScript('src/core/toast.js');
   injectScript('src/features/timezone-clocks.js');
   injectScript('src/ai/conversation-validator.js');
   injectScript('src/features/data-manager.js');

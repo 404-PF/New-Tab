@@ -36,7 +36,7 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 
 ## Directory Layout
 
-- `src/core/` - bootstrap, storage, version, utilities, language/runtime, update check, app-grid state/storage
+- `src/core/` - bootstrap, storage, version, utilities, language/runtime, update check, app-grid state/storage, toast notifications
 - `src/ui/` - settings, app manager, add-app flow, color/font pickers
 - `src/features/` - todo, notes (public API: `initNotes`, `addNote`, `deleteNote`, `updateNoteText`), onboarding, simple mode, drag-drop, app folders, context menu, weather, interactive background
 - `src/ai/` - AI assistant, markdown parser, network/offline detection, OpenRouter client

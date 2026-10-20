@@ -47,7 +47,8 @@ describe('hidden default app storage', () => {
       expect(AppGridStorage.saveHiddenDefaultApps(['ai-app'])).toBe(false);
       expect(showToast).toHaveBeenCalledWith(
         'Failed to save app changes. Your last action was not saved.',
-        'error'
+        'error',
+        { duration: 3000 }
       );
     } finally {
       window.showToast = originalShowToast;

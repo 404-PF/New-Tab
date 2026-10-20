@@ -23,6 +23,9 @@
     'src/core/motion.js',
     'src/core/dom-ready.js',
     'src/core/storage-rmw.js',
+    // toast.js must load before app-grid-storage.js and every feature module:
+    // it is the single showToast provider all in-app notifications rely on.
+    'src/core/toast.js',
     'src/core/app-grid-storage.js',
     'src/core/main.js',
     'src/features/timezone-clocks.js',

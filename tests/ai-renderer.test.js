@@ -28,6 +28,7 @@ const stubElements = () => {
 
 beforeAll(() => {
   stubElements();
+  injectScript('src/core/toast.js');
   injectScript('src/ai/conversation-validator.js');
   injectScript('src/ai/ai-store.js');
   injectScript('src/ai/markdown-parser.js');
@@ -155,16 +156,16 @@ describe('AIRenderer copy failure notification (#839)', () => {
       container.querySelector('.ai-message-copy').click();
 
       await vi.waitFor(() => {
-        expect(document.querySelector('.ai-copy-error-notification')).not.toBeNull();
+        expect(document.querySelector('.toast-notification')).not.toBeNull();
       });
 
-      const notification = document.querySelector('.ai-copy-error-notification');
+      const notification = document.querySelector('.toast-notification');
       expect(notification.textContent).toBe(localizedCopyFailed);
 
       notification.remove();
     } finally {
       window.i18n.t = originalT;
-      const leftover = document.querySelector('.ai-copy-error-notification');
+      const leftover = document.querySelector('.toast-notification');
       if (leftover) leftover.remove();
       container.replaceChildren();
     }
