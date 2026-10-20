@@ -24,7 +24,10 @@ jobs:
     timeout-minutes: 10
     permissions:
       issues: write
-      pull-requests: read
+      # Write (not read) is required here: the gate step reacts to the
+      # triggering comment, and GitHub routes issue-comment writes on pull
+      # requests through the pull-requests scope; issues: write + read 403s.
+      pull-requests: write
     # issue_comment is a coarse pre-filter (PR comments only, no bots); the
     # gate step does exact first-line /drive parsing and the permission check.
     if: >
