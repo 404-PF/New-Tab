@@ -1043,6 +1043,7 @@ describe('Offline chat Object.prototype key inputs (#864)', () => {
       expect(assistant.role).toBe('assistant');
       expect(assistant.isStreaming).toBe(false);
       expect(typeof assistant.content).toBe('string');
+      expect(assistant.content.trim().length).toBeGreaterThan(0);
       expect(document.getElementById('ai-chat-error').style.display).not.toBe('block');
     } finally {
       OfflineMode.getResponse = originalGetResponse;

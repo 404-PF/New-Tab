@@ -617,7 +617,7 @@ const AIService = (function() {
         result = OfflineMode.getResponse(userMessage);
 
         if (result.success && typeof result.content !== 'string') {
-          result = { ...result, content: '' };
+          result = { ...result, content: OfflineMode.getAcknowledgment().content };
         }
 
         if (result.success && result.content) {
