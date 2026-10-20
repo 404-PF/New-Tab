@@ -439,9 +439,9 @@
     if (targetIndex < 0) targetIndex = 0;
     if (targetIndex >= cells.length) targetIndex = cells.length - 1;
 
-    if (delta === columns) {
+    if (absoluteIndex === null && delta === columns) {
       targetIndex = Math.min(cells.length - 1, currentIndex + columns);
-    } else if (delta === -columns) {
+    } else if (absoluteIndex === null && delta === -columns) {
       targetIndex = Math.max(0, currentIndex - columns);
     }
 

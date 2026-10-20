@@ -7,6 +7,7 @@ beforeAll(() => {
 beforeEach(() => {
   document.body.className = '';
   document.querySelectorAll('#a11y-test-app-grid, #a11y-test-modal, #a11y-opener').forEach(el => el.remove());
+  document.getElementById('folder-popup-apps')?.remove();
 
   let grid = document.getElementById('app-grid');
   if (!grid) {
@@ -223,6 +224,101 @@ describe('Accessibility - app grid keyboard interaction', () => {
 
     expect(window.AppGridState.reorder).toHaveBeenCalledWith('app-2', 2);
     expect(cells[1].getAttribute('aria-grabbed')).toBe('false');
+  });
+
+  function buildCells(container, count) {
+    const cells = [];
+    for (let i = 0; i < count; i++) {
+      const cell = document.createElement('a');
+      cell.id = 'a11y-cell-' + (i + 1);
+      cell.href = '#';
+      cell.className = 'app-icon custom-app';
+      cell.innerHTML = '<span class="app-name">App ' + (i + 1) + '</span>';
+      container.appendChild(cell);
+      cells.push(cell);
+    }
+    return cells;
+  }
+
+  function pressKey(cell, key) {
+    const event = new KeyboardEvent('keydown', {
+      key: key,
+      bubbles: true,
+      cancelable: true
+    });
+    cell.dispatchEvent(event);
+    return event;
+  }
+
+  it('moves focus with Home and End on a single-row app grid (#867)', () => {
+    const grid = document.getElementById('app-grid');
+    grid.innerHTML = '';
+    const cells = buildCells(grid, 5);
+    window.Accessibility.refreshGrid();
+
+    cells[2].focus();
+    const homeEvent = pressKey(cells[2], 'Home');
+    expect(homeEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(cells[0]);
+
+    cells[2].focus();
+    const endEvent = pressKey(cells[2], 'End');
+    expect(endEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(cells[4]);
+  });
+
+  it('moves focus with Home and End on a single-row folder popup (#867)', () => {
+    const popup = document.createElement('div');
+    popup.id = 'folder-popup-apps';
+    document.body.appendChild(popup);
+    const cells = buildCells(popup, 4);
+    window.Accessibility.refreshGrid();
+
+    cells[1].focus();
+    const homeEvent = pressKey(cells[1], 'Home');
+    expect(homeEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(cells[0]);
+
+    cells[1].focus();
+    const endEvent = pressKey(cells[1], 'End');
+    expect(endEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(cells[3]);
+  });
+
+  it('keeps multi-row arrow navigation and Home/End intact (#867)', () => {
+    const grid = document.getElementById('app-grid');
+    grid.innerHTML = '';
+    const cells = buildCells(grid, 6);
+    cells.forEach((cell, index) => {
+      const top = index < 3 ? 0 : 100;
+      cell.getBoundingClientRect = () => ({
+        top: top,
+        bottom: top + 80,
+        left: (index % 3) * 100,
+        right: (index % 3) * 100 + 80,
+        width: 80,
+        height: 80,
+        x: (index % 3) * 100,
+        y: top
+      });
+    });
+    window.Accessibility.refreshGrid();
+
+    cells[4].focus();
+    pressKey(cells[4], 'ArrowUp');
+    expect(document.activeElement).toBe(cells[1]);
+
+    cells[1].focus();
+    pressKey(cells[1], 'ArrowDown');
+    expect(document.activeElement).toBe(cells[4]);
+
+    cells[4].focus();
+    pressKey(cells[4], 'Home');
+    expect(document.activeElement).toBe(cells[0]);
+
+    cells[0].focus();
+    pressKey(cells[0], 'End');
+    expect(document.activeElement).toBe(cells[5]);
   });
 });
 
