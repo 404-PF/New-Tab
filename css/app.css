@@ -1883,12 +1883,14 @@ body.light-theme .todo-bullet:hover .bullet-unchecked:where(:not(.todo-section, 
   }
 }
 
-/* Toast-only mechanics on top of the shared shell: it waits for .show
-   instead of animating itself in, so it starts hidden and fades out on exit. */
+/* Toast-only mechanics on top of the shared shell: the shared entry
+   animation is disabled so the toast waits for .show instead of
+   animating itself in; it starts hidden and fades out on exit. */
 .toast-notification {
   padding: 12px 24px;
   z-index: 4000;
   opacity: 0;
+  animation: none;
   transform: translateX(-50%) translateY(-20px);
   pointer-events: none;
 }

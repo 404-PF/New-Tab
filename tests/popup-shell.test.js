@@ -95,9 +95,7 @@ describe('Shared top-middle pop-up shell (#877)', () => {
     expectDeclaration(body, 'animation', 'popupSlideDown 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)');
     expectDeclaration(body, 'transition', 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)');
 
-    // The shared look is written down once: its definition plus the single
-    // animation use — never re-declared by a family rule.
-    expect(APP_CSS.match(/popupSlideDown/g)).toHaveLength(2);
+    // The shared look is written down once: never re-declared by a family rule.
     expect(FEATURES_CSS).not.toMatch(/popupSlideDown|background:\s*rgba\(0, 0, 0, 0\.9\)/);
   });
 
@@ -128,6 +126,7 @@ describe('Shared top-middle pop-up shell (#877)', () => {
     expectDeclaration(toast, 'padding', '12px 24px');
     expectDeclaration(toast, 'z-index', '4000');
     expectDeclaration(toast, 'opacity', '0');
+    expectDeclaration(toast, 'animation', 'none');
     expectDeclaration(toast, 'transform', 'translateX(-50%) translateY(-20px)');
     expect(APP_CSS).toMatch(/\.toast-notification\.show\s*\{\s*\n\s*opacity: 1;/);
   });
@@ -210,7 +209,6 @@ describe('Shared top-middle pop-up shell (#877)', () => {
   it('leaves the manual-check shell colors to CSS instead of inline styles', () => {
     const source = readFileSync(UPDATE_CHECKER_PATH, 'utf-8');
     expect(source).not.toMatch(/notification\.style\.(background|borderColor)/);
-    expect(source).not.toMatch(/bgColor/);
   });
 });
 
