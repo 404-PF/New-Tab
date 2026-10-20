@@ -142,7 +142,7 @@ describe('Custom background error translations', () => {
   // back to the English string when a locale omits the key, so a missing
   // customBackgroundDialogError entry would still pass a t()-based check.
   it('defines every error message for all supported languages', () => {
-    expectTranslationKeys(CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS);
+    expectTranslationKeys(CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS, { differFromEnglish: true });
   });
 });
 
