@@ -124,4 +124,32 @@ describe('OfflineMode', () => {
       window.i18n = originalI18n;
     }
   });
+
+  it.each(['constructor', 'hasOwnProperty', 'toString', 'valueOf', '__proto__', 'Constructor', 'TOSTRING'])(
+    'falls back with a string reply for Object.prototype key input %s (#864)',
+    input => {
+      expect(OfflineMode.matchPattern(input).matched).toBe(false);
+
+      const result = OfflineMode.getResponse(input);
+      expect(result).toMatchObject({ success: true, mode: 'offline' });
+      expect(typeof result.content).toBe('string');
+      expect(result.content).toContain('couldn\'t process');
+      expect(result.content).not.toContain('[object Object]');
+    }
+  );
+
+  it('falls back with a string reply for prototype keys in Chinese (#864)', () => {
+    const originalI18n = window.i18n;
+    window.i18n = { ...(originalI18n || {}), currentLanguage: () => 'zh' };
+
+    try {
+      const result = OfflineMode.getResponse('constructor');
+      expect(result).toMatchObject({ success: true, mode: 'offline' });
+      expect(typeof result.content).toBe('string');
+      expect(result.content).toContain('无法处理');
+      expect(OfflineMode.matchPattern('toString').matched).toBe(false);
+    } finally {
+      window.i18n = originalI18n;
+    }
+  });
 });

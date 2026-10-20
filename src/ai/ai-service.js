@@ -616,6 +616,10 @@ const AIService = (function() {
       if (networkStatus.isOffline) {
         result = OfflineMode.getResponse(userMessage);
 
+        if (result.success && typeof result.content !== 'string') {
+          result = { ...result, content: '' };
+        }
+
         if (result.success && result.content) {
           const chunks = result.content.split('');
 

@@ -205,7 +205,7 @@ const OfflineMode = (function() {
     const knowledgeBase = getKnowledgeBase();
     
     // Direct match
-    if (knowledgeBase[lowerInput]) {
+    if (Object.hasOwn(knowledgeBase, lowerInput)) {
       const response = knowledgeBase[lowerInput];
       return {
         matched: true,
@@ -214,7 +214,7 @@ const OfflineMode = (function() {
     }
     
     // Also check original input for Chinese
-    if (knowledgeBase[input.trim()]) {
+    if (Object.hasOwn(knowledgeBase, input.trim())) {
       const response = knowledgeBase[input.trim()];
       return {
         matched: true,
