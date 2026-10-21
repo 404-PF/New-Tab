@@ -50,7 +50,7 @@ describe('Settings modal entrance blur (#875)', () => {
     const baseRule = css.match(/#settings-modal\s*\{[^}]*\}/);
     expect(baseRule).not.toBeNull();
     expect(baseRule[0]).not.toMatch(/backdrop-filter/);
-    expect(baseRule[0]).toMatch(/transition:\s*opacity 0\.3s ease;/);
+    expect(baseRule[0]).toMatch(/transition:\s*opacity 0\.18s ease-out;/);
 
     const openRule = css.match(/#settings-modal\.modal-open\s*\{[^}]*\}/);
     expect(openRule).not.toBeNull();
@@ -59,8 +59,8 @@ describe('Settings modal entrance blur (#875)', () => {
     // The blur lands only after the fade finishes, so the overlay never
     // re-blurs on every animation frame. Engines that only honor the
     // prefixed property must be delayed by the same amount.
-    expect(openRule[0]).toMatch(/transition:\s*opacity 0\.3s ease,\s*backdrop-filter 0\.01s linear 0\.3s/);
-    expect(openRule[0]).toMatch(/-webkit-backdrop-filter 0\.01s linear 0\.3s/);
+    expect(openRule[0]).toMatch(/transition:\s*opacity 0\.18s ease-out,\s*backdrop-filter 0\.01s linear 0\.18s/);
+    expect(openRule[0]).toMatch(/-webkit-backdrop-filter 0\.01s linear 0\.18s/);
   });
 
   it('does not stack a second live blur on the settings dialog', () => {
@@ -89,8 +89,8 @@ describe('Settings modal entrance blur (#875)', () => {
     const openRule = glass.match(/body\.light-theme #settings-modal\.modal-open\s*\{[^}]*\}/);
     expect(openRule).not.toBeNull();
     expect(openRule[0]).toMatch(/backdrop-filter:\s*blur\(var\(--glass-overlay-blur\)\)/);
-    expect(openRule[0]).toMatch(/transition:\s*opacity 0\.3s ease,\s*backdrop-filter 0\.01s linear 0\.3s/);
-    expect(openRule[0]).toMatch(/-webkit-backdrop-filter 0\.01s linear 0\.3s/);
+    expect(openRule[0]).toMatch(/transition:\s*opacity 0\.18s ease-out,\s*backdrop-filter 0\.01s linear 0\.18s/);
+    expect(openRule[0]).toMatch(/-webkit-backdrop-filter 0\.01s linear 0\.18s/);
   });
 });
 
@@ -134,10 +134,11 @@ describe('Settings menu and section transitions (#875)', () => {
     // Exit fade: this rule is the after-change style when `.selected` is
     // removed, so it carries the crossfade. `content-visibility` is discrete;
     // its explicit transition keeps the outgoing section painted until the
-    // fade completes instead of snapping hidden on the first frame.
-    expect(sectionRule).toMatch(/transition:[^;]*opacity 0\.15s ease/);
-    expect(sectionRule).toMatch(/transition:[^;]*visibility 0\.15s ease/);
-    expect(sectionRule).toMatch(/content-visibility 0\.15s ease allow-discrete/);
+    // fade completes instead of snapping hidden on the first frame. The
+    // duration is deliberately short so the tab swap reads as instant.
+    expect(sectionRule).toMatch(/transition:[^;]*opacity 0\.09s ease-out/);
+    expect(sectionRule).toMatch(/transition:[^;]*visibility 0\.09s ease-out/);
+    expect(sectionRule).toMatch(/content-visibility 0\.09s ease-out allow-discrete/);
 
     // Only the visual rule uses `.selected`; the reduced-motion override
     // targets the base selector so it also disables the exit fade.
@@ -216,5 +217,54 @@ describe('Settings tab switching without display toggles (#875)', () => {
   it('does not hardcode display toggles for settings sections in settings.js', () => {
     const settingsJs = readFileSync(SETTINGS_JS_PATH, 'utf-8');
     expect(settingsJs).not.toMatch(/s\.style\.display\s*=\s*'(block|none)'/);
+  });
+});
+
+describe('Settings animations stay snappy (#875)', () => {
+  it('keeps the modal entrance under 200ms', () => {
+    const css = readCoreCss();
+    const dialogRule = css.match(/#settings-modal > div\s*\{[^}]*\}/);
+    expect(dialogRule).not.toBeNull();
+
+    const transition = dialogRule[0].match(/transition:\s*([^;]+);/);
+    expect(transition).not.toBeNull();
+    // 0.3s with an overshooting spring made the panel feel like it trailed
+    // the click; anything at or above 0.3s regresses that.
+    expect(transition[1]).not.toMatch(/0\.3s/);
+    expect(transition[1]).toMatch(/opacity 0\.18s ease-out/);
+    expect(transition[1]).toMatch(/transform 0\.18s ease-out/);
+  });
+
+  it('keeps the menu hover feedback under 200ms', () => {
+    const css = readCoreCss();
+    const rule = css.match(/\.settings-menu-item\s*\{[^}]*\}/);
+    expect(rule).not.toBeNull();
+
+    const transition = rule[0].match(/transition:\s*([^;]+);/);
+    expect(transition).not.toBeNull();
+    expect(transition[1]).not.toMatch(/0\.25s/);
+    ['background', 'color', 'transform', 'box-shadow'].forEach((prop) => {
+      expect(transition[1], prop).toMatch(new RegExp(`${prop} 0\\.15s ease-out`));
+    });
+  });
+
+  it('keeps the tab crossfade under 100ms', () => {
+    const css = readCoreCss();
+    const sectionRules = [...css.matchAll(/\.settings-section\s*\{[^}]*\}/g)].map((m) => m[0]);
+    const sectionRule = sectionRules.find((rule) => /grid-area:/.test(rule));
+    expect(sectionRule).toBeDefined();
+
+    const transitions = [...sectionRule.matchAll(/transition:[^;]*;/g)].map((m) => m[0]);
+    // Both the fallback and the allow-discrete declaration must use the short
+    // duration; a stale 0.15s on either one makes the swap read as laggy.
+    expect(transitions.length).toBe(2);
+    transitions.forEach((declaration) => {
+      expect(declaration).not.toMatch(/0\.15s/);
+      expect(declaration).toMatch(/0\.09s ease-out/);
+    });
+
+    const selected = css.match(/\.settings-section\.selected\s*\{[^}]*\}/);
+    expect(selected).not.toBeNull();
+    expect(selected[0]).toMatch(/transition:\s*opacity 0\.09s ease-out;/);
   });
 });

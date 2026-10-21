@@ -166,7 +166,9 @@ body.light-theme :is(
 /* #875: mirror the dark-theme timing for the settings overlay — the glass
    blur must not run while the modal's opacity animates, so it lives only on
    the open state and is delayed until the fade has finished. Closing removes
-   it immediately (the base rule transitions opacity only). */
+   it immediately (the base rule transitions opacity only). The delay tracks
+   the shortened core.css fade so the blur still lands after the panel
+   settles instead of trailing it. */
 body.light-theme #settings-modal {
   background: var(--glass-overlay);
   backdrop-filter: none;
@@ -176,8 +178,8 @@ body.light-theme #settings-modal {
 body.light-theme #settings-modal.modal-open {
   backdrop-filter: blur(var(--glass-overlay-blur));
   -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
-  transition: opacity 0.3s ease, backdrop-filter 0.01s linear 0.3s,
-    -webkit-backdrop-filter 0.01s linear 0.3s;
+  transition: opacity 0.18s ease-out, backdrop-filter 0.01s linear 0.18s,
+    -webkit-backdrop-filter 0.01s linear 0.18s;
 }
 
 /* Nested cards and controls share the same lower-level surface. */
