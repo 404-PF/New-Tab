@@ -662,7 +662,9 @@ body.light-theme .calendar-nav-btn {
 
 body.light-theme .calendar-nav-btn:hover {
   background: rgba(33, 150, 243, 0.2);
-  color: #2196f3;
+  /* Darker than #2196f3: the glyph needs >=3:1 against the pale blue
+     hover fill (the SVG strokes use currentColor). */
+  color: #1565c0;
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
 }
 
@@ -2027,6 +2029,15 @@ body.light-theme .inline-calendar-days .calendar-day.today {
 
 body.light-theme .inline-calendar-days .calendar-day.other-month {
   color: rgba(31, 41, 55, 0.3);
+}
+
+/* Selected days keep the #2196f3 fill from the dark-theme base rules, so the
+   light theme needs a dark foreground: white on that blue is only ~3.1:1.
+   Placed after the .today overrides so today+selected resolves to dark text
+   too (glass.css re-colors the edit-modal variant via its shared group). */
+body.light-theme .calendar-day.selected,
+body.light-theme .inline-calendar-days .calendar-day.selected {
+  color: #111827;
 }
 
 body.light-theme .inline-clear-date,

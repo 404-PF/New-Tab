@@ -66,6 +66,26 @@ describe('Todo date picker opaque surface and stacking (issue #855)', () => {
     expect(css).toMatch(/body\.light-theme \.calendar-btn\.secondary\s*\{[^}]*color:\s*#1f2937;/);
   });
 
+  it('darkens the light-theme selected date and nav hover foregrounds for contrast', () => {
+    const css = appCss();
+    const selected = css.match(
+      /body\.light-theme \.calendar-day\.selected,\s*body\.light-theme \.inline-calendar-days \.calendar-day\.selected\s*\{([^}]*)\}/
+    );
+
+    // White on the shared #2196f3 selected fill is only ~3.1:1; a dark
+    // foreground clears 4.5:1 while the fill stays untouched.
+    expect(selected).not.toBeNull();
+    expect(selected[1]).toMatch(/color:\s*#111827;/);
+    // The nav glyph strokes with currentColor on a pale blue hover fill, so
+    // the hover foreground must be darker than the base #2196f3 (>=3:1).
+    expect(css).toMatch(
+      /body\.light-theme \.calendar-nav-btn:hover\s*\{[^}]*color:\s*#1565c0;/
+    );
+    expect(css).not.toMatch(
+      /body\.light-theme \.calendar-nav-btn:hover\s*\{[^}]*color:\s*#2196f3;/
+    );
+  });
+
   it('lifts .todo-section above the fixed footer/motto layers while a picker is open', () => {
     const css = appCss();
     const rule = css.match(/\.todo-section:has\(([^)]*)\)\s*\{([^}]*)\}/);
