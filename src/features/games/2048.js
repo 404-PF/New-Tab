@@ -389,6 +389,9 @@
     // alone while a button/link is focused so it stays activatable (#887).
     if (window.gamesHelpers && typeof window.gamesHelpers.suppressGameKeyScroll === 'function') {
       window.gamesHelpers.suppressGameKeyScroll(e);
+    } else if (!e.ctrlKey && !e.metaKey && !e.altKey && (parseDirection(e) ||
+        (e.code === 'Space' && !(e.target && e.target.closest && e.target.closest('button, a, [role="button"]'))))) {
+      e.preventDefault();
     }
     if (shouldIgnoreKey(e)) return;
 
