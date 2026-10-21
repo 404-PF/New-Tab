@@ -158,9 +158,11 @@ describe('Settings menu and section transitions (#875)', () => {
     expect(reduced[0]).toMatch(/#settings-modal > div/);
     expect(reduced[0]).toMatch(/\.settings-menu-item/);
     // The bare `.settings-section` selector covers both the entry transition
-    // (on `.selected`) and the exit transition (on the base rule).
-    expect(reduced[0]).toMatch(/\.settings-section\s*\{/);
-    expect(reduced[0]).toMatch(/transition:\s*none\s*!important/);
+    // (on `.selected`) and the exit transition (on the base rule); bind the
+    // declaration to that selector so it cannot pass via a sibling selector.
+    expect(reduced[0]).toMatch(
+      /\.settings-section\s*\{[^}]*transition:\s*none\s*!important/
+    );
   });
 
   it('keeps New-Tab.html sections free of inline display toggles', () => {
