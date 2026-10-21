@@ -79,13 +79,58 @@ describe('Weather app', () => {
     expect(detailCards.length).toBe(3);
   });
 
-  it('renders disabled state when weather is not enabled', () => {
-    localStorage.removeItem('weatherEnabled');
+  it('renders cached weather when the widget toggle is off', () => {
+    localStorage.setItem('weatherEnabled', 'false');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherCache', JSON.stringify({
+      data: {
+        current: { temperature_2m: 18, weather_code: 0, apparent_temperature: 16, wind_speed_10m: 9, relative_humidity_2m: 40 }
+      },
+      locationName: 'Berlin, DE'
+    }));
+
+    window.WeatherApp.open();
+
+    const modal = document.getElementById('weather-app-modal');
+    const body = document.getElementById('weather-app-body');
+    expect(modal.classList.contains('modal-open')).toBe(true);
+    expect(body.querySelector('.weather-app-disabled')).toBeNull();
+    expect(body.querySelector('.weather-app-current')).not.toBeNull();
+    expect(body.querySelector('.weather-app-current-temp').textContent).toContain('18');
+    expect(body.querySelector('.weather-app-current-location').textContent).toContain('Berlin, DE');
+  });
+
+  it('renders cached weather when weatherEnabled was never set', () => {
+    localStorage.setItem('weatherCache', JSON.stringify({
+      data: {
+        current: { temperature_2m: 21, weather_code: 1 }
+      },
+      locationName: 'Rome, IT'
+    }));
 
     window.WeatherApp.open();
 
     const body = document.getElementById('weather-app-body');
-    expect(body.querySelector('.weather-app-disabled')).not.toBeNull();
+    expect(body.querySelector('.weather-app-disabled')).toBeNull();
+    expect(body.querySelector('.weather-app-current-temp').textContent).toContain('21');
+  });
+
+  it('triggers a refresh that ignores the widget toggle', () => {
+    const refresh = vi.fn().mockResolvedValue();
+    const originalWeatherWidget = window.WeatherWidget;
+    window.WeatherWidget = { refresh };
+
+    try {
+      window.WeatherApp.open();
+
+      expect(refresh).toHaveBeenCalledWith(false, true);
+    } finally {
+      if (originalWeatherWidget === undefined) {
+        delete window.WeatherWidget;
+      } else {
+        window.WeatherWidget = originalWeatherWidget;
+      }
+    }
   });
 
   it('renders forecast days in expanded view', () => {

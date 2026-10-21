@@ -397,10 +397,14 @@
     });
   }
 
-  async function refreshWeather(force = false) {
+  // ignoreWidgetToggle lets callers (the standalone Weather app modal) run the
+  // fetch/cache pipeline while the widget toggle is off. The widget DOM still
+  // stays hidden: renderLoading/renderWeather/renderError keep their own
+  // loadEnabled() checks.
+  async function refreshWeather(force = false, ignoreWidgetToggle = false) {
     if (!WeatherStorage.loadEnabled()) {
       hideWidget();
-      return;
+      if (!ignoreWidgetToggle) return;
     }
 
     // Persist any in-flight manual city input before reading stored value,

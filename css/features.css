@@ -3432,24 +3432,6 @@ body.light-theme .weather-city-inline input:focus {
   font-weight: 500;
 }
 
-/* Weather app - disabled state */
-.weather-app-disabled {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 40px 0;
-  text-align: center;
-}
-
-.weather-app-disabled-text {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
-  font-weight: 500;
-  max-width: 280px;
-  line-height: 1.5;
-}
-
 /* Weather app - current conditions */
 .weather-app-current {
   display: flex;
@@ -3726,10 +3708,6 @@ body.light-theme .weather-app-loading-text {
 
 body.light-theme .weather-app-error-text {
   color: rgba(55, 65, 81, 0.7);
-}
-
-body.light-theme .weather-app-disabled-text {
-  color: rgba(107, 114, 128, 0.8);
 }
 
 body.light-theme .weather-app-current-icon {
