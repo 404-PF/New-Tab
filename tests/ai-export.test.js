@@ -397,12 +397,31 @@ describe('AIService delete confirmation keyboard safety (#889)', () => {
 
   it('Enter anywhere else in the dialog does not delete the conversation', () => {
     openDialogWithKeyboard();
-    // Only the dialog's own Delete button confirms; a stray Enter on any
-    // other element of the dialog must not destroy the conversation.
+    // Focus can only ever be on one of the two buttons while the dialog is
+    // open, so this is not a reachable keyboard path today. It stays as a
+    // guard for the removed document-level Enter branch: if focus ever moves
+    // to a non-button part of the dialog, that keypress must not be able to
+    // destroy the conversation.
     const overlay = document.querySelector('#ai-confirm-dialog .ai-confirm-overlay');
     overlay.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
     );
+    expect(AIStore.state.conversations).toHaveLength(2);
+    expect(AIStore.state.confirmDialogCallback).not.toBeNull();
+  });
+
+  it('leaves the Delete button to its native Enter activation so the keyboard can still confirm', () => {
+    openDialogWithKeyboard();
+    // Focus can only ever be on one of the two buttons while the dialog is
+    // open, so this is the reachable confirm path: the document-level handler
+    // must not claim the event, leaving the browser free to activate the
+    // focused button natively.
+    const deleteBtn = document.querySelector('#ai-confirm-dialog .ai-confirm-delete');
+    deleteBtn.focus();
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    deleteBtn.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
     expect(AIStore.state.conversations).toHaveLength(2);
     expect(AIStore.state.confirmDialogCallback).not.toBeNull();
   });

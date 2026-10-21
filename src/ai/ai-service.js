@@ -14,6 +14,10 @@ const AIService = (function() {
   // back when the dialog closes.
   let confirmDialogReturnFocus = null;
 
+  /**
+   * Remembers the element that has focus before the delete confirmation
+   * dialog takes it, so it can be handed back when the dialog closes.
+   */
   function captureConfirmDialogReturnFocus() {
     const active = document.activeElement;
     // Only a focus outside the dialog is worth remembering, and an already
@@ -25,6 +29,10 @@ const AIService = (function() {
     }
   }
 
+  /**
+   * Restores the focus the delete confirmation dialog captured, falling back
+   * to the topics list when a confirmed delete detached the original element.
+   */
   function restoreConfirmDialogReturnFocus() {
     const previous = confirmDialogReturnFocus;
     confirmDialogReturnFocus = null;
@@ -131,6 +139,14 @@ const AIService = (function() {
     }
   }
 
+  /**
+   * Opens the delete confirmation dialog for a conversation.
+   *
+   * Only the dialog's own buttons act on Enter (Cancel cancels, Delete
+   * deletes): the document-level handler deliberately confirms nothing, so a
+   * keypress that is not on the Delete button can never delete (#889).
+   * @param {Function} onConfirm Callback that runs when the delete is confirmed.
+   */
   function showDeleteConfirm(onConfirm) {
     cacheElements();
 
@@ -198,6 +214,10 @@ const AIService = (function() {
     document.addEventListener('keydown', handleKeydown);
   }
 
+  /**
+   * Closes the delete confirmation dialog without running the stored
+   * callback, and makes its buttons unreachable while it is invisible.
+   */
   function hideDeleteConfirm() {
     cacheElements();
 
@@ -218,6 +238,10 @@ const AIService = (function() {
     AIStore.clearConfirmDialogCallback();
   }
 
+  /**
+   * Dismisses the delete confirmation dialog the way the user asked
+   * (Escape, Cancel or the overlay) and hands focus back to where it was.
+   */
   function closeDeleteConfirm() {
     hideDeleteConfirm();
     restoreConfirmDialogReturnFocus();
