@@ -349,6 +349,15 @@
     animation: none !important;
     opacity: 1 !important;
   }
+  /* Settings modal (#875): collapse the entrance fade, the tab crossfade,
+     and the delayed backdrop-filter so the modal snaps to its final state
+     in one step instead of animating. */
+  #settings-modal,
+  #settings-modal > div,
+  .settings-menu-item,
+  .settings-section.selected {
+    transition: none !important;
+  }
 }
 
 /* Ensure video doesn't interfere with interactions */
@@ -1358,6 +1367,11 @@ body.light-theme .timezone-add-btn {
   border-color: rgba(99, 102, 241, 0.2);
   color: #6366f1;
 }
+/* The full-screen blur must not run while the overlay's opacity animates —
+   that forces the browser to re-run the blur on every frame of the
+   transition (#875). The blur therefore lives only on the open state, and
+   its transition delays it until the fade has finished; closing removes it
+   immediately because the base rule transitions opacity only. */
 #settings-modal {
   display: flex;
   position: fixed;
@@ -1366,8 +1380,6 @@ body.light-theme .timezone-add-btn {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   z-index: 1005;
   align-items: center;
   justify-content: center;
@@ -1378,11 +1390,12 @@ body.light-theme .timezone-add-btn {
 #settings-modal.modal-open {
   opacity: 1;
   pointer-events: auto;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: opacity 0.3s ease, backdrop-filter 0.01s linear 0.3s;
 }
 #settings-modal > div {
   background: var(--settings-modal-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-radius: 16px;
   padding: 0;
   width: min(720px, calc(100vw - 32px));
@@ -1441,7 +1454,12 @@ body.light-theme .timezone-add-btn {
   white-space: normal;
   overflow-wrap: anywhere;
   border-radius: 0 12px 12px 0;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Explicit list: `transition: all` also animated paint-heavy box-shadow
+     and reflow-causing font-weight changes on every hover/selection (#875). */
+  transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   margin-left: 8px;
   margin-right: 8px;
@@ -1472,6 +1490,11 @@ body.light-theme .timezone-add-btn {
 .settings-content {
   flex: 1;
   min-width: 0;
+  /* Grid-stack every section in the same cell so the panel height stays
+     stable and tab switching only flips opacity/visibility — never a
+     relayout of the dialog (#875). */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   padding: 20px 20px 16px 20px;
   font-size: 1em;
   overflow-x: hidden;
@@ -1481,6 +1504,14 @@ body.light-theme .timezone-add-btn {
 .settings-section {
   min-width: 0;
   overflow-wrap: anywhere;
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+}
+.settings-section.selected {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.15s ease;
 }
 .settings-content .bg-thumbnails,
 .settings-content > div {

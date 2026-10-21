@@ -1996,6 +1996,7 @@ if (gamesEnabledSetting) {
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];
 const settingsSections = document.querySelectorAll('.settings-section'); // This will include the About section if present in HTML
+const settingsContent = document.querySelector('.settings-content');
 let backgroundsInitialized = false;
 let backgroundsInitializing = false;
 
@@ -2014,14 +2015,19 @@ if (settingsMenu) {
       const section = this.getAttribute('data-section');
       settingsMenuItems.forEach((i) => i.classList.remove('selected'));
       this.classList.add('selected');
+      // Keep every section rendered and crossfade via the `.selected`
+      // opacity/visibility styles instead of toggling `display`, which
+      // relaid out the whole dialog on each tab click (#875).
+      let sectionChanged = false;
       settingsSections.forEach((s) => {
-        // Show the section that matches the clicked tab, hide others
-        if (s.getAttribute('data-section') === section) {
-          s.style.display = 'block';
-        } else {
-          s.style.display = 'none';
-        }
+        const show = s.getAttribute('data-section') === section;
+        if (show !== s.classList.contains('selected')) sectionChanged = true;
+        s.classList.toggle('selected', show);
       });
+      // The old display toggle clamped the shared scroller back to the top;
+      // with all sections stacked in one grid cell the position would
+      // otherwise persist across tabs.
+      if (sectionChanged && settingsContent) settingsContent.scrollTop = 0;
       // Lazy load backgrounds
       if (section === 'background' && !backgroundsInitialized && !backgroundsInitializing) {
         backgroundsInitializing = true;
