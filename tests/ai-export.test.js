@@ -410,7 +410,7 @@ describe('AIService delete confirmation keyboard safety (#889)', () => {
     expect(AIStore.state.confirmDialogCallback).not.toBeNull();
   });
 
-  it('leaves the Delete button to its native Enter activation so the keyboard can still confirm', () => {
+  it('does not claim Enter on the focused Delete button, leaving activation to the browser', () => {
     openDialogWithKeyboard();
     // Focus can only ever be on one of the two buttons while the dialog is
     // open, so this is the reachable confirm path: the document-level handler
