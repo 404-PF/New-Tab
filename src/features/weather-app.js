@@ -431,9 +431,25 @@
     // Refresh the shared cache so the open modal stays fresh. The app works
     // independently of the widget toggle: the second argument tells the widget
     // pipeline to ignore `weatherEnabled` (the widget DOM stays hidden).
+    // The refresh resolves with a completion result (independent of cache
+    // persistence), so a geolocation/fetch failure or a failed cache write
+    // cannot leave the loading state stuck: failures render the error view and
+    // successful fetches render their data directly.
     if (window.WeatherWidget && window.WeatherWidget.refresh) {
-      window.WeatherWidget.refresh(false, true).catch(function (error) {
+      window.WeatherWidget.refresh(false, true).then(function (result) {
+        if (!result || !modal.classList.contains('modal-open')) return;
+        if (result.ok) {
+          if (result.data) {
+            renderExpandedWeather(result.data, result.locationName, loadUnit());
+          }
+          return;
+        }
+        renderAppError(result.message || t('weatherError'));
+      }).catch(function (error) {
         console.error('Failed to refresh weather:', error);
+        if (modal.classList.contains('modal-open')) {
+          renderAppError(t('weatherError'));
+        }
       });
     }
   }

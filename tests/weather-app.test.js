@@ -133,6 +133,54 @@ describe('Weather app', () => {
     }
   });
 
+  it('renders an error when the refresh fails with no cache', async () => {
+    localStorage.setItem('weatherEnabled', 'false');
+    const refresh = vi.fn().mockResolvedValue({ ok: false, message: 'Location unavailable' });
+    const originalWeatherWidget = window.WeatherWidget;
+    window.WeatherWidget = { refresh };
+
+    try {
+      window.WeatherApp.open();
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const body = document.getElementById('weather-app-body');
+      expect(body.querySelector('.weather-app-loading')).toBeNull();
+      expect(body.querySelector('.weather-app-error-text').textContent).toBe('Location unavailable');
+    } finally {
+      if (originalWeatherWidget === undefined) {
+        delete window.WeatherWidget;
+      } else {
+        window.WeatherWidget = originalWeatherWidget;
+      }
+    }
+  });
+
+  it('renders fetched data when the refresh succeeds independently of cache persistence', async () => {
+    const refresh = vi.fn().mockResolvedValue({
+      ok: true,
+      data: { current: { temperature_2m: 24, weather_code: 0 } },
+      locationName: 'Vienna, AT'
+    });
+    const originalWeatherWidget = window.WeatherWidget;
+    window.WeatherWidget = { refresh };
+
+    try {
+      window.WeatherApp.open();
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const body = document.getElementById('weather-app-body');
+      expect(body.querySelector('.weather-app-loading')).toBeNull();
+      expect(body.querySelector('.weather-app-current-temp').textContent).toContain('24');
+      expect(body.querySelector('.weather-app-current-location').textContent).toContain('Vienna, AT');
+    } finally {
+      if (originalWeatherWidget === undefined) {
+        delete window.WeatherWidget;
+      } else {
+        window.WeatherWidget = originalWeatherWidget;
+      }
+    }
+  });
+
   it('renders forecast days in expanded view', () => {
     localStorage.setItem('weatherEnabled', 'true');
     localStorage.setItem('weatherUnit', 'celsius');

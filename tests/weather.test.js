@@ -397,9 +397,11 @@ describe('Weather widget', () => {
       }
     });
 
-    await window.WeatherWidget.refresh(true, true);
+    const result = await window.WeatherWidget.refresh(true, true);
     await new Promise(resolve => setTimeout(resolve, 0));
 
+    expect(result.ok).toBe(true);
+    expect(result.data.current.temperature_2m).toBe(22);
     expect(capturedUrl).toBeDefined();
     const stored = JSON.parse(localStorage.getItem('weatherCache'));
     expect(stored).not.toBeNull();
@@ -408,6 +410,28 @@ describe('Weather widget', () => {
     // The widget DOM must stay hidden while the widget toggle is off.
     const widget = document.getElementById('weather-widget');
     expect(widget.querySelector('.weather-temp')).toBeNull();
+    expect(widget.style.display).toBe('none');
+  });
+
+  it('returns a failure result when geolocation fails while ignoring the widget toggle', async () => {
+    localStorage.setItem('weatherLocationMode', 'auto');
+    mockGeolocationError();
+
+    let fetchCalled = false;
+    installWeatherFetch({
+      onCall: () => {
+        fetchCalled = true;
+      }
+    });
+
+    const result = await window.WeatherWidget.refresh(true, true);
+
+    expect(fetchCalled).toBe(false);
+    expect(result.ok).toBe(false);
+    expect(typeof result.message).toBe('string');
+
+    // The widget DOM stays hidden while the widget toggle is off.
+    const widget = document.getElementById('weather-widget');
     expect(widget.style.display).toBe('none');
   });
 

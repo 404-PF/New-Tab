@@ -401,6 +401,14 @@
   // fetch/cache pipeline while the widget toggle is off. The widget DOM still
   // stays hidden: renderLoading/renderWeather/renderError keep their own
   // loadEnabled() checks.
+  //
+  // Every terminal path resolves with a completion result that does not depend
+  // on cache persistence: { ok: true, data, locationName } after a successful
+  // fetch (or accepted cache) or { ok: false, message } after a failure, so
+  // callers like the modal can render the outcome instead of waiting for a
+  // weatherCacheUpdated event that only fires on a successful cache write.
+  // It resolves undefined when the refresh was skipped (toggle off without
+  // ignoreWidgetToggle, or another refresh already in flight).
   async function refreshWeather(force = false, ignoreWidgetToggle = false) {
     if (!WeatherStorage.loadEnabled()) {
       hideWidget();
@@ -447,7 +455,7 @@
         }
         if (isCacheMatchingSettings(cache, location)) {
           renderWeather(cache.data, cache.locationName, unit);
-          return;
+          return { ok: true, data: cache.data, locationName: cache.locationName };
         }
       }
 
@@ -455,7 +463,7 @@
       if (locationMode === 'manual') {
         if (!manualCity.trim()) {
           renderError(t('weatherEnterCity'));
-          return;
+          return { ok: false, message: t('weatherEnterCity') };
         }
         try {
           location = await geocodeCity(manualCity.trim());
@@ -463,14 +471,14 @@
           // Try to use stale cache as fallback only if it matches current settings
           if (cache && cache.data && isCacheMatchingSettings(cache)) {
             renderWeather(cache.data, cache.locationName, unit);
-            return;
+            return { ok: true, data: cache.data, locationName: cache.locationName };
           }
           if (e.code === 'NETWORK_ERROR' || e.code === 'GEOCODING_TIMEOUT' || e.code === 'GEOCODING_FAILED' || e.code === 'GEOCODING_INVALID') {
             renderError(t('weatherError'));
-          } else {
-            renderError(t('weatherLocationNotFound'));
+            return { ok: false, message: t('weatherError') };
           }
-          return;
+          renderError(t('weatherLocationNotFound'));
+          return { ok: false, message: t('weatherLocationNotFound') };
         }
       } else {
         try {
@@ -482,7 +490,7 @@
           // Auto-location cache is not safe to use without a successful
           // current geolocation check.
           renderError(t('weatherLocationUnavailable'));
-          return;
+          return { ok: false, message: t('weatherLocationUnavailable') };
         }
       }
 
@@ -510,15 +518,17 @@
         console.warn('Failed to write weather cache:', error);
       });
       renderWeather(weatherData, newCache.locationName, unit);
+      return { ok: true, data: weatherData, locationName: newCache.locationName };
     } catch (e) {
       console.error('Weather refresh failed:', e);
       // A cached auto-location result is only a safe fallback after the
       // current geolocation has been confirmed to be within the tolerance.
       if (cache && cache.data && isCacheMatchingSettings(cache, location)) {
         renderWeather(cache.data, cache.locationName, unit);
-      } else {
-        renderError(t('weatherError'));
+        return { ok: true, data: cache.data, locationName: cache.locationName };
       }
+      renderError(t('weatherError'));
+      return { ok: false, message: t('weatherError') };
     } finally {
       isRefreshing = false;
       if (pendingRefresh) {
