@@ -176,7 +176,8 @@ body.light-theme #settings-modal {
 body.light-theme #settings-modal.modal-open {
   backdrop-filter: blur(var(--glass-overlay-blur));
   -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
-  transition: opacity 0.3s ease, backdrop-filter 0.01s linear 0.3s;
+  transition: opacity 0.3s ease, backdrop-filter 0.01s linear 0.3s,
+    -webkit-backdrop-filter 0.01s linear 0.3s;
 }
 
 /* Nested cards and controls share the same lower-level surface. */

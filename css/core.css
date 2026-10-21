@@ -1392,7 +1392,8 @@ body.light-theme .timezone-add-btn {
   pointer-events: auto;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  transition: opacity 0.3s ease, backdrop-filter 0.01s linear 0.3s;
+  transition: opacity 0.3s ease, backdrop-filter 0.01s linear 0.3s,
+    -webkit-backdrop-filter 0.01s linear 0.3s;
 }
 #settings-modal > div {
   background: var(--settings-modal-bg);
@@ -1454,8 +1455,8 @@ body.light-theme .timezone-add-btn {
   white-space: normal;
   overflow-wrap: anywhere;
   border-radius: 0 12px 12px 0;
-  /* Explicit list: `transition: all` also animated paint-heavy box-shadow
-     and reflow-causing font-weight changes on every hover/selection (#875). */
+  /* Explicit list: `transition: all` also animated the reflow-causing
+     font-weight change on every hover/selection (#875). */
   transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1),
     color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -1505,10 +1506,16 @@ body.light-theme .timezone-add-btn {
   min-width: 0;
   overflow-wrap: anywhere;
   grid-area: 1 / 1;
+  /* Size containment keeps inactive tabs out of the shared scroller: without
+     it the grid row would match the tallest section and short tabs (e.g.
+     General, About) would scroll through empty space (#875). The box stays
+     in the cell, so the opacity crossfade still runs. */
+  content-visibility: hidden;
   opacity: 0;
   visibility: hidden;
 }
 .settings-section.selected {
+  content-visibility: visible;
   opacity: 1;
   visibility: visible;
   transition: opacity 0.15s ease;

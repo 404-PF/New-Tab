@@ -57,8 +57,10 @@ describe('Settings modal entrance blur (#875)', () => {
     expect(openRule[0]).toMatch(/backdrop-filter:\s*blur\(16px\)/);
     expect(openRule[0]).toMatch(/-webkit-backdrop-filter:\s*blur\(16px\)/);
     // The blur lands only after the fade finishes, so the overlay never
-    // re-blurs on every animation frame.
+    // re-blurs on every animation frame. Engines that only honor the
+    // prefixed property must be delayed by the same amount.
     expect(openRule[0]).toMatch(/transition:\s*opacity 0\.3s ease,\s*backdrop-filter 0\.01s linear 0\.3s/);
+    expect(openRule[0]).toMatch(/-webkit-backdrop-filter 0\.01s linear 0\.3s/);
   });
 
   it('does not stack a second live blur on the settings dialog', () => {
@@ -88,6 +90,7 @@ describe('Settings modal entrance blur (#875)', () => {
     expect(openRule).not.toBeNull();
     expect(openRule[0]).toMatch(/backdrop-filter:\s*blur\(var\(--glass-overlay-blur\)\)/);
     expect(openRule[0]).toMatch(/transition:\s*opacity 0\.3s ease,\s*backdrop-filter 0\.01s linear 0\.3s/);
+    expect(openRule[0]).toMatch(/-webkit-backdrop-filter 0\.01s linear 0\.3s/);
   });
 });
 
@@ -120,6 +123,9 @@ describe('Settings menu and section transitions (#875)', () => {
     expect(sectionRule[0]).toMatch(/grid-area:\s*1 \/ 1/);
     expect(sectionRule[0]).toMatch(/opacity:\s*0/);
     expect(sectionRule[0]).toMatch(/visibility:\s*hidden/);
+    // Size-contained inactive tabs stay out of the shared scroller, so short
+    // tabs no longer scroll through the tallest section's empty space.
+    expect(sectionRule[0]).toMatch(/content-visibility:\s*hidden/);
 
     // The reduced-motion override at the top of the file reuses this
     // selector; the visual rule is the one that shows the section.
@@ -129,6 +135,7 @@ describe('Settings menu and section transitions (#875)', () => {
     const visibleRule = selectedRules.find((rule) => /opacity:\s*1/.test(rule));
     expect(visibleRule).toBeDefined();
     expect(visibleRule).toMatch(/visibility:\s*visible/);
+    expect(visibleRule).toMatch(/content-visibility:\s*visible/);
   });
 
   it('disables the settings modal animations under prefers-reduced-motion', () => {
