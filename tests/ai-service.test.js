@@ -424,8 +424,8 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
     expect(secondAssistant.content).toBe('Second answer');
   });
 
-  describe("offline answers with success:false are answers, not failures (#872)", () => {
-    it("finalizes a can't-convert answer as the assistant message instead of deleting the question", async () => {
+  describe('offline answers with success:false are answers, not failures (#872)', () => {
+    it('finalizes a can\'t-convert answer as the assistant message instead of deleting the question', async () => {
       const conversation = {
         id: 'conv_cant_convert',
         title: 'CantConvert',
@@ -458,7 +458,7 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
       }
     });
 
-    it("shows no transport error banner for a can't-convert answer", async () => {
+    it('shows no transport error banner for a can\'t-convert answer', async () => {
       const conversation = {
         id: 'conv_no_banner',
         title: 'NoBanner',
