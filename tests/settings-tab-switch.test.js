@@ -118,22 +118,34 @@ describe('Settings menu and section transitions (#875)', () => {
     expect(contentRule[0]).toMatch(/display:\s*grid/);
     expect(contentRule[0]).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
 
-    const sectionRule = css.match(/\.settings-section\s*\{[^}]*\}/);
-    expect(sectionRule).not.toBeNull();
-    expect(sectionRule[0]).toMatch(/grid-area:\s*1 \/ 1/);
-    expect(sectionRule[0]).toMatch(/opacity:\s*0/);
-    expect(sectionRule[0]).toMatch(/visibility:\s*hidden/);
+    // The reduced-motion override at the top of the file uses the same bare
+    // selector; the visual base rule is the one that grid-stacks the
+    // sections.
+    const sectionRules = [...css.matchAll(/\.settings-section\s*\{[^}]*\}/g)]
+      .map((match) => match[0]);
+    const sectionRule = sectionRules.find((rule) => /grid-area:/.test(rule));
+    expect(sectionRule).toBeDefined();
+    expect(sectionRule).toMatch(/grid-area:\s*1 \/ 1/);
+    expect(sectionRule).toMatch(/opacity:\s*0/);
+    expect(sectionRule).toMatch(/visibility:\s*hidden/);
     // Size-contained inactive tabs stay out of the shared scroller, so short
     // tabs no longer scroll through the tallest section's empty space.
-    expect(sectionRule[0]).toMatch(/content-visibility:\s*hidden/);
+    expect(sectionRule).toMatch(/content-visibility:\s*hidden/);
+    // Exit fade: this rule is the after-change style when `.selected` is
+    // removed, so it carries the crossfade. `content-visibility` is discrete;
+    // its explicit transition keeps the outgoing section painted until the
+    // fade completes instead of snapping hidden on the first frame.
+    expect(sectionRule).toMatch(/transition:[^;]*opacity 0\.15s ease/);
+    expect(sectionRule).toMatch(/transition:[^;]*visibility 0\.15s ease/);
+    expect(sectionRule).toMatch(/content-visibility 0\.15s ease allow-discrete/);
 
-    // The reduced-motion override at the top of the file reuses this
-    // selector; the visual rule is the one that shows the section.
+    // Only the visual rule uses `.selected`; the reduced-motion override
+    // targets the base selector so it also disables the exit fade.
     const selectedRules = [...css.matchAll(/\.settings-section\.selected\s*\{[^}]*\}/g)]
       .map((match) => match[0]);
-    expect(selectedRules.length).toBeGreaterThan(1);
-    const visibleRule = selectedRules.find((rule) => /opacity:\s*1/.test(rule));
-    expect(visibleRule).toBeDefined();
+    expect(selectedRules.length).toBe(1);
+    const visibleRule = selectedRules[0];
+    expect(visibleRule).toMatch(/opacity:\s*1/);
     expect(visibleRule).toMatch(/visibility:\s*visible/);
     expect(visibleRule).toMatch(/content-visibility:\s*visible/);
   });
@@ -145,7 +157,9 @@ describe('Settings menu and section transitions (#875)', () => {
     expect(reduced[0]).toMatch(/#settings-modal/);
     expect(reduced[0]).toMatch(/#settings-modal > div/);
     expect(reduced[0]).toMatch(/\.settings-menu-item/);
-    expect(reduced[0]).toMatch(/\.settings-section\.selected/);
+    // The bare `.settings-section` selector covers both the entry transition
+    // (on `.selected`) and the exit transition (on the base rule).
+    expect(reduced[0]).toMatch(/\.settings-section\s*\{/);
     expect(reduced[0]).toMatch(/transition:\s*none\s*!important/);
   });
 

@@ -355,7 +355,7 @@
   #settings-modal,
   #settings-modal > div,
   .settings-menu-item,
-  .settings-section.selected {
+  .settings-section {
     transition: none !important;
   }
 }
@@ -1513,11 +1513,22 @@ body.light-theme .timezone-add-btn {
   content-visibility: hidden;
   opacity: 0;
   visibility: hidden;
+  /* Exit fade (#875): the base rule is the after-change style when a tab
+     loses `.selected`, so the transition must live here — the `.selected`
+     rule below only runs on the way in. `content-visibility` is not
+     interpolable, so it needs the explicit discrete transition
+     (`allow-discrete`); its exit flip lands at the end of the duration,
+     keeping the outgoing section painted for the whole fade. `visibility`
+     stays visible until the fade completes for the same reason. */
+  transition: opacity 0.15s ease, visibility 0.15s ease,
+    content-visibility 0.15s ease allow-discrete;
 }
 .settings-section.selected {
   content-visibility: visible;
   opacity: 1;
   visibility: visible;
+  /* Entry only: the incoming section is already painted, so just fade
+     opacity in; the hiding properties flip immediately. */
   transition: opacity 0.15s ease;
 }
 .settings-content .bg-thumbnails,
