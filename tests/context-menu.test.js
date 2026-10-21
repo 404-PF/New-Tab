@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 const createElement = (tag, id) => {
@@ -7,6 +7,21 @@ const createElement = (tag, id) => {
   document.body.appendChild(element);
   return element;
 };
+
+// The rename and change-thumbnail handlers focus their input on a 100ms
+// delay (src/features/context-menu.js). Fake timers so those delays are fake
+// timers that afterEach clears, instead of real ones firing 100ms after
+// teardown — by then the environment is gone, `document` is undefined, and
+// the callback throws "document is not defined" as an unhandled error that
+// fails the whole run.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+});
+
+afterEach(() => {
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
 
 describe('context menu previews', () => {
   beforeAll(() => {
@@ -72,6 +87,32 @@ describe('context menu previews', () => {
     expect(deletePreview.querySelector('[data-test="evil"]')).toBeNull();
   });
 
+  it('keeps the delayed modal focus on a fake timer that does not outlive the test', () => {
+    const appIcon = document.getElementById('app-1');
+    appIcon.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      pageX: 32,
+      pageY: 32
+    }));
+
+    const thumbnailInput = document.getElementById('thumbnail-app-input');
+    document.getElementById('change-thumbnail').click();
+
+    // The thumbnail handler defers focusing its input by 100ms. That delay
+    // must be a fake timer: a real one would still be pending when the test
+    // file's environment is torn down, and it would then read `document`
+    // from a destroyed environment and throw "document is not defined" as an
+    // unhandled error that fails the whole run.
+    expect(vi.getTimerCount()).toBe(1);
+    expect(document.activeElement).not.toBe(thumbnailInput);
+
+    vi.advanceTimersByTime(200);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(document.activeElement).toBe(thumbnailInput);
+  });
+
   it('skips delayed focus when modal inputs disappear', () => {
     const appIcon = document.getElementById('app-1');
     const openContextMenu = () => {
@@ -89,7 +130,6 @@ describe('context menu previews', () => {
       event.preventDefault();
     };
     window.addEventListener('error', onError);
-    vi.useFakeTimers();
 
     try {
       window.renameAppId = null;
@@ -108,7 +148,6 @@ describe('context menu previews', () => {
 
       expect(errors).toEqual([]);
     } finally {
-      vi.useRealTimers();
       window.removeEventListener('error', onError);
     }
   });
