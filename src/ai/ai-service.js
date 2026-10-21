@@ -140,14 +140,32 @@ const AIService = (function() {
     });
     newOverlay.addEventListener('click', hideDeleteConfirm);
 
+    // Focus moves into the dialog when it opens: the cloneNode() calls above
+    // replace the buttons (and the focused element with them), which would
+    // otherwise drop focus back to wherever the user was. The Cancel button
+    // is the dialog's first control and its safe default.
+    newCancelBtn.focus();
+
     const handleKeydown = (event) => {
       if (event.key === 'Escape') {
         hideDeleteConfirm();
       } else if (event.key === 'Enter') {
-        const callback = AIStore.state.confirmDialogCallback;
-        hideDeleteConfirm();
-        if (callback) {
-          callback();
+        // A focused button activates natively on Enter — Cancel cancels,
+        // Delete deletes — so the document-level handler must stay out of
+        // it. Confirming here as well made Enter on Cancel destroy the
+        // conversation (#889).
+        if (event.target && event.target.tagName === 'BUTTON') {
+          return;
+        }
+        // Only a keydown from inside the dialog confirms; Enter elsewhere
+        // on the page (e.g. in the chat input) keeps its own meaning while
+        // the dialog is open.
+        if (elements.confirmDialog.contains(event.target)) {
+          const callback = AIStore.state.confirmDialogCallback;
+          hideDeleteConfirm();
+          if (callback) {
+            callback();
+          }
         }
       }
     };
