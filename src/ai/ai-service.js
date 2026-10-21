@@ -620,7 +620,13 @@ const AIService = (function() {
           result = { ...result, content: OfflineMode.getAcknowledgment().content };
         }
 
-        if (result.success && result.content) {
+        // An offline answer is a completed answer, not a transport failure:
+        // getResponse also answers with success:false and a content (a unit
+        // conversion it cannot make, e.g. "10 km to furlong"). Streaming that
+        // content keeps the question and its answer in the conversation; the
+        // old success check fell through to removeFailedMessages, which
+        // destroyed the user's message (#872).
+        if (result.content) {
           const chunks = result.content.split('');
 
           for (let index = 0; index < chunks.length; index++) {
@@ -714,7 +720,12 @@ const AIService = (function() {
         }
       }
 
-      if (result.success) {
+      // An offline answer finished the moment getResponse returned it, whatever
+      // its success flag says: a conversion the offline engine cannot make
+      // answers with success:false AND the content to show, which is a
+      // completed answer, not a transport failure that should destroy the
+      // user's message (#872).
+      if (result.success || result.mode === 'offline') {
         // Finalize the exact assistant message created for this request, not
         // whatever is last in the current conversation: a newer request may
         // have started (or the conversation switched) before this one settled.

@@ -424,6 +424,63 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
     expect(secondAssistant.content).toBe('Second answer');
   });
 
+  describe('offline answers with success:false are answers, not failures (#872)', () => {
+    it('finalizes a can\'t-convert answer as the assistant message instead of deleting the question', async () => {
+      const conversation = {
+        id: 'conv_cant_convert',
+        title: 'CantConvert',
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      AIStore.state.conversations = [conversation];
+      AIStore.state.currentConversationId = conversation.id;
+
+      window.dispatchEvent(new Event('offline'));
+      try {
+        const cantConvert = OfflineMode.getResponse('10 km to furlong');
+        expect(cantConvert.success).toBe(false);
+        expect(cantConvert.content).toBeTruthy();
+
+        await AIService.sendMessage('10 km to furlong');
+
+        // The question and its answer both stay in the conversation
+        expect(conversation.messages).toHaveLength(2);
+        expect(conversation.messages[0]).toMatchObject({ role: 'user', content: '10 km to furlong' });
+        expect(conversation.messages[1]).toMatchObject({ role: 'assistant', content: cantConvert.content, isStreaming: false });
+
+        // ... and survive a reload from storage
+        const saved = JSON.parse(localStorage.getItem('ai_conversations'));
+        expect(saved[0].messages).toHaveLength(2);
+        expect(saved[0].messages[1].content).toBe(cantConvert.content);
+      } finally {
+        window.dispatchEvent(new Event('online'));
+      }
+    });
+
+    it('shows no transport error banner for a can\'t-convert answer', async () => {
+      const conversation = {
+        id: 'conv_no_banner',
+        title: 'NoBanner',
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      AIStore.state.conversations = [conversation];
+      AIStore.state.currentConversationId = conversation.id;
+
+      window.dispatchEvent(new Event('offline'));
+      try {
+        await AIService.sendMessage('10 km to furlong');
+
+        expect(document.getElementById('ai-chat-error').textContent).toBe('');
+        expect(document.getElementById('ai-chat-error').style.display).not.toBe('block');
+      } finally {
+        window.dispatchEvent(new Event('online'));
+      }
+    });
+  });
+
   it('keeps the partial simulated response when stopping mid-stream in offline mode', async () => {
     const conversation = {
       id: 'conv_offline',
