@@ -217,6 +217,22 @@ describe('Pac-Man input and movement', () => {
     container.remove();
   });
 
+  it('swallows page scroll for held direction keys but not modified shortcuts (#876)', () => {
+    const container = makeContainer();
+    startWithSpace();
+
+    const held = new KeyboardEvent('keydown', { code: 'ArrowLeft', key: 'ArrowLeft', repeat: true, cancelable: true, bubbles: true });
+    document.dispatchEvent(held);
+    expect(held.defaultPrevented).toBe(true);
+
+    const modified = new KeyboardEvent('keydown', { code: 'ArrowLeft', key: 'ArrowLeft', repeat: true, ctrlKey: true, cancelable: true, bubbles: true });
+    document.dispatchEvent(modified);
+    expect(modified.defaultPrevented).toBe(false);
+
+    getGame().destroy();
+    container.remove();
+  });
+
   it('pauses with Space and resume() is a no-op while manually paused', () => {
     const container = makeContainer();
     startWithSpace();

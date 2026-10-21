@@ -536,7 +536,14 @@
   }
 
   function handleKeydown(e) {
-    if (shouldIgnoreKey(e)) return;
+    if (shouldIgnoreKey(e)) {
+      // Swallow page scroll for a held game key without acting on its auto-repeat.
+      const editable = !!(e && e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable));
+      if (e && e.repeat && !editable && !e.ctrlKey && !e.metaKey && !e.altKey && (isUpKey(e) || e.code === 'Space')) {
+        e.preventDefault();
+      }
+      return;
+    }
     if (!started) return;
 
     if (gameOver) {

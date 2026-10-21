@@ -331,15 +331,26 @@
 
   // Drain the buffer synchronously so a snapshot taken on a visibilitychange
   // or pagehide serialization cannot drop a key whose animation frame has
-  // not run yet (#876).
+  // not run yet (#876). applyMove() can end the run through afterMove(), so
+  // gameOver is re-checked inside the loop before each drained move.
   function flushQueuedMoves() {
     cancelMoveFrame();
-    while (!gameOver && queuedMoves.length > 0) {
+    while (queuedMoves.length > 0) {
+      if (gameOver) return;
       applyMove(queuedMoves.shift());
     }
   }
 
   function handleKeydown(e) {
+    if (window.gamesHelpers.isEditableTarget(e.target)) return;
+
+    // Swallow the browser default (page scroll) for game control keys even
+    // when the event itself is dropped below: a held arrow or Space key
+    // would otherwise scroll the page behind the game (#876).
+    if (!e.ctrlKey && !e.metaKey && !e.altKey &&
+        (window.gamesHelpers.parseDirection(e) || e.code === 'Space')) {
+      e.preventDefault();
+    }
     if (window.gamesHelpers.shouldIgnoreKey(e)) return;
 
     // Ignore all moves until the player has started the game.

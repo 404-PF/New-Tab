@@ -491,6 +491,24 @@ describe('2048 responsive input (#876)', () => {
     container.remove();
   });
 
+  it('swallows page scroll for held direction keys but not modified shortcuts (#876)', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+    game.init(container);
+
+    const held = new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', repeat: true, cancelable: true });
+    document.dispatchEvent(held);
+    expect(held.defaultPrevented).toBe(true);
+
+    const modified = new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', repeat: true, ctrlKey: true, cancelable: true });
+    document.dispatchEvent(modified);
+    expect(modified.defaultPrevented).toBe(false);
+
+    game.destroy();
+    container.remove();
+  });
+
   it('buffers rapid keys to at most one board update per frame', async () => {
     const randomSpy = vi.spyOn(window.GameRegistry, 'secureRandom').mockReturnValue(0);
     const container = document.createElement('div');

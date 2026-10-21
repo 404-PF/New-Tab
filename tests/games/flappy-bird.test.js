@@ -138,6 +138,27 @@ describe('Flappy Bird input and lifecycle', () => {
     getGame().destroy();
     container.remove();
   });
+
+  it('swallows page scroll for held game keys but not modified shortcuts (#876)', () => {
+    const container = makeContainer();
+    startWithSpace();
+
+    const held = new KeyboardEvent('keydown', { code: 'KeyW', key: 'w', repeat: true, cancelable: true });
+    document.dispatchEvent(held);
+    expect(held.defaultPrevented).toBe(true);
+
+    const heldSpace = new KeyboardEvent('keydown', { code: 'Space', key: ' ', repeat: true, cancelable: true });
+    document.dispatchEvent(heldSpace);
+    expect(heldSpace.defaultPrevented).toBe(true);
+
+    // Ctrl/Cmd/Alt combos stay with the browser and keep their default.
+    const modified = new KeyboardEvent('keydown', { code: 'KeyW', key: 'w', repeat: true, ctrlKey: true, cancelable: true });
+    document.dispatchEvent(modified);
+    expect(modified.defaultPrevented).toBe(false);
+
+    getGame().destroy();
+    container.remove();
+  });
 });
 
 describe('Flappy Bird save and restore', () => {
