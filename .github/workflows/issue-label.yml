@@ -258,7 +258,11 @@ jobs:
           DECISION_FILE="${DECISION_FILE:-$GITHUB_WORKSPACE/.tmp/label-decision.txt}"
           ADD="$(grep -m1 -E '^ADD:' "$DECISION_FILE" | sed 's/^ADD:[[:space:]]*//' | tr -d '\r' || true)"
           REMOVE="$(grep -m1 -E '^REMOVE:' "$DECISION_FILE" | sed 's/^REMOVE:[[:space:]]*//' | tr -d '\r' || true)"
-          REPO_LABELS="$(gh label list --repo "$GH_REPO" --limit 100 --json name --jq '.[].name')"
+          # gh api --paginate walks every page (per_page=100) so the filter
+          # set and both registry snapshots see the complete label registry;
+          # a --limit would truncate the snapshot and hide a create, rename,
+          # or delete that lands beyond the first page.
+          REPO_LABELS="$(gh api --paginate "repos/$GH_REPO/labels?per_page=100" --jq '.[].name')"
           ISSUE_LABELS="$(gh issue view "$ISSUE_NUMBER" --repo "$GH_REPO" --json labels --jq '.labels[].name')"
           # Integrity guard: issues: write also covers the repo label-registry
           # endpoints, and GitHub offers no narrower scope. Snapshot the
@@ -292,7 +296,7 @@ jobs:
           if [ -n "$REMOVE_VALID" ]; then
             gh issue edit "$ISSUE_NUMBER" --repo "$GH_REPO" --remove-label "$REMOVE_VALID"
           fi
-          REGISTRY_AFTER="$(gh label list --repo "$GH_REPO" --limit 100 --json name --jq '.[].name' | LC_ALL=C sort)"
+          REGISTRY_AFTER="$(gh api --paginate "repos/$GH_REPO/labels?per_page=100" --jq '.[].name' | LC_ALL=C sort)"
           if [ "$REGISTRY_BEFORE" != "$REGISTRY_AFTER" ]; then
             echo 'Label registry changed during the run (a label was created, renamed, or deleted); failing loudly.'
             echo 'Before:'; printf '%s\n' "$REGISTRY_BEFORE"

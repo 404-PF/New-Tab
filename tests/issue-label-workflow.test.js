@@ -31,6 +31,20 @@ describe('issue-label guards the repo label registry (#879)', () => {
 
   it('never creates, renames, or deletes registry labels', () => {
     expect(label).not.toMatch(/gh label (create|edit|delete)/);
+    // Direct writes to the label-registry REST endpoints are rejected too:
+    // any gh api/curl call touching /labels must be a plain read (default or
+    // explicit GET/HEAD, and no request-body flags that imply POST).
+    const registryWrites = label
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .filter((line) => /(?:gh api|curl)\b/.test(line) && /\/labels\b/.test(line))
+      .filter((line) => {
+        const method = line.match(/(?:-X|--method)\s+(\S+)/);
+        const verb = (method ? method[1] : 'GET').toUpperCase();
+        const hasBody = /\s(?:-f|-F|--field|--input|-d|--data(?:-\w+)?)\b/.test(line);
+        return (verb !== 'GET' && verb !== 'HEAD') || hasBody;
+      });
+    expect(registryWrites).toEqual([]);
   });
 
   it('keeps the decision step credential-free', () => {
@@ -43,13 +57,22 @@ describe('issue-label guards the repo label registry (#879)', () => {
   it('snapshots the label registry before applying and re-checks after', () => {
     const applySection = label.match(/- name: Apply label decisions[\s\S]*?(?=\n {6}- name: Report)/);
     expect(applySection).not.toBeNull();
-    expect(applySection[0]).toMatch(/REGISTRY_BEFORE=/);
-    expect(applySection[0]).toMatch(/REGISTRY_AFTER=/);
+    const beforeIdx = applySection[0].indexOf('REGISTRY_BEFORE=');
+    const afterIdx = applySection[0].indexOf('REGISTRY_AFTER=');
+    const edits = [...applySection[0].matchAll(/gh issue edit /g)].map((match) => match.index);
+    expect(beforeIdx).toBeGreaterThan(-1);
+    expect(afterIdx).toBeGreaterThan(-1);
+    expect(edits.length).toBeGreaterThan(0);
+    // The before snapshot must be taken before the first edit and the
+    // re-check after the last one, otherwise registry changes slip through.
+    expect(beforeIdx).toBeLessThan(edits[0]);
+    expect(afterIdx).toBeGreaterThan(edits[edits.length - 1]);
     expect(applySection[0]).toMatch(/if \[ "\$REGISTRY_BEFORE" != "\$REGISTRY_AFTER" \]; then/);
     expect(applySection[0]).toMatch(/Label registry changed during the run/);
     expect(applySection[0]).toMatch(/exit 1/);
-    // Two registry fetches in Apply: the pre-edit snapshot and the post-edit re-check.
-    const fetches = applySection[0].match(/gh label list --repo "\$GH_REPO" --limit 100 --json name --jq/g) || [];
+    // Two complete (paginated) registry fetches in Apply: the pre-edit
+    // snapshot and the post-edit re-check.
+    const fetches = applySection[0].match(/gh api --paginate "repos\/\$GH_REPO\/labels\?per_page=100" --jq '\.\[\]\.name'/g) || [];
     expect(fetches.length).toBe(2);
   });
 
@@ -59,6 +82,12 @@ describe('issue-label guards the repo label registry (#879)', () => {
     expect(applySection[0]).toMatch(/filter_valid "\$ADD" "\$REPO_LABELS"/);
     expect(applySection[0]).toMatch(/gh issue edit "\$ISSUE_NUMBER" --repo "\$GH_REPO" --add-label "\$ADD_VALID"/);
     expect(applySection[0]).toMatch(/gh issue edit "\$ISSUE_NUMBER" --repo "\$GH_REPO" --remove-label "\$REMOVE_VALID"/);
+    // Exactly these two edits exist, so an extra unfiltered edit fails the
+    // count, and raw $ADD/$REMOVE write arguments are rejected outright.
+    const edits = applySection[0].match(/gh issue edit /g) || [];
+    expect(edits.length).toBe(2);
+    expect(applySection[0]).not.toMatch(/--add-label "\$ADD"/);
+    expect(applySection[0]).not.toMatch(/--remove-label "\$REMOVE"/);
   });
 
   it('surfaces a guard trip through the existing failure-comment path', () => {
