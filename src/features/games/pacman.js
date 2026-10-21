@@ -1066,32 +1066,26 @@
 
   // ===================== Input =====================
 
-  function handleKeydown(e) {
-    if (window.gamesHelpers.isEditableTarget(e.target)) return;
+  function pauseRun() {
+    paused = true;
+    manualPause = true;
+    stopAnimation();
+    draw();
+  }
 
+  function handleKeydown(e) {
     // Swallow the browser default (page scroll) for game control keys even
     // when the event itself is dropped below: a held direction key or Space
     // would otherwise scroll the page behind the game (#876).
-    window.gamesHelpers.suppressGameKeyScroll(e);
-    if (!started || window.gamesHelpers.shouldIgnoreKey(e)) return;
+    if (!window.gamesHelpers.beginGameKeydown(e)) return;
+    if (!started) return;
 
     if (gameOver) {
       window.gamesHelpers.handleRestartSpace(e, resetAndStart);
       return;
     }
 
-    if (e.code === 'Space') {
-      e.preventDefault();
-      if (manualPause) {
-        resumeFromManualPause();
-      } else {
-        paused = true;
-        manualPause = true;
-        stopAnimation();
-        draw();
-      }
-      return;
-    }
+    if (window.gamesHelpers.togglePauseOnSpace(e, manualPause, pauseRun, resumeFromManualPause)) return;
 
     const dir = window.gamesHelpers.parseDirection(e);
     if (dir) {

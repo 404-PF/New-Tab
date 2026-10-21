@@ -343,72 +343,21 @@
     }
   }
 
-  // The shared key helpers are optional so a standalone or partial load still
-  // runs (matching Flappy Bird's fallbacks); fall back to the local checks the
-  // handler used before #876 centralized them.
-  function isEditableTarget(target) {
-    if (window.gamesHelpers && typeof window.gamesHelpers.isEditableTarget === 'function') {
-      return window.gamesHelpers.isEditableTarget(target);
-    }
-    return !!(target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
-  }
-
-  function parseDirection(e) {
-    if (window.gamesHelpers && typeof window.gamesHelpers.parseDirection === 'function') {
-      return window.gamesHelpers.parseDirection(e);
-    }
-    if (!e) return null;
-    const code = e.code;
-    if (code === 'ArrowUp' || code === 'KeyW') return 'up';
-    if (code === 'ArrowDown' || code === 'KeyS') return 'down';
-    if (code === 'ArrowLeft' || code === 'KeyA') return 'left';
-    if (code === 'ArrowRight' || code === 'KeyD') return 'right';
-    const key = e.key;
-    if (key === 'ArrowUp' || key === 'w' || key === 'W') return 'up';
-    if (key === 'ArrowDown' || key === 's' || key === 'S') return 'down';
-    if (key === 'ArrowLeft' || key === 'a' || key === 'A') return 'left';
-    if (key === 'ArrowRight' || key === 'd' || key === 'D') return 'right';
-    return null;
-  }
-
-  function shouldIgnoreKey(e) {
-    if (window.gamesHelpers && typeof window.gamesHelpers.shouldIgnoreKey === 'function') {
-      return window.gamesHelpers.shouldIgnoreKey(e);
-    }
-    if (!e) return true;
-    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return true;
-    return isEditableTarget(e.target);
-  }
-
+  // The shared key helpers in shared.js always load before this game (the
+  // Games hub loader and the tests both load them first, the assumption
+  // Pac-Man already makes), so the handler calls them directly (#876).
   function handleKeydown(e) {
-    if (isEditableTarget(e.target)) return;
-
-    // Swallow the browser default (page scroll) for game control keys even
-    // when the event itself is dropped below: a held arrow or Space key
-    // would otherwise scroll the page behind the game (#876). Space is left
-    // alone while a button/link is focused so it stays activatable (#887).
-    if (window.gamesHelpers && typeof window.gamesHelpers.suppressGameKeyScroll === 'function') {
-      window.gamesHelpers.suppressGameKeyScroll(e);
-    } else if (!e.ctrlKey && !e.metaKey && !e.altKey && (parseDirection(e) ||
-        (e.code === 'Space' && !(e.target && e.target.closest && e.target.closest('button, a, [role="button"]'))))) {
-      e.preventDefault();
-    }
-    if (shouldIgnoreKey(e)) return;
+    if (!window.gamesHelpers.beginGameKeydown(e)) return;
 
     // Ignore all moves until the player has started the game.
     if (!started) return;
 
     if (gameOver) {
-      if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
-        window.gamesHelpers.handleRestartSpace(e, resetGame);
-      } else if (e.code === 'Space') {
-        e.preventDefault();
-        resetGame();
-      }
+      window.gamesHelpers.handleRestartSpace(e, resetGame);
       return;
     }
 
-    const dir = parseDirection(e);
+    const dir = window.gamesHelpers.parseDirection(e);
     if (!dir) return;
 
     e.preventDefault();

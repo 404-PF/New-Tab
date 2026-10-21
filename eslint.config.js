@@ -412,7 +412,7 @@ const commonRules = {
 
 module.exports = [
   {
-    ignores: ['coverage/**', 'node_modules/**', 'eslint.config.js'],
+    ignores: ['coverage/**', 'node_modules/**', 'eslint.config.js', '.tmp/**'],
   },
   js.configs.recommended,
   {

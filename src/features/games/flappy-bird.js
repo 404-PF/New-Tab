@@ -518,58 +518,28 @@
     draw(nowMs());
   }
 
-  // The shared key helpers are optional so a standalone or partial load still
-  // runs; fall back to the local editable-target and direction checks the
-  // handler used before #876 centralized them.
-  function shouldIgnoreKey(e) {
-    if (window.gamesHelpers && typeof window.gamesHelpers.shouldIgnoreKey === 'function') {
-      return window.gamesHelpers.shouldIgnoreKey(e);
-    }
-    return !e || !!(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable));
+  function pauseRun() {
+    paused = true;
+    manualPause = true;
+    stopAnimation();
+    draw(nowMs());
   }
 
-  function isUpKey(e) {
-    if (window.gamesHelpers && typeof window.gamesHelpers.parseDirection === 'function') {
-      return window.gamesHelpers.parseDirection(e) === 'up';
-    }
-    return !!e && (e.code === 'ArrowUp' || e.code === 'KeyW' || e.key === 'w' || e.key === 'W');
-  }
-
+  // The shared key helpers in shared.js always load before this game (the
+  // Games hub loader and the tests both load them first, the assumption
+  // Pac-Man already makes), so the handler calls them directly (#876).
   function handleKeydown(e) {
-    if (shouldIgnoreKey(e)) {
-      // Swallow page scroll for a held game key without acting on its auto-repeat.
-      const editable = !!(e && e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable));
-      if (e && e.repeat && !editable && !e.ctrlKey && !e.metaKey && !e.altKey && (isUpKey(e) || e.code === 'Space')) {
-        e.preventDefault();
-      }
-      return;
-    }
+    if (!window.gamesHelpers.beginGameKeydown(e)) return;
     if (!started) return;
 
     if (gameOver) {
-      if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
-        window.gamesHelpers.handleRestartSpace(e, resetAndStart);
-      } else if (e.code === 'Space') {
-        e.preventDefault();
-        resetAndStart();
-      }
+      window.gamesHelpers.handleRestartSpace(e, resetAndStart);
       return;
     }
 
-    if (e.code === 'Space') {
-      e.preventDefault();
-      if (manualPause) {
-        resumeFromManualPause();
-      } else {
-        paused = true;
-        manualPause = true;
-        stopAnimation();
-        draw(nowMs());
-      }
-      return;
-    }
+    if (window.gamesHelpers.togglePauseOnSpace(e, manualPause, pauseRun, resumeFromManualPause)) return;
 
-    if (isUpKey(e)) {
+    if (window.gamesHelpers.parseDirection(e) === 'up') {
       e.preventDefault();
       flap();
     }

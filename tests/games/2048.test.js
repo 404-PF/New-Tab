@@ -463,13 +463,18 @@ describe('2048 save validation round 2 (review #654)', () => {
 });
 
 describe('2048 responsive input (#876)', () => {
-  it('accepts WASD keys and ignores OS auto-repeat', async () => {
+  // Shared launch: one container plus a restored run, which skips the ready
+  // screen (its own Space handling would swallow events before the game's).
+  function launch(save) {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const game = window.GameRegistry.get('2048');
+    game.init(container, save);
+    return { container: container, game: game };
+  }
 
-    // A restored run starts immediately, skipping the ready screen.
-    game.init(container, {
+  it('accepts WASD keys and ignores OS auto-repeat', async () => {
+    const { container, game } = launch({
       board: [[0, 0, 0, 0], [0, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
       score: 0,
       won: false
@@ -492,10 +497,7 @@ describe('2048 responsive input (#876)', () => {
   });
 
   it('swallows page scroll for held direction keys but not modified shortcuts (#876)', () => {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const game = window.GameRegistry.get('2048');
-    game.init(container);
+    const { container, game } = launch();
 
     try {
       const held = new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', repeat: true, cancelable: true });
@@ -512,16 +514,10 @@ describe('2048 responsive input (#876)', () => {
   });
 
   it('leaves Space alone while a button is focused so it stays activatable (#887)', () => {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
     const button = document.createElement('button');
     document.body.appendChild(button);
-    const game = window.GameRegistry.get('2048');
-
-    // A restored run starts immediately, skipping the ready screen (whose own
-    // Space handling would swallow the event before the game handler runs).
-    game.init(container, {
-      board: [[0, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+    const { container, game } = launch({
+      board: [[2, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
       score: 0,
       won: false
     });
@@ -539,11 +535,7 @@ describe('2048 responsive input (#876)', () => {
 
   it('returns null when a flushed move ends the run instead of re-saving the terminal board (#887)', () => {
     const randomSpy = vi.spyOn(window.GameRegistry, 'secureRandom').mockReturnValue(0);
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const game = window.GameRegistry.get('2048');
-
-    game.init(container, {
+    const { container, game } = launch({
       board: [[1024, 1024, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
       score: 0,
       won: false
@@ -563,12 +555,8 @@ describe('2048 responsive input (#876)', () => {
 
   it('buffers rapid keys to at most one board update per frame', async () => {
     const randomSpy = vi.spyOn(window.GameRegistry, 'secureRandom').mockReturnValue(0);
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const game = window.GameRegistry.get('2048');
-
-    game.init(container, {
-      board: [[0, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+    const { container, game } = launch({
+      board: [[0, 0, 2, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
       score: 0,
       won: false
     });

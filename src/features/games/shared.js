@@ -92,6 +92,30 @@
     e.preventDefault();
   };
 
+  // Shared keydown prologue for the games. Returns false when the event
+  // belongs to an editable element, is an OS auto-repeat, or is a modified
+  // shortcut — the caller should drop it. Otherwise it has already swallowed
+  // the browser default (page scroll) for game control keys and the caller
+  // continues with its own started/gameOver/steering logic (#876/#887).
+  window.gamesHelpers.beginGameKeydown = function (e) {
+    if (window.gamesHelpers.isEditableTarget(e.target)) return false;
+    window.gamesHelpers.suppressGameKeyScroll(e);
+    if (window.gamesHelpers.shouldIgnoreKey(e)) return false;
+    return true;
+  };
+
+  // Toggle manual pause on Space for the animation-driven games: resume a
+  // manually paused run, otherwise pause it through onPause. Prevents the
+  // Space default (page scroll) first and returns true when the key was
+  // Space, false when the caller should keep handling the event (#876).
+  window.gamesHelpers.togglePauseOnSpace = function (e, isManualPaused, onPause, onResume) {
+    if (e.code !== 'Space') return false;
+    e.preventDefault();
+    if (isManualPaused) onResume();
+    else onPause();
+    return true;
+  };
+
   // Keep at most one state overlay (for example paused or game over) on a
   // stage. sync(stage, kind, optionsFor) re-renders only when kind changes;
   // optionsFor(kind) returns renderDOMOverlay options. A null kind clears it.
