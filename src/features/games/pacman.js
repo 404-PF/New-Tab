@@ -1072,10 +1072,7 @@
     // Swallow the browser default (page scroll) for game control keys even
     // when the event itself is dropped below: a held direction key or Space
     // would otherwise scroll the page behind the game (#876).
-    if (!e.ctrlKey && !e.metaKey && !e.altKey &&
-        (window.gamesHelpers.parseDirection(e) || e.code === 'Space')) {
-      e.preventDefault();
-    }
+    window.gamesHelpers.suppressGameKeyScroll(e);
     if (!started || window.gamesHelpers.shouldIgnoreKey(e)) return;
 
     if (gameOver) {

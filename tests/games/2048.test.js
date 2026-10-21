@@ -497,16 +497,68 @@ describe('2048 responsive input (#876)', () => {
     const game = window.GameRegistry.get('2048');
     game.init(container);
 
-    const held = new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', repeat: true, cancelable: true });
-    document.dispatchEvent(held);
-    expect(held.defaultPrevented).toBe(true);
+    try {
+      const held = new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', repeat: true, cancelable: true });
+      document.dispatchEvent(held);
+      expect(held.defaultPrevented).toBe(true);
 
-    const modified = new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', repeat: true, ctrlKey: true, cancelable: true });
-    document.dispatchEvent(modified);
-    expect(modified.defaultPrevented).toBe(false);
+      const modified = new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', repeat: true, ctrlKey: true, cancelable: true });
+      document.dispatchEvent(modified);
+      expect(modified.defaultPrevented).toBe(false);
+    } finally {
+      game.destroy();
+      container.remove();
+    }
+  });
 
-    game.destroy();
-    container.remove();
+  it('leaves Space alone while a button is focused so it stays activatable (#887)', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    const game = window.GameRegistry.get('2048');
+
+    // A restored run starts immediately, skipping the ready screen (whose own
+    // Space handling would swallow the event before the game handler runs).
+    game.init(container, {
+      board: [[0, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 0,
+      won: false
+    });
+
+    try {
+      const spaceOnButton = new KeyboardEvent('keydown', { key: ' ', code: 'Space', cancelable: true, bubbles: true });
+      button.dispatchEvent(spaceOnButton);
+      expect(spaceOnButton.defaultPrevented).toBe(false);
+    } finally {
+      game.destroy();
+      container.remove();
+      button.remove();
+    }
+  });
+
+  it('returns null when a flushed move ends the run instead of re-saving the terminal board (#887)', () => {
+    const randomSpy = vi.spyOn(window.GameRegistry, 'secureRandom').mockReturnValue(0);
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+
+    game.init(container, {
+      board: [[1024, 1024, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 0,
+      won: false
+    });
+
+    try {
+      // The buffered move merges to 2048, ending the run during serialize()'s
+      // flush; the terminal board must not come back as a persistable snapshot.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      expect(game.serialize()).toBeNull();
+    } finally {
+      randomSpy.mockRestore();
+      game.destroy();
+      container.remove();
+    }
   });
 
   it('buffers rapid keys to at most one board update per frame', async () => {

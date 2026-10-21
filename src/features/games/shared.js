@@ -77,6 +77,21 @@
     return window.gamesHelpers.isEditableTarget(e.target);
   };
 
+  // Swallow the browser default (page scroll) for game control keys even
+  // when the caller drops the event afterwards: a held arrow or Space key
+  // would otherwise scroll the page behind the game (#876). Space is left
+  // alone while a button, link, or [role="button"] is focused so keyboard
+  // users can still activate those controls (#887).
+  window.gamesHelpers.suppressGameKeyScroll = function (e) {
+    if (!e || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!window.gamesHelpers.parseDirection(e) && e.code !== 'Space') return;
+    if (e.code === 'Space' && e.target && typeof e.target.closest === 'function' &&
+        e.target.closest('button, a, [role="button"]')) {
+      return;
+    }
+    e.preventDefault();
+  };
+
   // Keep at most one state overlay (for example paused or game over) on a
   // stage. sync(stage, kind, optionsFor) re-renders only when kind changes;
   // optionsFor(kind) returns renderDOMOverlay options. A null kind clears it.

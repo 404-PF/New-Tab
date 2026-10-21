@@ -226,6 +226,8 @@
     // Apply keys still buffered for the next animation frame so the saved
     // run reflects every move the player already made (#876).
     flushQueuedMoves();
+    // A drained move can end the run; a terminal board must not be saved.
+    if (gameOver) return null;
     return {
       board: board.map(function (row) { return row.slice(); }),
       score: score,
@@ -341,17 +343,54 @@
     }
   }
 
+  // The shared key helpers are optional so a standalone or partial load still
+  // runs (matching Flappy Bird's fallbacks); fall back to the local checks the
+  // handler used before #876 centralized them.
+  function isEditableTarget(target) {
+    if (window.gamesHelpers && typeof window.gamesHelpers.isEditableTarget === 'function') {
+      return window.gamesHelpers.isEditableTarget(target);
+    }
+    return !!(target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
+  }
+
+  function parseDirection(e) {
+    if (window.gamesHelpers && typeof window.gamesHelpers.parseDirection === 'function') {
+      return window.gamesHelpers.parseDirection(e);
+    }
+    if (!e) return null;
+    const code = e.code;
+    if (code === 'ArrowUp' || code === 'KeyW') return 'up';
+    if (code === 'ArrowDown' || code === 'KeyS') return 'down';
+    if (code === 'ArrowLeft' || code === 'KeyA') return 'left';
+    if (code === 'ArrowRight' || code === 'KeyD') return 'right';
+    const key = e.key;
+    if (key === 'ArrowUp' || key === 'w' || key === 'W') return 'up';
+    if (key === 'ArrowDown' || key === 's' || key === 'S') return 'down';
+    if (key === 'ArrowLeft' || key === 'a' || key === 'A') return 'left';
+    if (key === 'ArrowRight' || key === 'd' || key === 'D') return 'right';
+    return null;
+  }
+
+  function shouldIgnoreKey(e) {
+    if (window.gamesHelpers && typeof window.gamesHelpers.shouldIgnoreKey === 'function') {
+      return window.gamesHelpers.shouldIgnoreKey(e);
+    }
+    if (!e) return true;
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return true;
+    return isEditableTarget(e.target);
+  }
+
   function handleKeydown(e) {
-    if (window.gamesHelpers.isEditableTarget(e.target)) return;
+    if (isEditableTarget(e.target)) return;
 
     // Swallow the browser default (page scroll) for game control keys even
     // when the event itself is dropped below: a held arrow or Space key
-    // would otherwise scroll the page behind the game (#876).
-    if (!e.ctrlKey && !e.metaKey && !e.altKey &&
-        (window.gamesHelpers.parseDirection(e) || e.code === 'Space')) {
-      e.preventDefault();
+    // would otherwise scroll the page behind the game (#876). Space is left
+    // alone while a button/link is focused so it stays activatable (#887).
+    if (window.gamesHelpers && typeof window.gamesHelpers.suppressGameKeyScroll === 'function') {
+      window.gamesHelpers.suppressGameKeyScroll(e);
     }
-    if (window.gamesHelpers.shouldIgnoreKey(e)) return;
+    if (shouldIgnoreKey(e)) return;
 
     // Ignore all moves until the player has started the game.
     if (!started) return;
@@ -366,7 +405,7 @@
       return;
     }
 
-    const dir = window.gamesHelpers.parseDirection(e);
+    const dir = parseDirection(e);
     if (!dir) return;
 
     e.preventDefault();

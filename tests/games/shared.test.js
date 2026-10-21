@@ -223,3 +223,58 @@ describe('gamesHelpers.shouldIgnoreKey (#876)', () => {
     expect(window.gamesHelpers.shouldIgnoreKey(undefined)).toBe(true);
   });
 });
+
+describe('gamesHelpers.suppressGameKeyScroll (#887)', () => {
+  function keydown(init) {
+    return new KeyboardEvent('keydown', { cancelable: true, bubbles: true, ...init });
+  }
+
+  it('prevents the default for direction keys and Space', () => {
+    const arrow = keydown({ key: 'ArrowLeft', code: 'ArrowLeft' });
+    window.gamesHelpers.suppressGameKeyScroll(arrow);
+    expect(arrow.defaultPrevented).toBe(true);
+
+    const space = keydown({ key: ' ', code: 'Space' });
+    window.gamesHelpers.suppressGameKeyScroll(space);
+    expect(space.defaultPrevented).toBe(true);
+  });
+
+  it('leaves modified shortcuts and unrelated keys alone', () => {
+    const modified = keydown({ key: 'ArrowLeft', code: 'ArrowLeft', ctrlKey: true });
+    window.gamesHelpers.suppressGameKeyScroll(modified);
+    expect(modified.defaultPrevented).toBe(false);
+
+    const other = keydown({ key: 'q', code: 'KeyQ' });
+    window.gamesHelpers.suppressGameKeyScroll(other);
+    expect(other.defaultPrevented).toBe(false);
+  });
+
+  it('leaves Space alone while a button, link, or role=button is focused', () => {
+    const button = document.createElement('button');
+    const link = document.createElement('a');
+    const roleButton = document.createElement('div');
+    roleButton.setAttribute('role', 'button');
+    document.body.append(button, link, roleButton);
+
+    const onButton = keydown({ key: ' ', code: 'Space' });
+    button.dispatchEvent(onButton);
+    expect(onButton.defaultPrevented).toBe(false);
+
+    const onLink = keydown({ key: ' ', code: 'Space' });
+    link.dispatchEvent(onLink);
+    expect(onLink.defaultPrevented).toBe(false);
+
+    const onRoleButton = keydown({ key: ' ', code: 'Space' });
+    roleButton.dispatchEvent(onRoleButton);
+    expect(onRoleButton.defaultPrevented).toBe(false);
+
+    button.remove();
+    link.remove();
+    roleButton.remove();
+  });
+
+  it('ignores missing events', () => {
+    expect(() => window.gamesHelpers.suppressGameKeyScroll(null)).not.toThrow();
+    expect(() => window.gamesHelpers.suppressGameKeyScroll(undefined)).not.toThrow();
+  });
+});
