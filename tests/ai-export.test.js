@@ -21,7 +21,7 @@ beforeAll(() => {
   stubElement('ai-chat-title');
   stubElement('ai-new-chat-btn', 'button');
   stubElement('ai-export-all-btn', 'button');
-  stubElement('ai-topics-list');
+  stubElement('ai-topics-list').setAttribute('tabindex', '0');
   stubElement('ai-topics-search-input', 'input');
   stubElement('ai-topics-count');
   const confirmDialog = stubElement('ai-confirm-dialog');
@@ -395,13 +395,53 @@ describe('AIService delete confirmation keyboard safety (#889)', () => {
     expect(AIStore.state.confirmDialogCallback).not.toBeNull();
   });
 
-  it('Enter with focus inside the dialog but not on a button still confirms', () => {
+  it('Enter anywhere else in the dialog does not delete the conversation', () => {
     openDialogWithKeyboard();
+    // Only the dialog's own Delete button confirms; a stray Enter on any
+    // other element of the dialog must not destroy the conversation.
     const overlay = document.querySelector('#ai-confirm-dialog .ai-confirm-overlay');
     overlay.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
     );
+    expect(AIStore.state.conversations).toHaveLength(2);
+    expect(AIStore.state.confirmDialogCallback).not.toBeNull();
+  });
+
+  it('the Delete button confirms the deletion', () => {
+    openDialogWithKeyboard();
+    document.querySelector('#ai-confirm-dialog .ai-confirm-delete').click();
     expect(AIStore.state.conversations).toHaveLength(1);
     expect(AIStore.state.confirmDialogCallback).toBeNull();
+  });
+
+  it('returns focus to the list when the dialog is closed with Escape', () => {
+    const list = document.getElementById('ai-topics-list');
+    list.focus();
+    openDialogWithKeyboard();
+    expect(document.activeElement.classList.contains('ai-confirm-cancel')).toBe(true);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(document.activeElement).toBe(list);
+  });
+
+  it('returns focus to the list when the dialog is closed with Cancel', () => {
+    const list = document.getElementById('ai-topics-list');
+    list.focus();
+    openDialogWithKeyboard();
+
+    document.querySelector('#ai-confirm-dialog .ai-confirm-cancel').click();
+
+    expect(document.activeElement).toBe(list);
+  });
+
+  it('marks the closed dialog inert so its hidden buttons are unreachable', () => {
+    const confirmDialog = document.getElementById('ai-confirm-dialog');
+    openDialogWithKeyboard();
+    expect(confirmDialog.hasAttribute('inert')).toBe(false);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(confirmDialog.hasAttribute('inert')).toBe(true);
   });
 });
