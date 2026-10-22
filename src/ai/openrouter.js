@@ -160,11 +160,13 @@ const OpenRouterAPI = (function() {
   /**
    * Handle API errors
    * @param {Response} response - Fetch response
+   * @param {AbortSignal|null} [callerSignal] - Optional caller cancellation signal
    * @returns {Object} Error information
    */
-  async function handleError(response) {
+  async function handleError(response, callerSignal = null) {
     let errorMessage = getTranslation('aiError');
     let errorCode;
+    let retryAfterSeconds = null;
 
     // Error bodies are often empty or non-JSON (e.g. Cloudflare HTML pages
     // for 502/521/522, or body-less 429s); classify by HTTP status even when
@@ -173,8 +175,10 @@ const OpenRouterAPI = (function() {
     try {
       errorData = await response.json();
     } catch (parseError) {
-      // Cancellation must propagate so the caller's abort path can run.
-      if (parseError?.name === 'AbortError') {
+      // Only caller cancellation propagates so the caller's abort path can
+      // run; an internal request timeout falls through to status-based
+      // classification instead of surfacing a network error.
+      if (parseError?.name === 'AbortError' && callerSignal?.aborted) {
         throw parseError;
       }
       // Non-JSON body; status-based classification below still applies.
@@ -191,9 +195,9 @@ const OpenRouterAPI = (function() {
         break;
       case 429: {
         errorCode = 'RATE_LIMIT';
-        const retrySeconds = parseRetryAfterSeconds(response.headers.get('Retry-After'));
-        errorMessage = retrySeconds > 0
-          ? getTranslation('aiRateLimitRetryAfter', { seconds: retrySeconds })
+        retryAfterSeconds = parseRetryAfterSeconds(response.headers.get('Retry-After'));
+        errorMessage = retryAfterSeconds > 0
+          ? getTranslation('aiRateLimitRetryAfter', { seconds: retryAfterSeconds })
           : getTranslation('aiRateLimit');
         break;
       }
@@ -210,7 +214,7 @@ const OpenRouterAPI = (function() {
         }
     }
 
-    return { code: errorCode, message: errorMessage };
+    return { code: errorCode, message: errorMessage, retryAfterSeconds };
   }
 
   /**
@@ -358,6 +362,7 @@ const OpenRouterAPI = (function() {
 
       let fullContent = '';
       let retryableFailure;
+      let retryAfterMs = 0;
       let requestState = null;
       let reader;
       let timeoutId = null;
@@ -393,11 +398,13 @@ const OpenRouterAPI = (function() {
         // Handle non-OK responses. Retry rate limits and server failures because
         // they are commonly transient; surface other client errors immediately.
         if (!response.ok) {
-          const errorInfo = await handleError(response);
+          const errorInfo = await handleError(response, signal);
           const retryableStatus = response.status === 429 || response.status >= 500;
 
           if (retryableStatus && attempt < CONFIG.maxRetries) {
             retryableFailure = true;
+            // Honour a longer server-requested Retry-After for the wait below.
+            retryAfterMs = errorInfo.retryAfterSeconds > 0 ? errorInfo.retryAfterSeconds * 1000 : 0;
           } else {
             return { success: false, error: errorInfo.message, code: errorInfo.code };
           }
@@ -533,7 +540,10 @@ const OpenRouterAPI = (function() {
       }
 
       if (retryableFailure) {
-        const delay = CONFIG.retryDelay * 2 ** attempt;
+        // Back off exponentially, but never retry sooner than a longer
+        // Retry-After requested by the server for a 429.
+        const backoffDelay = CONFIG.retryDelay * 2 ** attempt;
+        const delay = Math.max(backoffDelay, retryAfterMs);
         const shouldRetry = await waitForRetryDelay(delay, signal);
 
         if (!shouldRetry && signal?.aborted) {

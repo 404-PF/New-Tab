@@ -766,6 +766,57 @@ describe('OpenRouter non-JSON error bodies (#866)', () => {
 
     expect(result).toMatchObject({ success: false, aborted: true, error: 'Request cancelled' });
   });
+
+  it('classifies a 401 when an internal timeout aborts body parsing', async () => {
+    const abortError = new Error('The operation was aborted.');
+    abortError.name = 'AbortError';
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      headers: { get: vi.fn().mockReturnValue(null) },
+      // The request timeout aborts the body read; no caller signal exists.
+      json: vi.fn().mockRejectedValue(abortError)
+    });
+
+    const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ success: false, code: 'AUTH_ERROR', error: 'aiAuthError' });
+  });
+
+  it('waits for a longer Retry-After before retrying a 429', async () => {
+    vi.useFakeTimers();
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalRetryDelay = OpenRouterAPI.config.retryDelay;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 1;
+      OpenRouterAPI.config.retryDelay = 0;
+      globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce(createNonJsonErrorResponse(429, { headers: { 'Retry-After': '30' } }))
+        .mockResolvedValueOnce(createStreamingResponse([
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n'
+        ]));
+
+      const promise = OpenRouterAPI.sendMessageStreaming('hello');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+
+      // The 0ms backoff would already have retried; Retry-After must win.
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(29000);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+
+      expect(await promise).toMatchObject({ success: true, content: 'Recovered' });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.retryDelay = originalRetryDelay;
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('OpenRouter web grounding (#707)', () => {
