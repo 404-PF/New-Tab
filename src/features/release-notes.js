@@ -22,6 +22,16 @@
   // MAINTENANCE: whenever version.js / manifest.json is bumped for a release,
   // add a new entry here (or the modal falls back to RELEASE_NOTES_FALLBACK).
   const RELEASE_NOTES = {
+    '0.5.3': [
+      'Sped up settings modal/tab animations and Games keyboard responsiveness',
+      'Unified in-app notifications into one top-middle toast style',
+      'The Weather app now works without the weather widget enabled',
+      'Fixed offline chat misfires, crashes from certain words, and stuck streaming bubbles after a restart',
+      'Fixed OpenRouter timeouts cutting off long AI answers mid-stream',
+      'Fixed DuckDuckGo search suggestions never appearing',
+      'Fixed untranslated Todo and app dialog labels on non-English languages',
+      'Settings export/import now keeps focus mode and auto-theme scheduling'
+    ],
     '0.5.2': [
       'Added a Pac-Man maze game to the Games hub',
       'Added dim, blur, and tint background overlays for readability',
