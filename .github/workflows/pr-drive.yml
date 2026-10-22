@@ -557,6 +557,13 @@ jobs:
       # committed here as the PAT owner. Push is a plain fast-forward, or
       # --force-with-lease against the head SHA fetched at the start when the
       # branch was rebased.
+      # A rejected push is a lost race, not a broken drive: it records
+      # pushed=rejected and exits 0 so the summary below still reports the
+      # round. Rejection needs evidence: git must report a rejected update
+      # and the remote head must have moved; anything else records
+      # pushed=failed and exits 1. A real setup problem (no GH_PAT, unexpected
+      # git config) still exits 1; "Post summary comment" runs on always()
+      # and reports it.
       - name: Commit and push
         id: push
         if: steps.loop.outcome == 'success'
@@ -615,20 +622,59 @@ jobs:
             echo 'pushed=none' >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # A lost race (the branch moved under us) is not a broken drive:
+          # record pushed=rejected and exit 0 so the summary still reports
+          # the round. Rejection needs evidence from git itself: a
+          # [rejected]/[remote rejected] line in the push output, plus a
+          # moved remote head. An auth or network failure that happens to
+          # coincide with a moved branch stays fatal. pushed=attempted is
+          # written before the push so the summary can tell an attempted
+          # failure apart from a setup failure that never reached the push.
+          PUSH_LOG="$(mktemp)"
+          push_rejected() {
+            grep -Eq '\[remote rejected\]|\[rejected\]' "$PUSH_LOG"
+          }
           if [ "$REBASED" = 'true' ]; then
-            git_pr push --force-with-lease="refs/heads/$HEAD_REF:$HEAD_SHA" "$REPO_URL" "HEAD:refs/heads/$HEAD_REF"
-            echo 'pushed=rebase' >> "$GITHUB_OUTPUT"
+            echo 'pushed=attempted' >> "$GITHUB_OUTPUT"
+            if git_pr push --force-with-lease="refs/heads/$HEAD_REF:$HEAD_SHA" "$REPO_URL" "HEAD:refs/heads/$HEAD_REF" 2>&1 | tee "$PUSH_LOG"; then
+              echo 'pushed=rebase' >> "$GITHUB_OUTPUT"
+            else
+              REMOTE_HEAD="$(git_pr ls-remote "$REPO_URL" "refs/heads/$HEAD_REF" | cut -f1)" || REMOTE_HEAD=''
+              if [ -n "$REMOTE_HEAD" ] && [ "$REMOTE_HEAD" != "$HEAD_SHA" ] && push_rejected; then
+                echo '::warning::Force-push with lease rejected; the branch moved since this run started. Skipping the push.'
+                echo 'pushed=rejected' >> "$GITHUB_OUTPUT"
+              else
+                echo '::error::Force-push failed; not a lost race.'
+                echo 'pushed=failed' >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+            fi
           else
-            git_pr push "$REPO_URL" "HEAD:refs/heads/$HEAD_REF"
-            echo 'pushed=fast-forward' >> "$GITHUB_OUTPUT"
+            echo 'pushed=attempted' >> "$GITHUB_OUTPUT"
+            if git_pr push "$REPO_URL" "HEAD:refs/heads/$HEAD_REF" 2>&1 | tee "$PUSH_LOG"; then
+              echo 'pushed=fast-forward' >> "$GITHUB_OUTPUT"
+            else
+              REMOTE_HEAD="$(git_pr ls-remote "$REPO_URL" "refs/heads/$HEAD_REF" | cut -f1)" || REMOTE_HEAD=''
+              if [ -n "$REMOTE_HEAD" ] && [ "$REMOTE_HEAD" != "$HEAD_SHA" ] && push_rejected; then
+                echo '::warning::Push rejected; the branch moved since this run started. Skipping the push.'
+                echo 'pushed=rejected' >> "$GITHUB_OUTPUT"
+              else
+                echo '::error::Push failed; not a lost race.'
+                echo 'pushed=failed' >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+            fi
           fi
+          exit 0
 
       # Reply to and resolve the threads the agent reported, but only ids that
       # were in threads.json. Reply text travels as a GraphQL variable inside
       # a jq-built JSON body; it is never interpolated into shell or query text.
+      # Skipped when the push never landed: the agent's edits are not on the
+      # branch, so claiming a thread is fixed would be a lie.
       - name: Reply to and resolve addressed threads
         id: threads
-        if: steps.push.outcome == 'success'
+        if: steps.push.outcome == 'success' && steps.push.outputs.pushed != 'rejected'
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
@@ -658,8 +704,14 @@ jobs:
           fi
           echo "resolved=$RESOLVED" >> "$GITHUB_OUTPUT"
 
+      # always() rather than steps.push.outcome == 'success': the drive
+      # already happened and its outcome must reach the PR even when the push
+      # step could not publish the branch (missing GH_PAT, bad git config).
+      # A hard failure still reaches "Report drive failure on PR" below.
+      # !cancelled(): a superseded run must not overwrite the newer run's
+      # summary with "not attempted (cancelled)".
       - name: Post summary comment
-        if: steps.loop.outcome == 'success'
+        if: always() && !cancelled() && steps.loop.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -675,6 +727,29 @@ jobs:
         run: |
           set -euo pipefail
           BODY="$GITHUB_WORKSPACE/.tmp/summary.md"
+          # pushed= is written by the push step: none/rebase/fast-forward on
+          # success, rejected on a lost race, failed when the push was
+          # attempted and errored, attempted if it died mid-push. PUSH_OUTCOME
+          # only exists when the step ran at all, so an empty PUSHED with a
+          # failure outcome is a setup failure that never reached the push.
+          if [ -n "${PUSHED:-}" ]; then
+            PUSH_LINE="$PUSHED"
+          elif [ -n "${PUSH_OUTCOME:-}" ]; then
+            PUSH_LINE="not attempted ($PUSH_OUTCOME)"
+          else
+            PUSH_LINE='not attempted'
+          fi
+          case "$PUSH_LINE" in
+            rejected)
+              PUSH_LINE='rejected (the branch moved since this run started; re-run /drive to pick up the newer head)'
+              ;;
+            failed)
+              PUSH_LINE='failed (see the run log for the git error)'
+              ;;
+            attempted)
+              PUSH_LINE='failed (the push was interrupted before git reported a result)'
+              ;;
+          esac
           {
             echo '<!-- pr-drive -->'
             echo '## /drive summary'
@@ -684,7 +759,7 @@ jobs:
             echo "- Rebase onto main: ${REBASE_STATE:-none}"
             echo "- Lint: ${LINT:-unknown} (main: ${BASE_LINT:-unknown})"
             echo "- Tests: ${TEST:-unknown} (main: ${BASE_TEST:-unknown})"
-            echo "- Push: ${PUSHED:-not pushed ($PUSH_OUTCOME)}"
+            echo "- Push: $PUSH_LINE"
             echo "- Review threads replied to and resolved: ${RESOLVED:-0}"
             echo ''
             echo "Run: $RUN_URL"
