@@ -143,40 +143,44 @@ const OpenRouterAPI = (function() {
    */
   async function handleError(response) {
     let errorMessage = getTranslation('aiError');
-    let errorCode = 'UNKNOWN';
+    let errorCode;
 
+    // Error bodies are often empty or non-JSON (e.g. Cloudflare HTML pages
+    // for 502/521/522, or body-less 429s); classify by HTTP status even when
+    // the parse fails, and only consult errorData for unknown statuses.
+    let errorData = null;
     try {
-      const errorData = await response.json();
-      
-      switch (response.status) {
-        case 401:
-          errorCode = 'AUTH_ERROR';
-          errorMessage = getTranslation('aiAuthError');
-          break;
-        case 403:
-          errorCode = 'FORBIDDEN';
-          errorMessage = getTranslation('aiForbidden');
-          break;
-        case 429: {
-          errorCode = 'RATE_LIMIT';
-          const retryAfter = response.headers.get('Retry-After');
-          errorMessage = retryAfter
-            ? `Rate limited. Try again in ${retryAfter} seconds`
-            : getTranslation('aiRateLimit');
-          break;
-        }
-        case 500:
-        case 502:
-        case 503:
-          errorCode = 'SERVER_ERROR';
-          errorMessage = getTranslation('aiServerError');
-          break;
-        default:
-          errorCode = errorData.error?.code || 'API_ERROR';
-          errorMessage = errorData.error?.message || errorMessage;
-      }
+      errorData = await response.json();
     } catch {
-      errorMessage = response.statusText || errorMessage;
+      // Non-JSON body; status-based classification below still applies.
+    }
+
+    switch (response.status) {
+      case 401:
+        errorCode = 'AUTH_ERROR';
+        errorMessage = getTranslation('aiAuthError');
+        break;
+      case 403:
+        errorCode = 'FORBIDDEN';
+        errorMessage = getTranslation('aiForbidden');
+        break;
+      case 429: {
+        errorCode = 'RATE_LIMIT';
+        const retryAfter = response.headers.get('Retry-After');
+        errorMessage = retryAfter
+          ? `Rate limited. Try again in ${retryAfter} seconds`
+          : getTranslation('aiRateLimit');
+        break;
+      }
+      case 500:
+      case 502:
+      case 503:
+        errorCode = 'SERVER_ERROR';
+        errorMessage = getTranslation('aiServerError');
+        break;
+      default:
+        errorCode = errorData?.error?.code || 'API_ERROR';
+        errorMessage = errorData?.error?.message || response.statusText || errorMessage;
     }
 
     return { code: errorCode, message: errorMessage };
