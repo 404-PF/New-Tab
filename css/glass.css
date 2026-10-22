@@ -134,9 +134,18 @@ body.light-theme :is(
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
-/* Overlay layers add depth without making the background disappear. */
+/* #875: the settings overlay owns the only live blur; a second
+   backdrop-filter on the dialog would stack on top of it while the modal
+   animates. */
+body.light-theme #settings-modal > div {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Overlay layers add depth without making the background disappear.
+   #settings-modal is handled separately below so its blur is applied only
+   in the open state, after the entrance fade settles (#875). */
 body.light-theme :is(
-  #settings-modal,
   #add-app-modal,
   #todo-edit-modal,
   #ai-chat-modal,
@@ -152,6 +161,25 @@ body.light-theme :is(
   background: var(--glass-overlay);
   -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
   backdrop-filter: blur(var(--glass-overlay-blur));
+}
+
+/* #875: mirror the dark-theme timing for the settings overlay — the glass
+   blur must not run while the modal's opacity animates, so it lives only on
+   the open state and is delayed until the fade has finished. Closing removes
+   it immediately (the base rule transitions opacity only). The delay tracks
+   the shortened core.css fade so the blur still lands after the panel
+   settles instead of trailing it. */
+body.light-theme #settings-modal {
+  background: var(--glass-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body.light-theme #settings-modal.modal-open {
+  backdrop-filter: blur(var(--glass-overlay-blur));
+  -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
+  transition: opacity 0.18s ease-out, backdrop-filter 0.01s linear 0.18s,
+    -webkit-backdrop-filter 0.01s linear 0.18s;
 }
 
 /* Nested cards and controls share the same lower-level surface. */

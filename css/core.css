@@ -349,6 +349,15 @@
     animation: none !important;
     opacity: 1 !important;
   }
+  /* Settings modal (#875): collapse the entrance fade, the tab crossfade,
+     and the delayed backdrop-filter so the modal snaps to its final state
+     in one step instead of animating. */
+  #settings-modal,
+  #settings-modal > div,
+  .settings-menu-item,
+  .settings-section {
+    transition: none !important;
+  }
 }
 
 /* Ensure video doesn't interfere with interactions */
@@ -1358,6 +1367,11 @@ body.light-theme .timezone-add-btn {
   border-color: rgba(99, 102, 241, 0.2);
   color: #6366f1;
 }
+/* The full-screen blur must not run while the overlay's opacity animates —
+   that forces the browser to re-run the blur on every frame of the
+   transition (#875). The blur therefore lives only on the open state, and
+   its transition delays it until the fade has finished; closing removes it
+   immediately because the base rule transitions opacity only. */
 #settings-modal {
   display: flex;
   position: fixed;
@@ -1366,23 +1380,26 @@ body.light-theme .timezone-add-btn {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   z-index: 1005;
   align-items: center;
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  /* Snappy fade (#875): 0.3s reads as lagging behind the click. Keep the
+     overlay's own animation short so the delayed blur below lands right
+     after the panel has already settled. */
+  transition: opacity 0.18s ease-out;
 }
 #settings-modal.modal-open {
   opacity: 1;
   pointer-events: auto;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: opacity 0.18s ease-out, backdrop-filter 0.01s linear 0.18s,
+    -webkit-backdrop-filter 0.01s linear 0.18s;
 }
 #settings-modal > div {
   background: var(--settings-modal-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-radius: 16px;
   padding: 0;
   width: min(720px, calc(100vw - 32px));
@@ -1397,8 +1414,12 @@ body.light-theme .timezone-add-btn {
   display: flex;
   flex-direction: column;
   opacity: 0;
-  transform: translateY(-20px);
-  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateY(-12px);
+  /* Snappier entrance (#875): the springy 0.3s curve overshoots for ~0.2s,
+     which is what makes the panel feel like it trails the click. A short
+     ease-out with a smaller offset settles almost immediately while still
+     reading as motion. */
+  transition: opacity 0.18s ease-out, transform 0.18s ease-out;
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: visible;
 }
@@ -1441,7 +1462,14 @@ body.light-theme .timezone-add-btn {
   white-space: normal;
   overflow-wrap: anywhere;
   border-radius: 0 12px 12px 0;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Explicit list: `transition: all` also animated the reflow-causing
+     font-weight change on every hover/selection (#875).
+     Snappier (#875): 0.25s made hover feedback feel like it lagged the
+     cursor; 0.15s keeps the highlight responsive. */
+  transition: background 0.15s ease-out,
+    color 0.15s ease-out,
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out;
   position: relative;
   margin-left: 8px;
   margin-right: 8px;
@@ -1472,6 +1500,11 @@ body.light-theme .timezone-add-btn {
 .settings-content {
   flex: 1;
   min-width: 0;
+  /* Grid-stack every section in the same cell so the panel height stays
+     stable and tab switching only flips opacity/visibility — never a
+     relayout of the dialog (#875). */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   padding: 20px 20px 16px 20px;
   font-size: 1em;
   overflow-x: hidden;
@@ -1481,6 +1514,37 @@ body.light-theme .timezone-add-btn {
 .settings-section {
   min-width: 0;
   overflow-wrap: anywhere;
+  grid-area: 1 / 1;
+  /* Size containment keeps inactive tabs out of the shared scroller: without
+     it the grid row would match the tallest section and short tabs (e.g.
+     General, About) would scroll through empty space (#875). The box stays
+     in the cell, so the opacity crossfade still runs. */
+  content-visibility: hidden;
+  opacity: 0;
+  visibility: hidden;
+  /* Exit fade (#875): the base rule is the after-change style when a tab
+     loses `.selected`, so the transition must live here — the `.selected`
+     rule below only runs on the way in. `content-visibility` is not
+     interpolable, so it needs the explicit discrete transition
+     (`allow-discrete`); its exit flip lands at the end of the duration,
+     keeping the outgoing section painted for the whole fade. `visibility`
+     stays visible until the fade completes for the same reason. The first
+     declaration is a fallback for engines that reject `allow-discrete`
+     (pre-Chromium 117): they drop the whole second declaration, so the
+     opacity/visibility fade must not live only there.
+     Snappy (#875): 0.15s was long enough to read as a deliberate crossfade
+     that lags the click; 0.09s is just long enough to hide the swap. */
+  transition: opacity 0.09s ease-out, visibility 0.09s ease-out;
+  transition: opacity 0.09s ease-out, visibility 0.09s ease-out,
+    content-visibility 0.09s ease-out allow-discrete;
+}
+.settings-section.selected {
+  content-visibility: visible;
+  opacity: 1;
+  visibility: visible;
+  /* Entry only: the incoming section is already painted, so just fade
+     opacity in; the hiding properties flip immediately. */
+  transition: opacity 0.09s ease-out;
 }
 .settings-content .bg-thumbnails,
 .settings-content > div {
