@@ -518,36 +518,28 @@
     draw(nowMs());
   }
 
+  function pauseRun() {
+    paused = true;
+    manualPause = true;
+    stopAnimation();
+    draw(nowMs());
+  }
+
+  // The shared key helpers in shared.js always load before this game (the
+  // Games hub loader and the tests both load them first, the assumption
+  // Pac-Man already makes), so the handler calls them directly (#876).
   function handleKeydown(e) {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
-      return;
-    }
+    if (!window.gamesHelpers.beginGameKeydown(e)) return;
     if (!started) return;
 
     if (gameOver) {
-      if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
-        window.gamesHelpers.handleRestartSpace(e, resetAndStart);
-      } else if (e.code === 'Space') {
-        e.preventDefault();
-        resetAndStart();
-      }
+      window.gamesHelpers.handleRestartSpace(e, resetAndStart);
       return;
     }
 
-    if (e.code === 'Space') {
-      e.preventDefault();
-      if (manualPause) {
-        resumeFromManualPause();
-      } else {
-        paused = true;
-        manualPause = true;
-        stopAnimation();
-        draw(nowMs());
-      }
-      return;
-    }
+    if (window.gamesHelpers.togglePauseOnSpace(e, manualPause, pauseRun, resumeFromManualPause)) return;
 
-    if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.key === 'w' || e.key === 'W') {
+    if (window.gamesHelpers.parseDirection(e) === 'up') {
       e.preventDefault();
       flap();
     }

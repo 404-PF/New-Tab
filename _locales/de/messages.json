@@ -495,7 +495,7 @@
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "Pfeile zum Verschmelzen der Blöcke",
+    "message": "Pfeile oder WASD zum Verschmelzen der Blöcke",
     "description": "2048 game controls"
   },
   "gamesMemory": {

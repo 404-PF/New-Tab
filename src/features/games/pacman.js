@@ -34,16 +34,6 @@
     right: { x: 1, y: 0 }
   };
   const OPPOSITE = { up: 'down', down: 'up', left: 'right', right: 'left' };
-  const KEY_TO_DIR = {
-    ArrowUp: 'up',
-    KeyW: 'up',
-    ArrowDown: 'down',
-    KeyS: 'down',
-    ArrowLeft: 'left',
-    KeyA: 'left',
-    ArrowRight: 'right',
-    KeyD: 'right'
-  };
   const SCATTER_MS = 7000;
   const CHASE_MS = 20000;
   const MODE_SEQUENCE = [
@@ -1076,28 +1066,28 @@
 
   // ===================== Input =====================
 
+  function pauseRun() {
+    paused = true;
+    manualPause = true;
+    stopAnimation();
+    draw();
+  }
+
   function handleKeydown(e) {
-    if (!started || window.gamesHelpers.isEditableTarget(e.target)) return;
+    // Swallow the browser default (page scroll) for game control keys even
+    // when the event itself is dropped below: a held direction key or Space
+    // would otherwise scroll the page behind the game (#876).
+    if (!window.gamesHelpers.beginGameKeydown(e)) return;
+    if (!started) return;
 
     if (gameOver) {
       window.gamesHelpers.handleRestartSpace(e, resetAndStart);
       return;
     }
 
-    if (e.code === 'Space') {
-      e.preventDefault();
-      if (manualPause) {
-        resumeFromManualPause();
-      } else {
-        paused = true;
-        manualPause = true;
-        stopAnimation();
-        draw();
-      }
-      return;
-    }
+    if (window.gamesHelpers.togglePauseOnSpace(e, manualPause, pauseRun, resumeFromManualPause)) return;
 
-    const dir = KEY_TO_DIR[e.code];
+    const dir = window.gamesHelpers.parseDirection(e);
     if (dir) {
       e.preventDefault();
       queueTurn(dir);

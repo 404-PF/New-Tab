@@ -495,7 +495,7 @@
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "Flechas para fusionar bloques",
+    "message": "Flechas o WASD para fusionar bloques",
     "description": "2048 game controls"
   },
   "gamesMemory": {

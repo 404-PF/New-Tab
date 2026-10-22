@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
+import { expectNoStackedKeydownListeners } from '../helpers/keydown-listener-tally.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
@@ -12,6 +13,12 @@ beforeEach(() => {
   localStorage.clear();
   document.querySelectorAll('.games-score-display, .games-2048-board, .games-ready-overlay, .games-instructions').forEach(el => el.remove());
 });
+
+// Resolves after the next animation frame, once any move buffered by the
+// keydown handler (#876) has been drained.
+function flushFrame() {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
 
 describe('2048 Game', () => {
   it('registers with GameRegistry', () => {
@@ -266,15 +273,17 @@ describe('2048 cross-session saves (#646)', () => {
   }
 
   // Launch through the registry, start, and make moves until the board
-  // changes from its initial render.
-  function playUntilBoardChanged() {
+  // changes from its initial render. Moves are buffered per frame (#876), so
+  // each keydown is followed by a flush before the board is compared.
+  async function playUntilBoardChanged() {
     const container = ensureContainer();
     expect(window.GameRegistry.launch('2048')).toBe(true);
     document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
     const boardBefore = container.querySelector('.games-2048-board').innerHTML;
     for (let i = 0; i < 4; i++) {
       const dirs = ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'];
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: dirs[i] }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: dirs[i], code: dirs[i] }));
+      await flushFrame();
       if (container.querySelector('.games-2048-board').innerHTML !== boardBefore) return true;
     }
     return false;
@@ -285,9 +294,9 @@ describe('2048 cross-session saves (#646)', () => {
       .forEach(el => el.remove());
   });
 
-  it('persists the board on destroyCurrent and restores it on the next init', () => {
+  it('persists the board on destroyCurrent and restores it on the next init', async () => {
     const container = ensureContainer();
-    if (!playUntilBoardChanged()) {
+    if (!(await playUntilBoardChanged())) {
       window.GameRegistry.destroyCurrent();
       container.remove();
       return; // extremely unlikely with random tiles; nothing to assert
@@ -450,5 +459,149 @@ describe('2048 save validation round 2 (review #654)', () => {
 
     game.destroy();
     container.remove();
+  });
+});
+
+describe('2048 responsive input (#876)', () => {
+  // Shared launch: one container plus a restored run, which skips the ready
+  // screen (its own Space handling would swallow events before the game's).
+  function launch(save) {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('2048');
+    game.init(container, save);
+    return { container: container, game: game };
+  }
+
+  it('accepts WASD keys and ignores OS auto-repeat', async () => {
+    const { container, game } = launch({
+      board: [[0, 0, 0, 0], [0, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 0,
+      won: false
+    });
+
+    try {
+      const boardEl = container.querySelector('.games-2048-board');
+      const before = boardEl.innerHTML;
+
+      // Auto-repeat is dropped: S would slide the tile down if it registered.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS', repeat: true }));
+      await flushFrame();
+      expect(boardEl.innerHTML).toBe(before);
+
+      // A real W press moves up (parsed from e.code, like Snake and Pac-Man).
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', code: 'KeyW' }));
+      await flushFrame();
+      expect(boardEl.innerHTML).not.toBe(before);
+    } finally {
+      game.destroy();
+      container.remove();
+    }
+  });
+
+  it('swallows page scroll for held direction keys but not modified shortcuts (#876)', () => {
+    const { container, game } = launch();
+
+    try {
+      const held = new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', repeat: true, cancelable: true });
+      document.dispatchEvent(held);
+      expect(held.defaultPrevented).toBe(true);
+
+      const modified = new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', repeat: true, ctrlKey: true, cancelable: true });
+      document.dispatchEvent(modified);
+      expect(modified.defaultPrevented).toBe(false);
+    } finally {
+      game.destroy();
+      container.remove();
+    }
+  });
+
+  it('leaves Space alone while a button is focused so it stays activatable (#887)', () => {
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    const { container, game } = launch({
+      board: [[2, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 0,
+      won: false
+    });
+
+    try {
+      const spaceOnButton = new KeyboardEvent('keydown', { key: ' ', code: 'Space', cancelable: true, bubbles: true });
+      button.dispatchEvent(spaceOnButton);
+      expect(spaceOnButton.defaultPrevented).toBe(false);
+    } finally {
+      game.destroy();
+      container.remove();
+      button.remove();
+    }
+  });
+
+  it('returns null when a flushed move ends the run instead of re-saving the terminal board (#887)', () => {
+    const randomSpy = vi.spyOn(window.GameRegistry, 'secureRandom').mockReturnValue(0);
+    const { container, game } = launch({
+      board: [[1024, 1024, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 0,
+      won: false
+    });
+
+    try {
+      // The buffered move merges to 2048, ending the run during serialize()'s
+      // flush; the terminal board must not come back as a persistable snapshot.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      expect(game.serialize()).toBeNull();
+    } finally {
+      randomSpy.mockRestore();
+      game.destroy();
+      container.remove();
+    }
+  });
+
+  it('buffers rapid keys to at most one board update per frame', async () => {
+    const randomSpy = vi.spyOn(window.GameRegistry, 'secureRandom').mockReturnValue(0);
+    const { container, game } = launch({
+      board: [[0, 0, 2, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+      score: 0,
+      won: false
+    });
+
+    // serialize() flushes keys still buffered for the next frame (#876), so
+    // the buffering assertions read the rendered cells instead.
+    const boardEl = container.querySelector('.games-2048-board');
+    const cellTexts = () => Array.from(boardEl.querySelectorAll('.games-2048-cell')).map(c => c.textContent);
+
+    try {
+      const start = cellTexts();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+
+      // Moves are buffered, not applied synchronously in the keydown handler.
+      expect(cellTexts()).toEqual(start);
+
+      // One frame drains exactly one move: the tile slides left and one
+      // deterministic random tile spawns (secureRandom mocked to 0).
+      await flushFrame();
+      expect(cellTexts()).toEqual(['2', '2', ...Array(14).fill('')]);
+
+      // The next buffered move runs on the following frame.
+      await flushFrame();
+      expect(cellTexts()).toEqual(['4', '2', ...Array(14).fill('')]);
+
+      // The final buffered move is a no-op slide; the flushed snapshot agrees.
+      await flushFrame();
+      expect(game.serialize().board).toEqual([
+        [4, 2, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]
+      ]);
+    } finally {
+      randomSpy.mockRestore();
+      game.destroy();
+      container.remove();
+    }
+  });
+
+  it('does not stack keydown listeners between consecutive plays', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    expectNoStackedKeydownListeners(window.GameRegistry.get('2048'), container);
   });
 });

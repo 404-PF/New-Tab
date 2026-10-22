@@ -14,6 +14,11 @@
   let started = false;
   let readyScreen = null;
   let tiles = null;
+  // Rapid keys are buffered here and drained one per animation frame so the
+  // board renders at most once per frame (#876).
+  const MAX_QUEUED_MOVES = 4;
+  let queuedMoves = [];
+  let moveFrame = null;
 
   // ===================== Helpers =====================
 
@@ -218,6 +223,11 @@
   // needed here.
   function serialize() {
     if (!started || gameOver) return null;
+    // Apply keys still buffered for the next animation frame so the saved
+    // run reflects every move the player already made (#876).
+    flushQueuedMoves();
+    // A drained move can end the run; a terminal board must not be saved.
+    if (gameOver) return null;
     return {
       board: board.map(function (row) { return row.slice(); }),
       score: score,
@@ -275,34 +285,83 @@
     }
   }
 
-  function handleKeydown(e) {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+  // The keydown handler only buffers a direction; a requestAnimationFrame
+  // callback drains one buffered move, so hammering arrows can no longer
+  // queue several DOM updates inside a single frame (#876).
+  function cancelMoveFrame() {
+    if (moveFrame === null) return;
+    if (typeof window.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(moveFrame);
+    }
+    moveFrame = null;
+  }
+
+  function clearQueuedMoves() {
+    queuedMoves = [];
+    cancelMoveFrame();
+  }
+
+  function queueMove(dir) {
+    if (!dir || queuedMoves.length >= MAX_QUEUED_MOVES) return;
+    queuedMoves.push(dir);
+    if (moveFrame === null) {
+      moveFrame = window.requestAnimationFrame(applyQueuedMove);
+    }
+  }
+
+  function applyMove(dir) {
+    let moved;
+    if (dir === 'left') moved = moveLeft();
+    else if (dir === 'right') moved = moveRight();
+    else if (dir === 'up') moved = moveUp();
+    else moved = moveDown();
+    afterMove(moved);
+  }
+
+  function applyQueuedMove() {
+    moveFrame = null;
+    const dir = queuedMoves.shift();
+    if (!dir || !started || gameOver) {
+      queuedMoves = [];
       return;
     }
+    applyMove(dir);
+    if (!gameOver && queuedMoves.length > 0) {
+      moveFrame = window.requestAnimationFrame(applyQueuedMove);
+    }
+  }
+
+  // Drain the buffer synchronously so a snapshot taken on a visibilitychange
+  // or pagehide serialization cannot drop a key whose animation frame has
+  // not run yet (#876). applyMove() can end the run through afterMove(), so
+  // gameOver is re-checked inside the loop before each drained move.
+  function flushQueuedMoves() {
+    cancelMoveFrame();
+    while (queuedMoves.length > 0) {
+      if (gameOver) return;
+      applyMove(queuedMoves.shift());
+    }
+  }
+
+  // The shared key helpers in shared.js always load before this game (the
+  // Games hub loader and the tests both load them first, the assumption
+  // Pac-Man already makes), so the handler calls them directly (#876).
+  function handleKeydown(e) {
+    if (!window.gamesHelpers.beginGameKeydown(e)) return;
 
     // Ignore all moves until the player has started the game.
     if (!started) return;
 
     if (gameOver) {
-      if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
-        window.gamesHelpers.handleRestartSpace(e, resetGame);
-      } else if (e.code === 'Space') {
-        e.preventDefault();
-        resetGame();
-      }
+      window.gamesHelpers.handleRestartSpace(e, resetGame);
       return;
     }
 
-    let moved;
-    switch (e.key) {
-      case 'ArrowLeft': e.preventDefault(); moved = moveLeft(); break;
-      case 'ArrowRight': e.preventDefault(); moved = moveRight(); break;
-      case 'ArrowUp': e.preventDefault(); moved = moveUp(); break;
-      case 'ArrowDown': e.preventDefault(); moved = moveDown(); break;
-      default: return;
-    }
+    const dir = window.gamesHelpers.parseDirection(e);
+    if (!dir) return;
 
-    afterMove(moved);
+    e.preventDefault();
+    queueMove(dir);
   }
 
   // ===================== Touch =====================
@@ -330,14 +389,11 @@
     const absDy = Math.abs(dy);
     if (Math.max(absDx, absDy) < 30) return;
 
-    let moved;
     if (absDx > absDy) {
-      moved = dx > 0 ? moveRight() : moveLeft();
+      queueMove(dx > 0 ? 'right' : 'left');
     } else {
-      moved = dy > 0 ? moveDown() : moveUp();
+      queueMove(dy > 0 ? 'down' : 'up');
     }
-
-    afterMove(moved);
   }
 
   // ===================== Stats =====================
@@ -357,6 +413,7 @@
   // ===================== Lifecycle =====================
 
   function resetGame() {
+    clearQueuedMoves();
     board = createEmpty();
     score = 0;
     gameOver = false;
@@ -400,7 +457,7 @@
 
     const instructions = document.createElement('div');
     instructions.className = 'games-instructions';
-    instructions.textContent = t('games2048Controls') || 'Arrow keys to merge tiles';
+    instructions.textContent = t('games2048Controls') || 'Arrow keys or WASD to merge tiles';
     container.appendChild(instructions);
 
     // A restored run was already started in a previous session, so it skips
@@ -454,6 +511,7 @@
       readyScreen = null;
     }
     started = false;
+    clearQueuedMoves();
     document.removeEventListener('keydown', handleKeydown);
     if (boardEl) {
       boardEl.removeEventListener('touchstart', handleTouchStart);

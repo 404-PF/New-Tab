@@ -11,6 +11,10 @@
   const MIN_TICK_MS = 60;
   const TICK_MS_PER_FOOD = 2;
   const FOODS_PER_LEVEL = 5;
+  // One frame's contribution to the logic accumulator is capped so a
+  // throttled/backgrounded tab replaying minutes of hidden time does not
+  // dump a catch-up burst of ticks on return.
+  const MAX_FRAME_DELTA_MS = 250;
   const SHAKE_MS = 140;
   const HEAD_COLOR = { r: 94, g: 234, b: 212 };
   const TAIL_COLOR = { r: 45, g: 138, b: 131 };
@@ -28,7 +32,10 @@
   let gameOver = false;
   let paused = false;
   let manualPause = false;
-  let tickTimer = null;
+  // rAF-driven fixed-step logic loop state (#876); see stepLogic().
+  let logicFrame = null;
+  let logicLastAt = null;
+  let logicAccumulatorMs = 0;
   let container = null;
   let scoreEl = null;
   let prevSnake = null;
@@ -178,14 +185,17 @@
     scoreEl.textContent = t('gamesScore') + ': ' + score + '  ·  ' + (t('gamesLevel') || 'Level') + ': ' + levelForScore(score);
   }
 
-  // Recompute the current tick interval and, when it changed, restart the
-  // timer so the new speed takes effect immediately.
+  // Recompute the current tick interval. The rAF logic loop reads tickMs on
+  // every step, so the new speed takes effect on the next frame; clamp any
+  // leftover accumulator so the faster step never fires a catch-up burst.
   function rescheduleTick() {
     const nextTickMs = tickMsForScore(score);
-    if (nextTickMs === tickMs || !tickTimer) return;
+    if (nextTickMs === tickMs) return;
     tickMs = nextTickMs;
-    stopTick();
-    tickTimer = setInterval(tick, tickMs);
+    // Clamp strictly below the new tickMs: rescheduleTick() runs inside the
+    // stepLogic while loop, so an accumulator left at tickMs would let the
+    // loop fire a second tick in the same frame after a speed-up.
+    if (logicAccumulatorMs >= tickMs) logicAccumulatorMs = tickMs - 1;
   }
 
   function tick() {
@@ -261,17 +271,50 @@
     draw();
   }
 
-  function stopTick() {
-    if (tickTimer) {
-      clearInterval(tickTimer);
-      tickTimer = null;
+  // ===================== Game Loop (#876) =====================
+  // Logic runs on a requestAnimationFrame fixed-step accumulator instead of
+  // setInterval: timer wakes drift or coalesce (background tabs, OS
+  // throttling), which made a queued turn land one tick late. Ticks fire
+  // when the accumulator crosses tickMs, so a queued turn is applied on the
+  // next tick, at most one tick interval after the key press. Rendering
+  // keeps its own interpolation loop; draw() still runs from tick() when
+  // that loop is off (reduced motion, paused).
+
+  function stepLogic(frameAt) {
+    if (logicFrame === null) return;
+    logicFrame = window.requestAnimationFrame(stepLogic);
+    if (paused || gameOver) return;
+    const at = typeof frameAt === 'number' ? frameAt : nowMs();
+    // Anchor the accumulator to the first frame's timestamp so scheduling
+    // time and frame time never skew the first step.
+    if (logicLastAt === null) {
+      logicLastAt = at;
+      return;
     }
+    const delta = Math.min(Math.max(at - logicLastAt, 0), MAX_FRAME_DELTA_MS);
+    logicLastAt = at;
+    logicAccumulatorMs += delta;
+    while (logicAccumulatorMs >= tickMs) {
+      logicAccumulatorMs -= tickMs;
+      tick();
+      if (paused || gameOver) return;
+    }
+  }
+
+  function stopTick() {
+    if (logicFrame !== null && typeof window.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(logicFrame);
+    }
+    logicFrame = null;
+    logicAccumulatorMs = 0;
   }
 
   function startTick() {
     tickMs = currentTickMs();
-    stopTick();
-    tickTimer = setInterval(tick, tickMs);
+    if (logicFrame !== null) return;
+    logicAccumulatorMs = 0;
+    logicLastAt = null;
+    logicFrame = window.requestAnimationFrame(stepLogic);
   }
 
   // ===================== Drawing =====================
@@ -586,21 +629,17 @@
 
   // ===================== Input =====================
 
+  // The shared key helpers in shared.js always load before this game (the
+  // Games hub loader and the tests both load them first, the assumption
+  // Pac-Man already makes), so the handler calls them directly (#876/#887).
   function handleKeydown(e) {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
-      return;
-    }
+    if (!window.gamesHelpers.beginGameKeydown(e)) return;
 
     // Ignore all steering until the player has started the run.
     if (!started) return;
 
     if (gameOver) {
-      if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
-        window.gamesHelpers.handleRestartSpace(e, restart);
-      } else if (e.code === 'Space') {
-        e.preventDefault();
-        restart();
-      }
+      window.gamesHelpers.handleRestartSpace(e, restart);
       return;
     }
 
@@ -619,12 +658,7 @@
       return;
     }
 
-    const keyMap = {
-      ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
-      w: 'up', s: 'down', a: 'left', d: 'right',
-      W: 'up', S: 'down', A: 'left', D: 'right'
-    };
-    const newDir = keyMap[e.key] || keyMap[e.code];
+    const newDir = window.gamesHelpers.parseDirection(e);
     if (!newDir) return;
 
     e.preventDefault();

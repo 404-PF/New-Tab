@@ -211,17 +211,13 @@
   // ===================== Input =====================
 
   function handleKeydown(e) {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
-      return;
-    }
+    // The shared key helpers in shared.js always load before this game (the
+    // Games hub loader and the tests both load them first, the assumption
+    // Pac-Man already makes), so the handler calls them directly (#876).
+    if (window.gamesHelpers.shouldIgnoreKey(e)) return;
 
     if (gameOver) {
-      if (window.gamesHelpers && typeof window.gamesHelpers.handleRestartSpace === 'function') {
-        window.gamesHelpers.handleRestartSpace(e, resetGame);
-      } else if (e.code === 'Space') {
-        e.preventDefault();
-        resetGame();
-      }
+      window.gamesHelpers.handleRestartSpace(e, resetGame);
     }
   }
 

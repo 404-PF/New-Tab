@@ -495,7 +495,7 @@
     "description": "2048 game description"
   },
   "games2048Controls": {
-    "message": "Flèches pour fusionner les blocs",
+    "message": "Flèches ou ZQSD pour fusionner les blocs",
     "description": "2048 game controls"
   },
   "gamesMemory": {

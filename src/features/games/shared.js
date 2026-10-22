@@ -41,6 +41,88 @@
     return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || !!target.isContentEditable;
   };
 
+  // Steering directions resolved from KeyboardEvent.code, which is based on
+  // the physical key position and therefore layout-independent (the WASD
+  // block steers the same on QWERTY, AZERTY, Dvorak, ...).
+  const CODE_TO_DIRECTION = {
+    ArrowUp: 'up', KeyW: 'up',
+    ArrowDown: 'down', KeyS: 'down',
+    ArrowLeft: 'left', KeyA: 'left',
+    ArrowRight: 'right', KeyD: 'right'
+  };
+  // Fallback for events that carry only `key` (synthetic events, older
+  // callers); e.code always wins when present.
+  const KEY_TO_DIRECTION = {
+    ArrowUp: 'up', w: 'up', W: 'up',
+    ArrowDown: 'down', s: 'down', S: 'down',
+    ArrowLeft: 'left', a: 'left', A: 'left',
+    ArrowRight: 'right', d: 'right', D: 'right'
+  };
+
+  // Resolve a steering direction ('up' | 'down' | 'left' | 'right') from a
+  // keydown event, or null when the key is not a direction key (#876).
+  window.gamesHelpers.parseDirection = function (e) {
+    if (!e) return null;
+    return CODE_TO_DIRECTION[e.code] || KEY_TO_DIRECTION[e.key] || null;
+  };
+
+  // True when a keydown event should be skipped entirely: OS auto-repeat
+  // (holding a key would otherwise flood the game with moves), modified
+  // shortcuts (Ctrl/Cmd/Alt combos belong to the browser, so Ctrl+S must
+  // not be queued as a move or suppressed via preventDefault), and keys
+  // typed into editable elements (#876).
+  window.gamesHelpers.shouldIgnoreKey = function (e) {
+    if (!e) return true;
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return true;
+    return window.gamesHelpers.isEditableTarget(e.target);
+  };
+
+  // Swallow the browser default (page scroll) for game control keys even
+  // when the caller drops the event afterwards: a held arrow or Space key
+  // would otherwise scroll the page behind the game (#876). Space is left
+  // alone while a button, link, or [role="button"] is focused so keyboard
+  // users can still activate those controls (#887).
+  window.gamesHelpers.suppressGameKeyScroll = function (e) {
+    if (!e || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!window.gamesHelpers.parseDirection(e) && e.code !== 'Space') return;
+    if (e.code === 'Space' && e.target && typeof e.target.closest === 'function' &&
+        e.target.closest('button, a, [role="button"]')) {
+      return;
+    }
+    e.preventDefault();
+  };
+
+  // Shared keydown prologue for the games. Returns false when the event
+  // belongs to an editable element, is an OS auto-repeat, or is a modified
+  // shortcut — the caller should drop it. Otherwise it has already swallowed
+  // the browser default (page scroll) for game control keys and the caller
+  // continues with its own started/gameOver/steering logic (#876/#887).
+  window.gamesHelpers.beginGameKeydown = function (e) {
+    if (window.gamesHelpers.isEditableTarget(e.target)) return false;
+    window.gamesHelpers.suppressGameKeyScroll(e);
+    if (window.gamesHelpers.shouldIgnoreKey(e)) return false;
+    return true;
+  };
+
+  // Toggle manual pause on Space for the animation-driven games: resume a
+  // manually paused run, otherwise pause it through onPause. Prevents the
+  // Space default (page scroll) first and returns true when the key was
+  // Space, false when the caller should keep handling the event (#876).
+  // Space while a button, link, or [role="button"] is focused belongs to
+  // that control (the #887 exemption in suppressGameKeyScroll), so the
+  // pause toggle is skipped and the key is left for the caller.
+  window.gamesHelpers.togglePauseOnSpace = function (e, isManualPaused, onPause, onResume) {
+    if (e.code !== 'Space') return false;
+    if (e.target && typeof e.target.closest === 'function' &&
+        e.target.closest('button, a, [role="button"]')) {
+      return false;
+    }
+    e.preventDefault();
+    if (isManualPaused) onResume();
+    else onPause();
+    return true;
+  };
+
   // Keep at most one state overlay (for example paused or game over) on a
   // stage. sync(stage, kind, optionsFor) re-renders only when kind changes;
   // optionsFor(kind) returns renderDOMOverlay options. A null kind clears it.
