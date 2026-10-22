@@ -108,8 +108,15 @@
   // manually paused run, otherwise pause it through onPause. Prevents the
   // Space default (page scroll) first and returns true when the key was
   // Space, false when the caller should keep handling the event (#876).
+  // Space while a button, link, or [role="button"] is focused belongs to
+  // that control (the #887 exemption in suppressGameKeyScroll), so the
+  // pause toggle is skipped and the key is left for the caller.
   window.gamesHelpers.togglePauseOnSpace = function (e, isManualPaused, onPause, onResume) {
     if (e.code !== 'Space') return false;
+    if (e.target && typeof e.target.closest === 'function' &&
+        e.target.closest('button, a, [role="button"]')) {
+      return false;
+    }
     e.preventDefault();
     if (isManualPaused) onResume();
     else onPause();

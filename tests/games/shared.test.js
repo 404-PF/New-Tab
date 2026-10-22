@@ -307,6 +307,7 @@ describe('gamesHelpers.beginGameKeydown (#876/#887)', () => {
     const e = keydown({ key: 'a', code: 'KeyA' });
     input.dispatchEvent(e);
     expect(window.gamesHelpers.beginGameKeydown(e)).toBe(false);
+    expect(e.defaultPrevented).toBe(false);
     input.remove();
   });
 
@@ -356,5 +357,20 @@ describe('gamesHelpers.togglePauseOnSpace (#876)', () => {
     expect(e.defaultPrevented).toBe(false);
     expect(onPause).not.toHaveBeenCalled();
     expect(onResume).not.toHaveBeenCalled();
+  });
+
+  it('leaves Space alone while a button is focused so it stays activatable (#887)', () => {
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    const onPause = vi.fn();
+    const onResume = vi.fn();
+    const e = keydown({ key: ' ', code: 'Space' });
+    button.dispatchEvent(e);
+
+    expect(window.gamesHelpers.togglePauseOnSpace(e, false, onPause, onResume)).toBe(false);
+    expect(e.defaultPrevented).toBe(false);
+    expect(onPause).not.toHaveBeenCalled();
+    expect(onResume).not.toHaveBeenCalled();
+    button.remove();
   });
 });

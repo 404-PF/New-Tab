@@ -479,21 +479,24 @@ describe('2048 responsive input (#876)', () => {
       score: 0,
       won: false
     });
-    const boardEl = container.querySelector('.games-2048-board');
-    const before = boardEl.innerHTML;
 
-    // Auto-repeat is dropped: S would slide the tile down if it registered.
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS', repeat: true }));
-    await flushFrame();
-    expect(boardEl.innerHTML).toBe(before);
+    try {
+      const boardEl = container.querySelector('.games-2048-board');
+      const before = boardEl.innerHTML;
 
-    // A real W press moves up (parsed from e.code, like Snake and Pac-Man).
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', code: 'KeyW' }));
-    await flushFrame();
-    expect(boardEl.innerHTML).not.toBe(before);
+      // Auto-repeat is dropped: S would slide the tile down if it registered.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS', repeat: true }));
+      await flushFrame();
+      expect(boardEl.innerHTML).toBe(before);
 
-    game.destroy();
-    container.remove();
+      // A real W press moves up (parsed from e.code, like Snake and Pac-Man).
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', code: 'KeyW' }));
+      await flushFrame();
+      expect(boardEl.innerHTML).not.toBe(before);
+    } finally {
+      game.destroy();
+      container.remove();
+    }
   });
 
   it('swallows page scroll for held direction keys but not modified shortcuts (#876)', () => {
