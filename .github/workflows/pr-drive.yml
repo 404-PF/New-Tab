@@ -619,13 +619,18 @@ jobs:
             echo 'pushed=none' >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # A rejected push is a lost race, not a broken drive: the other
-          # writer (usually a newer /drive run) already advanced the branch.
-          # Record it and exit 0 so the summary still reports the round.
+          # A lost race (the branch moved under us) is not a broken drive:
+          # record pushed=rejected and exit 0 so the summary still reports
+          # the round. Any other push failure still exits 1.
           if [ "$REBASED" = 'true' ]; then
             if git_pr push --force-with-lease="refs/heads/$HEAD_REF:$HEAD_SHA" "$REPO_URL" "HEAD:refs/heads/$HEAD_REF"; then
               echo 'pushed=rebase' >> "$GITHUB_OUTPUT"
             else
+              REMOTE_HEAD="$(git_pr ls-remote "$REPO_URL" "refs/heads/$HEAD_REF" | cut -f1)"
+              if [ -z "$REMOTE_HEAD" ] || [ "$REMOTE_HEAD" = "$HEAD_SHA" ]; then
+                echo '::error::Force-push failed and the branch did not move; not a lost race.'
+                exit 1
+              fi
               echo '::warning::Force-push with lease rejected; the branch moved since this run started. Skipping the push.'
               echo 'pushed=rejected' >> "$GITHUB_OUTPUT"
             fi
@@ -633,6 +638,11 @@ jobs:
             if git_pr push "$REPO_URL" "HEAD:refs/heads/$HEAD_REF"; then
               echo 'pushed=fast-forward' >> "$GITHUB_OUTPUT"
             else
+              REMOTE_HEAD="$(git_pr ls-remote "$REPO_URL" "refs/heads/$HEAD_REF" | cut -f1)"
+              if [ -z "$REMOTE_HEAD" ] || [ "$REMOTE_HEAD" = "$HEAD_SHA" ]; then
+                echo '::error::Push failed and the branch did not move; not a lost race.'
+                exit 1
+              fi
               echo '::warning::Push rejected; the branch moved since this run started. Skipping the push.'
               echo 'pushed=rejected' >> "$GITHUB_OUTPUT"
             fi
@@ -680,8 +690,10 @@ jobs:
       # already happened and its outcome must reach the PR even when the push
       # step could not publish the branch (missing GH_PAT, bad git config).
       # A hard failure still reaches "Report drive failure on PR" below.
+      # !cancelled(): a superseded run must not overwrite the newer run's
+      # summary with "not attempted (cancelled)".
       - name: Post summary comment
-        if: always() && steps.loop.outcome == 'success'
+        if: always() && !cancelled() && steps.loop.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
