@@ -8,6 +8,44 @@ const AIService = (function() {
     aiGroundingFallback: 'Web search is unavailable. Answering without live web data.'
   };
   let activeConfirmKeydownHandler = null;
+  // The dialog is only faded out, so its buttons stay focusable after it
+  // closed and keep swallowing the keyboard. The closed dialog is therefore
+  // marked inert, and the focus it took is remembered so it can be handed
+  // back when the dialog closes.
+  let confirmDialogReturnFocus = null;
+
+  /**
+   * Remembers the element that has focus before the delete confirmation
+   * dialog takes it, so it can be handed back when the dialog closes.
+   */
+  function captureConfirmDialogReturnFocus() {
+    const active = document.activeElement;
+    // Only a focus outside the dialog is worth remembering, and an already
+    // open dialog keeps the target it captured the first time.
+    if (active instanceof HTMLElement &&
+      active !== document.body &&
+      !elements.confirmDialog.contains(active)) {
+      confirmDialogReturnFocus = active;
+    }
+  }
+
+  /**
+   * Restores the focus the delete confirmation dialog captured, falling back
+   * to the topics list when a confirmed delete detached the original element.
+   */
+  function restoreConfirmDialogReturnFocus() {
+    const previous = confirmDialogReturnFocus;
+    confirmDialogReturnFocus = null;
+    if (!previous) return;
+
+    // Confirming the delete re-renders the topics list, which detaches the
+    // row that opened the dialog; fall back to the list itself so the arrow
+    // and Delete keys keep working.
+    const target = previous.isConnected ? previous : elements.topicsList;
+    if (target?.isConnected) {
+      target.focus({ preventScroll: true });
+    }
+  }
 
   function getTranslation(key) {
     if (window.i18n && window.i18n.t) {
@@ -101,6 +139,14 @@ const AIService = (function() {
     }
   }
 
+  /**
+   * Opens the delete confirmation dialog for a conversation.
+   *
+   * Only the dialog's own buttons act on Enter (Cancel cancels, Delete
+   * deletes): the document-level handler deliberately confirms nothing, so a
+   * keypress that is not on the Delete button can never delete (#889).
+   * @param {Function} onConfirm Callback that runs when the delete is confirmed.
+   */
   function showDeleteConfirm(onConfirm) {
     cacheElements();
 
@@ -120,6 +166,9 @@ const AIService = (function() {
 
     AIStore.setConfirmDialogCallback(onConfirm);
     elements.confirmDialog.classList.add('ai-confirm-open');
+    // The closed dialog is inert so its (invisible) buttons cannot be
+    // reached by Tab; opening it makes them available again.
+    elements.confirmDialog.removeAttribute('inert');
 
     const newCancelBtn = cancelBtn.cloneNode(true);
     cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
@@ -130,26 +179,34 @@ const AIService = (function() {
     const newOverlay = overlay.cloneNode(true);
     overlay.parentNode.replaceChild(newOverlay, overlay);
 
-    newCancelBtn.addEventListener('click', hideDeleteConfirm);
+    newCancelBtn.addEventListener('click', closeDeleteConfirm);
     newDeleteBtn.addEventListener('click', () => {
       const callback = AIStore.state.confirmDialogCallback;
       hideDeleteConfirm();
       if (callback) {
         callback();
       }
+      // The confirmed delete re-renders the topics list, which detaches the
+      // row that had focus, so the focus is only restored afterwards.
+      restoreConfirmDialogReturnFocus();
     });
-    newOverlay.addEventListener('click', hideDeleteConfirm);
+    newOverlay.addEventListener('click', closeDeleteConfirm);
+
+    // Focus moves into the dialog when it opens: the cloneNode() calls above
+    // replace the buttons (and the focused element with them), which would
+    // otherwise drop focus back to wherever the user was. The Cancel button
+    // is the dialog's first control and its safe default.
+    captureConfirmDialogReturnFocus();
+    newCancelBtn.focus();
 
     const handleKeydown = (event) => {
       if (event.key === 'Escape') {
-        hideDeleteConfirm();
-      } else if (event.key === 'Enter') {
-        const callback = AIStore.state.confirmDialogCallback;
-        hideDeleteConfirm();
-        if (callback) {
-          callback();
-        }
+        closeDeleteConfirm();
       }
+      // Enter is deliberately not handled here: the dialog's own buttons
+      // activate natively on Enter (Cancel cancels, Delete deletes), so
+      // confirming from the document level as well made Enter on Cancel
+      // destroy the conversation (#889).
     };
 
     activeConfirmKeydownHandler = handleKeydown;
@@ -157,11 +214,20 @@ const AIService = (function() {
     document.addEventListener('keydown', handleKeydown);
   }
 
+  /**
+   * Closes the delete confirmation dialog without running the stored
+   * callback, and makes its buttons unreachable while it is invisible.
+   */
   function hideDeleteConfirm() {
     cacheElements();
 
     if (elements.confirmDialog) {
       elements.confirmDialog.classList.remove('ai-confirm-open');
+      // The dialog is only faded out, so its buttons would stay focusable and
+      // keep swallowing the keyboard. Marking it inert also stops the shared
+      // modal helper (accessibility.js) from restoring focus to a button the
+      // user can no longer see.
+      elements.confirmDialog.setAttribute('inert', '');
     }
 
     if (activeConfirmKeydownHandler) {
@@ -170,6 +236,15 @@ const AIService = (function() {
     }
 
     AIStore.clearConfirmDialogCallback();
+  }
+
+  /**
+   * Dismisses the delete confirmation dialog the way the user asked
+   * (Escape, Cancel or the overlay) and hands focus back to where it was.
+   */
+  function closeDeleteConfirm() {
+    hideDeleteConfirm();
+    restoreConfirmDialogReturnFocus();
   }
 
   function setLoadingStatus(message) {

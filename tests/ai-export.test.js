@@ -21,7 +21,7 @@ beforeAll(() => {
   stubElement('ai-chat-title');
   stubElement('ai-new-chat-btn', 'button');
   stubElement('ai-export-all-btn', 'button');
-  stubElement('ai-topics-list');
+  stubElement('ai-topics-list').setAttribute('tabindex', '0');
   stubElement('ai-topics-search-input', 'input');
   stubElement('ai-topics-count');
   const confirmDialog = stubElement('ai-confirm-dialog');
@@ -316,8 +316,9 @@ describe('AIService export flow (#647)', () => {
     const confirmDialog = document.getElementById('ai-confirm-dialog');
 
     try {
-      // Delete/Backspace opens the confirm dialog and leaves focus + selection
-      // on the list; pressing E afterwards must not export underneath it.
+      // Delete/Backspace opens the confirm dialog (selection stays on the
+      // list; focus moves into the dialog); pressing E afterwards must not
+      // export underneath it.
       document.getElementById('ai-topics-list').dispatchEvent(
         new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true })
       );
@@ -347,5 +348,119 @@ describe('AIService export flow (#647)', () => {
 
     expect(objectUrls).toHaveLength(0);
     expect(lastToast()).toBe('aiExportError');
+  });
+});
+
+describe('AIService delete confirmation keyboard safety (#889)', () => {
+  const openDialogWithKeyboard = () => {
+    seedConversations();
+    AIStore.setKeyboardSelectedIndex(0);
+    AIRenderer.renderTopicsList();
+    document.getElementById('ai-topics-list').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true })
+    );
+  };
+
+  afterEach(() => {
+    // Start each test from a closed dialog (Escape is the dialog's own close).
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  });
+
+  it('moves focus into the dialog when it opens', () => {
+    openDialogWithKeyboard();
+    const confirmDialog = document.getElementById('ai-confirm-dialog');
+    expect(confirmDialog.classList.contains('ai-confirm-open')).toBe(true);
+    expect(confirmDialog.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement.classList.contains('ai-confirm-cancel')).toBe(true);
+  });
+
+  it('Enter on the focused Cancel button does not delete the conversation', () => {
+    openDialogWithKeyboard();
+    const confirmDialog = document.getElementById('ai-confirm-dialog');
+    document.activeElement.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    );
+    // jsdom does not run the native button activation, so the dialog stays
+    // open here; the essential property is that the conversation survived.
+    expect(AIStore.state.conversations).toHaveLength(2);
+    expect(confirmDialog.classList.contains('ai-confirm-open')).toBe(true);
+  });
+
+  it('Enter in the chat input while the dialog is open does not delete', () => {
+    openDialogWithKeyboard();
+    document.getElementById('ai-chat-input').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    );
+    expect(AIStore.state.conversations).toHaveLength(2);
+    expect(AIStore.state.confirmDialogCallback).not.toBeNull();
+  });
+
+  it('Enter anywhere else in the dialog does not delete the conversation', () => {
+    openDialogWithKeyboard();
+    // Focus can only ever be on one of the two buttons while the dialog is
+    // open, so this is not a reachable keyboard path today. It stays as a
+    // guard for the removed document-level Enter branch: if focus ever moves
+    // to a non-button part of the dialog, that keypress must not be able to
+    // destroy the conversation.
+    const overlay = document.querySelector('#ai-confirm-dialog .ai-confirm-overlay');
+    overlay.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    );
+    expect(AIStore.state.conversations).toHaveLength(2);
+    expect(AIStore.state.confirmDialogCallback).not.toBeNull();
+  });
+
+  it('does not claim Enter on the focused Delete button, leaving activation to the browser', () => {
+    openDialogWithKeyboard();
+    // Focus can only ever be on one of the two buttons while the dialog is
+    // open, so this is the reachable confirm path: the document-level handler
+    // must not claim the event, leaving the browser free to activate the
+    // focused button natively.
+    const deleteBtn = document.querySelector('#ai-confirm-dialog .ai-confirm-delete');
+    deleteBtn.focus();
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    deleteBtn.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(AIStore.state.conversations).toHaveLength(2);
+    expect(AIStore.state.confirmDialogCallback).not.toBeNull();
+  });
+
+  it('the Delete button confirms the deletion', () => {
+    openDialogWithKeyboard();
+    document.querySelector('#ai-confirm-dialog .ai-confirm-delete').click();
+    expect(AIStore.state.conversations).toHaveLength(1);
+    expect(AIStore.state.confirmDialogCallback).toBeNull();
+  });
+
+  it('returns focus to the list when the dialog is closed with Escape', () => {
+    const list = document.getElementById('ai-topics-list');
+    list.focus();
+    openDialogWithKeyboard();
+    expect(document.activeElement.classList.contains('ai-confirm-cancel')).toBe(true);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(document.activeElement).toBe(list);
+  });
+
+  it('returns focus to the list when the dialog is closed with Cancel', () => {
+    const list = document.getElementById('ai-topics-list');
+    list.focus();
+    openDialogWithKeyboard();
+
+    document.querySelector('#ai-confirm-dialog .ai-confirm-cancel').click();
+
+    expect(document.activeElement).toBe(list);
+  });
+
+  it('marks the closed dialog inert so its hidden buttons are unreachable', () => {
+    const confirmDialog = document.getElementById('ai-confirm-dialog');
+    openDialogWithKeyboard();
+    expect(confirmDialog.hasAttribute('inert')).toBe(false);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(confirmDialog.hasAttribute('inert')).toBe(true);
   });
 });
