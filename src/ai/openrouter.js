@@ -35,11 +35,12 @@ const OpenRouterAPI = (function() {
   /**
    * Get translation for a key
    * @param {string} key - Translation key
+   * @param {Object} [replacements] - Optional placeholder replacements
    * @returns {string} Translated string or key
    */
-  function getTranslation(key) {
+  function getTranslation(key, replacements) {
     if (window.i18n && window.i18n.t) {
-      return window.i18n.t(key);
+      return window.i18n.t(key, replacements);
     }
     // Fallback - should not happen if languages.js loads first
     console.warn('i18n not available, using fallback for:', key);
@@ -137,49 +138,83 @@ const OpenRouterAPI = (function() {
   }
 
   /**
+   * Parse a Retry-After header value (delay-seconds or HTTP-date per RFC 9110)
+   * into a positive whole number of seconds.
+   * @param {string|null} value - Raw Retry-After header value
+   * @returns {number|null} Whole seconds, or null when unusable
+   */
+  function parseRetryAfterSeconds(value) {
+    if (!value) {
+      return null;
+    }
+    if (/^\d+$/.test(value)) {
+      return Number(value);
+    }
+    const dateMs = Date.parse(value);
+    if (Number.isNaN(dateMs)) {
+      return null;
+    }
+    return Math.ceil((dateMs - Date.now()) / 1000);
+  }
+
+  /**
    * Handle API errors
    * @param {Response} response - Fetch response
+   * @param {AbortSignal|null} [callerSignal] - Optional caller cancellation signal
    * @returns {Object} Error information
    */
-  async function handleError(response) {
+  async function handleError(response, callerSignal = null) {
     let errorMessage = getTranslation('aiError');
-    let errorCode = 'UNKNOWN';
+    let errorCode;
+    let retryAfterSeconds = null;
 
+    // Error bodies are often empty or non-JSON (e.g. Cloudflare HTML pages
+    // for 502/521/522, or body-less 429s); classify by HTTP status even when
+    // the parse fails, and only consult errorData for unknown statuses.
+    let errorData = null;
     try {
-      const errorData = await response.json();
-      
-      switch (response.status) {
-        case 401:
-          errorCode = 'AUTH_ERROR';
-          errorMessage = getTranslation('aiAuthError');
-          break;
-        case 403:
-          errorCode = 'FORBIDDEN';
-          errorMessage = getTranslation('aiForbidden');
-          break;
-        case 429: {
-          errorCode = 'RATE_LIMIT';
-          const retryAfter = response.headers.get('Retry-After');
-          errorMessage = retryAfter
-            ? `Rate limited. Try again in ${retryAfter} seconds`
-            : getTranslation('aiRateLimit');
-          break;
-        }
-        case 500:
-        case 502:
-        case 503:
-          errorCode = 'SERVER_ERROR';
-          errorMessage = getTranslation('aiServerError');
-          break;
-        default:
-          errorCode = errorData.error?.code || 'API_ERROR';
-          errorMessage = errorData.error?.message || errorMessage;
+      errorData = await response.json();
+    } catch (parseError) {
+      // Only caller cancellation propagates so the caller's abort path can
+      // run; an internal request timeout falls through to status-based
+      // classification instead of surfacing a network error.
+      if (parseError?.name === 'AbortError' && callerSignal?.aborted) {
+        throw parseError;
       }
-    } catch {
-      errorMessage = response.statusText || errorMessage;
+      // Non-JSON body; status-based classification below still applies.
     }
 
-    return { code: errorCode, message: errorMessage };
+    switch (response.status) {
+      case 401:
+        errorCode = 'AUTH_ERROR';
+        errorMessage = getTranslation('aiAuthError');
+        break;
+      case 403:
+        errorCode = 'FORBIDDEN';
+        errorMessage = getTranslation('aiForbidden');
+        break;
+      case 429: {
+        errorCode = 'RATE_LIMIT';
+        retryAfterSeconds = parseRetryAfterSeconds(response.headers.get('Retry-After'));
+        errorMessage = retryAfterSeconds > 0
+          ? getTranslation('aiRateLimitRetryAfter', { seconds: retryAfterSeconds })
+          : getTranslation('aiRateLimit');
+        break;
+      }
+      default:
+        if (response.status >= 500) {
+          errorCode = 'SERVER_ERROR';
+          errorMessage = getTranslation('aiServerError');
+        } else {
+          errorCode = errorData?.error?.code || 'API_ERROR';
+          // Prefer the API-provided message; keep the localized fallback for
+          // parsed JSON bodies and only surface raw statusText when the body
+          // could not be parsed at all.
+          errorMessage = errorData?.error?.message || (errorData ? errorMessage : response.statusText) || errorMessage;
+        }
+    }
+
+    return { code: errorCode, message: errorMessage, retryAfterSeconds };
   }
 
   /**
@@ -327,6 +362,7 @@ const OpenRouterAPI = (function() {
 
       let fullContent = '';
       let retryableFailure;
+      let retryAfterMs = 0;
       let requestState = null;
       let reader;
       let timeoutId = null;
@@ -362,11 +398,13 @@ const OpenRouterAPI = (function() {
         // Handle non-OK responses. Retry rate limits and server failures because
         // they are commonly transient; surface other client errors immediately.
         if (!response.ok) {
-          const errorInfo = await handleError(response);
+          const errorInfo = await handleError(response, signal);
           const retryableStatus = response.status === 429 || response.status >= 500;
 
           if (retryableStatus && attempt < CONFIG.maxRetries) {
             retryableFailure = true;
+            // Honour a longer server-requested Retry-After for the wait below.
+            retryAfterMs = errorInfo.retryAfterSeconds > 0 ? errorInfo.retryAfterSeconds * 1000 : 0;
           } else {
             return { success: false, error: errorInfo.message, code: errorInfo.code };
           }
@@ -502,7 +540,10 @@ const OpenRouterAPI = (function() {
       }
 
       if (retryableFailure) {
-        const delay = CONFIG.retryDelay * 2 ** attempt;
+        // Back off exponentially, but never retry sooner than a longer
+        // Retry-After requested by the server for a 429.
+        const backoffDelay = CONFIG.retryDelay * 2 ** attempt;
+        const delay = Math.max(backoffDelay, retryAfterMs);
         const shouldRetry = await waitForRetryDelay(delay, signal);
 
         if (!shouldRetry && signal?.aborted) {

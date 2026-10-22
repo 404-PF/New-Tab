@@ -288,6 +288,7 @@ globalThis.window.i18n = {
       dueDate: 'Due Date',
       dueTime: 'Due Time',
       aiNetworkError: 'Network error occurred',
+      aiRateLimitRetryAfter: 'Rate limited. Try again in {seconds} seconds',
       clearDate: 'Clear',
       todayDate: 'Today',
       todoSetDate: 'Set date',
