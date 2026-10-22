@@ -35,11 +35,12 @@ const OpenRouterAPI = (function() {
   /**
    * Get translation for a key
    * @param {string} key - Translation key
+   * @param {Object} [replacements] - Optional placeholder replacements
    * @returns {string} Translated string or key
    */
-  function getTranslation(key) {
+  function getTranslation(key, replacements) {
     if (window.i18n && window.i18n.t) {
-      return window.i18n.t(key);
+      return window.i18n.t(key, replacements);
     }
     // Fallback - should not happen if languages.js loads first
     console.warn('i18n not available, using fallback for:', key);
@@ -137,6 +138,26 @@ const OpenRouterAPI = (function() {
   }
 
   /**
+   * Parse a Retry-After header value (delay-seconds or HTTP-date per RFC 9110)
+   * into a positive whole number of seconds.
+   * @param {string|null} value - Raw Retry-After header value
+   * @returns {number|null} Whole seconds, or null when unusable
+   */
+  function parseRetryAfterSeconds(value) {
+    if (!value) {
+      return null;
+    }
+    if (/^\d+$/.test(value)) {
+      return Number(value);
+    }
+    const dateMs = Date.parse(value);
+    if (Number.isNaN(dateMs)) {
+      return null;
+    }
+    return Math.ceil((dateMs - Date.now()) / 1000);
+  }
+
+  /**
    * Handle API errors
    * @param {Response} response - Fetch response
    * @returns {Object} Error information
@@ -151,7 +172,11 @@ const OpenRouterAPI = (function() {
     let errorData = null;
     try {
       errorData = await response.json();
-    } catch {
+    } catch (parseError) {
+      // Cancellation must propagate so the caller's abort path can run.
+      if (parseError?.name === 'AbortError') {
+        throw parseError;
+      }
       // Non-JSON body; status-based classification below still applies.
     }
 
@@ -166,21 +191,23 @@ const OpenRouterAPI = (function() {
         break;
       case 429: {
         errorCode = 'RATE_LIMIT';
-        const retryAfter = response.headers.get('Retry-After');
-        errorMessage = retryAfter
-          ? `Rate limited. Try again in ${retryAfter} seconds`
+        const retrySeconds = parseRetryAfterSeconds(response.headers.get('Retry-After'));
+        errorMessage = retrySeconds > 0
+          ? getTranslation('aiRateLimitRetryAfter', { seconds: retrySeconds })
           : getTranslation('aiRateLimit');
         break;
       }
-      case 500:
-      case 502:
-      case 503:
-        errorCode = 'SERVER_ERROR';
-        errorMessage = getTranslation('aiServerError');
-        break;
       default:
-        errorCode = errorData?.error?.code || 'API_ERROR';
-        errorMessage = errorData?.error?.message || response.statusText || errorMessage;
+        if (response.status >= 500) {
+          errorCode = 'SERVER_ERROR';
+          errorMessage = getTranslation('aiServerError');
+        } else {
+          errorCode = errorData?.error?.code || 'API_ERROR';
+          // Prefer the API-provided message; keep the localized fallback for
+          // parsed JSON bodies and only surface raw statusText when the body
+          // could not be parsed at all.
+          errorMessage = errorData?.error?.message || (errorData ? errorMessage : response.statusText) || errorMessage;
+        }
     }
 
     return { code: errorCode, message: errorMessage };

@@ -677,6 +677,95 @@ describe('OpenRouter non-JSON error bodies (#866)', () => {
       OpenRouterAPI.config.retryDelay = originalRetryDelay;
     }
   });
+
+  it('classifies a 521 with an HTML body as SERVER_ERROR', async () => {
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 0;
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        createNonJsonErrorResponse(521, { statusText: 'Service Unavailable' })
+      );
+
+      const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+      expect(result).toMatchObject({ success: false, code: 'SERVER_ERROR', error: 'aiServerError' });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+    }
+  });
+
+  it('converts an HTTP-date Retry-After into a duration in seconds', async () => {
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 0;
+      const retryAt = new Date(Date.now() + 90 * 1000).toUTCString();
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        createNonJsonErrorResponse(429, { headers: { 'Retry-After': retryAt } })
+      );
+
+      const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+      expect(result).toMatchObject({ success: false, code: 'RATE_LIMIT' });
+      // toUTCString drops sub-second precision, so the duration lands at 89 or 90.
+      expect(result.error).toMatch(/^Rate limited\. Try again in (89|90) seconds$/);
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+    }
+  });
+
+  it('falls back to aiRateLimit for an unparseable Retry-After value', async () => {
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 0;
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        createNonJsonErrorResponse(429, { headers: { 'Retry-After': 'soon' } })
+      );
+
+      const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+      expect(result).toMatchObject({ success: false, code: 'RATE_LIMIT', error: 'aiRateLimit' });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+    }
+  });
+
+  it('keeps the localized fallback for a JSON body without error.message', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      headers: { get: vi.fn().mockReturnValue(null) },
+      json: vi.fn().mockResolvedValue({})
+    });
+
+    const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+    expect(result).toMatchObject({ success: false, code: 'API_ERROR', error: 'aiError' });
+    expect(result.error).not.toBe('Bad Request');
+  });
+
+  it('reports cancellation when the caller aborts during body parsing', async () => {
+    const controller = new AbortController();
+    globalThis.fetch = vi.fn().mockImplementation(async () => ({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      headers: { get: vi.fn().mockReturnValue(null) },
+      json: vi.fn().mockImplementation(async () => {
+        controller.abort();
+        const abortError = new Error('The operation was aborted.');
+        abortError.name = 'AbortError';
+        throw abortError;
+      })
+    }));
+
+    const result = await OpenRouterAPI.sendMessageStreaming('hello', [], null, controller.signal);
+
+    expect(result).toMatchObject({ success: false, aborted: true, error: 'Request cancelled' });
+  });
 });
 
 describe('OpenRouter web grounding (#707)', () => {
