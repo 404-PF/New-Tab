@@ -904,6 +904,45 @@ describe('renderAllApps order validation', () => {
     }
   });
 
+  it('keeps grid-hide and the games_enabled toggle as independent gates (#897)', () => {
+    localStorage.setItem('games_enabled', 'false');
+    const applyGamesEnabled = vi.fn(() => {
+      const gamesApp = document.getElementById('games-app');
+      if (gamesApp) {
+        gamesApp.style.display = localStorage.getItem('games_enabled') !== 'false' ? '' : 'none';
+      }
+    });
+    const originalApplyGamesEnabled = window.applyGamesEnabled;
+    try {
+      window.applyGamesEnabled = applyGamesEnabled;
+
+      window.renderAllApps();
+      expect(document.getElementById('games-app').style.display).toBe('none');
+
+      // Grid-hide removes the tile without flipping the feature flag.
+      expect(AppGridState.hideDefaultApp('games-app')).toBe(true);
+      window.renderAllApps();
+      expect(document.getElementById('games-app')).toBeNull();
+      expect(localStorage.getItem('games_enabled')).toBe('false');
+
+      // Restoring re-evaluates the flag on the fresh tile, so flipping the
+      // feature back on cannot leave a stale inline display:none behind.
+      localStorage.setItem('games_enabled', 'true');
+      expect(AppGridState.showDefaultApp('games-app')).toBe(true);
+      window.renderAllApps();
+      const gamesApp = document.getElementById('games-app');
+      expect(gamesApp).not.toBeNull();
+      expect(gamesApp.style.display).toBe('');
+      expect(applyGamesEnabled).toHaveBeenCalledTimes(3);
+    } finally {
+      if (originalApplyGamesEnabled === undefined) {
+        delete window.applyGamesEnabled;
+      } else {
+        window.applyGamesEnabled = originalApplyGamesEnabled;
+      }
+    }
+  });
+
   it('does not resurrect a hidden default app during order repair (#787)', () => {
     // A hidden default must stay hidden even when the order is missing or
     // invalid and the repair pass rebuilds it from the default definitions.

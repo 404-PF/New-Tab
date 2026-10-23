@@ -243,7 +243,7 @@ document.addEventListener('contextmenu', function (e) {
   }
 
   // Right-click on a hideable built-in app. Settings is the guaranteed
-  // restore path and Games has its own toggle, so neither gets this menu.
+  // restore path, so it never gets this menu.
   const defaultAppIcon = e.target.closest('.app-icon.default-app');
   if (defaultAppIcon && window.AppGridState.canHideDefaultApp(defaultAppIcon.id)) {
     e.preventDefault();

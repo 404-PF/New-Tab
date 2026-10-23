@@ -93,11 +93,52 @@ describe('AppGridState default app visibility', () => {
   it('rejects unknown ids and non-hideable defaults', () => {
     expect(AppGridState.hideDefaultApp('not-an-app')).toBe(false);
     expect(AppGridState.hideDefaultApp('settings-app')).toBe(false);
-    expect(AppGridState.hideDefaultApp('games-app')).toBe(false);
     expect(AppGridState.canHideDefaultApp('ai-app')).toBe(true);
     expect(AppGridState.canHideDefaultApp('settings-app')).toBe(false);
-    expect(AppGridState.canHideDefaultApp('games-app')).toBe(false);
     expect(AppGridStorage.loadHiddenDefaultApps()).toEqual([]);
+  });
+
+  it('hides and restores Games through the generic mechanism (#897)', () => {
+    AppGridStorage.saveOrder(['ai-app', 'weather-app', 'games-app', 'feedback-app', 'settings-app']);
+
+    expect(AppGridState.canHideDefaultApp('games-app')).toBe(true);
+    expect(AppGridState.hideDefaultApp('games-app')).toBe(true);
+    expect(AppGridState.isDefaultHidden('games-app')).toBe(true);
+    expect(AppGridStorage.loadHiddenDefaultApps()).toEqual(['games-app']);
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app', 'feedback-app', 'settings-app']);
+    // Round-trips through the localStorage -> chrome.storage.local bridge.
+    expect(JSON.parse(localStorage.getItem('hiddenDefaultApps'))).toEqual(['games-app']);
+    expect(JSON.parse(localStorage.getItem('appOrder'))).not.toContain('games-app');
+
+    expect(AppGridState.showDefaultApp('games-app')).toBe(true);
+    expect(AppGridState.isDefaultHidden('games-app')).toBe(false);
+    expect(AppGridStorage.loadHiddenDefaultApps()).toEqual([]);
+    expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app', 'feedback-app', 'settings-app', 'games-app']);
+    expect(JSON.parse(localStorage.getItem('hiddenDefaultApps'))).toEqual([]);
+    expect(JSON.parse(localStorage.getItem('appOrder'))).toContain('games-app');
+  });
+
+  it('closes the Games hub when Games is hidden from the grid (#897)', () => {
+    const close = vi.fn();
+    const originalGamesApp = window.GamesApp;
+    window.GamesApp = { close };
+
+    try {
+      AppGridStorage.saveOrder(['ai-app', 'weather-app', 'games-app', 'settings-app']);
+
+      expect(AppGridState.hideDefaultApp('games-app')).toBe(true);
+      expect(close).toHaveBeenCalledTimes(1);
+
+      close.mockClear();
+      expect(AppGridState.hideDefaultApp('weather-app')).toBe(true);
+      expect(close).not.toHaveBeenCalled();
+    } finally {
+      if (originalGamesApp === undefined) {
+        delete window.GamesApp;
+      } else {
+        window.GamesApp = originalGamesApp;
+      }
+    }
   });
 
   it('setDefaultAppHidden toggles visibility', () => {
@@ -166,6 +207,8 @@ describe('default app context menu hide action', () => {
 
     const aiIcon = createElement('a', 'ai-app');
     aiIcon.className = 'app-icon default-app';
+    const gamesIcon = createElement('a', 'games-app');
+    gamesIcon.className = 'app-icon default-app';
     const settingsIcon = createElement('a', 'settings-app');
     settingsIcon.className = 'app-icon default-app';
 
@@ -221,15 +264,51 @@ describe('default app context menu hide action', () => {
     expect(hideItem.style.display).toBe('none');
     expect(menu.style.display).toBe('none');
   });
+
+  it('offers Hide for the Games tile and applies it (#897)', () => {
+    AppGridStorage.saveOrder(['ai-app', 'weather-app', 'games-app', 'feedback-app', 'settings-app']);
+    const renderAllApps = vi.fn();
+    const originalRenderAllApps = window.renderAllApps;
+    window.renderAllApps = renderAllApps;
+
+    try {
+      openContextMenu(document.getElementById('games-app'));
+
+      const hideItem = document.getElementById('hide-default-app');
+      expect(hideItem.style.display).toBe('block');
+
+      hideItem.click();
+
+      expect(AppGridState.isDefaultHidden('games-app')).toBe(true);
+      expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app', 'feedback-app', 'settings-app']);
+      expect(renderAllApps).toHaveBeenCalledOnce();
+      expect(document.getElementById('app-context-menu').style.display).toBe('none');
+    } finally {
+      if (originalRenderAllApps === undefined) {
+        delete window.renderAllApps;
+      } else {
+        window.renderAllApps = originalRenderAllApps;
+      }
+    }
+  });
 });
 
 describe('default app visibility review fixes', () => {
   it('ignores protected or unknown ids in stored or imported hidden lists', () => {
-    localStorage.setItem('hiddenDefaultApps', JSON.stringify(['settings-app', 'games-app', 'not-an-app', 'weather-app']));
+    localStorage.setItem('hiddenDefaultApps', JSON.stringify(['settings-app', 'not-an-app', 'weather-app']));
 
     expect(AppGridState.getHiddenDefaultApps()).toEqual(['weather-app']);
     expect(AppGridState.isDefaultHidden('settings-app')).toBe(false);
-    expect(AppGridState.isDefaultHidden('games-app')).toBe(false);
+    expect(AppGridState.isDefaultHidden('not-an-app')).toBe(false);
+  });
+
+  it('honours Games in stored or imported hidden lists (#897)', () => {
+    localStorage.setItem('hiddenDefaultApps', JSON.stringify(['settings-app', 'games-app', 'not-an-app', 'weather-app']));
+
+    expect(AppGridState.getHiddenDefaultApps()).toEqual(['games-app', 'weather-app']);
+    expect(AppGridState.isDefaultHidden('games-app')).toBe(true);
+    expect(AppGridState.isDefaultHidden('weather-app')).toBe(true);
+    expect(AppGridState.isDefaultHidden('settings-app')).toBe(false);
   });
 
   it('restores a foldered app into its folder without duplicating it in the grid order', () => {
