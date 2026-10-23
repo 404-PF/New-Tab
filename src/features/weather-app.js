@@ -503,6 +503,32 @@
         }
       }
     });
+
+    // Settle the modal's initial loading state when a refresh completes.
+    // weatherCacheUpdated only fires after a successful cache write, so a
+    // failed refresh — or a successful fetch whose write was suppressed —
+    // would otherwise leave the modal on "Loading..." forever. The settled
+    // event also covers opening the modal while another refresh is already
+    // in flight: the modal's own refresh call is then skipped, and whichever
+    // refresh actually ran announces its outcome here.
+    window.addEventListener('weatherRefreshSettled', function (e) {
+      if (!modal || !modal.classList.contains('modal-open')) return;
+      const detail = (e && e.detail) || {};
+      if (detail.ok) {
+        // Prefer the payload carried by the event so a fetch whose cache
+        // write failed still renders fresh data instead of stale/absent cache.
+        if (detail.data) {
+          renderExpandedWeather(detail.data, detail.locationName, loadUnit());
+          return;
+        }
+        const cache = loadCache();
+        if (cache && cache.data) {
+          renderExpandedWeather(cache.data, cache.locationName, loadUnit());
+        }
+        return;
+      }
+      renderAppError(detail.message || t('weatherError'));
+    });
   }
 
   // ===================== Initialization =====================
