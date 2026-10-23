@@ -6,7 +6,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   document.body.className = '';
-  document.querySelectorAll('#a11y-test-app-grid, #a11y-test-modal, #a11y-opener, #a11y-inert-sibling, .onboarding-overlay')
+  document.querySelectorAll('#a11y-test-app-grid, #a11y-test-modal, #a11y-opener, #a11y-inert-sibling, .onboarding-overlay, .toast-notification')
     .forEach(el => el.remove());
   document.getElementById('folder-popup-apps')?.remove();
 
@@ -195,6 +195,55 @@ describe('Accessibility - app grid keyboard interaction', () => {
     overlay.remove();
     toast.remove();
     sibling.remove();
+    modal.classList.remove('modal-open');
+    window.Accessibility.refresh();
+  });
+
+  it('keeps the onboarding tour controls in the Tab cycle while a modal is open (#898)', async () => {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.add('modal-open');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'onboarding-overlay';
+    overlay.innerHTML =
+      '<button type="button" id="tour-close">Close</button>' +
+      '<button type="button" id="tour-next">Next</button>';
+    document.body.appendChild(overlay);
+
+    window.Accessibility.refresh();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const first = document.getElementById('settings-first');
+    const last = document.getElementById('settings-last');
+    const next = document.getElementById('tour-next');
+
+    first.focus();
+    first.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    }));
+    expect(document.activeElement).toBe(next);
+
+    next.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true
+    }));
+    expect(document.activeElement).toBe(first);
+
+    last.focus();
+    const forwardTab = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true
+    });
+    last.dispatchEvent(forwardTab);
+    expect(forwardTab.defaultPrevented).toBe(false);
+
+    overlay.remove();
+    modal.classList.remove('modal-open');
     window.Accessibility.refresh();
   });
 
