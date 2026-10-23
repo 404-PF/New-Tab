@@ -14,7 +14,7 @@ beforeAll(() => {
     getCustomApps: () => JSON.parse(localStorage.getItem('customApps') || '[]'),
     getFolders: () => [],
     getHiddenDefaultApps: () => JSON.parse(localStorage.getItem('hiddenDefaultApps') || '[]'),
-    canHideDefaultApp: id => id !== 'settings-app' && id !== 'games-app',
+    canHideDefaultApp: id => id !== 'settings-app',
     isDefaultHidden: id => JSON.parse(localStorage.getItem('hiddenDefaultApps') || '[]').includes(id),
     setDefaultAppHidden: (id, hidden) => {
       const list = JSON.parse(localStorage.getItem('hiddenDefaultApps') || '[]');
@@ -93,7 +93,7 @@ describe('app manager', () => {
 
       const appIds = Array.from(container.querySelectorAll('input[type="checkbox"]'))
         .map(checkbox => checkbox.dataset.appId);
-      expect(appIds).toEqual(['ai-app', 'weather-app', 'feedback-app']);
+      expect(appIds).toEqual(['ai-app', 'weather-app', 'games-app', 'feedback-app']);
 
       const weatherCheckbox = container.querySelector('[data-app-id="weather-app"]');
       weatherCheckbox.checked = false;
@@ -110,6 +110,38 @@ describe('app manager', () => {
 
       expect(JSON.parse(localStorage.getItem('hiddenDefaultApps'))).toEqual([]);
       expect(document.getElementById('weather-app')).not.toBeNull();
+    } finally {
+      container.remove();
+    }
+  });
+
+  it('hides and restores the Games tile from Settings > Apps (#897)', () => {
+    const container = document.createElement('div');
+    container.id = 'default-app-visibility-list';
+    document.body.appendChild(container);
+
+    try {
+      window.renderAllApps();
+
+      const gamesCheckbox = container.querySelector('[data-app-id="games-app"]');
+      expect(gamesCheckbox).not.toBeNull();
+      expect(gamesCheckbox.checked).toBe(true);
+
+      gamesCheckbox.checked = false;
+      gamesCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(JSON.parse(localStorage.getItem('hiddenDefaultApps'))).toEqual(['games-app']);
+      expect(document.getElementById('games-app')).toBeNull();
+
+      const rebuiltCheckbox = container.querySelector('[data-app-id="games-app"]');
+      expect(rebuiltCheckbox.checked).toBe(false);
+
+      rebuiltCheckbox.checked = true;
+      rebuiltCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(JSON.parse(localStorage.getItem('hiddenDefaultApps'))).toEqual([]);
+      expect(document.getElementById('games-app')).not.toBeNull();
+      expect(JSON.parse(localStorage.getItem('appOrder'))).toContain('games-app');
     } finally {
       container.remove();
     }

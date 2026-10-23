@@ -1963,6 +1963,12 @@ function loadGamesEnabled() {
     return checkbox ? checkbox.checked : true;
   }
 }
+// Games visibility has two independent gates: this feature toggle (General
+// settings) switches the Games feature itself, while grid-hide
+// (hiddenDefaultApps via Settings > Apps or the context menu) removes the
+// tile from the grid entirely. renderAllApps re-runs this after every
+// rebuild, so a tile restored by showDefaultApp is re-evaluated here
+// instead of keeping a stale inline display.
 function applyGamesEnabled(enabledOverride) {
   const enabled = typeof enabledOverride === 'boolean' ? enabledOverride : loadGamesEnabled();
   const gamesApp = document.getElementById('games-app');

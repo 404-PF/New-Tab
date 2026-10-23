@@ -204,7 +204,7 @@ const AppGridState = {
   // definitions survive so updates, resets, and recovery keep working.
 
   // Only hideable built-ins count as hidden: a stored or imported list that
-  // names Settings or Games (or an unknown id) must never remove them.
+  // names Settings (or an unknown id) must never remove them.
   getHiddenDefaultApps() {
     const stored = window.AppGridStorage ? window.AppGridStorage.loadHiddenDefaultApps() : [];
     return stored.filter(id => this.canHideDefaultApp(id));
@@ -240,11 +240,15 @@ const AppGridState = {
     return this.getHiddenDefaultApps().includes(id);
   },
 
-  // Games has its own dedicated toggle in General settings, and Settings is
-  // the guaranteed restore path for hidden apps, so neither may be hidden
-  // through the generic mechanism's UI.
+  // Settings is the guaranteed restore path for hidden apps, so it may never
+  // be hidden through the generic mechanism. Every other built-in — Games
+  // included — participates normally. Grid membership (hiddenDefaultApps)
+  // and the games_enabled feature toggle are independent gates: hiding the
+  // tile here does not flip games_enabled, and renderAllApps re-applies that
+  // toggle after every rebuild so a restored tile never keeps a stale
+  // inline display.
   canHideDefaultApp(id) {
-    return this.isDefaultAppId(id) && id !== 'settings-app' && id !== 'games-app';
+    return this.isDefaultAppId(id) && id !== 'settings-app';
   },
 
   hideDefaultApp(id) {
@@ -266,6 +270,12 @@ const AppGridState = {
         this.saveHiddenDefaultApps(previousHidden);
         return false;
       }
+    }
+
+    // The Games hub launches from its grid tile, so an open modal must not
+    // outlive the tile it was opened from.
+    if (id === 'games-app' && window.GamesApp && typeof window.GamesApp.close === 'function') {
+      window.GamesApp.close();
     }
 
     return true;
