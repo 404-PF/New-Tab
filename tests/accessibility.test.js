@@ -6,7 +6,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   document.body.className = '';
-  document.querySelectorAll('#a11y-test-app-grid, #a11y-test-modal, #a11y-opener').forEach(el => el.remove());
+  document.querySelectorAll('#a11y-test-app-grid, #a11y-test-modal, #a11y-opener, #a11y-inert-sibling, .onboarding-overlay')
+    .forEach(el => el.remove());
   document.getElementById('folder-popup-apps')?.remove();
 
   let grid = document.getElementById('app-grid');
@@ -163,6 +164,38 @@ describe('Accessibility - app grid keyboard interaction', () => {
     expect(liveRegion).toBeTruthy();
     expect(liveRegion.inert).toBe(false);
     expect(liveRegion.hasAttribute('inert')).toBe(false);
+  });
+
+  it('keeps the onboarding overlay and toasts non-inert while a modal is open (#898)', () => {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.add('modal-open');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'onboarding-overlay';
+    document.body.appendChild(overlay);
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.setAttribute('role', 'alert');
+    document.body.appendChild(toast);
+
+    const sibling = document.createElement('div');
+    sibling.id = 'a11y-inert-sibling';
+    document.body.appendChild(sibling);
+
+    window.Accessibility.refresh();
+
+    expect(overlay.inert).toBe(false);
+    expect(overlay.hasAttribute('inert')).toBe(false);
+    expect(toast.inert).toBe(false);
+    expect(toast.hasAttribute('inert')).toBe(false);
+    expect(sibling.inert).toBe(true);
+    expect(sibling.hasAttribute('inert')).toBe(true);
+
+    overlay.remove();
+    toast.remove();
+    sibling.remove();
+    window.Accessibility.refresh();
   });
 
   it('adds grid semantics, roving tabindex, arrow navigation, and keyboard reorder', async () => {

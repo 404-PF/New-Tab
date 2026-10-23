@@ -128,13 +128,22 @@
     if (label) modal.setAttribute('aria-labelledby', label.id);
   }
 
+  // Top-level overlays that intentionally stack above an open modal (the
+  // onboarding tour and toast notifications). Inerting them would block the
+  // tour's own buttons (#898) and hide role=alert toasts from screen readers.
+  const EXEMPT_OVERLAY_CLASSES = ['onboarding-overlay', 'toast-notification'];
+
+  function isExemptOverlay(child) {
+    return EXEMPT_OVERLAY_CLASSES.some(className => child.classList.contains(className));
+  }
+
   function setBackgroundInert(activeModal) {
     if (!activeModal) return;
 
     Array.from(document.body.children).forEach(child => {
       const containsActiveModal = child === activeModal || child.contains(activeModal);
       const isLiveRegion = child.id === 'accessibility-live-region';
-      if (containsActiveModal || isLiveRegion) {
+      if (containsActiveModal || isLiveRegion || isExemptOverlay(child)) {
         backgroundState.delete(child);
         child.inert = false;
         child.removeAttribute('inert');
