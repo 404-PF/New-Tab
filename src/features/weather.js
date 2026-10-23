@@ -540,11 +540,10 @@
 
   // Public entry point for the refresh pipeline. After the core refresh
   // settles (its own finally has already released the refresh slot), announce
-  // the outcome via weatherRefreshSettled so surfaces that cannot await this
-  // promise — the Weather app modal's loading state — can settle even when
-  // their own refresh call was skipped because another refresh was already in
-  // flight. Skipped refreshes resolve undefined and stay silent, so a
-  // "nothing to do" outcome never flips a rendered surface into an error.
+  // the outcome via weatherRefreshSettled so surfaces that missed the promise
+  // — a skipped call resolves undefined — can still settle. Skipped refreshes
+  // stay silent, so a "nothing to do" outcome never flips a rendered surface
+  // into an error.
   // weatherCacheUpdated still only fires after a successful cache write; this
   // event fires for every refresh that actually ran, carrying the same
   // completion result ({ ok, data, locationName } or { ok, message }) so a
