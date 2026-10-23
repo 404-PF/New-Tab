@@ -690,3 +690,87 @@ describe('Shortcuts - save failure handling', () => {
     }
   });
 });
+
+describe('Shortcuts - languageChanged re-render', () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.getElementById('shortcuts-options');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+    }
+    Shortcuts.renderShortcutsSection();
+  });
+
+  afterEach(() => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    Shortcuts.reset();
+  });
+
+  function getFocusSearchLabel() {
+    return container.querySelector('[data-action="focusSearch"]')
+      .closest('.setting-content')
+      .querySelector('label');
+  }
+
+  it('re-renders shortcut labels in the new language on languageChanged', () => {
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => (key === 'shortcutFocusSearch' ? 'Búsqueda enfocada' : originalT(key));
+
+    try {
+      window.dispatchEvent(new CustomEvent('languageChanged'));
+      expect(getFocusSearchLabel().textContent).toBe('Búsqueda enfocada');
+    } finally {
+      window.i18n.t = originalT;
+    }
+  });
+
+  it('rebinds prompt is rendered in the new language when rebinding starts after a language change', () => {
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => (key === 'shortcutPressAKey' ? 'Presiona una tecla...' : originalT(key));
+
+    try {
+      window.dispatchEvent(new CustomEvent('languageChanged'));
+      container.querySelector('[data-action="focusSearch"]').click();
+      expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('Presiona una tecla...');
+    } finally {
+      window.i18n.t = originalT;
+    }
+  });
+
+  it('cancels an in-progress rebind on languageChanged', () => {
+    const btn = container.querySelector('[data-action="focusSearch"]');
+    btn.click();
+    expect(btn.textContent).toBe('Press a key...');
+
+    window.dispatchEvent(new CustomEvent('languageChanged'));
+
+    // The re-render restores the combo text instead of the stale prompt.
+    expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('/');
+
+    // The keydown handler must be detached: a key press no longer rebinds.
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Z',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true
+    }));
+
+    expect(Shortcuts.load().focusSearch).toBe('/');
+  });
+
+  it('does not register duplicate languageChanged listeners on repeated init', () => {
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    try {
+      Shortcuts.init();
+      Shortcuts.init();
+      const languageChangedRegistrations = addSpy.mock.calls
+        .filter(([eventName]) => eventName === 'languageChanged');
+      expect(languageChangedRegistrations).toHaveLength(0);
+    } finally {
+      addSpy.mockRestore();
+    }
+  });
+});

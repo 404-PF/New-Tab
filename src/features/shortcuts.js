@@ -506,6 +506,17 @@
     activeShortcuts = loadShortcuts();
     document.addEventListener('keydown', handleKeydown);
 
+    // Generated row labels use plain textContent (no data-i18n), so re-render
+    // on language change. Cancel any in-progress rebind first so its key
+    // handler is removed and the prompt is not left dangling in the old language.
+    window.addEventListener('languageChanged', function () {
+      if (rebindingAction) {
+        cancelRebinding();
+      } else {
+        renderShortcutsSection();
+      }
+    });
+
     const resetBtn = document.getElementById('shortcuts-reset-btn');
     if (resetBtn) {
       resetBtn.addEventListener('click', resetShortcuts);
