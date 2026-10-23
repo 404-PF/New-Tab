@@ -409,7 +409,7 @@
   // weatherCacheUpdated event that only fires on a successful cache write.
   // It resolves undefined when the refresh was skipped (toggle off without
   // ignoreWidgetToggle, or another refresh already in flight).
-  async function refreshWeather(force = false, ignoreWidgetToggle = false) {
+  async function runRefreshWeather(force = false, ignoreWidgetToggle = false) {
     if (!WeatherStorage.loadEnabled()) {
       hideWidget();
       if (!ignoreWidgetToggle) return;
@@ -536,6 +536,24 @@
         refreshWeatherSafely(true);
       }
     }
+  }
+
+  // Public entry point for the refresh pipeline. After the core refresh
+  // settles (its own finally has already released the refresh slot), announce
+  // the outcome via weatherRefreshSettled so surfaces that missed the promise
+  // — a skipped call resolves undefined — can still settle. Skipped refreshes
+  // stay silent, so a "nothing to do" outcome never flips a rendered surface
+  // into an error.
+  // weatherCacheUpdated still only fires after a successful cache write; this
+  // event fires for every refresh that actually ran, carrying the same
+  // completion result ({ ok, data, locationName } or { ok, message }) so a
+  // fetch whose cache write failed can still publish its fresh payload.
+  async function refreshWeather(force = false, ignoreWidgetToggle = false) {
+    const result = await runRefreshWeather(force, ignoreWidgetToggle);
+    if (result !== undefined) {
+      window.dispatchEvent(new CustomEvent('weatherRefreshSettled', { detail: result }));
+    }
+    return result;
   }
 
   function initWeather() {

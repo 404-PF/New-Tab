@@ -269,4 +269,80 @@ describe('Weather app', () => {
       window.i18n.t = originalT;
     }
   });
+
+  it('settles into the error state instead of an endless spinner when a refresh fails with no cache (#892)', () => {
+    window.WeatherApp.open();
+
+    const body = document.getElementById('weather-app-body');
+    expect(body.querySelector('.weather-app-loading')).not.toBeNull();
+
+    window.dispatchEvent(new CustomEvent('weatherRefreshSettled', {
+      detail: { ok: false, message: 'Location unavailable' }
+    }));
+
+    expect(body.querySelector('.weather-app-loading')).toBeNull();
+    expect(body.querySelector('.weather-app-error-text').textContent).toBe('Location unavailable');
+
+    // A failure without a message falls back to the generic weather error.
+    window.dispatchEvent(new CustomEvent('weatherRefreshSettled', {
+      detail: { ok: false }
+    }));
+    expect(body.querySelector('.weather-app-error-text').textContent).toBe('Unable to load weather');
+  });
+
+  it('renders fresh data from a settled success when the cache write failed', () => {
+    window.WeatherApp.open();
+
+    const body = document.getElementById('weather-app-body');
+    expect(body.querySelector('.weather-app-loading')).not.toBeNull();
+
+    window.dispatchEvent(new CustomEvent('weatherRefreshSettled', {
+      detail: {
+        ok: true,
+        data: { current: { temperature_2m: 26, weather_code: 0 } },
+        locationName: 'Fresh City'
+      }
+    }));
+
+    expect(body.querySelector('.weather-app-loading')).toBeNull();
+    expect(body.querySelector('.weather-app-current-temp').textContent).toContain('26');
+    expect(body.querySelector('.weather-app-current-location').textContent).toContain('Fresh City');
+    // The cache write really did fail — the payload came from the event.
+    expect(localStorage.getItem('weatherCache')).toBeNull();
+  });
+
+  it('re-renders from cache when a settled success carries no payload', () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherUnit', 'celsius');
+    localStorage.setItem('weatherCache', JSON.stringify({
+      data: { current: { temperature_2m: 15, weather_code: 0 } },
+      locationName: 'Cached City'
+    }));
+
+    window.WeatherApp.open();
+
+    const body = document.getElementById('weather-app-body');
+    expect(body.querySelector('.weather-app-current-temp').textContent).toContain('15');
+
+    localStorage.setItem('weatherCache', JSON.stringify({
+      data: { current: { temperature_2m: 31, weather_code: 1 } },
+      locationName: 'Refreshed City'
+    }));
+
+    window.dispatchEvent(new CustomEvent('weatherRefreshSettled', { detail: { ok: true } }));
+
+    expect(body.querySelector('.weather-app-current-temp').textContent).toContain('31');
+    expect(body.querySelector('.weather-app-current-location').textContent).toContain('Refreshed City');
+  });
+
+  it('ignores settled refresh events while the modal is closed', () => {
+    const body = document.getElementById('weather-app-body');
+    expect(body.innerHTML).toBe('');
+
+    window.dispatchEvent(new CustomEvent('weatherRefreshSettled', {
+      detail: { ok: false, message: 'Location unavailable' }
+    }));
+
+    expect(body.innerHTML).toBe('');
+  });
 });

@@ -52,6 +52,9 @@ beforeAll(() => {
   document.body.appendChild(unitGroup);
 
   injectScript('src/features/weather.js');
+  // The Weather app modal listens for weatherRefreshSettled; loading it here
+  // lets specs exercise the real widget -> modal settle path (issue #892).
+  injectScript('src/features/weather-app.js');
 });
 
 beforeEach(() => {
@@ -595,5 +598,105 @@ describe('Weather widget', () => {
         };
       }
     });
+  });
+
+  async function captureSettledEvents(refreshCall) {
+    const onSettled = vi.fn();
+    window.addEventListener('weatherRefreshSettled', onSettled);
+    try {
+      const result = await refreshCall();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return { result, details: onSettled.mock.calls.map((call) => call[0].detail) };
+    } finally {
+      window.removeEventListener('weatherRefreshSettled', onSettled);
+    }
+  }
+
+  it('dispatches weatherRefreshSettled with the successful result', async () => {
+    configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
+    installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
+
+    const { result, details } = await captureSettledEvents(
+      () => window.WeatherWidget.refresh(true)
+    );
+
+    expect(result.ok).toBe(true);
+    expect(details).toHaveLength(1);
+    expect(details[0].ok).toBe(true);
+    expect(details[0].data.current.temperature_2m).toBe(22);
+    // The fresh geolocation has no place name, so the payload carries the
+    // formatted coordinates just like the widget renders them.
+    expect(details[0].locationName).toBe('37.77\u00B0N, 122.42\u00B0W');
+  });
+
+  it('dispatches weatherRefreshSettled with ok:false when the refresh fails', async () => {
+    localStorage.setItem('weatherLocationMode', 'auto');
+    mockGeolocationError();
+
+    let fetchCalled = false;
+    installWeatherFetch({
+      onCall: () => {
+        fetchCalled = true;
+      }
+    });
+
+    const { result, details } = await captureSettledEvents(
+      () => window.WeatherWidget.refresh(true, true)
+    );
+
+    expect(result.ok).toBe(false);
+    expect(fetchCalled).toBe(false);
+    expect(details).toHaveLength(1);
+    expect(details[0].ok).toBe(false);
+    expect(typeof details[0].message).toBe('string');
+  });
+
+  it('does not dispatch weatherRefreshSettled when the refresh is skipped', async () => {
+    localStorage.setItem('weatherLocationMode', 'auto');
+
+    let fetchCalled = false;
+    installWeatherFetch({
+      onCall: () => {
+        fetchCalled = true;
+      }
+    });
+
+    const { result, details } = await captureSettledEvents(
+      () => window.WeatherWidget.refresh(true)
+    );
+
+    expect(result).toBeUndefined();
+    expect(fetchCalled).toBe(false);
+    expect(details).toHaveLength(0);
+  });
+
+  it('ends the modal in the error state instead of an endless spinner when the refresh fails with no cache (#892)', async () => {
+    // Repro: no weatherCache and geolocation denied — the modal used to sit
+    // on renderAppLoading() forever because only weatherCacheUpdated could
+    // ever change it.
+    mockGeolocationError();
+
+    let fetchCalled = false;
+    installWeatherFetch({
+      onCall: () => {
+        fetchCalled = true;
+      }
+    });
+
+    try {
+      window.WeatherApp.open();
+
+      const modal = document.getElementById('weather-app-modal');
+      expect(modal.classList.contains('modal-open')).toBe(true);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(fetchCalled).toBe(false);
+      const body = document.getElementById('weather-app-body');
+      expect(body.querySelector('.weather-app-loading')).toBeNull();
+      expect(body.querySelector('.weather-app-error')).not.toBeNull();
+    } finally {
+      window.WeatherApp.close();
+    }
   });
 });
