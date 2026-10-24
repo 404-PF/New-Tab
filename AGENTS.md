@@ -84,7 +84,7 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 
 - Opt a PR out with any of these labels: `do-not-merge`, `hold`, `wip`, `blocked`.
 - Manual escape hatch: `workflow_dispatch` with `pr_number` (and `dry_run` to evaluate and comment without merging).
-- The workflow uses `secrets.GITHUB_TOKEN` only and never merges while a `pr-drive` run is active for the same PR.
+- The workflow uses `secrets.GITHUB_TOKEN` for every call except the branch-protection read (which requires `Administration: read` and falls back to `GITHUB_TOKEN` when `secrets.GH_PAT` is unset), and never merges while a `pr-drive` run is active for the same PR (dispatch runs are matched via pr-drive's `run-name` marker).
 
 ## Skills
 

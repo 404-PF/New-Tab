@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const MERGE_PATH = resolve(process.cwd(), '.github/workflows/pr-merge.yml');
+const DRIVE_PATH = resolve(process.cwd(), '.github/workflows/pr-drive.yml');
 
 describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
   let merge;
@@ -54,12 +55,21 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toMatch(/cancel-in-progress: true/);
   });
 
-  it('pins narrow permissions and never uses GH_PAT', () => {
+  it('pins narrow permissions, uses GITHUB_TOKEN everywhere, and GH_PAT only for branch protection', () => {
     // Anchored to the closing blank line so an extra scope cannot slip in
     // after actions: read while still matching.
     expect(merge).toMatch(/permissions:\n {6}contents: write\n {6}pull-requests: write\n {6}checks: read\n {6}statuses: read\n {6}actions: read\n/);
-    expect(merge).not.toMatch(/GH_PAT/);
+    // The protection endpoint requires Administration:read, which
+    // GITHUB_TOKEN cannot carry; GH_PAT is scoped to that single call and
+    // falls back to GITHUB_TOKEN when the secret is unset.
     expect(merge).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
+    expect(merge).toContain('GH_PAT: ${{ secrets.GH_PAT }}');
+    expect(merge).toContain('PROTECT_TOKEN="${GH_PAT:-$GH_TOKEN}"');
+    expect(merge).toContain('GH_TOKEN="$PROTECT_TOKEN" gh api "repos/$GH_REPO/branches/main/protection"');
+    // No other gh call may override GH_TOKEN with the PAT.
+    const patCalls = [...merge.matchAll(/GH_TOKEN="\$PROTECT_TOKEN" gh api [^\n]*/g)].map((match) => match[0]);
+    expect(patCalls).toHaveLength(1);
+    expect(patCalls[0]).toContain('repos/$GH_REPO/branches/main/protection');
   });
 
   it('uses no external actions at all', () => {
@@ -98,8 +108,21 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     // falls inside a bounded window of unrelated historical runs.
     expect(merge).toContain('gh api "repos/$GH_REPO/actions/workflows/pr-drive.yml/runs?status=$drive_status&per_page=100"');
     expect(merge).toMatch(/for drive_status in in_progress queued; do/);
-    expect(merge).toContain('any(.workflow_runs[]?; any(.pull_requests[]?; .number == $n))');
+    // The runs API leaves pull_requests empty for issue_comment and
+    // workflow_dispatch runs (pr-drive's only triggers), so dispatch runs
+    // are matched through the durable pr-drive run-name marker instead.
+    expect(merge).toContain('any(.pull_requests[]?; .number == $n)');
+    expect(merge).toContain('.display_title // ""');
+    expect(merge).toContain('"pr-drive #" + ($n | tostring)');
     expect(merge).toContain('could not list pr-drive runs');
+  });
+
+  it('pr-drive publishes a per-PR run-name marker the active-drive guard can match', () => {
+    // Without this marker, dispatch and comment runs (pr-drive's only
+    // triggers) carry no pull_requests association and would be invisible
+    // to pr-merge's active-drive guard.
+    const drive = readFileSync(DRIVE_PATH, 'utf-8');
+    expect(drive).toMatch(/^run-name: >-\n {2}pr-drive #\$\{\{ github\.event_name == 'workflow_dispatch'\n {4}&& github\.event\.inputs\.pr_number \|\| github\.event\.issue\.number \}\}/m);
   });
 
   it('requires mergeable != false and lowercase mergeable_state == clean, with retries', () => {
@@ -172,9 +195,13 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toContain('expectedHeadOid mismatch or permissions');
   });
 
-  it('deletes the branch after a successful merge via the git refs endpoint', () => {
-    expect(merge).toMatch(/gh api -X DELETE "repos\/\$GH_REPO\/git\/refs\/heads\/\$HEAD_REF"/);
+  it('deletes the head ref re-read at merge time via the git refs endpoint', () => {
+    // A rename during evaluation frees the pre-evaluation HEAD_REF, which an
+    // unrelated branch may then occupy; cleanup must use FINAL_REF instead.
+    expect(merge).toContain('FINAL_REF="$(jq -r .head.ref <<<"$FINAL_JSON")"');
+    expect(merge).toMatch(/gh api -X DELETE "repos\/\$GH_REPO\/git\/refs\/heads\/\$FINAL_REF"/);
     expect(merge).toMatch(/Merged, but could not delete branch/);
+    expect(merge).toMatch(/\[ "\$FINAL_REF" != 'main' \]/);
   });
 
   it('skips commenting when the PR is no longer open', () => {

@@ -12,6 +12,14 @@ name: pr-merge
 # Every GitHub lookup below fails closed: an API error blocks the merge
 # instead of skipping a gate. Only an explicit 404 on the branch-protection
 # endpoint means "no required checks configured".
+#
+# GITHUB_TOKEN authenticates every call except the branch-protection read:
+# that endpoint requires Administration:read, which GITHUB_TOKEN cannot
+# carry (its permission set has no administration scope), so that one call
+# uses secrets.GH_PAT — the same secret pr-drive uses for its collaborator
+# lookup — falling back to GITHUB_TOKEN when the secret is unset, which
+# keeps an unprotected main readable as 404 and fails closed on a protected
+# main.
 
 on:
   pull_request:
@@ -64,7 +72,8 @@ jobs:
     # contents: write (squash merge + branch delete), pull-requests: write
     # (merge mutation + verdict comment), checks/statuses: read (check-run
     # and required-status evaluation), actions: read (active pr-drive guard).
-    # secrets.GITHUB_TOKEN only; no PATs and no third-party actions.
+    # GH_PAT is read only by the branch-protection step below; every other
+    # call uses GITHUB_TOKEN. No third-party actions.
     permissions:
       contents: write
       pull-requests: write
@@ -103,6 +112,10 @@ jobs:
         id: evaluate
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Used ONLY for the branch-protection read below; every other call
+          # keeps GH_TOKEN. Keep it a plain shell variable so only that one
+          # gh invocation can see it.
+          GH_PAT: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
           # jq filter below excludes this workflow's own check runs by name
           # prefix ("pr-merge" matches both "pr-merge" and "pr-merge / merge"
@@ -146,7 +159,6 @@ jobs:
           DRAFT="$(jq -r .draft <<<"$PR_JSON")"
           HEAD_SHA="$(jq -r .head.sha <<<"$PR_JSON")"
           HEAD_REPO="$(jq -r '.head.repo.full_name // ""' <<<"$PR_JSON")"
-          HEAD_REF="$(jq -r .head.ref <<<"$PR_JSON")"
           BASE_REF="$(jq -r .base.ref <<<"$PR_JSON")"
           PR_NODE_ID="$(jq -r .node_id <<<"$PR_JSON")"
           MERGEABLE="$(jq -r '.mergeable // "null"' <<<"$PR_JSON")"
@@ -206,7 +218,10 @@ jobs:
           # 7. Never merge while a pr-drive run is active for this PR, so a
           # drive is not merged out from under itself. Query only the active
           # statuses server-side (no bounded scan of unrelated runs), and
-          # block when the lookup itself fails.
+          # block when the lookup itself fails. The runs API leaves
+          # pull_requests empty for issue_comment and workflow_dispatch runs
+          # (pr-drive's only triggers), so a run is matched either by its
+          # pull_requests association or by the pr-drive run-name marker.
           if [ -z "$VERDICT" ]; then
             ACTIVE_DRIVE=0
             for drive_status in in_progress queued; do
@@ -215,7 +230,9 @@ jobs:
                 break
               fi
               if jq -e --argjson n "$PR_NUMBER" \
-                  'any(.workflow_runs[]?; any(.pull_requests[]?; .number == $n))' \
+                  'any(.workflow_runs[]?;
+                    any(.pull_requests[]?; .number == $n)
+                    or ((.display_title // "") == ("pr-drive #" + ($n | tostring))))' \
                   <<<"$DRIVE_RUNS" >/dev/null; then
                 ACTIVE_DRIVE=1
               fi
@@ -273,11 +290,16 @@ jobs:
           # 10. Every required status check configured in branch protection is
           # successful on the head SHA. Read from the protection API — never
           # hardcode a check name (ci.yml's `test` is not required today).
-          # A 404 means the branch is intentionally unprotected; any other
-          # protection or status-fetch failure blocks.
+          # The protection endpoint requires Administration:read, which
+          # GITHUB_TOKEN cannot carry, so this one call uses GH_PAT when the
+          # secret exists and falls back to GITHUB_TOKEN otherwise. A 404
+          # means the branch is intentionally unprotected; any other
+          # protection or status-fetch failure (including a 403 from a
+          # protected main without GH_PAT) blocks.
           if [ -z "$VERDICT" ]; then
             : > "$CTX/required-checks.txt"
-            if PROTECTION="$(gh api "repos/$GH_REPO/branches/main/protection" 2>"$CTX/protection.err")"; then
+            PROTECT_TOKEN="${GH_PAT:-$GH_TOKEN}"
+            if PROTECTION="$(GH_TOKEN="$PROTECT_TOKEN" gh api "repos/$GH_REPO/branches/main/protection" 2>"$CTX/protection.err")"; then
               if ! jq -r '(.required_status_checks.checks // [] | .[].context), (.required_status_checks.contexts // [] | .[])' \
                   <<<"$PROTECTION" | sort -u > "$CTX/required-checks.txt"; then
                 deny 'could not parse branch protection for main'
@@ -329,6 +351,7 @@ jobs:
             FINAL_DRAFT="$(jq -r .draft <<<"$FINAL_JSON")"
             FINAL_BASE="$(jq -r .base.ref <<<"$FINAL_JSON")"
             FINAL_HEAD="$(jq -r .head.sha <<<"$FINAL_JSON")"
+            FINAL_REF="$(jq -r .head.ref <<<"$FINAL_JSON")"
             if [ "$FINAL_STATE" != 'open' ] || [ "$FINAL_DRAFT" = 'true' ] \
               || [ "$FINAL_BASE" != 'main' ] || [ "$FINAL_HEAD" != "$HEAD_SHA" ]; then
               deny 'PR state changed during evaluation; merge aborted'
@@ -352,9 +375,16 @@ jobs:
                 DECISION='merged (squash)'
                 # Mirrors the repo's delete_branch_on_merge: true setting.
                 # The refs endpoint requires the git/refs prefix; deletion
-                # is best-effort and a failure never un-merges the PR.
-                gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$HEAD_REF" \
-                  || echo "::warning::Merged, but could not delete branch $HEAD_REF."
+                # is best-effort and a failure never un-merges the PR. Delete
+                # the head ref re-read at merge time (FINAL_REF), not the
+                # pre-evaluation HEAD_REF: a rename during evaluation frees
+                # the old name, which an unrelated branch may then occupy.
+                # Skip main outright so a corrupted response can never
+                # delete the base branch.
+                if [ -n "$FINAL_REF" ] && [ "$FINAL_REF" != 'main' ]; then
+                  gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$FINAL_REF" \
+                    || echo "::warning::Merged, but could not delete branch $FINAL_REF."
+                fi
               else
                 deny 'mergePullRequest did not merge (expectedHeadOid mismatch or permissions); re-check the PR'
                 DECISION='blocked'
