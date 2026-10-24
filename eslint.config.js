@@ -466,7 +466,7 @@ module.exports = [
     },
   },
   {
-    files: ['background/tools/**/*.js'],
+    files: ['backgrounds/tools/**/*.js'],
     languageOptions: {
       sourceType: 'script',
       globals: {
@@ -480,7 +480,7 @@ module.exports = [
     },
   },
   {
-    files: ['background/service-worker.js', 'background/*.js'],
+    files: ['backgrounds/service-worker.js', 'backgrounds/*.js'],
     languageOptions: {
       sourceType: 'script',
       globals: {

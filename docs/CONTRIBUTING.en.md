@@ -83,7 +83,7 @@ Same-repo pull requests targeting `main` are squash-merged automatically by the 
 - **Load order matters**. `bootstrap.js` uses `script.async = false` to preserve order, and `app-manager.js` must execute before `add-app-modal.js`, `context-menu.js`, and `app-folders.js`.
 - **Module style**: Browser code is plain scripts that attach functions to `window.*`. There are no ES module imports in `src/` source files (tests are ES modules and use `import`/`export`). A handful of files wrap their top-level code in a strict-mode IIFE. Inside these IIFEs, cross-file globals must be referenced as `window.Foo`, not bare `Foo`.
 - **Storage**: `src/core/storage.js` bridges `localStorage` onto `chrome.storage.local`. The bootstrap waits on `window.__storageBridgeReady` before loading the rest of the scripts.
-- **Service worker**: `background/service-worker.js` is a separate context.
+- **Service worker**: `backgrounds/service-worker.js` is a separate context.
 - **No build artifacts**: nothing is generated from source. `package.json` and `manifest.json` versions are kept in sync manually.
 
 ### Directory layout
@@ -93,7 +93,7 @@ Same-repo pull requests targeting `main` are squash-merged automatically by the 
 - `src/features/` - todo, notes, onboarding, simple mode, drag-drop, app folders, context menu, weather, interactive background
 - `src/ai/` - AI assistant, markdown parser, network/offline detection, OpenRouter client
 - `src/data/` - built-in backgrounds and mottos
-- `background/` - service worker and Node thumbnail/video tooling
+- `backgrounds/` - service worker and Node thumbnail/video tooling
 - `tests/` - Vitest specs
 - `docs/` - localized READMEs and contributing guides
 - `_locales/` - extension i18n messages

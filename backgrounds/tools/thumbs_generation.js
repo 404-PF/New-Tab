@@ -20,7 +20,7 @@ async function main() {
   const files = fs.readdirSync(BG_DIR).filter(isImage);
 
   if (files.length === 0) {
-    console.log('No images found in /background');
+    console.log('No images found in /backgrounds');
     return;
   }
 

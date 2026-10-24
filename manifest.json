@@ -13,7 +13,7 @@
     "newtab": "New-Tab.html"
   },
   "background": {
-    "service_worker": "background/service-worker.js"
+    "service_worker": "backgrounds/service-worker.js"
   },
   "permissions": [
     "alarms",

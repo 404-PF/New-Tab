@@ -1235,7 +1235,7 @@ describe('Todo reminders', () => {
 
   it('alarm name in fallback matches ALARM_NAME in service-worker.js', () => {
     const todoCode = readFileSync(resolve(process.cwd(), 'src/features/todo.js'), 'utf-8');
-    const swCode = readFileSync(resolve(process.cwd(), 'background/service-worker.js'), 'utf-8');
+    const swCode = readFileSync(resolve(process.cwd(), 'backgrounds/service-worker.js'), 'utf-8');
 
     const swMatch = swCode.match(/ALARM_NAME\s*=\s*'([^']+)'/);
     expect(swMatch).not.toBeNull();
@@ -1508,7 +1508,7 @@ describe('Todo priority', () => {
 
 describe('Service worker checkReminders', () => {
   beforeAll(() => {
-    injectScript('background/service-worker.js');
+    injectScript('backgrounds/service-worker.js');
   });
 
   beforeEach(() => {

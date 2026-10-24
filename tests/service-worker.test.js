@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
-  injectScript('background/service-worker.js');
+  injectScript('backgrounds/service-worker.js');
 });
 
 beforeEach(async () => {
@@ -93,7 +93,7 @@ describe('service worker todo reminders', () => {
       // chrome mocks don't accumulate a second copy of each handler.
       chrome.notifications.onClicked._clearListeners();
       chrome.runtime.onMessage._clearListeners();
-      injectScript('background/service-worker.js');
+      injectScript('backgrounds/service-worker.js');
       expect(chrome.notifications.onClicked._listeners).toHaveLength(1);
       expect(chrome.runtime.onMessage._listeners).toHaveLength(1);
 

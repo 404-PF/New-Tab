@@ -61,7 +61,7 @@ src/
 	features/          # todo list, onboarding, simple mode, drag/drop helpers
 	ui/                # settings, app manager, add-app flow, search bar handling
 _locales/            # extension translations
-background/tools/    # background thumbnail and video preview generators
+backgrounds/tools/   # background thumbnail and video preview generators
 ```
 
 ## 👥 Contributing
@@ -73,7 +73,7 @@ Development notes:
 - Styles: `style.css`
 - Source code: `src/`
 - Localization files: `_locales/`
-- Background asset helper scripts: `background/tools/`
+- Background asset helper scripts: `backgrounds/tools/`
 - There is no automated test suite in the repository yet. Manual verification is done by reloading the unpacked extension and testing the new tab page in the browser.
 
 ## 📄 License

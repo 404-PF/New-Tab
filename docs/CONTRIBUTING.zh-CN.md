@@ -76,7 +76,7 @@ Husky 的 pre-commit 钩子也会自动运行 `eslint .`。
 - **加载顺序很重要**。`bootstrap.js` 使用 `script.async = false` 来保持顺序，且 `app-manager.js` 必须在 `add-app-modal.js`、`context-menu.js` 与 `app-folders.js` 之前执行。
 - **模块风格**：浏览器代码为普通脚本，将函数挂载到 `window.*`。`src/` 源文件中不使用 ES module 的 `import`（测试文件是 ES module，使用 `import`/`export`）。部分文件将顶层代码包裹在严格模式的 IIFE 中。在这些 IIFE 内部，跨文件全局变量必须以 `window.Foo` 引用，而非裸写 `Foo`。
 - **存储**：`src/core/storage.js` 将 `localStorage` 桥接到 `chrome.storage.local`。引导脚本会等待 `window.__storageBridgeReady` 后再加载其余脚本。
-- **Service worker**：`background/service-worker.js` 是独立的运行上下文。
+- **Service worker**：`backgrounds/service-worker.js` 是独立的运行上下文。
 - **无构建产物**：源码不会生成任何产物。`package.json` 与 `manifest.json` 的版本需手动保持同步。
 
 ### 目录结构
@@ -86,7 +86,7 @@ Husky 的 pre-commit 钩子也会自动运行 `eslint .`。
 - `src/features/` - 待办、笔记、新手引导、简洁模式、拖拽、应用文件夹、右键菜单、天气、交互背景
 - `src/ai/` - AI 助手、Markdown 解析、网络/离线检测、OpenRouter 客户端
 - `src/data/` - 内置背景与格言
-- `background/` - Service worker 与 Node 缩略图/视频工具
+- `backgrounds/` - Service worker 与 Node 缩略图/视频工具
 - `tests/` - Vitest 测试
 - `docs/` - 本地化 README 与贡献指南
 - `_locales/` - 扩展的 i18n 文案
