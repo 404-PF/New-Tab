@@ -8,7 +8,7 @@
     "description": "Error shown when AI conversation changes cannot be persisted"
   },
   "aiNoSearchResults": {
-    "message": "Nenhuma conversa correspondante",
+    "message": "Nenhuma conversa correspondente",
     "description": "Empty state text when a conversation search matches nothing"
   },
   "appGridSaveError": {

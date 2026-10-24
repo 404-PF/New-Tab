@@ -434,7 +434,7 @@ window.i18n.__registerLocale('pt', {
   aiNewChat: 'Novo chat',
   aiConversations: 'Conversas',
   aiNoConversations: 'Nenhuma conversa ainda',
-  aiNoSearchResults: 'Nenhuma conversa correspondante',
+  aiNoSearchResults: 'Nenhuma conversa correspondente',
   aiNewConversation: 'Nova conversa',
   aiDeleteConversation: 'Ctrl+Clique para excluir sem confirmação',
   aiDeleteConfirm: 'Excluir esta conversa?',
