@@ -3,6 +3,7 @@
 // All modules that read or write appOrder / customApps must go through this
 // object so that the rules for id/order translation live in one place.
 
+const CANONICAL_URL_CACHE_LIMIT = 64;
 const canonicalAppUrls = new Map();
 let lastAppUrlCheck = null;
 
@@ -93,6 +94,10 @@ const AppGridState = {
       canonical = urlObj.href;
     } catch {
       // Invalid URLs retain their original comparison value.
+    }
+    // Cached values derive purely from their keys, so clearing at the limit loses reuse, never correctness.
+    if (canonicalAppUrls.size >= CANONICAL_URL_CACHE_LIMIT) {
+      canonicalAppUrls.clear();
     }
     canonicalAppUrls.set(url, canonical);
     return canonical;

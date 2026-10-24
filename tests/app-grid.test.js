@@ -1165,4 +1165,27 @@ describe('App URL result reuse', () => {
     expect(AppGridState.hasAppWithUrl(target)).toBe(change !== 'delete');
     expect(canonicalize).not.toHaveBeenCalled();
   });
+
+  it('bounds the canonical URL cache: entries beyond the limit are evicted and re-parse', () => {
+    const limit = 64; // mirrors the production CANONICAL_URL_CACHE_LIMIT
+    const urls = Array.from({ length: limit + 1 }, (_, i) => `https://evict-probe-${i}.example/`);
+    const first = urls[0];
+    const { parse, unmodeledCalls } = spyOnWindowURL(urls);
+
+    // Within the cap a repeated url reuses its cached result without re-parsing.
+    expect(AppGridState.getCanonicalUrl(first)).toBe(first);
+    expect(parse.mock.calls.filter(([url]) => url === first)).toHaveLength(1);
+    expect(AppGridState.getCanonicalUrl(first)).toBe(first);
+    expect(parse.mock.calls.filter(([url]) => url === first)).toHaveLength(1);
+
+    // limit more distinct urls guarantee the cache has cleared since `first`
+    // was cached, so the repeat below must construct its URL again.
+    urls.slice(1).forEach((url) => {
+      expect(AppGridState.getCanonicalUrl(url)).toBe(url);
+      expect(parse.mock.calls.filter(([probe]) => probe === url)).toHaveLength(1);
+    });
+    expect(AppGridState.getCanonicalUrl(first)).toBe(first);
+    expect(parse.mock.calls.filter(([url]) => url === first)).toHaveLength(2);
+    expect(unmodeledCalls).toEqual([]);
+  });
 });
