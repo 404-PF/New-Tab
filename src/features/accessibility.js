@@ -128,13 +128,22 @@
     if (label) modal.setAttribute('aria-labelledby', label.id);
   }
 
+  // Top-level overlays that intentionally stack above an open modal (the
+  // onboarding tour and toast notifications). Inerting them would block the
+  // tour's own buttons (#898) and hide role=alert toasts from screen readers.
+  const EXEMPT_OVERLAY_CLASSES = ['onboarding-overlay', 'toast-notification'];
+
+  function isExemptOverlay(child) {
+    return EXEMPT_OVERLAY_CLASSES.some(className => child.classList.contains(className));
+  }
+
   function setBackgroundInert(activeModal) {
     if (!activeModal) return;
 
     Array.from(document.body.children).forEach(child => {
       const containsActiveModal = child === activeModal || child.contains(activeModal);
       const isLiveRegion = child.id === 'accessibility-live-region';
-      if (containsActiveModal || isLiveRegion) {
+      if (containsActiveModal || isLiveRegion || isExemptOverlay(child)) {
         backgroundState.delete(child);
         child.inert = false;
         child.removeAttribute('inert');
@@ -307,16 +316,31 @@
     }
   }
 
+  // While a modal is open during the onboarding tour, the tour's own controls
+  // join the active focus scope. Without them the Tab trap wraps inside the
+  // modal and the tour buttons stay unreachable by keyboard (#898).
+  function getFocusScopeContainers(modal) {
+    const containers = [modal];
+    Array.from(document.body.children).forEach(child => {
+      if (child.classList.contains('onboarding-overlay') && !child.hasAttribute('inert')) {
+        containers.push(child);
+      }
+    });
+    return containers;
+  }
+
   function handleModalKeydown(event) {
     const top = getTopOpenModal();
     if (!top) return;
 
     const modal = top.modal;
-    if (!modal.contains(event.target)) {
+    const scope = getFocusScopeContainers(modal);
+    const inModal = modal.contains(event.target);
+    if (!scope.some(container => container.contains(event.target))) {
       return;
     }
 
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && inModal) {
       const rebindingButton = document.querySelector('.shortcut-combo-btn.rebinding');
       if (rebindingButton) return;
 
@@ -329,7 +353,7 @@
 
     if (event.key !== 'Tab') return;
 
-    const focusable = getFocusableElements(modal);
+    const focusable = scope.flatMap(container => getFocusableElements(container));
     if (focusable.length === 0) {
       event.preventDefault();
       modal.focus({ preventScroll: true });

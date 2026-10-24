@@ -6,7 +6,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   document.body.className = '';
-  document.querySelectorAll('#a11y-test-app-grid, #a11y-test-modal, #a11y-opener').forEach(el => el.remove());
+  document.querySelectorAll('#a11y-test-app-grid, #a11y-test-modal, #a11y-opener, #a11y-inert-sibling, .onboarding-overlay, .toast-notification')
+    .forEach(el => el.remove());
   document.getElementById('folder-popup-apps')?.remove();
 
   let grid = document.getElementById('app-grid');
@@ -163,6 +164,87 @@ describe('Accessibility - app grid keyboard interaction', () => {
     expect(liveRegion).toBeTruthy();
     expect(liveRegion.inert).toBe(false);
     expect(liveRegion.hasAttribute('inert')).toBe(false);
+  });
+
+  it('keeps the onboarding overlay and toasts non-inert while a modal is open (#898)', () => {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.add('modal-open');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'onboarding-overlay';
+    document.body.appendChild(overlay);
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.setAttribute('role', 'alert');
+    document.body.appendChild(toast);
+
+    const sibling = document.createElement('div');
+    sibling.id = 'a11y-inert-sibling';
+    document.body.appendChild(sibling);
+
+    window.Accessibility.refresh();
+
+    expect(overlay.inert).toBe(false);
+    expect(overlay.hasAttribute('inert')).toBe(false);
+    expect(toast.inert).toBe(false);
+    expect(toast.hasAttribute('inert')).toBe(false);
+    expect(sibling.inert).toBe(true);
+    expect(sibling.hasAttribute('inert')).toBe(true);
+
+    overlay.remove();
+    toast.remove();
+    sibling.remove();
+    modal.classList.remove('modal-open');
+    window.Accessibility.refresh();
+  });
+
+  it('keeps the onboarding tour controls in the Tab cycle while a modal is open (#898)', async () => {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.add('modal-open');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'onboarding-overlay';
+    overlay.innerHTML =
+      '<button type="button" id="tour-close">Close</button>' +
+      '<button type="button" id="tour-next">Next</button>';
+    document.body.appendChild(overlay);
+
+    window.Accessibility.refresh();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const first = document.getElementById('settings-first');
+    const last = document.getElementById('settings-last');
+    const next = document.getElementById('tour-next');
+
+    first.focus();
+    first.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    }));
+    expect(document.activeElement).toBe(next);
+
+    next.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true
+    }));
+    expect(document.activeElement).toBe(first);
+
+    last.focus();
+    const forwardTab = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true
+    });
+    last.dispatchEvent(forwardTab);
+    expect(forwardTab.defaultPrevented).toBe(false);
+
+    overlay.remove();
+    modal.classList.remove('modal-open');
+    window.Accessibility.refresh();
   });
 
   it('adds grid semantics, roving tabindex, arrow navigation, and keyboard reorder', async () => {
