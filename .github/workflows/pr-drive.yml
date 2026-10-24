@@ -1,5 +1,13 @@
 name: pr-drive
 
+# Durable per-PR run marker. The Actions runs API leaves pull_requests
+# empty for issue_comment and workflow_dispatch triggers (pr-drive's only
+# triggers), so pr-merge's active-drive guard attributes a run to its PR
+# through this title instead.
+run-name: >-
+  pr-drive #${{ github.event_name == 'workflow_dispatch'
+    && github.event.inputs.pr_number || github.event.issue.number }}
+
 # /drive on a pull request (or workflow_dispatch with pr_number) runs OpenCode
 # in rounds to push the PR toward mergeable: rebase onto main when behind,
 # fix failing lint/tests and CI, and address unresolved review threads. See
