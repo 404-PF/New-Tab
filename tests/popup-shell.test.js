@@ -1,7 +1,8 @@
 // tests/popup-shell.test.js
-// #877: every top-middle pop-up (.toast-notification, .update-notification,
-// .manual-check-notification, .eye-care-reminder) shares one shell look in
-// css/app.css instead of shipping per-family shell styling.
+// #877/#890: every top-middle pop-up (.toast-notification, .eye-care-reminder)
+// shares one shell look in css/app.css instead of shipping per-family shell
+// styling. #890 folded the update and manual-check banners into the toast
+// family, so only the toast and the interactive eye-care reminder remain.
 
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -16,16 +17,19 @@ const FEATURES_CSS = readFileSync(FEATURES_CSS_PATH, 'utf-8');
 
 const SHELL_SELECTORS = [
   '.toast-notification',
-  '.update-notification',
-  '.manual-check-notification',
   '.eye-care-reminder',
 ];
 
+const RETIRED_FAMILIES = [
+  '.update-notification',
+  '.manual-check-notification',
+];
+
 const SHELL_RULE_PATTERN =
-  /\.toast-notification,\s*\n\s*\.update-notification,\s*\n\s*\.manual-check-notification,\s*\n\s*\.eye-care-reminder\s*\{([^}]*)\}/;
+  /\.toast-notification,\s*\n\s*\.eye-care-reminder\s*\{([^}]*)\}/;
 
 const SHELL_LIGHT_RULE_PATTERN =
-  /body\.light-theme \.toast-notification,\s*\n\s*body\.light-theme \.update-notification,\s*\n\s*body\.light-theme \.manual-check-notification,\s*\n\s*body\.light-theme \.eye-care-reminder\s*\{([^}]*)\}/;
+  /body\.light-theme \.toast-notification,\s*\n\s*body\.light-theme \.eye-care-reminder\s*\{([^}]*)\}/;
 
 const SHELL_PROPERTIES = [
   'position',
@@ -75,8 +79,8 @@ function familyRuleLacksShell(body, selector) {
   });
 }
 
-describe('Shared top-middle pop-up shell (#877)', () => {
-  it('defines one shell rule covering all four pop-up families with the toast look', () => {
+describe('Shared top-middle pop-up shell (#877, #890)', () => {
+  it('defines one shell rule covering both remaining pop-up families with the toast look', () => {
     const body = ruleBody(APP_CSS, SHELL_RULE_PATTERN, 'shared shell rule in css/app.css');
 
     expectDeclaration(body, 'position', 'fixed');
@@ -99,17 +103,15 @@ describe('Shared top-middle pop-up shell (#877)', () => {
     expect(FEATURES_CSS).not.toMatch(/popupSlideDown|background:\s*rgba\(0, 0, 0, 0\.9\)/);
   });
 
+  it('drops the retired update and manual-check notification families entirely (#890)', () => {
+    RETIRED_FAMILIES.forEach((selector) => {
+      const escaped = selector.replace('.', '\\.');
+      expect(APP_CSS).not.toMatch(new RegExp(escaped));
+      expect(FEATURES_CSS).not.toMatch(new RegExp('(?:^|\\n)' + escaped + '\\s*\\{'));
+    });
+  });
+
   it('keeps only family layout on the per-family rules in css/features.css', () => {
-    const update = familyRule('.update-notification');
-    familyRuleLacksShell(update, '.update-notification');
-    expectDeclaration(update, 'max-width', '400px');
-    expectDeclaration(update, 'z-index', '5000');
-
-    const manualCheck = familyRule('.manual-check-notification');
-    familyRuleLacksShell(manualCheck, '.manual-check-notification');
-    expectDeclaration(manualCheck, 'max-width', '350px');
-    expectDeclaration(manualCheck, 'z-index', '4999');
-
     const eyeCare = familyRule('.eye-care-reminder');
     familyRuleLacksShell(eyeCare, '.eye-care-reminder');
     expectDeclaration(eyeCare, 'width', 'min(560px, calc(100vw - 32px))');
@@ -129,6 +131,16 @@ describe('Shared top-middle pop-up shell (#877)', () => {
     expectDeclaration(toast, 'animation', 'none');
     expectDeclaration(toast, 'transform', 'translateX(-50%) translateY(-20px)');
     expect(APP_CSS).toMatch(/\.toast-notification\.show\s*\{\s*\n\s*opacity: 1;/);
+  });
+
+  it('re-enables pointer events on the optional toast action only (#890)', () => {
+    const action = ruleBody(
+      APP_CSS,
+      /(?:^|\n)\.toast-notification \.toast-action\s*\{([^}]*)\}/m,
+      '.toast-action rule in css/app.css'
+    );
+
+    expectDeclaration(action, 'pointer-events', 'auto');
   });
 
   it('drops the superseded per-family keyframes for the shared animation', () => {
@@ -172,9 +184,7 @@ describe('Shared top-middle pop-up shell (#877)', () => {
     expect(FEATURES_CSS).toMatch(
       /body:has\(\.eye-care-reminder:not\(\[hidden\]\)\)[^{}]*\{[^}]*top: 220px;/
     );
-    SHELL_SELECTORS.slice(0, 3).forEach((selector) => {
-      expect(FEATURES_CSS).toContain('body:has(.eye-care-reminder:not([hidden])) ' + selector);
-    });
+    expect(FEATURES_CSS).toContain('body:has(.eye-care-reminder:not([hidden])) .toast-notification');
   });
 
   it('disables the shared shell motion under prefers-reduced-motion', () => {
@@ -193,11 +203,10 @@ describe('Shared top-middle pop-up shell (#877)', () => {
   });
 
   it('keeps the content layouts that legitimately differ', () => {
-    expect(FEATURES_CSS).toMatch(/\.update-notification-content\s*\{[^}]*padding:\s*20px/);
-    expect(FEATURES_CSS).toMatch(/\.manual-check-notification-content\s*\{[^}]*padding:\s*16px/);
-    expect(FEATURES_CSS).toMatch(/\.eye-care-reminder-content\s*\{/);
+    expect(FEATURES_CSS).toMatch(/\.eye-care-reminder-content\s*\{[^}]*padding:\s*12px 24px/);
     expect(FEATURES_CSS).toMatch(/\.eye-care-ring\s*\{/);
-    expect(FEATURES_CSS).toMatch(/\.eye-care-reminder-btn\s*\{[^}]*border-radius:\s*999px/);
+    expect(FEATURES_CSS).toMatch(/\.eye-care-reminder-btn\s*\{[^}]*border-radius:\s*12px/);
+    expect(FEATURES_CSS).not.toMatch(/\.eye-care-reminder-btn\s*\{[^}]*border-radius:\s*999px/);
 
     ['toast-error', 'toast-success', 'toast-info', 'toast-warning'].forEach((variant) => {
       expect(APP_CSS).toMatch(
@@ -206,36 +215,111 @@ describe('Shared top-middle pop-up shell (#877)', () => {
     });
   });
 
+  it('paints the eye-care reminder with the toast-info semantic variant (#890)', () => {
+    expect(FEATURES_CSS).toMatch(
+      /\.eye-care-reminder-info\s*\{[^}]*background:\s*rgba\(33, 150, 243, 0\.95\)/
+    );
+    expect(FEATURES_CSS).toMatch(
+      /body\.light-theme \.eye-care-reminder-info\s*\{[^}]*background:\s*rgba\(33, 150, 243, 0\.95\)/
+    );
+  });
+
   it('leaves the manual-check shell colors to CSS instead of inline styles', () => {
     const source = readFileSync(UPDATE_CHECKER_PATH, 'utf-8');
     expect(source).not.toMatch(/notification\.style\.(background|borderColor)/);
+    expect(source).not.toMatch(/innerHTML/);
   });
 });
 
-describe('Manual check notification shell (#877)', () => {
+describe('Manual check notification via the toast provider (#890)', () => {
   beforeAll(() => {
     injectScript('src/core/dom-ready.js');
     injectScript('src/core/utils.js');
+    injectScript('src/core/toast.js');
     injectScript('src/core/update-checker.js');
   });
 
   beforeEach(() => {
-    document.querySelectorAll('.manual-check-notification').forEach((el) => el.remove());
+    document.querySelectorAll('.toast-notification').forEach((el) => el.remove());
+    window.updateChecker.hideManualCheckNotification();
+    window.updateChecker.hideUpdateNotification();
   });
 
   afterEach(() => {
     window.updateChecker.hideManualCheckNotification();
+    window.updateChecker.hideUpdateNotification();
   });
 
-  it('renders without inline background or border so the shared shell shows through', () => {
+  it('renders as a semantic toast without an emoji icon or Dismiss button', () => {
     window.updateChecker.showManualCheckNotification('Up to date', 'success');
 
-    const notification = document.querySelector('.manual-check-notification');
-    expect(notification).not.toBeNull();
-    expect(notification.style.background).toBe('');
-    expect(notification.style.borderColor).toBe('');
-    expect(notification.querySelector('.manual-check-notification-icon')?.textContent).toBe('✅');
-    expect(notification.querySelector('.manual-check-notification-text')?.textContent.trim())
-      .toBe('Up to date');
+    const toast = document.querySelector('.toast-notification');
+    expect(toast).not.toBeNull();
+    expect(toast.classList.contains('toast-success')).toBe(true);
+    expect(toast.textContent).toBe('Up to date');
+    expect(toast.querySelector('.toast-action')).toBeNull();
+  });
+
+  it('maps every manual-check result type onto a toast variant', () => {
+    const cases = [
+      ['success', 'toast-success'],
+      ['warning', 'toast-warning'],
+      ['error', 'toast-error'],
+      ['info', 'toast-info'],
+    ];
+
+    cases.forEach(([type, variant]) => {
+      window.updateChecker.showManualCheckNotification('result', type);
+      expect(
+        document.querySelector('.toast-notification.' + variant),
+        variant
+      ).not.toBeNull();
+      window.updateChecker.hideManualCheckNotification();
+      document.querySelectorAll('.toast-notification').forEach((el) => el.remove());
+    });
+  });
+
+  it('gives the update notification a View Release action that opens the release URL', () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    try {
+      window.updateChecker.showUpdateNotification({
+        version: '2.0.0',
+        url: 'https://example.com/release'
+      });
+
+      const toast = document.querySelector('.toast-notification.toast-info');
+      expect(toast).not.toBeNull();
+      expect(toast.textContent).toContain('New-Tab v2.0.0 is now available.');
+
+      const action = toast.querySelector('.toast-action');
+      expect(action).not.toBeNull();
+      expect(action.textContent).toBe('View Release');
+
+      action.click();
+      expect(openSpy).toHaveBeenCalledWith('https://example.com/release', '_blank');
+      // The action dismisses its own toast.
+      expect(document.querySelector('.toast-notification')).toBeNull();
+    } finally {
+      openSpy.mockRestore();
+      window.updateChecker.hideUpdateNotification();
+    }
+  });
+
+  it('hideUpdateNotification dismisses only its own toast, not an unrelated one', () => {
+    window.updateChecker.showUpdateNotification({
+      version: '2.0.0',
+      url: 'https://example.com'
+    });
+    const updateToast = document.querySelector('.toast-notification');
+    expect(updateToast).not.toBeNull();
+
+    window.showToast('unrelated toast', 'error');
+    const unrelatedToast = document.querySelector('.toast-notification');
+    expect(unrelatedToast).not.toBe(updateToast);
+
+    window.updateChecker.hideUpdateNotification();
+    expect(document.querySelector('.toast-notification')).toBe(unrelatedToast);
+
+    unrelatedToast.remove();
   });
 });

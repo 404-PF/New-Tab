@@ -9,6 +9,7 @@ beforeAll(() => {
   injectScript('src/ui/settings.js');
   injectScript('src/core/dom-ready.js');
   injectScript('src/core/utils.js');
+  injectScript('src/core/toast.js');
   injectScript('src/core/update-checker.js');
 });
 
@@ -1292,7 +1293,7 @@ describe('Manual update check button', () => {
       document.body.appendChild(el);
     }
     const aboutSection = document.querySelector('.settings-section[data-section="about"]');
-    document.querySelectorAll('.manual-check-result, .manual-check-notification')
+    document.querySelectorAll('.manual-check-result, .toast-notification')
       .forEach(el => el.remove());
 
     const originalFetch = window.fetch;

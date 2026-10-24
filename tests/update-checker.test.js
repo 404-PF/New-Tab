@@ -3,6 +3,7 @@ import { injectScript } from './helpers/inject-script.js';
 beforeAll(() => {
   injectScript('src/core/dom-ready.js');
   injectScript('src/core/utils.js');
+  injectScript('src/core/toast.js');
   injectScript('src/core/update-checker.js');
 });
 
@@ -10,20 +11,15 @@ describe('UpdateChecker', () => {
   let checker;
 
   beforeEach(() => {
-    document.querySelectorAll('.update-notification, .manual-check-notification, .manual-check-result')
-      .forEach(el => el.remove());
-
     checker = window.updateChecker;
     checker.currentVersion = '1.0.0';
-    [checker._autoHideTimeoutId, checker._manualCheckTimeoutId, checker._manualCheckResultTimeoutId]
-      .forEach(id => { if (id) clearTimeout(id); });
-    if (checker._autoHideUnsubscribe) checker._autoHideUnsubscribe();
-    if (checker._manualCheckUnsubscribe) checker._manualCheckUnsubscribe();
+    checker.hideUpdateNotification();
+    checker.hideManualCheckNotification();
+    document.querySelectorAll('.toast-notification, .manual-check-result')
+      .forEach(el => el.remove());
+
+    if (checker._manualCheckResultTimeoutId) clearTimeout(checker._manualCheckResultTimeoutId);
     if (checker._manualCheckResultUnsubscribe) checker._manualCheckResultUnsubscribe();
-    checker._autoHideTimeoutId = null;
-    checker._autoHideUnsubscribe = null;
-    checker._manualCheckTimeoutId = null;
-    checker._manualCheckUnsubscribe = null;
     checker._manualCheckResultTimeoutId = null;
     checker._manualCheckResultUnsubscribe = null;
     checker._manualCheckResultState = null;
@@ -48,24 +44,97 @@ describe('UpdateChecker', () => {
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();
     });
+
+    it('writes the durable inline About result when the auto-check finds an update (#890)', async () => {
+      let captured = null;
+      window.onDomReady = (cb) => { captured = cb; };
+      injectScript('src/core/update-checker.js');
+
+      const instance = window.updateChecker;
+      instance.currentVersion = '1.0.0';
+      instance.setLastCheckTime(0);
+      const release = { version: '2.0.0', url: 'https://example.com' };
+      const checkSpy = vi.spyOn(instance, 'checkForUpdates').mockResolvedValue(release);
+      const toastSpy = vi.spyOn(instance, 'showUpdateNotification').mockImplementation(() => {});
+      const resultSpy = vi.spyOn(instance, 'showManualCheckResult').mockImplementation(() => {});
+
+      await captured();
+
+      expect(toastSpy).toHaveBeenCalledWith(release);
+      expect(resultSpy).toHaveBeenCalledWith(
+        instance.formatMessage('updateManualNewVersion', { version: '2.0.0' }),
+        'updateManualNewVersion',
+        { version: '2.0.0' }
+      );
+
+      checkSpy.mockRestore();
+      toastSpy.mockRestore();
+      resultSpy.mockRestore();
+    });
   });
 
   describe('auto-hide timer isolation', () => {
-    it('does not overwrite update notification auto-hide when showing manual check result', () => {
+    it('keeps the update toast on screen while a manual-check result is shown', () => {
       const aboutSection = document.createElement('section');
       aboutSection.className = 'settings-section';
       aboutSection.setAttribute('data-section', 'about');
       document.body.appendChild(aboutSection);
 
-      const release = { version: '2.0.0', url: 'https://example.com' };
-      checker.showUpdateNotification(release);
-      const bannerTimerId = checker._autoHideTimeoutId;
-      expect(bannerTimerId).not.toBeNull();
+      try {
+        const release = { version: '2.0.0', url: 'https://example.com' };
+        checker.showUpdateNotification(release);
+        const toast = document.querySelector('.toast-notification');
+        expect(toast).not.toBeNull();
 
-      checker.showManualCheckResult('New version 2.0.0 available');
-      expect(checker._autoHideTimeoutId).toBe(bannerTimerId);
-      expect(checker._manualCheckResultTimeoutId).not.toBeNull();
-      expect(checker._manualCheckResultTimeoutId).not.toBe(bannerTimerId);
+        checker.showManualCheckResult('New version 2.0.0 available');
+        expect(document.querySelector('.toast-notification')).toBe(toast);
+        expect(document.querySelector('.manual-check-result')).not.toBeNull();
+        expect(checker._manualCheckResultTimeoutId).not.toBeNull();
+      } finally {
+        checker.hideUpdateNotification();
+        checker.hideManualCheckResult();
+        aboutSection.remove();
+      }
+    });
+  });
+
+  describe('update notification toast (#890)', () => {
+    it('does not expire while the tab is hidden', () => {
+      vi.useFakeTimers();
+      const listeners = new Set();
+      const originalVisibilityManager = window.visibilityManager;
+      window.visibilityManager = {
+        isVisible: true,
+        onChange(fn) {
+          listeners.add(fn);
+          return () => listeners.delete(fn);
+        }
+      };
+      const setVisible = (visible) => {
+        window.visibilityManager.isVisible = visible;
+        [...listeners].forEach(fn => fn(visible));
+      };
+
+      try {
+        checker.showUpdateNotification({ version: '2.0.0', url: 'https://example.com' });
+        vi.advanceTimersByTime(4000);
+
+        // Background the tab for a minute; the countdown pauses.
+        setVisible(false);
+        vi.advanceTimersByTime(60_000);
+        setVisible(true);
+
+        // Only the remaining 6 s of visible time elapse, not a fresh 10 s.
+        vi.advanceTimersByTime(5999);
+        expect(document.querySelector('.toast-notification')).not.toBeNull();
+        vi.advanceTimersByTime(1);
+        vi.advanceTimersByTime(300); // fade-out completes
+        expect(document.querySelector('.toast-notification')).toBeNull();
+      } finally {
+        checker.hideUpdateNotification();
+        window.visibilityManager = originalVisibilityManager;
+        vi.useRealTimers();
+      }
     });
   });
 
@@ -421,15 +490,19 @@ describe('UpdateChecker', () => {
   });
 
   describe('notification content security', () => {
-    it('escapes untrusted content', () => {
+    it('renders untrusted content as text on the toast (#890)', () => {
       const payload = '<img src=x onerror=alert(1)>';
       vi.spyOn(checker, 'formatMessage').mockReturnValue(payload);
       checker.showUpdateNotification({ version: payload, url: 'https://example.com' });
-      expect(document.querySelector('.update-notification-text').textContent).toContain(payload);
-      expect(document.querySelector('.update-notification-text img')).toBeNull();
+      const updateToast = document.querySelector('.toast-notification');
+      expect(updateToast.textContent).toContain(payload);
+      expect(updateToast.querySelector('img')).toBeNull();
+
       checker.showManualCheckNotification(payload);
-      expect(document.querySelector('.manual-check-notification-text').textContent.trim()).toBe(payload);
-      expect(document.querySelector('.manual-check-notification-text img')).toBeNull();
+      const manualToast = document.querySelector('.toast-notification');
+      expect(manualToast.textContent).toContain(payload);
+      expect(manualToast.querySelector('img')).toBeNull();
+      vi.restoreAllMocks();
     });
   });
 

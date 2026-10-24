@@ -6,14 +6,12 @@ class UpdateChecker {
     this.apiUrl = `https://api.github.com/repos/${this.repo}/releases/latest`;
     this.currentVersion = typeof window !== 'undefined' ? window.CURRENT_VERSION || null : null;
     this.checkInterval = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-    this._autoHideTimeoutId = null; // Track auto-hide timeout for cleanup
-    this._autoHideUnsubscribe = null; // Track visibility unsubscribe for cleanup
-    this._manualCheckTimeoutId = null; // Track manual-check notification auto-hide timeout
-    this._manualCheckUnsubscribe = null; // Track manual-check notification visibility unsubscribe
     this._manualCheckResultTimeoutId = null; // Track manual-check-result auto-hide timeout
     this._manualCheckResultUnsubscribe = null; // Track manual-check-result visibility unsubscribe
     this._manualCheckResultGetRemaining = null; // Visible time left on the manual-check-result timer
     this._manualCheckResultState = null; // Last inline About result: { message, key, replacements, remaining }
+    this._updateToastHandle = null; // Handle for the active update toast (#890)
+    this._manualCheckToastHandle = null; // Handle for the active manual-check toast (#890)
   }
 
   hasCurrentVersion() {
@@ -223,66 +221,31 @@ class UpdateChecker {
     }
   }
 
-  // Clear any existing auto-hide timer
-  _clearAutoHideTimer() {
-    this._clearTimedAutoHide('autoHide');
-  }
-
-  // Show update notification
+  // Show update notification as a toast with a View Release action (#890).
+  // Deliberately shorter-lived than the old 30 s banner: the toast is a
+  // transient nudge and the inline About-section result written alongside it
+  // (see manualCheck and the auto-check on load) is the durable record.
   showUpdateNotification(release) {
-    // Remove existing notification if present
-    this.hideUpdateNotification();
+    if (typeof window.showToast !== 'function') {
+      console.warn('[update-checker] showToast unavailable; update notification dropped');
+      return;
+    }
 
-    const title = this.t('updateNotificationTitle');
     const message = this.formatMessage('updateNotificationBody', { version: release.version });
     const viewReleaseLabel = this.t('updateNotificationViewRelease');
-    const dismissLabel = this.t('dismiss');
 
-    const notification = document.createElement('div');
-    notification.className = 'update-notification';
-    notification.innerHTML = `
-      <div class="update-notification-content">
-        <div class="update-notification-icon">🚀</div>
-        <div class="update-notification-text">
-          <strong>${window.escapeHtml(title)}</strong>
-          <br>
-          ${window.escapeHtml(message)}
-        </div>
-        <div class="update-notification-actions">
-          <button class="update-btn update-btn-primary" id="update-view-btn">
-            ${window.escapeHtml(viewReleaseLabel)}
-          </button>
-          <button class="update-btn update-btn-secondary" id="update-dismiss-btn">
-            ${window.escapeHtml(dismissLabel)}
-          </button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(notification);
-
-    // Add event listeners programmatically for better reliability
-    const viewBtn = document.getElementById('update-view-btn');
-    const dismissBtn = document.getElementById('update-dismiss-btn');
-
-    if (viewBtn) {
-      viewBtn.addEventListener('click', () => {
-        window.open(release.url, '_blank');
-      });
-    }
-
-    if (dismissBtn) {
-      dismissBtn.addEventListener('click', () => {
-        this.hideUpdateNotification();
-      });
-    }
-
-    // Auto-hide after 30 seconds (visibility-aware)
-    this._scheduleTimedAutoHide('autoHide', () => this.hideUpdateNotification(), 30000);
+    this._updateToastHandle = window.showToast(message, 'info', {
+      duration: 10000,
+      action: {
+        label: viewReleaseLabel,
+        onClick: () => window.open(release.url, '_blank')
+      }
+    });
   }
 
   // Generic visibility-aware auto-hide scheduler, keyed by state name
-  // e.g. stateKey 'autoHide' -> uses _autoHideTimeoutId / _autoHideUnsubscribe
+  // e.g. stateKey 'manualCheckResult' -> uses _manualCheckResultTimeoutId /
+  // _manualCheckResultUnsubscribe
   _scheduleTimedAutoHide(stateKey, callback, delay) {
     const timeoutKey = `_${stateKey}TimeoutId`;
     const unsubscribeKey = `_${stateKey}Unsubscribe`;
@@ -331,78 +294,32 @@ class UpdateChecker {
     }
   }
 
-  // Hide update notification
+  // Dismiss the update toast this checker started. Dismisses only its own
+  // toast handle, never an unrelated toast occupying the single slot (#890).
   hideUpdateNotification() {
-    // Clear the auto-hide timer first to prevent any race conditions
-    this._clearAutoHideTimer();
-    
-    const notification = document.querySelector('.update-notification');
-    if (notification) {
-      notification.remove();
+    if (this._updateToastHandle) {
+      this._updateToastHandle.dismiss();
+      this._updateToastHandle = null;
     }
   }
 
-  // Show manual check notification (for all manual check results)
+  // Show manual check notification (for all manual check results) as a
+  // semantic toast variant (#890): the old emoji icon and Dismiss button are
+  // replaced by the toast's color coding and auto-hide.
   showManualCheckNotification(message, type = 'info') {
-    // Remove existing manual check notification if present
-    this.hideManualCheckNotification();
-
-    const notification = document.createElement('div');
-    notification.className = 'manual-check-notification';
-
-    // Only the icon varies by result type; the shell look comes from the
-    // shared top-middle pop-up styles in css/app.css (#877).
-    let icon = 'ℹ️';
-
-    if (type === 'success') {
-      icon = '✅';
-    } else if (type === 'warning') {
-      icon = '⚠️';
-    } else if (type === 'error') {
-      icon = '❌';
+    if (typeof window.showToast !== 'function') {
+      console.warn('[update-checker] showToast unavailable; manual check notification dropped:', message);
+      return;
     }
 
-    notification.innerHTML = `
-      <div class="manual-check-notification-content">
-        <div class="manual-check-notification-icon">${window.escapeHtml(icon)}</div>
-        <div class="manual-check-notification-text">
-          ${window.escapeHtml(message)}
-        </div>
-        <div class="manual-check-notification-actions">
-          <button class="manual-check-btn" id="manual-check-dismiss-btn">
-            ${window.escapeHtml(this.t('dismiss'))}
-          </button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(notification);
-
-    // Add event listener programmatically
-    const dismissBtn = document.getElementById('manual-check-dismiss-btn');
-    if (dismissBtn) {
-      dismissBtn.addEventListener('click', () => {
-        this.hideManualCheckNotification();
-      });
-    }
-
-    // Auto-hide after 5 seconds (visibility-aware)
-    this._scheduleManualCheckAutoHide(() => this.hideManualCheckNotification(), 5000);
+    this._manualCheckToastHandle = window.showToast(message, type, { duration: 5000 });
   }
 
-  // Schedule auto-hide for manual check notification (separate timer tracking)
-  _scheduleManualCheckAutoHide(callback, delay) {
-    this._scheduleTimedAutoHide('manualCheck', callback, delay);
-  }
-
-  // Hide manual check notification
+  // Dismiss the manual-check toast this checker started (own toast only).
   hideManualCheckNotification() {
-    // Clear timers
-    this._clearTimedAutoHide('manualCheck');
-
-    const notification = document.querySelector('.manual-check-notification');
-    if (notification) {
-      notification.remove();
+    if (this._manualCheckToastHandle) {
+      this._manualCheckToastHandle.dismiss();
+      this._manualCheckToastHandle = null;
     }
   }
 
@@ -438,10 +355,9 @@ class UpdateChecker {
     }
 
     if (comparison > 0) {
-      // New version available: show the update notification plus the inline
-      // About result. Skip the separate manual-check popup — it shares the
-      // same top-middle anchor as the update notification and would be
-      // hidden beneath it.
+      // New version available: show the update toast plus the inline About
+      // result. Skip the separate manual-check toast — the single toast slot
+      // means it would replace the update toast and its View Release action.
       this.showUpdateNotification(latestRelease);
       const message = this.formatMessage('updateManualNewVersion', { version: latestRelease.version });
       this.showManualCheckResult(message, 'updateManualNewVersion', { version: latestRelease.version });
@@ -573,6 +489,10 @@ window.onDomReady(async () => {
     const update = await updateChecker.checkForUpdates();
     if (update) {
       updateChecker.showUpdateNotification(update);
+      // The toast is a short-lived nudge; write the durable inline About
+      // result too so an available update always leaves a record (#890).
+      const message = updateChecker.formatMessage('updateManualNewVersion', { version: update.version });
+      updateChecker.showManualCheckResult(message, 'updateManualNewVersion', { version: update.version });
     }
   }
 });

@@ -1533,120 +1533,6 @@ body.light-theme .about-cards .setting-card a:hover {
   color: #1565c0;
 }
 
-/* Update Notification — family layout layered on the shared top-middle shell */
-.update-notification {
-  max-width: 400px;
-  z-index: 5000;
-}
-
-.update-notification-content {
-  padding: 20px;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.update-notification-icon {
-  font-size: 24px;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.update-notification-text {
-  flex: 1;
-  color: #ffffff;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.update-notification-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.update-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  display: inline-block;
-  text-align: center;
-}
-
-.update-btn-primary {
-  background: #2196f3;
-  color: white;
-}
-
-.update-btn-primary:hover {
-  background: #1976d2;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
-}
-
-.update-btn-secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.update-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-/* Manual Check Notification — family layout on the shared top-middle shell */
-.manual-check-notification {
-  max-width: 350px;
-  z-index: 4999;
-}
-
-.manual-check-notification-content {
-  padding: 16px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.manual-check-notification-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.manual-check-notification-text {
-  flex: 1;
-  color: #ffffff;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.manual-check-notification-actions {
-  margin-top: 8px;
-}
-
-.manual-check-btn {
-  padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.manual-check-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
 .setting-description {
   margin-top: 8px;
   font-size: 13px;
@@ -1654,17 +1540,24 @@ body.light-theme .about-cards .setting-card a:hover {
   color: rgba(107, 114, 128, 0.8);
 }
 
-/* Eye-care Reminder — family layout (wide banner) on the shared shell */
+/* Eye-care Reminder — family layout on the shared shell. Keeps its countdown
+   ring and Skip/Done controls but adopts the toast type scale, padding, and
+   button treatment, painted with the toast-info semantic variant (#890). */
 .eye-care-reminder {
   width: min(560px, calc(100vw - 32px));
   z-index: 5001;
 }
 
+.eye-care-reminder-info {
+  background: rgba(33, 150, 243, 0.95);
+  border-color: rgba(33, 150, 243, 0.4);
+}
+
 .eye-care-reminder-content {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 18px 20px;
+  gap: 16px;
+  padding: 12px 24px;
 }
 
 .eye-care-reminder-summary {
@@ -1673,8 +1566,9 @@ body.light-theme .about-cards .setting-card a:hover {
 }
 
 .eye-care-reminder-title {
-  margin: 0 0 6px;
-  font-size: 16px;
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 500;
   color: #fff;
 }
 
@@ -1716,10 +1610,10 @@ body.light-theme .about-cards .setting-card a:hover {
 
 .eye-care-reminder-btn {
   border: 0;
-  border-radius: 999px;
-  padding: 10px 16px;
+  border-radius: 12px;
+  padding: 8px 16px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: transform 0.2s ease, background 0.2s ease;
 }
@@ -1747,36 +1641,21 @@ body.light-theme .setting-description {
   color: rgba(55, 65, 81, 0.8);
 }
 
-body.light-theme .eye-care-reminder-title {
-  color: #0f172a;
+/* The reminder keeps the toast-info hue in light theme, mirroring
+   body.light-theme .toast-notification.toast-info in css/app.css (#890). */
+body.light-theme .eye-care-reminder-info {
+  background: rgba(33, 150, 243, 0.95);
+  color: #ffffff;
 }
 
-body.light-theme .eye-care-reminder-text {
-  color: rgba(15, 23, 42, 0.78);
-}
-
-body.light-theme .eye-care-ring-track {
-  stroke: rgba(15, 23, 42, 0.12);
-}
-
-body.light-theme .eye-care-reminder-btn-secondary {
-  background: rgba(15, 23, 42, 0.08);
-  color: #0f172a;
-}
-
-/* While the eye-care reminder is visible, push the shared top-middle pop-up
-   anchor below it so the reminder (z-index 5001) cannot cover toast, update,
-   or manual-check text during the break. */
-body:has(.eye-care-reminder:not([hidden])) .toast-notification,
-body:has(.eye-care-reminder:not([hidden])) .update-notification,
-body:has(.eye-care-reminder:not([hidden])) .manual-check-notification {
+/* While the eye-care reminder is visible, push the toast pop-up anchor below
+   it so the reminder (z-index 5001) cannot cover toast text during the break. */
+body:has(.eye-care-reminder:not([hidden])) .toast-notification {
   top: 160px;
 }
 
 @media (max-width: 640px) {
-  body:has(.eye-care-reminder:not([hidden])) .toast-notification,
-  body:has(.eye-care-reminder:not([hidden])) .update-notification,
-  body:has(.eye-care-reminder:not([hidden])) .manual-check-notification {
+  body:has(.eye-care-reminder:not([hidden])) .toast-notification {
     top: 220px;
   }
 }
@@ -2023,38 +1902,6 @@ body.light-theme .language-preview {
 
 body.light-theme .language-code {
   color: #666;
-}
-
-/* Light Theme Adjustments for Update Features — the shell itself is themed
-   by the shared light-theme pop-up rule in css/app.css. */
-body.light-theme .update-notification-text {
-  color: #1f2937;
-}
-
-body.light-theme .update-btn-secondary {
-  background: rgba(0, 0, 0, 0.05);
-  color: #374151;
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-body.light-theme .update-btn-secondary:hover {
-  background: rgba(0, 0, 0, 0.1);
-  border-color: rgba(0, 0, 0, 0.2);
-}
-
-body.light-theme .manual-check-notification-text {
-  color: #1f2937;
-}
-
-body.light-theme .manual-check-btn {
-  background: rgba(0, 0, 0, 0.05);
-  color: #374151;
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-body.light-theme .manual-check-btn:hover {
-  background: rgba(0, 0, 0, 0.1);
-  border-color: rgba(0, 0, 0, 0.2);
 }
 
 body.light-theme .manual-check-result {

@@ -145,7 +145,9 @@
     if (bannerEl) return bannerEl;
 
     bannerEl = document.createElement('section');
-    bannerEl.className = 'eye-care-reminder';
+    // eye-care-reminder-info paints the banner with the toast-info semantic
+    // variant so it shares the notification color system (#890).
+    bannerEl.className = 'eye-care-reminder eye-care-reminder-info';
     bannerEl.setAttribute('role', 'status');
     bannerEl.setAttribute('aria-live', 'polite');
     bannerEl.hidden = true;
