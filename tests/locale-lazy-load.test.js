@@ -103,8 +103,9 @@ describe('lazy locale loading', () => {
     const ja = window.i18n.getTranslations('ja');
 
     expect(ja.gamesLevel).toBe('レベル');
-    expect(ja.gamesReady).toBeTypeOf('string');
-    expect(ja.gamesStart).toBeTypeOf('string');
+    expect(ja.gamesReady).toBe('準備はいいですか？');
+    expect(ja.gamesReadyStart).toBe('スペースキーまたはタップで開始');
+    expect(ja.gamesStart).toBe('開始');
     expect(ja.gamesFlappyBird).toBe('Flappy Bird');
     expect(ja.gamesPacman).toBe('パックマン');
     expect(ja.enablePomodoro).toBeTypeOf('string');

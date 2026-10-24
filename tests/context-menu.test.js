@@ -305,19 +305,23 @@ describe('context menu i18n labels', () => {
     if (existingMenu) existingMenu.remove();
   };
 
-  beforeAll(() => {
+  beforeAll(async () => {
     injectScript('src/core/dom-ready.js');
     injectScript('src/core/languages.js');
-    // de is lazy-loaded now (issue #927); register it before the startup-like
-    // applyLanguage below so the menu is built from real German strings.
-    injectScript('src/core/locales/de.js');
-
-    // Mirror the startup order: settings.js applies the saved language while
-    // it is evaluated, before context-menu.js creates its menu items.
-    window.i18n.applyLanguage('de');
-
     removeExistingMenu();
+
+    // Mirror the startup order under lazy loading (issue #927): settings.js
+    // starts the async de load, context-menu.js then builds the menu while
+    // that load is still pending (labels fall back to English), and only the
+    // sweep after registration translates the data-i18n labels.
+    const pendingLanguage = window.i18n.applyLanguage('de');
+    expect(window.i18n.getTranslations('de')).toEqual({});
+
     injectScript('src/features/context-menu.js');
+    expect(document.getElementById('rename-app').textContent).toBe('Rename');
+
+    injectScript('src/core/locales/de.js');
+    await pendingLanguage;
   });
 
   afterAll(() => {
@@ -328,9 +332,9 @@ describe('context menu i18n labels', () => {
     }
   });
 
-  it('translates menu labels at creation under a startup-like language', () => {
+  it('translates menu labels after the pending locale load finishes', () => {
     // t() silently falls back to English when a locale omits a key, and the
-    // menu builds its labels with the same t() call — so assert the German
+    // post-registration sweep reads the same table — so assert the German
     // entry itself, which a missing translation would leave undefined.
     const englishLabels = window.i18n.getTranslations('en');
     const germanLabels = window.i18n.getTranslations('de');
