@@ -78,6 +78,14 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 - Triggers: `push` tag `v*` / `v*.*` / `v*.*.*` / `v*.*.*.*` (1–4 dot-separated components), `release: published`, and `workflow_dispatch`.
 - Use the `.agents/skills/prepare-release` skill (bump + tag) for the release workflow; ensure the package and manifest versions match before pushing the version tag.
 
+## PR auto-merge
+
+`.github/workflows/pr-merge.yml` squash-merges a same-repo PR targeting `main` once every requirement holds: PR open and not a draft, no merge conflicts (`mergeStateStatus == CLEAN`), every check run on the head SHA green, every status check required by branch protection (read from `/branches/main/protection`, never hardcoded) successful, no unresolved review threads, review decision not `CHANGES_REQUESTED`, no blocking label, and no active `pr-drive` run. The merge is the GraphQL `mergePullRequest` mutation with `expectedHeadOid`, so a push that lands mid-evaluation aborts instead of merging an unverified commit. Exactly one verdict comment is kept up to date on the PR via a `<!-- pr-merge -->` sentinel.
+
+- Opt a PR out with any of these labels: `do-not-merge`, `hold`, `wip`, `blocked`.
+- Manual escape hatch: `workflow_dispatch` with `pr_number` (and `dry_run` to evaluate and comment without merging).
+- The workflow uses `secrets.GITHUB_TOKEN` only and never merges while a `pr-drive` run is active for the same PR.
+
 ## Skills
 
 Local skills under `.agents/skills/` (loaded via the `skill` tool):

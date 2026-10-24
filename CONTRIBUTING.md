@@ -73,6 +73,13 @@ A Husky pre-commit hook also runs `eslint .` automatically.
 - Use a descriptive branch name (e.g., `fix/issue-123-tooltip`, `feat/issue-456-weather`).
 - Keep changes focused on a single issue or feature.
 
+### Auto-merge
+
+Same-repo pull requests targeting `main` are squash-merged automatically by the `pr-merge` workflow once every merge requirement holds: CI green, no `CHANGES_REQUESTED` review, all review threads resolved, no merge conflicts, and no blocking label. The branch is deleted with the merge, and the head SHA is re-checked at merge time so a late push aborts instead of merging an unverified commit.
+
+- To opt a PR out, add any of these labels: `do-not-merge`, `hold`, `wip`, `blocked`.
+- Maintainers can trigger an evaluation manually (`workflow_dispatch` with `pr_number`), optionally as a `dry_run` that posts the verdict without merging. Exactly one `<!-- pr-merge -->` comment on the PR tracks the decision.
+
 ## 🏗️ Architecture Overview
 
 - **Entry point**: `New-Tab.html` is the `chrome_url_overrides.newtab` page (see `manifest.json`).

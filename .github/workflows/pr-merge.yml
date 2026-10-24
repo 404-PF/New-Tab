@@ -1,0 +1,329 @@
+name: pr-merge
+
+# Auto-merge a pull request once every merge requirement holds (#920).
+# ci.yml only reports status and pr-drive.yml stops at a summary comment, so
+# the final merge was a manual click: a stale "all green" could merge an
+# unverified head SHA after a late push, and repo-level allow_auto_merge is
+# off. This workflow re-evaluates every requirement on demand and merges with
+# the GraphQL mergePullRequest mutation carrying expectedHeadOid, so a push
+# that lands mid-evaluation aborts instead of merging an unverified commit.
+# Opt a PR out with any of: do-not-merge, hold, wip, blocked.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  pull_request_review_thread:
+    types: [resolved, unresolved]
+  check_run:
+    types: [completed]
+  check_suite:
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to evaluate for merge'
+        required: true
+        type: number
+      dry_run:
+        description: 'Evaluate and comment the verdict without merging'
+        required: false
+        type: boolean
+        default: false
+
+# One evaluation per PR; a newer event (push, review, check completion)
+# cancels the stale evaluation so it can never outrun a newer one.
+concurrency:
+  group: >-
+    ${{ github.event_name == 'workflow_dispatch'
+      && format('pr-merge-{0}', github.event.inputs.pr_number)
+      || format('pr-merge-{0}',
+        github.event.pull_request.number ||
+        github.event.check_run.pull_requests[0].number ||
+        github.event.check_suite.pull_requests[0].number) }}
+  cancel-in-progress: true
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # contents: write (squash merge + branch delete), pull-requests: write
+    # (merge mutation + verdict comment), checks/statuses: read (check-run
+    # and required-status evaluation), actions: read (active pr-drive guard).
+    # secrets.GITHUB_TOKEN only; no PATs and no third-party actions.
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      statuses: read
+      actions: read
+    # Cheap event pre-filter: no runner for events unrelated to a PR
+    # targeting main. workflow_dispatch always runs; the first step
+    # re-validates the pr_number before touching anything.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        (
+          github.event_name == 'pull_request' ||
+          github.event_name == 'pull_request_review' ||
+          github.event_name == 'pull_request_review_thread'
+        ) &&
+        github.event.pull_request.base.ref == 'main'
+      ) ||
+      (
+        (
+          github.event_name == 'check_run' ||
+          github.event_name == 'check_suite'
+        ) &&
+        (
+          github.event.check_run.pull_requests[0].base.ref == 'main' ||
+          github.event.check_suite.pull_requests[0].base.ref == 'main'
+        )
+      )
+
+    steps:
+      - name: Evaluate requirements and merge
+        id: evaluate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          # jq filter below excludes this workflow's own check runs by name
+          # prefix; they are in_progress by definition while evaluating.
+          WORKFLOW_NAME: ${{ github.workflow }}
+          PR_NUMBER: >-
+            ${{ github.event.pull_request.number ||
+               github.event.check_run.pull_requests[0].number ||
+               github.event.check_suite.pull_requests[0].number ||
+               github.event.inputs.pr_number }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          CTX="$RUNNER_TEMP/pr-merge"
+          mkdir -p "$CTX"
+          BODY_FILE="$CTX/verdict.md"
+          # Empty VERDICT means every requirement checked so far holds.
+          VERDICT=''
+          DECISION='blocked'
+
+          case "$PR_NUMBER" in
+            ''|*[!0-9]*)
+              echo 'No pull request number on this event; nothing to evaluate.'
+              exit 0
+              ;;
+          esac
+
+          deny() { VERDICT="$1"; echo "Blocked: $1"; }
+
+          PR_JSON="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")"
+          STATE="$(jq -r .state <<<"$PR_JSON")"
+          if [ "$STATE" != 'open' ]; then
+            # Already merged or closed: no verdict to post, so a check
+            # completion that lands after the merge cannot overwrite the
+            # "merged" comment with a stale evaluation.
+            echo "PR #$PR_NUMBER is $STATE; nothing to evaluate."
+            exit 0
+          fi
+          DRAFT="$(jq -r .draft <<<"$PR_JSON")"
+          HEAD_SHA="$(jq -r .head.sha <<<"$PR_JSON")"
+          HEAD_REPO="$(jq -r '.head.repo.full_name // ""' <<<"$PR_JSON")"
+          HEAD_REF="$(jq -r .head.ref <<<"$PR_JSON")"
+          BASE_REF="$(jq -r .base.ref <<<"$PR_JSON")"
+          PR_NODE_ID="$(jq -r .node_id <<<"$PR_JSON")"
+          MERGEABLE="$(jq -r '.mergeable // "null"' <<<"$PR_JSON")"
+          MERGE_STATE="$(jq -r '.mergeable_state // "unknown"' <<<"$PR_JSON")"
+          REVIEW_DECISION="$(gh pr view "$PR_NUMBER" --repo "$GH_REPO" --json reviewDecision --jq '.reviewDecision // ""')"
+
+          # 1. Base branch must be main.
+          if [ "$BASE_REF" != 'main' ]; then
+            deny "base branch is $BASE_REF, not main"
+          fi
+
+          # 2. Same-repo head only; refuse forks.
+          if [ -z "$VERDICT" ] && [ "$HEAD_REPO" != "$GH_REPO" ]; then
+            deny 'PR comes from a fork; auto-merge only runs on same-repo branches'
+          fi
+
+          # 3. Not a draft.
+          if [ -z "$VERDICT" ] && [ "$DRAFT" = 'true' ]; then
+            deny 'PR is a draft'
+          fi
+
+          # 4. No blocking label.
+          if [ -z "$VERDICT" ]; then
+            for label in do-not-merge hold wip blocked; do
+              if jq -e --arg l "$label" 'any(.labels[]; .name == $l)' <<<"$PR_JSON" >/dev/null; then
+                deny "blocking label \`${label}\` is present"
+                break
+              fi
+            done
+          fi
+
+          # 5. Review decision is not CHANGES_REQUESTED.
+          if [ -z "$VERDICT" ] && [ "$REVIEW_DECISION" = 'CHANGES_REQUESTED' ]; then
+            deny 'a review has requested changes'
+          fi
+
+          # 6. No unresolved review threads (GraphQL, paginated).
+          if [ -z "$VERDICT" ]; then
+            OWNER="${GH_REPO%%/*}"
+            NAME="${GH_REPO#*/}"
+            UNRESOLVED="$(gh api graphql --paginate -F owner="$OWNER" -F name="$NAME" -F number="$PR_NUMBER" -f query='
+              query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
+                repository(owner: $owner, name: $name) {
+                  pullRequest(number: $number) {
+                    reviewThreads(first: 100, after: $endCursor) {
+                      pageInfo { hasNextPage endCursor }
+                      nodes { isResolved }
+                    }
+                  }
+                }
+              }' | jq -s '[.[].data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not)] | length')"
+            if [ "$UNRESOLVED" -gt 0 ]; then
+              deny "$UNRESOLVED review thread(s) are unresolved"
+            fi
+          fi
+
+          # 7. Never merge while a pr-drive run is active for this PR, so a
+          # drive is not merged out from under itself.
+          if [ -z "$VERDICT" ]; then
+            if gh run list --repo "$GH_REPO" --workflow=pr-drive.yml --limit 100 \
+                --json status,pullRequests \
+                | jq -e --argjson n "$PR_NUMBER" \
+                  'any(.[]; (.status == "in_progress" or .status == "queued") and any(.pullRequests[]?; .number == $n))' \
+                  >/dev/null; then
+              deny 'a pr-drive run is active for this PR'
+            fi
+          fi
+
+          # 8. Mergeable with no conflicts and mergeStateStatus == CLEAN.
+          # GitHub computes these asynchronously, so re-read a few times
+          # before declaring non-CLEAN.
+          if [ -z "$VERDICT" ]; then
+            for attempt in 1 2 3; do
+              PR_JSON="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")"
+              MERGEABLE="$(jq -r '.mergeable // "null"' <<<"$PR_JSON")"
+              MERGE_STATE="$(jq -r '.mergeable_state // "unknown"' <<<"$PR_JSON")"
+              if [ "$MERGEABLE" != 'null' ] && [ "$MERGE_STATE" != 'unknown' ]; then
+                break
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                sleep 5
+              fi
+            done
+            if [ "$MERGEABLE" = 'false' ] || [ "$MERGE_STATE" = 'DIRTY' ]; then
+              deny 'PR has merge conflicts'
+            elif [ "$MERGE_STATE" != 'CLEAN' ]; then
+              deny "merge state is ${MERGE_STATE}, not CLEAN"
+            fi
+          fi
+
+          # 9. Every check run on the head SHA is terminal and successful,
+          # neutral, or skipped. This workflow's own check runs are excluded
+          # by name prefix: they are in_progress while we evaluate, and the
+          # concurrency group keeps at most one evaluation per PR active.
+          if [ -z "$VERDICT" ]; then
+            gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs" --paginate \
+              --jq '.check_runs[] | select(.name | startswith(env.WORKFLOW_NAME + " /") | not) | [.name, .status, (.conclusion // "")] | @tsv' \
+              > "$CTX/check-runs.tsv" || true
+            awk -F'\t' '$2 != "completed" || ($3 != "successful" && $3 != "neutral" && $3 != "skipped") { print $1 " (" $2 "/" $3 ")" }' \
+              "$CTX/check-runs.tsv" > "$CTX/bad-checks.txt"
+            if [ -s "$CTX/bad-checks.txt" ]; then
+              deny "checks are not green on the head SHA: $(paste -sd ',' "$CTX/bad-checks.txt")"
+            fi
+          fi
+
+          # 10. Every required status check configured in branch protection is
+          # successful on the head SHA. Read from the protection API — never
+          # hardcode a check name (ci.yml's `test` is not required today).
+          if [ -z "$VERDICT" ]; then
+            PROTECTION="$(gh api "repos/$GH_REPO/branches/main/protection" 2>/dev/null || true)"
+            : > "$CTX/required-checks.txt"
+            if [ -n "$PROTECTION" ]; then
+              jq -r '(.required_status_checks.checks // [] | .[].context), (.required_status_checks.contexts // [] | .[])' \
+                <<<"$PROTECTION" | sort -u > "$CTX/required-checks.txt" || true
+            fi
+            if [ -s "$CTX/required-checks.txt" ]; then
+              gh api "repos/$GH_REPO/commits/$HEAD_SHA/status" \
+                --jq '.statuses[] | [.context, .state] | @tsv' \
+                > "$CTX/commit-statuses.tsv" || true
+              : > "$CTX/bad-required.txt"
+              while IFS= read -r required; do
+                [ -n "$required" ] || continue
+                if awk -F'\t' -v n="$required" '$1 == n && $2 == "completed" && ($3 == "successful" || $3 == "neutral" || $3 == "skipped") { found = 1 } END { exit !found }' \
+                  "$CTX/check-runs.tsv"; then
+                  continue
+                fi
+                if awk -F'\t' -v n="$required" '$1 == n && $2 == "SUCCESS" { found = 1 } END { exit !found }' \
+                  "$CTX/commit-statuses.tsv"; then
+                  continue
+                fi
+                echo "$required" >> "$CTX/bad-required.txt"
+              done < "$CTX/required-checks.txt"
+              if [ -s "$CTX/bad-required.txt" ]; then
+                deny "required status check(s) not successful on the head SHA: $(paste -sd ',' "$CTX/bad-required.txt")"
+              fi
+            fi
+          fi
+
+          # 11. Merge, or record the dry-run verdict.
+          if [ -n "$VERDICT" ]; then
+            DECISION='blocked'
+          elif [ "$DRY_RUN" = 'true' ]; then
+            DECISION='dry run: every requirement holds; would squash-merge'
+          else
+            # Re-read the head SHA immediately before merging. The mutation
+            # below carries expectedHeadOid, so a push that landed during
+            # this evaluation aborts instead of merging an unverified commit.
+            HEAD_NOW="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER" --jq .head.sha)"
+            if [ "$HEAD_NOW" != "$HEAD_SHA" ]; then
+              deny 'head SHA moved during evaluation; merge aborted'
+              DECISION='blocked'
+            else
+              jq -n \
+                --arg q 'mutation($id: ID!, $oid: GitObjectID!, $method: PullRequestMergeMethod!) {
+                  mergePullRequest(input: {pullRequestId: $id, expectedHeadOid: $oid, mergeMethod: $method}) {
+                    pullRequest { merged }
+                  }
+                }' \
+                --arg id "$PR_NODE_ID" --arg oid "$HEAD_SHA" --arg method SQUASH \
+                '{query: $q, variables: {id: $id, oid: $oid, method: $method}}' \
+                > "$CTX/merge-request.json"
+              if MERGED="$(gh api graphql --input "$CTX/merge-request.json" --jq '.data.mergePullRequest.pullRequest.merged' 2>/dev/null)" \
+                && [ "$MERGED" = 'true' ]; then
+                DECISION='merged (squash)'
+                # Mirrors the repo's delete_branch_on_merge: true setting.
+                gh api -X DELETE "repos/$GH_REPO/heads/$HEAD_REF" \
+                  || echo "::warning::Merged, but could not delete branch $HEAD_REF."
+              else
+                deny 'mergePullRequest did not merge (expectedHeadOid mismatch or permissions); re-check the PR'
+                DECISION='blocked'
+              fi
+            fi
+          fi
+
+          # 12. Exactly one verdict comment, updated in place via the
+          # <!-- pr-merge --> sentinel (same find-or-PATCH as pr-drive).
+          {
+            echo '<!-- pr-merge -->'
+            echo '## pr-merge summary'
+            echo ''
+            echo "- Decision: $DECISION"
+            if [ -n "$VERDICT" ]; then
+              echo "- Unmet requirement: $VERDICT"
+            fi
+            echo "- Head SHA: \`$HEAD_SHA\`"
+            echo "- Merge state: ${MERGE_STATE}"
+            echo ''
+            echo "Run: $RUN_URL"
+          } > "$BODY_FILE"
+          EXISTING="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and ((.body // "") | startswith("<!-- pr-merge -->"))) | .id' | tail -n 1)"
+          if [ -n "$EXISTING" ]; then
+            jq -n --rawfile b "$BODY_FILE" '{body: $b}' \
+              | gh api -X PATCH "repos/$GH_REPO/issues/comments/$EXISTING" --input - >/dev/null
+          else
+            gh pr comment "$PR_NUMBER" --repo "$GH_REPO" --body-file "$BODY_FILE"
+          fi
+          echo "Decision: $DECISION${VERDICT:+ ($VERDICT)}"
