@@ -229,6 +229,72 @@ describe('Shortcuts - cancel while rebinding (#905)', () => {
   });
 });
 
+describe('Shortcuts - consecutive combo button clicks', () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.getElementById('shortcuts-options');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+    }
+    Shortcuts.renderShortcutsSection();
+  });
+
+  afterEach(() => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    Shortcuts.reset();
+  });
+
+  it('applies the rebind prompt to the live second button when a rebind is already active', () => {
+    container.querySelector('[data-action="focusSearch"]').click();
+
+    container.querySelector('[data-action="openSettings"]').click();
+
+    const liveSecondBtn = container.querySelector('[data-action="openSettings"]');
+    expect(liveSecondBtn.textContent).toBe('Press a key...');
+    expect(liveSecondBtn.classList.contains('rebinding')).toBe(true);
+
+    const rebindingButtons = document.querySelectorAll('.shortcut-combo-btn.rebinding');
+    expect(rebindingButtons).toHaveLength(1);
+    expect(rebindingButtons[0]).toBe(liveSecondBtn);
+  });
+
+  it('Escape cancels only the rebind and keeps the settings modal open', () => {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.add('modal-open');
+
+    container.querySelector('[data-action="focusSearch"]').click();
+    container.querySelector('[data-action="openSettings"]').click();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true
+    }));
+
+    expect(modal.classList.contains('modal-open')).toBe(true);
+    expect(container.querySelector('[data-action="openSettings"]').textContent).toBe('Ctrl+,');
+    expect(document.querySelector('.shortcut-combo-btn.rebinding')).toBeNull();
+  });
+
+  it('a key press after switching rebinds the newly selected action', () => {
+    container.querySelector('[data-action="focusSearch"]').click();
+    container.querySelector('[data-action="toggleTodo"]').click();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'L',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true
+    }));
+
+    expect(Shortcuts.load().toggleTodo).toBe('Ctrl+L');
+    expect(Shortcuts.load().focusSearch).toBe('/');
+  });
+});
+
 describe('Shortcuts - formatCombo', () => {
   it('formats simple key', () => {
     const combo = Shortcuts.formatCombo({ key: '/', ctrlKey: false, shiftKey: false, altKey: false });
