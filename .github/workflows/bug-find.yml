@@ -1,4 +1,4 @@
-name: issue-find
+name: bug-find
 
 # An OpenCode agent looks for real bugs or gaps in the codebase and proposes
 # issues. A token-free validator checks every proposal against the checked-out
@@ -57,7 +57,7 @@ jobs:
           skip() { echo "$1"; echo 'to_file=0' >> "$GITHUB_OUTPUT"; exit 0; }
           HARD_MAX=10
           COOLDOWN_SECONDS=$(( 6 * 3600 ))
-          MARKER='<!-- issue-find -->'
+          MARKER='<!-- bug-find -->'
 
           TARGET=10
           MAX_NEW=5
@@ -73,7 +73,7 @@ jobs:
                 admin|maintain|write) AUTHORIZED=true ;;
               esac
             fi
-            [ "$AUTHORIZED" = true ] || { echo "::error::$ACTOR is not authorized to dispatch issue-find."; exit 1; }
+            [ "$AUTHORIZED" = true ] || { echo "::error::$ACTOR is not authorized to dispatch bug-find."; exit 1; }
             TARGET="${INPUT_TARGET:-10}"
             MAX_NEW="${INPUT_MAX_NEW:-5}"
           fi
@@ -103,7 +103,7 @@ jobs:
               | jq -r --arg m "$MARKER" '[.data.repository.issues.nodes[] | select((.body // "") | contains($m))][0].createdAt // empty')"
             if [ -n "$LAST" ]; then
               AGE=$(( $(date +%s) - $(date -d "$LAST" +%s) ))
-              [ "$AGE" -ge "$COOLDOWN_SECONDS" ] || skip "Cooldown: last issue-find issue was filed $((AGE / 60)) min ago."
+              [ "$AGE" -ge "$COOLDOWN_SECONDS" ] || skip "Cooldown: last bug-find issue was filed $((AGE / 60)) min ago."
             fi
           fi
           echo "to_file=$TO_FILE" >> "$GITHUB_OUTPUT"
@@ -112,7 +112,7 @@ jobs:
     needs: gate
     if: needs.gate.result == 'success' && fromJSON(needs.gate.outputs.to_file || '0') > 0
     concurrency:
-      group: issue-find
+      group: bug-find
       cancel-in-progress: false
     # Name pinned so the single-entry matrix below doesn't rename the job.
     name: find
@@ -130,7 +130,7 @@ jobs:
       TO_FILE: ${{ needs.gate.outputs.to_file }}
       TARGET: ${{ needs.gate.outputs.target }}
       DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
-      MARKER: '<!-- issue-find -->'
+      MARKER: '<!-- bug-find -->'
     steps:
       # Lets the failure report tell a job-level timeout from a cancellation.
       - name: Record job start time
@@ -156,8 +156,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          mkdir -p "$GITHUB_WORKSPACE/.tmp" "$RUNNER_TEMP/issue-find"
-          STATE="$RUNNER_TEMP/issue-find"
+          mkdir -p "$GITHUB_WORKSPACE/.tmp" "$RUNNER_TEMP/bug-find"
+          STATE="$RUNNER_TEMP/bug-find"
           gh issue list --repo "$GH_REPO" --state open --limit 1000 --json number,title > "$STATE/open.json"
           gh issue list --repo "$GH_REPO" --state closed --limit 1000 --json number,title > "$STATE/closed.json"
           jq -s 'add | map(.title)' "$STATE/open.json" "$STATE/closed.json" > "$STATE/existing-titles.json"
@@ -248,7 +248,7 @@ jobs:
         id: validate
         env:
           PROPOSED: ${{ github.workspace }}/.tmp/proposed-issues.jsonl
-          STATE_DIR: ${{ runner.temp }}/issue-find
+          STATE_DIR: ${{ runner.temp }}/bug-find
         run: |
           set -euo pipefail
           python3 - <<'VALIDATOR_EOF'
@@ -276,7 +276,7 @@ jobs:
           def strip_markers(s):
               s = re.sub(r'<!--.*?-->', '', s, flags=re.S)
               s = s.replace('<!--', '').replace('-->', '')
-              return re.sub(r'issue-find', 'issue find', s, flags=re.I)
+              return re.sub(r'bug-find', 'bug find', s, flags=re.I)
 
           def tokens(t):
               return {w for w in re.findall(r'[a-z0-9]+', t.lower()) if len(w) > 2}
@@ -400,7 +400,7 @@ jobs:
           # Fine-grained PAT, Issues read/write on this repo.
           GH_PAT: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
-          VALIDATED: ${{ runner.temp }}/issue-find/validated.json
+          VALIDATED: ${{ runner.temp }}/bug-find/validated.json
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -410,11 +410,11 @@ jobs:
             jq -r --argjson i "$1" --arg marker "$MARKER" --arg run "$RUN_URL" '.[$i] |
               .body, "", "### Evidence",
               (.evidence[] | "- `\(.file):\(.line)`: `\(.snippet | gsub("`"; "\u0027"))`"),
-              "", $marker, "Filed automatically by issue-find: \($run)"' "$VALIDATED"
+              "", $marker, "Filed automatically by bug-find: \($run)"' "$VALIDATED"
           }
           if [ "$DRY_RUN" = 'true' ]; then
             {
-              echo "## issue-find dry run: $N proposed issue(s)"
+              echo "## bug-find dry run: $N proposed issue(s)"
               for i in $(seq 0 $((N - 1))); do
                 echo ''
                 echo "### $(jq -r --argjson i "$i" '.[$i].title' "$VALIDATED")"
@@ -442,10 +442,10 @@ jobs:
               echo "Open issues reached the target ($CURRENT >= $TARGET); stopping."
               break
             fi
-            render "$i" > "$RUNNER_TEMP/issue-find/body.md"
-            jq --argjson i "$i" --rawfile body "$RUNNER_TEMP/issue-find/body.md" \
-              '.[$i] | {title, labels, body: $body}' "$VALIDATED" > "$RUNNER_TEMP/issue-find/req.json"
-            URL="$(GH_TOKEN="$GH_PAT" gh api "repos/$GH_REPO/issues" --input "$RUNNER_TEMP/issue-find/req.json" --jq .html_url)"
+            render "$i" > "$RUNNER_TEMP/bug-find/body.md"
+            jq --argjson i "$i" --rawfile body "$RUNNER_TEMP/bug-find/body.md" \
+              '.[$i] | {title, labels, body: $body}' "$VALIDATED" > "$RUNNER_TEMP/bug-find/req.json"
+            URL="$(GH_TOKEN="$GH_PAT" gh api "repos/$GH_REPO/issues" --input "$RUNNER_TEMP/bug-find/req.json" --jq .html_url)"
             echo "Created $URL"
             echo "- $URL" >> "$GITHUB_STEP_SUMMARY"
             CREATED=$((CREATED + 1))
@@ -462,9 +462,9 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           FILED: ${{ steps.validate.outputs.count }}
         run: |
-          echo "::error::issue-find agent step failed or timed out; ${FILED:-0} validated proposal(s) were still processed. See $RUN_URL"
+          echo "::error::bug-find agent step failed or timed out; ${FILED:-0} validated proposal(s) were still processed. See $RUN_URL"
           {
-            echo '## issue-find agent failed or timed out'
+            echo '## bug-find agent failed or timed out'
             echo "Partial results: ${FILED:-0} validated proposal(s) were processed."
             echo "See the workflow run: $RUN_URL"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -488,6 +488,6 @@ jobs:
               exit 0
             fi
           fi
-          echo "::error::issue-find failed or timed out. See $RUN_URL"
-          echo "## issue-find failed or timed out" >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::bug-find failed or timed out. See $RUN_URL"
+          echo "## bug-find failed or timed out" >> "$GITHUB_STEP_SUMMARY"
           echo "See the workflow run: $RUN_URL" >> "$GITHUB_STEP_SUMMARY"
