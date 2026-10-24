@@ -1900,12 +1900,11 @@ body.light-theme .todo-bullet:hover .bullet-unchecked:where(:not(.todo-section, 
   transform: translateY(0);
 }
 
-/* Shared shell for every top-middle pop-up (#877, follow-up to #871).
-   The toast, update, manual-check, and eye-care pop-ups all anchor here;
-   each family only layers its own layout (widths, z-index, content) on top. */
+/* Shared shell for every top-middle pop-up (#877, follow-up to #871; #890
+   folded the update and manual-check banners into the toast family). The
+   toast and eye-care pop-ups anchor here; each family only layers its own
+   layout (widths, z-index, content) on top. */
 .toast-notification,
-.update-notification,
-.manual-check-notification,
 .eye-care-reminder {
   position: fixed;
   top: 20px;
@@ -1973,12 +1972,31 @@ body.light-theme .todo-bullet:hover .bullet-unchecked:where(:not(.todo-section, 
   color: #1f2937;
 }
 
+/* Optional action button on a toast (#890): the shell is pointer-events:
+   none so a toast never steals clicks; only the button re-enables them. */
+.toast-notification .toast-action {
+  pointer-events: auto;
+  margin-left: 16px;
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.toast-notification .toast-action:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 /* The shared shell must win the reduced-motion race against its own
    animation/transition declarations above (same file, later in the cascade). */
 @media (prefers-reduced-motion: reduce) {
   .toast-notification,
-  .update-notification,
-  .manual-check-notification,
   .eye-care-reminder {
     animation: none;
     transition: none;
@@ -2056,8 +2074,6 @@ body.light-theme .inline-today-date:hover {
 
 /* Light theme for the shared top-middle pop-up shell */
 body.light-theme .toast-notification,
-body.light-theme .update-notification,
-body.light-theme .manual-check-notification,
 body.light-theme .eye-care-reminder {
   background: rgba(255, 255, 255, 0.95);
   color: #1f2937;
@@ -2083,6 +2099,15 @@ body.light-theme .toast-notification.toast-info {
 body.light-theme .toast-notification.toast-warning {
   background: rgba(255, 152, 0, 0.95);
   color: #1f2937;
+}
+
+body.light-theme .toast-notification .toast-action {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+body.light-theme .toast-notification .toast-action:hover {
+  background: rgba(0, 0, 0, 0.12);
 }
 
 /* Mobile responsive adjustments for inline date picker */
