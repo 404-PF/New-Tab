@@ -54,7 +54,7 @@ src/
 	features/          # 待办、引导、简洁模式、拖拽等功能
 	ui/                # 设置、应用管理、添加应用、搜索栏处理
 _locales/            # 扩展国际化文案
-background/tools/    # 背景缩略图与视频预览生成脚本
+backgrounds/tools/   # 背景缩略图与视频预览生成脚本
 ```
 
 ## 👥 贡献指南
@@ -66,7 +66,7 @@ background/tools/    # 背景缩略图与视频预览生成脚本
 - 样式文件：`style.css`
 - 源码目录：`src/`
 - 国际化文案：`_locales/`
-- 背景资源辅助脚本：`background/tools/`
+- 背景资源辅助脚本：`backgrounds/tools/`
 - 仓库当前没有自动化测试。日常验证方式是重新加载已解压扩展，并在浏览器中新开标签页进行手动测试。
 
 ## 📄 许可协议

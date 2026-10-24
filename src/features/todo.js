@@ -109,7 +109,7 @@
   function createReminderAlarmFallback() {
     try {
       if (chrome.alarms) {
-        // SYNC: This alarm name must match ALARM_NAME in background/service-worker.js
+        // SYNC: This alarm name must match ALARM_NAME in backgrounds/service-worker.js
         // Matches CHECK_INTERVAL_MINUTES in service-worker.js — must be a periodic
         // alarm so the fallback never degrades the recurring reminder check into a
         // one-shot (see issue #620). Check first so repeated fallbacks while a

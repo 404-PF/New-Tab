@@ -56,93 +56,93 @@ const interactiveBackgroundArt = createInteractiveBackgroundDataUri();
 const backgroundsMap = {
   'Beach - Australia': {
     title: 'Beach - Australia',
-    thumb: 'background/thumbs/Beach_-_Australia.jpeg',
-    url: 'background/Beach_-_Australia.jpeg',
+    thumb: 'backgrounds/thumbs/Beach_-_Australia.jpeg',
+    url: 'backgrounds/Beach_-_Australia.jpeg',
   },
   'Canion Mountains on Night Sky': {
     title: 'Canion Mountains on Night Sky',
-    thumb: 'background/thumbs/Canion_Mountains_on_Night_Sky.jpeg',
-    url: 'background/Canion_Mountains_on_Night_Sky.jpeg',
+    thumb: 'backgrounds/thumbs/Canion_Mountains_on_Night_Sky.jpeg',
+    url: 'backgrounds/Canion_Mountains_on_Night_Sky.jpeg',
   },
   'City - Shanghai': {
     title: 'City - Shanghai',
-    thumb: 'background/thumbs/City_-_Shanghai.jpeg',
-    url: 'background/City_-_Shanghai.jpeg',
+    thumb: 'backgrounds/thumbs/City_-_Shanghai.jpeg',
+    url: 'backgrounds/City_-_Shanghai.jpeg',
   },
   'Close-up Photo of Glowing Blue Butterflies': {
     title: 'Close-up Photo of Glowing Blue Butterflies',
-    thumb: 'background/thumbs/Close-up_Photo_of_Glowing_Blue_Butterflies.jpeg',
-    url: 'background/Close-up_Photo_of_Glowing_Blue_Butterflies.jpeg',
+    thumb: 'backgrounds/thumbs/Close-up_Photo_of_Glowing_Blue_Butterflies.jpeg',
+    url: 'backgrounds/Close-up_Photo_of_Glowing_Blue_Butterflies.jpeg',
   },
   'Desert during Nighttime': {
     title: 'Desert during Nighttime',
-    thumb: 'background/thumbs/Desert_during_Nighttime.jpeg',
-    url: 'background/Desert_during_Nighttime.jpeg',
+    thumb: 'backgrounds/thumbs/Desert_during_Nighttime.jpeg',
+    url: 'backgrounds/Desert_during_Nighttime.jpeg',
   },
   'Dubai - United Arab Emirates': {
     title: 'Dubai - United Arab Emirates',
-    thumb: 'background/thumbs/Dubai_-_United_Arab_Emirates.jpeg',
-    url: 'background/Dubai_-_United_Arab_Emirates.jpeg',
+    thumb: 'backgrounds/thumbs/Dubai_-_United_Arab_Emirates.jpeg',
+    url: 'backgrounds/Dubai_-_United_Arab_Emirates.jpeg',
   },
   'Flower Field Under Pink Sky': {
     title: 'Flower Field Under Pink Sky',
-    thumb: 'background/thumbs/Flower_Field_Under_Pink_Sky.jpeg',
-    url: 'background/Flower_Field_Under_Pink_Sky.jpeg',
+    thumb: 'backgrounds/thumbs/Flower_Field_Under_Pink_Sky.jpeg',
+    url: 'backgrounds/Flower_Field_Under_Pink_Sky.jpeg',
   },
   'Full Moon': {
     title: 'Full Moon',
-    thumb: 'background/thumbs/Full_Moon.jpeg',
-    url: 'background/Full_Moon.jpeg',
+    thumb: 'backgrounds/thumbs/Full_Moon.jpeg',
+    url: 'backgrounds/Full_Moon.jpeg',
   },
   'High-rise Buildings During Nighttime': {
     title: 'High-rise Buildings During Nighttime',
-    thumb: 'background/thumbs/High-rise_Buildings_During_Nighttime.jpeg',
-    url: 'background/High-rise_Buildings_During_Nighttime.jpeg',
+    thumb: 'backgrounds/thumbs/High-rise_Buildings_During_Nighttime.jpeg',
+    url: 'backgrounds/High-rise_Buildings_During_Nighttime.jpeg',
   },
   'Huangshan - Anhui': {
     title: 'Huangshan - Anhui',
-    thumb: 'background/thumbs/Huangshan_-_Anhui.jpeg',
-    url: 'background/Huangshan_-_Anhui.jpeg',
+    thumb: 'backgrounds/thumbs/Huangshan_-_Anhui.jpeg',
+    url: 'backgrounds/Huangshan_-_Anhui.jpeg',
   },
   'Mountain Covered Snow Under Star': {
     title: 'Mountain Covered Snow Under Star',
-    thumb: 'background/thumbs/Mountain_Covered_Snow_Under_Star.jpeg',
-    url: 'background/Mountain_Covered_Snow_Under_Star.jpeg',
+    thumb: 'backgrounds/thumbs/Mountain_Covered_Snow_Under_Star.jpeg',
+    url: 'backgrounds/Mountain_Covered_Snow_Under_Star.jpeg',
   },
   'Mountain Covered With Snow during Nighttime': {
     title: 'Mountain Covered With Snow during Nighttime',
-    thumb: 'background/thumbs/Mountain_Covered_With_Snow_during_Nighttime.jpeg',
-    url: 'background/Mountain_Covered_With_Snow_during_Nighttime.jpeg',
+    thumb: 'backgrounds/thumbs/Mountain_Covered_With_Snow_during_Nighttime.jpeg',
+    url: 'backgrounds/Mountain_Covered_With_Snow_during_Nighttime.jpeg',
   },
   'Night Sky - Mountain Peak': {
     title: 'Night Sky - Mountain Peak',
-    thumb: 'background/thumbs/Night_Sky_-_Mountain_Peak.jpeg',
-    url: 'background/Night_Sky_-_Mountain_Peak.jpeg',
+    thumb: 'backgrounds/thumbs/Night_Sky_-_Mountain_Peak.jpeg',
+    url: 'backgrounds/Night_Sky_-_Mountain_Peak.jpeg',
   },
   'Night Sky - Tree': {
     title: 'Night Sky - Tree',
-    thumb: 'background/thumbs/Night_Sky_-_Tree.jpeg',
-    url: 'background/Night_Sky_-_Tree.jpeg',
+    thumb: 'backgrounds/thumbs/Night_Sky_-_Tree.jpeg',
+    url: 'backgrounds/Night_Sky_-_Tree.jpeg',
   },
   'Photo of Starry Night': {
     title: 'Photo of Starry Night',
-    thumb: 'background/thumbs/Photo_of_Starry_Night.jpeg',
-    url: 'background/Photo_of_Starry_Night.jpeg',
+    thumb: 'backgrounds/thumbs/Photo_of_Starry_Night.jpeg',
+    url: 'backgrounds/Photo_of_Starry_Night.jpeg',
   },
   'Skyline At Night - Hong Kong': {
     title: 'Skyline At Night - Hong Kong',
-    thumb: 'background/thumbs/Skyline_At_Night_-_Hong_Kong.jpeg',
-    url: 'background/Skyline_At_Night_-_Hong_Kong.jpeg',
+    thumb: 'backgrounds/thumbs/Skyline_At_Night_-_Hong_Kong.jpeg',
+    url: 'backgrounds/Skyline_At_Night_-_Hong_Kong.jpeg',
   },
   'Slovenia': {
     title: 'Slovenia',
-    thumb: 'background/thumbs/Slovenia.jpeg',
-    url: 'background/Slovenia.jpeg',
+    thumb: 'backgrounds/thumbs/Slovenia.jpeg',
+    url: 'backgrounds/Slovenia.jpeg',
   },
   'Water Beside Forest': {
     title: 'Water Beside Forest',
-    thumb: 'background/thumbs/Water_Beside_Forest.jpeg',
-    url: 'background/Water_Beside_Forest.jpeg',
+    thumb: 'backgrounds/thumbs/Water_Beside_Forest.jpeg',
+    url: 'backgrounds/Water_Beside_Forest.jpeg',
   },
   'Interactive Drift': {
     title: 'Interactive Drift',
@@ -153,26 +153,26 @@ const backgroundsMap = {
   // Live Video Background
   'Animated Wallpaper - Kitten': {
     title: 'Animated Wallpaper - Kitten',
-    thumb: 'background/thumbs/Animated-Wallpaper-Kitten.jpeg',
-    url: 'background/live_background/Animated-Wallpaper-Kitten.mp4',
+    thumb: 'backgrounds/thumbs/Animated-Wallpaper-Kitten.jpeg',
+    url: 'backgrounds/live_backgrounds/Animated-Wallpaper-Kitten.mp4',
     type: 'video'
   },
   'Anime Cartoon - Cottage': {
     title: 'Anime Cartoon - Cottage',
-    thumb: 'background/thumbs/Anime-Cartoon-Cottage.jpeg',
-    url: 'background/live_background/Anime-Cartoon-Cottage.mp4',
+    thumb: 'backgrounds/thumbs/Anime-Cartoon-Cottage.jpeg',
+    url: 'backgrounds/live_backgrounds/Anime-Cartoon-Cottage.mp4',
     type: 'video'
   },
   'Boy Running - Green Hillside': {
     title: 'Boy Running - Green Hillside',
-    thumb: 'background/thumbs/Boy-Running-Green-Hillside.jpeg',
-    url: 'background/live_background/Boy-Running-Green-Hillside.mp4',
+    thumb: 'backgrounds/thumbs/Boy-Running-Green-Hillside.jpeg',
+    url: 'backgrounds/live_backgrounds/Boy-Running-Green-Hillside.mp4',
     type: 'video'
   },
   'Tyndall - Morning Light': {
     title: 'Tyndall - Morning Light',
-    thumb: 'background/thumbs/Tyndall-Morning_Light.jpeg', // Actual video thumbnail
-    url: 'background/live_background/Tyndall-Morning Light.mp4',
+    thumb: 'backgrounds/thumbs/Tyndall-Morning_Light.jpeg', // Actual video thumbnail
+    url: 'backgrounds/live_backgrounds/Tyndall-Morning Light.mp4',
     type: 'video'
   },
 };

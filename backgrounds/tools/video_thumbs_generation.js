@@ -1,12 +1,12 @@
 // video_thumbs_generation.js
 // Generates thumbnails from video files using FFmpeg
-// Run with: FFMPEG_PATH=/absolute/path/to/ffmpeg node background/tools/video_thumbs_generation.js
+// Run with: FFMPEG_PATH=/absolute/path/to/ffmpeg node backgrounds/tools/video_thumbs_generation.js
 
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const LIVE_BG_DIR = path.join(__dirname, '../live_background');
+const LIVE_BG_DIR = path.join(__dirname, '../live_backgrounds');
 const OUT_DIR = path.join(__dirname, '../thumbs');
 
 // Thumbnail settings
@@ -90,7 +90,7 @@ async function main() {
   const ffmpegPath = getFFmpegPath();
   if (!ffmpegPath) {
     console.error('ERROR: FFMPEG_PATH must be an absolute path to an executable file.');
-    console.error('Example: FFMPEG_PATH=/usr/bin/ffmpeg node background/tools/video_thumbs_generation.js');
+    console.error('Example: FFMPEG_PATH=/usr/bin/ffmpeg node backgrounds/tools/video_thumbs_generation.js');
     process.exit(1);
   }
 
@@ -105,9 +105,9 @@ async function main() {
     console.log(`Created directory: ${OUT_DIR}\n`);
   }
 
-  // Check if live_background directory exists
+  // Check if live_backgrounds directory exists
   if (!fs.existsSync(LIVE_BG_DIR)) {
-    console.log('No live_background directory found.');
+    console.log('No live_backgrounds directory found.');
     return;
   }
 
@@ -115,7 +115,7 @@ async function main() {
   const files = fs.readdirSync(LIVE_BG_DIR).filter(isVideo);
 
   if (files.length === 0) {
-    console.log('No video files found in /live_background');
+    console.log('No video files found in /live_backgrounds');
     return;
   }
 

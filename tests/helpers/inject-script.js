@@ -3,7 +3,7 @@ import { resolve, sep } from 'path';
 import vm from 'vm';
 
 const PROJECT_ROOT = realpathSync(process.cwd());
-const TRUSTED_SCRIPT_PATH = /^(?:src|background|tests)(?:\/[A-Za-z0-9._-]+)+\.js$/;
+const TRUSTED_SCRIPT_PATH = /^(?:src|backgrounds|tests)(?:\/[A-Za-z0-9._-]+)+\.js$/;
 
 function resolveTrustedScriptPath(relativePath) {
   if (

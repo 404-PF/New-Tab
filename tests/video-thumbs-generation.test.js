@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 
-const toolPath = path.resolve(process.cwd(), 'background/tools/video_thumbs_generation.js');
+const toolPath = path.resolve(process.cwd(), 'backgrounds/tools/video_thumbs_generation.js');
 const toolSource = readFileSync(toolPath, 'utf8');
 
 function loadTool({ ffmpegPath, statSync, accessSync, execFileSync = vi.fn() } = {}) {
@@ -73,7 +73,7 @@ describe('video thumbnail generator', () => {
   it('uses an argv array and bounded execution times for FFmpeg', () => {
     const execFileSync = vi.fn();
     const { tool } = loadTool({ execFileSync });
-    const videoPath = path.resolve('live_background', 'trailer;still-a-filename.mp4');
+    const videoPath = path.resolve('live_backgrounds', 'trailer;still-a-filename.mp4');
     const outputPath = path.resolve('thumbs', 'trailer.jpeg');
 
     expect(tool.checkFFmpeg(absolutePath)).toBe(true);

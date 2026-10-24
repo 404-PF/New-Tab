@@ -17,7 +17,7 @@ export default defineConfig({
       exclude: [
         'tests/**',
         '**/node_modules/**',
-        'background/tools/**'
+        'backgrounds/tools/**'
       ]
     }
   }

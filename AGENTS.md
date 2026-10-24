@@ -31,7 +31,7 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 - **App-grid coordination**: `src/core/app-grid-state.js` exposes `window.__appGridState`, a phase-based state machine (`'idle'` → `'deferred'` → `'rendered'`) that coordinates grid readiness across modules. Call `__appGridState.setPhase('rendered')` when the grid is fully rendered; the object dispatches an `appGridReady` CustomEvent on that transition. `window.appGridReady` is a backward-compatible getter (`=== true` when rendered).
 - **Module style**: Browser code is plain scripts that attach functions to `window.*`. There are no ES module imports in `src/` source files (tests are ES modules and use `import`/`export`). A handful of files (`utils.js`, `app-manager.js`, `add-app-modal.js`, `app-folders.js`, `drag-drop.js`, `context-menu.js`) wrap their top-level code in a strict-mode IIFE. Inside these IIFEs, cross-file globals must be referenced as `window.Foo`, not bare `Foo` — ESLint enforces this via `no-restricted-globals` in `eslint.config.js`.
 - **Storage**: `src/core/storage.js` is a shim that bridges `localStorage` onto `chrome.storage.local` and exposes `window.__storageBridgeReady`. The bootstrap waits on that promise before loading the rest of the scripts.
-- **Service worker**: `background/service-worker.js` is a separate context; ESLint treats it with browser globals only.
+- **Service worker**: `backgrounds/service-worker.js` is a separate context; ESLint treats it with browser globals only.
 - **No build artifacts**: nothing is generated from source. `package.json` and `manifest.json` versions are kept in sync manually when preparing a release.
 
 ## Directory Layout
@@ -41,7 +41,7 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 - `src/features/` - todo, notes (public API: `initNotes`, `addNote`, `deleteNote`, `updateNoteText`), onboarding, simple mode, drag-drop, app folders, context menu, weather, interactive background
 - `src/ai/` - AI assistant, markdown parser, network/offline detection, OpenRouter client
 - `src/data/` - built-in backgrounds and mottos
-- `background/` - service worker and Node thumbnail/video tooling (excluded from coverage)
+- `backgrounds/` - service worker and Node thumbnail/video tooling (excluded from coverage)
 - `tests/` - Vitest specs; `tests/setup.js` mocks `chrome.*` and `window.i18n`
 - `docs/` - localized READMEs, contributing guide, store listing copy, privacy policy
 - `_locales/` - extension i18n messages
@@ -53,14 +53,14 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 - **DOM stubs**: `tests/setup.js` pre-creates a long list of element stubs (`clock-time`, `date`, `todo-list`, `notes-list`, `bg-*`, settings inputs, dialogs). If a new test fails with "cannot read property of null", add a stub there.
 - **Reset between tests**: `beforeAll` and `beforeEach` clear `localStorage`; `beforeEach` also removes transient toast/notification/validation DOM nodes.
 - **Manual testing still required** for extension APIs, `chrome.*` behaviors the mock does not cover, video playback, and the AI chat.
-- **Coverage** (`src/**/*.js`, excludes `background/tools/**`) is generated locally only; not committed.
+- **Coverage** (`src/**/*.js`, excludes `backgrounds/tools/**`) is generated locally only; not committed.
 
 ## Linting
 
 - ESLint v10 flat config (`eslint.config.js`).
-- Per-file `globals` blocks: source files, test files, IIFE-wrapped source files, `background/tools/*` (Node), and `background/service-worker.js` each have their own globals. When you expose a new `window.*` symbol used by tests, add it to both the `srcGlobals` and `testGlobals` objects in `eslint.config.js`.
+- Per-file `globals` blocks: source files, test files, IIFE-wrapped source files, `backgrounds/tools/*` (Node), and `backgrounds/service-worker.js` each have their own globals. When you expose a new `window.*` symbol used by tests, add it to both the `srcGlobals` and `testGlobals` objects in `eslint.config.js`.
 - Source style: single quotes, semicolons, `===` only, no `var`, `no-unused-vars` ignores `_`-prefixed and arguments, `no-console` warns but allows `info`/`log`/`warn`/`error`.
-- `background/tools/**` is the only place `no-console` is off and Node globals are enabled.
+- `backgrounds/tools/**` is the only place `no-console` is off and Node globals are enabled.
 
 ## Conventions
 
