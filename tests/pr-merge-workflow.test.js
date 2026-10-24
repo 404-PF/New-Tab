@@ -56,9 +56,19 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
   });
 
   it('pins narrow permissions, uses GITHUB_TOKEN everywhere, and GH_PAT only for branch protection and the merge mutation', () => {
-    // Anchored to the closing blank line with a lookahead so an extra scope
-    // cannot slip in after actions: read while still matching.
-    expect(merge).toMatch(/permissions:\n {6}contents: write\n {6}pull-requests: write\n {6}checks: read\n {6}statuses: read\n {6}actions: read\n(?! {6}[\w-]+:)/);
+    // Parse the complete permissions mapping so a blank or comment line
+    // cannot hide an extra scope anywhere inside the block: every scope
+    // line the block contains must be one of the five expected entries.
+    const perms = merge.match(/^ {4}permissions:\n((?:[ \t]*\n|[ \t]*#[^\n]*\n| {6}[\w-]+:[^\n]*\n)*)/m);
+    expect(perms).not.toBeNull();
+    const scopes = [...perms[1].matchAll(/^ {6}([\w-]+):\s*(\S+)\s*$/gm)].map((match) => `${match[1]}: ${match[2]}`);
+    expect(scopes).toEqual([
+      'contents: write',
+      'pull-requests: write',
+      'checks: read',
+      'statuses: read',
+      'actions: read',
+    ]);
     // The protection endpoint requires Administration:read, and a merge
     // with GITHUB_TOKEN would not trigger post-merge workflows; GH_PAT is
     // scoped to those two calls via PAT_TOKEN and falls back to
@@ -193,8 +203,9 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
 
   it('revalidates every mutable merge predicate immediately before merging', () => {
     // The mutation also carries expectedHeadOid, but state, draft, base,
-    // head SHA, and labels are re-checked so a change during evaluation
-    // aborts instead of merging an unverified commit.
+    // head SHA, labels, and the active pr-drive guard are re-checked so a
+    // change during evaluation aborts instead of merging an unverified
+    // commit or merging a pr-drive run out from under itself.
     expect(merge).toContain('FINAL_JSON="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")"');
     expect(merge).toContain('[ "$FINAL_STATE" != \'open\' ]');
     expect(merge).toContain('[ "$FINAL_DRAFT" = \'true\' ]');
@@ -202,6 +213,12 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toContain('[ "$FINAL_HEAD" != "$HEAD_SHA" ]');
     expect(merge).toContain('PR state changed during evaluation; merge aborted');
     expect(merge).toContain('a blocking label was added during evaluation; merge aborted');
+    // Gate 7's active-drive guard is re-run immediately before the
+    // mutation: a pr-drive run can start after gate 7 and before the
+    // merge, so a fresh lookup failure or an active run must abort.
+    expect(merge).toContain('FINAL_DRIVE_RUNS=');
+    expect(merge).toContain('could not re-check active pr-drive runs before merge');
+    expect(merge).toContain('a pr-drive run became active during evaluation; merge aborted');
     expect(merge).toContain('expectedHeadOid mismatch or permissions');
   });
 

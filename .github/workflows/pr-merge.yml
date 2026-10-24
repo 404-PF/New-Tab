@@ -370,6 +370,24 @@ jobs:
             FINAL_BASE="$(jq -r .base.ref <<<"$FINAL_JSON")"
             FINAL_HEAD="$(jq -r .head.sha <<<"$FINAL_JSON")"
             FINAL_REF="$(jq -r .head.ref <<<"$FINAL_JSON")"
+            # Re-run gate 7 too: a pr-drive run can start after that gate
+            # and before this mutation, and must not be merged out from
+            # under itself. Fail closed on a lookup error, same as gate 7.
+            FINAL_ACTIVE_DRIVE=0
+            FINAL_DRIVE_LOOKUP_OK=1
+            for drive_status in in_progress queued; do
+              if ! FINAL_DRIVE_RUNS="$(gh api "repos/$GH_REPO/actions/workflows/pr-drive.yml/runs?status=$drive_status&per_page=100")"; then
+                FINAL_DRIVE_LOOKUP_OK=0
+                break
+              fi
+              if jq -e --argjson n "$PR_NUMBER" \
+                  'any(.workflow_runs[]?;
+                    any(.pull_requests[]?; .number == $n)
+                    or ((.display_title // "") == ("pr-drive #" + ($n | tostring))))' \
+                  <<<"$FINAL_DRIVE_RUNS" >/dev/null; then
+                FINAL_ACTIVE_DRIVE=1
+              fi
+            done
             if [ "$FINAL_STATE" != 'open' ] || [ "$FINAL_DRAFT" = 'true' ] \
               || [ "$FINAL_BASE" != 'main' ] || [ "$FINAL_HEAD" != "$HEAD_SHA" ]; then
               deny 'PR state changed during evaluation; merge aborted'
@@ -377,6 +395,12 @@ jobs:
             elif jq -e 'any(.labels[]; .name == "do-not-merge" or .name == "hold" or .name == "wip" or .name == "blocked")' \
                 <<<"$FINAL_JSON" >/dev/null; then
               deny 'a blocking label was added during evaluation; merge aborted'
+              DECISION='blocked'
+            elif [ "$FINAL_DRIVE_LOOKUP_OK" = '0' ]; then
+              deny 'could not re-check active pr-drive runs before merge'
+              DECISION='blocked'
+            elif [ "$FINAL_ACTIVE_DRIVE" = '1' ]; then
+              deny 'a pr-drive run became active during evaluation; merge aborted'
               DECISION='blocked'
             else
               jq -n \
