@@ -1542,15 +1542,18 @@ body.light-theme .about-cards .setting-card a:hover {
 
 /* Eye-care Reminder — family layout on the shared shell. Keeps its countdown
    ring and Skip/Done controls but adopts the toast type scale, padding, and
-   button treatment, painted with the toast-info semantic variant (#890). */
+   button treatment, painted with the info semantic variant (#890). The variant
+   selector is doubled because css/app.css loads after this file, so the shared
+   shell would win a specificity tie. The blue is darker than toast-info's
+   #2196f3 so the 14 px white text clears WCAG AA. */
 .eye-care-reminder {
   width: min(560px, calc(100vw - 32px));
   z-index: 5001;
 }
 
-.eye-care-reminder-info {
-  background: rgba(33, 150, 243, 0.95);
-  border-color: rgba(33, 150, 243, 0.4);
+.eye-care-reminder.eye-care-reminder-info {
+  background: rgba(21, 101, 192, 0.95);
+  border-color: rgba(21, 101, 192, 0.4);
 }
 
 .eye-care-reminder-content {
@@ -1576,7 +1579,7 @@ body.light-theme .about-cards .setting-card a:hover {
   margin: 0;
   font-size: 14px;
   line-height: 1.45;
-  color: rgba(255, 255, 255, 0.84);
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .eye-care-ring {
@@ -1641,10 +1644,12 @@ body.light-theme .setting-description {
   color: rgba(55, 65, 81, 0.8);
 }
 
-/* The reminder keeps the toast-info hue in light theme, mirroring
-   body.light-theme .toast-notification.toast-info in css/app.css (#890). */
-body.light-theme .eye-care-reminder-info {
-  background: rgba(33, 150, 243, 0.95);
+/* The reminder keeps its info hue in light theme, restoring the variant over
+   the shared light shell exactly as body.light-theme .toast-notification.toast-info
+   does in css/app.css. Selector doubled so it out-specifies that shell (#890). */
+body.light-theme .eye-care-reminder.eye-care-reminder-info {
+  background: rgba(21, 101, 192, 0.95);
+  border-color: rgba(21, 101, 192, 0.4);
   color: #ffffff;
 }
 

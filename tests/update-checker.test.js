@@ -64,12 +64,50 @@ describe('UpdateChecker', () => {
       expect(resultSpy).toHaveBeenCalledWith(
         instance.formatMessage('updateManualNewVersion', { version: '2.0.0' }),
         'updateManualNewVersion',
-        { version: '2.0.0' }
+        { version: '2.0.0' },
+        { autoHide: false }
       );
 
       checkSpy.mockRestore();
       toastSpy.mockRestore();
       resultSpy.mockRestore();
+    });
+
+    it('keeps the auto-check About result on screen past the five-second window (#890)', async () => {
+      let captured = null;
+      window.onDomReady = (cb) => { captured = cb; };
+      injectScript('src/core/update-checker.js');
+
+      const instance = window.updateChecker;
+      instance.currentVersion = '1.0.0';
+      instance.setLastCheckTime(0);
+
+      const aboutSection = document.createElement('section');
+      aboutSection.className = 'settings-section';
+      aboutSection.setAttribute('data-section', 'about');
+      document.body.appendChild(aboutSection);
+
+      vi.useFakeTimers();
+      const checkSpy = vi.spyOn(instance, 'checkForUpdates').mockResolvedValue({
+        version: '2.0.0',
+        url: 'https://example.com'
+      });
+      const toastSpy = vi.spyOn(instance, 'showUpdateNotification').mockImplementation(() => {});
+
+      try {
+        await captured();
+
+        expect(document.querySelector('.manual-check-result')).not.toBeNull();
+
+        vi.advanceTimersByTime(6000);
+        expect(document.querySelector('.manual-check-result')).not.toBeNull();
+      } finally {
+        instance.hideManualCheckResult();
+        checkSpy.mockRestore();
+        toastSpy.mockRestore();
+        vi.useRealTimers();
+        aboutSection.remove();
+      }
     });
   });
 
@@ -500,7 +538,7 @@ describe('UpdateChecker', () => {
 
       checker.showManualCheckNotification(payload);
       const manualToast = document.querySelector('.toast-notification');
-      expect(manualToast.textContent).toContain(payload);
+      expect(manualToast.textContent).toBe(payload);
       expect(manualToast.querySelector('img')).toBeNull();
       vi.restoreAllMocks();
     });

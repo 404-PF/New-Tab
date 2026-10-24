@@ -9,7 +9,7 @@ class UpdateChecker {
     this._manualCheckResultTimeoutId = null; // Track manual-check-result auto-hide timeout
     this._manualCheckResultUnsubscribe = null; // Track manual-check-result visibility unsubscribe
     this._manualCheckResultGetRemaining = null; // Visible time left on the manual-check-result timer
-    this._manualCheckResultState = null; // Last inline About result: { message, key, replacements, remaining }
+    this._manualCheckResultState = null; // Last inline About result: { message, key, replacements, remaining, autoHide }
     this._updateToastHandle = null; // Handle for the active update toast (#890)
     this._manualCheckToastHandle = null; // Handle for the active manual-check toast (#890)
   }
@@ -380,7 +380,10 @@ class UpdateChecker {
 
   // Show manual check result. When i18nKey is provided, rebuilds re-render the
   // text via formatMessage so a languageChanged refresh re-translates it.
-  showManualCheckResult(message, i18nKey = null, replacements = {}) {
+  // options.autoHide === false keeps the result on screen indefinitely: the
+  // auto-check on load writes it while the About section is hidden, so a 5 s
+  // window would expire before anyone could read it (#890).
+  showManualCheckResult(message, i18nKey = null, replacements = {}, options = {}) {
     // A new result gets a fresh window; drop the previous result's timer so
     // its remaining time is not carried over.
     this._clearTimedAutoHide('manualCheckResult');
@@ -388,7 +391,8 @@ class UpdateChecker {
       message,
       key: i18nKey || null,
       replacements: replacements || {},
-      remaining: 5000
+      remaining: 5000,
+      autoHide: options.autoHide !== false
     };
     this.renderManualCheckResult();
   }
@@ -399,16 +403,18 @@ class UpdateChecker {
     const state = this._manualCheckResultState;
     if (!state) return;
 
+    const stays = state.autoHide === false;
+
     // Carry over the visible time left on the running timer, so time spent
     // in a background tab (when the timer is paused) does not count.
     const getRemaining = this._manualCheckResultGetRemaining;
-    if (getRemaining) state.remaining = getRemaining();
+    if (!stays && getRemaining) state.remaining = getRemaining();
 
     this._clearTimedAutoHide('manualCheckResult');
     const existing = document.querySelector('.manual-check-result');
     if (existing) existing.remove();
 
-    if (state.remaining <= 0) {
+    if (!stays && state.remaining <= 0) {
       this._manualCheckResultState = null;
       return;
     }
@@ -421,7 +427,9 @@ class UpdateChecker {
     result.textContent = state.key ? this.formatMessage(state.key, state.replacements) : state.message;
     aboutSection.appendChild(result);
 
-    this._scheduleManualCheckResultAutoHide(() => this.hideManualCheckResult(), state.remaining);
+    if (!stays) {
+      this._scheduleManualCheckResultAutoHide(() => this.hideManualCheckResult(), state.remaining);
+    }
   }
 
   // Hide manual check result and drop its stored state
@@ -489,10 +497,12 @@ window.onDomReady(async () => {
     const update = await updateChecker.checkForUpdates();
     if (update) {
       updateChecker.showUpdateNotification(update);
-      // The toast is a short-lived nudge; write the durable inline About
-      // result too so an available update always leaves a record (#890).
+      // The toast is a short-lived nudge; write the inline About result too
+      // so an available update always leaves a record. It must not expire:
+      // the About section is still hidden here, so a 5 s window would delete
+      // it before anyone saw it (#890).
       const message = updateChecker.formatMessage('updateManualNewVersion', { version: update.version });
-      updateChecker.showManualCheckResult(message, 'updateManualNewVersion', { version: update.version });
+      updateChecker.showManualCheckResult(message, 'updateManualNewVersion', { version: update.version }, { autoHide: false });
     }
   }
 });

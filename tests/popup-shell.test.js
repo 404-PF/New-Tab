@@ -215,18 +215,25 @@ describe('Shared top-middle pop-up shell (#877, #890)', () => {
     });
   });
 
-  it('paints the eye-care reminder with the toast-info semantic variant (#890)', () => {
+  it('paints the eye-care reminder with the info variant at an AA-passing blue (#890)', () => {
     expect(FEATURES_CSS).toMatch(
-      /\.eye-care-reminder-info\s*\{[^}]*background:\s*rgba\(33, 150, 243, 0\.95\)/
+      /\.eye-care-reminder\.eye-care-reminder-info\s*\{[^}]*background:\s*rgba\(21, 101, 192, 0\.95\)/
     );
     expect(FEATURES_CSS).toMatch(
-      /body\.light-theme \.eye-care-reminder-info\s*\{[^}]*background:\s*rgba\(33, 150, 243, 0\.95\)/
+      /body\.light-theme \.eye-care-reminder\.eye-care-reminder-info\s*\{[^}]*background:\s*rgba\(21, 101, 192, 0\.95\)/
+    );
+    expect(FEATURES_CSS).toMatch(
+      /\.eye-care-reminder-text\s*\{[^}]*color:\s*rgba\(255, 255, 255, 0\.95\)/
     );
   });
 
   it('leaves the manual-check shell colors to CSS instead of inline styles', () => {
     const source = readFileSync(UPDATE_CHECKER_PATH, 'utf-8');
     expect(source).not.toMatch(/notification\.style\.(background|borderColor)/);
+  });
+
+  it('builds update-checker UI with DOM APIs instead of innerHTML (#890)', () => {
+    const source = readFileSync(UPDATE_CHECKER_PATH, 'utf-8');
     expect(source).not.toMatch(/innerHTML/);
   });
 });
