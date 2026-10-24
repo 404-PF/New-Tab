@@ -1075,8 +1075,10 @@ describe('App URL result reuse', () => {
 
   it('reuses canonical results and parses changed inputs independently', () => {
     const OriginalURL = window.URL;
+    const unmodeledCalls = [];
     const parse = vi.spyOn(window, 'URL').mockImplementation(function (url) {
       if (arguments.length !== 1 || !['https://www.memo-canonical.example/path/', 'https://www.memo-changed.example/next/'].includes(url)) {
+        unmodeledCalls.push(Array.from(arguments));
         throw new Error('Unmodeled URL construction');
       }
       return new OriginalURL(url);
@@ -1087,12 +1089,15 @@ describe('App URL result reuse', () => {
     expect(parse).toHaveBeenCalledTimes(1);
     expect(AppGridState.getCanonicalUrl('https://www.memo-changed.example/next/')).toBe('https://memo-changed.example/next');
     expect(parse).toHaveBeenCalledTimes(2);
+    expect(unmodeledCalls).toEqual([]);
   });
 
   it('reuses invalid canonical results without losing changed-input misses', () => {
     const OriginalURL = window.URL;
+    const unmodeledCalls = [];
     const parse = vi.spyOn(window, 'URL').mockImplementation(function (url) {
       if (arguments.length !== 1 || !['invalid memo url', 'another invalid memo url'].includes(url)) {
+        unmodeledCalls.push(Array.from(arguments));
         throw new Error('Unmodeled URL construction');
       }
       return new OriginalURL(url);
@@ -1103,6 +1108,32 @@ describe('App URL result reuse', () => {
     expect(parse).toHaveBeenCalledTimes(1);
     expect(AppGridState.getCanonicalUrl('another invalid memo url')).toBe('another invalid memo url');
     expect(parse).toHaveBeenCalledTimes(2);
+    expect(unmodeledCalls).toEqual([]);
+  });
+
+  it('reuses stored canonical parsing across changed duplicate queries', () => {
+    const storedUrl = 'https://www.integrated-memo.example/path/';
+    const firstQuery = 'https://first-integrated-miss.example/';
+    const secondQuery = 'https://second-integrated-miss.example/';
+    AppGridStorage.saveCustomApps([{ id: 'integrated-memo', name: 'Stored', url: storedUrl }]);
+    const OriginalURL = window.URL;
+    const unmodeledCalls = [];
+    const parse = vi.spyOn(window, 'URL').mockImplementation(function (url) {
+      if (arguments.length !== 1 || ![storedUrl, firstQuery, secondQuery].includes(url)) {
+        unmodeledCalls.push(Array.from(arguments));
+        throw new Error('Unmodeled URL construction');
+      }
+      return new OriginalURL(url);
+    });
+
+    expect(AppGridState.hasAppWithUrl(firstQuery)).toBe(false);
+    // Storage validation and duplicate normalization each parse once, plus the cold canonical parse.
+    expect(parse.mock.calls.filter(([url]) => url === storedUrl)).toHaveLength(3);
+    parse.mockClear();
+    expect(AppGridState.hasAppWithUrl(secondQuery)).toBe(false);
+    expect(parse).toHaveBeenCalledWith(secondQuery);
+    expect(parse.mock.calls.filter(([url]) => url === storedUrl)).toHaveLength(2);
+    expect(unmodeledCalls).toEqual([]);
   });
 
   it('skips the duplicate scan for unchanged inputs and scans changed inputs', () => {

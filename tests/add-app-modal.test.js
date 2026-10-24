@@ -443,6 +443,53 @@ describe('Add app preview debounce', () => {
     expect(document.getElementById('preview-url').textContent).toBe('https://next.example/');
   });
 
+  it('debounces malformed preview construction while showing format errors immediately', () => {
+    const previewUrl = document.getElementById('preview-url');
+    const previewWrite = vi.spyOn(previewUrl, 'textContent', 'set');
+
+    for (const url of ['http://', 'https://', 'https://final.c/']) {
+      typeUrl(url);
+      expect(document.getElementById('add-app-confirm').disabled).toBe(true);
+      expect(document.querySelector('.add-app-validation-message').classList.contains('malformed')).toBe(true);
+      vi.advanceTimersByTime(100);
+    }
+    vi.advanceTimersByTime(49);
+    expect(previewWrite).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(previewWrite).toHaveBeenCalledExactlyOnceWith('https://final.c/');
+    expect(document.querySelector('#preview-icon img').src).toContain('domain=final.c&');
+    expect(scan).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(300);
+    expect(previewWrite).toHaveBeenCalledTimes(1);
+
+    typeUrl('https://next.c/');
+    vi.advanceTimersByTime(149);
+    expect(previewWrite).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(previewWrite).toHaveBeenCalledTimes(2);
+    expect(previewWrite).toHaveBeenLastCalledWith('https://next.c/');
+    typeUrl('valid-after-malformed.example');
+    vi.advanceTimersByTime(150);
+    expect(scan).toHaveBeenCalledExactlyOnceWith('https://valid-after-malformed.example/');
+  });
+
+  it.each(['close', 'reset', 'empty'])('cancels malformed preview construction on %s', (action) => {
+    const previewWrite = vi.spyOn(document.getElementById('preview-url'), 'textContent', 'set');
+    typeUrl('https://cancel.c/');
+    expect(previewWrite).not.toHaveBeenCalled();
+    if (action === 'close') window.closeAddAppModal();
+    else if (action === 'reset') window.resetAddAppModalState();
+    else typeUrl('');
+
+    vi.advanceTimersByTime(450);
+    expect(previewWrite).not.toHaveBeenCalled();
+    window.initAddAppModal();
+    window.openAddAppModal();
+    typeUrl('https://reopened.c/');
+    vi.advanceTimersByTime(150);
+    expect(previewWrite).toHaveBeenCalledExactlyOnceWith('https://reopened.c/');
+  });
+
   it('coalesces language refreshes with pending input previews', () => {
     typeUrl('language.example');
     vi.advanceTimersByTime(100);

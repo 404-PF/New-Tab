@@ -424,7 +424,7 @@ function updatePreview(showPreview = true) {
   const isCreatable = (isValid || validation.status === 'undetectable') &&
     isStorableAppUrl(normalizeAppUrl(url));
 
-  if (showPreview || !isCreatable) {
+  if (showPreview) {
     const appName = extractAppName(url);
 
     if (previewName) {
@@ -468,7 +468,7 @@ function updatePreview(showPreview = true) {
   if (addAppConfirm) {
     addAppConfirm.disabled = !isCreatable || isDuplicate;
   }
-  return isCreatable;
+  return true;
 }
 
 function scheduleAddAppPreview() {
