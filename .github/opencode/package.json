@@ -1,0 +1,9 @@
+{
+  "name": "opencode-install",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reviewed OpenCode install for the bug-find and feature-find workflows. Bump opencode-ai and regenerate package-lock.json together after reviewing a new release.",
+  "dependencies": {
+    "opencode-ai": "1.19.4"
+  }
+}
