@@ -90,6 +90,15 @@ jobs:
     # Cheap event pre-filter: no runner for events unrelated to a PR
     # targeting main. workflow_dispatch always runs; the first step
     # re-validates the pr_number before touching anything.
+    #
+    # The same-repo-head half of that filter is not just tidiness: GitHub
+    # downgrades GITHUB_TOKEN to read-only on pull_request and
+    # pull_request_review events when the PR's head is a fork, so a fork PR
+    # could only ever reach a "blocked" verdict — never a merge — while
+    # still burning a runner and failing the step on the verdict comment's
+    # 403. Skipping it up front keeps that check neutral. workflow_dispatch
+    # stays open as a manual escape hatch, and gate 2 below still denies a
+    # fork the dispatch path is pointed at.
     if: >
       github.event_name == 'workflow_dispatch' ||
       (
@@ -97,6 +106,7 @@ jobs:
           github.event_name == 'pull_request' ||
           github.event_name == 'pull_request_review'
         ) &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.pull_request.base.ref == 'main'
       ) ||
       (
@@ -105,12 +115,17 @@ jobs:
           github.event_name == 'check_suite'
         ) &&
         (
+          github.event.check_run.pull_requests[0].head.repo.full_name == github.repository ||
+          github.event.check_suite.pull_requests[0].head.repo.full_name == github.repository
+        ) &&
+        (
           github.event.check_run.pull_requests[0].base.ref == 'main' ||
           github.event.check_suite.pull_requests[0].base.ref == 'main'
         )
       ) ||
       (
         github.event_name == 'workflow_run' &&
+        github.event.workflow_run.pull_requests[0].head.repo.full_name == github.repository &&
         github.event.workflow_run.pull_requests[0].base.ref == 'main'
       )
 
@@ -441,6 +456,16 @@ jobs:
           # <!-- pr-merge --> sentinel (same find-or-PATCH as pr-drive);
           # any earlier duplicate sentinel comments are deleted so the
           # "exactly one" guarantee holds even after historical races.
+          #
+          # Reporting is deliberately the only best-effort part of this
+          # workflow, and it is guarded rather than allowed to fail the
+          # step. A token that lost comment access (a read-only fork-PR
+          # downgrade, a comment restriction, a locked PR) must not turn a
+          # correct "blocked" verdict into a red check — that would report a
+          # merge problem where none exists and train maintainers to ignore
+          # this check. Note that only the reporting writes are guarded: a
+          # gate failure or a failed merge above still fails this step, so
+          # the fail-closed guarantees are unchanged.
           {
             echo '<!-- pr-merge -->'
             echo '## pr-merge summary'
@@ -455,16 +480,19 @@ jobs:
             echo "Run: $RUN_URL"
           } > "$BODY_FILE"
           EXISTING_IDS="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate \
-            --jq '.[] | select(.user.login == "github-actions[bot]" and ((.body // "") | startswith("<!-- pr-merge -->"))) | .id')"
+            --jq '.[] | select(.user.login == "github-actions[bot]" and ((.body // "") | startswith("<!-- pr-merge -->"))) | .id')" || true
           LAST_ID="$(<<<"$EXISTING_IDS" tail -n 1)"
           if [ -n "$LAST_ID" ]; then
-            jq -n --rawfile b "$BODY_FILE" '{body: $b}' \
-              | gh api -X PATCH "repos/$GH_REPO/issues/comments/$LAST_ID" --input - >/dev/null
-            while IFS= read -r dup; do
-              [ -n "$dup" ] || continue
-              gh api -X DELETE "repos/$GH_REPO/issues/comments/$dup" >/dev/null || true
-            done < <(<<<"$EXISTING_IDS" head -n -1)
-          else
-            gh pr comment "$PR_NUMBER" --repo "$GH_REPO" --body-file "$BODY_FILE"
+            if jq -n --rawfile b "$BODY_FILE" '{body: $b}' \
+                | gh api -X PATCH "repos/$GH_REPO/issues/comments/$LAST_ID" --input - >/dev/null; then
+              while IFS= read -r dup; do
+                [ -n "$dup" ] || continue
+                gh api -X DELETE "repos/$GH_REPO/issues/comments/$dup" >/dev/null || true
+              done < <(<<<"$EXISTING_IDS" head -n -1)
+            else
+              echo "::warning::Could not update the pr-merge verdict comment on PR #$PR_NUMBER."
+            fi
+          elif ! gh pr comment "$PR_NUMBER" --repo "$GH_REPO" --body-file "$BODY_FILE" >/dev/null; then
+            echo "::warning::Could not post the pr-merge verdict comment on PR #$PR_NUMBER."
           fi
           echo "Decision: $DECISION${VERDICT:+ ($VERDICT)}"
