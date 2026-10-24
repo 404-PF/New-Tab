@@ -235,6 +235,48 @@
     return orderedKeys.map(key => result.get(key));
   }
 
+  /** Merge concurrent arrays that share no merge base, keying entries by ID. */
+  function mergeConcurrentArrays(current, candidate) {
+    const currentArray = createArrayMap(current, null);
+    if (!currentArray) return clone(candidate);
+
+    const candidateArray = createArrayMap(candidate, null);
+    if (!candidateArray) return clone(candidate);
+
+    const result = new Map();
+    const allKeys = new Set([
+      ...currentArray.map.keys(),
+      ...candidateArray.map.keys()
+    ]);
+
+    allKeys.forEach(key => {
+      const currentHas = currentArray.map.has(key);
+      const candidateHas = candidateArray.map.has(key);
+      const resolved = resolveMergeEntry(
+        false,
+        currentHas,
+        candidateHas,
+        missing,
+        currentHas ? currentArray.map.get(key) : missing,
+        candidateHas ? candidateArray.map.get(key) : missing
+      );
+
+      if (resolved.present) result.set(key, resolved.value);
+    });
+
+    const orderedKeys = [];
+    [
+      ...candidateArray.order,
+      ...currentArray.order
+    ].forEach(key => {
+      if (!orderedKeys.includes(key) && result.has(key)) {
+        orderedKeys.push(key);
+      }
+    });
+
+    return orderedKeys.map(key => result.get(key));
+  }
+
   /** Recursively merge JSON values with local conflict precedence. */
   function mergeJsonValue(base, current, candidate) {
     if (deepEqual(candidate, base)) return clone(current);
@@ -265,13 +307,14 @@
 
     if (base === missing) {
       // The key was absent when this tab first read it, so no merge base was
-      // captured. If storage now holds a concurrently written array, merge
-      // against an empty base so the concurrent items survive this write. A
-      // still-absent current value is a genuine first write and stores the
-      // candidate verbatim, as does any non-array pair.
+      // captured. If storage now holds a concurrently written array, merge the
+      // concurrent additions keyed by ID so same-shaped records do not collide
+      // and same-ID edits do not duplicate. A still-absent current value is a
+      // genuine first write and stores the candidate verbatim, as does any
+      // non-array pair.
       if (Array.isArray(current) && Array.isArray(candidate)) {
         try {
-          return JSON.stringify(mergeIdentifiedArray([], current, candidate));
+          return JSON.stringify(mergeConcurrentArrays(current, candidate));
         } catch (error) {
           console.warn('Failed to merge concurrent storage update; using latest local value:', error);
           return candidateRaw;

@@ -336,6 +336,33 @@ describe('null merge base for keys absent at session start', () => {
     const merged = JSON.parse(persisted.get('todos'));
     expect(merged.map(todo => todo.id)).toEqual(expect.arrayContaining(['todo-external', 'todo-local']));
   });
+
+  it('keeps same-shaped concurrent records with distinct ids when the base was null', () => {
+    const { context, persisted } = createStorageContext();
+    expect(context.localStorage.getItem('todos')).toBe(null);
+
+    // Both tabs independently added the same-shaped todo under different ids.
+    const externalTodo = { id: 'todo-external', text: 'Milk', completed: false, order: 0 };
+    const localTodo = { id: 'todo-local', text: 'Milk', completed: false, order: 0 };
+    persisted.set('todos', JSON.stringify([externalTodo]));
+    context.localStorage.setItem('todos', JSON.stringify([localTodo]));
+
+    const merged = JSON.parse(persisted.get('todos'));
+    expect(merged.map(todo => todo.id)).toEqual(expect.arrayContaining(['todo-external', 'todo-local']));
+  });
+
+  it('does not duplicate same-id records when concurrent edits race with a null base', () => {
+    const { context, persisted } = createStorageContext();
+    expect(context.localStorage.getItem('todos')).toBe(null);
+
+    persisted.set('todos', JSON.stringify([{ id: 'todo-shared', text: 'From tab B', completed: false, order: 0 }]));
+    context.localStorage.setItem('todos', JSON.stringify([{ id: 'todo-shared', text: 'From tab A', completed: false, order: 0 }]));
+
+    const merged = JSON.parse(persisted.get('todos'));
+    expect(merged).toHaveLength(1);
+    expect(merged[0].id).toBe('todo-shared');
+    expect(merged[0].text).toBe('From tab A');
+  });
 });
 
 
