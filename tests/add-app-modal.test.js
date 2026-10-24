@@ -422,6 +422,23 @@ describe('Add app preview debounce', () => {
     expect(spy).toHaveBeenLastCalledWith(expectedUrl);
   }
 
+  // Arrange the colliding-duplicate phase both cubic-fix tests share: the
+  // conflicting app sits in the grid and the input has gone quiet past the
+  // debounce, so submit is blocked as a duplicate.
+  function settleCollidingDuplicate() {
+    const existing = { id: 'existing-duplicate', name: 'Example', url: 'https://example.com/' };
+    expect(window.AppGridState.addApp(existing)).toBe(true);
+    typeUrl('example.com');
+    const confirm = document.getElementById('add-app-confirm');
+    const modal = document.getElementById('add-app-modal');
+    const message = document.querySelector('.add-app-validation-message');
+
+    vi.advanceTimersByTime(150);
+    expect(confirm.disabled).toBe(true);
+    expect(message.classList.contains('duplicate')).toBe(true);
+    return { confirm, modal, message, existing };
+  }
+
   beforeEach(() => {
     vi.useFakeTimers();
     window.initAddAppModal();
@@ -487,16 +504,7 @@ describe('Add app preview debounce', () => {
   });
 
   it('unblocks submit when the conflicting app is deleted while the modal stays open', async () => {
-    const existing = { id: 'existing-duplicate', name: 'Example', url: 'https://example.com/' };
-    expect(window.AppGridState.addApp(existing)).toBe(true);
-    typeUrl('example.com');
-    const confirm = document.getElementById('add-app-confirm');
-    const modal = document.getElementById('add-app-modal');
-    const message = document.querySelector('.add-app-validation-message');
-
-    vi.advanceTimersByTime(150);
-    expect(confirm.disabled).toBe(true);
-    expect(message.classList.contains('duplicate')).toBe(true);
+    const { modal, message } = settleCollidingDuplicate();
 
     expect(window.AppGridState.deleteApp('existing-duplicate')).toBe(true);
     expect(window.AppGridState.getCustomApps()).toEqual([]);
@@ -512,16 +520,7 @@ describe('Add app preview debounce', () => {
   });
 
   it('keeps submit blocked while the conflicting app still exists at submit', async () => {
-    const existing = { id: 'existing-duplicate', name: 'Example', url: 'https://example.com/' };
-    expect(window.AppGridState.addApp(existing)).toBe(true);
-    typeUrl('example.com');
-    const confirm = document.getElementById('add-app-confirm');
-    const modal = document.getElementById('add-app-modal');
-    const message = document.querySelector('.add-app-validation-message');
-
-    vi.advanceTimersByTime(150);
-    expect(confirm.disabled).toBe(true);
-    expect(message.classList.contains('duplicate')).toBe(true);
+    const { confirm, modal, message, existing } = settleCollidingDuplicate();
 
     input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
     await flushMicrotasks();
