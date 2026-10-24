@@ -418,6 +418,55 @@ describe('Add app preview debounce', () => {
     vi.restoreAllMocks();
   });
 
+  it.each(['language refresh', 'trailing whitespace', 'immediate paste'])('keeps duplicate submission blocked during %s', async (change) => {
+    const existing = { id: 'existing-duplicate', name: 'Example', url: 'https://example.com/' };
+    expect(window.AppGridState.addApp(existing)).toBe(true);
+    scan.mockClear();
+    typeUrl('example.com');
+    const confirm = document.getElementById('add-app-confirm');
+    const modal = document.getElementById('add-app-modal');
+    const message = document.querySelector('.add-app-validation-message');
+
+    if (change === 'immediate paste') {
+      input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+      await flushMicrotasks();
+      expect(scan).toHaveBeenCalledTimes(1);
+      expect(scan).toHaveBeenCalledWith('https://example.com/');
+    } else {
+      vi.advanceTimersByTime(150);
+      expect(confirm.disabled).toBe(true);
+      expect(message.classList.contains('duplicate')).toBe(true);
+      expect(scan).toHaveBeenCalledExactlyOnceWith('https://example.com/');
+      if (change === 'language refresh') window.dispatchEvent(new Event('languageChanged'));
+      else typeUrl('example.com   ');
+
+      expect(message.classList.contains('duplicate')).toBe(true);
+      expect(confirm.disabled).toBe(true);
+      input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+      await flushMicrotasks();
+      expect(scan).toHaveBeenCalledTimes(1);
+    }
+
+    expect(modal.classList.contains('modal-open')).toBe(true);
+    expect(confirm.disabled).toBe(true);
+    expect(window.AppGridState.getCustomApps()).toEqual([existing]);
+    expect(window.renderCustomApps).not.toHaveBeenCalled();
+    expect(message.classList.contains('duplicate')).toBe(true);
+
+    vi.advanceTimersByTime(150);
+    expect(scan).toHaveBeenCalledTimes(change === 'immediate paste' ? 1 : 2);
+    expect(message.classList.contains('duplicate')).toBe(true);
+    expect(confirm.disabled).toBe(true);
+    expect(modal.classList.contains('modal-open')).toBe(true);
+
+    typeUrl('available.example');
+    expect(confirm.disabled).toBe(false);
+    vi.advanceTimersByTime(150);
+    expect(scan).toHaveBeenLastCalledWith('https://available.example/');
+    expect(confirm.disabled).toBe(false);
+    expect(window.AppGridState.getCustomApps()).toEqual([existing]);
+  });
+
   it('previews exactly once per quiet window with only the final input', () => {
     typeUrl('first.example');
     vi.advanceTimersByTime(100);

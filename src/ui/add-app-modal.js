@@ -35,6 +35,9 @@ const DEFAULT_PREVIEW_ICON = `
 
 const ADD_APP_PREVIEW_DEBOUNCE_MS = 150;
 let addAppPreviewTimer = null;
+// Last settled preview's duplicate verdict, keyed by effective URL: a
+// revalidation pass reuses it so an unchanged URL keeps its answer.
+let duplicatePreviewUrl = null;
 
 let addAppElementsCache = null;
 let addAppModalInitialized = false;
@@ -42,6 +45,7 @@ let addAppAbortController = null;
 let isQuickAddInProgress = false;
 
 function resetAddAppModalState() {
+  duplicatePreviewUrl = null;
   clearTimeout(addAppPreviewTimer);
   addAppPreviewTimer = null;
   addAppElementsCache = null;
@@ -168,6 +172,7 @@ function setAddAppPreviewIcon(faviconUrl, appName) {
 }
 
 function resetPreviewState() {
+  duplicatePreviewUrl = null;
   clearTimeout(addAppPreviewTimer);
   addAppPreviewTimer = null;
   const {
@@ -449,7 +454,11 @@ function updatePreview(showPreview = true) {
     validationIcon.classList.toggle('invalid', !isValid);
   }
 
-  const isDuplicate = showPreview && isCreatable && window.AppGridState && window.AppGridState.hasAppWithUrl(fullUrl);
+  if (showPreview) {
+    duplicatePreviewUrl = isCreatable && window.AppGridState && window.AppGridState.hasAppWithUrl(fullUrl)
+      ? fullUrl : null;
+  }
+  const isDuplicate = duplicatePreviewUrl === fullUrl;
 
   if (validationMessage) {
     if (isDuplicate) {
@@ -480,6 +489,22 @@ function scheduleAddAppPreview() {
       updatePreview();
     }, ADD_APP_PREVIEW_DEBOUNCE_MS);
   }
+}
+
+// Submitters settle an outstanding preview synchronously so a URL whose
+// duplicate scan is still pending cannot reach the save path, which would
+// dismiss the modal instead of showing the duplicate warning.
+function settlePendingPreviewBeforeSubmit() {
+  const { addAppConfirm } = getAddAppElements();
+  if (addAppConfirm && addAppConfirm.disabled) {
+    return false;
+  }
+  if (addAppPreviewTimer !== null) {
+    clearTimeout(addAppPreviewTimer);
+    addAppPreviewTimer = null;
+    updatePreview();
+  }
+  return !(addAppConfirm && addAppConfirm.disabled);
 }
 
 function openAddAppModal() {
@@ -548,7 +573,7 @@ function bindAddAppModal() {
     if (!url) {
       return;
     }
-    if (addAppConfirm && addAppConfirm.disabled) {
+    if (!settlePendingPreviewBeforeSubmit()) {
       return;
     }
     await addAppFromInput(url);
@@ -558,6 +583,9 @@ function bindAddAppModal() {
     addAppConfirm.addEventListener('click', async function () {
       const url = addAppUrlInput.value.trim();
       if (!url) {
+        return;
+      }
+      if (!settlePendingPreviewBeforeSubmit()) {
         return;
       }
       await addAppFromInput(url);
