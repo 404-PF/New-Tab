@@ -431,6 +431,11 @@
   function startRebinding(action, btn) {
     if (rebindingAction) {
       cancelRebinding();
+      const container = document.getElementById('shortcuts-options');
+      const liveBtn = container && container.querySelector('.shortcut-combo-btn[data-action="' + action + '"]');
+      if (liveBtn) {
+        btn = liveBtn;
+      }
     }
 
     rebindingAction = action;
