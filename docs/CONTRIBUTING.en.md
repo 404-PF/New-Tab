@@ -71,7 +71,7 @@ A Husky pre-commit hook also runs `eslint .` automatically.
 
 ### Auto-merge
 
-Same-repo pull requests targeting `main` are squash-merged automatically by the `pr-merge` workflow once every merge requirement holds: CI green, no `CHANGES_REQUESTED` review, all review threads resolved, no merge conflicts, and no blocking label. The branch is deleted with the merge, and the head SHA is re-checked at merge time so a late push aborts instead of merging an unverified commit.
+Same-repo pull requests targeting `main` are squash-merged automatically by the `pr-merge` workflow once every merge requirement holds: CI and every branch-protection check are green, no `CHANGES_REQUESTED` review exists, all review threads are resolved, no merge conflicts or blocking label exist, and no `pr-drive` run is active. The workflow attempts to delete the branch after merging (best-effort; deletion can fail), and the head SHA plus the other mutable merge predicates are re-checked at merge time so a late push or label change aborts instead of merging an unverified commit.
 
 - To opt a PR out, add any of these labels: `do-not-merge`, `hold`, `wip`, `blocked`.
 - Maintainers can trigger an evaluation manually (`workflow_dispatch` with `pr_number`), optionally as a `dry_run` that posts the verdict without merging. Exactly one `<!-- pr-merge -->` comment on the PR tracks the decision.

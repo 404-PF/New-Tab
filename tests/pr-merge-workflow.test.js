@@ -2,19 +2,26 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const MERGE_PATH = resolve(process.cwd(), '.github/workflows/pr-merge.yml');
-const CI_PATH = resolve(process.cwd(), '.github/workflows/ci.yml');
 
 describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
   let merge;
-  let ci;
 
   beforeAll(() => {
     merge = readFileSync(MERGE_PATH, 'utf-8');
-    ci = readFileSync(CI_PATH, 'utf-8');
   });
 
-  it('triggers on PR lifecycle, review, thread, check, and dispatch events', () => {
-    expect(merge).toMatch(/^on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review\]\n {2}pull_request_review:\n {4}types: \[submitted, edited, dismissed\]\n {2}pull_request_review_thread:\n {4}types: \[resolved, unresolved\]\n {2}check_run:\n {4}types: \[completed\]\n {2}check_suite:\n {4}types: \[completed\]\n {2}workflow_dispatch:/m);
+  it('triggers on PR lifecycle, review, check, CI completion, and dispatch events', () => {
+    expect(merge).toMatch(/^on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review, labeled, unlabeled\]\n {2}pull_request_review:\n {4}types: \[submitted, edited, dismissed\]/m);
+    expect(merge).toMatch(/^ {2}check_run:\n {4}types: \[completed\]\n {2}check_suite:\n {4}types: \[completed\]/m);
+    expect(merge).toMatch(/^ {4}types: \[completed\]\n {2}workflow_dispatch:\n {4}inputs:/m);
+    expect(merge).toMatch(/^ {2}workflow_run:\n {4}workflows: \[CI\]\n {4}types: \[completed\]/m);
+  });
+
+  it('never uses the invalid pull_request_review_thread trigger', () => {
+    // pull_request_review_thread is a webhook event, not an Actions trigger:
+    // GitHub rejects the entire workflow file when it appears in `on:`.
+    expect(merge).not.toMatch(/^ {2}pull_request_review_thread:/m);
+    expect(merge).not.toMatch(/event_name == 'pull_request_review_thread'/);
   });
 
   it('exposes pr_number and dry_run inputs on workflow_dispatch', () => {
@@ -28,12 +35,13 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(jobIf[1]).toMatch(/github\.event_name == 'workflow_dispatch'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'pull_request'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'pull_request_review'/);
-    expect(jobIf[1]).toMatch(/github\.event_name == 'pull_request_review_thread'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'check_run'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'check_suite'/);
+    expect(jobIf[1]).toMatch(/github\.event_name == 'workflow_run'/);
     expect(jobIf[1]).toContain('github.event.pull_request.base.ref == \'main\'');
     expect(jobIf[1]).toContain('github.event.check_run.pull_requests[0].base.ref == \'main\'');
     expect(jobIf[1]).toContain('github.event.check_suite.pull_requests[0].base.ref == \'main\'');
+    expect(jobIf[1]).toContain('github.event.workflow_run.pull_requests[0].base.ref == \'main\'');
   });
 
   it('serializes evaluations per PR with cancel-in-progress', () => {
@@ -42,6 +50,7 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toContain('github.event.pull_request.number');
     expect(merge).toContain('github.event.check_run.pull_requests[0].number');
     expect(merge).toContain('github.event.check_suite.pull_requests[0].number');
+    expect(merge).toContain('github.event.workflow_run.pull_requests[0].number');
     expect(merge).toMatch(/cancel-in-progress: true/);
   });
 
@@ -53,15 +62,11 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
   });
 
-  it('uses only SHA-pinned actions, mirroring ci.yml (none beyond that)', () => {
+  it('uses no external actions at all', () => {
     // Anchored to the step-level "- uses:" so substrings like "statuses:" do
     // not count as action references.
     const actionPins = [...merge.matchAll(/^\s*- uses: (\S+)/gm)].map((match) => match[1]);
-    expect(actionPins.length).toBe(0);
-    actionPins.forEach((pin) => {
-      expect(pin).toMatch(/^actions\/[^@]+@[0-9a-f]{40} # v\d+/);
-      expect(ci).toContain(pin);
-    });
+    expect(actionPins).toEqual([]);
   });
 
   it('runs bash with set -euo pipefail', () => {
@@ -88,27 +93,41 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toMatch(/gh api graphql --paginate -F owner=/);
   });
 
-  it('never merges while a pr-drive run is active', () => {
-    expect(merge).toMatch(/gh run list --repo "\$GH_REPO" --workflow=pr-drive\.yml --limit 100/);
-    expect(merge).toMatch(/\.status == "in_progress" or \.status == "queued"/);
-    expect(merge).toMatch(/any\(\.pullRequests\[\]\?; \.number == \$n\)/);
+  it('never merges while a pr-drive run is active, and fails closed on lookup errors', () => {
+    // Active runs are queried server-side by status so the guard never
+    // falls inside a bounded window of unrelated historical runs.
+    expect(merge).toContain('gh api "repos/$GH_REPO/actions/workflows/pr-drive.yml/runs?status=$drive_status&per_page=100"');
+    expect(merge).toMatch(/for drive_status in in_progress queued; do/);
+    expect(merge).toContain('any(.workflow_runs[]?; any(.pull_requests[]?; .number == $n))');
+    expect(merge).toContain('could not list pr-drive runs');
   });
 
-  it('requires mergeable != false and mergeStateStatus == CLEAN, with retries', () => {
-    // mergeable/mergeStateStatus are computed asynchronously; poll briefly.
+  it('requires mergeable != false and lowercase mergeable_state == clean, with retries', () => {
+    // mergeable/mergeable_state are computed asynchronously; poll briefly.
+    // The REST API reports lowercase values (clean, dirty, unknown).
     expect(merge).toMatch(/for attempt in 1 2 3; do/);
     expect(merge).toMatch(/sleep 5/);
-    expect(merge).toMatch(/if \[ "\$MERGEABLE" = 'false' \] \|\| \[ "\$MERGE_STATE" = 'DIRTY' \]; then/);
-    expect(merge).toMatch(/\[ "\$MERGE_STATE" != 'CLEAN' \]/);
+    expect(merge).toMatch(/if \[ "\$MERGEABLE" = 'false' \] \|\| \[ "\$MERGE_STATE" = 'dirty' \]; then/);
+    expect(merge).toMatch(/\[ "\$MERGE_STATE" != 'clean' \]/);
+    expect(merge).not.toMatch(/'CLEAN'|'DIRTY'/);
   });
 
   it('requires every check run on the head SHA terminal and successful, excluding itself', () => {
     expect(merge).toContain('/commits/$HEAD_SHA/check-runs');
-    expect(merge).toMatch(/\$2 != "completed" \|\| \(\$3 != "successful" && \$3 != "neutral" && \$3 != "skipped"\)/);
+    expect(merge).toMatch(/\$2 != "completed" \|\| \(\$3 != "success" && \$3 != "neutral" && \$3 != "skipped"\)/);
     // This workflow's own check is in_progress while evaluating; the name
     // prefix exclusion keeps it from blocking every evaluation forever.
-    expect(merge).toContain('startswith(env.WORKFLOW_NAME + " /") | not');
+    expect(merge).toContain('startswith(env.WORKFLOW_NAME) | not');
     expect(merge).toContain('WORKFLOW_NAME: ${{ github.workflow }}');
+    expect(merge).toContain('gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs" --paginate');
+  });
+
+  it('treats a missing or unreadable check set as not green (fail closed)', () => {
+    // An empty set is not green: CI may not have started yet, and a fetch
+    // error must block instead of skipping the gate.
+    expect(merge).toContain('could not fetch check runs for the head SHA');
+    expect(merge).toContain('no check runs found on the head SHA yet; waiting for CI');
+    expect(merge).toMatch(/if ! gh api "repos\/\$GH_REPO\/commits\/\$HEAD_SHA\/check-runs" --paginate/);
   });
 
   it('reads required status checks from branch protection, never a hardcoded name', () => {
@@ -121,6 +140,16 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).not.toMatch(/SonarCloud/);
   });
 
+  it('fails closed when branch protection or required statuses cannot be read', () => {
+    // Only an explicit 404 means "intentionally unprotected"; any other
+    // protection or status-fetch failure must block the merge.
+    expect(merge).toMatch(/grep -q '404' "\$CTX\/protection\.err"/);
+    expect(merge).toContain('could not read branch protection for main');
+    expect(merge).toContain('could not parse branch protection for main');
+    expect(merge).toContain('could not fetch commit statuses for the head SHA');
+    expect(merge).toContain('gh api "repos/$GH_REPO/commits/$HEAD_SHA/status" --paginate');
+  });
+
   it('merges via GraphQL mergePullRequest with expectedHeadOid and SQUASH', () => {
     // Plain `gh pr merge` cannot pass expectedHeadOid, so it must not appear.
     expect(merge).not.toMatch(/gh pr merge/);
@@ -129,14 +158,22 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toContain('{query: $q, variables: {id: $id, oid: $oid, method: $method}}');
   });
 
-  it('re-reads the head SHA immediately before merging', () => {
-    expect(merge).toMatch(/HEAD_NOW="\$\(gh api "repos\/\$GH_REPO\/pulls\/\$PR_NUMBER" --jq \.head\.sha\)"/);
-    expect(merge).toMatch(/if \[ "\$HEAD_NOW" != "\$HEAD_SHA" \]; then/);
-    expect(merge).toMatch(/head SHA moved during evaluation; merge aborted/);
+  it('revalidates every mutable merge predicate immediately before merging', () => {
+    // The mutation also carries expectedHeadOid, but state, draft, base,
+    // head SHA, and labels are re-checked so a change during evaluation
+    // aborts instead of merging an unverified commit.
+    expect(merge).toContain('FINAL_JSON="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")"');
+    expect(merge).toContain('[ "$FINAL_STATE" != \'open\' ]');
+    expect(merge).toContain('[ "$FINAL_DRAFT" = \'true\' ]');
+    expect(merge).toContain('[ "$FINAL_BASE" != \'main\' ]');
+    expect(merge).toContain('[ "$FINAL_HEAD" != "$HEAD_SHA" ]');
+    expect(merge).toContain('PR state changed during evaluation; merge aborted');
+    expect(merge).toContain('a blocking label was added during evaluation; merge aborted');
+    expect(merge).toContain('expectedHeadOid mismatch or permissions');
   });
 
-  it('deletes the branch after a successful merge', () => {
-    expect(merge).toMatch(/gh api -X DELETE "repos\/\$GH_REPO\/heads\/\$HEAD_REF"/);
+  it('deletes the branch after a successful merge via the git refs endpoint', () => {
+    expect(merge).toMatch(/gh api -X DELETE "repos\/\$GH_REPO\/git\/refs\/heads\/\$HEAD_REF"/);
     expect(merge).toMatch(/Merged, but could not delete branch/);
   });
 
@@ -149,15 +186,18 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(notOpen[1]).not.toMatch(/pr-merge -->/);
   });
 
-  it('updates exactly one <!-- pr-merge --> sentinel comment, never spamming', () => {
+  it('keeps exactly one <!-- pr-merge --> sentinel comment, never spamming', () => {
     expect(merge).toContain('\'<!-- pr-merge -->\'');
     expect(merge).toMatch(/select\(\.user\.login == "github-actions\[bot\]" and \(\(\.body \/\/ ""\) \| startswith\("<!-- pr-merge -->"\)\)\) \| \.id/);
-    expect(merge).toMatch(/gh api -X PATCH "repos\/\$GH_REPO\/issues\/comments\/\$EXISTING" --input -/);
+    expect(merge).toMatch(/gh api -X PATCH "repos\/\$GH_REPO\/issues\/comments\/\$LAST_ID" --input -/);
+    // Older duplicate sentinels are removed so exactly one remains.
+    expect(merge).toContain('head -n -1');
+    expect(merge).toMatch(/gh api -X DELETE "repos\/\$GH_REPO\/issues\/comments\/\$dup" >\/dev\/null \|\| true/);
     expect(merge).toMatch(/gh pr comment "\$PR_NUMBER" --repo "\$GH_REPO" --body-file "\$BODY_FILE"/);
   });
 
   it('dry_run evaluates and comments the verdict without merging', () => {
-    expect(merge).toContain('DRY_RUN: ${{ github.event_name == \'workflow_dispatch\' && inputs.dry_run || false }}');
+    expect(merge).toContain('DRY_RUN: ${{ github.event_name == \'workflow_dispatch\' && github.event.inputs.dry_run || false }}');
     expect(merge).toMatch(/elif \[ "\$DRY_RUN" = 'true' \]; then/);
     expect(merge).toMatch(/dry run: every requirement holds; would squash-merge/);
   });
