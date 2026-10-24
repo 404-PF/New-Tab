@@ -58,6 +58,9 @@ jobs:
           HARD_MAX=10
           COOLDOWN_SECONDS=$(( 6 * 3600 ))
           MARKER='<!-- bug-find -->'
+          # Issues filed by the pre-rename workflow carry the old marker; the
+          # cooldown counts both so the first post-rename run cannot bypass it.
+          LEGACY_MARKER='<!-- issue-find -->'
 
           TARGET=10
           MAX_NEW=5
@@ -92,18 +95,18 @@ jobs:
           echo "Open issues: $CURRENT, target: $TARGET, max_new: $MAX_NEW, to_file: $TO_FILE"
           [ "$TO_FILE" -gt 0 ] || skip 'At or above target; nothing to file.'
 
-          # 6-hour cooldown from the newest issue carrying the marker. Manual
-          # dispatch overrides it.
+          # 6-hour cooldown from the newest issue carrying either marker (new
+          # or pre-rename). Manual dispatch overrides it.
           if [ "$EVENT_NAME" != 'workflow_dispatch' ]; then
             # GraphQL issues() with no states filter covers every state and
             # never includes PRs.
             # shellcheck disable=SC2016 # GraphQL variables, not shell
             LAST="$(gh api graphql -F owner="${GH_REPO%%/*}" -F name="${GH_REPO#*/}" \
               -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { issues(first: 100, orderBy: {field: CREATED_AT, direction: DESC}) { nodes { createdAt body } } } }' \
-              | jq -r --arg m "$MARKER" '[.data.repository.issues.nodes[] | select((.body // "") | contains($m))][0].createdAt // empty')"
+              | jq -r --arg m "$MARKER" --arg lm "$LEGACY_MARKER" '[.data.repository.issues.nodes[] | select(((.body // "") | contains($m)) or ((.body // "") | contains($lm)))][0].createdAt // empty')"
             if [ -n "$LAST" ]; then
               AGE=$(( $(date +%s) - $(date -d "$LAST" +%s) ))
-              [ "$AGE" -ge "$COOLDOWN_SECONDS" ] || skip "Cooldown: last bug-find issue was filed $((AGE / 60)) min ago."
+              [ "$AGE" -ge "$COOLDOWN_SECONDS" ] || skip "Cooldown: last marked issue was filed $((AGE / 60)) min ago."
             fi
           fi
           echo "to_file=$TO_FILE" >> "$GITHUB_OUTPUT"
@@ -111,9 +114,15 @@ jobs:
   find:
     needs: gate
     if: needs.gate.result == 'success' && fromJSON(needs.gate.outputs.to_file || '0') > 0
+    # Shared concurrency group: both find workflows refill the same open-issue
+    # target, so their find jobs must never run at the same time (a shared
+    # group is repository-wide across workflows). queue: max keeps every
+    # pending issue-event refill queued instead of replaced, since the default
+    # single pending slot would drop it during a burst.
     concurrency:
-      group: bug-find
+      group: find-issues
       cancel-in-progress: false
+      queue: max
     # Name pinned so the single-entry matrix below doesn't rename the job.
     name: find
     # Single source for the job timeout: timeout-minutes cannot read env,

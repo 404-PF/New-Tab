@@ -112,9 +112,15 @@ jobs:
   find:
     needs: gate
     if: needs.gate.result == 'success' && fromJSON(needs.gate.outputs.to_file || '0') > 0
+    # Shared concurrency group: both find workflows refill the same open-issue
+    # target, so their find jobs must never run at the same time (a shared
+    # group is repository-wide across workflows). queue: max keeps every
+    # pending issue-event refill queued instead of replaced, since the default
+    # single pending slot would drop it during a burst.
     concurrency:
-      group: feature-find
+      group: find-issues
       cancel-in-progress: false
+      queue: max
     # Name pinned so the single-entry matrix below doesn't rename the job.
     name: find
     # Single source for the job timeout: timeout-minutes cannot read env,
@@ -143,11 +149,29 @@ jobs:
         with:
           persist-credentials: false
 
-      # NOTE: do NOT add --ignore-scripts here. opencode-ai ships a JS wrapper
-      # whose postinstall selects the native binary; with --ignore-scripts the
-      # wrapper exits 1 and every run fails at `opencode run`.
+      # Pinned to a reviewed release, and the registry must report exactly the
+      # reviewed integrity hash before anything installs, so a changed or
+      # compromised release cannot reach OPENCODE_API_KEY unreviewed. Bump the
+      # version and hash together after reviewing a new release.
+      # --ignore-scripts keeps every dependency's lifecycle scripts from
+      # running with runner privileges; opencode-ai's own postinstall (it
+      # selects the native binary) is then invoked explicitly, since with
+      # --ignore-scripts alone the wrapper exits 1 at `opencode run`.
       - name: Install OpenCode
-        run: npm install -g opencode-ai
+        run: |
+          set -euo pipefail
+          INTEGRITY='sha512-O3rTc9OCd6CeeJohCAjFYD3MX5U0weKzKnySfsJ9sw9uAbNZZK4meIcjd+7k3inmZB5G2qONSen3yA45yECiFA=='
+          REPORTED="$(npm view opencode-ai@1.19.4 dist.integrity)" || {
+            echo '::error::Could not read the opencode-ai@1.19.4 integrity hash from the registry.'
+            exit 1
+          }
+          if [ "$REPORTED" != "$INTEGRITY" ]; then
+            echo '::error::opencode-ai@1.19.4 does not match the reviewed integrity hash; review the release, then bump the version and hash together.'
+            exit 1
+          fi
+          npm install -g opencode-ai@1.19.4 --ignore-scripts
+          PKG="$(npm root -g)/opencode-ai"
+          (cd "$PKG" && npm run postinstall)
 
       # Existing issue titles (untrusted) for the agent to dedupe against, and
       # validator inputs kept in RUNNER_TEMP, outside the agent's workspace.
@@ -162,7 +186,10 @@ jobs:
           gh issue list --repo "$GH_REPO" --state open --limit 1000 --json number,title > "$STATE/open.json"
           gh issue list --repo "$GH_REPO" --state closed --limit 1000 --json number,title > "$STATE/closed.json"
           jq -s 'add | map(.title)' "$STATE/open.json" "$STATE/closed.json" > "$STATE/existing-titles.json"
-          gh label list --repo "$GH_REPO" --limit 200 --json name --jq '[.[].name]' > "$STATE/labels.json"
+          # --paginate walks every label page; gh label list caps its display
+          # at 200 names and would truncate the registry.
+          gh api --paginate "repos/$GH_REPO/labels?per_page=100" --jq '.[].name' \
+            | jq -R -s 'split("\n") | map(select(length > 0))' > "$STATE/labels.json"
           {
             echo '# Existing issues (untrusted data; titles only)'
             echo ''
