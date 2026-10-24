@@ -33,12 +33,21 @@ const DEFAULT_PREVIEW_ICON = `
   </svg>
 `;
 
+const ADD_APP_PREVIEW_DEBOUNCE_MS = 150;
+let addAppPreviewTimer = null;
+// Last settled preview's duplicate verdict, keyed by effective URL: a
+// revalidation pass reuses it so an unchanged URL keeps its answer.
+let duplicatePreviewUrl = null;
+
 let addAppElementsCache = null;
 let addAppModalInitialized = false;
 let addAppAbortController = null;
 let isQuickAddInProgress = false;
 
 function resetAddAppModalState() {
+  duplicatePreviewUrl = null;
+  clearTimeout(addAppPreviewTimer);
+  addAppPreviewTimer = null;
   addAppElementsCache = null;
   addAppModalInitialized = false;
   isQuickAddInProgress = false;
@@ -163,6 +172,9 @@ function setAddAppPreviewIcon(faviconUrl, appName) {
 }
 
 function resetPreviewState() {
+  duplicatePreviewUrl = null;
+  clearTimeout(addAppPreviewTimer);
+  addAppPreviewTimer = null;
   const {
     previewSection,
     validationIcon,
@@ -386,15 +398,11 @@ function renderDefaultAppsList() {
   }
 }
 
-function updatePreview() {
+function updatePreview(showPreview = true) {
   const {
     addAppUrlInput,
     addAppConfirm,
-    previewSection,
-    previewName,
-    previewUrl,
     validationIcon,
-    validationMessage,
   } = getAddAppElements();
 
   if (!addAppUrlInput) {
@@ -413,6 +421,47 @@ function updatePreview() {
   const validation = validateUrl(url);
   const isValid = validation.status === 'valid';
   const fullUrl = validation.url ? validation.url.href : normalizeAppUrl(url);
+  // Validate synchronously; defer the preview and duplicate scan while typing.
+  const isCreatable = (isValid || validation.status === 'undetectable') &&
+    isStorableAppUrl(normalizeAppUrl(url));
+
+  if (showPreview) {
+    renderAddAppPreviewFields(url, fullUrl, isValid);
+  }
+
+  if (validationIcon) {
+    validationIcon.classList.add('show');
+    validationIcon.classList.toggle('valid', isValid);
+    validationIcon.classList.toggle('invalid', !isValid);
+  }
+
+  if (showPreview) {
+    settleAddAppDuplicateVerdict(fullUrl, isCreatable);
+  }
+  const isDuplicate = duplicatePreviewUrl === fullUrl;
+
+  renderAddAppValidationMessage(validation, isDuplicate);
+
+  if (addAppConfirm) {
+    addAppConfirm.disabled = !isCreatable || isDuplicate;
+  }
+  return true;
+}
+
+function scheduleAddAppPreview() {
+  clearTimeout(addAppPreviewTimer);
+  addAppPreviewTimer = null;
+  if (updatePreview(false)) {
+    addAppPreviewTimer = setTimeout(() => {
+      addAppPreviewTimer = null;
+      updatePreview();
+    }, ADD_APP_PREVIEW_DEBOUNCE_MS);
+  }
+}
+
+// Paints the preview card: name, URL, favicon and valid/invalid tint.
+function renderAddAppPreviewFields(url, fullUrl, isValid) {
+  const { previewName, previewUrl, previewSection } = getAddAppElements();
   const appName = extractAppName(url);
 
   if (previewName) {
@@ -429,36 +478,75 @@ function updatePreview() {
     previewSection.classList.toggle('valid', isValid);
     previewSection.classList.toggle('invalid', !isValid);
   }
+}
 
-  if (validationIcon) {
-    validationIcon.classList.add('show');
-    validationIcon.classList.toggle('valid', isValid);
-    validationIcon.classList.toggle('invalid', !isValid);
+// Settles the duplicate verdict for the shown preview, cached by effective
+// URL so an unchanged URL keeps its answer across passes.
+function settleAddAppDuplicateVerdict(fullUrl, isCreatable) {
+  duplicatePreviewUrl = isCreatable && window.AppGridState?.hasAppWithUrl(fullUrl)
+    ? fullUrl : null;
+}
+
+// Duplicate notice when the settled verdict says so, otherwise the raw
+// validation verdict text.
+function renderAddAppValidationMessage(validation, isDuplicate) {
+  const { validationMessage } = getAddAppElements();
+  if (!validationMessage) {
+    return;
   }
+  if (isDuplicate) {
+    validationMessage.textContent = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
+    validationMessage.classList.add('show', 'duplicate');
+    validationMessage.classList.remove('malformed', 'undetectable');
+  } else {
+    validationMessage.textContent = translateValidationMessage(validation.message);
+    validationMessage.classList.add('show');
+    validationMessage.classList.remove('duplicate');
+    validationMessage.classList.toggle('malformed', validation.status === 'malformed');
+    validationMessage.classList.toggle('undetectable', validation.status === 'undetectable');
+  }
+}
 
-  // Only enable confirm for input the storage sanitizer will accept, using
-  // the same URL createAppData() stores.
-  const isCreatable = (isValid || validation.status === 'undetectable') &&
-    isStorableAppUrl(normalizeAppUrl(url));
-  const isDuplicate = isCreatable && window.AppGridState && window.AppGridState.hasAppWithUrl(fullUrl);
+// A settled duplicate verdict can go stale while the modal stays open: when
+// the conflicting app is deleted or its URL changed, Confirm stays disabled
+// and Enter blocked until the input changes. A submit whose Confirm is
+// disabled by the settled verdict re-checks it against the current apps and,
+// when the conflict is gone, clears the verdict and re-derives the preview
+// with one synchronous pass so submit can proceed.
+function revalidateSettledDuplicateVerdict(fullUrl) {
+  if (duplicatePreviewUrl !== fullUrl) {
+    return;
+  }
+  const { urls } = getExistingAppUrls();
+  if (window.AppGridState?.getCanonicalUrl && urls.has(window.AppGridState.getCanonicalUrl(fullUrl))) {
+    return;
+  }
+  duplicatePreviewUrl = null;
+  clearTimeout(addAppPreviewTimer);
+  addAppPreviewTimer = null;
+  updatePreview();
+}
 
-  if (validationMessage) {
-    if (isDuplicate) {
-      validationMessage.textContent = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
-      validationMessage.classList.add('show', 'duplicate');
-      validationMessage.classList.remove('malformed', 'undetectable');
-    } else {
-      validationMessage.textContent = translateValidationMessage(validation.message);
-      validationMessage.classList.add('show');
-      validationMessage.classList.remove('duplicate');
-      validationMessage.classList.toggle('malformed', validation.status === 'malformed');
-      validationMessage.classList.toggle('undetectable', validation.status === 'undetectable');
+// Submitters settle an outstanding preview synchronously so a URL whose
+// duplicate scan is still pending cannot reach the save path, which would
+// dismiss the modal instead of showing the duplicate warning.
+function settlePendingPreviewBeforeSubmit() {
+  const { addAppConfirm, addAppUrlInput } = getAddAppElements();
+  if (addAppConfirm?.disabled && addAppUrlInput?.value) {
+    const url = addAppUrlInput.value.trim();
+    const validation = validateUrl(url);
+    const fullUrl = validation.url ? validation.url.href : normalizeAppUrl(url);
+    revalidateSettledDuplicateVerdict(fullUrl);
+    if (addAppConfirm.disabled) {
+      return false;
     }
   }
-
-  if (addAppConfirm) {
-    addAppConfirm.disabled = !isCreatable || isDuplicate;
+  if (addAppPreviewTimer !== null) {
+    clearTimeout(addAppPreviewTimer);
+    addAppPreviewTimer = null;
+    updatePreview();
   }
+  return !addAppConfirm?.disabled;
 }
 
 function openAddAppModal() {
@@ -516,7 +604,7 @@ function bindAddAppModal() {
     }, { signal });
   }
 
-  addAppUrlInput.addEventListener('input', updatePreview, { signal });
+  addAppUrlInput.addEventListener('input', scheduleAddAppPreview, { signal });
   addAppUrlInput.addEventListener('keypress', async function (event) {
     if (event.key !== 'Enter') {
       return;
@@ -527,7 +615,7 @@ function bindAddAppModal() {
     if (!url) {
       return;
     }
-    if (addAppConfirm && addAppConfirm.disabled) {
+    if (!settlePendingPreviewBeforeSubmit()) {
       return;
     }
     await addAppFromInput(url);
@@ -539,6 +627,9 @@ function bindAddAppModal() {
       if (!url) {
         return;
       }
+      if (!settlePendingPreviewBeforeSubmit()) {
+        return;
+      }
       await addAppFromInput(url);
     }, { signal });
   }
@@ -546,7 +637,7 @@ function bindAddAppModal() {
   window.addEventListener('languageChanged', function () {
     const { addAppModal } = getAddAppElements();
     if (addAppModal && addAppModal.classList.contains('modal-open')) {
-      updatePreview();
+      scheduleAddAppPreview();
     }
   }, { signal });
 

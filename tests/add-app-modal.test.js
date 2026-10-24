@@ -1,5 +1,5 @@
 /* global renderDefaultAppsList closeAddAppModal */
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 let originalDefaultAppsList = [];
@@ -304,30 +304,37 @@ describe('Add app modal undetectable URLs', () => {
   });
 
   it('blocks duplicate undetectable URLs', async () => {
-    const newAppBtn = document.getElementById('new-app');
-    const addAppUrlInput = document.getElementById('add-app-url');
-    const addAppConfirm = document.getElementById('add-app-confirm');
+    vi.useFakeTimers();
+    try {
+      const newAppBtn = document.getElementById('new-app');
+      const addAppUrlInput = document.getElementById('add-app-url');
+      const addAppConfirm = document.getElementById('add-app-confirm');
 
-    window.AppGridState.addApp({
-      id: 'custom-app-mywiki',
-      name: 'Mywiki',
-      url: 'https://mywiki',
-      icon: ''
-    });
+      window.AppGridState.addApp({
+        id: 'custom-app-mywiki',
+        name: 'Mywiki',
+        url: 'https://mywiki',
+        icon: ''
+      });
 
-    window.initAddAppModal();
-    newAppBtn.click();
+      window.initAddAppModal();
+      newAppBtn.click();
 
-    addAppUrlInput.value = 'mywiki';
-    addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+      addAppUrlInput.value = 'mywiki';
+      addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-    expect(addAppConfirm.disabled).toBe(true);
+      vi.advanceTimersByTime(150);
+      expect(addAppConfirm.disabled).toBe(true);
 
-    pressEnter(addAppUrlInput);
-    await flushMicrotasks();
+      pressEnter(addAppUrlInput);
+      await flushMicrotasks();
 
-    expect(window.AppGridState.getCustomApps()).toHaveLength(1);
-    expect(window.renderCustomApps).not.toHaveBeenCalled();
+      expect(window.AppGridState.getCustomApps()).toHaveLength(1);
+      expect(window.renderCustomApps).not.toHaveBeenCalled();
+    } finally {
+      window.resetAddAppModalState();
+      vi.useRealTimers();
+    }
   });
 
   it('keeps the confirm button disabled for malformed URLs', async () => {
@@ -384,5 +391,248 @@ describe('Add app modal undetectable URLs', () => {
     addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
 
     expect(addAppConfirm.disabled).toBe(true);
+  });
+});
+
+describe('Add app preview debounce', () => {
+  let scan;
+  let input;
+
+  function typeUrl(value) {
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function reopenModal(value) {
+    window.initAddAppModal();
+    window.openAddAppModal();
+    typeUrl(value);
+  }
+
+  // A settled preview stays settled after 300 ms, and the next quiet window
+  // settles exactly one more preview, last with `expectedUrl`.
+  function expectNextQuietWindow(spy, value, expectedUrl) {
+    vi.advanceTimersByTime(300);
+    expect(spy).toHaveBeenCalledTimes(1);
+    typeUrl(value);
+    vi.advanceTimersByTime(149);
+    expect(spy).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenLastCalledWith(expectedUrl);
+  }
+
+  // Arrange the colliding-duplicate phase both cubic-fix tests share: the
+  // conflicting app sits in the grid and the input has gone quiet past the
+  // debounce, so submit is blocked as a duplicate.
+  function settleCollidingDuplicate() {
+    const existing = { id: 'existing-duplicate', name: 'Example', url: 'https://example.com/' };
+    expect(window.AppGridState.addApp(existing)).toBe(true);
+    typeUrl('example.com');
+    const confirm = document.getElementById('add-app-confirm');
+    const modal = document.getElementById('add-app-modal');
+    const message = document.querySelector('.add-app-validation-message');
+
+    vi.advanceTimersByTime(150);
+    expect(confirm.disabled).toBe(true);
+    expect(message.classList.contains('duplicate')).toBe(true);
+    return { confirm, modal, message, existing };
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    window.initAddAppModal();
+    window.openAddAppModal();
+    input = document.getElementById('add-app-url');
+    scan = vi.spyOn(window.AppGridState, 'hasAppWithUrl');
+  });
+
+  afterEach(() => {
+    window.resetAddAppModalState();
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it.each(['language refresh', 'trailing whitespace', 'immediate paste'])('keeps duplicate submission blocked during %s', async (change) => {
+    const existing = { id: 'existing-duplicate', name: 'Example', url: 'https://example.com/' };
+    expect(window.AppGridState.addApp(existing)).toBe(true);
+    scan.mockClear();
+    typeUrl('example.com');
+    const confirm = document.getElementById('add-app-confirm');
+    const modal = document.getElementById('add-app-modal');
+    const message = document.querySelector('.add-app-validation-message');
+
+    if (change === 'immediate paste') {
+      input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+      await flushMicrotasks();
+      expect(scan).toHaveBeenCalledTimes(1);
+      expect(scan).toHaveBeenCalledWith('https://example.com/');
+    } else {
+      vi.advanceTimersByTime(150);
+      expect(confirm.disabled).toBe(true);
+      expect(message.classList.contains('duplicate')).toBe(true);
+      expect(scan).toHaveBeenCalledExactlyOnceWith('https://example.com/');
+      if (change === 'language refresh') window.dispatchEvent(new Event('languageChanged'));
+      else typeUrl('example.com   ');
+
+      expect(message.classList.contains('duplicate')).toBe(true);
+      expect(confirm.disabled).toBe(true);
+      input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+      await flushMicrotasks();
+      expect(scan).toHaveBeenCalledTimes(1);
+    }
+
+    expect(modal.classList.contains('modal-open')).toBe(true);
+    expect(confirm.disabled).toBe(true);
+    expect(window.AppGridState.getCustomApps()).toEqual([existing]);
+    expect(window.renderCustomApps).not.toHaveBeenCalled();
+    expect(message.classList.contains('duplicate')).toBe(true);
+
+    vi.advanceTimersByTime(150);
+    expect(scan).toHaveBeenCalledTimes(change === 'immediate paste' ? 1 : 2);
+    expect(message.classList.contains('duplicate')).toBe(true);
+    expect(confirm.disabled).toBe(true);
+    expect(modal.classList.contains('modal-open')).toBe(true);
+
+    typeUrl('available.example');
+    expect(confirm.disabled).toBe(false);
+    vi.advanceTimersByTime(150);
+    expect(scan).toHaveBeenLastCalledWith('https://available.example/');
+    expect(confirm.disabled).toBe(false);
+    expect(window.AppGridState.getCustomApps()).toEqual([existing]);
+  });
+
+  it('unblocks submit when the conflicting app is deleted while the modal stays open', async () => {
+    const { modal, message } = settleCollidingDuplicate();
+
+    expect(window.AppGridState.deleteApp('existing-duplicate')).toBe(true);
+    expect(window.AppGridState.getCustomApps()).toEqual([]);
+
+    input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+
+    expect(window.AppGridState.getCustomApps()).toHaveLength(1);
+    expect(window.AppGridState.getCustomApps()[0]).toMatchObject({ url: 'https://example.com' });
+    expect(window.renderCustomApps).toHaveBeenCalled();
+    expect(modal.classList.contains('modal-open')).toBe(false);
+    expect(message.classList.contains('duplicate')).toBe(false);
+  });
+
+  it('keeps submit blocked while the conflicting app still exists at submit', async () => {
+    const { confirm, modal, message, existing } = settleCollidingDuplicate();
+
+    input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+
+    expect(window.AppGridState.getCustomApps()).toEqual([existing]);
+    expect(window.renderCustomApps).not.toHaveBeenCalled();
+    expect(modal.classList.contains('modal-open')).toBe(true);
+    expect(confirm.disabled).toBe(true);
+    expect(message.classList.contains('duplicate')).toBe(true);
+  });
+
+  it('previews exactly once per quiet window with only the final input', () => {
+    typeUrl('first.example');
+    vi.advanceTimersByTime(100);
+    typeUrl('second.example');
+    vi.advanceTimersByTime(100);
+    typeUrl('final.example');
+    vi.advanceTimersByTime(149);
+    expect(scan).not.toHaveBeenCalled();
+    expect(document.getElementById('preview-url').textContent).toBe('');
+
+    vi.advanceTimersByTime(1);
+    expect(scan).toHaveBeenCalledExactlyOnceWith('https://final.example/');
+    expect(document.getElementById('preview-url').textContent).toBe('https://final.example/');
+    expectNextQuietWindow(scan, 'next.example', 'https://next.example/');
+    expect(document.getElementById('preview-url').textContent).toBe('https://next.example/');
+  });
+
+  it('debounces malformed preview construction while showing format errors immediately', () => {
+    const previewUrl = document.getElementById('preview-url');
+    const previewWrite = vi.spyOn(previewUrl, 'textContent', 'set');
+
+    for (const url of ['http://', 'https://', 'https://final.c/']) {
+      typeUrl(url);
+      expect(document.getElementById('add-app-confirm').disabled).toBe(true);
+      expect(document.querySelector('.add-app-validation-message').classList.contains('malformed')).toBe(true);
+      vi.advanceTimersByTime(100);
+    }
+    vi.advanceTimersByTime(49);
+    expect(previewWrite).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(previewWrite).toHaveBeenCalledExactlyOnceWith('https://final.c/');
+    expect(document.querySelector('#preview-icon img').src).toContain('domain=final.c&');
+    expect(scan).not.toHaveBeenCalled();
+    expectNextQuietWindow(previewWrite, 'https://next.c/', 'https://next.c/');
+    typeUrl('valid-after-malformed.example');
+    vi.advanceTimersByTime(150);
+    expect(scan).toHaveBeenCalledExactlyOnceWith('https://valid-after-malformed.example/');
+  });
+
+  it.each(['close', 'reset', 'empty'])('cancels malformed preview construction on %s', (action) => {
+    const previewWrite = vi.spyOn(document.getElementById('preview-url'), 'textContent', 'set');
+    typeUrl('https://cancel.c/');
+    expect(previewWrite).not.toHaveBeenCalled();
+    if (action === 'close') window.closeAddAppModal();
+    else if (action === 'reset') window.resetAddAppModalState();
+    else typeUrl('');
+
+    vi.advanceTimersByTime(450);
+    expect(previewWrite).not.toHaveBeenCalled();
+    reopenModal('https://reopened.c/');
+    vi.advanceTimersByTime(150);
+    expect(previewWrite).toHaveBeenCalledExactlyOnceWith('https://reopened.c/');
+  });
+
+  it('coalesces language refreshes with pending input previews', () => {
+    typeUrl('language.example');
+    vi.advanceTimersByTime(100);
+    window.dispatchEvent(new Event('languageChanged'));
+    vi.advanceTimersByTime(149);
+    expect(scan).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(scan).toHaveBeenCalledExactlyOnceWith('https://language.example/');
+    vi.advanceTimersByTime(300);
+    expect(scan).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['close', 'reset'])('cancels pending preview on %s without later UI or storage writes', (action) => {
+    typeUrl('cancel.example');
+    expect(scan).not.toHaveBeenCalled();
+    if (action === 'close') window.closeAddAppModal();
+    else window.resetAddAppModalState();
+
+    const observer = new MutationObserver(() => {});
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+    const setItem = vi.spyOn(localStorage, 'setItem');
+    const removeItem = vi.spyOn(localStorage, 'removeItem');
+    const clear = vi.spyOn(localStorage, 'clear');
+    vi.advanceTimersByTime(450);
+    expect(observer.takeRecords()).toEqual([]);
+    expect(scan).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
+    expect(removeItem).not.toHaveBeenCalled();
+    expect(clear).not.toHaveBeenCalled();
+    observer.disconnect();
+
+    // Reopening proves the scan oracle still observes live work after cancellation.
+    reopenModal('reopened.example');
+    vi.advanceTimersByTime(150);
+    expect(scan).toHaveBeenCalledExactlyOnceWith('https://reopened.example/');
+  });
+
+  it('shows cheap format errors immediately while cancelling a valid pending preview', () => {
+    typeUrl('valid.example');
+    typeUrl('http://');
+    expect(document.getElementById('add-app-confirm').disabled).toBe(true);
+    expect(document.querySelector('.add-app-validation-message').classList.contains('malformed')).toBe(true);
+    expect(scan).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(150);
+    expect(scan).not.toHaveBeenCalled();
+    typeUrl('valid-again.example');
+    vi.advanceTimersByTime(150);
+    expect(scan).toHaveBeenCalledExactlyOnceWith('https://valid-again.example/');
   });
 });

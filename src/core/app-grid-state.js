@@ -3,6 +3,10 @@
 // All modules that read or write appOrder / customApps must go through this
 // object so that the rules for id/order translation live in one place.
 
+const CANONICAL_URL_CACHE_LIMIT = 64;
+const canonicalAppUrls = new Map();
+let lastAppUrlCheck = null;
+
 const AppGridState = {
   // --- Raw storage access ---
 
@@ -74,6 +78,9 @@ const AppGridState = {
   // Returns a canonical form of the given URL for duplicate comparison:
   // strips www., lowercases the hostname, removes trailing slash.
   getCanonicalUrl(url) {
+    if (canonicalAppUrls.has(url)) return canonicalAppUrls.get(url);
+
+    let canonical = url;
     try {
       const urlObj = new URL(url);
       urlObj.hostname = urlObj.hostname.replace(/^www\./, '');
@@ -84,10 +91,16 @@ const AppGridState = {
           (urlObj.protocol === 'https:' && urlObj.port === '443')) {
         urlObj.port = '';
       }
-      return urlObj.href;
+      canonical = urlObj.href;
     } catch {
-      return url;
+      // Invalid URLs retain their original comparison value.
     }
+    // Cached values derive purely from their keys, so clearing at the limit loses reuse, never correctness.
+    if (canonicalAppUrls.size >= CANONICAL_URL_CACHE_LIMIT) {
+      canonicalAppUrls.clear();
+    }
+    canonicalAppUrls.set(url, canonical);
+    return canonical;
   },
 
   _normalizeForUrlCheck(trimmed) {
@@ -101,18 +114,24 @@ const AppGridState = {
   hasAppWithUrl(url) {
     if (!url || typeof url !== 'string') return false;
 
+    const apps = this.getCustomApps();
+    const defaults = window.defaultApps || [];
+    const urls = [...apps, ...defaults].map(app => app.url);
+    // Derive freshness from URL values so imports and in-place edits are covered.
+    const key = JSON.stringify([url, urls]);
+    if (lastAppUrlCheck?.key === key) return lastAppUrlCheck.result;
+
     const trimmedInput = String(url).trim();
     const normalizedInput = this._normalizeForUrlCheck(trimmedInput);
     const canonicalInput = this.getCanonicalUrl(normalizedInput);
-    const apps = this.getCustomApps();
-    const defaults = window.defaultApps || [];
-
-    return [...apps, ...defaults].some(app => {
-      if (!app.url) return false;
-      const trimmed = String(app.url).trim();
+    const result = urls.some(url => {
+      if (!url) return false;
+      const trimmed = String(url).trim();
       const storedUrl = this._normalizeForUrlCheck(trimmed);
       return this.getCanonicalUrl(storedUrl) === canonicalInput;
     });
+    lastAppUrlCheck = { key, result };
+    return result;
   },
 
   // --- Id helpers ---
