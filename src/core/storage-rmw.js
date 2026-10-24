@@ -17,7 +17,14 @@
 
   const nativeGetItem = storage.getItem.bind(storage);
   const nativeSetItem = storage.setItem.bind(storage);
+  const nativeSetItemAsync = typeof storage.setItemAsync === 'function'
+    ? storage.setItemAsync.bind(storage)
+    : null;
+  const nativeRemoveItemAsync = typeof storage.removeItemAsync === 'function'
+    ? storage.removeItemAsync.bind(storage)
+    : null;
   const lastLocalValues = new Map();
+  const localWriteGenerations = new Map();
 
   /** Clone a JSON-compatible merge value without sharing mutable references. */
   function clone(value) {
@@ -354,6 +361,7 @@
       return nativeSetItem(key, value);
     }
 
+    bumpLocalWriteGeneration(key);
     const candidateRaw = String(value);
     const currentRaw = nativeGetItem(key);
     const baseRaw = lastLocalValues.has(key) ? lastLocalValues.get(key) : currentRaw;
@@ -370,6 +378,63 @@
     return result;
   }
 
+  // The storage bridge exposes async persistence methods (setItemAsync /
+  // removeItemAsync) that update localStorage without passing through the
+  // wrapped sync setItem. Settings import (data-manager.js) uses them for
+  // todos/notes/ai_conversations; without a reseed the merge base keeps the
+  // pre-import snapshot and later deletes of imported items are resurrected
+  // by the three-way merge (issue #904). Reseed from the value actually
+  // persisted after the bridge settles: on success that is the imported
+  // value; on a rejected write the bridge rolled the cache back, so the
+  // base returns to the real stored state. A per-key write generation makes
+  // the settlement skip the reseed whenever a newer local write has already
+  // established a merge base of its own, so an overdue settlement can never
+  // overwrite the base that a later synchronous write recorded.
+
+  /** Advance the per-key local write generation and return the new value. */
+  function bumpLocalWriteGeneration(key) {
+    const generation = (localWriteGenerations.get(key) || 0) + 1;
+    localWriteGenerations.set(key, generation);
+    return generation;
+  }
+
+  /** Reseed the merge base from the currently persisted value. */
+  function reseedBaseFromStorage(key) {
+    lastLocalValues.set(key, nativeGetItem(key));
+  }
+
+  /** Settle an async bridge result, reseeding only while still the latest write. */
+  function reseedAfterAsyncWrite(key, result, generation) {
+    const reseedIfLatest = function () {
+      if (localWriteGenerations.get(key) === generation) {
+        reseedBaseFromStorage(key);
+      }
+    };
+    return Promise.resolve(result).then(function (ok) {
+      reseedIfLatest();
+      return ok;
+    }, function (error) {
+      reseedIfLatest();
+      throw error;
+    });
+  }
+
+  /** Wrap Storage#setItemAsync so bridge writes refresh the merge base. */
+  function wrappedSetItemAsync(key, value) {
+    if (!TARGET_KEYS.has(key)) return nativeSetItemAsync(key, value);
+    const generation = bumpLocalWriteGeneration(key);
+    return reseedAfterAsyncWrite(key, nativeSetItemAsync(key, value), generation);
+  }
+
+  /** Wrap Storage#removeItemAsync so bridge removals refresh the merge base. */
+  function wrappedRemoveItemAsync(key) {
+    if (!TARGET_KEYS.has(key)) return nativeRemoveItemAsync(key);
+    const generation = bumpLocalWriteGeneration(key);
+    return reseedAfterAsyncWrite(key, nativeRemoveItemAsync(key), generation);
+  }
+
   storage.getItem = wrappedGetItem;
   storage.setItem = wrappedSetItem;
+  if (nativeSetItemAsync) storage.setItemAsync = wrappedSetItemAsync;
+  if (nativeRemoveItemAsync) storage.removeItemAsync = wrappedRemoveItemAsync;
 })();
