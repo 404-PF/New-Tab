@@ -299,8 +299,11 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     // The sentinel listing is read-only, so a failure there must not abort
     // the verdict either.
     expect(merge).toMatch(/--jq '\.\[\] \| select\(\.user\.login == "github-actions\[bot\]"[^\n]*\)\) \| \.id'\)" \|\| true/);
-    // ...but the guards cover reporting only: no blanket exit 0 at the end,
-    // so a failed gate or a failed merge still fails the check.
+    // ...but the guards cover reporting only: the tail must not blanket-exit
+    // success. A recorded denial is not a failure — it ends the step with
+    // the shell's default status 0 and the posted verdict comment as the
+    // check's real output, while an unexpected failure still propagates via
+    // set -e.
     const tail = merge.slice(merge.indexOf('echo "Decision: $DECISION${VERDICT:+ ($VERDICT)}"'));
     expect(tail).not.toMatch(/exit 0/);
   });

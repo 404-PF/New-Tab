@@ -505,9 +505,15 @@ jobs:
           # downgrade, a comment restriction, a locked PR) must not turn a
           # correct "blocked" verdict into a red check — that would report a
           # merge problem where none exists and train maintainers to ignore
-          # this check. Note that only the reporting writes are guarded: a
-          # gate failure or a failed merge above still fails this step, so
-          # the fail-closed guarantees are unchanged.
+          # this check. Note that only the reporting writes are guarded: an
+          # unexpected failure elsewhere still fails this step via set -e,
+          # but a recorded denial is not a failure — deny() sets VERDICT and
+          # lets the script run on so the verdict comment is posted; the
+          # script then ends after the Decision line with the shell's
+          # default status 0. Fail-closed lives in the gates rather than in
+          # the exit code: a non-empty VERDICT means the merge mutation was
+          # never attempted, and the verdict comment is the check's real
+          # output.
           {
             echo '<!-- pr-merge -->'
             echo '## pr-merge summary'
