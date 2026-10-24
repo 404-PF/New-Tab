@@ -102,6 +102,21 @@
     }
   }
 
+  // chrome.storage's callback API reports failures through chrome.runtime.lastError
+  // inside the callback, which the callers below already handle. A
+  // promise-returning implementation can instead reject without invoking the
+  // callback at all, so the returned promise must still be observed or it becomes
+  // an unhandled rejection. Only a defined return value is a promise-style area:
+  // a callback-style area returns undefined and settles through its callback, so
+  // racing Promise.resolve(undefined) against that callback would let a stale
+  // result win before the asynchronous read returns its items.
+  function observeStoragePromise(result, onFulfilled, onRejected) {
+    if (result === undefined) {
+      return;
+    }
+    Promise.resolve(result).then(onFulfilled).catch(onRejected);
+  }
+
   function loadTimerStateAsync() {
     const storageArea = globalThis.chrome?.storage?.local;
     if (!storageArea || typeof storageArea.get !== 'function') {
@@ -120,22 +135,15 @@
       let result;
       try {
         result = storageArea.get(TIMER_STATE_KEY, finish);
-      } catch (_error) {
-        finish(null);
-        return;
-      }
-      // A callback-style storage area returns undefined and settles through the
-      // callback above; only a promise-style return value settles here. Racing
-      // Promise.resolve(undefined) against the callback would let "no saved
-      // state" win before the asynchronous read returns its items, so the
-      // promise path is guarded the same way saveTimerStateAsync's is.
-      if (result !== undefined) {
-        Promise.resolve(result).then(function (items) {
+        observeStoragePromise(result, function (items) {
           finish(items);
-        }).catch(function (error) {
+        }, function (error) {
           console.warn('Failed to load Pomodoro timer state from chrome.storage:', error);
           finish(null);
         });
+      } catch (_error) {
+        finish(null);
+        return;
       }
     });
   }
@@ -186,21 +194,19 @@
         result = storageArea.set({ [TIMER_STATE_KEY]: serialized }, function () {
           finish(!globalThis.chrome.runtime?.lastError);
         });
+        // Same normalisation as the load path above: a callback-style area
+        // returns undefined and settles through the callback, so only a defined
+        // return value (i.e. a promise-style area) settles here.
+        observeStoragePromise(result, function () {
+          finish(true);
+        }, function (error) {
+          console.warn('Failed to save Pomodoro timer state to chrome.storage:', error);
+          finish(false);
+        });
       } catch (_error) {
         finish(false);
         return;
       }
-      // Same normalisation as the load path above: a callback-style area returns
-      // undefined and settles through the callback, so only a defined return
-      // value (i.e. a promise-style area) settles here.
-      Promise.resolve(result).then(function () {
-        if (result !== undefined) {
-          finish(true);
-        }
-      }).catch(function (error) {
-        console.warn('Failed to save Pomodoro timer state to chrome.storage:', error);
-        finish(false);
-      });
     });
   }
 
