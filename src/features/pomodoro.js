@@ -141,7 +141,8 @@
           console.warn('Failed to load Pomodoro timer state from chrome.storage:', error);
           finish(null);
         });
-      } catch (_error) {
+      } catch (error) {
+        console.warn('Failed to load Pomodoro timer state from chrome.storage:', error);
         finish(null);
         return;
       }
@@ -203,7 +204,8 @@
           console.warn('Failed to save Pomodoro timer state to chrome.storage:', error);
           finish(false);
         });
-      } catch (_error) {
+      } catch (error) {
+        console.warn('Failed to save Pomodoro timer state to chrome.storage:', error);
         finish(false);
         return;
       }
