@@ -1066,3 +1066,88 @@ describe('__appGridState', () => {
     expect(window.__appGridState.phase).toBe('deferred');
   });
 });
+
+describe('App URL result reuse', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete window.defaultApps;
+  });
+
+  it('reuses canonical results and parses changed inputs independently', () => {
+    const OriginalURL = window.URL;
+    const parse = vi.spyOn(window, 'URL').mockImplementation(function (url) {
+      if (arguments.length !== 1 || !['https://www.memo-canonical.example/path/', 'https://www.memo-changed.example/next/'].includes(url)) {
+        throw new Error('Unmodeled URL construction');
+      }
+      return new OriginalURL(url);
+    });
+    expect(AppGridState.getCanonicalUrl('https://www.memo-canonical.example/path/')).toBe('https://memo-canonical.example/path');
+    expect(parse).toHaveBeenCalledTimes(1);
+    expect(AppGridState.getCanonicalUrl('https://www.memo-canonical.example/path/')).toBe('https://memo-canonical.example/path');
+    expect(parse).toHaveBeenCalledTimes(1);
+    expect(AppGridState.getCanonicalUrl('https://www.memo-changed.example/next/')).toBe('https://memo-changed.example/next');
+    expect(parse).toHaveBeenCalledTimes(2);
+  });
+
+  it('reuses invalid canonical results without losing changed-input misses', () => {
+    const OriginalURL = window.URL;
+    const parse = vi.spyOn(window, 'URL').mockImplementation(function (url) {
+      if (arguments.length !== 1 || !['invalid memo url', 'another invalid memo url'].includes(url)) {
+        throw new Error('Unmodeled URL construction');
+      }
+      return new OriginalURL(url);
+    });
+    expect(AppGridState.getCanonicalUrl('invalid memo url')).toBe('invalid memo url');
+    expect(parse).toHaveBeenCalledTimes(1);
+    expect(AppGridState.getCanonicalUrl('invalid memo url')).toBe('invalid memo url');
+    expect(parse).toHaveBeenCalledTimes(1);
+    expect(AppGridState.getCanonicalUrl('another invalid memo url')).toBe('another invalid memo url');
+    expect(parse).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips the duplicate scan for unchanged inputs and scans changed inputs', () => {
+    AppGridStorage.saveCustomApps([{ id: 'memo', name: 'Memo', url: 'https://memo-scan.example/' }]);
+    const canonicalize = vi.spyOn(AppGridState, 'getCanonicalUrl');
+    expect(AppGridState.hasAppWithUrl('https://missing-memo.example/')).toBe(false);
+    expect(canonicalize).toHaveBeenCalledWith('https://memo-scan.example/');
+    canonicalize.mockClear();
+    expect(AppGridState.hasAppWithUrl('https://missing-memo.example/')).toBe(false);
+    expect(canonicalize).not.toHaveBeenCalled();
+    expect(AppGridState.hasAppWithUrl('https://memo-scan.example/')).toBe(true);
+    expect(canonicalize).toHaveBeenCalledWith('https://memo-scan.example/');
+    canonicalize.mockClear();
+    expect(AppGridState.hasAppWithUrl('https://memo-scan.example/')).toBe(true);
+    expect(canonicalize).not.toHaveBeenCalled();
+  });
+
+  it.each(['import', 'edit', 'delete', 'default edit'])('invalidates duplicate results after %s and reuses the refreshed result', (change) => {
+    const target = `https://memo-record-${change.replaceAll(' ', '-')}.example/`;
+    const record = { id: 'record-memo', name: 'Memo', url: target };
+    if (change === 'delete') {
+      AppGridStorage.saveCustomApps([record]);
+      AppGridStorage.saveOrder([record.id]);
+    } else if (change === 'edit') {
+      AppGridStorage.saveCustomApps([{ ...record, url: 'https://old-record-memo.example/' }]);
+    } else if (change === 'default edit') {
+      window.defaultApps = [{ ...record, url: 'https://old-default-memo.example/' }];
+    }
+    const canonicalize = vi.spyOn(AppGridState, 'getCanonicalUrl');
+    expect(AppGridState.hasAppWithUrl(target)).toBe(change === 'delete');
+    expect(canonicalize).toHaveBeenCalled();
+    canonicalize.mockClear();
+    expect(AppGridState.hasAppWithUrl(target)).toBe(change === 'delete');
+    expect(canonicalize).not.toHaveBeenCalled();
+
+    if (change === 'import') localStorage.setItem('customApps', JSON.stringify([record]));
+    else if (change === 'edit') AppGridState.updateCustomApps(apps => apps.map(app => ({ ...app, url: target })));
+    else if (change === 'delete') expect(AppGridState.deleteApp(record.id)).toBe(true);
+    else window.defaultApps[0].url = target;
+
+    canonicalize.mockClear();
+    expect(AppGridState.hasAppWithUrl(target)).toBe(change !== 'delete');
+    expect(canonicalize).toHaveBeenCalled();
+    canonicalize.mockClear();
+    expect(AppGridState.hasAppWithUrl(target)).toBe(change !== 'delete');
+    expect(canonicalize).not.toHaveBeenCalled();
+  });
+});

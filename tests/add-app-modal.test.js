@@ -1,5 +1,5 @@
 /* global renderDefaultAppsList closeAddAppModal */
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 let originalDefaultAppsList = [];
@@ -304,30 +304,37 @@ describe('Add app modal undetectable URLs', () => {
   });
 
   it('blocks duplicate undetectable URLs', async () => {
-    const newAppBtn = document.getElementById('new-app');
-    const addAppUrlInput = document.getElementById('add-app-url');
-    const addAppConfirm = document.getElementById('add-app-confirm');
+    vi.useFakeTimers();
+    try {
+      const newAppBtn = document.getElementById('new-app');
+      const addAppUrlInput = document.getElementById('add-app-url');
+      const addAppConfirm = document.getElementById('add-app-confirm');
 
-    window.AppGridState.addApp({
-      id: 'custom-app-mywiki',
-      name: 'Mywiki',
-      url: 'https://mywiki',
-      icon: ''
-    });
+      window.AppGridState.addApp({
+        id: 'custom-app-mywiki',
+        name: 'Mywiki',
+        url: 'https://mywiki',
+        icon: ''
+      });
 
-    window.initAddAppModal();
-    newAppBtn.click();
+      window.initAddAppModal();
+      newAppBtn.click();
 
-    addAppUrlInput.value = 'mywiki';
-    addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+      addAppUrlInput.value = 'mywiki';
+      addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-    expect(addAppConfirm.disabled).toBe(true);
+      vi.advanceTimersByTime(150);
+      expect(addAppConfirm.disabled).toBe(true);
 
-    pressEnter(addAppUrlInput);
-    await flushMicrotasks();
+      pressEnter(addAppUrlInput);
+      await flushMicrotasks();
 
-    expect(window.AppGridState.getCustomApps()).toHaveLength(1);
-    expect(window.renderCustomApps).not.toHaveBeenCalled();
+      expect(window.AppGridState.getCustomApps()).toHaveLength(1);
+      expect(window.renderCustomApps).not.toHaveBeenCalled();
+    } finally {
+      window.resetAddAppModalState();
+      vi.useRealTimers();
+    }
   });
 
   it('keeps the confirm button disabled for malformed URLs', async () => {
@@ -384,5 +391,107 @@ describe('Add app modal undetectable URLs', () => {
     addAppUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
 
     expect(addAppConfirm.disabled).toBe(true);
+  });
+});
+
+describe('Add app preview debounce', () => {
+  let scan;
+  let input;
+
+  function typeUrl(value) {
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    window.initAddAppModal();
+    window.openAddAppModal();
+    input = document.getElementById('add-app-url');
+    scan = vi.spyOn(window.AppGridState, 'hasAppWithUrl');
+  });
+
+  afterEach(() => {
+    window.resetAddAppModalState();
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('previews exactly once per quiet window with only the final input', () => {
+    typeUrl('first.example');
+    vi.advanceTimersByTime(100);
+    typeUrl('second.example');
+    vi.advanceTimersByTime(100);
+    typeUrl('final.example');
+    vi.advanceTimersByTime(149);
+    expect(scan).not.toHaveBeenCalled();
+    expect(document.getElementById('preview-url').textContent).toBe('');
+
+    vi.advanceTimersByTime(1);
+    expect(scan).toHaveBeenCalledExactlyOnceWith('https://final.example/');
+    expect(document.getElementById('preview-url').textContent).toBe('https://final.example/');
+    vi.advanceTimersByTime(300);
+    expect(scan).toHaveBeenCalledTimes(1);
+
+    typeUrl('next.example');
+    vi.advanceTimersByTime(149);
+    expect(scan).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(scan).toHaveBeenCalledTimes(2);
+    expect(scan).toHaveBeenLastCalledWith('https://next.example/');
+    expect(document.getElementById('preview-url').textContent).toBe('https://next.example/');
+  });
+
+  it('coalesces language refreshes with pending input previews', () => {
+    typeUrl('language.example');
+    vi.advanceTimersByTime(100);
+    window.dispatchEvent(new Event('languageChanged'));
+    vi.advanceTimersByTime(149);
+    expect(scan).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(scan).toHaveBeenCalledExactlyOnceWith('https://language.example/');
+    vi.advanceTimersByTime(300);
+    expect(scan).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['close', 'reset'])('cancels pending preview on %s without later UI or storage writes', (action) => {
+    typeUrl('cancel.example');
+    expect(scan).not.toHaveBeenCalled();
+    if (action === 'close') window.closeAddAppModal();
+    else window.resetAddAppModalState();
+
+    const observer = new MutationObserver(() => {});
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+    const setItem = vi.spyOn(localStorage, 'setItem');
+    const removeItem = vi.spyOn(localStorage, 'removeItem');
+    const clear = vi.spyOn(localStorage, 'clear');
+    vi.advanceTimersByTime(450);
+    expect(observer.takeRecords()).toEqual([]);
+    expect(scan).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
+    expect(removeItem).not.toHaveBeenCalled();
+    expect(clear).not.toHaveBeenCalled();
+    observer.disconnect();
+
+    // Reopening proves the scan oracle still observes live work after cancellation.
+    window.initAddAppModal();
+    window.openAddAppModal();
+    typeUrl('reopened.example');
+    vi.advanceTimersByTime(150);
+    expect(scan).toHaveBeenCalledExactlyOnceWith('https://reopened.example/');
+  });
+
+  it('shows cheap format errors immediately while cancelling a valid pending preview', () => {
+    typeUrl('valid.example');
+    typeUrl('http://');
+    expect(document.getElementById('add-app-confirm').disabled).toBe(true);
+    expect(document.querySelector('.add-app-validation-message').classList.contains('malformed')).toBe(true);
+    expect(scan).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(150);
+    expect(scan).not.toHaveBeenCalled();
+    typeUrl('valid-again.example');
+    vi.advanceTimersByTime(150);
+    expect(scan).toHaveBeenCalledExactlyOnceWith('https://valid-again.example/');
   });
 });

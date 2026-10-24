@@ -33,12 +33,17 @@ const DEFAULT_PREVIEW_ICON = `
   </svg>
 `;
 
+const ADD_APP_PREVIEW_DEBOUNCE_MS = 150;
+let addAppPreviewTimer = null;
+
 let addAppElementsCache = null;
 let addAppModalInitialized = false;
 let addAppAbortController = null;
 let isQuickAddInProgress = false;
 
 function resetAddAppModalState() {
+  clearTimeout(addAppPreviewTimer);
+  addAppPreviewTimer = null;
   addAppElementsCache = null;
   addAppModalInitialized = false;
   isQuickAddInProgress = false;
@@ -163,6 +168,8 @@ function setAddAppPreviewIcon(faviconUrl, appName) {
 }
 
 function resetPreviewState() {
+  clearTimeout(addAppPreviewTimer);
+  addAppPreviewTimer = null;
   const {
     previewSection,
     validationIcon,
@@ -386,7 +393,7 @@ function renderDefaultAppsList() {
   }
 }
 
-function updatePreview() {
+function updatePreview(showPreview = true) {
   const {
     addAppUrlInput,
     addAppConfirm,
@@ -413,21 +420,27 @@ function updatePreview() {
   const validation = validateUrl(url);
   const isValid = validation.status === 'valid';
   const fullUrl = validation.url ? validation.url.href : normalizeAppUrl(url);
-  const appName = extractAppName(url);
+  // Validate synchronously; defer the preview and duplicate scan while typing.
+  const isCreatable = (isValid || validation.status === 'undetectable') &&
+    isStorableAppUrl(normalizeAppUrl(url));
 
-  if (previewName) {
-    previewName.textContent = appName;
-  }
-  if (previewUrl) {
-    previewUrl.textContent = fullUrl;
-  }
+  if (showPreview || !isCreatable) {
+    const appName = extractAppName(url);
 
-  setAddAppPreviewIcon(getFaviconUrl(url), appName);
+    if (previewName) {
+      previewName.textContent = appName;
+    }
+    if (previewUrl) {
+      previewUrl.textContent = fullUrl;
+    }
 
-  if (previewSection) {
-    previewSection.classList.add('visible');
-    previewSection.classList.toggle('valid', isValid);
-    previewSection.classList.toggle('invalid', !isValid);
+    setAddAppPreviewIcon(getFaviconUrl(url), appName);
+
+    if (previewSection) {
+      previewSection.classList.add('visible');
+      previewSection.classList.toggle('valid', isValid);
+      previewSection.classList.toggle('invalid', !isValid);
+    }
   }
 
   if (validationIcon) {
@@ -436,11 +449,7 @@ function updatePreview() {
     validationIcon.classList.toggle('invalid', !isValid);
   }
 
-  // Only enable confirm for input the storage sanitizer will accept, using
-  // the same URL createAppData() stores.
-  const isCreatable = (isValid || validation.status === 'undetectable') &&
-    isStorableAppUrl(normalizeAppUrl(url));
-  const isDuplicate = isCreatable && window.AppGridState && window.AppGridState.hasAppWithUrl(fullUrl);
+  const isDuplicate = showPreview && isCreatable && window.AppGridState && window.AppGridState.hasAppWithUrl(fullUrl);
 
   if (validationMessage) {
     if (isDuplicate) {
@@ -458,6 +467,18 @@ function updatePreview() {
 
   if (addAppConfirm) {
     addAppConfirm.disabled = !isCreatable || isDuplicate;
+  }
+  return isCreatable;
+}
+
+function scheduleAddAppPreview() {
+  clearTimeout(addAppPreviewTimer);
+  addAppPreviewTimer = null;
+  if (updatePreview(false)) {
+    addAppPreviewTimer = setTimeout(() => {
+      addAppPreviewTimer = null;
+      updatePreview();
+    }, ADD_APP_PREVIEW_DEBOUNCE_MS);
   }
 }
 
@@ -516,7 +537,7 @@ function bindAddAppModal() {
     }, { signal });
   }
 
-  addAppUrlInput.addEventListener('input', updatePreview, { signal });
+  addAppUrlInput.addEventListener('input', scheduleAddAppPreview, { signal });
   addAppUrlInput.addEventListener('keypress', async function (event) {
     if (event.key !== 'Enter') {
       return;
@@ -546,7 +567,7 @@ function bindAddAppModal() {
   window.addEventListener('languageChanged', function () {
     const { addAppModal } = getAddAppElements();
     if (addAppModal && addAppModal.classList.contains('modal-open')) {
-      updatePreview();
+      scheduleAddAppPreview();
     }
   }, { signal });
 
