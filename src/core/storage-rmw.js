@@ -24,6 +24,7 @@
     ? storage.removeItemAsync.bind(storage)
     : null;
   const lastLocalValues = new Map();
+  const localWriteGenerations = new Map();
 
   /** Clone a JSON-compatible merge value without sharing mutable references. */
   function clone(value) {
@@ -298,6 +299,7 @@
       return nativeSetItem(key, value);
     }
 
+    bumpLocalWriteGeneration(key);
     const candidateRaw = String(value);
     const currentRaw = nativeGetItem(key);
     const baseRaw = lastLocalValues.has(key) ? lastLocalValues.get(key) : currentRaw;
@@ -322,36 +324,51 @@
   // by the three-way merge (issue #904). Reseed from the value actually
   // persisted after the bridge settles: on success that is the imported
   // value; on a rejected write the bridge rolled the cache back, so the
-  // base returns to the real stored state.
+  // base returns to the real stored state. A per-key write generation makes
+  // the settlement skip the reseed whenever a newer local write has already
+  // established a merge base of its own, so an overdue settlement can never
+  // overwrite the base that a later synchronous write recorded.
+
+  /** Advance the per-key local write generation and return the new value. */
+  function bumpLocalWriteGeneration(key) {
+    const generation = (localWriteGenerations.get(key) || 0) + 1;
+    localWriteGenerations.set(key, generation);
+    return generation;
+  }
 
   /** Reseed the merge base from the currently persisted value. */
   function reseedBaseFromStorage(key) {
     lastLocalValues.set(key, nativeGetItem(key));
   }
 
-  /** Settle an async bridge result, reseeding the merge base either way. */
-  function reseedAfterAsyncWrite(key, result) {
+  /** Settle an async bridge result, reseeding only while still the latest write. */
+  function reseedAfterAsyncWrite(key, result, generation) {
+    const reseedIfLatest = function () {
+      if (localWriteGenerations.get(key) === generation) {
+        reseedBaseFromStorage(key);
+      }
+    };
     return Promise.resolve(result).then(function (ok) {
-      reseedBaseFromStorage(key);
+      reseedIfLatest();
       return ok;
     }, function (error) {
-      reseedBaseFromStorage(key);
+      reseedIfLatest();
       throw error;
     });
   }
 
   /** Wrap Storage#setItemAsync so bridge writes refresh the merge base. */
   function wrappedSetItemAsync(key, value) {
-    const result = nativeSetItemAsync(key, value);
-    if (!TARGET_KEYS.has(key)) return result;
-    return reseedAfterAsyncWrite(key, result);
+    if (!TARGET_KEYS.has(key)) return nativeSetItemAsync(key, value);
+    const generation = bumpLocalWriteGeneration(key);
+    return reseedAfterAsyncWrite(key, nativeSetItemAsync(key, value), generation);
   }
 
   /** Wrap Storage#removeItemAsync so bridge removals refresh the merge base. */
   function wrappedRemoveItemAsync(key) {
-    const result = nativeRemoveItemAsync(key);
-    if (!TARGET_KEYS.has(key)) return result;
-    return reseedAfterAsyncWrite(key, result);
+    if (!TARGET_KEYS.has(key)) return nativeRemoveItemAsync(key);
+    const generation = bumpLocalWriteGeneration(key);
+    return reseedAfterAsyncWrite(key, nativeRemoveItemAsync(key), generation);
   }
 
   storage.getItem = wrappedGetItem;

@@ -138,6 +138,62 @@ describe('settings import merge-base reseeding (issue #904)', () => {
     expect(JSON.parse(nativeGetItem('todos'))).toEqual([]);
   });
 
+  it('keeps a newer sync write base when a pending async settlement resolves later', async () => {
+    const todoA = { id: 'todo-a', text: 'A', completed: false, order: 0 };
+    const importedTodo = { id: 'todo-imported', text: 'Imported', completed: false, order: 1 };
+    const todoB = { id: 'todo-b', text: 'B', completed: false, order: 1 };
+
+    let resolveAsyncWrite;
+    const persisted = new Map();
+    const fakeStorage = {
+      getItem(key) {
+        return persisted.has(key) ? persisted.get(key) : null;
+      },
+      setItem(key, value) {
+        persisted.set(key, String(value));
+        return true;
+      },
+      setItemAsync(key, value) {
+        // Mirror the bridge: the visible value updates immediately while the
+        // persistence settles later.
+        persisted.set(key, String(value));
+        return new Promise(resolve => {
+          resolveAsyncWrite = () => resolve(true);
+        });
+      },
+      removeItemAsync(key) {
+        persisted.delete(key);
+        return Promise.resolve(true);
+      }
+    };
+    const context = vm.createContext({ localStorage: fakeStorage, console });
+    injectScript('src/core/storage-rmw.js', context);
+    const storage = context.localStorage;
+
+    // Session base established through a wrapped sync write.
+    storage.setItem('todos', JSON.stringify([todoA]));
+
+    // An import-style async write starts and stays pending.
+    const pendingWrite = storage.setItemAsync('todos', JSON.stringify([todoA, importedTodo]));
+
+    // A sync write from the pre-import in-memory snapshot settles first. The
+    // merge keeps the import-introduced todo and records the caller's
+    // snapshot as the new base.
+    storage.setItem('todos', JSON.stringify([todoA]));
+    expect(JSON.parse(persisted.get('todos'))).toEqual([todoA, importedTodo]);
+
+    // The pending async settlement must not overwrite that newer base.
+    resolveAsyncWrite();
+    await pendingWrite;
+
+    // The next write from the same pre-import snapshot must still preserve
+    // the import-introduced todo instead of discarding it wholesale.
+    storage.setItem('todos', JSON.stringify([todoA, todoB]));
+    const merged = JSON.parse(persisted.get('todos'));
+    expect(merged.map(todo => todo.id)).toEqual(expect.arrayContaining(['todo-a', 'todo-b', 'todo-imported']));
+    expect(merged).toHaveLength(3);
+  });
+
   it('propagates rejected async bridge writes and keeps storage unchanged', async () => {
     const persisted = new Map([
       ['todos', JSON.stringify([{ id: 'todo-1', text: 'Still here', completed: false, order: 0 }])]
