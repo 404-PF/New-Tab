@@ -223,6 +223,122 @@ describe('cross-tab storage read-modify-write merging', () => {
 });
 
 
+describe('null merge base for keys absent at session start', () => {
+  function createStorageContext(initialValues = {}) {
+    const persisted = new Map(Object.entries(initialValues));
+    const fakeStorage = {
+      getItem(key) {
+        return persisted.has(key) ? persisted.get(key) : null;
+      },
+      setItem(key, value) {
+        persisted.set(key, String(value));
+        return true;
+      }
+    };
+    const context = vm.createContext({ localStorage: fakeStorage, console });
+    injectScript('src/core/storage-rmw.js', context);
+    return { context, persisted };
+  }
+
+  it('preserves a concurrent todo written by another tab when the local base was null', () => {
+    const { context, persisted } = createStorageContext();
+
+    // Session start: the key is absent, so the merge base seeds as null.
+    expect(context.localStorage.getItem('todos')).toBe(null);
+
+    // Another tab writes first.
+    const externalTodo = { id: 'todo-external', text: 'From tab B', completed: false, order: 0 };
+    persisted.set('todos', JSON.stringify([externalTodo]));
+
+    // This tab then adds a different todo from its own in-memory snapshot.
+    const localTodo = { id: 'todo-local', text: 'From tab A', completed: false, order: 0 };
+    context.localStorage.setItem('todos', JSON.stringify([localTodo]));
+
+    const merged = JSON.parse(persisted.get('todos'));
+    expect(merged.map(todo => todo.id)).toEqual(expect.arrayContaining(['todo-external', 'todo-local']));
+  });
+
+  it('preserves concurrent notes and AI conversations when the base was null', () => {
+    const { context, persisted } = createStorageContext();
+    expect(context.localStorage.getItem('notes')).toBe(null);
+    expect(context.localStorage.getItem('ai_conversations')).toBe(null);
+
+    const externalNote = { id: 'note-external', text: 'Note B', tag: 'work', order: 0 };
+    const localNote = { id: 'note-local', text: 'Note A', tag: '', order: 0 };
+    persisted.set('notes', JSON.stringify([externalNote]));
+    context.localStorage.setItem('notes', JSON.stringify([localNote]));
+
+    const mergedNotes = JSON.parse(persisted.get('notes'));
+    expect(mergedNotes.map(note => note.id)).toEqual(expect.arrayContaining(['note-external', 'note-local']));
+
+    const externalConversation = {
+      id: 'conversation-external',
+      title: 'Chat B',
+      messages: [{ id: 'message-1', role: 'user', content: 'Hi' }],
+      createdAt: 1,
+      updatedAt: 1
+    };
+    const localConversation = {
+      id: 'conversation-local',
+      title: 'Chat A',
+      messages: [{ id: 'message-2', role: 'user', content: 'Hello' }],
+      createdAt: 2,
+      updatedAt: 2
+    };
+    persisted.set('ai_conversations', JSON.stringify([externalConversation]));
+    context.localStorage.setItem('ai_conversations', JSON.stringify([localConversation]));
+
+    const mergedConversations = JSON.parse(persisted.get('ai_conversations'));
+    expect(mergedConversations.map(conversation => conversation.id)).toEqual(
+      expect.arrayContaining(['conversation-external', 'conversation-local'])
+    );
+  });
+
+  it('stores the candidate verbatim on the first write into an absent key', () => {
+    const { context, persisted } = createStorageContext();
+    expect(context.localStorage.getItem('todos')).toBe(null);
+
+    const firstTodo = { id: 'todo-first', text: 'First write', completed: false, order: 0 };
+    context.localStorage.setItem('todos', JSON.stringify([firstTodo]));
+
+    expect(JSON.parse(persisted.get('todos'))).toEqual([firstTodo]);
+  });
+
+  it('merges concurrent items after a rejected first write kept the base null', () => {
+    const persisted = new Map();
+    let rejectNextWrite = true;
+    const fakeStorage = {
+      getItem(key) {
+        return persisted.has(key) ? persisted.get(key) : null;
+      },
+      setItem(key, value) {
+        if (rejectNextWrite) {
+          rejectNextWrite = false;
+          return false;
+        }
+        persisted.set(key, String(value));
+        return true;
+      }
+    };
+    const context = vm.createContext({ localStorage: fakeStorage, console });
+    injectScript('src/core/storage-rmw.js', context);
+    expect(context.localStorage.getItem('todos')).toBe(null);
+
+    const externalTodo = { id: 'todo-external', text: 'From tab B', completed: false, order: 0 };
+    const localTodo = { id: 'todo-local', text: 'From tab A', completed: false, order: 0 };
+
+    // The rejected write leaves the null base untouched.
+    expect(context.localStorage.setItem('todos', JSON.stringify([localTodo]))).toBe(false);
+    persisted.set('todos', JSON.stringify([externalTodo]));
+
+    // The retry still holds a null base and must preserve the concurrent item.
+    expect(context.localStorage.setItem('todos', JSON.stringify([localTodo]))).toBe(true);
+    const merged = JSON.parse(persisted.get('todos'));
+    expect(merged.map(todo => todo.id)).toEqual(expect.arrayContaining(['todo-external', 'todo-local']));
+  });
+});
+
+
 describe('rejected storage bridge writes', () => {
   it('keeps the original base when a non-concurrent write is rejected', () => {
     const base = [{

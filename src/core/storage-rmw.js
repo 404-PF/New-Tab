@@ -255,13 +255,32 @@
 
   /** Merge serialized storage snapshots, falling back safely on invalid data. */
   function mergeStoredValue(baseRaw, currentRaw, candidateRaw) {
-    if (baseRaw === null || baseRaw === missing) return candidateRaw;
+    let base = missing;
+    if (baseRaw !== null && baseRaw !== missing) {
+      base = parseJson(baseRaw);
+    }
 
-    const base = parseJson(baseRaw);
     const current = parseJson(currentRaw);
     const candidate = parseJson(candidateRaw);
 
-    if (base === missing || current === missing || candidate === missing) {
+    if (base === missing) {
+      // The key was absent when this tab first read it, so no merge base was
+      // captured. If storage now holds a concurrently written array, merge
+      // against an empty base so the concurrent items survive this write. A
+      // still-absent current value is a genuine first write and stores the
+      // candidate verbatim, as does any non-array pair.
+      if (Array.isArray(current) && Array.isArray(candidate)) {
+        try {
+          return JSON.stringify(mergeIdentifiedArray([], current, candidate));
+        } catch (error) {
+          console.warn('Failed to merge concurrent storage update; using latest local value:', error);
+          return candidateRaw;
+        }
+      }
+      return candidateRaw;
+    }
+
+    if (current === missing || candidate === missing) {
       return candidateRaw;
     }
 
