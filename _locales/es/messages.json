@@ -7,6 +7,10 @@
     "message": "No se pudieron guardar las conversaciones. La última acción no se guardó.",
     "description": "Error shown when AI conversation changes cannot be persisted"
   },
+  "aiNoSearchResults": {
+    "message": "No hay conversaciones que coincidan",
+    "description": "Empty state text when a conversation search matches nothing"
+  },
   "appGridSaveError": {
     "message": "No se pudieron guardar los cambios de las aplicaciones. La última acción no se guardó.",
     "description": "Error shown when app grid changes cannot be persisted"

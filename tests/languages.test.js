@@ -195,6 +195,19 @@ describe('Todo bulk selection translations (issue #942)', () => {
   });
 });
 
+const MISSING_UI_KEY_TRANSLATIONS = [
+  'notesEditTooltip',
+  'notesPreviewTooltip',
+  'todoSubtaskDelete',
+  'aiNoSearchResults'
+];
+
+describe('Notes/todo tooltip and AI search empty state translations', () => {
+  it('defines every raw-key bug key in each supported language', () => {
+    expectTranslationKeys(MISSING_UI_KEY_TRANSLATIONS, { differFromEnglish: true });
+  });
+});
+
 describe('Games translations', () => {
   it('defines every games string in each supported language', () => {
     expectTranslationKeys(GAMES_TRANSLATION_KEYS);

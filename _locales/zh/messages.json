@@ -7,6 +7,10 @@
     "message": "无法保存对话。您上次的操作未被保存。",
     "description": "Error shown when AI conversation changes cannot be persisted"
   },
+  "aiNoSearchResults": {
+    "message": "没有匹配的对话",
+    "description": "Empty state text when a conversation search matches nothing"
+  },
   "appGridSaveError": {
     "message": "无法保存应用更改。您上次的操作未被保存。",
     "description": "Error shown when app grid changes cannot be persisted"

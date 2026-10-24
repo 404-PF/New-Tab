@@ -7,6 +7,10 @@
     "message": "Unterhaltungen konnten nicht gespeichert werden. Ihre letzte Aktion wurde nicht gespeichert.",
     "description": "Error shown when AI conversation changes cannot be persisted"
   },
+  "aiNoSearchResults": {
+    "message": "Keine passenden Unterhaltungen",
+    "description": "Empty state text when a conversation search matches nothing"
+  },
   "appGridSaveError": {
     "message": "App-Änderungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
     "description": "Error shown when app grid changes cannot be persisted"
