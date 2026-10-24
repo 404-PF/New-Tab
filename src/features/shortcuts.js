@@ -536,6 +536,7 @@
     load: loadShortcuts,
     save: saveShortcuts,
     reset: resetShortcuts,
+    cancel: cancelRebinding,
     formatCombo: formatCombo,
     isTextInputFocused: isTextInputFocused,
     executeAction: executeAction,

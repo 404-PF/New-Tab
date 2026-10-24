@@ -2221,6 +2221,7 @@ function initAboutSection() {
         const settingsModal = document.getElementById('settings-modal');
         if (settingsModal) {
           settingsModal.classList.remove('modal-open');
+          window.Shortcuts?.cancel?.();
           const opener = document.getElementById('settings-app');
           if (opener) opener.focus();
         }
