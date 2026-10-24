@@ -13,13 +13,15 @@ name: pr-merge
 # instead of skipping a gate. Only an explicit 404 on the branch-protection
 # endpoint means "no required checks configured".
 #
-# GITHUB_TOKEN authenticates every call except the branch-protection read:
-# that endpoint requires Administration:read, which GITHUB_TOKEN cannot
-# carry (its permission set has no administration scope), so that one call
-# uses secrets.GH_PAT — the same secret pr-drive uses for its collaborator
+# GITHUB_TOKEN authenticates every call except two: the branch-protection
+# read (that endpoint requires Administration:read, which GITHUB_TOKEN
+# cannot carry — its permission set has no administration scope) and the
+# merge mutation (a push made with GITHUB_TOKEN does not trigger workflows,
+# so a token merge would skip post-merge CI on main). Both calls use
+# secrets.GH_PAT — the same secret pr-drive uses for its collaborator
 # lookup — falling back to GITHUB_TOKEN when the secret is unset, which
-# keeps an unprotected main readable as 404 and fails closed on a protected
-# main.
+# keeps an unprotected main readable as 404, fails closed on a protected
+# main, and still merges when the PAT is unavailable.
 
 on:
   pull_request:
@@ -67,13 +69,18 @@ concurrency:
 
 jobs:
   merge:
+    # Named after the workflow so this job's check run name equals
+    # WORKFLOW_NAME ("pr-merge") and the step-9 filter below can exclude
+    # this workflow's own (in_progress) run by exact name.
+    name: pr-merge
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # contents: write (squash merge + branch delete), pull-requests: write
     # (merge mutation + verdict comment), checks/statuses: read (check-run
     # and required-status evaluation), actions: read (active pr-drive guard).
-    # GH_PAT is read only by the branch-protection step below; every other
-    # call uses GITHUB_TOKEN. No third-party actions.
+    # GH_PAT (via PAT_TOKEN) authenticates only the branch-protection read
+    # and the merge mutation; every other call uses GITHUB_TOKEN. No
+    # third-party actions.
     permissions:
       contents: write
       pull-requests: write
@@ -112,14 +119,15 @@ jobs:
         id: evaluate
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Used ONLY for the branch-protection read below; every other call
-          # keeps GH_TOKEN. Keep it a plain shell variable so only that one
-          # gh invocation can see it.
+          # Used only to build PAT_TOKEN below (branch-protection read and
+          # the merge mutation); every other call keeps GH_TOKEN. Keep it a
+          # plain shell variable so only those gh invocations can see it.
           GH_PAT: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
-          # jq filter below excludes this workflow's own check runs by name
-          # prefix ("pr-merge" matches both "pr-merge" and "pr-merge / merge"
-          # naming); they are in_progress by definition while evaluating.
+          # The merge job is named after the workflow, so its check run is
+          # named WORKFLOW_NAME; the jq filter below excludes exactly that
+          # name — own runs are in_progress by definition while evaluating,
+          # and prior cancelled evaluations on the same SHA must not block.
           WORKFLOW_NAME: ${{ github.workflow }}
           PR_NUMBER: >-
             ${{ github.event.pull_request.number ||
@@ -146,6 +154,12 @@ jobs:
           esac
 
           deny() { VERDICT="$1"; echo "Blocked: $1"; }
+
+          # GH_PAT, when set, authenticates the two calls GITHUB_TOKEN
+          # cannot serve well: the branch-protection read (Administration:read)
+          # and the merge mutation (GITHUB_TOKEN pushes do not trigger
+          # workflows). Falls back to GITHUB_TOKEN when the secret is unset.
+          PAT_TOKEN="${GH_PAT:-$GH_TOKEN}"
 
           PR_JSON="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")"
           STATE="$(jq -r .state <<<"$PR_JSON")"
@@ -242,10 +256,14 @@ jobs:
             fi
           fi
 
-          # 8. Mergeable with no conflicts and mergeable_state == clean
-          # (the REST API reports lowercase values: clean, dirty, unknown).
-          # GitHub computes these asynchronously, so re-read a few times
-          # before declaring non-clean.
+          # 8. Mergeable with no conflicts and a mergeable_state that does
+          # not block: clean, unstable (mergeable with a non-passing
+          # non-required status — including this workflow's own in-progress
+          # check run on the head SHA), or has_hooks (mergeable with
+          # passing statuses and pre-receive hooks). blocked, behind, dirty,
+          # and unknown still deny; gate 9 independently requires every
+          # check run on the head SHA to be green. GitHub computes these
+          # asynchronously, so re-read a few times before deciding.
           if [ -z "$VERDICT" ]; then
             for attempt in 1 2 3; do
               PR_JSON="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")"
@@ -260,20 +278,21 @@ jobs:
             done
             if [ "$MERGEABLE" = 'false' ] || [ "$MERGE_STATE" = 'dirty' ]; then
               deny 'PR has merge conflicts'
-            elif [ "$MERGE_STATE" != 'clean' ]; then
-              deny "merge state is ${MERGE_STATE}, not clean"
+            elif [ "$MERGE_STATE" != 'clean' ] && [ "$MERGE_STATE" != 'unstable' ] && [ "$MERGE_STATE" != 'has_hooks' ]; then
+              deny "merge state is ${MERGE_STATE}, which blocks merging"
             fi
           fi
 
           # 9. Every check run on the head SHA is terminal and successful,
           # neutral, or skipped, and at least one exists (an empty set is
           # not green — CI may not have started yet). This workflow's own
-          # check runs are excluded by name prefix: they are in_progress
-          # while we evaluate, and prior evaluations on the same SHA must
-          # not block the next one. Fail closed on a fetch error.
+          # check run (name: pr-merge) is excluded by exact name: it is
+          # in_progress while we evaluate, and prior evaluations on the
+          # same SHA must not block the next one. Fail closed on a fetch
+          # error.
           if [ -z "$VERDICT" ]; then
             if ! gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs" --paginate \
-                --jq '.check_runs[] | select(.name | startswith(env.WORKFLOW_NAME) | not) | [.name, .status, (.conclusion // "")] | @tsv' \
+                --jq '.check_runs[] | select(.name != env.WORKFLOW_NAME) | [.name, .status, (.conclusion // "")] | @tsv' \
                 > "$CTX/check-runs.tsv"; then
               deny 'could not fetch check runs for the head SHA'
             elif [ ! -s "$CTX/check-runs.tsv" ]; then
@@ -291,15 +310,14 @@ jobs:
           # successful on the head SHA. Read from the protection API — never
           # hardcode a check name (ci.yml's `test` is not required today).
           # The protection endpoint requires Administration:read, which
-          # GITHUB_TOKEN cannot carry, so this one call uses GH_PAT when the
-          # secret exists and falls back to GITHUB_TOKEN otherwise. A 404
-          # means the branch is intentionally unprotected; any other
-          # protection or status-fetch failure (including a 403 from a
-          # protected main without GH_PAT) blocks.
+          # GITHUB_TOKEN cannot carry, so this call uses PAT_TOKEN (GH_PAT
+          # with a GITHUB_TOKEN fallback). A 404 means the branch is
+          # intentionally unprotected; any other protection or status-fetch
+          # failure (including a 403 from a protected main without GH_PAT)
+          # blocks.
           if [ -z "$VERDICT" ]; then
             : > "$CTX/required-checks.txt"
-            PROTECT_TOKEN="${GH_PAT:-$GH_TOKEN}"
-            if PROTECTION="$(GH_TOKEN="$PROTECT_TOKEN" gh api "repos/$GH_REPO/branches/main/protection" 2>"$CTX/protection.err")"; then
+            if PROTECTION="$(GH_TOKEN="$PAT_TOKEN" gh api "repos/$GH_REPO/branches/main/protection" 2>"$CTX/protection.err")"; then
               if ! jq -r '(.required_status_checks.checks // [] | .[].context), (.required_status_checks.contexts // [] | .[])' \
                   <<<"$PROTECTION" | sort -u > "$CTX/required-checks.txt"; then
                 deny 'could not parse branch protection for main'
@@ -370,7 +388,10 @@ jobs:
                 --arg id "$PR_NODE_ID" --arg oid "$HEAD_SHA" --arg method SQUASH \
                 '{query: $q, variables: {id: $id, oid: $oid, method: $method}}' \
                 > "$CTX/merge-request.json"
-              if MERGED="$(gh api graphql --input "$CTX/merge-request.json" --jq '.data.mergePullRequest.pullRequest.merged' 2>/dev/null)" \
+              # PAT_TOKEN so the resulting push to main triggers post-merge
+              # workflows: pushes made with GITHUB_TOKEN are recursion-
+              # guarded and would skip the push-triggered CI run on main.
+              if MERGED="$(GH_TOKEN="$PAT_TOKEN" gh api graphql --input "$CTX/merge-request.json" --jq '.data.mergePullRequest.pullRequest.merged' 2>/dev/null)" \
                 && [ "$MERGED" = 'true' ]; then
                 DECISION='merged (squash)'
                 # Mirrors the repo's delete_branch_on_merge: true setting.

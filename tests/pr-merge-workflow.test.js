@@ -55,21 +55,24 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toMatch(/cancel-in-progress: true/);
   });
 
-  it('pins narrow permissions, uses GITHUB_TOKEN everywhere, and GH_PAT only for branch protection', () => {
-    // Anchored to the closing blank line so an extra scope cannot slip in
-    // after actions: read while still matching.
-    expect(merge).toMatch(/permissions:\n {6}contents: write\n {6}pull-requests: write\n {6}checks: read\n {6}statuses: read\n {6}actions: read\n/);
-    // The protection endpoint requires Administration:read, which
-    // GITHUB_TOKEN cannot carry; GH_PAT is scoped to that single call and
-    // falls back to GITHUB_TOKEN when the secret is unset.
+  it('pins narrow permissions, uses GITHUB_TOKEN everywhere, and GH_PAT only for branch protection and the merge mutation', () => {
+    // Anchored to the closing blank line with a lookahead so an extra scope
+    // cannot slip in after actions: read while still matching.
+    expect(merge).toMatch(/permissions:\n {6}contents: write\n {6}pull-requests: write\n {6}checks: read\n {6}statuses: read\n {6}actions: read\n(?! {6}[\w-]+:)/);
+    // The protection endpoint requires Administration:read, and a merge
+    // with GITHUB_TOKEN would not trigger post-merge workflows; GH_PAT is
+    // scoped to those two calls via PAT_TOKEN and falls back to
+    // GITHUB_TOKEN when the secret is unset.
     expect(merge).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
     expect(merge).toContain('GH_PAT: ${{ secrets.GH_PAT }}');
-    expect(merge).toContain('PROTECT_TOKEN="${GH_PAT:-$GH_TOKEN}"');
-    expect(merge).toContain('GH_TOKEN="$PROTECT_TOKEN" gh api "repos/$GH_REPO/branches/main/protection"');
+    expect(merge).toContain('PAT_TOKEN="${GH_PAT:-$GH_TOKEN}"');
+    expect(merge).toContain('GH_TOKEN="$PAT_TOKEN" gh api "repos/$GH_REPO/branches/main/protection"');
+    expect(merge).toContain('GH_TOKEN="$PAT_TOKEN" gh api graphql --input "$CTX/merge-request.json"');
     // No other gh call may override GH_TOKEN with the PAT.
-    const patCalls = [...merge.matchAll(/GH_TOKEN="\$PROTECT_TOKEN" gh api [^\n]*/g)].map((match) => match[0]);
-    expect(patCalls).toHaveLength(1);
+    const patCalls = [...merge.matchAll(/GH_TOKEN="\$PAT_TOKEN" gh api [^\n]*/g)].map((match) => match[0]);
+    expect(patCalls).toHaveLength(2);
     expect(patCalls[0]).toContain('repos/$GH_REPO/branches/main/protection');
+    expect(patCalls[1]).toContain('--input "$CTX/merge-request.json"');
   });
 
   it('uses no external actions at all', () => {
@@ -125,22 +128,29 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(drive).toMatch(/^run-name: >-\n {2}pr-drive #\$\{\{ github\.event_name == 'workflow_dispatch'\n {4}&& github\.event\.inputs\.pr_number \|\| github\.event\.issue\.number \}\}/m);
   });
 
-  it('requires mergeable != false and lowercase mergeable_state == clean, with retries', () => {
+  it('requires mergeable != false and a non-blocking lowercase mergeable_state, with retries', () => {
     // mergeable/mergeable_state are computed asynchronously; poll briefly.
-    // The REST API reports lowercase values (clean, dirty, unknown).
+    // clean passes; unstable/has_hooks are still mergeable (unstable often
+    // means this workflow's own in-progress check on the head SHA) and
+    // pass only because the check-run gate below is independent. blocked,
+    // behind, dirty, and unknown keep denying.
     expect(merge).toMatch(/for attempt in 1 2 3; do/);
     expect(merge).toMatch(/sleep 5/);
     expect(merge).toMatch(/if \[ "\$MERGEABLE" = 'false' \] \|\| \[ "\$MERGE_STATE" = 'dirty' \]; then/);
     expect(merge).toMatch(/\[ "\$MERGE_STATE" != 'clean' \]/);
+    expect(merge).toMatch(/\[ "\$MERGE_STATE" != 'unstable' \]/);
+    expect(merge).toMatch(/\[ "\$MERGE_STATE" != 'has_hooks' \]/);
     expect(merge).not.toMatch(/'CLEAN'|'DIRTY'/);
   });
 
   it('requires every check run on the head SHA terminal and successful, excluding itself', () => {
     expect(merge).toContain('/commits/$HEAD_SHA/check-runs');
     expect(merge).toMatch(/\$2 != "completed" \|\| \(\$3 != "success" && \$3 != "neutral" && \$3 != "skipped"\)/);
-    // This workflow's own check is in_progress while evaluating; the name
-    // prefix exclusion keeps it from blocking every evaluation forever.
-    expect(merge).toContain('startswith(env.WORKFLOW_NAME) | not');
+    // The merge job is named after the workflow, so its check run name
+    // equals WORKFLOW_NAME; the exact-name exclusion keeps it (in_progress
+    // while evaluating) and prior cancelled evaluations from blocking.
+    expect(merge).toMatch(/^ {2}merge:\n(?: {4}#[^\n]*\n)* {4}name: pr-merge\n/m);
+    expect(merge).toContain('.name != env.WORKFLOW_NAME');
     expect(merge).toContain('WORKFLOW_NAME: ${{ github.workflow }}');
     expect(merge).toContain('gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs" --paginate');
   });
