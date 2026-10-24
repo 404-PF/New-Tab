@@ -41,8 +41,13 @@ describe('issue-milestone assigns closest [v*.*.*] milestone (#880)', () => {
     // jq regex source in the workflow file (shell-escaped backslashes).
     expect(milestone).toContain('test("^v[0-9]+\\\\.[0-9]+\\\\.[0-9]+$")');
     expect(milestone).toContain('sort_by(.title | ltrimstr("v") | split(".") | map(tonumber))');
-    // --slurp flattens paginated pages into one array before the jq queries.
-    expect(milestone).toMatch(/gh api --paginate --slurp "repos\/\$GH_REPO\/milestones\?state=all&per_page=100"/);
+    // --slurp flattens paginated pages into one array; gh api rejects
+    // --slurp combined with --jq (#913), so the filter/sort run in a piped
+    // jq call instead. Everything past the first page is still flattened.
+    expect(milestone).toMatch(/gh api --paginate --slurp "repos\/\$GH_REPO\/milestones\?state=all&per_page=100" \\\n\s+\| jq '/);
+    milestone.split('\n').filter((line) => line.includes('gh api')).forEach((line) => {
+      expect(line).not.toMatch(/--slurp[^\n]*(--jq|--template)|(--jq|--template)[^\n]*--slurp/);
+    });
     expect(milestone).toContain('[.[][] | select(');
   });
 

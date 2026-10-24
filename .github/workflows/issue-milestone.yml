@@ -67,10 +67,12 @@ jobs:
           FILE="$RUNNER_TEMP/milestones.json"
           # Milestone titles are untrusted data: keep only strict v*.*.*
           # titles, sorted ascending as semver.
-          # --slurp flattens paginated responses into one array so the jq
-          # queries below see every milestone even past the first 100.
+          # --slurp flattens paginated responses into one array; the filter
+          # and sort run in the piped jq below because gh api rejects
+          # --slurp combined with --jq. Every milestone even past the first
+          # 100 is therefore still present in the file.
           gh api --paginate --slurp "repos/$GH_REPO/milestones?state=all&per_page=100" \
-            --jq '[.[][] | select(.title | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(.title | ltrimstr("v") | split(".") | map(tonumber))' \
+            | jq '[.[][] | select(.title | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(.title | ltrimstr("v") | split(".") | map(tonumber))' \
             > "$FILE"
 
           # Closest = lowest still-open version. With nothing open, continue
