@@ -334,7 +334,7 @@ window.i18n.__registerLocale('ru', {
   importReplace: 'Замена',
   importInvalidData: 'Неверные данные дел. Выберите корректный JSON-файл.',
   importReadError: 'Не удалось прочитать выбранный файл.',
-  importSuccess: '{count} дел успешно импортировано.',
+  importSuccess: 'Успешно импортировано дел: {count}.',
   importNoNewTodos: 'Нет новых дел для импорта.',
   data: 'Данные',
   dataBackupTitle: 'Резервное копирование и восстановление',
