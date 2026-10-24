@@ -1073,40 +1073,32 @@ describe('App URL result reuse', () => {
     delete window.defaultApps;
   });
 
-  it('reuses canonical results and parses changed inputs independently', () => {
+  // Spies on window.URL so only the listed URLs construct a real URL. Any
+  // other call is recorded outside the production catch and then throws, so
+  // the case's empty-record assert fails even when production swallows the throw.
+  function spyOnWindowURL(allowed) {
     const OriginalURL = window.URL;
     const unmodeledCalls = [];
     const parse = vi.spyOn(window, 'URL').mockImplementation(function (url) {
-      if (arguments.length !== 1 || !['https://www.memo-canonical.example/path/', 'https://www.memo-changed.example/next/'].includes(url)) {
+      if (arguments.length !== 1 || !allowed.includes(url)) {
         unmodeledCalls.push(Array.from(arguments));
         throw new Error('Unmodeled URL construction');
       }
       return new OriginalURL(url);
     });
-    expect(AppGridState.getCanonicalUrl('https://www.memo-canonical.example/path/')).toBe('https://memo-canonical.example/path');
-    expect(parse).toHaveBeenCalledTimes(1);
-    expect(AppGridState.getCanonicalUrl('https://www.memo-canonical.example/path/')).toBe('https://memo-canonical.example/path');
-    expect(parse).toHaveBeenCalledTimes(1);
-    expect(AppGridState.getCanonicalUrl('https://www.memo-changed.example/next/')).toBe('https://memo-changed.example/next');
-    expect(parse).toHaveBeenCalledTimes(2);
-    expect(unmodeledCalls).toEqual([]);
-  });
+    return { parse, unmodeledCalls };
+  }
 
-  it('reuses invalid canonical results without losing changed-input misses', () => {
-    const OriginalURL = window.URL;
-    const unmodeledCalls = [];
-    const parse = vi.spyOn(window, 'URL').mockImplementation(function (url) {
-      if (arguments.length !== 1 || !['invalid memo url', 'another invalid memo url'].includes(url)) {
-        unmodeledCalls.push(Array.from(arguments));
-        throw new Error('Unmodeled URL construction');
-      }
-      return new OriginalURL(url);
-    });
-    expect(AppGridState.getCanonicalUrl('invalid memo url')).toBe('invalid memo url');
+  it.each([
+    ['reuses canonical results and parses changed inputs independently', ['https://www.memo-canonical.example/path/', 'https://www.memo-changed.example/next/'], ['https://www.memo-canonical.example/path/', 'https://memo-canonical.example/path'], ['https://www.memo-changed.example/next/', 'https://memo-changed.example/next']],
+    ['reuses invalid canonical results without losing changed-input misses', ['invalid memo url', 'another invalid memo url'], ['invalid memo url', 'invalid memo url'], ['another invalid memo url', 'another invalid memo url']],
+  ])('%s', (name, allowed, [input, canonical], [changedInput, changedCanonical]) => {
+    const { parse, unmodeledCalls } = spyOnWindowURL(allowed);
+    expect(AppGridState.getCanonicalUrl(input)).toBe(canonical);
     expect(parse).toHaveBeenCalledTimes(1);
-    expect(AppGridState.getCanonicalUrl('invalid memo url')).toBe('invalid memo url');
+    expect(AppGridState.getCanonicalUrl(input)).toBe(canonical);
     expect(parse).toHaveBeenCalledTimes(1);
-    expect(AppGridState.getCanonicalUrl('another invalid memo url')).toBe('another invalid memo url');
+    expect(AppGridState.getCanonicalUrl(changedInput)).toBe(changedCanonical);
     expect(parse).toHaveBeenCalledTimes(2);
     expect(unmodeledCalls).toEqual([]);
   });
@@ -1116,15 +1108,7 @@ describe('App URL result reuse', () => {
     const firstQuery = 'https://first-integrated-miss.example/';
     const secondQuery = 'https://second-integrated-miss.example/';
     AppGridStorage.saveCustomApps([{ id: 'integrated-memo', name: 'Stored', url: storedUrl }]);
-    const OriginalURL = window.URL;
-    const unmodeledCalls = [];
-    const parse = vi.spyOn(window, 'URL').mockImplementation(function (url) {
-      if (arguments.length !== 1 || ![storedUrl, firstQuery, secondQuery].includes(url)) {
-        unmodeledCalls.push(Array.from(arguments));
-        throw new Error('Unmodeled URL construction');
-      }
-      return new OriginalURL(url);
-    });
+    const { parse, unmodeledCalls } = spyOnWindowURL([storedUrl, firstQuery, secondQuery]);
 
     expect(AppGridState.hasAppWithUrl(firstQuery)).toBe(false);
     // Storage validation and duplicate normalization each parse once, plus the cold canonical parse.

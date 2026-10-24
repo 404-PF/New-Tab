@@ -403,6 +403,25 @@ describe('Add app preview debounce', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
+  function reopenModal(value) {
+    window.initAddAppModal();
+    window.openAddAppModal();
+    typeUrl(value);
+  }
+
+  // A settled preview stays settled after 300 ms, and the next quiet window
+  // settles exactly one more preview, last with `expectedUrl`.
+  function expectNextQuietWindow(spy, value, expectedUrl) {
+    vi.advanceTimersByTime(300);
+    expect(spy).toHaveBeenCalledTimes(1);
+    typeUrl(value);
+    vi.advanceTimersByTime(149);
+    expect(spy).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenLastCalledWith(expectedUrl);
+  }
+
   beforeEach(() => {
     vi.useFakeTimers();
     window.initAddAppModal();
@@ -480,15 +499,7 @@ describe('Add app preview debounce', () => {
     vi.advanceTimersByTime(1);
     expect(scan).toHaveBeenCalledExactlyOnceWith('https://final.example/');
     expect(document.getElementById('preview-url').textContent).toBe('https://final.example/');
-    vi.advanceTimersByTime(300);
-    expect(scan).toHaveBeenCalledTimes(1);
-
-    typeUrl('next.example');
-    vi.advanceTimersByTime(149);
-    expect(scan).toHaveBeenCalledTimes(1);
-    vi.advanceTimersByTime(1);
-    expect(scan).toHaveBeenCalledTimes(2);
-    expect(scan).toHaveBeenLastCalledWith('https://next.example/');
+    expectNextQuietWindow(scan, 'next.example', 'https://next.example/');
     expect(document.getElementById('preview-url').textContent).toBe('https://next.example/');
   });
 
@@ -508,15 +519,7 @@ describe('Add app preview debounce', () => {
     expect(previewWrite).toHaveBeenCalledExactlyOnceWith('https://final.c/');
     expect(document.querySelector('#preview-icon img').src).toContain('domain=final.c&');
     expect(scan).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(300);
-    expect(previewWrite).toHaveBeenCalledTimes(1);
-
-    typeUrl('https://next.c/');
-    vi.advanceTimersByTime(149);
-    expect(previewWrite).toHaveBeenCalledTimes(1);
-    vi.advanceTimersByTime(1);
-    expect(previewWrite).toHaveBeenCalledTimes(2);
-    expect(previewWrite).toHaveBeenLastCalledWith('https://next.c/');
+    expectNextQuietWindow(previewWrite, 'https://next.c/', 'https://next.c/');
     typeUrl('valid-after-malformed.example');
     vi.advanceTimersByTime(150);
     expect(scan).toHaveBeenCalledExactlyOnceWith('https://valid-after-malformed.example/');
@@ -532,9 +535,7 @@ describe('Add app preview debounce', () => {
 
     vi.advanceTimersByTime(450);
     expect(previewWrite).not.toHaveBeenCalled();
-    window.initAddAppModal();
-    window.openAddAppModal();
-    typeUrl('https://reopened.c/');
+    reopenModal('https://reopened.c/');
     vi.advanceTimersByTime(150);
     expect(previewWrite).toHaveBeenCalledExactlyOnceWith('https://reopened.c/');
   });
@@ -571,9 +572,7 @@ describe('Add app preview debounce', () => {
     observer.disconnect();
 
     // Reopening proves the scan oracle still observes live work after cancellation.
-    window.initAddAppModal();
-    window.openAddAppModal();
-    typeUrl('reopened.example');
+    reopenModal('reopened.example');
     vi.advanceTimersByTime(150);
     expect(scan).toHaveBeenCalledExactlyOnceWith('https://reopened.example/');
   });
