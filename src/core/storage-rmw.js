@@ -250,6 +250,14 @@
     const candidateArray = createArrayMap(candidate, null);
     if (!candidateArray) return clone(candidate);
 
+    // An empty candidate is a deletion, not an "unmentioned" write. Without a
+    // base to compare against, the union rule below would keep every item the
+    // other tab wrote, so the deletion could never be expressed and the
+    // removed items would come back on the next write. Let it win outright.
+    if (candidateArray.order.length === 0) {
+      return clone(candidate);
+    }
+
     const result = new Map();
     const allKeys = new Set([
       ...currentArray.map.keys(),

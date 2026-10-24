@@ -369,6 +369,51 @@ describe('null merge base for keys absent at session start', () => {
     expect(merged[0].id).toBe('todo-shared');
     expect(merged[0].text).toBe('From tab A');
   });
+
+  // Regression for the CI failure left by #917 on main: the null-base path now
+  // unions concurrent items, which is right for a concurrent *add* but makes a
+  // deletion inexpressible. After this tab removes a target key the wrapper
+  // reseeds the base from storage, so the base is null again and an empty
+  // candidate is a delete of everything. The union rule kept the other tab's
+  // item, so the removal silently resurrected on the next write.
+  it('lets an empty candidate delete concurrent items when the base is null', () => {
+    const { context, persisted } = createStorageContext();
+    expect(context.localStorage.getItem('todos')).toBe(null);
+
+    persisted.set('todos', JSON.stringify([{ id: 'todo-b', text: 'From tab B', completed: false, order: 0 }]));
+    context.localStorage.setItem('todos', JSON.stringify([]));
+
+    expect(persisted.get('todos')).toBe('[]');
+  });
+
+  it('still unions concurrent items when the candidate adds rather than deletes', () => {
+    const { context, persisted } = createStorageContext();
+    expect(context.localStorage.getItem('todos')).toBe(null);
+
+    const externalTodo = { id: 'todo-external', text: 'From tab B', completed: false, order: 0 };
+    const localTodo = { id: 'todo-local', text: 'From tab A', completed: false, order: 0 };
+    persisted.set('todos', JSON.stringify([externalTodo]));
+    context.localStorage.setItem('todos', JSON.stringify([localTodo]));
+
+    // The non-empty candidate keeps the #907 behaviour the union exists for.
+    const merged = JSON.parse(persisted.get('todos'));
+    expect(merged.map(todo => todo.id)).toEqual(expect.arrayContaining(['todo-external', 'todo-local']));
+  });
+
+  it('lets an empty candidate delete concurrent notes and conversations too', () => {
+    const { context, persisted } = createStorageContext();
+    expect(context.localStorage.getItem('notes')).toBe(null);
+    expect(context.localStorage.getItem('ai_conversations')).toBe(null);
+
+    persisted.set('notes', JSON.stringify([{ id: 'note-external', text: 'Note B', tag: 'work', order: 0 }]));
+    persisted.set('ai_conversations', JSON.stringify([{ id: 'conv-external', title: 'Chat B', messages: [], createdAt: 1, updatedAt: 1 }]));
+
+    context.localStorage.setItem('notes', '[]');
+    context.localStorage.setItem('ai_conversations', '[]');
+
+    expect(persisted.get('notes')).toBe('[]');
+    expect(persisted.get('ai_conversations')).toBe('[]');
+  });
 });
 
 
