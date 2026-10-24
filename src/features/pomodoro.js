@@ -688,14 +688,23 @@
     }
   }
 
+  // The coordination poll only guards lease expiry (LEASE_DURATION_MS) and
+  // cross-tab updates already arrive push-style through subscribeToTimerStateChanges,
+  // so it runs at lease cadence and pauses with the tab like every other timer here.
   function startCoordinationInterval() {
     if (_coordinationInterval || !state.active || _isLeader) return;
-    _coordinationInterval = setInterval(reconcileTimerState, 1000);
+    _coordinationInterval = window.VisibilityInterval
+      ? new window.VisibilityInterval(reconcileTimerState, LEASE_DURATION_MS)
+      : setInterval(reconcileTimerState, LEASE_DURATION_MS);
   }
 
   function stopCoordinationInterval() {
     if (_coordinationInterval) {
-      clearInterval(_coordinationInterval);
+      if (typeof _coordinationInterval.destroy === 'function') {
+        _coordinationInterval.destroy();
+      } else {
+        clearInterval(_coordinationInterval);
+      }
       _coordinationInterval = null;
     }
   }
@@ -925,6 +934,15 @@
 
   function initPomodoro() {
     subscribeToTimerStateChanges();
+
+    // A closing tab must not leave a coordination poll (or its lease reconcile)
+    // pending; pagehide fires on navigation and tab/window close alike. A
+    // persisted pagehide only parks the page in the back-forward cache, so the
+    // poll must survive for a restored non-leader to reconcile an expired lease.
+    window.addEventListener('pagehide', function (event) {
+      if (event.persisted) return;
+      stopCoordinationInterval();
+    });
 
     const saved = loadTimerState();
     if (saved) {
