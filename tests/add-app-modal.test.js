@@ -486,6 +486,53 @@ describe('Add app preview debounce', () => {
     expect(window.AppGridState.getCustomApps()).toEqual([existing]);
   });
 
+  it('unblocks submit when the conflicting app is deleted while the modal stays open', async () => {
+    const existing = { id: 'existing-duplicate', name: 'Example', url: 'https://example.com/' };
+    expect(window.AppGridState.addApp(existing)).toBe(true);
+    typeUrl('example.com');
+    const confirm = document.getElementById('add-app-confirm');
+    const modal = document.getElementById('add-app-modal');
+    const message = document.querySelector('.add-app-validation-message');
+
+    vi.advanceTimersByTime(150);
+    expect(confirm.disabled).toBe(true);
+    expect(message.classList.contains('duplicate')).toBe(true);
+
+    expect(window.AppGridState.deleteApp('existing-duplicate')).toBe(true);
+    expect(window.AppGridState.getCustomApps()).toEqual([]);
+
+    input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+
+    expect(window.AppGridState.getCustomApps()).toHaveLength(1);
+    expect(window.AppGridState.getCustomApps()[0]).toMatchObject({ url: 'https://example.com' });
+    expect(window.renderCustomApps).toHaveBeenCalled();
+    expect(modal.classList.contains('modal-open')).toBe(false);
+    expect(message.classList.contains('duplicate')).toBe(false);
+  });
+
+  it('keeps submit blocked while the conflicting app still exists at submit', async () => {
+    const existing = { id: 'existing-duplicate', name: 'Example', url: 'https://example.com/' };
+    expect(window.AppGridState.addApp(existing)).toBe(true);
+    typeUrl('example.com');
+    const confirm = document.getElementById('add-app-confirm');
+    const modal = document.getElementById('add-app-modal');
+    const message = document.querySelector('.add-app-validation-message');
+
+    vi.advanceTimersByTime(150);
+    expect(confirm.disabled).toBe(true);
+    expect(message.classList.contains('duplicate')).toBe(true);
+
+    input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+
+    expect(window.AppGridState.getCustomApps()).toEqual([existing]);
+    expect(window.renderCustomApps).not.toHaveBeenCalled();
+    expect(modal.classList.contains('modal-open')).toBe(true);
+    expect(confirm.disabled).toBe(true);
+    expect(message.classList.contains('duplicate')).toBe(true);
+  });
+
   it('previews exactly once per quiet window with only the final input', () => {
     typeUrl('first.example');
     vi.advanceTimersByTime(100);

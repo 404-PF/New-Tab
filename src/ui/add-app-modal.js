@@ -507,13 +507,39 @@ function renderAddAppValidationMessage(validation, isDuplicate) {
   }
 }
 
+// A settled duplicate verdict can go stale while the modal stays open: when
+// the conflicting app is deleted or its URL changed, Confirm stays disabled
+// and Enter blocked until the input changes. A submit whose Confirm is
+// disabled by the settled verdict re-checks it against the current apps and,
+// when the conflict is gone, clears the verdict and re-derives the preview
+// with one synchronous pass so submit can proceed.
+function revalidateSettledDuplicateVerdict(fullUrl) {
+  if (duplicatePreviewUrl !== fullUrl) {
+    return;
+  }
+  const { urls } = getExistingAppUrls();
+  if (window.AppGridState?.getCanonicalUrl && urls.has(window.AppGridState.getCanonicalUrl(fullUrl))) {
+    return;
+  }
+  duplicatePreviewUrl = null;
+  clearTimeout(addAppPreviewTimer);
+  addAppPreviewTimer = null;
+  updatePreview();
+}
+
 // Submitters settle an outstanding preview synchronously so a URL whose
 // duplicate scan is still pending cannot reach the save path, which would
 // dismiss the modal instead of showing the duplicate warning.
 function settlePendingPreviewBeforeSubmit() {
-  const { addAppConfirm } = getAddAppElements();
-  if (addAppConfirm && addAppConfirm.disabled) {
-    return false;
+  const { addAppConfirm, addAppUrlInput } = getAddAppElements();
+  if (addAppConfirm?.disabled && addAppUrlInput?.value) {
+    const url = addAppUrlInput.value.trim();
+    const validation = validateUrl(url);
+    const fullUrl = validation.url ? validation.url.href : normalizeAppUrl(url);
+    revalidateSettledDuplicateVerdict(fullUrl);
+    if (addAppConfirm.disabled) {
+      return false;
+    }
   }
   if (addAppPreviewTimer !== null) {
     clearTimeout(addAppPreviewTimer);
