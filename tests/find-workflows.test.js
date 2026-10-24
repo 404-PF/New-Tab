@@ -28,7 +28,7 @@ describe('bug-find/feature-find split (#921)', () => {
     expect(bug).not.toMatch(/feature-find/);
     expect(bug).toMatch(/LEGACY_MARKER='<!-- issue-find -->'/);
     expect(bug).not.toMatch(/group: issue-find/);
-    expect(bug).not.toMatch(/RUNNER_TEMP\/issue-find/);
+    expect(bug).not.toMatch(/(?:RUNNER_TEMP\/issue-find|runner\.temp \}\}\/issue-find)/);
 
     expect(feature).toMatch(/MARKER='<!-- feature-find -->'/);
     expect(feature).toMatch(/MARKER: '<!-- feature-find -->'/);
@@ -96,6 +96,11 @@ describe('bug-find/feature-find split (#921)', () => {
       expect(wf).toMatch(/timeout-minutes: 60/);
       expect(wf).toMatch(/job-timeout-minutes: \[75\]/);
       expect(wf).toMatch(/continue-on-error: true/);
+      // OpenCode installs only from the reviewed lockfile: exact versions,
+      // every tarball integrity-verified by npm ci, lifecycle scripts off.
+      expect(wf).toMatch(/npm ci --ignore-scripts/);
+      expect(wf).toContain('.github/opencode/package-lock.json');
+      expect(wf).not.toMatch(/npm install -g opencode-ai/);
       // The agent step must stay token-free; GH_PAT only in the create step.
       const agentSection = wf.match(/- name: Find (?:issues|features) with OpenCode[\s\S]*?- name: Validate proposed issues/);
       expect(agentSection).not.toBeNull();

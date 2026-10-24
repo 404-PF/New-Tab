@@ -151,11 +151,24 @@ jobs:
         with:
           persist-credentials: false
 
-      # NOTE: do NOT add --ignore-scripts here. opencode-ai ships a JS wrapper
-      # whose postinstall selects the native binary; with --ignore-scripts the
-      # wrapper exits 1 and every run fails at `opencode run`.
+      # Reviewed lockfile: npm ci installs exactly the reviewed tree and
+      # verifies every tarball's integrity hash against the reviewed hashes in
+      # .github/opencode/package-lock.json before any of it can run, so only
+      # reviewed code reaches OPENCODE_API_KEY. Bump package.json and
+      # package-lock.json together after reviewing a new opencode-ai release.
+      # --ignore-scripts keeps lifecycle scripts from running with runner
+      # privileges; opencode-ai's own postinstall (it selects the native
+      # binary) is then invoked explicitly, since with --ignore-scripts alone
+      # the wrapper exits 1 at `opencode run`.
       - name: Install OpenCode
-        run: npm install -g opencode-ai
+        run: |
+          set -euo pipefail
+          PKG_DIR="$RUNNER_TEMP/opencode"
+          mkdir -p "$PKG_DIR"
+          cp "$GITHUB_WORKSPACE/.github/opencode/package.json" "$GITHUB_WORKSPACE/.github/opencode/package-lock.json" "$PKG_DIR/"
+          npm ci --ignore-scripts --prefix "$PKG_DIR"
+          echo "$PKG_DIR/node_modules/.bin" >> "$GITHUB_PATH"
+          npm run postinstall --prefix "$PKG_DIR/node_modules/opencode-ai"
 
       # Existing issue titles (untrusted) for the agent to dedupe against, and
       # validator inputs kept in RUNNER_TEMP, outside the agent's workspace.

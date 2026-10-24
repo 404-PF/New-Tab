@@ -149,29 +149,24 @@ jobs:
         with:
           persist-credentials: false
 
-      # Pinned to a reviewed release, and the registry must report exactly the
-      # reviewed integrity hash before anything installs, so a changed or
-      # compromised release cannot reach OPENCODE_API_KEY unreviewed. Bump the
-      # version and hash together after reviewing a new release.
-      # --ignore-scripts keeps every dependency's lifecycle scripts from
-      # running with runner privileges; opencode-ai's own postinstall (it
-      # selects the native binary) is then invoked explicitly, since with
-      # --ignore-scripts alone the wrapper exits 1 at `opencode run`.
+      # Reviewed lockfile: npm ci installs exactly the reviewed tree and
+      # verifies every tarball's integrity hash against the reviewed hashes in
+      # .github/opencode/package-lock.json before any of it can run, so only
+      # reviewed code reaches OPENCODE_API_KEY. Bump package.json and
+      # package-lock.json together after reviewing a new opencode-ai release.
+      # --ignore-scripts keeps lifecycle scripts from running with runner
+      # privileges; opencode-ai's own postinstall (it selects the native
+      # binary) is then invoked explicitly, since with --ignore-scripts alone
+      # the wrapper exits 1 at `opencode run`.
       - name: Install OpenCode
         run: |
           set -euo pipefail
-          INTEGRITY='sha512-O3rTc9OCd6CeeJohCAjFYD3MX5U0weKzKnySfsJ9sw9uAbNZZK4meIcjd+7k3inmZB5G2qONSen3yA45yECiFA=='
-          REPORTED="$(npm view opencode-ai@1.19.4 dist.integrity)" || {
-            echo '::error::Could not read the opencode-ai@1.19.4 integrity hash from the registry.'
-            exit 1
-          }
-          if [ "$REPORTED" != "$INTEGRITY" ]; then
-            echo '::error::opencode-ai@1.19.4 does not match the reviewed integrity hash; review the release, then bump the version and hash together.'
-            exit 1
-          fi
-          npm install -g opencode-ai@1.19.4 --ignore-scripts
-          PKG="$(npm root -g)/opencode-ai"
-          (cd "$PKG" && npm run postinstall)
+          PKG_DIR="$RUNNER_TEMP/opencode"
+          mkdir -p "$PKG_DIR"
+          cp "$GITHUB_WORKSPACE/.github/opencode/package.json" "$GITHUB_WORKSPACE/.github/opencode/package-lock.json" "$PKG_DIR/"
+          npm ci --ignore-scripts --prefix "$PKG_DIR"
+          echo "$PKG_DIR/node_modules/.bin" >> "$GITHUB_PATH"
+          npm run postinstall --prefix "$PKG_DIR/node_modules/opencode-ai"
 
       # Existing issue titles (untrusted) for the agent to dedupe against, and
       # validator inputs kept in RUNNER_TEMP, outside the agent's workspace.
