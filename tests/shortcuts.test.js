@@ -166,7 +166,7 @@ describe('Shortcuts - cancel while rebinding (#905)', () => {
   });
 
   afterEach(() => {
-    Shortcuts.reset();
+    return Shortcuts.reset();
   });
 
   it('cancel() restores the combo button and disarms the capture handler', () => {
