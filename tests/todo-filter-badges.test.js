@@ -5,6 +5,11 @@ let originalI18n;
 beforeAll(() => {
   originalI18n = window.i18n;
   injectScript('src/core/languages.js');
+  // Register the locales these tests switch to (issue #927 made them lazy) so
+  // each applyLanguage() still sweeps synchronously like it did before.
+  ['zh', 'ja', 'de'].forEach((code) => {
+    injectScript('src/core/locales/' + code + '.js');
+  });
 });
 
 afterAll(() => {

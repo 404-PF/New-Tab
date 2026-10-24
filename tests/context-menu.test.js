@@ -308,6 +308,9 @@ describe('context menu i18n labels', () => {
   beforeAll(() => {
     injectScript('src/core/dom-ready.js');
     injectScript('src/core/languages.js');
+    // de is lazy-loaded now (issue #927); register it before the startup-like
+    // applyLanguage below so the menu is built from real German strings.
+    injectScript('src/core/locales/de.js');
 
     // Mirror the startup order: settings.js applies the saved language while
     // it is evaluated, before context-menu.js creates its menu items.

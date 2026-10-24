@@ -200,6 +200,10 @@ const srcGlobals = {
   fetchRemoteSearchSuggestions: 'readonly',
   scheduleSearchSuggestionsFetch: 'readonly',
   updateProviderSelection: 'readonly',
+  // Defined in src/core/languages.js, referenced by the lazy-loaded
+  // src/core/locales/<code>.js tables (issue #927).
+  createGamesTranslations: 'readonly',
+  createNoteTagTranslations: 'readonly',
 };
 
 const testGlobals = {
