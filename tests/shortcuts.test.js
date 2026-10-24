@@ -152,6 +152,83 @@ describe('Shortcuts - modifier-only rejection', () => {
   });
 });
 
+describe('Shortcuts - cancel while rebinding (#905)', () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.getElementById('shortcuts-options');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+    }
+    Shortcuts.renderShortcutsSection();
+  });
+
+  afterEach(() => {
+    Shortcuts.reset();
+  });
+
+  it('cancel() restores the combo button and disarms the capture handler', () => {
+    const btn = container.querySelector('[data-action="focusSearch"]');
+    btn.click();
+    expect(btn.textContent).toBe('Press a key...');
+
+    Shortcuts.cancel();
+
+    expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('/');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'Z',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(Shortcuts.load().focusSearch).toBe('/');
+  });
+
+  it('cancel() is a no-op when no rebind is pending', () => {
+    expect(() => Shortcuts.cancel()).not.toThrow();
+    expect(Shortcuts.load().focusSearch).toBe('/');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'Z',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(Shortcuts.load().focusSearch).toBe('/');
+  });
+
+  it('Escape still cancels a pending rebind without closing the modal', () => {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.add('modal-open');
+
+    const btn = container.querySelector('[data-action="focusSearch"]');
+    btn.click();
+    expect(btn.textContent).toBe('Press a key...');
+
+    const escapeEvent = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(escapeEvent);
+
+    expect(escapeEvent.defaultPrevented).toBe(true);
+    expect(modal.classList.contains('modal-open')).toBe(true);
+    expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('/');
+
+    modal.classList.remove('modal-open');
+  });
+});
+
 describe('Shortcuts - formatCombo', () => {
   it('formats simple key', () => {
     const combo = Shortcuts.formatCombo({ key: '/', ctrlKey: false, shiftKey: false, altKey: false });

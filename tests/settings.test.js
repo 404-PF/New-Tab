@@ -1566,3 +1566,68 @@ describe('Background overlay settings', () => {
     if (!container.contains(overlay)) container.appendChild(overlay);
   });
 });
+
+describe('Restart onboarding button closes Settings mid-rebind (#905)', () => {
+  beforeAll(() => {
+    injectScript('src/features/shortcuts.js');
+  });
+
+  let container;
+  let aboutSection;
+  let originalOnboardingTour;
+
+  beforeEach(() => {
+    container = document.getElementById('shortcuts-options');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+    }
+    localStorage.removeItem('customShortcuts');
+    Shortcuts.renderShortcutsSection();
+
+    document.getElementById('settings-modal').classList.remove('modal-open');
+
+    aboutSection = document.createElement('section');
+    aboutSection.className = 'settings-section';
+    aboutSection.setAttribute('data-section', 'about');
+    document.body.appendChild(aboutSection);
+
+    originalOnboardingTour = window.onboardingTour;
+    window.onboardingTour = { reset: vi.fn(), start: vi.fn() };
+    window.initAboutSection();
+  });
+
+  afterEach(() => {
+    Shortcuts.reset();
+    window.onboardingTour = originalOnboardingTour;
+    aboutSection.remove();
+  });
+
+  it('cancels a pending rebind when the restart-tour button closes Settings', () => {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.add('modal-open');
+
+    const btn = container.querySelector('[data-action="focusSearch"]');
+    btn.click();
+    expect(btn.textContent).toBe('Press a key...');
+
+    document.getElementById('restart-onboarding-btn').click();
+
+    expect(modal.classList.contains('modal-open')).toBe(false);
+    expect(window.onboardingTour.reset).toHaveBeenCalled();
+    expect(window.onboardingTour.start).toHaveBeenCalled();
+
+    expect(container.querySelector('[data-action="focusSearch"]').textContent).toBe('/');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'G',
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(Shortcuts.load().focusSearch).toBe('/');
+  });
+});

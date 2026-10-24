@@ -441,6 +441,7 @@ function attachSettingsAppHandler() {
     settingsModal.addEventListener('click', function (e) {
       if (e.target === settingsModal) {
         settingsModal.classList.remove('modal-open');
+        window.Shortcuts?.cancel?.();
         const opener = document.getElementById('settings-app');
         if (opener) opener.focus();
       }
