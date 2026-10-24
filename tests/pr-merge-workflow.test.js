@@ -45,6 +45,25 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(jobIf[1]).toContain('github.event.workflow_run.pull_requests[0].base.ref == \'main\'');
   });
 
+  it('pre-filters fork heads so no runner starts for a PR it can only block', () => {
+    // GitHub downgrades GITHUB_TOKEN to read-only on pull_request and
+    // pull_request_review events when the PR's head is a fork, so such a run
+    // can never merge and cannot even post its verdict comment. Without the
+    // fork half of the filter, every fork PR burns a runner and then fails
+    // the step on the comment write's 403 — a red check for a PR that was
+    // correctly "blocked". The fork gate below still denies a dispatch run
+    // that is pointed at a fork.
+    const jobIf = merge.match(/^ {4}if: >\n((?: {6}.*\n?)*)/m);
+    expect(jobIf).not.toBeNull();
+    expect(jobIf[1]).toContain('github.event.pull_request.head.repo.full_name == github.repository');
+    expect(jobIf[1]).toContain('github.event.check_run.pull_requests[0].head.repo.full_name == github.repository');
+    expect(jobIf[1]).toContain('github.event.check_suite.pull_requests[0].head.repo.full_name == github.repository');
+    expect(jobIf[1]).toContain('github.event.workflow_run.pull_requests[0].head.repo.full_name == github.repository');
+    // Gate 2 is the enforcement point, so the dispatch escape hatch cannot
+    // merge a fork either.
+    expect(merge).toMatch(/if \[ -z "\$VERDICT" \] && \[ "\$HEAD_REPO" != "\$GH_REPO" \]; then/);
+  });
+
   it('serializes evaluations per PR with cancel-in-progress', () => {
     expect(merge).toMatch(/concurrency:\n {2}group: >-\n {4}\$\{\{ github\.event_name == 'workflow_dispatch'/);
     expect(merge).toContain('format(\'pr-merge-{0}\', github.event.inputs.pr_number)');
@@ -248,6 +267,25 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toContain('head -n -1');
     expect(merge).toMatch(/gh api -X DELETE "repos\/\$GH_REPO\/issues\/comments\/\$dup" >\/dev\/null \|\| true/);
     expect(merge).toMatch(/gh pr comment "\$PR_NUMBER" --repo "\$GH_REPO" --body-file "\$BODY_FILE"/);
+  });
+
+  it('treats a verdict-comment failure as a warning, not a failed check', () => {
+    // The verdict is the check's real output. A token that lost comment
+    // access (fork-PR read-only downgrade, comment restriction, locked PR)
+    // must not turn a correct "blocked" verdict into a red check, which
+    // would report a merge problem where none exists. Every reporting write
+    // is therefore guarded and downgraded to a warning.
+    expect(merge).toMatch(/gh api -X PATCH "repos\/\$GH_REPO\/issues\/comments\/\$LAST_ID" --input - >\/dev\/null; then/);
+    expect(merge).toMatch(/elif ! gh pr comment "\$PR_NUMBER" --repo "\$GH_REPO" --body-file "\$BODY_FILE" >\/dev\/null; then/);
+    expect(merge).toContain('::warning::Could not update the pr-merge verdict comment on PR #$PR_NUMBER.');
+    expect(merge).toContain('::warning::Could not post the pr-merge verdict comment on PR #$PR_NUMBER.');
+    // The sentinel listing is read-only, so a failure there must not abort
+    // the verdict either.
+    expect(merge).toMatch(/--jq '\.\[\] \| select\(\.user\.login == "github-actions\[bot\]"[^\n]*\)\) \| \.id'\)" \|\| true/);
+    // ...but the guards cover reporting only: no blanket exit 0 at the end,
+    // so a failed gate or a failed merge still fails the check.
+    const tail = merge.slice(merge.indexOf('echo "Decision: $DECISION${VERDICT:+ ($VERDICT)}"'));
+    expect(tail).not.toMatch(/exit 0/);
   });
 
   it('dry_run evaluates and comments the verdict without merging', () => {
