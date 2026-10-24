@@ -369,6 +369,46 @@ describe('null merge base for keys absent at session start', () => {
     expect(merged[0].id).toBe('todo-shared');
     expect(merged[0].text).toBe('From tab A');
   });
+
+  // Regression for the CI failure left by #917 on main: the null-base path now
+  // unions concurrent items, which is right for a concurrent *add* but makes a
+  // deletion inexpressible. After this tab removes a target key the wrapper
+  // reseeds the base from storage, so the base is null again and an empty
+  // candidate is a delete of everything. The union rule kept the other tab's
+  // item, so the removal silently resurrected on the next write.
+  //
+  // The three cases below differ only in which key is written and what the
+  // candidate holds, so they share one driver rather than repeating the
+  // fixture per case.
+  const deletionCases = [
+    {
+      name: 'todos',
+      external: [{ id: 'todo-b', text: 'From tab B', completed: false, order: 0 }],
+      candidate: []
+    },
+    {
+      name: 'notes',
+      external: [{ id: 'note-b', text: 'Note B', tag: 'work', order: 0 }],
+      candidate: []
+    },
+    {
+      name: 'ai_conversations',
+      external: [{ id: 'conv-b', title: 'Chat B', messages: [], createdAt: 1, updatedAt: 1 }],
+      candidate: []
+    }
+  ];
+
+  deletionCases.forEach(({ name, external, candidate }) => {
+    it(`lets an empty candidate delete a concurrent ${name} write when the base is null`, () => {
+      const { context, persisted } = createStorageContext();
+      expect(context.localStorage.getItem(name)).toBe(null);
+
+      persisted.set(name, JSON.stringify(external));
+      context.localStorage.setItem(name, JSON.stringify(candidate));
+
+      expect(persisted.get(name)).toBe(JSON.stringify(candidate));
+    });
+  });
 });
 
 
