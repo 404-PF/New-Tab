@@ -6,11 +6,15 @@ describe('cross-tab storage read-modify-write merging', () => {
   let nativeGetItem;
   let nativeSetItem;
   let nativeRemoveItem;
+  let nativeSetItemAsync;
+  let nativeRemoveItemAsync;
 
   beforeAll(() => {
     nativeGetItem = localStorage.getItem.bind(localStorage);
     nativeSetItem = localStorage.setItem.bind(localStorage);
     nativeRemoveItem = localStorage.removeItem.bind(localStorage);
+    nativeSetItemAsync = localStorage.setItemAsync.bind(localStorage);
+    nativeRemoveItemAsync = localStorage.removeItemAsync.bind(localStorage);
     injectScript('src/core/storage-rmw.js');
   });
 
@@ -21,6 +25,8 @@ describe('cross-tab storage read-modify-write merging', () => {
     localStorage.getItem = nativeGetItem;
     localStorage.setItem = nativeSetItem;
     localStorage.removeItem = nativeRemoveItem;
+    localStorage.setItemAsync = nativeSetItemAsync;
+    localStorage.removeItemAsync = nativeRemoveItemAsync;
   });
 
   it('preserves independent todo, note, and AI conversation edits from a stale snapshot', () => {

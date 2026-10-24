@@ -17,6 +17,12 @@
 
   const nativeGetItem = storage.getItem.bind(storage);
   const nativeSetItem = storage.setItem.bind(storage);
+  const nativeSetItemAsync = typeof storage.setItemAsync === 'function'
+    ? storage.setItemAsync.bind(storage)
+    : null;
+  const nativeRemoveItemAsync = typeof storage.removeItemAsync === 'function'
+    ? storage.removeItemAsync.bind(storage)
+    : null;
   const lastLocalValues = new Map();
 
   /** Clone a JSON-compatible merge value without sharing mutable references. */
@@ -308,6 +314,48 @@
     return result;
   }
 
+  // The storage bridge exposes async persistence methods (setItemAsync /
+  // removeItemAsync) that update localStorage without passing through the
+  // wrapped sync setItem. Settings import (data-manager.js) uses them for
+  // todos/notes/ai_conversations; without a reseed the merge base keeps the
+  // pre-import snapshot and later deletes of imported items are resurrected
+  // by the three-way merge (issue #904). Reseed from the value actually
+  // persisted after the bridge settles: on success that is the imported
+  // value; on a rejected write the bridge rolled the cache back, so the
+  // base returns to the real stored state.
+
+  /** Reseed the merge base from the currently persisted value. */
+  function reseedBaseFromStorage(key) {
+    lastLocalValues.set(key, nativeGetItem(key));
+  }
+
+  /** Settle an async bridge result, reseeding the merge base either way. */
+  function reseedAfterAsyncWrite(key, result) {
+    return Promise.resolve(result).then(function (ok) {
+      reseedBaseFromStorage(key);
+      return ok;
+    }, function (error) {
+      reseedBaseFromStorage(key);
+      throw error;
+    });
+  }
+
+  /** Wrap Storage#setItemAsync so bridge writes refresh the merge base. */
+  function wrappedSetItemAsync(key, value) {
+    const result = nativeSetItemAsync(key, value);
+    if (!TARGET_KEYS.has(key)) return result;
+    return reseedAfterAsyncWrite(key, result);
+  }
+
+  /** Wrap Storage#removeItemAsync so bridge removals refresh the merge base. */
+  function wrappedRemoveItemAsync(key) {
+    const result = nativeRemoveItemAsync(key);
+    if (!TARGET_KEYS.has(key)) return result;
+    return reseedAfterAsyncWrite(key, result);
+  }
+
   storage.getItem = wrappedGetItem;
   storage.setItem = wrappedSetItem;
+  if (nativeSetItemAsync) storage.setItemAsync = wrappedSetItemAsync;
+  if (nativeRemoveItemAsync) storage.removeItemAsync = wrappedRemoveItemAsync;
 })();
