@@ -535,4 +535,22 @@ describe('Pomodoro coordination poll (issue #929)', () => {
       await flushTab(tab);
     }
   });
+
+  it('keeps the coordination poll alive on a persisted pagehide (BFCache)', async () => {
+    const tab = await createCoordinationTab();
+    try {
+      const subscribed = tab.dom.window.visibilityManager.callbacks;
+      expect(tab.timers[0].active).toBe(true);
+      expect(subscribed).toHaveLength(1);
+
+      const event = new tab.dom.window.Event('pagehide');
+      Object.defineProperty(event, 'persisted', { value: true });
+      tab.dom.window.dispatchEvent(event);
+
+      expect(tab.timers[0].active).toBe(true);
+      expect(subscribed).toHaveLength(1);
+    } finally {
+      await flushTab(tab);
+    }
+  });
 });

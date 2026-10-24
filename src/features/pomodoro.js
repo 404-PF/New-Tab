@@ -936,8 +936,11 @@
     subscribeToTimerStateChanges();
 
     // A closing tab must not leave a coordination poll (or its lease reconcile)
-    // pending; pagehide fires on navigation and tab/window close alike.
-    window.addEventListener('pagehide', function () {
+    // pending; pagehide fires on navigation and tab/window close alike. A
+    // persisted pagehide only parks the page in the back-forward cache, so the
+    // poll must survive for a restored non-leader to reconcile an expired lease.
+    window.addEventListener('pagehide', function (event) {
+      if (event.persisted) return;
       stopCoordinationInterval();
     });
 
