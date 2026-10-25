@@ -4,6 +4,13 @@
   let hydrationStarted = false;
   let hydrationFinished = false;
   let hydrationClearRequested = false;
+  // Set when the safety timeout resolves the bridge while chrome.storage's
+  // hydration get is still outstanding: its late callback must merge instead of
+  // being discarded, so writes made while waiting keep winning (#948).
+  let lateHydrationPending = false;
+  // A clear() issued before the hydration get settles must also beat the late
+  // result, otherwise the merge would resurrect cleared data (#948).
+  let lateHydrationClearRequested = false;
   const hydrationMutations = new Map();
   let resolveStorageBridge;
   let storageBridgeResolved = false;
@@ -35,6 +42,9 @@
       'Proceeding with native localStorage snapshot. Settings saved this session ' +
       'will still be written to chrome.storage when the API becomes available.'
     );
+    // The get callback can still arrive later; keep it alive for an additive
+    // merge instead of letting hydrationFinished discard it (#948).
+    lateHydrationPending = true;
     resolveStorageReady();
   }, STORAGE_BRIDGE_TIMEOUT_MS);
 
@@ -152,7 +162,7 @@
   }
 
   function trackHydrationMutation(key, value) {
-    if (!hydrationStarted || hydrationFinished) {
+    if (!hydrationStarted || (hydrationFinished && !lateHydrationPending)) {
       return;
     }
 
@@ -181,6 +191,27 @@
     });
 
     return mergedSnapshot;
+  }
+
+  // Applies a hydration result that arrived after the safety timeout resolved
+  // the bridge (#948). The current cache — the boot snapshot plus every write
+  // made while waiting — is the merge base, so keys written during the timeout
+  // window win over the (older) server values, while keys the page never
+  // touched still come from chrome.storage instead of being dropped.
+  function mergeLateHydrationSnapshot(storageSnapshot) {
+    const mergedSnapshot = snapshotToObject();
+
+    if (!lateHydrationClearRequested) {
+      Object.keys(storageSnapshot).forEach((key) => {
+        if (!hydrationMutations.has(key)) {
+          mergedSnapshot[key] = storageSnapshot[key];
+        }
+      });
+    }
+
+    applySnapshot(mergedSnapshot);
+    writeNativeSnapshot(snapshotToObject());
+    hydrationMutations.clear();
   }
 
   function snapshotToObject() {
@@ -219,6 +250,14 @@
     try {
       storageArea.get(null, (items) => {
         if (hydrationFinished) {
+          // Arrived after the safety timeout already resolved the bridge
+          // (#948): merge the late result additively instead of discarding it,
+          // so chrome.storage content the page never wrote is not lost.
+          const failed = chrome.runtime && chrome.runtime.lastError;
+          lateHydrationPending = false;
+          if (!failed) {
+            mergeLateHydrationSnapshot(items || {});
+          }
           return;
         }
 
@@ -403,11 +442,17 @@
           }
 
           const mutationValue = hydrationMutations.get(key);
-          hydrationMutations.delete(key);
-
           if (isMatchingHydrationMutation(change, mutationValue)) {
+            // This page's own write echoing back. Keep the tracked value while
+            // a late hydration get is still outstanding, so the eventual merge
+            // cannot clobber the write with the older server value (#948).
+            if (!lateHydrationPending) {
+              hydrationMutations.delete(key);
+            }
             return;
           }
+
+          hydrationMutations.delete(key);
         }
 
         const mutation = beginMutationGeneration(key);
@@ -930,9 +975,14 @@
       pendingRemoveRollbackSnapshots.clear();
       rollbackCacheOwners.clear();
       cache.clear();
-      if (hydrationStarted && !hydrationFinished) {
-        hydrationClearRequested = true;
-        hydrationMutations.clear();
+      if (hydrationStarted) {
+        // A clear issued before the hydration get settles must beat its late
+        // result too, or the #948 merge would resurrect the cleared data.
+        lateHydrationClearRequested = true;
+        if (!hydrationFinished) {
+          hydrationClearRequested = true;
+          hydrationMutations.clear();
+        }
       }
 
       if (!getStorageArea()) {
