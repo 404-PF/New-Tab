@@ -402,6 +402,11 @@ document.getElementById('hide-default-app').addEventListener('click', function (
   if (window.AppGridState.hideDefaultApp(contextTargetId)) {
     if (typeof window.removeAppIcon === 'function') window.removeAppIcon(contextTargetId);
     if (typeof window.renderDefaultAppVisibilityList === 'function') window.renderDefaultAppVisibilityList();
+    if (window.AppFolders && typeof window.AppFolders.refreshFolderUI === 'function') {
+      const folder = window.AppGridState.getFolders()
+        .find(f => Array.isArray(f.apps) && f.apps.includes(contextTargetId));
+      if (folder) window.AppFolders.refreshFolderUI(folder.id);
+    }
   }
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');

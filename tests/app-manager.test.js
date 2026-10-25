@@ -165,7 +165,7 @@ describe('app manager', () => {
       checkbox.dispatchEvent(new Event('change', { bubbles: true }));
 
       expect(document.getElementById('weather-app')).toBeNull();
-      expect(removeSpy).toHaveBeenCalledOnce();
+      expect(removeSpy).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'weather-app' }));
       expect(container.querySelector('[data-app-id="weather-app"]')).toBe(checkbox);
       expect(checkbox.closest('label')).toBe(label);
       removeSpy.mockRestore();
