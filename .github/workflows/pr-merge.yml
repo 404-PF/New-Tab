@@ -25,13 +25,19 @@ name: pr-merge
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
-  pull_request_review:
-    types: [submitted, edited, dismissed]
+    # Only PR events that do not start CI. A push (opened, synchronize,
+    # reopened) already runs CI, and CI completing re-enters below via
+    # workflow_run, so evaluating on the push itself only added a PR-head
+    # pr-merge check that the merging re-entry (which runs on main)
+    # cancelled, leaving every merged PR with a red "cancelled" check.
+    # Reviews are not a trigger for the same reason: an approval is usually
+    # followed by a manual merge, and a blocking review is still caught by
+    # gates 5 and 6, which re-run immediately before the merge mutation.
+    types: [ready_for_review, labeled, unlabeled]
   # pull_request_review_thread is a webhook event but NOT a valid Actions
   # trigger — GitHub rejects the whole workflow file when it appears in `on:`.
-  # Thread resolve/unresolve is picked up on the next review, label, push, or
-  # CI completion, all of which re-run this evaluation.
+  # Thread resolve/unresolve and review approvals are picked up on the next
+  # label change, CI completion, or manual dispatch.
   check_run:
     types: [completed]
   check_suite:
@@ -79,8 +85,8 @@ jobs:
     # re-validates the pr_number before touching anything.
     #
     # The same-repo-head half of that filter is not just tidiness: GitHub
-    # downgrades GITHUB_TOKEN to read-only on pull_request and
-    # pull_request_review events when the PR's head is a fork, so a fork PR
+    # downgrades GITHUB_TOKEN to read-only on pull_request events when the
+    # PR's head is a fork, so a fork PR
     # could only ever reach a "blocked" verdict — never a merge — while
     # still burning a runner and failing the step on the verdict comment's
     # 403. Skipping it up front keeps that check neutral. workflow_dispatch
@@ -92,10 +98,7 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       (
-        (
-          github.event_name == 'pull_request' ||
-          github.event_name == 'pull_request_review'
-        ) &&
+        github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.pull_request.base.ref == 'main'
       ) ||

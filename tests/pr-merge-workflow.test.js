@@ -11,8 +11,13 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     merge = readFileSync(MERGE_PATH, 'utf-8');
   });
 
-  it('triggers on PR lifecycle, review, check, CI completion, and dispatch events', () => {
-    expect(merge).toMatch(/^on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review, labeled, unlabeled\]\n {2}pull_request_review:\n {4}types: \[submitted, edited, dismissed\]/m);
+  it('triggers on label/ready PR events, check, CI completion, and dispatch events', () => {
+    expect(merge).toMatch(/^on:\n {2}pull_request:\n(?: {4}#.*\n)* {4}types: \[ready_for_review, labeled, unlabeled\]\n/m);
+    // Pushes evaluate via CI completion (workflow_run), and reviews are not
+    // a trigger: a PR-head run there was cancelled by the merging re-entry
+    // on main, leaving merged PRs with a red "cancelled" pr-merge check.
+    expect(merge).not.toMatch(/^ {2}pull_request_review:/m);
+    expect(merge).not.toMatch(/types: \[[^\]]*\b(opened|synchronize|reopened)\b/);
     expect(merge).toMatch(/^ {2}check_run:\n {4}types: \[completed\]\n {2}check_suite:\n {4}types: \[completed\]/m);
     expect(merge).toMatch(/^ {4}types: \[completed\]\n {2}workflow_dispatch:\n {4}inputs:/m);
     expect(merge).toMatch(/^ {2}workflow_run:\n {4}workflows: \[CI\]\n {4}types: \[completed\]/m);
@@ -35,7 +40,7 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(jobIf).not.toBeNull();
     expect(jobIf[1]).toMatch(/github\.event_name == 'workflow_dispatch'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'pull_request'/);
-    expect(jobIf[1]).toMatch(/github\.event_name == 'pull_request_review'/);
+    expect(jobIf[1]).not.toMatch(/github\.event_name == 'pull_request_review'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'check_run'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'check_suite'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'workflow_run'/);
@@ -46,8 +51,8 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
   });
 
   it('pre-filters fork heads so no runner starts for a PR it can only block', () => {
-    // GitHub downgrades GITHUB_TOKEN to read-only on pull_request and
-    // pull_request_review events when the PR's head is a fork, so such a run
+    // GitHub downgrades GITHUB_TOKEN to read-only on pull_request events
+    // when the PR's head is a fork, so such a run
     // can never merge and cannot even post its verdict comment. Without the
     // fork half of the filter, every fork PR burns a runner and then fails
     // the step on the comment write's 403 — a red check for a PR that was
