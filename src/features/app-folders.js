@@ -220,8 +220,8 @@
     if (confirm(msg)) {
       if (currentFolderId === folderId) closeFolderPopup();
       const releasedAppIds = Array.isArray(folder.apps) ? folder.apps.slice() : [];
-      window.AppGridState.deleteFolder(folderId);
-      if (typeof window.removeAppIcon === 'function') {
+      const deleted = window.AppGridState.deleteFolder(folderId);
+      if (deleted && typeof window.removeAppIcon === 'function') {
         window.removeAppIcon(folderId);
         releasedAppIds.forEach(appId => window.addAppIcon(appId));
       }

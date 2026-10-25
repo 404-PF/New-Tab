@@ -328,7 +328,13 @@ document.getElementById('remove-from-folder').addEventListener('click', function
   const folderId = contextTargetFolderId;
   if (folderId) {
     window.AppGridState.removeAppFromFolder(folderId, contextTargetId);
-    if (window.AppFolders) window.AppFolders.renderFolderAppsInPopup();
+    if (window.AppFolders) {
+      window.AppFolders.renderFolderAppsInPopup();
+      // The stacked preview on the folder tile must drop the removed app too.
+      if (typeof window.AppFolders.refreshFolderUI === 'function') {
+        window.AppFolders.refreshFolderUI(folderId);
+      }
+    }
     if (typeof window.addAppIcon === 'function') window.addAppIcon(contextTargetId);
   }
   contextMenu.style.display = 'none';
@@ -393,9 +399,10 @@ document.getElementById('sort-alphabetically').addEventListener('click', functio
 document.getElementById('hide-default-app').addEventListener('click', function () {
   if (contextMenuTrigger !== 'default-app') return;
   if (!contextTargetId) return;
-  window.AppGridState.hideDefaultApp(contextTargetId);
-  if (typeof window.removeAppIcon === 'function') window.removeAppIcon(contextTargetId);
-  if (typeof window.renderDefaultAppVisibilityList === 'function') window.renderDefaultAppVisibilityList();
+  if (window.AppGridState.hideDefaultApp(contextTargetId)) {
+    if (typeof window.removeAppIcon === 'function') window.removeAppIcon(contextTargetId);
+    if (typeof window.renderDefaultAppVisibilityList === 'function') window.renderDefaultAppVisibilityList();
+  }
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');
 });
@@ -427,8 +434,10 @@ function initRenameModalHandlers() {
   renameConfirm.addEventListener('click', function() {
     const newName = renameInput.value.trim();
     if (newName && window.renameAppId) {
-      window.AppGridState.renameApp(window.renameAppId, newName);
-      if (typeof window.renameAppIcon === 'function') window.renameAppIcon(window.renameAppId, newName);
+      const renamed = window.AppGridState.renameApp(window.renameAppId, newName);
+      if (renamed && typeof window.renameAppIcon === 'function') {
+        window.renameAppIcon(window.renameAppId, newName);
+      }
     }
     renameModal.classList.remove('modal-open');
     window.renameAppId = null;
@@ -533,8 +542,10 @@ function initThumbnailModalHandlers() {
     const newIcon = thumbnailInput.value.trim();
     if (newIcon && window.thumbnailAppId) {
       try {
-        window.AppGridState.updateThumbnail(window.thumbnailAppId, newIcon);
-        if (typeof window.updateAppIcon === 'function') window.updateAppIcon(window.thumbnailAppId, newIcon);
+        const updated = window.AppGridState.updateThumbnail(window.thumbnailAppId, newIcon);
+        if (updated && typeof window.updateAppIcon === 'function') {
+          window.updateAppIcon(window.thumbnailAppId, newIcon);
+        }
       } catch (e) {
         console.error('Failed to update custom app thumbnail:', e);
       }
@@ -620,8 +631,10 @@ function initDeleteModalHandlers() {
   // Delete on confirm
   deleteConfirm.addEventListener('click', function() {
     if (window.deleteAppId) {
-      window.AppGridState.deleteApp(window.deleteAppId);
-      if (typeof window.removeAppIcon === 'function') window.removeAppIcon(window.deleteAppId);
+      const deleted = window.AppGridState.deleteApp(window.deleteAppId);
+      if (deleted && typeof window.removeAppIcon === 'function') {
+        window.removeAppIcon(window.deleteAppId);
+      }
     }
     deleteModal.classList.remove('modal-open');
     window.deleteAppId = null;

@@ -296,6 +296,10 @@ function renderAllApps() {
   // Re-attach settings app click handler after render
   attachSettingsAppHandler();
 
+  // Re-apply the open-in-new-tab preference after rebuilding links (also
+  // re-syncs the Settings checkbox after an import changes the value).
+  applyOpenNewTabSetting();
+
   // Re-apply the games-enabled preference after rebuilding the grid so a
   // disabled Games app stays hidden across re-renders (e.g. language change,
   // app/folder edits). settings.js loads after this module, so guard the call.
@@ -514,11 +518,25 @@ document.addEventListener('change', function (event) {
   if (target?.type !== 'checkbox' || !target.dataset.appId) return;
   if (!target.closest?.('#default-app-visibility-list')) return;
   const appId = target.dataset.appId;
-  window.AppGridState.setDefaultAppHidden(appId, !target.checked);
-  if (window.AppGridState.isDefaultHidden(appId)) {
+  const hidden = !target.checked;
+  const saved = window.AppGridState.setDefaultAppHidden(appId, hidden);
+  if (saved !== true) {
+    // Persistence failed: put the checkbox back in line with stored state
+    // and leave the visible grid untouched.
+    target.checked = !window.AppGridState.isDefaultHidden(appId);
+    return;
+  }
+  if (hidden) {
     removeAppIcon(appId);
   } else {
     addAppIcon(appId);
+  }
+  // Foldered apps are skipped by the tile mutators, so their stacked preview
+  // must be refreshed from the folder itself.
+  if (window.AppFolders && typeof window.AppFolders.refreshFolderUI === 'function') {
+    const folder = window.AppGridState.getFolders()
+      .find(f => Array.isArray(f.apps) && f.apps.includes(appId));
+    if (folder) window.AppFolders.refreshFolderUI(folder.id);
   }
 });
 

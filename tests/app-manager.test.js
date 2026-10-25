@@ -20,6 +20,7 @@ beforeAll(() => {
       const list = JSON.parse(localStorage.getItem('hiddenDefaultApps') || '[]');
       const next = hidden ? [...new Set([...list, id])] : list.filter(item => item !== id);
       localStorage.setItem('hiddenDefaultApps', JSON.stringify(next));
+      return true;
     },
     getAppDisplayName: app => {
       if (app.nameKey && window.i18n && typeof window.i18n.t === 'function') {
@@ -164,7 +165,7 @@ describe('app manager', () => {
       checkbox.dispatchEvent(new Event('change', { bubbles: true }));
 
       expect(document.getElementById('weather-app')).toBeNull();
-      expect(removeSpy.mock.calls.every(args => args[0].id === 'weather-app')).toBe(true);
+      expect(removeSpy).toHaveBeenCalledOnce();
       expect(container.querySelector('[data-app-id="weather-app"]')).toBe(checkbox);
       expect(checkbox.closest('label')).toBe(label);
       removeSpy.mockRestore();
@@ -179,6 +180,79 @@ describe('app manager', () => {
       insertSpy.mockRestore();
     } finally {
       container.remove();
+    }
+  });
+
+  it('restores the visibility checkbox when the change fails to persist (#934)', () => {
+    const container = document.createElement('div');
+    container.id = 'default-app-visibility-list';
+    document.body.appendChild(container);
+    const originalSetDefaultAppHidden = window.AppGridState.setDefaultAppHidden;
+
+    try {
+      window.renderAllApps();
+
+      const checkbox = container.querySelector('[data-app-id="weather-app"]');
+      window.AppGridState.setDefaultAppHidden = () => false;
+
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(checkbox.checked).toBe(true);
+      expect(document.getElementById('weather-app')).not.toBeNull();
+      expect(JSON.parse(localStorage.getItem('hiddenDefaultApps') || '[]')).toEqual([]);
+    } finally {
+      window.AppGridState.setDefaultAppHidden = originalSetDefaultAppHidden;
+      container.remove();
+    }
+  });
+
+  it('refreshes the folder preview when a foldered built-in app is hidden (#934)', () => {
+    const container = document.createElement('div');
+    container.id = 'default-app-visibility-list';
+    document.body.appendChild(container);
+    const originalGetFolders = window.AppGridState.getFolders;
+    const originalAppFolders = window.AppFolders;
+    const refreshFolderUI = vi.fn();
+
+    try {
+      window.renderAllApps();
+
+      window.AppGridState.getFolders = () => [{ id: 'folder-1', name: 'Folder', apps: ['weather-app'] }];
+      window.AppFolders = { refreshFolderUI };
+
+      const checkbox = container.querySelector('[data-app-id="weather-app"]');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(refreshFolderUI).toHaveBeenCalledExactlyOnceWith('folder-1');
+    } finally {
+      window.AppGridState.getFolders = originalGetFolders;
+      if (originalAppFolders === undefined) {
+        delete window.AppFolders;
+      } else {
+        window.AppFolders = originalAppFolders;
+      }
+      container.remove();
+    }
+  });
+
+  it('re-syncs the open-in-new-tab checkbox when the grid rebuilds (#934)', () => {
+    const openNewTabCheckbox = document.createElement('input');
+    openNewTabCheckbox.type = 'checkbox';
+    openNewTabCheckbox.id = 'open-new-tab-setting';
+    document.body.appendChild(openNewTabCheckbox);
+
+    try {
+      localStorage.setItem('openAppsInNewTab', 'false');
+      window.renderAllApps();
+      expect(openNewTabCheckbox.checked).toBe(false);
+
+      localStorage.setItem('openAppsInNewTab', 'true');
+      window.renderAllApps();
+      expect(openNewTabCheckbox.checked).toBe(true);
+    } finally {
+      openNewTabCheckbox.remove();
     }
   });
 });
