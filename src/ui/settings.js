@@ -1028,6 +1028,7 @@ if (clockStyleReset) {
     applyClockFormatSetting();
     if (window.initModernColorPickers) window.initModernColorPickers();
     if (window.initModernFontPickers) window.initModernFontPickers();
+    if (window.refreshClockSettings) window.refreshClockSettings();
     if (window.updateTime) updateTime();
   });
 }
@@ -1036,6 +1037,7 @@ const clockFormatPicker = document.getElementById('clock-format-picker');
 if (clockFormatPicker) {
   clockFormatPicker.addEventListener('change', function () {
     localStorage.setItem('clockFormat', this.value);
+    if (window.refreshClockSettings) window.refreshClockSettings();
     if (window.updateTime) updateTime();
   });
 }
@@ -1128,6 +1130,7 @@ if (dateStyleReset) {
     applyDateFormatSetting();
     if (window.initModernColorPickers) window.initModernColorPickers();
     if (window.initModernFontPickers) window.initModernFontPickers();
+    if (window.refreshClockSettings) window.refreshClockSettings();
     if (window.updateTime) updateTime();
   });
 }
@@ -1136,6 +1139,7 @@ const dateFormatPicker = document.getElementById('date-format-picker');
 if (dateFormatPicker) {
   dateFormatPicker.addEventListener('change', function () {
     localStorage.setItem('dateFormat', this.value);
+    if (window.refreshClockSettings) window.refreshClockSettings();
     if (window.updateTime) updateTime();
   });
 }
