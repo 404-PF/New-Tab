@@ -41,6 +41,9 @@
     'src/ui/color-picker.js',
     'src/ui/font-picker.js',
     'src/features/interactive-background.js',
+    // Non-en locale tables are intentionally NOT listed here: languages.js
+    // lazy-loads src/core/locales/<code>.js through ensureLocale() so a new
+    // tab only builds the locale in use instead of all nine (issue #927).
     'src/core/languages.js',
     'src/features/pomodoro.js',
     'src/features/pomodoro-stats.js',

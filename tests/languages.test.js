@@ -86,6 +86,11 @@ let originalLanguage;
 
 beforeAll(() => {
   injectScript('src/core/languages.js');
+  // Non-en tables are lazy-loaded now (issue #927); inject them so the
+  // completeness checks below see every supported locale.
+  ['zh', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru'].forEach((code) => {
+    injectScript('src/core/locales/' + code + '.js');
+  });
   originalLanguage = window.i18n.currentLanguage();
   GAMES_TRANSLATION_KEYS = window.i18n.gamesTranslationKeys;
 });
