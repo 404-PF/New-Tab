@@ -459,6 +459,7 @@ describe('Modern picker events', () => {
     });
 
     initModernFontPickers();
+    document.querySelector('.font-swatch').click();
     document.querySelector('.font-option').click();
 
     expect(events).toHaveLength(1);
@@ -475,19 +476,23 @@ describe('Modern picker events', () => {
     });
 
     initModernColorPickers();
+    document.querySelector('.color-swatch').click();
     document.querySelector('.color-chip').click();
 
     expect(events).toHaveLength(1);
   });
 
   it.each([
-    ['font', 'initModernFontPickers'],
-    ['color', 'initModernColorPickers']
-  ])('removes document listeners when a %s picker is destroyed', (_, initMethod) => {
+    ['font', 'initModernFontPickers', '.font-swatch'],
+    ['color', 'initModernColorPickers', '.color-swatch']
+  ])('removes document listeners when a %s picker is destroyed', (_, initMethod, swatchSelector) => {
     const addListener = vi.spyOn(document, 'addEventListener');
     const removeListener = vi.spyOn(document, 'removeEventListener');
 
     window[initMethod]();
+    // The shared document listeners are attached on first show(), so open a
+    // popup before capturing them.
+    document.querySelector(swatchSelector).click();
     const clickHandler = addListener.mock.calls.find(([type]) => type === 'click')[1];
     const keydownHandler = addListener.mock.calls.find(([type]) => type === 'keydown')[1];
     window[initMethod]();

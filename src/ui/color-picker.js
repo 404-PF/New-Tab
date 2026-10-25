@@ -1,5 +1,45 @@
 // src/ui/color-picker.js - Modern Color Picker Component
 
+// One shared pair of document-level handlers serves every picker instance, so
+// listener count never scales with picker count. The pair is attached only
+// while a popup is open, so a hidden popup costs nothing at load. Classic
+// scripts share the browser's global scope, so these top-level names stay
+// color-specific and must not collide with font-picker.js.
+let activeColorPicker = null;
+let colorPickerListenerRefs = 0;
+
+function handleColorPickerDocumentClick(event) {
+  const picker = activeColorPicker;
+  if (!picker || !picker.isOpen || !picker.pickerElement) return;
+  if (!picker.pickerElement.contains(event.target) && !picker.swatch.contains(event.target)) {
+    picker.hide();
+  }
+}
+
+function handleColorPickerDocumentKeydown(event) {
+  if (event.key !== 'Escape') return;
+  const picker = activeColorPicker;
+  if (picker && picker.isOpen) picker.hide();
+}
+
+function retainColorPickerListeners() {
+  colorPickerListenerRefs += 1;
+  if (colorPickerListenerRefs === 1) {
+    document.addEventListener('click', handleColorPickerDocumentClick);
+    document.addEventListener('keydown', handleColorPickerDocumentKeydown);
+  }
+}
+
+function releaseColorPickerListeners() {
+  if (colorPickerListenerRefs === 0) return;
+  colorPickerListenerRefs -= 1;
+  if (colorPickerListenerRefs === 0) {
+    document.removeEventListener('click', handleColorPickerDocumentClick);
+    document.removeEventListener('keydown', handleColorPickerDocumentKeydown);
+    activeColorPicker = null;
+  }
+}
+
 class ModernColorPicker {
   constructor(options = {}) {
     this.options = {
@@ -13,13 +53,13 @@ class ModernColorPicker {
     this.isOpen = false;
     this.selectedColor = this.options.defaultColor;
     this.pickerElement = null;
+    this.destroyed = false;
 
     this.init();
   }
 
   init() {
     this.createColorSwatch();
-    this.createPickerPopup();
     this.bindEvents();
   }
 
@@ -46,6 +86,8 @@ class ModernColorPicker {
   }
 
   createPickerPopup() {
+    if (this.pickerElement) return;
+
     // Expanded palette for clock/date styling.
     this.commonColors = [
       '#ffffff', '#f8f9fa', '#e9ecef', '#dee2e6', '#ced4da', '#adb5bd', '#6c757d', '#495057', '#343a40', '#212529',
@@ -84,22 +126,6 @@ class ModernColorPicker {
     this.swatch.addEventListener('click', () => {
       this.show();
     });
-
-    // Close picker when clicking outside
-    this.handleDocumentClick = (e) => {
-      if (this.isOpen && !this.pickerElement.contains(e.target) && !this.swatch.contains(e.target)) {
-        this.hide();
-      }
-    };
-    document.addEventListener('click', this.handleDocumentClick);
-
-    // ESC key to close
-    this.handleDocumentKeydown = (e) => {
-      if (e.key === 'Escape' && this.isOpen) {
-        this.hide();
-      }
-    };
-    document.addEventListener('keydown', this.handleDocumentKeydown);
   }
 
   bindPopupEvents() {
@@ -116,7 +142,19 @@ class ModernColorPicker {
   }
 
   show() {
-    if (!this.pickerElement) return;
+    if (this.destroyed) return;
+    if (!this.pickerElement) {
+      this.createPickerPopup();
+    }
+
+    // Attach the shared document listeners only while a popup is open.
+    if (!this.isOpen) {
+      retainColorPickerListeners();
+    }
+
+    if (activeColorPicker && activeColorPicker !== this) {
+      activeColorPicker.hide();
+    }
 
     // Position the popup near the swatch
     const swatchRect = this.swatch.getBoundingClientRect();
@@ -134,11 +172,18 @@ class ModernColorPicker {
 
     this.pickerElement.classList.add('visible');
     this.isOpen = true;
+    activeColorPicker = this;
   }
 
   hide() {
-    this.pickerElement.classList.remove('visible');
-    this.isOpen = false;
+    if (activeColorPicker === this) activeColorPicker = null;
+    if (this.isOpen) {
+      this.isOpen = false;
+      releaseColorPickerListeners();
+    }
+    if (this.pickerElement) {
+      this.pickerElement.classList.remove('visible');
+    }
   }
 
   selectColor(color) {
@@ -170,6 +215,8 @@ class ModernColorPicker {
   }
 
   updatePopup(color) {
+    if (!this.pickerElement) return;
+
     // Update selected chip
     const chips = this.pickerElement.querySelectorAll('.color-chip');
     chips.forEach(chip => {
@@ -184,11 +231,20 @@ class ModernColorPicker {
   }
 
   destroy() {
-    document.removeEventListener('click', this.handleDocumentClick);
-    document.removeEventListener('keydown', this.handleDocumentKeydown);
+    if (this.destroyed) return;
+    this.destroyed = true;
+
+    if (activeColorPicker === this) activeColorPicker = null;
+    // Only a popup that actually opened retained the shared listeners, so
+    // only it may release them - otherwise a live picker would lose them.
+    if (this.isOpen) {
+      this.isOpen = false;
+      releaseColorPickerListeners();
+    }
 
     if (this.pickerElement && this.pickerElement.parentNode) {
       this.pickerElement.parentNode.removeChild(this.pickerElement);
+      this.pickerElement = null;
     }
     if (this.swatch && this.swatch.parentNode) {
       this.swatch.parentNode.removeChild(this.swatch);
