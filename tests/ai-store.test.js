@@ -43,11 +43,12 @@ describe('AIStore conversation identifiers', () => {
 });
 
 describe('AIStore conversation recovery (#458)', () => {
-  it('persists a canonical conversation after malformed JSON', () => {
+  it('persists a canonical conversation after malformed JSON', async () => {
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     localStorage.setItem(AIStore.STORAGE_KEYS.conversations, '{invalid');
 
-    AIStore.loadConversations();
+    // The recovery write waits for the quarantine backup, so await it.
+    await AIStore.loadConversations();
 
     expect(AIStore.state.conversations).toHaveLength(1);
     expect(JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations))).toEqual(
@@ -80,13 +81,14 @@ describe('AIStore conversation recovery (#458)', () => {
       createdAt: 1,
       updatedAt: 1
     }]]
-  ])('repairs and persists %s', (_, storedValue) => {
+  ])('repairs and persists %s', async (_, storedValue) => {
     localStorage.setItem(
       AIStore.STORAGE_KEYS.conversations,
       JSON.stringify(storedValue)
     );
 
-    AIStore.loadConversations();
+    // The repair write waits for the quarantine backup, so await it.
+    await AIStore.loadConversations();
 
     const persisted = JSON.parse(
       localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
@@ -174,6 +176,299 @@ describe('AIStore conversation recovery (#458)', () => {
     expect(typeof AIStore.state.conversations[0].messages[0].id).toBe('string');
     expect(AIStore.state.conversations[0].messages[0].id.length).toBeGreaterThan(0);
     expect(AIStore.state.currentConversationId).toBe('conv-2');
+  });
+});
+
+describe('AIStore fail-soft conversation recovery (#949)', () => {
+  const RECOVERY_MESSAGE =
+    'Some saved conversations could not be loaded. A backup copy of the rejected data was kept.';
+
+  function quarantineKeys() {
+    const keys = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key && key.indexOf(AIStore.QUARANTINE_KEY_PREFIX) === 0) {
+        keys.push(key);
+      }
+    }
+    return keys.sort();
+  }
+
+  function stubShowToast() {
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+    return {
+      showToast,
+      restore() {
+        if (typeof originalShowToast === 'undefined') {
+          delete window.showToast;
+        } else {
+          window.showToast = originalShowToast;
+        }
+      }
+    };
+  }
+
+  // The bridge reports a rejected backup write for the timestamped quarantine
+  // key only, so the rest of the load still behaves normally (#949).
+  function rejectQuarantineWrites() {
+    const originalSetItemAsync = localStorage.setItemAsync;
+    localStorage.setItemAsync = function (key, value) {
+      if (key.startsWith(AIStore.QUARANTINE_KEY_PREFIX)) {
+        return Promise.resolve(false);
+      }
+      return originalSetItemAsync.call(localStorage, key, value);
+    };
+    return () => {
+      if (typeof originalSetItemAsync === 'undefined') {
+        delete localStorage.setItemAsync;
+      } else {
+        localStorage.setItemAsync = originalSetItemAsync;
+      }
+    };
+  }
+
+  it('keeps every valid conversation when a single stored record is invalid', async () => {
+    const validFirst = {
+      id: 'conv-a',
+      title: 'First topic',
+      messages: [{ role: 'user', content: 'Hello' }],
+      createdAt: 1,
+      updatedAt: 2
+    };
+    const validSecond = {
+      id: 'conv-b',
+      title: 'Second topic',
+      messages: [],
+      createdAt: 3,
+      updatedAt: 4
+    };
+    // Whitespace-only title fails the non-empty trimmed-title check (#949).
+    const rejected = {
+      id: 'conv-c',
+      title: ' ',
+      messages: [],
+      createdAt: 5,
+      updatedAt: 6
+    };
+    const storedPayload = [validFirst, rejected, validSecond];
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(storedPayload)
+    );
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, 'conv-b');
+    const toast = stubShowToast();
+
+    try {
+      await AIStore.loadConversations();
+
+      expect(AIStore.state.conversations.map(conversation => conversation.id))
+        .toEqual(['conv-a', 'conv-b']);
+      expect(AIStore.state.currentConversationId).toBe('conv-b');
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-b');
+
+      const persisted = JSON.parse(
+        localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+      );
+      expect(persisted.map(conversation => conversation.id))
+        .toEqual(['conv-a', 'conv-b']);
+
+      const keys = quarantineKeys();
+      expect(keys).toHaveLength(1);
+      expect(JSON.parse(localStorage.getItem(keys[0]))).toEqual(storedPayload);
+      const backedUp = await chrome.storage.local.get(keys[0]);
+      expect(JSON.parse(backedUp[keys[0]])).toEqual(storedPayload);
+
+      expect(toast.showToast).toHaveBeenCalledWith(RECOVERY_MESSAGE, 'error');
+    } finally {
+      toast.restore();
+    }
+  });
+
+  it('quarantines the rejected payload and starts fresh when nothing valid survives', async () => {
+    const storedPayload = [{
+      id: 'conv-1',
+      title: 'Topic',
+      createdAt: 1,
+      updatedAt: 1
+    }];
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(storedPayload)
+    );
+    const toast = stubShowToast();
+
+    try {
+      await AIStore.loadConversations();
+
+      expect(AIStore.state.conversations).toHaveLength(1);
+      expect(AIStore.state.conversations[0].messages).toEqual([]);
+      expect(JSON.parse(
+        localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+      )).toEqual(AIStore.state.conversations);
+
+      const keys = quarantineKeys();
+      expect(keys).toHaveLength(1);
+      expect(JSON.parse(localStorage.getItem(keys[0]))).toEqual(storedPayload);
+      const backedUp = await chrome.storage.local.get(keys[0]);
+      expect(JSON.parse(backedUp[keys[0]])).toEqual(storedPayload);
+      expect(toast.showToast).toHaveBeenCalledWith(RECOVERY_MESSAGE, 'error');
+    } finally {
+      toast.restore();
+    }
+  });
+
+  it('quarantines the raw payload when the stored JSON cannot be parsed', async () => {
+    localStorage.setItem(AIStore.STORAGE_KEYS.conversations, '{invalid');
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const toast = stubShowToast();
+
+    try {
+      await AIStore.loadConversations();
+
+      const keys = quarantineKeys();
+      expect(keys).toHaveLength(1);
+      expect(localStorage.getItem(keys[0])).toBe('{invalid');
+      const backedUp = await chrome.storage.local.get(keys[0]);
+      expect(backedUp[keys[0]]).toBe('{invalid');
+      expect(toast.showToast).toHaveBeenCalledWith(RECOVERY_MESSAGE, 'error');
+      expect(AIStore.state.conversations).toHaveLength(1);
+    } finally {
+      toast.restore();
+      consoleWarn.mockRestore();
+    }
+  });
+
+  it('preserves the stored payload when the quarantine backup write is rejected', async () => {
+    const storedPayload = [{
+      id: 'conv-1',
+      title: ' ',
+      messages: [],
+      createdAt: 1,
+      updatedAt: 1
+    }];
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(storedPayload)
+    );
+    const toast = stubShowToast();
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const restoreWrites = rejectQuarantineWrites();
+
+    try {
+      const recovered = await AIStore.loadConversations();
+
+      expect(recovered).toBe(false);
+      // The rejected payload is still the only copy: no recovery write ran.
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations))
+        .toBe(JSON.stringify(storedPayload));
+      const stillStored = await chrome.storage.local.get(AIStore.STORAGE_KEYS.conversations);
+      expect(stillStored[AIStore.STORAGE_KEYS.conversations])
+        .toBe(JSON.stringify(storedPayload));
+      expect(quarantineKeys()).toHaveLength(0);
+      expect(toast.showToast).not.toHaveBeenCalled();
+      // The UI still gets a usable conversation in memory (#949).
+      expect(AIStore.state.conversations).toHaveLength(1);
+      expect(AIStore.state.conversations[0].id).not.toBe('conv-1');
+    } finally {
+      restoreWrites();
+      toast.restore();
+      consoleWarn.mockRestore();
+    }
+  });
+
+  it('does not persist a fail-soft repair when the quarantine backup write is rejected', async () => {
+    const storedPayload = [
+      {
+        id: 'conv-a',
+        title: 'First topic',
+        messages: [],
+        createdAt: 1,
+        updatedAt: 2
+      },
+      {
+        id: 'conv-b',
+        title: ' ',
+        messages: [],
+        createdAt: 3,
+        updatedAt: 4
+      }
+    ];
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(storedPayload)
+    );
+    const toast = stubShowToast();
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const restoreWrites = rejectQuarantineWrites();
+
+    try {
+      const healed = await AIStore.loadConversations();
+
+      expect(healed).toBe(false);
+      expect(AIStore.state.conversations.map(conversation => conversation.id))
+        .toEqual(['conv-a']);
+      // The repair that would drop `conv-b` is held back until a backup exists.
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations))
+        .toBe(JSON.stringify(storedPayload));
+      expect(quarantineKeys()).toHaveLength(0);
+      expect(toast.showToast).not.toHaveBeenCalled();
+    } finally {
+      restoreWrites();
+      toast.restore();
+      consoleWarn.mockRestore();
+    }
+  });
+
+  it('neither quarantines nor notifies when a fresh load finds nothing stored', () => {
+    const toast = stubShowToast();
+
+    try {
+      AIStore.loadConversations();
+
+      expect(quarantineKeys()).toHaveLength(0);
+      expect(toast.showToast).not.toHaveBeenCalled();
+      expect(AIStore.state.conversations).toHaveLength(1);
+    } finally {
+      toast.restore();
+    }
+  });
+
+  it('caps the retained quarantine copies at MAX_QUARANTINE_KEYS', async () => {
+    const seeded = [];
+    for (let index = 0; index < AIStore.MAX_QUARANTINE_KEYS + 2; index += 1) {
+      const key = AIStore.QUARANTINE_KEY_PREFIX + (1000000000000 + index);
+      seeded.push(key);
+      localStorage.setItem(key, 'stale-' + index);
+    }
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify([{ id: 'conv-1', title: ' ', messages: [], createdAt: 1, updatedAt: 1 }])
+    );
+
+    await AIStore.loadConversations();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const keys = quarantineKeys();
+    expect(keys).toHaveLength(AIStore.MAX_QUARANTINE_KEYS);
+    // The oldest copies are dropped first; the newest seeded ones and the
+    // copy written by this load survive.
+    expect(keys).not.toContain(seeded[0]);
+    expect(keys).not.toContain(seeded[1]);
+    expect(keys).not.toContain(seeded[2]);
+    expect(localStorage.getItem(seeded[0])).toBeNull();
+    expect(localStorage.getItem(seeded[AIStore.MAX_QUARANTINE_KEYS + 1])).not.toBeNull();
+
+    const freshKeys = keys.filter(key => seeded.indexOf(key) === -1);
+    expect(freshKeys).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem(freshKeys[0]))).toEqual([{
+      id: 'conv-1',
+      title: ' ',
+      messages: [],
+      createdAt: 1,
+      updatedAt: 1
+    }]);
   });
 });
 

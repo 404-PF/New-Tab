@@ -456,6 +456,7 @@ window.i18n.__registerLocale('es', {
   aiScrollToBottom: 'Desplazar al fondo',
   aiSaveError: 'No se pudieron guardar las conversaciones. La última acción no se guardó.',
   aiStorageFullError: 'El almacenamiento está lleno. Exporta o elimina conversaciones antiguas para liberar espacio.',
+  aiConversationLoadError: 'Algunas conversaciones guardadas no se pudieron cargar. Se conservó una copia de seguridad de los datos rechazados.',
   createFolder: 'Crear carpeta',
   renameFolder: 'Renombrar carpeta',
   deleteFolder: 'Eliminar carpeta',

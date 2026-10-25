@@ -514,6 +514,7 @@ window.i18n.__registerLocale('zh', {
   aiScrollToBottom: '滚动到底部',
   aiSaveError: '无法保存对话。您上次的操作未被保存。',
   aiStorageFullError: '存储空间已满。导出或删除旧对话以释放空间。',
+  aiConversationLoadError: '部分已保存的对话无法加载，已保留被拒绝数据的备份副本。',
 
   // Bootstrap error overlay
   bootstrapErrorTitle: '扩展加载失败',
