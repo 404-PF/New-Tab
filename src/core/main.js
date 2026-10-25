@@ -246,7 +246,7 @@ function refreshClockSettingsOnStorageChange(changes, areaName) {
   }
 
   refreshClockSettings();
-  updateTime();
+  window.updateTime();
 }
 
 if (globalThis.chrome?.storage?.onChanged?.addListener) {
