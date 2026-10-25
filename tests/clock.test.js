@@ -263,6 +263,14 @@ describe('Clock refresh cadence', () => {
       refreshClockSettings();
     }
   });
+
+  it('refreshes the cached settings when another page changes them', () => {
+    chrome.storage.onChanged._emit({ clockFormat: { oldValue: 'auto', newValue: '24h' } }, 'local');
+    expect(getClockFormat()).toBe('24h');
+
+    chrome.storage.onChanged._emit({ dateFormat: { oldValue: 'auto', newValue: 'long' } }, 'local');
+    expect(getDateFormat()).toBe('long');
+  });
 });
 
 describe('Search engine utilities', () => {

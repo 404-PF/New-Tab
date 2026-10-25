@@ -224,6 +224,35 @@ window.addEventListener('languageChanged', function () {
   updateTime();
 });
 
+// Settings changed in another open new-tab page reach this page through
+// chrome.storage.onChanged, which the storage bridge listens to from a
+// listener registered before this one (storage.js is the first script the
+// page loads), so the bridge cache is already updated when this runs.
+// Without it the cached clock/date/locale values would stay stale until
+// the page is reloaded.
+const CLOCK_SETTINGS_STORAGE_KEYS = ['clockFormat', 'dateFormat', 'language'];
+
+function refreshClockSettingsOnStorageChange(changes, areaName) {
+  if (areaName !== 'local' || !changes) {
+    return;
+  }
+
+  const affectsDisplay = CLOCK_SETTINGS_STORAGE_KEYS.some(function (key) {
+    return Object.prototype.hasOwnProperty.call(changes, key);
+  });
+
+  if (!affectsDisplay) {
+    return;
+  }
+
+  refreshClockSettings();
+  updateTime();
+}
+
+if (globalThis.chrome?.storage?.onChanged?.addListener) {
+  chrome.storage.onChanged.addListener(refreshClockSettingsOnStorageChange);
+}
+
 // Display a motto that stays the same for each day
 function displayDailyMotto() {
   try {
