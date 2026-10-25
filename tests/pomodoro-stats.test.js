@@ -443,3 +443,134 @@ describe('Pomodoro completion event', () => {
     expect(updated).toBe(true);
   });
 });
+
+function isoDaysAgo(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+describe('Pomodoro stats parse caching', () => {
+  it('getPomodoroAverageMinutes parses the key exactly once', () => {
+    // Sync the module parse cache with the (empty) store so the call is cold.
+    loadPomodoroStats();
+    const days = {};
+    for (let i = 0; i < 30; i++) days[isoDaysAgo(i)] = { sessions: 2, minutes: 50 };
+    const raw = JSON.stringify({ days, byDateTodos: {} });
+    localStorage.setItem('pomodoroStats', raw);
+
+    const parseSpy = vi.spyOn(JSON, 'parse');
+    try {
+      expect(window.getPomodoroAverageMinutes()).toBe(25);
+      expect(parseSpy.mock.calls.filter((call) => call[0] === raw).length).toBe(1);
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
+  it('renderPomodoroStats parses the key exactly once and performs no writes', () => {
+    loadPomodoroStats();
+    const raw = JSON.stringify({ days: { [getToday()]: { sessions: 3, minutes: 75 } }, byDateTodos: {} });
+    localStorage.setItem('pomodoroStats', raw);
+
+    const parseSpy = vi.spyOn(JSON, 'parse');
+    const setItemSpy = vi.spyOn(localStorage, 'setItem');
+    try {
+      renderPomodoroStats();
+      const parses = parseSpy.mock.calls.filter((call) => call[0] === raw).length;
+      expect(parses).toBe(1);
+      expect(setItemSpy).not.toHaveBeenCalled();
+    } finally {
+      parseSpy.mockRestore();
+      setItemSpy.mockRestore();
+    }
+  });
+
+  it('getPomodoroTrend parses the key exactly once', () => {
+    loadPomodoroStats();
+    const raw = JSON.stringify({ days: { [getToday()]: { sessions: 2, minutes: 50 } }, byDateTodos: {} });
+    localStorage.setItem('pomodoroStats', raw);
+
+    const parseSpy = vi.spyOn(JSON, 'parse');
+    try {
+      expect(window.getPomodoroTrend()).toEqual({ deltaSessions: 2, deltaMinutes: 50, direction: 'up' });
+      expect(parseSpy.mock.calls.filter((call) => call[0] === raw).length).toBe(1);
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
+  it('repeated reads of unchanged data parse the key only once', () => {
+    loadPomodoroStats();
+    const raw = JSON.stringify({ days: { [getToday()]: { sessions: 2, minutes: 50 } }, byDateTodos: {} });
+    localStorage.setItem('pomodoroStats', raw);
+
+    const parseSpy = vi.spyOn(JSON, 'parse');
+    try {
+      const first = window.getPomodoroTrend();
+      const second = window.getPomodoroTrend();
+      expect(second).toEqual(first);
+      expect(parseSpy.mock.calls.filter((call) => call[0] === raw).length).toBe(1);
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
+  it('loadPomodoroStats returns a copy so caller edits do not poison the cache', async () => {
+    const today = getToday();
+    await savePomodoroStats({ days: { [today]: { sessions: 2, minutes: 50 } }, byDateTodos: {} });
+
+    const first = loadPomodoroStats();
+    first.days[today] = { sessions: 99, minutes: 999 };
+    first.byDateTodos[today] = { hacked: 1 };
+
+    const second = loadPomodoroStats();
+    expect(second.days[today]).toEqual({ sessions: 2, minutes: 50 });
+    expect(second.byDateTodos[today]).toBeUndefined();
+  });
+});
+
+describe('Pomodoro stats retention', () => {
+  it('recordPomodoroSession prunes days outside the window', async () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    const stale = isoDaysAgo(45);
+    const kept = isoDaysAgo(29);
+    await savePomodoroStats({
+      days: {
+        [stale]: { sessions: 5, minutes: 125 },
+        [kept]: { sessions: 1, minutes: 25 }
+      },
+      byDateTodos: {
+        [stale]: { 'stale-todo': 125 },
+        [kept]: { 'kept-todo': 25 }
+      }
+    });
+
+    await recordPomodoroSession({ minutes: 25, todoId: 'today-todo' });
+
+    const stats = loadPomodoroStats();
+    expect(stats.days[stale]).toBeUndefined();
+    expect(stats.byDateTodos[stale]).toBeUndefined();
+    expect(stats.days[kept]).toEqual({ sessions: 1, minutes: 25 });
+    expect(stats.byDateTodos[kept]).toEqual({ 'kept-todo': 25 });
+    expect(stats.days[getToday()]).toEqual({ sessions: 1, minutes: 25 });
+    expect(stats.byDateTodos[getToday()]).toEqual({ 'today-todo': 25 });
+  });
+
+  it('keeps the days getPomodoroWeeklyBreakdown still reads', async () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    // The breakdown Sunday-aligns five weeks, reaching back at most 33 days.
+    const oldest = isoDaysAgo(33);
+    await savePomodoroStats({
+      days: { [oldest]: { sessions: 1, minutes: 25 } },
+      byDateTodos: { [oldest]: { 'old-todo': 25 } }
+    });
+
+    await recordPomodoroSession({ minutes: 25 });
+
+    const stats = loadPomodoroStats();
+    expect(stats.days[oldest]).toEqual({ sessions: 1, minutes: 25 });
+    expect(stats.byDateTodos[oldest]).toEqual({ 'old-todo': 25 });
+    expect(stats.days[isoDaysAgo(34)]).toBeUndefined();
+  });
+});

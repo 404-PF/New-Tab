@@ -237,3 +237,64 @@ describe('Todo completion event', () => {
     expect(getCompletedToday()).toBe(1);
   });
 });
+
+describe('Todo stats render performance', () => {
+  it('renderTodoStats parses todoStats exactly once and performs no writes', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    // Sync the module parse cache with the (empty) store so the render is cold.
+    loadTodoStats();
+    const raw = JSON.stringify({
+      days: { [getToday()]: 2, [getDateDaysAgo(1)]: 1 },
+      currentStreak: 0,
+      longestStreak: 0
+    });
+    localStorage.setItem('todoStats', raw);
+
+    const parseSpy = vi.spyOn(JSON, 'parse');
+    const setItemSpy = vi.spyOn(localStorage, 'setItem');
+    try {
+      renderTodoStats();
+      const todoParses = parseSpy.mock.calls.filter((call) => call[0] === raw).length;
+      expect(todoParses).toBe(1);
+      expect(setItemSpy).not.toHaveBeenCalled();
+    } finally {
+      parseSpy.mockRestore();
+      setItemSpy.mockRestore();
+    }
+  });
+});
+
+describe('Todo stats retention', () => {
+  it('recordTodoCompletion prunes days outside the retention window', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    const stale = getDateDaysAgo(120);
+    const kept = getDateDaysAgo(50);
+    saveTodoStats({ days: { [stale]: 4, [kept]: 2 }, currentStreak: 0, longestStreak: 0 });
+    recordTodoCompletion();
+    const stats = loadTodoStats();
+    expect(stats.days[stale]).toBeUndefined();
+    expect(stats.days[kept]).toBe(2);
+    expect(stats.days[getToday()]).toBe(1);
+  });
+
+  it('keeps an active streak longer than the retention window intact', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    const days = {};
+    for (let i = 1; i <= 100; i++) days[getDateDaysAgo(i)] = 1;
+    saveTodoStats({ days, currentStreak: 0, longestStreak: 0 });
+    recordTodoCompletion();
+    const stats = loadTodoStats();
+    expect(stats.currentStreak).toBe(101);
+    expect(stats.longestStreak).toBe(101);
+    expect(Object.keys(stats.days).length).toBe(101);
+  });
+
+  it('falls back to the computed streak when the stored longestStreak is malformed', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    saveTodoStats({ days: { [getToday()]: 1 }, currentStreak: 0, longestStreak: 'unknown' });
+    recordTodoCompletion();
+    const stats = loadTodoStats();
+    expect(stats.longestStreak).toBe(1);
+    expect(Number.isFinite(stats.longestStreak)).toBe(true);
+  });
+});

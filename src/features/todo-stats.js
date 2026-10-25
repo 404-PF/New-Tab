@@ -5,26 +5,58 @@
 
   const STORAGE_KEY = 'todoStats';
   const HEATMAP_DAYS = 30;
+  const RETENTION_DAYS = 90;
 
-  function getToday() {
-    const d = new Date();
+  // Raw-string-keyed parse cache, mirroring games/game-registry.js: repeat
+  // reads of unchanged data return the cached object instead of re-parsing.
+  // Invalidated on every write path (see saveStats).
+  let statsCacheRaw;
+  let statsCache = null;
+
+  function emptyStats() {
+    return { days: {}, currentStreak: 0, longestStreak: 0 };
+  }
+
+  function formatDate(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  function getToday() {
+    return formatDate(new Date());
+  }
+
   function loadStats() {
+    let raw;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { days: {}, currentStreak: 0, longestStreak: 0 };
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed.days !== 'object' || parsed.days === null || Array.isArray(parsed.days)) return { days: {}, currentStreak: 0, longestStreak: 0 };
-      return parsed;
+      raw = localStorage.getItem(STORAGE_KEY);
     } catch (e) {
       console.warn('Failed to load todo stats:', e);
-      return { days: {}, currentStreak: 0, longestStreak: 0 };
+      statsCacheRaw = undefined;
+      statsCache = emptyStats();
+      return statsCache;
     }
+    if (raw === statsCacheRaw && statsCache !== null) return statsCache;
+    statsCacheRaw = raw;
+    if (!raw) {
+      statsCache = emptyStats();
+      return statsCache;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      statsCache = (parsed && typeof parsed.days === 'object' && parsed.days !== null && !Array.isArray(parsed.days))
+        ? parsed
+        : emptyStats();
+    } catch (e) {
+      console.warn('Failed to load todo stats:', e);
+      statsCache = emptyStats();
+    }
+    return statsCache;
   }
 
   function saveStats(stats) {
+    // Invalidate first so a failed write cannot serve a mutated cache.
+    statsCacheRaw = undefined;
+    statsCache = null;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
     } catch (e) {
@@ -86,8 +118,26 @@
       }
     }
 
+    // Keep the best streak ever observed: pruned history can no longer prove
+    // a longest streak that ran longer than the retention window.
     stats.currentStreak = current;
-    stats.longestStreak = longest;
+    stats.longestStreak = Math.max(longest, Number.isFinite(stats.longestStreak) ? stats.longestStreak : 0);
+  }
+
+  // Drop days outside the retention window so the key cannot grow forever.
+  // An active streak longer than the window keeps its own days so the current
+  // streak walk never breaks mid-streak.
+  function pruneOldDays(stats) {
+    const retentionDate = new Date();
+    retentionDate.setDate(retentionDate.getDate() - (RETENTION_DAYS - 1));
+    let cutoff = formatDate(retentionDate);
+    const streakDate = new Date();
+    streakDate.setDate(streakDate.getDate() - (stats.currentStreak || 0));
+    const streakCutoff = formatDate(streakDate);
+    if (streakCutoff < cutoff) cutoff = streakCutoff;
+    Object.keys(stats.days).forEach(function (dateStr) {
+      if (dateStr < cutoff) delete stats.days[dateStr];
+    });
   }
 
   function recordCompletion(event) {
@@ -113,44 +163,45 @@
 
     stats.days[today] = (stats.days[today] || 0) + 1;
     recalculateStreaks(stats);
+    pruneOldDays(stats);
     saveStats(stats);
     renderStats();
   }
 
-  function getCompletedToday() {
-    const stats = loadStats();
-    return stats.days[getToday()] || 0;
+  function getCompletedToday(stats) {
+    const data = stats || loadStats();
+    return data.days[getToday()] || 0;
   }
 
-  function getCompletedThisWeek() {
-    const stats = loadStats();
+  function getCompletedThisWeek(stats) {
+    const data = stats || loadStats();
     let count = 0;
     const d = new Date();
     const dayOfWeek = d.getDay();
     d.setDate(d.getDate() - dayOfWeek);
     for (let i = 0; i <= dayOfWeek; i++) {
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      count += stats.days[dateStr] || 0;
+      count += data.days[dateStr] || 0;
       d.setDate(d.getDate() + 1);
     }
     return count;
   }
 
-  function getHeatmapData() {
-    const stats = loadStats();
-    const data = [];
+  function getHeatmapData(stats) {
+    const data = stats || loadStats();
+    const rows = [];
     const d = new Date();
     d.setDate(d.getDate() - (HEATMAP_DAYS - 1));
     for (let i = 0; i < HEATMAP_DAYS; i++) {
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      data.push({ date: dateStr, count: stats.days[dateStr] || 0 });
+      rows.push({ date: dateStr, count: data.days[dateStr] || 0 });
       d.setDate(d.getDate() + 1);
     }
-    return data;
+    return rows;
   }
 
-  function getMaxHeatmapCount() {
-    const data = getHeatmapData();
+  function getMaxHeatmapCount(stats) {
+    const data = getHeatmapData(stats);
     let max = 0;
     for (const entry of data) {
       if (entry.count > max) max = entry.count;
@@ -167,13 +218,13 @@
     return 3;
   }
 
-  function renderHeatmap() {
+  function renderHeatmap(stats) {
     const container = document.getElementById('todo-stats-heatmap');
     if (!container) return;
 
     container.innerHTML = '';
-    const data = getHeatmapData();
-    const maxCount = getMaxHeatmapCount();
+    const data = getHeatmapData(stats);
+    const maxCount = getMaxHeatmapCount(stats);
 
     for (const entry of data) {
       const cell = document.createElement('div');
@@ -191,20 +242,20 @@
     if (!isStatsEnabled()) return;
 
     const stats = loadStats();
+    // Read-only render: recalculate in memory for display, never persist here.
     recalculateStreaks(stats);
-    saveStats(stats);
 
     const todayEl = document.getElementById('todo-stats-today');
     const weekEl = document.getElementById('todo-stats-week');
     const currentStreakEl = document.getElementById('todo-stats-current-streak');
     const longestStreakEl = document.getElementById('todo-stats-longest-streak');
 
-    if (todayEl) todayEl.textContent = String(getCompletedToday());
-    if (weekEl) weekEl.textContent = String(getCompletedThisWeek());
+    if (todayEl) todayEl.textContent = String(getCompletedToday(stats));
+    if (weekEl) weekEl.textContent = String(getCompletedThisWeek(stats));
     if (currentStreakEl) currentStreakEl.textContent = String(stats.currentStreak);
     if (longestStreakEl) longestStreakEl.textContent = String(stats.longestStreak);
 
-    renderHeatmap();
+    renderHeatmap(stats);
   }
 
   function isStatsEnabled() {
