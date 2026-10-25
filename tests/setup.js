@@ -640,7 +640,15 @@ globalThis.window.i18n = {
       accessibilityMoveCancelled: 'Move cancelled.',
       accessibilityFilter: 'Filter: {label}.',
       accessibilityTodoListUpdated: 'Todo list updated. {count} items shown.',
-      accessibilityTodoListUpdatedOne: 'Todo list updated. {count} item shown.'
+      accessibilityTodoListUpdatedOne: 'Todo list updated. {count} item shown.',
+      releaseNotes054TodoMultiSelect: 'Added multi-select to the Todo list with bulk complete and delete',
+      releaseNotes054ToolbarIcon: 'The toolbar extension icon now opens the new tab page',
+      releaseNotes054GamesAppGrid: 'Games can now be configured in the app grid like any other app',
+      releaseNotes054FasterStartup: 'Faster startup and smoother app-grid, clock, and stats updates',
+      releaseNotes054AiChatHistory: 'AI chat history no longer gets wiped by a bad record, a full storage, or cross-tab saves',
+      releaseNotes054ShortcutLabels: 'Fixed shortcut rebinding staying armed after closing Settings, and labels not updating after a language switch',
+      releaseNotes054OnboardingFreeze: 'Fixed the onboarding tour freezing when it opens the Settings modal',
+      releaseNotes054WeatherSpinner: 'Fixed the Weather app showing a permanent spinner after a failed refresh'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {

@@ -398,6 +398,24 @@ describe('App and todo modal translations', () => {
   });
 });
 
+// Bullets behind the v0.5.4 What's New modal list (src/features/release-notes.js).
+const RELEASE_NOTES_054_TRANSLATION_KEYS = [
+  'releaseNotes054TodoMultiSelect',
+  'releaseNotes054ToolbarIcon',
+  'releaseNotes054GamesAppGrid',
+  'releaseNotes054FasterStartup',
+  'releaseNotes054AiChatHistory',
+  'releaseNotes054ShortcutLabels',
+  'releaseNotes054OnboardingFreeze',
+  'releaseNotes054WeatherSpinner'
+];
+
+describe('Release notes translations', () => {
+  it('defines every v0.5.4 release-note bullet in each supported language', () => {
+    expectTranslationKeys(RELEASE_NOTES_054_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
+
 describe('New-Tab.html i18n key completeness', () => {
   it('resolves every data-i18n key used in New-Tab.html in the en dictionary', () => {
     const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');

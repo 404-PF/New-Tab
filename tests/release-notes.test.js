@@ -79,7 +79,8 @@ describe('ReleaseNotes', () => {
   [
     ['0.4.7', '0.4.6', 'Redesigned the Background tab'],
     ['0.4.8', '0.4.7', 'focus-mode layout'],
-    ['0.5.0', '0.4.9', 'Flappy Bird']
+    ['0.5.0', '0.4.9', 'Flappy Bird'],
+    ['0.5.4', '0.5.3', 'Added multi-select to the Todo list with bulk complete and delete']
   ].forEach(([version, previousVersion, expectedNote]) => {
     it(`renders bundled notes for the ${version} release`, () => {
       window.CURRENT_VERSION = version;

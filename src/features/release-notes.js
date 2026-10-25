@@ -19,18 +19,25 @@
   // Kept intentionally short so the modal stays readable. Keys MUST match the
   // runtime `manifest.json` version string exactly (semver, no leading 'v').
   //
+  // Each bullet is an i18n key defined in src/core/languages.js (English) and
+  // src/core/locales/<code>.js, so every supported language shows a translated
+  // list. Bullets from older releases are still plain English literals, which
+  // getNotesForVersion passes through unchanged because t() echoes unknown
+  // keys verbatim.
+  //
   // MAINTENANCE: whenever version.js / manifest.json is bumped for a release,
-  // add a new entry here (or the modal falls back to RELEASE_NOTES_FALLBACK).
+  // add a new entry here (plus its i18n keys in every locale, or the modal
+  // falls back to RELEASE_NOTES_FALLBACK).
   const RELEASE_NOTES = {
     '0.5.4': [
-      'Added multi-select to the Todo list with bulk complete and delete',
-      'The toolbar extension icon now opens the new tab page',
-      'Games can now be configured in the app grid like any other app',
-      'Faster startup and smoother app-grid, clock, and stats updates',
-      'AI chat history no longer gets wiped by a bad record, a full storage, or cross-tab saves',
-      'Fixed shortcut rebinding staying armed after closing Settings, and labels not updating after a language switch',
-      'Fixed the onboarding tour freezing when it opens the Settings modal',
-      'Fixed the Weather app showing a permanent spinner after a failed refresh'
+      'releaseNotes054TodoMultiSelect',
+      'releaseNotes054ToolbarIcon',
+      'releaseNotes054GamesAppGrid',
+      'releaseNotes054FasterStartup',
+      'releaseNotes054AiChatHistory',
+      'releaseNotes054ShortcutLabels',
+      'releaseNotes054OnboardingFreeze',
+      'releaseNotes054WeatherSpinner'
     ],
     '0.5.3': [
       'Sped up settings modal/tab animations and Games keyboard responsiveness',
@@ -180,12 +187,14 @@
   }
 
   // Resolve the bundled summary for a version, falling back so the modal is
-  // never empty even when this map was not updated for a new release.
+  // never empty even when this map was not updated for a new release. Every
+  // bullet goes through t() so locale-backed i18n keys render translated,
+  // while legacy English literals (unknown keys) come back verbatim.
   function getNotesForVersion(version) {
-    if (RELEASE_NOTES[version]) {
-      return RELEASE_NOTES[version];
-    }
-    return RELEASE_NOTES_FALLBACK;
+    const notes = RELEASE_NOTES[version] || RELEASE_NOTES_FALLBACK;
+    return notes.map(function (note) {
+      return t(note);
+    });
   }
 
   // Compare two semver strings; uses UpdateChecker when available, else a
