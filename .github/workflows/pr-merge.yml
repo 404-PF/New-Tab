@@ -303,6 +303,12 @@ jobs:
             done
             if [ "$MERGEABLE" = 'false' ] || [ "$MERGE_STATE" = 'dirty' ]; then
               deny 'PR has merge conflicts'
+            elif [ "$MERGE_STATE" = 'blocked' ]; then
+              # blocked is GitHub's normal in-progress state for a fresh PR
+              # (required checks or approval still pending), not a defect:
+              # deny exactly as before, but word the verdict as waiting so
+              # the comment does not read like a hard blockage.
+              deny 'merge state is blocked: required status check(s) or review approval still pending'
             elif [ "$MERGE_STATE" != 'clean' ] && [ "$MERGE_STATE" != 'unstable' ] && [ "$MERGE_STATE" != 'has_hooks' ]; then
               deny "merge state is ${MERGE_STATE}, which blocks merging"
             fi
