@@ -76,7 +76,7 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 - `package.json` and `manifest.json` versions must stay in sync. `CURRENT_VERSION` is read from the manifest at runtime (`src/core/version.js`) — do not hardcode it elsewhere.
 - The release workflow builds `new-tab.zip` from a stripped source tree (removes `.github`, `.husky`, `.agents`, `tests`, `ISSUES`, `screenshots`, `.gitignore`, `.nvmrc`, `vitest.config.js`, `eslint.config.js`, `package.json`, and `package-lock.json`) via `zip -r`.
 - Triggers: `push` tag `v*` / `v*.*` / `v*.*.*` / `v*.*.*.*` (1–4 dot-separated components), `release: published`, and `workflow_dispatch`.
-- Use the `.agents/skills/prepare-release` skill (bump + tag) for the release workflow; ensure the package and manifest versions match before pushing the version tag.
+- Use the `.agents/skills/prepare-release` skill (bump + What's New notes) for the release workflow; ensure the package and manifest versions match before pushing the version tag.
 
 ## PR auto-merge
 
@@ -89,7 +89,7 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 ## Skills
 
 Local skills under `.agents/skills/` (loaded via the `skill` tool):
-- `prepare-release` - bump display version and push tag
+- `prepare-release` - bump display version and update bundled What's New notes
 - `create-pr` - branch prep and PR description
 - `review-pr` - prioritize review findings
 - `resolve-issue` - narrow evidence-first bug fix loop
