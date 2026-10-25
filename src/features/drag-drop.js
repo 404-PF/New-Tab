@@ -471,9 +471,14 @@
       }
       const folderId = target.id;
       if (window.AppFolders && window.AppGridState.getFolders().some(f => f.id === folderId)) {
-        window.AppGridState.moveAppToFolder(folderId, sourceId);
-        if (typeof window.renderAllApps === 'function') {
-          window.renderAllApps();
+        const moved = window.AppGridState.moveAppToFolder(folderId, sourceId);
+        // Only patch the grid when the move persisted; otherwise the visible
+        // grid would disagree with the folders that storage still holds.
+        if (moved && typeof window.removeAppIcon === 'function') {
+          window.removeAppIcon(sourceId);
+          if (typeof window.AppFolders.refreshFolderUI === 'function') {
+            window.AppFolders.refreshFolderUI(folderId);
+          }
         }
       }
       removePlaceholder();
@@ -501,8 +506,8 @@
     if (!window.AppGridState.reorder(sourceId, toIdx)) {
       return;
     }
-    if (typeof window.renderAllApps === 'function') {
-      window.renderAllApps();
+    if (typeof window.syncAppGridOrder === 'function') {
+      window.syncAppGridOrder();
     }
 
     // Apply bounce landing animation to the moved icon. The

@@ -31,20 +31,175 @@ const getAllAppData = () => {
   return [...visibleDefaults, ...customApps];
 };
 
+const HANDLED_APP_HANDLER_IDS = new Set(['settings-app', 'ai-app', 'weather-app', 'games-app']);
+
+function getGridElements() {
+  return {
+    appGrid: document.getElementById('app-grid'),
+    addApp: document.getElementById('new-app')
+  };
+}
+
+function isGridChild(element, appGrid) {
+  return !!element && !!appGrid && element.parentNode === appGrid;
+}
+
+function invalidateDragIconCache() {
+  if (window.DnD && window.DnD.invalidateIconCache) {
+    window.DnD.invalidateIconCache();
+  }
+}
+
+// Storage records win so className / cachedIcon stay canonical.
+function resolveAppRecord(appOrId) {
+  const id = typeof appOrId === 'string' ? appOrId : appOrId && appOrId.id;
+  if (!id) return null;
+  const stored = getAllAppData().find(app => app.id === id);
+  if (stored) return stored;
+  if (typeof appOrId === 'object') {
+    return { ...appOrId, className: appOrId.className || 'custom-app' };
+  }
+  return null;
+}
+
+function getInsertionReference(appGrid, addApp, id) {
+  const order = getAppOrder();
+  if (Array.isArray(order)) {
+    const index = order.indexOf(id);
+    if (index !== -1) {
+      for (let i = index + 1; i < order.length; i++) {
+        const next = document.getElementById(order[i]);
+        if (isGridChild(next, appGrid)) return next;
+      }
+    }
+  }
+  return addApp;
+}
+
+/** Builds one validated app icon anchor (shared by rebuild and mutators). */
+function createAppIconElement(app) {
+  const a = document.createElement('a');
+  const safeAppUrl = typeof window.getSafeCustomAppUrl === 'function'
+    ? window.getSafeCustomAppUrl(app.url)
+    : '#';
+  a.href = safeAppUrl;
+  a.className = 'app-icon ' + app.className;
+  a.id = app.id;
+  a.draggable = true;
+  const openInNewTab = loadOpenNewTabSetting();
+  if (openInNewTab && safeAppUrl !== '#') {
+    a.setAttribute('target', '_blank');
+    a.setAttribute('rel', 'noopener noreferrer');
+  }
+  // Get translated name (shared resolver keeps sort order in lockstep)
+  const displayName = window.AppGridState.getAppDisplayName(app);
+  // Use cached icon if available, otherwise use original icon
+  const iconUrl = app.cachedIcon || app.icon;
+  a.title = displayName;
+  const safeIconUrl = window.validateIconUrl ? window.validateIconUrl(iconUrl) : iconUrl;
+  const iconHtml = `<div class="icon"><img src="${window.escapeHtml(safeIconUrl || '')}" alt="${window.escapeHtml(displayName)}" data-app-icon></div>`;
+  a.innerHTML = iconHtml + `<span class="app-name">${escapeHtml(displayName)}</span>`;
+  return a;
+}
+
+/** Adds one icon to the grid without touching siblings; takes a record or id. */
+function addAppIcon(appOrId) {
+  const { appGrid, addApp } = getGridElements();
+  const record = resolveAppRecord(appOrId);
+  if (!appGrid || !addApp || !record) return null;
+
+  const existing = document.getElementById(record.id);
+  if (existing) return isGridChild(existing, appGrid) ? existing : null;
+
+  const folders = window.AppGridState.getFolders();
+  const inFolder = Array.isArray(folders)
+    && folders.some(folder => Array.isArray(folder.apps) && folder.apps.includes(record.id));
+  if (inFolder) return null;
+
+  const icon = createAppIconElement(record);
+  appGrid.insertBefore(icon, getInsertionReference(appGrid, addApp, record.id));
+
+  if (HANDLED_APP_HANDLER_IDS.has(record.id)) {
+    attachSettingsAppHandler();
+  }
+  if (record.id === 'games-app' && typeof window.applyGamesEnabled === 'function') {
+    window.applyGamesEnabled();
+  }
+  invalidateDragIconCache();
+  return icon;
+}
+
+/** Removes one icon from the grid. */
+function removeAppIcon(id) {
+  const { appGrid } = getGridElements();
+  const element = document.getElementById(id);
+  if (!appGrid || !isGridChild(element, appGrid)) return false;
+  appGrid.removeChild(element);
+  invalidateDragIconCache();
+  return true;
+}
+
+/** Updates one icon's visible name in place. */
+function renameAppIcon(id, newName) {
+  if (typeof newName !== 'string') return false;
+  const element = document.getElementById(id);
+  if (!element) return false;
+  const nameElement = element.querySelector('.app-name');
+  if (nameElement) nameElement.textContent = newName;
+  element.title = newName;
+  return true;
+}
+
+/** Swaps one icon's thumbnail in place. */
+function updateAppIcon(id, iconUrl) {
+  const element = document.getElementById(id);
+  if (!element) return false;
+  const image = element.querySelector('.icon img');
+  if (!image) return false;
+  const safeIconUrl = window.validateIconUrl ? window.validateIconUrl(iconUrl) : iconUrl;
+  image.setAttribute('src', safeIconUrl || '');
+  invalidateDragIconCache();
+  return true;
+}
+
+/** Re-positions existing icons to match the persisted order; recreates none. */
+function syncAppGridOrder() {
+  const { appGrid, addApp } = getGridElements();
+  const order = getAppOrder();
+  if (!appGrid || !addApp || !Array.isArray(order)) return false;
+
+  const nodes = order.map(id => {
+    const element = document.getElementById(id);
+    return isGridChild(element, appGrid) ? element : null;
+  });
+
+  let reference = addApp;
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const element = nodes[i];
+    if (!element) continue;
+    if (element.nextSibling !== reference) {
+      appGrid.insertBefore(element, reference);
+    }
+    reference = element;
+  }
+  invalidateDragIconCache();
+  return true;
+}
+
 /**
  * Renders the app grid while validating every app URL at the DOM sink.
  * Invalid or bypassed app records fail closed to a harmless fragment URL.
  * @returns {void}
  */
 function renderAllApps() {
-  const appGrid = document.getElementById('app-grid');
-  const addApp = document.getElementById('new-app');
+  const { appGrid, addApp } = getGridElements();
   if (!appGrid || !addApp) {
     console.warn('renderAllApps: missing #app-grid or #new-app element');
     return;
   }
   // Remove all except New
   Array.from(appGrid.children).forEach(child => { if (child.id !== 'new-app') appGrid.removeChild(child); });
+  const fragment = document.createDocumentFragment();
   let order = getAppOrder();
   const allApps = getAllAppData();
   // Deduplicate by id so corrupted storage can't permanently invalidate the order
@@ -124,45 +279,27 @@ function renderAllApps() {
       }
       const folder = folderMap[appId];
       const folderEl = window.AppFolders.createFolderIconElement(folder);
-      appGrid.insertBefore(folderEl, addApp);
+      fragment.appendChild(folderEl);
       return;
     }
     const app = appMap[appId];
     if (!app) return;
-    const a = document.createElement('a');
-    const safeAppUrl = typeof window.getSafeCustomAppUrl === 'function'
-      ? window.getSafeCustomAppUrl(app.url)
-      : '#';
-    a.href = safeAppUrl;
-    a.className = 'app-icon ' + app.className;
-    a.id = app.id;
-    a.draggable = true;
-    const openInNewTab = loadOpenNewTabSetting();
-    if (openInNewTab && safeAppUrl !== '#') {
-      a.setAttribute('target', '_blank');
-      a.setAttribute('rel', 'noopener noreferrer');
-    }
-    // Get translated name (shared resolver keeps sort order in lockstep)
-    const displayName = window.AppGridState.getAppDisplayName(app);
-    // Use cached icon if available, otherwise use original icon
-    const iconUrl = app.cachedIcon || app.icon;
-    a.title = displayName;
-    const safeIconUrl = window.validateIconUrl ? window.validateIconUrl(iconUrl) : iconUrl;
-    const iconHtml = `<div class="icon"><img src="${window.escapeHtml(safeIconUrl || '')}" alt="${window.escapeHtml(displayName)}" data-app-icon></div>`;
-    a.innerHTML = iconHtml + `<span class="app-name">${escapeHtml(displayName)}</span>`;
-    appGrid.insertBefore(a, addApp);
+    fragment.appendChild(createAppIconElement(app));
   });
 
+  // Batch the rebuild into a single insertion (one relayout, not one per icon).
+  appGrid.insertBefore(fragment, addApp);
+
   // Invalidate drag-drop icon cache after the grid is rebuilt
-  if (window.DnD && window.DnD.invalidateIconCache) {
-    window.DnD.invalidateIconCache();
-  }
+  invalidateDragIconCache();
 
   // Re-attach settings app click handler after render
   attachSettingsAppHandler();
 
-  // Re-apply the open-in-new-tab preference after rebuilding links.
+  // Re-apply the open-in-new-tab preference after rebuilding links (also
+  // re-syncs the Settings checkbox after an import changes the value).
   applyOpenNewTabSetting();
+
   // Re-apply the games-enabled preference after rebuilding the grid so a
   // disabled Games app stays hidden across re-renders (e.g. language change,
   // app/folder edits). settings.js loads after this module, so guard the call.
@@ -199,6 +336,14 @@ window.onDomReady(cacheIconsAndRenderFallback);
 // Re-render function (export for other modules)
 window.renderCustomApps = renderAllApps;
 window.renderAllApps = renderAllApps;
+
+// Item-scoped mutators (export for other modules, issue #934)
+window.addAppIcon = addAppIcon;
+window.removeAppIcon = removeAppIcon;
+window.renameAppIcon = renameAppIcon;
+window.updateAppIcon = updateAppIcon;
+window.syncAppGridOrder = syncAppGridOrder;
+window.renderDefaultAppVisibilityList = renderDefaultAppVisibilityList;
 
 // Re-render when language changes
 window.addEventListener('languageChanged', renderAllApps);
@@ -366,12 +511,33 @@ function initDefaultAppVisibilitySettings() {
 
 // Delegated at document level so it works no matter when the container is
 // created (it is populated dynamically on every grid render).
+// The toggle patches only the one tile: the checkbox already reflects the new
+// state, so rebuilding the list here would only discard the caller's node.
 document.addEventListener('change', function (event) {
   const target = event.target;
   if (target?.type !== 'checkbox' || !target.dataset.appId) return;
   if (!target.closest?.('#default-app-visibility-list')) return;
-  window.AppGridState.setDefaultAppHidden(target.dataset.appId, !target.checked);
-  renderAllApps();
+  const appId = target.dataset.appId;
+  const hidden = !target.checked;
+  const saved = window.AppGridState.setDefaultAppHidden(appId, hidden);
+  if (saved !== true) {
+    // Persistence failed: put the checkbox back in line with stored state
+    // and leave the visible grid untouched.
+    target.checked = !window.AppGridState.isDefaultHidden(appId);
+    return;
+  }
+  if (hidden) {
+    removeAppIcon(appId);
+  } else {
+    addAppIcon(appId);
+  }
+  // Foldered apps are skipped by the tile mutators, so their stacked preview
+  // must be refreshed from the folder itself.
+  if (window.AppFolders && typeof window.AppFolders.refreshFolderUI === 'function') {
+    const folder = window.AppGridState.getFolders()
+      .find(f => Array.isArray(f.apps) && f.apps.includes(appId));
+    if (folder) window.AppFolders.refreshFolderUI(folder.id);
+  }
 });
 
 window.onDomReady(initDefaultAppVisibilitySettings);

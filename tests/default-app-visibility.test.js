@@ -228,8 +228,14 @@ describe('default app context menu hide action', () => {
   it('offers Hide for hideable default apps and applies it', () => {
     AppGridStorage.saveOrder(['ai-app', 'weather-app', 'feedback-app', 'settings-app']);
     const renderAllApps = vi.fn();
+    const removeAppIcon = vi.fn();
+    const renderDefaultAppVisibilityList = vi.fn();
     const originalRenderAllApps = window.renderAllApps;
+    const originalRemoveAppIcon = window.removeAppIcon;
+    const originalRenderDefaultAppVisibilityList = window.renderDefaultAppVisibilityList;
     window.renderAllApps = renderAllApps;
+    window.removeAppIcon = removeAppIcon;
+    window.renderDefaultAppVisibilityList = renderDefaultAppVisibilityList;
 
     try {
       openContextMenu(document.getElementById('ai-app'));
@@ -241,13 +247,26 @@ describe('default app context menu hide action', () => {
 
       expect(AppGridState.isDefaultHidden('ai-app')).toBe(true);
       expect(AppGridState.getOrder()).toEqual(['weather-app', 'feedback-app', 'settings-app']);
-      expect(renderAllApps).toHaveBeenCalledOnce();
+      // Single-item patch: only the hidden tile is removed, no full rebuild.
+      expect(removeAppIcon).toHaveBeenCalledExactlyOnceWith('ai-app');
+      expect(renderDefaultAppVisibilityList).toHaveBeenCalledOnce();
+      expect(renderAllApps).not.toHaveBeenCalled();
       expect(document.getElementById('app-context-menu').style.display).toBe('none');
     } finally {
       if (originalRenderAllApps === undefined) {
         delete window.renderAllApps;
       } else {
         window.renderAllApps = originalRenderAllApps;
+      }
+      if (originalRemoveAppIcon === undefined) {
+        delete window.removeAppIcon;
+      } else {
+        window.removeAppIcon = originalRemoveAppIcon;
+      }
+      if (originalRenderDefaultAppVisibilityList === undefined) {
+        delete window.renderDefaultAppVisibilityList;
+      } else {
+        window.renderDefaultAppVisibilityList = originalRenderDefaultAppVisibilityList;
       }
     }
   });
@@ -268,8 +287,11 @@ describe('default app context menu hide action', () => {
   it('offers Hide for the Games tile and applies it (#897)', () => {
     AppGridStorage.saveOrder(['ai-app', 'weather-app', 'games-app', 'feedback-app', 'settings-app']);
     const renderAllApps = vi.fn();
+    const removeAppIcon = vi.fn();
     const originalRenderAllApps = window.renderAllApps;
+    const originalRemoveAppIcon = window.removeAppIcon;
     window.renderAllApps = renderAllApps;
+    window.removeAppIcon = removeAppIcon;
 
     try {
       openContextMenu(document.getElementById('games-app'));
@@ -281,13 +303,19 @@ describe('default app context menu hide action', () => {
 
       expect(AppGridState.isDefaultHidden('games-app')).toBe(true);
       expect(AppGridState.getOrder()).toEqual(['ai-app', 'weather-app', 'feedback-app', 'settings-app']);
-      expect(renderAllApps).toHaveBeenCalledOnce();
+      expect(removeAppIcon).toHaveBeenCalledExactlyOnceWith('games-app');
+      expect(renderAllApps).not.toHaveBeenCalled();
       expect(document.getElementById('app-context-menu').style.display).toBe('none');
     } finally {
       if (originalRenderAllApps === undefined) {
         delete window.renderAllApps;
       } else {
         window.renderAllApps = originalRenderAllApps;
+      }
+      if (originalRemoveAppIcon === undefined) {
+        delete window.removeAppIcon;
+      } else {
+        window.removeAppIcon = originalRemoveAppIcon;
       }
     }
   });

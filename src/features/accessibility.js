@@ -615,13 +615,17 @@
       picked.setAttribute('aria-grabbed', 'false');
       getGridCells(container).forEach(item => item.removeAttribute('aria-dropeffect'));
 
-      if (moved && typeof window.renderAllApps === 'function') {
-        const shouldRestoreFolderPopup = container.id === 'folder-popup-apps';
-        if (shouldRestoreFolderPopup) {
-          window.AppFolders?.renderFolderAppsInPopup?.();
-        } else {
-          window.renderAllApps();
+      if (moved && container.id === 'folder-popup-apps') {
+        window.AppFolders?.renderFolderAppsInPopup?.();
+      } else if (moved && cell.classList.contains('folder-icon') && !picked.classList.contains('folder-icon')) {
+        if (typeof window.removeAppIcon === 'function') {
+          window.removeAppIcon(sourceId);
+          if (typeof window.AppFolders?.refreshFolderUI === 'function') {
+            window.AppFolders.refreshFolderUI(targetId);
+          }
         }
+      } else if (moved && typeof window.syncAppGridOrder === 'function') {
+        window.syncAppGridOrder();
       }
 
       requestAnimationFrame(() => {

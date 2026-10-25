@@ -221,11 +221,14 @@ describe('context menu previews', () => {
     }
 
     const sortAlphabetically = vi.fn(() => true);
+    const syncAppGridOrder = vi.fn();
     const renderAllApps = vi.fn();
     const originalRenderAllApps = window.renderAllApps;
+    const originalSyncAppGridOrder = window.syncAppGridOrder;
     const originalSort = window.AppGridState.sortAlphabetically;
     window.AppGridState.sortAlphabetically = sortAlphabetically;
     window.renderAllApps = renderAllApps;
+    window.syncAppGridOrder = syncAppGridOrder;
 
     try {
       // Right-click empty grid space to open the grid section of the menu.
@@ -241,7 +244,9 @@ describe('context menu previews', () => {
       document.getElementById('sort-alphabetically').click();
 
       expect(sortAlphabetically).toHaveBeenCalledOnce();
-      expect(renderAllApps).toHaveBeenCalledOnce();
+      // Sorting only re-positions existing icons; it must not rebuild them.
+      expect(syncAppGridOrder).toHaveBeenCalledOnce();
+      expect(renderAllApps).not.toHaveBeenCalled();
       // The menu closes after the action.
       expect(document.getElementById('app-context-menu').style.display).toBe('none');
     } finally {
@@ -250,6 +255,11 @@ describe('context menu previews', () => {
         delete window.renderAllApps;
       } else {
         window.renderAllApps = originalRenderAllApps;
+      }
+      if (originalSyncAppGridOrder === undefined) {
+        delete window.syncAppGridOrder;
+      } else {
+        window.syncAppGridOrder = originalSyncAppGridOrder;
       }
     }
   });
@@ -264,16 +274,20 @@ describe('context menu previews', () => {
     }));
 
     const sortAlphabetically = vi.fn(() => false);
+    const syncAppGridOrder = vi.fn();
     const renderAllApps = vi.fn();
     const originalRenderAllApps = window.renderAllApps;
+    const originalSyncAppGridOrder = window.syncAppGridOrder;
     const originalSort = window.AppGridState.sortAlphabetically;
     window.AppGridState.sortAlphabetically = sortAlphabetically;
     window.renderAllApps = renderAllApps;
+    window.syncAppGridOrder = syncAppGridOrder;
 
     try {
       document.getElementById('sort-alphabetically').click();
 
       expect(sortAlphabetically).toHaveBeenCalledOnce();
+      expect(syncAppGridOrder).not.toHaveBeenCalled();
       expect(renderAllApps).not.toHaveBeenCalled();
     } finally {
       window.AppGridState.sortAlphabetically = originalSort;
@@ -281,6 +295,11 @@ describe('context menu previews', () => {
         delete window.renderAllApps;
       } else {
         window.renderAllApps = originalRenderAllApps;
+      }
+      if (originalSyncAppGridOrder === undefined) {
+        delete window.syncAppGridOrder;
+      } else {
+        window.syncAppGridOrder = originalSyncAppGridOrder;
       }
     }
   });
