@@ -15,6 +15,10 @@
     "message": "Speicher ist voll. Exportiere oder lösche alte Unterhaltungen, um Platz freizugeben.",
     "description": "Error shown when AI conversation history fills the storage quota"
   },
+  "aiConversationLoadError": {
+    "message": "Einige gespeicherte Konversationen konnten nicht geladen werden. Eine Sicherungskopie der abgelehnten Daten wurde aufbewahrt.",
+    "description": "Error shown when stored AI conversations are rejected and repaired"
+  },
   "appGridSaveError": {
     "message": "App-Änderungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
     "description": "Error shown when app grid changes cannot be persisted"

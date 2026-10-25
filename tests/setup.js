@@ -385,6 +385,7 @@ globalThis.window.i18n = {
       aiPlaceholder: 'Ask me anything...',
       aiSaveError: 'Failed to save conversations. Your last action was not saved.',
       aiStorageFullError: 'Storage is full. Export or delete old conversations to free space.',
+      aiConversationLoadError: 'Some saved conversations could not be loaded. A backup copy of the rejected data was kept.',
       aiNewChat: 'New Chat',
       aiSearchConversations: 'Search conversations...',
       aiConversations: 'Conversations',

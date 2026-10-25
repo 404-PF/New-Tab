@@ -76,7 +76,8 @@ const AI_TRANSLATION_KEYS = [
   'aiExportAllSuccess',
   'aiExportError',
   'aiSaveError',
-  'aiStorageFullError'
+  'aiStorageFullError',
+  'aiConversationLoadError'
 ];
 
 // Derived from the source's window.i18n.gamesTranslationKeys in beforeAll so

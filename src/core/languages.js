@@ -590,6 +590,7 @@ const translations = {
     aiScrollToBottom: 'Scroll to bottom',
     aiSaveError: 'Failed to save conversations. Your last action was not saved.',
     aiStorageFullError: 'Storage is full. Export or delete old conversations to free space.',
+    aiConversationLoadError: 'Some saved conversations could not be loaded. A backup copy of the rejected data was kept.',
 
     // Bootstrap error overlay
     bootstrapErrorTitle: 'Extension failed to load',

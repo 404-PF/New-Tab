@@ -456,6 +456,7 @@ window.i18n.__registerLocale('fr', {
   aiScrollToBottom: 'Descendre en bas',
   aiSaveError: 'Impossible d’enregistrer les conversations. Votre dernière action n’a pas été enregistrée.',
   aiStorageFullError: 'Le stockage est plein. Exportez ou supprimez d’anciennes conversations pour libérer de l’espace.',
+  aiConversationLoadError: 'Certaines conversations enregistrées n’ont pas pu être chargées. Une copie de sauvegarde des données rejetées a été conservée.',
   createFolder: 'Créer un dossier',
   renameFolder: 'Renommer le dossier',
   deleteFolder: 'Supprimer le dossier',
