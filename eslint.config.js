@@ -496,4 +496,16 @@ module.exports = [
       ...commonRules,
     },
   },
+  {
+    files: ['cloudflare/**/*.js'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: {
+        ...globals.worker,
+      },
+    },
+    rules: {
+      ...commonRules,
+    },
+  },
 ];

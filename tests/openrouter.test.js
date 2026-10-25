@@ -48,12 +48,13 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function createStreamingResponse(chunks) {
+function createStreamingResponse(chunks, headers = {}) {
   const encoder = new TextEncoder();
   let index = 0;
 
   return {
     ok: true,
+    headers: { get: vi.fn(name => headers[name] ?? null) },
     body: {
       getReader: () => ({
         read: vi.fn(async () => {
@@ -860,6 +861,25 @@ describe('OpenRouter web grounding (#707)', () => {
 
     expect(result).toMatchObject({ success: true, content: 'Ungrounded' });
     expect(body).not.toHaveProperty('plugins');
+  });
+
+  it('surfaces the proxy X-Grounding header in the result', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      createStreamingResponse(
+        ['data: {"choices":[{"delta":{"content":"Plain"}}]}\n'],
+        { 'X-Grounding': 'unavailable' }
+      )
+    );
+
+    const result = await OpenRouterAPI.sendMessageStreaming(
+      'What happened today?',
+      [],
+      undefined,
+      null,
+      { grounding: true }
+    );
+
+    expect(result).toMatchObject({ success: true, content: 'Plain', grounding: 'unavailable' });
   });
 
   it('refreshes the cached grounding preference after an external storage change', async () => {

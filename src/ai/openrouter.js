@@ -395,6 +395,8 @@ const OpenRouterAPI = (function() {
 
         const response = await fetch(CONFIG.baseURL, fetchOptions);
 
+        const groundingStatus = response.headers?.get('X-Grounding') || null;
+
         // Handle non-OK responses. Retry rate limits and server failures because
         // they are commonly transient; surface other client errors immediately.
         if (!response.ok) {
@@ -492,7 +494,8 @@ const OpenRouterAPI = (function() {
             success: true,
             content: fullContent,
             usage: null,
-            model: CONFIG.model
+            model: CONFIG.model,
+            grounding: groundingStatus
           };
         }
       } catch (e) {
