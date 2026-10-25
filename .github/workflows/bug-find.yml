@@ -210,9 +210,13 @@ jobs:
           # No GitHub token here. The agent may only write files in the
           # workspace; git and gh are denied. bash keeps allow entries because
           # OpenCode's free tier rejects requests whose tools lack bash.
+          # task (subagents) is denied: runs that fanned out to Explore
+          # subagents hung silently until the 60-minute step timeout and
+          # saved no proposals.
           OPENCODE_PERMISSION: >-
             {
               "edit": "allow",
+              "task": "deny",
               "webfetch": "deny",
               "external_directory": "deny",
               "bash": {
@@ -251,6 +255,7 @@ jobs:
           - No style nits, no speculative refactors, no duplicates of existing issues.
           - Labels must come only from: ${LABELS_LIST}
           - Prefer targeted read/glob/grep calls over broad repo-wide greps. Do NOT run git or gh. Do NOT edit any file other than the output file.
+          - Work alone: do NOT use the task tool or spawn subagents; read the files yourself.
 
           Saving (important; the run can be cut off at any time):
           - ${OUTPUT_FILE} is JSON Lines: exactly one complete JSON object per line, no array, no commas between lines, no other text.
