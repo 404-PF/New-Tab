@@ -54,19 +54,6 @@ on:
         type: boolean
         default: false
 
-# One evaluation per PR; a newer event (push, review, label, check or CI
-# completion) cancels the stale evaluation so it can never outrun a newer one.
-concurrency:
-  group: >-
-    ${{ github.event_name == 'workflow_dispatch'
-      && format('pr-merge-{0}', github.event.inputs.pr_number)
-      || format('pr-merge-{0}',
-        github.event.pull_request.number ||
-        github.event.check_run.pull_requests[0].number ||
-        github.event.check_suite.pull_requests[0].number ||
-        github.event.workflow_run.pull_requests[0].number) }}
-  cancel-in-progress: true
-
 jobs:
   merge:
     # Named after the workflow so this job's check run name equals
@@ -99,6 +86,9 @@ jobs:
     # 403. Skipping it up front keeps that check neutral. workflow_dispatch
     # stays open as a manual escape hatch, and gate 2 below still denies a
     # fork the dispatch path is pointed at.
+    # check_run / check_suite / workflow_run payloads carry a minimal PR
+    # object whose head.repo has only id, url and name (no full_name), so the
+    # same-repo test on those events compares head.repo.id to repository_id.
     if: >
       github.event_name == 'workflow_dispatch' ||
       (
@@ -115,8 +105,8 @@ jobs:
           github.event_name == 'check_suite'
         ) &&
         (
-          github.event.check_run.pull_requests[0].head.repo.full_name == github.repository ||
-          github.event.check_suite.pull_requests[0].head.repo.full_name == github.repository
+          github.event.check_run.pull_requests[0].head.repo.id == github.repository_id ||
+          github.event.check_suite.pull_requests[0].head.repo.id == github.repository_id
         ) &&
         (
           github.event.check_run.pull_requests[0].base.ref == 'main' ||
@@ -125,9 +115,26 @@ jobs:
       ) ||
       (
         github.event_name == 'workflow_run' &&
-        github.event.workflow_run.pull_requests[0].head.repo.full_name == github.repository &&
+        github.event.workflow_run.pull_requests[0].head.repo.id == github.repository_id &&
         github.event.workflow_run.pull_requests[0].base.ref == 'main'
       )
+
+    # One evaluation per PR; a newer event (push, review, label, check or CI
+    # completion) cancels the stale evaluation so it can never outrun a newer one.
+    # Job-level, not workflow-level: a workflow-level group is joined before
+    # the job's `if:` is evaluated, so a re-entry that is about to be skipped
+    # still cancelled the in-progress evaluation it superseded. A job skipped
+    # by `if:` never enters this group.
+    concurrency:
+      group: >-
+        ${{ github.event_name == 'workflow_dispatch'
+          && format('pr-merge-{0}', github.event.inputs.pr_number)
+          || format('pr-merge-{0}',
+            github.event.pull_request.number ||
+            github.event.check_run.pull_requests[0].number ||
+            github.event.check_suite.pull_requests[0].number ||
+            github.event.workflow_run.pull_requests[0].number) }}
+      cancel-in-progress: true
 
     steps:
       - name: Evaluate requirements and merge

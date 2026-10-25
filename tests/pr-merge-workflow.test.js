@@ -56,16 +56,22 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     const jobIf = merge.match(/^ {4}if: >\n((?: {6}.*\n?)*)/m);
     expect(jobIf).not.toBeNull();
     expect(jobIf[1]).toContain('github.event.pull_request.head.repo.full_name == github.repository');
-    expect(jobIf[1]).toContain('github.event.check_run.pull_requests[0].head.repo.full_name == github.repository');
-    expect(jobIf[1]).toContain('github.event.check_suite.pull_requests[0].head.repo.full_name == github.repository');
-    expect(jobIf[1]).toContain('github.event.workflow_run.pull_requests[0].head.repo.full_name == github.repository');
+    // check_run / check_suite / workflow_run payloads carry a minimal PR
+    // object whose head.repo has only id, url and name (no full_name), so
+    // those events compare head.repo.id to repository_id instead.
+    expect(jobIf[1]).toContain('github.event.check_run.pull_requests[0].head.repo.id == github.repository_id');
+    expect(jobIf[1]).toContain('github.event.check_suite.pull_requests[0].head.repo.id == github.repository_id');
+    expect(jobIf[1]).toContain('github.event.workflow_run.pull_requests[0].head.repo.id == github.repository_id');
     // Gate 2 is the enforcement point, so the dispatch escape hatch cannot
     // merge a fork either.
     expect(merge).toMatch(/if \[ -z "\$VERDICT" \] && \[ "\$HEAD_REPO" != "\$GH_REPO" \]; then/);
   });
 
   it('serializes evaluations per PR with cancel-in-progress', () => {
-    expect(merge).toMatch(/concurrency:\n {2}group: >-\n {4}\$\{\{ github\.event_name == 'workflow_dispatch'/);
+    // Job-level, not workflow-level: a job skipped by `if:` never joins the
+    // group, so a re-entry that is about to be skipped cannot cancel an
+    // in-progress evaluation.
+    expect(merge).toMatch(/concurrency:\n {6}group: >-\n {8}\$\{\{ github\.event_name == 'workflow_dispatch'/);
     expect(merge).toContain('format(\'pr-merge-{0}\', github.event.inputs.pr_number)');
     expect(merge).toContain('github.event.pull_request.number');
     expect(merge).toContain('github.event.check_run.pull_requests[0].number');
