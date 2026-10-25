@@ -459,6 +459,7 @@ describe('Modern picker events', () => {
     });
 
     initModernFontPickers();
+    document.querySelector('.font-swatch').click();
     document.querySelector('.font-option').click();
 
     expect(events).toHaveLength(1);
@@ -475,6 +476,7 @@ describe('Modern picker events', () => {
     });
 
     initModernColorPickers();
+    document.querySelector('.color-swatch').click();
     document.querySelector('.color-chip').click();
 
     expect(events).toHaveLength(1);

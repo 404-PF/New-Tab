@@ -1,5 +1,44 @@
 // src/ui/font-picker.js - Modern Font Picker Component
 
+// One shared pair of document-level handlers serves every picker instance, so
+// listener count never scales with picker count. Classic scripts share the
+// browser's global scope, so these top-level names stay font-specific and
+// must not collide with color-picker.js.
+let activeFontPicker = null;
+let fontPickerListenerRefs = 0;
+
+function handleFontPickerDocumentClick(event) {
+  const picker = activeFontPicker;
+  if (!picker || !picker.isOpen || !picker.pickerElement) return;
+  if (!picker.pickerElement.contains(event.target) && !picker.swatch.contains(event.target)) {
+    picker.hide();
+  }
+}
+
+function handleFontPickerDocumentKeydown(event) {
+  if (event.key !== 'Escape') return;
+  const picker = activeFontPicker;
+  if (picker && picker.isOpen) picker.hide();
+}
+
+function retainFontPickerListeners() {
+  fontPickerListenerRefs += 1;
+  if (fontPickerListenerRefs === 1) {
+    document.addEventListener('click', handleFontPickerDocumentClick);
+    document.addEventListener('keydown', handleFontPickerDocumentKeydown);
+  }
+}
+
+function releaseFontPickerListeners() {
+  if (fontPickerListenerRefs === 0) return;
+  fontPickerListenerRefs -= 1;
+  if (fontPickerListenerRefs === 0) {
+    document.removeEventListener('click', handleFontPickerDocumentClick);
+    document.removeEventListener('keydown', handleFontPickerDocumentKeydown);
+    activeFontPicker = null;
+  }
+}
+
 class ModernFontPicker {
   constructor(options = {}) {
     // Define available fonts with display names
@@ -37,6 +76,7 @@ class ModernFontPicker {
     this.isOpen = false;
     this.selectedFont = this.normalizeFontValue(this.options.defaultFont);
     this.pickerElement = null;
+    this.destroyed = false;
 
     this.init();
   }
@@ -53,7 +93,6 @@ class ModernFontPicker {
 
   init() {
     this.createFontSwatch();
-    this.createPickerPopup();
     this.bindEvents();
   }
 
@@ -99,6 +138,8 @@ class ModernFontPicker {
   }
 
   createPickerPopup() {
+    if (this.pickerElement) return;
+
     // Create popup structure with font preview grid
     this.pickerElement = document.createElement('div');
     this.pickerElement.className = 'font-picker-popup';
@@ -141,21 +182,7 @@ class ModernFontPicker {
       this.toggle();
     });
 
-    // Close picker when clicking outside
-    this.handleDocumentClick = (e) => {
-      if (this.isOpen && !this.pickerElement.contains(e.target) && !this.swatch.contains(e.target)) {
-        this.hide();
-      }
-    };
-    document.addEventListener('click', this.handleDocumentClick);
-
-    // ESC key to close
-    this.handleDocumentKeydown = (e) => {
-      if (e.key === 'Escape' && this.isOpen) {
-        this.hide();
-      }
-    };
-    document.addEventListener('keydown', this.handleDocumentKeydown);
+    retainFontPickerListeners();
   }
 
   bindPopupEvents() {
@@ -180,7 +207,13 @@ class ModernFontPicker {
   }
 
   show() {
-    if (!this.pickerElement) return;
+    if (!this.pickerElement) {
+      this.createPickerPopup();
+    }
+
+    if (activeFontPicker && activeFontPicker !== this) {
+      activeFontPicker.hide();
+    }
 
     // Position the popup near the swatch
     const swatchRect = this.swatch.getBoundingClientRect();
@@ -201,11 +234,15 @@ class ModernFontPicker {
 
     this.pickerElement.classList.add('visible');
     this.isOpen = true;
+    activeFontPicker = this;
   }
 
   hide() {
-    this.pickerElement.classList.remove('visible');
+    if (activeFontPicker === this) activeFontPicker = null;
     this.isOpen = false;
+    if (this.pickerElement) {
+      this.pickerElement.classList.remove('visible');
+    }
   }
 
   selectFont(font) {
@@ -242,6 +279,8 @@ class ModernFontPicker {
   }
 
   updatePopup(font) {
+    if (!this.pickerElement) return;
+
     const normalized = this.normalizeFontValue(font);
     // Update selected option
     const options = this.pickerElement.querySelectorAll('.font-option');
@@ -262,11 +301,15 @@ class ModernFontPicker {
   }
 
   destroy() {
-    document.removeEventListener('click', this.handleDocumentClick);
-    document.removeEventListener('keydown', this.handleDocumentKeydown);
+    if (this.destroyed) return;
+    this.destroyed = true;
+
+    if (activeFontPicker === this) activeFontPicker = null;
+    releaseFontPickerListeners();
 
     if (this.pickerElement && this.pickerElement.parentNode) {
       this.pickerElement.parentNode.removeChild(this.pickerElement);
+      this.pickerElement = null;
     }
     if (this.swatch && this.swatch.parentNode) {
       this.swatch.parentNode.removeChild(this.swatch);
