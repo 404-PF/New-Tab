@@ -1037,6 +1037,63 @@ describe('storage bridge', () => {
     }
   }, 10_000);
 
+  it('merges a late hydration result after a clear fails behind a pending async write (#948)', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let lateCallback;
+      let clearCallback;
+      let setCallback;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(_keys, callback) {
+              lateCallback = () => callback({ serverSetting: 'from-server' });
+            },
+            set(_items, callback) {
+              setCallback = callback;
+            },
+            remove(_keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) {
+              clearCallback = callback;
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.clear();
+      const asyncWrite = dom.window.localStorage.setItemAsync('theme', 'dark');
+
+      dom.window.chrome.runtime.lastError = { message: 'clear rejected' };
+      clearCallback();
+      dom.window.chrome.runtime.lastError = null;
+
+      lateCallback();
+
+      setCallback();
+      await asyncWrite;
+
+      expect(dom.window.localStorage.getItem('serverSetting')).toBe('from-server');
+      expect(dom.window.localStorage.getItem('theme')).toBe('dark');
+    } finally {
+      dom.window.close();
+    }
+  }, 15_000);
+
   it('preserves writes that land between get callback and applySnapshot', async () => {
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
       url: 'https://example.com',

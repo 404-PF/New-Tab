@@ -633,6 +633,7 @@
           pendingWriteGenerations.delete(key);
         }
         cleanupMutationGeneration(key, generation);
+        finalizeClearOperations();
       }
       return failureError ? Promise.reject(failureError) : Promise.resolve(false);
     }
@@ -646,6 +647,7 @@
         pendingWriteGenerations.delete(key);
       }
       cleanupMutationGeneration(key, generation);
+      finalizeClearOperations();
     });
   }
 
