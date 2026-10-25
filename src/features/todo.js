@@ -1173,7 +1173,15 @@ function handleTodoSelect(id, event) {
   }
 
   selectionAnchorId = id;
+  const focusedTodoId = document.activeElement?.classList.contains('todo-select')
+    ? document.activeElement.dataset.id
+    : null;
   renderTodos();
+  if (focusedTodoId) {
+    [...elements.todoList.querySelectorAll('.todo-select')]
+      .find(select => select.dataset.id === focusedTodoId)
+      ?.focus();
+  }
   updateBulkActions();
 }
 

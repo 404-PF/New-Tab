@@ -328,9 +328,9 @@ window.i18n.__registerLocale('fr', {
   emptyStateDesc: 'Essayez d\'ajouter des dates d\'échéance pour mieux vous organiser.',
   // Todo bulk selection toolbar (issue #942)
   bulkActionsLabel: 'Actions groupées de tâches',
-  bulkComplete: 'Marquer comme terminé',
+  bulkComplete: 'Marquer comme terminées',
   bulkDelete: 'Supprimer',
-  selectedCount: '{count} sélectionnés',
+  selectedCount: '{count} sélectionné(s)',
   todoSelectAria: 'Sélectionner la tâche : {text}',
   exportTodos: 'Exporter',
   importTodos: 'Importer',
