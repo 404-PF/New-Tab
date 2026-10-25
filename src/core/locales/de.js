@@ -456,7 +456,7 @@ window.i18n.__registerLocale('de', {
   aiScrollToBottom: 'Nach unten scrollen',
   aiSaveError: 'Unterhaltungen konnten nicht gespeichert werden. Ihre letzte Aktion wurde nicht gespeichert.',
   aiStorageFullError: 'Speicher ist voll. Exportiere oder lösche alte Unterhaltungen, um Platz freizugeben.',
-  aiConversationLoadError: 'Einige gespeicherte Konversationen konnten nicht geladen werden. Eine Sicherungskopie der abgelehnten Daten wurde aufbewahrt.',
+  aiConversationLoadError: 'Einige gespeicherte Unterhaltungen konnten nicht geladen werden. Eine Sicherungskopie der abgelehnten Daten wurde aufbewahrt.',
   createFolder: 'Ordner erstellen',
   renameFolder: 'Ordner umbenennen',
   deleteFolder: 'Ordner löschen',

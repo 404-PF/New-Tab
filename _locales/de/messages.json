@@ -16,7 +16,7 @@
     "description": "Error shown when AI conversation history fills the storage quota"
   },
   "aiConversationLoadError": {
-    "message": "Einige gespeicherte Konversationen konnten nicht geladen werden. Eine Sicherungskopie der abgelehnten Daten wurde aufbewahrt.",
+    "message": "Einige gespeicherte Unterhaltungen konnten nicht geladen werden. Eine Sicherungskopie der abgelehnten Daten wurde aufbewahrt.",
     "description": "Error shown when stored AI conversations are rejected and repaired"
   },
   "appGridSaveError": {

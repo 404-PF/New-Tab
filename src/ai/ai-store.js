@@ -86,12 +86,44 @@ const AIStore = (function() {
     return validator(conversation);
   }
 
-  function recoverConversations() {
+  /** Applies the fresh in-memory conversation immediately so the UI can render,
+   *  but holds the storage write back until the rejected payload is backed up:
+   *  a rejected quarantine write must never be followed by an overwrite of
+   *  `ai_conversations` (#949). Returns the settlement so callers can await it. */
+  function recoverConversations(stored) {
     const previousState = createSaveSnapshot();
     const newConversation = createNewConversation();
     state.conversations = [newConversation];
     state.currentConversationId = newConversation.id;
-    saveConversationsSafely(previousState);
+
+    return settlePersistence(
+      reportRejectedPayload(stored),
+      backedUp => {
+        if (backedUp === false) {
+          console.warn('Conversation recovery was not persisted: the quarantine backup was rejected');
+          return false;
+        }
+        return persistRecovery(previousState);
+      }
+    );
+  }
+
+  // Fire-and-forget save, but reported as a settlement so an awaited load also
+  // waits for the recovery write to reach storage.
+  function persistRecovery(previousState) {
+    try {
+      return settlePersistence(
+        saveConversations(previousState),
+        success => success !== false,
+        error => {
+          console.error('Unexpected conversation save rejection:', error);
+          return false;
+        }
+      );
+    } catch (error) {
+      console.error('Unexpected conversation save failure:', error);
+      return false;
+    }
   }
 
   // Drop the oldest quarantine copies beyond MAX_QUARANTINE_KEYS so repeated
@@ -101,15 +133,15 @@ const AIStore = (function() {
       const keys = [];
       for (let index = 0; index < localStorage.length; index += 1) {
         const key = localStorage.key(index);
-        if (key && key.indexOf(QUARANTINE_KEY_PREFIX) === 0) {
+        if (key?.startsWith(QUARANTINE_KEY_PREFIX)) {
           keys.push(key);
         }
       }
       if (keys.length <= MAX_QUARANTINE_KEYS) return;
 
-      // Quarantine keys end in a millisecond timestamp, so lexicographic
-      // ordering is chronological for equal-length timestamps.
-      keys.sort();
+      // Quarantine keys end in a millisecond timestamp, so comparing the keys
+      // orders equal-length timestamps chronologically.
+      keys.sort((a, b) => a.localeCompare(b));
       keys.slice(0, keys.length - MAX_QUARANTINE_KEYS).forEach(oldest => {
         const removal = typeof localStorage.removeItemAsync === 'function'
           ? localStorage.removeItemAsync(oldest)
@@ -124,23 +156,33 @@ const AIStore = (function() {
   }
 
   // Copy the rejected payload to a timestamped quarantine key before
-  // `ai_conversations` is overwritten (#949).
+  // `ai_conversations` may be rewritten (#949). Returns the write outcome —
+  // true when the copy is stored (or there is nothing to store), false when
+  // the backup write was rejected — as a boolean for native storage and as a
+  // promise for the async storage bridge.
   function quarantineRejectedPayload(raw) {
-    if (typeof raw !== 'string' || !raw) return;
+    if (typeof raw !== 'string' || !raw) return true;
 
     try {
       const result = persistStorageValue(QUARANTINE_KEY_PREFIX + Date.now(), raw);
-      settlePersistence(
+      return settlePersistence(
         result,
         success => {
-          if (success !== false) pruneQuarantineKeys();
+          if (success === false) {
+            console.warn('Failed to quarantine rejected conversations: the backup write was rejected');
+            return false;
+          }
+          pruneQuarantineKeys();
+          return true;
         },
         error => {
           console.warn('Failed to quarantine rejected conversations:', error);
+          return false;
         }
       );
     } catch (error) {
       console.warn('Failed to quarantine rejected conversations:', error);
+      return false;
     }
   }
 
@@ -154,10 +196,18 @@ const AIStore = (function() {
   }
 
   // Quarantine first so the rejected payload is never lost, then tell the
-  // user instead of failing silently (#949).
+  // user instead of failing silently (#949). Returns the quarantine outcome so
+  // callers can hold back every write to `ai_conversations` until the backup
+  // is stored; the notice claims a backup was kept, so it is only shown when
+  // one really was.
   function reportRejectedPayload(stored) {
-    quarantineRejectedPayload(stored);
-    showRecoveryToast();
+    return settlePersistence(
+      quarantineRejectedPayload(stored),
+      backedUp => {
+        if (backedUp !== false) showRecoveryToast();
+        return backedUp !== false;
+      }
+    );
   }
 
   // A request in flight owns its assistant message's isStreaming flag, and
@@ -205,9 +255,12 @@ const AIStore = (function() {
 
   /** Loads persisted conversations without recovering when the validator is unavailable.
    *  Fail-soft (#949): every valid conversation survives a partially corrupt
-   *  payload; full recovery only runs when nothing valid remains. Returns the
-   *  healing storage write when stale streaming flags were cleared or a repair
-   *  was persisted, so callers can await the settlement. */
+   *  payload; full recovery only runs when nothing valid remains. Runtime state
+   *  is applied synchronously so the UI can render, while every write to
+   *  `ai_conversations` waits for the quarantine backup of the rejected payload
+   *  — a rejected backup write therefore never destroys the last copy of the
+   *  data. Returns that settlement (or the healing write for stale streaming
+   *  flags) so callers can await it. */
   function loadConversations() {
     let stored = null;
     try {
@@ -220,20 +273,14 @@ const AIStore = (function() {
       }
 
       if (!Array.isArray(conversations)) {
-        reportRejectedPayload(stored);
-        recoverConversations();
-        return;
+        return recoverConversations(stored);
       }
 
       const valid = conversations.filter(isValidConversation);
       const rejectedCount = conversations.length - valid.length;
 
-      if (rejectedCount > 0) {
-        reportRejectedPayload(stored);
-        if (valid.length === 0) {
-          recoverConversations();
-          return;
-        }
+      if (rejectedCount > 0 && valid.length === 0) {
+        return recoverConversations(stored);
       }
 
       state.conversations = valid;
@@ -272,15 +319,28 @@ const AIStore = (function() {
       // Heal storage too, so the stale flag cannot resurface in exports or
       // save rollbacks (#865); a cleared flag implies at least one message,
       // so the empty-state branch above cannot have fired in this pass.
-      // Persist a fail-soft repair through the same write so a rejected
-      // record cannot re-trigger the recovery notice on the next load (#949).
-      if (clearedStreamingFlag || rejectedCount > 0) {
+      // A fail-soft repair is only persisted once the rejected payload is
+      // backed up, so the repair cannot re-trigger the recovery notice — and
+      // cannot overwrite the only copy of the data — on the next load (#949).
+      if (rejectedCount > 0) {
+        return settlePersistence(
+          reportRejectedPayload(stored),
+          backedUp => {
+            if (backedUp === false) {
+              console.warn('Conversation repair was not persisted: the quarantine backup was rejected');
+              return false;
+            }
+            return healStoredStreamingFlags();
+          }
+        );
+      }
+
+      if (clearedStreamingFlag) {
         return healStoredStreamingFlags();
       }
     } catch (error) {
       console.warn('Failed to load conversations:', error);
-      reportRejectedPayload(stored);
-      recoverConversations();
+      return recoverConversations(stored);
     }
   }
 

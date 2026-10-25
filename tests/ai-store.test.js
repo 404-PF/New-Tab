@@ -43,11 +43,12 @@ describe('AIStore conversation identifiers', () => {
 });
 
 describe('AIStore conversation recovery (#458)', () => {
-  it('persists a canonical conversation after malformed JSON', () => {
+  it('persists a canonical conversation after malformed JSON', async () => {
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     localStorage.setItem(AIStore.STORAGE_KEYS.conversations, '{invalid');
 
-    AIStore.loadConversations();
+    // The recovery write waits for the quarantine backup, so await it.
+    await AIStore.loadConversations();
 
     expect(AIStore.state.conversations).toHaveLength(1);
     expect(JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations))).toEqual(
@@ -80,13 +81,14 @@ describe('AIStore conversation recovery (#458)', () => {
       createdAt: 1,
       updatedAt: 1
     }]]
-  ])('repairs and persists %s', (_, storedValue) => {
+  ])('repairs and persists %s', async (_, storedValue) => {
     localStorage.setItem(
       AIStore.STORAGE_KEYS.conversations,
       JSON.stringify(storedValue)
     );
 
-    AIStore.loadConversations();
+    // The repair write waits for the quarantine backup, so await it.
+    await AIStore.loadConversations();
 
     const persisted = JSON.parse(
       localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
@@ -208,6 +210,25 @@ describe('AIStore fail-soft conversation recovery (#949)', () => {
     };
   }
 
+  // The bridge reports a rejected backup write for the timestamped quarantine
+  // key only, so the rest of the load still behaves normally (#949).
+  function rejectQuarantineWrites() {
+    const originalSetItemAsync = localStorage.setItemAsync;
+    localStorage.setItemAsync = function (key, value) {
+      if (key.startsWith(AIStore.QUARANTINE_KEY_PREFIX)) {
+        return Promise.resolve(false);
+      }
+      return originalSetItemAsync.call(localStorage, key, value);
+    };
+    return () => {
+      if (typeof originalSetItemAsync === 'undefined') {
+        delete localStorage.setItemAsync;
+      } else {
+        localStorage.setItemAsync = originalSetItemAsync;
+      }
+    };
+  }
+
   it('keeps every valid conversation when a single stored record is invalid', async () => {
     const validFirst = {
       id: 'conv-a',
@@ -256,6 +277,8 @@ describe('AIStore fail-soft conversation recovery (#949)', () => {
       const keys = quarantineKeys();
       expect(keys).toHaveLength(1);
       expect(JSON.parse(localStorage.getItem(keys[0]))).toEqual(storedPayload);
+      const backedUp = await chrome.storage.local.get(keys[0]);
+      expect(JSON.parse(backedUp[keys[0]])).toEqual(storedPayload);
 
       expect(toast.showToast).toHaveBeenCalledWith(RECOVERY_MESSAGE, 'error');
     } finally {
@@ -288,26 +311,111 @@ describe('AIStore fail-soft conversation recovery (#949)', () => {
       const keys = quarantineKeys();
       expect(keys).toHaveLength(1);
       expect(JSON.parse(localStorage.getItem(keys[0]))).toEqual(storedPayload);
+      const backedUp = await chrome.storage.local.get(keys[0]);
+      expect(JSON.parse(backedUp[keys[0]])).toEqual(storedPayload);
       expect(toast.showToast).toHaveBeenCalledWith(RECOVERY_MESSAGE, 'error');
     } finally {
       toast.restore();
     }
   });
 
-  it('quarantines the raw payload when the stored JSON cannot be parsed', () => {
+  it('quarantines the raw payload when the stored JSON cannot be parsed', async () => {
     localStorage.setItem(AIStore.STORAGE_KEYS.conversations, '{invalid');
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const toast = stubShowToast();
 
     try {
-      AIStore.loadConversations();
+      await AIStore.loadConversations();
 
       const keys = quarantineKeys();
       expect(keys).toHaveLength(1);
       expect(localStorage.getItem(keys[0])).toBe('{invalid');
+      const backedUp = await chrome.storage.local.get(keys[0]);
+      expect(backedUp[keys[0]]).toBe('{invalid');
       expect(toast.showToast).toHaveBeenCalledWith(RECOVERY_MESSAGE, 'error');
       expect(AIStore.state.conversations).toHaveLength(1);
     } finally {
+      toast.restore();
+      consoleWarn.mockRestore();
+    }
+  });
+
+  it('preserves the stored payload when the quarantine backup write is rejected', async () => {
+    const storedPayload = [{
+      id: 'conv-1',
+      title: ' ',
+      messages: [],
+      createdAt: 1,
+      updatedAt: 1
+    }];
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(storedPayload)
+    );
+    const toast = stubShowToast();
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const restoreWrites = rejectQuarantineWrites();
+
+    try {
+      const recovered = await AIStore.loadConversations();
+
+      expect(recovered).toBe(false);
+      // The rejected payload is still the only copy: no recovery write ran.
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations))
+        .toBe(JSON.stringify(storedPayload));
+      const stillStored = await chrome.storage.local.get(AIStore.STORAGE_KEYS.conversations);
+      expect(stillStored[AIStore.STORAGE_KEYS.conversations])
+        .toBe(JSON.stringify(storedPayload));
+      expect(quarantineKeys()).toHaveLength(0);
+      expect(toast.showToast).not.toHaveBeenCalled();
+      // The UI still gets a usable conversation in memory (#949).
+      expect(AIStore.state.conversations).toHaveLength(1);
+      expect(AIStore.state.conversations[0].id).not.toBe('conv-1');
+    } finally {
+      restoreWrites();
+      toast.restore();
+      consoleWarn.mockRestore();
+    }
+  });
+
+  it('does not persist a fail-soft repair when the quarantine backup write is rejected', async () => {
+    const storedPayload = [
+      {
+        id: 'conv-a',
+        title: 'First topic',
+        messages: [],
+        createdAt: 1,
+        updatedAt: 2
+      },
+      {
+        id: 'conv-b',
+        title: ' ',
+        messages: [],
+        createdAt: 3,
+        updatedAt: 4
+      }
+    ];
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(storedPayload)
+    );
+    const toast = stubShowToast();
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const restoreWrites = rejectQuarantineWrites();
+
+    try {
+      const healed = await AIStore.loadConversations();
+
+      expect(healed).toBe(false);
+      expect(AIStore.state.conversations.map(conversation => conversation.id))
+        .toEqual(['conv-a']);
+      // The repair that would drop `conv-b` is held back until a backup exists.
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations))
+        .toBe(JSON.stringify(storedPayload));
+      expect(quarantineKeys()).toHaveLength(0);
+      expect(toast.showToast).not.toHaveBeenCalled();
+    } finally {
+      restoreWrites();
       toast.restore();
       consoleWarn.mockRestore();
     }
