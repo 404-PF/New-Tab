@@ -227,7 +227,32 @@
     }
   }
 
+  // Non-English locale tables are lazy-loaded by languages.js, so building the
+  // modal before the active locale registers would show the keyed v0.5.4
+  // bullets in English. Wait for ensureLocale() to settle first so translated
+  // bullets are used, on both the upgrade path and the delayed install-reason
+  // retry. When i18n is unavailable (dev server, unit tests) the modal renders
+  // synchronously, keeping detectAndShow() reporting its result with the modal
+  // already in the DOM.
   function showReleaseNotesModal(version) {
+    const i18n = window.i18n;
+    if (
+      i18n &&
+      typeof i18n.ensureLocale === 'function' &&
+      typeof i18n.currentLanguage === 'function'
+    ) {
+      const pending = i18n.ensureLocale(i18n.currentLanguage());
+      if (pending && typeof pending.then === 'function') {
+        pending.then(function () {
+          renderReleaseNotesModal(version);
+        });
+        return;
+      }
+    }
+    renderReleaseNotesModal(version);
+  }
+
+  function renderReleaseNotesModal(version) {
     removeExistingModal();
 
     const title = t('releaseNotesTitle');
