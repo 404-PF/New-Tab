@@ -5,6 +5,24 @@ const BUG_PATH = resolve(process.cwd(), '.github/workflows/bug-find.yml');
 const FEATURE_PATH = resolve(process.cwd(), '.github/workflows/feature-find.yml');
 const OLD_PATH = resolve(process.cwd(), '.github/workflows/issue-find.yml');
 
+function readOpenCodePermission(wf) {
+  const lines = wf.split('\n');
+  const keyIndex = lines.findIndex((line) => /^\s*OPENCODE_PERMISSION: >-/.test(line));
+  if (keyIndex === -1) {
+    throw new Error('OPENCODE_PERMISSION block not found');
+  }
+  const keyIndent = lines[keyIndex].search(/\S/);
+  const block = [];
+  for (let i = keyIndex + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim() !== '' && line.search(/\S/) <= keyIndent) {
+      break;
+    }
+    block.push(line.trim());
+  }
+  return JSON.parse(block.join('\n'));
+}
+
 describe('bug-find/feature-find split (#921)', () => {
   let bug;
   let feature;
@@ -93,6 +111,11 @@ describe('bug-find/feature-find split (#921)', () => {
       expect(wf).toMatch(/"date -u": "allow"/);
       expect(wf).not.toMatch(/"date(?: \*|)": "allow"/);
       expect(wf).toMatch(/"gh \*": "deny"/);
+      // Subagents hung the agent step until its timeout (bug-find runs on
+      // 2026-10-25); the agent must work alone.
+      const permission = readOpenCodePermission(wf);
+      expect(permission.task).toBe('deny');
+      expect(wf).toContain('do NOT use the task tool or spawn subagents');
       expect(wf).toMatch(/timeout-minutes: 60/);
       expect(wf).toMatch(/job-timeout-minutes: \[75\]/);
       expect(wf).toMatch(/continue-on-error: true/);
