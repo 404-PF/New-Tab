@@ -22,6 +22,16 @@
   // MAINTENANCE: whenever version.js / manifest.json is bumped for a release,
   // add a new entry here (or the modal falls back to RELEASE_NOTES_FALLBACK).
   const RELEASE_NOTES = {
+    '0.5.4': [
+      'Added multi-select to the Todo list with bulk complete and delete',
+      'The toolbar extension icon now opens the new tab page',
+      'Games can now be configured in the app grid like any other app',
+      'Faster startup and smoother app-grid, clock, and stats updates',
+      'AI chat history no longer gets wiped by a bad record, a full storage, or cross-tab saves',
+      'Fixed shortcut rebinding staying armed after closing Settings, and labels not updating after a language switch',
+      'Fixed the onboarding tour freezing when it opens the Settings modal',
+      'Fixed the Weather app showing a permanent spinner after a failed refresh'
+    ],
     '0.5.3': [
       'Sped up settings modal/tab animations and Games keyboard responsiveness',
       'Unified in-app notifications into one top-middle toast style',
