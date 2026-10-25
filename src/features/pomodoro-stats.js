@@ -75,7 +75,10 @@
       const map = store.byDateTodos[iso];
       byDateTodos[iso] = map && typeof map === 'object' && !Array.isArray(map) ? Object.assign({}, map) : map;
     });
-    return { days: days, byDateTodos: byDateTodos };
+    const out = Object.assign({}, store);
+    out.days = days;
+    out.byDateTodos = byDateTodos;
+    return out;
   }
   function write(data) {
     // Invalidate first so a failed write cannot serve a mutated cache.
