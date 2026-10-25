@@ -19,9 +19,26 @@
   // Kept intentionally short so the modal stays readable. Keys MUST match the
   // runtime `manifest.json` version string exactly (semver, no leading 'v').
   //
+  // Each bullet is an i18n key defined in src/core/languages.js (English) and
+  // src/core/locales/<code>.js, so every supported language shows a translated
+  // list. Bullets from older releases are still plain English literals, which
+  // getNotesForVersion passes through unchanged because t() echoes unknown
+  // keys verbatim.
+  //
   // MAINTENANCE: whenever version.js / manifest.json is bumped for a release,
-  // add a new entry here (or the modal falls back to RELEASE_NOTES_FALLBACK).
+  // add a new entry here (plus its i18n keys in every locale, or the modal
+  // falls back to RELEASE_NOTES_FALLBACK).
   const RELEASE_NOTES = {
+    '0.5.4': [
+      'releaseNotes054TodoMultiSelect',
+      'releaseNotes054ToolbarIcon',
+      'releaseNotes054GamesAppGrid',
+      'releaseNotes054FasterStartup',
+      'releaseNotes054AiChatHistory',
+      'releaseNotes054ShortcutLabels',
+      'releaseNotes054OnboardingFreeze',
+      'releaseNotes054WeatherSpinner'
+    ],
     '0.5.3': [
       'Sped up settings modal/tab animations and Games keyboard responsiveness',
       'Unified in-app notifications into one top-middle toast style',
@@ -170,12 +187,14 @@
   }
 
   // Resolve the bundled summary for a version, falling back so the modal is
-  // never empty even when this map was not updated for a new release.
+  // never empty even when this map was not updated for a new release. Every
+  // bullet goes through t() so locale-backed i18n keys render translated,
+  // while legacy English literals (unknown keys) come back verbatim.
   function getNotesForVersion(version) {
-    if (RELEASE_NOTES[version]) {
-      return RELEASE_NOTES[version];
-    }
-    return RELEASE_NOTES_FALLBACK;
+    const notes = RELEASE_NOTES[version] || RELEASE_NOTES_FALLBACK;
+    return notes.map(function (note) {
+      return t(note);
+    });
   }
 
   // Compare two semver strings; uses UpdateChecker when available, else a
@@ -208,7 +227,32 @@
     }
   }
 
+  // Non-English locale tables are lazy-loaded by languages.js, so building the
+  // modal before the active locale registers would show the keyed v0.5.4
+  // bullets in English. Wait for ensureLocale() to settle first so translated
+  // bullets are used, on both the upgrade path and the delayed install-reason
+  // retry. When i18n is unavailable (dev server, unit tests) the modal renders
+  // synchronously, keeping detectAndShow() reporting its result with the modal
+  // already in the DOM.
   function showReleaseNotesModal(version) {
+    const i18n = window.i18n;
+    if (
+      i18n &&
+      typeof i18n.ensureLocale === 'function' &&
+      typeof i18n.currentLanguage === 'function'
+    ) {
+      const pending = i18n.ensureLocale(i18n.currentLanguage());
+      if (pending && typeof pending.then === 'function') {
+        pending.then(function () {
+          renderReleaseNotesModal(version);
+        });
+        return;
+      }
+    }
+    renderReleaseNotesModal(version);
+  }
+
+  function renderReleaseNotesModal(version) {
     removeExistingModal();
 
     const title = t('releaseNotesTitle');
