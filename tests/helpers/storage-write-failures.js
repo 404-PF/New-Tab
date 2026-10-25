@@ -28,10 +28,13 @@ export function failStorageWritesFor(key, mode = 'sync') {
 
 export const flushDeferredFailureSync = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+const UTF8_ENCODER = new TextEncoder();
+const utf8Length = (text) => UTF8_ENCODER.encode(text).length;
+
 // Model a persistent storage quota: every write for `key` whose serialized
-// value is longer than `limitBytes` is rejected, while smaller writes still
-// land. Unlike failStorageWritesFor this never recovers on its own, so a save
-// path can only succeed by shrinking the payload first (#947). Returns a
+// value exceeds `limitBytes` in UTF-8 bytes is rejected, while smaller writes
+// still land. Unlike failStorageWritesFor this never recovers on its own, so a
+// save path can only succeed by shrinking the payload first (#947). Returns a
 // restore function.
 export function failStorageWritesOver(limitBytes, key, mode = 'async') {
   const area = chrome.storage.local;
@@ -39,7 +42,7 @@ export function failStorageWritesOver(limitBytes, key, mode = 'async') {
   area.set = function (items, callback) {
     const oversized = Object.prototype.hasOwnProperty.call(items, key) &&
       typeof items[key] === 'string' &&
-      items[key].length > limitBytes;
+      utf8Length(items[key]) > limitBytes;
     if (!oversized) {
       return originalSet.call(area, items, callback);
     }

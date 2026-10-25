@@ -4,6 +4,9 @@ import { beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 import { failStorageWritesFor, failStorageWritesOver } from './helpers/storage-write-failures.js';
 
+const UTF8_ENCODER = new TextEncoder();
+const utf8Length = (text) => UTF8_ENCODER.encode(text).length;
+
 beforeAll(() => {
   injectScript('src/ai/conversation-validator.js');
   injectScript('src/ai/ai-store.js');
@@ -800,7 +803,7 @@ describe('AIStore storage bounds (#947)', () => {
     AIStore.state.conversations = [active, middle, oldest];
     AIStore.state.currentConversationId = active.id;
 
-    const untrimmedSize = JSON.stringify(AIStore.state.conversations).length;
+    const untrimmedSize = utf8Length(JSON.stringify(AIStore.state.conversations));
     expect(untrimmedSize).toBeGreaterThan(QUOTA);
     expect(untrimmedSize).toBeGreaterThan(AIStore.MAX_SERIALIZED_BYTES);
 
@@ -812,7 +815,7 @@ describe('AIStore storage bounds (#947)', () => {
 
       const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
       expect(persisted).toEqual(AIStore.state.conversations);
-      expect(JSON.stringify(persisted).length).toBeLessThanOrEqual(AIStore.MAX_SERIALIZED_BYTES);
+      expect(utf8Length(JSON.stringify(persisted))).toBeLessThanOrEqual(AIStore.MAX_SERIALIZED_BYTES);
 
       const persistedActive = persisted.find(conversation => conversation.id === 'conv-active');
       expect(persistedActive.messages[persistedActive.messages.length - 1].content).toBe('still here');
@@ -848,7 +851,7 @@ describe('AIStore storage bounds (#947)', () => {
     AIStore.state.conversations = [active, oldest];
     AIStore.state.currentConversationId = active.id;
 
-    const untrimmedSize = JSON.stringify(AIStore.state.conversations).length;
+    const untrimmedSize = utf8Length(JSON.stringify(AIStore.state.conversations));
     expect(untrimmedSize).toBeGreaterThan(QUOTA);
     expect(untrimmedSize).toBeGreaterThanOrEqual(AIStore.MIN_QUOTA_RETRY_BYTES);
 
@@ -863,7 +866,7 @@ describe('AIStore storage bounds (#947)', () => {
       const persistedOldest = persisted.find(conversation => conversation.id === 'conv-oldest');
       expect(persistedActive.messages[persistedActive.messages.length - 1].content).toBe('typed through the quota');
       expect(persistedOldest.messages.length).toBeLessThan(15);
-      expect(JSON.stringify(persisted).length).toBeLessThanOrEqual(QUOTA);
+      expect(utf8Length(JSON.stringify(persisted))).toBeLessThanOrEqual(QUOTA);
       expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-active');
       // The re-save trims this transaction's captured snapshot, so storage
       // sheds the oldest messages without pulling them from the live view or
@@ -891,7 +894,7 @@ describe('AIStore storage bounds (#947)', () => {
     // must not treat the request's own messages as disposable.
     AIStore.setInFlightConversation(oldest.id);
 
-    expect(JSON.stringify(AIStore.state.conversations).length).toBeGreaterThan(AIStore.MAX_SERIALIZED_BYTES);
+    expect(utf8Length(JSON.stringify(AIStore.state.conversations))).toBeGreaterThan(AIStore.MAX_SERIALIZED_BYTES);
 
     try {
       expect(await AIStore.saveConversations()).toBe(true);
@@ -903,7 +906,7 @@ describe('AIStore storage bounds (#947)', () => {
       const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
       const persistedOldest = persisted.find(conversation => conversation.id === 'conv-oldest');
       expect(persistedOldest.messages).toHaveLength(75);
-      expect(JSON.stringify(persisted).length).toBeLessThanOrEqual(AIStore.MAX_SERIALIZED_BYTES);
+      expect(utf8Length(JSON.stringify(persisted))).toBeLessThanOrEqual(AIStore.MAX_SERIALIZED_BYTES);
     } finally {
       AIStore.setInFlightConversation(null);
     }
@@ -923,7 +926,7 @@ describe('AIStore storage bounds (#947)', () => {
     AIStore.state.conversations = [conversation];
     AIStore.state.currentConversationId = conversation.id;
     localStorage.setItem(AIStore.STORAGE_KEYS.conversations, JSON.stringify([conversation]));
-    expect(JSON.stringify([conversation]).length).toBeGreaterThanOrEqual(
+    expect(utf8Length(JSON.stringify([conversation]))).toBeGreaterThanOrEqual(
       AIStore.MIN_QUOTA_RETRY_BYTES
     );
 
