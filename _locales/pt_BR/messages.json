@@ -11,6 +11,10 @@
     "message": "Nenhuma conversa correspondente",
     "description": "Empty state text when a conversation search matches nothing"
   },
+  "aiStorageFullError": {
+    "message": "O armazenamento está cheio. Exporte ou exclua conversas antigas para liberar espaço.",
+    "description": "Error shown when AI conversation history fills the storage quota"
+  },
   "appGridSaveError": {
     "message": "Não foi possível salvar as alterações dos aplicativos. Sua última ação não foi salva.",
     "description": "Error shown when app grid changes cannot be persisted"

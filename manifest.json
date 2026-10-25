@@ -19,7 +19,8 @@
     "alarms",
     "notifications",
     "search",
-    "storage"
+    "storage",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "https://suggestqueries.google.com/*",

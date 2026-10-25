@@ -11,6 +11,10 @@
     "message": "No matching conversations",
     "description": "Empty state text when a conversation search matches nothing"
   },
+  "aiStorageFullError": {
+    "message": "Storage is full. Export or delete old conversations to free space.",
+    "description": "Error shown when AI conversation history fills the storage quota"
+  },
   "appGridSaveError": {
     "message": "Failed to save app changes. Your last action was not saved.",
     "description": "Error shown when app grid changes cannot be persisted"

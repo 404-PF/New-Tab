@@ -455,6 +455,7 @@ window.i18n.__registerLocale('de', {
   aiStopStreaming: 'Stopp',
   aiScrollToBottom: 'Nach unten scrollen',
   aiSaveError: 'Unterhaltungen konnten nicht gespeichert werden. Ihre letzte Aktion wurde nicht gespeichert.',
+  aiStorageFullError: 'Speicher ist voll. Exportiere oder lösche alte Unterhaltungen, um Platz freizugeben.',
   createFolder: 'Ordner erstellen',
   renameFolder: 'Ordner umbenennen',
   deleteFolder: 'Ordner löschen',
