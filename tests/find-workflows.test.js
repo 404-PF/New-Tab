@@ -93,6 +93,10 @@ describe('bug-find/feature-find split (#921)', () => {
       expect(wf).toMatch(/"date -u": "allow"/);
       expect(wf).not.toMatch(/"date(?: \*|)": "allow"/);
       expect(wf).toMatch(/"gh \*": "deny"/);
+      // Subagents hung the agent step until its timeout (bug-find runs on
+      // 2026-10-25); the agent must work alone.
+      expect(wf).toMatch(/"task": "deny"/);
+      expect(wf).toContain('do NOT use the task tool or spawn subagents');
       expect(wf).toMatch(/timeout-minutes: 60/);
       expect(wf).toMatch(/job-timeout-minutes: \[75\]/);
       expect(wf).toMatch(/continue-on-error: true/);
