@@ -319,4 +319,27 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toMatch(/elif \[ "\$DRY_RUN" = 'true' \]; then/);
     expect(merge).toMatch(/dry run: every requirement holds; would squash-merge/);
   });
+
+  it('re-runs the merged head\'s cancelled pr-merge checks in a separate job after merging', () => {
+    // The merging run attaches its check to main, so without this the PR
+    // head kept its cancelled pull_request / pull_request_review runs.
+    expect(merge).toMatch(/^ {4}outputs:\n {6}merged: \$\{\{ steps\.evaluate\.outputs\.merged \}\}\n {6}head_sha: \$\{\{ steps\.evaluate\.outputs\.head_sha \}\}/m);
+    expect(merge).toContain("echo 'merged=true'");
+    const repaint = merge.match(/^ {2}repaint:\n((?: {4,}.*\n?|\s*\n)*)/m);
+    expect(repaint).not.toBeNull();
+    const job = repaint[1];
+    expect(job).toMatch(/^ {4}needs: merge$/m);
+    expect(job).toMatch(/^ {4}if: needs\.merge\.outputs\.merged == 'true'$/m);
+    // No concurrency group: a re-run must never cancel the merge job.
+    expect(job).not.toMatch(/concurrency:/);
+    expect(job).toMatch(/^ {4}permissions:\n {6}actions: write\n {4}steps:/m);
+    expect(job).toContain('set -euo pipefail');
+    expect(job).toContain('.event == "pull_request" or .event == "pull_request_review"');
+    expect(job).toContain('select(.conclusion == "cancelled")');
+    expect(job).toContain('.id != $self');
+    expect(job).toContain('gh api -X POST "repos/$GH_REPO/actions/runs/$id/rerun"');
+    // Best-effort: list and re-run failures are warnings, not a red check.
+    expect(job).toContain('::warning::Could not list runs');
+    expect(job).toContain('::warning::Could not re-run pr-merge run');
+  });
 });
