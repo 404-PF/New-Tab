@@ -468,6 +468,7 @@ window.i18n.__registerLocale('ko', {
   aiStopStreaming: '중지',
   aiScrollToBottom: '맨 아래로 스크롤',
   aiSaveError: '대화를 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
+  aiStorageFullError: '저장 공간이 가득 찼습니다. 공간을 확보하려면 오래된 대화를 내보내거나 삭제하세요.',
 
   // Bootstrap error overlay
   bootstrapErrorTitle: '확장 프로그램을 로드하지 못했습니다',

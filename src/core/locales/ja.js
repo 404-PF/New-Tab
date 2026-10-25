@@ -468,6 +468,7 @@ window.i18n.__registerLocale('ja', {
   aiStopStreaming: '停止',
   aiScrollToBottom: '一番下にスクロール',
   aiSaveError: '会話を保存できませんでした。直前の操作は保存されていません。',
+  aiStorageFullError: 'ストレージが満杯です。空き容量を確保するため、古い会話をエクスポートまたは削除してください。',
 
   // Bootstrap error overlay
   bootstrapErrorTitle: '拡張機能の読み込みに失敗しました',

@@ -455,6 +455,7 @@ window.i18n.__registerLocale('pt', {
   aiStopStreaming: 'Parar',
   aiScrollToBottom: 'Rolar para o final',
   aiSaveError: 'Não foi possível salvar as conversas. Sua última ação não foi salva.',
+  aiStorageFullError: 'O armazenamento está cheio. Exporte ou exclua conversas antigas para liberar espaço.',
   createFolder: 'Criar pasta',
   renameFolder: 'Renomear pasta',
   deleteFolder: 'Excluir pasta',

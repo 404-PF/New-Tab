@@ -15,9 +15,32 @@ const AIStore = (function() {
 
   const MAX_CONVERSATIONS = 50;
 
+  // Per-conversation message cap, applied on write (addMessageToConversation)
+  // and during save-time normalization so loaded history cannot grow without
+  // bound either (#947).
+  const MAX_MESSAGES_PER_CONVERSATION = 200;
+
+  // Serialized ai_conversations bound in UTF-8 bytes. chrome.storage.local is
+  // capped at 10 MB, so keep AI history well below it; exceeding the bound
+  // evicts the oldest messages instead of failing the save (#947).
+  const MAX_SERIALIZED_BYTES = 4 * 1024 * 1024;
+
+  // The active conversation keeps at least this many of its newest messages
+  // when the size bound evicts from it, so the message the user just sent
+  // always survives trimming (#947).
+  const ACTIVE_MESSAGE_FLOOR = 10;
+
+  // Payloads below this never justify a trimmed re-save after a rejected
+  // write: halving them frees too little space to matter (#947).
+  const MIN_QUOTA_RETRY_BYTES = 256 * 1024;
+
   const state = {
     currentConversationId: null,
     conversations: [],
+    // The conversation a request in flight writes into. switchConversation
+    // can move the active id while that request is still open, and eviction
+    // must not treat the request's own messages as disposable (#947).
+    inFlightConversationId: null,
     isLoading: false,
     isOfflineMode: false,
     abortController: null,
@@ -187,8 +210,28 @@ const AIStore = (function() {
     };
   }
 
-  function showSaveErrorToast() {
-    const message = getTranslation('aiSaveError');
+  // Serialization is best-effort: a conversation holding an unserializable
+  // value yields null so callers can fall through to the guarded write path.
+  function trySerialize(value) {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return null;
+    }
+  }
+
+  // Storage limits are byte based, while String#length counts UTF-16 code
+  // units: a CJK-heavy history is up to three times its code-unit count in
+  // UTF-8, so the size cap, the retry floor and the eviction budget all
+  // measure bytes (#947).
+  const UTF8_ENCODER = new TextEncoder();
+
+  function byteLength(payload) {
+    return UTF8_ENCODER.encode(payload).length;
+  }
+
+  function showSaveErrorToast(storageFull) {
+    const message = getTranslation(storageFull ? 'aiStorageFullError' : 'aiSaveError');
     if (typeof window.showToast === 'function') {
       window.showToast(message, 'error');
     } else {
@@ -255,7 +298,7 @@ const AIStore = (function() {
     return fallbackState;
   }
 
-  function reportSaveFailure(error, rollbackState, saveGeneration) {
+  function reportSaveFailure(error, rollbackState, saveGeneration, storageFull) {
     const isLatestSave = saveGeneration === saveSequence;
     if (isLatestSave && rollbackState) {
       const restoredState = cloneSaveSnapshot(rollbackState);
@@ -264,7 +307,7 @@ const AIStore = (function() {
     }
     console.error('Failed to save conversations:', error);
     if (isLatestSave) {
-      showSaveErrorToast();
+      showSaveErrorToast(storageFull);
     }
     return false;
   }
@@ -295,8 +338,10 @@ const AIStore = (function() {
   }
 
   // Roll back every key in `written` to its persisted value, then report.
-  function handleSaveFailure(error, written, persistedValues, rollbackState, saveGeneration) {
-    const reportFailure = () => reportSaveFailure(error, rollbackState, saveGeneration);
+  // `storageFull` steers the toast toward actionable guidance when a
+  // trimmed re-save was already attempted (#947).
+  function handleSaveFailure(error, written, persistedValues, rollbackState, saveGeneration, storageFull) {
+    const reportFailure = () => reportSaveFailure(error, rollbackState, saveGeneration, storageFull);
     const rollbacks = written.map(key => rollbackStorageValue(key, persistedValues[key]));
     if (rollbacks.some(isPromiseLike)) {
       return Promise.all(rollbacks).then(reportFailure, reportFailure);
@@ -324,7 +369,8 @@ const AIStore = (function() {
     nextConversations,
     nextCurrentConversationId,
     previousState,
-    saveGeneration
+    saveGeneration,
+    precomputedPayload
   ) {
     const persistedValues = {};
 
@@ -332,7 +378,7 @@ const AIStore = (function() {
       persistedValues[STORAGE_KEYS.conversations] = localStorage.getItem(STORAGE_KEYS.conversations);
       persistedValues[STORAGE_KEYS.currentId] = localStorage.getItem(STORAGE_KEYS.currentId);
     } catch (error) {
-      return reportSaveFailure(error, previousState, saveGeneration);
+      return reportSaveFailure(error, previousState, saveGeneration, false);
     }
 
     const rollbackState = getPersistedStateSnapshot(
@@ -341,28 +387,38 @@ const AIStore = (function() {
       previousState
     );
 
-    let serializedConversations;
-    try {
-      serializedConversations = JSON.stringify(nextConversations);
-    } catch (error) {
-      return handleSaveFailure(error, [], persistedValues, rollbackState, saveGeneration);
+    let serializedConversations = typeof precomputedPayload === 'string'
+      ? precomputedPayload
+      : null;
+    if (serializedConversations === null) {
+      try {
+        serializedConversations = JSON.stringify(nextConversations);
+      } catch (error) {
+        return handleSaveFailure(error, [], persistedValues, rollbackState, saveGeneration, false);
+      }
     }
 
-    const conversationsOutcome = writeOutcome(STORAGE_KEYS.conversations, serializedConversations);
-    if (!isPromiseLike(conversationsOutcome) && !conversationsOutcome.ok) {
-      return handleSaveFailure(
-        conversationsOutcome.error || new Error('Conversation storage write was rejected'),
-        [],
-        persistedValues,
-        rollbackState,
-        saveGeneration
+    // A rejected conversations write on a large payload gets exactly one
+    // trimmed re-save (#947): halving the history before rolling back keeps
+    // the message the user just sent instead of discarding it. The trim is
+    // applied to this transaction's captured payload, never to the live
+    // state, so a conversation switch during the pending write cannot pair
+    // newer conversations with this save's current id (#947).
+    let recoveryAttempted = false;
+    const retryConversationsWrite = () => {
+      const payloadBytes = byteLength(serializedConversations);
+      if (payloadBytes < MIN_QUOTA_RETRY_BYTES) return null;
+      const trimmed = trimConversationsToLimit(
+        nextConversations,
+        nextCurrentConversationId,
+        Math.floor(payloadBytes / 2)
       );
-    }
-
-    // Write the current id in the same turn as the conversations (#458), so
-    // the storage bridge never holds new conversations with a stale id. If
-    // either write fails, roll back the one that succeeded (#716).
-    const currentIdOutcome = writeOutcome(STORAGE_KEYS.currentId, nextCurrentConversationId);
+      if (!trimmed) return null;
+      const trimmedPayload = trySerialize(nextConversations);
+      if (trimmedPayload === null) return null;
+      recoveryAttempted = true;
+      return writeOutcome(STORAGE_KEYS.conversations, trimmedPayload);
+    };
 
     const finish = (conversations, currentId) => {
       if (conversations.ok && currentId.ok) return true;
@@ -372,12 +428,73 @@ const AIStore = (function() {
       const written = [];
       if (conversations.ok) written.push(STORAGE_KEYS.conversations);
       if (currentId.ok) written.push(STORAGE_KEYS.currentId);
-      return handleSaveFailure(error, written, persistedValues, rollbackState, saveGeneration);
+      return handleSaveFailure(error, written, persistedValues, rollbackState, saveGeneration, recoveryAttempted);
     };
+
+    // Used after a successful trimmed re-save, where the conversations write
+    // already happened but the current id has not been issued yet.
+    const writeCurrentIdAndFinish = (conversationsOutcome) => {
+      const currentIdOutcome = writeOutcome(STORAGE_KEYS.currentId, nextCurrentConversationId);
+      return settlePersistence(
+        currentIdOutcome,
+        currentId => finish(conversationsOutcome, currentId),
+        error => handleSaveFailure(
+          error,
+          conversationsOutcome.ok ? [STORAGE_KEYS.conversations] : [],
+          persistedValues,
+          rollbackState,
+          saveGeneration,
+          recoveryAttempted
+        )
+      );
+    };
+
+    const conversationsOutcome = writeOutcome(STORAGE_KEYS.conversations, serializedConversations);
+    if (!isPromiseLike(conversationsOutcome) && !conversationsOutcome.ok) {
+      const retryOutcome = retryConversationsWrite();
+      if (retryOutcome === null) {
+        return handleSaveFailure(
+          conversationsOutcome.error || new Error('Conversation storage write was rejected'),
+          [],
+          persistedValues,
+          rollbackState,
+          saveGeneration,
+          false
+        );
+      }
+      return settlePersistence(
+        retryOutcome,
+        retried => (retried.ok
+          ? writeCurrentIdAndFinish(retried)
+          : handleSaveFailure(
+            retried.error || new Error('Conversation storage write was rejected'),
+            [],
+            persistedValues,
+            rollbackState,
+            saveGeneration,
+            true
+          )),
+        error => handleSaveFailure(error, [], persistedValues, rollbackState, saveGeneration, true)
+      );
+    }
+
+    // Write the current id in the same turn as the conversations (#458), so
+    // the storage bridge never holds new conversations with a stale id. If
+    // either write fails, roll back the one that succeeded (#716).
+    const currentIdOutcome = writeOutcome(STORAGE_KEYS.currentId, nextCurrentConversationId);
 
     if (isPromiseLike(conversationsOutcome) || isPromiseLike(currentIdOutcome)) {
       return Promise.all([conversationsOutcome, currentIdOutcome])
-        .then(([conversations, currentId]) => finish(conversations, currentId));
+        .then(([conversations, currentId]) => {
+          if (conversations.ok) return finish(conversations, currentId);
+          const retryOutcome = retryConversationsWrite();
+          if (retryOutcome === null) return finish(conversations, currentId);
+          return settlePersistence(
+            retryOutcome,
+            retried => finish(retried, currentId),
+            error => finish({ ok: false, error }, currentId)
+          );
+        });
     }
     return finish(conversationsOutcome, currentIdOutcome);
   }
@@ -409,6 +526,76 @@ const AIStore = (function() {
     return queuedSave;
   }
 
+  function enforceMessageCap(conversation) {
+    if (!Array.isArray(conversation.messages)) return;
+    const overflow = conversation.messages.length - MAX_MESSAGES_PER_CONVERSATION;
+    if (overflow > 0) {
+      conversation.messages.splice(0, overflow);
+    }
+  }
+
+  // Evict the oldest messages until at least `targetBytes` of serialized
+  // payload is gone. Conversations are walked oldest-first (newest
+  // conversations sit at the front of the array); the active conversation and
+  // the conversation an in-flight request writes into are never touched, so
+  // the message the user just sent survives trimming (#947).
+  function evictOldestMessages(conversations, activeConversationId, targetBytes) {
+    let freed = 0;
+    const inFlightConversationId = state.inFlightConversationId;
+
+    const evictFrom = (conversation, keepRecent) => {
+      const evictable = Math.max(0, conversation.messages.length - keepRecent);
+      let index = 0;
+      while (index < evictable && freed < targetBytes) {
+        freed += byteLength(JSON.stringify(conversation.messages[index])) + 1;
+        index += 1;
+      }
+      if (index > 0) {
+        conversation.messages.splice(0, index);
+      }
+    };
+
+    for (let index = conversations.length - 1; index >= 0; index -= 1) {
+      if (freed >= targetBytes) break;
+      const conversation = conversations[index];
+      if (!Array.isArray(conversation.messages) || conversation.messages.length === 0) continue;
+      if (conversation.id === activeConversationId) continue;
+      if (conversation.id === inFlightConversationId) continue;
+      evictFrom(conversation, 0);
+    }
+
+    if (freed < targetBytes) {
+      const active = conversations.find(conversation => conversation.id === activeConversationId);
+      if (active && Array.isArray(active.messages)) {
+        evictFrom(active, Math.min(ACTIVE_MESSAGE_FLOOR, active.messages.length));
+      }
+    }
+
+    return freed;
+  }
+
+  // Trim conversations in place until the serialized payload fits
+  // `limitBytes`. Returns whether anything was evicted; returns false when
+  // the payload already fits or nothing may be evicted any further.
+  function trimConversationsToLimit(conversations, activeConversationId, limitBytes) {
+    const initial = trySerialize(conversations);
+    if (initial === null) return false;
+
+    let size = byteLength(initial);
+    if (size <= limitBytes) return false;
+
+    let changed = false;
+    while (size > limitBytes) {
+      const freed = evictOldestMessages(conversations, activeConversationId, size - limitBytes);
+      if (freed <= 0) break;
+      changed = true;
+      const next = trySerialize(conversations);
+      if (next === null) break;
+      size = byteLength(next);
+    }
+    return changed;
+  }
+
   function saveConversations(previousState = createSaveSnapshot()) {
     const saveGeneration = ++saveSequence;
 
@@ -434,12 +621,29 @@ const AIStore = (function() {
         : null;
     }
 
-    const nextState = createSaveSnapshot();
+    // Size bounds applied on write, not only after a failed save (#947): a
+    // per-conversation message cap plus a serialized-size cap that evicts the
+    // oldest messages instead of letting the store run into its quota.
+    state.conversations.forEach(enforceMessageCap);
+
+    let nextState = createSaveSnapshot();
+    let serializedConversations = trySerialize(nextState.conversations);
+
+    if (
+      serializedConversations !== null &&
+      byteLength(serializedConversations) > MAX_SERIALIZED_BYTES &&
+      trimConversationsToLimit(state.conversations, state.currentConversationId, MAX_SERIALIZED_BYTES)
+    ) {
+      nextState = createSaveSnapshot();
+      serializedConversations = trySerialize(nextState.conversations);
+    }
+
     const saveTransaction = () => saveConversationsTransaction(
       nextState.conversations,
       nextState.currentConversationId,
       previousState,
-      saveGeneration
+      saveGeneration,
+      serializedConversations
     );
 
     if (typeof localStorage.setItemAsync === 'function') {
@@ -492,6 +696,7 @@ const AIStore = (function() {
     }
 
     conversation.messages.push(message);
+    enforceMessageCap(conversation);
     conversation.updatedAt = Date.now();
 
     if (conversation.messages.length === 1 && message.role === 'user') {
@@ -630,6 +835,13 @@ const AIStore = (function() {
     state.isStreaming = value;
   }
 
+  // Records which conversation an in-flight request writes into, so size
+  // trimming never evicts the messages that request just produced after the
+  // user switched chats (#947).
+  function setInFlightConversation(conversationId) {
+    state.inFlightConversationId = conversationId || null;
+  }
+
   function setOfflineMode(value) {
     state.isOfflineMode = value;
   }
@@ -671,6 +883,10 @@ const AIStore = (function() {
     STORAGE_KEYS,
     createSaveSnapshot,
     MAX_CONVERSATIONS,
+    MAX_MESSAGES_PER_CONVERSATION,
+    MAX_SERIALIZED_BYTES,
+    ACTIVE_MESSAGE_FLOOR,
+    MIN_QUOTA_RETRY_BYTES,
     generateId,
     createNewConversation,
     loadConversations,
@@ -689,6 +905,7 @@ const AIStore = (function() {
     setKeyboardSelectedIndex,
     setLoading,
     setStreaming,
+    setInFlightConversation,
     setOfflineMode,
     setAbortController,
     setUserScrolledUp,

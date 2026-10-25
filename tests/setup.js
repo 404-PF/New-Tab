@@ -384,6 +384,7 @@ globalThis.window.i18n = {
       aiAssistant: 'AI Assistant',
       aiPlaceholder: 'Ask me anything...',
       aiSaveError: 'Failed to save conversations. Your last action was not saved.',
+      aiStorageFullError: 'Storage is full. Export or delete old conversations to free space.',
       aiNewChat: 'New Chat',
       aiSearchConversations: 'Search conversations...',
       aiConversations: 'Conversations',

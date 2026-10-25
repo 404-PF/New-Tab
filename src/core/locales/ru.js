@@ -455,6 +455,7 @@ window.i18n.__registerLocale('ru', {
   aiStopStreaming: 'Стоп',
   aiScrollToBottom: 'Прокрутить вниз',
   aiSaveError: 'Не удалось сохранить разговоры. Последнее действие не было сохранено.',
+  aiStorageFullError: 'Хранилище заполнено. Экспортируйте или удалите старые разговоры, чтобы освободить место.',
   createFolder: 'Создать папку',
   renameFolder: 'Переименовать папку',
   deleteFolder: 'Удалить папку',

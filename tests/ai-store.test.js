@@ -1,6 +1,11 @@
+import { readFileSync } from 'fs';
+import path from 'path';
 import { beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
-import { failStorageWritesFor } from './helpers/storage-write-failures.js';
+import { failStorageWritesFor, failStorageWritesOver } from './helpers/storage-write-failures.js';
+
+const UTF8_ENCODER = new TextEncoder();
+const utf8Length = (text) => UTF8_ENCODER.encode(text).length;
 
 beforeAll(() => {
   injectScript('src/ai/conversation-validator.js');
@@ -11,6 +16,7 @@ beforeEach(() => {
   localStorage.clear();
   AIStore.state.conversations = [];
   AIStore.state.currentConversationId = null;
+  AIStore.state.inFlightConversationId = null;
   AIStore.state.isStreaming = false;
   AIStore.state.isLoading = false;
   AIStore.state.abortController = null;
@@ -691,6 +697,255 @@ describe('AIStore serialization failures', () => {
       } else {
         window.showToast = originalShowToast;
       }
+      errorSpy.mockRestore();
+    }
+  });
+});
+
+describe('AIStore storage bounds (#947)', () => {
+  const CHUNK = 'x'.repeat(40 * 1024);
+  const flushSaves = () => new Promise(resolve => setTimeout(resolve, 0));
+
+  function makeMessages(count, prefix) {
+    return Array.from({ length: count }, (_, index) => ({
+      id: prefix + '-' + index,
+      role: index % 2 === 0 ? 'user' : 'assistant',
+      content: CHUNK,
+      timestamp: index
+    }));
+  }
+
+  function captureToast() {
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+    window.showToast = showToast;
+    return {
+      showToast,
+      restore() {
+        if (typeof originalShowToast === 'undefined') {
+          delete window.showToast;
+        } else {
+          window.showToast = originalShowToast;
+        }
+      }
+    };
+  }
+
+  it('requests the unlimitedStorage permission', () => {
+    const manifest = JSON.parse(readFileSync(path.join(process.cwd(), 'manifest.json'), 'utf8'));
+    expect(manifest.permissions).toContain('unlimitedStorage');
+  });
+
+  it('caps a conversation when a message is added', async () => {
+    const conversation = {
+      id: 'conv-cap',
+      title: 'Cap',
+      messages: Array.from({ length: AIStore.MAX_MESSAGES_PER_CONVERSATION }, (_, index) => ({
+        id: 'm-' + index,
+        role: 'user',
+        content: 'message ' + index,
+        timestamp: index
+      })),
+      createdAt: 1,
+      updatedAt: 1
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+
+    AIStore.addMessageToConversation({ role: 'user', content: 'newest' });
+    await flushSaves();
+
+    expect(conversation.messages).toHaveLength(AIStore.MAX_MESSAGES_PER_CONVERSATION);
+    expect(conversation.messages[0].id).toBe('m-1');
+    expect(conversation.messages[conversation.messages.length - 1].content).toBe('newest');
+  });
+
+  it('caps a conversation during save normalization', async () => {
+    const overflow = 25;
+    const conversation = {
+      id: 'conv-loaded',
+      title: 'Loaded',
+      messages: Array.from({ length: AIStore.MAX_MESSAGES_PER_CONVERSATION + overflow }, (_, index) => ({
+        id: 'l-' + index,
+        role: 'assistant',
+        content: 'history ' + index,
+        timestamp: index
+      })),
+      createdAt: 1,
+      updatedAt: 1
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+
+    expect(await AIStore.saveConversations()).toBe(true);
+
+    expect(conversation.messages).toHaveLength(AIStore.MAX_MESSAGES_PER_CONVERSATION);
+    expect(conversation.messages[0].id).toBe('l-' + overflow);
+    expect(conversation.messages[conversation.messages.length - 1].id).toBe(
+      'l-' + (AIStore.MAX_MESSAGES_PER_CONVERSATION + overflow - 1)
+    );
+    const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
+    expect(persisted[0].messages).toHaveLength(AIStore.MAX_MESSAGES_PER_CONVERSATION);
+  });
+
+  // The 4.5 MB mock sits above MAX_SERIALIZED_BYTES, so the proactive cap
+  // always brings a write under it and the rejecting path never fires here;
+  // the rejected-write recovery is covered by the retry test below.
+  it('trims the oldest messages before a write can reach the size cap', async () => {
+    const toast = captureToast();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const QUOTA = 4.5 * 1024 * 1024;
+
+    const active = { id: 'conv-active', title: 'Active', messages: makeMessages(4, 'n'), createdAt: 3, updatedAt: 3 };
+    const middle = { id: 'conv-middle', title: 'Middle', messages: makeMessages(45, 'm'), createdAt: 2, updatedAt: 2 };
+    const oldest = { id: 'conv-oldest', title: 'Oldest', messages: makeMessages(75, 'o'), createdAt: 1, updatedAt: 1 };
+    AIStore.state.conversations = [active, middle, oldest];
+    AIStore.state.currentConversationId = active.id;
+
+    const untrimmedSize = utf8Length(JSON.stringify(AIStore.state.conversations));
+    expect(untrimmedSize).toBeGreaterThan(QUOTA);
+    expect(untrimmedSize).toBeGreaterThan(AIStore.MAX_SERIALIZED_BYTES);
+
+    const restoreQuota = failStorageWritesOver(QUOTA, AIStore.STORAGE_KEYS.conversations, 'async');
+
+    try {
+      AIStore.addMessageToConversation({ role: 'user', content: 'still here' });
+      await flushSaves();
+
+      const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
+      expect(persisted).toEqual(AIStore.state.conversations);
+      expect(utf8Length(JSON.stringify(persisted))).toBeLessThanOrEqual(AIStore.MAX_SERIALIZED_BYTES);
+
+      const persistedActive = persisted.find(conversation => conversation.id === 'conv-active');
+      expect(persistedActive.messages[persistedActive.messages.length - 1].content).toBe('still here');
+      expect(active.messages).toHaveLength(5);
+      expect(middle.messages).toHaveLength(45);
+      expect(oldest.messages.length).toBeLessThan(75);
+      expect(oldest.messages.some(message => message.id === 'o-0')).toBe(false);
+
+      AIStore.addMessageToConversation({ role: 'assistant', content: 'reply' });
+      await flushSaves();
+
+      const persistedAgain = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
+      const persistedActiveAgain = persistedAgain.find(conversation => conversation.id === 'conv-active');
+      expect(persistedActiveAgain.messages[persistedActiveAgain.messages.length - 1].content).toBe('reply');
+      expect(persistedAgain).toEqual(AIStore.state.conversations);
+      expect(toast.showToast).not.toHaveBeenCalled();
+    } finally {
+      restoreQuota();
+      toast.restore();
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('re-saves a trimmed payload when a large store rejects the first write', async () => {
+    const toast = captureToast();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const QUOTA = 400 * 1024;
+
+    const active = { id: 'conv-active', title: 'Active', messages: makeMessages(4, 'n'), createdAt: 3, updatedAt: 3 };
+    const oldest = { id: 'conv-oldest', title: 'Oldest', messages: makeMessages(15, 'o'), createdAt: 1, updatedAt: 1 };
+    AIStore.state.conversations = [active, oldest];
+    AIStore.state.currentConversationId = active.id;
+
+    const untrimmedSize = utf8Length(JSON.stringify(AIStore.state.conversations));
+    expect(untrimmedSize).toBeGreaterThan(QUOTA);
+    expect(untrimmedSize).toBeGreaterThanOrEqual(AIStore.MIN_QUOTA_RETRY_BYTES);
+
+    const restoreQuota = failStorageWritesOver(QUOTA, AIStore.STORAGE_KEYS.conversations, 'async');
+
+    try {
+      AIStore.addMessageToConversation({ role: 'user', content: 'typed through the quota' });
+      await flushSaves();
+
+      const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
+      const persistedActive = persisted.find(conversation => conversation.id === 'conv-active');
+      const persistedOldest = persisted.find(conversation => conversation.id === 'conv-oldest');
+      expect(persistedActive.messages[persistedActive.messages.length - 1].content).toBe('typed through the quota');
+      expect(persistedOldest.messages.length).toBeLessThan(15);
+      expect(utf8Length(JSON.stringify(persisted))).toBeLessThanOrEqual(QUOTA);
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-active');
+      // The re-save trims this transaction's captured snapshot, so storage
+      // sheds the oldest messages without pulling them from the live view or
+      // pairing them with another conversation's current id.
+      expect(oldest.messages).toHaveLength(15);
+      expect(active.messages).toHaveLength(5);
+      expect(toast.showToast).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      restoreQuota();
+      toast.restore();
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('never evicts the conversation an in-flight request writes into', async () => {
+    const active = { id: 'conv-active', title: 'Active', messages: makeMessages(4, 'n'), createdAt: 3, updatedAt: 3 };
+    const middle = { id: 'conv-middle', title: 'Middle', messages: makeMessages(45, 'm'), createdAt: 2, updatedAt: 2 };
+    const oldest = { id: 'conv-oldest', title: 'Oldest', messages: makeMessages(75, 'o'), createdAt: 1, updatedAt: 1 };
+    AIStore.state.conversations = [active, middle, oldest];
+    AIStore.state.currentConversationId = active.id;
+    // The user switched to the newest chat while a request is still writing
+    // into the oldest one: eviction may drain the middle conversation but
+    // must not treat the request's own messages as disposable.
+    AIStore.setInFlightConversation(oldest.id);
+
+    expect(utf8Length(JSON.stringify(AIStore.state.conversations))).toBeGreaterThan(AIStore.MAX_SERIALIZED_BYTES);
+
+    try {
+      expect(await AIStore.saveConversations()).toBe(true);
+
+      expect(oldest.messages).toHaveLength(75);
+      expect(middle.messages.length).toBeLessThan(45);
+      expect(active.messages).toHaveLength(4);
+
+      const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
+      const persistedOldest = persisted.find(conversation => conversation.id === 'conv-oldest');
+      expect(persistedOldest.messages).toHaveLength(75);
+      expect(utf8Length(JSON.stringify(persisted))).toBeLessThanOrEqual(AIStore.MAX_SERIALIZED_BYTES);
+    } finally {
+      AIStore.setInFlightConversation(null);
+    }
+  });
+
+  it('suggests exporting when the store stays full after the trimmed re-save', async () => {
+    const toast = captureToast();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const conversation = {
+      id: 'conv-full',
+      title: 'Full',
+      messages: makeMessages(20, 'f'),
+      createdAt: 1,
+      updatedAt: 1
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    localStorage.setItem(AIStore.STORAGE_KEYS.conversations, JSON.stringify([conversation]));
+    expect(utf8Length(JSON.stringify([conversation]))).toBeGreaterThanOrEqual(
+      AIStore.MIN_QUOTA_RETRY_BYTES
+    );
+
+    const restoreWrites = failStorageWritesFor(AIStore.STORAGE_KEYS.conversations, 'async');
+
+    try {
+      expect(await AIStore.saveConversations()).toBe(false);
+      expect(toast.showToast).toHaveBeenCalledWith(
+        'Storage is full. Export or delete old conversations to free space.',
+        'error'
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Failed to save conversations:',
+        expect.any(Error)
+      );
+    } finally {
+      restoreWrites();
+      toast.restore();
+      warnSpy.mockRestore();
       errorSpy.mockRestore();
     }
   });

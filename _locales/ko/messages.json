@@ -11,6 +11,10 @@
     "message": "일치하는 대화가 없습니다",
     "description": "Empty state text when a conversation search matches nothing"
   },
+  "aiStorageFullError": {
+    "message": "저장 공간이 가득 찼습니다. 공간을 확보하려면 오래된 대화를 내보내거나 삭제하세요.",
+    "description": "Error shown when AI conversation history fills the storage quota"
+  },
   "appGridSaveError": {
     "message": "앱 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
     "description": "Error shown when app grid changes cannot be persisted"
