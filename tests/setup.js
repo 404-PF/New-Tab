@@ -149,6 +149,18 @@ const createStorageArea = () => {
 };
 
 globalThis.chrome = {
+  action: {
+    onClicked: {
+      _listeners: [],
+      addListener(fn) { chrome.action.onClicked._listeners.push(fn); },
+      removeListener(fn) {
+        chrome.action.onClicked._listeners = chrome.action.onClicked._listeners.filter(l => l !== fn);
+      },
+      _clearListeners() {
+        chrome.action.onClicked._listeners = [];
+      }
+    }
+  },
   i18n: {
     getMessage(messageName, substitutions) {
       const messages = {

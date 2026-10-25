@@ -360,6 +360,16 @@ if (chrome?.notifications?.onClicked) {
   });
 }
 
+// The toolbar action in manifest.json declares only default_icon (no
+// default_popup), so this click handler is what makes the button do
+// anything. MV3 treats the two as mutually exclusive: adding
+// default_popup would suppress chrome.action.onClicked entirely.
+if (chrome?.action?.onClicked) {
+  chrome.action.onClicked.addListener(() => {
+    chrome.tabs.create({ url: 'New-Tab.html' });
+  });
+}
+
 if (chrome?.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message && message.type === 'syncTodos') {
