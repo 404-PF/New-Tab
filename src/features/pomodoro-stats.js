@@ -9,6 +9,9 @@
   'use strict';
   const KEY = 'pomodoroStats';
   const WINDOW = 30;
+  // Retention must cover both the 30-day heatmap and getPomodoroWeeklyBreakdown,
+  // which Sunday-aligns five weeks and can read as far back as today - 33.
+  const RETENTION_DAYS = 34;
   function pad(n) { return String(n).padStart(2, '0'); }
   function toISO(date) { return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()); }
   function coerceEntry(raw) {
@@ -59,6 +62,21 @@
       return readCache;
     }
   }
+  // The parse cache must stay private: hand callers a copy so edits made
+  // without saving cannot silently change later reads of the cached store.
+  function cloneStore(store) {
+    const days = {};
+    Object.keys(store.days).forEach(function (iso) {
+      const entry = store.days[iso];
+      days[iso] = entry && typeof entry === 'object' && !Array.isArray(entry) ? Object.assign({}, entry) : entry;
+    });
+    const byDateTodos = {};
+    Object.keys(store.byDateTodos).forEach(function (iso) {
+      const map = store.byDateTodos[iso];
+      byDateTodos[iso] = map && typeof map === 'object' && !Array.isArray(map) ? Object.assign({}, map) : map;
+    });
+    return { days: days, byDateTodos: byDateTodos };
+  }
   function write(data) {
     // Invalidate first so a failed write cannot serve a mutated cache.
     readCacheRaw = undefined;
@@ -94,11 +112,11 @@
     catch (err) { console.warn('Failed to read pomodoro stats enabled:', err); return false; }
   }
   function todayISO() { return toISO(new Date()); }
-  // Drop days (and per-todo attribution) outside the heatmap window so the key
+  // Drop days (and per-todo attribution) outside the retention window so the key
   // cannot grow without bound — one entry per day forever is the failure mode.
   function pruneOldEntries(store) {
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - (WINDOW - 1));
+    cutoffDate.setDate(cutoffDate.getDate() - (RETENTION_DAYS - 1));
     const cutoff = toISO(cutoffDate);
     Object.keys(store.days).forEach(function (iso) {
       if (iso < cutoff) delete store.days[iso];
@@ -258,7 +276,7 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  window.loadPomodoroStats = read;
+  window.loadPomodoroStats = function () { return cloneStore(read()); };
   window.savePomodoroStats = write;
   window.recordPomodoroSession = record;
   window.clearPomodoroStats = wipe;

@@ -288,4 +288,13 @@ describe('Todo stats retention', () => {
     expect(stats.longestStreak).toBe(101);
     expect(Object.keys(stats.days).length).toBe(101);
   });
+
+  it('falls back to the computed streak when the stored longestStreak is malformed', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    saveTodoStats({ days: { [getToday()]: 1 }, currentStreak: 0, longestStreak: 'unknown' });
+    recordTodoCompletion();
+    const stats = loadTodoStats();
+    expect(stats.longestStreak).toBe(1);
+    expect(Number.isFinite(stats.longestStreak)).toBe(true);
+  });
 });

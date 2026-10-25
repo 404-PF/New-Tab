@@ -121,7 +121,7 @@
     // Keep the best streak ever observed: pruned history can no longer prove
     // a longest streak that ran longer than the retention window.
     stats.currentStreak = current;
-    stats.longestStreak = Math.max(longest, stats.longestStreak || 0);
+    stats.longestStreak = Math.max(longest, Number.isFinite(stats.longestStreak) ? stats.longestStreak : 0);
   }
 
   // Drop days outside the retention window so the key cannot grow forever.
