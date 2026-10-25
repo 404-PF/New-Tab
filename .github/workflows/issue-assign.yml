@@ -149,7 +149,7 @@ jobs:
             # else it would only authorize a no-op. A maintainer
             # releasing a hostile claim uses the assignees UI instead.
             CURRENT=''
-            if CURRENT="$(gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")' 2>/dev/null)"; then
+            if CURRENT="$(gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"; then
               case ",$(lower "$CURRENT")," in
                 *",$CANON,"*) AUTHORIZED=true ;;
               esac
