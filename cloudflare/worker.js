@@ -10,7 +10,9 @@
  *
  * Secrets (wrangler secret put <NAME>):
  *   OPENROUTER_API_KEY  OpenRouter key (free models only, $0 limit is fine)
- *   TAVILY_API_KEY      Tavily key (free tier; basic search = 1 credit)
+ *   TAVILY_API_KEY      Optional Tavily key (free tier: 1,000 credits/month,
+ *                       basic search = 1 credit). When unset, searches use
+ *                       Tavily's keyless mode (free, rate-limited).
  *
  * Response header X-Grounding: used | unavailable | off
  */
@@ -58,7 +60,9 @@ async function tavilySearch(apiKey, query, maxResults) {
   try {
     const res = await fetch(TAVILY_URL, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      headers: apiKey
+        ? { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
+        : { 'X-Tavily-Access-Mode': 'keyless', 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: query.slice(0, MAX_QUERY_CHARS),
         search_depth: 'basic',
@@ -128,8 +132,8 @@ export default {
     if (webPlugin) {
       const query = lastUserText(messages).trim();
       const maxResults = Math.min(Math.max(Number(webPlugin.max_results) || 5, 1), MAX_RESULTS_CAP);
-      const results = env.TAVILY_API_KEY && query
-        ? await tavilySearch(env.TAVILY_API_KEY, query, maxResults)
+      const results = query
+        ? await tavilySearch(env.TAVILY_API_KEY || '', query, maxResults)
         : null;
 
       if (results && results.length > 0) {
