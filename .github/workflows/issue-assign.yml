@@ -22,7 +22,10 @@ name: issue-assign
 # Denials are policy results (closed issue, already assigned, not
 # authorized): they exit 0 and stay out of the failure report. The
 # failure report only comments when a run the requester explicitly asked
-# for (dispatch, or an authorized comment command) actually broke.
+# for (dispatch, an authorized comment command, or a gate that failed
+# after an explicit /assign or /unassign) actually broke. A failed
+# assignee lookup is a broken run, not a denial: it fails the gate
+# instead of posting a possibly false "you are not assigned".
 #
 # Claims are open to every non-bot commenter on purpose — that is the
 # whole point. Abuse is bounded: a claim can never target anything but
@@ -151,7 +154,14 @@ jobs:
                 *",$CANON,"*) AUTHORIZED=true ;;
               esac
             else
-              echo 'Assignee lookup failed; denying /unassign request.'
+              # A failed read is an infrastructure problem, not a policy
+              # denial: falling through would post a possibly false "you
+              # are not assigned" comment and hide the breakage behind
+              # exit 0. Fail the gate so the run is visibly broken; the
+              # failure-report step treats a failed gate as a run the
+              # requester explicitly asked for and comments instead.
+              echo "::error::Assignee lookup failed for issue #$ISSUE_NUMBER; cannot verify /unassign authorization."
+              exit 1
             fi
           fi
 
@@ -321,12 +331,16 @@ jobs:
 
       # Tell the requester when a run they explicitly asked for fails or
       # hits the timeout. Policy denials exit 0 above, so they never reach
-      # this step.
+      # this step. A failed gate does: after the job-level /assign and
+      # /unassign pre-filter, a gate failure means the requester asked for
+      # a command that then broke (for example a failed assignee lookup),
+      # which must be reported instead of passing as a denial.
       - name: Report assignment failure on issue
         if: >-
           (failure() || cancelled()) &&
           (github.event_name == 'workflow_dispatch' ||
-           (github.event_name == 'issue_comment' && steps.gate.outputs.proceed == 'true'))
+           (github.event_name == 'issue_comment' &&
+            (steps.gate.outputs.proceed == 'true' || steps.gate.outcome == 'failure')))
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
