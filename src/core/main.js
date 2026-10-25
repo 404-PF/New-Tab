@@ -1,5 +1,11 @@
 // main.js - Main initialization, time, date, motto
 
+// The rendered time only changes once per minute (the date once per day), so
+// the refresh cadence and the cached display settings below both follow that
+// resolution instead of re-reading storage and re-running ICU formatters on a
+// 1 Hz timer (issue #930).
+const CLOCK_REFRESH_INTERVAL_MS = 60000;
+
 function updateTime() {
   const now = new Date();
   const timeElement = document.getElementById('clock-time') || document.getElementById('clock');
@@ -8,12 +14,18 @@ function updateTime() {
 
   // Update time
   if (timeElement) {
-    timeElement.textContent = formatClockTime(now, locale);
+    const timeText = formatClockTime(now, locale);
+    if (timeElement.textContent !== timeText) {
+      timeElement.textContent = timeText;
+    }
   }
 
   // Update date - use current language for locale
   if (dateElement) {
-    dateElement.textContent = formatDateDisplay(now, locale);
+    const dateText = formatDateDisplay(now, locale);
+    if (dateElement.textContent !== dateText) {
+      dateElement.textContent = dateText;
+    }
   }
 }
 
@@ -21,7 +33,15 @@ window.updateTime = updateTime;
 window.getDisplayLocale = getDisplayLocale;
 window.getClockFormat = getClockFormat;
 
-function getDisplayLocale() {
+// Display settings cached so per-tick formatting never touches storage.
+// Refreshed by the languageChanged listener below, by the clock/date settings
+// handlers in src/ui/settings.js, and after a settings import in
+// src/features/data-manager.js.
+let cachedLocale = null;
+let cachedClockFormat = null;
+let cachedDateFormat = null;
+
+function resolveDisplayLocale() {
   const currentLang = window.i18n ? window.i18n.currentLanguage() : 'en';
   const displayLocales = {
     en: 'en-US',
@@ -39,13 +59,43 @@ function getDisplayLocale() {
   return displayLocales[currentLang] || 'en-US';
 }
 
-function getClockFormat() {
+function resolveClockFormat() {
   return localStorage.getItem('clockFormat') || 'auto';
 }
 
-function getDateFormat() {
+function resolveDateFormat() {
   return localStorage.getItem('dateFormat') || 'auto';
 }
+
+function refreshClockSettings() {
+  cachedLocale = resolveDisplayLocale();
+  cachedClockFormat = resolveClockFormat();
+  cachedDateFormat = resolveDateFormat();
+}
+window.refreshClockSettings = refreshClockSettings;
+
+function getDisplayLocale() {
+  if (cachedLocale === null) {
+    refreshClockSettings();
+  }
+  return cachedLocale;
+}
+
+function getClockFormat() {
+  if (cachedClockFormat === null) {
+    refreshClockSettings();
+  }
+  return cachedClockFormat;
+}
+
+function getDateFormat() {
+  if (cachedDateFormat === null) {
+    refreshClockSettings();
+  }
+  return cachedDateFormat;
+}
+
+refreshClockSettings();
 
 function formatClockTime(now, locale) {
   const clockFormat = getClockFormat();
@@ -118,25 +168,47 @@ function formatDateDisplay(now, locale) {
   return formatLocaleDefaultDate(now, locale);
 }
 
-// Update time immediately and then every minute using visibility-aware interval
-updateTime();
+// Refresh the display on minute boundaries using a visibility-aware timer.
+// Each tick re-arms aligned to the next minute so the display flips exactly
+// on the minute instead of drifting.
+let _clockTimer = null;
 
-let _clockInterval = null;
+function msUntilNextMinute(nowMs) {
+  const remainder = nowMs % CLOCK_REFRESH_INTERVAL_MS;
+  return remainder === 0 ? CLOCK_REFRESH_INTERVAL_MS : CLOCK_REFRESH_INTERVAL_MS - remainder;
+}
+
+function clearClockTimer() {
+  if (!_clockTimer) {
+    return;
+  }
+  if (_clockTimer.destroy) _clockTimer.destroy();
+  else clearTimeout(_clockTimer);
+  _clockTimer = null;
+}
+
+function scheduleClockUpdate() {
+  clearClockTimer();
+  // Reference window.updateTime so that later wrappers (e.g. timezone-clocks.js)
+  // that replace window.updateTime are picked up by the timer.
+  const tick = function () {
+    window.updateTime();
+    scheduleClockUpdate();
+  };
+  const delay = msUntilNextMinute(Date.now());
+  // Use VisibilityInterval if available, fallback to a regular timeout.
+  if (window.VisibilityInterval) {
+    _clockTimer = new window.VisibilityInterval(tick, delay);
+  } else {
+    _clockTimer = setTimeout(tick, delay);
+  }
+}
 
 function initClock() {
-  // Clear any existing interval to prevent duplicates
-  if (_clockInterval) {
-    if (_clockInterval.destroy) _clockInterval.destroy();
-    else clearInterval(_clockInterval);
-  }
-  // Use VisibilityInterval if available, fallback to regular setInterval.
-  // Reference window.updateTime so that later wrappers (e.g. timezone-clocks.js)
-  // that replace window.updateTime are picked up by the interval.
-  if (window.VisibilityInterval) {
-    _clockInterval = new VisibilityInterval(function () { window.updateTime(); }, 1000);
-  } else {
-    _clockInterval = setInterval(function () { window.updateTime(); }, 1000);
-  }
+  clearClockTimer();
+  // Paint immediately once, then wait for the next minute boundary.
+  window.updateTime();
+  scheduleClockUpdate();
 }
 
 // Initialize clock when DOM is ready
@@ -146,8 +218,40 @@ if (document.readyState === 'loading') {
   initClock();
 }
 
-// Listen for language changes to update time and date display
-window.addEventListener('languageChanged', updateTime);
+// Refresh the cached display settings and repaint when the language changes
+window.addEventListener('languageChanged', function () {
+  refreshClockSettings();
+  updateTime();
+});
+
+// Settings changed in another open new-tab page reach this page through
+// chrome.storage.onChanged, which the storage bridge listens to from a
+// listener registered before this one (storage.js is the first script the
+// page loads), so the bridge cache is already updated when this runs.
+// Without it the cached clock/date/locale values would stay stale until
+// the page is reloaded.
+const CLOCK_SETTINGS_STORAGE_KEYS = ['clockFormat', 'dateFormat', 'language'];
+
+function refreshClockSettingsOnStorageChange(changes, areaName) {
+  if (areaName !== 'local' || !changes) {
+    return;
+  }
+
+  const affectsDisplay = CLOCK_SETTINGS_STORAGE_KEYS.some(function (key) {
+    return Object.prototype.hasOwnProperty.call(changes, key);
+  });
+
+  if (!affectsDisplay) {
+    return;
+  }
+
+  refreshClockSettings();
+  window.updateTime();
+}
+
+if (globalThis.chrome?.storage?.onChanged?.addListener) {
+  chrome.storage.onChanged.addListener(refreshClockSettingsOnStorageChange);
+}
 
 // Display a motto that stays the same for each day
 function displayDailyMotto() {

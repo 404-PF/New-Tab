@@ -295,6 +295,16 @@
       window.renderTimezoneCurrentList();
     }
 
+    // Re-read the cached clock/date display settings so an import that
+    // changed clockFormat, dateFormat, or the language repaints the clock
+    // immediately instead of waiting for the next minute tick.
+    if (typeof window.refreshClockSettings === 'function') {
+      window.refreshClockSettings();
+    }
+    if (typeof window.updateTime === 'function') {
+      window.updateTime();
+    }
+
     // Reinitialize the search provider bar so imported providers/selection take effect live
     if (typeof window.refreshProviderBar === 'function') {
       window.refreshProviderBar();
