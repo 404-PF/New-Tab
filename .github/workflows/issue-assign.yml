@@ -1,0 +1,366 @@
+name: issue-assign
+
+# Self-assignment for GitHub issues. The GitHub assignees control needs
+# write access, so contributors cannot claim an issue themselves. This
+# workflow closes that gap with two comment commands, both operating only
+# on the comment author's own account:
+#
+#   /assign    claim: only works on an OPEN issue with no assignees.
+#              The bare token must be the comment's first line (no
+#              arguments: "/assign me" is not a command and is ignored).
+#   /unassign  release: removes the commenter from the assignees. Only
+#              the commenter's own assignment can be released this way;
+#              a maintainer releasing a claim uses the assignees UI.
+#
+# Every authorized run gets an eyes reaction on the requesting comment and
+# a short result or denial comment in the thread, so nobody has to open a
+# run log to know what happened. The apply step re-reads the issue after
+# the POST/DELETE and verifies the assignee list changed exactly as
+# requested; GitHub can silently skip an assignee it cannot assign, and
+# this must fail loudly instead of claiming success.
+#
+# Denials are policy results (closed issue, already assigned, not
+# authorized): they exit 0 and stay out of the failure report. The
+# failure report only comments when a run the requester explicitly asked
+# for (dispatch, an authorized comment command, or a gate that failed
+# after an explicit /assign or /unassign) actually broke. A failed
+# assignee lookup is a broken run, not a denial: it fails the gate
+# instead of posting a possibly false "you are not assigned".
+#
+# Claims are open to every non-bot commenter on purpose — that is the
+# whole point. Abuse is bounded: a claim can never target anything but
+# the commenter's own account, so the blast radius is one issue become
+# "claimed", and any write-capable user can reverse it in the assignees
+# UI. Triggers deliberately exclude issues.opened: nothing is
+# auto-assigned without a person explicitly asking for it.
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number the command applies to'
+        required: true
+        type: number
+      login:
+        description: 'User to self-assign (defaults to the account dispatching the run)'
+        required: false
+        type: string
+
+# Claims and releases are check-then-write against the assignee list, so
+# two comments on the same issue can race on stale state. Serialize per
+# issue instead of trusting each read: group per issue number, never
+# cancel (cancel-in-progress: false), and queue: max keeps every queued
+# run waiting instead of letting a newer event replace the only pending
+# one, so no /assign or /unassign is lost and each run decides on the
+# state the previous one left behind (same pattern as issue-milestone).
+concurrency:
+  group: >-
+    ${{ format('issue-assign-{0}', github.event.issue.number || github.event.inputs.issue_number) }}
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  assign:
+    # Name pinned so the single-entry matrix below doesn't rename the job.
+    name: assign
+    # Single source for the job timeout: timeout-minutes cannot read env,
+    # but it can read matrix, and the failure report reads the same value.
+    strategy:
+      matrix:
+        job-timeout-minutes: [5]
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.job-timeout-minutes }}
+    # issues: write is the narrowest Actions permission that can add or
+    # remove assignees on an issue. contents: read matches the other
+    # issue workflows; no checkout or agent runs here.
+    permissions:
+      contents: read
+      issues: write
+    # workflow_dispatch always runs. issue_comment is a coarse pre-filter;
+    # the gate step does the exact first-line parse of bare /assign and
+    # /unassign. Restricting to non-Bot authors and real issues (never
+    # PRs) here keeps everything else from starting a runner at all.
+    # Unlike /label and /triage, no association whitelist: self-assign is
+    # intentionally open to every human commenter (associations like NONE
+    # and FIRST_TIMER included) — see the file header.
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (
+        github.event.issue != null &&
+        github.event.issue.pull_request == null &&
+        github.event.comment.user.type != 'Bot' &&
+        (
+          startsWith(github.event.comment.body, '/assign') ||
+          startsWith(github.event.comment.body, '/unassign')
+        )
+      )
+
+    steps:
+      # Record when the job started so the failure report can tell a
+      # job-level timeout apart from a run cancelled manually (both show
+      # up as cancelled()).
+      - name: Record job start time
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Check /assign or /unassign command and authorization
+        id: gate
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          # NOTE: do not use head here. head exits after line 1, so a large
+          # COMMENT_BODY makes printf receive SIGPIPE and pipefail aborts the
+          # gate. sed -n without q drains the input instead.
+          first_line="$(printf '%s' "$COMMENT_BODY" | sed -n '1s/[[:space:]]*$//p')"
+          case "$first_line" in
+            /assign) mode=claim ;;
+            /unassign) mode=release ;;
+            *)
+              echo 'Not a bare /assign or /unassign command, skipping.'
+              echo 'proceed=false' >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
+          # Logins are case-insensitive on GitHub; normalize both sides of
+          # every comparison below.
+          lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+          CANON="$(lower "$COMMENT_AUTHOR")"
+
+          # /assign (claim) is open to every non-bot commenter, and the job
+          # if already excluded Bot users and PR comments, so there is
+          # nothing left to prove here.
+          AUTHORIZED=false
+          if [ "$mode" = claim ]; then
+            AUTHORIZED=true
+          else
+            # /unassign (release) is self-release only: the command takes
+            # no arguments, so the apply step can only ever remove the
+            # commenter's own account. Only a current assignee passes —
+            # write access deliberately does not, because for anyone
+            # else it would only authorize a no-op. A maintainer
+            # releasing a hostile claim uses the assignees UI instead.
+            CURRENT=''
+            if CURRENT="$(gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"; then
+              case ",$(lower "$CURRENT")," in
+                *",$CANON,"*) AUTHORIZED=true ;;
+              esac
+            else
+              # A failed read is an infrastructure problem, not a policy
+              # denial: falling through would post a possibly false "you
+              # are not assigned" comment and hide the breakage behind
+              # exit 0. Fail the gate so the run is visibly broken; the
+              # failure-report step treats a failed gate as a run the
+              # requester explicitly asked for and comments instead.
+              echo "::error::Assignee lookup failed for issue #$ISSUE_NUMBER; cannot verify /unassign authorization."
+              exit 1
+            fi
+          fi
+
+          if [ "$AUTHORIZED" != true ]; then
+            echo 'User not authorized, exiting.'
+            gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --body "/unassign only releases your own assignment, and you are not assigned to #$ISSUE_NUMBER."
+            echo 'proceed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # React to the authorized comment with eyes so the requester can
+          # tell it was picked up. Denied commands get no reaction, so a
+          # user is not left looking for a run that never started.
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content='eyes' >/dev/null || true
+          echo 'proceed=true' >> "$GITHUB_OUTPUT"
+
+      # The single apply step: policy checks, assignee mutation, and
+      # verification happen against a freshly re-read issue so the run
+      # decides on the state as of execution, not the event payload. The
+      # if mirrors the other issue workflows: on comments the gate must
+      # have recognized and authorized a bare command, otherwise a plain
+      # comment would fall through to the dispatch default mode below and
+      # assign the commenter without anyone asking.
+      - name: Apply command as assignee change
+        if: github.event_name != 'issue_comment' || steps.gate.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+          # Comment runs target the commenter; dispatch runs target the
+          # login input or the account that dispatched.
+          TARGET: ${{ github.event.comment.user.login || github.event.inputs.login || github.actor }}
+          MODE: ${{ steps.gate.outputs.mode || 'claim' }}
+          IS_COMMENT: ${{ github.event_name == 'issue_comment' }}
+        run: |
+          set -euo pipefail
+          case "$MODE" in
+            claim|release) ;;
+            *)
+              echo "::error::Unknown mode '$MODE'."
+              exit 1
+              ;;
+          esac
+
+          # GitHub logins are [A-Za-z0-9-] up to 39 chars. Rejecting
+          # anything else (dispatch input text included) keeps a malformed
+          # login from reaching gh arguments, JSON bodies, or the comment
+          # texts below. Logins are case-insensitive; normalize upfront.
+          lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+          if ! printf '%s' "$TARGET" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9-]{0,38}$'; then
+            echo "::error::'$TARGET' is not a valid GitHub login."
+            exit 1
+          fi
+          TARGET_LOW="$(lower "$TARGET")"
+
+          list_has() {
+            case ",$(lower "$1")," in
+              *",$2,"*) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          # Policy results and outcomes: comment runs post a short message
+          # in the thread; workflow_dispatch runs keep the log as the
+          # record instead of spamming the issue on every manual call.
+          say() {
+            echo "$1"
+            if [ "$IS_COMMENT" = 'true' ]; then
+              gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "$1"
+            fi
+          }
+
+          # workflow_dispatch may pass any number, so reject a pull
+          # request number here; issue_comment runs were already gated to
+          # issues by the job if.
+          if [ "$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq 'has("pull_request")')" = 'true' ]; then
+            echo "::error::Issue #$ISSUE_NUMBER is a pull request; refusing to assign."
+            exit 1
+          fi
+
+          # Re-read instead of trusting the event payload: state and
+          # assignees may have changed while the run queued. A deleted
+          # issue (or a permission/capacity problem) fails the run loudly
+          # via set -e and reaches the failure report.
+          #
+          # Claim policy: unless the issue is open and unassigned, post
+          # the reason and exit 0 (a policy result, not a failure). The
+          # guard re-reads on every call, so it runs once after the queue
+          # delay and again immediately before the POST: the user lookup
+          # in between is another network round trip during which the
+          # issue can be closed or claimed by somebody else, and a stale
+          # read must never decide the write.
+          claim_guard() {
+            local state assignees text
+            state="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq .state)"
+            assignees="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"
+            echo "Issue #$ISSUE_NUMBER: state=$state, assignees=${assignees:-none}"
+            if [ "$state" != open ]; then
+              say "Issue #$ISSUE_NUMBER is closed, so /assign does not apply; only open issues can be self-assigned."
+              exit 0
+            fi
+            if [ -n "$assignees" ]; then
+              if list_has "$assignees" "$TARGET_LOW"; then
+                say "Already assigned to @$TARGET — nothing changed."
+              else
+                # Mention syntax in the message is intentional: it
+                # notifies the current assignees that somebody asked to
+                # join the claim.
+                text="$(printf '%s' "$assignees" | sed 's/,/, @/g; s/^/@/')"
+                say "Issue #$ISSUE_NUMBER is already assigned to $text. To share the claim, ask an existing assignee or a maintainer."
+              fi
+              exit 0
+            fi
+          }
+
+          if [ "$MODE" = claim ]; then
+            claim_guard
+          else
+            ASSIGNEES="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"
+            echo "Issue #$ISSUE_NUMBER: assignees=${ASSIGNEES:-none}"
+            if ! list_has "$ASSIGNEES" "$TARGET_LOW"; then
+              say "@$TARGET is not assigned to issue #$ISSUE_NUMBER, so /unassign did nothing."
+              exit 0
+            fi
+          fi
+
+          # Confirm the target user exists and is a real account before
+          # touching the assignees. Bots and organizations cannot hold
+          # issue assignments, and a failed lookup denies (fail closed).
+          USER_TYPE=''
+          if USER_TYPE="$(gh api "users/$TARGET" --jq .type 2>/dev/null)"; then
+            echo "Resolved user type for '$TARGET': $USER_TYPE"
+          else
+            echo "::error::User lookup failed for '$TARGET'."
+            exit 1
+          fi
+          if [ "$USER_TYPE" != 'User' ]; then
+            echo "::error::'$TARGET' is of type '$USER_TYPE'; only human accounts can be assigned to an issue."
+            exit 1
+          fi
+
+          # The verify step below is the source of truth: the assignees
+          # endpoint may silently skip targeted users it cannot assign, so
+          # a "success" must never be announced without re-reading.
+          if [ "$MODE" = claim ]; then
+            # Last check before the write: the first policy read predated
+            # the user lookup above, so re-read state and assignees now
+            # and abort if the issue is no longer open and unassigned.
+            claim_guard
+            gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER/assignees" -f "assignees[]=$TARGET" >/dev/null
+            ASSIGNEES_AFTER="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"
+            if ! list_has "$ASSIGNEES_AFTER" "$TARGET_LOW"; then
+              echo "::error::GitHub did not assign '$TARGET' to issue #$ISSUE_NUMBER (assignable users only); refusing to announce success."
+              exit 1
+            fi
+            say "Assigned to @$TARGET — self-assigned via /assign."
+          else
+            gh api -X DELETE "repos/$GH_REPO/issues/$ISSUE_NUMBER/assignees" -f "assignees[]=$TARGET" >/dev/null
+            ASSIGNEES_AFTER="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"
+            if list_has "$ASSIGNEES_AFTER" "$TARGET_LOW"; then
+              echo "::error::GitHub kept '$TARGET' as an assignee after DELETE; refusing to announce success."
+              exit 1
+            fi
+            say "Removed @$TARGET from the assignees via /unassign."
+          fi
+
+      # Tell the requester when a run they explicitly asked for fails or
+      # hits the timeout. Policy denials exit 0 above, so they never reach
+      # this step. A failed gate does: after the job-level /assign and
+      # /unassign pre-filter, a gate failure means the requester asked for
+      # a command that then broke (for example a failed assignee lookup),
+      # which must be reported instead of passing as a denial.
+      - name: Report assignment failure on issue
+        if: >-
+          (failure() || cancelled()) &&
+          (github.event_name == 'workflow_dispatch' ||
+           (github.event_name == 'issue_comment' &&
+            (steps.gate.outputs.proceed == 'true' || steps.gate.outcome == 'failure')))
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          JOB_TIMEOUT_MINUTES: ${{ matrix.job-timeout-minutes }}
+        run: |
+          set -euo pipefail
+          # A step timeout fails its step, so failure() covers it. A
+          # cancelled job is either a job-level timeout (report it) or a
+          # manual cancel (stay silent). Only a job that ran to within 2
+          # minutes of its timeout counts as timed out; earlier
+          # cancellations are treated as manual.
+          if [ "$JOB_STATUS" = 'cancelled' ]; then
+            elapsed=$(( $(date +%s) - ${JOB_STARTED_AT:-0} ))
+            if [ -z "${JOB_STARTED_AT:-}" ] || [ "$elapsed" -lt $(( (JOB_TIMEOUT_MINUTES - 2) * 60 )) ]; then
+              echo "Run cancelled after ${elapsed}s (cancelled manually); not reporting."
+              exit 0
+            fi
+          fi
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
+            --body "Issue assignment failed or timed out. See the workflow run: $RUN_URL"
