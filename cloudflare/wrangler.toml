@@ -4,4 +4,3 @@ compatibility_date = "2026-10-01"
 
 # Secrets (not stored here):
 #   wrangler secret put OPENROUTER_API_KEY
-#   wrangler secret put TAVILY_API_KEY   (optional; keyless mode without it)
