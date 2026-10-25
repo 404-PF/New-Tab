@@ -483,13 +483,16 @@ describe('Modern picker events', () => {
   });
 
   it.each([
-    ['font', 'initModernFontPickers'],
-    ['color', 'initModernColorPickers']
-  ])('removes document listeners when a %s picker is destroyed', (_, initMethod) => {
+    ['font', 'initModernFontPickers', '.font-swatch'],
+    ['color', 'initModernColorPickers', '.color-swatch']
+  ])('removes document listeners when a %s picker is destroyed', (_, initMethod, swatchSelector) => {
     const addListener = vi.spyOn(document, 'addEventListener');
     const removeListener = vi.spyOn(document, 'removeEventListener');
 
     window[initMethod]();
+    // The shared document listeners are attached on first show(), so open a
+    // popup before capturing them.
+    document.querySelector(swatchSelector).click();
     const clickHandler = addListener.mock.calls.find(([type]) => type === 'click')[1];
     const keydownHandler = addListener.mock.calls.find(([type]) => type === 'keydown')[1];
     window[initMethod]();

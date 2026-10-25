@@ -1,9 +1,10 @@
 // src/ui/font-picker.js - Modern Font Picker Component
 
 // One shared pair of document-level handlers serves every picker instance, so
-// listener count never scales with picker count. Classic scripts share the
-// browser's global scope, so these top-level names stay font-specific and
-// must not collide with color-picker.js.
+// listener count never scales with picker count. The pair is attached only
+// while a popup is open, so a hidden popup costs nothing at load. Classic
+// scripts share the browser's global scope, so these top-level names stay
+// font-specific and must not collide with color-picker.js.
 let activeFontPicker = null;
 let fontPickerListenerRefs = 0;
 
@@ -181,8 +182,6 @@ class ModernFontPicker {
       e.stopPropagation();
       this.toggle();
     });
-
-    retainFontPickerListeners();
   }
 
   bindPopupEvents() {
@@ -207,8 +206,14 @@ class ModernFontPicker {
   }
 
   show() {
+    if (this.destroyed) return;
     if (!this.pickerElement) {
       this.createPickerPopup();
+    }
+
+    // Attach the shared document listeners only while a popup is open.
+    if (!this.isOpen) {
+      retainFontPickerListeners();
     }
 
     if (activeFontPicker && activeFontPicker !== this) {
@@ -239,7 +244,10 @@ class ModernFontPicker {
 
   hide() {
     if (activeFontPicker === this) activeFontPicker = null;
-    this.isOpen = false;
+    if (this.isOpen) {
+      this.isOpen = false;
+      releaseFontPickerListeners();
+    }
     if (this.pickerElement) {
       this.pickerElement.classList.remove('visible');
     }
@@ -305,7 +313,12 @@ class ModernFontPicker {
     this.destroyed = true;
 
     if (activeFontPicker === this) activeFontPicker = null;
-    releaseFontPickerListeners();
+    // Only a popup that actually opened retained the shared listeners, so
+    // only it may release them - otherwise a live picker would lose them.
+    if (this.isOpen) {
+      this.isOpen = false;
+      releaseFontPickerListeners();
+    }
 
     if (this.pickerElement && this.pickerElement.parentNode) {
       this.pickerElement.parentNode.removeChild(this.pickerElement);

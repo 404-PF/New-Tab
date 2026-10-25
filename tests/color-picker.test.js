@@ -62,12 +62,17 @@ describe('ModernColorPicker', () => {
     expect(document.querySelectorAll('.color-picker-popup')).toHaveLength(0);
   });
 
-  it('binds one shared pair of document listeners no matter how many pickers exist', () => {
+  it('binds one shared pair of document listeners, and only while a popup is open', () => {
     const inputs = ['a', 'b', 'c'].map(name => createColorInput(`color-picker-shared-${name}`));
     const addListener = vi.spyOn(document, 'addEventListener');
     const removeListener = vi.spyOn(document, 'removeEventListener');
 
     const pickers = inputs.map(input => new window.ModernColorPicker({ element: input }));
+
+    expect(countCalls(addListener, 'click')).toBe(0);
+    expect(countCalls(addListener, 'keydown')).toBe(0);
+
+    pickers[0].show();
 
     expect(countCalls(addListener, 'click')).toBe(1);
     expect(countCalls(addListener, 'keydown')).toBe(1);

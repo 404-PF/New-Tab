@@ -67,12 +67,17 @@ describe('ModernFontPicker', () => {
     expect(document.querySelectorAll('.font-picker-popup')).toHaveLength(0);
   });
 
-  it('binds one shared pair of document listeners no matter how many pickers exist', () => {
+  it('binds one shared pair of document listeners, and only while a popup is open', () => {
     const selects = ['a', 'b'].map(name => createFontSelect(`font-picker-shared-${name}`));
     const addListener = vi.spyOn(document, 'addEventListener');
     const removeListener = vi.spyOn(document, 'removeEventListener');
 
     const pickers = selects.map(select => new window.ModernFontPicker({ element: select }));
+
+    expect(countCalls(addListener, 'click')).toBe(0);
+    expect(countCalls(addListener, 'keydown')).toBe(0);
+
+    pickers[0].show();
 
     expect(countCalls(addListener, 'click')).toBe(1);
     expect(countCalls(addListener, 'keydown')).toBe(1);
