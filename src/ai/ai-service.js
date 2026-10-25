@@ -788,6 +788,11 @@ const AIService = (function() {
           );
         }
 
+        if (groundingEnabled && result.success && result.grounding === 'unavailable') {
+          showError(getTranslation('aiGroundingFallback'));
+          syncGroundingFlag(false);
+        }
+
         if (accumulatedContent && !result.aborted) {
           syncContentToStore(accumulatedContent);
           const liveEl = getLiveStreamingTextEl();

@@ -1044,6 +1044,41 @@ describe('AIService web grounding fallback (#707)', () => {
     expect(document.getElementById('ai-chat-error').textContent)
       .toContain('Web search is unavailable');
   });
+
+  it('clears the grounded state when the proxy reports grounding unavailable', async () => {
+    const conv = {
+      id: 'conv_grounding_unavailable',
+      title: 'Grounding unavailable',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conv];
+    AIStore.state.currentConversationId = conv.id;
+    document.getElementById('ai-chat-error').textContent = '';
+
+    OpenRouterAPI.sendMessageStreaming = vi.fn().mockResolvedValueOnce({
+      success: true,
+      content: 'Ungrounded answer',
+      grounding: 'unavailable'
+    });
+
+    await AIService.sendMessage('What happened today?');
+
+    expect(OpenRouterAPI.sendMessageStreaming).toHaveBeenCalledTimes(1);
+    expect(OpenRouterAPI.sendMessageStreaming.mock.calls[0][4]).toEqual({ grounding: true });
+
+    const conversation = AIStore.getCurrentConversation();
+    expect(conversation.messages.at(-1)).toMatchObject({
+      role: 'assistant',
+      content: 'Ungrounded answer',
+      grounded: false,
+      isStreaming: false
+    });
+
+    expect(document.getElementById('ai-chat-error').textContent)
+      .toContain('Web search is unavailable');
+  });
 });
 
 describe('Offline chat Object.prototype key inputs (#864)', () => {
