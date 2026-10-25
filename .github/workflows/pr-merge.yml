@@ -25,13 +25,19 @@ name: pr-merge
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
-  pull_request_review:
-    types: [submitted, edited, dismissed]
+    # Only PR events that do not start CI. A push (opened, synchronize,
+    # reopened) already runs CI, and CI completing re-enters below via
+    # workflow_run, so evaluating on the push itself only added a PR-head
+    # pr-merge check that the merging re-entry (which runs on main)
+    # cancelled, leaving every merged PR with a red "cancelled" check.
+    # Reviews are not a trigger for the same reason: an approval is usually
+    # followed by a manual merge, and a blocking review is still caught by
+    # gates 5 and 6, which re-run immediately before the merge mutation.
+    types: [ready_for_review, labeled, unlabeled]
   # pull_request_review_thread is a webhook event but NOT a valid Actions
   # trigger — GitHub rejects the whole workflow file when it appears in `on:`.
-  # Thread resolve/unresolve is picked up on the next review, label, push, or
-  # CI completion, all of which re-run this evaluation.
+  # Thread resolve/unresolve and review approvals are picked up on the next
+  # label change, CI completion, or manual dispatch.
   check_run:
     types: [completed]
   check_suite:
@@ -62,11 +68,6 @@ jobs:
     name: pr-merge
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Read by the repaint job below to re-run this PR's cancelled pr-merge
-    # checks once the merge has landed.
-    outputs:
-      merged: ${{ steps.evaluate.outputs.merged }}
-      head_sha: ${{ steps.evaluate.outputs.head_sha }}
     # contents: write (squash merge + branch delete), pull-requests: write
     # (merge mutation + verdict comment), checks/statuses: read (check-run
     # and required-status evaluation), actions: read (active pr-drive guard).
@@ -84,8 +85,8 @@ jobs:
     # re-validates the pr_number before touching anything.
     #
     # The same-repo-head half of that filter is not just tidiness: GitHub
-    # downgrades GITHUB_TOKEN to read-only on pull_request and
-    # pull_request_review events when the PR's head is a fork, so a fork PR
+    # downgrades GITHUB_TOKEN to read-only on pull_request events when the
+    # PR's head is a fork, so a fork PR
     # could only ever reach a "blocked" verdict — never a merge — while
     # still burning a runner and failing the step on the verdict comment's
     # 403. Skipping it up front keeps that check neutral. workflow_dispatch
@@ -97,10 +98,7 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       (
-        (
-          github.event_name == 'pull_request' ||
-          github.event_name == 'pull_request_review'
-        ) &&
+        github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.pull_request.base.ref == 'main'
       ) ||
@@ -487,10 +485,6 @@ jobs:
               if MERGED="$(GH_TOKEN="$PAT_TOKEN" gh api graphql --input "$CTX/merge-request.json" --jq '.data.mergePullRequest.pullRequest.merged' 2>/dev/null)" \
                 && [ "$MERGED" = 'true' ]; then
                 DECISION='merged (squash)'
-                {
-                  echo 'merged=true'
-                  echo "head_sha=$HEAD_SHA"
-                } >> "$GITHUB_OUTPUT"
                 # Mirrors the repo's delete_branch_on_merge: true setting.
                 # The refs endpoint requires the git/refs prefix; deletion
                 # is best-effort and a failure never un-merges the PR. Delete
@@ -560,56 +554,3 @@ jobs:
             echo "::warning::Could not post the pr-merge verdict comment on PR #$PR_NUMBER."
           fi
           echo "Decision: $DECISION${VERDICT:+ ($VERDICT)}"
-
-  # Repaint the PR's own pr-merge checks after a merge.
-  # The merge almost always lands from a check_run, check_suite or
-  # workflow_run re-entry, and those runs attach their check run to main,
-  # not to the PR head. Joining the per-PR concurrency group, that run
-  # cancelled the head's own pull_request / pull_request_review
-  # evaluations, and GitHub keeps the newest run per triggering event on
-  # the PR, so every auto-merged PR was left showing red "cancelled"
-  # pr-merge checks. Re-running the newest cancelled run per event lets it
-  # see the PR is no longer open and exit green without commenting.
-  # A separate job with no concurrency group, so the re-runs can never
-  # cancel the merge job, which has already finished when this starts.
-  # Best-effort throughout: nothing here can affect a merge that happened.
-  repaint:
-    name: pr-merge repaint
-    needs: merge
-    if: needs.merge.outputs.merged == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    # actions: write is the only scope the rerun endpoint needs.
-    permissions:
-      actions: write
-    steps:
-      - name: Re-run cancelled pr-merge checks on the merged head
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          HEAD_SHA: ${{ needs.merge.outputs.head_sha }}
-          WORKFLOW_NAME: ${{ github.workflow }}
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          # Newest run per event on the head; only those still cancelled.
-          # A listing failure leaves the checks as they are.
-          IDS=''
-          if RUNS_JSON="$(gh api "repos/$GH_REPO/actions/runs?head_sha=$HEAD_SHA&per_page=100")"; then
-            IDS="$(jq -r --arg wf "$WORKFLOW_NAME" --argjson self "$RUN_ID" '
-              [.workflow_runs[]
-                | select(.name == $wf and .id != $self
-                    and (.event == "pull_request" or .event == "pull_request_review"))]
-              | group_by(.event) | map(max_by(.created_at))[]
-              | select(.conclusion == "cancelled") | .id' <<<"$RUNS_JSON")"
-          else
-            echo "::warning::Could not list runs for $HEAD_SHA; leaving its checks as they are."
-          fi
-          while IFS= read -r id; do
-            [ -n "$id" ] || continue
-            if gh api -X POST "repos/$GH_REPO/actions/runs/$id/rerun" >/dev/null; then
-              echo "Re-ran cancelled pr-merge run $id."
-            else
-              echo "::warning::Could not re-run pr-merge run $id."
-            fi
-          done <<<"$IDS"
