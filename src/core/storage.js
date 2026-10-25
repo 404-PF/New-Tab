@@ -8,9 +8,17 @@
   // hydration get is still outstanding: its late callback must merge instead of
   // being discarded, so writes made while waiting keep winning (#948).
   let lateHydrationPending = false;
+  // True only while get() itself is outstanding. The safety timeout must not
+  // arm late-hydration handling once the callback has already returned (e.g.
+  // while the localStorage migration set() is still pending), or the flag
+  // would stay set forever with no callback left to clear it (#948).
+  let hydrationGetPending = false;
   // A clear() issued before the hydration get settles must also beat the late
   // result, otherwise the merge would resurrect cleared data (#948).
   let lateHydrationClearRequested = false;
+  // A late hydration result held back by a pending clear, kept so a failed
+  // clear can still reconcile it (#948).
+  let suppressedLateHydrationSnapshot = null;
   const hydrationMutations = new Map();
   let resolveStorageBridge;
   let storageBridgeResolved = false;
@@ -43,8 +51,10 @@
       'will still be written to chrome.storage when the API becomes available.'
     );
     // The get callback can still arrive later; keep it alive for an additive
-    // merge instead of letting hydrationFinished discard it (#948).
-    lateHydrationPending = true;
+    // merge instead of letting hydrationFinished discard it (#948). When the
+    // callback already returned (migration set() still pending) there is no
+    // late result left to merge, so the flag must stay clear.
+    lateHydrationPending = hydrationGetPending;
     resolveStorageReady();
   }, STORAGE_BRIDGE_TIMEOUT_MS);
 
@@ -199,19 +209,39 @@
   // window win over the (older) server values, while keys the page never
   // touched still come from chrome.storage instead of being dropped.
   function mergeLateHydrationSnapshot(storageSnapshot) {
+    if (lateHydrationClearRequested) {
+      // A clear owns the persisted data: hold the late result aside instead of
+      // merging or discarding it, so a clear that fails can still reconcile
+      // the values it suppressed (#948).
+      suppressedLateHydrationSnapshot = storageSnapshot;
+      return;
+    }
+
     const mergedSnapshot = snapshotToObject();
 
-    if (!lateHydrationClearRequested) {
-      Object.keys(storageSnapshot).forEach((key) => {
-        if (!hydrationMutations.has(key)) {
-          mergedSnapshot[key] = storageSnapshot[key];
-        }
-      });
-    }
+    Object.keys(storageSnapshot).forEach((key) => {
+      if (!hydrationMutations.has(key)) {
+        mergedSnapshot[key] = storageSnapshot[key];
+      }
+    });
 
     applySnapshot(mergedSnapshot);
     writeNativeSnapshot(snapshotToObject());
     hydrationMutations.clear();
+  }
+
+  // Called when a clear definitively failed: without its marker a late
+  // hydration result would skip every persisted value, so drop the marker and
+  // merge anything the pending clear held back (#948).
+  function reconcileFailedLateHydrationClear() {
+    lateHydrationClearRequested = false;
+    if (!suppressedLateHydrationSnapshot) {
+      return;
+    }
+
+    const storageSnapshot = suppressedLateHydrationSnapshot;
+    suppressedLateHydrationSnapshot = null;
+    mergeLateHydrationSnapshot(storageSnapshot);
   }
 
   function snapshotToObject() {
@@ -247,8 +277,10 @@
 
     const nativeSnapshot = readNativeSnapshot();
 
+    hydrationGetPending = true;
     try {
       storageArea.get(null, (items) => {
+        hydrationGetPending = false;
         if (hydrationFinished) {
           // Arrived after the safety timeout already resolved the bridge
           // (#948): merge the late result additively instead of discarding it,
@@ -298,6 +330,7 @@
         resolveStorageReady();
       });
     } catch (error) {
+      hydrationGetPending = false;
       console.warn('Failed to initialize chrome.storage bridge:', error);
       hydrationFinished = true;
       resolveStorageReady();
@@ -402,6 +435,11 @@
         });
 
         writeNativeSnapshot(snapshotToObjectWithSnapshot(restoredSnapshot));
+
+        // The clear never landed, so a late hydration result must still merge
+        // (#948): undo the marker that suppresses it and reconcile anything the
+        // pending clear held back.
+        reconcileFailedLateHydrationClear();
       }
 
       if (hydrationStarted && hydrationClearRequested) {
@@ -979,6 +1017,9 @@
         // A clear issued before the hydration get settles must beat its late
         // result too, or the #948 merge would resurrect the cleared data.
         lateHydrationClearRequested = true;
+        // Anything held back by an earlier clear no longer applies: this clear
+        // supersedes it, and only its own failure may reconcile a late result.
+        suppressedLateHydrationSnapshot = null;
         if (!hydrationFinished) {
           hydrationClearRequested = true;
           hydrationMutations.clear();

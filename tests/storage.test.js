@@ -996,7 +996,10 @@ describe('storage bridge', () => {
           local: {
             get(_keys, callback) {
               lateCallback = () => {
-                callback({ serverSetting: 'from-server' });
+                callback({
+                  serverSetting: 'from-server',
+                  theme: 'server-theme'
+                });
               };
             },
             set(items, callback) { callback?.(); return Promise.resolve(); },
@@ -1022,65 +1025,13 @@ describe('storage bridge', () => {
       // Now chrome.storage.local.get finally responds (late callback).
       // Before the fix this would call applySnapshot() and clobber the
       // script-persisted values. After the fix the callback merges the late
-      // result additively: keys written during the timeout window win (#948).
+      // result additively: keys written during the timeout window win (#948),
+      // while a key the page never touched still arrives from the server.
       lateCallback();
 
       expect(dom.window.localStorage.getItem('appOrder')).toBe('["app1","app2"]');
       expect(dom.window.localStorage.getItem('theme')).toBe('dark');
-    } finally {
-      dom.window.close();
-    }
-  }, 10_000);
-
-  it('merges a late chrome.storage.get result after the bridge timeout (#948)', async () => {
-    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
-      url: 'https://example.com',
-      runScripts: 'dangerously'
-    });
-
-    try {
-      let lateCallback;
-
-      dom.window.chrome = {
-        runtime: { lastError: null },
-        storage: {
-          onChanged: {
-            addListener() {},
-            removeListener() {},
-            hasListener() { return false; }
-          },
-          local: {
-            get(_keys, callback) {
-              lateCallback = () => {
-                callback({
-                  serverSetting: 'from-server',
-                  theme: 'server-theme'
-                });
-              };
-            },
-            set(items, callback) { callback?.(); return Promise.resolve(); },
-            remove(keys, callback) { callback?.(); return Promise.resolve(); },
-            clear(callback) { callback?.(); return Promise.resolve(); }
-          }
-        }
-      };
-
-      injectScript('src/core/storage.js', dom.getInternalVMContext());
-
-      // Wait for the 3 s bridge timeout to fire
-      await dom.window.__storageBridgeReady;
-
-      // Scripts write while the hydration get is still outstanding
-      dom.window.localStorage.setItem('theme', 'dark');
-      dom.window.localStorage.setItem('appOrder', '["app1","app2"]');
-
-      lateCallback();
-
-      // The late result is merged, not discarded: the untouched server key
-      // arrives while every timeout-window write keeps winning.
       expect(dom.window.localStorage.getItem('serverSetting')).toBe('from-server');
-      expect(dom.window.localStorage.getItem('theme')).toBe('dark');
-      expect(dom.window.localStorage.getItem('appOrder')).toBe('["app1","app2"]');
     } finally {
       dom.window.close();
     }
