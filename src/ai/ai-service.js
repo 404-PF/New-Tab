@@ -633,6 +633,9 @@ const AIService = (function() {
     const targetConversationId = AIStore.getCurrentConversation()?.id || null;
     const targetUserId = userMsg.id;
     const targetAssistantId = assistantMsg.id;
+    // Keep this conversation out of size trimming while the request is open:
+    // switching chats mid-request must not evict the messages written here.
+    AIStore.setInFlightConversation(targetConversationId);
 
     function getLiveStreamingTextEl() {
       const container = document.getElementById('ai-chat-container');
@@ -902,6 +905,7 @@ const AIService = (function() {
     // request started before this one settled (Stop re-enables the input
     // immediately), leave its state and abort controller intact.
     if (AIStore.state.abortController === null || AIStore.state.abortController === abortController) {
+      AIStore.setInFlightConversation(null);
       hideLoading();
     }
   }

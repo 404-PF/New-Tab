@@ -20,9 +20,9 @@ const AIStore = (function() {
   // bound either (#947).
   const MAX_MESSAGES_PER_CONVERSATION = 200;
 
-  // Serialized ai_conversations bound. chrome.storage.local is capped at
-  // 10 MB, so keep AI history well below it; exceeding the bound evicts the
-  // oldest messages instead of failing the save (#947).
+  // Serialized ai_conversations bound in UTF-8 bytes. chrome.storage.local is
+  // capped at 10 MB, so keep AI history well below it; exceeding the bound
+  // evicts the oldest messages instead of failing the save (#947).
   const MAX_SERIALIZED_BYTES = 4 * 1024 * 1024;
 
   // The active conversation keeps at least this many of its newest messages
@@ -37,6 +37,10 @@ const AIStore = (function() {
   const state = {
     currentConversationId: null,
     conversations: [],
+    // The conversation a request in flight writes into. switchConversation
+    // can move the active id while that request is still open, and eviction
+    // must not treat the request's own messages as disposable (#947).
+    inFlightConversationId: null,
     isLoading: false,
     isOfflineMode: false,
     abortController: null,
@@ -216,6 +220,16 @@ const AIStore = (function() {
     }
   }
 
+  // Storage limits are byte based, while String#length counts UTF-16 code
+  // units: a CJK-heavy history is up to three times its code-unit count in
+  // UTF-8, so the size cap, the retry floor and the eviction budget all
+  // measure bytes (#947).
+  const UTF8_ENCODER = new TextEncoder();
+
+  function byteLength(payload) {
+    return UTF8_ENCODER.encode(payload).length;
+  }
+
   function showSaveErrorToast(storageFull) {
     const message = getTranslation(storageFull ? 'aiStorageFullError' : 'aiSaveError');
     if (typeof window.showToast === 'function') {
@@ -386,17 +400,21 @@ const AIStore = (function() {
 
     // A rejected conversations write on a large payload gets exactly one
     // trimmed re-save (#947): halving the history before rolling back keeps
-    // the message the user just sent instead of discarding it.
+    // the message the user just sent instead of discarding it. The trim is
+    // applied to this transaction's captured payload, never to the live
+    // state, so a conversation switch during the pending write cannot pair
+    // newer conversations with this save's current id (#947).
     let recoveryAttempted = false;
     const retryConversationsWrite = () => {
-      if (serializedConversations.length < MIN_QUOTA_RETRY_BYTES) return null;
+      const payloadBytes = byteLength(serializedConversations);
+      if (payloadBytes < MIN_QUOTA_RETRY_BYTES) return null;
       const trimmed = trimConversationsToLimit(
-        state.conversations,
-        state.currentConversationId,
-        Math.floor(serializedConversations.length / 2)
+        nextConversations,
+        nextCurrentConversationId,
+        Math.floor(payloadBytes / 2)
       );
       if (!trimmed) return null;
-      const trimmedPayload = trySerialize(createSaveSnapshot().conversations);
+      const trimmedPayload = trySerialize(nextConversations);
       if (trimmedPayload === null) return null;
       recoveryAttempted = true;
       return writeOutcome(STORAGE_KEYS.conversations, trimmedPayload);
@@ -518,17 +536,18 @@ const AIStore = (function() {
 
   // Evict the oldest messages until at least `targetBytes` of serialized
   // payload is gone. Conversations are walked oldest-first (newest
-  // conversations sit at the front of the array) and the active conversation
-  // is only touched once every other conversation is empty, keeping its
-  // newest ACTIVE_MESSAGE_FLOOR messages (#947).
+  // conversations sit at the front of the array); the active conversation and
+  // the conversation an in-flight request writes into are never touched, so
+  // the message the user just sent survives trimming (#947).
   function evictOldestMessages(conversations, activeConversationId, targetBytes) {
     let freed = 0;
+    const inFlightConversationId = state.inFlightConversationId;
 
     const evictFrom = (conversation, keepRecent) => {
       const evictable = Math.max(0, conversation.messages.length - keepRecent);
       let index = 0;
       while (index < evictable && freed < targetBytes) {
-        freed += JSON.stringify(conversation.messages[index]).length + 1;
+        freed += byteLength(JSON.stringify(conversation.messages[index])) + 1;
         index += 1;
       }
       if (index > 0) {
@@ -536,10 +555,12 @@ const AIStore = (function() {
       }
     };
 
-    for (let index = conversations.length - 1; index >= 0 && freed < targetBytes; index -= 1) {
+    for (let index = conversations.length - 1; index >= 0; index -= 1) {
+      if (freed >= targetBytes) break;
       const conversation = conversations[index];
       if (!Array.isArray(conversation.messages) || conversation.messages.length === 0) continue;
       if (conversation.id === activeConversationId) continue;
+      if (conversation.id === inFlightConversationId) continue;
       evictFrom(conversation, 0);
     }
 
@@ -558,9 +579,11 @@ const AIStore = (function() {
   // the payload already fits or nothing may be evicted any further.
   function trimConversationsToLimit(conversations, activeConversationId, limitBytes) {
     const initial = trySerialize(conversations);
-    if (initial === null || initial.length <= limitBytes) return false;
+    if (initial === null) return false;
 
-    let size = initial.length;
+    let size = byteLength(initial);
+    if (size <= limitBytes) return false;
+
     let changed = false;
     while (size > limitBytes) {
       const freed = evictOldestMessages(conversations, activeConversationId, size - limitBytes);
@@ -568,7 +591,7 @@ const AIStore = (function() {
       changed = true;
       const next = trySerialize(conversations);
       if (next === null) break;
-      size = next.length;
+      size = byteLength(next);
     }
     return changed;
   }
@@ -608,7 +631,7 @@ const AIStore = (function() {
 
     if (
       serializedConversations !== null &&
-      serializedConversations.length > MAX_SERIALIZED_BYTES &&
+      byteLength(serializedConversations) > MAX_SERIALIZED_BYTES &&
       trimConversationsToLimit(state.conversations, state.currentConversationId, MAX_SERIALIZED_BYTES)
     ) {
       nextState = createSaveSnapshot();
@@ -812,6 +835,13 @@ const AIStore = (function() {
     state.isStreaming = value;
   }
 
+  // Records which conversation an in-flight request writes into, so size
+  // trimming never evicts the messages that request just produced after the
+  // user switched chats (#947).
+  function setInFlightConversation(conversationId) {
+    state.inFlightConversationId = conversationId || null;
+  }
+
   function setOfflineMode(value) {
     state.isOfflineMode = value;
   }
@@ -875,6 +905,7 @@ const AIStore = (function() {
     setKeyboardSelectedIndex,
     setLoading,
     setStreaming,
+    setInFlightConversation,
     setOfflineMode,
     setAbortController,
     setUserScrolledUp,

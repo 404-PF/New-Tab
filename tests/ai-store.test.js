@@ -13,6 +13,7 @@ beforeEach(() => {
   localStorage.clear();
   AIStore.state.conversations = [];
   AIStore.state.currentConversationId = null;
+  AIStore.state.inFlightConversationId = null;
   AIStore.state.isStreaming = false;
   AIStore.state.isLoading = false;
   AIStore.state.abortController = null;
@@ -784,7 +785,10 @@ describe('AIStore storage bounds (#947)', () => {
     expect(persisted[0].messages).toHaveLength(AIStore.MAX_MESSAGES_PER_CONVERSATION);
   });
 
-  it('trims the oldest messages while the store is persistently over quota', async () => {
+  // The 4.5 MB mock sits above MAX_SERIALIZED_BYTES, so the proactive cap
+  // always brings a write under it and the rejecting path never fires here;
+  // the rejected-write recovery is covered by the retry test below.
+  it('trims the oldest messages before a write can reach the size cap', async () => {
     const toast = captureToast();
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -855,11 +859,17 @@ describe('AIStore storage bounds (#947)', () => {
       await flushSaves();
 
       const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
-      expect(persisted).toEqual(AIStore.state.conversations);
       const persistedActive = persisted.find(conversation => conversation.id === 'conv-active');
+      const persistedOldest = persisted.find(conversation => conversation.id === 'conv-oldest');
       expect(persistedActive.messages[persistedActive.messages.length - 1].content).toBe('typed through the quota');
+      expect(persistedOldest.messages.length).toBeLessThan(15);
+      expect(JSON.stringify(persisted).length).toBeLessThanOrEqual(QUOTA);
+      expect(localStorage.getItem(AIStore.STORAGE_KEYS.currentId)).toBe('conv-active');
+      // The re-save trims this transaction's captured snapshot, so storage
+      // sheds the oldest messages without pulling them from the live view or
+      // pairing them with another conversation's current id.
+      expect(oldest.messages).toHaveLength(15);
       expect(active.messages).toHaveLength(5);
-      expect(oldest.messages.length).toBeLessThan(15);
       expect(toast.showToast).not.toHaveBeenCalled();
       expect(errorSpy).not.toHaveBeenCalled();
     } finally {
@@ -867,6 +877,35 @@ describe('AIStore storage bounds (#947)', () => {
       toast.restore();
       warnSpy.mockRestore();
       errorSpy.mockRestore();
+    }
+  });
+
+  it('never evicts the conversation an in-flight request writes into', async () => {
+    const active = { id: 'conv-active', title: 'Active', messages: makeMessages(4, 'n'), createdAt: 3, updatedAt: 3 };
+    const middle = { id: 'conv-middle', title: 'Middle', messages: makeMessages(45, 'm'), createdAt: 2, updatedAt: 2 };
+    const oldest = { id: 'conv-oldest', title: 'Oldest', messages: makeMessages(75, 'o'), createdAt: 1, updatedAt: 1 };
+    AIStore.state.conversations = [active, middle, oldest];
+    AIStore.state.currentConversationId = active.id;
+    // The user switched to the newest chat while a request is still writing
+    // into the oldest one: eviction may drain the middle conversation but
+    // must not treat the request's own messages as disposable.
+    AIStore.setInFlightConversation(oldest.id);
+
+    expect(JSON.stringify(AIStore.state.conversations).length).toBeGreaterThan(AIStore.MAX_SERIALIZED_BYTES);
+
+    try {
+      expect(await AIStore.saveConversations()).toBe(true);
+
+      expect(oldest.messages).toHaveLength(75);
+      expect(middle.messages.length).toBeLessThan(45);
+      expect(active.messages).toHaveLength(4);
+
+      const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
+      const persistedOldest = persisted.find(conversation => conversation.id === 'conv-oldest');
+      expect(persistedOldest.messages).toHaveLength(75);
+      expect(JSON.stringify(persisted).length).toBeLessThanOrEqual(AIStore.MAX_SERIALIZED_BYTES);
+    } finally {
+      AIStore.setInFlightConversation(null);
     }
   });
 
