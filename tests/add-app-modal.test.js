@@ -49,7 +49,7 @@ beforeEach(() => {
   }
   window.defaultAppsList = originalDefaultAppsList.map((app) => ({ ...app }));
   window.iconCache = null;
-  window.renderCustomApps = vi.fn();
+  window.addAppIcon = vi.fn();
 });
 
 describe('Add app modal quick add', () => {
@@ -77,7 +77,7 @@ describe('Add app modal quick add', () => {
       name: 'Google',
       url: 'https://www.google.com'
     });
-    expect(window.renderCustomApps).toHaveBeenCalled();
+    expect(window.addAppIcon).toHaveBeenCalled();
   });
 
   it('hides the section when no quick-add apps exist', () => {
@@ -187,7 +187,7 @@ describe('Add app modal quick add', () => {
     await flushMicrotasks();
 
     expect(window.AppGridState.getCustomApps()).toHaveLength(1);
-    expect(window.renderCustomApps).toHaveBeenCalledTimes(1);
+    expect(window.addAppIcon).toHaveBeenCalledTimes(1);
   });
 
   it('shows a localized save error and keeps the form open when saving fails', async () => {
@@ -218,7 +218,7 @@ describe('Add app modal quick add', () => {
       );
       expect(addAppModal.classList.contains('modal-open')).toBe(true);
       expect(addAppUrlInput.value).toBe('example.com');
-      expect(window.renderCustomApps).not.toHaveBeenCalled();
+      expect(window.addAppIcon).not.toHaveBeenCalled();
     } finally {
       window.AppGridState.addApp = originalAddApp;
       window.showToast = originalShowToast;
@@ -280,7 +280,7 @@ describe('Add app modal undetectable URLs', () => {
       url: 'https://mywiki',
       name: 'Mywiki'
     });
-    expect(window.renderCustomApps).toHaveBeenCalled();
+    expect(window.addAppIcon).toHaveBeenCalled();
   });
 
   it('creates the app when clicking confirm with an undetectable URL', async () => {
@@ -330,7 +330,7 @@ describe('Add app modal undetectable URLs', () => {
       await flushMicrotasks();
 
       expect(window.AppGridState.getCustomApps()).toHaveLength(1);
-      expect(window.renderCustomApps).not.toHaveBeenCalled();
+      expect(window.addAppIcon).not.toHaveBeenCalled();
     } finally {
       window.resetAddAppModalState();
       vi.useRealTimers();
@@ -486,7 +486,7 @@ describe('Add app preview debounce', () => {
     expect(modal.classList.contains('modal-open')).toBe(true);
     expect(confirm.disabled).toBe(true);
     expect(window.AppGridState.getCustomApps()).toEqual([existing]);
-    expect(window.renderCustomApps).not.toHaveBeenCalled();
+    expect(window.addAppIcon).not.toHaveBeenCalled();
     expect(message.classList.contains('duplicate')).toBe(true);
 
     vi.advanceTimersByTime(150);
@@ -514,7 +514,7 @@ describe('Add app preview debounce', () => {
 
     expect(window.AppGridState.getCustomApps()).toHaveLength(1);
     expect(window.AppGridState.getCustomApps()[0]).toMatchObject({ url: 'https://example.com' });
-    expect(window.renderCustomApps).toHaveBeenCalled();
+    expect(window.addAppIcon).toHaveBeenCalled();
     expect(modal.classList.contains('modal-open')).toBe(false);
     expect(message.classList.contains('duplicate')).toBe(false);
   });
@@ -526,7 +526,7 @@ describe('Add app preview debounce', () => {
     await flushMicrotasks();
 
     expect(window.AppGridState.getCustomApps()).toEqual([existing]);
-    expect(window.renderCustomApps).not.toHaveBeenCalled();
+    expect(window.addAppIcon).not.toHaveBeenCalled();
     expect(modal.classList.contains('modal-open')).toBe(true);
     expect(confirm.disabled).toBe(true);
     expect(message.classList.contains('duplicate')).toBe(true);

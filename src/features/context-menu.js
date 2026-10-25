@@ -329,7 +329,7 @@ document.getElementById('remove-from-folder').addEventListener('click', function
   if (folderId) {
     window.AppGridState.removeAppFromFolder(folderId, contextTargetId);
     if (window.AppFolders) window.AppFolders.renderFolderAppsInPopup();
-    if (typeof window.renderAllApps === 'function') window.renderAllApps();
+    if (typeof window.addAppIcon === 'function') window.addAppIcon(contextTargetId);
   }
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');
@@ -383,7 +383,7 @@ document.getElementById('sort-alphabetically').addEventListener('click', functio
   if (contextMenuTrigger !== 'grid') return;
   const sortable = window.AppGridState && typeof window.AppGridState.sortAlphabetically === 'function';
   if (sortable && window.AppGridState.sortAlphabetically()) {
-    if (typeof window.renderAllApps === 'function') window.renderAllApps();
+    if (typeof window.syncAppGridOrder === 'function') window.syncAppGridOrder();
   }
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');
@@ -394,7 +394,8 @@ document.getElementById('hide-default-app').addEventListener('click', function (
   if (contextMenuTrigger !== 'default-app') return;
   if (!contextTargetId) return;
   window.AppGridState.hideDefaultApp(contextTargetId);
-  if (typeof window.renderAllApps === 'function') window.renderAllApps();
+  if (typeof window.removeAppIcon === 'function') window.removeAppIcon(contextTargetId);
+  if (typeof window.renderDefaultAppVisibilityList === 'function') window.renderDefaultAppVisibilityList();
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');
 });
@@ -427,7 +428,7 @@ function initRenameModalHandlers() {
     const newName = renameInput.value.trim();
     if (newName && window.renameAppId) {
       window.AppGridState.renameApp(window.renameAppId, newName);
-      if (window.renderCustomApps) window.renderCustomApps();
+      if (typeof window.renameAppIcon === 'function') window.renameAppIcon(window.renameAppId, newName);
     }
     renameModal.classList.remove('modal-open');
     window.renameAppId = null;
@@ -533,7 +534,7 @@ function initThumbnailModalHandlers() {
     if (newIcon && window.thumbnailAppId) {
       try {
         window.AppGridState.updateThumbnail(window.thumbnailAppId, newIcon);
-        if (window.renderCustomApps) window.renderCustomApps();
+        if (typeof window.updateAppIcon === 'function') window.updateAppIcon(window.thumbnailAppId, newIcon);
       } catch (e) {
         console.error('Failed to update custom app thumbnail:', e);
       }
@@ -620,7 +621,7 @@ function initDeleteModalHandlers() {
   deleteConfirm.addEventListener('click', function() {
     if (window.deleteAppId) {
       window.AppGridState.deleteApp(window.deleteAppId);
-      if (window.renderCustomApps) window.renderCustomApps();
+      if (typeof window.removeAppIcon === 'function') window.removeAppIcon(window.deleteAppId);
     }
     deleteModal.classList.remove('modal-open');
     window.deleteAppId = null;

@@ -285,8 +285,8 @@ async function saveCustomApp(appData) {
     showAddAppSaveError();
     return;
   }
-  if (window.renderCustomApps) {
-    window.renderCustomApps();
+  if (typeof window.addAppIcon === 'function') {
+    window.addAppIcon(appToSave);
   }
   closeAddAppModal();
 }

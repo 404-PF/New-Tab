@@ -146,4 +146,181 @@ describe('app manager', () => {
       container.remove();
     }
   });
+
+  it('patches only the toggled tile and keeps the visibility list node (#934)', () => {
+    const container = document.createElement('div');
+    container.id = 'default-app-visibility-list';
+    document.body.appendChild(container);
+
+    try {
+      window.renderAllApps();
+
+      const checkbox = container.querySelector('[data-app-id="weather-app"]');
+      const label = checkbox.closest('label');
+      const grid = document.getElementById('app-grid');
+      const removeSpy = vi.spyOn(grid, 'removeChild');
+
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(document.getElementById('weather-app')).toBeNull();
+      expect(removeSpy.mock.calls.every(args => args[0].id === 'weather-app')).toBe(true);
+      expect(container.querySelector('[data-app-id="weather-app"]')).toBe(checkbox);
+      expect(checkbox.closest('label')).toBe(label);
+      removeSpy.mockRestore();
+
+      const insertSpy = vi.spyOn(grid, 'insertBefore');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(document.getElementById('weather-app')).not.toBeNull();
+      expect(insertSpy).toHaveBeenCalledOnce();
+      expect(container.querySelector('[data-app-id="weather-app"]')).toBe(checkbox);
+      insertSpy.mockRestore();
+    } finally {
+      container.remove();
+    }
+  });
+});
+
+describe('app grid item-scoped mutators (#934)', () => {
+  const buildCustomApps = count => Array.from({ length: count }, (_, index) => ({
+    id: 'custom-' + index,
+    name: 'App ' + index,
+    url: 'https://app' + index + '.test',
+    icon: 'icon-' + index + '.png'
+  }));
+
+  it('adds one icon to a 50-app grid without touching the existing nodes', () => {
+    localStorage.setItem('customApps', JSON.stringify(buildCustomApps(50)));
+    window.renderAllApps();
+
+    const grid = document.getElementById('app-grid');
+    const before = Array.from(grid.children);
+    expect(before).toHaveLength(56);
+
+    const removeSpy = vi.spyOn(grid, 'removeChild');
+    const insertSpy = vi.spyOn(grid, 'insertBefore');
+
+    localStorage.setItem('customApps', JSON.stringify([
+      ...buildCustomApps(50),
+      { id: 'custom-new', name: 'New', url: 'https://new.test', icon: 'new.png' }
+    ]));
+    const order = JSON.parse(localStorage.getItem('appOrder'));
+    order.push('custom-new');
+    localStorage.setItem('appOrder', JSON.stringify(order));
+
+    const added = window.addAppIcon('custom-new');
+
+    expect(added).not.toBeNull();
+    expect(removeSpy).not.toHaveBeenCalled();
+    expect(insertSpy).toHaveBeenCalledExactlyOnceWith(added, document.getElementById('new-app'));
+
+    const after = Array.from(grid.children);
+    expect(after).toHaveLength(before.length + 1);
+    const survivors = after.filter(element => element.id !== 'custom-new');
+    expect(survivors).toHaveLength(before.length);
+    survivors.forEach((element, index) => expect(element).toBe(before[index]));
+
+    removeSpy.mockRestore();
+    insertSpy.mockRestore();
+  });
+
+  it('renames only the targeted icon app-name', () => {
+    localStorage.setItem('customApps', JSON.stringify(buildCustomApps(2)));
+    window.renderAllApps();
+
+    const grid = document.getElementById('app-grid');
+    const first = document.getElementById('custom-0');
+    const second = document.getElementById('custom-1');
+    const secondName = second.querySelector('.app-name');
+    const secondHtml = second.innerHTML;
+    const removeSpy = vi.spyOn(grid, 'removeChild');
+    const insertSpy = vi.spyOn(grid, 'insertBefore');
+
+    expect(window.renameAppIcon('custom-0', 'Renamed')).toBe(true);
+
+    expect(first.querySelector('.app-name').textContent).toBe('Renamed');
+    expect(first.title).toBe('Renamed');
+    expect(document.getElementById('custom-1')).toBe(second);
+    expect(second.querySelector('.app-name')).toBe(secondName);
+    expect(secondName.textContent).toBe('App 1');
+    expect(second.innerHTML).toBe(secondHtml);
+    expect(removeSpy).not.toHaveBeenCalled();
+    expect(insertSpy).not.toHaveBeenCalled();
+
+    removeSpy.mockRestore();
+    insertSpy.mockRestore();
+  });
+
+  it('removes exactly one icon', () => {
+    localStorage.setItem('customApps', JSON.stringify(buildCustomApps(3)));
+    window.renderAllApps();
+
+    const grid = document.getElementById('app-grid');
+    const removed = document.getElementById('custom-1');
+    const removeSpy = vi.spyOn(grid, 'removeChild');
+
+    expect(window.removeAppIcon('custom-1')).toBe(true);
+
+    expect(removeSpy).toHaveBeenCalledExactlyOnceWith(removed);
+    expect(document.getElementById('custom-1')).toBeNull();
+    expect(document.getElementById('custom-0')).not.toBeNull();
+    expect(document.getElementById('custom-2')).not.toBeNull();
+
+    removeSpy.mockRestore();
+  });
+
+  it('swaps one thumbnail in place', () => {
+    localStorage.setItem('customApps', JSON.stringify(buildCustomApps(2)));
+    window.renderAllApps();
+
+    const first = document.getElementById('custom-0');
+    const second = document.getElementById('custom-1');
+    const secondImage = second.querySelector('img');
+
+    expect(window.updateAppIcon('custom-0', 'https://cdn.test/new.png')).toBe(true);
+
+    expect(first.querySelector('img').getAttribute('src')).toBe('https://cdn.test/new.png');
+    expect(document.getElementById('custom-1')).toBe(second);
+    expect(second.querySelector('img')).toBe(secondImage);
+    expect(secondImage.getAttribute('src')).toBe('icon-1.png');
+  });
+
+  it('re-positions existing icons to match the persisted order', () => {
+    localStorage.setItem('customApps', JSON.stringify(buildCustomApps(3)));
+    window.renderAllApps();
+
+    const grid = document.getElementById('app-grid');
+    const first = document.getElementById('custom-0');
+    const second = document.getElementById('custom-1');
+    const third = document.getElementById('custom-2');
+
+    const order = JSON.parse(localStorage.getItem('appOrder'));
+    const withoutFirst = order.filter(id => id !== 'custom-0');
+    withoutFirst.splice(2, 0, 'custom-0');
+    localStorage.setItem('appOrder', JSON.stringify(withoutFirst));
+
+    expect(window.syncAppGridOrder()).toBe(true);
+
+    const children = Array.from(grid.children);
+    expect(children.map(element => element.id)).toEqual([...withoutFirst, 'new-app']);
+    expect(children).toContain(first);
+    expect(children).toContain(second);
+    expect(children).toContain(third);
+  });
+
+  it('rebuilds through a single DocumentFragment insertion', () => {
+    localStorage.setItem('customApps', JSON.stringify(buildCustomApps(3)));
+    const grid = document.getElementById('app-grid');
+    const insertSpy = vi.spyOn(grid, 'insertBefore');
+
+    window.renderAllApps();
+
+    const fragmentInserts = insertSpy.mock.calls.filter(args => args[0] instanceof DocumentFragment);
+    expect(fragmentInserts).toHaveLength(1);
+    expect(fragmentInserts[0][1]).toBe(document.getElementById('new-app'));
+
+    insertSpy.mockRestore();
+  });
 });

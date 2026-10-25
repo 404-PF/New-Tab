@@ -219,9 +219,11 @@
     const msg = window.i18n ? window.i18n.t('deleteFolderConfirm', { name: folder.name }) : 'Delete folder "' + folder.name + '"? Apps inside will be moved back to the grid.';
     if (confirm(msg)) {
       if (currentFolderId === folderId) closeFolderPopup();
+      const releasedAppIds = Array.isArray(folder.apps) ? folder.apps.slice() : [];
       window.AppGridState.deleteFolder(folderId);
-      if (typeof window.renderAllApps === 'function') {
-        window.renderAllApps();
+      if (typeof window.removeAppIcon === 'function') {
+        window.removeAppIcon(folderId);
+        releasedAppIds.forEach(appId => window.addAppIcon(appId));
       }
     }
   }
