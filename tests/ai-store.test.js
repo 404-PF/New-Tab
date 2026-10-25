@@ -1118,6 +1118,61 @@ describe('AIStore cross-tab lost updates (#948)', () => {
       setItemAsync.mockRestore();
     }
   });
+
+  it('defers an external refresh while a save is queued and applies it once the save settles', async () => {
+    seedStorage([createSharedConversation()]);
+    AIStore.loadConversations();
+
+    const conversationsRef = AIStore.state.conversations;
+    const originalSetItemAsync = localStorage.setItemAsync;
+    let releaseConversationsWrite;
+
+    // Hold the conversations write open so the save stays queued on the
+    // storage pipeline while the external update arrives.
+    localStorage.setItemAsync = vi.fn((key, value) => {
+      if (!releaseConversationsWrite) {
+        return new Promise(resolve => {
+          releaseConversationsWrite = () => {
+            localStorage.setItem(key, value);
+            resolve(true);
+          };
+        });
+      }
+      localStorage.setItem(key, value);
+      return Promise.resolve(true);
+    });
+
+    try {
+      const savePromise = AIStore.saveConversations();
+      expect(releaseConversationsWrite).toBeDefined();
+
+      const externalValue = JSON.stringify([
+        {
+          ...createSharedConversation(),
+          messages: [
+            ...createSharedConversation().messages,
+            { id: 'm-other', role: 'user', content: 'From tab A', timestamp: 3 }
+          ],
+          updatedAt: 3
+        }
+      ]);
+      chrome.storage.onChanged._emit({
+        [AIStore.STORAGE_KEYS.conversations]: { newValue: externalValue }
+      }, 'local');
+
+      // The queued save owns the pipeline, so the refresh waits instead of
+      // replacing the conversation objects under the transaction.
+      expect(AIStore.state.conversations).toBe(conversationsRef);
+
+      releaseConversationsWrite();
+      await savePromise;
+
+      // Settling the save flushes the deferred refresh from the bridge mirror.
+      expect(AIStore.state.conversations).not.toBe(conversationsRef);
+    } finally {
+      localStorage.setItemAsync = originalSetItemAsync;
+    }
+  });
 });
 
 describe('AIStore serialization failures', () => {
@@ -1321,6 +1376,7 @@ describe('AIStore storage bounds (#947)', () => {
     const oldest = { id: 'conv-oldest', title: 'Oldest', messages: makeMessages(15, 'o'), createdAt: 1, updatedAt: 1 };
     AIStore.state.conversations = [active, oldest];
     AIStore.state.currentConversationId = active.id;
+    const conversationsRef = AIStore.state.conversations;
 
     const untrimmedSize = utf8Length(JSON.stringify(AIStore.state.conversations));
     expect(untrimmedSize).toBeGreaterThan(QUOTA);
@@ -1344,6 +1400,12 @@ describe('AIStore storage bounds (#947)', () => {
       // pairing them with another conversation's current id.
       expect(oldest.messages).toHaveLength(15);
       expect(active.messages).toHaveLength(5);
+
+      // The trimmed re-save payload was recorded as an own write, so the
+      // storage bridge's echo of it must not rebase runtime state onto it
+      // (#948).
+      expect(AIStore.state.conversations).toBe(conversationsRef);
+
       expect(toast.showToast).not.toHaveBeenCalled();
       expect(errorSpy).not.toHaveBeenCalled();
     } finally {

@@ -445,10 +445,13 @@ const AIStore = (function() {
 
   // Applies an external update that arrived while a request owned the
   // streaming flags, once the request has settled and the storage bridge
-  // mirrors the newest persisted array (#948).
+  // mirrors the newest persisted array (#948). A queued save also defers the
+  // refresh: applying it mid-save would replace state under the transaction's
+  // captured snapshot, and the save's own echo would then be ignored, dropping
+  // the local message from runtime state (#948).
   function flushPendingExternalRefresh() {
     if (!pendingExternalRefresh) return;
-    if (state.isStreaming || state.isLoading || state.abortController !== null) return;
+    if (state.isStreaming || state.isLoading || state.abortController !== null || saveQueue !== null) return;
     pendingExternalRefresh = false;
     applyPersistedConversations(localStorage.getItem(STORAGE_KEYS.conversations));
   }
@@ -915,6 +918,9 @@ const AIStore = (function() {
       const trimmedPayload = trySerialize(nextConversations);
       if (trimmedPayload === null) return null;
       recoveryAttempted = true;
+      // The trimmed payload differs from the one recorded before the first
+      // write, so its echo must be recognized as our own too (#948).
+      rememberWrittenValue(trimmedPayload);
       return writeOutcome(STORAGE_KEYS.conversations, trimmedPayload);
     };
 
@@ -1020,10 +1026,18 @@ const AIStore = (function() {
     saveQueue = queuedSave;
     queuedSave.then(
       () => {
-        if (saveQueue === queuedSave) saveQueue = null;
+        if (saveQueue === queuedSave) {
+          saveQueue = null;
+          // The save no longer owns the pipeline: a refresh deferred while it
+          // was queued can be applied now (#948).
+          flushPendingExternalRefresh();
+        }
       },
       () => {
-        if (saveQueue === queuedSave) saveQueue = null;
+        if (saveQueue === queuedSave) {
+          saveQueue = null;
+          flushPendingExternalRefresh();
+        }
       }
     );
     return queuedSave;
@@ -1396,8 +1410,10 @@ const AIStore = (function() {
       if (isOwnWriteEcho(change.newValue)) return;
       // A live request owns the streaming flags; replacing the conversation
       // objects under it would orphan the message it writes to, so defer the
-      // refresh until the request settles (#948, #865).
-      if (state.isStreaming || state.isLoading || state.abortController !== null) {
+      // refresh until the request settles (#948, #865). A save queued on the
+      // storage pipeline defers it too, so the refresh cannot land between a
+      // save's snapshot and its write (#948).
+      if (state.isStreaming || state.isLoading || state.abortController !== null || saveQueue !== null) {
         pendingExternalRefresh = true;
         return;
       }

@@ -213,7 +213,14 @@
       // A clear owns the persisted data: hold the late result aside instead of
       // merging or discarding it, so a clear that fails can still reconcile
       // the values it suppressed (#948).
-      suppressedLateHydrationSnapshot = storageSnapshot;
+      if (pendingClearOperations.size > 0) {
+        suppressedLateHydrationSnapshot = storageSnapshot;
+        return;
+      }
+      // The clear has already settled successfully and owns the data, so the
+      // late result must stay dropped — and the mutations it would have
+      // reconciled must not linger as stale echo matches (#948).
+      hydrationMutations.clear();
       return;
     }
 
@@ -289,6 +296,13 @@
           lateHydrationPending = false;
           if (!failed) {
             mergeLateHydrationSnapshot(items || {});
+          } else {
+            // No merge will consume the mutations tracked during the timeout
+            // window, and tracking has just stopped: leaving them would make
+            // the echo matcher swallow a later external write that happens to
+            // equal a stale entry (#948).
+            console.warn('Failed to read chrome.storage during late hydration:', failed.message);
+            hydrationMutations.clear();
           }
           return;
         }
@@ -445,6 +459,13 @@
       if (hydrationStarted && hydrationClearRequested) {
         hydrationClearRequested = false;
       }
+    } else if (hydrationFinished) {
+      // The clear owns the persisted data, so the mutations it supersedes can
+      // never apply again: without this cleanup they would linger as stale
+      // echo matches and swallow an equal external write (#948). While
+      // hydration is still running the entries may hold post-clear writes the
+      // upcoming merge must keep, so they stay.
+      hydrationMutations.clear();
     }
 
     pendingClearOperations.clear();
