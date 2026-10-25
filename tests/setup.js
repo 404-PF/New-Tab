@@ -376,6 +376,11 @@ globalThis.window.i18n = {
       clearCompletedText: 'Clear Completed',
       emptyStateTitle: 'No todos yet. Add one above!',
       emptyStateDesc: 'Try adding due dates for better organization.',
+      bulkActionsLabel: 'Bulk todo actions',
+      bulkComplete: 'Mark complete',
+      bulkDelete: 'Delete',
+      selectedCount: '{count} selected',
+      todoSelectAria: 'Select todo: {text}',
       aiAssistant: 'AI Assistant',
       aiPlaceholder: 'Ask me anything...',
       aiSaveError: 'Failed to save conversations. Your last action was not saved.',
@@ -833,6 +838,17 @@ document.body.appendChild(createStubElement('select', 'filter-status'));
 const todoFilters = document.createElement('div');
 todoFilters.className = 'todo-filters';
 document.body.appendChild(todoFilters);
+
+// Bulk selection toolbar stubs mirroring the markup in New-Tab.html (issue #942)
+const bulkActions = document.createElement('div');
+bulkActions.id = 'bulk-actions';
+bulkActions.className = 'bulk-actions';
+bulkActions.innerHTML = `
+  <span id="selected-count" aria-live="polite"></span>
+  <button type="button" class="bulk-btn" id="bulk-complete">Mark complete</button>
+  <button type="button" class="bulk-btn danger" id="bulk-delete">Delete</button>
+`;
+document.body.appendChild(bulkActions);
 
 // Todo stats elements
 document.body.appendChild(createStubElement('button', 'todo-stats-toggle'));

@@ -326,6 +326,12 @@ window.i18n.__registerLocale('fr', {
   clearCompletedConfirmButton: 'Effacer terminées',
   emptyStateTitle: 'Pas encore de tâches. Ajoutez-en une ci-dessus !',
   emptyStateDesc: 'Essayez d\'ajouter des dates d\'échéance pour mieux vous organiser.',
+  // Todo bulk selection toolbar (issue #942)
+  bulkActionsLabel: 'Actions groupées de tâches',
+  bulkComplete: 'Marquer comme terminées',
+  bulkDelete: 'Supprimer',
+  selectedCount: '{count} sélectionné(s)',
+  todoSelectAria: 'Sélectionner la tâche : {text}',
   exportTodos: 'Exporter',
   importTodos: 'Importer',
   importConfirmTitle: 'Importer les tâches',

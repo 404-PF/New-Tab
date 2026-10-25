@@ -181,6 +181,20 @@ describe('AI translations', () => {
   });
 });
 
+const TODO_BULK_TRANSLATION_KEYS = [
+  'bulkActionsLabel',
+  'bulkComplete',
+  'bulkDelete',
+  'selectedCount',
+  'todoSelectAria'
+];
+
+describe('Todo bulk selection translations (issue #942)', () => {
+  it('defines every bulk-toolbar string in each supported language', () => {
+    expectTranslationKeys(TODO_BULK_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
+
 describe('Games translations', () => {
   it('defines every games string in each supported language', () => {
     expectTranslationKeys(GAMES_TRANSLATION_KEYS);

@@ -326,6 +326,12 @@ window.i18n.__registerLocale('es', {
   clearCompletedConfirmButton: 'Limpiar completadas',
   emptyStateTitle: '¡No hay tareas aún. Agrega una arriba!',
   emptyStateDesc: 'Prueba agregar fechas de vencimiento para organizarte mejor.',
+  // Todo bulk selection toolbar (issue #942)
+  bulkActionsLabel: 'Acciones masivas de tareas',
+  bulkComplete: 'Marcar como completadas',
+  bulkDelete: 'Eliminar',
+  selectedCount: '{count} seleccionadas',
+  todoSelectAria: 'Seleccionar tarea: {text}',
   exportTodos: 'Exportar',
   importTodos: 'Importar',
   importConfirmTitle: 'Importar tareas',

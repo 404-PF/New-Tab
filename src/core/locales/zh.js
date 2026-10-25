@@ -377,6 +377,12 @@ window.i18n.__registerLocale('zh', {
   clearCompletedConfirmButton: '清除已完成',
   emptyStateTitle: '还没有待办事项。在上方添加一个！',
   emptyStateDesc: '尝试添加到期日期以更好地组织。',
+  // Todo bulk selection toolbar (issue #942)
+  bulkActionsLabel: '批量待办操作',
+  bulkComplete: '标记完成',
+  bulkDelete: '删除',
+  selectedCount: '已选择 {count} 项',
+  todoSelectAria: '选择待办：{text}',
   exportTodos: '导出',
   importTodos: '导入',
   importConfirmTitle: '导入待办事项',

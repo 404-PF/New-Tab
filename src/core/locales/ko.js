@@ -339,6 +339,12 @@ window.i18n.__registerLocale('ko', {
   clearCompletedConfirmButton: '완료 항목 지우기',
   emptyStateTitle: '아직 할 일이 없습니다. 위에서 추가하세요!',
   emptyStateDesc: '마감일을 설정하여 더 잘 정리해보세요.',
+  // Todo bulk selection toolbar (issue #942)
+  bulkActionsLabel: '할 일 일괄 작업',
+  bulkComplete: '완료로 표시',
+  bulkDelete: '삭제',
+  selectedCount: '{count}개 선택됨',
+  todoSelectAria: '할 일 선택: {text}',
   exportTodos: '내보내기',
   importTodos: '가져오기',
   importConfirmTitle: '할 일 가져오기',
