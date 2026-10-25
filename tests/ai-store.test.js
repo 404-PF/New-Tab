@@ -1127,6 +1127,17 @@ describe('AIStore cross-tab lost updates (#948)', () => {
     const originalSetItemAsync = localStorage.setItemAsync;
     let releaseConversationsWrite;
 
+    const externalValue = JSON.stringify([
+      {
+        ...createSharedConversation(),
+        messages: [
+          ...createSharedConversation().messages,
+          { id: 'm-other', role: 'user', content: 'From tab A', timestamp: 3 }
+        ],
+        updatedAt: 3
+      }
+    ]);
+
     // Hold the conversations write open so the save stays queued on the
     // storage pipeline while the external update arrives.
     localStorage.setItemAsync = vi.fn((key, value) => {
@@ -1134,6 +1145,10 @@ describe('AIStore cross-tab lost updates (#948)', () => {
         return new Promise(resolve => {
           releaseConversationsWrite = () => {
             localStorage.setItem(key, value);
+            // The external update reached the bridge mirror while the write
+            // was held; completing the save must not clobber it, because the
+            // deferred refresh flushes from that mirror.
+            localStorage.setItem(key, externalValue);
             resolve(true);
           };
         });
@@ -1146,16 +1161,6 @@ describe('AIStore cross-tab lost updates (#948)', () => {
       const savePromise = AIStore.saveConversations();
       expect(releaseConversationsWrite).toBeDefined();
 
-      const externalValue = JSON.stringify([
-        {
-          ...createSharedConversation(),
-          messages: [
-            ...createSharedConversation().messages,
-            { id: 'm-other', role: 'user', content: 'From tab A', timestamp: 3 }
-          ],
-          updatedAt: 3
-        }
-      ]);
       chrome.storage.onChanged._emit({
         [AIStore.STORAGE_KEYS.conversations]: { newValue: externalValue }
       }, 'local');
@@ -1169,6 +1174,8 @@ describe('AIStore cross-tab lost updates (#948)', () => {
 
       // Settling the save flushes the deferred refresh from the bridge mirror.
       expect(AIStore.state.conversations).not.toBe(conversationsRef);
+      expect(AIStore.state.conversations[0].messages.map(message => message.id))
+        .toContain('m-other');
     } finally {
       localStorage.setItemAsync = originalSetItemAsync;
     }
