@@ -11,8 +11,13 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     merge = readFileSync(MERGE_PATH, 'utf-8');
   });
 
-  it('triggers on PR lifecycle, review, check, CI completion, and dispatch events', () => {
-    expect(merge).toMatch(/^on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review, labeled, unlabeled\]\n {2}pull_request_review:\n {4}types: \[submitted, edited, dismissed\]/m);
+  it('triggers on label/ready PR events, check, CI completion, and dispatch events', () => {
+    expect(merge).toMatch(/^on:\n {2}pull_request:\n(?: {4}#.*\n)* {4}types: \[ready_for_review, labeled, unlabeled\]\n/m);
+    // Pushes evaluate via CI completion (workflow_run), and reviews are not
+    // a trigger: a PR-head run there was cancelled by the merging re-entry
+    // on main, leaving merged PRs with a red "cancelled" pr-merge check.
+    expect(merge).not.toMatch(/^ {2}pull_request_review:/m);
+    expect(merge).not.toMatch(/types: \[[^\]]*\b(opened|synchronize|reopened)\b/);
     expect(merge).toMatch(/^ {2}check_run:\n {4}types: \[completed\]\n {2}check_suite:\n {4}types: \[completed\]/m);
     expect(merge).toMatch(/^ {4}types: \[completed\]\n {2}workflow_dispatch:\n {4}inputs:/m);
     expect(merge).toMatch(/^ {2}workflow_run:\n {4}workflows: \[CI\]\n {4}types: \[completed\]/m);
@@ -35,7 +40,7 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(jobIf).not.toBeNull();
     expect(jobIf[1]).toMatch(/github\.event_name == 'workflow_dispatch'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'pull_request'/);
-    expect(jobIf[1]).toMatch(/github\.event_name == 'pull_request_review'/);
+    expect(jobIf[1]).not.toMatch(/github\.event_name == 'pull_request_review'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'check_run'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'check_suite'/);
     expect(jobIf[1]).toMatch(/github\.event_name == 'workflow_run'/);
@@ -46,8 +51,8 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
   });
 
   it('pre-filters fork heads so no runner starts for a PR it can only block', () => {
-    // GitHub downgrades GITHUB_TOKEN to read-only on pull_request and
-    // pull_request_review events when the PR's head is a fork, so such a run
+    // GitHub downgrades GITHUB_TOKEN to read-only on pull_request events
+    // when the PR's head is a fork, so such a run
     // can never merge and cannot even post its verdict comment. Without the
     // fork half of the filter, every fork PR burns a runner and then fails
     // the step on the comment write's 403 — a red check for a PR that was
@@ -318,28 +323,5 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toContain('DRY_RUN: ${{ github.event_name == \'workflow_dispatch\' && github.event.inputs.dry_run || false }}');
     expect(merge).toMatch(/elif \[ "\$DRY_RUN" = 'true' \]; then/);
     expect(merge).toMatch(/dry run: every requirement holds; would squash-merge/);
-  });
-
-  it('re-runs the merged head\'s cancelled pr-merge checks in a separate job after merging', () => {
-    // The merging run attaches its check to main, so without this the PR
-    // head kept its cancelled pull_request / pull_request_review runs.
-    expect(merge).toMatch(/^ {4}outputs:\n {6}merged: \$\{\{ steps\.evaluate\.outputs\.merged \}\}\n {6}head_sha: \$\{\{ steps\.evaluate\.outputs\.head_sha \}\}/m);
-    expect(merge).toContain("echo 'merged=true'");
-    const repaint = merge.match(/^ {2}repaint:\n((?: {4,}.*\n?|\s*\n)*)/m);
-    expect(repaint).not.toBeNull();
-    const job = repaint[1];
-    expect(job).toMatch(/^ {4}needs: merge$/m);
-    expect(job).toMatch(/^ {4}if: needs\.merge\.outputs\.merged == 'true'$/m);
-    // No concurrency group: a re-run must never cancel the merge job.
-    expect(job).not.toMatch(/concurrency:/);
-    expect(job).toMatch(/^ {4}permissions:\n {6}actions: write\n {4}steps:/m);
-    expect(job).toContain('set -euo pipefail');
-    expect(job).toContain('.event == "pull_request" or .event == "pull_request_review"');
-    expect(job).toContain('select(.conclusion == "cancelled")');
-    expect(job).toContain('.id != $self');
-    expect(job).toContain('gh api -X POST "repos/$GH_REPO/actions/runs/$id/rerun"');
-    // Best-effort: list and re-run failures are warnings, not a red check.
-    expect(job).toContain('::warning::Could not list runs');
-    expect(job).toContain('::warning::Could not re-run pr-merge run');
   });
 });
