@@ -1,4 +1,5 @@
 import { injectScript } from './helpers/inject-script.js';
+import { expectSharedDocumentListeners } from './helpers/shared-picker-listeners.js';
 
 beforeAll(() => {
   injectScript('src/ui/color-picker.js');
@@ -11,10 +12,6 @@ function createColorInput(id) {
   input.value = '#ffffff';
   document.body.appendChild(input);
   return input;
-}
-
-function countCalls(spy, type) {
-  return spy.mock.calls.filter(([eventType]) => eventType === type).length;
 }
 
 describe('ModernColorPicker', () => {
@@ -64,27 +61,11 @@ describe('ModernColorPicker', () => {
 
   it('binds one shared pair of document listeners, and only while a popup is open', () => {
     const inputs = ['a', 'b', 'c'].map(name => createColorInput(`color-picker-shared-${name}`));
-    const addListener = vi.spyOn(document, 'addEventListener');
-    const removeListener = vi.spyOn(document, 'removeEventListener');
 
-    const pickers = inputs.map(input => new window.ModernColorPicker({ element: input }));
-
-    expect(countCalls(addListener, 'click')).toBe(0);
-    expect(countCalls(addListener, 'keydown')).toBe(0);
-
-    pickers[0].show();
-
-    expect(countCalls(addListener, 'click')).toBe(1);
-    expect(countCalls(addListener, 'keydown')).toBe(1);
-
-    pickers.forEach(picker => picker.destroy());
-
-    expect(countCalls(removeListener, 'click')).toBe(1);
-    expect(countCalls(removeListener, 'keydown')).toBe(1);
-
-    addListener.mockRestore();
-    removeListener.mockRestore();
-    inputs.forEach(input => input.remove());
+    expectSharedDocumentListeners({
+      createPickers: () => inputs.map(input => new window.ModernColorPicker({ element: input })),
+      cleanup: () => inputs.forEach(input => input.remove())
+    });
   });
 
   it('closes the active popup via the shared outside-click and Escape handlers', () => {

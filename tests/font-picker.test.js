@@ -1,4 +1,5 @@
 import { injectScript } from './helpers/inject-script.js';
+import { expectSharedDocumentListeners } from './helpers/shared-picker-listeners.js';
 
 beforeAll(() => {
   injectScript('src/ui/font-picker.js');
@@ -13,10 +14,6 @@ function createFontSelect(id) {
   select.value = option.value;
   document.body.appendChild(select);
   return select;
-}
-
-function countCalls(spy, type) {
-  return spy.mock.calls.filter(([eventType]) => eventType === type).length;
 }
 
 describe('ModernFontPicker', () => {
@@ -69,27 +66,11 @@ describe('ModernFontPicker', () => {
 
   it('binds one shared pair of document listeners, and only while a popup is open', () => {
     const selects = ['a', 'b'].map(name => createFontSelect(`font-picker-shared-${name}`));
-    const addListener = vi.spyOn(document, 'addEventListener');
-    const removeListener = vi.spyOn(document, 'removeEventListener');
 
-    const pickers = selects.map(select => new window.ModernFontPicker({ element: select }));
-
-    expect(countCalls(addListener, 'click')).toBe(0);
-    expect(countCalls(addListener, 'keydown')).toBe(0);
-
-    pickers[0].show();
-
-    expect(countCalls(addListener, 'click')).toBe(1);
-    expect(countCalls(addListener, 'keydown')).toBe(1);
-
-    pickers.forEach(picker => picker.destroy());
-
-    expect(countCalls(removeListener, 'click')).toBe(1);
-    expect(countCalls(removeListener, 'keydown')).toBe(1);
-
-    addListener.mockRestore();
-    removeListener.mockRestore();
-    selects.forEach(select => select.remove());
+    expectSharedDocumentListeners({
+      createPickers: () => selects.map(select => new window.ModernFontPicker({ element: select })),
+      cleanup: () => selects.forEach(select => select.remove())
+    });
   });
 
   it('leaves no popup behind after init and stays clean across re-runs', () => {
