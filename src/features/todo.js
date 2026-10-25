@@ -11,6 +11,12 @@
     priority: 'all'
   };
 
+  // Multi-select state for the bulk-actions toolbar (issue #942).
+  // `selectionAnchorId` is the row the last selection gesture landed on and
+  // anchors Shift-click ranges over `filteredTodos`.
+  const selectedIds = new Set();
+  let selectionAnchorId = null;
+
   // Animation config
   const STAGGER_DELAY = 0.05; // seconds between each item
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -491,12 +497,23 @@
     // Render each todo with staggered animation
     filteredTodos.forEach((todo, index) => {
       const li = document.createElement('li');
-      li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate, todo.dueTime) ? 'overdue' : ''}`;
+      li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate, todo.dueTime) ? 'overdue' : ''} ${selectedIds.has(todo.id) ? 'selected' : ''}`;
       li.dataset.id = todo.id;
       li.draggable = true;
 
       const todoItemRow = document.createElement('div');
       todoItemRow.className = 'todo-item-row';
+
+      // Selection checkbox for the bulk-actions toolbar (issue #942)
+      const selectBox = document.createElement('input');
+      selectBox.type = 'checkbox';
+      selectBox.className = 'todo-select';
+      selectBox.checked = selectedIds.has(todo.id);
+      selectBox.dataset.id = todo.id;
+      selectBox.draggable = false;
+      const selectLabel = todo.text ?? '';
+      selectBox.setAttribute('aria-label', window.i18n ? window.i18n.t('todoSelectAria', { text: selectLabel }) : `Select todo: ${selectLabel}`);
+      todoItemRow.appendChild(selectBox);
 
       const bullet = document.createElement('div');
       bullet.className = 'todo-bullet';
@@ -1028,14 +1045,17 @@
 // Filter management
 function applyFilters() {
   filterTodos();
+  pruneTodoSelection();
   renderTodos();
   updateFilterUI();
   updateProgressRing();
   updateFilterCounts();
+  updateBulkActions();
 }
 
 function updateFilters() {
   currentFilters.status = elements.filterStatus?.value || 'all';
+  clearTodoSelection();
   applyFilters();
 }
 
@@ -1091,6 +1111,137 @@ function updateFilterCounts() {
   if (badgeHigh) badgeHigh.textContent = high;
   if (badgeLow) badgeLow.textContent = low;
   if (todoCount) todoCount.textContent = `${completed}/${all}`;
+}
+
+// Bulk selection (issue #942)
+// Drop selected rows that are no longer in the filtered view so the count
+// never references hidden or deleted todos. Called from applyFilters.
+function pruneTodoSelection() {
+  const visibleIds = new Set(filteredTodos.map(todo => todo.id));
+  selectedIds.forEach(id => {
+    if (!visibleIds.has(id)) selectedIds.delete(id);
+  });
+  if (selectionAnchorId && !visibleIds.has(selectionAnchorId)) {
+    selectionAnchorId = null;
+  }
+}
+
+// Show the toolbar with an accurate count while anything is selected.
+function updateBulkActions() {
+  const bar = document.getElementById('bulk-actions');
+  const count = document.getElementById('selected-count');
+  const hasSelection = selectedIds.size > 0;
+
+  if (bar) bar.classList.toggle('active', hasSelection);
+  if (count) {
+    count.textContent = hasSelection
+      ? (window.i18n ? window.i18n.t('selectedCount', { count: selectedIds.size }) : `${selectedIds.size} selected`)
+      : '';
+  }
+}
+
+// Reset the selection (filter change, bulk action done). Callers re-render.
+function clearTodoSelection() {
+  selectedIds.clear();
+  selectionAnchorId = null;
+  updateBulkActions();
+}
+
+// Apply a selection gesture: a plain/Ctrl/Cmd click toggles one row, a Shift
+// click selects the range between the anchor and the clicked row in
+// `filteredTodos` order. Re-renders so checkboxes and row styling stay in sync.
+function handleTodoSelect(id, event) {
+  if (!id) return;
+
+  const rangeSelect = Boolean(event && event.shiftKey);
+  if (rangeSelect && selectionAnchorId && selectionAnchorId !== id) {
+    const anchorIndex = filteredTodos.findIndex(todo => todo.id === selectionAnchorId);
+    const targetIndex = filteredTodos.findIndex(todo => todo.id === id);
+    if (anchorIndex === -1 || targetIndex === -1) {
+      selectedIds.add(id);
+    } else {
+      const start = Math.min(anchorIndex, targetIndex);
+      const end = Math.max(anchorIndex, targetIndex);
+      for (let i = start; i <= end; i++) {
+        selectedIds.add(filteredTodos[i].id);
+      }
+    }
+  } else if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+  } else {
+    selectedIds.add(id);
+  }
+
+  selectionAnchorId = id;
+  renderTodos();
+  updateBulkActions();
+}
+
+// Mark every selected todo complete in a single save so the storage bridge
+// and cross-tab merge see one write. Recurring todos advance to their next
+// due date instead, mirroring toggleTodo.
+function bulkCompleteSelected() {
+  if (selectedIds.size === 0) return;
+
+  const previousTodos = cloneTodos(todos);
+  const completedAt = new Date().toISOString();
+  const completedIds = [];
+
+  todos.forEach(todo => {
+    if (!selectedIds.has(todo.id) || todo.completed) return;
+
+    if (todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence)) {
+      todo.dueDate = getNextDueDate(todo.dueDate, todo.recurrence);
+      todo.completed = false;
+      todo.completedAt = null;
+      if (todo.subtasks) {
+        todo.subtasks.forEach(st => { st.checked = false; });
+      }
+    } else {
+      todo.completed = true;
+      todo.completedAt = completedAt;
+    }
+    completedIds.push(todo.id);
+  });
+
+  if (completedIds.length === 0) {
+    clearTodoSelection();
+    applyFilters();
+    return;
+  }
+
+  if (!saveTodos(todos)) {
+    todos = previousTodos;
+    applyFilters();
+    showTodoSaveError();
+    return;
+  }
+
+  clearTodoSelection();
+  applyFilters();
+  completedIds.forEach(id => {
+    window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id } }));
+  });
+  scheduleTodoReminderCheck();
+}
+
+// Remove every selected todo in a single save.
+function bulkDeleteSelected() {
+  if (selectedIds.size === 0) return;
+
+  const previousTodos = cloneTodos(todos);
+  todos = todos.filter(todo => !selectedIds.has(todo.id));
+
+  if (!saveTodos(todos)) {
+    todos = previousTodos;
+    applyFilters();
+    showTodoSaveError();
+    return;
+  }
+
+  clearTodoSelection();
+  applyFilters();
+  scheduleTodoReminderCheck();
 }
 
 // Quick actions
@@ -1177,6 +1328,9 @@ function handleFilterPillClick(event) {
   } else {
     currentFilters.status = pill.dataset.filter;
   }
+  // The selection describes the previous filtered view; drop it so the
+  // toolbar never counts rows the new filter hides (issue #942).
+  clearTodoSelection();
   applyFilters();
 }
 
@@ -1209,7 +1363,9 @@ function syncDueTimeInputState() {
 let draggedElement = null;
 
 function handleDragStart(event) {
-  if (event.target.closest('button')) {
+  // Controls inside a row (buttons, the selection checkbox) must not start a
+  // row drag; the click they receive selects/activates instead.
+  if (event.target.closest('button, input, select, textarea')) {
     event.preventDefault();
     return;
   }
@@ -1302,6 +1458,14 @@ function getSelectedPriority() {
 function handleTodoListClick(event) {
   const target = event.target;
 
+  // Selection checkbox (issue #942)
+  const selectBox = target.closest('.todo-select');
+  if (selectBox) {
+    event.stopPropagation();
+    handleTodoSelect(selectBox.dataset.id, event);
+    return;
+  }
+
   // Handle bullet click (new circular bullet)
   const bullet = target.closest('.todo-bullet');
   if (bullet) {
@@ -1345,6 +1509,17 @@ function handleTodoListClick(event) {
     const subtaskId = subtaskDelete.dataset.subtaskId;
     deleteSubtask(todoId, subtaskId);
     return;
+  }
+
+  // Ctrl/Cmd or Shift click on the row body selects instead of activating a
+  // control, so multi-select also works without hitting the checkbox (issue #942).
+  if (event.ctrlKey || event.metaKey || event.shiftKey) {
+    const row = target.closest('.todo-item');
+    const isControl = target.closest('button, input, select, textarea, a, .todo-bullet, .todo-due-date');
+    if (row && !isControl) {
+      event.stopPropagation();
+      handleTodoSelect(row.dataset.id, event);
+    }
   }
 }
 
@@ -2077,6 +2252,17 @@ function initTodo() {
     importFileInput.addEventListener('change', handleImportFile);
   }
 
+  // Bulk selection toolbar (issue #942). The same function references are
+  // re-registered on every init, which the DOM de-duplicates.
+  const bulkCompleteBtn = document.getElementById('bulk-complete');
+  const bulkDeleteBtn = document.getElementById('bulk-delete');
+  if (bulkCompleteBtn) {
+    bulkCompleteBtn.addEventListener('click', bulkCompleteSelected);
+  }
+  if (bulkDeleteBtn) {
+    bulkDeleteBtn.addEventListener('click', bulkDeleteSelected);
+  }
+
   // Todo list event delegation
   elements.todoList.addEventListener('click', handleTodoListClick);
 
@@ -2624,6 +2810,8 @@ function initCustomDatePicker() {
 // Re-render todo items and calendar when language changes
 window.addEventListener('languageChanged', () => {
   renderTodos();
+  // Re-translate the live selection count in the bulk toolbar.
+  updateBulkActions();
   refreshInlineDatePickers();
   if (customDatePicker) customDatePicker.renderCalendar();
 });
@@ -2675,6 +2863,14 @@ try {
   window.DUE_TIME_PATTERN = DUE_TIME_PATTERN;
   window.syncDueTimeInputState = syncDueTimeInputState;
   window.currentFilters = currentFilters;
+  window.selectedIds = selectedIds;
+  window.handleTodoSelect = handleTodoSelect;
+  window.handleTodoListClick = handleTodoListClick;
+  window.updateBulkActions = updateBulkActions;
+  window.clearTodoSelection = clearTodoSelection;
+  window.pruneTodoSelection = pruneTodoSelection;
+  window.bulkCompleteSelected = bulkCompleteSelected;
+  window.bulkDeleteSelected = bulkDeleteSelected;
   window.getSelectedPriority = getSelectedPriority;
   window.addSubtask = addSubtask;
   window.deleteSubtask = deleteSubtask;

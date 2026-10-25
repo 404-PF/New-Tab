@@ -2793,3 +2793,224 @@ describe('Todo import refresh (issue #824)', () => {
     expect(stored[0].dueTime).toBeNull();
   });
 });
+
+describe('Todo multi-select and bulk actions (issue #942)', () => {
+  function itemFor(text) {
+    return [...document.querySelectorAll('.todo-item')]
+      .find(li => li.querySelector('.todo-text')?.textContent === text) || null;
+  }
+
+  function clickSelection(target, init = {}) {
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true, ...init }));
+  }
+
+  function clickCheckbox(text, init = {}) {
+    const box = itemFor(text)?.querySelector('.todo-select');
+    expect(box, `checkbox for "${text}"`).not.toBeNull();
+    clickSelection(box, init);
+    return box;
+  }
+
+  function bulkBar() {
+    return document.getElementById('bulk-actions');
+  }
+
+  function todoWriteCalls(spy) {
+    return spy.mock.calls.filter(call => call[0] === 'todos');
+  }
+
+  it('renders a selection checkbox per row and keeps the bar hidden while nothing is selected', () => {
+    addTodo('One');
+    addTodo('Two');
+
+    const boxes = document.querySelectorAll('.todo-select');
+    expect(boxes).toHaveLength(2);
+    expect(boxes[0].getAttribute('aria-label')).toBe('Select todo: One');
+    expect(boxes[0].type).toBe('checkbox');
+    expect(bulkBar().classList.contains('active')).toBe(false);
+    expect(document.getElementById('selected-count').textContent).toBe('');
+  });
+
+  it('checkbox clicks toggle selection, update the count and mark the row', () => {
+    addTodo('One');
+    addTodo('Two');
+
+    clickCheckbox('One');
+
+    expect(selectedIds.size).toBe(1);
+    expect(bulkBar().classList.contains('active')).toBe(true);
+    expect(document.getElementById('selected-count').textContent).toBe('1 selected');
+    expect(itemFor('One').classList.contains('selected')).toBe(true);
+    expect(itemFor('One').querySelector('.todo-select').checked).toBe(true);
+    expect(itemFor('Two').classList.contains('selected')).toBe(false);
+
+    clickCheckbox('Two');
+    expect(selectedIds.size).toBe(2);
+    expect(document.getElementById('selected-count').textContent).toBe('2 selected');
+
+    // Clicking a selected row again deselects it and hides the bar.
+    clickCheckbox('Two');
+    expect(selectedIds.has(loadTodos().find(t => t.text === 'Two').id)).toBe(false);
+    clickCheckbox('One');
+    expect(selectedIds.size).toBe(0);
+    expect(bulkBar().classList.contains('active')).toBe(false);
+    expect(document.getElementById('selected-count').textContent).toBe('');
+  });
+
+  it('ctrl-click toggles a row and shift-click selects a range in filtered order', () => {
+    addTodo('One');
+    addTodo('Two');
+    addTodo('Three');
+    const [idOne, idTwo, idThree] = loadTodos().map(todo => todo.id);
+
+    clickCheckbox('One');
+    clickCheckbox('Three', { shiftKey: true });
+
+    expect([...selectedIds].sort()).toEqual([idOne, idTwo, idThree].sort());
+    expect(document.getElementById('selected-count').textContent).toBe('3 selected');
+
+    clickCheckbox('Two', { ctrlKey: true });
+    expect(selectedIds.has(idTwo)).toBe(false);
+    expect(selectedIds.has(idOne)).toBe(true);
+    expect(selectedIds.has(idThree)).toBe(true);
+
+    clickCheckbox('Two', { metaKey: true });
+    expect(selectedIds.has(idTwo)).toBe(true);
+  });
+
+  it('ctrl-click on the row body selects without activating the row controls', () => {
+    addTodo('One');
+    addTodo('Two');
+    const idOne = loadTodos().find(todo => todo.text === 'One').id;
+
+    clickSelection(itemFor('One').querySelector('.todo-content'), { ctrlKey: true });
+
+    expect(selectedIds.has(idOne)).toBe(true);
+    expect(bulkBar().classList.contains('active')).toBe(true);
+
+    // A plain click on the row body must not select.
+    clickSelection(itemFor('Two').querySelector('.todo-content'));
+    expect(selectedIds.size).toBe(1);
+  });
+
+  it('bulk complete marks every selected todo in one write and persists across a reload', () => {
+    addTodo('One');
+    addTodo('Two');
+    addTodo('Three');
+    const idThree = loadTodos().find(todo => todo.text === 'Three').id;
+
+    clickCheckbox('One');
+    clickCheckbox('Two', { ctrlKey: true });
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem');
+    document.getElementById('bulk-complete').click();
+    const writes = todoWriteCalls(setItemSpy);
+    setItemSpy.mockRestore();
+    expect(writes).toHaveLength(1);
+
+    const stored = loadTodos();
+    expect(stored.filter(todo => todo.completed).map(todo => todo.text).sort()).toEqual(['One', 'Two']);
+    expect(stored.find(todo => todo.text === 'Three').completed).toBe(false);
+    expect(selectedIds.size).toBe(0);
+    expect(bulkBar().classList.contains('active')).toBe(false);
+
+    // A reload re-reads storage and still shows the completed rows.
+    initTodo();
+    expect(document.querySelectorAll('.todo-item.completed')).toHaveLength(2);
+    expect(loadTodos().find(todo => todo.id === idThree).completed).toBe(false);
+  });
+
+  it('bulk delete removes every selected todo in one write and persists across a reload', () => {
+    addTodo('One');
+    addTodo('Two');
+    addTodo('Three');
+
+    clickCheckbox('One');
+    clickCheckbox('Three', { ctrlKey: true });
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem');
+    document.getElementById('bulk-delete').click();
+    const writes = todoWriteCalls(setItemSpy);
+    setItemSpy.mockRestore();
+    expect(writes).toHaveLength(1);
+
+    expect(loadTodos().map(todo => todo.text)).toEqual(['Two']);
+    expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+    expect(selectedIds.size).toBe(0);
+    expect(bulkBar().classList.contains('active')).toBe(false);
+
+    initTodo();
+    expect(loadTodos().map(todo => todo.text)).toEqual(['Two']);
+    expect(document.getElementById('selected-count').textContent).toBe('');
+  });
+
+  it('changing the filter clears the selection and hides the bar', () => {
+    addTodo('One');
+    addTodo('Two');
+
+    clickCheckbox('One');
+    expect(selectedIds.size).toBe(1);
+
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill';
+    pill.dataset.filter = 'pending';
+    handleFilterPillClick({ target: pill });
+
+    expect(selectedIds.size).toBe(0);
+    expect(bulkBar().classList.contains('active')).toBe(false);
+    expect(document.getElementById('selected-count').textContent).toBe('');
+    expect(itemFor('One').classList.contains('selected')).toBe(false);
+
+    currentFilters.status = 'all';
+  });
+
+  it('drops a selected row from the selection when it is deleted individually', () => {
+    addTodo('One');
+    addTodo('Two');
+    const idOne = loadTodos().find(todo => todo.text === 'One').id;
+
+    clickCheckbox('One');
+    expect(selectedIds.size).toBe(1);
+
+    deleteTodo(idOne);
+
+    expect(selectedIds.size).toBe(0);
+    expect(bulkBar().classList.contains('active')).toBe(false);
+    expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+  });
+
+  it('bulk delete rolls back and toasts when the save fails', () => {
+    addTodo('One');
+    addTodo('Two');
+    clickCheckbox('One');
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      bulkDeleteSelected();
+
+      expect(loadTodos()).toHaveLength(2);
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(2);
+      expect(selectedIds.size).toBe(1);
+      expect(bulkBar().classList.contains('active')).toBe(true);
+      expect(document.querySelector('.toast-notification')?.textContent).toContain('Failed to save todo changes');
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('bulk complete with an empty selection is a no-op', () => {
+    addTodo('One');
+    const setItemSpy = vi.spyOn(localStorage, 'setItem');
+
+    bulkCompleteSelected();
+
+    expect(todoWriteCalls(setItemSpy)).toHaveLength(0);
+    expect(loadTodos()[0].completed).toBe(false);
+    setItemSpy.mockRestore();
+  });
+});

@@ -326,6 +326,12 @@ window.i18n.__registerLocale('de', {
   clearCompletedConfirmButton: 'Erledigte löschen',
   emptyStateTitle: 'Noch keine Aufgaben. Füge eine oben hinzu!',
   emptyStateDesc: 'Versuche, Fälligkeitsdaten hinzuzufügen, um dich besser zu organisieren.',
+  // Todo bulk selection toolbar (issue #942)
+  bulkActionsLabel: 'Sammelaktionen für Aufgaben',
+  bulkComplete: 'Als erledigt markieren',
+  bulkDelete: 'Löschen',
+  selectedCount: '{count} ausgewählt',
+  todoSelectAria: 'Aufgabe auswählen: {text}',
   exportTodos: 'Exportieren',
   importTodos: 'Importieren',
   importConfirmTitle: 'Aufgaben importieren',

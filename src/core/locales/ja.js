@@ -339,6 +339,12 @@ window.i18n.__registerLocale('ja', {
   clearCompletedConfirmButton: '完了をクリア',
   emptyStateTitle: 'まだTodoはありません。上で追加してください！',
   emptyStateDesc: '期限を設定して整理しましょう。',
+  // Todo bulk selection toolbar (issue #942)
+  bulkActionsLabel: 'Todo 一括操作',
+  bulkComplete: '完了としてマーク',
+  bulkDelete: '削除',
+  selectedCount: '{count} 件を選択中',
+  todoSelectAria: 'Todo を選択: {text}',
   exportTodos: 'エクスポート',
   importTodos: 'インポート',
   importConfirmTitle: 'Todoをインポート',

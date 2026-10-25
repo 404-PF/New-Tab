@@ -452,6 +452,13 @@ const translations = {
     clearCompletedConfirmButton: 'Clear Completed',
     emptyStateTitle: 'No todos yet. Add one above!',
     emptyStateDesc: 'Try adding due dates for better organization.',
+
+    // Todo bulk selection toolbar (issue #942)
+    bulkActionsLabel: 'Bulk todo actions',
+    bulkComplete: 'Mark complete',
+    bulkDelete: 'Delete',
+    selectedCount: '{count} selected',
+    todoSelectAria: 'Select todo: {text}',
     exportTodos: 'Export',
     importTodos: 'Import',
     importConfirmTitle: 'Import Todos',

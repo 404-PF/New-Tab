@@ -236,6 +236,12 @@
           </div>
         </div>
 
+        <div class="bulk-actions" id="bulk-actions" role="group" data-i18n-aria-label="bulkActionsLabel" aria-label="Bulk todo actions">
+          <span id="selected-count" aria-live="polite"></span>
+          <button type="button" class="bulk-btn" id="bulk-complete" data-i18n="bulkComplete">Mark complete</button>
+          <button type="button" class="bulk-btn danger" id="bulk-delete" data-i18n="bulkDelete">Delete</button>
+        </div>
+
         <div class="todo-list-container">
           <ul id="todo-list" class="todo-list"></ul>
           <div class="empty-state" id="empty-state">

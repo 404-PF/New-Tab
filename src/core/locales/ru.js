@@ -326,6 +326,12 @@ window.i18n.__registerLocale('ru', {
   clearCompletedConfirmButton: 'Очистить завершённые',
   emptyStateTitle: 'Пока нет дел. Добавьте одно выше!',
   emptyStateDesc: 'Попробуйте добавить сроки для лучшей организации.',
+  // Todo bulk selection toolbar (issue #942)
+  bulkActionsLabel: 'Массовые действия с задачами',
+  bulkComplete: 'Отметить выполненным',
+  bulkDelete: 'Удалить',
+  selectedCount: 'Выбрано: {count}',
+  todoSelectAria: 'Выбрать задачу: {text}',
   exportTodos: 'Экспорт',
   importTodos: 'Импорт',
   importConfirmTitle: 'Импорт дел',

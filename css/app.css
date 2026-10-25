@@ -1607,6 +1607,16 @@ body.light-theme .todo-bullet:hover .bullet-unchecked:where(:not(.todo-section, 
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
+/* Row selection checkbox feeding the bulk-actions toolbar (issue #942) */
+.todo-select {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #2196f3;
+  cursor: pointer;
+}
+
 .todo-checkbox {
   display: none; /* Old checkbox hidden - using new bullet instead */
 }
@@ -2316,6 +2326,57 @@ body.light-theme .toast-notification .toast-action:hover {
     opacity: 0;
     transform: scale(0.95) translateY(-10px);
   }
+}
+
+/* Bulk-selection toolbar (issue #942). Hidden until rows are selected; the
+   light-theme colors below and the 768px/480px layout rules further down
+   style these same three selectors. */
+.bulk-actions {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.bulk-actions.active {
+  display: flex;
+}
+
+#selected-count {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.bulk-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.bulk-btn.danger {
+  background: rgba(255, 82, 82, 0.15);
+  border-color: rgba(255, 82, 82, 0.35);
+  color: #ff8a80;
+}
+
+.bulk-btn.danger:hover {
+  background: rgba(255, 82, 82, 0.25);
+  border-color: rgba(255, 82, 82, 0.5);
 }
 
 /* Light theme adjustments.
