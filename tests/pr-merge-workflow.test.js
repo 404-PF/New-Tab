@@ -183,6 +183,30 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).not.toMatch(/'CLEAN'|'DIRTY'/);
   });
 
+  it('words the blocked merge state as pending instead of a hard blockage (#945)', () => {
+    // `blocked` is GitHub's normal in-progress state for a fresh PR
+    // (required checks or approval still pending), so the verdict must read
+    // as waiting while the deny itself stays fail-closed. dirty/behind/
+    // unknown keep their hard wording.
+    const pending = 'merge state is blocked: required status check(s) or review approval still pending';
+    expect(merge).toContain(pending);
+    const gate8 = merge.match(/if \[ "\$MERGEABLE" = 'false' \] \|\| \[ "\$MERGE_STATE" = 'dirty' \]; then[\s\S]*?\n {12}fi/);
+    expect(gate8).not.toBeNull();
+    const branch = gate8[0];
+    expect(branch).toMatch(/deny 'PR has merge conflicts'/);
+    expect(branch).toMatch(/\[ "\$MERGE_STATE" = 'blocked' \]/);
+    expect(branch).toContain(pending);
+    // The dedicated blocked branch must deny before the generic catch-all,
+    // which still exists for behind/unknown/other states.
+    expect(branch.indexOf(pending)).toBeGreaterThan(branch.indexOf('PR has merge conflicts'));
+    expect(branch).toContain('deny "merge state is ${MERGE_STATE}, which blocks merging"');
+    expect(branch.indexOf('${MERGE_STATE}, which blocks merging')).toBeGreaterThan(branch.indexOf(pending));
+    // Deny semantics unchanged: the blocked branch still records a denial,
+    // and DECISION stays the stable decision word.
+    expect(branch).toMatch(/deny 'merge state is blocked:/);
+    expect(merge).toMatch(/DECISION='blocked'/);
+  });
+
   it('requires every check run on the head SHA terminal and successful, excluding itself', () => {
     expect(merge).toContain('/commits/$HEAD_SHA/check-runs');
     expect(merge).toMatch(/\$2 != "completed" \|\| \(\$3 != "success" && \$3 != "neutral" && \$3 != "skipped"\)/);
