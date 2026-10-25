@@ -308,7 +308,7 @@ jobs:
               # (required checks or approval still pending), not a defect:
               # deny exactly as before, but word the verdict as waiting so
               # the comment does not read like a hard blockage.
-              deny 'merge state is blocked: required status check(s) or review approval still pending'
+              deny 'merge state is blocked: required checks or approval are not yet satisfied'
             elif [ "$MERGE_STATE" != 'clean' ] && [ "$MERGE_STATE" != 'unstable' ] && [ "$MERGE_STATE" != 'has_hooks' ]; then
               deny "merge state is ${MERGE_STATE}, which blocks merging"
             fi
