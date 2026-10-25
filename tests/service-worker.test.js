@@ -308,3 +308,47 @@ describe('service worker todo reminders', () => {
     expect(await chrome.storage.local.get('todoReminderNotified')).toEqual({ todoReminderNotified: {} });
   });
 });
+
+describe('service worker toolbar action (issue #944)', () => {
+  beforeAll(() => {
+    // Prior tests in this file may have re-injected the worker (each injection
+    // registers another copy of every listener), so drop the accumulated
+    // action listeners and evaluate a single fresh copy.
+    chrome.action.onClicked._clearListeners();
+    injectScript('backgrounds/service-worker.js');
+  });
+
+  it('registers exactly one chrome.action.onClicked listener', () => {
+    expect(chrome.action.onClicked._listeners).toHaveLength(1);
+  });
+
+  it('opens New-Tab.html when the toolbar icon is clicked', () => {
+    const tabsSpy = vi.spyOn(chrome.tabs, 'create');
+
+    try {
+      const listener = chrome.action.onClicked._listeners[0];
+      expect(listener).toBeDefined();
+      listener({ id: 7, url: 'https://example.com/' });
+
+      expect(tabsSpy).toHaveBeenCalledTimes(1);
+      expect(tabsSpy).toHaveBeenCalledWith({ url: 'New-Tab.html' });
+    } finally {
+      tabsSpy.mockRestore();
+    }
+  });
+
+  it('skips registration without throwing when chrome.action is unavailable', () => {
+    const originalAction = chrome.action;
+
+    try {
+      chrome.action = undefined;
+      expect(() => injectScript('backgrounds/service-worker.js')).not.toThrow();
+    } finally {
+      chrome.action = originalAction;
+      chrome.action.onClicked._clearListeners();
+      injectScript('backgrounds/service-worker.js');
+    }
+
+    expect(chrome.action.onClicked._listeners).toHaveLength(1);
+  });
+});
