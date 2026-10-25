@@ -54,19 +54,6 @@ on:
         type: boolean
         default: false
 
-# One evaluation per PR; a newer event (push, review, label, check or CI
-# completion) cancels the stale evaluation so it can never outrun a newer one.
-concurrency:
-  group: >-
-    ${{ github.event_name == 'workflow_dispatch'
-      && format('pr-merge-{0}', github.event.inputs.pr_number)
-      || format('pr-merge-{0}',
-        github.event.pull_request.number ||
-        github.event.check_run.pull_requests[0].number ||
-        github.event.check_suite.pull_requests[0].number ||
-        github.event.workflow_run.pull_requests[0].number) }}
-  cancel-in-progress: true
-
 jobs:
   merge:
     # Named after the workflow so this job's check run name equals
@@ -99,6 +86,9 @@ jobs:
     # 403. Skipping it up front keeps that check neutral. workflow_dispatch
     # stays open as a manual escape hatch, and gate 2 below still denies a
     # fork the dispatch path is pointed at.
+    # check_run / check_suite / workflow_run payloads carry a minimal PR
+    # object whose head.repo has only id, url and name (no full_name), so the
+    # same-repo test on those events compares head.repo.id to repository_id.
     if: >
       github.event_name == 'workflow_dispatch' ||
       (
@@ -115,8 +105,8 @@ jobs:
           github.event_name == 'check_suite'
         ) &&
         (
-          github.event.check_run.pull_requests[0].head.repo.full_name == github.repository ||
-          github.event.check_suite.pull_requests[0].head.repo.full_name == github.repository
+          github.event.check_run.pull_requests[0].head.repo.id == github.repository_id ||
+          github.event.check_suite.pull_requests[0].head.repo.id == github.repository_id
         ) &&
         (
           github.event.check_run.pull_requests[0].base.ref == 'main' ||
@@ -125,9 +115,26 @@ jobs:
       ) ||
       (
         github.event_name == 'workflow_run' &&
-        github.event.workflow_run.pull_requests[0].head.repo.full_name == github.repository &&
+        github.event.workflow_run.pull_requests[0].head.repo.id == github.repository_id &&
         github.event.workflow_run.pull_requests[0].base.ref == 'main'
       )
+
+    # One evaluation per PR; a newer event (push, review, label, check or CI
+    # completion) cancels the stale evaluation so it can never outrun a newer one.
+    # Job-level, not workflow-level: a workflow-level group is joined before
+    # the job's `if:` is evaluated, so a re-entry that is about to be skipped
+    # still cancelled the in-progress evaluation it superseded. A job skipped
+    # by `if:` never enters this group.
+    concurrency:
+      group: >-
+        ${{ github.event_name == 'workflow_dispatch'
+          && format('pr-merge-{0}', github.event.inputs.pr_number)
+          || format('pr-merge-{0}',
+            github.event.pull_request.number ||
+            github.event.check_run.pull_requests[0].number ||
+            github.event.check_suite.pull_requests[0].number ||
+            github.event.workflow_run.pull_requests[0].number) }}
+      cancel-in-progress: true
 
     steps:
       - name: Evaluate requirements and merge
@@ -375,10 +382,14 @@ jobs:
             DECISION='dry run: every requirement holds; would squash-merge'
           else
             # Re-fetch and revalidate every mutable merge predicate
-            # immediately before the mutation: a push, label, draft flip, or
-            # base-branch change that landed during this evaluation aborts
-            # instead of merging an unverified commit. The mutation below
-            # also carries expectedHeadOid as a second guard.
+            # immediately before the mutation: a push, review, label, draft
+            # flip, or base-branch change that landed during this evaluation
+            # aborts instead of merging an unverified commit. Gates 5 and 6
+            # (review decision, unresolved threads) are re-run alongside the
+            # plain REST predicates because a reviewer bot can open new
+            # unresolved threads after they pass and before the mutation.
+            # The mutation below also carries expectedHeadOid as a second
+            # guard.
             FINAL_JSON="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")"
             FINAL_STATE="$(jq -r .state <<<"$FINAL_JSON")"
             FINAL_DRAFT="$(jq -r .draft <<<"$FINAL_JSON")"
@@ -403,6 +414,32 @@ jobs:
                 FINAL_ACTIVE_DRIVE=1
               fi
             done
+            # Re-run gate 6 as well: a review (human or reviewer bot) can
+            # open unresolved threads after that gate and before this
+            # mutation, and re-running also covers threads resolved by the
+            # same margin. Fail closed on a lookup error, same as the
+            # drive re-check above.
+            FINAL_THREADS_LOOKUP_OK=1
+            if ! FINAL_UNRESOLVED="$(gh api graphql --paginate \
+                -F owner="$OWNER" -F name="$NAME" -F number="$PR_NUMBER" -f query='
+                  query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
+                    repository(owner: $owner, name: $name) {
+                      pullRequest(number: $number) {
+                        reviewThreads(first: 100, after: $endCursor) {
+                          pageInfo { hasNextPage endCursor }
+                          nodes { isResolved }
+                        }
+                      }
+                    }
+                  }' | jq -s '[.[].data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not)] | length')"; then
+              FINAL_THREADS_LOOKUP_OK=0
+            fi
+            # Re-run gate 5 too: a review submitted after that gate can flip
+            # the decision to CHANGES_REQUESTED.
+            FINAL_REVIEW_LOOKUP_OK=1
+            if ! FINAL_REVIEW_DECISION="$(gh pr view "$PR_NUMBER" --repo "$GH_REPO" --json reviewDecision --jq '.reviewDecision // ""')"; then
+              FINAL_REVIEW_LOOKUP_OK=0
+            fi
             if [ "$FINAL_STATE" != 'open' ] || [ "$FINAL_DRAFT" = 'true' ] \
               || [ "$FINAL_BASE" != 'main' ] || [ "$FINAL_HEAD" != "$HEAD_SHA" ]; then
               deny 'PR state changed during evaluation; merge aborted'
@@ -416,6 +453,18 @@ jobs:
               DECISION='blocked'
             elif [ "$FINAL_ACTIVE_DRIVE" = '1' ]; then
               deny 'a pr-drive run became active during evaluation; merge aborted'
+              DECISION='blocked'
+            elif [ "$FINAL_THREADS_LOOKUP_OK" = '0' ]; then
+              deny 'could not re-check unresolved review threads before merge'
+              DECISION='blocked'
+            elif [ "$FINAL_UNRESOLVED" -gt 0 ]; then
+              deny 'unresolved review thread(s) appeared during evaluation; merge aborted'
+              DECISION='blocked'
+            elif [ "$FINAL_REVIEW_LOOKUP_OK" = '0' ]; then
+              deny 'could not re-check the review decision before merge'
+              DECISION='blocked'
+            elif [ "$FINAL_REVIEW_DECISION" = 'CHANGES_REQUESTED' ]; then
+              deny 'a review requested changes during evaluation; merge aborted'
               DECISION='blocked'
             else
               jq -n \
@@ -463,9 +512,15 @@ jobs:
           # downgrade, a comment restriction, a locked PR) must not turn a
           # correct "blocked" verdict into a red check — that would report a
           # merge problem where none exists and train maintainers to ignore
-          # this check. Note that only the reporting writes are guarded: a
-          # gate failure or a failed merge above still fails this step, so
-          # the fail-closed guarantees are unchanged.
+          # this check. Note that only the reporting writes are guarded: an
+          # unexpected failure elsewhere still fails this step via set -e,
+          # but a recorded denial is not a failure — deny() sets VERDICT and
+          # lets the script run on so the verdict comment is posted; the
+          # script then ends after the Decision line with the shell's
+          # default status 0. Fail-closed lives in the gates rather than in
+          # the exit code: a non-empty VERDICT means the merge mutation was
+          # never attempted, and the verdict comment is the check's real
+          # output.
           {
             echo '<!-- pr-merge -->'
             echo '## pr-merge summary'

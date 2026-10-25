@@ -56,16 +56,22 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     const jobIf = merge.match(/^ {4}if: >\n((?: {6}.*\n?)*)/m);
     expect(jobIf).not.toBeNull();
     expect(jobIf[1]).toContain('github.event.pull_request.head.repo.full_name == github.repository');
-    expect(jobIf[1]).toContain('github.event.check_run.pull_requests[0].head.repo.full_name == github.repository');
-    expect(jobIf[1]).toContain('github.event.check_suite.pull_requests[0].head.repo.full_name == github.repository');
-    expect(jobIf[1]).toContain('github.event.workflow_run.pull_requests[0].head.repo.full_name == github.repository');
+    // check_run / check_suite / workflow_run payloads carry a minimal PR
+    // object whose head.repo has only id, url and name (no full_name), so
+    // those events compare head.repo.id to repository_id instead.
+    expect(jobIf[1]).toContain('github.event.check_run.pull_requests[0].head.repo.id == github.repository_id');
+    expect(jobIf[1]).toContain('github.event.check_suite.pull_requests[0].head.repo.id == github.repository_id');
+    expect(jobIf[1]).toContain('github.event.workflow_run.pull_requests[0].head.repo.id == github.repository_id');
     // Gate 2 is the enforcement point, so the dispatch escape hatch cannot
     // merge a fork either.
     expect(merge).toMatch(/if \[ -z "\$VERDICT" \] && \[ "\$HEAD_REPO" != "\$GH_REPO" \]; then/);
   });
 
   it('serializes evaluations per PR with cancel-in-progress', () => {
-    expect(merge).toMatch(/concurrency:\n {2}group: >-\n {4}\$\{\{ github\.event_name == 'workflow_dispatch'/);
+    // Job-level, not workflow-level: a job skipped by `if:` never joins the
+    // group, so a re-entry that is about to be skipped cannot cancel an
+    // in-progress evaluation.
+    expect(merge).toMatch(/concurrency:\n {6}group: >-\n {8}\$\{\{ github\.event_name == 'workflow_dispatch'/);
     expect(merge).toContain('format(\'pr-merge-{0}\', github.event.inputs.pr_number)');
     expect(merge).toContain('github.event.pull_request.number');
     expect(merge).toContain('github.event.check_run.pull_requests[0].number');
@@ -222,9 +228,11 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
 
   it('revalidates every mutable merge predicate immediately before merging', () => {
     // The mutation also carries expectedHeadOid, but state, draft, base,
-    // head SHA, labels, and the active pr-drive guard are re-checked so a
-    // change during evaluation aborts instead of merging an unverified
-    // commit or merging a pr-drive run out from under itself.
+    // head SHA, labels, the review decision, unresolved review threads,
+    // and the active pr-drive guard are re-checked so a change during
+    // evaluation aborts instead of merging an unverified commit, a
+    // CHANGES_REQUESTED review, or new unresolved thread, or merging a
+    // pr-drive run out from under itself.
     expect(merge).toContain('FINAL_JSON="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")"');
     expect(merge).toContain('[ "$FINAL_STATE" != \'open\' ]');
     expect(merge).toContain('[ "$FINAL_DRAFT" = \'true\' ]');
@@ -238,6 +246,21 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toContain('FINAL_DRIVE_RUNS=');
     expect(merge).toContain('could not re-check active pr-drive runs before merge');
     expect(merge).toContain('a pr-drive run became active during evaluation; merge aborted');
+    // Gates 5 and 6 are re-run alongside: a reviewer bot can open new
+    // unresolved threads or flip the review decision to
+    // CHANGES_REQUESTED after those gates pass and before the mutation,
+    // which must abort instead of copying exactly that race.
+    expect(merge).toContain('could not re-check unresolved review threads before merge');
+    expect(merge).toContain('unresolved review thread(s) appeared during evaluation; merge aborted');
+    expect(merge).toContain('could not re-check the review decision before merge');
+    expect(merge).toContain('a review requested changes during evaluation; merge aborted');
+    // The thread re-check must re-query GraphQL rather than trust the
+    // gate-6 count, so the paginated reviewThreads query appears in both
+    // places, and both re-checks fail closed on a lookup error.
+    expect(merge.match(/reviewThreads\(first: 100, after: \$endCursor\)/g)).toHaveLength(2);
+    expect(merge.match(/select\(\.isResolved \| not\)/g)).toHaveLength(2);
+    expect(merge).toContain('FINAL_THREADS_LOOKUP_OK=0');
+    expect(merge).toContain('FINAL_REVIEW_LOOKUP_OK=0');
     expect(merge).toContain('expectedHeadOid mismatch or permissions');
   });
 
@@ -282,8 +305,11 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     // The sentinel listing is read-only, so a failure there must not abort
     // the verdict either.
     expect(merge).toMatch(/--jq '\.\[\] \| select\(\.user\.login == "github-actions\[bot\]"[^\n]*\)\) \| \.id'\)" \|\| true/);
-    // ...but the guards cover reporting only: no blanket exit 0 at the end,
-    // so a failed gate or a failed merge still fails the check.
+    // ...but the guards cover reporting only: the tail must not blanket-exit
+    // success. A recorded denial is not a failure — it ends the step with
+    // the shell's default status 0 and the posted verdict comment as the
+    // check's real output, while an unexpected failure still propagates via
+    // set -e.
     const tail = merge.slice(merge.indexOf('echo "Decision: $DECISION${VERDICT:+ ($VERDICT)}"'));
     expect(tail).not.toMatch(/exit 0/);
   });

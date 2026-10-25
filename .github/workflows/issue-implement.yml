@@ -441,9 +441,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "The /implement run finished without producing code changes. No PR was opened; please check the run logs."
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "The /implement run finished without producing code changes. No PR was opened; please check the run logs: $RUN_URL"
 
       # Tell the requester when a run they explicitly asked for fails or hits
       # the timeout. issues.opened stays silent to avoid noise on new issues.
