@@ -11,23 +11,27 @@ function countCalls(spy, type) {
 export function expectSharedDocumentListeners({ createPickers, cleanup }) {
   const addListener = vi.spyOn(document, 'addEventListener');
   const removeListener = vi.spyOn(document, 'removeEventListener');
+  const pickers = [];
 
-  const pickers = createPickers();
+  try {
+    pickers.push(...createPickers());
 
-  expect(countCalls(addListener, 'click')).toBe(0);
-  expect(countCalls(addListener, 'keydown')).toBe(0);
+    expect(countCalls(addListener, 'click')).toBe(0);
+    expect(countCalls(addListener, 'keydown')).toBe(0);
 
-  pickers[0].show();
+    pickers[0].show();
 
-  expect(countCalls(addListener, 'click')).toBe(1);
-  expect(countCalls(addListener, 'keydown')).toBe(1);
+    expect(countCalls(addListener, 'click')).toBe(1);
+    expect(countCalls(addListener, 'keydown')).toBe(1);
 
-  pickers.forEach(picker => picker.destroy());
+    pickers.forEach(picker => picker.destroy());
 
-  expect(countCalls(removeListener, 'click')).toBe(1);
-  expect(countCalls(removeListener, 'keydown')).toBe(1);
-
-  addListener.mockRestore();
-  removeListener.mockRestore();
-  cleanup();
+    expect(countCalls(removeListener, 'click')).toBe(1);
+    expect(countCalls(removeListener, 'keydown')).toBe(1);
+  } finally {
+    pickers.forEach(picker => picker.destroy());
+    addListener.mockRestore();
+    removeListener.mockRestore();
+    cleanup();
+  }
 }
