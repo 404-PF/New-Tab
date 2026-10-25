@@ -996,7 +996,10 @@ describe('storage bridge', () => {
           local: {
             get(_keys, callback) {
               lateCallback = () => {
-                callback({ serverSetting: 'from-server' });
+                callback({
+                  serverSetting: 'from-server',
+                  theme: 'server-theme'
+                });
               };
             },
             set(items, callback) { callback?.(); return Promise.resolve(); },
@@ -1021,16 +1024,341 @@ describe('storage bridge', () => {
 
       // Now chrome.storage.local.get finally responds (late callback).
       // Before the fix this would call applySnapshot() and clobber the
-      // script-persisted values. After the fix the callback exits early
-      // because hydrationFinished was set when the timeout fired.
+      // script-persisted values. After the fix the callback merges the late
+      // result additively: keys written during the timeout window win (#948),
+      // while a key the page never touched still arrives from the server.
       lateCallback();
 
       expect(dom.window.localStorage.getItem('appOrder')).toBe('["app1","app2"]');
       expect(dom.window.localStorage.getItem('theme')).toBe('dark');
+      expect(dom.window.localStorage.getItem('serverSetting')).toBe('from-server');
     } finally {
       dom.window.close();
     }
   }, 10_000);
+
+  it('merges a late hydration result after a clear fails behind a pending async write (#948)', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let lateCallback;
+      let clearCallback;
+      let setCallback;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(_keys, callback) {
+              lateCallback = () => callback({ serverSetting: 'from-server' });
+            },
+            set(_items, callback) {
+              setCallback = callback;
+            },
+            remove(_keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) {
+              clearCallback = callback;
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.clear();
+      const asyncWrite = dom.window.localStorage.setItemAsync('theme', 'dark');
+
+      dom.window.chrome.runtime.lastError = { message: 'clear rejected' };
+      clearCallback();
+      dom.window.chrome.runtime.lastError = null;
+
+      lateCallback();
+
+      setCallback();
+      await asyncWrite;
+
+      expect(dom.window.localStorage.getItem('serverSetting')).toBe('from-server');
+      expect(dom.window.localStorage.getItem('theme')).toBe('dark');
+    } finally {
+      dom.window.close();
+    }
+  }, 15_000);
+
+  it('holds a late hydration result behind a pending clear until the clear settles (#948)', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let lateCallback;
+      let clearCallback;
+      let changeListener;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener(listener) { changeListener = listener; },
+            removeListener() {},
+            hasListener() { return true; }
+          },
+          local: {
+            get(_keys, callback) {
+              lateCallback = () => callback({ serverSetting: 'from-server' });
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) {
+              clearCallback = callback;
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.setItem('theme', 'dark');
+      dom.window.localStorage.clear();
+      expect(dom.window.localStorage.getItem('serverSetting')).toBeNull();
+
+      // The clear is still outstanding, so the late result must be held back
+      // instead of resurrecting the data the clear is about to remove.
+      lateCallback();
+      expect(dom.window.localStorage.getItem('serverSetting')).toBeNull();
+
+      // The successful clear supersedes the mutations tracked before it, so
+      // they must not linger as echo matches that swallow an equal write from
+      // another tab.
+      clearCallback();
+      expect(dom.window.localStorage.getItem('serverSetting')).toBeNull();
+      dom.window.localStorage.setItem('theme', 'blue');
+      changeListener({ theme: { oldValue: null, newValue: 'dark' } }, 'local');
+      expect(dom.window.localStorage.getItem('theme')).toBe('dark');
+    } finally {
+      dom.window.close();
+    }
+  }, 15_000);
+
+  it('drops a late hydration result that arrives after a successful clear (#948)', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let lateCallback;
+      let changeListener;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener(listener) { changeListener = listener; },
+            removeListener() {},
+            hasListener() { return true; }
+          },
+          local: {
+            get(_keys, callback) {
+              lateCallback = () => callback({ serverSetting: 'from-server' });
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.setItem('theme', 'dark');
+      dom.window.localStorage.clear();
+
+      // Still tracked while the late result is outstanding: it must be dropped
+      // together with this entry, not kept as a stale echo match.
+      dom.window.localStorage.setItem('theme', 'light');
+
+      lateCallback();
+      expect(dom.window.localStorage.getItem('serverSetting')).toBeNull();
+      expect(dom.window.localStorage.getItem('theme')).toBe('light');
+
+      dom.window.localStorage.setItem('theme', 'blue');
+      changeListener({ theme: { oldValue: null, newValue: 'light' } }, 'local');
+      expect(dom.window.localStorage.getItem('theme')).toBe('light');
+    } finally {
+      dom.window.close();
+    }
+  }, 15_000);
+
+  it('discards a late hydration result whose read failed (#948)', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let lateCallback;
+      let changeListener;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener(listener) { changeListener = listener; },
+            removeListener() {},
+            hasListener() { return true; }
+          },
+          local: {
+            get(_keys, callback) {
+              lateCallback = () => callback({ serverSetting: 'from-server' });
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.setItem('theme', 'dark');
+
+      dom.window.chrome.runtime.lastError = { message: 'read failed' };
+      lateCallback();
+      dom.window.chrome.runtime.lastError = null;
+
+      // A failed read contributes nothing: the page's write stays, and no
+      // server value leaks in.
+      expect(dom.window.localStorage.getItem('theme')).toBe('dark');
+      expect(dom.window.localStorage.getItem('serverSetting')).toBeNull();
+
+      // The tracked mutations were dropped with the failed result, so an
+      // external write that happens to equal the old page value is applied
+      // instead of being mistaken for an own-write echo.
+      dom.window.localStorage.setItem('theme', 'light');
+      changeListener({ theme: { oldValue: 'dark', newValue: 'dark' } }, 'local');
+      expect(dom.window.localStorage.getItem('theme')).toBe('dark');
+    } finally {
+      dom.window.close();
+    }
+  }, 15_000);
+
+  it('keeps a tracked write across its own echo while a late hydration result is outstanding (#948)', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let lateCallback;
+      let changeListener;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener(listener) { changeListener = listener; },
+            removeListener() {},
+            hasListener() { return true; }
+          },
+          local: {
+            get(_keys, callback) {
+              lateCallback = () => callback({
+                theme: 'server-theme',
+                serverSetting: 'from-server'
+              });
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.setItem('theme', 'dark');
+
+      // The echo of this page's own write must stay tracked while the late
+      // result is outstanding, or the merge below would clobber it with the
+      // older server value.
+      changeListener({ theme: { oldValue: null, newValue: 'dark' } }, 'local');
+
+      lateCallback();
+
+      expect(dom.window.localStorage.getItem('theme')).toBe('dark');
+      expect(dom.window.localStorage.getItem('serverSetting')).toBe('from-server');
+    } finally {
+      dom.window.close();
+    }
+  }, 15_000);
+
+  it('does not resurrect an item the page removed during the timeout window (#948)', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      let lateCallback;
+
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() { return false; }
+          },
+          local: {
+            get(_keys, callback) {
+              lateCallback = () => callback({
+                goneKey: 'server-value',
+                serverSetting: 'from-server'
+              });
+            },
+            set(items, callback) { callback?.(); return Promise.resolve(); },
+            remove(keys, callback) { callback?.(); return Promise.resolve(); },
+            clear(callback) { callback?.(); return Promise.resolve(); }
+          }
+        }
+      };
+
+      dom.window.localStorage.setItem('goneKey', 'page-value');
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      await dom.window.__storageBridgeReady;
+
+      dom.window.localStorage.removeItem('goneKey');
+      expect(dom.window.localStorage.getItem('goneKey')).toBeNull();
+
+      lateCallback();
+
+      expect(dom.window.localStorage.getItem('goneKey')).toBeNull();
+      expect(dom.window.localStorage.getItem('serverSetting')).toBe('from-server');
+    } finally {
+      dom.window.close();
+    }
+  }, 15_000);
 
   it('preserves writes that land between get callback and applySnapshot', async () => {
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {

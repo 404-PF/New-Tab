@@ -62,6 +62,45 @@ const AIStore = (function() {
     hoveredDeleteTooltip: null
   };
 
+  // Conversation values this page persisted whose own onChanged echo has not
+  // come back yet, so the storage bridge's echo can be dropped instead of
+  // rebasing runtime state onto it (#948). An echo consumes its entry, and an
+  // entry expires, so a later external write that happens to serialize
+  // identically to one of our own is still applied.
+  const pendingWriteEchoes = new Map();
+  const MAX_PENDING_WRITE_ECHOES = 8;
+  const PENDING_WRITE_ECHO_TTL_MS = 30000;
+
+  // Set when another page persisted conversations while a request owned the
+  // streaming flags; applied once the request settles (#948).
+  let pendingExternalRefresh = false;
+
+  // The conversation array as this page last saw it in storage: refreshed on
+  // load, after a successful write, after a rollback and when an external
+  // value is applied. Saves use it to decide which side owns a message's
+  // content, so a message this page changed since that point keeps its local
+  // copy while a message another tab advanced still replaces the untouched
+  // one (#948). Deletions stay decided against the state-derived baseline.
+  let lastObservedSnapshot = null;
+
+  function rememberWrittenValue(value) {
+    pendingWriteEchoes.set(value, Date.now());
+    while (pendingWriteEchoes.size > MAX_PENDING_WRITE_ECHOES) {
+      pendingWriteEchoes.delete(pendingWriteEchoes.keys().next().value);
+    }
+  }
+
+  /** True only for this page's own write echo: the matching entry is consumed
+   *  on the first match and expires after a while, so historical payloads are
+   *  never treated as proof of ownership (#948). */
+  function isOwnWriteEcho(value) {
+    const writtenAt = pendingWriteEchoes.get(value);
+    if (typeof writtenAt === 'undefined') return false;
+
+    pendingWriteEchoes.delete(value);
+    return Date.now() - writtenAt <= PENDING_WRITE_ECHO_TTL_MS;
+  }
+
   function generateId() {
     const randomValues = new Uint32Array(2);
     crypto.getRandomValues(randomValues);
@@ -300,6 +339,11 @@ const AIStore = (function() {
       // A request interrupted mid-stream persists isStreaming: true and no
       // live request owns it after a restart, so clear that transient flag
       // instead of letting the renderer show a stuck streaming bubble (#865).
+      // Capture the pre-clear view first: that is what storage holds, so the
+      // healing save below sees the clear as a local change instead of taking
+      // the persisted flag back (#865, #948).
+      const observedSnapshot = createSaveSnapshot();
+      lastObservedSnapshot = observedSnapshot;
       const clearedStreamingFlag = clearUnownedStreamingFlags();
 
       const currentId = localStorage.getItem(STORAGE_KEYS.currentId);
@@ -314,6 +358,12 @@ const AIStore = (function() {
         state.conversations.push(newConversation);
         state.currentConversationId = newConversation.id;
         saveConversationsSafely(previousState);
+      }
+
+      // The empty-state branch above writes the fresh conversation, which
+      // already refreshes lastObservedSnapshot to the array it persisted.
+      if (lastObservedSnapshot === observedSnapshot) {
+        observedSnapshot.currentConversationId = state.currentConversationId;
       }
 
       // Heal storage too, so the stale flag cannot resurface in exports or
@@ -342,6 +392,68 @@ const AIStore = (function() {
       console.warn('Failed to load conversations:', error);
       return recoverConversations(stored);
     }
+  }
+
+  /** Applies a conversations array persisted by another page to runtime state.
+   *  Reuses loadConversations()' validation, message-id normalization and
+   *  streaming-flag healing, but never writes to storage: an onChanged refresh
+   *  that saved would echo straight back into chrome.storage (#948). */
+  function applyPersistedConversations(value) {
+    if (typeof value !== 'string') {
+      return false;
+    }
+
+    if (typeof window.isValidConversation !== 'function') {
+      console.warn('AI conversation validator is unavailable; ignoring external conversations');
+      return false;
+    }
+
+    let conversations;
+    try {
+      conversations = JSON.parse(value);
+    } catch (error) {
+      console.warn('Failed to parse externally persisted conversations:', error);
+      return false;
+    }
+
+    if (!Array.isArray(conversations) || conversations.length === 0 ||
+        !conversations.every(isValidConversation)) {
+      return false;
+    }
+
+    conversations.forEach(conversation => {
+      if (Array.isArray(conversation.messages)) {
+        conversation.messages.forEach(message => {
+          if (!message.id) {
+            message.id = generateId();
+          }
+        });
+      }
+    });
+
+    state.conversations = conversations;
+    if (!state.conversations.some(conversation => conversation.id === state.currentConversationId)) {
+      state.currentConversationId = state.conversations[0].id;
+    }
+    // The value just became this page's view of storage, so it becomes the
+    // rebase baseline too; capture it before the flag healing below, which
+    // changes state without touching storage (#948, #865).
+    lastObservedSnapshot = createSaveSnapshot();
+    clearUnownedStreamingFlags();
+    return true;
+  }
+
+  // Applies an external update that arrived while a request owned the
+  // streaming flags, once the request has settled and the storage bridge
+  // mirrors the newest persisted array (#948). A queued save also defers the
+  // refresh: applying it mid-save would replace state under the transaction's
+  // captured snapshot, and the save's own echo would then be ignored, dropping
+  // the local message from runtime state (#948).
+  function flushPendingExternalRefresh() {
+    if (!pendingExternalRefresh) return;
+    if (state.isStreaming || state.isLoading || state.abortController !== null || saveQueue !== null) return;
+    pendingExternalRefresh = false;
+    applyPersistedConversations(localStorage.getItem(STORAGE_KEYS.conversations));
   }
 
   function cloneSaveSnapshot(snapshot) {
@@ -450,6 +562,11 @@ const AIStore = (function() {
   }
 
   function reportSaveFailure(error, rollbackState, saveGeneration, storageFull) {
+    // Storage was restored to this snapshot, so it is the baseline the next
+    // save must rebase on again (#948).
+    if (rollbackState) {
+      lastObservedSnapshot = cloneSaveSnapshot(rollbackState);
+    }
     const isLatestSave = saveGeneration === saveSequence;
     if (isLatestSave && rollbackState) {
       const restoredState = cloneSaveSnapshot(rollbackState);
@@ -516,6 +633,216 @@ const AIStore = (function() {
     );
   }
 
+  /** Parses the persisted conversations array for a pre-save rebase, or null
+   *  when the value is absent/invalid and the local snapshot must be written
+   *  as-is (#948). */
+  function parsePersistedConversations(persistedValue) {
+    if (!persistedValue || typeof window.isValidConversation !== 'function') {
+      return null;
+    }
+
+    try {
+      const conversations = JSON.parse(persistedValue);
+      if (Array.isArray(conversations) && conversations.every(isValidConversation)) {
+        return conversations;
+      }
+    } catch (error) {
+      console.warn('Failed to parse persisted conversations for rebase:', error);
+    }
+
+    return null;
+  }
+
+  // Matches messages without a shared id (legacy entries) across tabs by their
+  // content instead, so rebasing does not duplicate them (#948).
+  function messageSignature(message) {
+    return String(message?.role || '') + '\u0000' +
+      String(message?.content || '') + '\u0000' +
+      (typeof message?.timestamp === 'number' ? message.timestamp : '');
+  }
+
+  /** True when a message still equals the reference copy, i.e. this page never
+   *  touched it since that copy was recorded (#948). */
+  function messageUnchangedSinceBaseline(stateMessage, baselineMessage) {
+    if (stateMessage === baselineMessage) return true;
+    if (!stateMessage || !baselineMessage) return false;
+
+    const stateKeys = Object.keys(stateMessage);
+    const baselineKeys = Object.keys(baselineMessage);
+    if (stateKeys.length !== baselineKeys.length) return false;
+    return stateKeys.every(key => stateMessage[key] === baselineMessage[key]);
+  }
+
+  /** Unions one conversation's messages with the persisted copy. State keeps
+   *  everything it has; the persisted side only contributes messages this page
+   *  never saw, and replaces a message this page left untouched since the last
+   *  observed storage view so content another tab advanced (e.g. a deferred
+   *  cross-tab stream) is not overwritten by a stale local copy. A message
+   *  present in `baselineMessages` but missing from state was deleted here
+   *  (e.g. a failed request cleaned up after #843) and must stay deleted
+   *  instead of being resurrected by the rebase (#948). `observedMessages` is
+   *  what storage held when this page last read or wrote it. */
+  function mergeConversationMessages(stateMessages, persistedMessages, observedMessages, baselineMessages) {
+    const stateIndexById = new Map();
+    const stateSignatures = new Set();
+    const observedById = new Map();
+    const observedSignatures = new Set();
+    const baselineIds = new Set();
+    const baselineSignatures = new Set();
+    const baselineById = new Map();
+
+    stateMessages.forEach((message, index) => {
+      if (!message || typeof message !== 'object') return;
+      if (message.id && !stateIndexById.has(message.id)) {
+        stateIndexById.set(message.id, index);
+      }
+      stateSignatures.add(messageSignature(message));
+    });
+    observedMessages.forEach(message => {
+      if (!message || typeof message !== 'object') return;
+      if (message.id) observedById.set(message.id, message);
+      observedSignatures.add(messageSignature(message));
+    });
+    baselineMessages.forEach(message => {
+      if (!message || typeof message !== 'object') return;
+      if (message.id) {
+        baselineIds.add(message.id);
+        baselineById.set(message.id, message);
+      }
+      baselineSignatures.add(messageSignature(message));
+    });
+
+    const merged = stateMessages.slice();
+    persistedMessages.forEach(message => {
+      if (!message || typeof message !== 'object') return;
+      if (message.id) {
+        const stateIndex = stateIndexById.get(message.id);
+        if (typeof stateIndex === 'number') {
+          // Compare against what storage last held, falling back to the state
+          // baseline for a message this page never observed: only a message
+          // this page left untouched since then yields to the persisted copy.
+          const reference = observedById.get(message.id) || baselineById.get(message.id);
+          if (reference && messageUnchangedSinceBaseline(merged[stateIndex], reference)) {
+            merged[stateIndex] = message;
+          }
+          return;
+        }
+        if (baselineIds.has(message.id)) return;
+        merged.push(message);
+        return;
+      }
+      const signature = messageSignature(message);
+      if (stateSignatures.has(signature) ||
+          observedSignatures.has(signature) ||
+          baselineSignatures.has(signature)) return;
+      merged.push(message);
+    });
+    return merged;
+  }
+
+  function mergePersistedConversation(
+    stateConversation,
+    persistedConversation,
+    observedConversation,
+    baselineConversation
+  ) {
+    const observedMessages = observedConversation && Array.isArray(observedConversation.messages)
+      ? observedConversation.messages
+      : [];
+    const baselineMessages = baselineConversation && Array.isArray(baselineConversation.messages)
+      ? baselineConversation.messages
+      : [];
+
+    return {
+      ...stateConversation,
+      messages: mergeConversationMessages(
+        Array.isArray(stateConversation.messages) ? stateConversation.messages : [],
+        Array.isArray(persistedConversation.messages) ? persistedConversation.messages : [],
+        observedMessages,
+        baselineMessages
+      ),
+      updatedAt: Math.max(
+        Number(stateConversation.updatedAt) || 0,
+        Number(persistedConversation.updatedAt) || 0
+      )
+    };
+  }
+
+  /** Rebases this page's next write on the array already persisted (possibly
+   *  by another tab) so a stale in-memory snapshot can never overwrite newer
+   *  history (#948). Conversations only state knows about are kept; ones only
+   *  the persisted array knows about are merged in unless this page deleted
+   *  them (present in `baselineState`, the state-derived baseline, but gone
+   *  from state). `observedState` is the view of storage this page last
+   *  observed and decides which side owns a message's content. */
+  function mergePersistedConversations(nextConversations, persistedValue, baselineState, observedState) {
+    const persistedConversations = parsePersistedConversations(persistedValue);
+    if (!persistedConversations || persistedConversations.length === 0) {
+      return nextConversations;
+    }
+
+    const baselineConversations = baselineState && Array.isArray(baselineState.conversations)
+      ? baselineState.conversations
+      : [];
+    const observedConversations = observedState && Array.isArray(observedState.conversations)
+      ? observedState.conversations
+      : [];
+    const baselineIds = new Set(baselineConversations.map(conversation => conversation.id));
+    const baselineById = new Map(baselineConversations.map(conversation => [conversation.id, conversation]));
+    const observedById = new Map(observedConversations.map(conversation => [conversation.id, conversation]));
+    const stateIds = new Set(nextConversations.map(conversation => conversation.id));
+
+    const merged = nextConversations.map(stateConversation => {
+      const persistedConversation = persistedConversations
+        .find(conversation => conversation.id === stateConversation.id);
+      if (!persistedConversation) return stateConversation;
+      return mergePersistedConversation(
+        stateConversation,
+        persistedConversation,
+        observedById.get(stateConversation.id),
+        baselineById.get(stateConversation.id)
+      );
+    });
+
+    persistedConversations.forEach(persistedConversation => {
+      if (stateIds.has(persistedConversation.id)) return;
+      if (baselineIds.has(persistedConversation.id)) return;
+      merged.push(persistedConversation);
+    });
+
+    // State was capped before the rebase, so state conversations occupy the
+    // front of `merged`: evicting from the tail would discard exactly the
+    // conversations the rebase just recovered (#586, #948).
+    if (merged.length > MAX_CONVERSATIONS) {
+      return capMergedConversations(merged, nextConversations.length);
+    }
+
+    return merged;
+  }
+
+  /** Enforces MAX_CONVERSATIONS on a rebased array. `stateCount` is how many
+   *  entries at the front came from this page; the rest are conversations only
+   *  the persisted array knows about. Evict the oldest state entries instead
+   *  of those (newest conversations sit at the front, #586), never the active
+   *  or in-flight conversation, so a concurrent conversation another tab
+   *  created survives the cap (#948). */
+  function capMergedConversations(merged, stateCount) {
+    const kept = merged.slice();
+    let overflow = kept.length - MAX_CONVERSATIONS;
+
+    for (let index = Math.min(stateCount, kept.length) - 1; index >= 0 && overflow > 0; index -= 1) {
+      const conversation = kept[index];
+      if (conversation && conversation.id === state.currentConversationId) continue;
+      if (conversation && conversation.id === state.inFlightConversationId) continue;
+      kept.splice(index, 1);
+      overflow -= 1;
+    }
+
+    // Everything evictable in the state portion is protected: fall back to
+    // dropping the tail, which is then the oldest persisted-only entry.
+    return overflow > 0 ? kept.slice(0, kept.length - overflow) : kept;
+  }
+
   function saveConversationsTransaction(
     nextConversations,
     nextCurrentConversationId,
@@ -538,16 +865,39 @@ const AIStore = (function() {
       previousState
     );
 
-    let serializedConversations = typeof precomputedPayload === 'string'
+    // Rebase on the persisted array so a save from this page's in-memory
+    // snapshot never overwrites conversations another tab wrote since the
+    // snapshot was taken (#948). Content ownership is decided against what
+    // this page last observed in storage, so a message it changed since that
+    // observation keeps its local content instead of being replaced by the
+    // older persisted copy, while deletions are still decided against the
+    // state-derived baseline. The rebased array replaces `nextConversations`
+    // so the trimmed re-save below persists the same rebased content (#947).
+    const rebasedConversations = mergePersistedConversations(
+      nextConversations,
+      persistedValues[STORAGE_KEYS.conversations],
+      previousState,
+      lastObservedSnapshot || previousState
+    );
+
+    // The payload saveConversations already serialized is reusable only when
+    // the rebase left the array untouched; a rebased array is serialized here.
+    let serializedConversations = rebasedConversations === nextConversations &&
+      typeof precomputedPayload === 'string'
       ? precomputedPayload
       : null;
     if (serializedConversations === null) {
       try {
-        serializedConversations = JSON.stringify(nextConversations);
+        serializedConversations = JSON.stringify(rebasedConversations);
       } catch (error) {
         return handleSaveFailure(error, [], persistedValues, rollbackState, saveGeneration, false);
       }
     }
+    nextConversations = rebasedConversations;
+
+    // Recorded before the write so the onChanged echo this write triggers is
+    // recognized as our own instead of rebasing state onto it (#948).
+    rememberWrittenValue(serializedConversations);
 
     // A rejected conversations write on a large payload gets exactly one
     // trimmed re-save (#947): halving the history before rolling back keeps
@@ -568,11 +918,19 @@ const AIStore = (function() {
       const trimmedPayload = trySerialize(nextConversations);
       if (trimmedPayload === null) return null;
       recoveryAttempted = true;
+      // The trimmed payload differs from the one recorded before the first
+      // write, so its echo must be recognized as our own too (#948).
+      rememberWrittenValue(trimmedPayload);
       return writeOutcome(STORAGE_KEYS.conversations, trimmedPayload);
     };
 
     const finish = (conversations, currentId) => {
-      if (conversations.ok && currentId.ok) return true;
+      if (conversations.ok && currentId.ok) {
+        // Storage now holds exactly this array, so it becomes the baseline
+        // every later save rebases on (#948).
+        lastObservedSnapshot = createSaveSnapshot(nextConversations, nextCurrentConversationId);
+        return true;
+      }
       const error = conversations.ok
         ? currentId.error || new Error('Current conversation storage write was rejected')
         : conversations.error || new Error('Conversation storage write was rejected');
@@ -668,10 +1026,18 @@ const AIStore = (function() {
     saveQueue = queuedSave;
     queuedSave.then(
       () => {
-        if (saveQueue === queuedSave) saveQueue = null;
+        if (saveQueue === queuedSave) {
+          saveQueue = null;
+          // The save no longer owns the pipeline: a refresh deferred while it
+          // was queued can be applied now (#948).
+          flushPendingExternalRefresh();
+        }
       },
       () => {
-        if (saveQueue === queuedSave) saveQueue = null;
+        if (saveQueue === queuedSave) {
+          saveQueue = null;
+          flushPendingExternalRefresh();
+        }
       }
     );
     return queuedSave;
@@ -980,10 +1346,12 @@ const AIStore = (function() {
 
   function setLoading(value) {
     state.isLoading = value;
+    flushPendingExternalRefresh();
   }
 
   function setStreaming(value) {
     state.isStreaming = value;
+    flushPendingExternalRefresh();
   }
 
   // Records which conversation an in-flight request writes into, so size
@@ -999,6 +1367,7 @@ const AIStore = (function() {
 
   function setAbortController(controller) {
     state.abortController = controller;
+    flushPendingExternalRefresh();
   }
 
   function setUserScrolledUp(value) {
@@ -1027,6 +1396,29 @@ const AIStore = (function() {
       state.hoveredDeleteBtn = null;
       state.hoveredDeleteTooltip = null;
     }
+  }
+
+  // Another new-tab page writing ai_conversations must rebase this page's
+  // in-memory snapshot, or the next save here silently overwrites the newer
+  // array with this page's stale copy (#948). Mirrors the guard pattern used
+  // by src/ai/openrouter.js.
+  if (globalThis.chrome?.storage?.onChanged?.addListener) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== 'local') return;
+      const change = changes && changes[STORAGE_KEYS.conversations];
+      if (!change || typeof change.newValue !== 'string') return;
+      if (isOwnWriteEcho(change.newValue)) return;
+      // A live request owns the streaming flags; replacing the conversation
+      // objects under it would orphan the message it writes to, so defer the
+      // refresh until the request settles (#948, #865). A save queued on the
+      // storage pipeline defers it too, so the refresh cannot land between a
+      // save's snapshot and its write (#948).
+      if (state.isStreaming || state.isLoading || state.abortController !== null || saveQueue !== null) {
+        pendingExternalRefresh = true;
+        return;
+      }
+      applyPersistedConversations(change.newValue);
+    });
   }
 
   return {

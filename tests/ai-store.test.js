@@ -944,6 +944,244 @@ describe('AIStore synchronous fallback write failures (#823)', () => {
   });
 });
 
+describe('AIStore cross-tab lost updates (#948)', () => {
+  const createSharedConversation = () => ({
+    id: 'conv-shared',
+    title: 'Shared topic',
+    messages: [
+      { id: 'm-1', role: 'user', content: 'Hello', timestamp: 1 },
+      { id: 'm-2', role: 'assistant', content: 'Hi there', timestamp: 2 }
+    ],
+    createdAt: 1,
+    updatedAt: 2
+  });
+
+  function seedStorage(conversations) {
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify(conversations)
+    );
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, conversations[0].id);
+  }
+
+  it('keeps a message another tab persisted while this page saves mid-stream', async () => {
+    seedStorage([createSharedConversation()]);
+    AIStore.loadConversations();
+    expect(AIStore.state.conversations[0].messages).toHaveLength(2);
+
+    // A live request owns the streaming flags, so the external update is
+    // deferred instead of replacing the objects the request writes to.
+    AIStore.state.isStreaming = true;
+
+    const externalConversation = {
+      ...createSharedConversation(),
+      messages: [
+        ...createSharedConversation().messages,
+        { id: 'm-other', role: 'user', content: 'From tab A', timestamp: 3 }
+      ],
+      updatedAt: 3
+    };
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify([externalConversation])
+    );
+
+    expect(AIStore.state.conversations[0].messages.map(message => message.id))
+      .toEqual(['m-1', 'm-2']);
+
+    AIStore.addMessageToConversation({
+      id: 'm-local',
+      role: 'user',
+      content: 'From tab B',
+      timestamp: 4
+    });
+    await AIStore.saveConversations();
+
+    // The save rebased on the persisted array: both tabs' messages survive.
+    const persisted = JSON.parse(
+      localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+    );
+    expect(persisted[0].messages.map(message => message.id))
+      .toEqual(expect.arrayContaining(['m-1', 'm-2', 'm-other', 'm-local']));
+
+    // Settling the request applies the deferred refresh from the bridge mirror.
+    AIStore.setStreaming(false);
+    expect(AIStore.state.conversations[0].messages.map(message => message.id))
+      .toEqual(expect.arrayContaining(['m-1', 'm-2', 'm-other', 'm-local']));
+  });
+
+  it('keeps a conversation another tab created when this page saves', async () => {
+    seedStorage([createSharedConversation()]);
+    AIStore.loadConversations();
+
+    // Defer the refresh so only the pre-save rebase protects the new
+    // conversation from being overwritten.
+    AIStore.state.isStreaming = true;
+    const externalConversation = {
+      id: 'conv-external',
+      title: 'Created in tab A',
+      messages: [{ id: 'm-x', role: 'user', content: 'Hi', timestamp: 1 }],
+      createdAt: 5,
+      updatedAt: 5
+    };
+    localStorage.setItem(
+      AIStore.STORAGE_KEYS.conversations,
+      JSON.stringify([externalConversation, createSharedConversation()])
+    );
+
+    await AIStore.saveConversations();
+
+    const persisted = JSON.parse(
+      localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+    );
+    expect(persisted.map(conversation => conversation.id))
+      .toEqual(expect.arrayContaining(['conv-shared', 'conv-external']));
+    AIStore.setStreaming(false);
+  });
+
+  it('does not resurrect a conversation this page just deleted', async () => {
+    const secondConversation = {
+      id: 'conv-second',
+      title: 'Second topic',
+      messages: [],
+      createdAt: 3,
+      updatedAt: 4
+    };
+    seedStorage([createSharedConversation(), secondConversation]);
+    AIStore.loadConversations();
+
+    expect(AIStore.deleteConversation('conv-second')).toBe(true);
+    await AIStore.saveConversations();
+
+    const persisted = JSON.parse(
+      localStorage.getItem(AIStore.STORAGE_KEYS.conversations)
+    );
+    expect(persisted.map(conversation => conversation.id)).toEqual(['conv-shared']);
+  });
+
+  it('refreshes runtime state when another tab persists conversations', () => {
+    seedStorage([createSharedConversation()]);
+    AIStore.loadConversations();
+
+    const externalConversation = {
+      ...createSharedConversation(),
+      messages: [
+        ...createSharedConversation().messages,
+        { id: 'm-other', role: 'user', content: 'From tab A', timestamp: 3 }
+      ],
+      updatedAt: 3
+    };
+    const externalValue = JSON.stringify([externalConversation]);
+    chrome.storage.onChanged._emit({
+      [AIStore.STORAGE_KEYS.conversations]: { newValue: externalValue }
+    }, 'local');
+
+    expect(AIStore.state.conversations[0].messages.map(message => message.id))
+      .toContain('m-other');
+    // The refresh itself never writes: the bridge mirror already carries the
+    // external value, so there is nothing to echo back.
+    expect(localStorage.getItem(AIStore.STORAGE_KEYS.conversations))
+      .toBe(externalValue);
+  });
+
+  it('ignores its own persisted write instead of rebasing state onto it', async () => {
+    const conversation = createSharedConversation();
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    const conversationsRef = AIStore.state.conversations;
+
+    await AIStore.saveConversations();
+
+    // The onChanged echo of this page's own write must not replace state.
+    expect(AIStore.state.conversations).toBe(conversationsRef);
+    expect(AIStore.state.conversations[0]).toBe(conversation);
+
+    // ...and must not queue a deferred refresh for the next settle either.
+    AIStore.setStreaming(false);
+    expect(AIStore.state.conversations[0]).toBe(conversation);
+  });
+
+  it('rejects an invalid external value without writing or recovering', () => {
+    seedStorage([createSharedConversation()]);
+    AIStore.loadConversations();
+
+    const setItemAsync = vi.spyOn(localStorage, 'setItemAsync');
+    try {
+      chrome.storage.onChanged._emit({
+        [AIStore.STORAGE_KEYS.conversations]: { newValue: '{not-json' }
+      }, 'local');
+
+      expect(AIStore.state.conversations.map(conversation => conversation.id))
+        .toEqual(['conv-shared']);
+      expect(setItemAsync).not.toHaveBeenCalled();
+    } finally {
+      setItemAsync.mockRestore();
+    }
+  });
+
+  it('defers an external refresh while a save is queued and applies it once the save settles', async () => {
+    seedStorage([createSharedConversation()]);
+    AIStore.loadConversations();
+
+    const conversationsRef = AIStore.state.conversations;
+    const originalSetItemAsync = localStorage.setItemAsync;
+    let releaseConversationsWrite;
+
+    const externalValue = JSON.stringify([
+      {
+        ...createSharedConversation(),
+        messages: [
+          ...createSharedConversation().messages,
+          { id: 'm-other', role: 'user', content: 'From tab A', timestamp: 3 }
+        ],
+        updatedAt: 3
+      }
+    ]);
+
+    // Hold the conversations write open so the save stays queued on the
+    // storage pipeline while the external update arrives.
+    localStorage.setItemAsync = vi.fn((key, value) => {
+      if (!releaseConversationsWrite) {
+        return new Promise(resolve => {
+          releaseConversationsWrite = () => {
+            localStorage.setItem(key, value);
+            // The external update reached the bridge mirror while the write
+            // was held; completing the save must not clobber it, because the
+            // deferred refresh flushes from that mirror.
+            localStorage.setItem(key, externalValue);
+            resolve(true);
+          };
+        });
+      }
+      localStorage.setItem(key, value);
+      return Promise.resolve(true);
+    });
+
+    try {
+      const savePromise = AIStore.saveConversations();
+      expect(releaseConversationsWrite).toBeDefined();
+
+      chrome.storage.onChanged._emit({
+        [AIStore.STORAGE_KEYS.conversations]: { newValue: externalValue }
+      }, 'local');
+
+      // The queued save owns the pipeline, so the refresh waits instead of
+      // replacing the conversation objects under the transaction.
+      expect(AIStore.state.conversations).toBe(conversationsRef);
+
+      releaseConversationsWrite();
+      await savePromise;
+
+      // Settling the save flushes the deferred refresh from the bridge mirror.
+      expect(AIStore.state.conversations).not.toBe(conversationsRef);
+      expect(AIStore.state.conversations[0].messages.map(message => message.id))
+        .toContain('m-other');
+    } finally {
+      localStorage.setItemAsync = originalSetItemAsync;
+    }
+  });
+});
+
 describe('AIStore serialization failures', () => {
   it('rolls back and reports a save whose conversations cannot be serialized', async () => {
     const conversation = {
@@ -1145,6 +1383,7 @@ describe('AIStore storage bounds (#947)', () => {
     const oldest = { id: 'conv-oldest', title: 'Oldest', messages: makeMessages(15, 'o'), createdAt: 1, updatedAt: 1 };
     AIStore.state.conversations = [active, oldest];
     AIStore.state.currentConversationId = active.id;
+    const conversationsRef = AIStore.state.conversations;
 
     const untrimmedSize = utf8Length(JSON.stringify(AIStore.state.conversations));
     expect(untrimmedSize).toBeGreaterThan(QUOTA);
@@ -1168,6 +1407,12 @@ describe('AIStore storage bounds (#947)', () => {
       // pairing them with another conversation's current id.
       expect(oldest.messages).toHaveLength(15);
       expect(active.messages).toHaveLength(5);
+
+      // The trimmed re-save payload was recorded as an own write, so the
+      // storage bridge's echo of it must not rebase runtime state onto it
+      // (#948).
+      expect(AIStore.state.conversations).toBe(conversationsRef);
+
       expect(toast.showToast).not.toHaveBeenCalled();
       expect(errorSpy).not.toHaveBeenCalled();
     } finally {
