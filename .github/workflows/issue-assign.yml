@@ -8,8 +8,9 @@ name: issue-assign
 #   /assign    claim: only works on an OPEN issue with no assignees.
 #              The bare token must be the comment's first line (no
 #              arguments: "/assign me" is not a command and is ignored).
-#   /unassign  release: removes the commenter from the assignees. Also
-#              available to write-capable users releasing themselves.
+#   /unassign  release: removes the commenter from the assignees. Only
+#              the commenter's own assignment can be released this way;
+#              a maintainer releasing a claim uses the assignees UI.
 #
 # Every authorized run gets an eyes reaction on the requesting comment and
 # a short result or denial comment in the thread, so nobody has to open a
@@ -26,8 +27,8 @@ name: issue-assign
 # Claims are open to every non-bot commenter on purpose — that is the
 # whole point. Abuse is bounded: a claim can never target anything but
 # the commenter's own account, so the blast radius is one issue become
-# "claimed", and any write-capable user can reverse it with /unassign
-# or in the UI. Triggers deliberately exclude issues.opened: nothing is
+# "claimed", and any write-capable user can reverse it in the assignees
+# UI. Triggers deliberately exclude issues.opened: nothing is
 # auto-assigned without a person explicitly asking for it.
 
 on:
@@ -100,7 +101,7 @@ jobs:
       - name: Record job start time
         run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
-      - name: Check /assign or /unassign command and permission
+      - name: Check /assign or /unassign command and authorization
         id: gate
         if: github.event_name == 'issue_comment'
         env:
@@ -108,7 +109,6 @@ jobs:
           COMMENT_BODY: ${{ github.event.comment.body }}
           COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
           COMMENT_ID: ${{ github.event.comment.id }}
-          AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -euo pipefail
@@ -138,42 +138,27 @@ jobs:
           AUTHORIZED=false
           if [ "$mode" = claim ]; then
             AUTHORIZED=true
-          elif [ "$AUTHOR_ASSOCIATION" = 'OWNER' ]; then
-            # /unassign (release): OWNER is trusted via the event payload
-            # (always admin), same as the /label and /triage gates.
-            AUTHORIZED=true
           else
-            # A commenter assigned to this issue may always release
-            # themselves, no write permission needed.
+            # /unassign (release) is self-release only: the command takes
+            # no arguments, so the apply step can only ever remove the
+            # commenter's own account. Only a current assignee passes —
+            # write access deliberately does not, because for anyone
+            # else it would only authorize a no-op. A maintainer
+            # releasing a hostile claim uses the assignees UI instead.
             CURRENT=''
             if CURRENT="$(gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")' 2>/dev/null)"; then
               case ",$(lower "$CURRENT")," in
                 *",$CANON,"*) AUTHORIZED=true ;;
               esac
             else
-              echo 'Assignee lookup failed; falling back to the permission check.'
-            fi
-            if [ "$AUTHORIZED" != true ]; then
-              # Otherwise the same fail-closed rule as the /label and
-              # /triage gates: anyone without an OWNER association must
-              # prove a write-capable permission. The collaborators
-              # permission endpoint requires Administration:read, which
-              # GITHUB_TOKEN lacks, so a failed lookup denies.
-              if PERMISSION="$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$COMMENT_AUTHOR/permission" --jq .permission 2>/dev/null)"; then
-                echo "Permission for $COMMENT_AUTHOR: $PERMISSION"
-                case "$PERMISSION" in
-                  admin|maintain|write|triage) AUTHORIZED=true ;;
-                esac
-              else
-                echo "Permission check failed for $COMMENT_AUTHOR; denying /unassign request."
-              fi
+              echo 'Assignee lookup failed; denying /unassign request.'
             fi
           fi
 
           if [ "$AUTHORIZED" != true ]; then
             echo 'User not authorized, exiting.'
             gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
-              --body "/unassign needs write access, or being the account currently assigned to #$ISSUE_NUMBER."
+              --body "/unassign only releases your own assignment, and you are not assigned to #$ISSUE_NUMBER."
             echo 'proceed=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -252,28 +237,42 @@ jobs:
           # assignees may have changed while the run queued. A deleted
           # issue (or a permission/capacity problem) fails the run loudly
           # via set -e and reaches the failure report.
-          ISSUE_STATE="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq .state)"
-          ASSIGNEES="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"
-          echo "Issue #$ISSUE_NUMBER: state=$ISSUE_STATE, assignees=${ASSIGNEES:-none}"
-
-          if [ "$MODE" = claim ]; then
-            if [ "$ISSUE_STATE" != open ]; then
+          #
+          # Claim policy: unless the issue is open and unassigned, post
+          # the reason and exit 0 (a policy result, not a failure). The
+          # guard re-reads on every call, so it runs once after the queue
+          # delay and again immediately before the POST: the user lookup
+          # in between is another network round trip during which the
+          # issue can be closed or claimed by somebody else, and a stale
+          # read must never decide the write.
+          claim_guard() {
+            local state assignees text
+            state="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq .state)"
+            assignees="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"
+            echo "Issue #$ISSUE_NUMBER: state=$state, assignees=${assignees:-none}"
+            if [ "$state" != open ]; then
               say "Issue #$ISSUE_NUMBER is closed, so /assign does not apply; only open issues can be self-assigned."
               exit 0
             fi
-            if [ -n "$ASSIGNEES" ]; then
-              if list_has "$ASSIGNEES" "$TARGET_LOW"; then
+            if [ -n "$assignees" ]; then
+              if list_has "$assignees" "$TARGET_LOW"; then
                 say "Already assigned to @$TARGET — nothing changed."
               else
                 # Mention syntax in the message is intentional: it
                 # notifies the current assignees that somebody asked to
                 # join the claim.
-                ASSIGNEES_TEXT="$(printf '%s' "$ASSIGNEES" | sed 's/,/, @/g; s/^/@/')"
-                say "Issue #$ISSUE_NUMBER is already assigned to $ASSIGNEES_TEXT. To share the claim, ask an existing assignee or a maintainer."
+                text="$(printf '%s' "$assignees" | sed 's/,/, @/g; s/^/@/')"
+                say "Issue #$ISSUE_NUMBER is already assigned to $text. To share the claim, ask an existing assignee or a maintainer."
               fi
               exit 0
             fi
+          }
+
+          if [ "$MODE" = claim ]; then
+            claim_guard
           else
+            ASSIGNEES="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"
+            echo "Issue #$ISSUE_NUMBER: assignees=${ASSIGNEES:-none}"
             if ! list_has "$ASSIGNEES" "$TARGET_LOW"; then
               say "@$TARGET is not assigned to issue #$ISSUE_NUMBER, so /unassign did nothing."
               exit 0
@@ -299,6 +298,10 @@ jobs:
           # endpoint may silently skip targeted users it cannot assign, so
           # a "success" must never be announced without re-reading.
           if [ "$MODE" = claim ]; then
+            # Last check before the write: the first policy read predated
+            # the user lookup above, so re-read state and assignees now
+            # and abort if the issue is no longer open and unassigned.
+            claim_guard
             gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER/assignees" -f "assignees[]=$TARGET" >/dev/null
             ASSIGNEES_AFTER="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"
             if ! list_has "$ASSIGNEES_AFTER" "$TARGET_LOW"; then
