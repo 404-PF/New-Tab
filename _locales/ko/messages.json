@@ -19,6 +19,14 @@
     "message": "일부 저장된 대화를 불러오지 못했습니다. 거부된 데이터의 백업 사본은 보관되었습니다.",
     "description": "Error shown when stored AI conversations are rejected and repaired"
   },
+  "copySuccess": {
+    "message": "복사됨!",
+    "description": "AI chat copy button feedback after a successful copy"
+  },
+  "copyFailedShort": {
+    "message": "실패",
+    "description": "AI chat copy button feedback when the clipboard write fails"
+  },
   "appGridSaveError": {
     "message": "앱 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
     "description": "Error shown when app grid changes cannot be persisted"

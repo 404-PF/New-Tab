@@ -117,6 +117,8 @@ window.i18n.__registerLocale('zh', {
   copyMottoCopied: '已复制',
   copyMottoFailed: '复制失败',
   copyFailed: '复制文本失败。请手动选择并复制。',
+  copySuccess: '已复制！',
+  copyFailedShort: '失败',
   renameApp: '重命名',
   changeThumbnail: '更改缩略图',
   deleteApp: '删除',

@@ -19,6 +19,14 @@
     "message": "Algunas conversaciones guardadas no se pudieron cargar. Se conservó una copia de seguridad de los datos rechazados.",
     "description": "Error shown when stored AI conversations are rejected and repaired"
   },
+  "copySuccess": {
+    "message": "¡Copiado!",
+    "description": "AI chat copy button feedback after a successful copy"
+  },
+  "copyFailedShort": {
+    "message": "Error",
+    "description": "AI chat copy button feedback when the clipboard write fails"
+  },
   "appGridSaveError": {
     "message": "No se pudieron guardar los cambios de las aplicaciones. La última acción no se guardó.",
     "description": "Error shown when app grid changes cannot be persisted"

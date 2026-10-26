@@ -19,6 +19,14 @@
     "message": "Some saved conversations could not be loaded. A backup copy of the rejected data was kept.",
     "description": "Error shown when stored AI conversations are rejected and repaired"
   },
+  "copySuccess": {
+    "message": "Copied!",
+    "description": "AI chat copy button feedback after a successful copy"
+  },
+  "copyFailedShort": {
+    "message": "Failed",
+    "description": "AI chat copy button feedback when the clipboard write fails"
+  },
   "appGridSaveError": {
     "message": "Failed to save app changes. Your last action was not saved.",
     "description": "Error shown when app grid changes cannot be persisted"

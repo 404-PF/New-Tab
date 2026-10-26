@@ -138,6 +138,17 @@ describe('Storage/copy failure translations', () => {
   });
 });
 
+const AI_COPY_LABEL_TRANSLATION_KEYS = [
+  'copySuccess',
+  'copyFailedShort'
+];
+
+describe('AI copy button label translations (issue #970)', () => {
+  it('defines localized copySuccess and copyFailedShort for every supported language', () => {
+    expectTranslationKeys(AI_COPY_LABEL_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
+
 describe('Pomodoro translations', () => {
   it('falls back to English for every supported language', () => {
     const languages = window.i18n.getSupportedLanguages();

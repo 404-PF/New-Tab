@@ -113,6 +113,8 @@ window.i18n.__registerLocale('ko', {
   copyMottoCopied: '복사됨',
   copyMottoFailed: '복사 실패',
   copyFailed: '텍스트를 복사하지 못했습니다. 직접 선택하여 복사해 주세요.',
+  copySuccess: '복사됨!',
+  copyFailedShort: '실패',
   renameApp: '이름 바꾸기',
   changeThumbnail: '썸네일 변경',
   deleteApp: '삭제',

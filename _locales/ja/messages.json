@@ -19,6 +19,14 @@
     "message": "一部の保存済み会話を読み込めませんでした。拒否されたデータのバックアップは保持されています。",
     "description": "Error shown when stored AI conversations are rejected and repaired"
   },
+  "copySuccess": {
+    "message": "コピーしました！",
+    "description": "AI chat copy button feedback after a successful copy"
+  },
+  "copyFailedShort": {
+    "message": "失敗",
+    "description": "AI chat copy button feedback when the clipboard write fails"
+  },
   "appGridSaveError": {
     "message": "アプリの変更を保存できませんでした。直前の操作は保存されていません。",
     "description": "Error shown when app grid changes cannot be persisted"

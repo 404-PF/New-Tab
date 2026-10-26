@@ -113,6 +113,8 @@ window.i18n.__registerLocale('fr', {
   copyMottoCopied: 'Copié',
   copyMottoFailed: 'Échec de la copie',
   copyFailed: 'Échec de la copie du texte. Veuillez sélectionner et copier manuellement.',
+  copySuccess: 'Copié !',
+  copyFailedShort: 'Échec',
   renameApp: 'Renommer',
   changeThumbnail: 'Changer la vignette',
   deleteApp: 'Supprimer',

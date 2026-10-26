@@ -171,3 +171,74 @@ describe('AIRenderer copy failure notification (#839)', () => {
     }
   });
 });
+
+describe('AIRenderer copy button label translations (#970)', () => {
+  const setupCopyButton = () => {
+    const container = document.getElementById('ai-chat-container');
+    container.innerHTML =
+      '<div class="ai-message-content">' +
+      '<div class="ai-message-text">hello world</div>' +
+      '<button type="button" class="ai-message-copy"><span class="copy-text">Copy</span></button>' +
+      '</div>';
+    const messageText = container.querySelector('.ai-message-text');
+    Object.defineProperty(messageText, 'innerText', { value: 'hello world', configurable: true });
+    return container;
+  };
+
+  it('shows the copySuccess translation on the button label after a successful copy', async () => {
+    const container = setupCopyButton();
+
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true
+    });
+
+    const localizedCopySuccess = '¡Copiado!';
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => (key === 'copySuccess' ? localizedCopySuccess : originalT(key));
+
+    try {
+      AIRenderer.initCopyButtons();
+      container.querySelector('.ai-message-copy').click();
+
+      await vi.waitFor(() => {
+        expect(container.querySelector('.copy-text').textContent).toBe(localizedCopySuccess);
+      });
+      expect(container.querySelector('.copy-text').textContent).not.toBe('Copied!');
+    } finally {
+      window.i18n.t = originalT;
+      container.replaceChildren();
+    }
+  });
+
+  it('shows the copyFailedShort translation on the button label when the clipboard write fails', async () => {
+    const container = setupCopyButton();
+
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true
+    });
+
+    const localizedCopyFailedShort = 'Fehlgeschlagen';
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => (key === 'copyFailedShort' ? localizedCopyFailedShort : originalT(key));
+
+    try {
+      AIRenderer.initCopyButtons();
+      container.querySelector('.ai-message-copy').click();
+
+      await vi.waitFor(() => {
+        expect(container.querySelector('.copy-text').textContent).toBe(localizedCopyFailedShort);
+      });
+      expect(container.querySelector('.copy-text').textContent).not.toBe('Failed');
+
+      const notification = document.querySelector('.toast-notification');
+      if (notification) notification.remove();
+    } finally {
+      window.i18n.t = originalT;
+      const leftover = document.querySelector('.toast-notification');
+      if (leftover) leftover.remove();
+      container.replaceChildren();
+    }
+  });
+});
