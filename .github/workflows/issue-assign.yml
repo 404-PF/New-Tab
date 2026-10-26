@@ -43,14 +43,21 @@ on:
         required: true
         type: number
 
-# The fixed account every newly opened issue is assigned to. A repository
-# variable keeps the login out of the concurrency group and the job if, where
-# an expression on a missing variable could abort the whole run; the apply
-# step reads it from the environment instead and treats an unset value as
-# "auto-assign off". Override per repository from
-# Settings > Secrets and variables > Actions > Variables.
+# The fixed account every newly opened issue is assigned to comes from the
+# AUTO_ASSIGN_LOGIN repository variable (this repository configures it to
+# 404-Page-Found; override per repository from Settings > Secrets and
+# variables > Actions > Variables). A repository variable keeps the login
+# out of the concurrency group and the job if, where an expression on a
+# missing variable could abort the whole run; the apply step reads it from
+# the environment instead and treats an unset or empty value as
+# "auto-assign off". Deliberately no `|| 'default'` fallback: GitHub
+# expressions cannot tell an unset variable apart from one set to an empty
+# string, so a fallback would rewrite an explicit empty value into the
+# default and make the empty-disables check in the apply step dead code —
+# and would also auto-assign issues on forks that never configured the
+# variable at all.
 env:
-  AUTO_ASSIGN_LOGIN: ${{ vars.AUTO_ASSIGN_LOGIN || '404-Page-Found' }}
+  AUTO_ASSIGN_LOGIN: ${{ vars.AUTO_ASSIGN_LOGIN }}
 
 # Assignment is check-then-write against the assignee list, so two runs on
 # the same issue can race on stale state. Serialize per issue instead of
@@ -215,6 +222,27 @@ jobs:
           ASSIGNEES_AFTER="$(gh api "repos/$GH_REPO/issues/$ISSUE_NUMBER" --jq '[.assignees[].login] | join(",")')"
           if ! list_has "$ASSIGNEES_AFTER" "$TARGET_LOW"; then
             echo "::error::GitHub did not assign '$TARGET' to issue #$ISSUE_NUMBER (assignable users only); refusing to announce success."
+            exit 1
+          fi
+          # The final guard above still leaves a race window: anybody can
+          # assign the issue through the UI between that read and the POST
+          # that just ran, and the endpoint would happily create a
+          # co-assignee. The guard promised an existing claim is never
+          # joined, so the post-write list must be the target and nothing
+          # else; a co-assignee means the promise was broken, so undo our
+          # half of the write and fail loudly instead of announcing a
+          # "preserved" claim that is now a shared one.
+          CONFLICT=''
+          IFS=',' read -ra AFTER_LOGINS <<< "$ASSIGNEES_AFTER"
+          for login in "${AFTER_LOGINS[@]}"; do
+            if [ -n "$login" ] && [ "$(lower "$login")" != "$TARGET_LOW" ]; then
+              CONFLICT="$login"
+              break
+            fi
+          done
+          if [ -n "$CONFLICT" ]; then
+            echo "::error::'$CONFLICT' was assigned to issue #$ISSUE_NUMBER while this run was writing; removing '$TARGET' to preserve the human claim."
+            gh api -X DELETE "repos/$GH_REPO/issues/$ISSUE_NUMBER/assignees" -f "assignees[]=$TARGET" >/dev/null
             exit 1
           fi
           echo "Assigned issue #$ISSUE_NUMBER to @$TARGET automatically."
