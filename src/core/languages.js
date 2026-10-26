@@ -157,6 +157,8 @@ const translations = {
     deleteAppTitle: 'Delete App?',
     deleteAppMessage: 'This app will be permanently removed from your list.',
     delete: 'Delete',
+    customBackgroundDeleteConfirmTitle: 'Delete Background',
+    customBackgroundDeleteConfirmMessage: 'This custom background will be permanently removed.',
 
     // URL Validation messages
     validationPleaseEnter: 'Please enter a URL or search query',

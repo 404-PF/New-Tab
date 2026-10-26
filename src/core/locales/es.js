@@ -96,6 +96,8 @@ window.i18n.__registerLocale('es', {
   deleteAppTitle: '¿Eliminar aplicación?',
   deleteAppMessage: 'Esta aplicación se eliminará permanentemente de tu lista.',
   delete: 'Eliminar',
+  customBackgroundDeleteConfirmTitle: 'Eliminar fondo',
+  customBackgroundDeleteConfirmMessage: 'Este fondo personalizado se eliminará permanentemente.',
   validationPleaseEnter: 'Por favor ingresa una URL o consulta de búsqueda',
   validationInvalidAppears: 'Esta URL parece inválida. Presiona Enter para crear',
   validationMissingHostname: 'URL inválida: falta el nombre de host',

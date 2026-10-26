@@ -807,10 +807,34 @@
 
   // --- Custom confirm dialog ---
 
+  // Resolves the key through window.i18n.t, falling back to the English
+  // literal when the translation is missing or echoes the key.
+  function translate(key, fallback) {
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const translated = window.i18n.t(key);
+      if (translated && translated !== key) return translated;
+    }
+    return fallback;
+  }
+
+  // Escape hook for MODAL_DEFINITIONS (accessibility.js) and MODAL_SELECTORS
+  // (shortcuts.js). resolve() lives inside showConfirmDialog's Promise, so
+  // those registries route their close through here instead of calling
+  // resolve directly. Cleared as soon as the dialog closes, which keeps a
+  // repeated Escape press a no-op.
+  let closeActiveConfirmDialog = null;
+
+  function closeConfirmDialog() {
+    if (typeof closeActiveConfirmDialog === 'function') {
+      closeActiveConfirmDialog(false);
+    }
+  }
+
   function showConfirmDialog(title, message) {
     return new Promise(function (resolve) {
       const dialog = document.createElement('div');
       dialog.className = 'bg-confirm-dialog screen-overlay';
+      dialog.id = 'bg-confirm-dialog';
 
       const overlay = document.createElement('div');
       overlay.className = 'bg-confirm-overlay';
@@ -840,11 +864,11 @@
 
       const cancelBtn = document.createElement('button');
       cancelBtn.className = 'bg-confirm-cancel';
-      cancelBtn.textContent = 'Cancel';
+      cancelBtn.textContent = translate('cancel', 'Cancel');
 
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'bg-confirm-delete';
-      deleteBtn.textContent = 'Delete';
+      deleteBtn.textContent = translate('delete', 'Delete');
 
       actions.appendChild(cancelBtn);
       actions.appendChild(deleteBtn);
@@ -858,11 +882,18 @@
       document.body.appendChild(dialog);
       requestAnimationFrame(function () { dialog.classList.add('bg-confirm-open'); });
 
+      let closed = false;
+
       function close(result) {
+        if (closed) return;
+        closed = true;
+        if (closeActiveConfirmDialog === close) closeActiveConfirmDialog = null;
         dialog.classList.remove('bg-confirm-open');
         setTimeout(function () { dialog.remove(); }, 200);
         resolve(result);
       }
+
+      closeActiveConfirmDialog = close;
 
       overlay.addEventListener('click', function () { close(false); });
       cancelBtn.addEventListener('click', function () { close(false); });
@@ -880,7 +911,10 @@
     const bgId = delBtn.getAttribute('data-bg-id');
     if (!bgId) return;
 
-    showConfirmDialog('Delete Background', 'This custom background will be permanently removed.').then(function (confirmed) {
+    showConfirmDialog(
+      translate('customBackgroundDeleteConfirmTitle', 'Delete Background'),
+      translate('customBackgroundDeleteConfirmMessage', 'This custom background will be permanently removed.')
+    ).then(function (confirmed) {
       if (!confirmed) return;
 
       let currentBg = null;
@@ -1013,6 +1047,7 @@
     getBlobUrl: getBlobUrl,
     revokeAll: revokeAllBlobUrls,
     showConfirmDialog: showConfirmDialog,
+    closeConfirmDialog: closeConfirmDialog,
     refresh: refreshCachedList,
     getCachedList: getCachedList
   };

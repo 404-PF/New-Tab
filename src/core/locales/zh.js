@@ -97,6 +97,8 @@ window.i18n.__registerLocale('zh', {
   deleteAppTitle: '删除应用？',
   deleteAppMessage: '该应用将从此列表中永久删除。',
   delete: '删除',
+  customBackgroundDeleteConfirmTitle: '删除背景',
+  customBackgroundDeleteConfirmMessage: '此自定义背景将被永久删除。',
 
   // URL Validation messages
   validationPleaseEnter: '请输入URL或搜索词',

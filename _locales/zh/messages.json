@@ -66,6 +66,14 @@
     "message": "处理文件失败。请尝试其他文件。",
     "description": "Error shown when an uploaded background file cannot be processed"
   },
+  "customBackgroundDeleteConfirmTitle": {
+    "message": "删除背景",
+    "description": "Title of the custom background delete confirmation dialog"
+  },
+  "customBackgroundDeleteConfirmMessage": {
+    "message": "此自定义背景将被永久删除。",
+    "description": "Message shown in the custom background delete confirmation dialog"
+  },
   "onboardingSaveError": {
     "message": "无法保存新手引导的完成状态。您的进度已保留，可以重试。",
     "description": "Error shown when onboarding completion cannot be persisted"

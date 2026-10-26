@@ -66,6 +66,14 @@
     "message": "Não foi possível processar o arquivo. Tente com um arquivo diferente.",
     "description": "Error shown when an uploaded background file cannot be processed"
   },
+  "customBackgroundDeleteConfirmTitle": {
+    "message": "Excluir plano de fundo",
+    "description": "Title of the custom background delete confirmation dialog"
+  },
+  "customBackgroundDeleteConfirmMessage": {
+    "message": "Este plano de fundo personalizado será removido permanentemente.",
+    "description": "Message shown in the custom background delete confirmation dialog"
+  },
   "onboardingSaveError": {
     "message": "Não foi possível salvar a conclusão do onboarding. Seu progresso foi mantido para você poder tentar novamente.",
     "description": "Error shown when onboarding completion cannot be persisted"

@@ -3,6 +3,9 @@ import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/data/custom-backgrounds.js');
+  // Loaded so the Escape regression tests exercise the real MODAL_SELECTORS
+  // path in shortcuts.js (issue #968).
+  injectScript('src/features/shortcuts.js');
 });
 
 afterEach(() => {
@@ -89,5 +92,86 @@ describe('showConfirmDialog', () => {
     await vi.waitFor(() => {
       expect(dialog.classList.contains('bg-confirm-open')).toBe(true);
     });
+  });
+
+  it('gives the dialog the id looked up by the modal registries (#968)', () => {
+    window._customBackgrounds.showConfirmDialog('T', 'M');
+
+    const dialog = document.getElementById('bg-confirm-dialog');
+    expect(dialog).not.toBeNull();
+    expect(dialog).toBe(document.querySelector('.bg-confirm-dialog'));
+  });
+
+  it('resolves false and removes the dialog on Escape (#968)', async () => {
+    const promise = window._customBackgrounds.showConfirmDialog('T', 'M');
+    const dialog = document.getElementById('bg-confirm-dialog');
+    await vi.waitFor(() => expect(dialog.classList.contains('bg-confirm-open')).toBe(true));
+
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(await promise).toBe(false);
+
+    // close() uses a 200ms timeout to remove the element
+    await new Promise(resolve => setTimeout(resolve, 250));
+    expect(document.getElementById('bg-confirm-dialog')).toBeNull();
+  });
+
+  it('stays closed when Escape is pressed again (#968)', async () => {
+    const promise = window._customBackgrounds.showConfirmDialog('T', 'M');
+    const dialog = document.getElementById('bg-confirm-dialog');
+    await vi.waitFor(() => expect(dialog.classList.contains('bg-confirm-open')).toBe(true));
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+
+    const second = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(second);
+
+    // The second press must not re-close anything or swallow the event.
+    expect(second.defaultPrevented).toBe(false);
+    expect(await promise).toBe(false);
+
+    await new Promise(resolve => setTimeout(resolve, 250));
+    expect(document.getElementById('bg-confirm-dialog')).toBeNull();
+  });
+
+  it('exposes closeConfirmDialog as a no-op when nothing is open (#968)', () => {
+    expect(() => window._customBackgrounds.closeConfirmDialog()).not.toThrow();
+  });
+
+  it('translates the title, message, and buttons through i18n (#968)', async () => {
+    const originalT = window.i18n.t;
+    const strings = {
+      customBackgroundDeleteConfirmTitle: 'Hintergrund löschen',
+      customBackgroundDeleteConfirmMessage: 'Dieser benutzerdefinierte Hintergrund wird dauerhaft entfernt.',
+      cancel: 'Abbrechen',
+      delete: 'Löschen'
+    };
+    window.i18n.t = (key) => strings[key] || originalT(key);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'custom-bg-delete-btn';
+    delBtn.setAttribute('data-bg-id', 'custom_image_translate');
+    document.body.appendChild(delBtn);
+
+    try {
+      delBtn.click();
+
+      const dialog = document.getElementById('bg-confirm-dialog');
+      expect(dialog).not.toBeNull();
+      expect(dialog.querySelector('.bg-confirm-title').textContent).toBe('Hintergrund löschen');
+      expect(dialog.querySelector('.bg-confirm-message').textContent)
+        .toBe('Dieser benutzerdefinierte Hintergrund wird dauerhaft entfernt.');
+      expect(dialog.querySelector('.bg-confirm-cancel').textContent).toBe('Abbrechen');
+      expect(dialog.querySelector('.bg-confirm-delete').textContent).toBe('Löschen');
+
+      dialog.querySelector('.bg-confirm-cancel').click();
+      await new Promise(resolve => setTimeout(resolve, 250));
+      expect(document.getElementById('bg-confirm-dialog')).toBeNull();
+    } finally {
+      window.i18n.t = originalT;
+      delBtn.remove();
+    }
   });
 });

@@ -66,6 +66,14 @@
     "message": "Failed to process the file. Please try a different file.",
     "description": "Error shown when an uploaded background file cannot be processed"
   },
+  "customBackgroundDeleteConfirmTitle": {
+    "message": "Delete Background",
+    "description": "Title of the custom background delete confirmation dialog"
+  },
+  "customBackgroundDeleteConfirmMessage": {
+    "message": "This custom background will be permanently removed.",
+    "description": "Message shown in the custom background delete confirmation dialog"
+  },
   "onboardingSaveError": {
     "message": "Failed to save onboarding completion. Your progress was kept so you can retry.",
     "description": "Error shown when onboarding completion cannot be persisted"
