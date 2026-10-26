@@ -34,10 +34,23 @@ Bumps `manifest.json` + `package.json` to the version provided by the user, and 
   fi
   ```
 
-Verify you are on `main` before making any version changes:
+Ensure you are on a release branch (`release/*`) before making any version changes. If you are currently on `main`, create and switch to a new release branch (e.g. `release/$VERSION`):
 
 ```bash
-test "$(git branch --show-current)" = "main" || { echo "Release must be prepared from main" >&2; exit 1; }
+CURRENT_BRANCH="$(git branch --show-current)"
+if [ "$CURRENT_BRANCH" = "main" ]; then
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "Uncommitted changes present — commit or stash them before creating the release branch" >&2
+    exit 1
+  fi
+  if ! git checkout -b "release/$VERSION"; then
+    echo "Unable to create release/$VERSION" >&2
+    exit 1
+  fi
+elif ! printf '%s' "$CURRENT_BRANCH" | grep -Eq '^release/'; then
+  echo "Release must be prepared on a release/* branch (current branch: $CURRENT_BRANCH)" >&2
+  exit 1
+fi
 ```
 
 ### 2. Bump In-App Version
@@ -91,6 +104,7 @@ git commit -m "chore: release v$VERSION" manifest.json package.json package-lock
 
 ## Checklist
 
+- [ ] On a valid release branch (`release/*`)
 - [ ] Version from user, valid semver
 - [ ] manifest.json + package.json + package-lock.json synced
 - [ ] src/features/release-notes.js contains the matching version entry
