@@ -88,13 +88,18 @@ const AIRenderer = (function() {
       text.textContent = labelText;
     };
 
+    const restoreWebGroundingCheckbox = () => {
+      checkbox.checked = window.OpenRouterAPI?.isWebGroundingEnabled?.() ?? checkbox.checked;
+      console.warn('Web grounding preference could not be saved; reverted to the previous value for this session.');
+    };
+
     checkbox.addEventListener('change', () => {
       if (window.OpenRouterAPI?.setWebGroundingEnabled) {
-        const persisted = window.OpenRouterAPI.setWebGroundingEnabled(checkbox.checked);
-        if (persisted === false) {
-          checkbox.checked = window.OpenRouterAPI?.isWebGroundingEnabled?.() ?? checkbox.checked;
-          console.warn('Web grounding preference could not be saved; reverted to the previous value for this session.');
-        }
+        Promise.resolve(window.OpenRouterAPI.setWebGroundingEnabled(checkbox.checked)).then((persisted) => {
+          if (persisted === false) {
+            restoreWebGroundingCheckbox();
+          }
+        }).catch(restoreWebGroundingCheckbox);
       }
     });
 

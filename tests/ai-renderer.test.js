@@ -244,13 +244,13 @@ describe('AIRenderer copy button label translations (#970)', () => {
 });
 
 describe('AIRenderer web grounding toggle write failure (#971)', () => {
-  it('restores the checkbox from the stored preference when persistence fails', () => {
+  it('restores the checkbox from the stored preference when persistence fails', async () => {
     const getCheckbox = () => document.querySelector('.ai-grounding-toggle input[type="checkbox"]');
     const originalAPI = window.OpenRouterAPI;
 
     window.OpenRouterAPI = {
       isWebGroundingEnabled: () => true,
-      setWebGroundingEnabled: vi.fn(() => false)
+      setWebGroundingEnabled: vi.fn().mockResolvedValue(false)
     };
 
     try {
@@ -261,7 +261,10 @@ describe('AIRenderer web grounding toggle write failure (#971)', () => {
       getCheckbox().dispatchEvent(new Event('change'));
 
       expect(window.OpenRouterAPI.setWebGroundingEnabled).toHaveBeenCalledWith(false);
-      expect(getCheckbox().checked).toBe(true);
+
+      await vi.waitFor(() => {
+        expect(getCheckbox().checked).toBe(true);
+      });
     } finally {
       if (originalAPI === undefined) {
         delete window.OpenRouterAPI;

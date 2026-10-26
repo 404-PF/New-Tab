@@ -69,28 +69,53 @@ const OpenRouterAPI = (function() {
 
   /**
    * Persist the user's web-grounding preference.
-   * The in-memory value is kept only when the write is accepted; on failure
-   * it is rolled back so memory matches what storage will report on reload.
+   * The write is awaited, so a bridge-accepted write that fails later still
+   * rolls the in-memory flag back once it settles; memory then matches what
+   * storage will report on reload.
    * @param {boolean} enabled - Whether web grounding should be enabled
-   * @returns {boolean} Whether the setting was persisted
+   * @returns {Promise<boolean>} Whether the setting was persisted
    */
   function setWebGroundingEnabled(enabled) {
     const previous = webGroundingEnabled;
-    webGroundingEnabled = enabled === true;
+    const nextEnabled = enabled === true;
+    webGroundingEnabled = nextEnabled;
+
+    const rollback = () => {
+      // A later toggle or an onChanged refresh owns the flag by now.
+      if (webGroundingEnabled === nextEnabled) {
+        webGroundingEnabled = previous;
+      }
+      return false;
+    };
+
+    const value = nextEnabled ? 'true' : 'false';
+
+    if (typeof localStorage.setItemAsync === 'function') {
+      try {
+        return Promise.resolve(localStorage.setItemAsync(GROUNDING_STORAGE_KEY, value)).then(
+          (persisted) => (persisted === false ? rollback() : true),
+          (error) => {
+            console.warn('Failed to save web grounding preference:', error);
+            return rollback();
+          }
+        );
+      } catch (error) {
+        console.warn('Failed to save web grounding preference:', error);
+        return Promise.resolve(rollback());
+      }
+    }
 
     try {
       // The storage bridge returns false when it rejects a write; the native
       // Storage API returns undefined. Treat only an explicit false as failure.
-      const persisted = localStorage.setItem(GROUNDING_STORAGE_KEY, webGroundingEnabled ? 'true' : 'false');
-      if (persisted === false) {
-        webGroundingEnabled = previous;
-        return false;
+      const persisted = localStorage.setItem(GROUNDING_STORAGE_KEY, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+      if (!persisted) {
+        return Promise.resolve(rollback());
       }
-      return true;
+      return Promise.resolve(true);
     } catch (error) {
-      webGroundingEnabled = previous;
       console.warn('Failed to save web grounding preference:', error);
-      return false;
+      return Promise.resolve(rollback());
     }
   }
 
