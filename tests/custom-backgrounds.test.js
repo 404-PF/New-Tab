@@ -478,6 +478,20 @@ describe('custom backgrounds upload validation (issue #967)', () => {
     button.setAttribute('data-upload-type', uploadType);
     document.body.appendChild(button);
 
+    const restore = () => {
+      if (originalShowToast === undefined) {
+        delete window.showToast;
+      } else {
+        window.showToast = originalShowToast;
+      }
+      if (originalAlert === undefined) {
+        delete window.alert;
+      } else {
+        window.alert = originalAlert;
+      }
+      harness.restore();
+    };
+
     try {
       button.click();
       // tests/setup.js pre-creates #data-import-file; the upload flow appends
@@ -486,6 +500,11 @@ describe('custom backgrounds upload validation (issue #967)', () => {
       expect(input).not.toBeNull();
       Object.defineProperty(input, 'files', { value: [file], configurable: true });
       input.dispatchEvent(new Event('change'));
+    } catch (error) {
+      // Failures before the handle is handed back (e.g. a missing file
+      // input) must not leak the spies or the injected document listeners.
+      restore();
+      throw error;
     } finally {
       button.remove();
     }
@@ -493,19 +512,7 @@ describe('custom backgrounds upload validation (issue #967)', () => {
     return {
       showToast,
       alert,
-      restore() {
-        if (originalShowToast === undefined) {
-          delete window.showToast;
-        } else {
-          window.showToast = originalShowToast;
-        }
-        if (originalAlert === undefined) {
-          delete window.alert;
-        } else {
-          window.alert = originalAlert;
-        }
-        harness.restore();
-      }
+      restore
     };
   }
 
@@ -533,21 +540,23 @@ describe('custom backgrounds upload validation (issue #967)', () => {
 
   it('reports a thumbnail-generation failure through the localized toast', async () => {
     const originalCreateObjectURL = URL.createObjectURL;
-    // generateImageThumbnail resolves its blob URL through URL.createObjectURL;
-    // forcing it to throw exercises the process-error catch path.
-    URL.createObjectURL = () => {
-      throw new Error('blob URL creation failed');
-    };
-    const ctx = await primeUploadHarness('image', { name: 'photo.jpg', type: 'image/jpeg' });
-
+    let ctx = null;
     try {
+      // generateImageThumbnail resolves its blob URL through URL.createObjectURL;
+      // forcing it to throw exercises the process-error catch path.
+      URL.createObjectURL = () => {
+        throw new Error('blob URL creation failed');
+      };
+      ctx = await primeUploadHarness('image', { name: 'photo.jpg', type: 'image/jpeg' });
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(ctx.showToast).toHaveBeenCalledWith('customBgProcessError', 'error');
       expect(ctx.alert).not.toHaveBeenCalled();
     } finally {
       URL.createObjectURL = originalCreateObjectURL;
-      ctx.restore();
+      // primeUploadHarness cleans up after itself when it throws, so only an
+      // established harness still needs its handle restored here.
+      if (ctx) ctx.restore();
     }
   });
 });

@@ -452,6 +452,15 @@
         ? window.i18n.t('delete')
         : 'Delete';
 
+      // Applied from a single helper so the identical label/aria wiring is
+      // not repeated in both the static and the live thumbnail passes.
+      function labelDeleteButton(delBtn) {
+        delBtn.title = deleteLabel;
+        delBtn.setAttribute('aria-label', deleteLabel);
+        delBtn.setAttribute('data-i18n-title', 'delete');
+        delBtn.setAttribute('data-i18n-aria-label', 'delete');
+      }
+
       // Insert custom static backgrounds into the thumbnail grid
       staticBgs.forEach(function (bg) {
         const wrapper = document.createElement('div');
@@ -469,10 +478,7 @@
         delBtn.className = 'custom-bg-delete-btn';
         delBtn.setAttribute('data-bg-id', bg.id);
         delBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-        delBtn.title = deleteLabel;
-        delBtn.setAttribute('aria-label', deleteLabel);
-        delBtn.setAttribute('data-i18n-title', 'delete');
-        delBtn.setAttribute('data-i18n-aria-label', 'delete');
+        labelDeleteButton(delBtn);
 
         wrapper.appendChild(img);
         wrapper.appendChild(delBtn);
@@ -497,10 +503,7 @@
         delBtn.className = 'custom-bg-delete-btn';
         delBtn.setAttribute('data-bg-id', bg.id);
         delBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-        delBtn.title = deleteLabel;
-        delBtn.setAttribute('aria-label', deleteLabel);
-        delBtn.setAttribute('data-i18n-title', 'delete');
-        delBtn.setAttribute('data-i18n-aria-label', 'delete');
+        labelDeleteButton(delBtn);
 
         wrapper.appendChild(img);
         wrapper.appendChild(delBtn);
