@@ -216,6 +216,16 @@ describe('Motto action buttons share the pill glass treatment (#975)', () => {
     expect(match[0]).toContain(':hover');
   });
 
+  it('restates the focus ring above the light-theme primary-surface shadow', () => {
+    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
+    const rule = css.match(
+      /body\.light-theme :is\(\s*#refresh-motto-btn,\s*#copy-motto-btn\s*\):focus-visible[^{]*\{([^}]*)\}/
+    );
+    expect(rule).not.toBeNull();
+    expect(rule[1]).toContain('var(--glass-focus-ring)');
+    expect(rule[1]).toMatch(/outline:\s*none/);
+  });
+
   it('keeps the motto button IDs out of the shared control hover group', () => {
     // ID selectors inside the shared :is() group would raise every member to
     // ID-level specificity and override sibling states such as
@@ -228,15 +238,16 @@ describe('Motto action buttons share the pill glass treatment (#975)', () => {
     expect(shared[1]).not.toMatch(/#(refresh|copy)-motto-btn/);
   });
 
-  it('styles the dark-theme base rule as layout-only with a 24px hit area and pointer cursor', () => {
+  it('pins the dark-theme base rule to theme-controlled colors with a 24px hit area and pointer cursor', () => {
     const css = readFileSync(SHELL_CSS_PATH, 'utf-8');
     const rule = css.match(/#refresh-motto-btn,\s*#copy-motto-btn\s*\{([^}]*)\}/);
     expect(rule).not.toBeNull();
     const body = rule[1];
     expect(body).toContain('cursor: pointer');
-    expect(body).toMatch(/width:\s*(2[4-9]|[3-9]\d)px/);
-    expect(body).toMatch(/height:\s*(2[4-9]|[3-9]\d)px/);
-    expect(body).not.toMatch(/background\s*:/);
+    expect(body).toMatch(/(?<![\w-])width:\s*24px/);
+    expect(body).toMatch(/(?<![\w-])height:\s*24px/);
+    expect(body).toMatch(/color:\s*inherit/);
+    expect(body).toMatch(/background:\s*var\(--glass-control\)/);
     expect(body).not.toMatch(/rgb\(200,\s*200,\s*200\)/);
     expect(body).not.toMatch(/transition:\s*all/);
     expect(body).toMatch(/transition:[^;]*background-color/);

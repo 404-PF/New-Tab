@@ -290,6 +290,18 @@ body.light-theme :is(
   border-color: var(--glass-border-hover);
 }
 
+/* #975: the primary-surface rule above carries an ID-level box-shadow that
+   outranks the shell focus ring, and shell's outline:none outranks the
+   generic button focus rule — so keyboard focus would vanish in light
+   theme. Restate both at a higher specificity so the ring stays visible. */
+body.light-theme :is(
+  #refresh-motto-btn,
+  #copy-motto-btn
+):focus-visible {
+  outline: none;
+  box-shadow: var(--glass-focus-ring);
+}
+
 body.light-theme :is(
   .settings-menu-item.selected,
   .weather-choice-button.active,

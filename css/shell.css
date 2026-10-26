@@ -51,6 +51,11 @@
 #copy-motto-btn {
   width: 24px;
   height: 24px;
+  /* Explicit colors keep the buttons off the UA buttonface/buttontext
+     defaults; they take the motto bar's themed foreground and a token
+     surface that light theme replaces with the glass primary surface. */
+  color: inherit;
+  background: var(--glass-control);
   padding: 2px 5px;
   border: none;
   border-radius: 8px;
