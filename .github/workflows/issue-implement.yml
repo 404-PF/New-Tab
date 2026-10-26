@@ -374,15 +374,164 @@ jobs:
           fi
           echo 'has_changes=true' >> "$GITHUB_OUTPUT"
 
+          # Same exclude as the status check. git add -A without it would
+          # commit the context files. pr-body.md is written under .tmp after
+          # commit. Staging is moved before naming so the shared rule below
+          # can map the staged diff to a Conventional Commits type and scope.
+          git add -A -- . ':(exclude).tmp'
+
           TITLE="$(gh issue view "$ISSUE_NUMBER" --repo "$GH_REPO" --json title --jq .title)"
           LABELS="$(gh issue view "$ISSUE_NUMBER" --repo "$GH_REPO" --json labels --jq '[.labels[].name] | join(",")')"
+          STAGED_FILES="$(git diff --cached --name-only)"
+
+          # --- BEGIN naming rule ---
+          # Single source of truth for the branch prefix, the commit subject,
+          # and the PR title (issue #966). Inputs: $TITLE, $LABELS (comma-
+          # joined), $STAGED_FILES (newline-separated), $ISSUE_NUMBER.
+          # Outputs: $TYPE, $SCOPE (may be empty), $SUBJECT (conventional
+          # subject hard-capped at 72 chars), $SLUG (40-char branch slug,
+          # behavior unchanged). tests/issue-implement-workflow.test.js
+          # executes this block against a backfilled title set.
+          #
+          # Type precedence (explicit, documented):
+          #   1. An issue title that already starts with `type(scope):` is
+          #      reused as-is (matched case-insensitively, any whitespace
+          #      around the colon); its type and scope win and no second
+          #      prefix is ever prepended.
+          #   2. Otherwise the staged diff decides: src/** first (title
+          #      keywords perf > refactor > fix > feat; then the label
+          #      fallback; then fix, the legacy default for source changes),
+          #      then .github/** -> ci, tests/** -> test, docs/** -> docs.
+          #   3. Label fallback, only when the diff is ambiguous (no known
+          #      path matched): enhancement|feature -> feat, bug -> fix,
+          #      refactor -> refactor, performance|perf -> perf,
+          #      documentation|docs -> docs, tests|test -> test, ci -> ci,
+          #      anything else (including unlabeled issues) -> chore, so
+          #      refactor/maintenance/documentation/tests/ci are no longer
+          #      forced to fix.
+          #
+          # Scope precedence: a scope parsed from the issue title's prefix
+          # wins; otherwise it is derived from the changed paths (src/ui ->
+          # ui, src/core -> core, src/features/<name> -> <name>, src/ai ->
+          # ai, src/data -> data, .github -> ci).
+          #
+          # The description is normalized before use: legacy [Bug]/[Feature]/
+          # [Security] tags, trailing (#refs), and bare trailing #N refs are
+          # stripped, backticks and quotes removed, en/em-dashes converted to
+          # spaces, emoji and other non-ASCII dropped, whitespace collapsed.
+          # Trailing #<issue> refs are stripped from the subject; the issue number stays in the commit/PR body
+          # as Fixes #<issue>.
+          NORMALIZED="$(printf '%s' "$TITLE" | sed -E -e 's/^(\[(Bug|Feature|Security|Enhancement)\][[:space:]:]*)+//I' -e 's/[[:space:]]*\((#[0-9]+([,[:space:]]*#[0-9]+)*)\)[[:space:]]*$//' -e 's/[[:space:]]+#[0-9]+([,[:space:]]*#[0-9]+)*[[:space:]]*$//' -e "s/[\`\"']//g" -e 's/[–—]/ /g' -e 's/[[:space:]]+/ /g' -e 's/^ //' -e 's/ $//' | LC_ALL=C tr -cd '[:print:]' | sed -E -e 's/[[:space:]]+/ /g' -e 's/^ //' -e 's/ $//')"
+          TYPE=''
+          SCOPE=''
+          DESC="$NORMALIZED"
+          # Match an existing conventional prefix case-insensitively against a
+          # lowercased copy, so `Feat: add X` is never double-prefixed; any
+          # whitespace around the colon is accepted. DESC is re-cut from the
+          # original string to keep its casing. tr instead of a bash-4-only
+          # lowercase expansion keeps the rule runnable under macOS bash 3.2
+          # for the behavioral tests.
+          LOWER_NORMALIZED="$(printf '%s' "$NORMALIZED" | tr '[:upper:]' '[:lower:]')"
+          if [[ "$LOWER_NORMALIZED" =~ ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(([a-z0-9._/-]+)\))?[[:space:]]*:[[:space:]]*(.*)$ ]]; then
+            TYPE="${BASH_REMATCH[1]}"
+            SCOPE="${BASH_REMATCH[3]-}"
+            DESC_KEEP=$(( ${#NORMALIZED} - ${#BASH_REMATCH[4]} ))
+            DESC="${NORMALIZED:DESC_KEEP}"
+          fi
+          if [ -z "$TYPE" ]; then
+            LOWER_DESC="$(printf '%s' "$DESC" | tr '[:upper:]' '[:lower:]')"
+            # grep -E consumes the whole stream (grep -q would exit on the
+            # first match, SIGPIPE printf, and pipefail would treat a real
+            # match as no match on large file lists).
+            if printf '%s\n' "$STAGED_FILES" | grep -E '^src/' >/dev/null; then
+              if printf '%s' "$LOWER_DESC" | grep -E '\b(perf|performance|optimi[sz]e|slow)\b' >/dev/null; then
+                TYPE='perf'
+              elif printf '%s' "$LOWER_DESC" | grep -E '\b(refactor|cleanup|clean-up|restructure)\b' >/dev/null; then
+                TYPE='refactor'
+              elif printf '%s' "$LOWER_DESC" | grep -E '\b(fix|fixes|fixed|bug|bugs|broken|crash|regression)\b' >/dev/null; then
+                TYPE='fix'
+              elif printf '%s' "$LOWER_DESC" | grep -E '\b(add|adds|added|feat|feature|implement|implements|support|enhance|improve)\b' >/dev/null; then
+                TYPE='feat'
+              else
+                # Full label mapping; fix stays the legacy default for
+                # unlabeled source changes.
+                case ",$LABELS," in
+                  *,enhancement,*|*,feature,*) TYPE='feat' ;;
+                  *,bug,*|*,bugfix,*) TYPE='fix' ;;
+                  *,refactor,*) TYPE='refactor' ;;
+                  *,performance,*|*,perf,*) TYPE='perf' ;;
+                  *,documentation,*|*,docs,*) TYPE='docs' ;;
+                  *,tests,*|*,test,*) TYPE='test' ;;
+                  *,ci,*) TYPE='ci' ;;
+                  *) TYPE='fix' ;;
+                esac
+              fi
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^\.github/' >/dev/null; then
+              TYPE='ci'
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^tests?/' >/dev/null; then
+              TYPE='test'
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^docs/' >/dev/null; then
+              TYPE='docs'
+            fi
+          fi
+          if [ -z "$TYPE" ]; then
+            case ",$LABELS," in
+              *,enhancement,*|*,feature,*) TYPE='feat' ;;
+              *,bug,*|*,bugfix,*) TYPE='fix' ;;
+              *,refactor,*) TYPE='refactor' ;;
+              *,performance,*|*,perf,*) TYPE='perf' ;;
+              *,documentation,*|*,docs,*) TYPE='docs' ;;
+              *,tests,*|*,test,*) TYPE='test' ;;
+              *,ci,*) TYPE='ci' ;;
+              *) TYPE='chore' ;;
+            esac
+          fi
+          if [ -z "$SCOPE" ]; then
+            if printf '%s\n' "$STAGED_FILES" | grep -E '^src/ui/' >/dev/null; then
+              SCOPE='ui'
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^src/core/' >/dev/null; then
+              SCOPE='core'
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^src/features/' >/dev/null; then
+              FEATURE_SCOPES="$(printf '%s\n' "$STAGED_FILES" | sed -nE 's|^src/features/([^/.]+).*|\1|p')"
+              SCOPE="${FEATURE_SCOPES%%$'\n'*}"
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^src/ai/' >/dev/null; then
+              SCOPE='ai'
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^src/data/' >/dev/null; then
+              SCOPE='data'
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^\.github/' >/dev/null; then
+              SCOPE='ci'
+            fi
+            SCOPE="$(printf '%s' "$SCOPE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]//g')"
+          fi
+          # A scope identical to the type (e.g. ci from .github/) is noise.
+          if [ "$SCOPE" = "$TYPE" ]; then
+            SCOPE=''
+          fi
+          [ -n "$DESC" ] || DESC='implement changes'
+          if [ -n "$SCOPE" ]; then
+            SUBJECT="$TYPE($SCOPE): $DESC"
+          else
+            SUBJECT="$TYPE: $DESC"
+          fi
+          # Hard cap the subject at 72 chars with word-boundary truncation:
+          # drop the trailing partial word and any dangling punctuation the
+          # cut leaves behind. When the first description word alone exceeds
+          # the budget, that trim would eat the whole description and emit a
+          # bare `type(scope)`; keep the separator and hard-cut the long token
+          # instead.
+          if [ "${#SUBJECT}" -gt 72 ]; then
+            SUBJECT="${SUBJECT:0:72}"
+            TRIMMED="$(printf '%s' "$SUBJECT" | sed -E -e 's/ [^ ]*$//' -e 's/[^A-Za-z0-9)]+$//')"
+            case "$TRIMMED" in
+              *': '*) SUBJECT="$TRIMMED" ;;
+              *) SUBJECT="$(printf '%s' "$SUBJECT" | sed -E -e 's/[^A-Za-z0-9)]+$//')" ;;
+            esac
+          fi
+          # Branch slug stays exactly as before: 40 chars from the raw title.
           SLUG="$(printf '%s' "$TITLE" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9][^a-z0-9]*/-/g' -e 's/^-\+//' -e 's/-\+$//' | cut -c1-40 | sed -e 's/-\+$//')"
           [ -n "$SLUG" ] || SLUG="issue-$ISSUE_NUMBER"
-          case ",$LABELS," in
-            *,enhancement,*|*,feature,*) PREFIX='feat' ;;
-            *) PREFIX='fix' ;;
-          esac
-          BRANCH="$PREFIX/$ISSUE_NUMBER-$SLUG"
+          # --- END naming rule ---
+          BRANCH="$TYPE/$ISSUE_NUMBER-$SLUG"
           if git_pr ls-remote --exit-code --heads "$REPO_URL" "$BRANCH" >/dev/null 2>&1; then
             BRANCH="$BRANCH-r$GITHUB_RUN_ID"
           fi
@@ -391,9 +540,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -b "$BRANCH"
-          # Same exclude as the status check. git add -A without it would commit
-          # the context files. pr-body.md is written under .tmp after commit.
-          git add -A -- . ':(exclude).tmp'
           # Scan the staged diff, which includes new files. grep -E reads the
           # whole stream; grep -q would exit on the first match, SIGPIPE git
           # diff, and pipefail would treat a real match as no match.
@@ -401,7 +547,7 @@ jobs:
             echo "::error::Diff looks like it contains secret material; refusing to push."
             exit 1
           fi
-          git -c core.hooksPath=/dev/null commit -m "$PREFIX: implement #$ISSUE_NUMBER $TITLE" -m "Fixes #$ISSUE_NUMBER"
+          git -c core.hooksPath=/dev/null commit -m "$SUBJECT" -m "Fixes #$ISSUE_NUMBER"
           git_pr push "$REPO_URL" "HEAD:refs/heads/$BRANCH"
 
           mkdir -p "$GITHUB_WORKSPACE/.tmp"
@@ -417,7 +563,7 @@ jobs:
           } > "$GITHUB_WORKSPACE/.tmp/pr-body.md"
           # Open the PR as the token owner; GITHUB_TOKEN stays for the rest.
           PR_URL="$(GH_TOKEN="$GH_PAT" gh pr create --repo "$GH_REPO" --base main --head "$BRANCH" \
-            --title "$PREFIX: implement #$ISSUE_NUMBER $TITLE" \
+            --title "$SUBJECT" \
             --body-file "$GITHUB_WORKSPACE/.tmp/pr-body.md")"
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
           echo "Opened $PR_URL"
