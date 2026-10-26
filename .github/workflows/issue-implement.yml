@@ -419,7 +419,7 @@ jobs:
           # [Security] tags, trailing (#refs), and bare trailing #N refs are
           # stripped, backticks and quotes removed, en/em-dashes converted to
           # spaces, emoji and other non-ASCII dropped, whitespace collapsed.
-          # #<issue> never enters the subject; it stays in the commit/PR body
+          # Trailing #<issue> refs are stripped from the subject; the issue number stays in the commit/PR body
           # as Fixes #<issue>.
           NORMALIZED="$(printf '%s' "$TITLE" | sed -E -e 's/^(\[(Bug|Feature|Security|Enhancement)\][[:space:]:]*)+//I' -e 's/[[:space:]]*\((#[0-9]+([,[:space:]]*#[0-9]+)*)\)[[:space:]]*$//' -e 's/[[:space:]]+#[0-9]+([,[:space:]]*#[0-9]+)*[[:space:]]*$//' -e "s/[\`\"']//g" -e 's/[–—]/ /g' -e 's/[[:space:]]+/ /g' -e 's/^ //' -e 's/ $//' | LC_ALL=C tr -cd '[:print:]' | sed -E -e 's/[[:space:]]+/ /g' -e 's/^ //' -e 's/ $//')"
           TYPE=''
