@@ -11,6 +11,8 @@ body.light-theme {
   --settings-modal-bg: rgba(255, 255, 255, 0.98);
   --settings-menu-bg: rgba(0, 0, 0, 0.03);
   --settings-text-color: rgba(55, 65, 81, 0.9);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
 }
 
 body.light-theme .app-name {
@@ -1377,84 +1379,8 @@ body.light-theme .font-option-name {
   }
 }
 
-/* Custom Scrollbars for Modals and Popups */
-.settings-content::-webkit-scrollbar,
-.settings-menu::-webkit-scrollbar,
-#add-app-modal > div::-webkit-scrollbar,
-.color-picker-popup::-webkit-scrollbar,
-.font-picker-popup::-webkit-scrollbar,
-.app-context-menu::-webkit-scrollbar {
-  width: 6px;
-}
-
-.settings-content::-webkit-scrollbar-track,
-.settings-menu::-webkit-scrollbar-track,
-#add-app-modal > div::-webkit-scrollbar-track,
-.color-picker-popup::-webkit-scrollbar-track,
-.font-picker-popup::-webkit-scrollbar-track,
-.app-context-menu::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
-.settings-content::-webkit-scrollbar-thumb,
-.settings-menu::-webkit-scrollbar-thumb,
-#add-app-modal > div::-webkit-scrollbar-thumb,
-.color-picker-popup::-webkit-scrollbar-thumb,
-.font-picker-popup::-webkit-scrollbar-thumb,
-.app-context-menu::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
-  transition: background 0.2s ease;
-}
-
-.settings-content::-webkit-scrollbar-thumb:hover,
-.settings-menu::-webkit-scrollbar-thumb:hover,
-#add-app-modal > div::-webkit-scrollbar-thumb:hover,
-.color-picker-popup::-webkit-scrollbar-thumb:hover,
-.font-picker-popup::-webkit-scrollbar-thumb:hover,
-.app-context-menu::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
-}
-
-/* Firefox scrollbar */
-.settings-content,
-.settings-menu,
-#add-app-modal > div,
-.color-picker-popup,
-.font-picker-popup,
-.app-context-menu {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
-}
-
-/* Light theme scrollbars */
-body.light-theme .settings-content::-webkit-scrollbar-thumb,
-body.light-theme .settings-menu::-webkit-scrollbar-thumb,
-body.light-theme #add-app-modal > div::-webkit-scrollbar-thumb,
-body.light-theme .color-picker-popup::-webkit-scrollbar-thumb,
-body.light-theme .font-picker-popup::-webkit-scrollbar-thumb,
-body.light-theme .app-context-menu::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-body.light-theme .settings-content::-webkit-scrollbar-thumb:hover,
-body.light-theme .settings-menu::-webkit-scrollbar-thumb:hover,
-body.light-theme #add-app-modal > div::-webkit-scrollbar-thumb:hover,
-body.light-theme .color-picker-popup::-webkit-scrollbar-thumb:hover,
-body.light-theme .font-picker-popup::-webkit-scrollbar-thumb:hover,
-body.light-theme .app-context-menu::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.5);
-}
-
-body.light-theme .settings-content,
-body.light-theme .settings-menu,
-body.light-theme #add-app-modal > div,
-body.light-theme .color-picker-popup,
-body.light-theme .font-picker-popup,
-body.light-theme .app-context-menu {
-  scrollbar-color: rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.1);
-}
+/* Scrollbars for modals and popups come from the shared global rules in
+   css/core.css (#989) — no per-component scrollbar blocks here. */
 
 /* About Section Styles */
 .about-setting-group h4 {
@@ -3454,18 +3380,7 @@ body.light-theme .weather-city-inline input:focus {
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 8px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   -webkit-overflow-scrolling: touch;
-}
-
-.weather-app-hourly-list::-webkit-scrollbar {
-  height: 4px;
-}
-
-.weather-app-hourly-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
 }
 
 .weather-app-hourly-hour {
@@ -3626,14 +3541,6 @@ body.light-theme .weather-app-hourly-temp {
 
 body.light-theme .weather-app-hourly-precip {
   color: rgba(37, 99, 235, 0.9);
-}
-
-body.light-theme .weather-app-hourly-list {
-  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
-}
-
-body.light-theme .weather-app-hourly-list::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
 }
 
 /* Release Notes Modal */
@@ -3909,7 +3816,6 @@ body.light-theme .games-app-modal-content {
   padding: 16px 24px 24px;
   overflow-y: auto;
   flex: 1;
-  scrollbar-width: thin;
   color: var(--games-text-secondary);
 }
 
