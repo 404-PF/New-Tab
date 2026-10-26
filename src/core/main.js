@@ -1290,13 +1290,13 @@ function runDefaultSearch(query, onSuccess, providerId = activeProviderId) {
       }
     }).catch((error) => {
       console.warn('Failed to run default search:', error);
-      showSearchValidationFeedback(SEARCH_UNAVAILABLE_MESSAGE);
+      showSearchValidationFeedback(translateValidationMessage(SEARCH_UNAVAILABLE_MESSAGE));
     });
     return;
   }
 
   console.warn('chrome.search.query is unavailable in this browser.');
-  showSearchValidationFeedback(SEARCH_UNAVAILABLE_MESSAGE);
+  showSearchValidationFeedback(translateValidationMessage(SEARCH_UNAVAILABLE_MESSAGE));
 }
 
 function runSearch(query) {

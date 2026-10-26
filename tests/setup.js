@@ -549,6 +549,7 @@ globalThis.window.i18n = {
       validationIpOutOfRange: 'Invalid URL: IP address out of range',
       validationValid: 'Valid URL',
       validationMalformed: 'Malformed URL',
+      validationSearchUnavailable: 'Search is unavailable in this browser.',
       enableReminders: 'Enable reminders',
       reminderLeadTime: 'Remind before due',
       reminderLeadTimeAtDue: 'At due time',

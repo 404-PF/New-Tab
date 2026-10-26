@@ -107,6 +107,7 @@ window.i18n.__registerLocale('ru', {
   validationIpOutOfRange: 'Недействительный URL: IP-адрес вне диапазона',
   validationValid: 'Действительный URL',
   validationMalformed: 'Некорректный URL',
+  validationSearchUnavailable: 'Поиск недоступен в этом браузере.',
   appAlreadyAdded: 'Уже добавлено',
   refreshMotto: 'Обновить девиз',
   copyMotto: 'Копировать девиз',

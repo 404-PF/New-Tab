@@ -149,6 +149,12 @@ describe('AI copy button label translations (issue #970)', () => {
   });
 });
 
+describe('Search unavailable fallback translations (#973)', () => {
+  it('defines a localized validationSearchUnavailable for every supported language', () => {
+    expectTranslationKeys(['validationSearchUnavailable'], { differFromEnglish: true });
+  });
+});
+
 describe('Pomodoro translations', () => {
   it('falls back to English for every supported language', () => {
     const languages = window.i18n.getSupportedLanguages();
