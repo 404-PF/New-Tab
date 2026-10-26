@@ -116,4 +116,82 @@ describe('ReleaseNotes', () => {
     dismiss.click();
     expect(document.querySelector('.release-notes-modal')).toBeNull();
   });
+
+  // Every bullet is an i18n key (issue #972), so these run against the real
+  // languages.js/locale tables instead of the mock window.i18n from setup.js.
+  describe('localized bullets', () => {
+    let mockI18n;
+
+    // showReleaseNotesModal() waits on i18n.ensureLocale() before rendering
+    // when the real i18n is installed, so the modal lands one tick later.
+    const flushModalRender = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    const readBullets = () =>
+      Array.from(document.querySelectorAll('.release-notes-list li'), (li) => li.textContent);
+
+    beforeAll(() => {
+      mockI18n = window.i18n;
+      injectScript('src/core/languages.js');
+    });
+
+    afterAll(() => {
+      window.i18n = mockI18n;
+    });
+
+    it('renders the active language for every bullet of the current release', async () => {
+      injectScript('src/core/locales/de.js');
+      await window.i18n.applyLanguage('de');
+
+      window.CURRENT_VERSION = '0.5.4';
+      localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.5.3');
+      expect(window.releaseNotes.detectAndShow()).toBe('shown');
+      await flushModalRender();
+
+      const keys = window.releaseNotes.RELEASE_NOTES['0.5.4'];
+      const german = window.i18n.getTranslations('de');
+      const english = window.i18n.getTranslations('en');
+      const bullets = readBullets();
+
+      expect(bullets.length).toBe(keys.length);
+      expect(bullets).toEqual(keys.map((key) => german[key]));
+      keys.forEach((key) => {
+        expect(german[key], key).not.toBe(english[key]);
+        expect(bullets.join('\n'), key).not.toContain(english[key]);
+      });
+    });
+
+    it('falls back to English instead of the raw key for an untranslated locale', async () => {
+      // A registered table without release-note entries — the state of a
+      // locale that shipped before a key existed — must resolve through
+      // getTranslation()'s en fallback rather than print the key name. A code
+      // outside SUPPORTED_LANGUAGES keeps the merge passes from filling the
+      // table in again, which is exactly the "key not translated yet" case.
+      window.i18n.__registerLocale('xx', {});
+      await window.i18n.applyLanguage('xx');
+
+      window.CURRENT_VERSION = '9.9.9';
+      localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.5.4');
+      expect(window.releaseNotes.detectAndShow()).toBe('shown');
+      await flushModalRender();
+
+      expect(readBullets()).toEqual([
+        'Check the full changelog for everything included in this update.'
+      ]);
+    });
+
+    it('resolves every bundled bullet to a real English sentence', () => {
+      const english = window.i18n.getTranslations('en');
+
+      Object.values(window.releaseNotes.RELEASE_NOTES).forEach((keys) => {
+        expect(keys.length).toBeGreaterThan(0);
+        keys.forEach((key) => {
+          expect(english, `en:${key}`).toHaveProperty(key);
+          expect(english[key], `en:${key}`).toBeTypeOf('string');
+          expect(english[key], `en:${key}`).not.toBe(key);
+        });
+      });
+      expect(english.releaseNotesFallback).toBeTypeOf('string');
+      expect(english.releaseNotesFallback).not.toBe('releaseNotesFallback');
+    });
+  });
 });
