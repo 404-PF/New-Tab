@@ -107,6 +107,7 @@ window.i18n.__registerLocale('de', {
   validationIpOutOfRange: 'Ungültige URL: IP-Adresse außerhalb des Bereichs',
   validationValid: 'Gültige URL',
   validationMalformed: 'Fehlerhafte URL',
+  validationSearchUnavailable: 'Die Suche ist in diesem Browser nicht verfügbar.',
   appAlreadyAdded: 'Bereits hinzugefügt',
   refreshMotto: 'Motto aktualisieren',
   copyMotto: 'Motto kopieren',

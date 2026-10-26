@@ -129,7 +129,8 @@
       'Invalid URL: top-level domain too short': 'validationTldTooShort',
       'Invalid URL: incomplete domain name': 'validationIncompleteDomain',
       'Invalid URL: IP address out of range': 'validationIpOutOfRange',
-      'Valid URL': 'validationValid'
+      'Valid URL': 'validationValid',
+      'Search is unavailable in this browser.': 'validationSearchUnavailable'
     };
 
     if (message.startsWith('Malformed URL:')) {

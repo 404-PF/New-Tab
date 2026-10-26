@@ -286,14 +286,26 @@ describe('search history', () => {
   it('does not record history when chrome.search.query rejects (#280)', async () => {
     const searchQuerySpy = vi.spyOn(chrome.search, 'query').mockRejectedValue(new Error('fail'));
     const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => (key === 'validationSearchUnavailable' ? 'localized search unavailable' : originalT(key));
 
-    runSearch('failed query');
+    try {
+      runSearch('failed query');
 
-    await vi.advanceTimersByTimeAsync(1);
+      await vi.advanceTimersByTimeAsync(1);
 
-    expect(searchQuerySpy).toHaveBeenCalledTimes(1);
-    expect(setItemSpy).not.toHaveBeenCalled();
-    expect(localStorage.getItem('searchHistory')).toBeNull();
+      expect(searchQuerySpy).toHaveBeenCalledTimes(1);
+      expect(setItemSpy).not.toHaveBeenCalled();
+      expect(localStorage.getItem('searchHistory')).toBeNull();
+
+      // #973: the fallback feedback must go through translateValidationMessage,
+      // not render the hardcoded English SEARCH_UNAVAILABLE_MESSAGE.
+      const feedbackEl = document.querySelector('.search-validation-feedback');
+      expect(feedbackEl).not.toBeNull();
+      expect(feedbackEl.textContent).toBe('localized search unavailable');
+    } finally {
+      window.i18n.t = originalT;
+    }
   });
 
   it('clears search history and keeps focus on the input', () => {

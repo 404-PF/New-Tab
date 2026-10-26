@@ -107,6 +107,7 @@ window.i18n.__registerLocale('ja', {
   validationIpOutOfRange: '無効なURL: IPアドレスが範囲外です',
   validationValid: '有効なURL',
   validationMalformed: '不正なURL',
+  validationSearchUnavailable: 'このブラウザでは検索を利用できません。',
   appAlreadyAdded: '既に追加済み',
   refreshMotto: '名言を更新',
   copyMotto: '名言をコピー',

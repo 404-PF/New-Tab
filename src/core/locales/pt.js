@@ -107,6 +107,7 @@ window.i18n.__registerLocale('pt', {
   validationIpOutOfRange: 'URL inválida: endereço IP fora do intervalo',
   validationValid: 'URL válida',
   validationMalformed: 'URL malformada',
+  validationSearchUnavailable: 'A pesquisa não está disponível neste navegador.',
   appAlreadyAdded: 'Já adicionado',
   refreshMotto: 'Atualizar lema',
   copyMotto: 'Copiar lema',

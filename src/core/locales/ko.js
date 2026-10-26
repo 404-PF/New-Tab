@@ -107,6 +107,7 @@ window.i18n.__registerLocale('ko', {
   validationIpOutOfRange: '잘못된 URL: IP 주소 범위 초과',
   validationValid: '유효한 URL',
   validationMalformed: '형식이 잘못된 URL',
+  validationSearchUnavailable: '이 브라우저에서는 검색을 사용할 수 없습니다.',
   appAlreadyAdded: '이미 추가됨',
   refreshMotto: '명언 새로고침',
   copyMotto: '명언 복사',

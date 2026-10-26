@@ -110,6 +110,7 @@ window.i18n.__registerLocale('zh', {
   validationIpOutOfRange: '无效URL：IP地址超出范围',
   validationValid: '有效URL',
   validationMalformed: '格式错误的URL',
+  validationSearchUnavailable: '此浏览器中无法使用搜索。',
   appAlreadyAdded: '已添加',
 
   refreshMotto: '刷新格言',

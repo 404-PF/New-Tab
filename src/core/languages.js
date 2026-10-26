@@ -170,6 +170,7 @@ const translations = {
     validationIpOutOfRange: 'Invalid URL: IP address out of range',
     validationValid: 'Valid URL',
     validationMalformed: 'Malformed URL',
+    validationSearchUnavailable: 'Search is unavailable in this browser.',
     appAlreadyAdded: 'Already added',
 
     refreshMotto: 'Refresh motto',

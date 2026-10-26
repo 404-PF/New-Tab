@@ -179,6 +179,16 @@ describe('translateValidationMessage', () => {
   it('handles malformed prefix', () => {
     expect(translateValidationMessage('Malformed URL: error')).toBe('Malformed URL');
   });
+
+  it('translates the chrome.search fallback message (#973)', () => {
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => (key === 'validationSearchUnavailable' ? 'localized search unavailable' : originalT(key));
+    try {
+      expect(translateValidationMessage('Search is unavailable in this browser.')).toBe('localized search unavailable');
+    } finally {
+      window.i18n.t = originalT;
+    }
+  });
 });
 
 describe('iconCache', () => {
