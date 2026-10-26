@@ -92,7 +92,8 @@ const AIRenderer = (function() {
       if (window.OpenRouterAPI?.setWebGroundingEnabled) {
         const persisted = window.OpenRouterAPI.setWebGroundingEnabled(checkbox.checked);
         if (persisted === false) {
-          console.warn('Web grounding preference could not be saved; keeping the new value for this session.');
+          checkbox.checked = window.OpenRouterAPI?.isWebGroundingEnabled?.() ?? checkbox.checked;
+          console.warn('Web grounding preference could not be saved; reverted to the previous value for this session.');
         }
       }
     });

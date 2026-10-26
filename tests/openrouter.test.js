@@ -910,15 +910,28 @@ describe('OpenRouter web grounding (#707)', () => {
     }
   });
 
-  it('keeps the requested grounding value in memory when persistence fails', () => {
+  it('reverts the in-memory grounding value when persistence throws (#971)', () => {
     const previous = OpenRouterAPI.isWebGroundingEnabled();
     const setItem = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
       throw new Error('storage unavailable');
     });
 
     try {
-      expect(OpenRouterAPI.setWebGroundingEnabled(false)).toBe(false);
-      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(false);
+      expect(OpenRouterAPI.setWebGroundingEnabled(!previous)).toBe(false);
+      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(previous);
+    } finally {
+      setItem.mockRestore();
+      OpenRouterAPI.setWebGroundingEnabled(previous);
+    }
+  });
+
+  it('returns false and reverts the in-memory value when the bridge rejects the write (#971)', () => {
+    const previous = OpenRouterAPI.isWebGroundingEnabled();
+    const setItem = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => false);
+
+    try {
+      expect(OpenRouterAPI.setWebGroundingEnabled(!previous)).toBe(false);
+      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(previous);
     } finally {
       setItem.mockRestore();
       OpenRouterAPI.setWebGroundingEnabled(previous);
