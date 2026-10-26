@@ -54,6 +54,18 @@
     "message": "削除の確認ダイアログを開けませんでした。もう一度お試しください。",
     "description": "Error shown when the delete confirmation dialog cannot be opened"
   },
+  "customBgSelectVideo": {
+    "message": "動画ファイルを選択してください。",
+    "description": "Error shown when a non-video file is picked for a live background upload"
+  },
+  "customBgSelectImage": {
+    "message": "画像ファイルを選択してください。",
+    "description": "Error shown when a non-image file is picked for a background upload"
+  },
+  "customBgProcessError": {
+    "message": "ファイルの処理に失敗しました。別のファイルをお試しください。",
+    "description": "Error shown when an uploaded background file cannot be processed"
+  },
   "onboardingSaveError": {
     "message": "オンボーディングの完了を保存できませんでした。進行状況は保持されているため、再試行できます。",
     "description": "Error shown when onboarding completion cannot be persisted"

@@ -170,6 +170,20 @@
     }
   }
 
+  // User-facing upload validation prompts: localized like showBackgroundError
+  // but without the console.error noise — picking a wrong file type is not a
+  // failure worth logging.
+  function showUploadValidation(key, fallback) {
+    const message = window.i18n && typeof window.i18n.t === 'function'
+      ? window.i18n.t(key)
+      : fallback;
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+    } else {
+      window.alert(message);
+    }
+  }
+
   // --- Thumbnail generation ---
 
   function generateImageThumbnail(file) {
@@ -377,12 +391,12 @@
         const isImage = file.type.startsWith('image/');
 
         if (type === 'video' && !isVideo) {
-          alert('Please select a video file.');
+          showUploadValidation('customBgSelectVideo', 'Please select a video file.');
           resolve(null);
           return;
         }
         if (type === 'image' && !isImage) {
-          alert('Please select an image file.');
+          showUploadValidation('customBgSelectImage', 'Please select an image file.');
           resolve(null);
           return;
         }
@@ -405,8 +419,7 @@
             resolve(bg);
           });
         }).catch(function (err) {
-          console.error('Failed to process uploaded file:', err);
-          alert('Failed to process the file. Please try a different file.');
+          showBackgroundError('customBgProcessError', 'Failed to process the file. Please try a different file.', err);
           resolve(null);
         });
       });
@@ -431,6 +444,23 @@
       const staticBgs = customBgs.filter(function (bg) { return bg.type !== 'video'; });
       const liveBgs = customBgs.filter(function (bg) { return bg.type === 'video'; });
 
+      // Localized delete label for the icon-only thumbnail buttons. The
+      // data-i18n-* attributes let the applyLanguage() sweep relabel them on
+      // a later language switch (these nodes are created dynamically, so no
+      // languageChanged re-render reaches them).
+      const deleteLabel = window.i18n && typeof window.i18n.t === 'function'
+        ? window.i18n.t('delete')
+        : 'Delete';
+
+      // Applied from a single helper so the identical label/aria wiring is
+      // not repeated in both the static and the live thumbnail passes.
+      function labelDeleteButton(delBtn) {
+        delBtn.title = deleteLabel;
+        delBtn.setAttribute('aria-label', deleteLabel);
+        delBtn.setAttribute('data-i18n-title', 'delete');
+        delBtn.setAttribute('data-i18n-aria-label', 'delete');
+      }
+
       // Insert custom static backgrounds into the thumbnail grid
       staticBgs.forEach(function (bg) {
         const wrapper = document.createElement('div');
@@ -448,7 +478,7 @@
         delBtn.className = 'custom-bg-delete-btn';
         delBtn.setAttribute('data-bg-id', bg.id);
         delBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-        delBtn.title = 'Delete';
+        labelDeleteButton(delBtn);
 
         wrapper.appendChild(img);
         wrapper.appendChild(delBtn);
@@ -473,7 +503,7 @@
         delBtn.className = 'custom-bg-delete-btn';
         delBtn.setAttribute('data-bg-id', bg.id);
         delBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-        delBtn.title = 'Delete';
+        labelDeleteButton(delBtn);
 
         wrapper.appendChild(img);
         wrapper.appendChild(delBtn);

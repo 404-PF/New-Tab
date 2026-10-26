@@ -54,6 +54,18 @@
     "message": "Não foi possível abrir o diálogo de confirmação de exclusão. Tente novamente.",
     "description": "Error shown when the delete confirmation dialog cannot be opened"
   },
+  "customBgSelectVideo": {
+    "message": "Selecione um arquivo de vídeo.",
+    "description": "Error shown when a non-video file is picked for a live background upload"
+  },
+  "customBgSelectImage": {
+    "message": "Selecione um arquivo de imagem.",
+    "description": "Error shown when a non-image file is picked for a background upload"
+  },
+  "customBgProcessError": {
+    "message": "Não foi possível processar o arquivo. Tente com um arquivo diferente.",
+    "description": "Error shown when an uploaded background file cannot be processed"
+  },
   "onboardingSaveError": {
     "message": "Não foi possível salvar a conclusão do onboarding. Seu progresso foi mantido para você poder tentar novamente.",
     "description": "Error shown when onboarding completion cannot be persisted"

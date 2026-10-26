@@ -54,6 +54,18 @@
     "message": "Impossible d’ouvrir la boîte de dialogue de confirmation de suppression. Veuillez réessayer.",
     "description": "Error shown when the delete confirmation dialog cannot be opened"
   },
+  "customBgSelectVideo": {
+    "message": "Veuillez sélectionner un fichier vidéo.",
+    "description": "Error shown when a non-video file is picked for a live background upload"
+  },
+  "customBgSelectImage": {
+    "message": "Veuillez sélectionner un fichier image.",
+    "description": "Error shown when a non-image file is picked for a background upload"
+  },
+  "customBgProcessError": {
+    "message": "Impossible de traiter le fichier. Veuillez essayer un autre fichier.",
+    "description": "Error shown when an uploaded background file cannot be processed"
+  },
   "onboardingSaveError": {
     "message": "Impossible d’enregistrer la fin de la visite de bienvenue. Votre progression a été conservée, vous pouvez réessayer.",
     "description": "Error shown when onboarding completion cannot be persisted"
