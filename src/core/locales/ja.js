@@ -96,6 +96,8 @@ window.i18n.__registerLocale('ja', {
   deleteAppTitle: 'アプリを削除しますか？',
   deleteAppMessage: 'このアプリはリストから完全に削除されます。',
   delete: '削除',
+  customBackgroundDeleteConfirmTitle: '背景を削除',
+  customBackgroundDeleteConfirmMessage: 'このカスタム背景は完全に削除されます。',
   validationPleaseEnter: 'URLまたは検索クエリを入力してください',
   validationInvalidAppears: 'このURLは無効なようです。Enterキーを押して作成',
   validationMissingHostname: '無効なURL: ホスト名がありません',

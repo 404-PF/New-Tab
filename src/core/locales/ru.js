@@ -96,6 +96,8 @@ window.i18n.__registerLocale('ru', {
   deleteAppTitle: 'Удалить приложение?',
   deleteAppMessage: 'Приложение будет безвозвратно удалено из вашего списка.',
   delete: 'Удалить',
+  customBackgroundDeleteConfirmTitle: 'Удалить фон',
+  customBackgroundDeleteConfirmMessage: 'Этот пользовательский фон будет удалён навсегда.',
   validationPleaseEnter: 'Пожалуйста, введите URL или поисковый запрос',
   validationInvalidAppears: 'Этот URL похоже недействителен. Нажмите Enter для создания',
   validationMissingHostname: 'Недействительный URL: отсутствует имя хоста',

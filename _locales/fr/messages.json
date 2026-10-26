@@ -66,6 +66,14 @@
     "message": "Impossible de traiter le fichier. Veuillez essayer un autre fichier.",
     "description": "Error shown when an uploaded background file cannot be processed"
   },
+  "customBackgroundDeleteConfirmTitle": {
+    "message": "Supprimer l’arrière-plan",
+    "description": "Title of the custom background delete confirmation dialog"
+  },
+  "customBackgroundDeleteConfirmMessage": {
+    "message": "Cet arrière-plan personnalisé sera définitivement supprimé.",
+    "description": "Message shown in the custom background delete confirmation dialog"
+  },
   "onboardingSaveError": {
     "message": "Impossible d’enregistrer la fin de la visite de bienvenue. Votre progression a été conservée, vous pouvez réessayer.",
     "description": "Error shown when onboarding completion cannot be persisted"

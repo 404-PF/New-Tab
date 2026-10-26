@@ -6,7 +6,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   document.body.className = '';
-  document.querySelectorAll('#a11y-test-app-grid, #a11y-test-modal, #a11y-opener, #a11y-inert-sibling, .onboarding-overlay, .toast-notification')
+  document.querySelectorAll('#a11y-test-app-grid, #a11y-test-modal, #a11y-opener, #a11y-inert-sibling, .onboarding-overlay, .toast-notification, #bg-confirm-dialog')
     .forEach(el => el.remove());
   document.getElementById('folder-popup-apps')?.remove();
 
@@ -91,6 +91,57 @@ describe('Accessibility - modal semantics and focus management', () => {
     // Focus is restored in requestAnimationFrame. jsdom flushes that on a
     // timer, so wait for the opener instead of sleeping a fixed interval.
     await vi.waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+
+  it('adds dialog semantics, traps Tab, and restores focus for the bg confirm dialog (#968)', async () => {
+    const opener = document.createElement('button');
+    opener.id = 'a11y-opener';
+    opener.textContent = 'Delete background';
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const dialog = document.createElement('div');
+    dialog.id = 'bg-confirm-dialog';
+    dialog.className = 'bg-confirm-dialog screen-overlay bg-confirm-open';
+    dialog.innerHTML =
+      '<div class="bg-confirm-overlay"></div>' +
+      '<div class="bg-confirm-content">' +
+        '<h3 class="bg-confirm-title">Delete Background</h3>' +
+        '<div class="bg-confirm-message">This custom background will be permanently removed.</div>' +
+        '<div class="bg-confirm-actions">' +
+          '<button type="button" class="bg-confirm-cancel">Cancel</button>' +
+          '<button type="button" class="bg-confirm-delete">Delete</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(dialog);
+
+    window.Accessibility.refresh();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(dialog.getAttribute('role')).toBe('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-labelledby')).toBe('bg-confirm-dialog-accessibility-title');
+    expect(document.getElementById('bg-confirm-dialog-accessibility-title')).toBe(dialog.querySelector('.bg-confirm-title'));
+    expect(opener.hasAttribute('inert')).toBe(true);
+
+    const cancel = dialog.querySelector('.bg-confirm-cancel');
+    const del = dialog.querySelector('.bg-confirm-delete');
+
+    del.focus();
+    del.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(cancel);
+
+    cancel.focus();
+    cancel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(del);
+
+    cancel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+
+    expect(dialog.classList.contains('bg-confirm-open')).toBe(false);
+    expect(opener.hasAttribute('inert')).toBe(false);
+    await vi.waitFor(() => expect(document.activeElement).toBe(opener));
+
+    dialog.remove();
   });
 
   it('does not mutate a modal label that is already correct', async () => {

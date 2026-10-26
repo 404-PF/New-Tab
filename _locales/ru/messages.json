@@ -66,6 +66,14 @@
     "message": "Не удалось обработать файл. Попробуйте другой файл.",
     "description": "Error shown when an uploaded background file cannot be processed"
   },
+  "customBackgroundDeleteConfirmTitle": {
+    "message": "Удалить фон",
+    "description": "Title of the custom background delete confirmation dialog"
+  },
+  "customBackgroundDeleteConfirmMessage": {
+    "message": "Этот пользовательский фон будет удалён навсегда.",
+    "description": "Message shown in the custom background delete confirmation dialog"
+  },
   "onboardingSaveError": {
     "message": "Не удалось сохранить завершение обучения. Ваш прогресс сохранён, вы можете повторить попытку.",
     "description": "Error shown when onboarding completion cannot be persisted"

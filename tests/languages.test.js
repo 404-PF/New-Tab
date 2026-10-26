@@ -53,6 +53,11 @@ const CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS = [
   'customBgProcessError'
 ];
 
+const CUSTOM_BACKGROUND_DIALOG_TRANSLATION_KEYS = [
+  'customBackgroundDeleteConfirmTitle',
+  'customBackgroundDeleteConfirmMessage'
+];
+
 const ROTATION_UPLOADS_TRANSLATION_KEYS = [
   'bgRotationUploads'
 ];
@@ -153,6 +158,28 @@ describe('Custom background error translations', () => {
   // customBackgroundDialogError entry would still pass a t()-based check.
   it('defines every error message for all supported languages', () => {
     expectTranslationKeys(CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
+
+describe('Custom background confirm dialog translations (issue #968)', () => {
+  it('defines the delete confirmation title and message for all supported languages', () => {
+    // differFromEnglish: every non-English locale must ship its own copy, not
+    // the English fallback behind a passing presence check.
+    expectTranslationKeys(CUSTOM_BACKGROUND_DIALOG_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+
+  it('renders the confirmation strings through t() at runtime', async () => {
+    const languages = window.i18n.getSupportedLanguages();
+
+    for (const { code } of languages) {
+      await window.i18n.applyLanguage(code);
+
+      CUSTOM_BACKGROUND_DIALOG_TRANSLATION_KEYS.forEach((key) => {
+        expect(window.i18n.t(key), `${code}:${key}`).toBe(
+          window.i18n.getTranslations(code)[key]
+        );
+      });
+    }
   });
 });
 

@@ -96,6 +96,8 @@ window.i18n.__registerLocale('ko', {
   deleteAppTitle: '앱을 삭제하시겠습니까?',
   deleteAppMessage: '이 앱이 목록에서 영구적으로 삭제됩니다.',
   delete: '삭제',
+  customBackgroundDeleteConfirmTitle: '배경 삭제',
+  customBackgroundDeleteConfirmMessage: '이 사용자 지정 배경이 영구적으로 삭제됩니다.',
   validationPleaseEnter: 'URL 또는 검색어를 입력하세요',
   validationInvalidAppears: '이 URL이 유효하지 않은 것 같습니다. Enter를 눌러 생성',
   validationMissingHostname: '잘못된 URL: 호스트 이름 없음',

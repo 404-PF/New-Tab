@@ -17,7 +17,12 @@
     { id: 'weather-app-modal', openClass: 'modal-open', close: () => window.WeatherApp?.close?.() },
     { id: 'games-app-modal', nativeDialog: true, close: () => window.GamesApp?.close?.() },
     { id: 'folder-popup', bodyClass: 'folder-popup-open', display: 'flex', close: () => window.AppFolders?.closeFolderPopup?.() },
-    { id: 'move-to-folder-selector', display: 'flex' }
+    { id: 'move-to-folder-selector', display: 'flex' },
+    // Dynamically created by custom-backgrounds.js. close resolves the
+    // pending showConfirmDialog() promise with false instead of only
+    // stripping the open class; listed last so the fallback (empty
+    // modal-stack) lookup treats it as the topmost dialog.
+    { id: 'bg-confirm-dialog', openClass: 'bg-confirm-open', close: () => window._customBackgrounds?.closeConfirmDialog?.() }
   ];
 
   const modalState = new Map();

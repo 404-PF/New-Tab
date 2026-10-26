@@ -66,6 +66,14 @@
     "message": "ファイルの処理に失敗しました。別のファイルをお試しください。",
     "description": "Error shown when an uploaded background file cannot be processed"
   },
+  "customBackgroundDeleteConfirmTitle": {
+    "message": "背景を削除",
+    "description": "Title of the custom background delete confirmation dialog"
+  },
+  "customBackgroundDeleteConfirmMessage": {
+    "message": "このカスタム背景は完全に削除されます。",
+    "description": "Message shown in the custom background delete confirmation dialog"
+  },
   "onboardingSaveError": {
     "message": "オンボーディングの完了を保存できませんでした。進行状況は保持されているため、再試行できます。",
     "description": "Error shown when onboarding completion cannot be persisted"

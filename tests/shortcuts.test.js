@@ -565,6 +565,54 @@ describe('Shortcuts - modal closing priority', () => {
   });
 });
 
+describe('Shortcuts - custom background confirm dialog (#968)', () => {
+  let dialog;
+
+  beforeEach(() => {
+    dialog = document.createElement('div');
+    dialog.id = 'bg-confirm-dialog';
+    dialog.className = 'bg-confirm-dialog screen-overlay bg-confirm-open';
+    document.body.appendChild(dialog);
+  });
+
+  afterEach(() => {
+    dialog.remove();
+    delete window._customBackgrounds;
+  });
+
+  it('routes Escape through the dialog close hook so the promise resolves', () => {
+    const closeConfirmDialog = vi.fn();
+    window._customBackgrounds = { closeConfirmDialog };
+
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+
+    expect(closeConfirmDialog).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+    // The hook owns removal; closeModal must not strip the class itself.
+    expect(dialog.classList.contains('bg-confirm-open')).toBe(true);
+  });
+
+  it('still closes the dialog when no close hook is available', () => {
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+
+    expect(dialog.classList.contains('bg-confirm-open')).toBe(false);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('leaves settings-modal as the target when the dialog is closed', () => {
+    dialog.classList.remove('bg-confirm-open');
+    const settingsModal = document.getElementById('settings-modal');
+    settingsModal.classList.add('modal-open');
+
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+
+    expect(settingsModal.classList.contains('modal-open')).toBe(false);
+  });
+});
+
 describe('Shortcuts - save failure handling', () => {
   const SAVE_ERROR_MESSAGE = 'Failed to save shortcut changes. Your last action was not saved.';
   let container;

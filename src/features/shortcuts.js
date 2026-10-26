@@ -30,6 +30,9 @@
   }
 
   const MODAL_SELECTORS = [
+    // First so Escape always dismisses the topmost overlay before any modal
+    // underneath it (e.g. Settings) that may also be open.
+    { selector: '#bg-confirm-dialog', cssClass: 'bg-confirm-open' },
     { selector: '#ai-confirm-dialog', cssClass: 'ai-confirm-open' },
     { selector: '#todo-edit-modal', cssClass: 'modal-open' },
     { selector: '#add-app-modal', cssClass: 'modal-open' },
@@ -313,6 +316,15 @@
         // Route weather modal closing through WeatherApp.close() when available
         if (def.selector === '#weather-app-modal' && typeof window.WeatherApp === 'object' && typeof window.WeatherApp.close === 'function') {
           window.WeatherApp.close();
+          return true;
+        }
+        // The confirm dialog owns a pending Promise: only stripping the class
+        // would strand it (and the node's 200ms removal), so route through
+        // the close hook instead.
+        if (def.selector === '#bg-confirm-dialog' &&
+            window._customBackgrounds &&
+            typeof window._customBackgrounds.closeConfirmDialog === 'function') {
+          window._customBackgrounds.closeConfirmDialog();
           return true;
         }
         el.classList.remove(def.cssClass);
