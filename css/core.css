@@ -144,7 +144,8 @@
 }
 
 /* Readability overlay: dim and tint are layered backgrounds; blur is a
-   backdrop-filter until a visible photo or video can be blurred directly.
+   backdrop-filter (only while .bg-overlay-blur-media is set) until a visible
+   photo or video can be blurred directly.
    It sits above thumbnail (2), the transition snapshot (3), and the
    interactive canvas (4). Simple mode and focus mode only hide foreground
    widgets, so this layer stays in place for those modes too.
@@ -160,12 +161,20 @@
     linear-gradient(var(--bg-tint), var(--bg-tint)),
     linear-gradient(rgba(0, 0, 0, var(--bg-overlay-opacity)), rgba(0, 0, 0, var(--bg-overlay-opacity)));
   background-repeat: no-repeat;
-  -webkit-backdrop-filter: blur(var(--bg-overlay-blur));
-  backdrop-filter: blur(var(--bg-overlay-blur));
 }
 
 .background-overlay.inactive {
   display: none;
+}
+
+/* A non-none backdrop-filter makes this full-viewport layer a backdrop root:
+   Chrome snapshots and re-rasters everything painted beneath it. Emit the
+   filter only while blur is enabled (settings.js toggles .bg-overlay-blur-media
+   on settings.blur > 0); at blur 0 the dim/tint layer paints as a plain
+   gradient with no backdrop root. */
+.background-container.bg-overlay-blur-media .background-overlay {
+  -webkit-backdrop-filter: blur(var(--bg-overlay-blur));
+  backdrop-filter: blur(var(--bg-overlay-blur));
 }
 
 /* backdrop-filter does not sample hardware-composited video, and blurring
