@@ -1,4 +1,5 @@
 import { injectScript } from './helpers/inject-script.js';
+import { failStorageWritesFor } from './helpers/storage-write-failures.js';
 
 const originalFetch = globalThis.fetch;
 
@@ -900,7 +901,7 @@ describe('OpenRouter web grounding (#707)', () => {
         await chrome.storage.local.set({ [storageKey]: previousChromeStored });
       }
 
-      OpenRouterAPI.setWebGroundingEnabled(previous);
+      await OpenRouterAPI.setWebGroundingEnabled(previous);
 
       if (previousStored === null) {
         localStorage.removeItem(storageKey);
@@ -910,18 +911,54 @@ describe('OpenRouter web grounding (#707)', () => {
     }
   });
 
-  it('keeps the requested grounding value in memory when persistence fails', () => {
+  it('reverts the in-memory grounding value when the write throws (#971)', async () => {
     const previous = OpenRouterAPI.isWebGroundingEnabled();
-    const setItem = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
+    const setItemAsync = vi.spyOn(window.localStorage, 'setItemAsync').mockImplementation(() => {
       throw new Error('storage unavailable');
     });
 
     try {
-      expect(OpenRouterAPI.setWebGroundingEnabled(false)).toBe(false);
-      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(false);
+      await expect(OpenRouterAPI.setWebGroundingEnabled(!previous)).resolves.toBe(false);
+      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(previous);
     } finally {
-      setItem.mockRestore();
-      OpenRouterAPI.setWebGroundingEnabled(previous);
+      setItemAsync.mockRestore();
+      await OpenRouterAPI.setWebGroundingEnabled(previous);
+    }
+  });
+
+  it('returns false and reverts the in-memory value when the write rejects (#971)', async () => {
+    const previous = OpenRouterAPI.isWebGroundingEnabled();
+    const setItemAsync = vi.spyOn(window.localStorage, 'setItemAsync')
+      .mockRejectedValue(new Error('storage unavailable'));
+
+    try {
+      await expect(OpenRouterAPI.setWebGroundingEnabled(!previous)).resolves.toBe(false);
+      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(previous);
+    } finally {
+      setItemAsync.mockRestore();
+      await OpenRouterAPI.setWebGroundingEnabled(previous);
+    }
+  });
+
+  it('rolls the in-memory value back when an accepted write fails asynchronously (#971)', async () => {
+    const storageKey = OpenRouterAPI.groundingStorageKey;
+    const previous = OpenRouterAPI.isWebGroundingEnabled();
+    const previousStored = localStorage.getItem(storageKey);
+    const restoreWrites = failStorageWritesFor(storageKey, 'async');
+
+    try {
+      // The bridge accepts the write optimistically and only reports the
+      // chrome.storage failure after it settles, so success must not be
+      // reported before then.
+      const persisted = OpenRouterAPI.setWebGroundingEnabled(!previous);
+      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(!previous);
+
+      await expect(persisted).resolves.toBe(false);
+      expect(OpenRouterAPI.isWebGroundingEnabled()).toBe(previous);
+      expect(localStorage.getItem(storageKey)).toBe(previousStored);
+    } finally {
+      restoreWrites();
+      await OpenRouterAPI.setWebGroundingEnabled(previous);
     }
   });
 });

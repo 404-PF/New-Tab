@@ -242,3 +242,37 @@ describe('AIRenderer copy button label translations (#970)', () => {
     }
   });
 });
+
+describe('AIRenderer web grounding toggle write failure (#971)', () => {
+  it('restores the checkbox from the stored preference when persistence fails', async () => {
+    const getCheckbox = () => document.querySelector('.ai-grounding-toggle input[type="checkbox"]');
+    const originalAPI = window.OpenRouterAPI;
+
+    window.OpenRouterAPI = {
+      isWebGroundingEnabled: () => true,
+      setWebGroundingEnabled: vi.fn().mockResolvedValue(false)
+    };
+
+    try {
+      AIRenderer.initWebGroundingControl();
+      expect(getCheckbox().checked).toBe(true);
+
+      getCheckbox().checked = false;
+      getCheckbox().dispatchEvent(new Event('change'));
+
+      expect(window.OpenRouterAPI.setWebGroundingEnabled).toHaveBeenCalledWith(false);
+
+      await vi.waitFor(() => {
+        expect(getCheckbox().checked).toBe(true);
+      });
+    } finally {
+      if (originalAPI === undefined) {
+        delete window.OpenRouterAPI;
+      } else {
+        window.OpenRouterAPI = originalAPI;
+      }
+      document.querySelector('.ai-grounding-toggle')?.remove();
+      AIRenderer.getElements().webGroundingControl = null;
+    }
+  });
+});
