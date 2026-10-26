@@ -39,7 +39,14 @@ Ensure you are on a release branch (`release/*`) before making any version chang
 ```bash
 CURRENT_BRANCH="$(git branch --show-current)"
 if [ "$CURRENT_BRANCH" = "main" ]; then
-  git checkout -b "release/$VERSION"
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "Uncommitted changes present — commit or stash them before creating the release branch" >&2
+    exit 1
+  fi
+  if ! git checkout -b "release/$VERSION"; then
+    echo "Unable to create release/$VERSION" >&2
+    exit 1
+  fi
 elif ! printf '%s' "$CURRENT_BRANCH" | grep -Eq '^release/'; then
   echo "Release must be prepared on a release/* branch (current branch: $CURRENT_BRANCH)" >&2
   exit 1
