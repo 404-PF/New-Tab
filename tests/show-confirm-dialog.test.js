@@ -140,6 +140,25 @@ describe('showConfirmDialog', () => {
     expect(() => window._customBackgrounds.closeConfirmDialog()).not.toThrow();
   });
 
+  it('keeps a single dialog node when reopened during the close fade (#968)', async () => {
+    const first = window._customBackgrounds.showConfirmDialog('First', 'M');
+    const firstDialog = document.getElementById('bg-confirm-dialog');
+    await vi.waitFor(() => expect(firstDialog.classList.contains('bg-confirm-open')).toBe(true));
+
+    window._customBackgrounds.closeConfirmDialog();
+    expect(await first).toBe(false);
+
+    // Reopen while the first node is still in its 200 ms removal fade.
+    window._customBackgrounds.showConfirmDialog('Second', 'M');
+    const nodes = document.querySelectorAll('#bg-confirm-dialog');
+    expect(nodes.length).toBe(1);
+    expect(nodes[0].querySelector('.bg-confirm-title').textContent).toBe('Second');
+
+    nodes[0].querySelector('.bg-confirm-cancel').click();
+    await new Promise(resolve => setTimeout(resolve, 250));
+    expect(document.getElementById('bg-confirm-dialog')).toBeNull();
+  });
+
   it('translates the title, message, and buttons through i18n (#968)', async () => {
     const originalT = window.i18n.t;
     const strings = {

@@ -168,17 +168,18 @@ describe('Custom background confirm dialog translations (issue #968)', () => {
     expectTranslationKeys(CUSTOM_BACKGROUND_DIALOG_TRANSLATION_KEYS, { differFromEnglish: true });
   });
 
-  it('renders the confirmation strings through t() at runtime', () => {
+  it('renders the confirmation strings through t() at runtime', async () => {
     const languages = window.i18n.getSupportedLanguages();
 
-    languages.forEach(({ code }) => {
-      window.i18n.applyLanguage(code);
+    for (const { code } of languages) {
+      await window.i18n.applyLanguage(code);
 
       CUSTOM_BACKGROUND_DIALOG_TRANSLATION_KEYS.forEach((key) => {
-        expect(window.i18n.t(key), `${code}:${key}`).not.toBe(key);
-        expect(window.i18n.t(key).trim(), `${code}:${key}`).not.toBe('');
+        expect(window.i18n.t(key), `${code}:${key}`).toBe(
+          window.i18n.getTranslations(code)[key]
+        );
       });
-    });
+    }
   });
 });
 

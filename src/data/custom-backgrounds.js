@@ -832,6 +832,16 @@
 
   function showConfirmDialog(title, message) {
     return new Promise(function (resolve) {
+      // Fully settle any prior confirmation before appending a replacement,
+      // so overlapping opens cannot leave duplicate #bg-confirm-dialog nodes
+      // for the shortcut/accessibility registries to resolve (issue #968).
+      if (typeof closeActiveConfirmDialog === 'function') {
+        closeActiveConfirmDialog(false);
+      }
+      document.querySelectorAll('#bg-confirm-dialog').forEach(function (el) {
+        el.remove();
+      });
+
       const dialog = document.createElement('div');
       dialog.className = 'bg-confirm-dialog screen-overlay';
       dialog.id = 'bg-confirm-dialog';
