@@ -1,6 +1,7 @@
 (function () {
   const MAX_PARTICLES = 22;
   const DPR_CAP = 1.5;
+  const GLOW_SPRITE_SIZE = 256;
 
   let canvasEl = null;
   let ctx = null;
@@ -14,6 +15,7 @@
   let currentBackgroundId = '';
   let lastFrameTime = 0;
   const particles = [];
+  let glowSprites = [];
   let animationListenersBound = false;
   const pointer = {
     x: 0.5,
@@ -100,6 +102,38 @@
     }
   }
 
+  function buildGlowSprite(color) {
+    const sprite = document.createElement('canvas');
+    sprite.width = GLOW_SPRITE_SIZE;
+    sprite.height = GLOW_SPRITE_SIZE;
+
+    const spriteCtx = sprite.getContext('2d');
+    if (!spriteCtx) {
+      return null;
+    }
+
+    const center = GLOW_SPRITE_SIZE / 2;
+    const gradient = spriteCtx.createRadialGradient(center, center, 0, center, center, center);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    spriteCtx.fillStyle = gradient;
+    spriteCtx.fillRect(0, 0, GLOW_SPRITE_SIZE, GLOW_SPRITE_SIZE);
+
+    return sprite;
+  }
+
+  function buildGlowSprites() {
+    if (glowSprites.length) {
+      return;
+    }
+
+    glowSprites = [
+      buildGlowSprite('rgba(91, 205, 255, 0.17)'),
+      buildGlowSprite('rgba(167, 139, 250, 0.14)'),
+      buildGlowSprite('rgba(125, 211, 252, 0.08)')
+    ];
+  }
+
   function resizeCanvas() {
     if (!canvasEl || !ctx || !containerEl) {
       return;
@@ -116,6 +150,7 @@
     canvasEl.style.height = height + 'px';
 
     ctx.setTransform(devicePixelRatioValue, 0, 0, devicePixelRatioValue, 0, 0);
+    buildGlowSprites();
     initParticles();
   }
 
@@ -151,15 +186,18 @@
     if (particle.y > height + 20) particle.y = -20;
   }
 
-  function drawGlow(x, y, radius, color) {
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  function drawGlow(sprite, x, y, size) {
+    if (!sprite) {
+      return;
+    }
 
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.drawImage(
+      sprite,
+      x - size / 2,
+      y - size / 2,
+      size,
+      size
+    );
   }
 
   function render(timestamp) {
@@ -191,18 +229,20 @@
     const glowX2 = width * (0.78 - (pointer.x - 0.5) * 0.12);
     const glowY2 = height * (0.72 - (pointer.y - 0.5) * 0.1);
 
-    drawGlow(glowX, glowY, Math.max(width, height) * 0.42, 'rgba(91, 205, 255, 0.17)');
-    drawGlow(glowX2, glowY2, Math.max(width, height) * 0.36, 'rgba(167, 139, 250, 0.14)');
-    drawGlow(width * 0.5, height * 0.52, Math.max(width, height) * 0.26, 'rgba(125, 211, 252, 0.08)');
+    const glowBase = Math.max(width, height);
+    drawGlow(glowSprites[0], glowX, glowY, glowBase * 0.84);
+    drawGlow(glowSprites[1], glowX2, glowY2, glowBase * 0.72);
+    drawGlow(glowSprites[2], width * 0.5, height * 0.52, glowBase * 0.52);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    particles.forEach((particle) => {
+    for (let index = 0; index < particles.length; index += 1) {
+      const particle = particles[index];
       updateParticle(particle, delta);
       ctx.globalAlpha = particle.alpha;
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
       ctx.fill();
-    });
+    }
     ctx.globalAlpha = 1;
 
     ctx.globalCompositeOperation = 'source-over';
@@ -393,6 +433,7 @@
   function stop() {
     currentBackgroundId = '';
     isEnabled = false;
+    glowSprites = [];
     stopAnimation();
     unbindLifecycleListeners();
   }
