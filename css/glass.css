@@ -92,6 +92,8 @@ body.light-theme :is(
   .weather-widget,
   .focus-mode-indicator,
   #motto-container,
+  #refresh-motto-btn,
+  #copy-motto-btn,
   .todo-stats-panel,
   .setting-card,
   .bg-subsection
@@ -272,6 +274,18 @@ body.light-theme :is(
   .btn-secondary,
   .ai-confirm-cancel
 ):is(:hover, :active, .active):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+  background: var(--glass-control-hover);
+  border-color: var(--glass-border-hover);
+}
+
+/* #975: the motto buttons are ID selectors, so adding them to the shared
+   hover group above would raise every member to ID-level specificity and
+   override sibling states such as .weather-choice-button.active. They get
+   their own rule with the same tokens instead. */
+body.light-theme :is(
+  #refresh-motto-btn,
+  #copy-motto-btn
+):is(:hover, :active):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: var(--glass-control-hover);
   border-color: var(--glass-border-hover);
 }

@@ -188,3 +188,97 @@ describe('Light-theme Todo and Notes parity with the dark theme (#809)', () => {
     expect(glass).not.toMatch(/body\.light-theme \.(todo-section|notes-section|todo-item|note-item)\s*\{/);
   });
 });
+
+const SHELL_CSS_PATH = resolve(process.cwd(), 'css/shell.css');
+const FEATURES_CSS_PATH = resolve(process.cwd(), 'css/features.css');
+const NEW_TAB_HTML_PATH = resolve(process.cwd(), 'New-Tab.html');
+
+describe('Motto action buttons share the pill glass treatment (#975)', () => {
+  it('includes both buttons in the light-theme primary surface group', () => {
+    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
+    const match = css.match(
+      /body\.light-theme :is\(([^)]*)\)[^{]*\{[^}]*background:\s*var\(--glass-surface\)/
+    );
+    expect(match).not.toBeNull();
+    expect(match[1]).toContain('#motto-container');
+    expect(match[1]).toContain('#refresh-motto-btn');
+    expect(match[1]).toContain('#copy-motto-btn');
+  });
+
+  it('gives both buttons the shared control hover tokens on their own rule', () => {
+    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
+    const match = css.match(
+      /body\.light-theme :is\(\s*#refresh-motto-btn,\s*#copy-motto-btn\s*\)[^{]*\{[^}]*\}/
+    );
+    expect(match).not.toBeNull();
+    expect(match[0]).toContain('var(--glass-control-hover)');
+    expect(match[0]).toContain('var(--glass-border-hover)');
+    expect(match[0]).toContain(':hover');
+  });
+
+  it('keeps the motto button IDs out of the shared control hover group', () => {
+    // ID selectors inside the shared :is() group would raise every member to
+    // ID-level specificity and override sibling states such as
+    // .weather-choice-button.active, so the buttons use a dedicated rule.
+    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
+    const shared = css.match(
+      /body\.light-theme :is\(([^)]*)\):is\(:hover, :active, \.active\)[^{]*\{[^}]*--glass-control-hover/
+    );
+    expect(shared).not.toBeNull();
+    expect(shared[1]).not.toMatch(/#(refresh|copy)-motto-btn/);
+  });
+
+  it('styles the dark-theme base rule as layout-only with a 24px hit area and pointer cursor', () => {
+    const css = readFileSync(SHELL_CSS_PATH, 'utf-8');
+    const rule = css.match(/#refresh-motto-btn,\s*#copy-motto-btn\s*\{([^}]*)\}/);
+    expect(rule).not.toBeNull();
+    const body = rule[1];
+    expect(body).toContain('cursor: pointer');
+    expect(body).toMatch(/width:\s*(2[4-9]|[3-9]\d)px/);
+    expect(body).toMatch(/height:\s*(2[4-9]|[3-9]\d)px/);
+    expect(body).not.toMatch(/background\s*:/);
+    expect(body).not.toMatch(/rgb\(200,\s*200,\s*200\)/);
+    expect(body).not.toMatch(/transition:\s*all/);
+    expect(body).toMatch(/transition:[^;]*background-color/);
+    expect(body).toMatch(/transition:[^;]*transform/);
+  });
+
+  it('replaces the lift+glow hover with scale-only token feedback', () => {
+    const css = readFileSync(SHELL_CSS_PATH, 'utf-8');
+    const rule = css.match(
+      /#refresh-motto-btn:hover,\s*#copy-motto-btn:hover\s*\{([^}]*)\}/
+    );
+    expect(rule).not.toBeNull();
+    const body = rule[1];
+    expect(body).toMatch(/transform:\s*scale\(1\.08\)/);
+    expect(body).not.toMatch(/translateY/);
+    expect(body).not.toMatch(/box-shadow/);
+    expect(body).not.toMatch(/rgba\(33,\s*150,\s*243/);
+    expect(body).toContain('var(--glass-control-hover)');
+  });
+
+  it('adds a dark-theme focus-visible ring via the shared glass token', () => {
+    const css = readFileSync(SHELL_CSS_PATH, 'utf-8');
+    const rule = css.match(
+      /#refresh-motto-btn:focus-visible,\s*#copy-motto-btn:focus-visible\s*\{([^}]*)\}/
+    );
+    expect(rule).not.toBeNull();
+    expect(rule[1]).toContain('var(--glass-focus-ring)');
+  });
+
+  it('drops the legacy hardcoded light-theme motto button overrides', () => {
+    const css = readFileSync(FEATURES_CSS_PATH, 'utf-8');
+    expect(css).not.toMatch(/#refresh-motto-btn/);
+    expect(css).not.toMatch(/#copy-motto-btn/);
+  });
+
+  it('wires the aria-labels to the existing translation keys', () => {
+    const html = readFileSync(NEW_TAB_HTML_PATH, 'utf-8');
+    expect(html).toMatch(
+      /id="refresh-motto-btn"[^>]*aria-label="Refresh motto"[^>]*data-i18n-aria-label="refreshMotto"/
+    );
+    expect(html).toMatch(
+      /id="copy-motto-btn"[^>]*aria-label="Copy motto"[^>]*data-i18n-aria-label="copyMotto"/
+    );
+  });
+});

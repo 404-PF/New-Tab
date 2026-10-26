@@ -49,12 +49,15 @@
 
 #refresh-motto-btn,
 #copy-motto-btn {
-  color: #343232;
-  background: rgb(200, 200, 200);
+  width: 24px;
+  height: 24px;
   padding: 2px 5px;
   border: none;
   border-radius: 8px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -62,14 +65,19 @@
 
 #refresh-motto-btn:hover,
 #copy-motto-btn:hover {
-  background: rgba(33, 150, 243, 0.15);
-  transform: scale(1.08) translateY(-1px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+  background: var(--glass-control-hover);
+  transform: scale(1.08);
 }
 
 #refresh-motto-btn:active,
 #copy-motto-btn:active {
-  transform: scale(0.96) translateY(0);
+  transform: scale(0.96);
+}
+
+#refresh-motto-btn:focus-visible,
+#copy-motto-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--glass-focus-ring);
 }
 
 .footer-left {
