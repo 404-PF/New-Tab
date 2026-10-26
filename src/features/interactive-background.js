@@ -15,6 +15,8 @@
   let lastFrameTime = 0;
   const particles = [];
   let glowSprites = [];
+  let glowSpritesBase = 0;
+  let glowSpritesDpr = 0;
   let animationListenersBound = false;
   const pointer = {
     x: 0.5,
@@ -124,10 +126,16 @@
 
   function buildGlowSprites() {
     const base = Math.max(width, height);
+    if (glowSprites.length && glowSpritesBase === base && glowSpritesDpr === devicePixelRatioValue) {
+      return;
+    }
+
+    glowSpritesBase = base;
+    glowSpritesDpr = devicePixelRatioValue;
     glowSprites = [
-      buildGlowSprite(base * 0.42, 'rgba(91, 205, 255, 0.17)'),
-      buildGlowSprite(base * 0.36, 'rgba(167, 139, 250, 0.14)'),
-      buildGlowSprite(base * 0.26, 'rgba(125, 211, 252, 0.08)')
+      buildGlowSprite(base * 0.84, 'rgba(91, 205, 255, 0.17)'),
+      buildGlowSprite(base * 0.72, 'rgba(167, 139, 250, 0.14)'),
+      buildGlowSprite(base * 0.52, 'rgba(125, 211, 252, 0.08)')
     ];
   }
 
@@ -429,6 +437,9 @@
   function stop() {
     currentBackgroundId = '';
     isEnabled = false;
+    glowSprites = [];
+    glowSpritesBase = 0;
+    glowSpritesDpr = 0;
     stopAnimation();
     unbindLifecycleListeners();
   }
