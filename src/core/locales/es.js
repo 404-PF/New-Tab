@@ -111,6 +111,8 @@ window.i18n.__registerLocale('es', {
   copyMottoCopied: 'Copiado',
   copyMottoFailed: 'Error al copiar',
   copyFailed: 'No se pudo copiar el texto. Selecciona y copia manualmente.',
+  copySuccess: '¡Copiado!',
+  copyFailedShort: 'Error',
   renameApp: 'Renombrar',
   changeThumbnail: 'Cambiar miniatura',
   deleteApp: 'Eliminar',

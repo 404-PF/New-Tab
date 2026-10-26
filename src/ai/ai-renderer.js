@@ -6,7 +6,9 @@ const AIRenderer = (function() {
     aiGroundWithWeb: 'Ground with web',
     aiGroundWithWebDescription: 'Use live web results for current answers.',
     aiSources: 'Sources',
-    copyFailed: 'Failed to copy text. Please select and copy manually.'
+    copyFailed: 'Failed to copy text. Please select and copy manually.',
+    copySuccess: 'Copied!',
+    copyFailedShort: 'Failed'
   };
   const topicsListRenderState = {
     listEl: null,
@@ -713,12 +715,12 @@ const AIRenderer = (function() {
         copyIcon.innerHTML = '<polyline points="20,6 9,17 4,12"></polyline>';
       }
       if (copyText) {
-        copyText.textContent = 'Copied!';
+        copyText.textContent = getTranslation('copySuccess');
       }
       button.classList.add('copy-success');
     } else {
       if (copyText) {
-        copyText.textContent = 'Failed';
+        copyText.textContent = getTranslation('copyFailedShort');
       }
       button.classList.add('copy-error');
     }

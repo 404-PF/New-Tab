@@ -111,6 +111,8 @@ window.i18n.__registerLocale('de', {
   copyMottoCopied: 'Kopiert',
   copyMottoFailed: 'Kopieren fehlgeschlagen',
   copyFailed: 'Text konnte nicht kopiert werden. Bitte manuell auswählen und kopieren.',
+  copySuccess: 'Kopiert!',
+  copyFailedShort: 'Fehlgeschlagen',
   renameApp: 'Umbenennen',
   changeThumbnail: 'Miniaturbild ändern',
   deleteApp: 'Löschen',

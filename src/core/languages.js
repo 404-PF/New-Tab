@@ -175,6 +175,8 @@ const translations = {
     copyMottoCopied: 'Copied',
     copyMottoFailed: 'Failed to copy',
     copyFailed: 'Failed to copy text. Please select and copy manually.',
+    copySuccess: 'Copied!',
+    copyFailedShort: 'Failed',
     renameApp: 'Rename',
     changeThumbnail: 'Change Thumbnail',
     deleteApp: 'Delete',

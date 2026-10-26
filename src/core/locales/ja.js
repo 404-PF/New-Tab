@@ -111,6 +111,8 @@ window.i18n.__registerLocale('ja', {
   copyMottoCopied: 'コピーしました',
   copyMottoFailed: 'コピーに失敗しました',
   copyFailed: 'テキストのコピーに失敗しました。手動で選択してコピーしてください。',
+  copySuccess: 'コピーしました！',
+  copyFailedShort: '失敗',
   renameApp: '名前を変更',
   changeThumbnail: 'サムネイルを変更',
   deleteApp: '削除',

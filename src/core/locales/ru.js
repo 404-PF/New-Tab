@@ -111,6 +111,8 @@ window.i18n.__registerLocale('ru', {
   copyMottoCopied: 'Скопировано',
   copyMottoFailed: 'Не удалось скопировать',
   copyFailed: 'Не удалось скопировать текст. Выделите и скопируйте вручную.',
+  copySuccess: 'Скопировано!',
+  copyFailedShort: 'Ошибка',
   renameApp: 'Переименовать',
   changeThumbnail: 'Изменить миниатюру',
   deleteApp: 'Удалить',

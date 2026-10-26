@@ -318,6 +318,8 @@ globalThis.window.i18n = {
       notesDeleteTooltip: 'Delete Note',
       notesSaveError: 'Failed to save note. Your changes were not saved.',
       copyFailed: 'Failed to copy text. Please select and copy manually.',
+      copySuccess: 'Copied!',
+      copyFailedShort: 'Failed',
       notesFilterAll: 'All',
       notesAddTag: 'Add tag',
       notesTagPlaceholder: 'Tag name...',
