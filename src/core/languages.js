@@ -660,15 +660,15 @@ const translations = {
 };
 
 const customBackgroundErrorTranslations = {
-  en: ['Failed to load custom backgrounds. Please try again.', 'Failed to load the custom background. Please try again.', 'Failed to delete the custom background. Please try again.', 'Failed to open the delete confirmation dialog. Please try again.'],
-  zh: ['无法加载自定义背景。请重试。', '无法加载该自定义背景。请重试。', '无法删除自定义背景。请重试。', '无法打开删除确认对话框。请重试。'],
-  ja: ['カスタム背景を読み込めませんでした。もう一度お試しください。', 'このカスタム背景を読み込めませんでした。もう一度お試しください。', 'カスタム背景を削除できませんでした。もう一度お試しください。', '削除の確認ダイアログを開けませんでした。もう一度お試しください。'],
-  ko: ['사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.', '이 사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.', '사용자 지정 배경을 삭제하지 못했습니다. 다시 시도해 주세요.', '삭제 확인 대화 상자를 열지 못했습니다. 다시 시도해 주세요.'],
-  es: ['No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.', 'No se pudo cargar el fondo personalizado. Inténtalo de nuevo.', 'No se pudo eliminar el fondo personalizado. Inténtalo de nuevo.', 'No se pudo abrir el diálogo de confirmación de eliminación. Inténtalo de nuevo.'],
-  fr: ['Impossible de charger les arrière-plans personnalisés. Veuillez réessayer.', 'Impossible de charger l’arrière-plan personnalisé. Veuillez réessayer.', 'Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.', 'Impossible d’ouvrir la boîte de dialogue de confirmation de suppression. Veuillez réessayer.'],
-  de: ['Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.', 'Der benutzerdefinierte Hintergrund konnte nicht geladen werden. Bitte versuche es erneut.', 'Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.', 'Der Bestätigungsdialog zum Löschen konnte nicht geöffnet werden. Bitte versuche es erneut.'],
-  pt: ['Não foi possível carregar os planos de fundo personalizados. Tente novamente.', 'Não foi possível carregar o plano de fundo personalizado. Tente novamente.', 'Não foi possível excluir o plano de fundo personalizado. Tente novamente.', 'Não foi possível abrir o diálogo de confirmação de exclusão. Tente novamente.'],
-  ru: ['Не удалось загрузить пользовательские фоны. Повторите попытку.', 'Не удалось загрузить пользовательский фон. Повторите попытку.', 'Не удалось удалить пользовательский фон. Повторите попытку.', 'Не удалось открыть диалог подтверждения удаления. Повторите попытку.']
+  en: ['Failed to load custom backgrounds. Please try again.', 'Failed to load the custom background. Please try again.', 'Failed to delete the custom background. Please try again.', 'Failed to open the delete confirmation dialog. Please try again.', 'Please select a video file.', 'Please select an image file.', 'Failed to process the file. Please try a different file.'],
+  zh: ['无法加载自定义背景。请重试。', '无法加载该自定义背景。请重试。', '无法删除自定义背景。请重试。', '无法打开删除确认对话框。请重试。', '请选择视频文件。', '请选择图片文件。', '处理文件失败。请尝试其他文件。'],
+  ja: ['カスタム背景を読み込めませんでした。もう一度お試しください。', 'このカスタム背景を読み込めませんでした。もう一度お試しください。', 'カスタム背景を削除できませんでした。もう一度お試しください。', '削除の確認ダイアログを開けませんでした。もう一度お試しください。', '動画ファイルを選択してください。', '画像ファイルを選択してください。', 'ファイルの処理に失敗しました。別のファイルをお試しください。'],
+  ko: ['사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.', '이 사용자 지정 배경을 불러오지 못했습니다. 다시 시도해 주세요.', '사용자 지정 배경을 삭제하지 못했습니다. 다시 시도해 주세요.', '삭제 확인 대화 상자를 열지 못했습니다. 다시 시도해 주세요.', '동영상 파일을 선택해 주세요.', '이미지 파일을 선택해 주세요.', '파일을 처리하지 못했습니다. 다른 파일로 다시 시도해 주세요.'],
+  es: ['No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.', 'No se pudo cargar el fondo personalizado. Inténtalo de nuevo.', 'No se pudo eliminar el fondo personalizado. Inténtalo de nuevo.', 'No se pudo abrir el diálogo de confirmación de eliminación. Inténtalo de nuevo.', 'Selecciona un archivo de vídeo.', 'Selecciona un archivo de imagen.', 'No se pudo procesar el archivo. Inténtalo con un archivo diferente.'],
+  fr: ['Impossible de charger les arrière-plans personnalisés. Veuillez réessayer.', 'Impossible de charger l’arrière-plan personnalisé. Veuillez réessayer.', 'Impossible de supprimer l’arrière-plan personnalisé. Veuillez réessayer.', 'Impossible d’ouvrir la boîte de dialogue de confirmation de suppression. Veuillez réessayer.', 'Veuillez sélectionner un fichier vidéo.', 'Veuillez sélectionner un fichier image.', 'Impossible de traiter le fichier. Veuillez essayer un autre fichier.'],
+  de: ['Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.', 'Der benutzerdefinierte Hintergrund konnte nicht geladen werden. Bitte versuche es erneut.', 'Der benutzerdefinierte Hintergrund konnte nicht gelöscht werden. Bitte versuche es erneut.', 'Der Bestätigungsdialog zum Löschen konnte nicht geöffnet werden. Bitte versuche es erneut.', 'Bitte wähle eine Videodatei aus.', 'Bitte wähle eine Bilddatei aus.', 'Die Datei konnte nicht verarbeitet werden. Bitte versuche es mit einer anderen Datei.'],
+  pt: ['Não foi possível carregar os planos de fundo personalizados. Tente novamente.', 'Não foi possível carregar o plano de fundo personalizado. Tente novamente.', 'Não foi possível excluir o plano de fundo personalizado. Tente novamente.', 'Não foi possível abrir o diálogo de confirmação de exclusão. Tente novamente.', 'Selecione um arquivo de vídeo.', 'Selecione um arquivo de imagem.', 'Não foi possível processar o arquivo. Tente com um arquivo diferente.'],
+  ru: ['Не удалось загрузить пользовательские фоны. Повторите попытку.', 'Не удалось загрузить пользовательский фон. Повторите попытку.', 'Не удалось удалить пользовательский фон. Повторите попытку.', 'Не удалось открыть диалог подтверждения удаления. Повторите попытку.', 'Выберите видеофайл.', 'Выберите файл изображения.', 'Не удалось обработать файл. Попробуйте другой файл.']
 };
 
 // Merge passes are applied per locale instead of once for every locale: en
@@ -682,6 +682,9 @@ function applyCustomBackgroundErrorMerges(code) {
   target.customBackgroundLoadError = messages[1];
   target.customBackgroundDeleteError = messages[2];
   target.customBackgroundDialogError = messages[3];
+  target.customBgSelectVideo = messages[4];
+  target.customBgSelectImage = messages[5];
+  target.customBgProcessError = messages[6];
 }
 
 // The AI export strings are defined here rather than inline in each per-locale

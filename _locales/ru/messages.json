@@ -54,6 +54,18 @@
     "message": "Не удалось открыть диалог подтверждения удаления. Повторите попытку.",
     "description": "Error shown when the delete confirmation dialog cannot be opened"
   },
+  "customBgSelectVideo": {
+    "message": "Выберите видеофайл.",
+    "description": "Error shown when a non-video file is picked for a live background upload"
+  },
+  "customBgSelectImage": {
+    "message": "Выберите файл изображения.",
+    "description": "Error shown when a non-image file is picked for a background upload"
+  },
+  "customBgProcessError": {
+    "message": "Не удалось обработать файл. Попробуйте другой файл.",
+    "description": "Error shown when an uploaded background file cannot be processed"
+  },
   "onboardingSaveError": {
     "message": "Не удалось сохранить завершение обучения. Ваш прогресс сохранён, вы можете повторить попытку.",
     "description": "Error shown when onboarding completion cannot be persisted"

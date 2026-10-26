@@ -460,3 +460,131 @@ describe('custom backgrounds delete confirmation errors', () => {
     }
   });
 });
+
+describe('custom backgrounds upload validation (issue #967)', () => {
+  // Clicks an upload button, then feeds the file input a wrong-typed file so
+  // the validation branch runs. Returns the spies installed around the flow.
+  async function primeUploadHarness(uploadType, file) {
+    const harness = loadWithIndexedDB([]);
+    const originalShowToast = window.showToast;
+    const originalAlert = window.alert;
+    const showToast = vi.fn();
+    const alert = vi.fn();
+    window.showToast = showToast;
+    window.alert = alert;
+
+    const button = document.createElement('button');
+    button.className = 'upload-bg-btn';
+    button.setAttribute('data-upload-type', uploadType);
+    document.body.appendChild(button);
+
+    try {
+      button.click();
+      // tests/setup.js pre-creates #data-import-file; the upload flow appends
+      // its own un-id'd file input, so exclude the setup stub explicitly.
+      const input = document.querySelector('input[type="file"]:not(#data-import-file)');
+      expect(input).not.toBeNull();
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      input.dispatchEvent(new Event('change'));
+    } finally {
+      button.remove();
+    }
+
+    return {
+      showToast,
+      alert,
+      restore() {
+        if (originalShowToast === undefined) {
+          delete window.showToast;
+        } else {
+          window.showToast = originalShowToast;
+        }
+        if (originalAlert === undefined) {
+          delete window.alert;
+        } else {
+          window.alert = originalAlert;
+        }
+        harness.restore();
+      }
+    };
+  }
+
+  it('reports a wrong-typed video upload through the toast, not a blocking alert', async () => {
+    const ctx = await primeUploadHarness('video', { name: 'photo.jpg', type: 'image/jpeg' });
+
+    try {
+      expect(ctx.showToast).toHaveBeenCalledWith('customBgSelectVideo', 'error');
+      expect(ctx.alert).not.toHaveBeenCalled();
+    } finally {
+      ctx.restore();
+    }
+  });
+
+  it('reports a wrong-typed image upload through the toast, not a blocking alert', async () => {
+    const ctx = await primeUploadHarness('image', { name: 'clip.txt', type: 'text/plain' });
+
+    try {
+      expect(ctx.showToast).toHaveBeenCalledWith('customBgSelectImage', 'error');
+      expect(ctx.alert).not.toHaveBeenCalled();
+    } finally {
+      ctx.restore();
+    }
+  });
+
+  it('reports a thumbnail-generation failure through the localized toast', async () => {
+    const originalCreateObjectURL = URL.createObjectURL;
+    // generateImageThumbnail resolves its blob URL through URL.createObjectURL;
+    // forcing it to throw exercises the process-error catch path.
+    URL.createObjectURL = () => {
+      throw new Error('blob URL creation failed');
+    };
+    const ctx = await primeUploadHarness('image', { name: 'photo.jpg', type: 'image/jpeg' });
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(ctx.showToast).toHaveBeenCalledWith('customBgProcessError', 'error');
+      expect(ctx.alert).not.toHaveBeenCalled();
+    } finally {
+      URL.createObjectURL = originalCreateObjectURL;
+      ctx.restore();
+    }
+  });
+});
+
+describe('custom backgrounds delete button localization (issue #967)', () => {
+  const imageRecord = {
+    id: 'custom_image_i18n',
+    title: 'Localized photo',
+    type: 'image',
+    data: new Blob(['fake'], { type: 'image/jpeg' }),
+    thumb: 'data:image/jpeg;base64,i18n'
+  };
+
+  it('labels thumbnail delete buttons from t("delete") with relabel attributes', async () => {
+    const harness = loadWithIndexedDB([imageRecord]);
+    const staticContainer = document.createElement('div');
+    staticContainer.id = 'bg-thumbnails-static';
+    const liveContainer = document.createElement('div');
+    liveContainer.id = 'bg-thumbnails-live';
+    document.body.appendChild(staticContainer);
+    document.body.appendChild(liveContainer);
+
+    try {
+      await window._customBackgrounds.render();
+
+      const delBtn = staticContainer.querySelector('.custom-bg-delete-btn');
+      expect(delBtn).not.toBeNull();
+      expect(delBtn.title).toBe(window.i18n.t('delete'));
+      expect(delBtn.getAttribute('aria-label')).toBe(window.i18n.t('delete'));
+      // The applyLanguage() sweep relabels dynamically created buttons via
+      // these attributes on a later language switch.
+      expect(delBtn.getAttribute('data-i18n-title')).toBe('delete');
+      expect(delBtn.getAttribute('data-i18n-aria-label')).toBe('delete');
+    } finally {
+      staticContainer.remove();
+      liveContainer.remove();
+      harness.restore();
+    }
+  });
+});

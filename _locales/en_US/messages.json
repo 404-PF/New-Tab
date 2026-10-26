@@ -54,6 +54,18 @@
     "message": "Failed to open the delete confirmation dialog. Please try again.",
     "description": "Error shown when the delete confirmation dialog cannot be opened"
   },
+  "customBgSelectVideo": {
+    "message": "Please select a video file.",
+    "description": "Error shown when a non-video file is picked for a live background upload"
+  },
+  "customBgSelectImage": {
+    "message": "Please select an image file.",
+    "description": "Error shown when a non-image file is picked for a background upload"
+  },
+  "customBgProcessError": {
+    "message": "Failed to process the file. Please try a different file.",
+    "description": "Error shown when an uploaded background file cannot be processed"
+  },
   "onboardingSaveError": {
     "message": "Failed to save onboarding completion. Your progress was kept so you can retry.",
     "description": "Error shown when onboarding completion cannot be persisted"

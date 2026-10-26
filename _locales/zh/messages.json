@@ -54,6 +54,18 @@
     "message": "无法打开删除确认对话框。请重试。",
     "description": "Error shown when the delete confirmation dialog cannot be opened"
   },
+  "customBgSelectVideo": {
+    "message": "请选择视频文件。",
+    "description": "Error shown when a non-video file is picked for a live background upload"
+  },
+  "customBgSelectImage": {
+    "message": "请选择图片文件。",
+    "description": "Error shown when a non-image file is picked for a background upload"
+  },
+  "customBgProcessError": {
+    "message": "处理文件失败。请尝试其他文件。",
+    "description": "Error shown when an uploaded background file cannot be processed"
+  },
   "onboardingSaveError": {
     "message": "无法保存新手引导的完成状态。您的进度已保留，可以重试。",
     "description": "Error shown when onboarding completion cannot be persisted"

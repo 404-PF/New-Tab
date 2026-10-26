@@ -54,6 +54,18 @@
     "message": "Der Bestätigungsdialog zum Löschen konnte nicht geöffnet werden. Bitte versuche es erneut.",
     "description": "Error shown when the delete confirmation dialog cannot be opened"
   },
+  "customBgSelectVideo": {
+    "message": "Bitte wähle eine Videodatei aus.",
+    "description": "Error shown when a non-video file is picked for a live background upload"
+  },
+  "customBgSelectImage": {
+    "message": "Bitte wähle eine Bilddatei aus.",
+    "description": "Error shown when a non-image file is picked for a background upload"
+  },
+  "customBgProcessError": {
+    "message": "Die Datei konnte nicht verarbeitet werden. Bitte versuche es mit einer anderen Datei.",
+    "description": "Error shown when an uploaded background file cannot be processed"
+  },
   "onboardingSaveError": {
     "message": "Der Onboarding-Abschluss konnte nicht gespeichert werden. Dein Fortschritt wurde behalten, du kannst es erneut versuchen.",
     "description": "Error shown when onboarding completion cannot be persisted"

@@ -47,7 +47,10 @@ const CUSTOM_BACKGROUND_ERROR_TRANSLATION_KEYS = [
   'customBackgroundsLoadError',
   'customBackgroundLoadError',
   'customBackgroundDeleteError',
-  'customBackgroundDialogError'
+  'customBackgroundDialogError',
+  'customBgSelectVideo',
+  'customBgSelectImage',
+  'customBgProcessError'
 ];
 
 const ROTATION_UPLOADS_TRANSLATION_KEYS = [
