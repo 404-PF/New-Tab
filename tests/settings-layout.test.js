@@ -104,7 +104,7 @@ describe('Background readability overlay (#709)', () => {
     const css = readFileSync(CORE_CSS_PATH, 'utf-8');
 
     expect(css).toMatch(/\.background-container\s*\{[^}]*--bg-overlay-opacity:\s*0;/);
-    expect(css).toMatch(/\.background-overlay\s*\{[^}]*z-index:\s*5;[^}]*pointer-events:\s*none;[^}]*backdrop-filter:\s*blur\(var\(--bg-overlay-blur\)\);/);
+    expect(css).toMatch(/\.background-overlay\s*\{[^}]*z-index:\s*5;[^}]*pointer-events:\s*none;/);
     expect(css).toMatch(/\.background-overlay\.inactive\s*\{[^}]*display:\s*none;/);
     expect(css).toMatch(/\.bg-overlay-blur-media \.background-full,[\s\S]*?\.bg-overlay-blur-media \.background-transition-overlay\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*transform:\s*scale\(1\.05\);/);
     expect(css).toMatch(/\.bg-overlay-blur-media:has\(\.background-full\.loaded\) \.background-overlay,[\s\S]*?\.bg-overlay-blur-media:has\(\.background-transition-overlay\.active\) \.background-overlay\s*\{[^}]*backdrop-filter:\s*none;/);
@@ -123,5 +123,25 @@ describe('Background readability overlay (#709)', () => {
     expect(css).toMatch(/body\.light-theme #bg-overlay-section input\[type="range"\]/);
     expect(css).not.toMatch(/body\.simple-mode[^{]*\.background-overlay/);
     expect(css).not.toMatch(/data-focus-mode[^{]*\.background-overlay/);
+  });
+
+  it('only emits the overlay backdrop-filter while blur is enabled (#977)', () => {
+    const css = readFileSync(CORE_CSS_PATH, 'utf-8');
+
+    const overlayBase = css.match(/^\.background-overlay\s*\{[^}]*\}/m);
+    expect(overlayBase).toBeTruthy();
+    expect(overlayBase[0]).not.toMatch(/backdrop-filter/);
+
+    expect(css).toMatch(
+      /\.background-container\.bg-overlay-blur-media \.background-overlay\s*\{[^}]*-webkit-backdrop-filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*backdrop-filter:\s*blur\(var\(--bg-overlay-blur\)\);/
+    );
+
+    // The neutralizers must keep out-scoring the new rule when blur > 0.
+    expect(css).toMatch(
+      /\.background-container\.bg-overlay-blur-media:has\(\.background-full\.loaded\) \.background-overlay,[\s\S]*?\.background-container\.bg-overlay-blur-media:has\(\.background-transition-overlay\.active\) \.background-overlay\s*\{[^}]*backdrop-filter:\s*none;/
+    );
+    expect(css).toMatch(
+      /\.background-container\.bg-overlay-blur-media:not\(\.video-fallback\):not\(\.video-error\):is\([\s\S]*?\) \.background-overlay\s*\{[^}]*backdrop-filter:\s*none;/
+    );
   });
 });
