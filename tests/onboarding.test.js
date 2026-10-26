@@ -9,8 +9,14 @@ beforeAll(() => {
   // dom-ready.js must load before onboarding.js: the auto-start engine
   // registers through window.onDomReady, exactly as bootstrap.js orders it.
   injectScript('src/core/dom-ready.js');
+  // Inject under fake timers so the initial 500ms auto-start delay
+  // (src/features/onboarding.js setTimeout(checkAndStart, 500)) lands on
+  // the fake clock and is discarded with it, instead of becoming a native
+  // timer that can fire after teardown when globalThis.localStorage is gone.
+  vi.useFakeTimers();
   injectScript('src/features/onboarding.js');
   persistedInstance = window.onboardingTour;
+  vi.useRealTimers();
 });
 
 beforeEach(() => {

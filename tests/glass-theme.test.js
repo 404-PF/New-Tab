@@ -246,7 +246,7 @@ describe('Motto action buttons share the pill glass treatment (#975)', () => {
     expect(body).toContain('cursor: pointer');
     expect(body).toMatch(/(?<![\w-])width:\s*24px/);
     expect(body).toMatch(/(?<![\w-])height:\s*24px/);
-    expect(body).toMatch(/color:\s*inherit/);
+    expect(body).toMatch(/(?<![\w-])color:\s*inherit/);
     expect(body).toMatch(/background:\s*var\(--glass-control\)/);
     expect(body).not.toMatch(/rgb\(200,\s*200,\s*200\)/);
     expect(body).not.toMatch(/transition:\s*all/);
@@ -254,7 +254,7 @@ describe('Motto action buttons share the pill glass treatment (#975)', () => {
     expect(body).toMatch(/transition:[^;]*transform/);
   });
 
-  it('replaces the lift+glow hover with scale-only token feedback', () => {
+  it('replaces the lift+glow hover with scale and a visible dark tint', () => {
     const css = readFileSync(SHELL_CSS_PATH, 'utf-8');
     const rule = css.match(
       /#refresh-motto-btn:hover,\s*#copy-motto-btn:hover\s*\{([^}]*)\}/
@@ -265,7 +265,8 @@ describe('Motto action buttons share the pill glass treatment (#975)', () => {
     expect(body).not.toMatch(/translateY/);
     expect(body).not.toMatch(/box-shadow/);
     expect(body).not.toMatch(/rgba\(33,\s*150,\s*243/);
-    expect(body).toContain('var(--glass-control-hover)');
+    expect(body).not.toContain('var(--glass-control-hover)');
+    expect(body).toMatch(/background:\s*rgba\(15,\s*23,\s*42,\s*0\.12\)/);
   });
 
   it('adds a dark-theme focus-visible ring via the shared glass token', () => {

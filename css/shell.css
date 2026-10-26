@@ -70,7 +70,12 @@
 
 #refresh-motto-btn:hover,
 #copy-motto-btn:hover {
-  background: var(--glass-control-hover);
+  /* The motto bar is a light gray pill even in dark theme, where
+     --glass-control-hover (white 0.16) over it differs from the rest
+     surface (white 0.10) by only ~3 gray levels, so use a slate tint
+     that visibly darkens the pill. Light theme overrides this with the
+     glass control hover token. */
+  background: rgba(15, 23, 42, 0.12);
   transform: scale(1.08);
 }
 
