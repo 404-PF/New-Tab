@@ -1,6 +1,7 @@
 (function () {
   const MAX_PARTICLES = 22;
   const DPR_CAP = 1.5;
+  const GLOW_SPRITE_SIZE = 256;
 
   let canvasEl = null;
   let ctx = null;
@@ -15,8 +16,6 @@
   let lastFrameTime = 0;
   const particles = [];
   let glowSprites = [];
-  let glowSpritesBase = 0;
-  let glowSpritesDpr = 0;
   let animationListenersBound = false;
   const pointer = {
     x: 0.5,
@@ -103,39 +102,35 @@
     }
   }
 
-  function buildGlowSprite(cssSize, color) {
+  function buildGlowSprite(color) {
     const sprite = document.createElement('canvas');
-    const physicalSize = Math.max(1, Math.ceil(cssSize * devicePixelRatioValue));
-    sprite.width = physicalSize;
-    sprite.height = physicalSize;
+    sprite.width = GLOW_SPRITE_SIZE;
+    sprite.height = GLOW_SPRITE_SIZE;
 
     const spriteCtx = sprite.getContext('2d');
     if (!spriteCtx) {
       return null;
     }
 
-    const center = physicalSize / 2;
+    const center = GLOW_SPRITE_SIZE / 2;
     const gradient = spriteCtx.createRadialGradient(center, center, 0, center, center, center);
     gradient.addColorStop(0, color);
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     spriteCtx.fillStyle = gradient;
-    spriteCtx.fillRect(0, 0, physicalSize, physicalSize);
+    spriteCtx.fillRect(0, 0, GLOW_SPRITE_SIZE, GLOW_SPRITE_SIZE);
 
-    return { canvas: sprite, cssSize: cssSize };
+    return sprite;
   }
 
   function buildGlowSprites() {
-    const base = Math.max(width, height);
-    if (glowSprites.length && glowSpritesBase === base && glowSpritesDpr === devicePixelRatioValue) {
+    if (glowSprites.length) {
       return;
     }
 
-    glowSpritesBase = base;
-    glowSpritesDpr = devicePixelRatioValue;
     glowSprites = [
-      buildGlowSprite(base * 0.84, 'rgba(91, 205, 255, 0.17)'),
-      buildGlowSprite(base * 0.72, 'rgba(167, 139, 250, 0.14)'),
-      buildGlowSprite(base * 0.52, 'rgba(125, 211, 252, 0.08)')
+      buildGlowSprite('rgba(91, 205, 255, 0.17)'),
+      buildGlowSprite('rgba(167, 139, 250, 0.14)'),
+      buildGlowSprite('rgba(125, 211, 252, 0.08)')
     ];
   }
 
@@ -191,17 +186,17 @@
     if (particle.y > height + 20) particle.y = -20;
   }
 
-  function drawGlow(sprite, x, y) {
+  function drawGlow(sprite, x, y, size) {
     if (!sprite) {
       return;
     }
 
     ctx.drawImage(
-      sprite.canvas,
-      x - sprite.cssSize / 2,
-      y - sprite.cssSize / 2,
-      sprite.cssSize,
-      sprite.cssSize
+      sprite,
+      x - size / 2,
+      y - size / 2,
+      size,
+      size
     );
   }
 
@@ -234,9 +229,10 @@
     const glowX2 = width * (0.78 - (pointer.x - 0.5) * 0.12);
     const glowY2 = height * (0.72 - (pointer.y - 0.5) * 0.1);
 
-    drawGlow(glowSprites[0], glowX, glowY);
-    drawGlow(glowSprites[1], glowX2, glowY2);
-    drawGlow(glowSprites[2], width * 0.5, height * 0.52);
+    const glowBase = Math.max(width, height);
+    drawGlow(glowSprites[0], glowX, glowY, glowBase * 0.84);
+    drawGlow(glowSprites[1], glowX2, glowY2, glowBase * 0.72);
+    drawGlow(glowSprites[2], width * 0.5, height * 0.52, glowBase * 0.52);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     for (let index = 0; index < particles.length; index += 1) {
@@ -438,8 +434,6 @@
     currentBackgroundId = '';
     isEnabled = false;
     glowSprites = [];
-    glowSpritesBase = 0;
-    glowSpritesDpr = 0;
     stopAnimation();
     unbindLifecycleListeners();
   }
