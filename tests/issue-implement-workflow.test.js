@@ -5,8 +5,9 @@ import { execFileSync } from 'child_process';
 const WORKFLOW_PATH = resolve(process.cwd(), '.github/workflows/issue-implement.yml');
 
 // The naming rule is bash, so behavioral tests execute the extracted block.
-// CI (ubuntu) and macOS ship bash; Windows contributors still get the
-// structural suite below, and CI re-runs the behavioral one on Linux.
+// The rule avoids bash-4-only constructs (e.g. ${var,,}), so it runs under
+// macOS's default bash 3.2; Windows contributors still get the structural
+// suite below, and CI re-runs the behavioral one on Linux.
 const CAN_RUN_BASH = process.platform !== 'win32';
 
 const workflow = readFileSync(WORKFLOW_PATH, 'utf-8');
@@ -83,6 +84,12 @@ describe('issue-implement derives one bounded Conventional Commits name (#966)',
     expect(naming).toMatch(/s\/ \[\^ \]\*\$\//);
     expect(naming).toMatch(/s\/\[\^A-Za-z0-9\)\]\+\$\//);
   });
+
+  it('keeps the naming rule runnable under macOS bash 3.2', () => {
+    // ${var,,} is bash 4+; the behavioral suite runs on contributor machines.
+    const naming = extractNamingRule();
+    expect(naming).not.toMatch(/\$\{[^}]*,,/);
+  });
 });
 
 describe.skipIf(!CAN_RUN_BASH)('issue-implement naming rule behavior (#966)', () => {
@@ -127,6 +134,11 @@ describe.skipIf(!CAN_RUN_BASH)('issue-implement naming rule behavior (#966)', ()
     expect(mixed.SCOPE).toBe('ui');
     // src/** with no keyword and no labels keeps the legacy fix default.
     expect(derive({ title: 'polish internal comments', files: ['src/core/utils.js'] }).TYPE).toBe('fix');
+    // src/** with no keyword falls back through the full label mapping,
+    // not just enhancement/feature, before the fix default.
+    expect(derive({ title: 'polish internal comments', files: ['src/core/utils.js'], labels: 'performance' }).TYPE).toBe('perf');
+    expect(derive({ title: 'polish internal comments', files: ['src/core/utils.js'], labels: 'refactor' }).TYPE).toBe('refactor');
+    expect(derive({ title: 'polish internal comments', files: ['src/core/utils.js'], labels: 'documentation' }).TYPE).toBe('docs');
     // src/** keyword heuristics: feat and perf are recognized too.
     expect(derive({ title: 'add offline fallback for weather', files: ['src/features/weather/app.js'] }).SUBJECT)
       .toBe('feat(weather): add offline fallback for weather');
@@ -155,8 +167,26 @@ describe.skipIf(!CAN_RUN_BASH)('issue-implement naming rule behavior (#966)', ()
     const emoji = derive({ title: '🚀 speed up boot🐛', files: ['src/core/bootstrap.js'] });
     expect(emoji.SUBJECT).toBe('fix(core): speed up boot');
 
+    // A bare trailing #N reference is stripped too, not just (#N).
+    const bare = derive({ title: 'Polish the settings layout #966', files: ['src/ui/settings.js'] });
+    expect(bare.SUBJECT).toBe('fix(ui): Polish the settings layout');
+
     // A punctuation-only title still yields a valid slug fallback.
     expect(derive({ title: '!!!', files: [], issueNumber: 42 }).SLUG).toBe('issue-42');
+  });
+
+  it('reuses a capitalized or unspaced type prefix without doubling it', () => {
+    expect(derive({ title: 'Feat: add dark mode', files: ['src/ui/theme.js'] }).SUBJECT)
+      .toBe('feat(ui): add dark mode');
+    expect(derive({ title: 'Fix(ui):resolve layout glitch', files: ['src/ui/settings.js'] }).SUBJECT)
+      .toBe('fix(ui): resolve layout glitch');
+  });
+
+  it('keeps the type(scope): prefix when the first word alone overflows the cap', () => {
+    const result = derive({ title: `fix(ui): ${'a'.repeat(100)}`, files: [] });
+    expect(result.SUBJECT.startsWith('fix(ui): ')).toBe(true);
+    expect(result.SUBJECT.length).toBe(72);
+    expect(result.SUBJECT).toMatch(/^fix\(ui\): a+$/);
   });
 
   it('never doubles the prefix for any backfilled title shape', () => {

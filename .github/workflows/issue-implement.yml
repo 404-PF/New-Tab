@@ -395,8 +395,9 @@ jobs:
           #
           # Type precedence (explicit, documented):
           #   1. An issue title that already starts with `type(scope):` is
-          #      reused as-is; its type and scope win and no second prefix
-          #      is ever prepended.
+          #      reused as-is (matched case-insensitively, any whitespace
+          #      around the colon); its type and scope win and no second
+          #      prefix is ever prepended.
           #   2. Otherwise the staged diff decides: src/** first (title
           #      keywords perf > refactor > fix > feat; then the label
           #      fallback; then fix, the legacy default for source changes),
@@ -415,41 +416,61 @@ jobs:
           # ai, src/data -> data, .github -> ci).
           #
           # The description is normalized before use: legacy [Bug]/[Feature]/
-          # [Security] tags and trailing (#refs) are stripped, backticks and
-          # quotes removed, en/em-dashes converted to spaces, emoji and other
-          # non-ASCII dropped, whitespace collapsed. #<issue> never enters
-          # the subject; it stays in the commit/PR body as Fixes #<issue>.
-          NORMALIZED="$(printf '%s' "$TITLE" | sed -E -e 's/^(\[(Bug|Feature|Security|Enhancement)\][[:space:]:]*)+//I' -e 's/[[:space:]]*\((#[0-9]+([,[:space:]]*#[0-9]+)*)\)[[:space:]]*$//' -e "s/[\`\"']//g" -e 's/[–—]/ /g' -e 's/[[:space:]]+/ /g' -e 's/^ //' -e 's/ $//' | LC_ALL=C tr -cd '[:print:]' | sed -E -e 's/[[:space:]]+/ /g' -e 's/^ //' -e 's/ $//')"
+          # [Security] tags, trailing (#refs), and bare trailing #N refs are
+          # stripped, backticks and quotes removed, en/em-dashes converted to
+          # spaces, emoji and other non-ASCII dropped, whitespace collapsed.
+          # #<issue> never enters the subject; it stays in the commit/PR body
+          # as Fixes #<issue>.
+          NORMALIZED="$(printf '%s' "$TITLE" | sed -E -e 's/^(\[(Bug|Feature|Security|Enhancement)\][[:space:]:]*)+//I' -e 's/[[:space:]]*\((#[0-9]+([,[:space:]]*#[0-9]+)*)\)[[:space:]]*$//' -e 's/[[:space:]]+#[0-9]+([,[:space:]]*#[0-9]+)*[[:space:]]*$//' -e "s/[\`\"']//g" -e 's/[–—]/ /g' -e 's/[[:space:]]+/ /g' -e 's/^ //' -e 's/ $//' | LC_ALL=C tr -cd '[:print:]' | sed -E -e 's/[[:space:]]+/ /g' -e 's/^ //' -e 's/ $//')"
           TYPE=''
           SCOPE=''
           DESC="$NORMALIZED"
-          if [[ "$NORMALIZED" =~ ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(([A-Za-z0-9._/-]+)\))?[[:space:]]*:[[:space:]]+(.*)$ ]]; then
-            TYPE="${BASH_REMATCH[1],,}"
+          # Match an existing conventional prefix case-insensitively against a
+          # lowercased copy, so `Feat: add X` is never double-prefixed; any
+          # whitespace around the colon is accepted. DESC is re-cut from the
+          # original string to keep its casing. tr instead of a bash-4-only
+          # lowercase expansion keeps the rule runnable under macOS bash 3.2
+          # for the behavioral tests.
+          LOWER_NORMALIZED="$(printf '%s' "$NORMALIZED" | tr '[:upper:]' '[:lower:]')"
+          if [[ "$LOWER_NORMALIZED" =~ ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(([a-z0-9._/-]+)\))?[[:space:]]*:[[:space:]]*(.*)$ ]]; then
+            TYPE="${BASH_REMATCH[1]}"
             SCOPE="${BASH_REMATCH[3]-}"
-            DESC="${BASH_REMATCH[4]}"
+            DESC_KEEP=$(( ${#NORMALIZED} - ${#BASH_REMATCH[4]} ))
+            DESC="${NORMALIZED:DESC_KEEP}"
           fi
           if [ -z "$TYPE" ]; then
             LOWER_DESC="$(printf '%s' "$DESC" | tr '[:upper:]' '[:lower:]')"
-            if printf '%s\n' "$STAGED_FILES" | grep -qE '^src/'; then
-              if printf '%s' "$LOWER_DESC" | grep -qE '\b(perf|performance|optimi[sz]e|slow)\b'; then
+            # grep -E consumes the whole stream (grep -q would exit on the
+            # first match, SIGPIPE printf, and pipefail would treat a real
+            # match as no match on large file lists).
+            if printf '%s\n' "$STAGED_FILES" | grep -E '^src/' >/dev/null; then
+              if printf '%s' "$LOWER_DESC" | grep -E '\b(perf|performance|optimi[sz]e|slow)\b' >/dev/null; then
                 TYPE='perf'
-              elif printf '%s' "$LOWER_DESC" | grep -qE '\b(refactor|cleanup|clean-up|restructure)\b'; then
+              elif printf '%s' "$LOWER_DESC" | grep -E '\b(refactor|cleanup|clean-up|restructure)\b' >/dev/null; then
                 TYPE='refactor'
-              elif printf '%s' "$LOWER_DESC" | grep -qE '\b(fix|fixes|fixed|bug|bugs|broken|crash|regression)\b'; then
+              elif printf '%s' "$LOWER_DESC" | grep -E '\b(fix|fixes|fixed|bug|bugs|broken|crash|regression)\b' >/dev/null; then
                 TYPE='fix'
-              elif printf '%s' "$LOWER_DESC" | grep -qE '\b(add|adds|added|feat|feature|implement|implements|support|enhance|improve)\b'; then
+              elif printf '%s' "$LOWER_DESC" | grep -E '\b(add|adds|added|feat|feature|implement|implements|support|enhance|improve)\b' >/dev/null; then
                 TYPE='feat'
               else
+                # Full label mapping; fix stays the legacy default for
+                # unlabeled source changes.
                 case ",$LABELS," in
                   *,enhancement,*|*,feature,*) TYPE='feat' ;;
+                  *,bug,*|*,bugfix,*) TYPE='fix' ;;
+                  *,refactor,*) TYPE='refactor' ;;
+                  *,performance,*|*,perf,*) TYPE='perf' ;;
+                  *,documentation,*|*,docs,*) TYPE='docs' ;;
+                  *,tests,*|*,test,*) TYPE='test' ;;
+                  *,ci,*) TYPE='ci' ;;
                   *) TYPE='fix' ;;
                 esac
               fi
-            elif printf '%s\n' "$STAGED_FILES" | grep -qE '^\.github/'; then
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^\.github/' >/dev/null; then
               TYPE='ci'
-            elif printf '%s\n' "$STAGED_FILES" | grep -qE '^tests?/'; then
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^tests?/' >/dev/null; then
               TYPE='test'
-            elif printf '%s\n' "$STAGED_FILES" | grep -qE '^docs/'; then
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^docs/' >/dev/null; then
               TYPE='docs'
             fi
           fi
@@ -466,18 +487,18 @@ jobs:
             esac
           fi
           if [ -z "$SCOPE" ]; then
-            if printf '%s\n' "$STAGED_FILES" | grep -qE '^src/ui/'; then
+            if printf '%s\n' "$STAGED_FILES" | grep -E '^src/ui/' >/dev/null; then
               SCOPE='ui'
-            elif printf '%s\n' "$STAGED_FILES" | grep -qE '^src/core/'; then
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^src/core/' >/dev/null; then
               SCOPE='core'
-            elif printf '%s\n' "$STAGED_FILES" | grep -qE '^src/features/'; then
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^src/features/' >/dev/null; then
               FEATURE_SCOPES="$(printf '%s\n' "$STAGED_FILES" | sed -nE 's|^src/features/([^/.]+).*|\1|p')"
               SCOPE="${FEATURE_SCOPES%%$'\n'*}"
-            elif printf '%s\n' "$STAGED_FILES" | grep -qE '^src/ai/'; then
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^src/ai/' >/dev/null; then
               SCOPE='ai'
-            elif printf '%s\n' "$STAGED_FILES" | grep -qE '^src/data/'; then
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^src/data/' >/dev/null; then
               SCOPE='data'
-            elif printf '%s\n' "$STAGED_FILES" | grep -qE '^\.github/'; then
+            elif printf '%s\n' "$STAGED_FILES" | grep -E '^\.github/' >/dev/null; then
               SCOPE='ci'
             fi
             SCOPE="$(printf '%s' "$SCOPE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]//g')"
@@ -494,10 +515,17 @@ jobs:
           fi
           # Hard cap the subject at 72 chars with word-boundary truncation:
           # drop the trailing partial word and any dangling punctuation the
-          # cut leaves behind.
+          # cut leaves behind. When the first description word alone exceeds
+          # the budget, that trim would eat the whole description and emit a
+          # bare `type(scope)`; keep the separator and hard-cut the long token
+          # instead.
           if [ "${#SUBJECT}" -gt 72 ]; then
             SUBJECT="${SUBJECT:0:72}"
-            SUBJECT="$(printf '%s' "$SUBJECT" | sed -E -e 's/ [^ ]*$//' -e 's/[^A-Za-z0-9)]+$//')"
+            TRIMMED="$(printf '%s' "$SUBJECT" | sed -E -e 's/ [^ ]*$//' -e 's/[^A-Za-z0-9)]+$//')"
+            case "$TRIMMED" in
+              *': '*) SUBJECT="$TRIMMED" ;;
+              *) SUBJECT="$(printf '%s' "$SUBJECT" | sed -E -e 's/[^A-Za-z0-9)]+$//')" ;;
+            esac
           fi
           # Branch slug stays exactly as before: 40 chars from the raw title.
           SLUG="$(printf '%s' "$TITLE" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9][^a-z0-9]*/-/g' -e 's/^-\+//' -e 's/-\+$//' | cut -c1-40 | sed -e 's/-\+$//')"
