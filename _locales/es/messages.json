@@ -42,6 +42,10 @@
   "dataImportLateWriteFailure": {
     "message": "Algunos datos importados no se pudieron guardar después de finalizar la importación."
   },
+  "featureToggleSaveError": {
+    "message": "No se pudo guardar esta configuración. Tu última acción no se guardó.",
+    "description": "Error shown when a feature toggle setting cannot be persisted"
+  },
   "shortcutSaveError": {
     "message": "No se pudieron guardar los cambios de los atajos. La última acción no se guardó.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"

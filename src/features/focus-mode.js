@@ -59,12 +59,21 @@ function applyFocusMode() {
 }
 
 function setFocusMode(enabled) {
+  // The storage bridge's setItem returns false for a rejected write instead of
+  // throwing (#969), so a try/catch alone never sees the failure.
+  let persisted = false;
   try {
-    localStorage.setItem('focusMode', enabled ? 'true' : 'false');
+    persisted = localStorage.setItem('focusMode', enabled ? 'true' : 'false') !== false;
   } catch (e) {
     console.warn('Failed to save focusMode:', e);
   }
+  // Re-apply even when the write was rejected: the bridge has already rolled
+  // the value back, so this restores the checkbox/indicator to the persisted
+  // state instead of leaving the UI desynced.
   applyFocusMode();
+  if (!persisted && typeof window.showFeatureToggleSaveError === 'function') {
+    window.showFeatureToggleSaveError();
+  }
 }
 
 function toggleFocusMode() {

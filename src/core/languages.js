@@ -598,6 +598,7 @@ const translations = {
     shortcutCloseModal: 'Close Modal / Dialog',
     shortcutPressAKey: 'Press a key...',
     shortcutSaveError: 'Failed to save shortcut changes. Your last action was not saved.',
+    featureToggleSaveError: 'Failed to save this setting. Your last action was not saved.',
 
     // Shortcuts settings tab
     shortcuts: 'Shortcuts',

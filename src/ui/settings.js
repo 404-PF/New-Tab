@@ -1416,6 +1416,17 @@ document.addEventListener('change', function (e) {
   }
 });
 
+// Report a feature-toggle write the storage bridge rejected (#969): the
+// bridge's setItem returns false instead of throwing, so the caller detects
+// the failure from the return value rather than from the catch block.
+function reportFeatureToggleSaveError() {
+  if (typeof window.showFeatureToggleSaveError === 'function') {
+    window.showFeatureToggleSaveError();
+  } else {
+    console.warn('Failed to save setting: write rejected by the storage bridge');
+  }
+}
+
 // Todo enabled
 function loadTodoEnabled() {
   return localStorage.getItem('todoEnabled') !== 'false';
@@ -1434,8 +1445,16 @@ function applyTodoEnabled() {
 const todoEnabledSetting = document.getElementById('todo-enabled-setting');
 if (todoEnabledSetting) {
   todoEnabledSetting.addEventListener('change', function () {
-    localStorage.setItem('todoEnabled', this.checked);
+    let persisted = false;
+    try {
+      persisted = localStorage.setItem('todoEnabled', this.checked) !== false;
+    } catch (e) {
+      console.warn('Failed to save todoEnabled:', e);
+    }
     applyTodoEnabled();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 
@@ -1568,13 +1587,24 @@ function loadEyeCareReminderState() {
   }
 }
 
+// Returns the merged state after a successful save, or false when the storage
+// bridge rejected the write (#969). The bridge rolls its cache back and
+// returns false instead of throwing, so callers must check the result instead
+// of treating every call as persisted.
 function saveEyeCareReminderState(updates) {
   const current = loadEyeCareReminderState();
   const next = {
     ...current,
     ...updates
   };
-  localStorage.setItem('eyeCareReminder', JSON.stringify(next));
+  try {
+    if (localStorage.setItem('eyeCareReminder', JSON.stringify(next)) === false) {
+      return false;
+    }
+  } catch (e) {
+    console.warn('Failed to save eyeCareReminder:', e);
+    return false;
+  }
   return next;
 }
 
@@ -1606,8 +1636,14 @@ if (eyeCareEnabledSetting) {
       activeLastVisibleAt: null,
       visibilityPaused: false
     };
-    saveEyeCareReminderState(updates);
+    const saved = saveEyeCareReminderState(updates);
+    // Re-apply either way: after a rejected write it restores the controls to
+    // the rolled-back state instead of leaving them desynced.
     applyEyeCareReminderSettings();
+    if (saved === false) {
+      reportFeatureToggleSaveError();
+      return;
+    }
     if (typeof window.refreshEyeCareReminder === 'function') {
       window.refreshEyeCareReminder();
     }
@@ -1617,9 +1653,14 @@ if (eyeCareEnabledSetting) {
 const eyeCareIntervalSetting = document.getElementById('eye-care-interval-setting');
 if (eyeCareIntervalSetting) {
   eyeCareIntervalSetting.addEventListener('change', function () {
-    saveEyeCareReminderState({
+    const saved = saveEyeCareReminderState({
       intervalMinutes: parseInt(this.value, 10) || 20
     });
+    if (saved === false) {
+      applyEyeCareReminderSettings();
+      reportFeatureToggleSaveError();
+      return;
+    }
     if (typeof window.refreshEyeCareReminder === 'function') {
       window.refreshEyeCareReminder();
     }
@@ -1629,9 +1670,14 @@ if (eyeCareIntervalSetting) {
 const eyeCareBrowserNotificationSetting = document.getElementById('eye-care-browser-notification-setting');
 if (eyeCareBrowserNotificationSetting) {
   eyeCareBrowserNotificationSetting.addEventListener('change', function () {
-    saveEyeCareReminderState({
+    const saved = saveEyeCareReminderState({
       browserNotification: this.checked
     });
+    if (saved === false) {
+      applyEyeCareReminderSettings();
+      reportFeatureToggleSaveError();
+      return;
+    }
     if (typeof window.refreshEyeCareReminder === 'function') {
       window.refreshEyeCareReminder();
     }
@@ -1665,8 +1711,16 @@ function applyNotesEnabled() {
 const notesEnabledSetting = document.getElementById('notes-enabled-setting');
 if (notesEnabledSetting) {
   notesEnabledSetting.addEventListener('change', function () {
-    localStorage.setItem('notesEnabled', this.checked);
+    let persisted = false;
+    try {
+      persisted = localStorage.setItem('notesEnabled', this.checked) !== false;
+    } catch (e) {
+      console.warn('Failed to save notesEnabled:', e);
+    }
     applyNotesEnabled();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
 
@@ -474,6 +474,34 @@ describe('App and todo modal translations', () => {
 describe('Release notes translations', () => {
   it('defines every bundled release-note bullet in each supported language', () => {
     expectTranslationKeys(RELEASE_NOTES_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
+
+// Shared feedback string for feature toggles whose storage write the bridge
+// rejected (issue #969).
+describe('Feature toggle save error translation (issue #969)', () => {
+  it('defines a localized featureToggleSaveError for every supported language', () => {
+    expectTranslationKeys(['featureToggleSaveError'], { differFromEnglish: true });
+  });
+
+  it('includes featureToggleSaveError in every _locales messages.json', () => {
+    const localesDir = resolve(process.cwd(), '_locales');
+    const locales = readdirSync(localesDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+
+    expect(locales.length).toBeGreaterThan(0);
+
+    locales.forEach((locale) => {
+      const file = resolve(localesDir, locale, 'messages.json');
+      const parsed = JSON.parse(readFileSync(file, 'utf8'));
+      expect(parsed, `${locale}:featureToggleSaveError`).toHaveProperty('featureToggleSaveError');
+      const entry = parsed.featureToggleSaveError;
+      expect(entry.message, `${locale}`).toBeTypeOf('string');
+      expect(entry.message.trim(), `${locale}`).not.toBe('');
+      expect(entry.description, `${locale}`).toBeTypeOf('string');
+    });
   });
 });
 

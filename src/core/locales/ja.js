@@ -478,6 +478,7 @@ window.i18n.__registerLocale('ja', {
   shortcutCloseModal: 'モーダルを閉じる',
   shortcutPressAKey: 'キーを押してください...',
   shortcutSaveError: 'ショートカットの変更を保存できませんでした。直前の操作は保存されていません。',
+  featureToggleSaveError: 'この設定を保存できませんでした。直前の操作は保存されていません。',
 
   // Shortcuts settings tab
   shortcuts: 'ショートカット',

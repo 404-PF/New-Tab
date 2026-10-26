@@ -146,4 +146,27 @@ function showToast(message, type = '', options = {}) {
   return handle;
 }
 
+// Shared failure feedback for feature toggles whose storage write the bridge
+// rejected (#969). The bridge's setItem returns false instead of throwing on a
+// rejected write, so callers that only wrap the write in try/catch never learn
+// it failed and the control would snap back with no visible feedback.
+function showFeatureToggleSaveError() {
+  const fallback = 'Failed to save this setting. Your last action was not saved.';
+  let message = fallback;
+  if (window.i18n && typeof window.i18n.t === 'function') {
+    const translated = window.i18n.t('featureToggleSaveError');
+    if (translated && translated !== 'featureToggleSaveError') {
+      message = translated;
+    }
+  }
+
+  // Resolve through window so tests can stub the toast provider.
+  if (typeof window.showToast === 'function') {
+    window.showToast(message, 'error');
+  } else {
+    console.warn(message);
+  }
+}
+
 window.showToast = showToast;
+window.showFeatureToggleSaveError = showFeatureToggleSaveError;

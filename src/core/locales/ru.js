@@ -465,6 +465,7 @@ window.i18n.__registerLocale('ru', {
   shortcutCloseModal: 'Закрыть модальное окно',
   shortcutPressAKey: 'Нажмите клавишу...',
   shortcutSaveError: 'Не удалось сохранить изменения горячих клавиш. Последнее действие не было сохранено.',
+  featureToggleSaveError: 'Не удалось сохранить эту настройку. Последнее действие не было сохранено.',
 
   // Shortcuts settings tab
   shortcuts: 'Ярлыки',

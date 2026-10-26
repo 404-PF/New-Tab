@@ -478,6 +478,7 @@ window.i18n.__registerLocale('ko', {
   shortcutCloseModal: '모달 닫기',
   shortcutPressAKey: '키를 누르세요...',
   shortcutSaveError: '단축키 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
+  featureToggleSaveError: '이 설정을 저장하지 못했습니다. 마지막 작업은 저장되지 않았습니다.',
 
   // Shortcuts settings tab
   shortcuts: '단축키',
