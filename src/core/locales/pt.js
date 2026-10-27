@@ -465,6 +465,7 @@ window.i18n.__registerLocale('pt', {
   shortcutCloseModal: 'Fechar modal',
   shortcutPressAKey: 'Pressione uma tecla...',
   shortcutSaveError: 'Não foi possível salvar as alterações de atalhos. Sua última ação não foi salva.',
+  featureToggleSaveError: 'Não foi possível salvar esta configuração. Sua última ação não foi salva.',
 
   // Shortcuts settings tab
   shortcuts: 'Atalhos',

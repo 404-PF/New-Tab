@@ -3,6 +3,8 @@
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  // toast.js provides persistFeatureToggle, used by the keyboard toggle write path.
+  injectScript('src/core/toast.js');
   injectScript('src/core/utils.js');
   injectScript('src/features/shortcuts.js');
 });

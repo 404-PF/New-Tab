@@ -59,12 +59,24 @@ function applyFocusMode() {
 }
 
 function setFocusMode(enabled) {
+  // Guard the shared helper: toast.js may fail to load, and an unguarded
+  // call would throw before the write (#969 review thread).
+  let persisted;
   try {
-    localStorage.setItem('focusMode', enabled ? 'true' : 'false');
+    persisted = typeof window.persistFeatureToggle === 'function'
+      ? window.persistFeatureToggle('focusMode', enabled ? 'true' : 'false')
+      : localStorage.setItem('focusMode', enabled ? 'true' : 'false') !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
   } catch (e) {
     console.warn('Failed to save focusMode:', e);
+    persisted = false;
   }
+  // Re-apply even when the write was rejected: the bridge has already rolled
+  // the value back, so this restores the checkbox/indicator to the persisted
+  // state instead of leaving the UI desynced.
   applyFocusMode();
+  if (!persisted && typeof window.showFeatureToggleSaveError === 'function') {
+    window.showFeatureToggleSaveError();
+  }
 }
 
 function toggleFocusMode() {

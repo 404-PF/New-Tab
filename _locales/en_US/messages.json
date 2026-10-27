@@ -42,6 +42,10 @@
   "dataImportLateWriteFailure": {
     "message": "Some imported data failed to save after the import finished."
   },
+  "featureToggleSaveError": {
+    "message": "Failed to save this setting. Your last action was not saved.",
+    "description": "Error shown when a feature toggle setting cannot be persisted"
+  },
   "shortcutSaveError": {
     "message": "Failed to save shortcut changes. Your last action was not saved.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"

@@ -465,6 +465,7 @@ window.i18n.__registerLocale('es', {
   shortcutCloseModal: 'Cerrar modal',
   shortcutPressAKey: 'Presiona una tecla...',
   shortcutSaveError: 'No se pudieron guardar los cambios de los atajos. La última acción no se guardó.',
+  featureToggleSaveError: 'No se pudo guardar esta configuración. Tu última acción no se guardó.',
 
   // Shortcuts settings tab
   shortcuts: 'Atajos',

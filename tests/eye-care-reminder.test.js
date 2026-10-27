@@ -8,6 +8,8 @@ describe('eye-care reminder', () => {
     window.refreshEyeCareReminder = undefined;
     window.initEyeCareReminder = undefined;
     injectScript('src/core/motion.js');
+    // toast.js provides persistFeatureToggle, used by saveEyeCareReminderState.
+    injectScript('src/core/toast.js');
     injectScript('src/ui/settings.js');
     injectScript('src/features/eye-care-reminder.js');
   });

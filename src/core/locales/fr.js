@@ -465,6 +465,7 @@ window.i18n.__registerLocale('fr', {
   shortcutCloseModal: 'Fermer modal',
   shortcutPressAKey: 'Appuyez sur une touche...',
   shortcutSaveError: 'Impossible d’enregistrer les modifications des raccourcis. Votre dernière action n’a pas été enregistrée.',
+  featureToggleSaveError: 'Impossible d’enregistrer ce paramètre. Votre dernière action n’a pas été enregistrée.',
 
   // Shortcuts settings tab
   shortcuts: 'Raccourcis',

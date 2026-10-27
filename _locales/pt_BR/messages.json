@@ -42,6 +42,10 @@
   "dataImportLateWriteFailure": {
     "message": "Alguns dados importados não puderam ser salvos após a conclusão da importação."
   },
+  "featureToggleSaveError": {
+    "message": "Não foi possível salvar esta configuração. Sua última ação não foi salva.",
+    "description": "Error shown when a feature toggle setting cannot be persisted"
+  },
   "shortcutSaveError": {
     "message": "Não foi possível salvar as alterações de atalhos. Sua última ação não foi salva.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"

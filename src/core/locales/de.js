@@ -465,6 +465,7 @@ window.i18n.__registerLocale('de', {
   shortcutCloseModal: 'Modal schließen',
   shortcutPressAKey: 'Taste drücken...',
   shortcutSaveError: 'Tastenkombinationen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.',
+  featureToggleSaveError: 'Diese Einstellung konnte nicht gespeichert werden. Deine letzte Aktion wurde nicht gespeichert.',
 
   // Shortcuts settings tab
   shortcuts: 'Tastenkürzel',

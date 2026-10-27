@@ -42,6 +42,10 @@
   "dataImportLateWriteFailure": {
     "message": "导入完成后，部分导入的数据未能保存。"
   },
+  "featureToggleSaveError": {
+    "message": "无法保存此设置。您上次的操作未被保存。",
+    "description": "Error shown when a feature toggle setting cannot be persisted"
+  },
   "shortcutSaveError": {
     "message": "无法保存快捷键更改。您上次的操作未被保存。",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"

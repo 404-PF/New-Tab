@@ -522,6 +522,7 @@ window.i18n.__registerLocale('zh', {
   shortcutCloseModal: '关闭对话框',
   shortcutPressAKey: '按下按键...',
   shortcutSaveError: '无法保存快捷键更改。您上次的操作未被保存。',
+  featureToggleSaveError: '无法保存此设置。您上次的操作未被保存。',
 
   // Shortcuts settings tab
   shortcuts: '快捷键',

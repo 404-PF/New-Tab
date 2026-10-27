@@ -42,6 +42,10 @@
   "dataImportLateWriteFailure": {
     "message": "Некоторые импортированные данные не удалось сохранить после завершения импорта."
   },
+  "featureToggleSaveError": {
+    "message": "Не удалось сохранить эту настройку. Последнее действие не было сохранено.",
+    "description": "Error shown when a feature toggle setting cannot be persisted"
+  },
   "shortcutSaveError": {
     "message": "Не удалось сохранить изменения горячих клавиш. Последнее действие не было сохранено.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"

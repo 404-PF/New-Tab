@@ -146,4 +146,128 @@ function showToast(message, type = '', options = {}) {
   return handle;
 }
 
+// Shared write check for feature toggles (#969): the storage bridge's setItem
+// returns false instead of throwing on a rejected write, so callers must check
+// the result rather than relying on catch alone. Returns whether the write was
+// accepted.
+function persistFeatureToggle(key, value) {
+  try {
+    return localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+  } catch (error) {
+    console.warn('Failed to save ' + key + ':', error);
+    return false;
+  }
+}
+
+// Shared failure feedback for feature toggles whose storage write the bridge
+// rejected (#969). The bridge's setItem returns false instead of throwing on a
+// rejected write, so callers that only wrap the write in try/catch never learn
+// it failed and the control would snap back with no visible feedback.
+function showFeatureToggleSaveError() {
+  const fallback = 'Failed to save this setting. Your last action was not saved.';
+  let message = fallback;
+  if (window.i18n && typeof window.i18n.t === 'function') {
+    const translated = window.i18n.t('featureToggleSaveError');
+    if (translated && translated !== 'featureToggleSaveError') {
+      message = translated;
+    }
+  }
+
+  // Resolve through window so tests can stub the toast provider.
+  if (typeof window.showToast === 'function') {
+    window.showToast(message, 'error');
+  } else {
+    console.warn(message);
+  }
+}
+
+// Controls that must resync when the bridge rolls a rejected write back after
+// setItem already returned true (the async runtime.lastError path, #969).
+const FEATURE_TOGGLE_RESYNC = {
+  simpleMode: function () {
+    if (typeof window.applySimpleMode === 'function') {
+      window.applySimpleMode();
+    }
+  },
+  focusMode: function () {
+    if (typeof window.applyFocusMode === 'function') {
+      window.applyFocusMode();
+    }
+  },
+  todoEnabled: function () {
+    if (typeof window.applyTodoEnabled === 'function') {
+      window.applyTodoEnabled();
+    }
+  },
+  notesEnabled: function () {
+    if (typeof window.applyNotesEnabled === 'function') {
+      window.applyNotesEnabled();
+    }
+  },
+  eyeCareReminder: function () {
+    if (typeof window.applyEyeCareReminderSettings === 'function') {
+      window.applyEyeCareReminderSettings();
+    }
+    if (typeof window.refreshEyeCareReminder === 'function') {
+      window.refreshEyeCareReminder();
+    }
+  }
+};
+
+// True when a control still shows the rejected value the bridge has already
+// rolled back. The synchronous-failure path re-applies the control and toasts
+// before this runs, so comparing first keeps that path from reporting twice.
+function featureToggleControlDesynced(key) {
+  switch (key) {
+    case 'simpleMode': {
+      const checkbox = document.getElementById('simple-mode-checkbox');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
+    }
+    case 'focusMode': {
+      const checkbox = document.getElementById('focus-mode-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
+    }
+    case 'todoEnabled': {
+      const checkbox = document.getElementById('todo-enabled-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'notesEnabled': {
+      const checkbox = document.getElementById('notes-enabled-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'eyeCareReminder': {
+      try {
+        const state = JSON.parse(localStorage.getItem(key) || '{}');
+        const enabled = document.getElementById('eye-care-enabled-setting');
+        const interval = document.getElementById('eye-care-interval-setting');
+        const notification = document.getElementById('eye-care-browser-notification-setting');
+        return (Boolean(enabled) && enabled.checked !== (state.enabled === true)) ||
+          (Boolean(interval) && interval.value !== String(state.intervalMinutes)) ||
+          (Boolean(notification) && notification.checked !== (state.browserNotification === true));
+      } catch {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Async half of #969: chrome.storage reports a failed write through
+// runtime.lastError inside the set callback, after setItem has already
+// returned true. The bridge rolls its cache back and dispatches
+// storageBridgeWriteError; wait a macrotask for that rollback to land, then
+// resync the affected control and notify once.
+window.addEventListener('storageBridgeWriteError', function (event) {
+  const key = event?.detail?.key;
+  if (!Object.prototype.hasOwnProperty.call(FEATURE_TOGGLE_RESYNC, key)) return;
+
+  setTimeout(function () {
+    if (!featureToggleControlDesynced(key)) return;
+    FEATURE_TOGGLE_RESYNC[key]();
+    showFeatureToggleSaveError();
+  });
+});
+
 window.showToast = showToast;
+window.showFeatureToggleSaveError = showFeatureToggleSaveError;
+window.persistFeatureToggle = persistFeatureToggle;

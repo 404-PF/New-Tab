@@ -205,17 +205,37 @@
     if (modal) modal.classList.add('modal-open');
   }
 
+  // Guard the shared helper: toast.js may fail to load, and an unguarded
+  // call would throw before the write (#969 review thread).
+  function persistToggleOrFallback(key, value) {
+    try {
+      return typeof window.persistFeatureToggle === 'function'
+        ? window.persistFeatureToggle(key, value)
+        : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (e) {
+      console.warn('Failed to save ' + key + ':', e);
+      return false;
+    }
+  }
+
+  function reportToggleSaveError() {
+    if (typeof window.showFeatureToggleSaveError === 'function') {
+      window.showFeatureToggleSaveError();
+    } else {
+      console.warn('Failed to save a feature setting. Your last action was not saved.');
+    }
+  }
+
   function toggleSimpleMode() {
     const checkbox = document.getElementById('simple-mode-checkbox');
     if (checkbox) {
       checkbox.checked = !checkbox.checked;
-      try {
-        localStorage.setItem('simpleMode', checkbox.checked);
-      } catch (e) {
-        console.warn('Failed to save simpleMode:', e);
-      }
+      const persisted = persistToggleOrFallback('simpleMode', checkbox.checked);
       if (typeof window.applySimpleMode === 'function') {
         window.applySimpleMode();
+      }
+      if (!persisted) {
+        reportToggleSaveError();
       }
     }
   }
@@ -232,14 +252,13 @@
     } catch (e) {
       console.warn('Failed to read focusMode:', e);
     }
-    try {
-      localStorage.setItem('focusMode', current ? 'false' : 'true');
-    } catch (e) {
-      console.warn('Failed to save focusMode:', e);
-    }
+    const persisted = persistToggleOrFallback('focusMode', current ? 'false' : 'true');
 
     if (typeof window.applyFocusMode === 'function') {
       window.applyFocusMode();
+    }
+    if (!persisted) {
+      reportToggleSaveError();
     }
   }
 
@@ -250,13 +269,12 @@
     } catch (e) {
       console.warn('Failed to read todoEnabled:', e);
     }
-    try {
-      localStorage.setItem('todoEnabled', current ? 'false' : 'true');
-    } catch (e) {
-      console.warn('Failed to save todoEnabled:', e);
-    }
+    const persisted = persistToggleOrFallback('todoEnabled', current ? 'false' : 'true');
     if (typeof window.applyTodoEnabled === 'function') {
       window.applyTodoEnabled();
+    }
+    if (!persisted) {
+      reportToggleSaveError();
     }
   }
 
@@ -267,13 +285,12 @@
     } catch (e) {
       console.warn('Failed to read notesEnabled:', e);
     }
-    try {
-      localStorage.setItem('notesEnabled', current ? 'false' : 'true');
-    } catch (e) {
-      console.warn('Failed to save notesEnabled:', e);
-    }
+    const persisted = persistToggleOrFallback('notesEnabled', current ? 'false' : 'true');
     if (typeof window.applyNotesEnabled === 'function') {
       window.applyNotesEnabled();
+    }
+    if (!persisted) {
+      reportToggleSaveError();
     }
   }
 

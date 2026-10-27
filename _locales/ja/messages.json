@@ -42,6 +42,10 @@
   "dataImportLateWriteFailure": {
     "message": "インポート完了後に、一部のインポートデータを保存できませんでした。"
   },
+  "featureToggleSaveError": {
+    "message": "この設定を保存できませんでした。直前の操作は保存されていません。",
+    "description": "Error shown when a feature toggle setting cannot be persisted"
+  },
   "shortcutSaveError": {
     "message": "ショートカットの変更を保存できませんでした。直前の操作は保存されていません。",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"

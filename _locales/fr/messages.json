@@ -42,6 +42,10 @@
   "dataImportLateWriteFailure": {
     "message": "Certaines données importées n’ont pas pu être enregistrées après la fin de l’importation."
   },
+  "featureToggleSaveError": {
+    "message": "Impossible d’enregistrer ce paramètre. Votre dernière action n’a pas été enregistrée.",
+    "description": "Error shown when a feature toggle setting cannot be persisted"
+  },
   "shortcutSaveError": {
     "message": "Impossible d’enregistrer les modifications des raccourcis. Votre dernière action n’a pas été enregistrée.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
