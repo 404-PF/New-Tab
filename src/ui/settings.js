@@ -1292,18 +1292,74 @@ if (document.readyState === 'loading') {
 }
 
 // Theme
+const SYSTEM_THEME_QUERY = '(prefers-color-scheme: dark)';
+
 function loadTheme() {
   return localStorage.getItem('theme') || 'dark';
 }
+
+function getSystemThemeMql() {
+  if (typeof window.matchMedia !== 'function') return null;
+  try {
+    return window.matchMedia(SYSTEM_THEME_QUERY);
+  } catch {
+    return null;
+  }
+}
+
+// Map a stored theme to the effective theme: 'system' resolves from the OS
+// preference, every other stored value passes through unchanged.
+function resolveTheme(theme) {
+  if (theme !== 'system') return theme;
+  const mql = getSystemThemeMql();
+  if (!mql) return 'dark';
+  return mql.matches ? 'dark' : 'light';
+}
+
 function applyTheme() {
-  const theme = loadTheme();
+  const stored = loadTheme();
+  const theme = resolveTheme(stored);
   document.body.classList.toggle('light-theme', theme === 'light');
-  // Update radio buttons
+  // Radios reflect the stored value so "System" stays selected while the
+  // effective theme comes from the OS.
   const darkRadio = document.querySelector('input[name="theme"][value="dark"]');
   const lightRadio = document.querySelector('input[name="theme"][value="light"]');
-  if (darkRadio) darkRadio.checked = theme === 'dark';
-  if (lightRadio) lightRadio.checked = theme === 'light';
+  const systemRadio = document.querySelector('input[name="theme"][value="system"]');
+  if (darkRadio) darkRadio.checked = stored === 'dark';
+  if (lightRadio) lightRadio.checked = stored === 'light';
+  if (systemRadio) systemRadio.checked = stored === 'system';
 }
+
+// Live-update the effective theme when the OS preference flips and the stored
+// theme is 'system'. window.__systemThemeDetach detaches the handler from any
+// previous injection so re-running this file never stacks listeners.
+function onSystemThemeChange() {
+  if (loadTheme() !== 'system') return;
+  applyTheme();
+  window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolveTheme('system') } }));
+}
+
+function attachSystemThemeListener() {
+  if (typeof window.__systemThemeDetach === 'function') {
+    window.__systemThemeDetach();
+    window.__systemThemeDetach = null;
+  }
+  const mql = getSystemThemeMql();
+  if (!mql) return;
+  if (typeof mql.addEventListener === 'function') {
+    mql.addEventListener('change', onSystemThemeChange);
+    window.__systemThemeDetach = function () {
+      mql.removeEventListener('change', onSystemThemeChange);
+    };
+  } else if (typeof mql.addListener === 'function') {
+    mql.addListener(onSystemThemeChange);
+    window.__systemThemeDetach = function () {
+      mql.removeListener(onSystemThemeChange);
+    };
+  }
+}
+
+attachSystemThemeListener();
 
 // Language
 function loadLanguageSetting() {
@@ -1340,8 +1396,9 @@ document.addEventListener('change', function (e) {
     const selectedTheme = e.target.value;
     localStorage.setItem('theme', selectedTheme);
     applyTheme();
-    // Dispatch custom event for AI chat and other components to respond
-    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
+    // Dispatch custom event for AI chat and other components to respond.
+    // 'system' is resolved so listeners always receive a concrete theme.
+    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolveTheme(selectedTheme) } }));
   } else if (e.target.name === 'language') {
     const selectedLanguage = e.target.value;
     localStorage.setItem('language', selectedLanguage);
@@ -2427,6 +2484,7 @@ window.loadClockFormatSetting = loadClockFormatSetting;
 window.loadDateStyle = loadDateStyle;
 window.loadDateFormatSetting = loadDateFormatSetting;
 window.loadTheme = loadTheme;
+window.resolveTheme = resolveTheme;
 window.applyTheme = applyTheme;
 window.loadLanguageSetting = loadLanguageSetting;
 window.renderLanguageOptions = renderLanguageOptions;

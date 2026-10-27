@@ -76,6 +76,10 @@ describe('DataManager backup validation', () => {
     expect(window.DataManager.validateImportData({ version: 1, data: {
       theme: 'dark', todos: [{ id: 'todo-1' }], customApps: [{ id: 'app-1' }]
     } })).toEqual({ valid: true });
+    // A stored 'system' theme is a first-class value after issue #1011.
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      theme: 'system'
+    } })).toEqual({ valid: true });
     expect(window.DataManager.validateImportData({ version: 1, data: { dangerous: true } }).valid).toBe(false);
     expect(window.DataManager.validateImportData({ version: 1, data: { todos: [{}] } }).valid).toBe(false);
     expect(window.DataManager.validateImportData({ version: 2, data: {} }).valid).toBe(false);
@@ -360,6 +364,15 @@ describe('DataManager eye-care/games/search-history settings', () => {
     expect(localStorage.getItem('games_enabled')).toBeNull();
     expect(localStorage.getItem('searchHistoryEnabled')).toBeNull();
     expect(localStorage.getItem('eyeCareReminder')).toBeNull();
+  });
+
+  it('round-trips theme: system through a replace import without validation errors (issue #1011)', async () => {
+    localStorage.setItem('theme', 'light');
+
+    const result = await importBackup({ theme: 'system' }, 'replace');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('theme')).toBe('system');
   });
 
   function failBridgeWritesFor(key, mode) {

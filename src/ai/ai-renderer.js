@@ -901,7 +901,11 @@ const AIRenderer = (function() {
   }
 
   function loadTheme() {
-    return localStorage.getItem('theme') || 'dark';
+    const stored = localStorage.getItem('theme') || 'dark';
+    // 'system' resolves through the shared resolver so the AI modal follows
+    // the OS preference exactly like the rest of the page (issue #1011).
+    if (stored === 'system' && window.resolveTheme) return window.resolveTheme(stored);
+    return stored;
   }
 
   function applyThemeToAI() {

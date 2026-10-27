@@ -2451,6 +2451,11 @@ body.light-theme .bg-rotation-next-btn:hover {
   border: 2px solid rgba(107, 114, 128, 0.4);
 }
 
+.preview-icon.system {
+  background: linear-gradient(135deg, #1f2937 50%, #ffffff 50%);
+  border: 2px solid rgba(107, 114, 128, 0.6);
+}
+
 .theme-option.modern .label {
   font-size: 12px;
   font-weight: 500;

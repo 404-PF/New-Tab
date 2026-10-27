@@ -353,6 +353,7 @@ const translations = {
     themeSettingsDesc: 'Choose your preferred interface theme',
     dark: 'Dark',
     light: 'Light',
+    system: 'System',
     autoTheme: 'Auto Theme',
     autoThemeDesc: 'Switch theme automatically by time of day',
     autoThemeToggle: 'Enable auto theme scheduling',

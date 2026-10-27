@@ -52,4 +52,33 @@ describe('automatic theme switching', () => {
     expect(toggle.checked).toBe(false);
     expect(document.getElementById('auto-theme-times').style.display).toBe('none');
   });
+
+  it('keeps a stored system theme through a scheduled boundary (issue #1011)', () => {
+    vi.useFakeTimers();
+    try {
+      // Night: the schedule wants dark while the stored choice stays 'system'.
+      vi.setSystemTime(new Date('2026-01-01T22:00:00'));
+      localStorage.setItem('autoTheme', 'true');
+      localStorage.setItem('autoThemeLightTime', '07:00');
+      localStorage.setItem('autoThemeDarkTime', '19:00');
+      localStorage.setItem('theme', 'system');
+      window.loadTheme = () => localStorage.getItem('theme');
+      window.applyTheme = vi.fn();
+      document.body.insertAdjacentHTML('beforeend', '<input type="radio" name="theme" value="system">');
+
+      // The toggle is off at this point (the refresh test above left it
+      // disabled): switching it on resets lastScheduledTheme, forcing
+      // checkAndApply across a boundary where the guard must hold.
+      const toggle = document.getElementById('auto-theme-toggle');
+      toggle.checked = true;
+      toggle.dispatchEvent(new Event('change'));
+
+      expect(localStorage.getItem('theme')).toBe('system');
+      expect(window.applyTheme).not.toHaveBeenCalled();
+      expect(document.querySelector('input[name="theme"][value="system"]').checked).toBe(true);
+      expect(document.querySelector('input[name="theme"][value="dark"]').checked).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

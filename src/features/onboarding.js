@@ -405,18 +405,24 @@ class OnboardingTour {
         </div>
       `;
     } else if (step.id === 'theme') {
+      const storedTheme = localStorage.getItem('theme');
       text.innerHTML = `
         <p>${translatedContent}</p>
         <div class="theme-options">
           <label class="theme-option modern">
             <div class="preview-icon dark"></div>
-            <input type="radio" name="onboarding-theme" value="dark" ${localStorage.getItem('theme') === 'dark' || !localStorage.getItem('theme') ? 'checked' : ''} />
+            <input type="radio" name="onboarding-theme" value="dark" ${!storedTheme || storedTheme === 'dark' ? 'checked' : ''} />
             <span class="label">${window.i18n ? window.i18n.t('dark') : 'Dark'}</span>
           </label>
           <label class="theme-option modern">
             <div class="preview-icon light"></div>
-            <input type="radio" name="onboarding-theme" value="light" ${localStorage.getItem('theme') === 'light' ? 'checked' : ''} />
+            <input type="radio" name="onboarding-theme" value="light" ${storedTheme === 'light' ? 'checked' : ''} />
             <span class="label">${window.i18n ? window.i18n.t('light') : 'Light'}</span>
+          </label>
+          <label class="theme-option modern">
+            <div class="preview-icon system"></div>
+            <input type="radio" name="onboarding-theme" value="system" ${storedTheme === 'system' ? 'checked' : ''} />
+            <span class="label">${window.i18n ? window.i18n.t('system') : 'System'}</span>
           </label>
         </div>
       `;
@@ -625,15 +631,17 @@ class OnboardingTour {
           if (!this.isActive) return;
           const selectedTheme = e.target.value;
           localStorage.setItem('theme', selectedTheme);
+          // Resolve 'system' so the fallback applies the concrete OS theme too
+          const resolvedTheme = window.resolveTheme ? window.resolveTheme(selectedTheme) : selectedTheme;
           // Apply theme immediately
           if (window.applyTheme) {
             window.applyTheme();
           } else {
             // Fallback: directly apply theme
-            document.body.classList.toggle('light-theme', selectedTheme === 'light');
+            document.body.classList.toggle('light-theme', resolvedTheme === 'light');
           }
           // Notify other components of theme change
-          window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
+          window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolvedTheme } }));
           // Save progress immediately before the delayed advance
           if (this.currentStep < this.steps.length - 1) {
             localStorage.setItem('onboardingStep', String(this.currentStep + 1));

@@ -241,6 +241,7 @@ window.i18n.__registerLocale('ru', {
   themeSettingsDesc: 'Выберите предпочитаемую тему интерфейса',
   dark: 'Тёмная',
   light: 'Светлая',
+  system: 'Система',
   autoTheme: 'Авто-тема',
   autoThemeDesc: 'Автоматическое переключение темы в зависимости от времени суток',
   autoThemeToggle: 'Включить автоматическое переключение темы',
