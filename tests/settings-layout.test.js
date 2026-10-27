@@ -165,8 +165,10 @@ describe('Background crossfade compositing (#978)', () => {
     const clearing = css.match(/\.background-thumbnail\.clearing\s*\{[^}]*\}/);
 
     expect(thumbnail[0]).toMatch(/filter:\s*blur\(30px\);/);
-    expect(thumbnail[0]).toMatch(/opacity\s+0\.8s/);
-    expect(clearing[0]).toMatch(/opacity\s+2\.5s/);
+    expect(thumbnail[0]).toMatch(/transition:\s*opacity 0\.8s ease-out\s*;/);
+    expect(clearing[0]).toMatch(/transition:\s*opacity 2\.5s ease-in-out\s*;/);
+    expect(thumbnail[0].match(/transition:/g)).toHaveLength(1);
+    expect(clearing[0].match(/transition:/g)).toHaveLength(1);
   });
 
   it('keeps the blur-media overlay blur static on the thumbnail', () => {
