@@ -24,6 +24,14 @@ const SEARCH_BAR_HTML = `
 
 const flushAsyncUI = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+const readProviderForm = () => ({
+  name: document.getElementById('custom-search-provider-name'),
+  url: document.getElementById('custom-search-provider-url'),
+  suggestions: document.getElementById('custom-search-provider-suggestions-url'),
+  addBtn: document.getElementById('custom-search-provider-add-btn'),
+  feedback: document.getElementById('custom-search-provider-feedback')
+});
+
 beforeAll(() => {
   window.VisibilityInterval = class {
     constructor() {}
@@ -741,22 +749,17 @@ describe('Search providers - settings UI', () => {
   });
 
   it('shows a suggestions-specific validation error for an invalid suggestions URL (issue #1012)', async () => {
-    const nameInput = document.getElementById('custom-search-provider-name');
-    const urlInput = document.getElementById('custom-search-provider-url');
-    const suggestionsInput = document.getElementById('custom-search-provider-suggestions-url');
-    const addBtn = document.getElementById('custom-search-provider-add-btn');
-    const feedback = document.getElementById('custom-search-provider-feedback');
-
-    nameInput.value = 'Kagi';
-    urlInput.value = 'https://kagi.com/search?q={query}';
-    suggestionsInput.value = 'https://kagi.com/suggest';
-    addBtn.click();
+    const form = readProviderForm();
+    form.name.value = 'Kagi';
+    form.url.value = 'https://kagi.com/search?q={query}';
+    form.suggestions.value = 'https://kagi.com/suggest';
+    form.addBtn.click();
     await flushAsyncUI();
 
-    expect(feedback.textContent).toBe('Enter a valid suggestions URL with {query} and http(s).');
-    expect(feedback.classList.contains('error')).toBe(true);
+    expect(form.feedback.textContent).toBe('Enter a valid suggestions URL with {query} and http(s).');
+    expect(form.feedback.classList.contains('error')).toBe(true);
     expect(loadCustomProviders().length).toBe(0);
-    expect(addBtn.disabled).toBe(false);
+    expect(form.addBtn.disabled).toBe(false);
   });
 });
 

@@ -1940,9 +1940,10 @@ function initCustomSearchProvidersSettings() {
       return window.addCustomProvider(name, url, suggestionsUrl);
     }).then(function (savedId) {
       if (savedId === null) {
-        // Validation failure; the name was already checked above, so only
-        // the URL (or the optional suggestions URL) can still be invalid here.
-        if (suggestionsUrl && suggestionsUrlInput) {
+        // Validation failure; the name was already checked above. Blame the
+        // suggestions URL only when the main URL looks valid and the
+        // suggestions URL does not (issue #1012).
+        if (suggestionsUrl && /^https?:\/\//i.test(url) && !/^https?:\/\//i.test(suggestionsUrl)) {
           showFeedback(t('searchProviderInvalidSuggestionsUrl', 'Enter a valid suggestions URL with {query} and http(s).'), 'error');
           suggestionsUrlInput.focus();
         } else {

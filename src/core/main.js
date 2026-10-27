@@ -648,35 +648,32 @@ function getSuggestionsOriginPattern(url) {
   }
 }
 
-function requestSuggestionsPermission(suggestionsUrl) {
+// Both helpers are async so every failure path (sync throw or rejection)
+// lands in the same catch and resolves to false: an unconfirmed grant must
+// never be treated as permission.
+async function requestSuggestionsPermission(suggestionsUrl) {
   const origin = getSuggestionsOriginPattern(suggestionsUrl);
   if (!origin || !chrome.permissions || typeof chrome.permissions.request !== 'function') {
-    return Promise.resolve(false);
+    return false;
   }
   try {
-    return Promise.resolve(chrome.permissions.request({ origins: [origin] }))
-      .then(function (granted) { return Boolean(granted); })
-      .catch(function (error) {
-        console.warn('Failed to request suggestions host permission:', error);
-        return false;
-      });
+    return Boolean(await chrome.permissions.request({ origins: [origin] }));
   } catch (error) {
     console.warn('Failed to request suggestions host permission:', error);
-    return Promise.resolve(false);
+    return false;
   }
 }
 
-function hasSuggestionsPermission(suggestionsUrl) {
+async function hasSuggestionsPermission(suggestionsUrl) {
   const origin = getSuggestionsOriginPattern(suggestionsUrl);
   if (!origin || !chrome.permissions || typeof chrome.permissions.contains !== 'function') {
-    return Promise.resolve(true);
+    return false;
   }
   try {
-    return Promise.resolve(chrome.permissions.contains({ origins: [origin] }))
-      .then(function (granted) { return Boolean(granted); })
-      .catch(function () { return true; });
-  } catch {
-    return Promise.resolve(true);
+    return Boolean(await chrome.permissions.contains({ origins: [origin] }));
+  } catch (error) {
+    console.warn('Failed to check suggestions host permission:', error);
+    return false;
   }
 }
 
@@ -717,7 +714,7 @@ function addCustomProvider(name, url, suggestionsUrl) {
     provider.suggestionsUrl = normalizedSuggestionsUrl;
     // Fire-and-forget within the caller's user gesture; a denial only
     // disables remote suggestions, never the provider itself.
-    requestSuggestionsPermission(normalizedSuggestionsUrl);
+    void requestSuggestionsPermission(normalizedSuggestionsUrl);
   }
   providers.push(provider);
   return saveCustomProvidersAsync(providers).then(function (saved) {
@@ -1149,6 +1146,14 @@ function initProviderBar() {
     saveActiveProvider(btn.dataset.provider);
     updateProviderSelection();
     announceSearchProvider(btn.dataset.provider);
+    // Request the optional host permission for a custom suggestions endpoint
+    // when the user selects the provider. This covers providers imported from
+    // a backup, which never went through addCustomProvider's permission
+    // request (issue #1012). Already-granted permissions resolve silently.
+    const selectedProvider = loadCustomProviders().find(function (p) { return p.id === btn.dataset.provider; });
+    if (selectedProvider && selectedProvider.suggestionsUrl) {
+      void requestSuggestionsPermission(selectedProvider.suggestionsUrl);
+    }
   });
 
   bar.addEventListener('focusin', function (event) {
