@@ -50,15 +50,31 @@ function invalidDueDateKey(todo) {
   return todo.id + '_' + todo.dueDate + timePart;
 }
 
+// The MV3 callback API reports failed reads/writes through
+// chrome.runtime.lastError instead of rejecting, so both wrappers inspect it
+// inside the callback and reject. Without that guard a failed write resolves
+// as success and callers cannot tell a durable result from a lost one.
 async function getFromStorage(keys) {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(keys, resolve);
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(keys, (items) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(items);
+    });
   });
 }
 
 async function setToStorage(items) {
-  return new Promise((resolve) => {
-    chrome.storage.local.set(items, resolve);
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set(items, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve();
+    });
   });
 }
 
@@ -223,22 +239,44 @@ function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, lea
 }
 
 /**
- * Evaluates due todos and records a reminder only after notification creation succeeds.
+ * Evaluates due todos and records each reminder only after its notified mark
+ * is durable. The notified map is persisted before the notification is shown
+ * so a failed write (chrome.runtime.lastError) rolls the marks back, fails
+ * the check, and skips the notification — otherwise the next alarm check would
+ * reload the stale map and repeat the reminder on every interval (#994). If
+ * notification creation fails, the mark is rolled back so the final persist
+ * in runReminderCheck keeps the reminder retryable (#743).
  */
 async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime) {
-  let updated = false;
   let warnedUpdated = false;
   const now = new Date();
+  const pending = [];
   for (const todo of todos) {
     const candidate = getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, leadTime);
     if (candidate.warnedUpdated) warnedUpdated = true;
     if (candidate.skip) continue;
-    const notificationCreated = await showTodoNotification(todo, candidate.dueDisplay);
-    if (!notificationCreated) continue;
-    notified[candidate.notifiedKey] = Date.now();
-    updated = true;
+    pending.push({ todo, candidate });
   }
-  return { updated, warnedUpdated };
+  if (pending.length > 0) {
+    for (const { candidate } of pending) {
+      notified[candidate.notifiedKey] = Date.now();
+    }
+    try {
+      await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
+    } catch (e) {
+      for (const { candidate } of pending) {
+        delete notified[candidate.notifiedKey];
+      }
+      throw e;
+    }
+    for (const { todo, candidate } of pending) {
+      const notificationCreated = await showTodoNotification(todo, candidate.dueDisplay);
+      if (!notificationCreated) {
+        delete notified[candidate.notifiedKey];
+      }
+    }
+  }
+  return { updated: pending.length > 0, warnedUpdated };
 }
 
 async function runReminderCheck(todosJson, options = {}) {
@@ -276,6 +314,11 @@ async function runReminderCheck(todosJson, options = {}) {
   }
 
   const reminderResult = await evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime);
+  // A failed write rejects here on purpose: a check whose notified map could
+  // not be persisted has failed, and the callers (alarm listener, queued path,
+  // sync response) already surface that rejection. When candidates were
+  // attempted, this write also stores any marks rolled back above after a
+  // failed notification creation, keeping those reminders retryable.
   if (reminderResult.updated || staleNotifiedUpdated || staleWarnedUpdated || reminderResult.warnedUpdated || resetApplied) {
     await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
   }

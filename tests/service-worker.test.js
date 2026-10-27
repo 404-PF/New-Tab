@@ -352,3 +352,108 @@ describe('service worker toolbar action (issue #944)', () => {
     expect(chrome.action.onClicked._listeners).toHaveLength(1);
   });
 });
+
+describe('service worker storage lastError handling (issue #994)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+  });
+
+  // Deliberately does not seed todoReminderNotified: the chrome.storage.local
+  // mock hands out the live stored object from get, so seeding {} would let
+  // the in-memory notified mark leak into storage even when the write fails
+  // and would mask the failed-write path this suite covers.
+  async function seedDueTodo() {
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '30',
+      todos: JSON.stringify([
+        { id: 'due', text: 'Finish report', completed: false, dueDate: '2026-08-11' }
+      ])
+    });
+  }
+
+  function failSetWrite(items, callback) {
+    chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+    try {
+      if (callback) callback();
+    } finally {
+      chrome.runtime.lastError = null;
+    }
+  }
+
+  it('fails the check and skips the notification when the notified-map write reports lastError', async () => {
+    await seedDueTodo();
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementation(failSetWrite);
+
+    try {
+      await expect(checkReminders()).rejects.toThrow('QUOTA_BYTES quota exceeded');
+      await expect(checkReminders()).rejects.toThrow('QUOTA_BYTES quota exceeded');
+
+      // The reminder must not fire while its notified mark cannot be written,
+      // otherwise every alarm check would repeat it.
+      expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+      const data = await chrome.storage.local.get('todoReminderNotified');
+      expect(data.todoReminderNotified).toBeUndefined();
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
+
+  it('notifies exactly once when only the first notified-map write fails', async () => {
+    await seedDueTodo();
+    const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+    let failNext = true;
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementation((items, callback) => {
+      if (failNext) {
+        failNext = false;
+        failSetWrite(items, callback);
+        return;
+      }
+      return originalSet(items, callback);
+    });
+
+    try {
+      await expect(checkReminders()).rejects.toThrow('QUOTA_BYTES quota exceeded');
+      expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+
+      await checkReminders();
+
+      expect(Object.keys(chrome.notifications._notifications)).toEqual(['todo_reminder_due']);
+      const data = await chrome.storage.local.get('todoReminderNotified');
+      expect(data.todoReminderNotified).toHaveProperty('due_2026-08-11');
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
+
+  it('fails the check when the storage read reports lastError', async () => {
+    const getSpy = vi.spyOn(chrome.storage.local, 'get').mockImplementation((keys, callback) => {
+      chrome.runtime.lastError = { message: 'storage unavailable' };
+      try {
+        if (callback) callback({});
+      } finally {
+        chrome.runtime.lastError = null;
+      }
+    });
+
+    try {
+      // A failed read must reject instead of resolving like an empty result.
+      await expect(checkReminders()).rejects.toThrow('storage unavailable');
+    } finally {
+      getSpy.mockRestore();
+    }
+  });
+
+  it('fails the sync reset when the notified-map write reports lastError', async () => {
+    await chrome.storage.local.set({ todoReminderEnabled: 'false' });
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementationOnce(failSetWrite);
+
+    try {
+      await expect(checkReminders(JSON.stringify([]), { resetNotified: true }))
+        .rejects.toThrow('QUOTA_BYTES quota exceeded');
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
+});
