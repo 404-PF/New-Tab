@@ -124,6 +124,18 @@
     "message": "Alta",
     "description": "High priority label"
   },
+  "priorityHighTitle": {
+    "message": "Prioridad alta",
+    "description": "High priority button tooltip and aria-label"
+  },
+  "priorityMediumTitle": {
+    "message": "Prioridad media",
+    "description": "Medium priority button tooltip and aria-label"
+  },
+  "priorityLowTitle": {
+    "message": "Prioridad baja",
+    "description": "Low priority button tooltip and aria-label"
+  },
   "weatherWidgetCloseLabel": {
     "message": "Cerrar widget del clima",
     "description": "Accessible label for the weather app close button"

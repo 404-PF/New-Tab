@@ -180,6 +180,18 @@
     "message": "High",
     "description": "High priority label"
   },
+  "priorityHighTitle": {
+    "message": "High Priority",
+    "description": "High priority button tooltip and aria-label"
+  },
+  "priorityMediumTitle": {
+    "message": "Medium Priority",
+    "description": "Medium priority button tooltip and aria-label"
+  },
+  "priorityLowTitle": {
+    "message": "Low Priority",
+    "description": "Low priority button tooltip and aria-label"
+  },
   "shortcuts": {
     "message": "Shortcuts",
     "description": "Label for the shortcuts settings tab"

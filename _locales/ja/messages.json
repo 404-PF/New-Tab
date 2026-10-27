@@ -124,6 +124,18 @@
     "message": "高",
     "description": "High priority label"
   },
+  "priorityHighTitle": {
+    "message": "高優先度",
+    "description": "High priority button tooltip and aria-label"
+  },
+  "priorityMediumTitle": {
+    "message": "中優先度",
+    "description": "Medium priority button tooltip and aria-label"
+  },
+  "priorityLowTitle": {
+    "message": "低優先度",
+    "description": "Low priority button tooltip and aria-label"
+  },
   "weatherWidgetCloseLabel": {
     "message": "天気ウィジェットを閉じる",
     "description": "Accessible label for the weather app close button"

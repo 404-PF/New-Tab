@@ -478,6 +478,26 @@ describe('New-Tab.html i18n key completeness', () => {
       expect(english[key], `en:${key}`).not.toBe(key);
     });
   });
+
+  it('wires the todo priority selector buttons to localized titles and aria-labels', () => {
+    // #999: the priority dot buttons must not carry hardcoded English tooltips.
+    const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
+    const buttons = [...html.matchAll(/<button[^>]*class="priority-selector-btn[^"]*"[^>]*>/g)]
+      .map((match) => match[0]);
+
+    expectTranslationKeys(['priorityLowTitle', 'priorityMediumTitle', 'priorityHighTitle']);
+    expect(buttons).toHaveLength(3);
+    const expected = ['priorityLowTitle', 'priorityMediumTitle', 'priorityHighTitle'];
+    buttons.forEach((button, index) => {
+      expect(button, button).toContain(`data-i18n-title="${expected[index]}"`);
+      expect(button, button).toContain(`data-i18n-aria-label="${expected[index]}"`);
+      expect(button, button).not.toMatch(/title="(Low|Medium|High) Priority"/);
+    });
+  });
+
+  it('defines the todo priority labels in every supported language', () => {
+    expectTranslationKeys(['priorityLow', 'priorityMedium', 'priorityHigh']);
+  });
 });
 
 // Motto pill action buttons (issue #975): New-Tab.html wires the buttons'
