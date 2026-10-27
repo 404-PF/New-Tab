@@ -134,3 +134,56 @@ describe('bug-find/feature-find split (#921)', () => {
     });
   });
 });
+
+describe('find-workflows refill after mass-close (#1015)', () => {
+  let bug;
+  let feature;
+
+  beforeAll(() => {
+    bug = readFileSync(BUG_PATH, 'utf-8');
+    feature = readFileSync(FEATURE_PATH, 'utf-8');
+  });
+
+  it('shortens the gate cooldown from 6h to 2h in both workflows', () => {
+    [bug, feature].forEach((wf) => {
+      expect(wf).toMatch(/COOLDOWN_SECONDS=\$\(\( 2 \* 3600 \)\)/);
+      expect(wf).not.toMatch(/COOLDOWN_SECONDS=\$\(\( 6 \* 3600 \)\)/);
+      // Manual dispatch still bypasses the cooldown.
+      expect(wf).toMatch(/if \[ "\$EVENT_NAME" != 'workflow_dispatch' \]; then/);
+    });
+    // The legacy-marker counting that guards the first post-rename run stays.
+    expect(bug).toMatch(/LEGACY_MARKER='<!-- issue-find -->'/);
+  });
+
+  it('recounts the open pool under the concurrency slot before the agent', () => {
+    [bug, feature].forEach((wf) => {
+      const recountToAgent = wf.match(
+        /- name: Recount open issues before starting the agent[\s\S]*?- name: (?:Find issues|Find features) with OpenCode/
+      );
+      expect(recountToAgent).not.toBeNull();
+      expect(recountToAgent[0]).toMatch(/id: recount/);
+      expect(recountToAgent[0]).toContain('issues(states: OPEN) { totalCount }');
+      expect(recountToAgent[0]).toMatch(/if \[ "\$CURRENT" -ge "\$TARGET" \]; then/);
+      expect(recountToAgent[0]).toMatch(/echo 'skip=true' >> "\$GITHUB_OUTPUT"/);
+      // The recount recomputes to_file from the fresh count (same caps as the
+      // gate) and exports it so the agent prompt and validator cap are not the
+      // stale gate-time value.
+      expect(recountToAgent[0]).toMatch(/TO_FILE=\$\(\( TARGET - CURRENT \)\)/);
+      expect(recountToAgent[0]).toMatch(/echo "TO_FILE=\$TO_FILE" >> "\$GITHUB_ENV"/);
+      expect(wf).toMatch(/max_new: \$\{\{ steps\.plan\.outputs\.max_new \}\}/);
+      // The agent must not run when the queue waited out a closure burst;
+      // that was the "Accepted N ... Created 0" waste path. Assert the
+      // executable if, not comment wording or indentation.
+      expect(wf).toMatch(/id: agent\n(?: *#[^\n]*\n)* *if: steps\.recount\.outputs\.skip != 'true'/);
+    });
+  });
+
+  it('keeps the create-step per-creation recount as defense in depth (#1015)', () => {
+    [bug, feature].forEach((wf) => {
+      const createStep = wf.match(/- name: Create issues[\s\S]*?- name: Report agent failure/);
+      expect(createStep).not.toBeNull();
+      expect(createStep[0]).toContain('issues(states: OPEN) { totalCount }');
+      expect(createStep[0]).toMatch(/if \[ "\$CURRENT" -ge "\$TARGET" \]; then[\s\S]*?break/);
+    });
+  });
+});
