@@ -531,7 +531,9 @@
       if (todoPriority !== 'medium') {
         const priorityBadge = document.createElement('span');
         priorityBadge.className = `todo-priority-badge priority-${todoPriority}`;
-        priorityBadge.textContent = todoPriority.charAt(0).toUpperCase() + todoPriority.slice(1);
+        const priorityLabelKeys = { high: 'priorityHigh', low: 'priorityLow' };
+        const priorityKey = priorityLabelKeys[todoPriority] || 'priorityMedium';
+        priorityBadge.textContent = window.i18n ? window.i18n.t(priorityKey) : todoPriority.charAt(0).toUpperCase() + todoPriority.slice(1);
         todoContent.appendChild(priorityBadge);
       }
 

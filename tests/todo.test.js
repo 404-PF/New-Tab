@@ -1464,7 +1464,7 @@ describe('Todo priority', () => {
     addTodo('High task', null, 'high');
     const badge = document.querySelector('.todo-priority-badge');
     expect(badge).not.toBeNull();
-    expect(badge.textContent).toBe('High');
+    expect(badge.textContent).toBe(window.i18n.t('priorityHigh'));
     expect(badge.classList.contains('priority-high')).toBe(true);
   });
 
@@ -1478,8 +1478,23 @@ describe('Todo priority', () => {
     addTodo('Low task', null, 'low');
     const badge = document.querySelector('.todo-priority-badge');
     expect(badge).not.toBeNull();
-    expect(badge.textContent).toBe('Low');
+    expect(badge.textContent).toBe(window.i18n.t('priorityLow'));
     expect(badge.classList.contains('priority-low')).toBe(true);
+  });
+
+  it('renderTodos localizes priority badge text through i18n.t', () => {
+    // #999: badge text must come from the translation keys, not capitalization.
+    const originalT = window.i18n.t;
+    window.i18n.t = (key) => (key === 'priorityHigh' ? 'Hoch' : originalT(key));
+
+    try {
+      addTodo('High task', null, 'high');
+      const badge = document.querySelector('.todo-priority-badge');
+      expect(badge).not.toBeNull();
+      expect(badge.textContent).toBe('Hoch');
+    } finally {
+      window.i18n.t = originalT;
+    }
   });
 
   it('renderTodos does not show priority badge for todos without explicit priority (treated as medium)', () => {
