@@ -518,6 +518,7 @@ window.i18n.__registerLocale('ko', {
   aiMessageTooLong: '메시지가 너무 깁니다(최대 2000자)',
   aiMessageInvalidChars: '메시지에 잘못된 제어 문자가 포함되어 있습니다',
   aiStopStreaming: '중지',
+  aiRegenerate: '다시 생성',
   aiScrollToBottom: '맨 아래로 스크롤',
   aiSaveError: '대화를 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
   aiStorageFullError: '저장 공간이 가득 찼습니다. 공간을 확보하려면 오래된 대화를 내보내거나 삭제하세요.',

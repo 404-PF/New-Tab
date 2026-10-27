@@ -639,6 +639,7 @@ const translations = {
     aiMessageTooLong: 'Message too long (max 2000 characters)',
     aiMessageInvalidChars: 'Message contains invalid control characters',
     aiStopStreaming: 'Stop',
+    aiRegenerate: 'Regenerate',
     aiScrollToBottom: 'Scroll to bottom',
     aiSaveError: 'Failed to save conversations. Your last action was not saved.',
     aiStorageFullError: 'Storage is full. Export or delete old conversations to free space.',

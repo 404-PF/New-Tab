@@ -8,7 +8,8 @@ const AIRenderer = (function() {
     aiSources: 'Sources',
     copyFailed: 'Failed to copy text. Please select and copy manually.',
     copySuccess: 'Copied!',
-    copyFailedShort: 'Failed'
+    copyFailedShort: 'Failed',
+    aiRegenerate: 'Regenerate'
   };
   const topicsListRenderState = {
     listEl: null,
@@ -637,9 +638,63 @@ const AIRenderer = (function() {
       initCopyButtons();
     }
 
+    updateRegenerateButton();
+
     if (!AIStore.state.isUserScrolledUp) {
       scrollToBottom(false);
     }
+  }
+
+  /**
+   * Shows or removes the trailing Regenerate button (issue #997).
+   *
+   * Appended as the last child of the chat container; renderMessages'
+   * incremental DOM-order pass inserts messages before it via
+   * referenceNode.nextSibling, so it never lands between messages.
+   */
+  function updateRegenerateButton() {
+    if (!elements.container) cacheElements();
+    const container = elements.container;
+    if (!container) return;
+
+    const messages = AIStore.getCurrentMessages();
+    const lastMessage = messages[messages.length - 1];
+    // Mirror regenerate(): it only starts when the trailing message is a user
+    // prompt or an answer with a user prompt above it to re-send.
+    const canRegenerate = lastMessage && (
+      lastMessage.role === 'user'
+      || (lastMessage.role === 'assistant'
+        && messages.some(message => message.role === 'user'))
+    );
+    const shouldShow = canRegenerate
+      && !AIStore.state.isLoading
+      && !AIStore.state.isStreaming;
+
+    const existingButton = container.querySelector('.ai-regenerate');
+    if (!shouldShow) {
+      if (existingButton) existingButton.remove();
+      return;
+    }
+
+    let button = existingButton;
+    if (!button) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ai-regenerate';
+      button.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<polyline points="23 4 23 10 17 10"></polyline>' +
+        '<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>' +
+        '</svg>' +
+        '<span class="ai-regenerate-text"></span>';
+      container.appendChild(button);
+    }
+
+    const label = getTranslation('aiRegenerate');
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    const textEl = button.querySelector('.ai-regenerate-text');
+    if (textEl) textEl.textContent = label;
   }
 
   function initCopyButtons() {
@@ -912,6 +967,7 @@ const AIRenderer = (function() {
     updateWebGroundingControl,
     renderTopicsList,
     renderMessages,
+    updateRegenerateButton,
     initCopyButtons,
     isAtBottom,
     scrollToBottom,

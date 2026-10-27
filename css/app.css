@@ -3882,6 +3882,63 @@ body.light-theme .ai-message-copy.copy-error {
   color: #dc2626;
 }
 
+/* Regenerate the last answer (issue #997) */
+.ai-regenerate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+.ai-regenerate:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.ai-regenerate:focus {
+  /* Keep a transparent outline so forced-colors mode can still show focus
+     when it suppresses the box-shadow ring below. */
+  outline: 2px solid transparent;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+}
+
+.ai-regenerate:active {
+  transform: scale(0.95);
+}
+
+.ai-regenerate svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+body.light-theme .ai-regenerate {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.6);
+}
+
+body.light-theme .ai-regenerate:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.9);
+}
+
+body.light-theme .ai-regenerate:focus {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+}
+
 .ai-message-streaming::after {
   content: "...";
   animation: streamingDots 1.5s infinite;
