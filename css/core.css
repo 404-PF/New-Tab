@@ -55,30 +55,36 @@
 }
 
 /* One slim scroll-bar treatment for every scrollable surface (#989).
-   WebKit reads the pseudo-elements; Firefox matches via
-   scrollbar-width/scrollbar-color from the same variables (hover
-   brightening is a documented WebKit-only exception). */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+   The two branches are mutually exclusive: when a browser supports
+   scrollbar-width/scrollbar-color AND ::-webkit-scrollbar (Chromium),
+   setting the standard properties makes it ignore the pseudo-elements,
+   so each engine gets exactly one implementation. Hover brightening is
+   a documented WebKit-only exception kept in the WebKit branch. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
 }
 
-*::-webkit-scrollbar {
-  width: var(--scrollbar-size);
-  height: var(--scrollbar-size);
-}
+@supports selector(::-webkit-scrollbar) {
+  *::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
 
-*::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-}
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
 
-*::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: var(--scrollbar-radius);
-}
+  *::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--scrollbar-radius);
+  }
 
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
 }
 
 /* Background container for layered images */

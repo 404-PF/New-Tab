@@ -47,6 +47,22 @@ describe('Shared slim scrollbars (#989)', () => {
     expect(body).toMatch(/--scrollbar-thumb-hover:\s*rgba\(0, 0, 0, 0\.3\)/);
   });
 
+  it('keeps the standard and WebKit implementations in mutually exclusive @supports branches', () => {
+    const notWebkitIndex = CORE_CSS.indexOf('@supports not selector(::-webkit-scrollbar)');
+    const webkitIndex = CORE_CSS.indexOf('@supports selector(::-webkit-scrollbar)');
+
+    expect(notWebkitIndex, 'Firefox @supports branch in css/core.css').toBeGreaterThan(-1);
+    expect(webkitIndex, 'WebKit @supports branch in css/core.css').toBeGreaterThan(notWebkitIndex);
+  });
+
+  it('mirrors the light scrollbar tokens onto the root for the viewport scrollbar', () => {
+    const rootLight = FEATURES_CSS.match(/html:has\(body\.light-theme\)\s*\{([^}]*)\}/);
+    expect(rootLight, 'html:has(body.light-theme) block in css/features.css').toBeTruthy();
+
+    expect(rootLight[1]).toMatch(/--scrollbar-thumb:\s*rgba\(0, 0, 0, 0\.2\)/);
+    expect(rootLight[1]).toMatch(/--scrollbar-thumb-hover:\s*rgba\(0, 0, 0, 0\.3\)/);
+  });
+
   it('removes the former AI chat and AI topics per-component blocks', () => {
     expect(APP_CSS).not.toMatch(/#ai-chat-container::-webkit-scrollbar/);
     expect(APP_CSS).not.toMatch(/body\.light-theme #ai-chat-container::-webkit-scrollbar/);

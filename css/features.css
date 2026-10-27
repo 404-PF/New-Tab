@@ -15,6 +15,15 @@ body.light-theme {
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
 }
 
+/* The viewport scrollbar is painted on :root, which does not inherit
+   custom properties from body — mirror the light scrollbar tokens onto
+   the root while body.light-theme is active so the page scrollbar
+   follows the theme too (#989). */
+html:has(body.light-theme) {
+  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+}
+
 body.light-theme .app-name {
   color: #fff;
   text-shadow:
