@@ -1490,3 +1490,146 @@ describe('AIStore storage bounds (#947)', () => {
     }
   });
 });
+
+describe('AIStore conversation rename (#1014)', () => {
+  const AUTO_TITLE = 'How do I back up my todos and not...';
+
+  const seedConversation = () => {
+    const conversation = {
+      id: 'conv-rename',
+      title: AUTO_TITLE,
+      messages: [
+        { id: 'm-1', role: 'user', content: 'Which button exports everything?', timestamp: 1 }
+      ],
+      createdAt: 1,
+      updatedAt: 2
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    AIStore.state.searchQuery = '';
+    return conversation;
+  };
+
+  it('persists a trimmed rename and survives a reload', async () => {
+    const conversation = seedConversation();
+
+    let saveSettlement = null;
+    expect(AIStore.renameConversation('conv-rename', '  Backup plan  ', settlement => {
+      saveSettlement = settlement;
+    })).toBe(true);
+    expect(conversation.title).toBe('Backup plan');
+    // Await the save the rename itself triggered: a second explicit save would
+    // hide a rename that stops persisting (#1014).
+    expect(saveSettlement).not.toBeNull();
+    await saveSettlement;
+
+    const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
+    expect(persisted[0].title).toBe('Backup plan');
+
+    AIStore.state.conversations = [];
+    await AIStore.loadConversations();
+    expect(AIStore.state.conversations[0].title).toBe('Backup plan');
+  });
+
+  it('rejects empty and whitespace-only names without touching the title', () => {
+    const conversation = seedConversation();
+
+    expect(AIStore.renameConversation('conv-rename', '')).toBe(false);
+    expect(AIStore.renameConversation('conv-rename', '   \n\t ')).toBe(false);
+    expect(conversation.title).toBe(AUTO_TITLE);
+  });
+
+  it('rejects an unknown conversation id', () => {
+    seedConversation();
+
+    expect(AIStore.renameConversation('conv-missing', 'New title')).toBe(false);
+    expect(AIStore.state.conversations[0].title).toBe(AUTO_TITLE);
+  });
+
+  it('keeps the custom title when later messages arrive', async () => {
+    const conversation = seedConversation();
+
+    let renameSave = null;
+    expect(AIStore.renameConversation('conv-rename', 'Backup plan', settlement => {
+      renameSave = settlement;
+    })).toBe(true);
+    // Await the rename write so a failed rename cannot be masked by the
+    // message save that follows it.
+    expect(renameSave).not.toBeNull();
+    await renameSave;
+
+    AIStore.addMessageToConversation({
+      id: 'm-2',
+      role: 'assistant',
+      content: 'Use Settings → Backup.',
+      timestamp: 3
+    });
+
+    expect(conversation.title).toBe('Backup plan');
+  });
+
+  it('keeps a rename of the empty new chat when the first message arrives', async () => {
+    const conversation = AIStore.createNewConversation();
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    AIStore.state.searchQuery = '';
+
+    let renameSave = null;
+    expect(AIStore.renameConversation(conversation.id, 'Backup plan', settlement => {
+      renameSave = settlement;
+    })).toBe(true);
+    // Await the rename write so a failed rename cannot be masked by the
+    // message save that follows it.
+    expect(renameSave).not.toBeNull();
+    await renameSave;
+
+    AIStore.addMessageToConversation({
+      id: 'm-first',
+      role: 'user',
+      content: 'Which button exports everything?',
+      timestamp: 2
+    });
+
+    // The first user message may auto-title only an untouched placeholder
+    // (#1014): a manual rename must survive it.
+    expect(conversation.title).toBe('Backup plan');
+    expect(conversation.messages).toHaveLength(1);
+  });
+
+  it('finds the renamed title through the search filter', async () => {
+    seedConversation();
+
+    let renameSave = null;
+    expect(AIStore.renameConversation('conv-rename', 'Backup plan', settlement => {
+      renameSave = settlement;
+    })).toBe(true);
+    // Await the rename write so the test does not hand a pending save to the
+    // next one.
+    expect(renameSave).not.toBeNull();
+    await renameSave;
+
+    AIStore.setSearchQuery('backup plan');
+    expect(AIStore.getFilteredConversations().map(entry => entry.id)).toEqual(['conv-rename']);
+
+    // The auto-generated label no longer matches, and the message body does
+    // not contain this phrase, so only the old title could have matched it.
+    AIStore.setSearchQuery('back up my todos');
+    expect(AIStore.getFilteredConversations()).toHaveLength(0);
+    AIStore.setSearchQuery('');
+  });
+
+  it('caps an oversized rename before it is stored', async () => {
+    const conversation = seedConversation();
+    const oversized = `prefix ${'x'.repeat(AIStore.MAX_TITLE_LENGTH * 2)} suffix`;
+
+    let renameSave = null;
+    expect(AIStore.renameConversation('conv-rename', oversized, settlement => {
+      renameSave = settlement;
+    })).toBe(true);
+    await renameSave;
+
+    expect(conversation.title).toHaveLength(AIStore.MAX_TITLE_LENGTH);
+    const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
+    expect(persisted[0].title).toBe(conversation.title);
+  });
+});

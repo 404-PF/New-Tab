@@ -3579,6 +3579,52 @@ body.light-theme .ai-topic-tooltip::after {
   color: #a5b4fc;
 }
 
+.ai-topic-rename {
+  opacity: 0;
+  background: rgba(139, 92, 246, 0.1);
+  border: none;
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-topic-item:hover .ai-topic-rename,
+.ai-topic-item:focus-within .ai-topic-rename {
+  opacity: 1;
+}
+
+.ai-topic-rename:hover {
+  background: rgba(139, 92, 246, 0.3);
+}
+
+.ai-topic-rename svg {
+  width: 14px;
+  height: 14px;
+  color: #c4b5fd;
+}
+
+.ai-topic-rename-input {
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 2px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(139, 92, 246, 0.6);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+}
+
+.ai-topic-rename-input:focus {
+  border-color: rgba(167, 139, 250, 0.9);
+}
+
 .ai-export-all-btn {
   width: 100%;
   margin-top: 10px;
@@ -4363,6 +4409,24 @@ body.light-theme .ai-topic-export:hover {
   background: rgba(99, 102, 241, 0.18);
 }
 
+/* AI Chat Light Theme - Topic rename button and inline name editor */
+body.light-theme .ai-topic-rename {
+  background: rgba(139, 92, 246, 0.08);
+}
+
+body.light-theme .ai-topic-rename svg {
+  color: #7c3aed;
+}
+
+body.light-theme .ai-topic-rename:hover {
+  background: rgba(139, 92, 246, 0.18);
+}
+
+body.light-theme .ai-topic-rename-input {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f2937;
+}
+
 /* AI Chat Light Theme - Export all button */
 body.light-theme .ai-export-all-btn {
   background: #f1f2f8;
@@ -4439,7 +4503,8 @@ body.light-theme .ai-export-all-btn:hover {
   }
 
   .ai-topic-delete,
-  .ai-topic-export {
+  .ai-topic-export,
+  .ai-topic-rename {
     opacity: 1;
   }
 

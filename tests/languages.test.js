@@ -86,7 +86,8 @@ const AI_TRANSLATION_KEYS = [
   'aiSaveError',
   'aiStorageFullError',
   'aiConversationLoadError',
-  'aiRegenerate'
+  'aiRegenerate',
+  'aiRenameConversation'
 ];
 
 // Derived from the source's window.i18n.gamesTranslationKeys in beforeAll so

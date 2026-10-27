@@ -102,6 +102,156 @@ describe('AIRenderer.renderTopicsList', () => {
 });
 
 
+describe('AIRenderer conversation rename affordance (#1014)', () => {
+  const renderWithCallbacks = (callbacks = {}) => {
+    AIRenderer.renderTopicsList(callbacks);
+  };
+
+  it('renders a rename button before the export and delete buttons', () => {
+    renderWithCallbacks();
+
+    const items = document.querySelectorAll('#ai-topics-list .ai-topic-item');
+    expect(items).toHaveLength(2);
+
+    items.forEach(item => {
+      const children = Array.from(item.children);
+      const renameIndex = children.findIndex(el => el.classList.contains('ai-topic-rename'));
+      const exportIndex = children.findIndex(el => el.classList.contains('ai-topic-export'));
+      const deleteIndex = children.findIndex(el => el.classList.contains('ai-topic-delete'));
+      expect(renameIndex).toBeGreaterThan(-1);
+      expect(renameIndex).toBeLessThan(exportIndex);
+      expect(deleteIndex).toBeGreaterThan(exportIndex);
+      expect(children[renameIndex].dataset.id).toBe(item.dataset.id);
+    });
+  });
+
+  it('opens an inline editor with the current title and renames on Enter', () => {
+    const onSelectConversation = vi.fn();
+    const onRenameConversation = vi.fn();
+    renderWithCallbacks({ onSelectConversation, onRenameConversation });
+
+    document.querySelector('.ai-topic-rename[data-id="conv-2"]').click();
+
+    const input = document.querySelector('.ai-topic-rename-input');
+    expect(input).not.toBeNull();
+    expect(input.value).toBe('Second topic');
+    expect(input.maxLength).toBe(AIStore.MAX_TITLE_LENGTH);
+    expect(onSelectConversation).not.toHaveBeenCalled();
+
+    input.value = '  Renamed topic  ';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+
+    expect(onRenameConversation).toHaveBeenCalledWith('conv-2', 'Renamed topic');
+    expect(onSelectConversation).not.toHaveBeenCalled();
+    expect(document.querySelector('.ai-topic-rename-input')).toBeNull();
+    expect(document.querySelector('.ai-topic-item[data-id="conv-2"] .ai-topic-title').textContent)
+      .toBe('Renamed topic');
+  });
+
+  it('restores the original title on Escape without renaming', () => {
+    const onSelectConversation = vi.fn();
+    const onRenameConversation = vi.fn();
+    renderWithCallbacks({ onSelectConversation, onRenameConversation });
+
+    document.querySelector('.ai-topic-rename[data-id="conv-1"]').click();
+    const input = document.querySelector('.ai-topic-rename-input');
+    input.value = 'Discarded name';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+
+    expect(onRenameConversation).not.toHaveBeenCalled();
+    expect(document.querySelector('.ai-topic-rename-input')).toBeNull();
+    expect(document.querySelector('.ai-topic-item[data-id="conv-1"] .ai-topic-title').textContent)
+      .toBe('First topic');
+    expect(onSelectConversation).not.toHaveBeenCalled();
+  });
+
+  it('drops empty and whitespace-only names instead of renaming', () => {
+    const onRenameConversation = vi.fn();
+    renderWithCallbacks({ onRenameConversation });
+
+    document.querySelector('.ai-topic-rename[data-id="conv-1"]').click();
+    const input = document.querySelector('.ai-topic-rename-input');
+    input.value = '   ';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+
+    expect(onRenameConversation).not.toHaveBeenCalled();
+    expect(document.querySelector('.ai-topic-rename-input')).toBeNull();
+    expect(document.querySelector('.ai-topic-item[data-id="conv-1"] .ai-topic-title').textContent)
+      .toBe('First topic');
+  });
+
+  it('does not select the conversation for clicks inside the name editor', () => {
+    const onSelectConversation = vi.fn();
+    const onRenameConversation = vi.fn();
+    renderWithCallbacks({ onSelectConversation, onRenameConversation });
+
+    document.querySelector('.ai-topic-rename[data-id="conv-2"]').click();
+    document.querySelector('.ai-topic-rename-input').click();
+
+    expect(onSelectConversation).not.toHaveBeenCalled();
+    expect(onRenameConversation).not.toHaveBeenCalled();
+  });
+
+  it('does not submit the rename for Enter pressed during IME composition', () => {
+    const onRenameConversation = vi.fn();
+    renderWithCallbacks({ onRenameConversation });
+
+    document.querySelector('.ai-topic-rename[data-id="conv-1"]').click();
+    const input = document.querySelector('.ai-topic-rename-input');
+    input.value = 'Composing candidate';
+    input.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+      isComposing: true
+    }));
+
+    expect(onRenameConversation).not.toHaveBeenCalled();
+    expect(document.querySelector('.ai-topic-rename-input')).not.toBeNull();
+  });
+
+  it('defers the blur commit until the current task finishes', async () => {
+    const onRenameConversation = vi.fn();
+    renderWithCallbacks({ onRenameConversation });
+
+    document.querySelector('.ai-topic-rename[data-id="conv-1"]').click();
+    const input = document.querySelector('.ai-topic-rename-input');
+    input.value = 'Renamed on blur';
+    input.dispatchEvent(new Event('blur'));
+
+    expect(document.querySelector('.ai-topic-rename-input')).not.toBeNull();
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(onRenameConversation).toHaveBeenCalledWith('conv-1', 'Renamed on blur');
+    expect(document.querySelector('.ai-topic-rename-input')).toBeNull();
+    expect(document.querySelector('.ai-topic-item[data-id="conv-1"] .ai-topic-title').textContent)
+      .toBe('Renamed on blur');
+  });
+
+  it('refreshes the topic action labels after a language change', () => {
+    renderWithCallbacks();
+
+    document.querySelector('.ai-topic-rename[data-id="conv-1"]').click();
+    const input = document.querySelector('.ai-topic-rename-input');
+    expect(input).not.toBeNull();
+
+    const originalT = window.i18n.t;
+    window.i18n.t = key => (key === 'aiRenameConversation' ? 'Renommer la conversation' : originalT(key));
+    try {
+      window.dispatchEvent(new CustomEvent('languageChanged'));
+
+      const button = document.querySelector('.ai-topic-rename[data-id="conv-1"]');
+      expect(button.getAttribute('aria-label')).toBe('Renommer la conversation');
+      expect(button.title).toBe('Renommer la conversation');
+      // An editor left open across the switch keeps the new label too.
+      expect(input.getAttribute('aria-label')).toBe('Renommer la conversation');
+    } finally {
+      window.i18n.t = originalT;
+    }
+  });
+});
+
 describe('AIRenderer grounded source rendering (#707)', () => {
   it('renders cited links below grounded assistant messages', () => {
     const conversation = {

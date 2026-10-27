@@ -66,6 +66,7 @@ const AIService = (function() {
       onSelectConversation: switchConversation,
       onDeleteConversation: deleteConversation,
       onExportConversation: exportConversation,
+      onRenameConversation: renameConversation,
       onRequestDeleteConfirm: showDeleteConfirm
     });
 
@@ -356,6 +357,7 @@ const AIService = (function() {
             onSelectConversation: switchConversation,
             onDeleteConversation: deleteConversation,
             onExportConversation: exportConversation,
+            onRenameConversation: renameConversation,
             onRequestDeleteConfirm: showDeleteConfirm
           });
         }
@@ -485,11 +487,34 @@ const AIService = (function() {
     renderConversationUI();
   }
 
+  function renameConversation(conversationId, title) {
+    const onSaveResult = saveResult => {
+      // The inline editor already wrote the proposed title into the row, so
+      // the repaint below has to rebuild it from the store. When a synchronous
+      // save fails, AIStore has already rolled conversation.title back by this
+      // point, and the restored value matches the signature the list rendered
+      // before the rename, which would otherwise strand the unsaved title in
+      // the sidebar (#1014).
+      AIRenderer.invalidateTopicsListSignature();
+      rerenderOnSaveFailure(saveResult);
+    };
+
+    if (!AIStore.renameConversation(conversationId, title, onSaveResult)) return false;
+
+    // Only the sidebar label changed, so skip the chat repaint; the topics
+    // list signature carries conversation.title, which refreshes the row. The
+    // signature was cleared above whenever a write was issued, so this render
+    // rebuilds the row from whatever the store committed.
+    renderConversationUI({ renderMessages: false });
+    return true;
+  }
+
   function handleTopicsKeydown(event) {
     // Native button activation wins when an action button inside the list has
-    // focus: otherwise Enter on the export/delete button would be hijacked to
-    // switch conversations instead of clicking the button.
-    if (event.target?.closest?.('.ai-topic-export, .ai-topic-delete')) {
+    // focus: otherwise Enter on the export/delete/rename button (or a keystroke
+    // in the inline rename editor) would be hijacked to switch conversations
+    // instead of acting on the control.
+    if (event.target?.closest?.('.ai-topic-export, .ai-topic-delete, .ai-topic-rename, .ai-topic-rename-input')) {
       return;
     }
 
@@ -1222,7 +1247,8 @@ const AIService = (function() {
     quickSearch,
     isAvailable,
     exportConversation,
-    exportAllConversations
+    exportAllConversations,
+    renameConversation
   };
 })();
 

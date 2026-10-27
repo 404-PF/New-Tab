@@ -393,6 +393,7 @@ body.light-theme :is(
   .calendar-day,
   .inline-calendar-days .calendar-day,
   .ai-topic-title,
+  .ai-topic-rename-input,
   .ai-message-text,
   .note-textarea,
   .note-preview
