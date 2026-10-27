@@ -46,6 +46,49 @@
   --settings-modal-bg: rgba(0, 0, 0, 0.85);
   --settings-menu-bg: rgba(15, 23, 42, 0.6);
   --settings-text-color: rgba(203, 213, 225, 0.9);
+  /* Shared slim scrollbars (#989), based on the AI chat reference style */
+  --scrollbar-size: 6px;
+  --scrollbar-radius: 3px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+}
+
+/* One slim scroll-bar treatment for every scrollable surface (#989).
+   The two branches are mutually exclusive: when a browser supports
+   scrollbar-width/scrollbar-color AND ::-webkit-scrollbar-thumb
+   (Chromium/Safari), setting the standard properties makes it ignore
+   the pseudo-elements, so each engine gets exactly one implementation.
+   Test the thumb pseudo-element, not ::-webkit-scrollbar: Firefox 153+
+   parses the base pseudo for compatibility but does not style the thumb,
+   so probing it would strand those versions on the WebKit branch.
+   Hover brightening is a documented WebKit-only exception kept in the
+   WebKit branch. */
+@supports not selector(::-webkit-scrollbar-thumb) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+}
+
+@supports selector(::-webkit-scrollbar-thumb) {
+  *::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--scrollbar-radius);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
 }
 
 /* Background container for layered images */

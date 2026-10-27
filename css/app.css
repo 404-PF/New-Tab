@@ -3330,18 +3330,8 @@ body.light-theme .ai-topic-item.keyboard-selected {
   padding-right: 4px;
 }
 
-.ai-topics-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.ai-topics-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ai-topics-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
-}
+/* Scrollbar inherits the shared global slim bar from css/core.css (#989);
+   the former 4px variant was dropped in favor of one treatment. */
 
 .ai-topic-item {
   display: flex;
@@ -4096,22 +4086,7 @@ body.light-theme .ai-scroll-to-bottom-btn {
   background: rgba(99, 102, 241, 0.9);
 }
 
-#ai-chat-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-#ai-chat-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-#ai-chat-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-}
-
-#ai-chat-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
+/* Chat scrollbars come from the shared global rules in css/core.css (#989). */
 
 body.light-theme #ai-chat-modal {
   background: rgba(0, 0, 0, 0.4);
@@ -4222,14 +4197,6 @@ body.light-theme #ai-chat-input:focus {
 body.light-theme .ai-chat-input-container {
   background: rgba(0, 0, 0, 0.03);
   border-color: rgba(0, 0, 0, 0.08);
-}
-
-body.light-theme #ai-chat-container::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-}
-
-body.light-theme #ai-chat-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
 }
 
 /* AI Chat Light Theme - User message bubble override */
