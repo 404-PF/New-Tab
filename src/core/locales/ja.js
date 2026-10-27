@@ -479,6 +479,7 @@ window.i18n.__registerLocale('ja', {
   aiMessageTooLong: 'メッセージが長すぎます（最大2000文字）',
   aiMessageInvalidChars: 'メッセージに無効な制御文字が含まれています',
   aiStopStreaming: '停止',
+  aiRegenerate: '再生成',
   aiScrollToBottom: '一番下にスクロール',
   aiSaveError: '会話を保存できませんでした。直前の操作は保存されていません。',
   aiStorageFullError: 'ストレージが満杯です。空き容量を確保するため、古い会話をエクスポートまたは削除してください。',

@@ -301,6 +301,10 @@ const AIService = (function() {
       elements.input.disabled = false;
       elements.input.focus();
     }
+
+    // The final render runs while isLoading is still true (which hides the
+    // button), so re-evaluate it once the request is fully over.
+    AIRenderer.updateRegenerateButton();
   }
 
   function showError(error) {
@@ -310,8 +314,16 @@ const AIService = (function() {
     }
   }
 
-  function removeFailedMessages(targetConversationId, userId, assistantId) {
-    if (!targetConversationId || (!userId && !assistantId)) return false;
+  /**
+   * Removes the empty assistant bubble a failed request created (#997).
+   *
+   * The user's prompt deliberately stays in the conversation: the Regenerate
+   * action (and a plain follow-up) can re-send it, so a network error, rate
+   * limit or bad answer no longer forces the user to retype the question.
+   * The old cleanup deleted both messages and left an empty thread.
+   */
+  function removeFailedAssistantMessage(targetConversationId, assistantId) {
+    if (!targetConversationId || !assistantId) return false;
     // Resolve the live conversation object by id: the captured reference may
     // be stale if AIStore.loadConversations() ran while the request was in
     // flight (e.g. reopening the modal), which replaces state.conversations
@@ -327,7 +339,7 @@ const AIService = (function() {
     let removed = false;
     for (let i = conversation.messages.length - 1; i >= 0; i--) {
       const messageId = conversation.messages[i] && conversation.messages[i].id;
-      if ((userId && messageId === userId) || (assistantId && messageId === assistantId)) {
+      if (messageId === assistantId) {
         conversation.messages.splice(i, 1);
         removed = true;
       }
@@ -569,8 +581,13 @@ const AIService = (function() {
   /**
    * Sends a user message after trimming and rejecting blank input.
    * @param {string} userMessage The message text to send.
+   * @param {object} [options] Request options.
+   * @param {boolean} [options.reuseExistingUserMessage] Regenerate mode: the
+   *   prompt is already the last stored user message (its content must match),
+   *   so do not append a duplicate copy of it. Used by regenerate().
    */
-  async function sendMessage(userMessage) {
+  async function sendMessage(userMessage, options = {}) {
+    const reuseExistingUserMessage = options.reuseExistingUserMessage === true;
     console.log('[AI Debug] sendMessage called - State:', {
       hasMessage: !!userMessage,
       isLoading: AIStore.state.isLoading,
@@ -591,17 +608,32 @@ const AIService = (function() {
     const networkStatus = NetworkDetector.getStatus();
     const groundingEnabled = !networkStatus.isOffline
       && window.OpenRouterAPI.isWebGroundingEnabled();
-    const userMsg = {
-      role: 'user',
-      content: normalizedUserMessage,
-      timestamp: Date.now()
-    };
+    const currentMessages = AIStore.getCurrentMessages();
+    const lastStoredMessage = currentMessages[currentMessages.length - 1];
 
-    AIStore.addMessageToConversation(userMsg);
-    renderConversationUI();
+    if (
+      reuseExistingUserMessage
+      && (!lastStoredMessage
+        || lastStoredMessage.role !== 'user'
+        || lastStoredMessage.content !== normalizedUserMessage)
+    ) {
+      // regenerate() validated this before mutating anything; if the
+      // conversation changed underneath us, bail out instead of appending a
+      // second copy of the prompt (or sending a prompt that was removed).
+      return;
+    }
 
-    if (elements.input) {
-      elements.input.value = '';
+    if (!reuseExistingUserMessage) {
+      AIStore.addMessageToConversation({
+        role: 'user',
+        content: normalizedUserMessage,
+        timestamp: Date.now()
+      });
+      renderConversationUI();
+
+      if (elements.input) {
+        elements.input.value = '';
+      }
     }
 
     showLoading(
@@ -631,7 +663,6 @@ const AIService = (function() {
     renderConversationUI();
 
     const targetConversationId = AIStore.getCurrentConversation()?.id || null;
-    const targetUserId = userMsg.id;
     const targetAssistantId = assistantMsg.id;
     // Keep this conversation out of size trimming while the request is open:
     // switching chats mid-request must not evict the messages written here.
@@ -702,7 +733,7 @@ const AIService = (function() {
         // getResponse also answers with success:false and a content (a unit
         // conversion it cannot make, e.g. "10 km to furlong"). Streaming that
         // content keeps the question and its answer in the conversation; the
-        // old success check fell through to removeFailedMessages, which
+        // old success check fell through to the failure cleanup, which
         // destroyed the user's message (#872).
         if (result.content) {
           const chunks = result.content.split('');
@@ -881,7 +912,7 @@ const AIService = (function() {
           renderConversationUI();
         } else {
           showError(result.error);
-          removeFailedMessages(targetConversationId, targetUserId, targetAssistantId);
+          removeFailedAssistantMessage(targetConversationId, targetAssistantId);
         }
       }
     } catch (error) {
@@ -897,7 +928,7 @@ const AIService = (function() {
       } else {
         showError(getTranslation('aiError'));
         console.error('AI sendMessage error:', error);
-        removeFailedMessages(targetConversationId, targetUserId, targetAssistantId);
+        removeFailedAssistantMessage(targetConversationId, targetAssistantId);
       }
     }
 
@@ -943,6 +974,56 @@ const AIService = (function() {
     }
 
     hideLoading();
+  }
+
+  /**
+   * Re-sends the last user prompt through sendMessage() and replaces the
+   * answer it produced (issue #997).
+   *
+   * Works on a dangling prompt too: after a failed request the prompt is the
+   * last message, so it is re-sent without appending a duplicate copy.
+   * @returns {Promise<boolean>} true when a new request was started.
+   */
+  async function regenerate() {
+    if (AIStore.state.isLoading) {
+      showError(getTranslation('aiRequestInProgress') || 'A request is already in progress. Please wait for it to complete.');
+      return false;
+    }
+
+    const conversation = AIStore.getCurrentConversation();
+    const messages = conversation ? conversation.messages : [];
+    if (!Array.isArray(messages) || messages.length === 0) return false;
+
+    const lastMessage = messages[messages.length - 1];
+    let prompt;
+
+    if (lastMessage.role === 'assistant') {
+      // Nearest user prompt above the last answer (usually the message right
+      // before it); scan instead of slicing -1 in case the answer was cleaned
+      // up or an empty message sits in between.
+      for (let index = messages.length - 2; index >= 0; index--) {
+        if (messages[index].role === 'user') {
+          prompt = messages[index].content;
+          break;
+        }
+      }
+    } else if (lastMessage.role === 'user') {
+      prompt = lastMessage.content;
+    }
+
+    if (typeof prompt !== 'string' || !prompt.trim()) return false;
+
+    if (lastMessage.role === 'assistant') {
+      // Validate first: never drop the answer if there is nothing to re-send.
+      const previousState = AIStore.createSaveSnapshot();
+      messages.splice(messages.length - 1, 1);
+      conversation.updatedAt = Date.now();
+      rerenderOnSaveFailure(AIStore.saveConversations(previousState));
+      renderConversationUI();
+    }
+
+    await sendMessage(prompt, { reuseExistingUserMessage: true });
+    return true;
   }
 
   async function quickSearch(query) {
@@ -995,6 +1076,15 @@ const AIService = (function() {
 
     if (elements.container) {
       elements.container.addEventListener('scroll', AIRenderer.handleScroll);
+
+      elements.container.addEventListener('click', event => {
+        const regenerateBtn = event.target && event.target.closest
+          ? event.target.closest('.ai-regenerate')
+          : null;
+        if (regenerateBtn) {
+          void regenerate();
+        }
+      });
     }
 
     if (elements.newChatBtn) {
@@ -1079,6 +1169,7 @@ const AIService = (function() {
     open: openModal,
     close: closeModal,
     sendMessage,
+    regenerate,
     stopStreaming,
     quickSearch,
     isAvailable,

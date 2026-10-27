@@ -466,6 +466,7 @@ window.i18n.__registerLocale('es', {
   aiMessageTooLong: 'Mensaje demasiado largo (máx. 2000 caracteres)',
   aiMessageInvalidChars: 'El mensaje contiene caracteres de control no válidos',
   aiStopStreaming: 'Detener',
+  aiRegenerate: 'Regenerar',
   aiScrollToBottom: 'Desplazar al fondo',
   aiSaveError: 'No se pudieron guardar las conversaciones. La última acción no se guardó.',
   aiStorageFullError: 'El almacenamiento está lleno. Exporta o elimina conversaciones antiguas para liberar espacio.',

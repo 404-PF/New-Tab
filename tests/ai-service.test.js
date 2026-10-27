@@ -189,10 +189,10 @@ describe('AIService error path length guard (#282)', () => {
     expect(popCalls).toEqual([]);
   });
 
-  it('pops messages normally when the API returns a non-success result and the conversation has 1 pre-existing message', async () => {
-    // Sanity check: with at least 1 pre-existing message, the normal
-    // add-user + add-assistant + pop-2 behaviour applies (length 1 → 3 → 1).
-    // This proves the guard does not over-fire on healthy conversations.
+  it('removes only the failed assistant bubble when the conversation has 1 pre-existing message', async () => {
+    // Sanity check: the failed request adds user + assistant (1 → 3) and the
+    // error path then removes just the assistant bubble, keeping both prompts
+    // so the resent question stays available for Regenerate (#997).
     const conversation = {
       id: 'conv_one',
       title: 'One',
@@ -205,12 +205,12 @@ describe('AIService error path length guard (#282)', () => {
 
     await AIService.sendMessage('hello');
 
-    // Normal flow: push user + assistant (3 total), then pop 2 on error → 1.
-    expect(conversation.messages.length).toBe(1);
+    expect(conversation.messages.length).toBe(2);
     expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'orphan' });
+    expect(conversation.messages[1]).toMatchObject({ role: 'user', content: 'hello' });
   });
 
-  it('pops two messages on API error when conversation has enough messages (control case)', async () => {
+  it('keeps the original and resent prompts on API error (control case)', async () => {
     const conversation = {
       id: 'conv_normal',
       title: 'Normal',
@@ -225,10 +225,11 @@ describe('AIService error path length guard (#282)', () => {
 
     await AIService.sendMessage('hello');
 
-    // sendMessage pushes user + assistant (2), then on API error pops 2.
-    // Net effect: just the original message remains.
-    expect(conversation.messages.length).toBe(1);
+    // sendMessage pushes user + assistant (3), then on API error removes the
+    // assistant only: both prompts remain (#997).
+    expect(conversation.messages.length).toBe(2);
     expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'previous' });
+    expect(conversation.messages[1]).toMatchObject({ role: 'user', content: 'hello' });
   });
 
   it('catch-block error path also leaves messages intact when fewer than 2 exist', async () => {
@@ -615,10 +616,10 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
     expect(saved[0].messages[1].content).toBe('Partial answer');
   });
 
-  it('still removes both messages when a failure delivers no partial content', async () => {
+  it('keeps the user prompt and drops only the empty assistant bubble when a failure delivers no partial content', async () => {
     // Run with web grounding off so the failure does not take the
     // ungrounded retry path (#739): this test checks only the
-    // no-partial-content removal behavior.
+    // no-partial-content cleanup (#997).
     const originalIsWebGroundingEnabled = OpenRouterAPI.isWebGroundingEnabled;
     OpenRouterAPI.isWebGroundingEnabled = () => false;
 
@@ -642,10 +643,11 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
 
       await AIService.sendMessage('hello');
 
-      // No partial content: the user/assistant pair added for this request
-      // is removed as before.
-      expect(conversation.messages).toHaveLength(1);
+      // No partial content: only the assistant bubble created for this
+      // request is removed; both prompts stay for Regenerate.
+      expect(conversation.messages).toHaveLength(2);
       expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'previous' });
+      expect(conversation.messages[1]).toMatchObject({ role: 'user', content: 'hello' });
     } finally {
       OpenRouterAPI.isWebGroundingEnabled = originalIsWebGroundingEnabled;
     }
@@ -907,7 +909,7 @@ describe('AIService error path targets correct conversation (#617)', () => {
     OpenRouterAPI.isWebGroundingEnabled = originalIsWebGroundingEnabled;
   });
 
-  it('removes the failed pair from the original conversation after switching mid-request', async () => {
+  it('removes only the failed assistant bubble from the original conversation after switching mid-request', async () => {
     const convA = {
       id: 'conv_A',
       title: 'A',
@@ -936,9 +938,11 @@ describe('AIService error path targets correct conversation (#617)', () => {
     expect(convB.messages.length).toBe(1);
     resolveRequest({ success: false, error: 'mock API error' });
     await sendPromise;
-    expect(convA.messages.length).toBe(1);
+    // Only the failed assistant bubble is removed: its prompt stays for
+    // Regenerate (#997), and the other conversation is untouched.
+    expect(convA.messages.length).toBe(2);
     expect(convA.messages[0].id).toBe('a0');
-    expect(convA.messages.some(m => m.id === failedUserId)).toBe(false);
+    expect(convA.messages[1].id).toBe(failedUserId);
     expect(convA.messages.some(m => m.id === failedAssistantId)).toBe(false);
     expect(convB.messages.length).toBe(1);
     expect(convB.messages[0].id).toBe('b0');
@@ -969,16 +973,18 @@ describe('AIService error path targets correct conversation (#617)', () => {
     const secondAssistantId = conversation.messages[3].id;
     resolvers[0]({ success: false, error: 'first failed' });
     await firstSend;
-    expect(conversation.messages.length).toBe(2);
-    expect(conversation.messages[0].id).toBe(secondUserId);
-    expect(conversation.messages[1].id).toBe(secondAssistantId);
-    expect(conversation.messages.some(m => m.id === firstUserId)).toBe(false);
+    // Only the first assistant bubble is dropped: the first prompt and the
+    // whole second exchange survive (#997).
+    expect(conversation.messages.length).toBe(3);
+    expect(conversation.messages[0].id).toBe(firstUserId);
+    expect(conversation.messages[1].id).toBe(secondUserId);
+    expect(conversation.messages[2].id).toBe(secondAssistantId);
     expect(conversation.messages.some(m => m.id === firstAssistantId)).toBe(false);
     resolvers[1]({ success: true, content: 'ok' });
     await secondSend;
-    expect(conversation.messages.length).toBe(2);
+    expect(conversation.messages.length).toBe(3);
   });
-  it('catch-block also removes the targeted pair from the original conversation after switch', async () => {
+  it('catch-block also removes only the failed assistant bubble from the original conversation after switch', async () => {
     const convA = {
       id: 'conv_A2',
       title: 'A2',
@@ -1000,12 +1006,16 @@ describe('AIService error path targets correct conversation (#617)', () => {
     const sendPromise = AIService.sendMessage('will throw');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(convA.messages.length).toBe(2);
-    const failedIds = convA.messages.map(m => m.id);
+    const failedUserId = convA.messages[0].id;
+    const failedAssistantId = convA.messages[1].id;
     AIStore.switchConversation(convB.id);
     rejectRequest(new Error('boom'));
     await sendPromise;
-    expect(convA.messages.length).toBe(0);
-    expect(failedIds.every(id => !convA.messages.some(m => m.id === id))).toBe(true);
+    // The prompt the user sent stays in convA; only the assistant bubble is
+    // cleaned up (#997).
+    expect(convA.messages.length).toBe(1);
+    expect(convA.messages[0].id).toBe(failedUserId);
+    expect(convA.messages.some(m => m.id === failedAssistantId)).toBe(false);
     expect(convB.messages.length).toBe(1);
   });
 });
@@ -1141,5 +1151,201 @@ describe('Offline chat Object.prototype key inputs (#864)', () => {
       OfflineMode.getResponse = originalGetResponse;
       window.dispatchEvent(new Event('online'));
     }
+  });
+});
+
+describe('AIService regenerate (#997)', () => {
+  // Run with web grounding off by default so a failed request fails in a
+  // single shot instead of taking the ungrounded retry path (#739).
+  let originalIsWebGroundingEnabled;
+  beforeEach(() => {
+    originalIsWebGroundingEnabled = OpenRouterAPI.isWebGroundingEnabled;
+    OpenRouterAPI.isWebGroundingEnabled = () => false;
+  });
+  afterEach(() => {
+    OpenRouterAPI.isWebGroundingEnabled = originalIsWebGroundingEnabled;
+  });
+
+  const seedRegenerateConversation = (messages) => {
+    const conversation = {
+      id: 'conv_regen',
+      title: 'Regen',
+      messages,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    document.getElementById('ai-chat-error').style.display = 'none';
+    document.querySelector('#ai-chat-container').innerHTML = '';
+    return conversation;
+  };
+
+  it('keeps the user prompt after a failed request instead of deleting the pair', async () => {
+    const conversation = seedRegenerateConversation([]);
+
+    await AIService.sendMessage('What is 2+2?');
+
+    expect(conversation.messages).toHaveLength(1);
+    expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'What is 2+2?' });
+    expect(document.getElementById('ai-chat-error').textContent).toBe('mock API error');
+  });
+
+  it('re-sends the dangling prompt after a failure without duplicating it', async () => {
+    const conversation = seedRegenerateConversation([]);
+
+    await AIService.sendMessage('What is 2+2?');
+    expect(conversation.messages).toHaveLength(1);
+
+    const apiCall = vi.fn().mockResolvedValue({ success: true, content: '4' });
+    OpenRouterAPI.sendMessageStreaming = apiCall;
+
+    const started = await AIService.regenerate();
+    expect(started).toBe(true);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(apiCall.mock.calls[0][0]).toBe('What is 2+2?');
+
+    expect(conversation.messages).toHaveLength(2);
+    expect(conversation.messages.filter(m => m.role === 'user')).toHaveLength(1);
+    expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'What is 2+2?' });
+    expect(conversation.messages[1]).toMatchObject({ role: 'assistant', content: '4', isStreaming: false });
+  });
+
+  it('replaces the last assistant response instead of appending a duplicate exchange', async () => {
+    const conversation = seedRegenerateConversation([
+      { id: 'u1', role: 'user', content: 'Original prompt', timestamp: Date.now() },
+      { id: 'a1', role: 'assistant', content: 'Old answer', timestamp: Date.now(), isStreaming: false }
+    ]);
+    const apiCall = vi.fn().mockResolvedValue({ success: true, content: 'New answer' });
+    OpenRouterAPI.sendMessageStreaming = apiCall;
+
+    expect(await AIService.regenerate()).toBe(true);
+
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(apiCall.mock.calls[0][0]).toBe('Original prompt');
+    // The prompt itself must not be sent back as history
+    expect(apiCall.mock.calls[0][1]).toEqual([]);
+
+    expect(conversation.messages).toHaveLength(2);
+    expect(conversation.messages[0].id).toBe('u1');
+    expect(conversation.messages[1]).toMatchObject({
+      role: 'assistant',
+      content: 'New answer',
+      isStreaming: false
+    });
+    expect(conversation.messages[1].id).not.toBe('a1');
+  });
+
+  it('re-sends through the sendMessage pipeline with the current grounding setting', async () => {
+    try {
+      OpenRouterAPI.isWebGroundingEnabled = () => true;
+      seedRegenerateConversation([
+        { id: 'u1', role: 'user', content: 'Prompt', timestamp: Date.now() },
+        { id: 'a1', role: 'assistant', content: 'Answer', timestamp: Date.now(), isStreaming: false }
+      ]);
+      const groundedCall = vi.fn().mockResolvedValue({ success: true, content: 'A' });
+      OpenRouterAPI.sendMessageStreaming = groundedCall;
+      await AIService.regenerate();
+      expect(groundedCall).toHaveBeenCalledTimes(1);
+      expect(groundedCall.mock.calls[0][4]).toEqual({ grounding: true });
+
+      OpenRouterAPI.isWebGroundingEnabled = () => false;
+      const plainCall = vi.fn().mockResolvedValue({ success: true, content: 'B' });
+      OpenRouterAPI.sendMessageStreaming = plainCall;
+      await AIService.regenerate();
+      expect(plainCall).toHaveBeenCalledTimes(1);
+      expect(plainCall.mock.calls[0][4]).toEqual({ grounding: false });
+    } finally {
+      OpenRouterAPI.isWebGroundingEnabled = originalIsWebGroundingEnabled;
+    }
+  });
+
+  it('does nothing while a request is in progress', async () => {
+    const conversation = seedRegenerateConversation([
+      { id: 'u1', role: 'user', content: 'Prompt', timestamp: Date.now() }
+    ]);
+    AIStore.state.isLoading = true;
+    const apiCall = vi.fn();
+    OpenRouterAPI.sendMessageStreaming = apiCall;
+
+    expect(await AIService.regenerate()).toBe(false);
+    expect(apiCall).not.toHaveBeenCalled();
+    expect(conversation.messages).toHaveLength(1);
+  });
+
+  it('returns false when there is nothing to regenerate', async () => {
+    const conversation = seedRegenerateConversation([]);
+    const apiCall = vi.fn();
+    OpenRouterAPI.sendMessageStreaming = apiCall;
+
+    expect(await AIService.regenerate()).toBe(false);
+    expect(apiCall).not.toHaveBeenCalled();
+    expect(conversation.messages).toHaveLength(0);
+  });
+
+  it('bails out of reuse mode when the prompt is not the last stored message', async () => {
+    const conversation = seedRegenerateConversation([
+      { id: 'u1', role: 'user', content: 'Prompt', timestamp: Date.now() }
+    ]);
+    const apiCall = vi.fn();
+    OpenRouterAPI.sendMessageStreaming = apiCall;
+
+    await AIService.sendMessage('Something else', { reuseExistingUserMessage: true });
+
+    expect(apiCall).not.toHaveBeenCalled();
+    expect(conversation.messages).toHaveLength(1);
+  });
+
+  it('renders a Regenerate button after the last message and re-sends on click', async () => {
+    const conversation = seedRegenerateConversation([
+      { id: 'u1', role: 'user', content: 'Prompt', timestamp: Date.now() },
+      { id: 'a1', role: 'assistant', content: 'Answer', timestamp: Date.now(), isStreaming: false }
+    ]);
+    const container = document.getElementById('ai-chat-container');
+    AIRenderer.renderMessages();
+
+    const button = container.querySelector('.ai-regenerate');
+    expect(button).not.toBeNull();
+    expect(button).toBe(container.lastElementChild);
+    expect(button.type).toBe('button');
+    expect(button.title).toBe('Regenerate');
+    expect(button.getAttribute('aria-label')).toBe('Regenerate');
+    expect(container.querySelector('.ai-message')).not.toBeNull();
+
+    const apiCall = vi.fn().mockResolvedValue({ success: true, content: 'Fresh answer' });
+    OpenRouterAPI.sendMessageStreaming = apiCall;
+
+    button.click();
+    await vi.waitFor(() => {
+      expect(conversation.messages.at(-1)).toMatchObject({
+        role: 'assistant',
+        content: 'Fresh answer'
+      });
+    });
+
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(conversation.messages.filter(m => m.role === 'user')).toHaveLength(1);
+    expect(container.querySelector('.ai-regenerate')).not.toBeNull();
+    expect(container.lastElementChild.classList.contains('ai-regenerate')).toBe(true);
+  });
+
+  it('hides the Regenerate button while a request is in flight', async () => {
+    seedRegenerateConversation([
+      { id: 'u1', role: 'user', content: 'Prompt', timestamp: Date.now() },
+      { id: 'a1', role: 'assistant', content: 'Answer', timestamp: Date.now(), isStreaming: false }
+    ]);
+    const container = document.getElementById('ai-chat-container');
+    AIRenderer.renderMessages();
+    expect(container.querySelector('.ai-regenerate')).not.toBeNull();
+
+    let resolveRequest;
+    OpenRouterAPI.sendMessageStreaming = () => new Promise(resolve => { resolveRequest = resolve; });
+    const sendPromise = AIService.sendMessage('Follow-up');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(container.querySelector('.ai-regenerate')).toBeNull();
+
+    resolveRequest({ success: true, content: 'Done' });
+    await sendPromise;
+    expect(container.querySelector('.ai-regenerate')).not.toBeNull();
   });
 });

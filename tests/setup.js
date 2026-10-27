@@ -398,6 +398,7 @@ globalThis.window.i18n = {
       aiSources: 'Sources',
       aiSearchingWeb: 'Searching the web…',
       aiGroundingFallback: 'Web search is unavailable. Answering without live web data.',
+      aiRegenerate: 'Regenerate',
       editTodo: 'Edit Todo',
       todoEditTitle: 'Edit Todo',
       todoEditText: 'Text',

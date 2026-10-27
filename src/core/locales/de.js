@@ -466,6 +466,7 @@ window.i18n.__registerLocale('de', {
   aiMessageTooLong: 'Nachricht zu lang (max. 2000 Zeichen)',
   aiMessageInvalidChars: 'Nachricht enthält ungültige Steuerzeichen',
   aiStopStreaming: 'Stopp',
+  aiRegenerate: 'Neu generieren',
   aiScrollToBottom: 'Nach unten scrollen',
   aiSaveError: 'Unterhaltungen konnten nicht gespeichert werden. Ihre letzte Aktion wurde nicht gespeichert.',
   aiStorageFullError: 'Speicher ist voll. Exportiere oder lösche alte Unterhaltungen, um Platz freizugeben.',

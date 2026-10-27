@@ -466,6 +466,7 @@ window.i18n.__registerLocale('fr', {
   aiMessageTooLong: 'Message trop long (max 2000 caractères)',
   aiMessageInvalidChars: 'Le message contient des caractères de contrôle invalides',
   aiStopStreaming: 'Arrêter',
+  aiRegenerate: 'Régénérer',
   aiScrollToBottom: 'Descendre en bas',
   aiSaveError: 'Impossible d’enregistrer les conversations. Votre dernière action n’a pas été enregistrée.',
   aiStorageFullError: 'Le stockage est plein. Exportez ou supprimez d’anciennes conversations pour libérer de l’espace.',
