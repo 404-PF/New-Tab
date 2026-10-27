@@ -48,8 +48,12 @@ describe('Shared slim scrollbars (#989)', () => {
   });
 
   it('keeps the standard and WebKit implementations in mutually exclusive @supports branches', () => {
-    const notWebkitIndex = CORE_CSS.indexOf('@supports not selector(::-webkit-scrollbar)');
-    const webkitIndex = CORE_CSS.indexOf('@supports selector(::-webkit-scrollbar)');
+    // Probe the thumb pseudo-element: Firefox 153+ evaluates
+    // selector(::-webkit-scrollbar) as true for compatibility but does
+    // not implement thumb styling, so the standard branch must key off
+    // ::-webkit-scrollbar-thumb instead.
+    const notWebkitIndex = CORE_CSS.indexOf('@supports not selector(::-webkit-scrollbar-thumb)');
+    const webkitIndex = CORE_CSS.indexOf('@supports selector(::-webkit-scrollbar-thumb)');
 
     expect(notWebkitIndex, 'Firefox @supports branch in css/core.css').toBeGreaterThan(-1);
     expect(webkitIndex, 'WebKit @supports branch in css/core.css').toBeGreaterThan(notWebkitIndex);
