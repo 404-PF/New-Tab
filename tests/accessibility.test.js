@@ -1,4 +1,5 @@
 import { injectScript } from './helpers/inject-script.js';
+import { withWindowOverride } from './helpers/window-override.js';
 
 beforeAll(() => {
   injectScript('src/features/accessibility.js');
@@ -418,32 +419,34 @@ describe('Accessibility - app grid keyboard interaction', () => {
     expect(document.activeElement).toBe(cells[3]);
   });
 
-  it('moves a hideable built-in into a folder with the keyboard (#1010)', () => {
+  const createAppTile = (grid, id, name, className) => {
+    const tile = document.createElement('a');
+    tile.id = id;
+    tile.href = '#';
+    tile.className = className;
+    tile.innerHTML = '<span class="app-name">' + name + '</span>';
+    grid.appendChild(tile);
+    return tile;
+  };
+
+  const setupBuiltInGrid = (order) => {
     const grid = document.getElementById('app-grid');
     grid.innerHTML = '';
-    window.AppGridState.getOrder = vi.fn(() => ['ai-app', 'folder-1']);
+    window.AppGridState.getOrder = vi.fn(() => order);
     window.AppGridState.canHideDefaultApp = (id) => id !== 'settings-app';
+    return grid;
+  };
+
+  it('moves a hideable built-in into a folder with the keyboard (#1010)', () => {
+    const grid = setupBuiltInGrid(['ai-app', 'folder-1']);
     const removeAppIcon = vi.fn();
-    const originalRemoveAppIcon = window.removeAppIcon;
-    window.removeAppIcon = removeAppIcon;
 
-    const ai = document.createElement('a');
-    ai.id = 'ai-app';
-    ai.href = '#';
-    ai.className = 'app-icon default-app';
-    ai.innerHTML = '<span class="app-name">AI</span>';
-    grid.appendChild(ai);
-
-    const folder = document.createElement('a');
-    folder.id = 'folder-1';
-    folder.href = '#';
-    folder.className = 'app-icon folder-icon';
-    folder.innerHTML = '<span class="app-name">Tools</span>';
-    grid.appendChild(folder);
+    const ai = createAppTile(grid, 'ai-app', 'AI', 'app-icon default-app');
+    const folder = createAppTile(grid, 'folder-1', 'Tools', 'app-icon folder-icon');
 
     window.Accessibility.refreshGrid();
 
-    try {
+    withWindowOverride('removeAppIcon', removeAppIcon, () => {
       ai.focus();
       pressKey(ai, ' ');
       expect(ai.getAttribute('aria-grabbed')).toBe('true');
@@ -453,34 +456,14 @@ describe('Accessibility - app grid keyboard interaction', () => {
       expect(window.AppGridState.moveAppToFolder).toHaveBeenCalledWith('folder-1', 'ai-app');
       expect(removeAppIcon).toHaveBeenCalledExactlyOnceWith('ai-app');
       expect(ai.getAttribute('aria-grabbed')).toBe('false');
-    } finally {
-      if (originalRemoveAppIcon === undefined) {
-        delete window.removeAppIcon;
-      } else {
-        window.removeAppIcon = originalRemoveAppIcon;
-      }
-    }
+    });
   });
 
   it('keeps Settings out of the keyboard folder-move path (#1010)', () => {
-    const grid = document.getElementById('app-grid');
-    grid.innerHTML = '';
-    window.AppGridState.getOrder = vi.fn(() => ['settings-app', 'folder-1']);
-    window.AppGridState.canHideDefaultApp = (id) => id !== 'settings-app';
+    const grid = setupBuiltInGrid(['settings-app', 'folder-1']);
 
-    const settings = document.createElement('a');
-    settings.id = 'settings-app';
-    settings.href = '#';
-    settings.className = 'app-icon default-app';
-    settings.innerHTML = '<span class="app-name">Settings</span>';
-    grid.appendChild(settings);
-
-    const folder = document.createElement('a');
-    folder.id = 'folder-1';
-    folder.href = '#';
-    folder.className = 'app-icon folder-icon';
-    folder.innerHTML = '<span class="app-name">Tools</span>';
-    grid.appendChild(folder);
+    const settings = createAppTile(grid, 'settings-app', 'Settings', 'app-icon default-app');
+    const folder = createAppTile(grid, 'folder-1', 'Tools', 'app-icon folder-icon');
 
     window.Accessibility.refreshGrid();
 
@@ -495,23 +478,10 @@ describe('Accessibility - app grid keyboard interaction', () => {
   });
 
   it('arms the keyboard context menu for hideable built-ins but not Settings (#1010)', () => {
-    const grid = document.getElementById('app-grid');
-    grid.innerHTML = '';
-    window.AppGridState.canHideDefaultApp = (id) => id !== 'settings-app';
+    const grid = setupBuiltInGrid(['ai-app', 'settings-app']);
 
-    const ai = document.createElement('a');
-    ai.id = 'ai-app';
-    ai.href = '#';
-    ai.className = 'app-icon default-app';
-    ai.innerHTML = '<span class="app-name">AI</span>';
-    grid.appendChild(ai);
-
-    const settings = document.createElement('a');
-    settings.id = 'settings-app';
-    settings.href = '#';
-    settings.className = 'app-icon default-app';
-    settings.innerHTML = '<span class="app-name">Settings</span>';
-    grid.appendChild(settings);
+    const ai = createAppTile(grid, 'ai-app', 'AI', 'app-icon default-app');
+    const settings = createAppTile(grid, 'settings-app', 'Settings', 'app-icon default-app');
 
     window.Accessibility.refreshGrid();
 

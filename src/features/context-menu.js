@@ -186,8 +186,7 @@ function setContextMenuItems(trigger) {
     appItems.forEach(el => el.style.display = 'block');
   } else if (trigger === 'default-app') {
     defaultAppItems.forEach(el => el.style.display = 'block');
-    // Hideable built-ins also get Move to Folder; both apply because a
-    // hidden built-in stays listed in folder.apps for restore (issue #1010).
+    // Visible hideable built-ins can also be moved into folders (issue #1010).
     moveToFolderItem.style.display = 'block';
   } else if (trigger === 'folder-app') {
     folderAppItems.forEach(el => el.style.display = 'block');

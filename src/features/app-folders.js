@@ -333,6 +333,7 @@
         const icon = e.target.closest('.app-icon');
         if (!icon || !icon.id.startsWith('popup-')) return;
         if (typeof window.openInternalApp === 'function') {
+          if (window.AppFolders) window.AppFolders.closeFolderPopup();
           window.openInternalApp(icon.id.slice('popup-'.length), e);
         }
       });

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
+import { withWindowOverride } from './helpers/window-override.js';
 
 const createElement = (tag, id) => {
   const element = document.createElement(tag);
@@ -425,28 +426,23 @@ describe('AppFolders UI', () => {
         event.preventDefault();
         return true;
       });
-      const originalOpenInternalApp = window.openInternalApp;
-      window.openInternalApp = openInternalApp;
 
       try {
-        const folder = AppGridState.createFolder('Internal', ['settings-app']);
-        window.AppFolders.openFolderPopup(folder.id);
+        withWindowOverride('openInternalApp', openInternalApp, () => {
+          const folder = AppGridState.createFolder('Internal', ['settings-app']);
+          window.AppFolders.openFolderPopup(folder.id);
 
-        const tile = document.getElementById('popup-settings-app');
-        expect(tile).not.toBeNull();
-        expect(tile.className).toContain('default-app');
+          const tile = document.getElementById('popup-settings-app');
+          expect(tile).not.toBeNull();
+          expect(tile.className).toContain('default-app');
 
-        const click = new MouseEvent('click', { bubbles: true, cancelable: true });
-        tile.dispatchEvent(click);
+          const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+          tile.dispatchEvent(click);
 
-        expect(openInternalApp).toHaveBeenCalledExactlyOnceWith('settings-app', click);
-        expect(click.defaultPrevented).toBe(true);
+          expect(openInternalApp).toHaveBeenCalledExactlyOnceWith('settings-app', click);
+          expect(click.defaultPrevented).toBe(true);
+        });
       } finally {
-        if (originalOpenInternalApp === undefined) {
-          delete window.openInternalApp;
-        } else {
-          window.openInternalApp = originalOpenInternalApp;
-        }
         window.AppFolders.closeFolderPopup();
       }
     });
@@ -460,28 +456,23 @@ describe('AppFolders UI', () => {
       });
       const folder = AppGridState.createFolder('Customs', ['popup-pass-through']);
       const openInternalApp = vi.fn(() => false);
-      const originalOpenInternalApp = window.openInternalApp;
-      window.openInternalApp = openInternalApp;
 
       try {
-        window.AppFolders.openFolderPopup(folder.id);
+        withWindowOverride('openInternalApp', openInternalApp, () => {
+          window.AppFolders.openFolderPopup(folder.id);
 
-        const tile = document.getElementById('popup-popup-pass-through');
-        expect(tile).not.toBeNull();
+          const tile = document.getElementById('popup-popup-pass-through');
+          expect(tile).not.toBeNull();
 
-        const click = new MouseEvent('click', { bubbles: true, cancelable: true });
-        tile.dispatchEvent(click);
+          const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+          tile.dispatchEvent(click);
 
-        // The launcher is consulted but declines non-internal ids, so the
-        // anchor keeps its default navigation behavior.
-        expect(openInternalApp).toHaveBeenCalledExactlyOnceWith('popup-pass-through', click);
-        expect(click.defaultPrevented).toBe(false);
+          // The launcher is consulted but declines non-internal ids, so the
+          // anchor keeps its default navigation behavior.
+          expect(openInternalApp).toHaveBeenCalledExactlyOnceWith('popup-pass-through', click);
+          expect(click.defaultPrevented).toBe(false);
+        });
       } finally {
-        if (originalOpenInternalApp === undefined) {
-          delete window.openInternalApp;
-        } else {
-          window.openInternalApp = originalOpenInternalApp;
-        }
         window.AppFolders.closeFolderPopup();
       }
     });

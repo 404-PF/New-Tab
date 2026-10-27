@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
+import { withWindowOverride } from './helpers/window-override.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
@@ -258,10 +259,8 @@ describe('app manager', () => {
 
   it('launches built-in internal apps through the shared launcher (#1010)', () => {
     const aiOpen = vi.fn();
-    const originalAIService = window.AIService;
-    window.AIService = { open: aiOpen };
 
-    try {
+    withWindowOverride('AIService', { open: aiOpen }, () => {
       const aiClick = new MouseEvent('click', { bubbles: true, cancelable: true });
       expect(window.openInternalApp('ai-app', aiClick)).toBe(true);
       expect(aiClick.defaultPrevented).toBe(true);
@@ -276,23 +275,15 @@ describe('app manager', () => {
       // Non-internal ids (custom apps, Feedback) keep normal link navigation.
       expect(window.openInternalApp('feedback-app')).toBe(false);
       expect(window.openInternalApp('custom-nope')).toBe(false);
-    } finally {
-      if (originalAIService === undefined) {
-        delete window.AIService;
-      } else {
-        window.AIService = originalAIService;
-      }
-    }
+    });
   });
 
   it('binds grid tile clicks to the shared launcher and survives re-attachment (#1010)', () => {
     window.renderAllApps();
 
     const weatherOpen = vi.fn();
-    const originalWeatherApp = window.WeatherApp;
-    window.WeatherApp = { open: weatherOpen };
 
-    try {
+    withWindowOverride('WeatherApp', { open: weatherOpen }, () => {
       document.getElementById('weather-app').click();
       expect(weatherOpen).toHaveBeenCalledOnce();
 
@@ -300,13 +291,7 @@ describe('app manager', () => {
       window.renderAllApps();
       document.getElementById('weather-app').click();
       expect(weatherOpen).toHaveBeenCalledTimes(2);
-    } finally {
-      if (originalWeatherApp === undefined) {
-        delete window.WeatherApp;
-      } else {
-        window.WeatherApp = originalWeatherApp;
-      }
-    }
+    });
   });
 });
 

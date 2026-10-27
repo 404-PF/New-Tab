@@ -1,11 +1,36 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
+import { withWindowOverride } from './helpers/window-override.js';
 
 const createElement = (tag, id) => {
   const element = document.createElement(tag);
   element.id = id;
   document.body.appendChild(element);
   return element;
+};
+
+// Shared DOM stubs for the rename / change-thumbnail / delete modals that
+// src/features/context-menu.js binds to on load.
+const MODAL_STUBS = [
+  ['div', 'rename-app-modal'],
+  ['input', 'rename-app-input'],
+  ['button', 'rename-app-cancel'],
+  ['button', 'rename-app-confirm'],
+  ['div', 'thumbnail-app-modal'],
+  ['input', 'thumbnail-app-input'],
+  ['button', 'thumbnail-app-cancel'],
+  ['button', 'thumbnail-app-confirm'],
+  ['div', 'thumbnail-preview-icon'],
+  ['span', 'thumbnail-preview-name'],
+  ['div', 'delete-app-modal'],
+  ['button', 'delete-app-cancel'],
+  ['button', 'delete-app-confirm'],
+  ['div', 'delete-preview-icon'],
+  ['span', 'delete-preview-name']
+];
+
+const createModalStubs = (create) => {
+  MODAL_STUBS.forEach(([tag, id]) => create(tag, id));
 };
 
 // The rename and change-thumbnail handlers focus their input on a 100ms
@@ -38,23 +63,7 @@ describe('context menu previews', () => {
       deleteApp: vi.fn()
     };
 
-    createElement('div', 'rename-app-modal');
-    createElement('input', 'rename-app-input');
-    createElement('button', 'rename-app-cancel');
-    createElement('button', 'rename-app-confirm');
-
-    createElement('div', 'thumbnail-app-modal');
-    createElement('input', 'thumbnail-app-input');
-    createElement('button', 'thumbnail-app-cancel');
-    createElement('button', 'thumbnail-app-confirm');
-    createElement('div', 'thumbnail-preview-icon');
-    createElement('span', 'thumbnail-preview-name');
-
-    createElement('div', 'delete-app-modal');
-    createElement('button', 'delete-app-cancel');
-    createElement('button', 'delete-app-confirm');
-    createElement('div', 'delete-preview-icon');
-    createElement('span', 'delete-preview-name');
+    createModalStubs(createElement);
 
     const appIcon = createElement('a', 'app-1');
     appIcon.className = 'app-icon custom-app';
@@ -410,21 +419,7 @@ describe('built-in apps in folders (#1010)', () => {
     injectScript('src/core/dom-ready.js');
     removeExistingMenu();
 
-    createElementIfMissing('div', 'rename-app-modal');
-    createElementIfMissing('input', 'rename-app-input');
-    createElementIfMissing('button', 'rename-app-cancel');
-    createElementIfMissing('button', 'rename-app-confirm');
-    createElementIfMissing('div', 'thumbnail-app-modal');
-    createElementIfMissing('input', 'thumbnail-app-input');
-    createElementIfMissing('button', 'thumbnail-app-cancel');
-    createElementIfMissing('button', 'thumbnail-app-confirm');
-    createElementIfMissing('div', 'thumbnail-preview-icon');
-    createElementIfMissing('span', 'thumbnail-preview-name');
-    createElementIfMissing('div', 'delete-app-modal');
-    createElementIfMissing('button', 'delete-app-cancel');
-    createElementIfMissing('button', 'delete-app-confirm');
-    createElementIfMissing('div', 'delete-preview-icon');
-    createElementIfMissing('span', 'delete-preview-name');
+    createModalStubs(createElementIfMissing);
 
     window.AppGridState = {
       getCustomApps: () => [],
@@ -445,10 +440,8 @@ describe('built-in apps in folders (#1010)', () => {
 
   it('offers Move to Folder alongside Hide for hideable built-ins', () => {
     const showMoveToFolderSelector = vi.fn();
-    const originalAppFolders = window.AppFolders;
-    window.AppFolders = { showMoveToFolderSelector };
 
-    try {
+    withWindowOverride('AppFolders', { showMoveToFolderSelector }, () => {
       openContextMenu(document.getElementById('ai-app'));
 
       expect(document.getElementById('hide-default-app').style.display).toBe('block');
@@ -458,9 +451,7 @@ describe('built-in apps in folders (#1010)', () => {
 
       expect(showMoveToFolderSelector).toHaveBeenCalledExactlyOnceWith('ai-app');
       expect(document.getElementById('app-context-menu').style.display).toBe('none');
-    } finally {
-      window.AppFolders = originalAppFolders;
-    }
+    });
   });
 
   it('keeps Settings free of hide and folder actions', () => {
@@ -486,59 +477,50 @@ describe('built-in apps in folders (#1010)', () => {
     const renderFolderAppsInPopup = vi.fn();
     const refreshFolderUI = vi.fn();
     const addAppIcon = vi.fn();
-    const originalAppFolders = window.AppFolders;
-    const originalAddAppIcon = window.addAppIcon;
-    window.AppFolders = {
-      currentFolderId: 'folder-1',
-      renderFolderAppsInPopup,
-      refreshFolderUI
-    };
-    window.addAppIcon = addAppIcon;
 
     try {
-      openContextMenu(popupTile);
+      withWindowOverride('AppFolders', {
+        currentFolderId: 'folder-1',
+        renderFolderAppsInPopup,
+        refreshFolderUI
+      }, () => {
+        withWindowOverride('addAppIcon', addAppIcon, () => {
+          openContextMenu(popupTile);
 
-      expect(document.getElementById('remove-from-folder').style.display).toBe('block');
-      expect(document.getElementById('move-to-folder').style.display).toBe('none');
-      expect(document.getElementById('rename-app').style.display).toBe('none');
+          expect(document.getElementById('remove-from-folder').style.display).toBe('block');
+          expect(document.getElementById('move-to-folder').style.display).toBe('none');
+          expect(document.getElementById('rename-app').style.display).toBe('none');
 
-      document.getElementById('remove-from-folder').click();
+          document.getElementById('remove-from-folder').click();
 
-      // The popup- prefix is stripped so the real app id reaches the state layer.
-      expect(window.AppGridState.removeAppFromFolder)
-        .toHaveBeenCalledExactlyOnceWith('folder-1', 'weather-app');
-      expect(renderFolderAppsInPopup).toHaveBeenCalledOnce();
-      expect(refreshFolderUI).toHaveBeenCalledExactlyOnceWith('folder-1');
-      expect(addAppIcon).toHaveBeenCalledExactlyOnceWith('weather-app');
-      expect(document.getElementById('app-context-menu').style.display).toBe('none');
+          // The popup- prefix is stripped so the real app id reaches the state layer.
+          expect(window.AppGridState.removeAppFromFolder)
+            .toHaveBeenCalledExactlyOnceWith('folder-1', 'weather-app');
+          expect(renderFolderAppsInPopup).toHaveBeenCalledOnce();
+          expect(refreshFolderUI).toHaveBeenCalledExactlyOnceWith('folder-1');
+          expect(addAppIcon).toHaveBeenCalledExactlyOnceWith('weather-app');
+          expect(document.getElementById('app-context-menu').style.display).toBe('none');
+        });
+      });
     } finally {
-      window.AppFolders = originalAppFolders;
-      if (originalAddAppIcon === undefined) {
-        delete window.addAppIcon;
-      } else {
-        window.addAppIcon = originalAddAppIcon;
-      }
       popupApps.remove();
     }
   });
 
   it('ignores Move to Folder when the menu was opened from the grid background', () => {
     const showMoveToFolderSelector = vi.fn();
-    const originalAppFolders = window.AppFolders;
-    window.AppFolders = { showMoveToFolderSelector };
 
-    try {
+    withWindowOverride('AppFolders', { showMoveToFolderSelector }, () => {
       let grid = document.getElementById('app-grid');
       if (!grid) grid = createElement('div', 'app-grid');
 
       openContextMenu(grid);
       expect(document.getElementById('create-folder').style.display).toBe('block');
+      expect(document.getElementById('move-to-folder').style.display).toBe('none');
 
       document.getElementById('move-to-folder').click();
 
       expect(showMoveToFolderSelector).not.toHaveBeenCalled();
-    } finally {
-      window.AppFolders = originalAppFolders;
-    }
+    });
   });
 });
