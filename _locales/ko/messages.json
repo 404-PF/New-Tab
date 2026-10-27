@@ -596,23 +596,23 @@
   },
   "gamesDpad": {
     "message": "방향 패드",
-    "description": "화면 방향 패드의 접근성 이름"
+    "description": "Accessible label for the on-screen direction pad"
   },
   "gamesDpadUp": {
     "message": "위",
-    "description": "방향 패드: 위"
+    "description": "On-screen direction pad: up"
   },
   "gamesDpadDown": {
     "message": "아래",
-    "description": "방향 패드: 아래"
+    "description": "On-screen direction pad: down"
   },
   "gamesDpadLeft": {
     "message": "왼쪽",
-    "description": "방향 패드: 왼쪽"
+    "description": "On-screen direction pad: left"
   },
   "gamesDpadRight": {
     "message": "오른쪽",
-    "description": "방향 패드: 오른쪽"
+    "description": "On-screen direction pad: right"
   },
   "searchProviders": {
     "message": "검색 공급자",

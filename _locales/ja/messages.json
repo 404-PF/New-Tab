@@ -596,23 +596,23 @@
   },
   "gamesDpad": {
     "message": "方向パッド",
-    "description": "画面上の方向パッドのアクセシブル名"
+    "description": "Accessible label for the on-screen direction pad"
   },
   "gamesDpadUp": {
     "message": "上",
-    "description": "方向パッド：上"
+    "description": "On-screen direction pad: up"
   },
   "gamesDpadDown": {
     "message": "下",
-    "description": "方向パッド：下"
+    "description": "On-screen direction pad: down"
   },
   "gamesDpadLeft": {
     "message": "左",
-    "description": "方向パッド：左"
+    "description": "On-screen direction pad: left"
   },
   "gamesDpadRight": {
     "message": "右",
-    "description": "方向パッド：右"
+    "description": "On-screen direction pad: right"
   },
   "searchProviders": {
     "message": "検索プロバイダー",

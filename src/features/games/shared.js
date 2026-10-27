@@ -319,11 +319,16 @@
     let anchorY = 0;
     let tracking = false;
     let moved = false;
+    let activePointerId = null;
 
     function onPointerDown(e) {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
+      // A second finger must not hijack the gesture: the anchor and the
+      // tracked pointer stay with the first one (#1019 review).
+      if (tracking) return;
       tracking = true;
       moved = false;
+      activePointerId = e.pointerId;
       anchorX = e.clientX;
       anchorY = e.clientY;
       if (typeof canvas.setPointerCapture === 'function') {
@@ -333,6 +338,7 @@
 
     function onPointerMove(e) {
       if (!tracking) return;
+      if (activePointerId !== null && e.pointerId !== undefined && e.pointerId !== activePointerId) return;
       const dx = e.clientX - anchorX;
       const dy = e.clientY - anchorY;
       if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
@@ -348,11 +354,16 @@
 
     function onPointerEnd(e) {
       if (!tracking) return;
+      if (activePointerId !== null && e.pointerId !== undefined && e.pointerId !== activePointerId) return;
       tracking = false;
+      activePointerId = null;
       if (typeof canvas.releasePointerCapture === 'function' && e && e.pointerId !== undefined) {
         try { canvas.releasePointerCapture(e.pointerId); } catch (_err) { /* ignore */ }
       }
-      if (!moved && onTap) onTap();
+      // Only a deliberate pointerup counts as a tap; a pointercancel (the
+      // browser taking over for scroll/zoom) must never restart a finished
+      // run through onTap (#1019 review).
+      if (!moved && onTap && e && e.type === 'pointerup') onTap();
     }
 
     canvas.addEventListener('pointerdown', onPointerDown);
@@ -367,6 +378,7 @@
         canvas.removeEventListener('pointerup', onPointerEnd);
         canvas.removeEventListener('pointercancel', onPointerEnd);
         tracking = false;
+        activePointerId = null;
       }
     };
   };
@@ -400,6 +412,9 @@
       button.setAttribute('aria-label', window.gamesHelpers.tr(spec.key));
 
       function onPointerDown(e) {
+        // Same primary-button rule as the swipe helper: a right- or
+        // middle-click must not steer (#1019 review).
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
         e.preventDefault();
         onDirection(spec.dir);
       }

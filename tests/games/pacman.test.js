@@ -802,8 +802,19 @@ describe('Pac-Man pointer steering and D-pad (#1019)', () => {
 
     const canvas = container.querySelector('.games-pacman-canvas');
     const upBtn = container.querySelector('.games-dpad-up');
+    const canvasRemovals = vi.spyOn(canvas, 'removeEventListener');
+    const buttonRemovals = vi.spyOn(upBtn, 'removeEventListener');
 
     getGame().destroy();
+    // Listener cleanup is the real signal: stale handlers would still
+    // return harmlessly, so a no-throw dispatch alone proves nothing.
+    expect(canvasRemovals).toHaveBeenCalledWith('pointerdown', expect.any(Function));
+    expect(canvasRemovals).toHaveBeenCalledWith('pointermove', expect.any(Function));
+    expect(canvasRemovals).toHaveBeenCalledWith('pointerup', expect.any(Function));
+    expect(canvasRemovals).toHaveBeenCalledWith('pointercancel', expect.any(Function));
+    expect(buttonRemovals).toHaveBeenCalledWith('pointerdown', expect.any(Function));
+    expect(buttonRemovals).toHaveBeenCalledWith('click', expect.any(Function));
+
     // The stage (canvas + pad) is torn down with the container; dispatching at
     // the detached nodes must not throw or resurrect game state.
     expect(() => {
@@ -811,7 +822,10 @@ describe('Pac-Man pointer steering and D-pad (#1019)', () => {
       canvas.dispatchEvent(pointer('pointermove', 150, 100));
       upBtn.dispatchEvent(pointer('pointerdown', 0, 0));
     }).not.toThrow();
+    expect(window.__pacmanTest.getState().started).toBe(false);
 
+    canvasRemovals.mockRestore();
+    buttonRemovals.mockRestore();
     container.remove();
   });
 });

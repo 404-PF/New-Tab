@@ -596,23 +596,23 @@
   },
   "gamesDpad": {
     "message": "Cruzeta direcional",
-    "description": "Nome acessível da cruzeta na tela"
+    "description": "Accessible label for the on-screen direction pad"
   },
   "gamesDpadUp": {
     "message": "Cima",
-    "description": "Cruzeta na tela: cima"
+    "description": "On-screen direction pad: up"
   },
   "gamesDpadDown": {
     "message": "Baixo",
-    "description": "Cruzeta na tela: baixo"
+    "description": "On-screen direction pad: down"
   },
   "gamesDpadLeft": {
     "message": "Esquerda",
-    "description": "Cruzeta na tela: esquerda"
+    "description": "On-screen direction pad: left"
   },
   "gamesDpadRight": {
     "message": "Direita",
-    "description": "Cruzeta na tela: direita"
+    "description": "On-screen direction pad: right"
   },
   "searchProviders": {
     "message": "Provedores de pesquisa",

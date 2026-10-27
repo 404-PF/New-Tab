@@ -16,8 +16,19 @@ beforeEach(() => {
 
 // jsdom has no PointerEvent constructor, so pointer gestures are dispatched
 // as MouseEvent with pointer event types (listeners match on type only).
-function pointer(type, x, y) {
-  return new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+// MouseEvent lacks pointerId, so it is defined on the event when provided.
+function pointer(type, x, y, extra) {
+  const e = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX: x,
+    clientY: y,
+    ...extra
+  });
+  if (extra && extra.pointerId !== undefined) {
+    Object.defineProperty(e, 'pointerId', { value: extra.pointerId });
+  }
+  return e;
 }
 
 describe('Snake Game', () => {
@@ -747,15 +758,23 @@ describe('Snake pointer steering and D-pad (#1019)', () => {
     container.remove();
   });
 
-  it('keeps steering when the gesture ends outside the canvas (pointer capture)', () => {
+  it('captures the pointer on down and releases it on end', () => {
     const { container, game } = startSnake();
     const canvas = container.querySelector('.games-snake-canvas');
+    const captured = [];
+    canvas.setPointerCapture = (id) => { captured.push(id); };
+    canvas.releasePointerCapture = vi.fn();
 
-    canvas.dispatchEvent(pointer('pointerdown', 150, 150));
+    // Capture on down is what keeps a real gesture alive after the finger
+    // leaves the canvas; jsdom cannot retarget events, so assert the
+    // capture contract the browser relies on and that the turn from the
+    // gesture stays queued throughout.
+    canvas.dispatchEvent(pointer('pointerdown', 150, 150, { pointerId: 7 }));
+    expect(captured).toEqual([7]);
     canvas.dispatchEvent(pointer('pointermove', 150, 100));
-    // Finger leaves the board before lifting; capture keeps the turn queued.
-    document.dispatchEvent(pointer('pointerup', 400, 10));
-
+    expect(game.serialize().directionQueue).toContain('up');
+    canvas.dispatchEvent(pointer('pointerup', 400, 10, { pointerId: 7 }));
+    expect(canvas.releasePointerCapture).toHaveBeenCalledWith(7);
     expect(game.serialize().directionQueue).toContain('up');
 
     game.destroy();
@@ -819,8 +838,20 @@ describe('Snake pointer steering and D-pad (#1019)', () => {
     const canvas = container.querySelector('.games-snake-canvas');
     const pad = container.querySelector('.games-dpad');
     const upBtn = pad.querySelector('.games-dpad-up');
+    const canvasRemovals = vi.spyOn(canvas, 'removeEventListener');
+    const buttonRemovals = vi.spyOn(upBtn, 'removeEventListener');
 
     game.destroy();
+    // Listener cleanup is the real signal: stale handlers would still
+    // return harmlessly, so a no-throw dispatch alone proves nothing.
+    expect(canvasRemovals).toHaveBeenCalledWith('pointerdown', expect.any(Function));
+    expect(canvasRemovals).toHaveBeenCalledWith('pointermove', expect.any(Function));
+    expect(canvasRemovals).toHaveBeenCalledWith('pointerup', expect.any(Function));
+    expect(canvasRemovals).toHaveBeenCalledWith('pointercancel', expect.any(Function));
+    expect(buttonRemovals).toHaveBeenCalledWith('pointerdown', expect.any(Function));
+    expect(buttonRemovals).toHaveBeenCalledWith('click', expect.any(Function));
+    expect(container.querySelector('.games-dpad')).toBeNull();
+
     // The stage (canvas + pad) is torn down with the container; dispatching at
     // the detached nodes must not throw or resurrect game state.
     expect(() => {
@@ -828,7 +859,10 @@ describe('Snake pointer steering and D-pad (#1019)', () => {
       canvas.dispatchEvent(pointer('pointermove', 150, 100));
       upBtn.dispatchEvent(pointer('pointerdown', 0, 0));
     }).not.toThrow();
+    expect(window.__snakeReady.isStarted()).toBe(false);
 
+    canvasRemovals.mockRestore();
+    buttonRemovals.mockRestore();
     container.remove();
   });
 
@@ -843,7 +877,36 @@ describe('Snake pointer steering and D-pad (#1019)', () => {
     canvas.dispatchEvent(pointer('pointermove', 150, 100));
     expect(window.__snakeReady.isStarted()).toBe(false);
 
+    // The ignored swipes left nothing behind: starting the run afterwards
+    // still shows an empty turn queue.
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__snakeReady.isStarted()).toBe(true);
+    expect(game.serialize().directionQueue).toEqual([]);
+
     game.destroy();
     container.remove();
+  });
+
+  it('leaves Space alone while a D-pad button is focused so it stays activatable', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startSnake());
+      const headBefore = game.serialize().snake[0];
+      const upBtn = container.querySelector('.games-dpad-up');
+      upBtn.focus();
+      const e = new KeyboardEvent('keydown', { key: ' ', code: 'Space', cancelable: true, bubbles: true });
+      upBtn.dispatchEvent(e);
+
+      expect(e.defaultPrevented).toBe(false);
+      // Space went to the button, not the pause toggle: the run keeps ticking.
+      vi.advanceTimersByTime(300);
+      expect(game.serialize().snake[0]).not.toEqual(headBefore);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
   });
 });

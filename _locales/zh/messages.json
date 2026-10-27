@@ -596,23 +596,23 @@
   },
   "gamesDpad": {
     "message": "方向键",
-    "description": "屏幕方向键的无障碍标签"
+    "description": "Accessible label for the on-screen direction pad"
   },
   "gamesDpadUp": {
     "message": "上",
-    "description": "屏幕方向键：上"
+    "description": "On-screen direction pad: up"
   },
   "gamesDpadDown": {
     "message": "下",
-    "description": "屏幕方向键：下"
+    "description": "On-screen direction pad: down"
   },
   "gamesDpadLeft": {
     "message": "左",
-    "description": "屏幕方向键：左"
+    "description": "On-screen direction pad: left"
   },
   "gamesDpadRight": {
     "message": "右",
-    "description": "屏幕方向键：右"
+    "description": "On-screen direction pad: right"
   },
   "searchProviders": {
     "message": "搜索引擎",

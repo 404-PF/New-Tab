@@ -596,23 +596,23 @@
   },
   "gamesDpad": {
     "message": "Steuerkreuz",
-    "description": "Accessibleer Name des Bildschirm-Steuerkreuzes"
+    "description": "Accessible label for the on-screen direction pad"
   },
   "gamesDpadUp": {
     "message": "Oben",
-    "description": "Steuerkreuz: oben"
+    "description": "On-screen direction pad: up"
   },
   "gamesDpadDown": {
     "message": "Unten",
-    "description": "Steuerkreuz: unten"
+    "description": "On-screen direction pad: down"
   },
   "gamesDpadLeft": {
     "message": "Links",
-    "description": "Steuerkreuz: links"
+    "description": "On-screen direction pad: left"
   },
   "gamesDpadRight": {
     "message": "Rechts",
-    "description": "Steuerkreuz: rechts"
+    "description": "On-screen direction pad: right"
   },
   "searchProviders": {
     "message": "Suchanbieter",

@@ -596,23 +596,23 @@
   },
   "gamesDpad": {
     "message": "Croix directionnelle",
-    "description": "Nom accessible de la croix directionnelle à l'écran"
+    "description": "Accessible label for the on-screen direction pad"
   },
   "gamesDpadUp": {
     "message": "Haut",
-    "description": "Croix directionnelle : haut"
+    "description": "On-screen direction pad: up"
   },
   "gamesDpadDown": {
     "message": "Bas",
-    "description": "Croix directionnelle : bas"
+    "description": "On-screen direction pad: down"
   },
   "gamesDpadLeft": {
     "message": "Gauche",
-    "description": "Croix directionnelle : gauche"
+    "description": "On-screen direction pad: left"
   },
   "gamesDpadRight": {
     "message": "Droite",
-    "description": "Croix directionnelle : droite"
+    "description": "On-screen direction pad: right"
   },
   "searchProviders": {
     "message": "Moteurs de recherche",

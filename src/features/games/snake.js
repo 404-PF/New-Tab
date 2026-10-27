@@ -651,6 +651,14 @@
   function handleKeydown(e) {
     if (!window.gamesHelpers.beginRealTimeKeydown(e)) return;
 
+    // Space on a focused button, link, or [role="button"] — including the
+    // on-screen D-pad — activates that control; it must not pause or restart
+    // the game (the same #887 guard togglePauseOnSpace applies elsewhere).
+    if (e.code === 'Space' && e.target && typeof e.target.closest === 'function' &&
+        e.target.closest('button, a, [role="button"]')) {
+      return;
+    }
+
     // Ignore all steering until the player has started the run.
     if (!started) return;
 

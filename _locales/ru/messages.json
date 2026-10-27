@@ -596,23 +596,23 @@
   },
   "gamesDpad": {
     "message": "Крестовина",
-    "description": "Доступное имя экранных кнопок направления"
+    "description": "Accessible label for the on-screen direction pad"
   },
   "gamesDpadUp": {
     "message": "Вверх",
-    "description": "Кнопка направления: вверх"
+    "description": "On-screen direction pad: up"
   },
   "gamesDpadDown": {
     "message": "Вниз",
-    "description": "Кнопка направления: вниз"
+    "description": "On-screen direction pad: down"
   },
   "gamesDpadLeft": {
     "message": "Влево",
-    "description": "Кнопка направления: влево"
+    "description": "On-screen direction pad: left"
   },
   "gamesDpadRight": {
     "message": "Вправо",
-    "description": "Кнопка направления: вправо"
+    "description": "On-screen direction pad: right"
   },
   "searchProviders": {
     "message": "Поисковые системы",
