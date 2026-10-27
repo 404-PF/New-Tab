@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 const stubElement = (id, tag = 'div') => {
@@ -274,5 +274,43 @@ describe('AIRenderer web grounding toggle write failure (#971)', () => {
       document.querySelector('.ai-grounding-toggle')?.remove();
       AIRenderer.getElements().webGroundingControl = null;
     }
+  });
+});
+
+describe('AI modal theme follows a stored system theme (issue #1011)', () => {
+  afterEach(() => {
+    delete window.resolveTheme;
+    localStorage.removeItem('theme');
+    document.getElementById('ai-chat-modal').classList.remove('light-theme');
+  });
+
+  it('delegates a stored system theme to window.resolveTheme', () => {
+    window.resolveTheme = (theme) => (theme === 'system' ? 'light' : theme);
+    localStorage.setItem('theme', 'system');
+
+    expect(AIRenderer.loadTheme()).toBe('light');
+
+    AIRenderer.applyThemeToAI();
+    expect(document.getElementById('ai-chat-modal').classList.contains('light-theme')).toBe(true);
+  });
+
+  it('keeps concrete stored themes untouched and falls back to dark for system without the resolver', () => {
+    // The assertions below are only meaningful with the resolver absent.
+    delete window.resolveTheme;
+
+    localStorage.setItem('theme', 'light');
+    expect(AIRenderer.loadTheme()).toBe('light');
+
+    localStorage.setItem('theme', 'dark');
+    expect(AIRenderer.loadTheme()).toBe('dark');
+
+    // Stored 'system' with no resolver passes through unchanged, and
+    // applyThemeToAI therefore falls back to the dark modal styles.
+    localStorage.setItem('theme', 'system');
+    expect(AIRenderer.loadTheme()).toBe('system');
+    const modal = document.getElementById('ai-chat-modal');
+    modal.classList.add('light-theme');
+    AIRenderer.applyThemeToAI();
+    expect(modal.classList.contains('light-theme')).toBe(false);
   });
 });

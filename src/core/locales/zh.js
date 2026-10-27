@@ -278,6 +278,7 @@ window.i18n.__registerLocale('zh', {
   themeSettingsDesc: '选择您喜欢的界面主题',
   dark: '深色',
   light: '浅色',
+  system: '系统',
   autoTheme: '自动主题',
   autoThemeDesc: '根据时间自动切换主题',
   autoThemeToggle: '启用自动主题调度',

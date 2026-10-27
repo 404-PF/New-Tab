@@ -241,6 +241,7 @@ window.i18n.__registerLocale('fr', {
   themeSettingsDesc: 'Choisissez le thème d\'interface de votre préférence',
   dark: 'Sombre',
   light: 'Clair',
+  system: 'Système',
   autoTheme: 'Thème automatique',
   autoThemeDesc: 'Changer le thème automatiquement selon l\'heure de la journée',
   autoThemeToggle: 'Activer la planification du thème automatique',

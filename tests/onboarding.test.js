@@ -799,3 +799,45 @@ describe('Auto-start registration timing', () => {
     expect(visibilitySubscribers).toHaveLength(0);
   });
 });
+
+describe('System theme choice on the onboarding theme step (issue #1011)', () => {
+  it('checks only the system radio for a stored system theme', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    localStorage.setItem('theme', 'system');
+    tour.start(1);
+
+    const systemRadio = document.querySelector('input[name="onboarding-theme"][value="system"]');
+    expect(systemRadio).not.toBeNull();
+    expect(systemRadio.checked).toBe(true);
+    expect(document.querySelector('input[name="onboarding-theme"][value="dark"]').checked).toBe(false);
+    expect(document.querySelector('input[name="onboarding-theme"][value="light"]').checked).toBe(false);
+    tour.end(true);
+  });
+
+  it('dispatches themeChanged with the resolved theme when system is picked', () => {
+    const tour = window.onboardingTour;
+    tour.completed = false;
+    localStorage.setItem('theme', 'dark');
+    tour.start(1);
+
+    const systemRadio = document.querySelector('input[name="onboarding-theme"][value="system"]');
+    const events = [];
+    const onThemeChanged = (e) => events.push(e.detail.theme);
+    window.resolveTheme = (theme) => (theme === 'system' ? 'light' : theme);
+    window.addEventListener('themeChanged', onThemeChanged);
+    try {
+      systemRadio.checked = true;
+      systemRadio.dispatchEvent(new Event('change'));
+
+      expect(localStorage.getItem('theme')).toBe('system');
+      expect(document.body.classList.contains('light-theme')).toBe(true);
+      expect(events).toEqual(['light']);
+    } finally {
+      window.removeEventListener('themeChanged', onThemeChanged);
+      delete window.resolveTheme;
+      document.body.classList.remove('light-theme');
+      tour.end(true);
+    }
+  });
+});

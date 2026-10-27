@@ -254,6 +254,7 @@ window.i18n.__registerLocale('ko', {
   themeSettingsDesc: '원하는 인터페이스 테마 선택',
   dark: '다크',
   light: '라이트',
+  system: '시스템',
   autoTheme: '자동 테마',
   autoThemeDesc: '시간대에 따라 테마를 자동 전환',
   autoThemeToggle: '자동 테마 스케줄링 활성화',

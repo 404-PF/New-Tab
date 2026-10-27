@@ -254,6 +254,7 @@ window.i18n.__registerLocale('ja', {
   themeSettingsDesc: '好みのインターフェーステーマを選択',
   dark: 'ダーク',
   light: 'ライト',
+  system: 'システム',
   autoTheme: '自動テーマ',
   autoThemeDesc: '時刻に基づいてテーマを自動切替',
   autoThemeToggle: '自動テーマスケジューリングを有効にする',

@@ -241,6 +241,7 @@ window.i18n.__registerLocale('de', {
   themeSettingsDesc: 'Wähle dein bevorzugtes Oberflächenthema',
   dark: 'Dunkel',
   light: 'Hell',
+  system: 'System',
   autoTheme: 'Automatisches Thema',
   autoThemeDesc: 'Thema automatisch je nach Tageszeit wechseln',
   autoThemeToggle: 'Automatische Themenplanung aktivieren',

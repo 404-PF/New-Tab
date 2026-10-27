@@ -507,6 +507,7 @@ globalThis.window.i18n = {
       themeSettingsDesc: 'Choose your preferred interface theme',
       dark: 'Dark',
       light: 'Light',
+      system: 'System',
       languageSettings: 'Language',
       languageSettingsDesc: 'Choose your preferred language',
       english: 'English',

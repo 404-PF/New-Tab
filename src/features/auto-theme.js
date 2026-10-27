@@ -113,6 +113,13 @@
     // This preserves manual overrides until the next scheduled switch
     if (theme !== lastScheduledTheme) {
       lastScheduledTheme = theme;
+      // A stored 'system' theme (issue #1011) takes precedence over the
+      // schedule: track the boundary but let the OS preference decide the
+      // effective theme instead of overwriting the stored value.
+      if (window.loadTheme && window.loadTheme() === 'system') {
+        syncRadioButtons();
+        return;
+      }
       setTheme(theme);
       syncRadioButtons();
     }
@@ -122,8 +129,10 @@
     const theme = (window.loadTheme && window.loadTheme()) || 'dark';
     const darkRadio = document.querySelector('input[name="theme"][value="dark"]');
     const lightRadio = document.querySelector('input[name="theme"][value="light"]');
+    const systemRadio = document.querySelector('input[name="theme"][value="system"]');
     if (darkRadio) darkRadio.checked = theme === 'dark';
     if (lightRadio) lightRadio.checked = theme === 'light';
+    if (systemRadio) systemRadio.checked = theme === 'system';
   }
 
   function updateTimesVisibility() {
@@ -194,7 +203,9 @@
       // localStorage unavailable
     }
     if (window.applyTheme) window.applyTheme();
-    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
+    // Resolve 'system' so listeners always receive a concrete dark/light value
+    const resolvedTheme = window.resolveTheme ? window.resolveTheme(selectedTheme) : selectedTheme;
+    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolvedTheme } }));
     // Prevent the settings.js change handler from double-applying
     e.stopImmediatePropagation();
   }

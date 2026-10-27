@@ -1888,31 +1888,14 @@ body.light-theme .update-settings-group .setting-btn:hover {
   }
 }
 
-/* Dark Mode Support (System Preference) */
-@media (prefers-color-scheme: dark) {
-  /* Already optimized - this is the default theme */
-}
-
-/* Light Mode Support (System Preference) */
-@media (prefers-color-scheme: light) {
-  body:not(.light-theme) {
-    --body-bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  }
-
-  body:not(.light-theme) .app-name {
-    color: #fff;
-    text-shadow:
-      0 0 2px #000,
-      0 0 2px #000,
-      0 0 2px #000,
-      0 0 2px #000;
-  }
-
-  body:not(.light-theme) .clock-time,
-  body:not(.light-theme) .date {
-    color: #0a0a0a;
-    text-shadow: none;
-  }
+/* Pre-paint light clock/date (issue #1011): storage.js marks html.light-pre
+   from the stored theme before <body> exists, and applyTheme() keeps the
+   marker in sync, so these rules only match in the gap before the first
+   applyTheme() runs. */
+html.light-pre body:not(.light-theme) .clock-time,
+html.light-pre body:not(.light-theme) .date {
+  color: #0a0a0a;
+  text-shadow: none;
 }
 
 /* Settings Modal Responsive */
