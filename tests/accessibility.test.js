@@ -487,6 +487,7 @@ describe('Accessibility - app grid keyboard interaction', () => {
 
     ai.focus();
     const aiEvent = pressKey(ai, 'F10');
+    expect(aiEvent.defaultPrevented).toBe(false);
     // Shift+F10 is the conventional context-menu chord.
     ai.focus();
     const shiftF10 = new KeyboardEvent('keydown', {
@@ -497,7 +498,6 @@ describe('Accessibility - app grid keyboard interaction', () => {
     });
     ai.dispatchEvent(shiftF10);
     expect(shiftF10.defaultPrevented).toBe(true);
-    void aiEvent;
 
     settings.focus();
     const settingsEvent = new KeyboardEvent('keydown', {

@@ -332,9 +332,9 @@
       popupApps.addEventListener('click', function (e) {
         const icon = e.target.closest('.app-icon');
         if (!icon || !icon.id.startsWith('popup-')) return;
-        if (typeof window.openInternalApp === 'function') {
-          if (window.AppFolders) window.AppFolders.closeFolderPopup();
-          window.openInternalApp(icon.id.slice('popup-'.length), e);
+        if (typeof window.openInternalApp !== 'function') return;
+        if (window.openInternalApp(icon.id.slice('popup-'.length), e)) {
+          closeFolderPopup();
         }
       });
 

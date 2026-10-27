@@ -3,13 +3,23 @@
 export function withWindowOverride(name, value, run) {
   const original = window[name];
   window[name] = value;
-  try {
-    return run();
-  } finally {
+  const restore = () => {
     if (original === undefined) {
       delete window[name];
     } else {
       window[name] = original;
     }
+  };
+  let result;
+  try {
+    result = run();
+  } catch (error) {
+    restore();
+    throw error;
   }
+  if (result && typeof result.then === 'function') {
+    return result.finally(restore);
+  }
+  restore();
+  return result;
 }
