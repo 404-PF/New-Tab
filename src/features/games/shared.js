@@ -104,6 +104,22 @@
     return true;
   };
 
+  // Real-time variant of beginGameKeydown for games where players hold a
+  // direction key to steer (Snake, Pac-Man). OS auto-repeat is allowed
+  // through for direction keys so a held key keeps steering while the
+  // current turn is not yet legal, but a repeated Space is still dropped so
+  // a held Space can never flicker the pause toggle. Modified shortcuts and
+  // editable targets stay ignored, and the browser default (page scroll) is
+  // still swallowed for game control keys (#1016).
+  window.gamesHelpers.beginRealTimeKeydown = function (e) {
+    if (!e) return false;
+    if (window.gamesHelpers.isEditableTarget(e.target)) return false;
+    window.gamesHelpers.suppressGameKeyScroll(e);
+    if (e.ctrlKey || e.metaKey || e.altKey) return false;
+    if (e.repeat && !window.gamesHelpers.parseDirection(e)) return false;
+    return true;
+  };
+
   // Toggle manual pause on Space for the animation-driven games: resume a
   // manually paused run, otherwise pause it through onPause. Prevents the
   // Space default (page scroll) first and returns true when the key was

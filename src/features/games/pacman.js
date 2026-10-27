@@ -367,8 +367,12 @@
 
   function queueTurn(dir) {
     if (!isValidDirection(dir) || !pacman) return;
-    const effective = queue.length > 0 ? queue[queue.length - 1] : pacman.dir;
-    if (dir === effective) return;
+    // A held key's auto-repeats arrive as the same direction over and over:
+    // drop them when they match the pending tail or the direction already in
+    // effect so a repeat can never duplicate a queued turn or re-trigger the
+    // mid-turn reverse (#1016).
+    const pending = queue.length > 0 ? queue[queue.length - 1] : null;
+    if (dir === pending || dir === pacman.dir) return;
     if (pacman.b && dir === OPPOSITE[pacman.dir]) {
       reverseEntity(pacman);
       queue.length = 0;
@@ -1076,8 +1080,11 @@
   function handleKeydown(e) {
     // Swallow the browser default (page scroll) for game control keys even
     // when the event itself is dropped below: a held direction key or Space
-    // would otherwise scroll the page behind the game (#876).
-    if (!window.gamesHelpers.beginGameKeydown(e)) return;
+    // would otherwise scroll the page behind the game (#876). Pac-Man steers
+    // in real time, so the real-time variant lets a held direction key's
+    // auto-repeat keep steering while the queue is full or the turn is not
+    // yet legal, while a held Space still cannot flicker pause (#1016).
+    if (!window.gamesHelpers.beginRealTimeKeydown(e)) return;
     if (!started) return;
 
     if (gameOver) {

@@ -206,12 +206,68 @@ describe('Pac-Man input and movement', () => {
     container.remove();
   });
 
-  it('ignores OS auto-repeated direction keys (#876)', () => {
+  it('steers with a held direction key on the next tick instead of dropping auto-repeat (#1016)', () => {
     const container = makeContainer();
     startWithSpace();
 
-    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', key: 'KeyW', repeat: true, bubbles: true }));
-    expect(window.__pacmanTest.getState().queuedDirs).toEqual([]);
+    window.__pacmanTest.setPositions({ pacman: { x: 6, y: 13, dir: 'left' } });
+    const held = () =>
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowDown', key: 'ArrowDown', repeat: true, bubbles: true }));
+
+    // Auto-repeats of a held direction key queue a turn (they used to be
+    // discarded, so the intent was lost until the key was pressed again).
+    held();
+    expect(window.__pacmanTest.getState().queuedDirs).toEqual(['down']);
+    // Repeats are idempotent: the queue keeps one pending intent only.
+    held();
+    held();
+    expect(window.__pacmanTest.getState().queuedDirs).toEqual(['down']);
+
+    window.__pacmanTest.tick(0.2);
+    expect(window.__pacmanTest.getState().pacman.dir).toBe('down');
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('retries a held direction key once a full queue frees a slot (#1016)', () => {
+    const container = makeContainer();
+    startWithSpace();
+
+    window.__pacmanTest.setPositions({
+      pacman: { x: 6, y: 13, dir: 'left', queuedDirs: ['down', 'right'] }
+    });
+    const held = () =>
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowDown', key: 'ArrowDown', repeat: true, bubbles: true }));
+
+    // The queue is full, so the repeat waits instead of being lost forever.
+    held();
+    expect(window.__pacmanTest.getState().queuedDirs).toEqual(['down', 'right']);
+
+    // The next tick frees a slot and applies 'down'; the still-held key is
+    // now the effective direction, so its repeats must not duplicate the
+    // queue either.
+    window.__pacmanTest.tick(0.05);
+    held();
+    expect(window.__pacmanTest.getState().queuedDirs).toEqual(['right']);
+    window.__pacmanTest.tick(0.3);
+    expect(window.__pacmanTest.getState().pacman.dir).toBe('down');
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('does not flicker pause while Space is held (#1016)', () => {
+    const container = makeContainer();
+    startWithSpace();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', repeat: true, bubbles: true }));
+    expect(window.__pacmanTest.getState().paused).toBe(false);
+
+    pressKey('Space');
+    expect(window.__pacmanTest.getState().paused).toBe(true);
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', repeat: true, bubbles: true }));
+    expect(window.__pacmanTest.getState().paused).toBe(true);
 
     getGame().destroy();
     container.remove();
