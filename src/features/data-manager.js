@@ -69,7 +69,8 @@
     'focusMode',
     'autoTheme',
     'autoThemeLightTime',
-    'autoThemeDarkTime'
+    'autoThemeDarkTime',
+    'aiGroundWithWeb'
   ];
 
   // Object keys whose storage entries mix persistent settings with transient
@@ -336,6 +337,13 @@
     }
     if (typeof window.refreshAutoTheme === 'function') {
       window.refreshAutoTheme();
+    }
+
+    // Re-sync the AI "Ground with web" checkbox so an import that changed
+    // aiGroundWithWeb updates the visible toggle without a tab reload
+    // (issue #1003).
+    if (typeof window.refreshWebGroundingControl === 'function') {
+      window.refreshWebGroundingControl();
     }
 
     // Schedule todo reminders last so the service-worker payload is built
@@ -708,6 +716,7 @@
       return Array.isArray(v) && v.every(isValidAIConversation);
     },
     ai_current_conversation_id: function (v) { return typeof v === 'string'; },
+    aiGroundWithWeb: function (v) { return typeof v === 'boolean'; },
     updateCheckEnabled: function (v) { return typeof v === 'boolean'; },
     searchProvider: function (v) { return typeof v === 'string'; },
     searchHistoryEnabled: function (v) { return typeof v === 'boolean'; },

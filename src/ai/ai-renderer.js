@@ -128,6 +128,18 @@ const AIRenderer = (function() {
     updateWebGroundingControl(AIStore.state.isOfflineMode === true);
   }
 
+  // Data import hook (issue #1003): the storage bridge already holds the
+  // imported aiGroundWithWeb value, so drop the cached preference before
+  // re-reading and repaint the visible toggle without a tab reload.
+  function refreshWebGroundingControl() {
+    if (window.OpenRouterAPI && typeof window.OpenRouterAPI.invalidateWebGroundingCache === 'function') {
+      window.OpenRouterAPI.invalidateWebGroundingCache();
+    }
+    if (!elements.webGroundingControl) return;
+    const isOffline = window.AIStore && window.AIStore.state ? window.AIStore.state.isOfflineMode === true : false;
+    updateWebGroundingControl(isOffline);
+  }
+
   function escapeHTML(str) {
     const div = document.createElement('div');
     div.textContent = str || '';
@@ -965,6 +977,7 @@ const AIRenderer = (function() {
     hasModal,
     initWebGroundingControl,
     updateWebGroundingControl,
+    refreshWebGroundingControl,
     renderTopicsList,
     renderMessages,
     updateRegenerateButton,
@@ -988,3 +1001,4 @@ const AIRenderer = (function() {
 })();
 
 window.AIRenderer = AIRenderer;
+window.refreshWebGroundingControl = AIRenderer.refreshWebGroundingControl;

@@ -1181,3 +1181,101 @@ describe('DataManager import refresh (issue #824)', () => {
     }
   });
 });
+
+describe('DataManager AI grounding preference (issue #1003)', () => {
+  beforeAll(() => {
+    injectScript('src/ai/openrouter.js');
+    injectScript('src/ai/ai-renderer.js');
+  });
+
+  it('includes aiGroundWithWeb in the export allowlist', () => {
+    expect(window.DataManager.EXPORT_KEYS).toContain('aiGroundWithWeb');
+  });
+
+  it('validates aiGroundWithWeb as a boolean', () => {
+    expect(window.DataManager.EXPECTED_SHAPES.aiGroundWithWeb(true)).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.aiGroundWithWeb(false)).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.aiGroundWithWeb('true')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.aiGroundWithWeb(1)).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.aiGroundWithWeb(null)).toBe(false);
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      aiGroundWithWeb: false
+    } })).toEqual({ valid: true });
+
+    const stringBackup = window.DataManager.validateImportData({ version: 1, data: {
+      aiGroundWithWeb: 'false'
+    } });
+    expect(stringBackup.valid).toBe(false);
+    expect(stringBackup.error).toContain('dataImportInvalidShape');
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      aiGroundWithWeb: 1
+    } }).valid).toBe(false);
+  });
+
+  it('round-trips aiGroundWithWeb through export and import', async () => {
+    localStorage.setItem('aiGroundWithWeb', 'true');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.aiGroundWithWeb).toBe(true);
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+
+    localStorage.removeItem('aiGroundWithWeb');
+    const result = await importBackup(exported.data, 'replace');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('aiGroundWithWeb')).toBe('true');
+  });
+
+  it('applies aiGroundWithWeb in merge mode', async () => {
+    localStorage.setItem('aiGroundWithWeb', 'true');
+
+    const result = await importBackup({ aiGroundWithWeb: false }, 'merge');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('aiGroundWithWeb')).toBe('false');
+  });
+
+  it('clears aiGroundWithWeb in replace mode when the backup omits it', async () => {
+    localStorage.setItem('aiGroundWithWeb', 'true');
+
+    await importBackup({ theme: 'dark' }, 'replace');
+
+    expect(localStorage.getItem('aiGroundWithWeb')).toBeNull();
+    expect(localStorage.getItem('theme')).toBe('dark');
+  });
+
+  it('re-syncs the visible grounding checkbox after a live import', async () => {
+    expect(typeof window.refreshWebGroundingControl).toBe('function');
+
+    const container = document.createElement('div');
+    const input = document.createElement('textarea');
+    input.id = 'ai-chat-input';
+    container.appendChild(input);
+    document.body.appendChild(container);
+
+    try {
+      localStorage.setItem('aiGroundWithWeb', 'true');
+      window.AIRenderer.cacheElements();
+      window.AIRenderer.updateWebGroundingControl(false);
+
+      const checkbox = container.querySelector('.ai-grounding-toggle input[type="checkbox"]');
+      expect(checkbox).not.toBeNull();
+      expect(checkbox.checked).toBe(true);
+
+      const result = await importBackup({ aiGroundWithWeb: false }, 'merge');
+
+      expect(result.type).toBe('success');
+      expect(localStorage.getItem('aiGroundWithWeb')).toBe('false');
+      // The visible toggle flips without a tab reload.
+      expect(checkbox.checked).toBe(false);
+    } finally {
+      container.remove();
+      const rendererElements = window.AIRenderer.getElements();
+      rendererElements.webGroundingControl = null;
+      rendererElements.input = null;
+    }
+  });
+});
