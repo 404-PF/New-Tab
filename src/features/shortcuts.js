@@ -211,7 +211,7 @@
     try {
       return typeof window.persistFeatureToggle === 'function'
         ? window.persistFeatureToggle(key, value)
-        : localStorage.setItem(key, value) !== false;
+        : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (e) {
       console.warn('Failed to save ' + key + ':', e);
       return false;

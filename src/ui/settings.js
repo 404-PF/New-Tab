@@ -1442,7 +1442,7 @@ if (todoEnabledSetting) {
       // for a rejected write instead of throwing (#969).
       persisted = typeof window.persistFeatureToggle === 'function'
         ? window.persistFeatureToggle('todoEnabled', this.checked)
-        : localStorage.setItem('todoEnabled', this.checked) !== false;
+        : localStorage.setItem('todoEnabled', this.checked) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (e) {
       console.warn('Failed to save todoEnabled:', e);
       persisted = false;
@@ -1598,7 +1598,7 @@ function saveEyeCareReminderState(updates) {
   try {
     persisted = typeof window.persistFeatureToggle === 'function'
       ? window.persistFeatureToggle('eyeCareReminder', JSON.stringify(next))
-      : localStorage.setItem('eyeCareReminder', JSON.stringify(next)) !== false;
+      : localStorage.setItem('eyeCareReminder', JSON.stringify(next)) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
   } catch (e) {
     console.warn('Failed to save eyeCareReminder:', e);
     persisted = false;
@@ -1726,7 +1726,7 @@ if (notesEnabledSetting) {
     try {
       persisted = typeof window.persistFeatureToggle === 'function'
         ? window.persistFeatureToggle('notesEnabled', this.checked)
-        : localStorage.setItem('notesEnabled', this.checked) !== false;
+        : localStorage.setItem('notesEnabled', this.checked) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (e) {
       console.warn('Failed to save notesEnabled:', e);
       persisted = false;

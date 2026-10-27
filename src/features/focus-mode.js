@@ -65,7 +65,7 @@ function setFocusMode(enabled) {
   try {
     persisted = typeof window.persistFeatureToggle === 'function'
       ? window.persistFeatureToggle('focusMode', enabled ? 'true' : 'false')
-      : localStorage.setItem('focusMode', enabled ? 'true' : 'false') !== false;
+      : localStorage.setItem('focusMode', enabled ? 'true' : 'false') !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
   } catch (e) {
     console.warn('Failed to save focusMode:', e);
     persisted = false;

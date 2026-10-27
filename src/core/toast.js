@@ -152,7 +152,7 @@ function showToast(message, type = '', options = {}) {
 // accepted.
 function persistFeatureToggle(key, value) {
   try {
-    return localStorage.setItem(key, value) !== false;
+    return localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
   } catch (error) {
     console.warn('Failed to save ' + key + ':', error);
     return false;

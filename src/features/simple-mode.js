@@ -38,7 +38,7 @@ function initSimpleMode() {
     try {
       persisted = typeof window.persistFeatureToggle === 'function'
         ? window.persistFeatureToggle('simpleMode', this.checked)
-        : localStorage.setItem('simpleMode', this.checked) !== false;
+        : localStorage.setItem('simpleMode', this.checked) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (e) {
       console.warn('Failed to save simpleMode:', e);
       persisted = false;
