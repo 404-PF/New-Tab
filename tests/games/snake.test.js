@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
 import { expectNoStackedKeydownListeners } from '../helpers/keydown-listener-tally.js';
 
@@ -434,17 +434,19 @@ describe('Snake save validation regressions (review #654)', () => {
   });
 });
 
-describe('Snake frame-driven input (#876)', () => {
-  function startGame() {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const game = window.GameRegistry.get('snake');
-    game.init(container);
-    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
-    expect(window.__snakeReady.isStarted()).toBe(true);
-    return { container, game };
-  }
+// Start a fresh snake run on the ready screen and signal readiness. Shared by
+// the frame-driven input (#876) and turn-queue (#1017) suites.
+function startGame() {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const game = window.GameRegistry.get('snake');
+  game.init(container);
+  document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+  expect(window.__snakeReady.isStarted()).toBe(true);
+  return { container, game };
+}
 
+describe('Snake frame-driven input (#876)', () => {
   it('advances logic on animation frames instead of setInterval', () => {
     vi.useFakeTimers();
     let container = null;
@@ -531,16 +533,6 @@ describe('Snake frame-driven input (#876)', () => {
 });
 
 describe('Snake turn queue depth and apply-time veto (#1017)', () => {
-  function startGame() {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const game = window.GameRegistry.get('snake');
-    game.init(container);
-    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
-    expect(window.__snakeReady.isStarted()).toBe(true);
-    return { container, game };
-  }
-
   // Step the rAF logic loop one animation frame at a time and snapshot
   // serialize() after each frame, so per-tick direction changes stay
   // observable even though the accumulator schedules ticks asynchronously.
@@ -553,13 +545,40 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
     return samples;
   }
 
-  it('honours two distinct turns pressed inside one tick on consecutive ticks', () => {
-    vi.useFakeTimers();
+  function makeSavedRun(directionQueue) {
+    return {
+      snake: [
+        { x: 10, y: 10 },
+        { x: 9, y: 10 },
+        { x: 8, y: 10 }
+      ],
+      food: { x: 5, y: 5 },
+      direction: 'right',
+      nextDirection: 'up',
+      directionQueue: directionQueue,
+      score: 0
+    };
+  }
+
+  describe('live turn queue', () => {
     let container = null;
     let game = null;
-    try {
+
+    beforeEach(() => {
+      vi.useFakeTimers();
       ({ container, game } = startGame());
       vi.advanceTimersByTime(200);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+      container = null;
+      game = null;
+    });
+
+    it('honours two distinct turns pressed inside one tick on consecutive ticks', () => {
       expect(game.serialize().direction).toBe('right');
       const before = game.serialize().snake[0];
 
@@ -577,20 +596,9 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
       expect(rightIdx).toBeGreaterThan(upIdx);
       expect(samples[rightIdx].snake[0]).toEqual({ x: before.x + 1, y: before.y - 1 });
       expect(samples[rightIdx].directionQueue).toEqual([]);
-    } finally {
-      vi.useRealTimers();
-      if (game) game.destroy();
-      if (container) container.remove();
-    }
-  });
+    });
 
-  it('drops a queued turn that would reverse the head at apply time', () => {
-    vi.useFakeTimers();
-    let container = null;
-    let game = null;
-    try {
-      ({ container, game } = startGame());
-      vi.advanceTimersByTime(200);
+    it('drops a queued turn that would reverse the head at apply time', () => {
       expect(game.serialize().direction).toBe('right');
 
       // Up is legal when pressed; Down reverses the post-up heading and
@@ -610,20 +618,9 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
         expect(ys[i]).toBeLessThanOrEqual(ys[i - 1]);
       }
       expect(Math.min(...ys)).toBeLessThan(ys[0]);
-    } finally {
-      vi.useRealTimers();
-      if (game) game.destroy();
-      if (container) container.remove();
-    }
-  });
+    });
 
-  it('queues an immediate reversal press but never applies it', () => {
-    vi.useFakeTimers();
-    let container = null;
-    let game = null;
-    try {
-      ({ container, game } = startGame());
-      vi.advanceTimersByTime(200);
+    it('queues an immediate reversal press but never applies it', () => {
       const before = game.serialize().snake[0];
 
       // The enqueue-time opposite veto is gone: Left is accepted into the
@@ -639,20 +636,9 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
         expect(xs[i]).toBeGreaterThanOrEqual(xs[i - 1]);
       }
       expect(xs[xs.length - 1]).toBeGreaterThan(before.x);
-    } finally {
-      vi.useRealTimers();
-      if (game) game.destroy();
-      if (container) container.remove();
-    }
-  });
+    });
 
-  it('does not let duplicate presses of the current direction fill the queue', () => {
-    vi.useFakeTimers();
-    let container = null;
-    let game = null;
-    try {
-      ({ container, game } = startGame());
-      vi.advanceTimersByTime(200);
+    it('does not let duplicate presses of the current direction fill the queue', () => {
       expect(game.serialize().direction).toBe('right');
 
       // Spamming the current direction (non-repeat presses) never fills
@@ -667,30 +653,14 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
       expect(game.serialize().directionQueue).toEqual(['up']);
       const samples = sampleFrames(game, 15);
       expect(samples.findIndex((s) => s && s.direction === 'up')).toBeGreaterThan(-1);
-    } finally {
-      vi.useRealTimers();
-      if (game) game.destroy();
-      if (container) container.remove();
-    }
+    });
   });
 
   it('round-trips a 3-deep turn queue through save/restore and applies it in order', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const game = window.GameRegistry.get('snake');
-    const state = {
-      snake: [
-        { x: 10, y: 10 },
-        { x: 9, y: 10 },
-        { x: 8, y: 10 }
-      ],
-      food: { x: 5, y: 5 },
-      direction: 'right',
-      nextDirection: 'up',
-      directionQueue: ['up', 'down', 'left'],
-      score: 0
-    };
-    game.init(container, state);
+    game.init(container, makeSavedRun(['up', 'down', 'left']));
     // The validator accepts a full-depth queue whose later entries reverse
     // earlier ones: since the veto moved to apply time, such a queue is a
     // legal on-disk state that tick() drains safely.
@@ -724,20 +694,8 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const game = window.GameRegistry.get('snake');
-    const state = {
-      snake: [
-        { x: 10, y: 10 },
-        { x: 9, y: 10 },
-        { x: 8, y: 10 }
-      ],
-      food: { x: 5, y: 5 },
-      direction: 'right',
-      nextDirection: 'up',
-      // Four entries exceed MAX_QUEUED_TURNS (3).
-      directionQueue: ['up', 'left', 'down', 'right'],
-      score: 0
-    };
-    game.init(container, state);
+    // Four entries exceed MAX_QUEUED_TURNS (3).
+    game.init(container, makeSavedRun(['up', 'left', 'down', 'right']));
     // Restore rejected: the ready screen offers Start on a fresh board.
     expect(container.querySelector('.games-ready-overlay .games-ready-start').textContent).toBe('Start');
 
