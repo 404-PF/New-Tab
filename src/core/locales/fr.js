@@ -380,7 +380,7 @@ window.i18n.__registerLocale('fr', {
   priorityLowTitle: 'Priorité basse',
   // Todo sort selector (issue #1013)
   todoSortLabel: 'Trier',
-  todoSortManual: 'Manuelle',
+  todoSortManual: 'Manuel',
   todoSortDue: 'Échéance',
   todoSortPriority: 'Priorité',
   todoSortCreated: 'Créé',

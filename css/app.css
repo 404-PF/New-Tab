@@ -851,7 +851,9 @@ body.light-theme .calendar-day.other-month {
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 500;
-  outline: none;
+  /* Transparent (not none) so forced-colors mode can still render the
+     system focus indicator when the box-shadow ring is suppressed. */
+  outline: 2px solid transparent;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(10px);

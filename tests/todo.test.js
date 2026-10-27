@@ -1268,6 +1268,45 @@ describe('Todo sort order (issue #1013)', () => {
     setTodoSort('manual');
     expect(document.querySelector('.todo-item').draggable).toBe(true);
   });
+
+  it('renders completed rows non-draggable even in manual sort mode', () => {
+    addTodo('Done');
+    const doneId = loadTodos()[0].id;
+    toggleTodo(doneId);
+
+    setTodoSort('manual');
+    const row = document.querySelector('.todo-item.completed');
+    expect(row).not.toBeNull();
+    expect(row.draggable).toBe(false);
+  });
+
+  it('appends new todos after legacy todos that lack an order field in manual sort', () => {
+    // Legacy rows predating the order field fall back to createdAt
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'old1', text: 'Legacy 1', completed: false, createdAt: new Date(Date.now() - 120000).toISOString() },
+      { id: 'old2', text: 'Legacy 2', completed: false, createdAt: new Date(Date.now() - 60000).toISOString() }
+    ]));
+    initTodo();
+    setTodoSort('manual');
+
+    addTodo('Fresh');
+    expect(filterTodos().map(todo => todo.text)).toEqual(['Legacy 1', 'Legacy 2', 'Fresh']);
+  });
+
+  it('falls back to manual order when a created-sort timestamp is invalid', () => {
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'good', text: 'Dated', completed: false, createdAt: new Date(Date.now() - 60000).toISOString() },
+      { id: 'bad', text: 'No date', completed: false, createdAt: 'not-a-date' }
+    ]));
+    initTodo();
+    setTodoSort('created');
+
+    // Invalid createdAt must not poison the comparator (NaN !== 0 short-
+    // circuits the manual-order fallback): both rows fall back to their
+    // manual-order values (createdAt ms vs 0 for the invalid one), so the
+    // invalid row sorts first instead of relying on NaN-treated-as-equal.
+    expect(filterTodos().map(todo => todo.text)).toEqual(['No date', 'Dated']);
+  });
 });
 
 describe('Todo reminders', () => {

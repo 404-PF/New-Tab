@@ -456,9 +456,16 @@
 
   // Filtering and sorting
   // Manual position: the `order` field written by drag-and-drop, falling back
-  // to creation time for legacy todos that predate it.
+  // to creation time for legacy todos that predate it. Both branches return a
+  // finite number on a shared scale (addTodo seeds new `order` values from
+  // this helper) so newly added rows never jump ahead of legacy rows
+  // (issue #1013).
   function getManualOrderValue(todo) {
-    return todo.order !== undefined ? todo.order : new Date(todo.createdAt).getTime();
+    if (todo.order !== undefined && Number.isFinite(todo.order)) {
+      return todo.order;
+    }
+    const createdAtMs = new Date(todo.createdAt).getTime();
+    return Number.isFinite(createdAtMs) ? createdAtMs : 0;
   }
 
   const PRIORITY_SORT_WEIGHT = { high: 0, medium: 1, low: 2 };
@@ -476,8 +483,15 @@
         return getManualOrderValue(a) - getManualOrderValue(b);
       }
       case 'created': {
-        const createdDifference = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        if (createdDifference !== 0) return createdDifference;
+        // Guard both timestamps: an invalid or missing createdAt would make
+        // the subtraction return NaN and the manual-order fallback below
+        // unreachable (issue #1013).
+        const createdA = new Date(a.createdAt).getTime();
+        const createdB = new Date(b.createdAt).getTime();
+        if (Number.isFinite(createdA) && Number.isFinite(createdB)) {
+          const createdDifference = createdA - createdB;
+          if (createdDifference !== 0) return createdDifference;
+        }
         return getManualOrderValue(a) - getManualOrderValue(b);
       }
       case 'az': {
@@ -584,8 +598,10 @@
       const li = document.createElement('li');
       li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate, todo.dueTime) ? 'overdue' : ''} ${selectedIds.has(todo.id) ? 'selected' : ''}`;
       li.dataset.id = todo.id;
-      // Drag reordering only applies in manual sort mode (issue #1013).
-      li.draggable = currentSort === 'manual';
+      // Drag reordering only applies to incomplete rows in manual sort mode;
+      // completed rows always sort by completion time and would snap back
+      // if reordered (issue #1013).
+      li.draggable = currentSort === 'manual' && !todo.completed;
 
       const todoItemRow = document.createElement('div');
       todoItemRow.className = 'todo-item-row';
@@ -840,9 +856,11 @@
   function addTodo(text, dueDate = null, priority = 'medium', recurrence = null, dueTime = null) {
     if (!text.trim()) return;
 
-    // Find the maximum order value among existing todos
+    // Seed the next order from the same scale getManualOrderValue compares on
+    // (createdAt for legacy todos without an order field), so a new row
+    // appends after them instead of jumping ahead of all of them (issue #1013).
     const maxOrder = todos.reduce((max, todo) => {
-      return todo.order !== undefined ? Math.max(max, todo.order) : max;
+      return Math.max(max, getManualOrderValue(todo));
     }, -1);
 
     const normalizedDueTime = isValidDueTime(dueTime) && dueDate ? dueTime : null;
