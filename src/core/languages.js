@@ -553,8 +553,12 @@ const translations = {
     dataImportReplaceSuccess: 'Replaced all settings with imported data.',
     dataImportPartialSuccess: 'Import completed with some errors. Some old data could not be removed.',
     dataImportLateWriteFailure: 'Some imported data failed to save after the import finished.',
+    dataExportMediaSkipped: 'Backup created, but some custom background media could not be included.',
+    dataImportInvalidCustomBackgrounds: 'The backup contains invalid custom background data.',
+    dataImportInvalidMedia: 'A custom background in this backup has invalid media data.',
+    dataImportMediaTooLarge: 'A custom background in this backup exceeds the size limit.',
     dataLimitations: 'Limitations',
-    dataLimitationsDesc: 'Custom background images/videos are stored locally and cannot be included in the export file.',
+    dataLimitationsDesc: 'Custom background images/videos are included in backups up to the size limit; oversized media is skipped.',
 
     // Onboarding
     onboardingLanguageTitle: 'Choose Your Language 🌐',

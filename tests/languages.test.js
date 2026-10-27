@@ -188,6 +188,22 @@ describe('Custom background error translations', () => {
   });
 });
 
+const DATA_MEDIA_BACKUP_TRANSLATION_KEYS = [
+  'dataExportMediaSkipped',
+  'dataImportInvalidCustomBackgrounds',
+  'dataImportInvalidMedia',
+  'dataImportMediaTooLarge',
+  'dataLimitationsDesc'
+];
+
+describe('Custom background media backup translations (issue #996)', () => {
+  it('defines every media backup message for all supported languages', () => {
+    // differFromEnglish: the size-limit warning and the import validation
+    // errors must be localized in every locale, not just the English fallback.
+    expectTranslationKeys(DATA_MEDIA_BACKUP_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
+
 describe('Custom background confirm dialog translations (issue #968)', () => {
   it('defines the delete confirmation title and message for all supported languages', () => {
     // differFromEnglish: every non-English locale must ship its own copy, not

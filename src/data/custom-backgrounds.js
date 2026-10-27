@@ -1053,6 +1053,7 @@
     apply: applyCustomBackground,
     getAll: getAllCustomBackgrounds,
     get: getCustomBackground,
+    save: saveCustomBackground,
     render: renderCustomBackgrounds,
     getBlobUrl: getBlobUrl,
     revokeAll: revokeAllBlobUrls,
