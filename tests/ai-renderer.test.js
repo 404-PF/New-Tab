@@ -135,6 +135,7 @@ describe('AIRenderer conversation rename affordance (#1014)', () => {
     const input = document.querySelector('.ai-topic-rename-input');
     expect(input).not.toBeNull();
     expect(input.value).toBe('Second topic');
+    expect(input.maxLength).toBe(AIStore.MAX_TITLE_LENGTH);
     expect(onSelectConversation).not.toHaveBeenCalled();
 
     input.value = '  Renamed topic  ';
@@ -231,6 +232,10 @@ describe('AIRenderer conversation rename affordance (#1014)', () => {
   it('refreshes the topic action labels after a language change', () => {
     renderWithCallbacks();
 
+    document.querySelector('.ai-topic-rename[data-id="conv-1"]').click();
+    const input = document.querySelector('.ai-topic-rename-input');
+    expect(input).not.toBeNull();
+
     const originalT = window.i18n.t;
     window.i18n.t = key => (key === 'aiRenameConversation' ? 'Renommer la conversation' : originalT(key));
     try {
@@ -239,6 +244,8 @@ describe('AIRenderer conversation rename affordance (#1014)', () => {
       const button = document.querySelector('.ai-topic-rename[data-id="conv-1"]');
       expect(button.getAttribute('aria-label')).toBe('Renommer la conversation');
       expect(button.title).toBe('Renommer la conversation');
+      // An editor left open across the switch keeps the new label too.
+      expect(input.getAttribute('aria-label')).toBe('Renommer la conversation');
     } finally {
       window.i18n.t = originalT;
     }

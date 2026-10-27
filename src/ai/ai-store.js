@@ -34,6 +34,11 @@ const AIStore = (function() {
   // write: halving them frees too little space to matter (#947).
   const MIN_QUOTA_RETRY_BYTES = 256 * 1024;
 
+  // Manual renames take arbitrary pasted input, so bound the stored title: one
+  // oversized paste would push the payload toward MAX_SERIALIZED_BYTES and make
+  // the save-time trim evict messages to make room for it (#1014).
+  const MAX_TITLE_LENGTH = 100;
+
   // A rejected conversation payload is copied under one of these keys before
   // `ai_conversations` is rewritten, so fail-soft repair never destroys the
   // only copy of the data (#949). The retained copies are capped so storage
@@ -1277,14 +1282,16 @@ const AIStore = (function() {
   // Manual rename (#1014): the sidebar label, the title search and the export
   // filename all read conversation.title, so a single trimmed write here fixes
   // all three. Empty/whitespace-only names are rejected because the persisted
-  // validator (conversation-validator.js) requires a non-empty title.
-  // `onSaveResult` receives the save settlement so a caller that renders the
-  // new title can repaint if storage rejects and state rolls back.
+  // validator (conversation-validator.js) requires a non-empty title, and the
+  // value is capped at MAX_TITLE_LENGTH so a pasted wall of text cannot crowd
+  // out stored messages. `onSaveResult` receives the save settlement so a
+  // caller that renders the new title can repaint if storage rejects and state
+  // rolls back.
   function renameConversation(conversationId, title, onSaveResult) {
     const conversation = state.conversations.find(item => item.id === conversationId);
     if (!conversation) return false;
 
-    const nextTitle = String(title ?? '').trim();
+    const nextTitle = String(title ?? '').trim().slice(0, MAX_TITLE_LENGTH).trimEnd();
     if (!nextTitle) return false;
     // Unchanged titles are a successful no-op: skip the storage write.
     if (nextTitle === conversation.title) return true;
@@ -1462,6 +1469,7 @@ const AIStore = (function() {
     MAX_CONVERSATIONS,
     MAX_MESSAGES_PER_CONVERSATION,
     MAX_SERIALIZED_BYTES,
+    MAX_TITLE_LENGTH,
     ACTIVE_MESSAGE_FLOOR,
     MIN_QUOTA_RETRY_BYTES,
     generateId,

@@ -384,6 +384,59 @@ describe('AIService conversation rename (#1014)', () => {
     expect(AIStore.state.conversations[0].title).toBe('Packing list');
   });
 
+  it('restores the sidebar title when a synchronous rename save fails', async () => {
+    seedConversations();
+    // Persist the pre-rename titles so the failed save rolls back to them.
+    localStorage.setItem(AIStore.STORAGE_KEYS.conversations, JSON.stringify(AIStore.state.conversations));
+    localStorage.setItem(AIStore.STORAGE_KEYS.currentId, AIStore.state.currentConversationId);
+
+    const onSelectConversation = vi.fn();
+    AIRenderer.renderTopicsList({
+      onSelectConversation,
+      onRenameConversation: (id, title) => AIService.renameConversation(id, title)
+    });
+
+    const originalSetItemAsync = localStorage.setItemAsync;
+    const originalSetItem = localStorage.setItem;
+    const originalShowToast = window.showToast;
+    // No storage bridge: the synchronous write rejects and AIStore rolls
+    // conversation.title back before AIService repaints the list.
+    delete localStorage.setItemAsync;
+    localStorage.setItem = () => false;
+    window.showToast = vi.fn();
+
+    try {
+      document.querySelector('#ai-topics-list .ai-topic-rename[data-id="conv-1"]').click();
+      const input = document.querySelector('.ai-topic-rename-input');
+      input.value = 'Packing list';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+
+      const rowTitle = () => document.querySelector(
+        '#ai-topics-list .ai-topic-item[data-id="conv-1"] .ai-topic-title'
+      ).textContent;
+
+      expect(AIStore.state.conversations[0].title).toBe('Trip planning');
+      expect(rowTitle()).toBe('Trip planning');
+
+      // The deferred failure repaint must keep the rolled-back title too.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(rowTitle()).toBe('Trip planning');
+      expect(onSelectConversation).not.toHaveBeenCalled();
+    } finally {
+      localStorage.setItem = originalSetItem;
+      if (typeof originalSetItemAsync === 'undefined') {
+        delete localStorage.setItemAsync;
+      } else {
+        localStorage.setItemAsync = originalSetItemAsync;
+      }
+      if (typeof originalShowToast === 'undefined') {
+        delete window.showToast;
+      } else {
+        window.showToast = originalShowToast;
+      }
+    }
+  });
+
   it('ignores an invalid rename instead of clearing the title', () => {
     seedConversations();
     AIRenderer.renderTopicsList();

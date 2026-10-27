@@ -254,6 +254,7 @@ const AIRenderer = (function() {
     input.className = 'ai-topic-rename-input';
     input.dataset.id = conversationId;
     input.value = originalTitle;
+    input.maxLength = AIStore.MAX_TITLE_LENGTH;
     input.setAttribute('aria-label', getTranslation('aiRenameConversation'));
 
     let settled = false;
@@ -546,6 +547,15 @@ const AIRenderer = (function() {
     }
   }
 
+  // A rename rolls conversation.title back when storage rejects the write, and
+  // that restored value produces exactly the signature the list already
+  // rendered, so the early return above would keep the proposed title in the
+  // DOM. Clearing the signature forces the next render to rebuild the rows
+  // from the store (#1014).
+  function invalidateTopicsListSignature() {
+    topicsListRenderState.signature = '';
+  }
+
   // Row action labels are localized only while their row is created, so an
   // already rendered list keeps the previous language's aria-labels and
   // tooltips until the next structural re-render. Refresh them in place so a
@@ -558,6 +568,11 @@ const AIRenderer = (function() {
     list.querySelectorAll('.ai-topic-rename').forEach(button => {
       button.setAttribute('aria-label', renameLabel);
       button.title = renameLabel;
+    });
+    // An editor left open across the language switch keeps its accessible
+    // name in the previous language otherwise.
+    list.querySelectorAll('.ai-topic-rename-input').forEach(input => {
+      input.setAttribute('aria-label', renameLabel);
     });
 
     const exportLabel = getTranslation('aiExportConversation');
@@ -1105,6 +1120,7 @@ const AIRenderer = (function() {
     updateWebGroundingControl,
     refreshWebGroundingControl,
     renderTopicsList,
+    invalidateTopicsListSignature,
     renderMessages,
     updateRegenerateButton,
     initCopyButtons,
