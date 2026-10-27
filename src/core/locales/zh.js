@@ -429,6 +429,13 @@ window.i18n.__registerLocale('zh', {
   priorityHighTitle: '高优先级',
   priorityMediumTitle: '中优先级',
   priorityLowTitle: '低优先级',
+  // Todo sort selector (issue #1013)
+  todoSortLabel: '排序',
+  todoSortManual: '手动',
+  todoSortDue: '截止日期',
+  todoSortPriority: '优先级',
+  todoSortCreated: '创建时间',
+  todoSortAz: 'A-Z',
   clearCompletedText: '清除已完成',
   clearCompletedConfirmTitle: '清除已完成的待办事项？',
   clearCompletedConfirmMessage: '这将永久删除所有已完成的待办事项。此操作无法撤消。',

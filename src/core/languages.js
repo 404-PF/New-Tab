@@ -504,6 +504,13 @@ const translations = {
     priorityHighTitle: 'High Priority',
     priorityMediumTitle: 'Medium Priority',
     priorityLowTitle: 'Low Priority',
+    // Todo sort selector (issue #1013)
+    todoSortLabel: 'Sort',
+    todoSortManual: 'Manual',
+    todoSortDue: 'Due date',
+    todoSortPriority: 'Priority',
+    todoSortCreated: 'Created',
+    todoSortAz: 'A-Z',
     clearCompletedText: 'Clear Completed',
     clearCompletedConfirmTitle: 'Clear Completed Todos?',
     clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',

@@ -206,6 +206,17 @@
                 <span class="filter-label" data-i18n="priorityLow">Low</span>
                 <span class="filter-badge" id="badge-low">0</span>
               </button>
+              <span class="filter-divider"></span>
+              <div class="todo-sort">
+                <label for="todo-sort-select" class="todo-sort-label" data-i18n="todoSortLabel">Sort</label>
+                <select id="todo-sort-select" class="todo-sort-select">
+                  <option value="manual" data-i18n="todoSortManual">Manual</option>
+                  <option value="due" selected data-i18n="todoSortDue">Due date</option>
+                  <option value="priority" data-i18n="todoSortPriority">Priority</option>
+                  <option value="created" data-i18n="todoSortCreated">Created</option>
+                  <option value="az" data-i18n="todoSortAz">A-Z</option>
+                </select>
+              </div>
             </div>
             <div class="quick-actions">
               <button class="quick-action-btn" id="export-todos">

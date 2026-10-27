@@ -378,6 +378,13 @@ window.i18n.__registerLocale('de', {
   priorityHighTitle: 'Hohe Priorität',
   priorityMediumTitle: 'Mittlere Priorität',
   priorityLowTitle: 'Niedrige Priorität',
+  // Todo sort selector (issue #1013)
+  todoSortLabel: 'Sortierung',
+  todoSortManual: 'Manuell',
+  todoSortDue: 'Fälligkeitsdatum',
+  todoSortPriority: 'Priorität',
+  todoSortCreated: 'Erstellt',
+  todoSortAz: 'A-Z',
   clearCompletedText: 'Erledigte löschen',
   clearCompletedConfirmTitle: 'Erledigte Aufgaben löschen?',
   clearCompletedConfirmMessage: 'Dies entfernt dauerhaft alle erledigten Aufgaben. Diese Aktion kann nicht rückgängig gemacht werden.',

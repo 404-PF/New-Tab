@@ -391,6 +391,13 @@ window.i18n.__registerLocale('ja', {
   priorityHighTitle: '高優先度',
   priorityMediumTitle: '中優先度',
   priorityLowTitle: '低優先度',
+  // Todo sort selector (issue #1013)
+  todoSortLabel: '並び替え',
+  todoSortManual: '手動',
+  todoSortDue: '期限日',
+  todoSortPriority: '優先度',
+  todoSortCreated: '作成日',
+  todoSortAz: 'A-Z',
   clearCompletedText: '完了をクリア',
   clearCompletedConfirmTitle: '完了したTodoをクリアしますか？',
   clearCompletedConfirmMessage: '完了したすべてのTodoが完全に削除されます。この操作は元に戻せません。',

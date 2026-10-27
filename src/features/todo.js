@@ -11,6 +11,13 @@
     priority: 'all'
   };
 
+  // User-selectable sort order (issue #1013). `due` preserves the historical
+  // hard-coded ordering; `manual` is the only mode where drag-and-drop
+  // reordering is allowed to stick.
+  const SORT_MODES = ['manual', 'due', 'priority', 'created', 'az'];
+  const DEFAULT_TODO_SORT = 'due';
+  let currentSort = DEFAULT_TODO_SORT;
+
   // Multi-select state for the bulk-actions toolbar (issue #942).
   // `selectionAnchorId` is the row the last selection gesture landed on and
   // anchors Shift-click ranges over `filteredTodos`.
@@ -86,6 +93,46 @@
       console.warn('Failed to save todos to localStorage:', error);
       return false;
     }
+  }
+
+  function normalizeTodoSort(value) {
+    return SORT_MODES.includes(value) ? value : DEFAULT_TODO_SORT;
+  }
+
+  // Load the persisted sort preference; anything unknown falls back to `due`
+  // so the pre-existing due-date ordering stays the default.
+  function loadTodoSort() {
+    try {
+      return normalizeTodoSort(localStorage.getItem('todoSortOrder'));
+    } catch {
+      return DEFAULT_TODO_SORT;
+    }
+  }
+
+  function saveTodoSort(sort) {
+    try {
+      const result = localStorage.setItem('todoSortOrder', sort);
+      return result !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (error) {
+      console.warn('Failed to save todo sort order to localStorage:', error);
+      return false;
+    }
+  }
+
+  // Change the active sort mode, persist it, and re-render. Returns whether
+  // the preference was persisted (the in-memory sort still applies either way).
+  function setTodoSort(sort) {
+    currentSort = normalizeTodoSort(sort);
+    const persisted = saveTodoSort(currentSort);
+    if (elements.todoSort) {
+      elements.todoSort.value = currentSort;
+    }
+    applyFilters();
+    return persisted;
+  }
+
+  function getTodoSort() {
+    return currentSort;
   }
 
   window.addEventListener('storageBridgeWriteError', (event) => {
@@ -408,6 +455,57 @@
   }
 
   // Filtering and sorting
+  // Manual position: the `order` field written by drag-and-drop, falling back
+  // to creation time for legacy todos that predate it.
+  function getManualOrderValue(todo) {
+    return todo.order !== undefined ? todo.order : new Date(todo.createdAt).getTime();
+  }
+
+  const PRIORITY_SORT_WEIGHT = { high: 0, medium: 1, low: 2 };
+
+  // Order two incomplete todos according to the active sort mode. Completed
+  // items are grouped separately (see filterTodos).
+  function compareIncompleteTodos(a, b) {
+    switch (currentSort) {
+      case 'manual':
+        return getManualOrderValue(a) - getManualOrderValue(b);
+      case 'priority': {
+        const rankA = PRIORITY_SORT_WEIGHT[a.priority || 'medium'] ?? 1;
+        const rankB = PRIORITY_SORT_WEIGHT[b.priority || 'medium'] ?? 1;
+        if (rankA !== rankB) return rankA - rankB;
+        return getManualOrderValue(a) - getManualOrderValue(b);
+      }
+      case 'created': {
+        const createdDifference = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        if (createdDifference !== 0) return createdDifference;
+        return getManualOrderValue(a) - getManualOrderValue(b);
+      }
+      case 'az': {
+        const textDifference = String(a.text ?? '').localeCompare(String(b.text ?? ''), getDisplayLocale());
+        if (textDifference !== 0) return textDifference;
+        return getManualOrderValue(a) - getManualOrderValue(b);
+      }
+      case 'due':
+      default: {
+        // Historical ordering: incomplete items first by due date-time (dated
+        // before undated), then by manual order.
+        const dueA = a.dueDate ? getDueDateTime(a.dueDate, a.dueTime) : null;
+        const dueB = b.dueDate ? getDueDateTime(b.dueDate, b.dueTime) : null;
+        if (dueA && dueB) {
+          const dueDifference = dueA.getTime() - dueB.getTime();
+          if (dueDifference !== 0) return dueDifference;
+        } else if (dueA) {
+          return -1;
+        } else if (dueB) {
+          return 1;
+        }
+        return getManualOrderValue(a) - getManualOrderValue(b);
+      }
+    }
+  }
+
+  // Incomplete items first (ordered by the selected sort mode), then
+  // completed items (by completion time).
   function filterTodos() {
     let filtered = [...todos];
 
@@ -435,29 +533,16 @@
       });
     }
 
-    // Sort: incomplete items first (by due date-time, then order), then completed items (by completion time)
     filtered.sort((a, b) => {
-      if (!a.completed && !b.completed) {
-        const dueA = a.dueDate ? getDueDateTime(a.dueDate, a.dueTime) : null;
-        const dueB = b.dueDate ? getDueDateTime(b.dueDate, b.dueTime) : null;
-        if (dueA && dueB) {
-          const dueDifference = dueA.getTime() - dueB.getTime();
-          if (dueDifference !== 0) return dueDifference;
-        } else if (dueA) {
-          return -1;
-        } else if (dueB) {
-          return 1;
-        }
-        const orderA = a.order !== undefined ? a.order : new Date(a.createdAt).getTime();
-        const orderB = b.order !== undefined ? b.order : new Date(b.createdAt).getTime();
-        return orderA - orderB;
+      if (a.completed !== b.completed) {
+        return a.completed ? 1 : -1;
       }
       if (a.completed && b.completed) {
         const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
         const timeB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
         return timeA - timeB;
       }
-      return a.completed ? 1 : -1;
+      return compareIncompleteTodos(a, b);
     });
 
     filteredTodos = filtered;
@@ -499,7 +584,8 @@
       const li = document.createElement('li');
       li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate, todo.dueTime) ? 'overdue' : ''} ${selectedIds.has(todo.id) ? 'selected' : ''}`;
       li.dataset.id = todo.id;
-      li.draggable = true;
+      // Drag reordering only applies in manual sort mode (issue #1013).
+      li.draggable = currentSort === 'manual';
 
       const todoItemRow = document.createElement('div');
       todoItemRow.className = 'todo-item-row';
@@ -1344,6 +1430,11 @@ function handleFilterPillClick(event) {
   applyFilters();
 }
 
+// Handle sort selector changes (issue #1013)
+function handleTodoSortChange() {
+  setTodoSort(elements.todoSort ? elements.todoSort.value : DEFAULT_TODO_SORT);
+}
+
 // Clear input fields
 function clearInputs() {
   if (elements.todoInput) elements.todoInput.value = '';
@@ -1369,10 +1460,16 @@ function syncDueTimeInputState() {
   }
 }
 
-// Drag and drop functionality
+// Drag and drop functionality (manual sort mode only, issue #1013)
 let draggedElement = null;
 
 function handleDragStart(event) {
+  // Reordering is only meaningful in manual sort mode; block drag starts in
+  // the other modes so the rows never appear draggable.
+  if (currentSort !== 'manual') {
+    event.preventDefault();
+    return;
+  }
   // Controls inside a row (buttons, the selection checkbox) must not start a
   // row drag; the click they receive selects/activates instead.
   if (event.target.closest('button, input, select, textarea')) {
@@ -1394,6 +1491,9 @@ function handleDragOver(event) {
 
 function handleDrop(event) {
   event.preventDefault();
+  // Outside manual sort mode the rendered order comes from the active sort
+  // comparator, so mutating `order` would only snap back (issue #1013).
+  if (currentSort !== 'manual') return;
   if (!draggedElement) return;
 
   const draggedId = draggedElement.dataset.id;
@@ -2186,7 +2286,8 @@ function initTodo() {
     todoList: document.getElementById('todo-list'),
     emptyState: document.getElementById('empty-state'),
     filterStatus: document.getElementById('filter-status'),
-    todoFilters: document.querySelector('.todo-filters')
+    todoFilters: document.querySelector('.todo-filters'),
+    todoSort: document.getElementById('todo-sort-select')
   };
 
   // Check if all elements exist
@@ -2198,6 +2299,12 @@ function initTodo() {
 
   // Load todos
   todos = loadTodos();
+
+  // Load the persisted sort preference (issue #1013)
+  currentSort = loadTodoSort();
+  if (elements.todoSort) {
+    elements.todoSort.value = currentSort;
+  }
   
   // Migrate existing todos to have completedAt property
   migrateTodos();
@@ -2225,6 +2332,12 @@ function initTodo() {
   filterPills.forEach(pill => {
     pill.addEventListener('click', handleFilterPillClick);
   });
+
+  // Sort selector (issue #1013). The same function reference is re-registered
+  // on every init, which the DOM de-duplicates.
+  if (elements.todoSort) {
+    elements.todoSort.addEventListener('change', handleTodoSortChange);
+  }
 
   // Priority selector buttons
   const priorityBtns = document.querySelectorAll('.priority-selector-btn');
@@ -2873,6 +2986,9 @@ try {
   window.DUE_TIME_PATTERN = DUE_TIME_PATTERN;
   window.syncDueTimeInputState = syncDueTimeInputState;
   window.currentFilters = currentFilters;
+  window.setTodoSort = setTodoSort;
+  window.getTodoSort = getTodoSort;
+  window.handleTodoSortChange = handleTodoSortChange;
   window.selectedIds = selectedIds;
   window.handleTodoSelect = handleTodoSelect;
   window.handleTodoListClick = handleTodoListClick;

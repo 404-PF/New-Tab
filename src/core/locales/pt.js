@@ -378,6 +378,13 @@ window.i18n.__registerLocale('pt', {
   priorityHighTitle: 'Prioridade alta',
   priorityMediumTitle: 'Prioridade média',
   priorityLowTitle: 'Prioridade baixa',
+  // Todo sort selector (issue #1013)
+  todoSortLabel: 'Ordenar',
+  todoSortManual: 'Manual',
+  todoSortDue: 'Data de vencimento',
+  todoSortPriority: 'Prioridade',
+  todoSortCreated: 'Criado',
+  todoSortAz: 'A-Z',
   clearCompletedText: 'Limpar concluídas',
   clearCompletedConfirmTitle: 'Limpar tarefas concluídas?',
   clearCompletedConfirmMessage: 'Isso removerá permanentemente todas as tarefas concluídas. Esta ação não pode ser desfeita.',

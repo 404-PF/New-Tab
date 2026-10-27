@@ -378,6 +378,13 @@ window.i18n.__registerLocale('ru', {
   priorityHighTitle: 'Высокий приоритет',
   priorityMediumTitle: 'Средний приоритет',
   priorityLowTitle: 'Низкий приоритет',
+  // Todo sort selector (issue #1013)
+  todoSortLabel: 'Сортировка',
+  todoSortManual: 'Вручную',
+  todoSortDue: 'Срок выполнения',
+  todoSortPriority: 'Приоритет',
+  todoSortCreated: 'Дата создания',
+  todoSortAz: 'A-Z',
   clearCompletedText: 'Очистить завершённые',
   clearCompletedConfirmTitle: 'Очистить завершённые дела?',
   clearCompletedConfirmMessage: 'Это навсегда удалит все завершённые дела. Это действие нельзя отменить.',
