@@ -651,6 +651,14 @@
   function handleKeydown(e) {
     if (!window.gamesHelpers.beginRealTimeKeydown(e)) return;
 
+    // Space on a focused button, link, or [role="button"] — including the
+    // on-screen D-pad — activates that control; it must not pause or restart
+    // the game (the same #887 guard togglePauseOnSpace applies elsewhere).
+    if (e.code === 'Space' && e.target && typeof e.target.closest === 'function' &&
+        e.target.closest('button, a, [role="button"]')) {
+      return;
+    }
+
     // Ignore all steering until the player has started the run.
     if (!started) return;
 
@@ -681,41 +689,21 @@
     queueTurn(newDir);
   }
 
-  // ===================== Touch =====================
+  // ===================== Touch / pointer steering (#1019) =====================
 
-  let touchStartX = 0;
-  let touchStartY = 0;
+  let swipeSteering = null;
+  let dpad = null;
 
-  function handleTouchStart(e) {
-    if (e.touches.length === 1) {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-    }
+  // Shared by swipe gestures and the on-screen D-pad. Steering is ignored
+  // until the run starts and after it ends; a swipe-direction event never
+  // doubles as a restart (that stays a tap, see onTap below).
+  function applyGestureDirection(dir) {
+    if (!started || gameOver) return;
+    queueTurn(dir);
   }
 
-  function handleTouchEnd(e) {
-    if (gameOver) {
-      if (e.changedTouches && e.changedTouches.length > 0) {
-        restart();
-      }
-      return;
-    }
-    if (!started) return;
-    if (e.changedTouches.length !== 1) return;
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-    if (Math.max(absDx, absDy) < 20) return;
-
-    let newDir;
-    if (absDx > absDy) {
-      newDir = dx > 0 ? 'right' : 'left';
-    } else {
-      newDir = dy > 0 ? 'down' : 'up';
-    }
-
-    queueTurn(newDir);
+  function handleGestureTap() {
+    if (gameOver) restart();
   }
 
   // ===================== Save / Restore (#646) =====================
@@ -891,6 +879,14 @@
     stage.appendChild(canvas);
     container.appendChild(stage);
 
+    // Pointer swipes steer as soon as they cross the threshold (#1019); the
+    // touch-only D-pad (hidden on fine-pointer devices by CSS) queues the
+    // same turns for thumbs that cannot reach the board.
+    swipeSteering = window.gamesHelpers.createSwipeSteering(canvas, applyGestureDirection, {
+      onTap: handleGestureTap
+    });
+    dpad = window.gamesHelpers.createDPad(stage, applyGestureDirection);
+
     // Instructions
     const instructions = document.createElement('div');
     instructions.className = 'games-instructions';
@@ -914,8 +910,6 @@
     }
 
     document.addEventListener('keydown', handleKeydown);
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
-    canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     // Hold play until the user signals they are ready. A restored run offers
     // Continue instead of Start.
@@ -947,9 +941,13 @@
     stopTick();
     stopAnimation();
     document.removeEventListener('keydown', handleKeydown);
-    if (canvas) {
-      canvas.removeEventListener('touchstart', handleTouchStart);
-      canvas.removeEventListener('touchend', handleTouchEnd);
+    if (swipeSteering) {
+      swipeSteering.destroy();
+      swipeSteering = null;
+    }
+    if (dpad) {
+      dpad.destroy();
+      dpad = null;
     }
     canvas = null;
     ctx = null;
@@ -1002,6 +1000,8 @@
   // Test hook: expose whether the run has been started so tests can assert the
   // game holds on the ready screen until the player signals readiness.
   window.__snakeReady = {
-    isStarted: function () { return started; }
+    isStarted: function () { return started; },
+    isGameOver: function () { return gameOver; },
+    forceGameOver: endGame
   };
 })();

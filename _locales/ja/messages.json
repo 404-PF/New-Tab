@@ -594,6 +594,26 @@
     "message": "残機",
     "description": "Lives remaining label shown in game HUDs"
   },
+  "gamesDpad": {
+    "message": "方向パッド",
+    "description": "Accessible label for the on-screen direction pad"
+  },
+  "gamesDpadUp": {
+    "message": "上",
+    "description": "On-screen direction pad: up"
+  },
+  "gamesDpadDown": {
+    "message": "下",
+    "description": "On-screen direction pad: down"
+  },
+  "gamesDpadLeft": {
+    "message": "左",
+    "description": "On-screen direction pad: left"
+  },
+  "gamesDpadRight": {
+    "message": "右",
+    "description": "On-screen direction pad: right"
+  },
   "searchProviders": {
     "message": "検索プロバイダー",
     "description": "Title for the custom search providers settings card"

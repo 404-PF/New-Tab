@@ -302,6 +302,149 @@
     return { start: start, remove: remove };
   };
 
+  // Pointer-based swipe steering (#1019). Resolves a direction as soon as the
+  // pointer moves `threshold` px from the anchor (then re-anchors, so one
+  // continuous drag can steer through several turns) instead of waiting for
+  // release, and captures the pointer on down so a gesture that leaves the
+  // canvas is never lost. Movement below the threshold fires nothing, so a
+  // tap stays a tap and can mean start/restart. options:
+  //   threshold — px before a direction fires (default 20)
+  //   onTap — called on pointerup when the gesture never crossed the threshold
+  // Returns { destroy } to detach every listener.
+  window.gamesHelpers.createSwipeSteering = function (canvas, onDirection, options) {
+    if (!canvas || typeof onDirection !== 'function') return null;
+    const threshold = Number.isFinite(options?.threshold) ? options.threshold : 20;
+    const onTap = typeof options?.onTap === 'function' ? options.onTap : null;
+    let anchorX = 0;
+    let anchorY = 0;
+    let tracking = false;
+    let moved = false;
+    let activePointerId = null;
+
+    function onPointerDown(e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      // A second finger must not hijack the gesture: the anchor and the
+      // tracked pointer stay with the first one (#1019 review).
+      if (tracking) return;
+      tracking = true;
+      moved = false;
+      activePointerId = e.pointerId;
+      anchorX = e.clientX;
+      anchorY = e.clientY;
+      if (typeof canvas.setPointerCapture === 'function') {
+        try { canvas.setPointerCapture(e.pointerId); } catch (_err) { /* ignore */ }
+      }
+    }
+
+    function onPointerMove(e) {
+      if (!tracking) return;
+      if (activePointerId !== null && e.pointerId !== undefined && e.pointerId !== activePointerId) return;
+      const dx = e.clientX - anchorX;
+      const dy = e.clientY - anchorY;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
+      let dir;
+      if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? 'right' : 'left';
+      else dir = dy > 0 ? 'down' : 'up';
+      // Re-anchor so the rest of the same drag can trigger another turn.
+      anchorX = e.clientX;
+      anchorY = e.clientY;
+      moved = true;
+      onDirection(dir);
+    }
+
+    function onPointerEnd(e) {
+      if (!tracking) return;
+      if (activePointerId !== null && e.pointerId !== undefined && e.pointerId !== activePointerId) return;
+      tracking = false;
+      activePointerId = null;
+      if (typeof canvas.releasePointerCapture === 'function' && e && e.pointerId !== undefined) {
+        try { canvas.releasePointerCapture(e.pointerId); } catch (_err) { /* ignore */ }
+      }
+      // Only a deliberate pointerup counts as a tap; a pointercancel (the
+      // browser taking over for scroll/zoom) must never restart a finished
+      // run through onTap (#1019 review).
+      if (!moved && onTap && e && e.type === 'pointerup') onTap();
+    }
+
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerEnd);
+    canvas.addEventListener('pointercancel', onPointerEnd);
+
+    return {
+      destroy: function () {
+        canvas.removeEventListener('pointerdown', onPointerDown);
+        canvas.removeEventListener('pointermove', onPointerMove);
+        canvas.removeEventListener('pointerup', onPointerEnd);
+        canvas.removeEventListener('pointercancel', onPointerEnd);
+        tracking = false;
+        activePointerId = null;
+      }
+    };
+  };
+
+  // Compact on-screen D-pad for touch play (#1019), appended to a game stage
+  // and calling onDirection('up' | 'down' | 'left' | 'right') per press. CSS
+  // shows it only on coarse-pointer devices, so desktop is unchanged. Buttons
+  // fire on pointerdown for a lag-free press and re-fire on click with
+  // detail === 0 (keyboard/assistive-tech activation only, so a tap does not
+  // double-fire). Returns { destroy, element }.
+  window.gamesHelpers.createDPad = function (stage, onDirection) {
+    if (!stage || typeof onDirection !== 'function') return null;
+
+    const pad = document.createElement('div');
+    pad.className = 'games-dpad';
+    pad.setAttribute('role', 'group');
+    pad.setAttribute('aria-label', window.gamesHelpers.tr('gamesDpad'));
+
+    const buttons = [
+      { dir: 'up', glyph: '▲', key: 'gamesDpadUp' },
+      { dir: 'left', glyph: '◀', key: 'gamesDpadLeft' },
+      { dir: 'right', glyph: '▶', key: 'gamesDpadRight' },
+      { dir: 'down', glyph: '▼', key: 'gamesDpadDown' }
+    ];
+
+    const cleanups = buttons.map(function (spec) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'games-dpad-btn games-dpad-' + spec.dir;
+      button.textContent = spec.glyph;
+      button.setAttribute('aria-label', window.gamesHelpers.tr(spec.key));
+
+      function onPointerDown(e) {
+        // Same primary-button rule as the swipe helper: a right- or
+        // middle-click must not steer (#1019 review).
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        e.preventDefault();
+        onDirection(spec.dir);
+      }
+      function onClick(e) {
+        // Pointer taps already fired on pointerdown; only keyboard and
+        // assistive-tech clicks (detail 0) still need the direction here.
+        if (e.detail !== 0) return;
+        onDirection(spec.dir);
+      }
+
+      button.addEventListener('pointerdown', onPointerDown);
+      button.addEventListener('click', onClick);
+      pad.appendChild(button);
+      return function () {
+        button.removeEventListener('pointerdown', onPointerDown);
+        button.removeEventListener('click', onClick);
+      };
+    });
+
+    stage.appendChild(pad);
+
+    return {
+      element: pad,
+      destroy: function () {
+        cleanups.forEach(function (cleanup) { cleanup(); });
+        pad.remove();
+      }
+    };
+  };
+
   // Key handling helper for restarting on Space when gameOver
   window.gamesHelpers.handleRestartSpace = function (ev, resetFn) {
     if (!ev || window.gamesHelpers.isEditableTarget(ev.target)) return;

@@ -594,6 +594,26 @@
     "message": "Vidas",
     "description": "Lives remaining label shown in game HUDs"
   },
+  "gamesDpad": {
+    "message": "Cruceta",
+    "description": "Accessible label for the on-screen direction pad"
+  },
+  "gamesDpadUp": {
+    "message": "Arriba",
+    "description": "On-screen direction pad: up"
+  },
+  "gamesDpadDown": {
+    "message": "Abajo",
+    "description": "On-screen direction pad: down"
+  },
+  "gamesDpadLeft": {
+    "message": "Izquierda",
+    "description": "On-screen direction pad: left"
+  },
+  "gamesDpadRight": {
+    "message": "Derecha",
+    "description": "On-screen direction pad: right"
+  },
   "searchProviders": {
     "message": "Proveedores de búsqueda",
     "description": "Title for the custom search providers settings card"

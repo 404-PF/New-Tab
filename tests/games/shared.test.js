@@ -439,3 +439,339 @@ describe('gamesHelpers.togglePauseOnSpace (#876)', () => {
     button.remove();
   });
 });
+
+// jsdom has no PointerEvent constructor or setPointerCapture, so the tests
+// dispatch MouseEvent with pointer event types (listeners match on type only)
+// and the helper's capture calls are guarded in source. MouseEvent also lacks
+// the pointerType/pointerId fields, so those are defined directly on the
+// event when a test needs them.
+function makeCanvas() {
+  const canvas = document.createElement('canvas');
+  document.body.appendChild(canvas);
+  return canvas;
+}
+
+function pointer(type, x, y, extra) {
+  const e = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX: x,
+    clientY: y,
+    ...extra
+  });
+  if (extra && extra.pointerType !== undefined) {
+    Object.defineProperty(e, 'pointerType', { value: extra.pointerType });
+  }
+  if (extra && extra.pointerId !== undefined) {
+    Object.defineProperty(e, 'pointerId', { value: extra.pointerId });
+  }
+  return e;
+}
+
+describe('gamesHelpers.createSwipeSteering (#1019)', () => {
+  it('fires a direction as soon as the swipe crosses the threshold, before pointerup', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection);
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100));
+    canvas.dispatchEvent(pointer('pointermove', 110, 100));
+    expect(onDirection).not.toHaveBeenCalled();
+
+    canvas.dispatchEvent(pointer('pointermove', 130, 100));
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenCalledWith('right');
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('re-anchors after each resolved turn so one drag steers through several turns', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection);
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100));
+    canvas.dispatchEvent(pointer('pointermove', 140, 100)); // right, re-anchors at 140
+    canvas.dispatchEvent(pointer('pointermove', 140, 150)); // down from the new anchor
+    expect(onDirection.mock.calls).toEqual([['right'], ['down']]);
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('resolves the dominant axis', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection);
+
+    canvas.dispatchEvent(pointer('pointerdown', 50, 50));
+    canvas.dispatchEvent(pointer('pointermove', 55, 90));
+    expect(onDirection).toHaveBeenLastCalledWith('down');
+
+    canvas.dispatchEvent(pointer('pointerup', 55, 90));
+    canvas.dispatchEvent(pointer('pointerdown', 50, 50));
+    canvas.dispatchEvent(pointer('pointermove', 10, 55));
+    expect(onDirection).toHaveBeenLastCalledWith('left');
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('keeps a distance floor so a tap fires onTap, not a direction', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const onTap = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection, { onTap });
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100));
+    canvas.dispatchEvent(pointer('pointermove', 110, 110)); // under the 20px default
+    canvas.dispatchEvent(pointer('pointerup', 110, 110));
+
+    expect(onDirection).not.toHaveBeenCalled();
+    expect(onTap).toHaveBeenCalledTimes(1);
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('does not fire onTap once the gesture resolved a direction', () => {
+    const canvas = makeCanvas();
+    const onTap = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, vi.fn(), { onTap });
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100));
+    canvas.dispatchEvent(pointer('pointermove', 140, 100));
+    canvas.dispatchEvent(pointer('pointerup', 140, 100));
+
+    expect(onTap).not.toHaveBeenCalled();
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('ends tracking on pointercancel, stops steering, and never fires onTap', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const onTap = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection, { onTap });
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100));
+    canvas.dispatchEvent(pointer('pointercancel', 100, 100));
+    canvas.dispatchEvent(pointer('pointermove', 200, 100));
+    expect(onDirection).not.toHaveBeenCalled();
+    // A cancelled gesture is not a deliberate tap: it must never reach the
+    // game-over restart path through onTap.
+    expect(onTap).not.toHaveBeenCalled();
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('ignores non-primary mouse buttons', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection);
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100, { pointerType: 'mouse', button: 2 }));
+    canvas.dispatchEvent(pointer('pointermove', 140, 100));
+    expect(onDirection).not.toHaveBeenCalled();
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('captures the pointer when the platform supports it', () => {
+    const canvas = makeCanvas();
+    const captured = [];
+    canvas.setPointerCapture = (id) => { captured.push(id); };
+    canvas.releasePointerCapture = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, vi.fn());
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100, { pointerId: 7 }));
+    expect(captured).toEqual([7]);
+    canvas.dispatchEvent(pointer('pointerup', 100, 100, { pointerId: 7 }));
+    expect(canvas.releasePointerCapture).toHaveBeenCalledWith(7);
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('steers normally when the platform lacks the pointer capture APIs', () => {
+    // jsdom canvases ship without both methods; the helper must skip the
+    // capture calls quietly instead of throwing.
+    const canvas = makeCanvas();
+    expect(typeof canvas.setPointerCapture).not.toBe('function');
+    expect(typeof canvas.releasePointerCapture).not.toBe('function');
+    const onDirection = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection);
+
+    expect(() => {
+      canvas.dispatchEvent(pointer('pointerdown', 100, 100, { pointerId: 5 }));
+      canvas.dispatchEvent(pointer('pointermove', 140, 100));
+      canvas.dispatchEvent(pointer('pointerup', 140, 100, { pointerId: 5 }));
+    }).not.toThrow();
+    expect(onDirection).toHaveBeenCalledWith('right');
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('keeps steering when the pointer capture APIs throw', () => {
+    const canvas = makeCanvas();
+    canvas.setPointerCapture = () => { throw new Error('capture unavailable'); };
+    canvas.releasePointerCapture = () => { throw new Error('release unavailable'); };
+    const onDirection = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection);
+
+    expect(() => {
+      canvas.dispatchEvent(pointer('pointerdown', 100, 100, { pointerId: 9 }));
+      canvas.dispatchEvent(pointer('pointermove', 140, 100));
+      canvas.dispatchEvent(pointer('pointerup', 140, 100, { pointerId: 9 }));
+    }).not.toThrow();
+    expect(onDirection).toHaveBeenCalledWith('right');
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('ignores secondary pointers so multi-touch cannot corrupt the anchor', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection);
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100, { pointerId: 1 }));
+    // A second finger must not reset the shared anchor.
+    canvas.dispatchEvent(pointer('pointerdown', 300, 300, { pointerId: 2 }));
+    // Moves from the first finger still measure from its own anchor.
+    canvas.dispatchEvent(pointer('pointermove', 140, 100, { pointerId: 1 }));
+    expect(onDirection.mock.calls).toEqual([['right']]);
+    // Lifting the second finger must not end the first finger's gesture.
+    canvas.dispatchEvent(pointer('pointerup', 300, 300, { pointerId: 2 }));
+    canvas.dispatchEvent(pointer('pointermove', 140, 150, { pointerId: 1 }));
+    expect(onDirection.mock.calls).toEqual([['right'], ['down']]);
+    // The tracked finger's release ends the gesture.
+    canvas.dispatchEvent(pointer('pointerup', 140, 150, { pointerId: 1 }));
+    canvas.dispatchEvent(pointer('pointermove', 140, 200, { pointerId: 1 }));
+    expect(onDirection).toHaveBeenCalledTimes(2);
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('stops firing after destroy()', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection);
+    steering.destroy();
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100));
+    canvas.dispatchEvent(pointer('pointermove', 140, 100));
+    expect(onDirection).not.toHaveBeenCalled();
+
+    canvas.remove();
+  });
+
+  it('returns null without a canvas or direction callback', () => {
+    const canvas = makeCanvas();
+    expect(window.gamesHelpers.createSwipeSteering(null, vi.fn())).toBeNull();
+    expect(window.gamesHelpers.createSwipeSteering(canvas, null)).toBeNull();
+    canvas.remove();
+  });
+});
+
+describe('gamesHelpers.createDPad (#1019)', () => {
+  function makeStage() {
+    const stage = document.createElement('div');
+    document.body.appendChild(stage);
+    return stage;
+  }
+
+  it('appends an accessible four-button pad to the stage', () => {
+    const stage = makeStage();
+    const pad = window.gamesHelpers.createDPad(stage, vi.fn());
+
+    const element = stage.querySelector('.games-dpad');
+    expect(element).not.toBeNull();
+    expect(element.getAttribute('role')).toBe('group');
+    expect(element.getAttribute('aria-label')).toBe('Direction pad');
+    const buttons = element.querySelectorAll('.games-dpad-btn');
+    expect(buttons).toHaveLength(4);
+    expect(element.querySelector('.games-dpad-up').getAttribute('aria-label')).toBe('Up');
+    expect(element.querySelector('.games-dpad-down').getAttribute('aria-label')).toBe('Down');
+    expect(element.querySelector('.games-dpad-left').getAttribute('aria-label')).toBe('Left');
+    expect(element.querySelector('.games-dpad-right').getAttribute('aria-label')).toBe('Right');
+
+    pad.destroy();
+    stage.remove();
+  });
+
+  it('queues the matching direction on pointerdown', () => {
+    const stage = makeStage();
+    const onDirection = vi.fn();
+    const pad = window.gamesHelpers.createDPad(stage, onDirection);
+
+    pad.element.querySelector('.games-dpad-up').dispatchEvent(pointer('pointerdown', 0, 0));
+    pad.element.querySelector('.games-dpad-left').dispatchEvent(pointer('pointerdown', 0, 0));
+    expect(onDirection.mock.calls).toEqual([['up'], ['left']]);
+
+    pad.destroy();
+    stage.remove();
+  });
+
+  it('ignores non-primary mouse buttons on the pad', () => {
+    const stage = makeStage();
+    const onDirection = vi.fn();
+    const pad = window.gamesHelpers.createDPad(stage, onDirection);
+
+    pad.element.querySelector('.games-dpad-up').dispatchEvent(
+      pointer('pointerdown', 0, 0, { pointerType: 'mouse', button: 2 })
+    );
+    expect(onDirection).not.toHaveBeenCalled();
+
+    pad.destroy();
+    stage.remove();
+  });
+
+  it('accepts keyboard activation (click detail 0) without double-firing pointer taps', () => {
+    const stage = makeStage();
+    const onDirection = vi.fn();
+    const pad = window.gamesHelpers.createDPad(stage, onDirection);
+    const up = pad.element.querySelector('.games-dpad-up');
+
+    // A real tap fires pointerdown (already counted) then a compatibility
+    // click with detail > 0, which must not queue a second turn.
+    up.dispatchEvent(pointer('pointerdown', 0, 0));
+    up.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+    expect(onDirection).toHaveBeenCalledTimes(1);
+
+    // Keyboard/assistive-tech activation arrives as click with detail 0.
+    up.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 }));
+    expect(onDirection).toHaveBeenCalledTimes(2);
+    expect(onDirection).toHaveBeenLastCalledWith('up');
+
+    pad.destroy();
+    stage.remove();
+  });
+
+  it('removes the pad and its listeners on destroy()', () => {
+    const stage = makeStage();
+    const onDirection = vi.fn();
+    const pad = window.gamesHelpers.createDPad(stage, onDirection);
+    const up = pad.element.querySelector('.games-dpad-up');
+    pad.destroy();
+
+    expect(stage.querySelector('.games-dpad')).toBeNull();
+    up.dispatchEvent(pointer('pointerdown', 0, 0));
+    expect(onDirection).not.toHaveBeenCalled();
+
+    stage.remove();
+  });
+
+  it('returns null without a stage or direction callback', () => {
+    const stage = makeStage();
+    expect(window.gamesHelpers.createDPad(null, vi.fn())).toBeNull();
+    expect(window.gamesHelpers.createDPad(stage, null)).toBeNull();
+    stage.remove();
+  });
+});

@@ -594,6 +594,26 @@
     "message": "Leben",
     "description": "Lives remaining label shown in game HUDs"
   },
+  "gamesDpad": {
+    "message": "Steuerkreuz",
+    "description": "Accessible label for the on-screen direction pad"
+  },
+  "gamesDpadUp": {
+    "message": "Oben",
+    "description": "On-screen direction pad: up"
+  },
+  "gamesDpadDown": {
+    "message": "Unten",
+    "description": "On-screen direction pad: down"
+  },
+  "gamesDpadLeft": {
+    "message": "Links",
+    "description": "On-screen direction pad: left"
+  },
+  "gamesDpadRight": {
+    "message": "Rechts",
+    "description": "On-screen direction pad: right"
+  },
   "searchProviders": {
     "message": "Suchanbieter",
     "description": "Title for the custom search providers settings card"
