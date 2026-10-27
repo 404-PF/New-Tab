@@ -569,6 +569,7 @@ describe('toggle handlers tolerate a missing toast.js helper (#969)', () => {
     });
 
     localStorage.setItem('todoEnabled', 'true');
+    document.getElementById('todo-enabled-setting').checked = true;
 
     expect(() => {
       window.Shortcuts.executeAction('toggleTodo');
