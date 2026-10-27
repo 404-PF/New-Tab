@@ -389,7 +389,7 @@
     }
     // Ignore presses that change nothing: already heading this way, or this
     // is already the intended direction. Otherwise the last press wins.
-    if (dir === pacman.dir || dir === pendingDir) return;
+    if (dir === pendingDir || (dir === pacman.dir && pendingDir === null)) return;
     pendingDir = dir;
   }
 
