@@ -487,13 +487,18 @@ describe('New-Tab.html i18n key completeness', () => {
     const buttons = [...html.matchAll(/<button[^>]*class="priority-selector-btn[^"]*"[^>]*>/g)]
       .map((match) => match[0]);
 
+    expectTranslationKeys(['priorityLowTitle', 'priorityMediumTitle', 'priorityHighTitle']);
     expect(buttons).toHaveLength(3);
-    const expected = ['priorityLow', 'priorityMedium', 'priorityHigh'];
+    const expected = ['priorityLowTitle', 'priorityMediumTitle', 'priorityHighTitle'];
     buttons.forEach((button, index) => {
       expect(button, button).toContain(`data-i18n-title="${expected[index]}"`);
       expect(button, button).toContain(`data-i18n-aria-label="${expected[index]}"`);
       expect(button, button).not.toMatch(/title="(Low|Medium|High) Priority"/);
     });
+  });
+
+  it('defines the todo priority labels in every supported language', () => {
+    expectTranslationKeys(['priorityLow', 'priorityMedium', 'priorityHigh']);
   });
 });
 

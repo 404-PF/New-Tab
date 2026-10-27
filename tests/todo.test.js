@@ -1497,6 +1497,15 @@ describe('Todo priority', () => {
     }
   });
 
+  it('renderTodos falls back to the capitalized raw value for unknown priorities', () => {
+    // Unknown priorities must not masquerade as the Medium label.
+    addTodo('Urgent task', null, 'urgent');
+    const badge = document.querySelector('.todo-priority-badge');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe('Urgent');
+    expect(badge.classList.contains('priority-urgent')).toBe(true);
+  });
+
   it('renderTodos does not show priority badge for todos without explicit priority (treated as medium)', () => {
     addTodo('Legacy todo');
     const badge = document.querySelector('.todo-priority-badge');
