@@ -259,7 +259,7 @@ describe('Pac-Man input and movement', () => {
     container.remove();
   });
 
-  it('retries a held direction key once a full queue frees a slot (#1016)', () => {
+  it('retries a held direction key while a stale intent is pending (#1016)', () => {
     const container = makeContainer();
     startWithSpace();
 
@@ -269,16 +269,16 @@ describe('Pac-Man input and movement', () => {
     const held = () =>
       document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowDown', key: 'ArrowDown', repeat: true, bubbles: true }));
 
-    // The queue is full, so the repeat waits instead of being lost forever.
+    // The legacy queue collapses to its last intent; the held repeat replaces
+    // that stale intent instead of being lost behind a full buffer.
     held();
-    expect(window.__pacmanTest.getState().queuedDirs).toEqual(['down', 'right']);
+    expect(window.__pacmanTest.getState().queuedDirs).toEqual(['down']);
 
-    // The next tick frees a slot and applies 'down'; the still-held key is
-    // now the effective direction, so its repeats must not duplicate the
-    // queue either.
+    // The next tick applies 'down'; the still-held key is now the direction
+    // in effect, so its repeats must not invent a second intent either.
     window.__pacmanTest.tick(0.05);
     held();
-    expect(window.__pacmanTest.getState().queuedDirs).toEqual(['right']);
+    expect(window.__pacmanTest.getState().queuedDirs).toEqual([]);
     window.__pacmanTest.tick(0.3);
     expect(window.__pacmanTest.getState().pacman.dir).toBe('down');
 
@@ -884,9 +884,10 @@ describe('Pac-Man pointer steering and D-pad (#1019)', () => {
     pad.querySelector('.games-dpad-left').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
     expect(window.__pacmanTest.getState().queuedDirs).toEqual(['up']);
 
-    // Keyboard/assistive-tech activation (click detail 0) also steers.
+    // Keyboard/assistive-tech activation (click detail 0) also steers; the
+    // last press replaces the pending intent.
     pad.querySelector('.games-dpad-left').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
-    expect(window.__pacmanTest.getState().queuedDirs).toEqual(['up', 'left']);
+    expect(window.__pacmanTest.getState().queuedDirs).toEqual(['left']);
 
     // Steering is inert after game over (restart stays a tap).
     window.__pacmanTest.forceGameOver();
