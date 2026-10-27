@@ -435,8 +435,12 @@ window.i18n.__registerLocale('zh', {
   dataImportReplaceSuccess: '已用导入的数据替换所有设置。',
   dataImportPartialSuccess: '导入完成但出现一些错误。部分旧数据无法删除。',
   dataImportLateWriteFailure: '导入完成后，部分导入的数据未能保存。',
+  dataExportMediaSkipped: '备份已创建，但部分自定义背景文件过大，未能包含在内。',
+  dataImportInvalidCustomBackgrounds: '备份包含无效的自定义背景数据。',
+  dataImportInvalidMedia: '备份中的某个自定义背景媒体数据无效。',
+  dataImportMediaTooLarge: '备份中的某个自定义背景超出了大小限制。',
   dataLimitations: '限制',
-  dataLimitationsDesc: '自定义背景图片/视频存储在本地，无法包含在导出文件中。',
+  dataLimitationsDesc: '自定义背景图片/视频在不超过大小限制时会包含在备份中；过大的媒体会被跳过。',
 
   // Onboarding
   onboardingLanguageTitle: '选择您的语言 🌐',

@@ -281,6 +281,21 @@
       window.initSettings();
     }
 
+    // Re-render the custom background thumbnails and re-apply the homepage
+    // background so a restore shows the uploads in Settings → Background and
+    // renders the selected one without a tab reload (issue #996).
+    if (window._customBackgrounds && typeof window._customBackgrounds.render === 'function') {
+      const rendered = window._customBackgrounds.render();
+      if (rendered && typeof rendered.catch === 'function') {
+        // The real render surfaces its own error toast; keep a stray stub
+        // rejection from becoming an unhandled promise rejection here.
+        rendered.catch(function () {});
+      }
+    }
+    if (typeof window.applyBg === 'function') {
+      window.applyBg();
+    }
+
     // Re-apply simple mode so the imported simpleMode flag toggles the body
     // class and header checkbox without a tab reload (issue #837).
     if (typeof window.applySimpleMode === 'function') {
@@ -339,23 +354,105 @@
     }
   }
 
-  // --- Custom background metadata from IndexedDB ---
+  // --- Custom background media from IndexedDB ---
+  //
+  // Exports embed each upload's media as a base64 data URL inside the
+  // `_customBackgroundsMetadata` record so a backup can migrate devices
+  // (issue #996). The `_` prefix still never reaches localStorage: import
+  // validates this record explicitly and writes the blobs back to IndexedDB
+  // before any settings key is applied.
+
+  // Raw-byte caps, checked before encoding on export and against the decoded
+  // payload on import. base64 adds ~33% on top of these numbers. Tests can
+  // override them on window.DataManager.
+  const DEFAULT_MAX_MEDIA_BYTES_PER_RECORD = 20 * 1024 * 1024;
+  const DEFAULT_MAX_MEDIA_BYTES_TOTAL = 60 * 1024 * 1024;
+
+  function getMaxMediaBytesPerRecord() {
+    const configured = window.DataManager && window.DataManager.maxMediaBytesPerRecord;
+    return typeof configured === 'number' && configured >= 0
+      ? configured
+      : DEFAULT_MAX_MEDIA_BYTES_PER_RECORD;
+  }
+
+  function getMaxMediaBytesTotal() {
+    const configured = window.DataManager && window.DataManager.maxMediaBytesTotal;
+    return typeof configured === 'number' && configured >= 0
+      ? configured
+      : DEFAULT_MAX_MEDIA_BYTES_TOTAL;
+  }
+
+  // data:<mime>;base64,<payload> with a non-empty MIME type and a
+  // syntactically base64 payload. Anchored, so it doubles as format
+  // validation for media payloads read from a backup.
+  const MEDIA_DATA_URL_PATTERN = /^data:([^;,]+);base64,([A-Za-z0-9+/]+={0,2})$/;
+
+  function base64ByteLength(base64) {
+    const padding = base64.slice(-2) === '=='
+      ? 2
+      : (base64.slice(-1) === '=' ? 1 : 0);
+    return Math.floor(base64.length * 3 / 4) - padding;
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise(function (resolve, reject) {
+      const reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(reader.error || new Error('Failed to encode media')); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    const match = MEDIA_DATA_URL_PATTERN.exec(dataUrl);
+    if (!match) throw new Error('Invalid media data URL');
+    const binary = atob(match[2]);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: match[1] });
+  }
 
   function getCustomBackgroundsMetadata() {
     if (!window._customBackgrounds || typeof window._customBackgrounds.getAll !== 'function') {
-      return Promise.resolve([]);
+      return Promise.resolve({ entries: [], mediaSkipped: 0 });
     }
     return window._customBackgrounds.getAll().then(function (bgs) {
-      if (!Array.isArray(bgs)) return [];
-      return bgs.map(function (bg) {
-        return {
+      if (!Array.isArray(bgs)) return { entries: [], mediaSkipped: 0 };
+      let totalBytes = 0;
+      let mediaSkipped = 0;
+      const maxPerRecord = getMaxMediaBytesPerRecord();
+      const maxTotal = getMaxMediaBytesTotal();
+      const pending = bgs.map(function (bg) {
+        const entry = {
           id: bg.id,
           title: bg.title,
           type: bg.type,
-          timestamp: bg.timestamp
-          // Thumbnail included for reference; actual media data is not exportable
-          // thumb: bg.thumb
+          timestamp: bg.timestamp,
+          thumb: bg.thumb
         };
+        const data = bg.data;
+        const usable = data && typeof data.size === 'number' && typeof data.type === 'string' && data.type !== '';
+        // Oversized (per record or total) or unreadable media is skipped with
+        // a warning instead of failing the whole export.
+        if (!usable || data.size > maxPerRecord || totalBytes + data.size > maxTotal) {
+          mediaSkipped++;
+          return Promise.resolve(entry);
+        }
+        totalBytes += data.size;
+        return blobToDataUrl(data).then(function (dataUrl) {
+          entry.media = dataUrl;
+          return entry;
+        }).catch(function (error) {
+          console.warn('[data-manager] Failed to encode custom background media:', error);
+          totalBytes -= data.size;
+          mediaSkipped++;
+          return entry;
+        });
+      });
+      return Promise.all(pending).then(function (entries) {
+        return { entries: entries, mediaSkipped: mediaSkipped };
       });
     }).catch(function (error) {
       console.error('[data-manager] Failed to read custom background metadata:', error);
@@ -393,10 +490,11 @@
       return;
     }
 
-    // Mark custom backgrounds metadata (actual media in IndexedDB, not in JSON)
-    getCustomBackgroundsMetadata().then(function (customBgs) {
-      if (customBgs.length > 0) {
-        data._customBackgroundsMetadata = customBgs;
+    // Custom backgrounds travel with the backup: metadata plus base64 media
+    // for every upload that fits the size caps.
+    getCustomBackgroundsMetadata().then(function (result) {
+      if (result.entries.length > 0) {
+        data._customBackgroundsMetadata = result.entries;
       }
 
       const exportObj = {
@@ -418,7 +516,11 @@
       document.body.removeChild(a);
       setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
 
-      showToast(t('dataExportSuccess', 'Data exported successfully.'), 'success');
+      if (result.mediaSkipped > 0) {
+        showToast(t('dataExportMediaSkipped', 'Backup created, but some custom background media was too large to include.'), 'warning');
+      } else {
+        showToast(t('dataExportSuccess', 'Data exported successfully.'), 'success');
+      }
     }).catch(function (error) {
       console.error('[data-manager] Failed to export data:', error);
       showToast(t('dataExportReadError', 'Export failed: could not read all settings.'), 'error');
@@ -636,6 +738,46 @@
     autoThemeDarkTime: function (v) { return typeof v === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v); }
   };
 
+  // Shape and media-size validation for the `_customBackgroundsMetadata`
+  // record. Entries without `media` are legacy v1 metadata and stay valid so
+  // older backups keep importing exactly as before; only `_`-prefixed keys
+  // bypass the per-key allowlist/shape sweep above.
+  function validateCustomBackgroundsMetadata(entries) {
+    const invalidShape = {
+      valid: false,
+      error: t('dataImportInvalidCustomBackgrounds', 'The backup contains invalid custom background data.')
+    };
+    if (!Array.isArray(entries)) return invalidShape;
+    let totalBytes = 0;
+    const maxPerRecord = getMaxMediaBytesPerRecord();
+    const maxTotal = getMaxMediaBytesTotal();
+    for (const entry of entries) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return invalidShape;
+      if (typeof entry.id !== 'string' || entry.id.trim() === '') return invalidShape;
+      if (typeof entry.type !== 'string' || entry.type.trim() === '') return invalidShape;
+      if (entry.title !== undefined && typeof entry.title !== 'string') return invalidShape;
+      if (entry.thumb !== undefined && typeof entry.thumb !== 'string') return invalidShape;
+      if (entry.timestamp !== undefined && typeof entry.timestamp !== 'number') return invalidShape;
+      if (entry.media === undefined) continue;
+      const match = typeof entry.media === 'string' ? MEDIA_DATA_URL_PATTERN.exec(entry.media) : null;
+      if (!match) {
+        return {
+          valid: false,
+          error: t('dataImportInvalidMedia', 'A custom background in this backup has invalid media data.')
+        };
+      }
+      const bytes = base64ByteLength(match[2]);
+      if (bytes > maxPerRecord || totalBytes + bytes > maxTotal) {
+        return {
+          valid: false,
+          error: t('dataImportMediaTooLarge', 'A custom background in this backup exceeds the size limit.')
+        };
+      }
+      totalBytes += bytes;
+    }
+    return { valid: true };
+  }
+
   function validateImportData(data) {
     if (!data || typeof data !== 'object') return { valid: false, error: t('dataImportInvalidFile', 'Invalid file format.') };
     if (!data.data || typeof data.data !== 'object' || data.data === null || Array.isArray(data.data)) {
@@ -662,10 +804,52 @@
     if (invalidKeys.length > 0) {
       return { valid: false, error: t('dataImportInvalidShape', 'Invalid data structure for key(s).') + ' ' + invalidKeys.join(', ') };
     }
+    if (Object.prototype.hasOwnProperty.call(data.data, '_customBackgroundsMetadata')) {
+      const mediaValidation = validateCustomBackgroundsMetadata(data.data._customBackgroundsMetadata);
+      if (!mediaValidation.valid) return mediaValidation;
+    }
     return { valid: true };
   }
 
   // --- Import ---
+
+  // Writes the backup's custom background blobs back into the
+  // customBackgrounds/customBackgroundsMeta stores. Runs before any settings
+  // key is applied so `homepageBg` never points at a `custom_*` id whose
+  // media is still missing (issue #996). Entries without `media` (legacy v1
+  // backups) are left alone; they restore exactly as they did before.
+  function restoreCustomBackgroundMedia(entries) {
+    if (!Array.isArray(entries) || entries.length === 0) return Promise.resolve(true);
+    const restorable = entries.filter(function (entry) {
+      return entry && typeof entry.media === 'string';
+    });
+    if (restorable.length === 0) return Promise.resolve(true);
+    const save = window._customBackgrounds && typeof window._customBackgrounds.save === 'function'
+      ? window._customBackgrounds.save
+      : null;
+    if (!save) {
+      console.warn('[data-manager] Custom background media skipped: no IndexedDB write API available');
+      return Promise.resolve(false);
+    }
+    const writes = restorable.map(function (entry) {
+      return Promise.resolve().then(function () {
+        return save({
+          id: entry.id,
+          title: entry.title,
+          type: entry.type,
+          data: dataUrlToBlob(entry.media),
+          thumb: entry.thumb,
+          timestamp: entry.timestamp
+        });
+      });
+    });
+    return Promise.all(writes).then(function () {
+      return true;
+    }).catch(function (error) {
+      console.warn('[data-manager] Failed to restore custom background media:', error);
+      return false;
+    });
+  }
 
   function triggerImport() {
     const fileInput = document.getElementById('data-import-file');
@@ -737,19 +921,16 @@
       if (e.key === 'Escape') handleCancel();
     };
 
-    const applyData = function (mode) {
-      // Discard in-flight debounced note saves so a pre-import edit cannot
-      // overwrite the notes written by this backup (issue #824).
-      if (typeof window.cancelPendingNoteSaves === 'function') {
-        window.cancelPendingNoteSaves();
-      }
-
+    // Writes the settings keys themselves. Runs only after the backup's
+    // custom background media has been restored to IndexedDB, so an imported
+    // `homepageBg` never references a `custom_*` id whose blob is missing.
+    const applySettingsKeys = function (mode, mediaRestored) {
       const keys = Object.keys(importedData);
       let count = 0;
       const pendingWrites = [];
 
       // In replace mode, clear any EXPORT_KEYS not present in importedData
-      let hasWriteErrors = false;
+      let hasWriteErrors = !mediaRestored;
       if (mode === 'replace') {
         const keysToRemove = EXPORT_KEYS.filter(function (k) { return !(k in importedData); });
         keysToRemove.forEach(function (key) {
@@ -984,6 +1165,21 @@
 
       return waitForImportWrites(pendingWrites).then(function (allPersisted) {
         finishImport(mode, count, hasWriteErrors || !allPersisted);
+      });
+    };
+
+    const applyData = function (mode) {
+      // Discard in-flight debounced note saves so a pre-import edit cannot
+      // overwrite the notes written by this backup (issue #824).
+      if (typeof window.cancelPendingNoteSaves === 'function') {
+        window.cancelPendingNoteSaves();
+      }
+
+      // Custom background media must land in IndexedDB before any settings
+      // key is written (issue #996); `_`-prefixed keys never reach
+      // localStorage, so this record is handled here explicitly.
+      return restoreCustomBackgroundMedia(importedData._customBackgroundsMetadata).then(function (mediaRestored) {
+        return applySettingsKeys(mode, mediaRestored);
       });
     };
 

@@ -508,8 +508,9 @@ function applyBg() {
     captureBackgroundSnapshot();
     backgroundLoadVersion += 1;
     stopBackground();
-    // Dangling custom id from an import (media lives in IndexedDB and is not
-    // exported) or any other unknown id: fall back to a built-in background
+    // Dangling custom id from an import (older backups and oversized
+    // uploads carry no media, and the media lives in IndexedDB) or any
+    // other unknown id: fall back to a built-in background
     // and surface an error instead of leaving a blank viewport.
     const looksCustom = bg && bg.indexOf('custom_') === 0;
     const fallbackId = typeof window._getFallbackBackgroundId === 'function'

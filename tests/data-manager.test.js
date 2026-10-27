@@ -811,6 +811,246 @@ describe('DataManager focus-mode and auto-theme settings (issue #838)', () => {
   });
 });
 
+describe('DataManager custom background media backups (issue #996)', () => {
+  const mediaEntry = {
+    id: 'custom_image_1',
+    title: 'Sunset photo',
+    type: 'image',
+    timestamp: 1700000000000,
+    thumb: 'data:image/jpeg;base64,dGh1bWI=',
+    media: 'data:image/jpeg;base64,aGVsbG8='
+  };
+
+  function stubCustomBackgrounds(api) {
+    const descriptor = Object.getOwnPropertyDescriptor(window, '_customBackgrounds');
+    window._customBackgrounds = api;
+    return function restore() {
+      if (descriptor) {
+        Object.defineProperty(window, '_customBackgrounds', descriptor);
+      } else {
+        delete window._customBackgrounds;
+      }
+    };
+  }
+
+  function readBlobText(blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsText(blob);
+    });
+  }
+
+  it('embeds base64 media and thumbnails for every custom background on export', async () => {
+    const restoreStub = stubCustomBackgrounds({
+      getAll: vi.fn().mockResolvedValue([{
+        id: 'custom_image_1',
+        title: 'Sunset photo',
+        type: 'image',
+        timestamp: 1700000000000,
+        thumb: 'data:image/jpeg;base64,dGh1bWI=',
+        data: new Blob(['hello'], { type: 'image/jpeg' })
+      }])
+    });
+
+    try {
+      const exported = await exportDataForTest();
+
+      expect(exported.data._customBackgroundsMetadata).toEqual([mediaEntry]);
+      expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+    } finally {
+      restoreStub();
+    }
+  });
+
+  it('skips oversized media with a warning instead of failing the export', async () => {
+    const restoreStub = stubCustomBackgrounds({
+      getAll: vi.fn().mockResolvedValue([{
+        id: 'custom_image_1',
+        title: 'Sunset photo',
+        type: 'image',
+        timestamp: 1700000000000,
+        thumb: 'data:image/jpeg;base64,dGh1bWI=',
+        data: new Blob(['hello'], { type: 'image/jpeg' })
+      }])
+    });
+    const showToastSpy = vi.spyOn(window, 'showToast');
+    window.DataManager.maxMediaBytesPerRecord = 2;
+
+    try {
+      const exported = await exportDataForTest();
+
+      // The record survives without its media, so the backup stays importable.
+      expect(exported.data._customBackgroundsMetadata).toEqual([{
+        id: 'custom_image_1',
+        title: 'Sunset photo',
+        type: 'image',
+        timestamp: 1700000000000,
+        thumb: 'data:image/jpeg;base64,dGh1bWI='
+      }]);
+      expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+      expect(showToastSpy).toHaveBeenCalledWith(
+        'Backup created, but some custom background media was too large to include.',
+        'warning'
+      );
+    } finally {
+      delete window.DataManager.maxMediaBytesPerRecord;
+      showToastSpy.mockRestore();
+      restoreStub();
+    }
+  });
+
+  it('validates the shape and size of the metadata record', () => {
+    const validate = (metadata) => window.DataManager.validateImportData({
+      version: 1,
+      data: { _customBackgroundsMetadata: metadata }
+    });
+
+    expect(validate([mediaEntry])).toEqual({ valid: true });
+    // Legacy v1 backups carry metadata without media and keep importing.
+    expect(validate([{ id: 'custom_image_1', title: 'Sunset photo', type: 'image', timestamp: 1 }]))
+      .toEqual({ valid: true });
+
+    expect(validate('nope')).toEqual({
+      valid: false,
+      error: 'The backup contains invalid custom background data.'
+    });
+    expect(validate([null]).valid).toBe(false);
+    expect(validate([{ ...mediaEntry, id: '' }]).valid).toBe(false);
+    expect(validate([{ ...mediaEntry, id: 42 }]).valid).toBe(false);
+    expect(validate([{ ...mediaEntry, type: 42 }])).toEqual({
+      valid: false,
+      error: 'The backup contains invalid custom background data.'
+    });
+    expect(validate([{ ...mediaEntry, media: 'not-a-data-url' }])).toEqual({
+      valid: false,
+      error: 'A custom background in this backup has invalid media data.'
+    });
+    expect(validate([{ ...mediaEntry, media: 'data:image/jpeg;base64,@@@' }]).valid).toBe(false);
+
+    window.DataManager.maxMediaBytesPerRecord = 2;
+    try {
+      expect(validate([mediaEntry])).toEqual({
+        valid: false,
+        error: 'A custom background in this backup exceeds the size limit.'
+      });
+    } finally {
+      delete window.DataManager.maxMediaBytesPerRecord;
+    }
+  });
+
+  it('restores background blobs into IndexedDB before applying the settings keys', async () => {
+    localStorage.setItem('homepageBg', 'Water Beside Forest');
+    const saved = [];
+    const save = vi.fn().mockImplementation((bg) => {
+      saved.push({ bg, homepageBgDuringSave: localStorage.getItem('homepageBg') });
+      return Promise.resolve();
+    });
+    const render = vi.fn();
+    const applyBg = vi.fn();
+    const restoreStub = stubCustomBackgrounds({
+      save,
+      render,
+      getAll: vi.fn().mockResolvedValue([])
+    });
+    const originalApplyBg = window.applyBg;
+    window.applyBg = applyBg;
+
+    try {
+      const result = await importBackup({
+        homepageBg: 'custom_image_1',
+        _customBackgroundsMetadata: [mediaEntry]
+      }, 'replace');
+
+      expect(result.type).toBe('success');
+      expect(save).toHaveBeenCalledTimes(1);
+      // Media must be written while homepageBg still holds the old value:
+      // the settings keys are applied only after every blob is stored.
+      expect(saved[0].homepageBgDuringSave).toBe('Water Beside Forest');
+      expect(saved[0].bg.id).toBe('custom_image_1');
+      expect(saved[0].bg.title).toBe('Sunset photo');
+      expect(saved[0].bg.type).toBe('image');
+      expect(saved[0].bg.thumb).toBe('data:image/jpeg;base64,dGh1bWI=');
+      expect(saved[0].bg.data).toBeInstanceOf(Blob);
+      expect(saved[0].bg.data.type).toBe('image/jpeg');
+      expect(await readBlobText(saved[0].bg.data)).toBe('hello');
+
+      expect(localStorage.getItem('homepageBg')).toBe('custom_image_1');
+      // The `_`-prefixed record itself never reaches localStorage.
+      expect(localStorage.getItem('_customBackgroundsMetadata')).toBeNull();
+      // The background list and the active background refresh after import.
+      expect(render).toHaveBeenCalledTimes(1);
+      expect(applyBg).toHaveBeenCalledTimes(1);
+    } finally {
+      if (originalApplyBg === undefined) delete window.applyBg;
+      else window.applyBg = originalApplyBg;
+      restoreStub();
+    }
+  });
+
+  it('imports legacy backups without media and never restores empty records', async () => {
+    const save = vi.fn();
+    const restoreStub = stubCustomBackgrounds({
+      save,
+      getAll: vi.fn().mockResolvedValue([])
+    });
+
+    try {
+      const result = await importBackup({
+        homepageBg: 'custom_image_1',
+        _customBackgroundsMetadata: [{
+          id: 'custom_image_1',
+          title: 'Sunset photo',
+          type: 'image',
+          timestamp: 1700000000000
+        }]
+      }, 'merge');
+
+      expect(result.type).toBe('success');
+      expect(save).not.toHaveBeenCalled();
+      expect(localStorage.getItem('homepageBg')).toBe('custom_image_1');
+      expect(localStorage.getItem('_customBackgroundsMetadata')).toBeNull();
+    } finally {
+      restoreStub();
+    }
+  });
+
+  it('reports a partial import when restoring background media fails', async () => {
+    const restoreStub = stubCustomBackgrounds({
+      save: vi.fn().mockRejectedValue(new Error('IndexedDB unavailable')),
+      getAll: vi.fn().mockResolvedValue([])
+    });
+
+    try {
+      const result = await importBackup({
+        homepageBg: 'custom_image_1',
+        _customBackgroundsMetadata: [mediaEntry]
+      }, 'merge');
+
+      expect(result.type).toBe('warning');
+    } finally {
+      restoreStub();
+    }
+  });
+
+  it('reports a partial import when no IndexedDB write API is available', async () => {
+    const restoreStub = stubCustomBackgrounds({
+      getAll: vi.fn().mockResolvedValue([])
+    });
+
+    try {
+      const result = await importBackup({
+        homepageBg: 'custom_image_1',
+        _customBackgroundsMetadata: [mediaEntry]
+      }, 'merge');
+
+      expect(result.type).toBe('warning');
+    } finally {
+      restoreStub();
+    }
+  });
+});
+
 describe('DataManager import refresh (issue #824)', () => {
   function withSpiedRefreshHooks(names) {
     const spies = {};

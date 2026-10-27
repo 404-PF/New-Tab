@@ -597,3 +597,61 @@ describe('custom backgrounds delete button localization (issue #967)', () => {
     }
   });
 });
+
+describe('custom backgrounds save API (issue #996)', () => {
+  it('save writes the full record and its metadata mirror to both stores', async () => {
+    const harness = loadWithIndexedDB([]);
+    const record = {
+      id: 'custom_restore_1',
+      title: 'Restored photo',
+      type: 'image',
+      timestamp: 1700000000000,
+      thumb: 'data:image/jpeg;base64,restored',
+      data: new Blob(['restored'], { type: 'image/jpeg' })
+    };
+
+    try {
+      await window._customBackgrounds.save(record);
+
+      expect(harness.records.map((bg) => bg.id)).toEqual(['custom_restore_1']);
+      expect(harness.records[0].data).toBeInstanceOf(Blob);
+      expect(harness.records[0].title).toBe('Restored photo');
+      expect(harness.metaRecords).toEqual([{
+        id: 'custom_restore_1',
+        title: 'Restored photo',
+        type: 'image',
+        thumb: 'data:image/jpeg;base64,restored'
+      }]);
+      // save() invalidates the metadata cache, so refresh() re-reads the
+      // store and sees the record that was just written.
+      const list = await window._customBackgrounds.refresh();
+      expect(list.map((bg) => bg.id)).toEqual(['custom_restore_1']);
+    } finally {
+      harness.restore();
+    }
+  });
+
+  it('save rejects when the IndexedDB write fails', async () => {
+    const harness = loadWithIndexedDB([]);
+    harness.mockDB.transaction = () => {
+      throw new Error('Simulated write failure');
+    };
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      await expect(window._customBackgrounds.save({
+        id: 'custom_restore_2',
+        title: 'Doomed photo',
+        type: 'image',
+        thumb: 'data:image/jpeg;base64,doomed',
+        data: new Blob(['doomed'], { type: 'image/jpeg' })
+      })).rejects.toThrow('Simulated write failure');
+
+      expect(harness.records).toEqual([]);
+      expect(harness.metaRecords).toEqual([]);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      harness.restore();
+    }
+  });
+});
