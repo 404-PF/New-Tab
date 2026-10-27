@@ -166,17 +166,20 @@ describe('ReleaseNotes', () => {
       // getTranslation()'s en fallback rather than print the key name. A code
       // outside SUPPORTED_LANGUAGES keeps the merge passes from filling the
       // table in again, which is exactly the "key not translated yet" case.
+      // Use a real bundled release so actual bullet keys are rendered, not
+      // just the fallback-only array.
       window.i18n.__registerLocale('xx', {});
       await window.i18n.applyLanguage('xx');
 
-      window.CURRENT_VERSION = '9.9.9';
-      localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.5.4');
+      window.CURRENT_VERSION = '0.5.4';
+      localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.5.3');
       expect(window.releaseNotes.detectAndShow()).toBe('shown');
       await flushModalRender();
 
-      expect(readBullets()).toEqual([
-        'Check the full changelog for everything included in this update.'
-      ]);
+      const english = window.i18n.getTranslations('en');
+      expect(readBullets()).toEqual(
+        window.releaseNotes.RELEASE_NOTES['0.5.4'].map((key) => english[key])
+      );
     });
 
     it('resolves every bundled bullet to a real English sentence', () => {

@@ -21,16 +21,14 @@
   //
   // Every bullet — and the fallback below — is an i18n key, never a raw
   // sentence. English strings live in the inline en table in
-  // src/core/languages.js; the eight non-English locales get their copies from
-  // the releaseNotesTranslations merge map there (same pattern as
-  // aiExportTranslations, which keeps the parallel per-locale blocks out of the
-  // CPD-gated locale files). getNotesForVersion renders each key through t(),
-  // so a locale whose table has not caught up falls back to English rather
-  // than showing the key name.
+  // src/core/languages.js; the eight non-English locales carry their copies in
+  // src/core/locales/<code>.js, next to the 0.5.4 bullets. getNotesForVersion
+  // renders each key through t(), so a locale whose table has not caught up
+  // falls back to English rather than showing the key name.
   //
   // MAINTENANCE: whenever version.js / manifest.json is bumped for a release,
   // add a new entry here plus its i18n keys — one English line in the languages.js
-  // en table and one line per non-English locale in releaseNotesTranslations —
+  // en table and one line per non-English locale in src/core/locales/<code>.js —
   // or the modal falls back to RELEASE_NOTES_FALLBACK.
   const RELEASE_NOTES = {
     '0.5.4': [
@@ -172,21 +170,31 @@
     window.chrome.storage.onChanged.addListener(installReasonChangeListener);
   }
 
-  // Translate + interpolate. Reuses UpdateChecker.formatMessage so behavior
-  // (including the missing-key fallback) stays consistent with the rest of the
-  // update/notification UI.
+  // Translate + interpolate. Reuses UpdateChecker.formatMessage when present
+  // so behavior stays consistent with the rest of the update/notification UI.
+  // If the lookup echoes the key back (i18n unavailable or the key is missing
+  // everywhere), fall back to the English table so keyed bullets never render
+  // as raw identifiers.
   function t(key, replacements) {
+    let message;
     if (window.updateChecker && typeof window.updateChecker.formatMessage === 'function') {
-      return window.updateChecker.formatMessage(key, replacements || {});
+      message = window.updateChecker.formatMessage(key, replacements || {});
+    } else {
+      message = window.i18n ? window.i18n.t(key) : key;
+      if (typeof message !== 'string') {
+        message = key;
+      }
+      if (replacements) {
+        Object.entries(replacements).forEach(function (entry) {
+          message = message.replace('{' + entry[0] + '}', String(entry[1]));
+        });
+      }
     }
-    let message = window.i18n ? window.i18n.t(key) : key;
-    if (typeof message !== 'string') {
-      message = key;
-    }
-    if (replacements) {
-      Object.entries(replacements).forEach(function (entry) {
-        message = message.replace('{' + entry[0] + '}', String(entry[1]));
-      });
+    if (message === key && window.i18n && typeof window.i18n.getTranslations === 'function') {
+      const english = window.i18n.getTranslations('en') || {};
+      if (typeof english[key] === 'string' && english[key] !== key) {
+        message = english[key];
+      }
     }
     return message;
   }

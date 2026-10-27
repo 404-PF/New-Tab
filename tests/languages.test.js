@@ -92,6 +92,11 @@ const AI_TRANSLATION_KEYS = [
 // this list can never drift from the keys languages.js actually defines.
 let GAMES_TRANSLATION_KEYS = [];
 
+// Derived from the exported release-notes data in beforeAll so this list can
+// never drift from src/features/release-notes.js — a newly added raw English
+// bullet (or a key omitted from the locales) fails the check below.
+let RELEASE_NOTES_TRANSLATION_KEYS = [];
+
 let originalLanguage;
 
 beforeAll(() => {
@@ -101,8 +106,12 @@ beforeAll(() => {
   ['zh', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru'].forEach((code) => {
     injectScript('src/core/locales/' + code + '.js');
   });
+  injectScript('src/features/release-notes.js');
   originalLanguage = window.i18n.currentLanguage();
   GAMES_TRANSLATION_KEYS = window.i18n.gamesTranslationKeys;
+  RELEASE_NOTES_TRANSLATION_KEYS = Array.from(
+    new Set(Object.values(window.releaseNotes.RELEASE_NOTES).flat())
+  ).concat('releaseNotesFallback');
 });
 
 afterEach(() => {
@@ -444,60 +453,6 @@ describe('App and todo modal translations', () => {
     expectTranslationKeys(APP_MODAL_TRANSLATION_KEYS);
   });
 });
-
-// Bullets behind the What's New modal list (src/features/release-notes.js).
-// Every bullet of every bundled release — plus the RELEASE_NOTES_FALLBACK
-// string — is an i18n key, so a release that ships a raw English sentence here
-// instead of a key fails this check for all eight non-English locales.
-const RELEASE_NOTES_TRANSLATION_KEYS = [
-  'releaseNotes054TodoMultiSelect',
-  'releaseNotes054ToolbarIcon',
-  'releaseNotes054GamesAppGrid',
-  'releaseNotes054FasterStartup',
-  'releaseNotes054AiChatHistory',
-  'releaseNotes054ShortcutLabels',
-  'releaseNotes054OnboardingFreeze',
-  'releaseNotes054WeatherSpinner',
-  'releaseNotes053FasterAnimations',
-  'releaseNotes053UnifiedToasts',
-  'releaseNotes053WeatherStandalone',
-  'releaseNotes053OfflineChatFixes',
-  'releaseNotes053OpenRouterTimeouts',
-  'releaseNotes053DuckDuckGoSuggestions',
-  'releaseNotes053UntranslatedLabels',
-  'releaseNotes053ExportKeepsScheduling',
-  'releaseNotes052PacmanGame',
-  'releaseNotes052BackgroundOverlays',
-  'releaseNotes052Glassmorphism',
-  'releaseNotes052DeleteFromRow',
-  'releaseNotes052SaveFailureFeedback',
-  'releaseNotes051SearchSuggestions',
-  'releaseNotes051WebGroundedAi',
-  'releaseNotes051TodoDueTimes',
-  'releaseNotes051CrossTabSync',
-  'releaseNotes051UnsafeUrlSchemes',
-  'releaseNotes050GamesHub',
-  'releaseNotes050PomodoroTimer',
-  'releaseNotes050FocusStats',
-  'releaseNotes050MultiTimezoneClocks',
-  'releaseNotes050HourlyForecast',
-  'releaseNotes048FocusModeLayout',
-  'releaseNotes048EyeCareReminders',
-  'releaseNotes048FocusStatsDashboard',
-  'releaseNotes048SearchQuickLaunch',
-  'releaseNotes048SearchHistoryToggle',
-  'releaseNotes048WhatsNewSummary',
-  'releaseNotes047BackgroundTabCards',
-  'releaseNotes047TodoSubtasks',
-  'releaseNotes047ThemeScheduling',
-  'releaseNotes047MarkdownPreview',
-  'releaseNotes047SettingsImportExport',
-  'releaseNotes047MultiDayForecast',
-  'releaseNotes047CustomShortcuts',
-  'releaseNotes047BackgroundRotation',
-  'releaseNotes047TodoPriority',
-  'releaseNotesFallback'
-];
 
 describe('Release notes translations', () => {
   it('defines every bundled release-note bullet in each supported language', () => {
