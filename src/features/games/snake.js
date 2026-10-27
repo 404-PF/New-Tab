@@ -26,7 +26,10 @@
   let direction = 'right';
   let nextDirection = 'right';
   let directionQueue = [];
-  const MAX_QUEUED_TURNS = 2;
+  // Deeper queue = more latency tolerance for fast flicks, not more speed:
+  // tick() still applies at most one turn per tick. Reversals are vetoed at
+  // apply time (see tick), so queue depth never executes faster movement.
+  const MAX_QUEUED_TURNS = 3;
   const OPPOSITES = { up: 'down', down: 'up', left: 'right', right: 'left' };
   let score = 0;
   let gameOver = false;
@@ -125,7 +128,10 @@
   function queueTurn(newDir) {
     if (!isValidDirection(newDir)) return false;
     const last = getLastQueuedDirection();
-    if (OPPOSITES[newDir] === last) return false;
+    // Reject exact duplicates (OS auto-repeat) so a held key cannot fill the
+    // queue. Opposites are NOT vetoed here: a press that is legal when made
+    // can become a reversal by the time it is applied, and that reversal is
+    // dropped at apply time in tick() instead (#1017).
     if (newDir === last) return false;
     if (directionQueue.length >= MAX_QUEUED_TURNS) return false;
     directionQueue.push(newDir);
@@ -201,12 +207,19 @@
   function tick() {
     if (paused || gameOver) return;
 
-    if (directionQueue.length > 0) {
-      direction = directionQueue.shift();
-      nextDirection = directionQueue.length > 0 ? directionQueue[0] : direction;
-    } else {
-      direction = nextDirection;
+    // Drain the turn queue, dropping any queued turn that would reverse the
+    // head's current direction at apply time (legal when pressed, illegal
+    // once the head has turned), then apply the first legal entry. Only one
+    // turn is applied per tick, so extra queue depth stores intent without
+    // adding speed (#1017).
+    while (directionQueue.length > 0) {
+      const candidate = directionQueue.shift();
+      if (OPPOSITES[candidate] !== direction) {
+        direction = candidate;
+        break;
+      }
     }
+    nextDirection = directionQueue.length > 0 ? directionQueue[0] : direction;
     const head = { ...snake[0] };
 
     if (direction === 'right') head.x++;
@@ -774,8 +787,11 @@
       let prev = savedState.direction;
       for (let i = 0; i < savedState.directionQueue.length; i++) {
         const cur = savedState.directionQueue[i];
+        // Consecutive duplicates never occur in play (queueTurn rejects
+        // them). Reversals relative to the previous entry are allowed: since
+        // the opposite veto moved to apply time (#1017), a live queue can
+        // legally contain an entry that tick() will drop as a reversal.
         if (cur === prev) return false;
-        if (OPPOSITES[cur] === prev) return false;
         prev = cur;
       }
       // When both nextDirection and queue are present, they must agree.

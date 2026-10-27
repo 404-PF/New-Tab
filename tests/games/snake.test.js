@@ -529,3 +529,219 @@ describe('Snake frame-driven input (#876)', () => {
     expectNoStackedKeydownListeners(window.GameRegistry.get('snake'), container);
   });
 });
+
+describe('Snake turn queue depth and apply-time veto (#1017)', () => {
+  function startGame() {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__snakeReady.isStarted()).toBe(true);
+    return { container, game };
+  }
+
+  // Step the rAF logic loop one animation frame at a time and snapshot
+  // serialize() after each frame, so per-tick direction changes stay
+  // observable even though the accumulator schedules ticks asynchronously.
+  function sampleFrames(game, count) {
+    const samples = [];
+    for (let i = 0; i < count; i++) {
+      vi.advanceTimersByTime(16);
+      samples.push(game.serialize());
+    }
+    return samples;
+  }
+
+  it('honours two distinct turns pressed inside one tick on consecutive ticks', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      vi.advanceTimersByTime(200);
+      expect(game.serialize().direction).toBe('right');
+      const before = game.serialize().snake[0];
+
+      // The fast-flick case: both presses land inside one tick window.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight' }));
+
+      const samples = sampleFrames(game, 20);
+      const upIdx = samples.findIndex((s) => s && s.direction === 'up');
+      expect(upIdx).toBeGreaterThan(-1);
+      // The first queued turn moves the head north one cell.
+      expect(samples[upIdx].snake[0]).toEqual({ x: before.x, y: before.y - 1 });
+      // The second applies on a following tick, moving east again.
+      const rightIdx = samples.findIndex((s, i) => i > upIdx && s && s.direction === 'right');
+      expect(rightIdx).toBeGreaterThan(upIdx);
+      expect(samples[rightIdx].snake[0]).toEqual({ x: before.x + 1, y: before.y - 1 });
+      expect(samples[rightIdx].directionQueue).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('drops a queued turn that would reverse the head at apply time', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      vi.advanceTimersByTime(200);
+      expect(game.serialize().direction).toBe('right');
+
+      // Up is legal when pressed; Down reverses the post-up heading and
+      // must be dropped at apply time instead of ever executing.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown' }));
+
+      const samples = sampleFrames(game, 25);
+      const upIdx = samples.findIndex((s) => s && s.direction === 'up');
+      expect(upIdx).toBeGreaterThan(-1);
+      // After the up-turn the snake keeps heading north: the queued
+      // reversal is dropped, never causing a self-collision.
+      const after = samples.slice(upIdx);
+      expect(after.every((s) => s && s.direction === 'up')).toBe(true);
+      const ys = after.map((s) => s.snake[0].y);
+      for (let i = 1; i < ys.length; i++) {
+        expect(ys[i]).toBeLessThanOrEqual(ys[i - 1]);
+      }
+      expect(Math.min(...ys)).toBeLessThan(ys[0]);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('queues an immediate reversal press but never applies it', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      vi.advanceTimersByTime(200);
+      const before = game.serialize().snake[0];
+
+      // The enqueue-time opposite veto is gone: Left is accepted into the
+      // queue, but it reverses the travel direction and must be dropped
+      // at apply time.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      expect(game.serialize().directionQueue).toEqual(['left']);
+
+      const samples = sampleFrames(game, 15);
+      expect(samples.every((s) => s && s.direction === 'right')).toBe(true);
+      const xs = samples.map((s) => s.snake[0].x);
+      for (let i = 1; i < xs.length; i++) {
+        expect(xs[i]).toBeGreaterThanOrEqual(xs[i - 1]);
+      }
+      expect(xs[xs.length - 1]).toBeGreaterThan(before.x);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('does not let duplicate presses of the current direction fill the queue', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      vi.advanceTimersByTime(200);
+      expect(game.serialize().direction).toBe('right');
+
+      // Spamming the current direction (non-repeat presses) never fills
+      // the buffer: each exact duplicate is rejected at enqueue time.
+      for (let i = 0; i < 5; i++) {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight' }));
+      }
+      expect(game.serialize().directionQueue).toEqual([]);
+
+      // A real turn still fits and is applied.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+      expect(game.serialize().directionQueue).toEqual(['up']);
+      const samples = sampleFrames(game, 15);
+      expect(samples.findIndex((s) => s && s.direction === 'up')).toBeGreaterThan(-1);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('round-trips a 3-deep turn queue through save/restore and applies it in order', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    const state = {
+      snake: [
+        { x: 10, y: 10 },
+        { x: 9, y: 10 },
+        { x: 8, y: 10 }
+      ],
+      food: { x: 5, y: 5 },
+      direction: 'right',
+      nextDirection: 'up',
+      directionQueue: ['up', 'down', 'left'],
+      score: 0
+    };
+    game.init(container, state);
+    // The validator accepts a full-depth queue whose later entries reverse
+    // earlier ones: since the veto moved to apply time, such a queue is a
+    // legal on-disk state that tick() drains safely.
+    expect(container.querySelector('.games-ready-overlay .games-ready-start').textContent).toBe('Continue');
+
+    vi.useFakeTimers();
+    try {
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+      const samples = sampleFrames(game, 25);
+
+      // Tick 1 applies 'up'; tick 2 drops the reversed 'down' and applies
+      // 'left'; 'down' never executes in either direction order.
+      const upIdx = samples.findIndex((s) => s && s.direction === 'up');
+      expect(upIdx).toBeGreaterThan(-1);
+      const leftIdx = samples.findIndex((s, i) => i > upIdx && s && s.direction === 'left');
+      expect(leftIdx).toBeGreaterThan(upIdx);
+      expect(samples.some((s) => s && s.direction === 'down')).toBe(false);
+      // Up moved north one cell, then left moved west one cell.
+      expect(samples[leftIdx].snake[0]).toEqual({
+        x: samples[upIdx].snake[0].x - 1,
+        y: samples[upIdx].snake[0].y
+      });
+    } finally {
+      vi.useRealTimers();
+      game.destroy();
+      container.remove();
+    }
+  });
+
+  it('rejects a saved queue longer than the buffer cap', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    const state = {
+      snake: [
+        { x: 10, y: 10 },
+        { x: 9, y: 10 },
+        { x: 8, y: 10 }
+      ],
+      food: { x: 5, y: 5 },
+      direction: 'right',
+      nextDirection: 'up',
+      // Four entries exceed MAX_QUEUED_TURNS (3).
+      directionQueue: ['up', 'left', 'down', 'right'],
+      score: 0
+    };
+    game.init(container, state);
+    // Restore rejected: the ready screen offers Start on a fresh board.
+    expect(container.querySelector('.games-ready-overlay .games-ready-start').textContent).toBe('Start');
+
+    game.destroy();
+    container.remove();
+  });
+});
