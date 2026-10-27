@@ -1291,7 +1291,7 @@ const AIStore = (function() {
     const conversation = state.conversations.find(item => item.id === conversationId);
     if (!conversation) return false;
 
-    const nextTitle = String(title ?? '').trim().slice(0, MAX_TITLE_LENGTH).trimEnd();
+    const nextTitle = Array.from(String(title ?? '').trim()).slice(0, MAX_TITLE_LENGTH).join('').trimEnd();
     if (!nextTitle) return false;
     // Unchanged titles are a successful no-op: skip the storage write.
     if (nextTitle === conversation.title) return true;
