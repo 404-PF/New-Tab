@@ -1,5 +1,5 @@
 import { injectScript } from './helpers/inject-script.js';
-import { failStorageWritesFor } from './helpers/storage-write-failures.js';
+import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
 // #969: the storage bridge's setItem returns false instead of throwing on a
 // rejected write, so every feature toggle must check the return value, show
@@ -62,7 +62,11 @@ beforeEach(() => {
   window.refreshEyeCareReminder = vi.fn();
 });
 
-afterEach(() => {
+afterEach(async () => {
+  // Drain any storageBridgeWriteError resync timers this test scheduled so
+  // they cannot fire against the next test's reset DOM/storage state.
+  await flushDeferredFailureSync();
+  await flushDeferredFailureSync();
   while (restorers.length > 0) {
     const restore = restorers.pop();
     restore();
@@ -71,8 +75,8 @@ afterEach(() => {
   delete window.refreshEyeCareReminder;
 });
 
-function failWriteFor(key) {
-  const restore = failStorageWritesFor(key);
+function failWriteFor(key, mode) {
+  const restore = failStorageWritesFor(key, mode);
   restorers.push(restore);
   return restore;
 }
@@ -114,6 +118,27 @@ describe('keyboard feature toggles report rejected writes (#969)', () => {
     expect(localStorage.getItem('todoEnabled')).toBe('false');
     expect(document.getElementById('todo-enabled-setting').checked).toBe(false);
     expect(window.showToast).not.toHaveBeenCalled();
+  });
+
+  it('toggleTodo resyncs and toasts after an async lastError rollback', async () => {
+    localStorage.setItem('todoEnabled', 'true');
+    failWriteFor('todoEnabled', 'async');
+
+    window.Shortcuts.executeAction('toggleTodo');
+
+    // The bridge accepted the write optimistically; the failure only arrives
+    // through runtime.lastError in the chrome.storage callback.
+    expect(localStorage.getItem('todoEnabled')).toBe('false');
+    expect(document.getElementById('todo-enabled-setting').checked).toBe(false);
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('todoEnabled')).toBe('true');
+    expect(document.getElementById('todo-enabled-setting').checked).toBe(true);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 
   it('toggleNotes keeps the persisted value, restores the control, and toasts', () => {
@@ -218,6 +243,25 @@ describe('setFocusMode reports rejected writes (#969)', () => {
     expect(document.body.classList.contains('focus-mode')).toBe(true);
     expect(window.showToast).not.toHaveBeenCalled();
   });
+
+  it('resyncs and toasts after an async lastError rollback', async () => {
+    localStorage.setItem('focusMode', 'false');
+    failWriteFor('focusMode', 'async');
+
+    window.setFocusMode(true);
+
+    expect(localStorage.getItem('focusMode')).toBe('true');
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('focusMode')).toBe('false');
+    expect(document.getElementById('focus-mode-setting').checked).toBe(false);
+    expect(document.body.classList.contains('focus-mode')).toBe(false);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
 });
 
 describe('settings checkboxes report rejected writes (#969)', () => {
@@ -292,6 +336,94 @@ describe('settings checkboxes report rejected writes (#969)', () => {
     expect(localStorage.getItem('notesEnabled')).toBe('false');
     expect(checkbox.checked).toBe(false);
     expect(window.showToast).not.toHaveBeenCalled();
+  });
+});
+
+describe('async runtime.lastError rollback restores controls (#969)', () => {
+  it('todo-enabled checkbox resyncs and toasts after an async lastError rollback', async () => {
+    localStorage.setItem('todoEnabled', 'true');
+    failWriteFor('todoEnabled', 'async');
+
+    const checkbox = document.getElementById('todo-enabled-setting');
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('todoEnabled')).toBe('false');
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('todoEnabled')).toBe('true');
+    expect(checkbox.checked).toBe(true);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('notes-enabled checkbox resyncs and toasts after an async lastError rollback', async () => {
+    localStorage.setItem('notesEnabled', 'true');
+    failWriteFor('notesEnabled', 'async');
+
+    const checkbox = document.getElementById('notes-enabled-setting');
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('notesEnabled')).toBe('false');
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('notesEnabled')).toBe('true');
+    expect(checkbox.checked).toBe(true);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('simple-mode checkbox resyncs and toasts after an async lastError rollback', async () => {
+    localStorage.setItem('simpleMode', 'false');
+    window.applySimpleMode();
+    failWriteFor('simpleMode', 'async');
+
+    const checkbox = document.getElementById('simple-mode-checkbox');
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('simpleMode')).toBe('true');
+    expect(checkbox.checked).toBe(true);
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('simpleMode')).toBe('false');
+    expect(checkbox.checked).toBe(false);
+    expect(document.body.classList.contains('simple-mode')).toBe(false);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('eye-care enabled checkbox resyncs, refreshes, and toasts after an async lastError rollback', async () => {
+    seedEyeCareState({ enabled: false });
+    failWriteFor('eyeCareReminder', 'async');
+
+    const checkbox = document.getElementById('eye-care-enabled-setting');
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // The optimistic save path already refreshed once; the rollback resync
+    // refreshes again so the reminder drops the rolled-back enable.
+    expect(JSON.parse(localStorage.getItem('eyeCareReminder')).enabled).toBe(true);
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(JSON.parse(localStorage.getItem('eyeCareReminder')).enabled).toBe(false);
+    expect(checkbox.checked).toBe(false);
+    expect(window.refreshEyeCareReminder).toHaveBeenCalledTimes(2);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 });
 

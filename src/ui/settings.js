@@ -1416,17 +1416,6 @@ document.addEventListener('change', function (e) {
   }
 });
 
-// Report a feature-toggle write the storage bridge rejected (#969): the
-// bridge's setItem returns false instead of throwing, so the caller detects
-// the failure from the return value rather than from the catch block.
-function reportFeatureToggleSaveError() {
-  if (typeof window.showFeatureToggleSaveError === 'function') {
-    window.showFeatureToggleSaveError();
-  } else {
-    console.warn('Failed to save setting: write rejected by the storage bridge');
-  }
-}
-
 // Todo enabled
 function loadTodoEnabled() {
   return localStorage.getItem('todoEnabled') !== 'false';
@@ -1445,15 +1434,12 @@ function applyTodoEnabled() {
 const todoEnabledSetting = document.getElementById('todo-enabled-setting');
 if (todoEnabledSetting) {
   todoEnabledSetting.addEventListener('change', function () {
-    let persisted = false;
-    try {
-      persisted = localStorage.setItem('todoEnabled', this.checked) !== false;
-    } catch (e) {
-      console.warn('Failed to save todoEnabled:', e);
-    }
+    // persistFeatureToggle checks the bridge's result: setItem returns false
+    // for a rejected write instead of throwing (#969).
+    const persisted = window.persistFeatureToggle('todoEnabled', this.checked);
     applyTodoEnabled();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.showFeatureToggleSaveError();
     }
   });
 }
@@ -1597,12 +1583,7 @@ function saveEyeCareReminderState(updates) {
     ...current,
     ...updates
   };
-  try {
-    if (localStorage.setItem('eyeCareReminder', JSON.stringify(next)) === false) {
-      return false;
-    }
-  } catch (e) {
-    console.warn('Failed to save eyeCareReminder:', e);
+  if (!window.persistFeatureToggle('eyeCareReminder', JSON.stringify(next))) {
     return false;
   }
   return next;
@@ -1641,7 +1622,7 @@ if (eyeCareEnabledSetting) {
     // the rolled-back state instead of leaving them desynced.
     applyEyeCareReminderSettings();
     if (saved === false) {
-      reportFeatureToggleSaveError();
+      window.showFeatureToggleSaveError();
       return;
     }
     if (typeof window.refreshEyeCareReminder === 'function') {
@@ -1658,7 +1639,7 @@ if (eyeCareIntervalSetting) {
     });
     if (saved === false) {
       applyEyeCareReminderSettings();
-      reportFeatureToggleSaveError();
+      window.showFeatureToggleSaveError();
       return;
     }
     if (typeof window.refreshEyeCareReminder === 'function') {
@@ -1675,7 +1656,7 @@ if (eyeCareBrowserNotificationSetting) {
     });
     if (saved === false) {
       applyEyeCareReminderSettings();
-      reportFeatureToggleSaveError();
+      window.showFeatureToggleSaveError();
       return;
     }
     if (typeof window.refreshEyeCareReminder === 'function') {
@@ -1711,15 +1692,10 @@ function applyNotesEnabled() {
 const notesEnabledSetting = document.getElementById('notes-enabled-setting');
 if (notesEnabledSetting) {
   notesEnabledSetting.addEventListener('change', function () {
-    let persisted = false;
-    try {
-      persisted = localStorage.setItem('notesEnabled', this.checked) !== false;
-    } catch (e) {
-      console.warn('Failed to save notesEnabled:', e);
-    }
+    const persisted = window.persistFeatureToggle('notesEnabled', this.checked);
     applyNotesEnabled();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.showFeatureToggleSaveError();
     }
   });
 }

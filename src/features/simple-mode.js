@@ -32,18 +32,11 @@ function initSimpleMode() {
   if (!checkbox || !toggleContainer) return;
   
   checkbox.addEventListener('change', function() {
-    // The storage bridge's setItem returns false for a rejected write instead
-    // of throwing (#969), so check the result rather than relying on catch.
-    let persisted = false;
-    try {
-      persisted = localStorage.setItem('simpleMode', this.checked) !== false;
-    } catch (e) {
-      console.warn('Failed to save simpleMode:', e);
-    }
+    const persisted = window.persistFeatureToggle('simpleMode', this.checked);
     // Re-apply either way: after a rejected write it restores the checkbox to
     // the rolled-back value instead of leaving it desynced.
     applySimpleMode();
-    if (!persisted && typeof window.showFeatureToggleSaveError === 'function') {
+    if (!persisted) {
       window.showFeatureToggleSaveError();
     }
   });

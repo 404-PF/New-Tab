@@ -1,6 +1,9 @@
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  // toast.js provides persistFeatureToggle/showFeatureToggleSaveError, which
+  // setFocusMode and the shared toggle write path rely on.
+  injectScript('src/core/toast.js');
   injectScript('src/features/simple-mode.js');
   injectScript('src/features/focus-mode.js');
 });

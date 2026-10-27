@@ -102,26 +102,6 @@
     }
   }
 
-  // The storage bridge's setItem returns false for a rejected write instead of
-  // throwing (#969); only an explicit false is a failure, so keep the try/catch
-  // for synchronous throws but do not rely on it alone.
-  function writeToggleValue(key, value) {
-    try {
-      return localStorage.setItem(key, value) !== false;
-    } catch (e) {
-      console.warn('Failed to save ' + key + ':', e);
-      return false;
-    }
-  }
-
-  // Report a rejected toggle write after the apply* call has already resynced
-  // the control to the rolled-back value.
-  function reportFeatureToggleSaveError() {
-    if (typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    }
-  }
-
   // Resolves to whether the reset was persisted. The storage bridge's sync
   // removeItem() returns undefined and restores the value later if
   // chrome.storage fails, so prefer removeItemAsync() and check its result.
@@ -229,12 +209,12 @@
     const checkbox = document.getElementById('simple-mode-checkbox');
     if (checkbox) {
       checkbox.checked = !checkbox.checked;
-      const persisted = writeToggleValue('simpleMode', checkbox.checked);
+      const persisted = window.persistFeatureToggle('simpleMode', checkbox.checked);
       if (typeof window.applySimpleMode === 'function') {
         window.applySimpleMode();
       }
       if (!persisted) {
-        reportFeatureToggleSaveError();
+        window.showFeatureToggleSaveError();
       }
     }
   }
@@ -251,13 +231,13 @@
     } catch (e) {
       console.warn('Failed to read focusMode:', e);
     }
-    const persisted = writeToggleValue('focusMode', current ? 'false' : 'true');
+    const persisted = window.persistFeatureToggle('focusMode', current ? 'false' : 'true');
 
     if (typeof window.applyFocusMode === 'function') {
       window.applyFocusMode();
     }
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.showFeatureToggleSaveError();
     }
   }
 
@@ -268,12 +248,12 @@
     } catch (e) {
       console.warn('Failed to read todoEnabled:', e);
     }
-    const persisted = writeToggleValue('todoEnabled', current ? 'false' : 'true');
+    const persisted = window.persistFeatureToggle('todoEnabled', current ? 'false' : 'true');
     if (typeof window.applyTodoEnabled === 'function') {
       window.applyTodoEnabled();
     }
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.showFeatureToggleSaveError();
     }
   }
 
@@ -284,12 +264,12 @@
     } catch (e) {
       console.warn('Failed to read notesEnabled:', e);
     }
-    const persisted = writeToggleValue('notesEnabled', current ? 'false' : 'true');
+    const persisted = window.persistFeatureToggle('notesEnabled', current ? 'false' : 'true');
     if (typeof window.applyNotesEnabled === 'function') {
       window.applyNotesEnabled();
     }
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.showFeatureToggleSaveError();
     }
   }
 
