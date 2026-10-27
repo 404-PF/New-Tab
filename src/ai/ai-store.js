@@ -1264,6 +1264,25 @@ const AIStore = (function() {
     return true;
   }
 
+  // Manual rename (#1014): the sidebar label, the title search and the export
+  // filename all read conversation.title, so a single trimmed write here fixes
+  // all three. Empty/whitespace-only names are rejected because the persisted
+  // validator (conversation-validator.js) requires a non-empty title.
+  function renameConversation(conversationId, title) {
+    const conversation = state.conversations.find(item => item.id === conversationId);
+    if (!conversation) return false;
+
+    const nextTitle = String(title ?? '').trim();
+    if (!nextTitle) return false;
+    // Unchanged titles are a successful no-op: skip the storage write.
+    if (nextTitle === conversation.title) return true;
+
+    const previousState = createSaveSnapshot();
+    conversation.title = nextTitle;
+    saveConversationsSafely(previousState);
+    return true;
+  }
+
   function setSearchQuery(query) {
     state.searchQuery = query;
     state.keyboardSelectedIndex = -1;
@@ -1443,6 +1462,7 @@ const AIStore = (function() {
     createNewChat,
     switchConversation,
     deleteConversation,
+    renameConversation,
     setSearchQuery,
     serializeConversationToMarkdown,
     exportConversation,

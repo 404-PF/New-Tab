@@ -1490,3 +1490,81 @@ describe('AIStore storage bounds (#947)', () => {
     }
   });
 });
+
+describe('AIStore conversation rename (#1014)', () => {
+  const AUTO_TITLE = 'How do I back up my todos and not...';
+
+  const seedConversation = () => {
+    const conversation = {
+      id: 'conv-rename',
+      title: AUTO_TITLE,
+      messages: [
+        { id: 'm-1', role: 'user', content: 'Which button exports everything?', timestamp: 1 }
+      ],
+      createdAt: 1,
+      updatedAt: 2
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    AIStore.state.searchQuery = '';
+    return conversation;
+  };
+
+  it('persists a trimmed rename and survives a reload', async () => {
+    const conversation = seedConversation();
+
+    expect(AIStore.renameConversation('conv-rename', '  Backup plan  ')).toBe(true);
+    expect(conversation.title).toBe('Backup plan');
+    await AIStore.saveConversations();
+
+    const persisted = JSON.parse(localStorage.getItem(AIStore.STORAGE_KEYS.conversations));
+    expect(persisted[0].title).toBe('Backup plan');
+
+    AIStore.state.conversations = [];
+    await AIStore.loadConversations();
+    expect(AIStore.state.conversations[0].title).toBe('Backup plan');
+  });
+
+  it('rejects empty and whitespace-only names without touching the title', () => {
+    const conversation = seedConversation();
+
+    expect(AIStore.renameConversation('conv-rename', '')).toBe(false);
+    expect(AIStore.renameConversation('conv-rename', '   \n\t ')).toBe(false);
+    expect(conversation.title).toBe(AUTO_TITLE);
+  });
+
+  it('rejects an unknown conversation id', () => {
+    seedConversation();
+
+    expect(AIStore.renameConversation('conv-missing', 'New title')).toBe(false);
+    expect(AIStore.state.conversations[0].title).toBe(AUTO_TITLE);
+  });
+
+  it('keeps the custom title when later messages arrive', () => {
+    const conversation = seedConversation();
+    AIStore.renameConversation('conv-rename', 'Backup plan');
+
+    AIStore.addMessageToConversation({
+      id: 'm-2',
+      role: 'assistant',
+      content: 'Use Settings → Backup.',
+      timestamp: 3
+    });
+
+    expect(conversation.title).toBe('Backup plan');
+  });
+
+  it('finds the renamed title through the search filter', () => {
+    seedConversation();
+    AIStore.renameConversation('conv-rename', 'Backup plan');
+
+    AIStore.setSearchQuery('backup plan');
+    expect(AIStore.getFilteredConversations().map(entry => entry.id)).toEqual(['conv-rename']);
+
+    // The auto-generated label no longer matches, and the message body does
+    // not contain this phrase, so only the old title could have matched it.
+    AIStore.setSearchQuery('back up my todos');
+    expect(AIStore.getFilteredConversations()).toHaveLength(0);
+    AIStore.setSearchQuery('');
+  });
+});

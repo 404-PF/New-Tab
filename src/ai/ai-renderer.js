@@ -19,6 +19,7 @@ const AIRenderer = (function() {
       onSelectConversation: () => {},
       onDeleteConversation: () => {},
       onExportConversation: () => {},
+      onRenameConversation: () => {},
       onRequestDeleteConfirm: callback => callback()
     },
     hoveredDeleteBtn: null,
@@ -220,6 +221,77 @@ const AIRenderer = (function() {
     return button;
   }
 
+  function createTopicRenameButton(conversationId) {
+    const button = document.createElement('button');
+    button.className = 'ai-topic-rename';
+    button.dataset.id = conversationId;
+    button.setAttribute('aria-label', getTranslation('aiRenameConversation'));
+    button.title = getTranslation('aiRenameConversation');
+    button.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9"></path>
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+      </svg>
+    `;
+    return button;
+  }
+
+  // Swaps the row's title for an inline editor. Enter (or a blur away from the
+  // field) commits, Escape restores; empty and whitespace-only names are
+  // dropped so conversation.title stays valid per conversation-validator.js.
+  // The delegated list handlers ignore the input itself, so editing never
+  // selects, exports or deletes the conversation (#1014).
+  function beginTopicRename(item) {
+    const titleEl = item.querySelector('.ai-topic-title');
+    if (!titleEl || item.querySelector('.ai-topic-rename-input')) return;
+
+    const conversationId = item.dataset.id;
+    const conversation = AIStore.state.conversations.find(entry => entry.id === conversationId);
+    const originalTitle = conversation ? conversation.title : titleEl.textContent;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'ai-topic-rename-input';
+    input.dataset.id = conversationId;
+    input.value = originalTitle;
+    input.setAttribute('aria-label', getTranslation('aiRenameConversation'));
+
+    let settled = false;
+    const settle = commit => {
+      if (settled) return;
+      settled = true;
+
+      const value = input.value.trim();
+      const nextTitle = commit && value ? value : originalTitle;
+      const restoredTitle = document.createElement('div');
+      restoredTitle.className = 'ai-topic-title';
+      restoredTitle.textContent = nextTitle;
+      input.replaceWith(restoredTitle);
+
+      if (commit && value && value !== originalTitle) {
+        topicsListRenderState.callbacks.onRenameConversation(conversationId, value);
+      }
+    };
+
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+        settle(true);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        settle(false);
+      }
+    });
+    input.addEventListener('click', event => event.stopPropagation());
+    input.addEventListener('blur', () => settle(true));
+
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+  }
+
   function createTopicElement(conversation, index, state) {
     const item = document.createElement('div');
     item.className = 'ai-topic-item';
@@ -244,7 +316,13 @@ const AIRenderer = (function() {
     time.textContent = formatTopicTime(conversation.updatedAt);
 
     info.append(title, time);
-    item.append(createTopicIcon(), info, createTopicExportButton(conversation.id), createTopicDeleteButton(conversation.id));
+    item.append(
+      createTopicIcon(),
+      info,
+      createTopicRenameButton(conversation.id),
+      createTopicExportButton(conversation.id),
+      createTopicDeleteButton(conversation.id)
+    );
     return item;
   }
 
@@ -307,6 +385,20 @@ const AIRenderer = (function() {
   }
 
   function handleTopicsClick(event) {
+    // Clicks inside the inline rename editor must not select the conversation.
+    if (event.target.closest('.ai-topic-rename-input')) {
+      event.stopPropagation();
+      return;
+    }
+
+    const renameButton = event.target.closest('.ai-topic-rename');
+    if (renameButton) {
+      event.stopPropagation();
+      const renameItem = renameButton.closest('.ai-topic-item');
+      if (renameItem) beginTopicRename(renameItem);
+      return;
+    }
+
     const exportButton = event.target.closest('.ai-topic-export');
     if (exportButton) {
       event.stopPropagation();
@@ -393,6 +485,7 @@ const AIRenderer = (function() {
     topicsListRenderState.callbacks.onSelectConversation = options.onSelectConversation || (() => {});
     topicsListRenderState.callbacks.onDeleteConversation = options.onDeleteConversation || (() => {});
     topicsListRenderState.callbacks.onExportConversation = options.onExportConversation || (() => {});
+    topicsListRenderState.callbacks.onRenameConversation = options.onRenameConversation || (() => {});
     topicsListRenderState.callbacks.onRequestDeleteConfirm = options.onRequestDeleteConfirm || ((callback) => callback());
 
     const state = AIStore.state;

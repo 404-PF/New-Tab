@@ -351,6 +351,85 @@ describe('AIService export flow (#647)', () => {
   });
 });
 
+describe('AIService conversation rename (#1014)', () => {
+  it('uses the renamed title for the exported Markdown filename', async () => {
+    seedConversations();
+    expect(AIStore.renameConversation('conv-1', 'Packing list')).toBe(true);
+    await AIStore.saveConversations();
+
+    const exported = AIStore.exportConversation('conv-1');
+    expect(exported.filename).toMatch(/^Packing list-\d{4}-\d{2}-\d{2}\.md$/);
+    expect(exported.content).toContain('# Packing list');
+
+    // Reload: the sidebar label, the title search and the filename all read
+    // the persisted conversation.title.
+    AIStore.state.conversations = [];
+    await AIStore.loadConversations();
+    expect(AIStore.state.conversations.find(c => c.id === 'conv-1').title).toBe('Packing list');
+    AIStore.setSearchQuery('packing list');
+    expect(AIStore.getFilteredConversations().map(c => c.id)).toEqual(['conv-1']);
+    AIStore.setSearchQuery('');
+    expect(AIStore.exportConversation('conv-1').filename)
+      .toMatch(/^Packing list-\d{4}-\d{2}-\d{2}\.md$/);
+  });
+
+  it('renames through AIService and refreshes the sidebar label', () => {
+    seedConversations();
+    AIRenderer.renderTopicsList();
+
+    expect(AIService.renameConversation('conv-1', 'Packing list')).toBe(true);
+
+    const title = document.querySelector('#ai-topics-list .ai-topic-item[data-id="conv-1"] .ai-topic-title');
+    expect(title.textContent).toBe('Packing list');
+    expect(AIStore.state.conversations[0].title).toBe('Packing list');
+  });
+
+  it('ignores an invalid rename instead of clearing the title', () => {
+    seedConversations();
+    AIRenderer.renderTopicsList();
+
+    expect(AIService.renameConversation('conv-1', '   ')).toBe(false);
+    expect(AIService.renameConversation('missing-id', 'Nope')).toBe(false);
+
+    expect(AIStore.state.conversations[0].title).toBe('Trip planning');
+    expect(document.querySelector('#ai-topics-list .ai-topic-item[data-id="conv-1"] .ai-topic-title').textContent)
+      .toBe('Trip planning');
+  });
+
+  it('renames end to end from the row button without selecting the conversation', () => {
+    seedConversations();
+    const onSelectConversation = vi.fn();
+    AIRenderer.renderTopicsList({
+      onSelectConversation,
+      onRenameConversation: (id, title) => AIService.renameConversation(id, title)
+    });
+
+    document.querySelector('#ai-topics-list .ai-topic-rename[data-id="conv-2"]').click();
+    const input = document.querySelector('.ai-topic-rename-input');
+    input.value = 'Second topic renamed';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+
+    expect(onSelectConversation).not.toHaveBeenCalled();
+    expect(AIStore.state.conversations[1].title).toBe('Second topic renamed');
+    expect(document.querySelector('#ai-topics-list .ai-topic-item[data-id="conv-2"] .ai-topic-title').textContent)
+      .toBe('Second topic renamed');
+  });
+
+  it('ignores Enter on the focused rename button so it does not switch conversations', () => {
+    seedConversations();
+    const onSelectConversation = vi.fn();
+    AIRenderer.renderTopicsList({ onSelectConversation });
+
+    const button = document.querySelector('#ai-topics-list .ai-topic-rename[data-id="conv-1"]');
+    button.focus();
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    button.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(onSelectConversation).not.toHaveBeenCalled();
+  });
+});
+
 describe('AIService delete confirmation keyboard safety (#889)', () => {
   const openDialogWithKeyboard = () => {
     seedConversations();

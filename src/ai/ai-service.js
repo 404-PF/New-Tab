@@ -66,6 +66,7 @@ const AIService = (function() {
       onSelectConversation: switchConversation,
       onDeleteConversation: deleteConversation,
       onExportConversation: exportConversation,
+      onRenameConversation: renameConversation,
       onRequestDeleteConfirm: showDeleteConfirm
     });
 
@@ -356,6 +357,7 @@ const AIService = (function() {
             onSelectConversation: switchConversation,
             onDeleteConversation: deleteConversation,
             onExportConversation: exportConversation,
+            onRenameConversation: renameConversation,
             onRequestDeleteConfirm: showDeleteConfirm
           });
         }
@@ -485,11 +487,21 @@ const AIService = (function() {
     renderConversationUI();
   }
 
+  function renameConversation(conversationId, title) {
+    if (!AIStore.renameConversation(conversationId, title)) return false;
+
+    // Only the sidebar label changed, so skip the chat repaint; the topics
+    // list signature carries conversation.title, which refreshes the row.
+    renderConversationUI({ renderMessages: false });
+    return true;
+  }
+
   function handleTopicsKeydown(event) {
     // Native button activation wins when an action button inside the list has
-    // focus: otherwise Enter on the export/delete button would be hijacked to
-    // switch conversations instead of clicking the button.
-    if (event.target?.closest?.('.ai-topic-export, .ai-topic-delete')) {
+    // focus: otherwise Enter on the export/delete/rename button (or a keystroke
+    // in the inline rename editor) would be hijacked to switch conversations
+    // instead of acting on the control.
+    if (event.target?.closest?.('.ai-topic-export, .ai-topic-delete, .ai-topic-rename, .ai-topic-rename-input')) {
       return;
     }
 
@@ -1222,7 +1234,8 @@ const AIService = (function() {
     quickSearch,
     isAvailable,
     exportConversation,
-    exportAllConversations
+    exportAllConversations,
+    renameConversation
   };
 })();
 

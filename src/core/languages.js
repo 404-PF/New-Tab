@@ -778,6 +778,29 @@ function applyAiExportMerges(code) {
   target.aiExportError = messages[4];
 }
 
+// Single-string AI key kept in a per-language map (same shape as
+// gamesLevelTranslations) so the rename affordance's label does not repeat a
+// new line in every per-locale table. Every supported language needs an entry
+// here or the key would leak as the raw key name in that locale.
+const aiRenameTranslations = {
+  en: 'Rename conversation',
+  zh: '重命名对话',
+  ja: '会話名を変更',
+  ko: '대화 이름 변경',
+  es: 'Renombrar conversación',
+  fr: 'Renommer la conversation',
+  de: 'Unterhaltung umbenennen',
+  pt: 'Renomear conversa',
+  ru: 'Переименовать беседу'
+};
+
+function applyAiRenameMerges(code) {
+  const target = translations[code];
+  const value = aiRenameTranslations[code];
+  if (!target || !value) return;
+  target.aiRenameConversation = value;
+}
+
 // The games "Level" label is defined here rather than in the per-locale
 // createGamesTranslations arrays. Those blocks are structurally identical across
 // locales, so appending a string to each one would count every line as new
@@ -1179,6 +1202,7 @@ function applyAccessibilityMerges(code) {
 function applyLocaleMerges(code) {
   applyCustomBackgroundErrorMerges(code);
   applyAiExportMerges(code);
+  applyAiRenameMerges(code);
   applyGamesLevelMerges(code);
   applyGamesReadyMerges(code);
   applyFlappyBirdMerges(code);
