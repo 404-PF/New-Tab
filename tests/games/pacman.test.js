@@ -31,6 +31,19 @@ function collideWithGhost() {
   window.__pacmanTest.tick(0.01);
 }
 
+// Keep every ghost in the house for a long stretch so movement specs can
+// tick across several tiles without an unlucky collision resetting Pac-Man.
+function parkGhosts() {
+  window.__pacmanTest.setPositions({
+    ghosts: [
+      { inHouse: true, releaseAt: 1e9 },
+      { inHouse: true, releaseAt: 1e9 },
+      { inHouse: true, releaseAt: 1e9 },
+      { inHouse: true, releaseAt: 1e9 }
+    ]
+  });
+}
+
 describe('Pac-Man registration and ready state', () => {
   it('registers with the GameRegistry contract', () => {
     const game = getGame();
@@ -137,31 +150,46 @@ describe('Pac-Man difficulty helpers', () => {
 });
 
 describe('Pac-Man input and movement', () => {
-  it('steers with Arrow/WASD keys using a queued-turn buffer', () => {
+  it('steers with Arrow/WASD keys using a single intended direction', () => {
     const container = makeContainer();
     startWithSpace();
 
     pressKey('ArrowRight');
+    expect(window.__pacmanTest.getState().pendingDir).toBe('right');
     expect(window.__pacmanTest.getState().queuedDirs).toEqual(['right']);
     window.__pacmanTest.tick(0.25);
     const after = window.__pacmanTest.getState();
     expect(after.pacman.x).toBeCloseTo(10.125, 5);
     expect(after.pacman.dir).toBe('right');
+    expect(after.pendingDir).toBeNull();
 
-    // A second and third press while the buffer is full are dropped.
+    // The last press wins when several directions arrive between tiles and a
+    // repeat of the intended direction is a no-op.
     window.__pacmanTest.setPositions({ pacman: { x: 6, y: 13, dir: 'left' } });
     pressKey('ArrowDown');
     pressKey('ArrowUp');
     pressKey('KeyW');
-    expect(window.__pacmanTest.getState().queuedDirs.length).toBeLessThanOrEqual(2);
+    expect(window.__pacmanTest.getState().pendingDir).toBe('up');
     window.__pacmanTest.tick(0.2);
-    expect(window.__pacmanTest.getState().pacman.dir).toBe('down');
+    expect(window.__pacmanTest.getState().pacman.dir).toBe('up');
 
     getGame().destroy();
     container.remove();
   });
 
-  it('reverses immediately mid-corridor and clears the queue', () => {
+  it('ignores a press of the direction Pac-Man is already heading', () => {
+    const container = makeContainer();
+    startWithSpace();
+
+    window.__pacmanTest.setPositions({ pacman: { x: 6, y: 13, dir: 'left' } });
+    pressKey('ArrowLeft');
+    expect(window.__pacmanTest.getState().pendingDir).toBeNull();
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('reverses immediately mid-corridor and clears the intention', () => {
     const container = makeContainer();
     startWithSpace();
 
@@ -170,6 +198,7 @@ describe('Pac-Man input and movement', () => {
     expect(window.__pacmanTest.getState().pacman.x).toBeLessThan(7);
 
     pressKey('ArrowRight');
+    expect(window.__pacmanTest.getState().pendingDir).toBeNull();
     expect(window.__pacmanTest.getState().queuedDirs).toEqual([]);
     window.__pacmanTest.tick(0.05);
     const state = window.__pacmanTest.getState();
@@ -322,6 +351,65 @@ describe('Pac-Man input and movement', () => {
     expect(window.__pacmanTest.getState().started).toBe(false);
     expect(window.__pacmanTest.getState().paused).toBe(false);
     expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+
+    getGame().destroy();
+    container.remove();
+  });
+});
+
+describe('Pac-Man intended direction across junctions (#1018)', () => {
+  it('applies a turn pressed after a junction at the next junction where it is legal', () => {
+    const container = makeContainer();
+    startWithSpace();
+    parkGhosts();
+
+    // Travelling down column 14: the right opening at (14,11) has just been
+    // passed, so right is a wall at (14,12) when the press lands.
+    window.__pacmanTest.setPositions({ pacman: { x: 14, y: 12.4, dir: 'down' } });
+    pressKey('ArrowRight');
+    expect(window.__pacmanTest.getState().pendingDir).toBe('right');
+
+    // The wall press survives the straight tile instead of being discarded.
+    window.__pacmanTest.tick(0.05);
+    const mid = window.__pacmanTest.getState();
+    expect(mid.pacman.dir).toBe('down');
+    expect(mid.pendingDir).toBe('right');
+
+    // The next junction at (14,13) has a right opening: the turn lands there.
+    window.__pacmanTest.tick(0.7);
+    const done = window.__pacmanTest.getState();
+    expect(done.pacman.dir).toBe('right');
+    expect(done.pacman.x).toBeGreaterThan(14);
+    expect(done.pendingDir).toBeNull();
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('drops a wall press at the first junction where it is not walkable', () => {
+    const container = makeContainer();
+    startWithSpace();
+    parkGhosts();
+
+    // Down column 4, the first junction (4,5) opens left but not right, while
+    // a right opening exists far below at (4,9) - the stale press must not
+    // fire there.
+    window.__pacmanTest.setPositions({ pacman: { x: 4, y: 4.2, dir: 'down' } });
+    pressKey('ArrowRight');
+    expect(window.__pacmanTest.getState().pendingDir).toBe('right');
+
+    window.__pacmanTest.tick(0.05);
+    expect(window.__pacmanTest.getState().pendingDir).toBe('right');
+
+    window.__pacmanTest.tick(0.2);
+    const afterJunction = window.__pacmanTest.getState();
+    expect(afterJunction.pendingDir).toBeNull();
+    expect(afterJunction.pacman.dir).toBe('down');
+
+    window.__pacmanTest.tick(1.0);
+    const end = window.__pacmanTest.getState();
+    expect(end.pacman.dir).toBe('down');
+    expect(end.pendingDir).toBeNull();
 
     getGame().destroy();
     container.remove();
@@ -521,10 +609,33 @@ describe('Pac-Man save and restore', () => {
     startWithSpace();
     window.__pacmanTest.tick(0.25);
     const saved = getGame().serialize();
-    saved.pacman.queuedDirs = ['up'];
+    // Legacy pre-#1018 snapshots only carry the FIFO; its last entry wins.
+    delete saved.pacman.pendingDir;
+    saved.pacman.queuedDirs = ['left', 'up'];
 
     expect(window.__pacmanTest.applyRestoredState(saved)).toBe(true);
+    expect(window.__pacmanTest.getState().pendingDir).toBe('up');
     expect(window.__pacmanTest.getState().queuedDirs).toEqual(['up']);
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('serializes the intended direction and resumes it behind Continue', () => {
+    const container = makeContainer();
+    startWithSpace();
+    pressKey('ArrowRight');
+    expect(window.__pacmanTest.getState().pendingDir).toBe('right');
+
+    const saved = getGame().serialize();
+    expect(saved.pacman.pendingDir).toBe('right');
+    expect(window.__pacmanTest.validateSavedState(saved)).toBe(true);
+
+    getGame().destroy();
+    container.innerHTML = '';
+    getGame().init(container, saved);
+    expect(window.__pacmanTest.getState().pendingDir).toBe('right');
+    expect(container.querySelector('.games-ready-start').textContent).toBe('Continue');
 
     getGame().destroy();
     container.remove();
@@ -613,6 +724,9 @@ describe('Pac-Man save and restore', () => {
       pacman: { ...valid.pacman, queuedDirs: ['up', 'down', 'left'] }
     };
     expect(d.validateSavedState(tooManyQueued)).toBe(false);
+
+    const badPending = { ...valid, pacman: { ...valid.pacman, pendingDir: 'diagonal' } };
+    expect(d.validateSavedState(badPending)).toBe(false);
 
     getGame().destroy();
     container.remove();

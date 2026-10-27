@@ -5,6 +5,8 @@
   const MAZE_ID = 'maze-1';
   const CELL_SIZE = 20;
   const MAX_LIVES = 3;
+  // Legacy cap: the pre-#1018 FIFO never stored more than two directions, so
+  // an old queuedDirs snapshot with more entries is corrupt and rejected.
   const MAX_QUEUED_TURNS = 2;
   const DOT_SCORE = 10;
   const PELLET_SCORE = 50;
@@ -103,7 +105,9 @@
   let dotsRemaining = 0;
   let pacman = null;
   let ghosts = [];
-  let queue = [];
+  // Single intended direction (last press). Held across tiles until it is
+  // taken at the first junction where it is legal (#1018).
+  let pendingDir = null;
   let score = 0;
   let lives = MAX_LIVES;
   let level = 1;
@@ -363,30 +367,44 @@
     return isGhostWalkable(from.x + DIR_DELTA[dir].x, from.y + DIR_DELTA[dir].y, allowHouse);
   }
 
-  function queueTurn(dir) {
-    if (!isValidDirection(dir) || !pacman) return;
-    // A direction matching the effective intent — the pending tail when one
-    // is queued, otherwise the direction already in effect — is a no-op, so
-    // a held key's repeats never duplicate a queued turn. A fresh press of
-    // the current direction still buffers behind a queued turn; only
-    // auto-repeats of the direction in effect are filtered in handleKeydown
-    // so a held key can never re-trigger the mid-turn reverse (#1016).
-    const effective = queue.length > 0 ? queue[queue.length - 1] : pacman.dir;
-    if (dir === effective) return;
-    if (pacman.b && dir === OPPOSITE[pacman.dir]) {
-      reverseEntity(pacman);
-      queue.length = 0;
-      return;
-    }
-    if (queue.length >= MAX_QUEUED_TURNS) return;
-    queue.push(dir);
+  // A junction is a tile with three or more walkable neighbours: the only
+  // place Pac-Man has a real choice, so it is the only place an intended
+  // direction can be taken or rejected (#1018).
+  function isJunction(c, r) {
+    let walkable = 0;
+    if (isPacmanWalkable(c, r - 1)) walkable++;
+    if (isPacmanWalkable(c, r + 1)) walkable++;
+    if (isPacmanWalkable(c - 1, r)) walkable++;
+    if (isPacmanWalkable(c + 1, r)) walkable++;
+    return walkable >= 3;
   }
 
+  function queueTurn(dir) {
+    if (!isValidDirection(dir) || !pacman) return;
+    // Mid-corridor reversal happens instantly and cancels any intention.
+    if (pacman.b && dir === OPPOSITE[pacman.dir]) {
+      reverseEntity(pacman);
+      pendingDir = null;
+      return;
+    }
+    // Ignore presses that change nothing: already heading this way, or this
+    // is already the intended direction. Otherwise the last press wins.
+    if (dir === pacman.dir || dir === pendingDir) return;
+    pendingDir = dir;
+  }
+
+  // The intended direction is carried across tiles: it is taken at the first
+  // junction where it is walkable, and dropped at the first junction where it
+  // is not, so a stale wall press cannot fire turns much later (#1018).
   function pacmanChooseNext() {
     const from = tileOf(pacman);
-    while (queue.length > 0) {
-      const dir = queue.shift();
-      if (canWalkPacman(from, dir)) return applyNext(pacman, from, dir);
+    if (pendingDir && canWalkPacman(from, pendingDir)) {
+      const dir = pendingDir;
+      pendingDir = null;
+      return applyNext(pacman, from, dir);
+    }
+    if (pendingDir && isJunction(from.x, from.y)) {
+      pendingDir = null;
     }
     if (pacman.dir && canWalkPacman(from, pacman.dir)) {
       return applyNext(pacman, from, pacman.dir);
@@ -545,7 +563,7 @@
 
   function resetPositions() {
     pacman = makeEntity(PACMAN_SPAWN.x, PACMAN_SPAWN.y, 'left');
-    queue = [];
+    pendingDir = null;
     ghosts = GHOST_DEFS.map(function (_def, i) { return makeGhost(i); });
   }
 
@@ -937,6 +955,13 @@
     if (!isFiniteNumber(savedState.modeMsLeft) || savedState.modeMsLeft < 0) return false;
 
     if (!validateEntityPosition(savedState.pacman, false)) return false;
+    // New snapshots store a single intended direction; older ones stored a
+    // FIFO queue. Both shapes must validate so old saves keep restoring.
+    if (savedState.pacman.pendingDir !== undefined &&
+        savedState.pacman.pendingDir !== null &&
+        !isValidDirection(savedState.pacman.pendingDir)) {
+      return false;
+    }
     if (savedState.pacman.queuedDirs !== undefined) {
       if (!Array.isArray(savedState.pacman.queuedDirs) ||
           savedState.pacman.queuedDirs.length > MAX_QUEUED_TURNS) return false;
@@ -1011,8 +1036,18 @@
       a: savedState.pacman.a ? { x: savedState.pacman.a.x, y: savedState.pacman.a.y } : { x: Math.round(savedState.pacman.x), y: Math.round(savedState.pacman.y) },
       b: savedState.pacman.b ? { x: savedState.pacman.b.x, y: savedState.pacman.b.y } : null
     };
-    // Keep the turns queued at save time so Continue resumes the same move.
-    queue = Array.isArray(savedState.pacman.queuedDirs) ? savedState.pacman.queuedDirs.slice() : [];
+    // Resume with the intended direction from the save. Older snapshots only
+    // have the FIFO queue, so its last entry wins (#1018).
+    if (savedState.pacman.pendingDir !== undefined) {
+      pendingDir = isValidDirection(savedState.pacman.pendingDir)
+        ? savedState.pacman.pendingDir
+        : null;
+    } else if (Array.isArray(savedState.pacman.queuedDirs) &&
+        savedState.pacman.queuedDirs.length > 0) {
+      pendingDir = savedState.pacman.queuedDirs[savedState.pacman.queuedDirs.length - 1];
+    } else {
+      pendingDir = null;
+    }
     ghosts = savedState.ghosts.map(function (ghost, i) {
       return {
         index: i,
@@ -1045,7 +1080,7 @@
         dir: pacman.dir,
         a: pacman.a ? { x: pacman.a.x, y: pacman.a.y } : null,
         b: pacman.b ? { x: pacman.b.x, y: pacman.b.y } : null,
-        queuedDirs: queue.slice()
+        pendingDir: pendingDir
       },
       ghosts: ghosts.map(function (ghost) {
         return {
@@ -1256,7 +1291,7 @@
     bgCache = null;
     pacman = null;
     ghosts = [];
-    queue = [];
+    pendingDir = null;
     dots = [];
     dotsRemaining = 0;
   }
@@ -1309,7 +1344,13 @@
         pacman.dir = p.dir || pacman.dir;
         pacman.a = { x: Math.round(pacman.x), y: Math.round(pacman.y) };
         pacman.b = null;
-        if (p.queuedDirs) queue = p.queuedDirs.slice();
+        if ('pendingDir' in p) {
+          pendingDir = isValidDirection(p.pendingDir) ? p.pendingDir : null;
+        } else if (Array.isArray(p.queuedDirs)) {
+          pendingDir = p.queuedDirs.length > 0
+            ? p.queuedDirs[p.queuedDirs.length - 1]
+            : null;
+        }
       }
       if (Array.isArray(positions.ghosts)) {
         positions.ghosts.forEach(function (g, i) {
@@ -1344,7 +1385,10 @@
         frightened: isFrightened(),
         frightenedChain: frightenedChain,
         mode: currentMode(),
-        queuedDirs: queue.slice(),
+        pendingDir: pendingDir,
+        // Legacy alias for pre-#1018 specs: the FIFO that used to live here
+        // is now a single intended direction.
+        queuedDirs: pendingDir === null ? [] : [pendingDir],
         pacman: pacman ? { x: pacman.x, y: pacman.y, dir: pacman.dir } : null,
         ghosts: ghosts.map(function (ghost) {
           return {
