@@ -1177,6 +1177,9 @@ const AIStore = (function() {
         console.error('Unexpected conversation save rejection:', error);
       });
     }
+    // Returned so callers that repaint from the outcome (AIService) can
+    // observe the settlement instead of guessing.
+    return result;
   }
 
   function getCurrentConversation() {
@@ -1216,7 +1219,14 @@ const AIStore = (function() {
     enforceMessageCap(conversation);
     conversation.updatedAt = Date.now();
 
-    if (conversation.messages.length === 1 && message.role === 'user') {
+    // Auto-titling only runs while the untouched placeholder title is still in
+    // place: a manual rename of the empty chat (#1014) must survive the first
+    // user message.
+    if (
+      conversation.messages.length === 1 &&
+      message.role === 'user' &&
+      conversation.title === getTranslation('aiNewConversation')
+    ) {
       conversation.title = message.content.substring(0, 30) + (message.content.length > 30 ? '...' : '');
     }
 
@@ -1268,7 +1278,9 @@ const AIStore = (function() {
   // filename all read conversation.title, so a single trimmed write here fixes
   // all three. Empty/whitespace-only names are rejected because the persisted
   // validator (conversation-validator.js) requires a non-empty title.
-  function renameConversation(conversationId, title) {
+  // `onSaveResult` receives the save settlement so a caller that renders the
+  // new title can repaint if storage rejects and state rolls back.
+  function renameConversation(conversationId, title, onSaveResult) {
     const conversation = state.conversations.find(item => item.id === conversationId);
     if (!conversation) return false;
 
@@ -1279,7 +1291,8 @@ const AIStore = (function() {
 
     const previousState = createSaveSnapshot();
     conversation.title = nextTitle;
-    saveConversationsSafely(previousState);
+    const saveResult = saveConversationsSafely(previousState);
+    if (typeof onSaveResult === 'function') onSaveResult(saveResult);
     return true;
   }
 

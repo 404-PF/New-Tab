@@ -274,7 +274,9 @@ const AIRenderer = (function() {
     };
 
     input.addEventListener('keydown', event => {
-      if (event.key === 'Enter') {
+      // Enter confirms an IME candidate for CJK compositions; it must not
+      // double as a rename submission while composing.
+      if (event.key === 'Enter' && !event.isComposing) {
         event.preventDefault();
         event.stopPropagation();
         settle(true);
@@ -285,7 +287,9 @@ const AIRenderer = (function() {
       }
     });
     input.addEventListener('click', event => event.stopPropagation());
-    input.addEventListener('blur', () => settle(true));
+    // Settlement on blur waits a task so a click already moving to another row
+    // finishes its dispatch instead of being swallowed by the rebuild.
+    input.addEventListener('blur', () => setTimeout(() => settle(true), 0));
 
     titleEl.replaceWith(input);
     input.focus();
@@ -540,6 +544,27 @@ const AIRenderer = (function() {
         selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
     }
+  }
+
+  // Row action labels are localized only while their row is created, so an
+  // already rendered list keeps the previous language's aria-labels and
+  // tooltips until the next structural re-render. Refresh them in place so a
+  // language change does not strand stale labels (or drop button focus).
+  function refreshTopicActionLabels() {
+    const list = elements.topicsList || topicsListRenderState.listEl;
+    if (!list) return;
+
+    const renameLabel = getTranslation('aiRenameConversation');
+    list.querySelectorAll('.ai-topic-rename').forEach(button => {
+      button.setAttribute('aria-label', renameLabel);
+      button.title = renameLabel;
+    });
+
+    const exportLabel = getTranslation('aiExportConversation');
+    list.querySelectorAll('.ai-topic-export').forEach(button => {
+      button.setAttribute('aria-label', exportLabel);
+      button.title = exportLabel;
+    });
   }
 
   function extractSourceLinks(content) {
@@ -1067,6 +1092,10 @@ const AIRenderer = (function() {
     }
     return { size: 0, maxSize: 0 };
   }
+
+  // Registered at module scope: the topic rows outlive any single render call,
+  // so the list keeps its localized action labels after a language switch.
+  window.addEventListener('languageChanged', refreshTopicActionLabels);
 
   return {
     cacheElements,

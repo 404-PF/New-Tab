@@ -488,10 +488,12 @@ const AIService = (function() {
   }
 
   function renameConversation(conversationId, title) {
-    if (!AIStore.renameConversation(conversationId, title)) return false;
+    if (!AIStore.renameConversation(conversationId, title, rerenderOnSaveFailure)) return false;
 
     // Only the sidebar label changed, so skip the chat repaint; the topics
-    // list signature carries conversation.title, which refreshes the row.
+    // list signature carries conversation.title, which refreshes the row. A
+    // storage rejection is rolled back by AIStore and observed above, so the
+    // sidebar repaints from rerenderOnSaveFailure instead of staying stale.
     renderConversationUI({ renderMessages: false });
     return true;
   }

@@ -190,6 +190,59 @@ describe('AIRenderer conversation rename affordance (#1014)', () => {
     expect(onSelectConversation).not.toHaveBeenCalled();
     expect(onRenameConversation).not.toHaveBeenCalled();
   });
+
+  it('does not submit the rename for Enter pressed during IME composition', () => {
+    const onRenameConversation = vi.fn();
+    renderWithCallbacks({ onRenameConversation });
+
+    document.querySelector('.ai-topic-rename[data-id="conv-1"]').click();
+    const input = document.querySelector('.ai-topic-rename-input');
+    input.value = 'Composing candidate';
+    input.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+      isComposing: true
+    }));
+
+    expect(onRenameConversation).not.toHaveBeenCalled();
+    expect(document.querySelector('.ai-topic-rename-input')).not.toBeNull();
+  });
+
+  it('defers the blur commit until the current task finishes', async () => {
+    const onRenameConversation = vi.fn();
+    renderWithCallbacks({ onRenameConversation });
+
+    document.querySelector('.ai-topic-rename[data-id="conv-1"]').click();
+    const input = document.querySelector('.ai-topic-rename-input');
+    input.value = 'Renamed on blur';
+    input.dispatchEvent(new Event('blur'));
+
+    expect(document.querySelector('.ai-topic-rename-input')).not.toBeNull();
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(onRenameConversation).toHaveBeenCalledWith('conv-1', 'Renamed on blur');
+    expect(document.querySelector('.ai-topic-rename-input')).toBeNull();
+    expect(document.querySelector('.ai-topic-item[data-id="conv-1"] .ai-topic-title').textContent)
+      .toBe('Renamed on blur');
+  });
+
+  it('refreshes the topic action labels after a language change', () => {
+    renderWithCallbacks();
+
+    const originalT = window.i18n.t;
+    window.i18n.t = key => (key === 'aiRenameConversation' ? 'Renommer la conversation' : originalT(key));
+    try {
+      window.dispatchEvent(new CustomEvent('languageChanged'));
+
+      const button = document.querySelector('.ai-topic-rename[data-id="conv-1"]');
+      expect(button.getAttribute('aria-label')).toBe('Renommer la conversation');
+      expect(button.title).toBe('Renommer la conversation');
+    } finally {
+      window.i18n.t = originalT;
+    }
+  });
 });
 
 describe('AIRenderer grounded source rendering (#707)', () => {
