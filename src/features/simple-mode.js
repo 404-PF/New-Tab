@@ -32,11 +32,21 @@ function initSimpleMode() {
   if (!checkbox || !toggleContainer) return;
   
   checkbox.addEventListener('change', function() {
-    const persisted = window.persistFeatureToggle('simpleMode', this.checked);
+    // Guard the shared helper: toast.js may fail to load, and an unguarded
+    // call would throw before the write (#969 review thread).
+    let persisted;
+    try {
+      persisted = typeof window.persistFeatureToggle === 'function'
+        ? window.persistFeatureToggle('simpleMode', this.checked)
+        : localStorage.setItem('simpleMode', this.checked) !== false;
+    } catch (e) {
+      console.warn('Failed to save simpleMode:', e);
+      persisted = false;
+    }
     // Re-apply either way: after a rejected write it restores the checkbox to
     // the rolled-back value instead of leaving it desynced.
     applySimpleMode();
-    if (!persisted) {
+    if (!persisted && typeof window.showFeatureToggleSaveError === 'function') {
       window.showFeatureToggleSaveError();
     }
   });

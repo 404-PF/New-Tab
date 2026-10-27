@@ -1434,11 +1434,21 @@ function applyTodoEnabled() {
 const todoEnabledSetting = document.getElementById('todo-enabled-setting');
 if (todoEnabledSetting) {
   todoEnabledSetting.addEventListener('change', function () {
-    // persistFeatureToggle checks the bridge's result: setItem returns false
-    // for a rejected write instead of throwing (#969).
-    const persisted = window.persistFeatureToggle('todoEnabled', this.checked);
+    // Guard the shared helper: toast.js may fail to load, and an unguarded
+    // call would throw before the write (#969 review thread).
+    let persisted;
+    try {
+      // persistFeatureToggle checks the bridge's result: setItem returns false
+      // for a rejected write instead of throwing (#969).
+      persisted = typeof window.persistFeatureToggle === 'function'
+        ? window.persistFeatureToggle('todoEnabled', this.checked)
+        : localStorage.setItem('todoEnabled', this.checked) !== false;
+    } catch (e) {
+      console.warn('Failed to save todoEnabled:', e);
+      persisted = false;
+    }
     applyTodoEnabled();
-    if (!persisted) {
+    if (!persisted && typeof window.showFeatureToggleSaveError === 'function') {
       window.showFeatureToggleSaveError();
     }
   });
@@ -1576,14 +1586,24 @@ function loadEyeCareReminderState() {
 // Returns the merged state after a successful save, or false when the storage
 // bridge rejected the write (#969). The bridge rolls its cache back and
 // returns false instead of throwing, so callers must check the result instead
-// of treating every call as persisted.
+// of treating every call as persisted. Guarded so a toast.js load failure
+// cannot throw before the write.
 function saveEyeCareReminderState(updates) {
   const current = loadEyeCareReminderState();
   const next = {
     ...current,
     ...updates
   };
-  if (!window.persistFeatureToggle('eyeCareReminder', JSON.stringify(next))) {
+  let persisted;
+  try {
+    persisted = typeof window.persistFeatureToggle === 'function'
+      ? window.persistFeatureToggle('eyeCareReminder', JSON.stringify(next))
+      : localStorage.setItem('eyeCareReminder', JSON.stringify(next)) !== false;
+  } catch (e) {
+    console.warn('Failed to save eyeCareReminder:', e);
+    persisted = false;
+  }
+  if (!persisted) {
     return false;
   }
   return next;
@@ -1604,6 +1624,14 @@ function applyEyeCareReminderSettings() {
   if (browserNotificationOption) browserNotificationOption.style.display = state.enabled ? '' : 'none';
 }
 
+// Guarded reporter: toast.js may fail to load, so resolve through window
+// instead of assuming the helper exists (#969 review thread).
+function reportFeatureToggleSaveError() {
+  if (typeof window.showFeatureToggleSaveError === 'function') {
+    window.showFeatureToggleSaveError();
+  }
+}
+
 const eyeCareEnabledSetting = document.getElementById('eye-care-enabled-setting');
 if (eyeCareEnabledSetting) {
   eyeCareEnabledSetting.addEventListener('change', function () {
@@ -1622,7 +1650,7 @@ if (eyeCareEnabledSetting) {
     // the rolled-back state instead of leaving them desynced.
     applyEyeCareReminderSettings();
     if (saved === false) {
-      window.showFeatureToggleSaveError();
+      reportFeatureToggleSaveError();
       return;
     }
     if (typeof window.refreshEyeCareReminder === 'function') {
@@ -1639,7 +1667,7 @@ if (eyeCareIntervalSetting) {
     });
     if (saved === false) {
       applyEyeCareReminderSettings();
-      window.showFeatureToggleSaveError();
+      reportFeatureToggleSaveError();
       return;
     }
     if (typeof window.refreshEyeCareReminder === 'function') {
@@ -1656,7 +1684,7 @@ if (eyeCareBrowserNotificationSetting) {
     });
     if (saved === false) {
       applyEyeCareReminderSettings();
-      window.showFeatureToggleSaveError();
+      reportFeatureToggleSaveError();
       return;
     }
     if (typeof window.refreshEyeCareReminder === 'function') {
@@ -1692,10 +1720,20 @@ function applyNotesEnabled() {
 const notesEnabledSetting = document.getElementById('notes-enabled-setting');
 if (notesEnabledSetting) {
   notesEnabledSetting.addEventListener('change', function () {
-    const persisted = window.persistFeatureToggle('notesEnabled', this.checked);
+    // Guard the shared helper: toast.js may fail to load, and an unguarded
+    // call would throw before the write (#969 review thread).
+    let persisted;
+    try {
+      persisted = typeof window.persistFeatureToggle === 'function'
+        ? window.persistFeatureToggle('notesEnabled', this.checked)
+        : localStorage.setItem('notesEnabled', this.checked) !== false;
+    } catch (e) {
+      console.warn('Failed to save notesEnabled:', e);
+      persisted = false;
+    }
     applyNotesEnabled();
     if (!persisted) {
-      window.showFeatureToggleSaveError();
+      reportFeatureToggleSaveError();
     }
   });
 }

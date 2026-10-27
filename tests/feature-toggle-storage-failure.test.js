@@ -517,3 +517,64 @@ describe('eye-care settings checkboxes report rejected writes (#969)', () => {
     expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 });
+
+describe('toggle handlers tolerate a missing toast.js helper (#969)', () => {
+  it('simple-mode checkbox still saves via the fallback when persistFeatureToggle is unavailable', () => {
+    const originalPersist = window.persistFeatureToggle;
+    const originalReport = window.showFeatureToggleSaveError;
+    delete window.persistFeatureToggle;
+    delete window.showFeatureToggleSaveError;
+    restorers.push(() => {
+      window.persistFeatureToggle = originalPersist;
+      window.showFeatureToggleSaveError = originalReport;
+    });
+
+    const checkbox = document.getElementById('simple-mode-checkbox');
+    checkbox.checked = true;
+    expect(() => {
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }).not.toThrow();
+
+    expect(localStorage.getItem('simpleMode')).toBe('true');
+    expect(checkbox.checked).toBe(true);
+    expect(window.showToast).not.toHaveBeenCalled();
+  });
+
+  it('setFocusMode still saves via the fallback when persistFeatureToggle is unavailable', () => {
+    const originalPersist = window.persistFeatureToggle;
+    const originalReport = window.showFeatureToggleSaveError;
+    delete window.persistFeatureToggle;
+    delete window.showFeatureToggleSaveError;
+    restorers.push(() => {
+      window.persistFeatureToggle = originalPersist;
+      window.showFeatureToggleSaveError = originalReport;
+    });
+
+    expect(() => {
+      window.setFocusMode(true);
+    }).not.toThrow();
+
+    expect(localStorage.getItem('focusMode')).toBe('true');
+    expect(document.getElementById('focus-mode-setting').checked).toBe(true);
+  });
+
+  it('toggleTodo still saves via the fallback when persistFeatureToggle is unavailable', () => {
+    const originalPersist = window.persistFeatureToggle;
+    const originalReport = window.showFeatureToggleSaveError;
+    delete window.persistFeatureToggle;
+    delete window.showFeatureToggleSaveError;
+    restorers.push(() => {
+      window.persistFeatureToggle = originalPersist;
+      window.showFeatureToggleSaveError = originalReport;
+    });
+
+    localStorage.setItem('todoEnabled', 'true');
+
+    expect(() => {
+      window.Shortcuts.executeAction('toggleTodo');
+    }).not.toThrow();
+
+    expect(localStorage.getItem('todoEnabled')).toBe('false');
+    expect(document.getElementById('todo-enabled-setting').checked).toBe(false);
+  });
+});
