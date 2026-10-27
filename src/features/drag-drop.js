@@ -398,6 +398,21 @@
     cleanupDragSession();
   }
 
+  // Any app tile can be organized into a folder, including hideable
+  // built-ins (issue #1010). Settings stays out because it is the
+  // guaranteed restore path for hidden apps, and folder icons stay out
+  // because folders cannot nest.
+  function isFolderableDragSource(sourceEl) {
+    if (!sourceEl || !sourceEl.classList.contains('app-icon')) return false;
+    if (sourceEl.classList.contains('folder-icon')) return false;
+    if (sourceEl.classList.contains('custom-app')) return true;
+    if (sourceEl.classList.contains('default-app')) {
+      return typeof window.AppGridState?.canHideDefaultApp === 'function' &&
+        window.AppGridState.canHideDefaultApp(sourceEl.id);
+    }
+    return false;
+  }
+
   // Drag over handler (fires when cursor is over an icon).  It is
   // possible for `target` to be null if the user is hovering empty grid
   // space; the global dragover listener already handles placeholder
@@ -415,7 +430,7 @@
     if (target) {
       // If hovering over a folder icon, show folder highlight feedback
       if (target.classList.contains('folder-icon')) {
-        if (dragState.sourceElement && dragState.sourceElement.classList.contains('custom-app')) {
+        if (isFolderableDragSource(dragState.sourceElement)) {
           target.classList.add('drag-over-folder');
         } else {
           target.classList.add('drag-over-folder-rejected');
@@ -463,8 +478,7 @@
     // If dropped on a folder icon, add the app to the folder
     if (target && target.classList.contains('folder-icon')) {
       target.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
-      const sourceEl = dragState.sourceElement;
-      if (sourceEl && !sourceEl.classList.contains('custom-app')) {
+      if (!isFolderableDragSource(dragState.sourceElement)) {
         removePlaceholder();
         dragState.dropIndex = -1;
         return;

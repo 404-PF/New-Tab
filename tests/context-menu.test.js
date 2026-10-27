@@ -383,3 +383,162 @@ describe('context menu i18n labels', () => {
     }
   });
 });
+
+describe('built-in apps in folders (#1010)', () => {
+  const createElementIfMissing = (tag, id) => {
+    const existing = document.getElementById(id);
+    if (existing) return existing;
+    return createElement(tag, id);
+  };
+
+  const removeExistingMenu = () => {
+    const existingMenu = document.getElementById('app-context-menu');
+    if (existingMenu) existingMenu.remove();
+  };
+
+  const openContextMenu = (element) => {
+    element.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      pageX: 32,
+      pageY: 32
+    }));
+  };
+
+  beforeAll(() => {
+    injectScript('src/core/dom-ready.js');
+    removeExistingMenu();
+
+    createElementIfMissing('div', 'rename-app-modal');
+    createElementIfMissing('input', 'rename-app-input');
+    createElementIfMissing('button', 'rename-app-cancel');
+    createElementIfMissing('button', 'rename-app-confirm');
+    createElementIfMissing('div', 'thumbnail-app-modal');
+    createElementIfMissing('input', 'thumbnail-app-input');
+    createElementIfMissing('button', 'thumbnail-app-cancel');
+    createElementIfMissing('button', 'thumbnail-app-confirm');
+    createElementIfMissing('div', 'thumbnail-preview-icon');
+    createElementIfMissing('span', 'thumbnail-preview-name');
+    createElementIfMissing('div', 'delete-app-modal');
+    createElementIfMissing('button', 'delete-app-cancel');
+    createElementIfMissing('button', 'delete-app-confirm');
+    createElementIfMissing('div', 'delete-preview-icon');
+    createElementIfMissing('span', 'delete-preview-name');
+
+    window.AppGridState = {
+      getCustomApps: () => [],
+      canHideDefaultApp: (id) => id !== 'settings-app',
+      hideDefaultApp: vi.fn(() => true),
+      getFolders: () => [],
+      removeAppFromFolder: vi.fn(() => true),
+      renameApp: vi.fn(),
+      updateThumbnail: vi.fn(),
+      deleteApp: vi.fn()
+    };
+
+    createElement('a', 'ai-app').className = 'app-icon default-app';
+    createElement('a', 'settings-app').className = 'app-icon default-app';
+
+    injectScript('src/features/context-menu.js');
+  });
+
+  it('offers Move to Folder alongside Hide for hideable built-ins', () => {
+    const showMoveToFolderSelector = vi.fn();
+    const originalAppFolders = window.AppFolders;
+    window.AppFolders = { showMoveToFolderSelector };
+
+    try {
+      openContextMenu(document.getElementById('ai-app'));
+
+      expect(document.getElementById('hide-default-app').style.display).toBe('block');
+      expect(document.getElementById('move-to-folder').style.display).toBe('block');
+
+      document.getElementById('move-to-folder').click();
+
+      expect(showMoveToFolderSelector).toHaveBeenCalledExactlyOnceWith('ai-app');
+      expect(document.getElementById('app-context-menu').style.display).toBe('none');
+    } finally {
+      window.AppFolders = originalAppFolders;
+    }
+  });
+
+  it('keeps Settings free of hide and folder actions', () => {
+    const menu = document.getElementById('app-context-menu');
+    menu.style.display = 'none';
+    document.getElementById('hide-default-app').style.display = 'none';
+    document.getElementById('move-to-folder').style.display = 'none';
+
+    openContextMenu(document.getElementById('settings-app'));
+
+    expect(menu.style.display).toBe('none');
+    expect(document.getElementById('hide-default-app').style.display).toBe('none');
+    expect(document.getElementById('move-to-folder').style.display).toBe('none');
+  });
+
+  it('offers Remove from Folder for a foldered built-in in the popup', () => {
+    const popupApps = createElement('div', 'folder-popup-apps');
+    const popupTile = document.createElement('a');
+    popupTile.id = 'popup-weather-app';
+    popupTile.className = 'app-icon default-app';
+    popupApps.appendChild(popupTile);
+
+    const renderFolderAppsInPopup = vi.fn();
+    const refreshFolderUI = vi.fn();
+    const addAppIcon = vi.fn();
+    const originalAppFolders = window.AppFolders;
+    const originalAddAppIcon = window.addAppIcon;
+    window.AppFolders = {
+      currentFolderId: 'folder-1',
+      renderFolderAppsInPopup,
+      refreshFolderUI
+    };
+    window.addAppIcon = addAppIcon;
+
+    try {
+      openContextMenu(popupTile);
+
+      expect(document.getElementById('remove-from-folder').style.display).toBe('block');
+      expect(document.getElementById('move-to-folder').style.display).toBe('none');
+      expect(document.getElementById('rename-app').style.display).toBe('none');
+
+      document.getElementById('remove-from-folder').click();
+
+      // The popup- prefix is stripped so the real app id reaches the state layer.
+      expect(window.AppGridState.removeAppFromFolder)
+        .toHaveBeenCalledExactlyOnceWith('folder-1', 'weather-app');
+      expect(renderFolderAppsInPopup).toHaveBeenCalledOnce();
+      expect(refreshFolderUI).toHaveBeenCalledExactlyOnceWith('folder-1');
+      expect(addAppIcon).toHaveBeenCalledExactlyOnceWith('weather-app');
+      expect(document.getElementById('app-context-menu').style.display).toBe('none');
+    } finally {
+      window.AppFolders = originalAppFolders;
+      if (originalAddAppIcon === undefined) {
+        delete window.addAppIcon;
+      } else {
+        window.addAppIcon = originalAddAppIcon;
+      }
+      popupApps.remove();
+    }
+  });
+
+  it('ignores Move to Folder when the menu was opened from the grid background', () => {
+    const showMoveToFolderSelector = vi.fn();
+    const originalAppFolders = window.AppFolders;
+    window.AppFolders = { showMoveToFolderSelector };
+
+    try {
+      let grid = document.getElementById('app-grid');
+      if (!grid) grid = createElement('div', 'app-grid');
+
+      openContextMenu(grid);
+      expect(document.getElementById('create-folder').style.display).toBe('block');
+
+      document.getElementById('move-to-folder').click();
+
+      expect(showMoveToFolderSelector).not.toHaveBeenCalled();
+    } finally {
+      window.AppFolders = originalAppFolders;
+    }
+  });
+});

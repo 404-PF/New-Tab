@@ -145,3 +145,151 @@ describe('App grid drag-and-drop with folders present', () => {
     }
   });
 });
+
+describe('App grid drag-and-drop of built-in apps into folders (#1010)', () => {
+  const dataTransfer = {
+    effectAllowed: '',
+    dropEffect: '',
+    setData: () => {},
+    setDragImage: () => {}
+  };
+
+  beforeAll(() => {
+    injectScript('src/core/app-grid-storage.js');
+    injectScript('src/core/app-grid-state.js');
+    window.defaultApps = Object.freeze([
+      { id: 'ai-app', nameKey: 'ai', url: '#', className: 'default-app' },
+      { id: 'weather-app', nameKey: 'weather', url: '#', className: 'default-app' },
+      { id: 'games-app', nameKey: 'games', url: '#', className: 'default-app' },
+      { id: 'feedback-app', nameKey: 'feedback', url: 'https://example.com/feedback', className: 'default-app' },
+      { id: 'settings-app', nameKey: 'settings', url: '#', className: 'default-app' }
+    ]);
+  });
+
+  beforeEach(() => {
+    localStorage.clear();
+    document.querySelectorAll('#app-grid').forEach((el) => el.remove());
+    vi.useFakeTimers();
+    window.AppFolders = { refreshFolderUI: vi.fn() };
+    window.removeAppIcon = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    delete window.AppFolders;
+    delete window.removeAppIcon;
+  });
+
+  function buildGrid(iconSpecs) {
+    const grid = document.createElement('div');
+    grid.id = 'app-grid';
+    Object.defineProperty(grid, 'offsetWidth', { configurable: true, value: 600 });
+    grid.getBoundingClientRect = () => ({
+      left: 0, top: 0, width: 600, height: 200, right: 600, bottom: 200
+    });
+    document.body.appendChild(grid);
+
+    const icons = {};
+    iconSpecs.forEach(({ id, className }) => {
+      const el = document.createElement('a');
+      el.id = id;
+      el.className = className;
+      el.draggable = true;
+      Object.defineProperty(el, 'offsetWidth', { configurable: true, value: 60 });
+      Object.defineProperty(el, 'offsetHeight', { configurable: true, value: 60 });
+      Object.defineProperty(el, 'offsetTop', { configurable: true, value: 0 });
+      grid.appendChild(el);
+      icons[id] = el;
+    });
+    return { grid, icons };
+  }
+
+  function dispatchDragEvent(element, type, { clientX = 100, clientY = 50 } = {}) {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperties(event, {
+      dataTransfer: { value: dataTransfer },
+      clientX: { value: clientX },
+      clientY: { value: clientY }
+    });
+    element.dispatchEvent(event);
+    return event;
+  }
+
+  function finishDrag(grid) {
+    grid.dispatchEvent(new Event('dragend', { bubbles: true }));
+    grid.remove();
+    vi.unstubAllGlobals();
+  }
+
+  it('highlights and drops a hideable built-in onto a folder', () => {
+    AppGridStorage.saveOrder(['ai-app', 'weather-app', 'F1']);
+    AppGridStorage.saveFolders([{ id: 'F1', name: 'Tools', apps: [] }]);
+
+    vi.stubGlobal('requestAnimationFrame', (cb) => {
+      cb();
+      return 0;
+    });
+
+    const { grid, icons } = buildGrid([
+      { id: 'ai-app', className: 'app-icon default-app' },
+      { id: 'weather-app', className: 'app-icon default-app' },
+      { id: 'F1', className: 'app-icon folder-icon' }
+    ]);
+
+    try {
+      injectScript('src/features/drag-drop.js');
+
+      dispatchDragEvent(icons['weather-app'], 'dragstart');
+      const overFolder = dispatchDragEvent(icons.F1, 'dragover');
+      expect(overFolder.defaultPrevented).toBe(true);
+      expect(icons.F1.classList.contains('drag-over-folder')).toBe(true);
+      expect(icons.F1.classList.contains('drag-over-folder-rejected')).toBe(false);
+
+      dispatchDragEvent(icons.F1, 'drop');
+
+      expect(AppGridState.getFolders()[0].apps).toEqual(['weather-app']);
+      expect(AppGridState.getOrder()).toEqual(['ai-app', 'F1']);
+      // A folder move must not hide the built-in; restore stays a
+      // folder-membership concern, not a hiddenDefaultApps one.
+      expect(AppGridStorage.loadHiddenDefaultApps()).toEqual([]);
+      expect(window.removeAppIcon).toHaveBeenCalledExactlyOnceWith('weather-app');
+      expect(window.AppFolders.refreshFolderUI).toHaveBeenCalledExactlyOnceWith('F1');
+    } finally {
+      finishDrag(grid);
+    }
+  });
+
+  it('rejects dragging Settings onto a folder', () => {
+    AppGridStorage.saveOrder(['settings-app', 'weather-app', 'F1']);
+    AppGridStorage.saveFolders([{ id: 'F1', name: 'Tools', apps: [] }]);
+
+    vi.stubGlobal('requestAnimationFrame', (cb) => {
+      cb();
+      return 0;
+    });
+
+    const { grid, icons } = buildGrid([
+      { id: 'settings-app', className: 'app-icon default-app' },
+      { id: 'weather-app', className: 'app-icon default-app' },
+      { id: 'F1', className: 'app-icon folder-icon' }
+    ]);
+
+    try {
+      injectScript('src/features/drag-drop.js');
+
+      dispatchDragEvent(icons['settings-app'], 'dragstart');
+      dispatchDragEvent(icons.F1, 'dragover');
+      expect(icons.F1.classList.contains('drag-over-folder-rejected')).toBe(true);
+      expect(icons.F1.classList.contains('drag-over-folder')).toBe(false);
+
+      dispatchDragEvent(icons.F1, 'drop');
+
+      expect(AppGridState.getFolders()[0].apps).toEqual([]);
+      expect(AppGridState.getOrder()).toEqual(['settings-app', 'weather-app', 'F1']);
+      expect(window.removeAppIcon).not.toHaveBeenCalled();
+    } finally {
+      finishDrag(grid);
+    }
+  });
+});

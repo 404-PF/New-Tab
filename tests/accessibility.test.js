@@ -418,6 +418,127 @@ describe('Accessibility - app grid keyboard interaction', () => {
     expect(document.activeElement).toBe(cells[3]);
   });
 
+  it('moves a hideable built-in into a folder with the keyboard (#1010)', () => {
+    const grid = document.getElementById('app-grid');
+    grid.innerHTML = '';
+    window.AppGridState.getOrder = vi.fn(() => ['ai-app', 'folder-1']);
+    window.AppGridState.canHideDefaultApp = (id) => id !== 'settings-app';
+    const removeAppIcon = vi.fn();
+    const originalRemoveAppIcon = window.removeAppIcon;
+    window.removeAppIcon = removeAppIcon;
+
+    const ai = document.createElement('a');
+    ai.id = 'ai-app';
+    ai.href = '#';
+    ai.className = 'app-icon default-app';
+    ai.innerHTML = '<span class="app-name">AI</span>';
+    grid.appendChild(ai);
+
+    const folder = document.createElement('a');
+    folder.id = 'folder-1';
+    folder.href = '#';
+    folder.className = 'app-icon folder-icon';
+    folder.innerHTML = '<span class="app-name">Tools</span>';
+    grid.appendChild(folder);
+
+    window.Accessibility.refreshGrid();
+
+    try {
+      ai.focus();
+      pressKey(ai, ' ');
+      expect(ai.getAttribute('aria-grabbed')).toBe('true');
+
+      pressKey(folder, ' ');
+
+      expect(window.AppGridState.moveAppToFolder).toHaveBeenCalledWith('folder-1', 'ai-app');
+      expect(removeAppIcon).toHaveBeenCalledExactlyOnceWith('ai-app');
+      expect(ai.getAttribute('aria-grabbed')).toBe('false');
+    } finally {
+      if (originalRemoveAppIcon === undefined) {
+        delete window.removeAppIcon;
+      } else {
+        window.removeAppIcon = originalRemoveAppIcon;
+      }
+    }
+  });
+
+  it('keeps Settings out of the keyboard folder-move path (#1010)', () => {
+    const grid = document.getElementById('app-grid');
+    grid.innerHTML = '';
+    window.AppGridState.getOrder = vi.fn(() => ['settings-app', 'folder-1']);
+    window.AppGridState.canHideDefaultApp = (id) => id !== 'settings-app';
+
+    const settings = document.createElement('a');
+    settings.id = 'settings-app';
+    settings.href = '#';
+    settings.className = 'app-icon default-app';
+    settings.innerHTML = '<span class="app-name">Settings</span>';
+    grid.appendChild(settings);
+
+    const folder = document.createElement('a');
+    folder.id = 'folder-1';
+    folder.href = '#';
+    folder.className = 'app-icon folder-icon';
+    folder.innerHTML = '<span class="app-name">Tools</span>';
+    grid.appendChild(folder);
+
+    window.Accessibility.refreshGrid();
+
+    settings.focus();
+    pressKey(settings, ' ');
+    expect(settings.getAttribute('aria-grabbed')).toBe('true');
+
+    pressKey(folder, ' ');
+
+    expect(window.AppGridState.moveAppToFolder).not.toHaveBeenCalled();
+    expect(settings.getAttribute('aria-grabbed')).toBe('false');
+  });
+
+  it('arms the keyboard context menu for hideable built-ins but not Settings (#1010)', () => {
+    const grid = document.getElementById('app-grid');
+    grid.innerHTML = '';
+    window.AppGridState.canHideDefaultApp = (id) => id !== 'settings-app';
+
+    const ai = document.createElement('a');
+    ai.id = 'ai-app';
+    ai.href = '#';
+    ai.className = 'app-icon default-app';
+    ai.innerHTML = '<span class="app-name">AI</span>';
+    grid.appendChild(ai);
+
+    const settings = document.createElement('a');
+    settings.id = 'settings-app';
+    settings.href = '#';
+    settings.className = 'app-icon default-app';
+    settings.innerHTML = '<span class="app-name">Settings</span>';
+    grid.appendChild(settings);
+
+    window.Accessibility.refreshGrid();
+
+    ai.focus();
+    const aiEvent = pressKey(ai, 'F10');
+    // Shift+F10 is the conventional context-menu chord.
+    ai.focus();
+    const shiftF10 = new KeyboardEvent('keydown', {
+      key: 'F10',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    ai.dispatchEvent(shiftF10);
+    expect(shiftF10.defaultPrevented).toBe(true);
+    void aiEvent;
+
+    settings.focus();
+    const settingsEvent = new KeyboardEvent('keydown', {
+      key: 'ContextMenu',
+      bubbles: true,
+      cancelable: true
+    });
+    settings.dispatchEvent(settingsEvent);
+    expect(settingsEvent.defaultPrevented).toBe(false);
+  });
+
   it('keeps multi-row arrow navigation and Home/End intact (#867)', () => {
     const grid = document.getElementById('app-grid');
     grid.innerHTML = '';

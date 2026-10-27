@@ -418,4 +418,72 @@ describe('AppFolders UI', () => {
       }
     });
   });
+
+  describe('built-in apps in the folder popup (#1010)', () => {
+    it('routes built-in internal tile clicks through the shared launcher', () => {
+      const openInternalApp = vi.fn((appId, event) => {
+        event.preventDefault();
+        return true;
+      });
+      const originalOpenInternalApp = window.openInternalApp;
+      window.openInternalApp = openInternalApp;
+
+      try {
+        const folder = AppGridState.createFolder('Internal', ['settings-app']);
+        window.AppFolders.openFolderPopup(folder.id);
+
+        const tile = document.getElementById('popup-settings-app');
+        expect(tile).not.toBeNull();
+        expect(tile.className).toContain('default-app');
+
+        const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+        tile.dispatchEvent(click);
+
+        expect(openInternalApp).toHaveBeenCalledExactlyOnceWith('settings-app', click);
+        expect(click.defaultPrevented).toBe(true);
+      } finally {
+        if (originalOpenInternalApp === undefined) {
+          delete window.openInternalApp;
+        } else {
+          window.openInternalApp = originalOpenInternalApp;
+        }
+        window.AppFolders.closeFolderPopup();
+      }
+    });
+
+    it('leaves custom app tiles in the popup to normal link navigation', () => {
+      AppGridState.addApp({
+        id: 'popup-pass-through',
+        url: 'https://example.com/app',
+        name: 'Pass-through',
+        icon: 'app.png'
+      });
+      const folder = AppGridState.createFolder('Customs', ['popup-pass-through']);
+      const openInternalApp = vi.fn(() => false);
+      const originalOpenInternalApp = window.openInternalApp;
+      window.openInternalApp = openInternalApp;
+
+      try {
+        window.AppFolders.openFolderPopup(folder.id);
+
+        const tile = document.getElementById('popup-popup-pass-through');
+        expect(tile).not.toBeNull();
+
+        const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+        tile.dispatchEvent(click);
+
+        // The launcher is consulted but declines non-internal ids, so the
+        // anchor keeps its default navigation behavior.
+        expect(openInternalApp).toHaveBeenCalledExactlyOnceWith('popup-pass-through', click);
+        expect(click.defaultPrevented).toBe(false);
+      } finally {
+        if (originalOpenInternalApp === undefined) {
+          delete window.openInternalApp;
+        } else {
+          window.openInternalApp = originalOpenInternalApp;
+        }
+        window.AppFolders.closeFolderPopup();
+      }
+    });
+  });
 });

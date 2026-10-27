@@ -255,6 +255,59 @@ describe('app manager', () => {
       openNewTabCheckbox.remove();
     }
   });
+
+  it('launches built-in internal apps through the shared launcher (#1010)', () => {
+    const aiOpen = vi.fn();
+    const originalAIService = window.AIService;
+    window.AIService = { open: aiOpen };
+
+    try {
+      const aiClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+      expect(window.openInternalApp('ai-app', aiClick)).toBe(true);
+      expect(aiClick.defaultPrevented).toBe(true);
+      expect(aiOpen).toHaveBeenCalledOnce();
+
+      const settingsClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+      expect(window.openInternalApp('settings-app', settingsClick)).toBe(true);
+      expect(settingsClick.defaultPrevented).toBe(true);
+      expect(document.getElementById('settings-modal').classList.contains('modal-open')).toBe(true);
+      document.getElementById('settings-modal').classList.remove('modal-open');
+
+      // Non-internal ids (custom apps, Feedback) keep normal link navigation.
+      expect(window.openInternalApp('feedback-app')).toBe(false);
+      expect(window.openInternalApp('custom-nope')).toBe(false);
+    } finally {
+      if (originalAIService === undefined) {
+        delete window.AIService;
+      } else {
+        window.AIService = originalAIService;
+      }
+    }
+  });
+
+  it('binds grid tile clicks to the shared launcher and survives re-attachment (#1010)', () => {
+    window.renderAllApps();
+
+    const weatherOpen = vi.fn();
+    const originalWeatherApp = window.WeatherApp;
+    window.WeatherApp = { open: weatherOpen };
+
+    try {
+      document.getElementById('weather-app').click();
+      expect(weatherOpen).toHaveBeenCalledOnce();
+
+      // Re-running the bind path (as renderAllApps does) must not double-fire.
+      window.renderAllApps();
+      document.getElementById('weather-app').click();
+      expect(weatherOpen).toHaveBeenCalledTimes(2);
+    } finally {
+      if (originalWeatherApp === undefined) {
+        delete window.WeatherApp;
+      } else {
+        window.WeatherApp = originalWeatherApp;
+      }
+    }
+  });
 });
 
 describe('app grid item-scoped mutators (#934)', () => {
