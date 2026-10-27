@@ -92,6 +92,8 @@ body.light-theme :is(
   .weather-widget,
   .focus-mode-indicator,
   #motto-container,
+  #refresh-motto-btn,
+  #copy-motto-btn,
   .todo-stats-panel,
   .setting-card,
   .bg-subsection
@@ -274,6 +276,32 @@ body.light-theme :is(
 ):is(:hover, :active, .active):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
   background: var(--glass-control-hover);
   border-color: var(--glass-border-hover);
+}
+
+/* #975: the motto buttons are ID selectors, so adding them to the shared
+   hover group above would raise every member to ID-level specificity and
+   override sibling states such as .weather-choice-button.active. They get
+   their own rule with the same tokens instead. */
+body.light-theme :is(
+  #refresh-motto-btn,
+  #copy-motto-btn
+):is(:hover, :active):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+  background: var(--glass-control-hover);
+  border-color: var(--glass-border-hover);
+}
+
+/* #975: the primary-surface rule above carries an ID-level box-shadow that
+   outranks the shell focus ring, and shell's outline rule outranks the
+   generic button focus rule — so keyboard focus would vanish in light
+   theme. Restate both at a higher specificity so the ring stays visible.
+   The outline stays transparent (not none) so forced colors still show
+   a focus indicator when box-shadow is suppressed. */
+body.light-theme :is(
+  #refresh-motto-btn,
+  #copy-motto-btn
+):focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--glass-focus-ring);
 }
 
 body.light-theme :is(

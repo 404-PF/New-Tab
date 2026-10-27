@@ -481,3 +481,11 @@ describe('New-Tab.html i18n key completeness', () => {
     });
   });
 });
+
+// Motto pill action buttons (issue #975): New-Tab.html wires the buttons'
+// aria-labels to the pre-existing refreshMotto/copyMotto keys.
+describe('Motto button aria-label translations', () => {
+  it('defines every motto button label in each supported language', () => {
+    expectTranslationKeys(['refreshMotto', 'copyMotto'], { differFromEnglish: true });
+  });
+});

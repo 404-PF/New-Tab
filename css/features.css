@@ -39,33 +39,6 @@ body.light-theme #motto-text {
   color: #374151;
 }
 
-body.light-theme #refresh-motto-btn,
-body.light-theme #copy-motto-btn {
-  color: #4b5563;
-  background: rgba(255, 255, 255, 0.95);
-  opacity: 1;
-}
-
-body.light-theme #refresh-motto-btn:hover,
-body.light-theme #copy-motto-btn:hover {
-  background: rgba(33, 150, 243, 0.12);
-  border-color: rgba(33, 150, 243, 0.3);
-  color: #1976d2;
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
-}
-
-body.light-theme #refresh-motto-btn:active,
-body.light-theme #copy-motto-btn:active {
-  background: rgba(33, 150, 243, 0.18);
-  transform: scale(0.96) translateY(0);
-}
-
-body.light-theme #refresh-motto-btn:focus-visible,
-body.light-theme #copy-motto-btn:focus-visible {
-  outline: 2px solid #2196f3;
-  outline-offset: 2px;
-}
-
 body.light-theme .footer-left,
 body.light-theme .footer-right,
 body.light-theme .footer-link {

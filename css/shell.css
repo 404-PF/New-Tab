@@ -49,12 +49,20 @@
 
 #refresh-motto-btn,
 #copy-motto-btn {
-  color: #343232;
-  background: rgb(200, 200, 200);
+  width: 24px;
+  height: 24px;
+  /* Explicit colors keep the buttons off the UA buttonface/buttontext
+     defaults; they take the motto bar's themed foreground and a token
+     surface that light theme replaces with the glass primary surface. */
+  color: inherit;
+  background: var(--glass-control);
   padding: 2px 5px;
   border: none;
   border-radius: 8px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -62,14 +70,27 @@
 
 #refresh-motto-btn:hover,
 #copy-motto-btn:hover {
-  background: rgba(33, 150, 243, 0.15);
-  transform: scale(1.08) translateY(-1px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+  /* The motto bar is a light gray pill even in dark theme, where
+     --glass-control-hover (white 0.16) over it differs from the rest
+     surface (white 0.10) by only ~3 gray levels, so use a slate tint.
+     Keep it light so the inherited #666 strokes stay >= 3:1 on the
+     hovered pill. Light theme overrides this with the glass control
+     hover token. */
+  background: rgba(15, 23, 42, 0.06);
+  transform: scale(1.08);
 }
 
 #refresh-motto-btn:active,
 #copy-motto-btn:active {
-  transform: scale(0.96) translateY(0);
+  transform: scale(0.96);
+}
+
+#refresh-motto-btn:focus-visible,
+#copy-motto-btn:focus-visible {
+  /* Transparent outline keeps a focus indicator when forced colors
+     suppress the box-shadow ring. */
+  outline: 2px solid transparent;
+  box-shadow: var(--glass-focus-ring);
 }
 
 .footer-left {
