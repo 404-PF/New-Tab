@@ -165,17 +165,25 @@ describe('find-workflows refill after mass-close (#1015)', () => {
       expect(recountToAgent[0]).toContain('issues(states: OPEN) { totalCount }');
       expect(recountToAgent[0]).toMatch(/if \[ "\$CURRENT" -ge "\$TARGET" \]; then/);
       expect(recountToAgent[0]).toMatch(/echo 'skip=true' >> "\$GITHUB_OUTPUT"/);
+      // The recount recomputes to_file from the fresh count (same caps as the
+      // gate) and exports it so the agent prompt and validator cap are not the
+      // stale gate-time value.
+      expect(recountToAgent[0]).toMatch(/TO_FILE=\$\(\( TARGET - CURRENT \)\)/);
+      expect(recountToAgent[0]).toMatch(/echo "TO_FILE=\$TO_FILE" >> "\$GITHUB_ENV"/);
+      expect(wf).toMatch(/max_new: \$\{\{ steps\.plan\.outputs\.max_new \}\}/);
       // The agent must not run when the queue waited out a closure burst;
-      // that was the "Accepted N ... Created 0" waste path.
-      expect(wf).toMatch(
-        /id: agent\n {8}# Skipped when the recount above found the pool already at target\.\n {8}if: steps\.recount\.outputs\.skip != 'true'\n/
-      );
+      // that was the "Accepted N ... Created 0" waste path. Assert the
+      // executable if, not comment wording or indentation.
+      expect(wf).toMatch(/id: agent\n(?: *#[^\n]*\n)* *if: steps\.recount\.outputs\.skip != 'true'/);
     });
   });
 
   it('keeps the create-step per-creation recount as defense in depth (#1015)', () => {
     [bug, feature].forEach((wf) => {
-      expect(wf).toContain('Recount before every issue so concurrent filings never overshoot.');
+      const createStep = wf.match(/- name: Create issues[\s\S]*?- name: Report agent failure/);
+      expect(createStep).not.toBeNull();
+      expect(createStep[0]).toContain('issues(states: OPEN) { totalCount }');
+      expect(createStep[0]).toMatch(/if \[ "\$CURRENT" -ge "\$TARGET" \]; then[\s\S]*?break/);
     });
   });
 });
