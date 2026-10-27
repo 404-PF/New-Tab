@@ -646,6 +646,18 @@
     "message": "搜索网址模板",
     "description": "Accessible name for the provider URL input"
   },
+  "searchProviderSuggestionsUrlPlaceholder": {
+    "message": "https://example.com/suggest?q={query}",
+    "description": "Placeholder for the optional suggestions URL input"
+  },
+  "searchProviderSuggestionsUrlAriaLabel": {
+    "message": "搜索建议网址模板",
+    "description": "Accessible name for the suggestions URL input"
+  },
+  "searchProviderInvalidSuggestionsUrl": {
+    "message": "请输入包含 {query} 的有效 http(s) 建议网址。",
+    "description": "Validation error when the suggestions URL is invalid"
+  },
   "searchProviderUnavailable": {
     "message": "搜索提供商接口不可用。",
     "description": "Error when the provider API is unavailable"

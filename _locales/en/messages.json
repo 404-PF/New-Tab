@@ -822,6 +822,18 @@
     "message": "Search URL template",
     "description": "Accessible name for the provider URL input"
   },
+  "searchProviderSuggestionsUrlPlaceholder": {
+    "message": "https://example.com/suggest?q={query}",
+    "description": "Placeholder for the optional suggestions URL input"
+  },
+  "searchProviderSuggestionsUrlAriaLabel": {
+    "message": "Suggestions URL template",
+    "description": "Accessible name for the suggestions URL input"
+  },
+  "searchProviderInvalidSuggestionsUrl": {
+    "message": "Enter a valid suggestions URL with {query} and http(s).",
+    "description": "Validation error when the suggestions URL is invalid"
+  },
   "searchProviderUnavailable": {
     "message": "Provider API unavailable.",
     "description": "Error when the provider API is unavailable"

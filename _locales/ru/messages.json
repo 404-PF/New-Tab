@@ -646,6 +646,18 @@
     "message": "Шаблон поискового URL",
     "description": "Accessible name for the provider URL input"
   },
+  "searchProviderSuggestionsUrlPlaceholder": {
+    "message": "https://example.com/suggest?q={query}",
+    "description": "Placeholder for the optional suggestions URL input"
+  },
+  "searchProviderSuggestionsUrlAriaLabel": {
+    "message": "Шаблон URL предложений",
+    "description": "Accessible name for the suggestions URL input"
+  },
+  "searchProviderInvalidSuggestionsUrl": {
+    "message": "Введите корректный URL предложений с {query} и http(s).",
+    "description": "Validation error when the suggestions URL is invalid"
+  },
   "searchProviderUnavailable": {
     "message": "API поисковой системы недоступен.",
     "description": "Error when the provider API is unavailable"

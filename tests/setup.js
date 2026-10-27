@@ -184,6 +184,18 @@ globalThis.chrome = {
   search: {
     query: async () => ({}) // no-op
   },
+  permissions: {
+    _granted: {},
+    contains(permissions) {
+      const origins = permissions && Array.isArray(permissions.origins) ? permissions.origins : [];
+      return Promise.resolve(origins.every((origin) => chrome.permissions._granted[origin]));
+    },
+    request(permissions) {
+      const origins = permissions && Array.isArray(permissions.origins) ? permissions.origins : [];
+      origins.forEach((origin) => { chrome.permissions._granted[origin] = true; });
+      return Promise.resolve(true);
+    }
+  },
   alarms: {
     _alarms: {},
     create(name, opts) {
@@ -932,6 +944,7 @@ document.body.appendChild(createStubElement('div', 'pomodoro-stats-heatmap'));
 document.body.appendChild(createStubElement('button', 'pomodoro-stats-clear'));
 document.body.appendChild(createStubElement('input', 'custom-search-provider-name'));
 document.body.appendChild(createStubElement('input', 'custom-search-provider-url'));
+document.body.appendChild(createStubElement('input', 'custom-search-provider-suggestions-url'));
 document.body.appendChild(createStubElement('button', 'custom-search-provider-add-btn'));
 document.body.appendChild(createStubElement('div', 'custom-search-providers-list'));
 document.body.appendChild(createStubElement('div', 'custom-search-providers-empty'));
@@ -965,6 +978,11 @@ beforeEach(() => {
   localStorage.clear();
   document.querySelectorAll('.toast-notification, .search-validation-feedback, .inline-date-picker')
     .forEach(el => el.remove());
+  // Reset optional host permissions granted via chrome.permissions.request
+  // so suggestion-permission tests start from a clean slate.
+  if (globalThis.chrome && chrome.permissions && chrome.permissions._granted) {
+    chrome.permissions._granted = {};
+  }
 });
 
 
