@@ -325,6 +325,19 @@
       let dragSrcId = null;
       let dragSrcElement = null;
 
+      // Built-in internal tiles (AI/Weather/Games/Settings) launch through
+      // click handlers bound to their grid ids; the popup's popup- prefixed
+      // tiles never match those bindings, so route clicks through the shared
+      // launcher instead of leaving a dead '#' link (issue #1010).
+      popupApps.addEventListener('click', function (e) {
+        const icon = e.target.closest('.app-icon');
+        if (!icon || !icon.id.startsWith('popup-')) return;
+        if (typeof window.openInternalApp !== 'function') return;
+        if (window.openInternalApp(icon.id.slice('popup-'.length), e)) {
+          closeFolderPopup();
+        }
+      });
+
       popupApps.addEventListener('dragstart', function (e) {
         const icon = e.target.closest('.app-icon');
         if (!icon) return;

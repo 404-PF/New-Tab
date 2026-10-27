@@ -1,5 +1,30 @@
 import { describe, expect, it, beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
+import { DEFAULT_APPS } from './helpers/default-apps.js';
+
+function buildGrid(iconSpecs) {
+  const grid = document.createElement('div');
+  grid.id = 'app-grid';
+  Object.defineProperty(grid, 'offsetWidth', { configurable: true, value: 600 });
+  grid.getBoundingClientRect = () => ({
+    left: 0, top: 0, width: 600, height: 200, right: 600, bottom: 200
+  });
+  document.body.appendChild(grid);
+
+  const icons = {};
+  iconSpecs.forEach(({ id, className }) => {
+    const el = document.createElement('a');
+    el.id = id;
+    el.className = className;
+    el.draggable = true;
+    Object.defineProperty(el, 'offsetWidth', { configurable: true, value: 60 });
+    Object.defineProperty(el, 'offsetHeight', { configurable: true, value: 60 });
+    Object.defineProperty(el, 'offsetTop', { configurable: true, value: 0 });
+    grid.appendChild(el);
+    icons[id] = el;
+  });
+  return { grid, icons };
+}
 
 describe('App grid drag-and-drop cleanup', () => {
   it('does not throw when the app grid disappears before dragend', () => {
@@ -56,7 +81,10 @@ describe('App grid drag-and-drop with folders present', () => {
     // Repro from issue #599: appOrder = [A, B, C, F1, F2]. Dragging app A to
     // the last slot previously produced ['B','C','F1','A','F2'] because the
     // drop index was computed over app icons only but applied to the full
-    // order. It must land after both folders.
+    // order. It must land after both folders. The icons run in the same
+    // order as appOrder; folder icons share the app-icon class but are
+    // excluded from drag index math, which is the mismatch that triggered
+    // the bug.
     AppGridStorage.saveOrder(['A', 'B', 'C', 'F1', 'F2']);
     AppGridStorage.saveCustomApps([
       { id: 'A', url: 'https://a.example', name: 'A' },
@@ -68,33 +96,14 @@ describe('App grid drag-and-drop with folders present', () => {
       { id: 'F2', name: 'Two', apps: [] }
     ]);
 
-    const grid = document.createElement('div');
-    grid.id = 'app-grid';
-    Object.defineProperty(grid, 'offsetWidth', { configurable: true, value: 600 });
-    grid.getBoundingClientRect = () => ({
-      left: 0, top: 0, width: 600, height: 200, right: 600, bottom: 200
-    });
-    document.body.appendChild(grid);
-
-    // Icons in the same order as appOrder. Folder icons share the app-icon
-    // class but are excluded from drag index math, which is the mismatch
-    // that triggered the bug.
-    const makeIcon = (id, className) => {
-      const el = document.createElement('a');
-      el.id = id;
-      el.className = className;
-      el.draggable = true;
-      Object.defineProperty(el, 'offsetWidth', { configurable: true, value: 60 });
-      Object.defineProperty(el, 'offsetHeight', { configurable: true, value: 60 });
-      Object.defineProperty(el, 'offsetTop', { configurable: true, value: 0 });
-      grid.appendChild(el);
-      return el;
-    };
-    const appA = makeIcon('A', 'app-icon custom-app');
-    makeIcon('B', 'app-icon custom-app');
-    makeIcon('C', 'app-icon custom-app');
-    makeIcon('F1', 'app-icon folder-icon');
-    makeIcon('F2', 'app-icon folder-icon');
+    const { grid, icons } = buildGrid([
+      { id: 'A', className: 'app-icon custom-app' },
+      { id: 'B', className: 'app-icon custom-app' },
+      { id: 'C', className: 'app-icon custom-app' },
+      { id: 'F1', className: 'app-icon folder-icon' },
+      { id: 'F2', className: 'app-icon folder-icon' }
+    ]);
+    const appA = icons.A;
 
     // Run rAF callbacks synchronously so no frame callback is left pending
     // to fire against the removed grid after the test tears down.
@@ -142,6 +151,121 @@ describe('App grid drag-and-drop with folders present', () => {
       grid.dispatchEvent(new Event('dragend', { bubbles: true }));
       grid.remove();
       vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('App grid drag-and-drop of built-in apps into folders (#1010)', () => {
+  const dataTransfer = {
+    effectAllowed: '',
+    dropEffect: '',
+    setData: () => {},
+    setDragImage: () => {}
+  };
+
+  beforeAll(() => {
+    injectScript('src/core/app-grid-storage.js');
+    injectScript('src/core/app-grid-state.js');
+    window.defaultApps = Object.freeze(DEFAULT_APPS.map((app) => ({ ...app })));
+  });
+
+  beforeEach(() => {
+    localStorage.clear();
+    document.querySelectorAll('#app-grid').forEach((el) => el.remove());
+    vi.useFakeTimers();
+    window.AppFolders = { refreshFolderUI: vi.fn() };
+    window.removeAppIcon = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    delete window.AppFolders;
+    delete window.removeAppIcon;
+  });
+
+  function dispatchDragEvent(element, type, { clientX = 100, clientY = 50 } = {}) {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperties(event, {
+      dataTransfer: { value: dataTransfer },
+      clientX: { value: clientX },
+      clientY: { value: clientY }
+    });
+    element.dispatchEvent(event);
+    return event;
+  }
+
+  function finishDrag(grid) {
+    grid.dispatchEvent(new Event('dragend', { bubbles: true }));
+    grid.remove();
+    vi.unstubAllGlobals();
+  }
+
+  function startFolderDropScenario(order) {
+    AppGridStorage.saveOrder(order);
+    AppGridStorage.saveFolders([{ id: 'F1', name: 'Tools', apps: [] }]);
+
+    // Run rAF callbacks synchronously so no frame callback is left pending
+    // to fire against the removed grid after the test tears down.
+    vi.stubGlobal('requestAnimationFrame', (cb) => {
+      cb();
+      return 0;
+    });
+
+    const iconSpecs = order.map((id) => ({
+      id,
+      className: id === 'F1' ? 'app-icon folder-icon' : 'app-icon default-app'
+    }));
+    return buildGrid(iconSpecs);
+  }
+
+  function dragIconToFolder(sourceIcon, folderIcon) {
+    dispatchDragEvent(sourceIcon, 'dragstart');
+    return dispatchDragEvent(folderIcon, 'dragover');
+  }
+
+  it('highlights and drops a hideable built-in onto a folder', () => {
+    const { grid, icons } = startFolderDropScenario(['ai-app', 'weather-app', 'F1']);
+
+    try {
+      injectScript('src/features/drag-drop.js');
+
+      const overFolder = dragIconToFolder(icons['weather-app'], icons.F1);
+      expect(overFolder.defaultPrevented).toBe(true);
+      expect(icons.F1.classList.contains('drag-over-folder')).toBe(true);
+      expect(icons.F1.classList.contains('drag-over-folder-rejected')).toBe(false);
+
+      dispatchDragEvent(icons.F1, 'drop');
+
+      expect(AppGridState.getFolders()[0].apps).toEqual(['weather-app']);
+      expect(AppGridState.getOrder()).toEqual(['ai-app', 'F1']);
+      // A folder move must not hide the built-in; restore stays a
+      // folder-membership concern, not a hiddenDefaultApps one.
+      expect(AppGridStorage.loadHiddenDefaultApps()).toEqual([]);
+      expect(window.removeAppIcon).toHaveBeenCalledExactlyOnceWith('weather-app');
+      expect(window.AppFolders.refreshFolderUI).toHaveBeenCalledExactlyOnceWith('F1');
+    } finally {
+      finishDrag(grid);
+    }
+  });
+
+  it('rejects dragging Settings onto a folder', () => {
+    const { grid, icons } = startFolderDropScenario(['settings-app', 'weather-app', 'F1']);
+
+    try {
+      injectScript('src/features/drag-drop.js');
+
+      dragIconToFolder(icons['settings-app'], icons.F1);
+      expect(icons.F1.classList.contains('drag-over-folder-rejected')).toBe(true);
+      expect(icons.F1.classList.contains('drag-over-folder')).toBe(false);
+
+      dispatchDragEvent(icons.F1, 'drop');
+
+      expect(AppGridState.getFolders()[0].apps).toEqual([]);
+      expect(AppGridState.getOrder()).toEqual(['settings-app', 'weather-app', 'F1']);
+      expect(window.removeAppIcon).not.toHaveBeenCalled();
+    } finally {
+      finishDrag(grid);
     }
   });
 });

@@ -186,6 +186,8 @@ function setContextMenuItems(trigger) {
     appItems.forEach(el => el.style.display = 'block');
   } else if (trigger === 'default-app') {
     defaultAppItems.forEach(el => el.style.display = 'block');
+    // Visible hideable built-ins can also be moved into folders (issue #1010).
+    moveToFolderItem.style.display = 'block';
   } else if (trigger === 'folder-app') {
     folderAppItems.forEach(el => el.style.display = 'block');
   } else if (trigger === 'folder-icon') {
@@ -222,12 +224,17 @@ document.addEventListener('contextmenu', function (e) {
   const folderIcon = e.target.closest('.app-icon.folder-icon');
   const appGrid = e.target.closest('#app-grid');
   const folderPopup = e.target.closest('#folder-popup-apps');
+  // Right-click on an app inside the folder popup. Built-in tiles carry the
+  // default-app class and popup- prefixed ids, so match either app class
+  // (issue #1010).
+  const popupAppIcon = folderPopup
+    ? e.target.closest('.app-icon.custom-app, .app-icon.default-app')
+    : null;
 
-  // Right-click on custom app inside the folder popup
-  if (folderPopup && customAppIcon) {
+  // Right-click on a custom or built-in app inside the folder popup
+  if (folderPopup && popupAppIcon) {
     e.preventDefault();
-    const realAppId = customAppIcon.id.replace(/^popup-/, '');
-    contextTargetId = realAppId;
+    contextTargetId = popupAppIcon.id.replace(/^popup-/, '');
     contextTargetFolderId = window.AppFolders ? window.AppFolders.currentFolderId : null;
     setContextMenuItems('folder-app');
     positionContextMenu(e);
@@ -343,7 +350,7 @@ document.getElementById('remove-from-folder').addEventListener('click', function
 
 // Move to Folder
 document.getElementById('move-to-folder').addEventListener('click', function () {
-  if (contextMenuTrigger !== 'custom-app') return;
+  if (contextMenuTrigger !== 'custom-app' && contextMenuTrigger !== 'default-app') return;
   if (!contextTargetId) return;
   if (window.AppFolders) {
     window.AppFolders.showMoveToFolderSelector(contextTargetId);

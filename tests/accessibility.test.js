@@ -1,4 +1,5 @@
 import { injectScript } from './helpers/inject-script.js';
+import { withWindowOverride } from './helpers/window-override.js';
 
 beforeAll(() => {
   injectScript('src/features/accessibility.js');
@@ -416,6 +417,96 @@ describe('Accessibility - app grid keyboard interaction', () => {
     const endEvent = pressKey(cells[1], 'End');
     expect(endEvent.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(cells[3]);
+  });
+
+  const createAppTile = (grid, id, name, className) => {
+    const tile = document.createElement('a');
+    tile.id = id;
+    tile.href = '#';
+    tile.className = className;
+    tile.innerHTML = '<span class="app-name">' + name + '</span>';
+    grid.appendChild(tile);
+    return tile;
+  };
+
+  const setupBuiltInGrid = (order) => {
+    const grid = document.getElementById('app-grid');
+    grid.innerHTML = '';
+    window.AppGridState.getOrder = vi.fn(() => order);
+    window.AppGridState.canHideDefaultApp = (id) => id !== 'settings-app';
+    return grid;
+  };
+
+  it('moves a hideable built-in into a folder with the keyboard (#1010)', () => {
+    const grid = setupBuiltInGrid(['ai-app', 'folder-1']);
+    const removeAppIcon = vi.fn();
+
+    const ai = createAppTile(grid, 'ai-app', 'AI', 'app-icon default-app');
+    const folder = createAppTile(grid, 'folder-1', 'Tools', 'app-icon folder-icon');
+
+    window.Accessibility.refreshGrid();
+
+    withWindowOverride('removeAppIcon', removeAppIcon, () => {
+      ai.focus();
+      pressKey(ai, ' ');
+      expect(ai.getAttribute('aria-grabbed')).toBe('true');
+
+      pressKey(folder, ' ');
+
+      expect(window.AppGridState.moveAppToFolder).toHaveBeenCalledWith('folder-1', 'ai-app');
+      expect(removeAppIcon).toHaveBeenCalledExactlyOnceWith('ai-app');
+      expect(ai.getAttribute('aria-grabbed')).toBe('false');
+    });
+  });
+
+  it('keeps Settings out of the keyboard folder-move path (#1010)', () => {
+    const grid = setupBuiltInGrid(['settings-app', 'folder-1']);
+
+    const settings = createAppTile(grid, 'settings-app', 'Settings', 'app-icon default-app');
+    const folder = createAppTile(grid, 'folder-1', 'Tools', 'app-icon folder-icon');
+
+    window.Accessibility.refreshGrid();
+
+    settings.focus();
+    pressKey(settings, ' ');
+    expect(settings.getAttribute('aria-grabbed')).toBe('true');
+
+    pressKey(folder, ' ');
+
+    expect(window.AppGridState.moveAppToFolder).not.toHaveBeenCalled();
+    expect(settings.getAttribute('aria-grabbed')).toBe('false');
+  });
+
+  it('arms the keyboard context menu for hideable built-ins but not Settings (#1010)', () => {
+    const grid = setupBuiltInGrid(['ai-app', 'settings-app']);
+
+    const ai = createAppTile(grid, 'ai-app', 'AI', 'app-icon default-app');
+    const settings = createAppTile(grid, 'settings-app', 'Settings', 'app-icon default-app');
+
+    window.Accessibility.refreshGrid();
+
+    ai.focus();
+    const aiEvent = pressKey(ai, 'F10');
+    expect(aiEvent.defaultPrevented).toBe(false);
+    // Shift+F10 is the conventional context-menu chord.
+    ai.focus();
+    const shiftF10 = new KeyboardEvent('keydown', {
+      key: 'F10',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    ai.dispatchEvent(shiftF10);
+    expect(shiftF10.defaultPrevented).toBe(true);
+
+    settings.focus();
+    const settingsEvent = new KeyboardEvent('keydown', {
+      key: 'ContextMenu',
+      bubbles: true,
+      cancelable: true
+    });
+    settings.dispatchEvent(settingsEvent);
+    expect(settingsEvent.defaultPrevented).toBe(false);
   });
 
   it('keeps multi-row arrow navigation and Home/End intact (#867)', () => {

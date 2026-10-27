@@ -1,13 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
-
-const DEFAULT_APPS = [
-  { id: 'ai-app', nameKey: 'ai', url: '#', className: 'default-app' },
-  { id: 'weather-app', nameKey: 'weather', url: '#', className: 'default-app' },
-  { id: 'games-app', nameKey: 'games', url: '#', className: 'default-app' },
-  { id: 'feedback-app', nameKey: 'feedback', url: 'https://example.com/feedback', className: 'default-app' },
-  { id: 'settings-app', nameKey: 'settings', url: '#', className: 'default-app' }
-];
+import { DEFAULT_APPS } from './helpers/default-apps.js';
 
 beforeAll(() => {
   injectScript('src/core/app-grid-storage.js');

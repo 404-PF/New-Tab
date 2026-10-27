@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
+import { withWindowOverride } from './helpers/window-override.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
@@ -254,6 +255,43 @@ describe('app manager', () => {
     } finally {
       openNewTabCheckbox.remove();
     }
+  });
+
+  it('launches built-in internal apps through the shared launcher (#1010)', () => {
+    const aiOpen = vi.fn();
+
+    withWindowOverride('AIService', { open: aiOpen }, () => {
+      const aiClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+      expect(window.openInternalApp('ai-app', aiClick)).toBe(true);
+      expect(aiClick.defaultPrevented).toBe(true);
+      expect(aiOpen).toHaveBeenCalledOnce();
+
+      const settingsClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+      expect(window.openInternalApp('settings-app', settingsClick)).toBe(true);
+      expect(settingsClick.defaultPrevented).toBe(true);
+      expect(document.getElementById('settings-modal').classList.contains('modal-open')).toBe(true);
+      document.getElementById('settings-modal').classList.remove('modal-open');
+
+      // Non-internal ids (custom apps, Feedback) keep normal link navigation.
+      expect(window.openInternalApp('feedback-app')).toBe(false);
+      expect(window.openInternalApp('custom-nope')).toBe(false);
+    });
+  });
+
+  it('binds grid tile clicks to the shared launcher and survives re-attachment (#1010)', () => {
+    window.renderAllApps();
+
+    const weatherOpen = vi.fn();
+
+    withWindowOverride('WeatherApp', { open: weatherOpen }, () => {
+      document.getElementById('weather-app').click();
+      expect(weatherOpen).toHaveBeenCalledOnce();
+
+      // Re-running the bind path (as renderAllApps does) must not double-fire.
+      window.renderAllApps();
+      document.getElementById('weather-app').click();
+      expect(weatherOpen).toHaveBeenCalledTimes(2);
+    });
   });
 });
 

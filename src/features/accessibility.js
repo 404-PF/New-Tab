@@ -531,13 +531,24 @@
     announce(translate(entry[0], entry[1], { name: name }));
   }
 
+  // Hideable built-ins can be organized into folders alongside custom apps;
+  // Settings stays pinned to the grid as the guaranteed restore path
+  // (issue #1010). Folder popup tiles carry popup- prefixed ids.
+  function isFolderableDefaultAppId(appId) {
+    return typeof window.AppGridState?.canHideDefaultApp === 'function' &&
+      window.AppGridState.canHideDefaultApp(appId);
+  }
+
   function handleGridKeydown(event) {
     const cell = event.target.closest?.('.app-icon');
     if (!cell) return;
     const container = cell.parentElement;
     if (!container || (container.id !== 'app-grid' && container.id !== 'folder-popup-apps')) return;
 
-    const hasContextMenu = cell.classList.contains('custom-app') || cell.classList.contains('folder-icon');
+    const hasContextMenu = cell.classList.contains('custom-app') ||
+      cell.classList.contains('folder-icon') ||
+      (cell.classList.contains('default-app') &&
+        isFolderableDefaultAppId(cell.id.replace(/^popup-/, '')));
     if ((event.key === 'F10' && event.shiftKey || event.key === 'ContextMenu') && hasContextMenu) {
       event.preventDefault();
       contextMenuOpener = cell;
@@ -603,7 +614,9 @@
         const folderId = window.AppFolders?.currentFolderId;
         if (folderId) moved = reorderInFolder(folderId, sourceId.replace(/^popup-/, ''), targetId.replace(/^popup-/, ''));
       } else if (cell.classList.contains('folder-icon')) {
-        if (picked.classList.contains('custom-app')) {
+        const folderableSource = picked.classList.contains('custom-app') ||
+          (picked.classList.contains('default-app') && isFolderableDefaultAppId(picked.id));
+        if (folderableSource) {
           moved = !!window.AppGridState?.moveAppToFolder?.(targetId, sourceId);
         } else if (picked.classList.contains('folder-icon')) {
           moved = reorderInAppGrid(sourceId, targetId);

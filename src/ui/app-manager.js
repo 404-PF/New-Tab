@@ -542,63 +542,56 @@ document.addEventListener('change', function (event) {
 
 window.onDomReady(initDefaultAppVisibilitySettings);
 
+// Launch a built-in internal app by id. Shared by the grid tiles and — via
+// click delegation in app-folders.js — the folder popup tiles, whose
+// popup- prefixed ids never match the grid bindings (issue #1010).
+// Returns false for ids that are not internal apps so callers can fall
+// through to normal link navigation.
+function openInternalApp(appId, event) {
+  if (!HANDLED_APP_HANDLER_IDS.has(appId)) return false;
+  if (event && typeof event.preventDefault === 'function') event.preventDefault();
+
+  if (appId === 'settings-app') {
+    const settingsModal = document.getElementById('settings-modal');
+    if (settingsModal) {
+      settingsModal.classList.add('modal-open');
+    }
+    return true;
+  }
+  if (appId === 'ai-app') {
+    if (window.AIService && window.AIService.open) {
+      window.AIService.open();
+    }
+    return true;
+  }
+  if (appId === 'weather-app') {
+    if (window.WeatherApp && window.WeatherApp.open) {
+      window.WeatherApp.open();
+    }
+    return true;
+  }
+  if (appId === 'games-app') {
+    if (window.GamesApp?.open) {
+      window.GamesApp.open();
+    }
+    return true;
+  }
+  return false;
+}
+window.openInternalApp = openInternalApp;
+
 // Attach settings app click handler
 function attachSettingsAppHandler() {
-  const settingsApp = document.getElementById('settings-app');
-  if (settingsApp) {
+  HANDLED_APP_HANDLER_IDS.forEach((appId) => {
+    const appEl = document.getElementById(appId);
+    if (!appEl) return;
     // Remove existing listeners to avoid duplicates
-    settingsApp.removeEventListener('click', settingsApp._clickHandler);
-    // Create and attach new handler
-    settingsApp._clickHandler = function (e) {
-      e.preventDefault();
-      const settingsModal = document.getElementById('settings-modal');
-      if (settingsModal) {
-        settingsModal.classList.add('modal-open');
-      }
+    appEl.removeEventListener('click', appEl._clickHandler);
+    appEl._clickHandler = function (e) {
+      openInternalApp(appId, e);
     };
-    settingsApp.addEventListener('click', settingsApp._clickHandler);
-  }
-
-  // Attach AI app click handler
-  const aiApp = document.getElementById('ai-app');
-  if (aiApp) {
-    // Remove existing listeners to avoid duplicates
-    aiApp.removeEventListener('click', aiApp._clickHandler);
-    // Create and attach new handler
-    aiApp._clickHandler = function (e) {
-      e.preventDefault();
-      if (window.AIService && window.AIService.open) {
-        window.AIService.open();
-      }
-    };
-    aiApp.addEventListener('click', aiApp._clickHandler);
-  }
-
-  // Attach Weather app click handler
-  const weatherApp = document.getElementById('weather-app');
-  if (weatherApp) {
-    weatherApp.removeEventListener('click', weatherApp._clickHandler);
-    weatherApp._clickHandler = function (e) {
-      e.preventDefault();
-      if (window.WeatherApp && window.WeatherApp.open) {
-        window.WeatherApp.open();
-      }
-    };
-    weatherApp.addEventListener('click', weatherApp._clickHandler);
-  }
-
-  // Attach Games app click handler
-  const gamesApp = document.getElementById('games-app');
-  if (gamesApp) {
-    gamesApp.removeEventListener('click', gamesApp._clickHandler);
-    gamesApp._clickHandler = function (e) {
-      e.preventDefault();
-      if (window.GamesApp?.open) {
-        window.GamesApp.open();
-      }
-    };
-    gamesApp.addEventListener('click', gamesApp._clickHandler);
-  }
+    appEl.addEventListener('click', appEl._clickHandler);
+  });
 
   // Attach modal close handler (only once)
   const settingsModal = document.getElementById('settings-modal');
