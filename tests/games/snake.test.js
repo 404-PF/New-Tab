@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
 import { expectNoStackedKeydownListeners } from '../helpers/keydown-listener-tally.js';
 
@@ -13,6 +13,12 @@ beforeEach(() => {
   localStorage.clear();
   document.querySelectorAll('.games-score-display, .games-snake-canvas, .games-snake-stage, .games-ready-overlay, .games-instructions').forEach(el => el.remove());
 });
+
+// jsdom has no PointerEvent constructor, so pointer gestures are dispatched
+// as MouseEvent with pointer event types (listeners match on type only).
+function pointer(type, x, y) {
+  return new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+}
 
 describe('Snake Game', () => {
   it('registers with GameRegistry', () => {
@@ -698,6 +704,144 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
     game.init(container, makeSavedRun(['up', 'left', 'down', 'right']));
     // Restore rejected: the ready screen offers Start on a fresh board.
     expect(container.querySelector('.games-ready-overlay .games-ready-start').textContent).toBe('Start');
+
+    game.destroy();
+    container.remove();
+  });
+});
+
+describe('Snake pointer steering and D-pad (#1019)', () => {
+  function startSnake() {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+    // The ready screen lifts on Space, same as a real player.
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    expect(window.__snakeReady.isStarted()).toBe(true);
+    return { container, game };
+  }
+
+  it('renders an accessible touch D-pad inside the stage', () => {
+    const { container, game } = startSnake();
+
+    const pad = container.querySelector('.games-snake-stage .games-dpad');
+    expect(pad).not.toBeNull();
+    expect(pad.getAttribute('role')).toBe('group');
+    expect(pad.querySelectorAll('.games-dpad-btn')).toHaveLength(4);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('queues a swipe turn as soon as the gesture crosses the threshold, before pointerup', () => {
+    const { container, game } = startSnake();
+    const canvas = container.querySelector('.games-snake-canvas');
+
+    canvas.dispatchEvent(pointer('pointerdown', 150, 150));
+    canvas.dispatchEvent(pointer('pointermove', 150, 100));
+    // No pointerup yet: the turn is already queued (threshold-crossing).
+    expect(game.serialize().directionQueue).toContain('up');
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('keeps steering when the gesture ends outside the canvas (pointer capture)', () => {
+    const { container, game } = startSnake();
+    const canvas = container.querySelector('.games-snake-canvas');
+
+    canvas.dispatchEvent(pointer('pointerdown', 150, 150));
+    canvas.dispatchEvent(pointer('pointermove', 150, 100));
+    // Finger leaves the board before lifting; capture keeps the turn queued.
+    document.dispatchEvent(pointer('pointerup', 400, 10));
+
+    expect(game.serialize().directionQueue).toContain('up');
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('does not steer on a tap, and a tap restarts a finished run', () => {
+    const { container, game } = startSnake();
+    const canvas = container.querySelector('.games-snake-canvas');
+
+    // Tap while alive: no direction queued.
+    canvas.dispatchEvent(pointer('pointerdown', 150, 150));
+    canvas.dispatchEvent(pointer('pointerup', 150, 150));
+    expect(game.serialize().directionQueue).toEqual([]);
+
+    // After game over a tap restarts the run.
+    window.__snakeReady.forceGameOver();
+    expect(window.__snakeReady.isGameOver()).toBe(true);
+    canvas.dispatchEvent(pointer('pointerdown', 150, 150));
+    canvas.dispatchEvent(pointer('pointerup', 150, 150));
+    expect(window.__snakeReady.isGameOver()).toBe(false);
+    expect(window.__snakeReady.isStarted()).toBe(true);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('queues turns from the D-pad buttons and ignores them after game over', () => {
+    const { container, game } = startSnake();
+    const pad = container.querySelector('.games-dpad');
+
+    // Tap-to-press queues immediately (pointerdown).
+    pad.querySelector('.games-dpad-up').dispatchEvent(pointer('pointerdown', 0, 0));
+    expect(game.serialize().directionQueue).toEqual(['up']);
+
+    // The pointer tap's compatibility click (detail 1) must not double-fire:
+    // a non-opposite direction would queue if the click fired unchecked.
+    pad.querySelector('.games-dpad-left').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    expect(game.serialize().directionQueue).toEqual(['up']);
+
+    // Keyboard/assistive-tech activation (click detail 0) also steers.
+    pad.querySelector('.games-dpad-left').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
+    expect(game.serialize().directionQueue).toEqual(['up', 'left']);
+
+    // Steering is inert after game over (restart stays a tap).
+    window.__snakeReady.forceGameOver();
+    pad.querySelector('.games-dpad-up').dispatchEvent(pointer('pointerdown', 0, 0));
+    expect(window.__snakeReady.isGameOver()).toBe(true);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('detaches gesture and D-pad listeners on destroy', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+
+    const canvas = container.querySelector('.games-snake-canvas');
+    const pad = container.querySelector('.games-dpad');
+    const upBtn = pad.querySelector('.games-dpad-up');
+
+    game.destroy();
+    // The stage (canvas + pad) is torn down with the container; dispatching at
+    // the detached nodes must not throw or resurrect game state.
+    expect(() => {
+      canvas.dispatchEvent(pointer('pointerdown', 150, 150));
+      canvas.dispatchEvent(pointer('pointermove', 150, 100));
+      upBtn.dispatchEvent(pointer('pointerdown', 0, 0));
+    }).not.toThrow();
+
+    container.remove();
+  });
+
+  it('ignores swipes while the ready screen is still up', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+    const canvas = container.querySelector('.games-snake-canvas');
+
+    canvas.dispatchEvent(pointer('pointerdown', 150, 150));
+    canvas.dispatchEvent(pointer('pointermove', 150, 100));
+    expect(window.__snakeReady.isStarted()).toBe(false);
 
     game.destroy();
     container.remove();

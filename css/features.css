@@ -3988,6 +3988,8 @@ body.light-theme .games-hub-card-desc {
   border-radius: 8px;
   border: 2px solid var(--games-border-subtle);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 24px rgba(78, 205, 196, 0.12);
+  /* Swipes steer the snake (#1019); never let them pan the modal. */
+  touch-action: none;
 }
 
 /* ==================== Flappy Bird and Pac-Man ==================== */
@@ -4154,6 +4156,10 @@ body.light-theme .games-flappy-canvas:focus-visible {
 
 .games-pacman-canvas {
   width: min(380px, 82vw);
+  /* Swipes steer Pac-Man (#1019); never let them pan the modal. The shared
+     rule above keeps `manipulation` for Flappy Bird, which does not use
+     pointer swipes. */
+  touch-action: none;
 }
 
 .games-pacman-instructions {
@@ -4349,6 +4355,72 @@ body.light-theme .games-flappy-canvas:focus-visible {
 .games-ready-start:focus-visible {
   filter: brightness(1.1);
   transform: translateY(-1px);
+}
+
+/* ==================== Touch D-pad (#1019) ==================== */
+
+/* Hidden on fine-pointer (mouse) devices so desktop play is unchanged;
+   shown on touch-first viewports by the media query below. */
+.games-dpad {
+  display: none;
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 3;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+  gap: 4px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(8, 10, 24, 0.45);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .games-dpad {
+    display: grid;
+  }
+}
+
+.games-dpad-up { grid-column: 2; grid-row: 1; }
+.games-dpad-left { grid-column: 1; grid-row: 2; }
+.games-dpad-right { grid-column: 3; grid-row: 2; }
+.games-dpad-down { grid-column: 2; grid-row: 3; }
+
+.games-dpad-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(78, 205, 196, 0.4);
+  border-radius: 10px;
+  background: rgba(78, 205, 196, 0.22);
+  color: var(--games-text-primary);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.games-dpad-btn:active {
+  background: rgba(78, 205, 196, 0.45);
+}
+
+body.light-theme .games-dpad {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+body.light-theme .games-dpad-btn {
+  border-color: rgba(13, 148, 136, 0.45);
+  background: rgba(13, 148, 136, 0.18);
+  color: #0f172a;
+}
+
+body.light-theme .games-dpad-btn:active {
+  background: rgba(13, 148, 136, 0.38);
 }
 
 /* Consolidated light theme color overrides */

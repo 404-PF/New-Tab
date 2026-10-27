@@ -594,6 +594,26 @@
     "message": "Жизни",
     "description": "Lives remaining label shown in game HUDs"
   },
+  "gamesDpad": {
+    "message": "Крестовина",
+    "description": "Доступное имя экранных кнопок направления"
+  },
+  "gamesDpadUp": {
+    "message": "Вверх",
+    "description": "Кнопка направления: вверх"
+  },
+  "gamesDpadDown": {
+    "message": "Вниз",
+    "description": "Кнопка направления: вниз"
+  },
+  "gamesDpadLeft": {
+    "message": "Влево",
+    "description": "Кнопка направления: влево"
+  },
+  "gamesDpadRight": {
+    "message": "Вправо",
+    "description": "Кнопка направления: вправо"
+  },
   "searchProviders": {
     "message": "Поисковые системы",
     "description": "Title for the custom search providers settings card"

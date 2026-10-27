@@ -594,6 +594,26 @@
     "message": "Vies",
     "description": "Lives remaining label shown in game HUDs"
   },
+  "gamesDpad": {
+    "message": "Croix directionnelle",
+    "description": "Nom accessible de la croix directionnelle à l'écran"
+  },
+  "gamesDpadUp": {
+    "message": "Haut",
+    "description": "Croix directionnelle : haut"
+  },
+  "gamesDpadDown": {
+    "message": "Bas",
+    "description": "Croix directionnelle : bas"
+  },
+  "gamesDpadLeft": {
+    "message": "Gauche",
+    "description": "Croix directionnelle : gauche"
+  },
+  "gamesDpadRight": {
+    "message": "Droite",
+    "description": "Croix directionnelle : droite"
+  },
   "searchProviders": {
     "message": "Moteurs de recherche",
     "description": "Title for the custom search providers settings card"

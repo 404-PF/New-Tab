@@ -594,6 +594,26 @@
     "message": "生命",
     "description": "Lives remaining label shown in game HUDs"
   },
+  "gamesDpad": {
+    "message": "方向键",
+    "description": "屏幕方向键的无障碍标签"
+  },
+  "gamesDpadUp": {
+    "message": "上",
+    "description": "屏幕方向键：上"
+  },
+  "gamesDpadDown": {
+    "message": "下",
+    "description": "屏幕方向键：下"
+  },
+  "gamesDpadLeft": {
+    "message": "左",
+    "description": "屏幕方向键：左"
+  },
+  "gamesDpadRight": {
+    "message": "右",
+    "description": "屏幕方向键：右"
+  },
   "searchProviders": {
     "message": "搜索引擎",
     "description": "Title for the custom search providers settings card"

@@ -594,6 +594,26 @@
     "message": "남은 목숨",
     "description": "Lives remaining label shown in game HUDs"
   },
+  "gamesDpad": {
+    "message": "방향 패드",
+    "description": "화면 방향 패드의 접근성 이름"
+  },
+  "gamesDpadUp": {
+    "message": "위",
+    "description": "방향 패드: 위"
+  },
+  "gamesDpadDown": {
+    "message": "아래",
+    "description": "방향 패드: 아래"
+  },
+  "gamesDpadLeft": {
+    "message": "왼쪽",
+    "description": "방향 패드: 왼쪽"
+  },
+  "gamesDpadRight": {
+    "message": "오른쪽",
+    "description": "방향 패드: 오른쪽"
+  },
   "searchProviders": {
     "message": "검색 공급자",
     "description": "Title for the custom search providers settings card"

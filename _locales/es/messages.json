@@ -594,6 +594,26 @@
     "message": "Vidas",
     "description": "Lives remaining label shown in game HUDs"
   },
+  "gamesDpad": {
+    "message": "Cruceta",
+    "description": "Nombre accesible de la cruceta en pantalla"
+  },
+  "gamesDpadUp": {
+    "message": "Arriba",
+    "description": "Cruceta en pantalla: arriba"
+  },
+  "gamesDpadDown": {
+    "message": "Abajo",
+    "description": "Cruceta en pantalla: abajo"
+  },
+  "gamesDpadLeft": {
+    "message": "Izquierda",
+    "description": "Cruceta en pantalla: izquierda"
+  },
+  "gamesDpadRight": {
+    "message": "Derecha",
+    "description": "Cruceta en pantalla: derecha"
+  },
   "searchProviders": {
     "message": "Proveedores de búsqueda",
     "description": "Title for the custom search providers settings card"

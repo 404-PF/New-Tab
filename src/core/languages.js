@@ -45,7 +45,12 @@ const GAMES_ALL_TRANSLATION_KEYS = GAMES_TRANSLATION_KEYS.concat([
   'gamesPacman',
   'gamesPacmanDesc',
   'gamesPacmanControls',
-  'gamesLives'
+  'gamesLives',
+  'gamesDpad',
+  'gamesDpadUp',
+  'gamesDpadDown',
+  'gamesDpadLeft',
+  'gamesDpadRight'
 ]);
 
 function createNoteTagTranslations(
@@ -826,6 +831,29 @@ function applyGamesReadyMerges(code) {
   if (!target || !values) return;
   Object.assign(target, values);
 }
+
+// On-screen D-pad labels for touch play (#1019). Same per-language map
+// pattern as gamesReadyTranslations so the strings stay out of the positional
+// createGamesTranslations arrays. Every locale in SUPPORTED_LANGUAGES needs
+// an entry here or the key resolves to the English fallback.
+const gamesDpadTranslations = {
+  en: { gamesDpad: 'Direction pad', gamesDpadUp: 'Up', gamesDpadDown: 'Down', gamesDpadLeft: 'Left', gamesDpadRight: 'Right' },
+  zh: { gamesDpad: '方向键', gamesDpadUp: '上', gamesDpadDown: '下', gamesDpadLeft: '左', gamesDpadRight: '右' },
+  ja: { gamesDpad: '方向パッド', gamesDpadUp: '上', gamesDpadDown: '下', gamesDpadLeft: '左', gamesDpadRight: '右' },
+  ko: { gamesDpad: '방향 패드', gamesDpadUp: '위', gamesDpadDown: '아래', gamesDpadLeft: '왼쪽', gamesDpadRight: '오른쪽' },
+  es: { gamesDpad: 'Cruceta', gamesDpadUp: 'Arriba', gamesDpadDown: 'Abajo', gamesDpadLeft: 'Izquierda', gamesDpadRight: 'Derecha' },
+  fr: { gamesDpad: 'Croix directionnelle', gamesDpadUp: 'Haut', gamesDpadDown: 'Bas', gamesDpadLeft: 'Gauche', gamesDpadRight: 'Droite' },
+  de: { gamesDpad: 'Steuerkreuz', gamesDpadUp: 'Oben', gamesDpadDown: 'Unten', gamesDpadLeft: 'Links', gamesDpadRight: 'Rechts' },
+  pt: { gamesDpad: 'Cruzeta direcional', gamesDpadUp: 'Cima', gamesDpadDown: 'Baixo', gamesDpadLeft: 'Esquerda', gamesDpadRight: 'Direita' },
+  ru: { gamesDpad: 'Крестовина', gamesDpadUp: 'Вверх', gamesDpadDown: 'Вниз', gamesDpadLeft: 'Влево', gamesDpadRight: 'Вправо' }
+};
+
+function applyGamesDpadMerges(code) {
+  const target = translations[code];
+  const values = gamesDpadTranslations[code];
+  if (!target || !values) return;
+  Object.assign(target, values);
+}
 const flappyBirdTranslations = {
   en: {
     gamesFlappyBird: 'Flappy Bird',
@@ -1181,6 +1209,7 @@ function applyLocaleMerges(code) {
   applyAiExportMerges(code);
   applyGamesLevelMerges(code);
   applyGamesReadyMerges(code);
+  applyGamesDpadMerges(code);
   applyFlappyBirdMerges(code);
   applyPacmanMerges(code);
   applyPomodoroMerges(code);

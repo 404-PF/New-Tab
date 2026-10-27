@@ -119,8 +119,6 @@
   let gameOver = false;
   let rafId = null;
   let lastFrameAt = 0;
-  let touchActive = false;
-  let touchStart = null;
 
   const { tr, nowMs } = window.gamesHelpers;
 
@@ -1107,31 +1105,20 @@
     }
   }
 
-  function handleTouchStart(e) {
-    touchActive = !!(e.touches && e.touches.length === 1);
-    if (touchActive) {
-      touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else {
-      touchStart = null;
-    }
+  // ===================== Touch / pointer steering (#1019) =====================
+
+  let swipeSteering = null;
+  let dpad = null;
+
+  // Shared by swipe gestures and the on-screen D-pad. Steering is ignored
+  // until the run starts and after it ends; a tap restarts a finished run.
+  function applyGestureDirection(dir) {
+    if (!started || gameOver) return;
+    queueTurn(dir);
   }
 
-  function handleTouchEnd(e) {
-    if (!touchActive || !touchStart || !e.changedTouches || e.changedTouches.length === 0) {
-      touchActive = false;
-      touchStart = null;
-      return;
-    }
-    const dx = e.changedTouches[0].clientX - touchStart.x;
-    const dy = e.changedTouches[0].clientY - touchStart.y;
-    touchActive = false;
-    touchStart = null;
-    if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      queueTurn(dx > 0 ? 'right' : 'left');
-    } else {
-      queueTurn(dy > 0 ? 'down' : 'up');
-    }
+  function handleGestureTap() {
+    if (gameOver) resetAndStart();
   }
 
   // ===================== Lifecycle =====================
@@ -1187,6 +1174,14 @@
     stage.appendChild(canvas);
     container.appendChild(stage);
 
+    // Pointer swipes steer as soon as they cross the threshold (#1019); the
+    // touch-only D-pad (hidden on fine-pointer devices by CSS) queues the
+    // same turns for thumbs that cannot reach the maze.
+    swipeSteering = window.gamesHelpers.createSwipeSteering(canvas, applyGestureDirection, {
+      onTap: handleGestureTap
+    });
+    dpad = window.gamesHelpers.createDPad(stage, applyGestureDirection);
+
     instructionsEl = document.createElement('div');
     instructionsEl.className = 'games-instructions games-pacman-instructions';
     instructionsEl.textContent = tr('gamesPacmanControls');
@@ -1227,9 +1222,6 @@
   function toggleInputListeners(on) {
     const method = on ? 'addEventListener' : 'removeEventListener';
     document[method]('keydown', handleKeydown);
-    if (!canvas) return;
-    canvas[method]('touchstart', handleTouchStart, { passive: true });
-    canvas[method]('touchend', handleTouchEnd, { passive: true });
   }
 
   function destroy() {
@@ -1243,6 +1235,15 @@
     stateOverlay.clear();
 
     toggleInputListeners(false);
+
+    if (swipeSteering) {
+      swipeSteering.destroy();
+      swipeSteering = null;
+    }
+    if (dpad) {
+      dpad.destroy();
+      dpad = null;
+    }
 
     if (container) container.innerHTML = '';
 
@@ -1258,8 +1259,6 @@
     queue = [];
     dots = [];
     dotsRemaining = 0;
-    touchActive = false;
-    touchStart = null;
   }
 
   function pause() {
