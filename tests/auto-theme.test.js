@@ -55,6 +55,7 @@ describe('automatic theme switching', () => {
 
   it('keeps a stored system theme through a scheduled boundary (issue #1011)', () => {
     vi.useFakeTimers();
+    const created = [];
     try {
       // Night: the schedule wants dark while the stored choice stays 'system'.
       vi.setSystemTime(new Date('2026-01-01T22:00:00'));
@@ -64,10 +65,33 @@ describe('automatic theme switching', () => {
       localStorage.setItem('theme', 'system');
       window.loadTheme = () => localStorage.getItem('theme');
       window.applyTheme = vi.fn();
-      document.body.insertAdjacentHTML('beforeend', '<input type="radio" name="theme" value="system">');
 
-      // The toggle is off at this point (the refresh test above left it
-      // disabled): switching it on resets lastScheduledTheme, forcing
+      // Self-contained setup: build the fixtures this test needs instead of
+      // relying on the tests above to leave them behind, and inject the
+      // module only when an earlier test has not already done so.
+      if (!document.getElementById('auto-theme-toggle')) {
+        const fixtureHost = document.createElement('div');
+        fixtureHost.innerHTML = `
+          <input id="auto-theme-toggle" type="checkbox"><input id="auto-theme-light-time">
+          <input id="auto-theme-dark-time"><div id="auto-theme-times"></div>
+          <label class="theme-option"></label><input name="theme" value="light"><input name="theme" value="dark">
+        `;
+        document.body.appendChild(fixtureHost);
+        created.push(fixtureHost);
+      }
+      if (!document.querySelector('input[name="theme"][value="system"]')) {
+        const systemRadio = document.createElement('input');
+        systemRadio.type = 'radio';
+        systemRadio.name = 'theme';
+        systemRadio.value = 'system';
+        document.body.appendChild(systemRadio);
+        created.push(systemRadio);
+      }
+      if (typeof window.refreshAutoTheme !== 'function') {
+        injectScript('src/features/auto-theme.js');
+      }
+
+      // Switching the toggle on resets lastScheduledTheme, forcing
       // checkAndApply across a boundary where the guard must hold.
       const toggle = document.getElementById('auto-theme-toggle');
       toggle.checked = true;
@@ -78,6 +102,7 @@ describe('automatic theme switching', () => {
       expect(document.querySelector('input[name="theme"][value="system"]').checked).toBe(true);
       expect(document.querySelector('input[name="theme"][value="dark"]').checked).toBe(false);
     } finally {
+      created.forEach((el) => el.remove());
       vi.useRealTimers();
     }
   });

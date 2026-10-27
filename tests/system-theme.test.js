@@ -58,6 +58,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   document.body.classList.remove('light-theme');
+  document.documentElement.classList.remove('light-pre');
   if (!document.querySelector('input[name="theme"]')) {
     document.body.insertAdjacentHTML('beforeend', `
       <input type="radio" name="theme" value="dark">
@@ -107,6 +108,31 @@ describe('System theme option (issue #1011)', () => {
     window.applyTheme();
     expect(document.body.classList.contains('light-theme')).toBe(true);
     expect(themeRadio('system').checked).toBe(true);
+  });
+
+  it('primes and keeps the html pre-paint marker for a resolved light theme', () => {
+    // storage.js runs in <head> and can only mark <html>; applyTheme() must
+    // keep that marker in step with the effective theme (issue #1011).
+    const storageJs = readFileSync(resolve(process.cwd(), 'src/core/storage.js'), 'utf8');
+    expect(storageJs).toMatch(/classList\.toggle\('light-pre'/);
+
+    try {
+      localStorage.setItem('theme', 'light');
+      window.applyTheme();
+      expect(document.documentElement.classList.contains('light-pre')).toBe(true);
+
+      localStorage.setItem('theme', 'dark');
+      window.applyTheme();
+      expect(document.documentElement.classList.contains('light-pre')).toBe(false);
+
+      localStorage.setItem('theme', 'system');
+      mql.matches = false; // OS prefers light
+      window.applyTheme();
+      expect(document.documentElement.classList.contains('light-pre')).toBe(true);
+    } finally {
+      document.documentElement.classList.remove('light-pre');
+      localStorage.removeItem('theme');
+    }
   });
 
   it('keeps an explicit dark/light choice painted even when the OS disagrees', () => {
@@ -186,5 +212,8 @@ describe('System theme option (issue #1011)', () => {
     const featuresCss = readFileSync(resolve(process.cwd(), 'css/features.css'), 'utf8');
     expect(coreCss).toMatch(/\.preview-icon\.system\s*\{/);
     expect(featuresCss).not.toMatch(/@media \(prefers-color-scheme:/);
+    // The preview precedes its radio, so the checked ring must go through
+    // :has() — the following-sibling combinator can never match it.
+    expect(coreCss).toMatch(/\.theme-option\.modern:has\(input\[type="radio"\]:checked\) \.preview-icon/);
   });
 });

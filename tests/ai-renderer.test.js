@@ -294,11 +294,23 @@ describe('AI modal theme follows a stored system theme (issue #1011)', () => {
     expect(document.getElementById('ai-chat-modal').classList.contains('light-theme')).toBe(true);
   });
 
-  it('keeps concrete stored themes untouched without the resolver', () => {
+  it('keeps concrete stored themes untouched and falls back to dark for system without the resolver', () => {
+    // The assertions below are only meaningful with the resolver absent.
+    delete window.resolveTheme;
+
     localStorage.setItem('theme', 'light');
     expect(AIRenderer.loadTheme()).toBe('light');
 
     localStorage.setItem('theme', 'dark');
     expect(AIRenderer.loadTheme()).toBe('dark');
+
+    // Stored 'system' with no resolver passes through unchanged, and
+    // applyThemeToAI therefore falls back to the dark modal styles.
+    localStorage.setItem('theme', 'system');
+    expect(AIRenderer.loadTheme()).toBe('system');
+    const modal = document.getElementById('ai-chat-modal');
+    modal.classList.add('light-theme');
+    AIRenderer.applyThemeToAI();
+    expect(modal.classList.contains('light-theme')).toBe(false);
   });
 });

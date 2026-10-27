@@ -40,6 +40,33 @@
 
   globalThis.__storageBridgeReady = storageReady;
 
+  // Pre-paint theme (issue #1011): this file runs in <head> before <body>
+  // exists, so mark <html> with the resolved stored theme before the first
+  // paint instead of always starting dark. applyTheme() (settings.js) keeps
+  // the marker in sync afterwards; css/features.css only paints the light
+  // clock/date while html.light-pre is set and body has no light-theme yet.
+  try {
+    const storedTheme = nativeLocalStorage.getItem('theme') || 'dark';
+    let resolvedTheme = storedTheme;
+    if (storedTheme === 'system') {
+      // Mirror resolveTheme() in settings.js: without a usable matchMedia,
+      // 'system' resolves to dark.
+      resolvedTheme = 'dark';
+      if (typeof globalThis.matchMedia === 'function') {
+        try {
+          if (!globalThis.matchMedia('(prefers-color-scheme: dark)').matches) {
+            resolvedTheme = 'light';
+          }
+        } catch {
+          resolvedTheme = 'dark';
+        }
+      }
+    }
+    document.documentElement.classList.toggle('light-pre', resolvedTheme === 'light');
+  } catch {
+    // localStorage or document unavailable — keep the default dark pre-paint
+  }
+
   // Safety timeout: if chrome.storage.local.get() never calls back (e.g. extension
   // reload, context invalidation, transient API failure), resolve the bridge after
   // 3 seconds so bootstrap proceeds and the page renders. Without this the New Tab

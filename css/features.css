@@ -1888,6 +1888,16 @@ body.light-theme .update-settings-group .setting-btn:hover {
   }
 }
 
+/* Pre-paint light clock/date (issue #1011): storage.js marks html.light-pre
+   from the stored theme before <body> exists, and applyTheme() keeps the
+   marker in sync, so these rules only match in the gap before the first
+   applyTheme() runs. */
+html.light-pre body:not(.light-theme) .clock-time,
+html.light-pre body:not(.light-theme) .date {
+  color: #0a0a0a;
+  text-shadow: none;
+}
+
 /* Settings Modal Responsive */
 @media screen and (max-width: 600px) {
   #settings-modal {

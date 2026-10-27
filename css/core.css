@@ -2421,7 +2421,9 @@ body.light-theme .bg-rotation-next-btn:hover {
   height: 0;
 }
 
-.theme-option.modern input[type="radio"]:checked ~ .preview-icon {
+/* The preview precedes its radio in the markup, so the checked ring needs
+   :has() — the following-sibling combinator can never match it. */
+.theme-option.modern:has(input[type="radio"]:checked) .preview-icon {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgb(from var(--primary-color) r g b / 0.2);
 }

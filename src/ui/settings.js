@@ -1320,6 +1320,9 @@ function applyTheme() {
   const stored = loadTheme();
   const theme = resolveTheme(stored);
   document.body.classList.toggle('light-theme', theme === 'light');
+  // Keep the pre-paint marker set by storage.js in <head> in sync so the
+  // html.light-pre rules only ever match before body.light-theme exists.
+  document.documentElement.classList.toggle('light-pre', theme === 'light');
   // Radios reflect the stored value so "System" stays selected while the
   // effective theme comes from the OS.
   const darkRadio = document.querySelector('input[name="theme"][value="dark"]');
