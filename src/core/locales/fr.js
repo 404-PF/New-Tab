@@ -378,6 +378,13 @@ window.i18n.__registerLocale('fr', {
   priorityHighTitle: 'Priorité haute',
   priorityMediumTitle: 'Priorité moyenne',
   priorityLowTitle: 'Priorité basse',
+  // Todo sort selector (issue #1013)
+  todoSortLabel: 'Trier',
+  todoSortManual: 'Manuel',
+  todoSortDue: 'Échéance',
+  todoSortPriority: 'Priorité',
+  todoSortCreated: 'Créé',
+  todoSortAz: 'A-Z',
   clearCompletedText: 'Effacer terminées',
   clearCompletedConfirmTitle: 'Effacer les tâches terminées ?',
   clearCompletedConfirmMessage: 'Cela supprimera définitivement toutes les tâches terminées. Cette action est irréversible.',

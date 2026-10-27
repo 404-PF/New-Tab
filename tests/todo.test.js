@@ -978,6 +978,11 @@ describe('Todo import', () => {
 });
 
 describe('Todo drag-and-drop with filter', () => {
+  beforeEach(() => {
+    // Drag reordering only sticks in manual sort mode (issue #1013)
+    setTodoSort('manual');
+  });
+
   function simulateDrop(draggedId, dropTargetId) {
     const draggedEl = document.createElement('li');
     draggedEl.className = 'todo-item';
@@ -1106,6 +1111,201 @@ describe('Todo drag-and-drop with filter', () => {
     // Hidden items should maintain their relative order at the end
     expect(savedTexts[3]).toBe('C');
     expect(savedTexts[4]).toBe('E');
+  });
+});
+
+describe('Todo sort order (issue #1013)', () => {
+  beforeEach(() => {
+    currentFilters.status = 'all';
+    currentFilters.priority = 'all';
+  });
+
+  function simulateDrop(draggedId, dropTargetId) {
+    const draggedEl = document.createElement('li');
+    draggedEl.className = 'todo-item';
+    draggedEl.dataset.id = draggedId;
+
+    const dropTarget = document.createElement('li');
+    dropTarget.className = 'todo-item';
+    dropTarget.dataset.id = dropTargetId;
+
+    handleDragStart({ target: draggedEl, preventDefault: () => {} });
+    handleDrop({
+      preventDefault: () => {},
+      target: dropTarget
+    });
+    handleDragEnd({ target: draggedEl, preventDefault: () => {} });
+  }
+
+  function dateDaysFromNow(days) {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return formatDateISO(date);
+  }
+
+  it('defaults to due sort when no preference is stored', () => {
+    expect(localStorage.getItem('todoSortOrder')).toBeNull();
+    initTodo();
+    expect(getTodoSort()).toBe('due');
+  });
+
+  it('falls back to due sort for an invalid stored preference', () => {
+    localStorage.setItem('todoSortOrder', 'bogus');
+    initTodo();
+    expect(getTodoSort()).toBe('due');
+  });
+
+  it('persists the sort preference and restores it after re-init', () => {
+    setTodoSort('manual');
+    expect(localStorage.getItem('todoSortOrder')).toBe('manual');
+
+    // Simulate a reload: initTodo re-reads the stored preference
+    initTodo();
+    expect(getTodoSort()).toBe('manual');
+  });
+
+  it('due sort keeps dated todos before undated ones, soonest first', () => {
+    addTodo('No date');
+    addTodo('Next week', dateDaysFromNow(7));
+    addTodo('Tomorrow', dateDaysFromNow(1));
+
+    setTodoSort('due');
+    const texts = filterTodos().map(todo => todo.text);
+    expect(texts).toEqual(['Tomorrow', 'Next week', 'No date']);
+  });
+
+  it('manual sort keeps a dragged item in its new position across re-renders and reloads', () => {
+    addTodo('A');
+    addTodo('B');
+    addTodo('C');
+    setTodoSort('manual');
+
+    const list = loadTodos();
+    simulateDrop(list[2].id, list[0].id); // drag C before A
+
+    expect(filterTodos().map(todo => todo.text)).toEqual(['C', 'A', 'B']);
+
+    // A re-render (e.g. toggling another todo) must not snap the order back
+    addTodo('D');
+    expect(filterTodos().map(todo => todo.text)).toEqual(['C', 'A', 'B', 'D']);
+
+    // Nor must a reload
+    initTodo();
+    expect(filterTodos().map(todo => todo.text)).toEqual(['C', 'A', 'B', 'D']);
+  });
+
+  it('ignores drops outside manual sort mode', () => {
+    addTodo('A');
+    addTodo('B');
+    setTodoSort('due');
+
+    const before = JSON.stringify(loadTodos());
+    const list = loadTodos();
+    simulateDrop(list[1].id, list[0].id);
+    expect(JSON.stringify(loadTodos())).toBe(before);
+  });
+
+  it('priority sort orders high before medium before low', () => {
+    addTodo('Medium one');
+    addTodo('Low one', null, 'low');
+    addTodo('High one', null, 'high');
+    addTodo('High two', null, 'high');
+
+    setTodoSort('priority');
+    const texts = filterTodos().map(todo => todo.text);
+    expect(texts).toEqual(['High one', 'High two', 'Medium one', 'Low one']);
+  });
+
+  it('created sort orders oldest first', () => {
+    addTodo('First');
+    addTodo('Second');
+    addTodo('Third');
+
+    setTodoSort('created');
+    const texts = filterTodos().map(todo => todo.text);
+    expect(texts).toEqual(['First', 'Second', 'Third']);
+  });
+
+  it('az sort orders alphabetically', () => {
+    addTodo('banana');
+    addTodo('Apple');
+    addTodo('cherry');
+
+    setTodoSort('az');
+    const texts = filterTodos().map(todo => todo.text);
+    expect(texts).toEqual(['Apple', 'banana', 'cherry']);
+  });
+
+  it('keeps completed todos last in non-due sort modes', () => {
+    addTodo('Done');
+    addTodo('Pending');
+    const done = loadTodos()[0];
+    toggleTodo(done.id);
+
+    setTodoSort('az');
+    const texts = filterTodos().map(todo => todo.text);
+    expect(texts).toEqual(['Pending', 'Done']);
+  });
+
+  it('updates the sort from the select control', () => {
+    addTodo('A');
+    addTodo('B');
+
+    const select = document.getElementById('todo-sort-select');
+    select.value = 'manual';
+    select.dispatchEvent(new Event('change'));
+
+    expect(getTodoSort()).toBe('manual');
+    expect(localStorage.getItem('todoSortOrder')).toBe('manual');
+  });
+
+  it('renders rows draggable only in manual sort mode', () => {
+    addTodo('A');
+
+    setTodoSort('due');
+    expect(document.querySelector('.todo-item').draggable).toBe(false);
+
+    setTodoSort('manual');
+    expect(document.querySelector('.todo-item').draggable).toBe(true);
+  });
+
+  it('renders completed rows non-draggable even in manual sort mode', () => {
+    addTodo('Done');
+    const doneId = loadTodos()[0].id;
+    toggleTodo(doneId);
+
+    setTodoSort('manual');
+    const row = document.querySelector('.todo-item.completed');
+    expect(row).not.toBeNull();
+    expect(row.draggable).toBe(false);
+  });
+
+  it('appends new todos after legacy todos that lack an order field in manual sort', () => {
+    // Legacy rows predating the order field fall back to createdAt
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'old1', text: 'Legacy 1', completed: false, createdAt: new Date(Date.now() - 120000).toISOString() },
+      { id: 'old2', text: 'Legacy 2', completed: false, createdAt: new Date(Date.now() - 60000).toISOString() }
+    ]));
+    initTodo();
+    setTodoSort('manual');
+
+    addTodo('Fresh');
+    expect(filterTodos().map(todo => todo.text)).toEqual(['Legacy 1', 'Legacy 2', 'Fresh']);
+  });
+
+  it('falls back to manual order when a created-sort timestamp is invalid', () => {
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'good', text: 'Dated', completed: false, createdAt: new Date(Date.now() - 60000).toISOString() },
+      { id: 'bad', text: 'No date', completed: false, createdAt: 'not-a-date' }
+    ]));
+    initTodo();
+    setTodoSort('created');
+
+    // Invalid createdAt must not poison the comparator (NaN !== 0 short-
+    // circuits the manual-order fallback): both rows fall back to their
+    // manual-order values (createdAt ms vs 0 for the invalid one), so the
+    // invalid row sorts first instead of relying on NaN-treated-as-equal.
+    expect(filterTodos().map(todo => todo.text)).toEqual(['No date', 'Dated']);
   });
 });
 

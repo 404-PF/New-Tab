@@ -391,6 +391,13 @@ window.i18n.__registerLocale('ko', {
   priorityHighTitle: '높은 우선도',
   priorityMediumTitle: '보통 우선도',
   priorityLowTitle: '낮은 우선도',
+  // Todo sort selector (issue #1013)
+  todoSortLabel: '정렬',
+  todoSortManual: '수동',
+  todoSortDue: '마감일',
+  todoSortPriority: '우선순위',
+  todoSortCreated: '생성일',
+  todoSortAz: 'A-Z',
   clearCompletedText: '완료 항목 지우기',
   clearCompletedConfirmTitle: '완료된 할 일을 지우시겠습니까?',
   clearCompletedConfirmMessage: '완료된 모든 할 일이 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.',

@@ -270,6 +270,23 @@ describe('Todo bulk selection translations (issue #942)', () => {
   });
 });
 
+const TODO_SORT_TRANSLATION_KEYS = [
+  'todoSortLabel',
+  'todoSortManual',
+  'todoSortDue',
+  'todoSortPriority',
+  'todoSortCreated',
+  'todoSortAz'
+];
+
+describe('Todo sort selector translations (issue #1013)', () => {
+  it('defines every todo sort string in each supported language', () => {
+    // Presence-only: 'Manual' (es/pt) and 'A-Z' (every locale) legitimately
+    // match the English source, so differFromEnglish would be wrong here.
+    expectTranslationKeys(TODO_SORT_TRANSLATION_KEYS);
+  });
+});
+
 const MISSING_UI_KEY_TRANSLATIONS = [
   'notesEditTooltip',
   'notesPreviewTooltip',

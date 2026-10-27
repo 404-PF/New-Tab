@@ -378,6 +378,13 @@ window.i18n.__registerLocale('es', {
   priorityHighTitle: 'Prioridad alta',
   priorityMediumTitle: 'Prioridad media',
   priorityLowTitle: 'Prioridad baja',
+  // Todo sort selector (issue #1013)
+  todoSortLabel: 'Ordenar',
+  todoSortManual: 'Manual',
+  todoSortDue: 'Fecha de vencimiento',
+  todoSortPriority: 'Prioridad',
+  todoSortCreated: 'Creado',
+  todoSortAz: 'A-Z',
   clearCompletedText: 'Limpiar completadas',
   clearCompletedConfirmTitle: '¿Limpiar tareas completadas?',
   clearCompletedConfirmMessage: 'Esto eliminará permanentemente todas las tareas completadas. Esta acción no se puede deshacer.',

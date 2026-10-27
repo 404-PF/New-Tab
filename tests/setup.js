@@ -566,6 +566,12 @@ globalThis.window.i18n = {
       priorityLowTitle: 'Low Priority',
       priorityMediumTitle: 'Medium Priority',
       priorityHighTitle: 'High Priority',
+      todoSortLabel: 'Sort',
+      todoSortManual: 'Manual',
+      todoSortDue: 'Due date',
+      todoSortPriority: 'Priority',
+      todoSortCreated: 'Created',
+      todoSortAz: 'A-Z',
       shortcutFocusSearch: 'Focus Search',
       shortcutOpenSettings: 'Open Settings',
       shortcutToggleFocusMode: 'Toggle Focus Mode',
@@ -896,6 +902,15 @@ document.body.appendChild(createStubElement('button', 'focus-mode-indicator'));
 document.body.appendChild(createStubElement('input', 'todo-input'));
 document.body.appendChild(createStubElement('button', 'add-todo-btn'));
 document.body.appendChild(createStubElement('select', 'filter-status'));
+// Sort selector stub mirroring the markup in New-Tab.html (issue #1013)
+const todoSortSelect = createStubElement('select', 'todo-sort-select');
+['manual', 'due', 'priority', 'created', 'az'].forEach(value => {
+  const option = document.createElement('option');
+  option.value = value;
+  todoSortSelect.appendChild(option);
+});
+todoSortSelect.value = 'due';
+document.body.appendChild(todoSortSelect);
 const todoFilters = document.createElement('div');
 todoFilters.className = 'todo-filters';
 document.body.appendChild(todoFilters);
