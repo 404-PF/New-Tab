@@ -1,6 +1,6 @@
 // tests/search-providers.test.js
 
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 const SEARCH_BAR_HTML = `
@@ -23,6 +23,14 @@ const SEARCH_BAR_HTML = `
 `;
 
 const flushAsyncUI = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+const readProviderForm = () => ({
+  name: document.getElementById('custom-search-provider-name'),
+  url: document.getElementById('custom-search-provider-url'),
+  suggestions: document.getElementById('custom-search-provider-suggestions-url'),
+  addBtn: document.getElementById('custom-search-provider-add-btn'),
+  feedback: document.getElementById('custom-search-provider-feedback')
+});
 
 beforeAll(() => {
   window.VisibilityInterval = class {
@@ -409,11 +417,13 @@ describe('Search providers - settings UI', () => {
     document.querySelectorAll('.search-provider-custom').forEach((el) => el.remove());
     const nameInput = document.getElementById('custom-search-provider-name');
     const urlInput = document.getElementById('custom-search-provider-url');
+    const suggestionsInput = document.getElementById('custom-search-provider-suggestions-url');
     const feedback = document.getElementById('custom-search-provider-feedback');
     const list = document.getElementById('custom-search-providers-list');
     const empty = document.getElementById('custom-search-providers-empty');
     if (nameInput) nameInput.value = '';
     if (urlInput) urlInput.value = '';
+    if (suggestionsInput) suggestionsInput.value = '';
     if (feedback) {
       feedback.textContent = '';
       feedback.className = 'custom-search-provider-feedback';
@@ -716,6 +726,196 @@ describe('Search providers - settings UI', () => {
       chrome.storage.local.set = originalSet;
       chrome.runtime.lastError = null;
     }
+  });
+
+  it('adds a custom provider with a suggestions URL and clears the inputs (issue #1012)', async () => {
+    const nameInput = document.getElementById('custom-search-provider-name');
+    const urlInput = document.getElementById('custom-search-provider-url');
+    const suggestionsInput = document.getElementById('custom-search-provider-suggestions-url');
+    const addBtn = document.getElementById('custom-search-provider-add-btn');
+    const feedback = document.getElementById('custom-search-provider-feedback');
+
+    nameInput.value = 'Kagi';
+    urlInput.value = 'https://kagi.com/search?q={query}';
+    suggestionsInput.value = 'https://kagi.com/suggest?q={query}';
+    addBtn.click();
+    await flushAsyncUI();
+
+    expect(feedback.textContent).toBe('');
+    expect(loadCustomProviders().length).toBe(1);
+    expect(loadCustomProviders()[0].suggestionsUrl).toBe('https://kagi.com/suggest?q={query}');
+    expect(suggestionsInput.value).toBe('');
+    expect(addBtn.disabled).toBe(false);
+  });
+
+  it('shows a suggestions-specific validation error for an invalid suggestions URL (issue #1012)', async () => {
+    const form = readProviderForm();
+    form.name.value = 'Kagi';
+    form.url.value = 'https://kagi.com/search?q={query}';
+    form.suggestions.value = 'https://kagi.com/suggest';
+    form.addBtn.click();
+    await flushAsyncUI();
+
+    expect(form.feedback.textContent).toBe('Enter a valid suggestions URL with {query} and http(s).');
+    expect(form.feedback.classList.contains('error')).toBe(true);
+    expect(loadCustomProviders().length).toBe(0);
+    expect(form.addBtn.disabled).toBe(false);
+  });
+});
+
+describe('Search providers - custom suggestions endpoint (issue #1012)', () => {
+  it('addCustomProvider stores an optional suggestionsUrl', async () => {
+    const id = await addCustomProvider(
+      'Kagi',
+      'https://kagi.example/search?q={query}',
+      'https://kagi.example/suggest?q={query}'
+    );
+    const provider = loadCustomProviders().find((item) => item.id === id);
+    expect(provider.suggestionsUrl).toBe('https://kagi.example/suggest?q={query}');
+  });
+
+  it('addCustomProvider omits suggestionsUrl when not provided', async () => {
+    const id = await addCustomProvider('Plain', 'https://plain.example/search?q={query}');
+    const provider = loadCustomProviders().find((item) => item.id === id);
+    expect(Object.prototype.hasOwnProperty.call(provider, 'suggestionsUrl')).toBe(false);
+  });
+
+  it('addCustomProvider resolves null for an invalid suggestionsUrl', async () => {
+    await expect(
+      addCustomProvider('Bad', 'https://bad.example/search?q={query}', 'ftp://bad.example/suggest?q={query}')
+    ).resolves.toBeNull();
+    await expect(
+      addCustomProvider('Bad', 'https://bad.example/search?q={query}', 'https://bad.example/suggest')
+    ).resolves.toBeNull();
+    expect(loadCustomProviders()).toEqual([]);
+  });
+
+  it('keeps providers with a valid suggestionsUrl and legacy providers without one', () => {
+    localStorage.setItem('customSearchProviders', JSON.stringify([
+      { id: 'custom_1', name: 'With', url: 'https://with.example/search?q={query}', suggestionsUrl: 'https://with.example/suggest?q={query}' },
+      { id: 'custom_2', name: 'Legacy', url: 'https://legacy.example/search?q={query}' },
+      { id: 'custom_3', name: 'Broken', url: 'https://broken.example/search?q={query}', suggestionsUrl: 'not-a-url' }
+    ]));
+
+    expect(loadCustomProviders().map((provider) => provider.id)).toEqual(['custom_1', 'custom_2']);
+  });
+
+  it('getProviderSuggestionEndpoint resolves the custom template with an encoded query', async () => {
+    const id = await addCustomProvider(
+      'Kagi',
+      'https://kagi.example/search?q={query}',
+      'https://kagi.example/suggest?q={query}'
+    );
+    expect(getProviderSuggestionEndpoint(id, 'hello world')).toBe('https://kagi.example/suggest?q=hello%20world');
+  });
+
+  it('getProviderSuggestionEndpoint returns null for custom providers without a suggestionsUrl', async () => {
+    const id = await addCustomProvider('Plain', 'https://plain.example/search?q={query}');
+    expect(getProviderSuggestionEndpoint(id, 'query')).toBeNull();
+  });
+
+  it('getProviderSuggestionEndpoint still resolves built-in providers', () => {
+    expect(getProviderSuggestionEndpoint('google', 'cats')).toContain('suggestqueries.google.com');
+    expect(getProviderSuggestionEndpoint('nonexistent', 'cats')).toBeNull();
+  });
+});
+
+describe('Search providers - custom suggestions parsing (issue #1012)', () => {
+  it('parses a flat JSON string array for custom providers', () => {
+    const suggestions = parseRemoteSearchSuggestions('custom_123', ['kagi docs', 'kagi api'], 'kagi');
+    expect(suggestions).toEqual(['kagi docs', 'kagi api']);
+  });
+
+  it('parses the [query, [strings]] shape for custom providers', () => {
+    const suggestions = parseRemoteSearchSuggestions('custom_123', ['query', ['query one', 'query two']], 'query');
+    expect(suggestions).toEqual(['query one', 'query two']);
+  });
+
+  it('drops the echoed query from custom suggestions', () => {
+    const suggestions = parseRemoteSearchSuggestions('custom_123', ['cats', 'cats and dogs'], 'cats');
+    expect(suggestions).toEqual(['cats and dogs']);
+  });
+
+  it('returns [] for non-array custom payloads', () => {
+    expect(parseRemoteSearchSuggestions('custom_123', { suggestions: ['a'] }, 'query')).toEqual([]);
+  });
+});
+
+describe('Search providers - custom suggestions permission (issue #1012)', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    chrome.permissions._granted = {};
+  });
+
+  it('requests the suggestion origin when a provider with suggestionsUrl is added', async () => {
+    const requestSpy = vi.spyOn(chrome.permissions, 'request');
+    try {
+      await addCustomProvider(
+        'Kagi',
+        'https://kagi.example/search?q={query}',
+        'https://kagi.example/suggest?q={query}'
+      );
+      expect(requestSpy).toHaveBeenCalledWith({ origins: ['https://kagi.example/*'] });
+    } finally {
+      requestSpy.mockRestore();
+    }
+  });
+
+  it('degrades to [] and skips fetch when the host permission is denied', async () => {
+    const id = await addCustomProvider(
+      'Kagi',
+      'https://kagi.example/search?q={query}',
+      'https://kagi.example/suggest?q={query}'
+    );
+    // Simulate the user denying (or dismissing) the optional permission prompt.
+    chrome.permissions._granted = {};
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+
+    const result = await fetchRemoteSearchSuggestions(id, 'hello');
+
+    expect(result).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('fetches and parses suggestions when the host permission is granted', async () => {
+    const id = await addCustomProvider(
+      'Kagi',
+      'https://kagi.example/search?q={query}',
+      'https://kagi.example/suggest?q={query}'
+    );
+    chrome.permissions._granted['https://kagi.example/*'] = true;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ['hello world', 'hello kitty']
+    });
+    globalThis.fetch = fetchMock;
+
+    const result = await fetchRemoteSearchSuggestions(id, 'hello');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://kagi.example/suggest?q=hello');
+    expect(result).toEqual(['hello world', 'hello kitty']);
+  });
+
+  it('built-in providers do not require the optional permission', async () => {
+    chrome.permissions._granted = {};
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ['google', ['google suggest']]
+    });
+    globalThis.fetch = fetchMock;
+
+    const result = await fetchRemoteSearchSuggestions('google', 'google');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(['google suggest']);
   });
 });
 

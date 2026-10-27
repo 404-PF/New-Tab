@@ -28,6 +28,10 @@
     "https://duckduckgo.com/*",
     "https://en.wikipedia.org/*"
   ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
   "action": {
     "default_icon": {
       "16": "icons/icon16.png",

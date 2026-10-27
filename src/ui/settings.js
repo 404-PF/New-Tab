@@ -1859,6 +1859,7 @@ if (document.readyState === 'loading') {
 function initCustomSearchProvidersSettings() {
   const nameInput = document.getElementById('custom-search-provider-name');
   const urlInput = document.getElementById('custom-search-provider-url');
+  const suggestionsUrlInput = document.getElementById('custom-search-provider-suggestions-url');
   const addBtn = document.getElementById('custom-search-provider-add-btn');
   const listEl = document.getElementById('custom-search-providers-list');
   const emptyEl = document.getElementById('custom-search-providers-empty');
@@ -1964,6 +1965,7 @@ function initCustomSearchProvidersSettings() {
     if (addBtn.disabled) return;
     const name = nameInput.value.trim();
     const url = urlInput.value.trim();
+    const suggestionsUrl = suggestionsUrlInput ? suggestionsUrlInput.value.trim() : '';
 
     if (!name) {
       showFeedback(t('searchProviderInvalidName', 'Enter a name for the search provider.'), 'error');
@@ -1974,6 +1976,12 @@ function initCustomSearchProvidersSettings() {
     if (!url || !url.includes('{query}')) {
       showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
       urlInput.focus();
+      return;
+    }
+
+    if (suggestionsUrl && !suggestionsUrl.includes('{query}')) {
+      showFeedback(t('searchProviderInvalidSuggestionsUrl', 'Enter a valid suggestions URL with {query} and http(s).'), 'error');
+      if (suggestionsUrlInput) suggestionsUrlInput.focus();
       return;
     }
 
@@ -1989,13 +1997,19 @@ function initCustomSearchProvidersSettings() {
       addBtn.disabled = false;
     };
     callProviderApi(function () {
-      return window.addCustomProvider(name, url);
+      return window.addCustomProvider(name, url, suggestionsUrl);
     }).then(function (savedId) {
       if (savedId === null) {
-        // Validation failure; the name was already checked above, so only
-        // the URL can still be invalid here.
-        showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
-        urlInput.focus();
+        // Validation failure; the name was already checked above. Blame the
+        // suggestions URL only when the main URL looks valid and the
+        // suggestions URL does not (issue #1012).
+        if (suggestionsUrl && /^https?:\/\//i.test(url) && !/^https?:\/\//i.test(suggestionsUrl)) {
+          showFeedback(t('searchProviderInvalidSuggestionsUrl', 'Enter a valid suggestions URL with {query} and http(s).'), 'error');
+          suggestionsUrlInput.focus();
+        } else {
+          showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
+          urlInput.focus();
+        }
         return;
       }
       if (!savedId) {
@@ -2006,6 +2020,7 @@ function initCustomSearchProvidersSettings() {
 
       nameInput.value = '';
       urlInput.value = '';
+      if (suggestionsUrlInput) suggestionsUrlInput.value = '';
       clearFeedback();
       if (typeof window.refreshProviderBar === 'function') {
         window.refreshProviderBar();
@@ -2050,7 +2065,7 @@ function initCustomSearchProvidersSettings() {
 
   addBtn.addEventListener('click', handleAdd);
 
-  [nameInput, urlInput].forEach(function (input) {
+  [nameInput, urlInput, suggestionsUrlInput].filter(Boolean).forEach(function (input) {
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
         e.preventDefault();

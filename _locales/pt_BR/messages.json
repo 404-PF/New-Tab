@@ -646,6 +646,18 @@
     "message": "Modelo de URL de pesquisa",
     "description": "Accessible name for the provider URL input"
   },
+  "searchProviderSuggestionsUrlPlaceholder": {
+    "message": "https://example.com/suggest?q={query}",
+    "description": "Placeholder for the optional suggestions URL input"
+  },
+  "searchProviderSuggestionsUrlAriaLabel": {
+    "message": "Modelo de URL de sugestões",
+    "description": "Accessible name for the suggestions URL input"
+  },
+  "searchProviderInvalidSuggestionsUrl": {
+    "message": "Insira uma URL de sugestões válida com {query} e http(s).",
+    "description": "Validation error when the suggestions URL is invalid"
+  },
   "searchProviderUnavailable": {
     "message": "API do provedor indisponível.",
     "description": "Error when the provider API is unavailable"

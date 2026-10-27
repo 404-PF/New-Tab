@@ -646,6 +646,18 @@
     "message": "검색 URL 템플릿",
     "description": "Accessible name for the provider URL input"
   },
+  "searchProviderSuggestionsUrlPlaceholder": {
+    "message": "https://example.com/suggest?q={query}",
+    "description": "Placeholder for the optional suggestions URL input"
+  },
+  "searchProviderSuggestionsUrlAriaLabel": {
+    "message": "검색 제안 URL 템플릿",
+    "description": "Accessible name for the suggestions URL input"
+  },
+  "searchProviderInvalidSuggestionsUrl": {
+    "message": "{query} 및 http(s)가 포함된 유효한 제안 URL을 입력하세요.",
+    "description": "Validation error when the suggestions URL is invalid"
+  },
   "searchProviderUnavailable": {
     "message": "검색 공급자 API를 사용할 수 없습니다.",
     "description": "Error when the provider API is unavailable"

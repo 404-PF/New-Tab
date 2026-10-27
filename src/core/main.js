@@ -556,11 +556,19 @@ function isValidProviderUrl(url) {
   }
 }
 
+// The suggestions endpoint is optional (issue #1012). Validate it only when
+// present so providers stored before this field existed keep loading.
+function isValidCustomSuggestionsUrl(suggestionsUrl) {
+  if (suggestionsUrl === undefined || suggestionsUrl === null || suggestionsUrl === '') return true;
+  return isValidProviderUrl(suggestionsUrl);
+}
+
 function isValidCustomProvider(provider, seenIds, seenBangCodes) {
   if (!provider || typeof provider !== 'object' ||
     typeof provider.id !== 'string' || !provider.id.trim() ||
     typeof provider.name !== 'string' || !provider.name.trim() ||
-    !isValidProviderUrl(provider.url)) {
+    !isValidProviderUrl(provider.url) ||
+    !isValidCustomSuggestionsUrl(provider.suggestionsUrl)) {
     return false;
   }
   if (RESERVED_PROVIDER_IDS.indexOf(provider.id) !== -1) return false;
@@ -629,11 +637,53 @@ function saveCustomProvidersAsync(providers) {
   }
 }
 
+// Ask for the optional host permission covering a custom suggestions
+// endpoint (manifest optional_host_permissions, issue #1012). A denial is
+// not fatal: remote suggestions then degrade to history-only matches.
+function getSuggestionsOriginPattern(url) {
+  try {
+    return new URL(url).origin + '/*';
+  } catch {
+    return null;
+  }
+}
+
+// Both helpers are async so every failure path (sync throw or rejection)
+// lands in the same catch and resolves to false: an unconfirmed grant must
+// never be treated as permission.
+async function requestSuggestionsPermission(suggestionsUrl) {
+  const origin = getSuggestionsOriginPattern(suggestionsUrl);
+  if (!origin || !chrome.permissions || typeof chrome.permissions.request !== 'function') {
+    return false;
+  }
+  try {
+    return Boolean(await chrome.permissions.request({ origins: [origin] }));
+  } catch (error) {
+    console.warn('Failed to request suggestions host permission:', error);
+    return false;
+  }
+}
+
+async function hasSuggestionsPermission(suggestionsUrl) {
+  const origin = getSuggestionsOriginPattern(suggestionsUrl);
+  if (!origin || !chrome.permissions || typeof chrome.permissions.contains !== 'function') {
+    return false;
+  }
+  try {
+    return Boolean(await chrome.permissions.contains({ origins: [origin] }));
+  } catch (error) {
+    console.warn('Failed to check suggestions host permission:', error);
+    return false;
+  }
+}
+
 // Always returns a Promise. It resolves to the new provider id on success,
 // null when the input is invalid (or no shortcut code is free), and false
 // when the storage write fails.
-function addCustomProvider(name, url) {
+function addCustomProvider(name, url, suggestionsUrl) {
   if (typeof name !== 'string' || !name.trim() || !isValidProviderUrl(url)) return Promise.resolve(null);
+  const normalizedSuggestionsUrl = typeof suggestionsUrl === 'string' ? suggestionsUrl.trim() : '';
+  if (!isValidCustomSuggestionsUrl(normalizedSuggestionsUrl)) return Promise.resolve(null);
   const id = 'custom_' + Date.now();
   const providers = loadCustomProviders();
   const normalizedName = name.trim();
@@ -659,7 +709,14 @@ function addCustomProvider(name, url) {
   const code = codeCandidates.find(function (candidate) { return !usedCodes.has(candidate); });
   if (!code) return Promise.resolve(null);
 
-  providers.push({ id: id, name: normalizedName, url: url, code: code });
+  const provider = { id: id, name: normalizedName, url: url, code: code };
+  if (normalizedSuggestionsUrl) {
+    provider.suggestionsUrl = normalizedSuggestionsUrl;
+    // Fire-and-forget within the caller's user gesture; a denial only
+    // disables remote suggestions, never the provider itself.
+    void requestSuggestionsPermission(normalizedSuggestionsUrl);
+  }
+  providers.push(provider);
   return saveCustomProvidersAsync(providers).then(function (saved) {
     if (!saved) return false;
     renderCustomProviderButtons();
@@ -716,8 +773,12 @@ function getProviderSuggestionEndpoint(providerId, query) {
       return 'https://duckduckgo.com/ac/?q=' + encodedQuery + '&type=list';
     case 'wikipedia':
       return 'https://en.wikipedia.org/w/api.php?action=opensearch&search=' + encodedQuery + '&limit=' + SEARCH_REMOTE_SUGGESTION_LIMIT + '&namespace=0&format=json&origin=*';
-    default:
-      return null;
+    default: {
+      const customProvider = loadCustomProviders().find(function (p) { return p.id === providerId; });
+      const template = customProvider && customProvider.suggestionsUrl;
+      if (!template || !isValidCustomSuggestionsUrl(template)) return null;
+      return template.replace('{query}', encodedQuery);
+    }
   }
 }
 
@@ -754,6 +815,11 @@ function parseRemoteSearchSuggestions(providerId, payload, query) {
   } else if (providerId === 'wikipedia' && Array.isArray(payload)) {
     const wikipediaSuggestions = Array.isArray(payload[1]) ? payload[1] : [];
     wikipediaSuggestions.forEach(add);
+  } else if (!BUILT_IN_PROVIDERS[providerId] && Array.isArray(payload)) {
+    // Custom providers (issue #1012): accept both a flat JSON string array
+    // and the [query, [strings]] shape used by DuckDuckGo/Wikipedia.
+    const customSuggestions = Array.isArray(payload[1]) ? payload[1] : payload;
+    customSuggestions.forEach(add);
   }
 
   return values.slice(0, SEARCH_REMOTE_SUGGESTION_LIMIT);
@@ -763,6 +829,13 @@ async function fetchRemoteSearchSuggestions(providerId, query, signal) {
   const endpoint = getProviderSuggestionEndpoint(providerId, query);
   if (!endpoint || !query.trim() || navigator.onLine === false) {
     return [];
+  }
+
+  // Custom endpoints need the optional host permission for their origin;
+  // without it the cross-origin fetch would be blocked anyway (issue #1012).
+  if (!Object.prototype.hasOwnProperty.call(BUILT_IN_PROVIDERS, providerId)) {
+    const granted = await hasSuggestionsPermission(endpoint);
+    if (!granted) return [];
   }
 
   try {
@@ -1073,6 +1146,14 @@ function initProviderBar() {
     saveActiveProvider(btn.dataset.provider);
     updateProviderSelection();
     announceSearchProvider(btn.dataset.provider);
+    // Request the optional host permission for a custom suggestions endpoint
+    // when the user selects the provider. This covers providers imported from
+    // a backup, which never went through addCustomProvider's permission
+    // request (issue #1012). Already-granted permissions resolve silently.
+    const selectedProvider = loadCustomProviders().find(function (p) { return p.id === btn.dataset.provider; });
+    if (selectedProvider && selectedProvider.suggestionsUrl) {
+      void requestSuggestionsPermission(selectedProvider.suggestionsUrl);
+    }
   });
 
   bar.addEventListener('focusin', function (event) {
@@ -1499,6 +1580,7 @@ window.getActiveProviderUrl = getActiveProviderUrl;
 window.resolveSearchQuery = resolveSearchQuery;
 window.cycleSearchProvider = cycleSearchProvider;
 window.parseRemoteSearchSuggestions = parseRemoteSearchSuggestions;
+window.getProviderSuggestionEndpoint = getProviderSuggestionEndpoint;
 window.fetchRemoteSearchSuggestions = fetchRemoteSearchSuggestions;
 window.scheduleSearchSuggestionsFetch = scheduleSearchSuggestionsFetch;
 window.updateProviderSelection = updateProviderSelection;
