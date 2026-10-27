@@ -774,7 +774,9 @@
       if (entry.timestamp !== undefined && typeof entry.timestamp !== 'number') return invalidShape;
       if (entry.media === undefined) continue;
       const match = typeof entry.media === 'string' ? MEDIA_DATA_URL_PATTERN.exec(entry.media) : null;
-      if (!match || !isValidBase64Payload(match[2])) {
+      if (!match || (!(base64ByteLength(match[2]) > maxPerRecord
+        || totalBytes + base64ByteLength(match[2]) > maxTotal)
+        && !isValidBase64Payload(match[2]))) {
         return {
           valid: false,
           error: t('dataImportInvalidMedia', 'A custom background in this backup has invalid media data.')
