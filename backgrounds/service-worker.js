@@ -58,28 +58,34 @@ function invalidDueDateKey(todo) {
 // The MV3 callback API reports failed reads/writes through
 // chrome.runtime.lastError instead of rejecting, so both wrappers inspect it
 // inside the callback and reject. Without that guard a failed write resolves
-// as success and callers cannot tell a durable result from a lost one.
+// as success and callers cannot tell a durable result from a lost one. A
+// promise-style storage area can instead reject without ever invoking the
+// callback, so each wrapper also observes the returned promise's rejection;
+// otherwise that failure escapes as an unhandled rejection and the wrapper
+// never settles.
 async function getFromStorage(keys) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get(keys, (items) => {
+    const result = chrome.storage.local.get(keys, (items) => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
         return;
       }
       resolve(items);
     });
+    Promise.resolve(result).catch(reject);
   });
 }
 
 async function setToStorage(items) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.set(items, () => {
+    const result = chrome.storage.local.set(items, () => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
         return;
       }
       resolve();
     });
+    Promise.resolve(result).catch(reject);
   });
 }
 
