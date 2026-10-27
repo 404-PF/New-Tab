@@ -1,6 +1,11 @@
 const CHECK_INTERVAL_MINUTES = 1;
 // SYNC: This alarm name must match the hardcoded string in src/features/todo.js fallback
 const ALARM_NAME = 'todoReminderCheck';
+// Durable placeholder written between the notified-map pre-persist and the
+// confirmation write. A 'pending' value means the reminder was durably claimed
+// but never confirmed as shown (creation or cleanup write failed), so the next
+// check retries it instead of treating it as already notified.
+const PENDING_NOTIFIED_MARK = 'pending';
 let reminderCheckInProgress = false;
 const reminderCheckPendingQueue = [];
 
@@ -50,22 +55,48 @@ function invalidDueDateKey(todo) {
   return todo.id + '_' + todo.dueDate + timePart;
 }
 
+// The MV3 callback API reports failed reads/writes through
+// chrome.runtime.lastError instead of rejecting, so both wrappers inspect it
+// inside the callback and reject. Without that guard a failed write resolves
+// as success and callers cannot tell a durable result from a lost one. A
+// promise-style storage area can instead reject without ever invoking the
+// callback, so each wrapper also observes the returned promise's rejection;
+// otherwise that failure escapes as an unhandled rejection and the wrapper
+// never settles.
 async function getFromStorage(keys) {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(keys, resolve);
+  return new Promise((resolve, reject) => {
+    const result = chrome.storage.local.get(keys, (items) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(items);
+    });
+    Promise.resolve(result).catch(reject);
   });
 }
 
 async function setToStorage(items) {
-  return new Promise((resolve) => {
-    chrome.storage.local.set(items, resolve);
+  return new Promise((resolve, reject) => {
+    const result = chrome.storage.local.set(items, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve();
+    });
+    Promise.resolve(result).catch(reject);
   });
 }
 
 async function checkReminders(todosJson, options = {}) {
   if (reminderCheckInProgress) {
-    reminderCheckPendingQueue.push({ todosJson, options });
-    return;
+    // Hand back a promise that settles with the queued run itself, so callers
+    // (notably the syncTodos message handler) report the real outcome instead
+    // of acking success before the check has even started.
+    return new Promise((resolve, reject) => {
+      reminderCheckPendingQueue.push({ todosJson, options, resolve, reject });
+    });
   }
   reminderCheckInProgress = true;
   try {
@@ -76,8 +107,9 @@ async function checkReminders(todosJson, options = {}) {
         const next = reminderCheckPendingQueue.shift();
         try {
           await runReminderCheck(next.todosJson, next.options);
+          next.resolve();
         } catch (e) {
-          console.warn('Queued reminder check failed:', e);
+          next.reject(e);
         }
       }
     }
@@ -212,7 +244,9 @@ function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, lea
   }
   const timePart = todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime) ? '_' + todo.dueTime : '';
   const notifiedKey = todo.id + '_' + todo.dueDate + timePart;
-  if (notified[notifiedKey]) {
+  // A PENDING_NOTIFIED_MARK is a claim whose confirmation never landed, so it
+  // stays retryable instead of suppressing the reminder forever.
+  if (notified[notifiedKey] && notified[notifiedKey] !== PENDING_NOTIFIED_MARK) {
     return { skip: true, warnedUpdated: false };
   }
   let dueDisplay = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -223,22 +257,50 @@ function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, lea
 }
 
 /**
- * Evaluates due todos and records a reminder only after notification creation succeeds.
+ * Evaluates due todos and records each reminder only after its notified mark
+ * is durable. The notified map is persisted before the notification is shown
+ * so a failed write (chrome.runtime.lastError) rolls the marks back, fails
+ * the check, and skips the notification — otherwise the next alarm check would
+ * reload the stale map and repeat the reminder on every interval (#994).
+ * Marks are pre-persisted as PENDING_NOTIFIED_MARK and confirmed with a
+ * timestamp only after the notification is created: a failed creation is
+ * rolled back so the final persist in runReminderCheck keeps the reminder
+ * retryable (#743), and if even that cleanup write fails the durable
+ * PENDING_NOTIFIED_MARK is retried by the next check instead of suppressing
+ * the reminder forever.
  */
 async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime) {
-  let updated = false;
   let warnedUpdated = false;
   const now = new Date();
+  const pending = [];
   for (const todo of todos) {
     const candidate = getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, leadTime);
     if (candidate.warnedUpdated) warnedUpdated = true;
     if (candidate.skip) continue;
-    const notificationCreated = await showTodoNotification(todo, candidate.dueDisplay);
-    if (!notificationCreated) continue;
-    notified[candidate.notifiedKey] = Date.now();
-    updated = true;
+    pending.push({ todo, candidate });
   }
-  return { updated, warnedUpdated };
+  if (pending.length > 0) {
+    for (const { candidate } of pending) {
+      notified[candidate.notifiedKey] = PENDING_NOTIFIED_MARK;
+    }
+    try {
+      await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
+    } catch (e) {
+      for (const { candidate } of pending) {
+        delete notified[candidate.notifiedKey];
+      }
+      throw e;
+    }
+    for (const { todo, candidate } of pending) {
+      const notificationCreated = await showTodoNotification(todo, candidate.dueDisplay);
+      if (notificationCreated) {
+        notified[candidate.notifiedKey] = Date.now();
+      } else {
+        delete notified[candidate.notifiedKey];
+      }
+    }
+  }
+  return { updated: pending.length > 0, warnedUpdated };
 }
 
 async function runReminderCheck(todosJson, options = {}) {
@@ -276,6 +338,13 @@ async function runReminderCheck(todosJson, options = {}) {
   }
 
   const reminderResult = await evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime);
+  // A failed write rejects here on purpose: a check whose notified map could
+  // not be persisted has failed, and the callers (alarm listener, queued path,
+  // sync response) already surface that rejection. When candidates were
+  // attempted, this write confirms the PENDING_NOTIFIED_MARK of every shown
+  // notification and stores any marks rolled back after a failed creation,
+  // keeping those reminders retryable; if the write itself fails, the durable
+  // PENDING_NOTIFIED_MARK still retries them on the next check.
   if (reminderResult.updated || staleNotifiedUpdated || staleWarnedUpdated || reminderResult.warnedUpdated || resetApplied) {
     await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
   }
