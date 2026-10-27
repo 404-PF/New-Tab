@@ -134,3 +134,48 @@ describe('bug-find/feature-find split (#921)', () => {
     });
   });
 });
+
+describe('find-workflows refill after mass-close (#1015)', () => {
+  let bug;
+  let feature;
+
+  beforeAll(() => {
+    bug = readFileSync(BUG_PATH, 'utf-8');
+    feature = readFileSync(FEATURE_PATH, 'utf-8');
+  });
+
+  it('shortens the gate cooldown from 6h to 2h in both workflows', () => {
+    [bug, feature].forEach((wf) => {
+      expect(wf).toMatch(/COOLDOWN_SECONDS=\$\(\( 2 \* 3600 \)\)/);
+      expect(wf).not.toMatch(/COOLDOWN_SECONDS=\$\(\( 6 \* 3600 \)\)/);
+      // Manual dispatch still bypasses the cooldown.
+      expect(wf).toMatch(/if \[ "\$EVENT_NAME" != 'workflow_dispatch' \]; then/);
+    });
+    // The legacy-marker counting that guards the first post-rename run stays.
+    expect(bug).toMatch(/LEGACY_MARKER='<!-- issue-find -->'/);
+  });
+
+  it('recounts the open pool under the concurrency slot before the agent', () => {
+    [bug, feature].forEach((wf) => {
+      const recountToAgent = wf.match(
+        /- name: Recount open issues before starting the agent[\s\S]*?- name: (?:Find issues|Find features) with OpenCode/
+      );
+      expect(recountToAgent).not.toBeNull();
+      expect(recountToAgent[0]).toMatch(/id: recount/);
+      expect(recountToAgent[0]).toContain('issues(states: OPEN) { totalCount }');
+      expect(recountToAgent[0]).toMatch(/if \[ "\$CURRENT" -ge "\$TARGET" \]; then/);
+      expect(recountToAgent[0]).toMatch(/echo 'skip=true' >> "\$GITHUB_OUTPUT"/);
+      // The agent must not run when the queue waited out a closure burst;
+      // that was the "Accepted N ... Created 0" waste path.
+      expect(wf).toMatch(
+        /id: agent\n {8}# Skipped when the recount above found the pool already at target\.\n {8}if: steps\.recount\.outputs\.skip != 'true'\n/
+      );
+    });
+  });
+
+  it('keeps the create-step per-creation recount as defense in depth (#1015)', () => {
+    [bug, feature].forEach((wf) => {
+      expect(wf).toContain('Recount before every issue so concurrent filings never overshoot.');
+    });
+  });
+});

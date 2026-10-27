@@ -56,7 +56,11 @@ jobs:
           set -euo pipefail
           skip() { echo "$1"; echo 'to_file=0' >> "$GITHUB_OUTPUT"; exit 0; }
           HARD_MAX=10
-          COOLDOWN_SECONDS=$(( 6 * 3600 ))
+          # 2h, not 6h: after a mass-close the next auto-merge close must be
+          # able to refill the pool without waiting for the 6h cron (observed
+          # up to +5h late). Free-tier agent churn from the extra issue-event
+          # runs is capped by the pre-agent pool recount in the find job.
+          COOLDOWN_SECONDS=$(( 2 * 3600 ))
           MARKER='<!-- bug-find -->'
           # Issues filed by the pre-rename workflow carry the old marker; the
           # cooldown counts both so the first post-rename run cannot bypass it.
@@ -95,8 +99,8 @@ jobs:
           echo "Open issues: $CURRENT, target: $TARGET, max_new: $MAX_NEW, to_file: $TO_FILE"
           [ "$TO_FILE" -gt 0 ] || skip 'At or above target; nothing to file.'
 
-          # 6-hour cooldown from the newest issue carrying either marker (new
-          # or pre-rename). Manual dispatch overrides it.
+          # Cooldown from the newest issue carrying either marker (new or
+          # pre-rename). Manual dispatch overrides it.
           if [ "$EVENT_NAME" != 'workflow_dispatch' ]; then
             # GraphQL issues() with no states filter covers every state and
             # never includes PRs.
@@ -151,6 +155,32 @@ jobs:
         with:
           persist-credentials: false
 
+      # to_file was computed at gate time, which can be an hour or more before
+      # this job gets the shared concurrency slot; a queue that waited out a
+      # closure burst would otherwise run the agent for nothing and file zero
+      # issues at the create-step recount. Recount under the slot; the agent
+      # is gated on the result. The create-step recount stays as defense in
+      # depth against overshoot.
+      - name: Recount open issues before starting the agent
+        id: recount
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # GraphQL issues() never includes pull requests.
+          # shellcheck disable=SC2016 # GraphQL variables, not shell
+          CURRENT="$(gh api graphql -F owner="${GH_REPO%%/*}" -F name="${GH_REPO#*/}" \
+            -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { issues(states: OPEN) { totalCount } } }' \
+            --jq .data.repository.issues.totalCount)"
+          echo "Open issues: $CURRENT, target: $TARGET"
+          if [ "$CURRENT" -ge "$TARGET" ]; then
+            echo 'skip=true' >> "$GITHUB_OUTPUT"
+            echo "Open pool at or above target ($CURRENT >= $TARGET); not starting the agent."
+          else
+            echo 'skip=false' >> "$GITHUB_OUTPUT"
+          fi
+
       # Reviewed lockfile: npm ci installs exactly the reviewed tree and
       # verifies every tarball's integrity hash against the reviewed hashes in
       # .github/opencode/package-lock.json before any of it can run, so only
@@ -202,6 +232,8 @@ jobs:
       # agent failure is reported by "Report agent failure" below.
       - name: Find issues with OpenCode
         id: agent
+        # Skipped when the recount above found the pool already at target.
+        if: steps.recount.outputs.skip != 'true'
         timeout-minutes: 60
         continue-on-error: true
         env:
