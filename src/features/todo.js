@@ -533,7 +533,7 @@
         priorityBadge.className = `todo-priority-badge priority-${todoPriority}`;
         const priorityLabelKeys = { high: 'priorityHigh', low: 'priorityLow' };
         const priorityKey = priorityLabelKeys[todoPriority];
-        priorityBadge.textContent = priorityKey && window.i18n ? window.i18n.t(priorityKey) : todoPriority.charAt(0).toUpperCase() + todoPriority.slice(1);
+        priorityBadge.textContent = priorityKey && window.i18n ? window.i18n.t(priorityKey) : String(todoPriority).charAt(0).toUpperCase() + String(todoPriority).slice(1);
         todoContent.appendChild(priorityBadge);
       }
 
