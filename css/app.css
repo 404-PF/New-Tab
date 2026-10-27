@@ -3917,7 +3917,9 @@ body.light-theme .ai-message-copy.copy-error {
 }
 
 .ai-regenerate:focus {
-  outline: none;
+  /* Keep a transparent outline so forced-colors mode can still show focus
+     when it suppresses the box-shadow ring below. */
+  outline: 2px solid transparent;
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
 }
 

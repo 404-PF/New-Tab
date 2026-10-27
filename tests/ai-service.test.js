@@ -1236,6 +1236,30 @@ describe('AIService regenerate (#997)', () => {
     expect(conversation.messages[1].id).not.toBe('a1');
   });
 
+  it('restores the previous answer when the regeneration fails', async () => {
+    const conversation = seedRegenerateConversation([
+      { id: 'u1', role: 'user', content: 'Prompt', timestamp: Date.now() },
+      { id: 'a1', role: 'assistant', content: 'Old answer', timestamp: Date.now(), isStreaming: false }
+    ]);
+    const apiCall = vi.fn().mockResolvedValue({ success: false, error: 'mock API error' });
+    OpenRouterAPI.sendMessageStreaming = apiCall;
+
+    expect(await AIService.regenerate()).toBe(true);
+
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    // The replaced answer survives the failed request: only the empty bubble
+    // the retry created was removed, then the original came back.
+    expect(conversation.messages).toHaveLength(2);
+    expect(conversation.messages[0].id).toBe('u1');
+    expect(conversation.messages[1]).toMatchObject({
+      id: 'a1',
+      role: 'assistant',
+      content: 'Old answer',
+      isStreaming: false
+    });
+    expect(document.getElementById('ai-chat-error').textContent).toBe('mock API error');
+  });
+
   it('re-sends through the sendMessage pipeline with the current grounding setting', async () => {
     try {
       OpenRouterAPI.isWebGroundingEnabled = () => true;
@@ -1327,6 +1351,16 @@ describe('AIService regenerate (#997)', () => {
     expect(conversation.messages.filter(m => m.role === 'user')).toHaveLength(1);
     expect(container.querySelector('.ai-regenerate')).not.toBeNull();
     expect(container.lastElementChild.classList.contains('ai-regenerate')).toBe(true);
+  });
+
+  it('hides the Regenerate button when no message can be re-sent', () => {
+    seedRegenerateConversation([
+      { id: 'a1', role: 'assistant', content: 'Answer', timestamp: Date.now(), isStreaming: false }
+    ]);
+    const container = document.getElementById('ai-chat-container');
+    AIRenderer.renderMessages();
+
+    expect(container.querySelector('.ai-regenerate')).toBeNull();
   });
 
   it('hides the Regenerate button while a request is in flight', async () => {

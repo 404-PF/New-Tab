@@ -658,7 +658,15 @@ const AIRenderer = (function() {
     if (!container) return;
 
     const messages = AIStore.getCurrentMessages();
-    const shouldShow = messages.length > 0
+    const lastMessage = messages[messages.length - 1];
+    // Mirror regenerate(): it only starts when the trailing message is a user
+    // prompt or an answer with a user prompt above it to re-send.
+    const canRegenerate = lastMessage && (
+      lastMessage.role === 'user'
+      || (lastMessage.role === 'assistant'
+        && messages.some(message => message.role === 'user'))
+    );
+    const shouldShow = canRegenerate
       && !AIStore.state.isLoading
       && !AIStore.state.isStreaming;
 

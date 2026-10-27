@@ -585,9 +585,13 @@ const AIService = (function() {
    * @param {boolean} [options.reuseExistingUserMessage] Regenerate mode: the
    *   prompt is already the last stored user message (its content must match),
    *   so do not append a duplicate copy of it. Used by regenerate().
+   * @param {Function} [options.onFailure] Runs when the request produced no
+   *   answer at all (reuse bail-out, API error without content, thrown
+   *   request). Regenerate mode uses it to restore the answer it replaced.
    */
   async function sendMessage(userMessage, options = {}) {
     const reuseExistingUserMessage = options.reuseExistingUserMessage === true;
+    const onFailure = typeof options.onFailure === 'function' ? options.onFailure : null;
     console.log('[AI Debug] sendMessage called - State:', {
       hasMessage: !!userMessage,
       isLoading: AIStore.state.isLoading,
@@ -620,6 +624,7 @@ const AIService = (function() {
       // regenerate() validated this before mutating anything; if the
       // conversation changed underneath us, bail out instead of appending a
       // second copy of the prompt (or sending a prompt that was removed).
+      if (onFailure) onFailure();
       return;
     }
 
@@ -913,6 +918,7 @@ const AIService = (function() {
         } else {
           showError(result.error);
           removeFailedAssistantMessage(targetConversationId, targetAssistantId);
+          if (onFailure) onFailure();
         }
       }
     } catch (error) {
@@ -929,6 +935,7 @@ const AIService = (function() {
         showError(getTranslation('aiError'));
         console.error('AI sendMessage error:', error);
         removeFailedAssistantMessage(targetConversationId, targetAssistantId);
+        if (onFailure) onFailure();
       }
     }
 
@@ -1013,17 +1020,58 @@ const AIService = (function() {
 
     if (typeof prompt !== 'string' || !prompt.trim()) return false;
 
+    let replacedAnswer = null;
     if (lastMessage.role === 'assistant') {
       // Validate first: never drop the answer if there is nothing to re-send.
       const previousState = AIStore.createSaveSnapshot();
+      replacedAnswer = messages[messages.length - 1];
       messages.splice(messages.length - 1, 1);
       conversation.updatedAt = Date.now();
       rerenderOnSaveFailure(AIStore.saveConversations(previousState));
       renderConversationUI();
     }
 
-    await sendMessage(prompt, { reuseExistingUserMessage: true });
+    const sendOptions = { reuseExistingUserMessage: true };
+    if (replacedAnswer) {
+      // The old answer only leaves the conversation once a replacement is on
+      // the way; a request that fails without producing one brings it back.
+      const conversationId = conversation.id;
+      sendOptions.onFailure = () => restoreReplacedAnswer(conversationId, prompt, replacedAnswer);
+    }
+
+    await sendMessage(prompt, sendOptions);
     return true;
+  }
+
+  /**
+   * Puts back the answer a failed regeneration replaced (issue #997).
+   *
+   * The answer is removed before the request starts so it is not sent to the
+   * API as history; when that request then fails without producing any
+   * content (network error, rate limit), the original answer must not be
+   * lost. It is only re-inserted while the reused prompt is still the last
+   * message: a newer request that already answered owns the tail then, and a
+   * stopped or partial answer is a replacement in its own right.
+   * @param {string} conversationId Conversation that held the answer.
+   * @param {string} prompt The regenerated user prompt.
+   * @param {object} replacedAnswer The removed assistant message.
+   */
+  function restoreReplacedAnswer(conversationId, prompt, replacedAnswer) {
+    const conversation = AIStore.state.conversations.find(item => item.id === conversationId);
+    if (!conversation || !Array.isArray(conversation.messages)) return;
+
+    const lastMessage = conversation.messages[conversation.messages.length - 1];
+    const promptIsLast = lastMessage
+      && lastMessage.role === 'user'
+      && lastMessage.content === prompt;
+    if (!promptIsLast) return;
+    if (conversation.messages.some(message => message.id === replacedAnswer.id)) return;
+
+    const previousState = AIStore.createSaveSnapshot();
+    conversation.messages.push(replacedAnswer);
+    conversation.updatedAt = Date.now();
+    rerenderOnSaveFailure(AIStore.saveConversations(previousState));
+    renderConversationUI();
   }
 
   async function quickSearch(query) {
