@@ -456,4 +456,105 @@ describe('service worker storage lastError handling (issue #994)', () => {
       setSpy.mockRestore();
     }
   });
+
+  it('reports a queued syncTodos check failure instead of acking early', async () => {
+    await seedDueTodo();
+    chrome.runtime.onMessage._clearListeners();
+    injectScript('backgrounds/service-worker.js');
+
+    // Hang the leading check on its storage read so the syncTodos call below
+    // is forced through the pending queue.
+    let resolveFirstGet;
+    const originalGet = chrome.storage.local.get.bind(chrome.storage.local);
+    const getSpy = vi.spyOn(chrome.storage.local, 'get').mockImplementation((keys, callback) => {
+      if (resolveFirstGet) {
+        // Only the leading check hangs; later reads report lastError below.
+        chrome.runtime.lastError = { message: 'storage unavailable' };
+        try {
+          if (callback) callback({});
+        } finally {
+          chrome.runtime.lastError = null;
+        }
+        return;
+      }
+      return new Promise((resolve) => {
+        resolveFirstGet = () => {
+          originalGet(keys, callback).then(resolve);
+        };
+      });
+    });
+
+    const firstPromise = checkReminders();
+
+    const responses = [];
+    const listener = chrome.runtime.onMessage._listeners[0];
+    const keepsChannelOpen = listener(
+      { type: 'syncTodos', todos: JSON.stringify([]), resetNotified: true },
+      { tab: { id: 1 } },
+      (response) => responses.push(response)
+    );
+    expect(keepsChannelOpen).toBe(true);
+
+    try {
+      // Flush microtasks: the queued check has not run, so no response may be
+      // sent yet (the early-ack regression reported ok:true here).
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(responses).toHaveLength(0);
+
+      resolveFirstGet();
+      await firstPromise;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // The queued check's storage failure must reach sendResponse.
+      expect(responses).toEqual([{ ok: false }]);
+    } finally {
+      getSpy.mockRestore();
+    }
+  });
+
+  it('retries a reminder left pending when notification creation and the cleanup write both fail', async () => {
+    await seedDueTodo();
+    const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+    let setCalls = 0;
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementation((items, callback) => {
+      setCalls += 1;
+      if (setCalls === 1) {
+        // Clone the notified map on the successful pre-persist so the
+        // in-memory rollback below cannot mutate the durable copy (the shared
+        // mock otherwise stores the live object).
+        const cloned = {
+          ...items,
+          todoReminderNotified: items.todoReminderNotified
+            ? { ...items.todoReminderNotified }
+            : items.todoReminderNotified
+        };
+        return originalSet(cloned, callback);
+      }
+      failSetWrite(items, callback);
+    });
+    const createSpy = vi.spyOn(chrome.notifications, 'create')
+      .mockRejectedValueOnce(new Error('Permission denied'));
+
+    try {
+      await expect(checkReminders()).rejects.toThrow('QUOTA_BYTES quota exceeded');
+      expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+
+      // The pre-persisted mark must stay retryable, not become a durable
+      // timestamp that suppresses the reminder forever.
+      const pendingData = await chrome.storage.local.get('todoReminderNotified');
+      expect(pendingData.todoReminderNotified).toEqual({ 'due_2026-08-11': 'pending' });
+
+      setSpy.mockRestore();
+      createSpy.mockRestore();
+      await checkReminders();
+
+      expect(Object.keys(chrome.notifications._notifications)).toEqual(['todo_reminder_due']);
+      const data = await chrome.storage.local.get('todoReminderNotified');
+      expect(data.todoReminderNotified).toHaveProperty('due_2026-08-11');
+      expect(typeof data.todoReminderNotified['due_2026-08-11']).toBe('number');
+    } finally {
+      setSpy.mockRestore();
+      createSpy.mockRestore();
+    }
+  });
 });

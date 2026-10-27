@@ -1767,14 +1767,16 @@ describe('Service worker checkReminders', () => {
     const todos = [{ id: 't1', text: 'Buy groceries', completed: false, dueDate: '2026-05-20' }];
     await new Promise(resolve => chrome.storage.local.set({ todos: JSON.stringify(todos) }, resolve));
 
-    // Second call should see in-progress guard and set pending flag, then return
-    await checkReminders();
+    // Second call queues behind the in-flight check; its promise settles only
+    // after the queued check has actually run.
+    const secondPromise = checkReminders();
 
     // Resolve the first call's storage hang
     resolveFirstGet();
 
     // Wait for the first check + follow-up to complete
     await firstPromise;
+    await secondPromise;
 
     // The follow-up should have processed the mutated todo and fired a notification
     const notifKeys = Object.keys(chrome.notifications._notifications);
@@ -1885,10 +1887,13 @@ describe('Service worker checkReminders', () => {
 
     const firstPromise = checkReminders(JSON.stringify([{ id: 't1', text: 'First data', completed: false, dueDate: '2026-05-20' }]));
 
-    await checkReminders(JSON.stringify([{ id: 't2', text: 'Second data', completed: false, dueDate: '2026-05-20' }]));
+    // Queues behind the in-flight check and settles once that queued run
+    // finishes with the latest data.
+    const secondPromise = checkReminders(JSON.stringify([{ id: 't2', text: 'Second data', completed: false, dueDate: '2026-05-20' }]));
 
     resolveFirstGet();
     await firstPromise;
+    await secondPromise;
 
     const notifKeys = Object.keys(chrome.notifications._notifications);
     expect(notifKeys).toHaveLength(1);
