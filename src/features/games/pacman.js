@@ -367,12 +367,14 @@
 
   function queueTurn(dir) {
     if (!isValidDirection(dir) || !pacman) return;
-    // A held key's auto-repeats arrive as the same direction over and over:
-    // drop them when they match the pending tail or the direction already in
-    // effect so a repeat can never duplicate a queued turn or re-trigger the
-    // mid-turn reverse (#1016).
-    const pending = queue.length > 0 ? queue[queue.length - 1] : null;
-    if (dir === pending || dir === pacman.dir) return;
+    // A direction matching the effective intent — the pending tail when one
+    // is queued, otherwise the direction already in effect — is a no-op, so
+    // a held key's repeats never duplicate a queued turn. A fresh press of
+    // the current direction still buffers behind a queued turn; only
+    // auto-repeats of the direction in effect are filtered in handleKeydown
+    // so a held key can never re-trigger the mid-turn reverse (#1016).
+    const effective = queue.length > 0 ? queue[queue.length - 1] : pacman.dir;
+    if (dir === effective) return;
     if (pacman.b && dir === OPPOSITE[pacman.dir]) {
       reverseEntity(pacman);
       queue.length = 0;
@@ -1097,6 +1099,10 @@
     const dir = window.gamesHelpers.parseDirection(e);
     if (dir) {
       e.preventDefault();
+      // Auto-repeats of the direction already in effect are not new turns:
+      // drop them here so a fresh press of the current direction can still
+      // buffer behind a queued turn (#1016).
+      if (e.repeat && pacman && dir === pacman.dir) return;
       queueTurn(dir);
     }
   }

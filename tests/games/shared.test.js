@@ -371,6 +371,16 @@ describe('gamesHelpers.beginRealTimeKeydown (#1016)', () => {
     input.remove();
   });
 
+  it('leaves Space alone while a button is focused so it stays activatable (#887)', () => {
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    const e = keydown({ key: ' ', code: 'Space' });
+    button.dispatchEvent(e);
+    expect(window.gamesHelpers.beginRealTimeKeydown(e)).toBe(true);
+    expect(e.defaultPrevented).toBe(false);
+    button.remove();
+  });
+
   it('treats a missing event as ignorable', () => {
     expect(window.gamesHelpers.beginRealTimeKeydown(null)).toBe(false);
     expect(window.gamesHelpers.beginRealTimeKeydown(undefined)).toBe(false);
