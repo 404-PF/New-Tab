@@ -322,6 +322,71 @@ describe('gamesHelpers.beginGameKeydown (#876/#887)', () => {
   });
 });
 
+describe('gamesHelpers.beginRealTimeKeydown (#1016)', () => {
+  function keydown(init) {
+    return new KeyboardEvent('keydown', { cancelable: true, bubbles: true, ...init });
+  }
+
+  it('lets a fresh direction key through and swallows its page scroll', () => {
+    const e = keydown({ key: 'ArrowLeft', code: 'ArrowLeft' });
+    expect(window.gamesHelpers.beginRealTimeKeydown(e)).toBe(true);
+    expect(e.defaultPrevented).toBe(true);
+  });
+
+  it('lets an auto-repeated direction key through so a held key keeps steering', () => {
+    const e = keydown({ key: 'ArrowLeft', code: 'ArrowLeft', repeat: true });
+    expect(window.gamesHelpers.beginRealTimeKeydown(e)).toBe(true);
+    // The held key still cannot scroll the page behind the game.
+    expect(e.defaultPrevented).toBe(true);
+  });
+
+  it('drops an auto-repeated Space so a held Space cannot flicker pause', () => {
+    const repeat = keydown({ key: ' ', code: 'Space', repeat: true });
+    expect(window.gamesHelpers.beginRealTimeKeydown(repeat)).toBe(false);
+    // Even the dropped repeat cannot scroll the page behind the game.
+    expect(repeat.defaultPrevented).toBe(true);
+
+    const fresh = keydown({ key: ' ', code: 'Space' });
+    expect(window.gamesHelpers.beginRealTimeKeydown(fresh)).toBe(true);
+  });
+
+  it('drops auto-repeats of non-direction keys', () => {
+    const repeat = keydown({ key: 'Enter', code: 'Enter', repeat: true });
+    expect(window.gamesHelpers.beginRealTimeKeydown(repeat)).toBe(false);
+  });
+
+  it('drops modified shortcuts without swallowing their default', () => {
+    const modified = keydown({ key: 'ArrowLeft', code: 'ArrowLeft', ctrlKey: true });
+    expect(window.gamesHelpers.beginRealTimeKeydown(modified)).toBe(false);
+    expect(modified.defaultPrevented).toBe(false);
+  });
+
+  it('drops keys typed into editable targets without swallowing their default', () => {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    const e = keydown({ key: 'a', code: 'KeyA' });
+    input.dispatchEvent(e);
+    expect(window.gamesHelpers.beginRealTimeKeydown(e)).toBe(false);
+    expect(e.defaultPrevented).toBe(false);
+    input.remove();
+  });
+
+  it('leaves Space alone while a button is focused so it stays activatable (#887)', () => {
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    const e = keydown({ key: ' ', code: 'Space' });
+    button.dispatchEvent(e);
+    expect(window.gamesHelpers.beginRealTimeKeydown(e)).toBe(true);
+    expect(e.defaultPrevented).toBe(false);
+    button.remove();
+  });
+
+  it('treats a missing event as ignorable', () => {
+    expect(window.gamesHelpers.beginRealTimeKeydown(null)).toBe(false);
+    expect(window.gamesHelpers.beginRealTimeKeydown(undefined)).toBe(false);
+  });
+});
+
 describe('gamesHelpers.togglePauseOnSpace (#876)', () => {
   function keydown(init) {
     return new KeyboardEvent('keydown', { cancelable: true, bubbles: true, ...init });

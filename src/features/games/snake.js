@@ -632,8 +632,11 @@
   // The shared key helpers in shared.js always load before this game (the
   // Games hub loader and the tests both load them first, the assumption
   // Pac-Man already makes), so the handler calls them directly (#876/#887).
+  // Snake steers in real time, so it uses the real-time variant that lets a
+  // held direction key's auto-repeat keep the turn pending while the queue
+  // is full or the turn is not yet legal (#1016).
   function handleKeydown(e) {
-    if (!window.gamesHelpers.beginGameKeydown(e)) return;
+    if (!window.gamesHelpers.beginRealTimeKeydown(e)) return;
 
     // Ignore all steering until the player has started the run.
     if (!started) return;

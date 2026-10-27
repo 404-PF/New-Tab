@@ -473,21 +473,49 @@ describe('Snake frame-driven input (#876)', () => {
     }
   });
 
-  it('ignores OS auto-repeat but applies a real WASD press on the next frames', () => {
+  it('steers with a held direction key on the next tick instead of dropping auto-repeat (#1016)', () => {
     vi.useFakeTimers();
     let container = null;
     let game = null;
     try {
       ({ container, game } = startGame());
-      // Auto-repeats are dropped instead of flooding the turn queue.
+      // A held direction key's auto-repeat is steering input: the first
+      // repeat queues the turn and the next tick applies it (auto-repeat
+      // used to be discarded, so the intent was lost until re-pressed).
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp', repeat: true }));
-      vi.advanceTimersByTime(300);
-      expect(game.serialize().direction).toBe('right');
-
-      // A real W press (parsed from e.code) is consumed by the next tick.
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', code: 'KeyW' }));
       vi.advanceTimersByTime(200);
       expect(game.serialize().direction).toBe('up');
+
+      // Repeats stay idempotent while the key is still held.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp', repeat: true }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp', repeat: true }));
+      expect(game.serialize().directionQueue).toEqual([]);
+      vi.advanceTimersByTime(100);
+      expect(game.serialize().direction).toBe('up');
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('does not flicker pause while Space is held (#1016)', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      const headBefore = game.serialize().snake[0];
+      // A repeated Space is dropped, so the held key never toggles pause.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', repeat: true }));
+      vi.advanceTimersByTime(300);
+      const headAfter = game.serialize().snake[0];
+      expect(headAfter).not.toEqual(headBefore);
+      // A fresh Space still pauses.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+      const headWhilePaused = game.serialize().snake[0];
+      vi.advanceTimersByTime(300);
+      expect(game.serialize().snake[0]).toEqual(headWhilePaused);
     } finally {
       vi.useRealTimers();
       if (game) game.destroy();
