@@ -395,7 +395,7 @@ window.i18n.__registerLocale('ko', {
   dataImportReplaceSuccess: '모든 설정을 가져온 데이터로 바꾸었습니다.',
   dataImportPartialSuccess: '일부 오류와 함께 가져오기가 완료되었습니다. 일부 오래된 데이터를 삭제할 수 없었습니다.',
   dataImportLateWriteFailure: '가져오기가 끝난 후 일부 가져온 데이터를 저장하지 못했습니다.',
-  dataExportMediaSkipped: '백업을 생성했지만 일부 사용자 정의 배경이 너무 커서 포함되지 않았습니다.',
+  dataExportMediaSkipped: '백업을 생성했지만 일부 사용자 정의 배경을 포함하지 못했습니다.',
   dataImportInvalidCustomBackgrounds: '백업에 잘못된 사용자 정의 배경 데이터가 포함되어 있습니다.',
   dataImportInvalidMedia: '백업의 일부 사용자 정의 배경 미디어 데이터가 잘못되었습니다.',
   dataImportMediaTooLarge: '백업의 일부 사용자 정의 배경이 크기 제한을 초과했습니다.',

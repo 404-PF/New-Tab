@@ -511,7 +511,7 @@ const translations = {
     dataImportReplaceSuccess: 'Replaced all settings with imported data.',
     dataImportPartialSuccess: 'Import completed with some errors. Some old data could not be removed.',
     dataImportLateWriteFailure: 'Some imported data failed to save after the import finished.',
-    dataExportMediaSkipped: 'Backup created, but some custom background media was too large to include.',
+    dataExportMediaSkipped: 'Backup created, but some custom background media could not be included.',
     dataImportInvalidCustomBackgrounds: 'The backup contains invalid custom background data.',
     dataImportInvalidMedia: 'A custom background in this backup has invalid media data.',
     dataImportMediaTooLarge: 'A custom background in this backup exceeds the size limit.',

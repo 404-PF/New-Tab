@@ -382,7 +382,7 @@ window.i18n.__registerLocale('de', {
   dataImportReplaceSuccess: 'Alle Einstellungen durch importierte Daten ersetzt.',
   dataImportPartialSuccess: 'Import mit Fehlern abgeschlossen. Einige alte Daten konnten nicht entfernt werden.',
   dataImportLateWriteFailure: 'Einige importierte Daten konnten nach Abschluss des Imports nicht gespeichert werden.',
-  dataExportMediaSkipped: 'Sicherung erstellt, aber einige benutzerdefinierte Hintergründe waren zu groß, um enthalten zu sein.',
+  dataExportMediaSkipped: 'Sicherung erstellt, aber einige benutzerdefinierte Hintergründe konnten nicht einbezogen werden.',
   dataImportInvalidCustomBackgrounds: 'Die Sicherung enthält ungültige benutzerdefinierte Hintergrunddaten.',
   dataImportInvalidMedia: 'Die Mediendaten eines benutzerdefinierten Hintergrunds in der Sicherung sind ungültig.',
   dataImportMediaTooLarge: 'Ein benutzerdefinierter Hintergrund in der Sicherung überschreitet die Größenbegrenzung.',

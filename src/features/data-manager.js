@@ -394,6 +394,18 @@
     return Math.floor(base64.length * 3 / 4) - padding;
   }
 
+  // atob rejects payloads with a bad length or misplaced padding even though
+  // MEDIA_DATA_URL_PATTERN accepts them. Decoding here guarantees that
+  // dataUrlToBlob will not throw while restoring a backup.
+  function isValidBase64Payload(payload) {
+    try {
+      atob(payload);
+      return true;
+    } catch (_e) {
+      return false;
+    }
+  }
+
   function blobToDataUrl(blob) {
     return new Promise(function (resolve, reject) {
       const reader = new FileReader();
@@ -517,7 +529,7 @@
       setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
 
       if (result.mediaSkipped > 0) {
-        showToast(t('dataExportMediaSkipped', 'Backup created, but some custom background media was too large to include.'), 'warning');
+        showToast(t('dataExportMediaSkipped', 'Backup created, but some custom background media could not be included.'), 'warning');
       } else {
         showToast(t('dataExportSuccess', 'Data exported successfully.'), 'success');
       }
@@ -741,7 +753,9 @@
   // Shape and media-size validation for the `_customBackgroundsMetadata`
   // record. Entries without `media` are legacy v1 metadata and stay valid so
   // older backups keep importing exactly as before; only `_`-prefixed keys
-  // bypass the per-key allowlist/shape sweep above.
+  // bypass the per-key allowlist/shape sweep above. Ids must carry the
+  // `custom_` prefix because that is the only form settings.js recognizes as
+  // a custom background; anything else would be stored but never applied.
   function validateCustomBackgroundsMetadata(entries) {
     const invalidShape = {
       valid: false,
@@ -753,14 +767,14 @@
     const maxTotal = getMaxMediaBytesTotal();
     for (const entry of entries) {
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return invalidShape;
-      if (typeof entry.id !== 'string' || entry.id.trim() === '') return invalidShape;
+      if (typeof entry.id !== 'string' || !entry.id.startsWith('custom_')) return invalidShape;
       if (typeof entry.type !== 'string' || entry.type.trim() === '') return invalidShape;
       if (entry.title !== undefined && typeof entry.title !== 'string') return invalidShape;
       if (entry.thumb !== undefined && typeof entry.thumb !== 'string') return invalidShape;
       if (entry.timestamp !== undefined && typeof entry.timestamp !== 'number') return invalidShape;
       if (entry.media === undefined) continue;
       const match = typeof entry.media === 'string' ? MEDIA_DATA_URL_PATTERN.exec(entry.media) : null;
-      if (!match) {
+      if (!match || !isValidBase64Payload(match[2])) {
         return {
           valid: false,
           error: t('dataImportInvalidMedia', 'A custom background in this backup has invalid media data.')
@@ -924,6 +938,9 @@
     // Writes the settings keys themselves. Runs only after the backup's
     // custom background media has been restored to IndexedDB, so an imported
     // `homepageBg` never references a `custom_*` id whose blob is missing.
+    // When that restore failed (`mediaRestored` false) the custom
+    // `homepageBg` is skipped so the current value survives instead of
+    // pointing at a blob that was never written.
     const applySettingsKeys = function (mode, mediaRestored) {
       const keys = Object.keys(importedData);
       let count = 0;
@@ -949,6 +966,12 @@
           // Drop transient runtime state mixed into settings objects
           const importedValue = pickPersistentFields(key, importedData[key]);
           if (importedValue === null) return;
+          // Media restore failed: a custom homepageBg would dangle, so keep
+          // the value currently in storage instead (issue #996).
+          if (!mediaRestored && key === 'homepageBg'
+            && typeof importedValue === 'string' && importedValue.indexOf('custom_') === 0) {
+            return;
+          }
           if (mode === 'merge') {
             // For arrays, merge by ID where possible; for objects, shallow merge
             const current = readStorage(key);

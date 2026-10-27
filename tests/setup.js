@@ -623,7 +623,7 @@ globalThis.window.i18n = {
       searchProviderInvalidName: 'Enter a name for the search provider.',
       searchProviderInvalidUrl: 'Enter a valid URL with {query} and http(s).',
       dataImportLateWriteFailure: 'Some imported data failed to save after the import finished.',
-      dataExportMediaSkipped: 'Backup created, but some custom background media was too large to include.',
+      dataExportMediaSkipped: 'Backup created, but some custom background media could not be included.',
       dataImportInvalidCustomBackgrounds: 'The backup contains invalid custom background data.',
       dataImportInvalidMedia: 'A custom background in this backup has invalid media data.',
       dataImportMediaTooLarge: 'A custom background in this backup exceeds the size limit.',

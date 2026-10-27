@@ -395,7 +395,7 @@ window.i18n.__registerLocale('ja', {
   dataImportReplaceSuccess: 'すべての設定をインポートデータに置き換えました。',
   dataImportPartialSuccess: 'インポートは一部エラーで完了しました。一部の古いデータを削除できませんでした。',
   dataImportLateWriteFailure: 'インポート完了後に、一部のインポートデータを保存できませんでした。',
-  dataExportMediaSkipped: 'バックアップを作成しましたが、一部のカスタム背景が大きすぎるため含まれていません。',
+  dataExportMediaSkipped: 'バックアップを作成しましたが、一部のカスタム背景を含められませんでした。',
   dataImportInvalidCustomBackgrounds: 'バックアップに無効なカスタム背景データが含まれています。',
   dataImportInvalidMedia: 'バックアップ内のカスタム背景のメディアデータが無効です。',
   dataImportMediaTooLarge: 'バックアップ内のカスタム背景がサイズ上限を超えています。',

@@ -382,7 +382,7 @@ window.i18n.__registerLocale('pt', {
   dataImportReplaceSuccess: 'Todas as configurações substituídas pelos dados importados.',
   dataImportPartialSuccess: 'Importação concluída com alguns erros. Alguns dados antigos não puderam ser removidos.',
   dataImportLateWriteFailure: 'Alguns dados importados não puderam ser salvos após a conclusão da importação.',
-  dataExportMediaSkipped: 'Backup criado, mas alguns planos de fundo personalizados eram grandes demais para serem incluídos.',
+  dataExportMediaSkipped: 'Backup criado, mas alguns planos de fundo personalizados não puderam ser incluídos.',
   dataImportInvalidCustomBackgrounds: 'O backup contém dados de plano de fundo personalizados inválidos.',
   dataImportInvalidMedia: 'Os dados de mídia de um plano de fundo personalizado no backup são inválidos.',
   dataImportMediaTooLarge: 'Um plano de fundo personalizado no backup excede o limite de tamanho.',

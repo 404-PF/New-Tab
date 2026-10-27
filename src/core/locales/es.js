@@ -382,7 +382,7 @@ window.i18n.__registerLocale('es', {
   dataImportReplaceSuccess: 'Toda la configuración reemplazada con los datos importados.',
   dataImportPartialSuccess: 'Importación completada con algunos errores. No se pudieron eliminar algunos datos antiguos.',
   dataImportLateWriteFailure: 'Algunos datos importados no se pudieron guardar después de finalizar la importación.',
-  dataExportMediaSkipped: 'Se creó la copia de seguridad, pero algunos fondos personalizados eran demasiado grandes para incluirlos.',
+  dataExportMediaSkipped: 'Se creó la copia de seguridad, pero algunos fondos personalizados no pudieron incluirse.',
   dataImportInvalidCustomBackgrounds: 'La copia de seguridad contiene datos de fondos personalizados no válidos.',
   dataImportInvalidMedia: 'Los datos multimedia de un fondo personalizado en la copia de seguridad no son válidos.',
   dataImportMediaTooLarge: 'Un fondo personalizado de la copia de seguridad supera el límite de tamaño.',

@@ -890,7 +890,7 @@ describe('DataManager custom background media backups (issue #996)', () => {
       }]);
       expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
       expect(showToastSpy).toHaveBeenCalledWith(
-        'Backup created, but some custom background media was too large to include.',
+        'Backup created, but some custom background media could not be included.',
         'warning'
       );
     } finally {
@@ -927,6 +927,19 @@ describe('DataManager custom background media backups (issue #996)', () => {
       error: 'A custom background in this backup has invalid media data.'
     });
     expect(validate([{ ...mediaEntry, media: 'data:image/jpeg;base64,@@@' }]).valid).toBe(false);
+    // Payloads the pattern accepts but atob rejects (bad length or misplaced
+    // padding) must fail validation instead of throwing during the restore.
+    expect(validate([{ ...mediaEntry, media: 'data:image/jpeg;base64,abcde' }])).toEqual({
+      valid: false,
+      error: 'A custom background in this backup has invalid media data.'
+    });
+    expect(validate([{ ...mediaEntry, media: 'data:image/jpeg;base64,abcd==' }]).valid).toBe(false);
+    // Only `custom_` ids are recognized as custom backgrounds; anything else
+    // would be stored but never applied.
+    expect(validate([{ ...mediaEntry, id: 'background_1' }])).toEqual({
+      valid: false,
+      error: 'The backup contains invalid custom background data.'
+    });
 
     window.DataManager.maxMediaBytesPerRecord = 2;
     try {
@@ -1016,6 +1029,7 @@ describe('DataManager custom background media backups (issue #996)', () => {
   });
 
   it('reports a partial import when restoring background media fails', async () => {
+    localStorage.setItem('homepageBg', 'Water Beside Forest');
     const restoreStub = stubCustomBackgrounds({
       save: vi.fn().mockRejectedValue(new Error('IndexedDB unavailable')),
       getAll: vi.fn().mockResolvedValue([])
@@ -1028,6 +1042,9 @@ describe('DataManager custom background media backups (issue #996)', () => {
       }, 'merge');
 
       expect(result.type).toBe('warning');
+      // The imported custom homepageBg is skipped while its media is missing,
+      // so the current background keeps pointing at real media.
+      expect(localStorage.getItem('homepageBg')).toBe('Water Beside Forest');
     } finally {
       restoreStub();
     }
