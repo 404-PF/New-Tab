@@ -120,6 +120,15 @@ const OpenRouterAPI = (function() {
   }
 
   /**
+   * Drop the cached preference so the next read comes from storage.
+   * A settings import re-renders the toggle as soon as its writes settle;
+   * the onChanged echo of that same write may not have landed yet.
+   */
+  function invalidateWebGroundingCache() {
+    webGroundingEnabled = null;
+  }
+
+  /**
    * Get language-aware system prompt
    * @returns {string} System prompt in the user's language
    */
@@ -612,7 +621,7 @@ const OpenRouterAPI = (function() {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if ((areaName === 'local' || areaName === 'sync') &&
           Object.prototype.hasOwnProperty.call(changes || {}, GROUNDING_STORAGE_KEY)) {
-        webGroundingEnabled = null;
+        invalidateWebGroundingCache();
       }
     });
   }
@@ -630,6 +639,7 @@ const OpenRouterAPI = (function() {
     // Web grounding
     isWebGroundingEnabled,
     setWebGroundingEnabled,
+    invalidateWebGroundingCache,
 
     // API
     sendMessageStreaming,
