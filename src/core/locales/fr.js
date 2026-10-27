@@ -322,7 +322,7 @@ window.i18n.__registerLocale('fr', {
   releaseNotes048SearchQuickLaunch: 'Ajout d\'une barre de lancement rapide de recherche web avec raccourcis clavier',
   releaseNotes048SearchHistoryToggle: 'Ajout d\'un activateur pour l\'historique de recherche',
   releaseNotes048WhatsNewSummary: 'Ajout d\'un résumé Nouveautés après les mises à jour de l\'extension',
-  releaseNotes047BackgroundTabCards: 'Redesign de l\'onglet Arrière-plan avec une disposition en cartes',
+  releaseNotes047BackgroundTabCards: 'Refonte de l\'onglet Arrière-plan avec une disposition en cartes',
   releaseNotes047TodoSubtasks: 'Ajout de sous-tâches et de listes de contrôle aux tâches',
   releaseNotes047ThemeScheduling: 'Ajout de la programmation automatique du thème selon l\'heure de la journée',
   releaseNotes047MarkdownPreview: 'Ajout d\'un bouton d\'aperçu Markdown pour les notes',
