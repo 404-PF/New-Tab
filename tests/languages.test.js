@@ -92,6 +92,11 @@ const AI_TRANSLATION_KEYS = [
 // this list can never drift from the keys languages.js actually defines.
 let GAMES_TRANSLATION_KEYS = [];
 
+// Derived from the exported release-notes data in beforeAll so this list can
+// never drift from src/features/release-notes.js — a newly added raw English
+// bullet (or a key omitted from the locales) fails the check below.
+let RELEASE_NOTES_TRANSLATION_KEYS = [];
+
 let originalLanguage;
 
 beforeAll(() => {
@@ -101,8 +106,12 @@ beforeAll(() => {
   ['zh', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru'].forEach((code) => {
     injectScript('src/core/locales/' + code + '.js');
   });
+  injectScript('src/features/release-notes.js');
   originalLanguage = window.i18n.currentLanguage();
   GAMES_TRANSLATION_KEYS = window.i18n.gamesTranslationKeys;
+  RELEASE_NOTES_TRANSLATION_KEYS = Array.from(
+    new Set(Object.values(window.releaseNotes.RELEASE_NOTES).flat())
+  ).concat('releaseNotesFallback');
 });
 
 afterEach(() => {
@@ -445,21 +454,9 @@ describe('App and todo modal translations', () => {
   });
 });
 
-// Bullets behind the v0.5.4 What's New modal list (src/features/release-notes.js).
-const RELEASE_NOTES_054_TRANSLATION_KEYS = [
-  'releaseNotes054TodoMultiSelect',
-  'releaseNotes054ToolbarIcon',
-  'releaseNotes054GamesAppGrid',
-  'releaseNotes054FasterStartup',
-  'releaseNotes054AiChatHistory',
-  'releaseNotes054ShortcutLabels',
-  'releaseNotes054OnboardingFreeze',
-  'releaseNotes054WeatherSpinner'
-];
-
 describe('Release notes translations', () => {
-  it('defines every v0.5.4 release-note bullet in each supported language', () => {
-    expectTranslationKeys(RELEASE_NOTES_054_TRANSLATION_KEYS, { differFromEnglish: true });
+  it('defines every bundled release-note bullet in each supported language', () => {
+    expectTranslationKeys(RELEASE_NOTES_TRANSLATION_KEYS, { differFromEnglish: true });
   });
 });
 

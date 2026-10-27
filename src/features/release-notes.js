@@ -19,15 +19,17 @@
   // Kept intentionally short so the modal stays readable. Keys MUST match the
   // runtime `manifest.json` version string exactly (semver, no leading 'v').
   //
-  // Each bullet is an i18n key defined in src/core/languages.js (English) and
-  // src/core/locales/<code>.js, so every supported language shows a translated
-  // list. Bullets from older releases are still plain English literals, which
-  // getNotesForVersion passes through unchanged because t() echoes unknown
-  // keys verbatim.
+  // Every bullet — and the fallback below — is an i18n key, never a raw
+  // sentence. English strings live in the inline en table in
+  // src/core/languages.js; the eight non-English locales carry their copies in
+  // src/core/locales/<code>.js, next to the 0.5.4 bullets. getNotesForVersion
+  // renders each key through t(), so a locale whose table has not caught up
+  // falls back to English rather than showing the key name.
   //
   // MAINTENANCE: whenever version.js / manifest.json is bumped for a release,
-  // add a new entry here (plus its i18n keys in every locale, or the modal
-  // falls back to RELEASE_NOTES_FALLBACK).
+  // add a new entry here plus its i18n keys — one English line in the languages.js
+  // en table and one line per non-English locale in src/core/locales/<code>.js —
+  // or the modal falls back to RELEASE_NOTES_FALLBACK.
   const RELEASE_NOTES = {
     '0.5.4': [
       'releaseNotes054TodoMultiSelect',
@@ -40,61 +42,62 @@
       'releaseNotes054WeatherSpinner'
     ],
     '0.5.3': [
-      'Sped up settings modal/tab animations and Games keyboard responsiveness',
-      'Unified in-app notifications into one top-middle toast style',
-      'The Weather app now works without the weather widget enabled',
-      'Fixed offline chat misfires, crashes from certain words, and stuck streaming bubbles after a restart',
-      'Fixed OpenRouter timeouts cutting off long AI answers mid-stream',
-      'Fixed DuckDuckGo search suggestions never appearing',
-      'Fixed untranslated Todo and app dialog labels on non-English languages',
-      'Settings export/import now keeps focus mode and auto-theme scheduling'
+      'releaseNotes053FasterAnimations',
+      'releaseNotes053UnifiedToasts',
+      'releaseNotes053WeatherStandalone',
+      'releaseNotes053OfflineChatFixes',
+      'releaseNotes053OpenRouterTimeouts',
+      'releaseNotes053DuckDuckGoSuggestions',
+      'releaseNotes053UntranslatedLabels',
+      'releaseNotes053ExportKeepsScheduling'
     ],
     '0.5.2': [
-      'Added a Pac-Man maze game to the Games hub',
-      'Added dim, blur, and tint background overlays for readability',
-      'Applied glassmorphism styling to Todo and Notes in the light theme',
-      'Added the option to delete apps straight from the row',
-      'Fixed saves that reported success after storage failures'
+      'releaseNotes052PacmanGame',
+      'releaseNotes052BackgroundOverlays',
+      'releaseNotes052Glassmorphism',
+      'releaseNotes052DeleteFromRow',
+      'releaseNotes052SaveFailureFeedback'
     ],
     '0.5.1': [
-      'Added search suggestions with bang shortcuts and keyboard provider switching',
-      'Added web-grounded AI answers with cited sources',
-      'Added todo due times with timed reminders and minute-accurate overdue states',
-      'Kept todos, notes, and AI data in sync across open tabs',
-      'Blocked unsafe custom app URL schemes'
+      'releaseNotes051SearchSuggestions',
+      'releaseNotes051WebGroundedAi',
+      'releaseNotes051TodoDueTimes',
+      'releaseNotes051CrossTabSync',
+      'releaseNotes051UnsafeUrlSchemes'
     ],
     '0.5.0': [
-      'Added a built-in Games hub with Snake, 2048, Memory Match, and Flappy Bird',
-      'Added a Pomodoro focus timer with configurable work and break durations',
-      'Added focus-session statistics with weekly breakdowns and heatmaps',
-      'Added support for multiple time zone clocks',
-      'Added an hourly weather forecast with rain probabilities'
+      'releaseNotes050GamesHub',
+      'releaseNotes050PomodoroTimer',
+      'releaseNotes050FocusStats',
+      'releaseNotes050MultiTimezoneClocks',
+      'releaseNotes050HourlyForecast'
     ],
     '0.4.8': [
-      'Added a focus-mode layout and shortcut',
-      'Added configurable eye-care break reminders',
-      'Added a daily focus-stats dashboard for todos',
-      'Added a web-search quick-launch bar with keyboard shortcuts',
-      'Added a search-history toggle',
-      'Added a What’s New summary after extension updates'
+      'releaseNotes048FocusModeLayout',
+      'releaseNotes048EyeCareReminders',
+      'releaseNotes048FocusStatsDashboard',
+      'releaseNotes048SearchQuickLaunch',
+      'releaseNotes048SearchHistoryToggle',
+      'releaseNotes048WhatsNewSummary'
     ],
     '0.4.7': [
-      'Redesigned the Background tab with a card-based layout',
-      'Added subtasks and checklists to todo items',
-      'Added automatic theme scheduling by time of day',
-      'Added a markdown preview toggle for notes',
-      'Added full settings import and export support',
-      'Added a multi-day weather forecast',
-      'Added customizable keyboard shortcuts',
-      'Added background rotation and scheduling',
-      'Added configurable todo priority levels'
+      'releaseNotes047BackgroundTabCards',
+      'releaseNotes047TodoSubtasks',
+      'releaseNotes047ThemeScheduling',
+      'releaseNotes047MarkdownPreview',
+      'releaseNotes047SettingsImportExport',
+      'releaseNotes047MultiDayForecast',
+      'releaseNotes047CustomShortcuts',
+      'releaseNotes047BackgroundRotation',
+      'releaseNotes047TodoPriority'
     ]
   };
 
   // Shown when a version has no bundled summary yet (e.g. a future release
   // where this map was not updated). Keeps the modal useful instead of empty.
+  // Keyed like every bullet above so it renders in the active language.
   const RELEASE_NOTES_FALLBACK = [
-    'Check the full changelog for everything included in this update.'
+    'releaseNotesFallback'
   ];
 
   function getCurrentVersion() {
@@ -167,29 +170,40 @@
     window.chrome.storage.onChanged.addListener(installReasonChangeListener);
   }
 
-  // Translate + interpolate. Reuses UpdateChecker.formatMessage so behavior
-  // (including the missing-key fallback) stays consistent with the rest of the
-  // update/notification UI.
+  // Translate + interpolate. Reuses UpdateChecker.formatMessage when present
+  // so behavior stays consistent with the rest of the update/notification UI.
+  // If the lookup echoes the key back (i18n unavailable or the key is missing
+  // everywhere), fall back to the English table so keyed bullets never render
+  // as raw identifiers.
   function t(key, replacements) {
+    let message;
     if (window.updateChecker && typeof window.updateChecker.formatMessage === 'function') {
-      return window.updateChecker.formatMessage(key, replacements || {});
+      message = window.updateChecker.formatMessage(key, replacements || {});
+    } else {
+      message = window.i18n ? window.i18n.t(key) : key;
+      if (typeof message !== 'string') {
+        message = key;
+      }
+      if (replacements) {
+        Object.entries(replacements).forEach(function (entry) {
+          message = message.replace('{' + entry[0] + '}', String(entry[1]));
+        });
+      }
     }
-    let message = window.i18n ? window.i18n.t(key) : key;
-    if (typeof message !== 'string') {
-      message = key;
-    }
-    if (replacements) {
-      Object.entries(replacements).forEach(function (entry) {
-        message = message.replace('{' + entry[0] + '}', String(entry[1]));
-      });
+    if (message === key && window.i18n && typeof window.i18n.getTranslations === 'function') {
+      const english = window.i18n.getTranslations('en') || {};
+      if (typeof english[key] === 'string' && english[key] !== key) {
+        message = english[key];
+      }
     }
     return message;
   }
 
   // Resolve the bundled summary for a version, falling back so the modal is
   // never empty even when this map was not updated for a new release. Every
-  // bullet goes through t() so locale-backed i18n keys render translated,
-  // while legacy English literals (unknown keys) come back verbatim.
+  // bullet is an i18n key rendered through t(), which resolves to the active
+  // language and falls back to English (never the raw key name) when that
+  // locale table has no entry for it yet.
   function getNotesForVersion(version) {
     const notes = RELEASE_NOTES[version] || RELEASE_NOTES_FALLBACK;
     return notes.map(function (note) {
@@ -228,10 +242,10 @@
   }
 
   // Non-English locale tables are lazy-loaded by languages.js, so building the
-  // modal before the active locale registers would show the keyed v0.5.4
-  // bullets in English. Wait for ensureLocale() to settle first so translated
-  // bullets are used, on both the upgrade path and the delayed install-reason
-  // retry. When i18n is unavailable (dev server, unit tests) the modal renders
+  // modal before the active locale registers would show the keyed bullets in
+  // English. Wait for ensureLocale() to settle first so translated bullets are
+  // used, on both the upgrade path and the delayed install-reason retry. When
+  // i18n is unavailable (dev server, unit tests) the modal renders
   // synchronously, keeping detectAndShow() reporting its result with the modal
   // already in the DOM.
   function showReleaseNotesModal(version) {
