@@ -291,14 +291,16 @@ body.light-theme :is(
 }
 
 /* #975: the primary-surface rule above carries an ID-level box-shadow that
-   outranks the shell focus ring, and shell's outline:none outranks the
+   outranks the shell focus ring, and shell's outline rule outranks the
    generic button focus rule — so keyboard focus would vanish in light
-   theme. Restate both at a higher specificity so the ring stays visible. */
+   theme. Restate both at a higher specificity so the ring stays visible.
+   The outline stays transparent (not none) so forced colors still show
+   a focus indicator when box-shadow is suppressed. */
 body.light-theme :is(
   #refresh-motto-btn,
   #copy-motto-btn
 ):focus-visible {
-  outline: none;
+  outline: 2px solid transparent;
   box-shadow: var(--glass-focus-ring);
 }
 

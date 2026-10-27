@@ -72,10 +72,11 @@
 #copy-motto-btn:hover {
   /* The motto bar is a light gray pill even in dark theme, where
      --glass-control-hover (white 0.16) over it differs from the rest
-     surface (white 0.10) by only ~3 gray levels, so use a slate tint
-     that visibly darkens the pill. Light theme overrides this with the
-     glass control hover token. */
-  background: rgba(15, 23, 42, 0.12);
+     surface (white 0.10) by only ~3 gray levels, so use a slate tint.
+     Keep it light so the inherited #666 strokes stay >= 3:1 on the
+     hovered pill. Light theme overrides this with the glass control
+     hover token. */
+  background: rgba(15, 23, 42, 0.06);
   transform: scale(1.08);
 }
 
@@ -86,7 +87,9 @@
 
 #refresh-motto-btn:focus-visible,
 #copy-motto-btn:focus-visible {
-  outline: none;
+  /* Transparent outline keeps a focus indicator when forced colors
+     suppress the box-shadow ring. */
+  outline: 2px solid transparent;
   box-shadow: var(--glass-focus-ring);
 }
 

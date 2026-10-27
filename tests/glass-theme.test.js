@@ -223,7 +223,7 @@ describe('Motto action buttons share the pill glass treatment (#975)', () => {
     );
     expect(rule).not.toBeNull();
     expect(rule[1]).toContain('var(--glass-focus-ring)');
-    expect(rule[1]).toMatch(/outline:\s*none/);
+    expect(rule[1]).toMatch(/outline:\s*2px\s+solid\s+transparent/);
   });
 
   it('keeps the motto button IDs out of the shared control hover group', () => {
@@ -266,7 +266,7 @@ describe('Motto action buttons share the pill glass treatment (#975)', () => {
     expect(body).not.toMatch(/box-shadow/);
     expect(body).not.toMatch(/rgba\(33,\s*150,\s*243/);
     expect(body).not.toContain('var(--glass-control-hover)');
-    expect(body).toMatch(/background:\s*rgba\(15,\s*23,\s*42,\s*0\.12\)/);
+    expect(body).toMatch(/background:\s*rgba\(15,\s*23,\s*42,\s*0\.06\)/);
   });
 
   it('adds a dark-theme focus-visible ring via the shared glass token', () => {
@@ -276,6 +276,7 @@ describe('Motto action buttons share the pill glass treatment (#975)', () => {
     );
     expect(rule).not.toBeNull();
     expect(rule[1]).toContain('var(--glass-focus-ring)');
+    expect(rule[1]).toMatch(/outline:\s*2px\s+solid\s+transparent/);
   });
 
   it('drops the legacy hardcoded light-theme motto button overrides', () => {
