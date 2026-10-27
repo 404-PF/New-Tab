@@ -108,7 +108,7 @@ describe('Background readability overlay (#709)', () => {
     expect(css).toMatch(/\.background-overlay\.inactive\s*\{[^}]*display:\s*none;/);
     expect(css).toMatch(/\.bg-overlay-blur-media \.background-full,[\s\S]*?\.bg-overlay-blur-media \.background-transition-overlay\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*transform:\s*scale\(1\.05\);/);
     expect(css).toMatch(/\.bg-overlay-blur-media:has\(\.background-full\.loaded\) \.background-overlay,[\s\S]*?\.bg-overlay-blur-media:has\(\.background-transition-overlay\.active\) \.background-overlay\s*\{[^}]*backdrop-filter:\s*none;/);
-    expect(css).toMatch(/\.bg-overlay-blur-media \.background-thumbnail\.clearing\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\);/);
+    expect(css).toMatch(/\.bg-overlay-blur-media \.background-thumbnail\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\);/);
     expect(css).toMatch(/\.bg-overlay-blur-media \.background-interactive\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\)\s*saturate\(1\.08\)\s*contrast\(1\.04\);[^}]*transform:\s*scale\(1\.05\);/);
     expect(css).toMatch(/filter:\s*blur\(var\(--bg-overlay-blur\)\);[^}]*transform:\s*translate3d\(0,\s*0,\s*0\)\s*scale\(1\.05\);/);
     expect(css).toMatch(/\.background-video\.active\s*\{[^}]*filter:\s*blur\(var\(--bg-overlay-blur\)\);/);
@@ -143,5 +143,39 @@ describe('Background readability overlay (#709)', () => {
     expect(css).toMatch(
       /\.background-container\.bg-overlay-blur-media:not\(\.video-fallback\):not\(\.video-error\):is\([\s\S]*?\) \.background-overlay\s*\{[^}]*backdrop-filter:\s*none;/
     );
+  });
+});
+
+describe('Background crossfade compositing (#978)', () => {
+  const css = readFileSync(CORE_CSS_PATH, 'utf-8');
+
+  it('never transitions filter on the thumbnail crossfade layers', () => {
+    const thumbnail = css.match(/\.background-thumbnail\s*\{[^}]*\}/);
+    const clearing = css.match(/\.background-thumbnail\.clearing\s*\{[^}]*\}/);
+
+    expect(thumbnail).toBeTruthy();
+    expect(clearing).toBeTruthy();
+    expect(thumbnail[0]).not.toMatch(/transition:[^;]*filter/);
+    expect(clearing[0]).not.toMatch(/transition:[^;]*filter/);
+    expect(clearing[0]).not.toMatch(/filter:/);
+  });
+
+  it('crossfades the thumbnail with opacity only', () => {
+    const thumbnail = css.match(/\.background-thumbnail\s*\{[^}]*\}/);
+    const clearing = css.match(/\.background-thumbnail\.clearing\s*\{[^}]*\}/);
+
+    expect(thumbnail[0]).toMatch(/filter:\s*blur\(30px\);/);
+    expect(thumbnail[0]).toMatch(/transition:\s*opacity 0\.8s ease-out\s*;/);
+    expect(clearing[0]).toMatch(/transition:\s*opacity 2\.5s ease-in-out\s*;/);
+    expect(thumbnail[0].match(/transition:/g)).toHaveLength(1);
+    expect(clearing[0].match(/transition:/g)).toHaveLength(1);
+  });
+
+  it('keeps the blur-media overlay blur static on the thumbnail', () => {
+    const blurMedia = css.match(/\.bg-overlay-blur-media \.background-thumbnail\s*\{[^}]*\}/);
+
+    expect(blurMedia).toBeTruthy();
+    expect(blurMedia[0]).toMatch(/filter:\s*blur\(var\(--bg-overlay-blur\)\);/);
+    expect(blurMedia[0]).not.toMatch(/transition:/);
   });
 });

@@ -73,9 +73,7 @@
   filter: blur(30px);
   transform: scale(1.1);
   opacity: 1;
-  transition:
-    opacity 0.8s ease-out,
-    filter 2s ease-in-out;
+  transition: opacity 0.8s ease-out;
   z-index: 2;
 }
 
@@ -186,10 +184,11 @@
    sharp copy of the previous image and sits above #bg-full, so it gets the
    same blur and scale; otherwise the old image flashes sharp while it fades.
    While the full image is still loading and no snapshot is showing, the
-   thumbnail keeps its own blur and the backdrop path. Once it starts
-   clearing, its filter eases to the overlay blur instead of 0, so the
-   fade does not go sharp. The interactive canvas keeps its saturate and
-   contrast and adds the same blur and scale while that class is set.
+   thumbnail keeps its own blur and the backdrop path. Under this mode the
+   thumbnail takes the overlay blur statically instead of its 30px default,
+   so the crossfade never animates a filter or goes sharp. The interactive
+   canvas keeps its saturate and contrast and adds the same blur and scale
+   while that class is set.
    Reduced-motion playback that is still showing the thumbnail keeps
    backdrop-filter. A video that is already .active and then paused for
    reduced motion stays on screen, so it keeps the direct blur. Backdrop
@@ -207,7 +206,7 @@
   backdrop-filter: none;
 }
 
-.background-container.bg-overlay-blur-media .background-thumbnail.clearing {
+.background-container.bg-overlay-blur-media .background-thumbnail {
   filter: blur(var(--bg-overlay-blur));
 }
 
@@ -277,12 +276,11 @@
   transition: opacity 1.5s ease-out;
 }
 
-/* Blur-to-clear transition: thumbnail animates from blurred to clear while video fades in */
+/* Crossfade out: the thumbnail keeps its static blur and fades on opacity
+   alone. filter is not compositor-animatable, so animating it re-blurs the
+   full viewport every frame (#978). */
 .background-thumbnail.clearing {
-  filter: blur(0px);
-  transition:
-    filter 2s ease-in-out,
-    opacity 2.5s ease-in-out;
+  transition: opacity 2.5s ease-in-out;
   opacity: 0;
 }
 

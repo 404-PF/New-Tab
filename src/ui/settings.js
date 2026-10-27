@@ -721,9 +721,9 @@ function applyBg() {
         videoEl.classList.add('ready');
         hideBackgroundOverlay();
 
-        // Start thumbnail blur-to-clear animation at the same time as video fade-in
-        // This creates a smooth blur-to-clear effect while video fades in
-        // The thumbnail will fade out (opacity 0) while clearing blur (blur 0px)
+        // Fade the still-blurred thumbnail out as the video fades in.
+        // The blur stays static: filter is not compositor-animatable, so
+        // animating it re-blurs the viewport every frame (#978).
         thumbnailEl.classList.add('clearing');
 
         // After crossfade completes, fully hide the thumbnail
@@ -868,8 +868,9 @@ function applyBg() {
       fullEl.classList.add('loaded');
       hideBackgroundOverlay();
       
-      // Add clearing class to animate blur-to-clear while fading out
-      // This creates a smooth blur-to-clear effect while full image fades in
+      // Fade the still-blurred thumbnail out while the full image fades in.
+      // The blur stays static: filter is not compositor-animatable, so
+      // animating it re-blurs the viewport every frame (#978).
       thumbnailEl.classList.add('clearing');
       
       // After crossfade completes, fully hide the thumbnail
