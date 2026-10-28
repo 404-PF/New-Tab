@@ -1269,7 +1269,7 @@
     // One gamepad poller per mount (#1022), stopped in destroy() so
     // consecutive launches can never stack poll loops. Returns null when the
     // Gamepad API is unavailable, leaving keyboard/touch play untouched.
-    gamepad = window.gamesHelpers.createGamepadSteering({
+    gamepad = window.gamesHelpers?.createGamepadSteering?.({
       deadzone: 0.4,
       onDirection: applyGestureDirection,
       onPause: handleGamepadPause,

@@ -850,6 +850,26 @@ describe('gamesHelpers.createGamepadSteering (#1022)', () => {
     expect(onDirection).toHaveBeenLastCalledWith('down');
   });
 
+  it('treats a direct direction change as a fresh edge', () => {
+    const pad = makeGamepad();
+    stub.pads = [pad];
+    const onDirection = vi.fn();
+    create({ onDirection });
+    pump.step();
+
+    pressButton(pad, 12); // D-pad up
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenLastCalledWith('up');
+
+    // Switch to right without a neutral frame in between.
+    releaseButton(pad, 12);
+    pressButton(pad, 15);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(2);
+    expect(onDirection).toHaveBeenLastCalledWith('right');
+  });
+
   it('ignores stick drift inside the deadzone and unlatches on return', () => {
     const pad = makeGamepad();
     stub.pads = [pad];
@@ -964,15 +984,46 @@ describe('gamesHelpers.createGamepadSteering (#1022)', () => {
     expect(onPause).toHaveBeenCalledTimes(2);
   });
 
+  it('resets the latches when the selected pad identity changes', () => {
+    const first = makeGamepad();
+    const second = makeGamepad();
+    stub.pads = [first];
+    const onDirection = vi.fn();
+    const onPause = vi.fn();
+    create({ onDirection, onPause });
+    pump.step();
+
+    pressButton(first, 13);
+    pressButton(first, 9);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onPause).toHaveBeenCalledTimes(1);
+
+    // Swap to a different pad whose inputs are already held: its first
+    // direction and Start press must fire instead of being swallowed.
+    stub.pads = [second];
+    pressButton(second, 13);
+    pressButton(second, 9);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(2);
+    expect(onDirection).toHaveBeenLastCalledWith('down');
+    expect(onPause).toHaveBeenCalledTimes(2);
+  });
+
   it('uses the first connected pad and ignores disconnected slots', () => {
     const dead = makeGamepad({ connected: false });
     const alive = makeGamepad();
-    stub.pads = [dead, alive];
+    const later = makeGamepad();
+    stub.pads = [dead, alive, later];
     const onDirection = vi.fn();
     create({ onDirection });
     pump.step();
 
     pressButton(dead, 13); // the dead slot must not steer
+    pump.step();
+    expect(onDirection).not.toHaveBeenCalled();
+
+    pressButton(later, 13); // a later connected pad must not steer
     pump.step();
     expect(onDirection).not.toHaveBeenCalled();
 
@@ -982,10 +1033,29 @@ describe('gamesHelpers.createGamepadSteering (#1022)', () => {
     expect(onDirection).toHaveBeenLastCalledWith('down');
   });
 
+  it('skips connected controllers without the standard mapping', () => {
+    const unmapped = makeGamepad({ mapping: '' });
+    stub.pads = [unmapped];
+    const onDirection = vi.fn();
+    create({ onDirection });
+    pump.step();
+
+    pressButton(unmapped, 13); // fixed indices are meaningless here
+    pump.step();
+    expect(onDirection).not.toHaveBeenCalled();
+
+    const standard = makeGamepad();
+    stub.pads = [unmapped, standard];
+    pressButton(standard, 13);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenLastCalledWith('down');
+  });
+
   it('tolerates missing options and only wires provided callbacks', () => {
     const pad = makeGamepad();
     stub.pads = [pad];
-    const handle = create({});
+    const handle = create();
 
     pressButton(pad, 9);
     pressButton(pad, 0);

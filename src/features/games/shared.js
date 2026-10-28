@@ -453,7 +453,10 @@
   // transition into it and latches until every input returns inside the
   // deadzone, so a held stick behaves like a single key press instead of an
   // auto-repeat flood (the gamepad equivalent of shouldIgnoreKey dropping
-  // OS repeats); buttons are edge-triggered the same way. Returns
+  // OS repeats); a direct change to another direction counts as a fresh
+  // edge, and buttons are edge-triggered the same way. Only controllers
+  // reporting the standard mapping are selected, since the fixed button
+  // indices below are meaningless on unmapped pads. Returns
   // { destroy } to stop the loop, or null when the Gamepad API (or
   // requestAnimationFrame) is unavailable, so tests and non-supporting
   // browsers never see a poller.
@@ -478,6 +481,7 @@
     let latchedDirection = null;
     let startHeld = false;
     let aHeld = false;
+    let lastPad = null;
 
     function isPressed(button) {
       return !!button && (button.pressed === true || button.value > 0);
@@ -508,7 +512,9 @@
         // Back to neutral: release the latch so the next press of the same
         // direction is a fresh edge instead of being swallowed forever.
         latchedDirection = null;
-      } else if (latchedDirection === null) {
+      } else if (latchedDirection !== direction) {
+        // First press or a direct change to another direction: fire as a
+        // fresh edge while still suppressing repeats of the held direction.
         latchedDirection = direction;
         if (onDirection) onDirection(direction);
       }
@@ -531,7 +537,7 @@
       try {
         const pads = navigator.getGamepads() || [];
         for (let i = 0; i < pads.length; i++) {
-          if (pads[i] && pads[i].connected !== false) {
+          if (pads[i] && pads[i].connected !== false && pads[i].mapping === 'standard') {
             pad = pads[i];
             break;
           }
@@ -540,12 +546,22 @@
         pad = null;
       }
       if (!pad) {
-        // No controller: reset every latch so a reconnect re-fires its edges.
+        // No usable controller: reset every latch so a reconnect re-fires
+        // its edges.
         latchedDirection = null;
         startHeld = false;
         aHeld = false;
+        lastPad = null;
         return;
       }
+      if (lastPad !== null && lastPad !== pad) {
+        // The selected controller changed: its held inputs are fresh edges,
+        // not continuations of the previous pad's latches.
+        latchedDirection = null;
+        startHeld = false;
+        aHeld = false;
+      }
+      lastPad = pad;
       poll(pad);
     }
 
