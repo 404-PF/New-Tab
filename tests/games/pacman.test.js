@@ -416,6 +416,78 @@ describe('Pac-Man intended direction across junctions (#1018)', () => {
   });
 });
 
+describe('Pac-Man buffered-turn indicator (#1020)', () => {
+  it('signals a pending turn until the junction takes it', () => {
+    const container = makeContainer();
+    startWithSpace();
+    parkGhosts();
+
+    expect(window.__pacmanTest.getState().indicatorDirection).toBeNull();
+
+    // Travelling down column 14; a right turn is buffered past the junction
+    // at (14,11), so the wedge is visible while the intent is held.
+    window.__pacmanTest.setPositions({ pacman: { x: 14, y: 12.4, dir: 'down' } });
+    pressKey('ArrowRight');
+    const buffered = window.__pacmanTest.getState();
+    expect(buffered.pendingDir).toBe('right');
+    expect(buffered.indicatorDirection).toBe('right');
+
+    // The mark survives the straight tile where the turn is not yet legal.
+    window.__pacmanTest.tick(0.05);
+    expect(window.__pacmanTest.getState().indicatorDirection).toBe('right');
+
+    // It clears the moment the turn applies at the next junction.
+    window.__pacmanTest.tick(0.7);
+    const done = window.__pacmanTest.getState();
+    expect(done.pacman.dir).toBe('right');
+    expect(done.pendingDir).toBeNull();
+    expect(done.indicatorDirection).toBeNull();
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('clears the indicator when a wall press is dropped at a junction', () => {
+    const container = makeContainer();
+    startWithSpace();
+    parkGhosts();
+
+    // Down column 4, right is a wall at the first junction (4,5): the
+    // buffered intent is signalled, then dropped there.
+    window.__pacmanTest.setPositions({ pacman: { x: 4, y: 4.2, dir: 'down' } });
+    pressKey('ArrowRight');
+    expect(window.__pacmanTest.getState().indicatorDirection).toBe('right');
+
+    window.__pacmanTest.tick(0.25);
+    const after = window.__pacmanTest.getState();
+    expect(after.pendingDir).toBeNull();
+    expect(after.indicatorDirection).toBeNull();
+    expect(after.pacman.dir).toBe('down');
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('does not signal a buffered intent that only re-affirms the heading', () => {
+    const container = makeContainer();
+    startWithSpace();
+
+    window.__pacmanTest.setPositions({ pacman: { x: 7, y: 13, dir: 'left' } });
+    pressKey('ArrowDown');
+    expect(window.__pacmanTest.getState().indicatorDirection).toBe('down');
+
+    // Pressing the current heading behind a buffered intent replaces it, but
+    // that is not a pending turn, so no wedge is drawn for it.
+    pressKey('ArrowLeft');
+    const state = window.__pacmanTest.getState();
+    expect(state.pendingDir).toBe('left');
+    expect(state.indicatorDirection).toBeNull();
+
+    getGame().destroy();
+    container.remove();
+  });
+});
+
 describe('Pac-Man scoring, ghosts, and lives', () => {
   it('eats dots for 10 points', () => {
     const container = makeContainer();

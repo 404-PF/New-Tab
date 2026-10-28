@@ -125,6 +125,14 @@
     return directionQueue.length > 0 ? directionQueue[directionQueue.length - 1] : direction;
   }
 
+  // Render-only signal (#1020): the direction the head faces while a turn is
+  // buffered, or null when nothing is queued. The draw path reads live queue
+  // state each frame, so the mark clears automatically the moment tick()
+  // applies or drops the entry.
+  function pendingTurnDirection() {
+    return directionQueue.length > 0 ? getLastQueuedDirection() : null;
+  }
+
   function queueTurn(newDir) {
     if (!isValidDirection(newDir)) return false;
     const last = getLastQueuedDirection();
@@ -438,12 +446,16 @@
   function drawEyes(pos, size) {
     const eyeSize = 2.6;
     const offset = 3.5;
+    // Eyes look toward a buffered turn while one is queued (#1020), so an
+    // accepted-but-not-yet-applied input is visible instead of looking
+    // dropped. With an empty queue this is just the applied direction.
+    const look = pendingTurnDirection() || direction;
     let dx = 0;
     let dy = 0;
-    if (direction === 'right') dx = 1;
-    else if (direction === 'left') dx = -1;
-    else if (direction === 'up') dy = -1;
-    else if (direction === 'down') dy = 1;
+    if (look === 'right') dx = 1;
+    else if (look === 'left') dx = -1;
+    else if (look === 'up') dy = -1;
+    else if (look === 'down') dy = 1;
 
     // Eyes sit perpendicular to the direction of travel, offset forward.
     const perpX = -dy;
@@ -470,6 +482,33 @@
       ctx.arc(eye.x + dx, eye.y + dy, eyeSize * 0.55, 0, Math.PI * 2);
       ctx.fill();
     });
+  }
+
+  // A faint chevron on the head's leading edge pointing at the buffered
+  // turn (#1020). Static by design — no clock input — so reduced-motion
+  // users see the same mark as everyone else, never a flashing one.
+  function drawQueuedTurnChevron(pos, size) {
+    const dir = pendingTurnDirection();
+    if (!dir) return;
+    let dx = 0;
+    let dy = 0;
+    if (dir === 'right') dx = 1;
+    else if (dir === 'left') dx = -1;
+    else if (dir === 'up') dy = -1;
+    else if (dir === 'down') dy = 1;
+    const cx = pos.x + size / 2 + dx * (size / 2 + 1.5);
+    const cy = pos.y + size / 2 + dy * (size / 2 + 1.5);
+    const perpX = -dy;
+    const perpY = dx;
+    const wing = 3;
+    const back = 2.5;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - dx * back - perpX * wing, cy - dy * back - perpY * wing);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx - dx * back + perpX * wing, cy - dy * back + perpY * wing);
+    ctx.stroke();
   }
 
   function drawSnake(now) {
@@ -502,6 +541,7 @@
 
       if (idx === 0) {
         drawEyes(pos, size);
+        drawQueuedTurnChevron(pos, size);
       }
     });
   }
@@ -999,9 +1039,11 @@
 
   // Test hook: expose whether the run has been started so tests can assert the
   // game holds on the ready screen until the player signals readiness.
+  // pendingTurnDirection() is the render-only buffered-turn indicator (#1020).
   window.__snakeReady = {
     isStarted: function () { return started; },
     isGameOver: function () { return gameOver; },
-    forceGameOver: endGame
+    forceGameOver: endGame,
+    pendingTurnDirection: pendingTurnDirection
   };
 })();

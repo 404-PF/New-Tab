@@ -721,6 +721,63 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
   });
 });
 
+describe('Snake buffered-turn indicator (#1020)', () => {
+  it('signals a queued turn on the head until the tick applies it', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      // Moving right; queue an up-turn. The render indicator (eyes offset +
+      // head chevron) tracks the buffered direction.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+      expect(game.serialize().directionQueue).toEqual(['up']);
+      expect(window.__snakeReady.pendingTurnDirection()).toBe('up');
+
+      // Once a tick applies the turn the queue empties and the mark clears.
+      vi.advanceTimersByTime(400);
+      expect(game.serialize().direction).toBe('up');
+      expect(game.serialize().directionQueue).toEqual([]);
+      expect(window.__snakeReady.pendingTurnDirection()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('clears the indicator when a buffered reversal is dropped at apply time', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      // Left reverses the rightward heading: it is accepted into the queue
+      // (the enqueue-time veto is gone, #1017) and signalled, then dropped
+      // at apply time — the indicator must not outlive the drop.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      expect(window.__snakeReady.pendingTurnDirection()).toBe('left');
+
+      vi.advanceTimersByTime(400);
+      expect(game.serialize().direction).toBe('right');
+      expect(game.serialize().directionQueue).toEqual([]);
+      expect(window.__snakeReady.pendingTurnDirection()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('shows no indicator while the queue is empty', () => {
+    const { container, game } = startGame();
+    expect(window.__snakeReady.pendingTurnDirection()).toBeNull();
+
+    game.destroy();
+    container.remove();
+  });
+});
+
 describe('Snake pointer steering and D-pad (#1019)', () => {
   function startSnake() {
     const container = document.createElement('div');
