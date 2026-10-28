@@ -1675,4 +1675,29 @@ describe('Games steering keymap setting (#1023)', () => {
     expect(window.gamesHelpers.getKeymap()).toBe('numpad');
     expect(window.gamesHelpers.parseDirection({ code: 'Numpad8', key: '8' })).toBe('up');
   });
+
+  it('persists the choice via the direct-write fallback when gamesHelpers is absent', () => {
+    const helpers = window.gamesHelpers;
+    delete window.gamesHelpers;
+    try {
+      const keymapSelect = select();
+      keymapSelect.value = 'numpad';
+      keymapSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_keymap')).toBe('numpad');
+      expect(select().value).toBe('numpad');
+    } finally {
+      window.gamesHelpers = helpers;
+    }
+  });
+
+  it('delegates to gamesHelpers.setKeymap once the helpers are restored', () => {
+    const keymapSelect = select();
+    keymapSelect.value = 'ijkl';
+    keymapSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('games_keymap')).toBe('ijkl');
+    expect(window.gamesHelpers.getKeymap()).toBe('ijkl');
+    expect(window.gamesHelpers.parseDirection({ code: 'KeyI' })).toBe('up');
+  });
 });
