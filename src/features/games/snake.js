@@ -133,6 +133,15 @@
     return directionQueue.length > 0 ? getLastQueuedDirection() : null;
   }
 
+  // Unit offset for a cardinal direction; zero vector for unknown values.
+  function directionOffset(dir) {
+    if (dir === 'right') return { x: 1, y: 0 };
+    if (dir === 'left') return { x: -1, y: 0 };
+    if (dir === 'up') return { x: 0, y: -1 };
+    if (dir === 'down') return { x: 0, y: 1 };
+    return { x: 0, y: 0 };
+  }
+
   function queueTurn(newDir) {
     if (!isValidDirection(newDir)) return false;
     const last = getLastQueuedDirection();
@@ -449,13 +458,9 @@
     // Eyes look toward a buffered turn while one is queued (#1020), so an
     // accepted-but-not-yet-applied input is visible instead of looking
     // dropped. With an empty queue this is just the applied direction.
-    const look = pendingTurnDirection() || direction;
-    let dx = 0;
-    let dy = 0;
-    if (look === 'right') dx = 1;
-    else if (look === 'left') dx = -1;
-    else if (look === 'up') dy = -1;
-    else if (look === 'down') dy = 1;
+    const look = directionOffset(pendingTurnDirection() || direction);
+    const dx = look.x;
+    const dy = look.y;
 
     // Eyes sit perpendicular to the direction of travel, offset forward.
     const perpX = -dy;
@@ -490,12 +495,9 @@
   function drawQueuedTurnChevron(pos, size) {
     const dir = pendingTurnDirection();
     if (!dir) return;
-    let dx = 0;
-    let dy = 0;
-    if (dir === 'right') dx = 1;
-    else if (dir === 'left') dx = -1;
-    else if (dir === 'up') dy = -1;
-    else if (dir === 'down') dy = 1;
+    const off = directionOffset(dir);
+    const dx = off.x;
+    const dy = off.y;
     const cx = pos.x + size / 2 + dx * (size / 2 + 1.5);
     const cy = pos.y + size / 2 + dy * (size / 2 + 1.5);
     const perpX = -dy;
@@ -726,7 +728,10 @@
     if (!newDir) return;
 
     e.preventDefault();
-    queueTurn(newDir);
+    // Redraw as soon as a turn is accepted: with reduced motion there is no
+    // render loop, and the next tick drains the queue before it draws, so the
+    // buffered-turn mark would otherwise never paint (#1020).
+    if (queueTurn(newDir)) draw();
   }
 
   // ===================== Touch / pointer steering (#1019) =====================
@@ -739,7 +744,8 @@
   // doubles as a restart (that stays a tap, see onTap below).
   function applyGestureDirection(dir) {
     if (!started || gameOver) return;
-    queueTurn(dir);
+    // Same immediate redraw as the keyboard path (#1020).
+    if (queueTurn(dir)) draw();
   }
 
   function handleGestureTap() {

@@ -421,6 +421,14 @@ describe('Pac-Man buffered-turn indicator (#1020)', () => {
     const container = makeContainer();
     startWithSpace();
     parkGhosts();
+    const cellSize = window.__pacmanTest.constants.cellSize;
+    const ctx = document.createElement('canvas').getContext('2d');
+    const moveToSpy = vi.spyOn(ctx, 'moveTo');
+    // The wedge starts its path (radius + 5) px ahead of Pac-Man's centre.
+    const centreOf = (state) => ({
+      x: (state.pacman.x + 0.5) * cellSize,
+      y: (state.pacman.y + 0.5) * cellSize
+    });
 
     expect(window.__pacmanTest.getState().indicatorDirection).toBeNull();
 
@@ -432,9 +440,14 @@ describe('Pac-Man buffered-turn indicator (#1020)', () => {
     expect(buffered.pendingDir).toBe('right');
     expect(buffered.indicatorDirection).toBe('right');
 
-    // The mark survives the straight tile where the turn is not yet legal.
+    // The mark survives the straight tile where the turn is not yet legal,
+    // and the canvas shows it: the body path first, then the wedge tip.
     window.__pacmanTest.tick(0.05);
-    expect(window.__pacmanTest.getState().indicatorDirection).toBe('right');
+    const shown = window.__pacmanTest.getState();
+    expect(shown.indicatorDirection).toBe('right');
+    const centre = centreOf(shown);
+    const tip = [centre.x + (cellSize / 2 - 2 + 5), centre.y];
+    expect(moveToSpy.mock.calls).toEqual([[centre.x, centre.y], tip]);
 
     // It clears the moment the turn applies at the next junction.
     window.__pacmanTest.tick(0.7);
@@ -443,6 +456,13 @@ describe('Pac-Man buffered-turn indicator (#1020)', () => {
     expect(done.pendingDir).toBeNull();
     expect(done.indicatorDirection).toBeNull();
 
+    // With nothing buffered the next frame starts only the body path: no wedge.
+    moveToSpy.mockClear();
+    window.__pacmanTest.tick(0);
+    const rest = centreOf(window.__pacmanTest.getState());
+    expect(moveToSpy.mock.calls).toEqual([[rest.x, rest.y]]);
+
+    moveToSpy.mockRestore();
     getGame().destroy();
     container.remove();
   });
@@ -483,6 +503,37 @@ describe('Pac-Man buffered-turn indicator (#1020)', () => {
     expect(state.pendingDir).toBe('left');
     expect(state.indicatorDirection).toBeNull();
 
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('keeps the wedge on screen while the respawn blink hides Pac-Man', () => {
+    const container = makeContainer();
+    startWithSpace();
+    collideWithGhost();
+    expect(window.__pacmanTest.getState().lives).toBe(2);
+    parkGhosts();
+
+    // Land on a blink-hidden phase (an odd 150 ms slot) inside the window.
+    window.__pacmanTest.tick(0.14);
+    const phase = window.__pacmanTest.getState();
+    expect(Math.floor(phase.clockMs / 150) % 2).toBe(1);
+
+    window.__pacmanTest.setPositions({ pacman: { x: 14, y: 12.4, dir: 'down', pendingDir: 'right' } });
+    const cellSize = window.__pacmanTest.constants.cellSize;
+    const ctx = document.createElement('canvas').getContext('2d');
+    const moveToSpy = vi.spyOn(ctx, 'moveTo');
+    window.__pacmanTest.tick(0);
+
+    const state = window.__pacmanTest.getState();
+    expect(state.indicatorDirection).toBe('right');
+    const centreX = (state.pacman.x + 0.5) * cellSize;
+    const centreY = (state.pacman.y + 0.5) * cellSize;
+    // The blink still hides the body (no path started at its centre) while
+    // the static wedge is drawn ahead of Pac-Man, so the mark never flashes.
+    expect(moveToSpy.mock.calls).toEqual([[centreX + (cellSize / 2 - 2 + 5), centreY]]);
+
+    moveToSpy.mockRestore();
     getGame().destroy();
     container.remove();
   });

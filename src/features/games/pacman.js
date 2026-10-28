@@ -762,22 +762,26 @@
   }
 
   function drawPacman() {
-    if (clockMs < invulnerableUntil && Math.floor(clockMs / 150) % 2 === 1) return;
     const pos = px(pacman);
-    const angleMap = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
-    const rotation = angleMap[pacman.dir] ?? 0;
-    const mouth = reducedMotion()
-      ? 0.22 * Math.PI
-      : Math.abs(Math.sin(clockMs / 110)) * 0.32 * Math.PI;
     const radius = CELL_SIZE / 2 - 2;
-    ctx.fillStyle = '#ffd83d';
-    ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
-    ctx.arc(pos.x, pos.y, radius, rotation + mouth, rotation - mouth + Math.PI * 2);
-    ctx.closePath();
-    ctx.fill();
-    // Signal a buffered turn with a static wedge in front of Pac-Man (#1020).
     const indicator = pendingTurnIndicator();
+    const blinking = clockMs < invulnerableUntil && Math.floor(clockMs / 150) % 2 === 1;
+    if (!blinking) {
+      const angleMap = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
+      const rotation = angleMap[pacman.dir] ?? 0;
+      const mouth = reducedMotion()
+        ? 0.22 * Math.PI
+        : Math.abs(Math.sin(clockMs / 110)) * 0.32 * Math.PI;
+      ctx.fillStyle = '#ffd83d';
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.arc(pos.x, pos.y, radius, rotation + mouth, rotation - mouth + Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Signal a buffered turn with a static wedge in front of Pac-Man (#1020).
+    // Drawn even while the respawn blink hides the body, so the mark stays
+    // on screen instead of flickering with it.
     if (indicator) drawTurnIndicator(pos, radius, indicator);
   }
 
