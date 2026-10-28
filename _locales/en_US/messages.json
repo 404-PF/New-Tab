@@ -470,6 +470,22 @@
     "message": "Enable games",
     "description": "Toggle label for enabling the games feature"
   },
+  "gamesKeymap": {
+    "message": "Steering keys",
+    "description": "Label for the games steering keymap selector"
+  },
+  "gamesKeymapWasd": {
+    "message": "Arrow keys + WASD",
+    "description": "Steering keymap option: arrow keys plus WASD"
+  },
+  "gamesKeymapIjkl": {
+    "message": "IJKL",
+    "description": "Steering keymap option: IJKL layout"
+  },
+  "gamesKeymapNumpad": {
+    "message": "Numpad",
+    "description": "Steering keymap option: numpad"
+  },
   "gamesPlay": {
     "message": "Play",
     "description": "Button label to start a game"

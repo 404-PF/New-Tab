@@ -41,30 +41,82 @@
     return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || !!target.isContentEditable;
   };
 
-  // Steering directions resolved from KeyboardEvent.code, which is based on
-  // the physical key position and therefore layout-independent (the WASD
-  // block steers the same on QWERTY, AZERTY, Dvorak, ...).
-  const CODE_TO_DIRECTION = {
-    ArrowUp: 'up', KeyW: 'up',
-    ArrowDown: 'down', KeyS: 'down',
-    ArrowLeft: 'left', KeyA: 'left',
-    ArrowRight: 'right', KeyD: 'right'
+  // Steering directions are resolved from KeyboardEvent.code, which is based
+  // on the physical key position and therefore layout-independent (the same
+  // physical block steers the same on QWERTY, AZERTY, Dvorak, ...). Arrow
+  // keys are merged into every keymap so they always steer — a player can
+  // never be locked out by picking an unfamiliar layout (#1023).
+  const ARROW_CODE_TO_DIRECTION = {
+    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right'
+  };
+  const ARROW_KEY_TO_DIRECTION = {
+    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right'
+  };
+  // Selectable layouts, each combined with the arrow-key entries above.
+  // `e.code` is the primary lookup so the maps stay layout-independent.
+  const KEYMAP_CODE_SUFFIXES = {
+    wasd: { KeyW: 'up', KeyS: 'down', KeyA: 'left', KeyD: 'right' },
+    ijkl: { KeyI: 'up', KeyK: 'down', KeyJ: 'left', KeyL: 'right' },
+    numpad: { Numpad8: 'up', Numpad2: 'down', Numpad4: 'left', Numpad6: 'right' }
   };
   // Fallback for events that carry only `key` (synthetic events, older
   // callers); e.code always wins when present.
-  const KEY_TO_DIRECTION = {
-    ArrowUp: 'up', w: 'up', W: 'up',
-    ArrowDown: 'down', s: 'down', S: 'down',
-    ArrowLeft: 'left', a: 'left', A: 'left',
-    ArrowRight: 'right', d: 'right', D: 'right'
+  const KEYMAP_KEY_SUFFIXES = {
+    wasd: { w: 'up', W: 'up', s: 'down', S: 'down', a: 'left', A: 'left', d: 'right', D: 'right' },
+    ijkl: { i: 'up', I: 'up', k: 'down', K: 'down', j: 'left', J: 'left', l: 'right', L: 'right' },
+    numpad: { '8': 'up', '2': 'down', '4': 'left', '6': 'right' }
   };
+  const DEFAULT_KEYMAP_ID = 'wasd';
+
+  let activeKeymapId = DEFAULT_KEYMAP_ID;
+  let codeToDirection = {};
+  let keyToDirection = {};
+
+  function normalizeKeymapId(id) {
+    return Object.prototype.hasOwnProperty.call(KEYMAP_CODE_SUFFIXES, id) ? id : DEFAULT_KEYMAP_ID;
+  }
+
+  function applyKeymap(id) {
+    activeKeymapId = normalizeKeymapId(id);
+    codeToDirection = Object.assign({}, ARROW_CODE_TO_DIRECTION, KEYMAP_CODE_SUFFIXES[activeKeymapId]);
+    keyToDirection = Object.assign({}, ARROW_KEY_TO_DIRECTION, KEYMAP_KEY_SUFFIXES[activeKeymapId]);
+  }
 
   // Resolve a steering direction ('up' | 'down' | 'left' | 'right') from a
-  // keydown event, or null when the key is not a direction key (#876).
+  // keydown event, or null when the key is not a direction key (#876/#1023).
   window.gamesHelpers.parseDirection = function (e) {
     if (!e) return null;
-    return CODE_TO_DIRECTION[e.code] || KEY_TO_DIRECTION[e.key] || null;
+    return codeToDirection[e.code] || keyToDirection[e.key] || null;
   };
+
+  // Active keymap id ('wasd' | 'ijkl' | 'numpad') for the settings UI.
+  window.gamesHelpers.getKeymap = function () {
+    return activeKeymapId;
+  };
+
+  // Switch the steering keymap. An unknown id falls back to the default
+  // without throwing. The choice is persisted under `games_keymap` (with a
+  // localStorage try/catch, mirroring isEnabled) so it survives reloads;
+  // parseDirection consults the active map per event, so the switch applies
+  // to every steering game immediately, with no reload (#1023).
+  window.gamesHelpers.setKeymap = function (id) {
+    const resolved = normalizeKeymapId(id);
+    applyKeymap(resolved);
+    try {
+      localStorage.setItem('games_keymap', resolved);
+    } catch (_err) {
+      // ignore storage errors
+    }
+    return resolved;
+  };
+
+  // Initialize the active map from storage; a missing or corrupted value
+  // falls back to the default map without throwing.
+  try {
+    applyKeymap(localStorage.getItem('games_keymap'));
+  } catch (_err) {
+    applyKeymap(DEFAULT_KEYMAP_ID);
+  }
 
   // True when a keydown event should be skipped entirely: OS auto-repeat
   // (holding a key would otherwise flood the game with moves), modified

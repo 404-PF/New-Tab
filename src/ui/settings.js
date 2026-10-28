@@ -2147,6 +2147,40 @@ if (gamesEnabledSetting) {
   });
 }
 
+// Games steering keymap (#1023). The active map is read from storage the
+// time the games scripts load, so the select only needs to persist the
+// choice and apply it live when the helpers are already present.
+function loadGamesKeymap() {
+  try {
+    const stored = localStorage.getItem('games_keymap');
+    if (stored === 'wasd' || stored === 'ijkl' || stored === 'numpad') return stored;
+  } catch (_e) {
+    // ignore storage errors
+  }
+  return 'wasd';
+}
+function applyGamesKeymap(idOverride) {
+  const keymap = typeof idOverride === 'string' ? idOverride : loadGamesKeymap();
+  const select = document.getElementById('games-keymap-setting');
+  if (select) select.value = keymap;
+  if (window.gamesHelpers && typeof window.gamesHelpers.setKeymap === 'function') {
+    window.gamesHelpers.setKeymap(keymap);
+  }
+}
+const gamesKeymapSetting = document.getElementById('games-keymap-setting');
+if (gamesKeymapSetting) {
+  applyGamesKeymap();
+  gamesKeymapSetting.addEventListener('change', function () {
+    const keymap = this.value;
+    try {
+      localStorage.setItem('games_keymap', keymap);
+    } catch (_e) {
+      // ignore storage errors
+    }
+    applyGamesKeymap(keymap);
+  });
+}
+
 // Settings menu logic
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];
@@ -2441,6 +2475,7 @@ function initSettings() {
   applyEyeCareReminderSettings();
   applyNotesEnabled();
   applyGamesEnabled();
+  applyGamesKeymap();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
   applyBgOverlaySettings();
@@ -2518,6 +2553,8 @@ window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;
 window.applyNotesEnabled = applyNotesEnabled;
 window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;
+window.applyGamesKeymap = applyGamesKeymap;
+window.loadGamesKeymap = loadGamesKeymap;
 window.initSettings = initSettings;
 window.resolveFontAlias = resolveFontAlias;
 

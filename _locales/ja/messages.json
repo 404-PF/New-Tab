@@ -454,6 +454,22 @@
     "message": "ゲームを有効にする",
     "description": "Toggle label for enabling the games feature"
   },
+  "gamesKeymap": {
+    "message": "操作キー",
+    "description": "Label for the games steering keymap selector"
+  },
+  "gamesKeymapWasd": {
+    "message": "矢印キー + WASD",
+    "description": "Steering keymap option: arrow keys plus WASD"
+  },
+  "gamesKeymapIjkl": {
+    "message": "IJKL",
+    "description": "Steering keymap option: IJKL layout"
+  },
+  "gamesKeymapNumpad": {
+    "message": "テンキー",
+    "description": "Steering keymap option: numpad"
+  },
   "gamesPlay": {
     "message": "プレイ",
     "description": "Button label to start a game"

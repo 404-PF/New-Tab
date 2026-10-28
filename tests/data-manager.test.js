@@ -278,18 +278,20 @@ describe('DataManager eye-care/games/search-history settings', () => {
   it('includes the persisted preference keys in the export allowlist', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('eyeCareReminder');
     expect(window.DataManager.EXPORT_KEYS).toContain('games_enabled');
+    expect(window.DataManager.EXPORT_KEYS).toContain('games_keymap');
     expect(window.DataManager.EXPORT_KEYS).toContain('searchHistoryEnabled');
   });
 
   it('validates the shape of the new keys', () => {
     expect(window.DataManager.validateImportData({ version: 1, data: {
-      eyeCareReminder: EYE_CARE_SETTINGS, games_enabled: false, searchHistoryEnabled: true
+      eyeCareReminder: EYE_CARE_SETTINGS, games_enabled: false, games_keymap: 'ijkl', searchHistoryEnabled: true
     } })).toEqual({ valid: true });
     // Objects carrying legacy/runtime fields stay importable; applyData
     // strips them at write time.
     expect(window.DataManager.EXPECTED_SHAPES.eyeCareReminder(EYE_CARE_STORED_STATE)).toBe(true);
 
     expect(window.DataManager.EXPECTED_SHAPES.games_enabled(true)).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_keymap('wasd')).toBe(true);
     expect(window.DataManager.EXPECTED_SHAPES.searchHistoryEnabled(false)).toBe(true);
 
     expect(window.DataManager.EXPECTED_SHAPES.eyeCareReminder(null)).toBe(false);
@@ -299,6 +301,10 @@ describe('DataManager eye-care/games/search-history settings', () => {
     expect(window.DataManager.EXPECTED_SHAPES.eyeCareReminder({ ...EYE_CARE_SETTINGS, intervalMinutes: 25 })).toBe(false);
     expect(window.DataManager.EXPECTED_SHAPES.eyeCareReminder({ ...EYE_CARE_SETTINGS, browserNotification: 1 })).toBe(false);
     expect(window.DataManager.EXPECTED_SHAPES.games_enabled('true')).toBe(false);
+    // The games helpers normalize an unknown keymap id at read time, so any
+    // string stays importable — only non-strings are rejected.
+    expect(window.DataManager.EXPECTED_SHAPES.games_keymap(true)).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_keymap(null)).toBe(false);
     expect(window.DataManager.EXPECTED_SHAPES.searchHistoryEnabled('false')).toBe(false);
 
     expect(window.DataManager.validateImportData({ version: 1, data: {
@@ -314,10 +320,12 @@ describe('DataManager eye-care/games/search-history settings', () => {
     };
     localStorage.setItem('eyeCareReminder', JSON.stringify(existingState));
     localStorage.setItem('games_enabled', 'true');
+    localStorage.setItem('games_keymap', 'wasd');
     localStorage.setItem('searchHistoryEnabled', 'true');
 
     await importBackup({
       games_enabled: false,
+      games_keymap: 'ijkl',
       searchHistoryEnabled: false,
       // Full validated shape, but differing from the stored entry: if the
       // generic object branch ever degraded from Object.assign merge to a
@@ -326,6 +334,8 @@ describe('DataManager eye-care/games/search-history settings', () => {
     }, 'merge');
 
     expect(localStorage.getItem('games_enabled')).toBe(JSON.stringify(false));
+    // String settings are stored raw, not JSON-encoded.
+    expect(localStorage.getItem('games_keymap')).toBe('ijkl');
     expect(localStorage.getItem('searchHistoryEnabled')).toBe(JSON.stringify(false));
 
     const merged = JSON.parse(localStorage.getItem('eyeCareReminder'));
@@ -354,6 +364,7 @@ describe('DataManager eye-care/games/search-history settings', () => {
 
   it('clears unlisted settings in replace mode so restores are faithful', async () => {
     localStorage.setItem('games_enabled', 'false');
+    localStorage.setItem('games_keymap', 'numpad');
     localStorage.setItem('searchHistoryEnabled', 'false');
     localStorage.setItem('eyeCareReminder', JSON.stringify(EYE_CARE_STORED_STATE));
     localStorage.setItem('theme', 'light');
@@ -362,6 +373,7 @@ describe('DataManager eye-care/games/search-history settings', () => {
 
     expect(localStorage.getItem('theme')).toBe('dark');
     expect(localStorage.getItem('games_enabled')).toBeNull();
+    expect(localStorage.getItem('games_keymap')).toBeNull();
     expect(localStorage.getItem('searchHistoryEnabled')).toBeNull();
     expect(localStorage.getItem('eyeCareReminder')).toBeNull();
   });
@@ -493,6 +505,7 @@ describe('DataManager eye-care/games/search-history settings', () => {
     localStorage.setItem('theme', 'dark');
     localStorage.setItem('eyeCareReminder', JSON.stringify(EYE_CARE_STORED_STATE));
     localStorage.setItem('games_enabled', 'false');
+    localStorage.setItem('games_keymap', 'ijkl');
     localStorage.setItem('searchHistoryEnabled', 'false');
 
     const origCreateObjectURL = URL.createObjectURL;
@@ -519,6 +532,7 @@ describe('DataManager eye-care/games/search-history settings', () => {
       // Export carries only the persistent settings; timer bookkeeping stays local.
       expect(exported.data.eyeCareReminder).toEqual(EYE_CARE_SETTINGS);
       expect(exported.data.games_enabled).toBe(false);
+      expect(exported.data.games_keymap).toBe('ijkl');
       expect(exported.data.searchHistoryEnabled).toBe(false);
       expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
     } finally {

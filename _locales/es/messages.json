@@ -454,6 +454,22 @@
     "message": "Habilitar juegos",
     "description": "Toggle label for enabling the games feature"
   },
+  "gamesKeymap": {
+    "message": "Teclas de control",
+    "description": "Label for the games steering keymap selector"
+  },
+  "gamesKeymapWasd": {
+    "message": "Flechas + WASD",
+    "description": "Steering keymap option: arrow keys plus WASD"
+  },
+  "gamesKeymapIjkl": {
+    "message": "IJKL",
+    "description": "Steering keymap option: IJKL layout"
+  },
+  "gamesKeymapNumpad": {
+    "message": "Teclado numérico",
+    "description": "Steering keymap option: numpad"
+  },
   "gamesPlay": {
     "message": "Jugar",
     "description": "Button label to start a game"

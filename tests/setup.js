@@ -666,6 +666,10 @@ globalThis.window.i18n = {
       gamesDpadDown: 'Down',
       gamesDpadLeft: 'Left',
       gamesDpadRight: 'Right',
+      gamesKeymap: 'Steering keys',
+      gamesKeymapWasd: 'Arrow keys + WASD',
+      gamesKeymapIjkl: 'IJKL',
+      gamesKeymapNumpad: 'Numpad',
       accessibilityCalendar: 'Calendar',
       accessibilityApp: 'App',
       accessibilityAppActions: 'App actions',
@@ -873,6 +877,13 @@ document.body.appendChild(createStubElement('dialog', 'games-app-modal'));
 document.body.appendChild(createStubElement('div', 'games-hub-content'));
 document.body.appendChild(createStubElement('div', 'games-game-container'));
 document.body.appendChild(createStubElement('input', 'games-enabled-setting'));
+const gamesKeymapSelect = createStubElement('select', 'games-keymap-setting');
+['wasd', 'ijkl', 'numpad'].forEach(value => {
+  const option = document.createElement('option');
+  option.value = value;
+  gamesKeymapSelect.appendChild(option);
+});
+document.body.appendChild(gamesKeymapSelect);
 document.body.appendChild(createStubElement('input', 'weather-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'weather-unit-celsius'));
 document.body.appendChild(createStubElement('input', 'weather-unit-fahrenheit'));

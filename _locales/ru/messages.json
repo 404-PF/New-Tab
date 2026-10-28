@@ -454,6 +454,22 @@
     "message": "Включить игры",
     "description": "Toggle label for enabling the games feature"
   },
+  "gamesKeymap": {
+    "message": "Клавиши управления",
+    "description": "Label for the games steering keymap selector"
+  },
+  "gamesKeymapWasd": {
+    "message": "Стрелки + WASD",
+    "description": "Steering keymap option: arrow keys plus WASD"
+  },
+  "gamesKeymapIjkl": {
+    "message": "IJKL",
+    "description": "Steering keymap option: IJKL layout"
+  },
+  "gamesKeymapNumpad": {
+    "message": "Цифровой блок",
+    "description": "Steering keymap option: numpad"
+  },
   "gamesPlay": {
     "message": "Играть",
     "description": "Button label to start a game"
