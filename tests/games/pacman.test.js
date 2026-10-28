@@ -5,6 +5,7 @@ import {
   dispatchKey,
   resetGamesHub
 } from '../helpers/pacman-test-env.js';
+import { pointer } from '../helpers/pointer-event.js';
 import {
   installGamepadStub,
   removeGamepadStub,
@@ -806,24 +807,6 @@ describe('Pac-Man cleanup', () => {
     container.remove();
   });
 });
-
-// jsdom has no PointerEvent constructor, so pointer gestures are dispatched
-// as MouseEvent with pointer event types (listeners match on type only).
-// MouseEvent lacks pointerType, so it is defined on the event when provided
-// (needed for the primary-mouse-button steering specs).
-function pointer(type, x, y, extra) {
-  const e = new MouseEvent(type, {
-    bubbles: true,
-    cancelable: true,
-    clientX: x,
-    clientY: y,
-    ...extra
-  });
-  if (extra && extra.pointerType !== undefined) {
-    Object.defineProperty(e, 'pointerType', { value: extra.pointerType });
-  }
-  return e;
-}
 
 describe('Pac-Man pointer steering and D-pad (#1019)', () => {
   it('renders an accessible touch D-pad inside the stage', () => {

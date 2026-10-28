@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
+import { pointer } from '../helpers/pointer-event.js';
 import {
   installGamepadStub,
   removeGamepadStub,
@@ -528,30 +529,13 @@ describe('gamesHelpers.togglePauseOnSpace (#876)', () => {
 
 // jsdom has no PointerEvent constructor or setPointerCapture, so the tests
 // dispatch MouseEvent with pointer event types (listeners match on type only)
-// and the helper's capture calls are guarded in source. MouseEvent also lacks
-// the pointerType/pointerId fields, so those are defined directly on the
-// event when a test needs them.
+// and the helper's capture calls are guarded in source. The shared pointer()
+// helper in tests/helpers/pointer-event.js defines pointerType/pointerId on
+// the event when a test needs them.
 function makeCanvas() {
   const canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
   return canvas;
-}
-
-function pointer(type, x, y, extra) {
-  const e = new MouseEvent(type, {
-    bubbles: true,
-    cancelable: true,
-    clientX: x,
-    clientY: y,
-    ...extra
-  });
-  if (extra && extra.pointerType !== undefined) {
-    Object.defineProperty(e, 'pointerType', { value: extra.pointerType });
-  }
-  if (extra && extra.pointerId !== undefined) {
-    Object.defineProperty(e, 'pointerId', { value: extra.pointerId });
-  }
-  return e;
 }
 
 describe('gamesHelpers.createSwipeSteering (#1019)', () => {
