@@ -1,10 +1,18 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import {
   installPacmanTestEnvironment,
   mountPacman,
   dispatchKey,
   resetGamesHub
 } from '../helpers/pacman-test-env.js';
+import {
+  installGamepadStub,
+  removeGamepadStub,
+  makeGamepad,
+  pressButton,
+  releaseButton,
+  installFramePump
+} from '../helpers/gamepad.js';
 
 beforeAll(() => {
   installPacmanTestEnvironment(vi);
@@ -942,5 +950,102 @@ describe('Pac-Man pointer steering and D-pad (#1019)', () => {
     canvasRemovals.mockRestore();
     buttonRemovals.mockRestore();
     container.remove();
+  });
+});
+
+describe('Pac-Man gamepad input (#1022)', () => {
+  let stub = null;
+  let pad = null;
+  let pump = null;
+
+  beforeEach(() => {
+    stub = installGamepadStub();
+    pad = makeGamepad();
+    stub.pads = [pad];
+    pump = installFramePump();
+  });
+
+  afterEach(() => {
+    pump.restore();
+    removeGamepadStub();
+  });
+
+  it('ignores steering on the ready screen and lifts it from Start', () => {
+    const container = makeContainer();
+    expect(window.__pacmanTest.getState().started).toBe(false);
+
+    pressButton(pad, 14); // D-pad left must not steer or start the run
+    pump.step();
+    expect(window.__pacmanTest.getState().started).toBe(false);
+    expect(window.__pacmanTest.getState().pendingDir).toBeNull();
+    expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+
+    releaseButton(pad, 14);
+    pump.step();
+    pressButton(pad, 9); // Start behaves like Space on the ready screen
+    pump.step();
+    expect(window.__pacmanTest.getState().started).toBe(true);
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+  });
+
+  it('lifts the ready screen from A', () => {
+    const container = makeContainer();
+
+    pressButton(pad, 0); // A/Cross starts instead of restarting here
+    pump.step();
+    expect(window.__pacmanTest.getState().started).toBe(true);
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+  });
+
+  it('steers with the D-pad through the same queueTurn path as the keyboard', () => {
+    makeContainer();
+    startWithSpace();
+
+    pressButton(pad, 13); // D-pad down
+    pump.step();
+    expect(window.__pacmanTest.getState().pendingDir).toBe('down');
+  });
+
+  it('toggles pause from Start and resumes on the next press', () => {
+    makeContainer();
+    startWithSpace();
+
+    pressButton(pad, 9); // Start pauses
+    pump.step();
+    expect(window.__pacmanTest.getState().paused).toBe(true);
+    expect(window.__pacmanTest.getState().manualPause).toBe(true);
+
+    releaseButton(pad, 9); // releasing Start is not a toggle
+    pump.step();
+    expect(window.__pacmanTest.getState().paused).toBe(true);
+
+    pressButton(pad, 9); // Start again resumes
+    pump.step();
+    expect(window.__pacmanTest.getState().paused).toBe(false);
+    expect(window.__pacmanTest.getState().manualPause).toBe(false);
+  });
+
+  it('restarts a finished run with A', () => {
+    makeContainer();
+    startWithSpace();
+    window.__pacmanTest.forceGameOver();
+    expect(window.__pacmanTest.getState().gameOver).toBe(true);
+
+    pressButton(pad, 0); // A/Cross restarts
+    pump.step();
+    expect(window.__pacmanTest.getState().gameOver).toBe(false);
+    expect(window.__pacmanTest.getState().started).toBe(true);
+  });
+
+  it('stops the poller on destroy', () => {
+    makeContainer();
+    pump.step();
+    expect(stub.calls).toBeGreaterThan(0);
+
+    getGame().destroy();
+    const callsAfterDestroy = stub.calls;
+    expect(pump.pendingCount()).toBe(0);
+    pump.step(3);
+    expect(stub.calls).toBe(callsAfterDestroy);
   });
 });

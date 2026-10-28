@@ -642,6 +642,23 @@
 
   // ===================== Input =====================
 
+  // Manual pause toggle shared by Space and the gamepad Start button
+  // (#1022): pausing stops both loops, resuming restarts them, and
+  // manualPause keeps a visibility resume() from unpausing a pause the
+  // player chose.
+  function toggleManualPause() {
+    paused = !paused;
+    manualPause = paused;
+    if (paused) {
+      stopTick();
+      stopAnimation();
+    } else {
+      startTick();
+      startAnimation();
+    }
+    draw();
+  }
+
   // The shared key helpers in shared.js always load before this game (the
   // Games hub loader and the tests both load them first, the assumption
   // Pac-Man already makes), so the handler calls them directly (#876/#887).
@@ -669,16 +686,7 @@
 
     if (e.code === 'Space') {
       e.preventDefault();
-      paused = !paused;
-      manualPause = paused;
-      if (paused) {
-        stopTick();
-        stopAnimation();
-      } else {
-        startTick();
-        startAnimation();
-      }
-      draw();
+      toggleManualPause();
       return;
     }
 
@@ -693,6 +701,7 @@
 
   let swipeSteering = null;
   let dpad = null;
+  let gamepad = null;
 
   // Shared by swipe gestures and the on-screen D-pad. Steering is ignored
   // until the run starts and after it ends; a swipe-direction event never
@@ -703,6 +712,26 @@
   }
 
   function handleGestureTap() {
+    if (gameOver) restart();
+  }
+
+  // Gamepad input (#1022). Start behaves like Space: it lifts the ready
+  // screen first, then toggles the manual pause (never on a finished run).
+  // A/Cross restarts a finished run, or lifts the ready screen before one.
+  function handleGamepadPause() {
+    if (!started) {
+      if (readyScreen) readyScreen.start();
+      return;
+    }
+    if (gameOver) return;
+    toggleManualPause();
+  }
+
+  function handleGamepadRestart() {
+    if (!started) {
+      if (readyScreen) readyScreen.start();
+      return;
+    }
     if (gameOver) restart();
   }
 
@@ -926,6 +955,16 @@
       // still playable instead of being stuck with started === false.
       startRun();
     }
+
+    // One gamepad poller per mount (#1022), stopped in destroy() so
+    // consecutive launches can never stack poll loops. Returns null when the
+    // Gamepad API is unavailable, leaving keyboard/touch play untouched.
+    gamepad = window.gamesHelpers?.createGamepadSteering?.({
+      deadzone: 0.4,
+      onDirection: applyGestureDirection,
+      onPause: handleGamepadPause,
+      onRestart: handleGamepadRestart
+    });
   }
 
   function destroy() {
@@ -948,6 +987,10 @@
     if (dpad) {
       dpad.destroy();
       dpad = null;
+    }
+    if (gamepad) {
+      gamepad.destroy();
+      gamepad = null;
     }
     canvas = null;
     ctx = null;

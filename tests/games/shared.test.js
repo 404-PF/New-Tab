@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
+import {
+  installGamepadStub,
+  removeGamepadStub,
+  makeGamepad,
+  pressButton,
+  releaseButton,
+  setStick,
+  installFramePump
+} from '../helpers/gamepad.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
@@ -850,5 +859,307 @@ describe('gamesHelpers.createDPad (#1019)', () => {
     expect(window.gamesHelpers.createDPad(null, vi.fn())).toBeNull();
     expect(window.gamesHelpers.createDPad(stage, null)).toBeNull();
     stage.remove();
+  });
+});
+
+describe('gamesHelpers.createGamepadSteering (#1022)', () => {
+  let stub = null;
+  let pump = null;
+  let steer = null;
+
+  beforeEach(() => {
+    stub = installGamepadStub();
+    pump = installFramePump();
+  });
+
+  afterEach(() => {
+    if (steer) steer.destroy();
+    steer = null;
+    pump.restore();
+    removeGamepadStub();
+  });
+
+  function create(options) {
+    steer = window.gamesHelpers.createGamepadSteering(options);
+    return steer;
+  }
+
+  it('returns null without the Gamepad API and never arms a frame', () => {
+    removeGamepadStub();
+    expect(window.gamesHelpers.createGamepadSteering({})).toBeNull();
+    expect(pump.pendingCount()).toBe(0);
+  });
+
+  it('returns null without requestAnimationFrame', () => {
+    const savedRaf = Object.getOwnPropertyDescriptor(window, 'requestAnimationFrame');
+    delete window.requestAnimationFrame;
+    try {
+      expect(window.gamesHelpers.createGamepadSteering({})).toBeNull();
+      expect(stub.calls).toBe(0);
+    } finally {
+      Object.defineProperty(window, 'requestAnimationFrame', savedRaf);
+    }
+  });
+
+  it('emits a direction only on the edge into it, latched until neutral', () => {
+    const pad = makeGamepad();
+    stub.pads = [pad];
+    const onDirection = vi.fn();
+    create({ onDirection });
+    pump.step();
+
+    pressButton(pad, 13); // D-pad down
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenLastCalledWith('down');
+
+    // Held: no auto-repeat flood (the gamepad equivalent of #1016).
+    pump.step(5);
+    expect(onDirection).toHaveBeenCalledTimes(1);
+
+    // Neutral unlatches, so the next press of the same direction re-fires.
+    releaseButton(pad, 13);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    pressButton(pad, 13);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(2);
+    expect(onDirection).toHaveBeenLastCalledWith('down');
+  });
+
+  it('treats a direct direction change as a fresh edge', () => {
+    const pad = makeGamepad();
+    stub.pads = [pad];
+    const onDirection = vi.fn();
+    create({ onDirection });
+    pump.step();
+
+    pressButton(pad, 12); // D-pad up
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenLastCalledWith('up');
+
+    // Switch to right without a neutral frame in between.
+    releaseButton(pad, 12);
+    pressButton(pad, 15);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(2);
+    expect(onDirection).toHaveBeenLastCalledWith('right');
+  });
+
+  it('ignores stick drift inside the deadzone and unlatches on return', () => {
+    const pad = makeGamepad();
+    stub.pads = [pad];
+    const onDirection = vi.fn();
+    create({ onDirection, deadzone: 0.4 });
+    pump.step();
+
+    setStick(pad, 0.3, 0.1); // inside the deadzone
+    pump.step(3);
+    expect(onDirection).not.toHaveBeenCalled();
+
+    setStick(pad, -0.9, 0); // beyond the deadzone
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenLastCalledWith('left');
+
+    // Drifting back inside the deadzone unlatches without emitting.
+    setStick(pad, -0.2, 0);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+
+    // Re-crossing the deadzone is a fresh edge.
+    setStick(pad, -0.9, 0);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(2);
+    expect(onDirection).toHaveBeenLastCalledWith('left');
+  });
+
+  it('prefers the D-pad over the stick and cancels opposing D-pad presses', () => {
+    const pad = makeGamepad();
+    stub.pads = [pad];
+    const onDirection = vi.fn();
+    create({ onDirection });
+    pump.step();
+
+    setStick(pad, 0.9, 0); // stick right
+    pressButton(pad, 12); // D-pad up wins over the stick
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenLastCalledWith('up');
+
+    releaseButton(pad, 12);
+    setStick(pad, 0, 0);
+    pump.step();
+
+    // Opposing D-pad presses cancel to neutral instead of picking a winner.
+    pressButton(pad, 14);
+    pressButton(pad, 15);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+
+    // Releasing one side of the pair is a fresh edge.
+    releaseButton(pad, 15);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(2);
+    expect(onDirection).toHaveBeenLastCalledWith('left');
+  });
+
+  it('fires Start and A edges once per press', () => {
+    const pad = makeGamepad();
+    stub.pads = [pad];
+    const onPause = vi.fn();
+    const onRestart = vi.fn();
+    create({ onPause, onRestart });
+    pump.step();
+
+    pressButton(pad, 9); // Start
+    pump.step();
+    expect(onPause).toHaveBeenCalledTimes(1);
+    expect(onRestart).not.toHaveBeenCalled();
+    pump.step(3); // held Start keeps pausing exactly once
+    expect(onPause).toHaveBeenCalledTimes(1);
+
+    releaseButton(pad, 9);
+    pump.step();
+    pressButton(pad, 9);
+    pump.step();
+    expect(onPause).toHaveBeenCalledTimes(2);
+
+    pressButton(pad, 0); // A/Cross
+    pump.step();
+    expect(onRestart).toHaveBeenCalledTimes(1);
+    pump.step();
+    expect(onRestart).toHaveBeenCalledTimes(1);
+
+    releaseButton(pad, 0);
+    pump.step();
+    pressButton(pad, 0);
+    pump.step();
+    expect(onRestart).toHaveBeenCalledTimes(2);
+  });
+
+  it('resets every latch while no pad is connected so a reconnect re-fires', () => {
+    const pad = makeGamepad();
+    stub.pads = [pad];
+    const onDirection = vi.fn();
+    const onPause = vi.fn();
+    create({ onDirection, onPause });
+    pump.step();
+
+    pressButton(pad, 13);
+    pressButton(pad, 9);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onPause).toHaveBeenCalledTimes(1);
+
+    stub.pads = []; // disconnect mid-hold
+    pump.step();
+    stub.pads = [pad]; // reconnect with every input still held
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(2);
+    expect(onPause).toHaveBeenCalledTimes(2);
+  });
+
+  it('resets the latches when the selected pad identity changes', () => {
+    const first = makeGamepad();
+    const second = makeGamepad();
+    stub.pads = [first];
+    const onDirection = vi.fn();
+    const onPause = vi.fn();
+    create({ onDirection, onPause });
+    pump.step();
+
+    pressButton(first, 13);
+    pressButton(first, 9);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onPause).toHaveBeenCalledTimes(1);
+
+    // Swap to a different pad whose inputs are already held: its first
+    // direction and Start press must fire instead of being swallowed.
+    stub.pads = [second];
+    pressButton(second, 13);
+    pressButton(second, 9);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(2);
+    expect(onDirection).toHaveBeenLastCalledWith('down');
+    expect(onPause).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses the first connected pad and ignores disconnected slots', () => {
+    const dead = makeGamepad({ connected: false });
+    const alive = makeGamepad();
+    const later = makeGamepad();
+    stub.pads = [dead, alive, later];
+    const onDirection = vi.fn();
+    create({ onDirection });
+    pump.step();
+
+    pressButton(dead, 13); // the dead slot must not steer
+    pump.step();
+    expect(onDirection).not.toHaveBeenCalled();
+
+    pressButton(later, 13); // a later connected pad must not steer
+    pump.step();
+    expect(onDirection).not.toHaveBeenCalled();
+
+    pressButton(alive, 13);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenLastCalledWith('down');
+  });
+
+  it('skips connected controllers without the standard mapping', () => {
+    const unmapped = makeGamepad({ mapping: '' });
+    stub.pads = [unmapped];
+    const onDirection = vi.fn();
+    create({ onDirection });
+    pump.step();
+
+    pressButton(unmapped, 13); // fixed indices are meaningless here
+    pump.step();
+    expect(onDirection).not.toHaveBeenCalled();
+
+    const standard = makeGamepad();
+    stub.pads = [unmapped, standard];
+    pressButton(standard, 13);
+    pump.step();
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenLastCalledWith('down');
+  });
+
+  it('tolerates missing options and only wires provided callbacks', () => {
+    const pad = makeGamepad();
+    stub.pads = [pad];
+    const handle = create();
+
+    pressButton(pad, 9);
+    pressButton(pad, 0);
+    pressButton(pad, 13);
+    expect(() => pump.step()).not.toThrow();
+
+    handle.destroy();
+  });
+
+  it('destroy() stops polling and is idempotent', () => {
+    const pad = makeGamepad();
+    stub.pads = [pad];
+    const onDirection = vi.fn();
+    const handle = create({ onDirection });
+    pump.step();
+    expect(stub.calls).toBeGreaterThan(0);
+
+    handle.destroy();
+    const callsAfterDestroy = stub.calls;
+    expect(pump.pendingCount()).toBe(0);
+    pump.step(3);
+    expect(stub.calls).toBe(callsAfterDestroy);
+    expect(handle.destroy()).toBeUndefined();
+
+    // A late press after teardown must not sneak through.
+    pressButton(pad, 13);
+    pump.step();
+    expect(onDirection).not.toHaveBeenCalled();
   });
 });

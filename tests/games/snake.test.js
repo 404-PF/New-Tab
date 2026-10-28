@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
 import { expectNoStackedKeydownListeners } from '../helpers/keydown-listener-tally.js';
+import {
+  installGamepadStub,
+  removeGamepadStub,
+  makeGamepad,
+  pressButton,
+  releaseButton
+} from '../helpers/gamepad.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
@@ -907,6 +914,192 @@ describe('Snake pointer steering and D-pad (#1019)', () => {
       vi.useRealTimers();
       if (game) game.destroy();
       if (container) container.remove();
+    }
+  });
+});
+
+describe('Snake gamepad input (#1022)', () => {
+  let stub = null;
+  let pad = null;
+
+  beforeEach(() => {
+    stub = installGamepadStub();
+    pad = makeGamepad();
+    stub.pads = [pad];
+  });
+
+  afterEach(() => {
+    removeGamepadStub();
+  });
+
+  it('holds the ready screen against steering and lifts it from A', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      container = document.createElement('div');
+      document.body.appendChild(container);
+      game = window.GameRegistry.get('snake');
+      game.init(container);
+      expect(window.__snakeReady.isStarted()).toBe(false);
+      expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+
+      pressButton(pad, 12); // D-pad up must not steer or start the run
+      vi.advanceTimersByTime(50);
+      expect(window.__snakeReady.isStarted()).toBe(false);
+
+      pressButton(pad, 0); // A lifts the ready screen instead
+      vi.advanceTimersByTime(50);
+      expect(window.__snakeReady.isStarted()).toBe(true);
+      expect(container.querySelector('.games-ready-overlay')).toBeNull();
+      // The D-pad was latched while the screen was up, so nothing queued.
+      expect(game.serialize().directionQueue).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('lifts the ready screen from Start', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      container = document.createElement('div');
+      document.body.appendChild(container);
+      game = window.GameRegistry.get('snake');
+      game.init(container);
+
+      pressButton(pad, 9); // Start behaves like Space on the ready screen
+      vi.advanceTimersByTime(50);
+      expect(window.__snakeReady.isStarted()).toBe(true);
+      expect(container.querySelector('.games-ready-overlay')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('steers with the D-pad through the same queueTurn path as the keyboard', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+
+      pressButton(pad, 12); // D-pad up
+      vi.advanceTimersByTime(200); // press lands, first tick applies the turn
+      expect(game.serialize().direction).toBe('up');
+      expect(game.serialize().directionQueue).toEqual([]);
+
+      // The held D-pad never re-fires: only a return to neutral re-arms it,
+      // so the next press queues a fresh direction instead of being swallowed.
+      releaseButton(pad, 12);
+      vi.advanceTimersByTime(50);
+      pressButton(pad, 15); // D-pad right, perpendicular to the current up
+      vi.advanceTimersByTime(50);
+      const state = game.serialize();
+      expect(state.directionQueue.includes('right') || state.direction === 'right').toBe(true);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('pauses and resumes from Start', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      vi.advanceTimersByTime(300); // let the run move a few cells first
+
+      pressButton(pad, 9); // Start pauses
+      vi.advanceTimersByTime(50);
+      const pausedHead = game.serialize().snake[0];
+      vi.advanceTimersByTime(400);
+      expect(game.serialize().snake[0]).toEqual(pausedHead); // frozen
+
+      releaseButton(pad, 9); // releasing Start is not a toggle
+      vi.advanceTimersByTime(50);
+      expect(game.serialize().snake[0]).toEqual(pausedHead);
+
+      pressButton(pad, 9); // Start again resumes
+      vi.advanceTimersByTime(50);
+      vi.advanceTimersByTime(400);
+      expect(game.serialize().snake[0]).not.toEqual(pausedHead);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('ignores Start after game over and restarts with A', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      window.__snakeReady.forceGameOver();
+      expect(window.__snakeReady.isGameOver()).toBe(true);
+
+      pressButton(pad, 9); // Start must not toggle a dead run
+      vi.advanceTimersByTime(50);
+      expect(window.__snakeReady.isGameOver()).toBe(true);
+
+      releaseButton(pad, 9);
+      vi.advanceTimersByTime(50);
+      pressButton(pad, 0); // A/Cross restarts
+      vi.advanceTimersByTime(50);
+      expect(window.__snakeReady.isGameOver()).toBe(false);
+      expect(window.__snakeReady.isStarted()).toBe(true);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('runs exactly one poller per mount and stops it on destroy', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    let host = null;
+    try {
+      window.GameRegistry.destroyCurrent(); // start from a clean registry
+      container = document.createElement('div');
+      document.body.appendChild(container);
+      game = window.GameRegistry.get('snake');
+      game.init(container);
+      // One frame = exactly one getGamepads call when a single poller runs.
+      vi.advanceTimersByTime(16);
+      expect(stub.calls).toBe(1);
+
+      game.destroy(); // teardown cancels the frame loop
+      vi.advanceTimersByTime(16);
+      expect(stub.calls).toBe(1);
+
+      // A registry handoff (destroyCurrent → init) must not stack pollers.
+      host = document.createElement('div');
+      host.id = 'games-game-container';
+      document.body.appendChild(host);
+      expect(window.GameRegistry.launch('snake')).toBe(true);
+      vi.advanceTimersByTime(16);
+      expect(stub.calls).toBe(2);
+
+      window.GameRegistry.destroyCurrent();
+      vi.advanceTimersByTime(16);
+      expect(stub.calls).toBe(2);
+    } finally {
+      window.GameRegistry.destroyCurrent();
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+      if (host) host.remove();
     }
   });
 });
