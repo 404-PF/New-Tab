@@ -445,6 +445,123 @@
     };
   };
 
+  // Optional Gamepad API input for the steering games (#1022). Polls
+  // navigator.getGamepads() on a single requestAnimationFrame loop and maps
+  // the standard mapping onto the same entry points the keyboard uses:
+  // D-pad and left stick call onDirection (feeding queueTurn), Start calls
+  // onPause, and A/Cross calls onRestart. A direction fires only on the
+  // transition into it and latches until every input returns inside the
+  // deadzone, so a held stick behaves like a single key press instead of an
+  // auto-repeat flood (the gamepad equivalent of shouldIgnoreKey dropping
+  // OS repeats); buttons are edge-triggered the same way. Returns
+  // { destroy } to stop the loop, or null when the Gamepad API (or
+  // requestAnimationFrame) is unavailable, so tests and non-supporting
+  // browsers never see a poller.
+  window.gamesHelpers.createGamepadSteering = function (options) {
+    if (typeof navigator.getGamepads !== 'function') return null;
+    if (typeof window.requestAnimationFrame !== 'function') return null;
+    const deadzone = Number.isFinite(options?.deadzone) ? options.deadzone : 0.4;
+    const onDirection = typeof options?.onDirection === 'function' ? options.onDirection : null;
+    const onPause = typeof options?.onPause === 'function' ? options.onPause : null;
+    const onRestart = typeof options?.onRestart === 'function' ? options.onRestart : null;
+
+    // Standard gamepad mapping: 0 = A/Cross, 9 = Start/Options, 12-15 = D-pad.
+    const BUTTON_A = 0;
+    const BUTTON_START = 9;
+    const BUTTON_DPAD_UP = 12;
+    const BUTTON_DPAD_DOWN = 13;
+    const BUTTON_DPAD_LEFT = 14;
+    const BUTTON_DPAD_RIGHT = 15;
+
+    let rafId = null;
+    let destroyed = false;
+    let latchedDirection = null;
+    let startHeld = false;
+    let aHeld = false;
+
+    function isPressed(button) {
+      return !!button && (button.pressed === true || button.value > 0);
+    }
+
+    // Resolve the current direction, or null when everything is neutral
+    // (inside the deadzone, D-pad released). Discrete D-pad presses win over
+    // the analog stick, and opposing D-pad presses cancel each other.
+    function readDirection(pad) {
+      const buttons = pad.buttons || [];
+      const up = isPressed(buttons[BUTTON_DPAD_UP]);
+      const down = isPressed(buttons[BUTTON_DPAD_DOWN]);
+      const left = isPressed(buttons[BUTTON_DPAD_LEFT]);
+      const right = isPressed(buttons[BUTTON_DPAD_RIGHT]);
+      if (up !== down) return up ? 'up' : 'down';
+      if (left !== right) return left ? 'left' : 'right';
+      const axes = pad.axes || [];
+      const x = Number.isFinite(axes[0]) ? axes[0] : 0;
+      const y = Number.isFinite(axes[1]) ? axes[1] : 0;
+      if (Math.abs(x) <= deadzone && Math.abs(y) <= deadzone) return null;
+      if (Math.abs(x) > Math.abs(y)) return x > 0 ? 'right' : 'left';
+      return y > 0 ? 'down' : 'up';
+    }
+
+    function poll(pad) {
+      const direction = readDirection(pad);
+      if (direction === null) {
+        // Back to neutral: release the latch so the next press of the same
+        // direction is a fresh edge instead of being swallowed forever.
+        latchedDirection = null;
+      } else if (latchedDirection === null) {
+        latchedDirection = direction;
+        if (onDirection) onDirection(direction);
+      }
+
+      const buttons = pad.buttons || [];
+      const startPressed = isPressed(buttons[BUTTON_START]);
+      if (startPressed && !startHeld && onPause) onPause();
+      startHeld = startPressed;
+      const aPressed = isPressed(buttons[BUTTON_A]);
+      if (aPressed && !aHeld && onRestart) onRestart();
+      aHeld = aPressed;
+    }
+
+    function frame() {
+      if (destroyed) return;
+      // Re-arm before polling so a callback that tears the poller down
+      // mid-frame cancels the pending frame instead of resurrecting it.
+      rafId = window.requestAnimationFrame(frame);
+      let pad = null;
+      try {
+        const pads = navigator.getGamepads() || [];
+        for (let i = 0; i < pads.length; i++) {
+          if (pads[i] && pads[i].connected !== false) {
+            pad = pads[i];
+            break;
+          }
+        }
+      } catch (_err) {
+        pad = null;
+      }
+      if (!pad) {
+        // No controller: reset every latch so a reconnect re-fires its edges.
+        latchedDirection = null;
+        startHeld = false;
+        aHeld = false;
+        return;
+      }
+      poll(pad);
+    }
+
+    rafId = window.requestAnimationFrame(frame);
+
+    return {
+      destroy: function () {
+        destroyed = true;
+        if (rafId !== null && typeof window.cancelAnimationFrame === 'function') {
+          window.cancelAnimationFrame(rafId);
+        }
+        rafId = null;
+      }
+    };
+  };
+
   // Key handling helper for restarting on Space when gameOver
   window.gamesHelpers.handleRestartSpace = function (ev, resetFn) {
     if (!ev || window.gamesHelpers.isEditableTarget(ev.target)) return;

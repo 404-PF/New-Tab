@@ -1144,6 +1144,7 @@
 
   let swipeSteering = null;
   let dpad = null;
+  let gamepad = null;
 
   // Shared by swipe gestures and the on-screen D-pad. Steering is ignored
   // until the run starts and after it ends; a tap restarts a finished run.
@@ -1153,6 +1154,27 @@
   }
 
   function handleGestureTap() {
+    if (gameOver) resetAndStart();
+  }
+
+  // Gamepad input (#1022). Start behaves like Space: it lifts the ready
+  // screen first, then toggles the manual pause (never on a finished run),
+  // and A/Cross restarts a finished run or lifts the ready screen.
+  function handleGamepadPause() {
+    if (!started) {
+      if (readyScreen) readyScreen.start();
+      return;
+    }
+    if (gameOver) return;
+    if (manualPause) resumeFromManualPause();
+    else pauseRun();
+  }
+
+  function handleGamepadRestart() {
+    if (!started) {
+      if (readyScreen) readyScreen.start();
+      return;
+    }
     if (gameOver) resetAndStart();
   }
 
@@ -1243,6 +1265,16 @@
       onStart: restoredRun ? continueRestoredRun : resetAndStart
     });
     if (!readyScreen) resetAndStart();
+
+    // One gamepad poller per mount (#1022), stopped in destroy() so
+    // consecutive launches can never stack poll loops. Returns null when the
+    // Gamepad API is unavailable, leaving keyboard/touch play untouched.
+    gamepad = window.gamesHelpers.createGamepadSteering({
+      deadzone: 0.4,
+      onDirection: applyGestureDirection,
+      onPause: handleGamepadPause,
+      onRestart: handleGamepadRestart
+    });
   }
 
   function continueRestoredRun() {
@@ -1278,6 +1310,10 @@
     if (dpad) {
       dpad.destroy();
       dpad = null;
+    }
+    if (gamepad) {
+      gamepad.destroy();
+      gamepad = null;
     }
 
     if (container) container.innerHTML = '';
