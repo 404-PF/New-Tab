@@ -384,7 +384,12 @@
       // text selection (or drag) that highlights the page around the board
       // (#1024). Cancelling pointerdown only suppresses the compatibility
       // mouse events; pointerup still fires, so tap-to-restart is intact.
-      e.preventDefault();
+      if (e.pointerType === 'mouse') {
+        if (typeof canvas.focus === 'function') {
+          try { canvas.focus(); } catch (_err) { /* ignore */ }
+        }
+        e.preventDefault();
+      }
       tracking = true;
       moved = false;
       activePointerId = e.pointerId;
