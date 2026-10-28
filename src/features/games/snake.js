@@ -125,12 +125,13 @@
     return directionQueue.length > 0 ? directionQueue[directionQueue.length - 1] : direction;
   }
 
-  // Render-only signal (#1020): the direction the head faces while a turn is
+  // Render-only signal (#1020): the direction of the turn that applies next —
+  // the queue's first entry, matching nextDirection — while a turn is
   // buffered, or null when nothing is queued. The draw path reads live queue
   // state each frame, so the mark clears automatically the moment tick()
   // applies or drops the entry.
   function pendingTurnDirection() {
-    return directionQueue.length > 0 ? getLastQueuedDirection() : null;
+    return directionQueue.length > 0 ? directionQueue[0] : null;
   }
 
   // Unit offset for a cardinal direction; zero vector for unknown values.

@@ -769,6 +769,29 @@ describe('Snake buffered-turn indicator (#1020)', () => {
     }
   });
 
+  it('points the indicator at the first queued turn, not the last press', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      // Up then Left while moving right buffers two turns: the queue head is
+      // the one tick() applies next (and the one nextDirection reports), so
+      // the eyes/chevron must follow it — the last press would aim back into
+      // the neck and leave the first turn unmarked.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      expect(game.serialize().directionQueue).toEqual(['up', 'left']);
+      expect(game.serialize().nextDirection).toBe('up');
+      expect(window.__snakeReady.pendingTurnDirection()).toBe('up');
+      expect(context.strokeStyles).toContain(CHEVRON_STROKE);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
   it('clears the indicator when a buffered reversal is dropped at apply time', () => {
     vi.useFakeTimers();
     let container = null;
@@ -805,6 +828,7 @@ describe('Snake buffered-turn indicator (#1020)', () => {
   it('paints the mark when reduced motion leaves no render loop (#1020)', () => {
     const previousMotion = window.prefersReducedMotion;
     window.prefersReducedMotion = () => true;
+    vi.useFakeTimers();
     let container = null;
     let game = null;
     try {
@@ -817,6 +841,12 @@ describe('Snake buffered-turn indicator (#1020)', () => {
       expect(window.__snakeReady.pendingTurnDirection()).toBe('up');
       expect(context.strokeStyles).toContain(CHEVRON_STROKE);
 
+      // Let the tick apply it so the gesture below is the only buffered
+      // turn — the indicator tracks the queue head, and with the queue
+      // emptied that head is the gesture's direction.
+      vi.advanceTimersByTime(400);
+      expect(game.serialize().directionQueue).toEqual([]);
+
       // The gesture path redraws on acceptance the same way.
       context.strokeStyles.length = 0;
       const canvas = container.querySelector('.games-snake-canvas');
@@ -825,6 +855,7 @@ describe('Snake buffered-turn indicator (#1020)', () => {
       expect(window.__snakeReady.pendingTurnDirection()).toBe('down');
       expect(context.strokeStyles).toContain(CHEVRON_STROKE);
     } finally {
+      vi.useRealTimers();
       if (game) game.destroy();
       if (container) container.remove();
       if (previousMotion === undefined) delete window.prefersReducedMotion;
