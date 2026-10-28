@@ -60,6 +60,7 @@
     'pomodoro',
     'eyeCareReminder',
     'games_enabled',
+    'games_keymap',
     'ai_conversations',
     'ai_current_conversation_id',
     'updateCheckEnabled',
@@ -711,6 +712,9 @@
         typeof v.browserNotification === 'boolean';
     },
     games_enabled: function (v) { return typeof v === 'boolean'; },
+    // Any string is importable; the games helpers fall back to the default
+    // map for an unknown id instead of rejecting the whole backup.
+    games_keymap: function (v) { return typeof v === 'string'; },
     /** Validates the persisted AI conversation collection in a backup. */
     ai_conversations: function (v) {
       return Array.isArray(v) && v.every(isValidAIConversation);

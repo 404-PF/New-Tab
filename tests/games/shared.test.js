@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
 
 beforeAll(() => {
@@ -193,6 +193,83 @@ describe('gamesHelpers.parseDirection (#876)', () => {
     expect(parse({ code: 'KeyQ', key: 'q' })).toBeNull();
     expect(parse(null)).toBeNull();
     expect(parse(undefined)).toBeNull();
+  });
+});
+
+describe('gamesHelpers keymaps (#1023)', () => {
+  const parse = (e) => window.gamesHelpers.parseDirection(e);
+
+  afterEach(() => {
+    window.gamesHelpers.setKeymap('wasd');
+  });
+
+  it('defaults to the WASD map merged with arrow keys', () => {
+    expect(window.gamesHelpers.getKeymap()).toBe('wasd');
+    expect(parse({ code: 'KeyW' })).toBe('up');
+    expect(parse({ code: 'KeyS' })).toBe('down');
+    expect(parse({ code: 'KeyA' })).toBe('left');
+    expect(parse({ code: 'KeyD' })).toBe('right');
+    expect(parse({ code: 'ArrowUp' })).toBe('up');
+    expect(parse({ code: 'KeyI', key: 'i' })).toBeNull();
+    expect(parse({ code: 'Numpad8', key: '8' })).toBeNull();
+  });
+
+  it('steers with IJKL while arrow keys keep working', () => {
+    expect(window.gamesHelpers.setKeymap('ijkl')).toBe('ijkl');
+    expect(window.gamesHelpers.getKeymap()).toBe('ijkl');
+    expect(parse({ code: 'KeyI' })).toBe('up');
+    expect(parse({ code: 'KeyK' })).toBe('down');
+    expect(parse({ code: 'KeyJ' })).toBe('left');
+    expect(parse({ code: 'KeyL' })).toBe('right');
+    // e.key fallback for synthetic events, and arrows as the accessibility floor.
+    expect(parse({ key: 'i' })).toBe('up');
+    expect(parse({ code: 'ArrowRight', key: 'x' })).toBe('right');
+    // The previous layout stops steering so the maps do not bleed together.
+    expect(parse({ code: 'KeyW' })).toBeNull();
+  });
+
+  it('steers with the numpad while arrow keys keep working', () => {
+    expect(window.gamesHelpers.setKeymap('numpad')).toBe('numpad');
+    expect(window.gamesHelpers.getKeymap()).toBe('numpad');
+    expect(parse({ code: 'Numpad8', key: '8' })).toBe('up');
+    expect(parse({ code: 'Numpad2', key: '2' })).toBe('down');
+    expect(parse({ code: 'Numpad4', key: '4' })).toBe('left');
+    expect(parse({ code: 'Numpad6', key: '6' })).toBe('right');
+    expect(parse({ code: 'ArrowLeft', key: 'x' })).toBe('left');
+    expect(parse({ code: 'KeyW' })).toBeNull();
+  });
+
+  it('keeps e.code (physical position) as the primary lookup', () => {
+    window.gamesHelpers.setKeymap('ijkl');
+    // Same physical key as KeyI on QWERTY; the code wins over the label.
+    expect(parse({ code: 'KeyI', key: 'z' })).toBe('up');
+  });
+
+  it('persists the choice under games_keymap', () => {
+    window.gamesHelpers.setKeymap('ijkl');
+    expect(localStorage.getItem('games_keymap')).toBe('ijkl');
+    window.gamesHelpers.setKeymap('numpad');
+    expect(localStorage.getItem('games_keymap')).toBe('numpad');
+  });
+
+  it('falls back to the default map for an unknown id without throwing', () => {
+    expect(window.gamesHelpers.setKeymap('bogus')).toBe('wasd');
+    expect(window.gamesHelpers.getKeymap()).toBe('wasd');
+    expect(() => window.gamesHelpers.setKeymap(undefined)).not.toThrow();
+    expect(window.gamesHelpers.getKeymap()).toBe('wasd');
+    expect(parse({ code: 'KeyW' })).toBe('up');
+  });
+
+  it('initializes from storage when the scripts load and survives a corrupted value', () => {
+    localStorage.setItem('games_keymap', 'ijkl');
+    injectScript('src/features/games/shared.js');
+    expect(window.gamesHelpers.getKeymap()).toBe('ijkl');
+    expect(parse({ code: 'KeyI' })).toBe('up');
+
+    localStorage.setItem('games_keymap', 'not-a-keymap');
+    injectScript('src/features/games/shared.js');
+    expect(window.gamesHelpers.getKeymap()).toBe('wasd');
+    expect(parse({ code: 'KeyW' })).toBe('up');
   });
 });
 

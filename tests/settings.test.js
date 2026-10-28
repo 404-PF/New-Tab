@@ -1637,3 +1637,67 @@ describe('Restart onboarding button closes Settings mid-rebind (#905)', () => {
     expect(Shortcuts.load().focusSearch).toBe('/');
   });
 });
+
+describe('Games steering keymap setting (#1023)', () => {
+  beforeAll(() => {
+    injectScript('src/features/games/shared.js');
+  });
+
+  const select = () => document.getElementById('games-keymap-setting');
+
+  it('loadGamesKeymap defaults to wasd and falls back for unknown stored values', () => {
+    localStorage.removeItem('games_keymap');
+    expect(loadGamesKeymap()).toBe('wasd');
+
+    localStorage.setItem('games_keymap', 'ijkl');
+    expect(loadGamesKeymap()).toBe('ijkl');
+
+    localStorage.setItem('games_keymap', 'bogus');
+    expect(loadGamesKeymap()).toBe('wasd');
+  });
+
+  it('changing the select persists the choice and applies it to the games helpers', () => {
+    const keymapSelect = select();
+    keymapSelect.value = 'ijkl';
+    keymapSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('games_keymap')).toBe('ijkl');
+    expect(window.gamesHelpers.getKeymap()).toBe('ijkl');
+    expect(window.gamesHelpers.parseDirection({ code: 'KeyI' })).toBe('up');
+    expect(window.gamesHelpers.parseDirection({ code: 'ArrowUp' })).toBe('up');
+  });
+
+  it('applyGamesKeymap re-syncs the select and helpers from storage', () => {
+    localStorage.setItem('games_keymap', 'numpad');
+    window.applyGamesKeymap();
+
+    expect(select().value).toBe('numpad');
+    expect(window.gamesHelpers.getKeymap()).toBe('numpad');
+    expect(window.gamesHelpers.parseDirection({ code: 'Numpad8', key: '8' })).toBe('up');
+  });
+
+  it('persists the choice via the direct-write fallback when gamesHelpers is absent', () => {
+    const helpers = window.gamesHelpers;
+    delete window.gamesHelpers;
+    try {
+      const keymapSelect = select();
+      keymapSelect.value = 'numpad';
+      keymapSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_keymap')).toBe('numpad');
+      expect(select().value).toBe('numpad');
+    } finally {
+      window.gamesHelpers = helpers;
+    }
+  });
+
+  it('delegates to gamesHelpers.setKeymap once the helpers are restored', () => {
+    const keymapSelect = select();
+    keymapSelect.value = 'ijkl';
+    keymapSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('games_keymap')).toBe('ijkl');
+    expect(window.gamesHelpers.getKeymap()).toBe('ijkl');
+    expect(window.gamesHelpers.parseDirection({ code: 'KeyI' })).toBe('up');
+  });
+});

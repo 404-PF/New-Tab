@@ -404,6 +404,8 @@ const testGlobals = {
   __snakeDifficulty: 'readonly',
   loadGamesEnabled: 'readonly',
   applyGamesEnabled: 'readonly',
+  loadGamesKeymap: 'readonly',
+  applyGamesKeymap: 'readonly',
   CURRENT_VERSION_DISPLAY: 'readonly',
   startPomodoro: 'readonly',
   stopPomodoro: 'readonly',

@@ -50,7 +50,11 @@ const GAMES_ALL_TRANSLATION_KEYS = GAMES_TRANSLATION_KEYS.concat([
   'gamesDpadUp',
   'gamesDpadDown',
   'gamesDpadLeft',
-  'gamesDpadRight'
+  'gamesDpadRight',
+  'gamesKeymap',
+  'gamesKeymapWasd',
+  'gamesKeymapIjkl',
+  'gamesKeymapNumpad'
 ]);
 
 function createNoteTagTranslations(
@@ -885,6 +889,29 @@ function applyGamesDpadMerges(code) {
   if (!target || !values) return;
   Object.assign(target, values);
 }
+
+// Configurable steering-key labels for the Games settings select (#1023).
+// Same per-language map pattern as gamesDpadTranslations so the strings stay
+// out of the positional createGamesTranslations arrays.
+const gamesKeymapTranslations = {
+  en: { gamesKeymap: 'Steering keys', gamesKeymapWasd: 'Arrow keys + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'Numpad' },
+  zh: { gamesKeymap: '操控按键', gamesKeymapWasd: '方向键 + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: '小键盘' },
+  ja: { gamesKeymap: '操作キー', gamesKeymapWasd: '矢印キー + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'テンキー' },
+  ko: { gamesKeymap: '조작 키', gamesKeymapWasd: '방향키 + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: '넘패드' },
+  es: { gamesKeymap: 'Teclas de control', gamesKeymapWasd: 'Flechas + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'Teclado numérico' },
+  fr: { gamesKeymap: 'Touches de direction', gamesKeymapWasd: 'Flèches + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'Pavé numérique' },
+  de: { gamesKeymap: 'Steuerungstasten', gamesKeymapWasd: 'Pfeiltasten + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'Ziffernblock' },
+  pt: { gamesKeymap: 'Teclas de direção', gamesKeymapWasd: 'Setas + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'Teclado numérico' },
+  ru: { gamesKeymap: 'Клавиши управления', gamesKeymapWasd: 'Стрелки + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'Цифровой блок' }
+};
+
+function applyGamesKeymapMerges(code) {
+  const target = translations[code];
+  const values = gamesKeymapTranslations[code];
+  if (!target || !values) return;
+  Object.assign(target, values);
+}
+
 const flappyBirdTranslations = {
   en: {
     gamesFlappyBird: 'Flappy Bird',
@@ -1242,6 +1269,7 @@ function applyLocaleMerges(code) {
   applyGamesLevelMerges(code);
   applyGamesReadyMerges(code);
   applyGamesDpadMerges(code);
+  applyGamesKeymapMerges(code);
   applyFlappyBirdMerges(code);
   applyPacmanMerges(code);
   applyPomodoroMerges(code);
