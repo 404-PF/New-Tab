@@ -22,7 +22,7 @@
   // Every bullet — and the fallback below — is an i18n key, never a raw
   // sentence. English strings live in the inline en table in
   // src/core/languages.js; the eight non-English locales carry their copies in
-  // src/core/locales/<code>.js, next to the 0.5.4 bullets. getNotesForVersion
+  // src/core/locales/<code>.js, next to the newest release's bullets. getNotesForVersion
   // renders each key through t(), so a locale whose table has not caught up
   // falls back to English rather than showing the key name.
   //
@@ -31,6 +31,16 @@
   // en table and one line per non-English locale in src/core/locales/<code>.js —
   // or the modal falls back to RELEASE_NOTES_FALLBACK.
   const RELEASE_NOTES = {
+    '0.5.5': [
+      'releaseNotes055SystemTheme',
+      'releaseNotes055TodoSortOrder',
+      'releaseNotes055BuiltInAppsFolders',
+      'releaseNotes055AiRenameRegenerate',
+      'releaseNotes055GamesControls',
+      'releaseNotes055CustomSearchSuggestions',
+      'releaseNotes055BackupMedia',
+      'releaseNotes055SmoothBackgrounds'
+    ],
     '0.5.4': [
       'releaseNotes054TodoMultiSelect',
       'releaseNotes054ToolbarIcon',
