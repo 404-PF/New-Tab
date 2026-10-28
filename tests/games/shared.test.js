@@ -667,6 +667,41 @@ describe('gamesHelpers.createSwipeSteering (#1019)', () => {
     canvas.remove();
   });
 
+  it('steers a primary-button mouse drag and swallows the pointerdown default (#1024)', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection);
+
+    // Holding button 0 and dragging is a steering gesture on desktop, and
+    // the default is swallowed so the drag cannot start a native text
+    // selection around the board.
+    const down = pointer('pointerdown', 100, 100, { pointerType: 'mouse', button: 0 });
+    canvas.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    canvas.dispatchEvent(pointer('pointermove', 130, 100, { pointerType: 'mouse', buttons: 1 }));
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenCalledWith('right');
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('still fires onTap for a primary-button mouse click that never drags (#1024)', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const onTap = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection, { onTap });
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100, { pointerType: 'mouse', button: 0 }));
+    canvas.dispatchEvent(pointer('pointerup', 100, 100, { pointerType: 'mouse', button: 0 }));
+
+    expect(onDirection).not.toHaveBeenCalled();
+    expect(onTap).toHaveBeenCalledTimes(1);
+
+    steering.destroy();
+    canvas.remove();
+  });
+
   it('captures the pointer when the platform supports it', () => {
     const canvas = makeCanvas();
     const captured = [];

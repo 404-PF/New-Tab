@@ -380,6 +380,11 @@
       // A second finger must not hijack the gesture: the anchor and the
       // tracked pointer stay with the first one (#1019 review).
       if (tracking) return;
+      // Swallow the browser default so a mouse drag cannot start a native
+      // text selection (or drag) that highlights the page around the board
+      // (#1024). Cancelling pointerdown only suppresses the compatibility
+      // mouse events; pointerup still fires, so tap-to-restart is intact.
+      e.preventDefault();
       tracking = true;
       moved = false;
       activePointerId = e.pointerId;

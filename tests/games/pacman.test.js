@@ -809,8 +809,20 @@ describe('Pac-Man cleanup', () => {
 
 // jsdom has no PointerEvent constructor, so pointer gestures are dispatched
 // as MouseEvent with pointer event types (listeners match on type only).
-function pointer(type, x, y) {
-  return new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+// MouseEvent lacks pointerType, so it is defined on the event when provided
+// (needed for the primary-mouse-button steering specs).
+function pointer(type, x, y, extra) {
+  const e = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX: x,
+    clientY: y,
+    ...extra
+  });
+  if (extra && extra.pointerType !== undefined) {
+    Object.defineProperty(e, 'pointerType', { value: extra.pointerType });
+  }
+  return e;
 }
 
 describe('Pac-Man pointer steering and D-pad (#1019)', () => {
@@ -834,6 +846,24 @@ describe('Pac-Man pointer steering and D-pad (#1019)', () => {
     canvas.dispatchEvent(pointer('pointerdown', 150, 150));
     canvas.dispatchEvent(pointer('pointermove', 150, 100));
     // No pointerup yet: the turn is already queued (threshold-crossing).
+    expect(window.__pacmanTest.getState().queuedDirs).toContain('up');
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('steers with a primary-button mouse drag and swallows the pointerdown default', () => {
+    const container = makeContainer();
+    startWithSpace();
+    const canvas = container.querySelector('.games-pacman-canvas');
+
+    // A held primary button is a steering gesture, same as a touch swipe.
+    const down = pointer('pointerdown', 150, 150, { pointerType: 'mouse', button: 0 });
+    canvas.dispatchEvent(down);
+    // The default is swallowed so the drag cannot start a native text
+    // selection around the maze (#1024).
+    expect(down.defaultPrevented).toBe(true);
+    canvas.dispatchEvent(pointer('pointermove', 150, 100, { pointerType: 'mouse', buttons: 1 }));
     expect(window.__pacmanTest.getState().queuedDirs).toContain('up');
 
     getGame().destroy();

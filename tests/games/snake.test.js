@@ -23,7 +23,8 @@ beforeEach(() => {
 
 // jsdom has no PointerEvent constructor, so pointer gestures are dispatched
 // as MouseEvent with pointer event types (listeners match on type only).
-// MouseEvent lacks pointerId, so it is defined on the event when provided.
+// MouseEvent lacks pointerType/pointerId, so those are defined on the event
+// when provided (needed for the primary-mouse-button steering specs).
 function pointer(type, x, y, extra) {
   const e = new MouseEvent(type, {
     bubbles: true,
@@ -32,6 +33,9 @@ function pointer(type, x, y, extra) {
     clientY: y,
     ...extra
   });
+  if (extra && extra.pointerType !== undefined) {
+    Object.defineProperty(e, 'pointerType', { value: extra.pointerType });
+  }
   if (extra && extra.pointerId !== undefined) {
     Object.defineProperty(e, 'pointerId', { value: extra.pointerId });
   }
@@ -759,6 +763,23 @@ describe('Snake pointer steering and D-pad (#1019)', () => {
     canvas.dispatchEvent(pointer('pointerdown', 150, 150));
     canvas.dispatchEvent(pointer('pointermove', 150, 100));
     // No pointerup yet: the turn is already queued (threshold-crossing).
+    expect(game.serialize().directionQueue).toContain('up');
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('steers with a primary-button mouse drag and swallows the pointerdown default', () => {
+    const { container, game } = startSnake();
+    const canvas = container.querySelector('.games-snake-canvas');
+
+    // A held primary button is a steering gesture, same as a touch swipe.
+    const down = pointer('pointerdown', 150, 150, { pointerType: 'mouse', button: 0 });
+    canvas.dispatchEvent(down);
+    // The default is swallowed so the drag cannot start a native text
+    // selection around the board (#1024).
+    expect(down.defaultPrevented).toBe(true);
+    canvas.dispatchEvent(pointer('pointermove', 150, 100, { pointerType: 'mouse', buttons: 1 }));
     expect(game.serialize().directionQueue).toContain('up');
 
     game.destroy();
