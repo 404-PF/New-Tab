@@ -2172,10 +2172,14 @@ if (gamesKeymapSetting) {
   applyGamesKeymap();
   gamesKeymapSetting.addEventListener('change', function () {
     const keymap = this.value;
-    try {
-      localStorage.setItem('games_keymap', keymap);
-    } catch (_e) {
-      // ignore storage errors
+    // gamesHelpers.setKeymap persists the choice itself when the helpers
+    // are loaded; write directly only as the fallback when they are not.
+    if (!(window.gamesHelpers && typeof window.gamesHelpers.setKeymap === 'function')) {
+      try {
+        localStorage.setItem('games_keymap', keymap);
+      } catch (_e) {
+        // ignore storage errors
+      }
     }
     applyGamesKeymap(keymap);
   });

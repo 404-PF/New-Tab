@@ -156,8 +156,6 @@ const srcGlobals = {
   __snakeDifficulty: 'readonly',
   loadGamesEnabled: 'readonly',
   applyGamesEnabled: 'readonly',
-  loadGamesKeymap: 'readonly',
-  applyGamesKeymap: 'readonly',
   addSubtask: 'readonly',
   deleteSubtask: 'readonly',
   toggleSubtask: 'readonly',

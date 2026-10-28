@@ -64,7 +64,9 @@
   const KEYMAP_KEY_SUFFIXES = {
     wasd: { w: 'up', W: 'up', s: 'down', S: 'down', a: 'left', A: 'left', d: 'right', D: 'right' },
     ijkl: { i: 'up', I: 'up', k: 'down', K: 'down', j: 'left', J: 'left', l: 'right', L: 'right' },
-    numpad: { '8': 'up', '2': 'down', '4': 'left', '6': 'right' }
+    // Numpad has no `key` fallback: a digit `key` cannot distinguish the
+    // numpad block from the top-row digits, so match on `e.code` only.
+    numpad: {}
   };
   const DEFAULT_KEYMAP_ID = 'wasd';
 
