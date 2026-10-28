@@ -294,7 +294,7 @@ window.i18n.__registerLocale('de', {
   releaseNotes055BuiltInAppsFolders: 'Integrierte Apps lassen sich jetzt in Ordner verschieben',
   releaseNotes055AiRenameRegenerate: 'KI-Chat: Unterhaltungen umbenennen und die letzte Antwort neu generieren',
   releaseNotes055GamesControls: 'Spiele: Snake und Pac-Man verlieren kaum noch Eingaben, mit Wischsteuerung und Steuerkreuz am Bildschirm',
-  releaseNotes055CustomSearchSuggestions: 'Eigene Suchanbieter liefern jetzt ebenfalls Autovervollständigungsvorschläge, sobald ihre Vorschlags-URL hinterlegt ist',
+  releaseNotes055CustomSearchSuggestions: 'Eigene Suchanbieter zeigen jetzt Autovervollständigungsvorschläge aus ihrer hinterlegten Vorschlags-Quelle',
   releaseNotes055BackupMedia: 'Einstellungs-Backups enthalten jetzt hochgeladene Hintergrundbilder/videos bis zur Größenbegrenzung und bewahren die Web-Anreicherungseinstellung',
   releaseNotes055SmoothBackgrounds: 'Flüssigere animierte Hintergründe und leichtere Übergänge',
   releaseNotes054TodoMultiSelect: 'Mehrfachauswahl in der Todo-Liste mit Massenabschluss und Massenlöschung hinzugefügt',

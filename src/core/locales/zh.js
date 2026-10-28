@@ -335,7 +335,7 @@ window.i18n.__registerLocale('zh', {
   releaseNotes055BuiltInAppsFolders: '内置应用现在也可以移动到文件夹中',
   releaseNotes055AiRenameRegenerate: 'AI 对话：支持重命名会话和重新生成最新回答',
   releaseNotes055GamesControls: '游戏：贪吃蛇与吃豆人漏按键更少，新增滑动转向和屏幕方向键',
-  releaseNotes055CustomSearchSuggestions: '自定义搜索引擎在设置建议 URL 后也能获得自动补全建议',
+  releaseNotes055CustomSearchSuggestions: '自定义搜索引擎现在也能从配置的建议接口获得自动补全建议',
   releaseNotes055BackupMedia: '设置备份现在会包含大小限制内的上传背景媒体，并保留网页增强设置',
   releaseNotes055SmoothBackgrounds: '动态背景与过渡效果更加流畅轻快',
   releaseNotes054TodoMultiSelect: 'Todo 列表新增多选，支持批量完成和删除',

@@ -307,7 +307,7 @@ window.i18n.__registerLocale('ja', {
   releaseNotes055BuiltInAppsFolders: '内蔵アプリもフォルダへ移動できるようになりました',
   releaseNotes055AiRenameRegenerate: 'AI チャット：会話名の変更と最新回答の再生成に対応',
   releaseNotes055GamesControls: 'ゲーム：Snake とパックマンで入力の取りこぼしを削減。スワイプ操作と画面上の十字キーに対応',
-  releaseNotes055CustomSearchSuggestions: 'カスタム検索プロバイダでも、候補 URL を設定すると入力候補が表示されるようになりました',
+  releaseNotes055CustomSearchSuggestions: 'カスタム検索プロバイダでも、設定した候補エンドポイントから入力候補が表示されるようになりました',
   releaseNotes055BackupMedia: '設定のバックアップはサイズ上限内のアップロード済みの背景を含め、ウェブ補強の設定も保持します',
   releaseNotes055SmoothBackgrounds: 'アニメーション背景がより滑らかになり、トランジションも軽くなりました',
   releaseNotes054TodoMultiSelect: 'Todo リストに一括完了・一括削除に対応した複数選択を追加',

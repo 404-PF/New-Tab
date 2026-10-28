@@ -307,7 +307,7 @@ window.i18n.__registerLocale('ko', {
   releaseNotes055BuiltInAppsFolders: '기본 앱도 이제 폴더로 이동할 수 있습니다',
   releaseNotes055AiRenameRegenerate: 'AI 채팅: 대화 이름 변경과 마지막 답변 다시 생성을 지원합니다',
   releaseNotes055GamesControls: '게임: 스네이크와 팩맨에서 입력 누락이 줄었고, 스와이프 조작과 화면 방향키를 지원합니다',
-  releaseNotes055CustomSearchSuggestions: '직접 추가한 검색 서비스도 추천 URL을 설정하면 자동 완성 추천이 표시됩니다',
+  releaseNotes055CustomSearchSuggestions: '직접 추가한 검색 서비스도 설정한 추천 엔드포인트에서 자동 완성 추천이 표시됩니다',
   releaseNotes055BackupMedia: '설정 백업은 크기 제한 이내의 업로드한 배경을 포함하고 웹 보강 설정을 유지합니다',
   releaseNotes055SmoothBackgrounds: '애니메이션 배경과 전환 효과가 더 부드러워졌습니다',
   releaseNotes054TodoMultiSelect: '할 일 목록에 일괄 완료 및 삭제가 가능한 다중 선택을 추가했습니다',

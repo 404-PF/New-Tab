@@ -294,7 +294,7 @@ window.i18n.__registerLocale('es', {
   releaseNotes055BuiltInAppsFolders: 'Las aplicaciones integradas ya se pueden mover a carpetas',
   releaseNotes055AiRenameRegenerate: 'Chat de IA: renombra conversaciones y regenera la última respuesta',
   releaseNotes055GamesControls: 'Juegos: Snake y Pac-Man pierden menos entradas, con control por deslizamiento y cruceta en pantalla',
-  releaseNotes055CustomSearchSuggestions: 'Los buscadores personalizados también ofrecen sugerencias de autocompletado una vez configurada su URL de sugerencias',
+  releaseNotes055CustomSearchSuggestions: 'Los buscadores personalizados ahora muestran sugerencias de autocompletado según su endpoint de sugerencias configurado',
   releaseNotes055BackupMedia: 'Las copias de seguridad de Ajustes ahora incluyen los fondos subidos dentro del límite de tamaño y conservan la opción de búsqueda web',
   releaseNotes055SmoothBackgrounds: 'Fondos animados más fluidos y transiciones más ligeras',
   releaseNotes054TodoMultiSelect: 'Selección múltiple en la lista de Tareas con completado y borrado masivos',

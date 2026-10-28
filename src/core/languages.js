@@ -415,7 +415,7 @@ const translations = {
     releaseNotes055BuiltInAppsFolders: 'Built-in apps can now be moved into folders',
     releaseNotes055AiRenameRegenerate: 'AI chat: rename conversations and regenerate the last answer',
     releaseNotes055GamesControls: 'Games: Snake and Pac-Man miss fewer inputs, with swipe steering and an on-screen D-pad',
-    releaseNotes055CustomSearchSuggestions: 'Custom search providers can now supply autocomplete suggestions once you set their suggestions URL',
+    releaseNotes055CustomSearchSuggestions: 'Custom search providers can now show autocomplete suggestions from their configured suggestions endpoint',
     releaseNotes055BackupMedia: 'Settings backups now carry uploaded background media up to the size limit and keep the web-grounding setting intact',
     releaseNotes055SmoothBackgrounds: 'Smoother animated backgrounds and lighter transitions',
     releaseNotes054TodoMultiSelect: 'Added multi-select to the Todo list with bulk complete and delete',
