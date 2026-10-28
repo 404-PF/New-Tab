@@ -130,12 +130,13 @@ Husky 的 pre-commit 钩子也会自动运行 `eslint .`。
 
 ## 📝 提交改动
 
-1. 在功能/修复分支上进行改动。
-2. 为任何行为变更添加或更新测试。
-3. 运行 `npm run lint` 与 `npm test`，确保通过。
-4. 使用清晰、约定式的提交信息（例如 `fix(todo): ...`、`feat(weather): ...`）。
-5. 向 `main` 发起 PR，并描述改动内容及原因。
-6. 在 PR 描述中关联相关 issue（例如 `Closes #123`）。
+1. 使用 `.github/ISSUE_TEMPLATE/` 中的模板（bug report 或 feature request）提交 issue。模板与自动生成的 issue 使用相同的标题结构（`Description`、`Problem Statement`、`Expected Behavior`、`Proposed Solution`、`Acceptance Criteria`、`Evidence`），以便 `issue-triage` 与 `issue-label` 工作流保持一致解析。
+2. 在功能/修复分支上进行改动。
+3. 为任何行为变更添加或更新测试。
+4. 运行 `npm run lint` 与 `npm test`，确保通过。
+5. 使用清晰、约定式的提交信息（例如 `fix(todo): ...`、`feat(weather): ...`）。
+6. 使用 `.github/pull_request_template.md` 向 `main` 发起 PR，并描述改动内容及原因。
+7. 在 PR 描述中关联相关 issue（例如 `Closes #123`）。
 
 ## 📄 许可证
 

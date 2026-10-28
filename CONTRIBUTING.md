@@ -141,12 +141,13 @@ The extension supports multiple interface languages. To add a new one:
 
 ## 📝 Submitting Changes
 
-1. Make your changes on a feature/fix branch.
-2. Add or update tests for any behavior change.
-3. Run `npm run lint` and `npm test` and make sure they pass.
-4. Commit using clear, conventional commit messages (e.g., `fix(todo): ...`, `feat(weather): ...`).
-5. Open a PR against `main` and describe what changed and why.
-6. Link the related issue (e.g., `Closes #123`) in the PR description.
+1. File issues with the templates in `.github/ISSUE_TEMPLATE/` (bug report or feature request). They use the same headings as generated issues (`Description`, `Problem Statement`, `Expected Behavior`, `Proposed Solution`, `Acceptance Criteria`, `Evidence`) so the `issue-triage` and `issue-label` workflows parse them consistently.
+2. Make your changes on a feature/fix branch.
+3. Add or update tests for any behavior change.
+4. Run `npm run lint` and `npm test` and make sure they pass.
+5. Commit using clear, conventional commit messages (e.g., `fix(todo): ...`, `feat(weather): ...`).
+6. Open a PR against `main` using `.github/pull_request_template.md` and describe what changed and why.
+7. Link the related issue (e.g., `Closes #123`) in the PR description.
 
 ## 📄 License
 
