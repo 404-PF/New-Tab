@@ -762,18 +762,55 @@
   }
 
   function drawPacman() {
-    if (clockMs < invulnerableUntil && Math.floor(clockMs / 150) % 2 === 1) return;
     const pos = px(pacman);
-    const angleMap = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
-    const rotation = angleMap[pacman.dir] ?? 0;
-    const mouth = reducedMotion()
-      ? 0.22 * Math.PI
-      : Math.abs(Math.sin(clockMs / 110)) * 0.32 * Math.PI;
     const radius = CELL_SIZE / 2 - 2;
-    ctx.fillStyle = '#ffd83d';
+    const indicator = pendingTurnIndicator();
+    const blinking = clockMs < invulnerableUntil && Math.floor(clockMs / 150) % 2 === 1;
+    if (!blinking) {
+      const angleMap = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
+      const rotation = angleMap[pacman.dir] ?? 0;
+      const mouth = reducedMotion()
+        ? 0.22 * Math.PI
+        : Math.abs(Math.sin(clockMs / 110)) * 0.32 * Math.PI;
+      ctx.fillStyle = '#ffd83d';
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.arc(pos.x, pos.y, radius, rotation + mouth, rotation - mouth + Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Signal a buffered turn with a static wedge in front of Pac-Man (#1020).
+    // Drawn even while the respawn blink hides the body, so the mark stays
+    // on screen instead of flickering with it.
+    if (indicator) drawTurnIndicator(pos, radius, indicator);
+  }
+
+  // Render-only signal (#1020): the buffered turn that will be taken at the
+  // first junction where it is legal, or null when nothing is buffered (or
+  // the buffer only re-affirms the current heading). The draw path reads
+  // live state each frame, so the mark clears the moment pacmanChooseNext()
+  // applies or drops the intent.
+  function pendingTurnIndicator() {
+    if (!pacman || !pendingDir || pendingDir === pacman.dir) return null;
+    return pendingDir;
+  }
+
+  // A small translucent static wedge in front of Pac-Man pointing at the
+  // buffered turn. Static by design — no clock input — so reduced-motion
+  // users see the same mark as everyone else, never a flashing one.
+  function drawTurnIndicator(pos, radius, dir) {
+    const delta = DIR_DELTA[dir];
+    if (!delta) return;
+    const perpX = -delta.y;
+    const perpY = delta.x;
+    const tipDist = radius + 5;
+    const baseDist = radius + 1.5;
+    const halfWidth = 3.5;
+    ctx.fillStyle = 'rgba(255, 216, 61, 0.55)';
     ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
-    ctx.arc(pos.x, pos.y, radius, rotation + mouth, rotation - mouth + Math.PI * 2);
+    ctx.moveTo(pos.x + delta.x * tipDist, pos.y + delta.y * tipDist);
+    ctx.lineTo(pos.x + delta.x * baseDist + perpX * halfWidth, pos.y + delta.y * baseDist + perpY * halfWidth);
+    ctx.lineTo(pos.x + delta.x * baseDist - perpX * halfWidth, pos.y + delta.y * baseDist - perpY * halfWidth);
     ctx.closePath();
     ctx.fill();
   }
@@ -1422,6 +1459,9 @@
         frightenedChain: frightenedChain,
         mode: currentMode(),
         pendingDir: pendingDir,
+        // Render-only buffered-turn indicator (#1020); null when no pending
+        // turn would be drawn on Pac-Man.
+        indicatorDirection: pendingTurnIndicator(),
         // Legacy alias for pre-#1018 specs: the FIFO that used to live here
         // is now a single intended direction.
         queuedDirs: pendingDir === null ? [] : [pendingDir],

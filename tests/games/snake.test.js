@@ -728,6 +728,149 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
   });
 });
 
+describe('Snake buffered-turn indicator (#1020)', () => {
+  const CHEVRON_STROKE = 'rgba(255, 255, 255, 0.5)';
+  let context;
+  let getContextSpy;
+
+  // Stub the 2D context so specs can assert the mark that is actually drawn
+  // on the head, not only the queue state the renderer reads. Every stroke()
+  // records the strokeStyle in effect at call time, which is how the chevron
+  // (drawn last, after the segment outlines) is told apart.
+  beforeEach(() => {
+    const gradient = () => ({ addColorStop() {} });
+    context = { strokeStyles: [], createLinearGradient: gradient, createRadialGradient: gradient };
+    ['drawImage', 'fillRect', 'strokeRect', 'clearRect', 'beginPath', 'closePath', 'arc',
+      'arcTo', 'ellipse', 'moveTo', 'lineTo', 'fill', 'save', 'restore', 'translate', 'fillText'
+    ].forEach((name) => { context[name] = () => {}; });
+    context.stroke = () => { context.strokeStyles.push(context.strokeStyle); };
+    getContextSpy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
+  });
+
+  afterEach(() => {
+    getContextSpy.mockRestore();
+  });
+
+  it('signals a queued turn on the head until the tick applies it', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      // Moving right; queue an up-turn. The drawn head mark (the chevron on
+      // the canvas) tracks the buffered direction from the moment it lands.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+      expect(game.serialize().directionQueue).toEqual(['up']);
+      expect(window.__snakeReady.pendingTurnDirection()).toBe('up');
+      expect(context.strokeStyles).toContain(CHEVRON_STROKE);
+
+      // Once a tick applies the turn the queue empties and the mark clears.
+      vi.advanceTimersByTime(400);
+      expect(game.serialize().direction).toBe('up');
+      expect(game.serialize().directionQueue).toEqual([]);
+      expect(window.__snakeReady.pendingTurnDirection()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('points the indicator at the first queued turn, not the last press', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      // Up then Left while moving right buffers two turns: the queue head is
+      // the one tick() applies next (and the one nextDirection reports), so
+      // the eyes/chevron must follow it — the last press would aim back into
+      // the neck and leave the first turn unmarked.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      expect(game.serialize().directionQueue).toEqual(['up', 'left']);
+      expect(game.serialize().nextDirection).toBe('up');
+      expect(window.__snakeReady.pendingTurnDirection()).toBe('up');
+      expect(context.strokeStyles).toContain(CHEVRON_STROKE);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('clears the indicator when a buffered reversal is dropped at apply time', () => {
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      // Left reverses the rightward heading: it is accepted into the queue
+      // (the enqueue-time veto is gone, #1017) and signalled, then dropped
+      // at apply time — the indicator must not outlive the drop.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+      expect(window.__snakeReady.pendingTurnDirection()).toBe('left');
+      expect(context.strokeStyles).toContain(CHEVRON_STROKE);
+
+      vi.advanceTimersByTime(400);
+      expect(game.serialize().direction).toBe('right');
+      expect(game.serialize().directionQueue).toEqual([]);
+      expect(window.__snakeReady.pendingTurnDirection()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+    }
+  });
+
+  it('shows no indicator while the queue is empty', () => {
+    const { container, game } = startGame();
+    expect(window.__snakeReady.pendingTurnDirection()).toBeNull();
+    expect(context.strokeStyles).not.toContain(CHEVRON_STROKE);
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('paints the mark when reduced motion leaves no render loop (#1020)', () => {
+    const previousMotion = window.prefersReducedMotion;
+    window.prefersReducedMotion = () => true;
+    vi.useFakeTimers();
+    let container = null;
+    let game = null;
+    try {
+      ({ container, game } = startGame());
+      context.strokeStyles.length = 0;
+
+      // Keyboard path: the accepted turn redraws straight away, because no
+      // rAF render loop runs to pick it up while reduced motion is on.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+      expect(window.__snakeReady.pendingTurnDirection()).toBe('up');
+      expect(context.strokeStyles).toContain(CHEVRON_STROKE);
+
+      // Let the tick apply it so the gesture below is the only buffered
+      // turn — the indicator tracks the queue head, and with the queue
+      // emptied that head is the gesture's direction.
+      vi.advanceTimersByTime(400);
+      expect(game.serialize().directionQueue).toEqual([]);
+
+      // The gesture path redraws on acceptance the same way.
+      context.strokeStyles.length = 0;
+      const canvas = container.querySelector('.games-snake-canvas');
+      canvas.dispatchEvent(pointer('pointerdown', 150, 150));
+      canvas.dispatchEvent(pointer('pointermove', 150, 200));
+      expect(window.__snakeReady.pendingTurnDirection()).toBe('down');
+      expect(context.strokeStyles).toContain(CHEVRON_STROKE);
+    } finally {
+      vi.useRealTimers();
+      if (game) game.destroy();
+      if (container) container.remove();
+      if (previousMotion === undefined) delete window.prefersReducedMotion;
+      else window.prefersReducedMotion = previousMotion;
+    }
+  });
+});
+
 describe('Snake pointer steering and D-pad (#1019)', () => {
   function startSnake() {
     const container = document.createElement('div');
