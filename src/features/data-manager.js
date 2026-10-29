@@ -308,6 +308,19 @@
       window.applyBg();
     }
 
+    // Re-apply background rotation so an import that changed
+    // bgRotationEnabled/bgRotationInterval/bgRotationSelection starts,
+    // stops, or re-cadences the timer, then re-syncs the toggle, interval
+    // select, and picker, all without a tab reload (issue #1080). syncUI
+    // (not initUI) refreshes the controls without re-binding their
+    // listeners.
+    if (window.BackgroundRotation && typeof window.BackgroundRotation.apply === 'function') {
+      window.BackgroundRotation.apply();
+    }
+    if (window.BackgroundRotation && typeof window.BackgroundRotation.syncUI === 'function') {
+      window.BackgroundRotation.syncUI();
+    }
+
     // Re-apply simple mode so the imported simpleMode flag toggles the body
     // class and header checkbox without a tab reload (issue #837).
     if (typeof window.applySimpleMode === 'function') {

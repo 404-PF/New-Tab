@@ -575,6 +575,7 @@
 
   window.BackgroundRotation = {
     apply: applyRotation,
+    syncUI: syncRotationUI,
     advance: advanceBackground,
     isEnabled: loadEnabled,
     getInterval: loadInterval,

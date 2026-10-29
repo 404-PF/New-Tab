@@ -888,3 +888,66 @@ describe('Background rotation save failures', () => {
     expect(showToast).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Background rotation UI sync exposure (issue #1080)', () => {
+  let toggle;
+  let intervalSelect;
+  let optionsEl;
+  let pickerWrap;
+
+  beforeEach(() => {
+    window._backgrounds = [
+      { id: 'BG Alpha', title: 'BG Alpha', thumb: 'a.jpg', url: 'a-full.jpg' },
+      { id: 'BG Beta', title: 'BG Beta', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    localStorage.setItem('bgRotationEnabled', 'true');
+    localStorage.setItem('bgRotationInterval', '1hour');
+    localStorage.removeItem('bgRotationSelection');
+
+    optionsEl = document.createElement('div');
+    optionsEl.id = 'bg-rotation-options';
+    pickerWrap = document.createElement('div');
+    pickerWrap.id = 'bg-rotation-picker-wrap';
+    toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.id = 'bg-rotation-toggle';
+    intervalSelect = document.createElement('select');
+    intervalSelect.id = 'bg-rotation-interval';
+    ['5min', '15min', '30min', '1hour', 'hourly', 'daily'].forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      intervalSelect.appendChild(option);
+    });
+    document.body.append(optionsEl, pickerWrap, toggle, intervalSelect);
+
+    // Controls start out of sync with storage, as after a settings import.
+    toggle.checked = false;
+    optionsEl.hidden = true;
+    pickerWrap.hidden = true;
+    intervalSelect.value = '30min';
+  });
+
+  afterEach(() => {
+    [optionsEl, pickerWrap, toggle, intervalSelect].forEach((el) => el.remove());
+  });
+
+  it('refreshes the toggle, sections, and interval select from storage', () => {
+    expect(typeof BackgroundRotation.syncUI).toBe('function');
+
+    BackgroundRotation.syncUI();
+
+    expect(toggle.checked).toBe(true);
+    expect(optionsEl.hidden).toBe(false);
+    expect(pickerWrap.hidden).toBe(false);
+    expect(intervalSelect.value).toBe('1hour');
+  });
+
+  it('does not re-bind control listeners when called repeatedly', () => {
+    const addListener = vi.spyOn(toggle, 'addEventListener');
+
+    BackgroundRotation.syncUI();
+    BackgroundRotation.syncUI();
+
+    expect(addListener).not.toHaveBeenCalled();
+  });
+});
