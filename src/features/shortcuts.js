@@ -217,9 +217,25 @@
     }
   }
 
+  // The Games feature toggle hides its tile with display:none without removing
+  // it from appOrder, so the slot walk must skip it or every later visible tile
+  // would get a shifted Alt+N key.
+  function isGamesAppDisabled() {
+    if (window.gamesHelpers && typeof window.gamesHelpers.isEnabled === 'function') {
+      return !window.gamesHelpers.isEnabled();
+    }
+    try {
+      return localStorage.getItem('games_enabled') === 'false';
+    } catch (e) {
+      console.warn('Failed to read games_enabled:', e);
+      return false;
+    }
+  }
+
   // Maps grid slot ids to their Alt+N combo, walking appOrder. Folders occupy
-  // a slot (their combo opens the popup); hidden default apps and apps inside
-  // folders are skipped and do not consume a slot.
+  // a slot (their combo opens the popup); hidden default apps, apps inside
+  // folders, and a Games tile disabled by the feature toggle are skipped and
+  // do not consume a slot.
   function getAppShortcutMap() {
     const map = {};
     if (!appLaunchEnabled()) return map;
@@ -242,6 +258,7 @@
     for (const id of order) {
       if (slot > APP_SHORTCUT_MAX_SLOT) break;
       if (folderedIds.has(id) || hiddenIds.has(id)) continue;
+      if (id === 'games-app' && isGamesAppDisabled()) continue;
       map[id] = 'Alt+' + slot;
       slot += 1;
     }
@@ -302,11 +319,14 @@
 
   // After the global-action loop: Alt+1..9 launches the matching grid slot.
   // Global shortcuts always win, so a user-bound Alt+digit on a global action
-  // can never be shadowed by the positional launcher.
+  // can never be shadowed by the positional launcher. Match on e.code so the
+  // physical digit row works on macOS, where Option+digit changes e.key, and
+  // ignore auto-repeat so a held chord opens a single tab.
   function handleAppShortcutKeydown(e) {
-    if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return false;
-    if (e.key.length !== 1 || e.key < '1' || e.key > '9') return false;
-    const id = getAppShortcutSlotId(parseInt(e.key, 10));
+    if (e.repeat || !e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return false;
+    const digit = /^Digit([1-9])$/.exec(e.code || '');
+    if (!digit) return false;
+    const id = getAppShortcutSlotId(parseInt(digit[1], 10));
     if (!id) return false;
     return launchAppFromShortcut(id, e);
   }
@@ -329,7 +349,9 @@
       if (!combo) {
         if (badge) badge.remove();
         tile.title = baseTitle;
-        tile.removeAttribute('aria-label');
+        // The grid sets aria-label on every tile; restore the base title
+        // instead of dropping the attribute.
+        tile.setAttribute('aria-label', baseTitle);
         return;
       }
       if (!badge) {
@@ -631,8 +653,10 @@
 
     const toggleLabel = document.createElement('label');
     toggleLabel.textContent = t('shortcutAppLaunch');
+    toggleLabel.htmlFor = 'app-shortcuts-enabled-setting';
 
     const toggleCheckbox = document.createElement('input');
+    toggleCheckbox.id = 'app-shortcuts-enabled-setting';
     toggleCheckbox.type = 'checkbox';
     toggleCheckbox.checked = appLaunchEnabled();
     toggleCheckbox.addEventListener('change', function () {
@@ -719,7 +743,26 @@
   }
 
   window.addEventListener('storageBridgeWriteError', function (event) {
-    if (event?.detail?.key !== STORAGE_KEY) return;
+    const key = event?.detail?.key;
+
+    // Async half of the app-launch toggle: chrome.storage can reject after
+    // setItem already returned true. Wait a macrotask for the bridge rollback,
+    // then resync the checkbox and badges and surface the failure once. The
+    // synchronous-failure path already reverted the checkbox, so the desync
+    // check keeps that path from reporting twice.
+    if (key === APP_SHORTCUTS_KEY) {
+      setTimeout(function () {
+        const desired = appLaunchEnabled();
+        const checkbox = document.getElementById('app-shortcuts-enabled-setting');
+        if (!checkbox || checkbox.checked === desired) return;
+        checkbox.checked = desired;
+        refreshAppShortcutBadges();
+        showShortcutSaveError();
+      });
+      return;
+    }
+
+    if (key !== STORAGE_KEY) return;
 
     setTimeout(function () {
       const persisted = loadShortcuts();

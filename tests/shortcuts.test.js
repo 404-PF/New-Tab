@@ -13,6 +13,7 @@ beforeEach(() => {
   localStorage.removeItem('customShortcuts');
   localStorage.removeItem('appShortcutsEnabled');
   localStorage.removeItem('openAppsInNewTab');
+  localStorage.removeItem('games_enabled');
   // Reset settings-modal to default state (created by setup.js)
   const settingsModal = document.getElementById('settings-modal');
   if (settingsModal) {
@@ -996,6 +997,7 @@ describe('Shortcuts - positional app launch (#1061)', () => {
   function pressAppShortcut(key) {
     const event = new KeyboardEvent('keydown', {
       key,
+      code: 'Digit' + key,
       altKey: true,
       bubbles: true,
       cancelable: true
@@ -1029,6 +1031,7 @@ describe('Shortcuts - positional app launch (#1061)', () => {
     window.open = originalOpen;
     localStorage.removeItem('appShortcutsEnabled');
     localStorage.removeItem('openAppsInNewTab');
+    localStorage.removeItem('games_enabled');
     await Shortcuts.reset();
   });
 
@@ -1056,6 +1059,52 @@ describe('Shortcuts - positional app launch (#1061)', () => {
     const map = Shortcuts.getAppShortcutMap();
     expect(Object.keys(map)).toHaveLength(9);
     expect(map['app-10']).toBeUndefined();
+  });
+
+  it('skips the Games tile when the games feature is disabled', () => {
+    stubGridState({ order: ['games-app', 'app-a'] });
+    localStorage.setItem('games_enabled', 'false');
+
+    expect(Shortcuts.getAppShortcutMap()).toEqual({ 'app-a': 'Alt+1' });
+  });
+
+  it('ignores Alt+digit key repeat so a held chord launches once', () => {
+    stubGridState({ order: ['app-a'] });
+    addTile('app-a');
+    window.open = vi.fn();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: '1',
+      code: 'Digit1',
+      altKey: true,
+      repeat: true,
+      bubbles: true,
+      cancelable: true
+    }));
+
+    expect(window.open).not.toHaveBeenCalled();
+  });
+
+  it('matches the physical digit key (e.code) so macOS Option+digit works', () => {
+    stubGridState({ order: ['app-a'] });
+    addTile('app-a');
+    window.open = vi.fn();
+
+    // Option+1 on a macOS US layout yields e.key '¡' but e.code 'Digit1'.
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: '¡',
+      code: 'Digit1',
+      altKey: true,
+      bubbles: true,
+      cancelable: true
+    }));
+
+    expect(window.open).toHaveBeenCalledTimes(1);
+    expect(window.open).toHaveBeenCalledWith(
+      'https://example.com/app-a',
+      '_blank',
+      'noopener,noreferrer'
+    );
   });
 
   it('Alt+1 launches the first visible tile in a new tab by default', () => {
@@ -1147,6 +1196,7 @@ describe('Shortcuts - positional app launch (#1061)', () => {
     container.querySelector('[data-action="focusSearch"]').click();
     document.dispatchEvent(new KeyboardEvent('keydown', {
       key: '1',
+      code: 'Digit1',
       altKey: true,
       bubbles: true,
       cancelable: true
@@ -1195,8 +1245,10 @@ describe('Shortcuts - positional app launch (#1061)', () => {
     const checkbox = container.querySelector('input[type="checkbox"]');
     expect(checkbox).toBeTruthy();
     expect(checkbox.checked).toBe(true);
-    expect(checkbox.closest('.setting-content').querySelector('label').textContent)
-      .toBe('Launch apps with Alt+1…9');
+    expect(checkbox.id).toBe('app-shortcuts-enabled-setting');
+    const label = checkbox.closest('.setting-content').querySelector('label');
+    expect(label.textContent).toBe('Launch apps with Alt+1…9');
+    expect(label.htmlFor).toBe('app-shortcuts-enabled-setting');
 
     checkbox.checked = false;
     checkbox.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1206,6 +1258,27 @@ describe('Shortcuts - positional app launch (#1061)', () => {
     checkbox.checked = true;
     checkbox.dispatchEvent(new Event('change', { bubbles: true }));
     expect(localStorage.getItem('appShortcutsEnabled')).toBe('true');
+    expect(Shortcuts.appLaunchEnabled()).toBe(true);
+  });
+
+  it('resyncs the toggle after an async storage rollback', async () => {
+    const container = ensureShortcutsContainer();
+    stubGridState({ order: ['app-a'] });
+    addTile('app-a');
+    Shortcuts.renderShortcutsSection();
+    const checkbox = container.querySelector('input[type="checkbox"]');
+
+    // Simulate the bridge accepting the write, then rolling it back after
+    // chrome.storage reports the failure asynchronously.
+    localStorage.setItem('appShortcutsEnabled', 'true');
+    checkbox.checked = false;
+
+    window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+      detail: { key: 'appShortcutsEnabled' }
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(checkbox.checked).toBe(true);
     expect(Shortcuts.appLaunchEnabled()).toBe(true);
   });
 
@@ -1231,6 +1304,6 @@ describe('Shortcuts - positional app launch (#1061)', () => {
     Shortcuts.refreshAppShortcutBadges();
     expect(tileA.querySelector('.app-shortcut-badge')).toBeNull();
     expect(tileA.title).toBe('Alpha');
-    expect(tileA.getAttribute('aria-label')).toBeNull();
+    expect(tileA.getAttribute('aria-label')).toBe('Alpha');
   });
 });

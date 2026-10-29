@@ -505,7 +505,7 @@ window.i18n.__registerLocale('ko', {
   shortcutToggleNotes: '메모 전환',
   shortcutCloseModal: '모달 닫기',
   shortcutPressAKey: '키를 누르세요...',
-  shortcutAppLaunch: 'Alt+1…9으로 앱 실행',
+  shortcutAppLaunch: 'Alt+1…9로 앱 실행',
   shortcutSaveError: '단축키 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
   featureToggleSaveError: '이 설정을 저장하지 못했습니다. 마지막 작업은 저장되지 않았습니다.',
 

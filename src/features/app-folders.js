@@ -65,8 +65,10 @@
 
     const badgeHtml = shortcutCombo ? `<span class="app-shortcut-badge">${escapeHtml(shortcutCombo)}</span>` : '';
     a.innerHTML = buildStackedPreviewHtml(folder) + `<span class="app-name">${escapeHtml(folder.name)}</span>`;
-    const preview = a.querySelector('.folder-icon-preview');
-    if (preview && badgeHtml) preview.insertAdjacentHTML('beforeend', badgeHtml);
+    // Mount on the shared .icon wrapper so empty folders (.folder-icon-empty)
+    // show the badge too, matching refreshAppShortcutBadges.
+    const iconWrap = a.querySelector('.icon');
+    if (iconWrap && badgeHtml) iconWrap.insertAdjacentHTML('beforeend', badgeHtml);
 
     a.addEventListener('click', function (e) {
       e.preventDefault();
@@ -264,6 +266,11 @@
           if (moved) {
             removeAppIconFromGrid(moveToFolderAppId);
             updateFolderIconInGrid(getFolder(f.id));
+            // This path bypasses app-manager's removeAppIcon mutator, so
+            // re-sync Alt+N badges whose slots shifted after the move.
+            if (window.Shortcuts && typeof window.Shortcuts.refreshAppShortcutBadges === 'function') {
+              window.Shortcuts.refreshAppShortcutBadges();
+            }
           }
         }
         hideMoveToFolderSelector();
