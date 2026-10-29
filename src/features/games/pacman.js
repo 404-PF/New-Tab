@@ -768,9 +768,18 @@
     const travelled = (Math.abs(ent.x - ent.a.x) + Math.abs(ent.y - ent.a.y)) * CELL_SIZE;
     const remaining = ent.b ? CELL_SIZE - travelled : 0;
     // Approach: the pending turn is legal at the tile being approached (or,
-    // between chooseNext calls, at the tile Pac-Man already sits on).
+    // between chooseNext calls, at the tile Pac-Man already sits on). A
+    // press that only re-affirms the current heading is not a turn, so it
+    // must not lead the sprite down a straight corridor.
     const target = ent.b || tileOf(ent);
-    if (pendingDir && canWalkPacman(target, pendingDir) && remaining <= CORNER_CUT_PX) {
+    if (pendingDir && pendingDir !== ent.dir && canWalkPacman(target, pendingDir) && remaining <= CORNER_CUT_PX) {
+      // A replacement intent mid-lead would teleport the sprite to the new
+      // direction (#1021): cancel this approach's lead instead of snapping.
+      if (cornerCutAnchor && cornerCutAnchor.x === target.x &&
+          cornerCutAnchor.y === target.y && cornerCutAnchor.dir !== pendingDir) {
+        cornerCutAnchor = { x: target.x, y: target.y, dir: null };
+        return { x: 0, y: 0 };
+      }
       cornerCutAnchor = { x: target.x, y: target.y, dir: pendingDir };
       return {
         x: DIR_DELTA[pendingDir].x * (CORNER_CUT_PX - remaining),

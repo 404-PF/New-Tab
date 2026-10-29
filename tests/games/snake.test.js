@@ -970,6 +970,42 @@ describe('Snake immediate turn application (#1021)', () => {
     expect(advanced).not.toBeNull();
     expect(advanced.directionQueue).toEqual([]);
   });
+
+  it('faces a swipe or D-pad turn immediately, like the keyboard path', () => {
+    const canvas = container.querySelector('.games-snake-canvas');
+
+    canvas.dispatchEvent(pointer('pointerdown', 150, 150));
+    canvas.dispatchEvent(pointer('pointermove', 150, 100));
+
+    // Gesture steering shares the keyboard's instant facing (#1021): the
+    // queue keeps the entry for the per-tick drain, and the facing moved
+    // with the gesture.
+    const state = game.serialize();
+    expect(state.directionQueue).toContain('up');
+    expect(state.direction).toBe('up');
+  });
+
+  it('round-trips a snapshot taken immediately after a turn is faced (#1021)', () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+    const snapshot = game.serialize();
+    expect(snapshot.direction).toBe('up');
+    expect(snapshot.directionQueue).toEqual(['up']);
+
+    // A faced queue head is a legal live state since #1021: the snapshot
+    // must restore (Continue) instead of being rejected as corrupt.
+    game.destroy();
+    container.remove();
+    game = null;
+    container = null;
+    const restoredContainer = document.createElement('div');
+    document.body.appendChild(restoredContainer);
+    const restored = window.GameRegistry.get('snake');
+    restored.init(restoredContainer, snapshot);
+    expect(restoredContainer.querySelector('.games-ready-overlay .games-ready-start').textContent).toBe('Continue');
+
+    restored.destroy();
+    restoredContainer.remove();
+  });
 });
 
 describe('Snake pointer steering and D-pad (#1019)', () => {

@@ -780,8 +780,11 @@
   // doubles as a restart (that stays a tap, see onTap below).
   function applyGestureDirection(dir) {
     if (!started || gameOver) return;
-    // Same immediate redraw as the keyboard path (#1020).
-    if (queueTurn(dir)) draw();
+    // Face the turn the instant it is accepted (#1021), matching the
+    // keyboard path; when it cannot apply immediately (a queued reversal
+    // or a paused board), redraw so the buffered-turn mark still paints
+    // under reduced motion (#1020).
+    if (queueTurn(dir) && !applyQueuedTurnImmediately()) draw();
   }
 
   function handleGestureTap() {
@@ -881,7 +884,10 @@
         // them). Reversals relative to the previous entry are allowed: since
         // the opposite veto moved to apply time (#1017), a live queue can
         // legally contain an entry that tick() will drop as a reversal.
-        if (cur === prev) return false;
+        // The head may equal direction: #1021 faces a queued turn the
+        // instant the key lands, leaving that entry queued for the per-tick
+        // drain, so a snapshot taken before the next tick must still pass.
+        if (cur === prev && i > 0) return false;
         prev = cur;
       }
       // When both nextDirection and queue are present, they must agree.
