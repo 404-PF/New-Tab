@@ -1537,3 +1537,85 @@ describe('DataManager todo sort preference (issue #1056)', () => {
     expect(localStorage.getItem('theme')).toBe('dark');
   });
 });
+
+describe('DataManager background rotation re-apply (issue #1080)', () => {
+  let rotation;
+
+  function withStubbedRotation() {
+    const original = window.BackgroundRotation;
+    const apply = vi.fn();
+    const syncUI = vi.fn();
+    const initUI = vi.fn();
+    window.BackgroundRotation = { apply, syncUI, initUI };
+    return {
+      apply,
+      syncUI,
+      initUI,
+      restore() {
+        if (original === undefined) delete window.BackgroundRotation;
+        else window.BackgroundRotation = original;
+      }
+    };
+  }
+
+  function expectRotationRefreshed(times) {
+    expect(rotation.apply).toHaveBeenCalledTimes(times);
+    expect(rotation.syncUI).toHaveBeenCalledTimes(times);
+    // finishImport must refresh the existing controls, never re-bind them.
+    expect(rotation.initUI).not.toHaveBeenCalled();
+  }
+
+  beforeEach(() => {
+    rotation = withStubbedRotation();
+  });
+
+  afterEach(() => {
+    rotation.restore();
+  });
+
+  it('includes the rotation keys in the export allowlist', () => {
+    ['bgRotationEnabled', 'bgRotationInterval', 'bgRotationSelection'].forEach((key) => {
+      expect(window.DataManager.EXPORT_KEYS).toContain(key);
+    });
+  });
+
+  it('re-applies rotation and syncs the controls after a merge import that enables it', async () => {
+    const result = await importBackup({
+      bgRotationEnabled: true,
+      bgRotationInterval: '15min',
+      bgRotationSelection: ['bg-1', 'bg-2']
+    }, 'merge');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('bgRotationEnabled')).toBe('true');
+    expectRotationRefreshed(1);
+  });
+
+  it('re-applies rotation after a replace import that disables it', async () => {
+    const result = await importBackup({ bgRotationEnabled: false }, 'replace');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('bgRotationEnabled')).toBe('false');
+    expectRotationRefreshed(1);
+  });
+
+  it('re-applies rotation when only the interval or selection changes', async () => {
+    const intervalResult = await importBackup({ bgRotationInterval: '1hour' }, 'merge');
+    expect(intervalResult.type).toBe('success');
+    expectRotationRefreshed(1);
+
+    const selectionResult = await importBackup({
+      bgRotationSelection: ['bg-3']
+    }, 'merge');
+    expect(selectionResult.type).toBe('success');
+    expectRotationRefreshed(2);
+  });
+
+  it('still succeeds when window.BackgroundRotation is unavailable', async () => {
+    rotation.restore();
+    delete window.BackgroundRotation;
+    const result = await importBackup({ theme: 'dark' }, 'replace');
+
+    expect(result.type).toBe('success');
+  });
+});

@@ -888,3 +888,84 @@ describe('Background rotation save failures', () => {
     expect(showToast).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Background rotation UI sync exposure (issue #1080)', () => {
+  let toggle;
+  let intervalSelect;
+  let optionsEl;
+  let pickerWrap;
+  let picker;
+
+  beforeEach(() => {
+    window._backgrounds = [
+      { id: 'BG Alpha', title: 'BG Alpha', thumb: 'a.jpg', url: 'a-full.jpg' },
+      { id: 'BG Beta', title: 'BG Beta', thumb: 'b.jpg', url: 'b-full.jpg' },
+    ];
+    localStorage.setItem('bgRotationEnabled', 'true');
+    localStorage.setItem('bgRotationInterval', '1hour');
+    localStorage.setItem('bgRotationSelection', JSON.stringify(['BG Alpha']));
+
+    optionsEl = document.createElement('div');
+    optionsEl.id = 'bg-rotation-options';
+    pickerWrap = document.createElement('div');
+    pickerWrap.id = 'bg-rotation-picker-wrap';
+    picker = document.createElement('div');
+    picker.id = 'bg-rotation-picker';
+    pickerWrap.appendChild(picker);
+    toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.id = 'bg-rotation-toggle';
+    intervalSelect = document.createElement('select');
+    intervalSelect.id = 'bg-rotation-interval';
+    ['5min', '15min', '30min', '1hour', 'hourly', 'daily'].forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      intervalSelect.appendChild(option);
+    });
+    document.body.append(optionsEl, pickerWrap, toggle, intervalSelect);
+
+    // Controls start out of sync with storage, as after a settings import.
+    toggle.checked = false;
+    optionsEl.hidden = true;
+    pickerWrap.hidden = true;
+    intervalSelect.value = '30min';
+    // Stale picker checkboxes: every background checked, while storage
+    // selects only BG Alpha.
+    ['BG Alpha', 'BG Beta'].forEach((id) => {
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = id;
+      checkbox.checked = true;
+      picker.appendChild(checkbox);
+    });
+  });
+
+  afterEach(() => {
+    [optionsEl, pickerWrap, toggle, intervalSelect].forEach((el) => el.remove());
+  });
+
+  it('refreshes the toggle, sections, interval select, and picker from storage', () => {
+    expect(typeof BackgroundRotation.syncUI).toBe('function');
+
+    BackgroundRotation.syncUI();
+
+    expect(toggle.checked).toBe(true);
+    expect(optionsEl.hidden).toBe(false);
+    expect(pickerWrap.hidden).toBe(false);
+    expect(intervalSelect.value).toBe('1hour');
+
+    const checkedIds = Array.from(picker.querySelectorAll('input[type="checkbox"]'))
+      .filter((cb) => cb.checked)
+      .map((cb) => cb.value);
+    expect(checkedIds).toEqual(['BG Alpha']);
+  });
+
+  it('does not re-bind control listeners when called repeatedly', () => {
+    const addListener = vi.spyOn(toggle, 'addEventListener');
+
+    BackgroundRotation.syncUI();
+    BackgroundRotation.syncUI();
+
+    expect(addListener).not.toHaveBeenCalled();
+  });
+});
