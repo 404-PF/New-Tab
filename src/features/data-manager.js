@@ -1146,7 +1146,10 @@
                 const mruSeen = Object.create(null);
                 const mergedMru = [];
                 incoming.concat(Array.isArray(current) ? current : []).forEach(function (id) {
-                  if (mergedMru.length >= 20 || mruSeen[id]) return;
+                  // Skip non-string ids so a malformed local entry is never
+                  // written back; the backup's own MRU validator requires
+                  // strings, and a merged list with junk would fail re-import.
+                  if (mergedMru.length >= 20 || typeof id !== 'string' || mruSeen[id]) return;
                   mruSeen[id] = true;
                   mergedMru.push(id);
                 });
@@ -1225,6 +1228,34 @@
                   if (k !== 'days' && k !== 'byDateTodos') merged[k] = incoming[k];
                 });
                 writeStorage(key, merged, pendingWrites);
+              } else if (key === 'games_stats') {
+                // Merge per game id so a backup with a lower best score
+                // cannot lower a local high score: keep the higher
+                // highScore and gamesPlayed per game, the same
+                // keep-the-higher pattern as todoStats and pomodoroStats.
+                const mergedStats = Object.assign({}, currentObj);
+                Object.keys(incoming).forEach(function (id) {
+                  const localEntry = mergedStats[id];
+                  const incEntry = incoming[id];
+                  const localOk = localEntry && typeof localEntry === 'object' && !Array.isArray(localEntry);
+                  const incOk = incEntry && typeof incEntry === 'object' && !Array.isArray(incEntry);
+                  if (!localOk || !incOk) {
+                    // Nothing comparable on one side: take the imported
+                    // value as-is, matching the generic object merge.
+                    mergedStats[id] = incEntry;
+                    return;
+                  }
+                  const mergedEntry = Object.assign({}, localEntry, incEntry);
+                  ['highScore', 'gamesPlayed'].forEach(function (field) {
+                    const localVal = localEntry[field];
+                    const incVal = incEntry[field];
+                    if (Number.isFinite(localVal) && (!Number.isFinite(incVal) || localVal > incVal)) {
+                      mergedEntry[field] = localVal;
+                    }
+                  });
+                  mergedStats[id] = mergedEntry;
+                });
+                writeStorage(key, mergedStats, pendingWrites);
               } else {
                 writeStorage(key, Object.assign(currentObj, incoming), pendingWrites);
               }

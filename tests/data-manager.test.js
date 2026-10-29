@@ -378,6 +378,47 @@ describe('DataManager eye-care/games/search-history settings', () => {
     localStorage.setItem('games_recently_played', JSON.stringify(['local-only-1', 'local-only-2']));
     await importBackup({ games_recently_played: importedFull }, 'merge');
     expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(importedFull);
+
+    // Malformed local entries are dropped so the merged list stays
+    // exportable (the MRU validator requires strings).
+    localStorage.setItem('games_recently_played', JSON.stringify(['local-1', 42, null]));
+    await importBackup({ games_recently_played: ['imported-1'] }, 'merge');
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['imported-1', 'local-1']);
+  });
+
+  it('merges per-game stats keeping the higher score, and replaces shared saves (issue #1068)', async () => {
+    localStorage.setItem('games_stats', JSON.stringify({
+      snake: { highScore: 500, gamesPlayed: 10 },
+      '2048': { highScore: 4096, gamesPlayed: 7 }
+    }));
+    localStorage.setItem('games_saves', JSON.stringify({
+      snake: { state: { score: 10 }, savedAt: 1700000000000 }
+    }));
+
+    await importBackup({
+      games_stats: {
+        snake: { highScore: 100, gamesPlayed: 15 },
+        tetris: { highScore: 300, gamesPlayed: 2 }
+      },
+      games_saves: {
+        snake: { state: { score: 40 }, savedAt: 1700000001000 },
+        tetris: { state: { score: 5 }, savedAt: 1700000002000 }
+      }
+    }, 'merge');
+
+    // A backup with a lower best score cannot drop a local high score;
+    // gamesPlayed takes the larger count. Local-only ids are untouched.
+    expect(JSON.parse(localStorage.getItem('games_stats'))).toEqual({
+      snake: { highScore: 500, gamesPlayed: 15 },
+      '2048': { highScore: 4096, gamesPlayed: 7 },
+      tetris: { highScore: 300, gamesPlayed: 2 }
+    });
+    // Saves have no cumulative fields: the imported snapshot replaces the
+    // local entry for a shared id, and local-only ids would survive.
+    expect(JSON.parse(localStorage.getItem('games_saves'))).toEqual({
+      snake: { state: { score: 40 }, savedAt: 1700000001000 },
+      tetris: { state: { score: 5 }, savedAt: 1700000002000 }
+    });
   });
 
   it('validates the shape of the game data keys (issue #1068)', () => {
