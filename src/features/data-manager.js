@@ -62,6 +62,9 @@
     'games_enabled',
     'games_keymap',
     'games_fps_enabled',
+    'games_saves',
+    'games_stats',
+    'games_recently_played',
     'ai_conversations',
     'ai_current_conversation_id',
     'updateCheckEnabled',
@@ -734,6 +737,15 @@
     // map for an unknown id instead of rejecting the whole backup.
     games_keymap: function (v) { return typeof v === 'string'; },
     games_fps_enabled: function (v) { return typeof v === 'boolean'; },
+    // Per-game blobs keyed by game id; the games helpers re-validate each
+    // entry at read time (src/features/games/game-registry.js), so only the
+    // container shape is enforced here.
+    games_saves: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
+    games_stats: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
+    // Hub MRU list of game-id strings (loadMRU keeps Array.isArray results).
+    // GameRegistry caps MRU at 20 on every launch, so a longer list is not a
+    // real hub state and must not be persisted from a backup.
+    games_recently_played: function (v) { return Array.isArray(v) && v.length <= 20 && v.every(function (item) { return typeof item === 'string'; }); },
     /** Validates the persisted AI conversation collection in a backup. */
     ai_conversations: function (v) {
       return Array.isArray(v) && v.every(isValidAIConversation);
@@ -1127,6 +1139,22 @@
                 });
                 writeStorage(key, mergedZones, pendingWrites);
                 count++;
+              } else if (key === 'games_recently_played') {
+                // Hub MRU is most-recent-first and capped at 20 by
+                // GameRegistry. Keep the imported ordering, then any
+                // local-only entries, truncated to the same cap.
+                const mruSeen = Object.create(null);
+                const mergedMru = [];
+                incoming.concat(Array.isArray(current) ? current : []).forEach(function (id) {
+                  // Skip non-string ids so a malformed local entry is never
+                  // written back; the backup's own MRU validator requires
+                  // strings, and a merged list with junk would fail re-import.
+                  if (mergedMru.length >= 20 || typeof id !== 'string' || mruSeen[id]) return;
+                  mruSeen[id] = true;
+                  mergedMru.push(id);
+                });
+                writeStorage(key, mergedMru, pendingWrites);
+                count++;
               } else {
                 // Generic array merge (concatenate unique)
                 const existingArr = Array.isArray(current) ? current.slice() : [];
@@ -1200,6 +1228,45 @@
                   if (k !== 'days' && k !== 'byDateTodos') merged[k] = incoming[k];
                 });
                 writeStorage(key, merged, pendingWrites);
+              } else if (key === 'games_stats') {
+                // Merge per game id so a backup with a lower best score
+                // cannot lower a local high score: keep the higher
+                // highScore and gamesPlayed per game, the same
+                // keep-the-higher pattern as todoStats and pomodoroStats.
+                const mergedStats = Object.assign({}, currentObj);
+                Object.keys(incoming).forEach(function (id) {
+                  const localEntry = mergedStats[id];
+                  const incEntry = incoming[id];
+                  const localOk = localEntry && typeof localEntry === 'object' && !Array.isArray(localEntry);
+                  const incOk = incEntry && typeof incEntry === 'object' && !Array.isArray(incEntry);
+                  if (!localOk || !incOk) {
+                    // Nothing comparable on one side: take a valid imported
+                    // value as-is, matching the generic object merge. A
+                    // malformed imported entry never erases a valid local one.
+                    if (incOk) mergedStats[id] = incEntry;
+                    return;
+                  }
+                  const mergedEntry = Object.assign({}, localEntry, incEntry);
+                  ['highScore', 'gamesPlayed'].forEach(function (field) {
+                    const localVal = localEntry[field];
+                    const incVal = incEntry[field];
+                    if (Number.isFinite(localVal) && (!Number.isFinite(incVal) || localVal > incVal)) {
+                      mergedEntry[field] = localVal;
+                    }
+                  });
+                  // Memory records bestMoves/bestTime with Math.min (lower is
+                  // better), so a worse (higher) imported result must not
+                  // replace a local best.
+                  ['bestMoves', 'bestTime'].forEach(function (field) {
+                    const localVal = localEntry[field];
+                    const incVal = incEntry[field];
+                    if (Number.isFinite(localVal) && (!Number.isFinite(incVal) || localVal < incVal)) {
+                      mergedEntry[field] = localVal;
+                    }
+                  });
+                  mergedStats[id] = mergedEntry;
+                });
+                writeStorage(key, mergedStats, pendingWrites);
               } else {
                 writeStorage(key, Object.assign(currentObj, incoming), pendingWrites);
               }

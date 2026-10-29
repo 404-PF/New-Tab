@@ -280,6 +280,9 @@ describe('DataManager eye-care/games/search-history settings', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('games_enabled');
     expect(window.DataManager.EXPORT_KEYS).toContain('games_keymap');
     expect(window.DataManager.EXPORT_KEYS).toContain('games_fps_enabled');
+    expect(window.DataManager.EXPORT_KEYS).toContain('games_saves');
+    expect(window.DataManager.EXPORT_KEYS).toContain('games_stats');
+    expect(window.DataManager.EXPORT_KEYS).toContain('games_recently_played');
     expect(window.DataManager.EXPORT_KEYS).toContain('searchHistoryEnabled');
   });
 
@@ -313,6 +316,152 @@ describe('DataManager eye-care/games/search-history settings', () => {
 
     expect(window.DataManager.validateImportData({ version: 1, data: {
       eyeCareReminder: { ...EYE_CARE_SETTINGS, intervalMinutes: 25 }
+    } }).valid).toBe(false);
+  });
+
+  it('round-trips game saves, stats, and the MRU list through export and import (issue #1068)', async () => {
+    // A snapshot Snake's validateSavedState accepts (mirrors the fixture in
+    // tests/games/snake.test.js), so the round trip is verified against
+    // playable progress rather than storage shape only.
+    const saves = {
+      snake: {
+        state: {
+          snake: [
+            { x: 10, y: 10 },
+            { x: 9, y: 10 },
+            { x: 8, y: 10 }
+          ],
+          food: { x: 5, y: 5 },
+          direction: 'right',
+          nextDirection: 'up',
+          score: 40
+        },
+        savedAt: 1700000000000
+      }
+    };
+    const stats = { snake: { highScore: 100, gamesPlayed: 3 }, '2048': { highScore: 4096, gamesPlayed: 7 } };
+    const recentlyPlayed = ['snake', '2048'];
+    localStorage.setItem('games_saves', JSON.stringify(saves));
+    localStorage.setItem('games_stats', JSON.stringify(stats));
+    localStorage.setItem('games_recently_played', JSON.stringify(recentlyPlayed));
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.games_saves).toEqual(saves);
+    expect(exported.data.games_stats).toEqual(stats);
+    expect(exported.data.games_recently_played).toEqual(recentlyPlayed);
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+
+    // Restore into a profile with no game data at all.
+    localStorage.removeItem('games_saves');
+    localStorage.removeItem('games_stats');
+    localStorage.removeItem('games_recently_played');
+
+    const result = await importBackup(exported.data, 'replace');
+
+    expect(result.type).toBe('success');
+    expect(JSON.parse(localStorage.getItem('games_saves'))).toEqual(saves);
+    expect(JSON.parse(localStorage.getItem('games_stats'))).toEqual(stats);
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(recentlyPlayed);
+  });
+
+  it('merges the MRU list with recency order and the 20-entry cap (issue #1068)', async () => {
+    // Imported ordering wins; local-only ids follow, deduped.
+    localStorage.setItem('games_recently_played', JSON.stringify(['local-1', 'local-2']));
+    await importBackup({ games_recently_played: ['imported-1', 'local-2', 'imported-2'] }, 'merge');
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(
+      ['imported-1', 'local-2', 'imported-2', 'local-1']
+    );
+
+    // The combined list never exceeds the registry's 20-entry cap.
+    const importedFull = Array.from({ length: 20 }, (_, i) => 'imported-' + i);
+    localStorage.setItem('games_recently_played', JSON.stringify(['local-only-1', 'local-only-2']));
+    await importBackup({ games_recently_played: importedFull }, 'merge');
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(importedFull);
+
+    // Malformed local entries are dropped so the merged list stays
+    // exportable (the MRU validator requires strings).
+    localStorage.setItem('games_recently_played', JSON.stringify(['local-1', 42, null]));
+    await importBackup({ games_recently_played: ['imported-1'] }, 'merge');
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['imported-1', 'local-1']);
+  });
+
+  it('merges per-game stats keeping the higher score, and replaces shared saves (issue #1068)', async () => {
+    localStorage.setItem('games_stats', JSON.stringify({
+      snake: { highScore: 500, gamesPlayed: 10 },
+      '2048': { highScore: 4096, gamesPlayed: 7 },
+      memory: { bestMoves: 12, bestTime: 30000, gamesPlayed: 4 },
+      pacman: { highScore: 900, gamesPlayed: 2 }
+    }));
+    localStorage.setItem('games_saves', JSON.stringify({
+      snake: { state: { score: 10 }, savedAt: 1700000000000 },
+      pacman: { state: { score: 1200 }, savedAt: 1700000000500 }
+    }));
+
+    await importBackup({
+      games_stats: {
+        snake: { highScore: 100, gamesPlayed: 15 },
+        tetris: { highScore: 300, gamesPlayed: 2 },
+        memory: { bestMoves: 20, bestTime: 25000, gamesPlayed: 1 },
+        pacman: 'bogus'
+      },
+      games_saves: {
+        snake: { state: { score: 40 }, savedAt: 1700000001000 },
+        tetris: { state: { score: 5 }, savedAt: 1700000002000 }
+      }
+    }, 'merge');
+
+    // A backup with a lower best score cannot drop a local high score;
+    // gamesPlayed takes the larger count. Local-only ids are untouched.
+    // Memory's bestMoves/bestTime keep the lower value per field, and a
+    // malformed imported entry cannot erase valid local stats.
+    expect(JSON.parse(localStorage.getItem('games_stats'))).toEqual({
+      snake: { highScore: 500, gamesPlayed: 15 },
+      '2048': { highScore: 4096, gamesPlayed: 7 },
+      memory: { bestMoves: 12, bestTime: 25000, gamesPlayed: 4 },
+      pacman: { highScore: 900, gamesPlayed: 2 },
+      tetris: { highScore: 300, gamesPlayed: 2 }
+    });
+    // Saves have no cumulative fields: the imported snapshot replaces the
+    // local entry for a shared id, and local-only ids survive the merge.
+    expect(JSON.parse(localStorage.getItem('games_saves'))).toEqual({
+      snake: { state: { score: 40 }, savedAt: 1700000001000 },
+      pacman: { state: { score: 1200 }, savedAt: 1700000000500 },
+      tetris: { state: { score: 5 }, savedAt: 1700000002000 }
+    });
+  });
+
+  it('validates the shape of the game data keys (issue #1068)', () => {
+    expect(window.DataManager.EXPECTED_SHAPES.games_saves({ snake: { state: { score: 42 }, savedAt: 1700000000000 } })).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_saves({})).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_stats({ snake: { highScore: 100, gamesPlayed: 3 } })).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played(['snake', '2048'])).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played([])).toBe(true);
+    // The registry caps MRU at 20 entries; that cap holds on import too.
+    const twentyIds = Array.from({ length: 20 }, (_, i) => 'game-' + i);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played(twentyIds)).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played(twentyIds.concat('one-too-many'))).toBe(false);
+
+    expect(window.DataManager.EXPECTED_SHAPES.games_saves(null)).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_saves([])).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_saves('snake')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_stats(null)).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_stats([])).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_stats('snake')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played({})).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played('snake')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played([1, 2])).toBe(false);
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      games_saves: { snake: { state: { score: 42 }, savedAt: 1700000000000 } },
+      games_stats: { snake: { highScore: 100, gamesPlayed: 3 } },
+      games_recently_played: ['snake']
+    } })).toEqual({ valid: true });
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      games_saves: []
+    } }).valid).toBe(false);
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      games_recently_played: { 0: 'snake' }
     } }).valid).toBe(false);
   });
 
