@@ -211,6 +211,41 @@ const FEATURE_TOGGLE_RESYNC = {
     if (typeof window.refreshEyeCareReminder === 'function') {
       window.refreshEyeCareReminder();
     }
+  },
+  autoTheme: function () {
+    if (typeof window.refreshAutoTheme === 'function') {
+      window.refreshAutoTheme();
+    }
+  },
+  autoThemeLightTime: function () {
+    if (typeof window.refreshAutoTheme === 'function') {
+      window.refreshAutoTheme();
+    }
+  },
+  autoThemeDarkTime: function () {
+    if (typeof window.refreshAutoTheme === 'function') {
+      window.refreshAutoTheme();
+    }
+  },
+  weatherEnabled: function () {
+    if (window.WeatherWidget && typeof window.WeatherWidget.applySettings === 'function') {
+      window.WeatherWidget.applySettings();
+    }
+  },
+  weatherUnit: function () {
+    if (window.WeatherWidget && typeof window.WeatherWidget.applySettings === 'function') {
+      window.WeatherWidget.applySettings();
+    }
+  },
+  weatherLocationMode: function () {
+    if (window.WeatherWidget && typeof window.WeatherWidget.applySettings === 'function') {
+      window.WeatherWidget.applySettings();
+    }
+  },
+  weatherManualCity: function () {
+    if (window.WeatherWidget && typeof window.WeatherWidget.applySettings === 'function') {
+      window.WeatherWidget.applySettings();
+    }
   }
 };
 
@@ -247,6 +282,41 @@ function featureToggleControlDesynced(key) {
       } catch {
         return true;
       }
+    }
+    case 'autoTheme': {
+      const checkbox = document.getElementById('auto-theme-toggle');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
+    }
+    case 'autoThemeLightTime': {
+      // Mirror the module's fallback defaults (auto-theme.js).
+      const input = document.getElementById('auto-theme-light-time');
+      return Boolean(input) && input.value !== (localStorage.getItem(key) || '07:00');
+    }
+    case 'autoThemeDarkTime': {
+      const input = document.getElementById('auto-theme-dark-time');
+      return Boolean(input) && input.value !== (localStorage.getItem(key) || '19:00');
+    }
+    case 'weatherEnabled': {
+      const checkbox = document.getElementById('weather-enabled-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
+    }
+    case 'weatherUnit': {
+      const stored = localStorage.getItem(key) === 'fahrenheit' ? 'fahrenheit' : 'celsius';
+      const buttons = document.querySelectorAll('[data-weather-choice="unit"] .weather-choice-button');
+      return Array.prototype.some.call(buttons, function (btn) {
+        return btn.classList.contains('active') !== (btn.dataset.value === stored);
+      });
+    }
+    case 'weatherLocationMode': {
+      const stored = localStorage.getItem(key) || 'auto';
+      const buttons = document.querySelectorAll('[data-weather-choice="mode"] .weather-choice-button');
+      return Array.prototype.some.call(buttons, function (btn) {
+        return btn.classList.contains('active') !== (btn.dataset.value === stored);
+      });
+    }
+    case 'weatherManualCity': {
+      const input = document.getElementById('weather-manual-city');
+      return Boolean(input) && input.value !== (localStorage.getItem(key) || '');
     }
   }
   return false;
