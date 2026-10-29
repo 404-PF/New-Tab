@@ -48,6 +48,7 @@ window.i18n.__registerLocale('ru', {
   simpleMode: 'Простой',
   focusMode: 'Фокус',
   todoList: 'Список дел',
+  todoApp: 'Задачи',
   addTodoPlaceholder: 'Добавить новое дело...',
   dueDate: 'Срок выполнения',
   dueTime: 'Время выполнения',

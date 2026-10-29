@@ -3129,6 +3129,112 @@ body.light-theme .weather-city-inline input:focus {
   overflow-y: auto;
 }
 
+/* Todo app modal (issue #1066) - shell mirrors .weather-app-modal */
+.todo-app-modal {
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  /* visibility (not only opacity/pointer-events) keeps the closed modal's
+     settings out of the sequential keyboard focus order. */
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.todo-app-modal.modal-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.todo-app-modal-content {
+  background: var(--settings-modal-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  min-width: 320px;
+  max-width: 640px;
+  width: 90%;
+  max-height: var(--overlay-max-height);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.todo-app-modal.modal-open .todo-app-modal-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (min-width: 576px) {
+  .todo-app-modal-content {
+    width: 640px;
+  }
+}
+
+.todo-app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+
+.todo-app-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+}
+
+.todo-app-body {
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+}
+
+.todo-app-settings {
+  margin-bottom: 12px;
+}
+
+/* The relocated on-page widget fills the modal instead of the page's
+   narrow centered column. */
+#todo-app-widget-host .todo-section {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+}
+
+/* Simple mode hide */
+body.simple-mode #todo-app-modal {
+  display: none !important;
+}
+
+/* Light theme */
+body.light-theme .todo-app-modal-content:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+body.light-theme .todo-app-title:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+  color: rgba(31, 41, 55, 0.95);
+}
+
 /* Weather app - loading state */
 .weather-app-loading {
   display: flex;

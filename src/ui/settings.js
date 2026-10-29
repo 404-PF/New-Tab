@@ -1476,89 +1476,6 @@ document.addEventListener('change', function (e) {
   }
 });
 
-// Todo enabled
-function loadTodoEnabled() {
-  return localStorage.getItem('todoEnabled') !== 'false';
-}
-function applyTodoEnabled() {
-  const enabled = loadTodoEnabled();
-  const todoSection = document.querySelector('.todo-section');
-  if (todoSection) {
-    todoSection.style.display = enabled ? '' : 'none';
-  }
-  const todoEnabledSetting = document.getElementById('todo-enabled-setting');
-  if (todoEnabledSetting) todoEnabledSetting.checked = enabled;
-}
-
-// Event listeners for todo enabled
-const todoEnabledSetting = document.getElementById('todo-enabled-setting');
-if (todoEnabledSetting) {
-  todoEnabledSetting.addEventListener('change', function () {
-    // Guard the shared helper: toast.js may fail to load, and an unguarded
-    // call would throw before the write (#969 review thread).
-    let persisted;
-    try {
-      // persistFeatureToggle checks the bridge's result: setItem returns false
-      // for a rejected write instead of throwing (#969).
-      persisted = typeof window.persistFeatureToggle === 'function'
-        ? window.persistFeatureToggle('todoEnabled', this.checked)
-        : localStorage.setItem('todoEnabled', this.checked) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (e) {
-      console.warn('Failed to save todoEnabled:', e);
-      persisted = false;
-    }
-    applyTodoEnabled();
-    if (!persisted && typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    }
-  });
-}
-
-// Todo reminders
-function loadTodoReminderEnabled() {
-  return localStorage.getItem('todoReminderEnabled') === 'true';
-}
-function applyTodoReminderEnabled() {
-  const enabled = loadTodoReminderEnabled();
-  const setting = document.getElementById('todo-reminder-enabled-setting');
-  if (setting) setting.checked = enabled;
-  const leadTimeOption = document.getElementById('todo-reminder-lead-time-option');
-  if (leadTimeOption) {
-    leadTimeOption.style.display = enabled ? '' : 'none';
-  }
-}
-
-function loadTodoReminderLeadTime() {
-  const val = localStorage.getItem('todoReminderLeadTime');
-  if (val === null) return 30;
-  const num = parseInt(val, 10);
-  return isNaN(num) ? 30 : num;
-}
-function applyTodoReminderLeadTime() {
-  const leadTime = loadTodoReminderLeadTime();
-  const select = document.getElementById('todo-reminder-lead-time');
-  if (select) select.value = String(leadTime);
-}
-
-// Todo stats
-function loadTodoStatsEnabled() {
-  return localStorage.getItem('todoStatsEnabled') === 'true';
-}
-function applyTodoStatsEnabled() {
-  const enabled = loadTodoStatsEnabled();
-  const setting = document.getElementById('todo-stats-enabled-setting');
-  if (setting) setting.checked = enabled;
-  if (window.applyTodoStatsVisibility) window.applyTodoStatsVisibility();
-}
-
-const todoStatsEnabledSetting = document.getElementById('todo-stats-enabled-setting');
-if (todoStatsEnabledSetting) {
-  todoStatsEnabledSetting.addEventListener('change', function () {
-    localStorage.setItem('todoStatsEnabled', this.checked);
-    applyTodoStatsEnabled();
-  });
-}
-
 // Pomodoro stats
 function loadPomodoroStatsEnabled() {
   return localStorage.getItem('pomodoroStatsEnabled') === 'true';
@@ -1580,19 +1497,6 @@ if (pomodoroStatsEnabledSetting) {
       // ignore storage errors
     }
     applyPomodoroStatsEnabled(enabled);
-  });
-}
-
-const todoReminderEnabledSetting = document.getElementById('todo-reminder-enabled-setting');
-if (todoReminderEnabledSetting) {
-  todoReminderEnabledSetting.addEventListener('change', function () {
-    const wasEnabled = localStorage.getItem('todoReminderEnabled') === 'true';
-    localStorage.setItem('todoReminderEnabled', this.checked);
-    applyTodoReminderEnabled();
-    if (typeof window.scheduleTodoReminderCheck === 'function') {
-      const reEnabled = this.checked && !wasEnabled;
-      window.scheduleTodoReminderCheck(null, reEnabled);
-    }
   });
 }
 
@@ -1749,16 +1653,6 @@ if (eyeCareBrowserNotificationSetting) {
     }
     if (typeof window.refreshEyeCareReminder === 'function') {
       window.refreshEyeCareReminder();
-    }
-  });
-}
-
-const todoReminderLeadTime = document.getElementById('todo-reminder-lead-time');
-if (todoReminderLeadTime) {
-  todoReminderLeadTime.addEventListener('change', function () {
-    localStorage.setItem('todoReminderLeadTime', this.value);
-    if (typeof window.scheduleTodoReminderCheck === 'function') {
-      window.scheduleTodoReminderCheck();
     }
   });
 }
@@ -2530,10 +2424,6 @@ function initSettings() {
   applyDateStyle();
   applyDateFormatSetting();
   applyTheme();
-  applyTodoEnabled();
-  applyTodoReminderEnabled();
-  applyTodoReminderLeadTime();
-  applyTodoStatsEnabled();
   applyPomodoroStatsEnabled();
   applyEyeCareReminderSettings();
   applyNotesEnabled();
@@ -2605,10 +2495,6 @@ window.resolveTheme = resolveTheme;
 window.applyTheme = applyTheme;
 window.loadLanguageSetting = loadLanguageSetting;
 window.renderLanguageOptions = renderLanguageOptions;
-window.loadTodoEnabled = loadTodoEnabled;
-window.applyTodoEnabled = applyTodoEnabled;
-window.loadTodoStatsEnabled = loadTodoStatsEnabled;
-window.applyTodoStatsEnabled = applyTodoStatsEnabled;
 window.loadPomodoroStatsEnabled = loadPomodoroStatsEnabled;
 window.applyPomodoroStatsEnabled = applyPomodoroStatsEnabled;
 window.loadEyeCareReminderState = loadEyeCareReminderState;

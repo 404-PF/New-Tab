@@ -181,7 +181,7 @@ describe('AppGridState default app visibility', () => {
     AppGridState.hideDefaultApp('weather-app');
 
     expect(window.defaultApps.map(app => app.id)).toEqual([
-      'ai-app', 'weather-app', 'games-app', 'feedback-app', 'settings-app'
+      'ai-app', 'weather-app', 'games-app', 'todo-app', 'feedback-app', 'settings-app'
     ]);
   });
 });

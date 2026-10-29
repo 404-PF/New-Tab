@@ -15,6 +15,7 @@
     { id: 'ai-chat-modal', openClass: 'ai-modal-open', close: () => window.AIService?.close?.() },
     { id: 'settings-modal', openClass: 'modal-open', labelKey: 'settings', fallbackOpener: '#settings-app' },
     { id: 'weather-app-modal', openClass: 'modal-open', close: () => window.WeatherApp?.close?.() },
+    { id: 'todo-app-modal', openClass: 'modal-open', close: () => window.TodoApp?.close?.() },
     { id: 'games-app-modal', nativeDialog: true, close: () => window.GamesApp?.close?.() },
     { id: 'folder-popup', bodyClass: 'folder-popup-open', display: 'flex', close: () => window.AppFolders?.closeFolderPopup?.() },
     { id: 'move-to-folder-selector', display: 'flex' },

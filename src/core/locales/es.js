@@ -48,6 +48,7 @@ window.i18n.__registerLocale('es', {
   simpleMode: 'Simple',
   focusMode: 'Enfoque',
   todoList: 'Lista de Tareas',
+  todoApp: 'Tareas',
   addTodoPlaceholder: 'Agregar nueva tarea...',
   dueDate: 'Fecha de vencimiento',
   dueTime: 'Hora de vencimiento',

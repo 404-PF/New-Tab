@@ -44,6 +44,7 @@
     { selector: '#ai-chat-modal', cssClass: 'ai-modal-open' },
     { selector: '#settings-modal', cssClass: 'modal-open' },
     { selector: '#weather-app-modal', cssClass: 'modal-open' },
+    { selector: '#todo-app-modal', cssClass: 'modal-open' },
     { selector: '#games-app-modal', cssClass: 'modal-open' },
     { selector: '#folder-popup', cssClass: 'folder-popup-open', bodyClass: true },
     { selector: '#move-to-folder-selector', useDisplay: true },
@@ -333,6 +334,13 @@
         // Route weather modal closing through WeatherApp.close() when available
         if (def.selector === '#weather-app-modal' && typeof window.WeatherApp === 'object' && typeof window.WeatherApp.close === 'function') {
           window.WeatherApp.close();
+          return true;
+        }
+        // The relocated .todo-section lives inside this modal: only stripping
+        // the class would strand the widget there, so route through
+        // TodoApp.close() like the weather branch above.
+        if (def.selector === '#todo-app-modal' && typeof window.TodoApp === 'object' && typeof window.TodoApp.close === 'function') {
+          window.TodoApp.close();
           return true;
         }
         // The confirm dialog owns a pending Promise: only stripping the class

@@ -48,6 +48,7 @@ window.i18n.__registerLocale('ko', {
   simpleMode: '심플',
   focusMode: '집중',
   todoList: '할 일 목록',
+  todoApp: '할 일',
   addTodoPlaceholder: '새 할 일 추가...',
   dueDate: '마감일',
   dueTime: '마감 시간',

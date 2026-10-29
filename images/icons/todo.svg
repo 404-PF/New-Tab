@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Todo icon - Clipboard checklist -->
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Clipboard body with rounded corners -->
+  <path d="M8 4H6.5A1.5 1.5 0 0 0 5 5.5v14A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-14A1.5 1.5 0 0 0 17.5 4H16"/>
+  <!-- Clip -->
+  <rect x="9" y="2.5" width="6" height="3.5" rx="1"/>
+  <!-- Checked item -->
+  <path d="M9 12.2l1.7 1.7L14 10.6"/>
+  <!-- Unchecked item line -->
+  <path d="M9 17h6"/>
+</svg>

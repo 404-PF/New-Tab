@@ -48,6 +48,7 @@ window.i18n.__registerLocale('de', {
   simpleMode: 'Einfach',
   focusMode: 'Fokus',
   todoList: 'Aufgabenliste',
+  todoApp: 'Aufgaben',
   addTodoPlaceholder: 'Neue Aufgabe hinzufügen...',
   dueDate: 'Fälligkeitsdatum',
   dueTime: 'Fälligkeitszeit',
