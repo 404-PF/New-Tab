@@ -493,6 +493,7 @@ window.i18n.__registerLocale('pt', {
   shortcutToggleNotes: 'Alternar notas',
   shortcutCloseModal: 'Fechar modal',
   shortcutPressAKey: 'Pressione uma tecla...',
+  shortcutAppLaunch: 'Iniciar apps com Alt+1…9',
   shortcutSaveError: 'Não foi possível salvar as alterações de atalhos. Sua última ação não foi salva.',
   featureToggleSaveError: 'Não foi possível salvar esta configuração. Sua última ação não foi salva.',
 

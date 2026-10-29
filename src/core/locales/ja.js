@@ -506,6 +506,7 @@ window.i18n.__registerLocale('ja', {
   shortcutToggleNotes: 'メモ切替',
   shortcutCloseModal: 'モーダルを閉じる',
   shortcutPressAKey: 'キーを押してください...',
+  shortcutAppLaunch: 'Alt+1…9でアプリを起動',
   shortcutSaveError: 'ショートカットの変更を保存できませんでした。直前の操作は保存されていません。',
   featureToggleSaveError: 'この設定を保存できませんでした。直前の操作は保存されていません。',
 

@@ -493,6 +493,7 @@ window.i18n.__registerLocale('de', {
   shortcutToggleNotes: 'Notizen umschalten',
   shortcutCloseModal: 'Modal schließen',
   shortcutPressAKey: 'Taste drücken...',
+  shortcutAppLaunch: 'Apps mit Alt+1…9 starten',
   shortcutSaveError: 'Tastenkombinationen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.',
   featureToggleSaveError: 'Diese Einstellung konnte nicht gespeichert werden. Deine letzte Aktion wurde nicht gespeichert.',
 

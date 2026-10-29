@@ -2023,6 +2023,12 @@ function applyGamesEnabled(enabledOverride) {
   if (!enabled && window.GamesApp && typeof window.GamesApp.close === 'function') {
     window.GamesApp.close();
   }
+  // Disabling Games drops its tile from the Alt+1..9 map (shortcuts.js skips
+  // a hidden games-app), so later tiles shift slots; re-sync on-tile badges.
+  // Guarded: shortcuts.js may not have loaded yet during early renders.
+  if (window.Shortcuts && typeof window.Shortcuts.refreshAppShortcutBadges === 'function') {
+    window.Shortcuts.refreshAppShortcutBadges();
+  }
 }
 const gamesEnabledSetting = document.getElementById('games-enabled-setting');
 if (gamesEnabledSetting) {

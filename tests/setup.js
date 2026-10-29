@@ -599,6 +599,7 @@ globalThis.window.i18n = {
       shortcutToggleNotes: 'Toggle Notes',
       shortcutCloseModal: 'Close Modal / Dialog',
       shortcutPressAKey: 'Press a key...',
+      shortcutAppLaunch: 'Launch apps with Alt+1…9',
       shortcuts: 'Shortcuts',
       keyboardShortcuts: 'Keyboard Shortcuts',
       keyboardShortcutsDesc: 'Customize keyboard shortcuts for quick actions',

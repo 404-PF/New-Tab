@@ -1192,6 +1192,7 @@ body.light-theme .drag-placeholder {
 }
 
 .icon {
+  position: relative; /* anchors the on-tile shortcut badge */
   width: var(--app-icon-size);
   height: var(--app-icon-size);
   background: #f0f0f0;
@@ -1227,6 +1228,39 @@ body.light-theme .drag-placeholder {
     0 0 2px #000,
     0 0 2px #000;
   transition: opacity 0.2s ease;
+}
+
+/* Positional app shortcut badge (Alt+1..9) */
+.app-shortcut-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  padding: 1px 4px;
+  border-radius: 6px;
+  background: rgba(20, 20, 20, 0.75);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Folder previews clip their stacked icons; keep the badge inside. */
+.app-icon.folder-icon .app-shortcut-badge {
+  top: 2px;
+  right: 2px;
+}
+
+body.light-theme .app-shortcut-badge {
+  background: rgba(255, 255, 255, 0.92);
+  color: #333;
+  border-color: rgba(0, 0, 0, 0.2);
 }
 #clock {
   display: flex;

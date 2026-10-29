@@ -493,6 +493,7 @@ window.i18n.__registerLocale('es', {
   shortcutToggleNotes: 'Alternar notas',
   shortcutCloseModal: 'Cerrar modal',
   shortcutPressAKey: 'Presiona una tecla...',
+  shortcutAppLaunch: 'Abrir aplicaciones con Alt+1…9',
   shortcutSaveError: 'No se pudieron guardar los cambios de los atajos. La última acción no se guardó.',
   featureToggleSaveError: 'No se pudo guardar esta configuración. Tu última acción no se guardó.',
 

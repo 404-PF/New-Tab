@@ -636,6 +636,7 @@ const translations = {
     shortcutToggleNotes: 'Toggle Notes',
     shortcutCloseModal: 'Close Modal / Dialog',
     shortcutPressAKey: 'Press a key...',
+    shortcutAppLaunch: 'Launch apps with Alt+1…9',
     shortcutSaveError: 'Failed to save shortcut changes. Your last action was not saved.',
     featureToggleSaveError: 'Failed to save this setting. Your last action was not saved.',
 

@@ -51,6 +51,14 @@ function invalidateDragIconCache() {
   }
 }
 
+// Positional app shortcuts (Alt+1..9) own the on-tile badge; re-sync after
+// in-place grid mutations so slots shift correctly (issue #1061).
+function refreshShortcutBadges() {
+  if (window.Shortcuts && typeof window.Shortcuts.refreshAppShortcutBadges === 'function') {
+    window.Shortcuts.refreshAppShortcutBadges();
+  }
+}
+
 // Storage records win so className / cachedIcon stay canonical.
 function resolveAppRecord(appOrId) {
   const id = typeof appOrId === 'string' ? appOrId : appOrId && appOrId.id;
@@ -96,9 +104,15 @@ function createAppIconElement(app) {
   const displayName = window.AppGridState.getAppDisplayName(app);
   // Use cached icon if available, otherwise use original icon
   const iconUrl = app.cachedIcon || app.icon;
-  a.title = displayName;
+  const shortcutCombo = window.Shortcuts && typeof window.Shortcuts.getAppShortcutForId === 'function'
+    ? window.Shortcuts.getAppShortcutForId(app.id)
+    : null;
+  const labeledTitle = shortcutCombo ? displayName + ' (' + shortcutCombo + ')' : displayName;
+  a.title = labeledTitle;
+  a.setAttribute('aria-label', labeledTitle);
   const safeIconUrl = window.validateIconUrl ? window.validateIconUrl(iconUrl) : iconUrl;
-  const iconHtml = `<div class="icon"><img src="${window.escapeHtml(safeIconUrl || '')}" alt="${window.escapeHtml(displayName)}" data-app-icon></div>`;
+  const badgeHtml = shortcutCombo ? `<span class="app-shortcut-badge">${escapeHtml(shortcutCombo)}</span>` : '';
+  const iconHtml = `<div class="icon"><img src="${window.escapeHtml(safeIconUrl || '')}" alt="${window.escapeHtml(displayName)}" data-app-icon>${badgeHtml}</div>`;
   a.innerHTML = iconHtml + `<span class="app-name">${escapeHtml(displayName)}</span>`;
   return a;
 }
@@ -127,6 +141,7 @@ function addAppIcon(appOrId) {
     window.applyGamesEnabled();
   }
   invalidateDragIconCache();
+  refreshShortcutBadges();
   return icon;
 }
 
@@ -137,6 +152,7 @@ function removeAppIcon(id) {
   if (!appGrid || !isGridChild(element, appGrid)) return false;
   appGrid.removeChild(element);
   invalidateDragIconCache();
+  refreshShortcutBadges();
   return true;
 }
 
@@ -148,6 +164,8 @@ function renameAppIcon(id, newName) {
   const nameElement = element.querySelector('.app-name');
   if (nameElement) nameElement.textContent = newName;
   element.title = newName;
+  // Re-apply the positional shortcut suffix if this slot has one.
+  refreshShortcutBadges();
   return true;
 }
 
@@ -184,6 +202,8 @@ function syncAppGridOrder() {
     reference = element;
   }
   invalidateDragIconCache();
+  // Reordering shifts Alt+1..9 slots, so badges must follow the new order.
+  refreshShortcutBadges();
   return true;
 }
 

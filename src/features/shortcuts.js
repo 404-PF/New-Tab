@@ -4,6 +4,8 @@
   'use strict';
 
   const STORAGE_KEY = 'customShortcuts';
+  const APP_SHORTCUTS_KEY = 'appShortcutsEnabled';
+  const APP_SHORTCUT_MAX_SLOT = 9;
 
   const DEFAULT_SHORTCUTS = {
     focusSearch: '/',
@@ -194,6 +196,176 @@
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
     if (el.isContentEditable || el.getAttribute('contenteditable') === 'true') return true;
     return false;
+  }
+
+  // --- Positional app launch shortcuts (Alt+1..9, issue #1061) ---
+
+  function appLaunchEnabled() {
+    try {
+      return localStorage.getItem(APP_SHORTCUTS_KEY) !== 'false';
+    } catch (e) {
+      console.warn('Failed to read ' + APP_SHORTCUTS_KEY + ':', e);
+      return true;
+    }
+  }
+
+  function setAppLaunchEnabled(enabled) {
+    try {
+      return localStorage.setItem(APP_SHORTCUTS_KEY, enabled ? 'true' : 'false') !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (e) {
+      console.warn('Failed to save ' + APP_SHORTCUTS_KEY + ':', e);
+      return false;
+    }
+  }
+
+  // The Games feature toggle hides its tile with display:none without removing
+  // it from appOrder, so the slot walk must skip it or every later visible tile
+  // would get a shifted Alt+N key.
+  function isGamesAppDisabled() {
+    if (window.gamesHelpers && typeof window.gamesHelpers.isEnabled === 'function') {
+      return !window.gamesHelpers.isEnabled();
+    }
+    try {
+      return localStorage.getItem('games_enabled') === 'false';
+    } catch (e) {
+      console.warn('Failed to read games_enabled:', e);
+      return false;
+    }
+  }
+
+  // Maps grid slot ids to their Alt+N combo, walking appOrder. Folders occupy
+  // a slot (their combo opens the popup); hidden default apps, apps inside
+  // folders, and a Games tile disabled by the feature toggle are skipped and
+  // do not consume a slot.
+  function getAppShortcutMap() {
+    const map = {};
+    if (!appLaunchEnabled()) return map;
+    const state = window.AppGridState;
+    if (!state || typeof state.getOrder !== 'function') return map;
+    const order = state.getOrder();
+    if (!Array.isArray(order)) return map;
+
+    const folderedIds = new Set();
+    if (typeof state.getFolders === 'function') {
+      (state.getFolders() || []).forEach((folder) => {
+        (Array.isArray(folder.apps) ? folder.apps : []).forEach((appId) => folderedIds.add(appId));
+      });
+    }
+    const hiddenIds = new Set(
+      typeof state.getHiddenDefaultApps === 'function' ? state.getHiddenDefaultApps() : []
+    );
+
+    let slot = 1;
+    for (const id of order) {
+      if (slot > APP_SHORTCUT_MAX_SLOT) break;
+      if (folderedIds.has(id) || hiddenIds.has(id)) continue;
+      if (id === 'games-app' && isGamesAppDisabled()) continue;
+      map[id] = 'Alt+' + slot;
+      slot += 1;
+    }
+    return map;
+  }
+
+  function getAppShortcutForId(id) {
+    return getAppShortcutMap()[id] || null;
+  }
+
+  // Resolves a positional slot to its grid id, or null when the slot is empty.
+  function getAppShortcutSlotId(slot) {
+    const combo = 'Alt+' + slot;
+    const map = getAppShortcutMap();
+    const ids = Object.keys(map);
+    for (let i = 0; i < ids.length; i++) {
+      if (map[ids[i]] === combo) return ids[i];
+    }
+    return null;
+  }
+
+  function launchAppFromShortcut(id, e) {
+    const state = window.AppGridState;
+    const folders = state && typeof state.getFolders === 'function' ? state.getFolders() || [] : [];
+    const isFolder = folders.some((folder) => folder.id === id);
+    if (isFolder) {
+      if (window.AppFolders && typeof window.AppFolders.openFolderPopup === 'function') {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        window.AppFolders.openFolderPopup(id);
+        return true;
+      }
+      return false;
+    }
+
+    if (typeof window.openInternalApp === 'function' && window.openInternalApp(id, e)) {
+      return true;
+    }
+
+    const tile = document.getElementById(id);
+    if (!tile || !tile.classList || !tile.classList.contains('app-icon')) return false;
+    const href = tile.getAttribute('href');
+    if (!href || href === '#') return false;
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+    let openInNewTab = true;
+    try {
+      openInNewTab = localStorage.getItem('openAppsInNewTab') !== 'false';
+    } catch (err) {
+      console.warn('Failed to read openAppsInNewTab:', err);
+    }
+    if (openInNewTab) {
+      window.open(href, '_blank', 'noopener,noreferrer');
+    } else {
+      window.location.href = href;
+    }
+    return true;
+  }
+
+  // After the global-action loop: Alt+1..9 launches the matching grid slot.
+  // Global shortcuts always win, so a user-bound Alt+digit on a global action
+  // can never be shadowed by the positional launcher. Match on e.code so the
+  // physical digit row works on macOS, where Option+digit changes e.key, and
+  // ignore auto-repeat so a held chord opens a single tab.
+  function handleAppShortcutKeydown(e) {
+    if (e.repeat || !e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return false;
+    const digit = /^Digit([1-9])$/.exec(e.code || '');
+    if (!digit) return false;
+    const id = getAppShortcutSlotId(parseInt(digit[1], 10));
+    if (!id) return false;
+    return launchAppFromShortcut(id, e);
+  }
+
+  // Syncs on-tile key badges and titles with the current slot map. Full grid
+  // renders bake badges in via createAppIconElement; this covers in-place
+  // mutations (drag reorder, hide/show, toggle change).
+  function refreshAppShortcutBadges() {
+    const grid = document.getElementById('app-grid');
+    if (!grid) return;
+    const map = getAppShortcutMap();
+    grid.querySelectorAll('.app-icon').forEach((tile) => {
+      const combo = map[tile.id] || null;
+      const nameEl = tile.querySelector('.app-name');
+      let baseTitle = nameEl ? nameEl.textContent : '';
+      if (!baseTitle) {
+        baseTitle = tile.title ? tile.title.replace(/ \([^)]*\)$/, '') : '';
+      }
+      let badge = tile.querySelector('.app-shortcut-badge');
+      if (!combo) {
+        if (badge) badge.remove();
+        tile.title = baseTitle;
+        // The grid sets aria-label on every tile; restore the base title
+        // instead of dropping the attribute.
+        tile.setAttribute('aria-label', baseTitle);
+        return;
+      }
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'app-shortcut-badge';
+        const iconWrap = tile.querySelector('.icon');
+        if (iconWrap) iconWrap.appendChild(badge);
+      }
+      badge.textContent = combo;
+      const labeled = baseTitle + ' (' + combo + ')';
+      tile.title = labeled;
+      tile.setAttribute('aria-label', labeled);
+    });
   }
 
   function focusSearchBar() {
@@ -413,6 +585,10 @@
         return;
       }
     }
+
+    // Positional app launch (Alt+1..9). Reached only when no global action
+    // matched, and the text-input guard above already blocked typing contexts.
+    handleAppShortcutKeydown(e);
   }
 
   function renderShortcutsSection() {
@@ -463,6 +639,50 @@
       option.appendChild(card);
       container.appendChild(option);
     }
+
+    // Positional app-launch toggle: Alt+1..9 over the grid (issue #1061).
+    const toggleOption = document.createElement('div');
+    toggleOption.className = 'general-option';
+
+    const toggleCard = document.createElement('div');
+    toggleCard.className = 'setting-card';
+
+    const toggleIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    toggleIcon.setAttribute('class', 'setting-icon');
+    toggleIcon.setAttribute('viewBox', '0 0 24 24');
+    toggleIcon.setAttribute('fill', 'none');
+    toggleIcon.setAttribute('stroke', 'currentColor');
+    toggleIcon.setAttribute('stroke-width', '2');
+    toggleIcon.innerHTML = '<rect x="2" y="4" width="20" height="16" rx="2"></rect>' +
+      '<path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 15h8"></path>';
+
+    const toggleContent = document.createElement('div');
+    toggleContent.className = 'setting-content';
+
+    const toggleLabel = document.createElement('label');
+    toggleLabel.textContent = t('shortcutAppLaunch');
+    toggleLabel.htmlFor = 'app-shortcuts-enabled-setting';
+
+    const toggleCheckbox = document.createElement('input');
+    toggleCheckbox.id = 'app-shortcuts-enabled-setting';
+    toggleCheckbox.type = 'checkbox';
+    toggleCheckbox.checked = appLaunchEnabled();
+    toggleCheckbox.addEventListener('change', function () {
+      const persisted = setAppLaunchEnabled(this.checked);
+      if (!persisted) {
+        this.checked = appLaunchEnabled();
+        showShortcutSaveError();
+        return;
+      }
+      refreshAppShortcutBadges();
+    });
+
+    toggleContent.appendChild(toggleLabel);
+    toggleContent.appendChild(toggleCheckbox);
+    toggleCard.appendChild(toggleIcon);
+    toggleCard.appendChild(toggleContent);
+    toggleOption.appendChild(toggleCard);
+    container.appendChild(toggleOption);
   }
 
   function startRebinding(action, btn) {
@@ -531,7 +751,26 @@
   }
 
   window.addEventListener('storageBridgeWriteError', function (event) {
-    if (event?.detail?.key !== STORAGE_KEY) return;
+    const key = event?.detail?.key;
+
+    // Async half of the app-launch toggle: chrome.storage can reject after
+    // setItem already returned true. Wait a macrotask for the bridge rollback,
+    // then resync the checkbox and badges and surface the failure once. The
+    // synchronous-failure path already reverted the checkbox, so the desync
+    // check keeps that path from reporting twice.
+    if (key === APP_SHORTCUTS_KEY) {
+      setTimeout(function () {
+        const desired = appLaunchEnabled();
+        const checkbox = document.getElementById('app-shortcuts-enabled-setting');
+        if (!checkbox || checkbox.checked === desired) return;
+        checkbox.checked = desired;
+        refreshAppShortcutBadges();
+        showShortcutSaveError();
+      });
+      return;
+    }
+
+    if (key !== STORAGE_KEY) return;
 
     setTimeout(function () {
       const persisted = loadShortcuts();
@@ -583,6 +822,12 @@
     isTextInputFocused: isTextInputFocused,
     executeAction: executeAction,
     handleKeydown: handleKeydown,
-    renderShortcutsSection: renderShortcutsSection
+    renderShortcutsSection: renderShortcutsSection,
+    appLaunchEnabled: appLaunchEnabled,
+    setAppLaunchEnabled: setAppLaunchEnabled,
+    getAppShortcutMap: getAppShortcutMap,
+    getAppShortcutForId: getAppShortcutForId,
+    launchAppFromShortcut: launchAppFromShortcut,
+    refreshAppShortcutBadges: refreshAppShortcutBadges
   };
 })();

@@ -54,9 +54,21 @@
     a.className = 'app-icon folder-icon';
     a.id = folder.id;
     a.draggable = false;
-    a.title = folder.name;
 
+    // Folders occupy a positional Alt+1..9 slot; surface it like app tiles.
+    const shortcutCombo = window.Shortcuts && typeof window.Shortcuts.getAppShortcutForId === 'function'
+      ? window.Shortcuts.getAppShortcutForId(folder.id)
+      : null;
+    const labeledTitle = shortcutCombo ? folder.name + ' (' + shortcutCombo + ')' : folder.name;
+    a.title = labeledTitle;
+    a.setAttribute('aria-label', labeledTitle);
+
+    const badgeHtml = shortcutCombo ? `<span class="app-shortcut-badge">${escapeHtml(shortcutCombo)}</span>` : '';
     a.innerHTML = buildStackedPreviewHtml(folder) + `<span class="app-name">${escapeHtml(folder.name)}</span>`;
+    // Mount on the shared .icon wrapper so empty folders (.folder-icon-empty)
+    // show the badge too, matching refreshAppShortcutBadges.
+    const iconWrap = a.querySelector('.icon');
+    if (iconWrap && badgeHtml) iconWrap.insertAdjacentHTML('beforeend', badgeHtml);
 
     a.addEventListener('click', function (e) {
       e.preventDefault();
@@ -254,6 +266,11 @@
           if (moved) {
             removeAppIconFromGrid(moveToFolderAppId);
             updateFolderIconInGrid(getFolder(f.id));
+            // This path bypasses app-manager's removeAppIcon mutator, so
+            // re-sync Alt+N badges whose slots shifted after the move.
+            if (window.Shortcuts && typeof window.Shortcuts.refreshAppShortcutBadges === 'function') {
+              window.Shortcuts.refreshAppShortcutBadges();
+            }
           }
         }
         hideMoveToFolderSelector();
