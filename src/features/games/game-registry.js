@@ -138,17 +138,37 @@
     }
   }
 
+  function failMRUWrite(error) {
+    console.warn('Failed to save games_recently_played:', error || 'storage rejected the write');
+    // Drop the cache so the next read re-serves the value the storage bridge
+    // rolled back to, not the rejected list.
+    mruCache = null;
+    mruCacheRaw = undefined;
+  }
+
   function saveMRU(mru) {
+    let serialized;
     try {
-      const serialized = JSON.stringify(mru);
-      localStorage.setItem(MRU_KEY, serialized);
-      mruCache = mru;
-      mruCacheRaw = serialized;
+      serialized = JSON.stringify(mru);
     } catch (e) {
-      console.warn('Failed to save games_recently_played:', e);
-      mruCache = null;
-      mruCacheRaw = undefined;
+      failMRUWrite(e);
+      return;
     }
+
+    let accepted;
+    try {
+      // Native Storage#setItem returns void and throws on failure.
+      accepted = localStorage.setItem(MRU_KEY, serialized) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (e) {
+      failMRUWrite(e);
+      return;
+    }
+    if (!accepted) {
+      failMRUWrite();
+      return;
+    }
+    mruCache = mru;
+    mruCacheRaw = serialized;
   }
 
   function touchMRU(gameId) {

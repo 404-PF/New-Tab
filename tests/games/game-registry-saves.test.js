@@ -679,3 +679,94 @@ describe('GameRegistry saves bridge rejection (#1039)', () => {
     expect(showToast).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('GameRegistry MRU bridge rejection (#1069)', () => {
+  let warnSpy;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  // The storage bridge's setItem returns false for a rejected write while
+  // native Storage#setItem returns void; only the MRU key is failed so
+  // unrelated writes (e.g. saves) still land.
+  function failMRUWrites() {
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+      if (key === 'games_recently_played') return false;
+      return originalSetItem(key, value);
+    });
+    return () => spy.mockRestore();
+  }
+
+  function registerPlainGame(id) {
+    window.GameRegistry.register({ id: id, name: id, init: () => {}, destroy: () => {} });
+  }
+
+  it('drops the rejected MRU list so the next read re-serves rolled-back state', () => {
+    registerPlainGame('mru-game-a');
+    ensureContainer();
+    window.GameRegistry.launch('mru-game-a');
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-game-a']);
+
+    const restore = failMRUWrites();
+    try {
+      registerPlainGame('mru-game-b');
+      window.GameRegistry.launch('mru-game-b');
+    } finally {
+      restore();
+    }
+
+    // The rejected touch must not stay cached: reads serve the list the
+    // bridge rolled back to, not the one it refused.
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-game-a']);
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['mru-game-a']);
+    expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('games_recently_played'))).toBe(true);
+  });
+
+  it('lands a later MRU write after a rejected one', () => {
+    registerPlainGame('mru-game-c');
+    ensureContainer();
+    window.GameRegistry.launch('mru-game-c');
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-game-c']);
+
+    const restore = failMRUWrites();
+    try {
+      registerPlainGame('mru-game-d');
+      window.GameRegistry.launch('mru-game-d');
+    } finally {
+      restore();
+    }
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-game-c']);
+
+    registerPlainGame('mru-game-e');
+    window.GameRegistry.launch('mru-game-e');
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-game-e', 'mru-game-c']);
+  });
+
+  it('drops the MRU cache when the storage write throws', () => {
+    registerPlainGame('mru-throw-a');
+    ensureContainer();
+    window.GameRegistry.launch('mru-throw-a');
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-throw-a']);
+
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+      if (key === 'games_recently_played') throw new Error('storage unavailable');
+      return originalSetItem(key, value);
+    });
+    try {
+      registerPlainGame('mru-throw-b');
+      expect(() => window.GameRegistry.launch('mru-throw-b')).not.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-throw-a']);
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['mru-throw-a']);
+  });
+});
