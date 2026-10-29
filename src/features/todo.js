@@ -766,7 +766,7 @@
           stCheckbox.type = 'button';
           stCheckbox.setAttribute('role', 'checkbox');
           stCheckbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
-          stCheckbox.setAttribute('aria-label', `Toggle subtask: ${subtask.text}`);
+          stCheckbox.setAttribute('aria-label', window.i18n ? window.i18n.t('todoSubtaskToggleAria', { text: subtask.text }) : `Toggle subtask: ${subtask.text}`);
           stCheckbox.setAttribute('draggable', 'false');
           stCheckbox.dataset.todoId = todo.id;
           stCheckbox.dataset.subtaskId = subtask.id;
@@ -2102,7 +2102,7 @@ function renderEditModalSubtasks(todo) {
     checkbox.type = 'button';
     checkbox.setAttribute('role', 'checkbox');
     checkbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
-    checkbox.setAttribute('aria-label', `Subtask: ${subtask.text || 'Untitled'}`);
+    checkbox.setAttribute('aria-label', window.i18n ? window.i18n.t('todoSubtaskAria', { text: subtask.text || window.i18n.t('todoSubtaskUntitled') }) : `Subtask: ${subtask.text || 'Untitled'}`);
     checkbox.dataset.todoId = todo.id;
     checkbox.dataset.subtaskId = subtask.id;
 

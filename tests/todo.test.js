@@ -2440,6 +2440,10 @@ describe('Todo subtasks', () => {
     expect(items).toHaveLength(1);
     const subtasks = items[0].querySelectorAll('.todo-subtask-item');
     expect(subtasks).toHaveLength(2);
+    // Subtask toggle accessible names come from i18n, not hardcoded English (issue #1059).
+    const checkbox = items[0].querySelector('.todo-subtask-checkbox');
+    expect(checkbox.getAttribute('aria-label')).toBe(window.i18n.t('todoSubtaskToggleAria', { text: 'Sub A' }));
+    expect(checkbox.getAttribute('aria-label')).toBe('Toggle subtask: Sub A');
   });
 
   it('progress badge renders for todos with subtasks', () => {

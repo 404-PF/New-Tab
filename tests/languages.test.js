@@ -303,6 +303,18 @@ describe('Todo bulk selection translations (issue #942)', () => {
   });
 });
 
+const TODO_SUBTASK_ARIA_TRANSLATION_KEYS = [
+  'todoSubtaskToggleAria',
+  'todoSubtaskAria',
+  'todoSubtaskUntitled'
+];
+
+describe('Todo subtask aria-label translations (issue #1059)', () => {
+  it('defines every subtask screen-reader string in each supported language', () => {
+    expectTranslationKeys(TODO_SUBTASK_ARIA_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
+
 const TODO_SORT_TRANSLATION_KEYS = [
   'todoSortLabel',
   'todoSortManual',
