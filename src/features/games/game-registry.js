@@ -262,12 +262,19 @@
   // another write's unconfirmed values.
   let savesWriteChain = Promise.resolve();
   let savesWritesInFlight = 0;
+  // Bumped by _reset(): a write enqueued before the reset must neither run
+  // (its updater would write stale saves into post-reset storage) nor
+  // decrement the fresh in-flight counter when it settles, so pre-reset
+  // writes are invalidated instead of leaking across the reset boundary.
+  let savesWriteGeneration = 0;
 
   // `apply(saves)` mutates a copy of the stored saves and returns false to
   // skip the write entirely (nothing to persist). Resolves to whether a write
   // was persisted.
   function enqueueSavesWrite(apply) {
+    const generation = savesWriteGeneration;
     const run = () => {
+      if (generation !== savesWriteGeneration) return Promise.resolve(true);
       let saves;
       try {
         saves = { ...loadSaves() };
@@ -278,12 +285,13 @@
       return saveSaves(saves);
     };
 
+    const settle = () => {
+      if (generation === savesWriteGeneration) savesWritesInFlight -= 1;
+    };
+
     const write = savesWritesInFlight === 0 ? run() : savesWriteChain.then(run);
     savesWritesInFlight += 1;
-    savesWriteChain = write.then(
-      () => { savesWritesInFlight -= 1; },
-      () => { savesWritesInFlight -= 1; }
-    );
+    savesWriteChain = write.then(settle, settle);
     return write;
   }
 
@@ -608,7 +616,14 @@
     // A new tab replaces this page without ever closing the games modal, so
     // serialize the current game before the page unloads. pagehide fires on
     // both navigation and tab/window close; bfcache restores skip init()
-    // because `initialized` is still true.
+    // because `initialized` is still true. If a saves write is still in
+    // flight, this save queues behind it (writes are serialized so the
+    // storage bridge cannot roll a rejected snapshot back into a newer
+    // write, #1039): the wait is normally a single chrome.storage callback.
+    // Accepted risk: if the page is torn down before that settles, the
+    // queued write is never issued and the final snapshot is lost —
+    // bypassing the queue here would reintroduce the overlapping-write
+    // rollback serialization exists to prevent.
     window.addEventListener('pagehide', function () {
       void serializeCurrent();
     });
@@ -631,6 +646,9 @@
     statsWritesInFlight = 0;
     lastStatsToastAt = -Infinity;
     lastSavesToastAt = -Infinity;
+    // Invalidate writes enqueued (but not yet run) before this reset, then
+    // start a fresh queue for the next test.
+    savesWriteGeneration += 1;
     savesWriteChain = Promise.resolve();
     savesWritesInFlight = 0;
     mruCache = null;

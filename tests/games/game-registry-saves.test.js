@@ -87,7 +87,7 @@ describe('GameRegistry saves (#646)', () => {
     // Destroy again first: launch() is a no-op for a running game. Awaiting
     // keeps the clear below behind the serialized save write.
     await window.GameRegistry.destroyCurrent();
-    void window.GameRegistry.clearSave('save-game');
+    await window.GameRegistry.clearSave('save-game');
     expect(window.GameRegistry.hasSave('save-game')).toBe(false);
     expect(JSON.parse(localStorage.getItem('games_saves'))['save-game']).toBeUndefined();
 
