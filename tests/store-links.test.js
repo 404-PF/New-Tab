@@ -10,6 +10,7 @@ const STORE_LINK_FILES = [
   'docs/README.zh-CN.md'
 ];
 const SKIP_DIRS = new Set(['.git', 'node_modules', '.tmp', 'coverage']);
+const SKIP_EXTS = new Set(['mp4', 'webm', 'mov', 'jpeg', 'jpg', 'png', 'gif', 'webp', 'ico']);
 // This file itself names the old ID as a constant; skip it in the repo-wide scan.
 const SELF = resolve(process.cwd(), 'tests/store-links.test.js');
 
@@ -37,6 +38,11 @@ describe('Chrome Web Store links (#1040)', () => {
   it('no longer reference the old extension ID anywhere in the repo', () => {
     const offenders = walk(process.cwd()).filter((file) => {
       if (resolve(file) === SELF) {
+        return false;
+      }
+      const dot = file.lastIndexOf('.');
+      const ext = dot === -1 ? '' : file.slice(dot + 1).toLowerCase();
+      if (SKIP_EXTS.has(ext)) {
         return false;
       }
       let content;
