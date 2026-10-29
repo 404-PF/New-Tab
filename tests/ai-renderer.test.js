@@ -464,3 +464,61 @@ describe('AI modal theme follows a stored system theme (issue #1011)', () => {
     expect(modal.classList.contains('light-theme')).toBe(false);
   });
 });
+
+describe('AIRenderer.resizeChatInput auto-grow (#1047)', () => {
+  let input;
+
+  const mockScrollHeight = (value) => {
+    Object.defineProperty(input, 'scrollHeight', {
+      configurable: true,
+      get: () => value
+    });
+  };
+
+  beforeAll(() => {
+    AIRenderer.cacheElements();
+    input = document.getElementById('ai-chat-input');
+  });
+
+  afterEach(() => {
+    input.style.height = '';
+    delete input.scrollHeight;
+  });
+
+  it('grows the composer to its measured height plus borders', () => {
+    mockScrollHeight(60);
+    AIRenderer.resizeChatInput();
+    expect(input.style.height).toBe('62px');
+  });
+
+  it('caps the grown height so the composer scrolls internally', () => {
+    mockScrollHeight(500);
+    AIRenderer.resizeChatInput();
+    expect(input.style.height).toBe('200px');
+  });
+
+  it('resets to auto before measuring so the composer can shrink', () => {
+    input.style.height = '180px';
+    let heightWhenMeasured = null;
+    Object.defineProperty(input, 'scrollHeight', {
+      configurable: true,
+      get: () => {
+        heightWhenMeasured = input.style.height;
+        return 40;
+      }
+    });
+
+    AIRenderer.resizeChatInput();
+
+    expect(heightWhenMeasured).toBe('auto');
+    expect(input.style.height).toBe('42px');
+  });
+
+  it('is a no-op when the composer element is missing', () => {
+    const elements = AIRenderer.getElements();
+    const cached = elements.input;
+    elements.input = null;
+    expect(() => AIRenderer.resizeChatInput()).not.toThrow();
+    elements.input = cached;
+  });
+});
