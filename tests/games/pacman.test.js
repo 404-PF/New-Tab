@@ -67,7 +67,7 @@ describe('Pac-Man registration and ready state', () => {
     });
   });
 
-  it('renders behind the shared ready screen and does not start until Space', () => {
+  it('renders behind the shared ready screen and does not start until the player signals readiness', () => {
     const container = makeContainer();
     const state = window.__pacmanTest.getState();
 
@@ -77,12 +77,25 @@ describe('Pac-Man registration and ready state', () => {
     expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
     expect(state.started).toBe(false);
 
-    pressKey('ArrowRight');
-    expect(window.__pacmanTest.getState().started).toBe(false);
-
     startWithSpace();
     expect(window.__pacmanTest.getState().started).toBe(true);
     expect(container.querySelector('.games-ready-overlay')).toBeNull();
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('starts on a direction key and records it as the first input (#1021)', () => {
+    const container = makeContainer();
+    expect(window.__pacmanTest.getState().started).toBe(false);
+
+    // A direction key on the ready screen starts the run instead of being
+    // swallowed, and the pressed direction becomes the intended turn.
+    pressKey('ArrowUp');
+    const state = window.__pacmanTest.getState();
+    expect(state.started).toBe(true);
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+    expect(state.pendingDir).toBe('up');
 
     getGame().destroy();
     container.remove();
@@ -380,6 +393,111 @@ describe('Pac-Man input and movement', () => {
     expect(window.__pacmanTest.getState().started).toBe(false);
     expect(window.__pacmanTest.getState().paused).toBe(false);
     expect(container.querySelector('.games-ready-overlay')).not.toBeNull();
+
+    getGame().destroy();
+    container.remove();
+  });
+});
+
+describe('Pac-Man visual corner-cut lead (#1021)', () => {
+  // Mount, start, park the ghosts, and place Pac-Man on a west-bound leg
+  // from (7,13) toward the centre at (6,13).
+  function beginWestboundApproach() {
+    const container = makeContainer();
+    startWithSpace();
+    parkGhosts();
+    window.__pacmanTest.setPositions({ pacman: { x: 7, y: 13, dir: 'left' } });
+    window.__pacmanTest.tick(0.01);
+    return container;
+  }
+
+  it('leads the sprite toward a legal pending turn before the centre while logic stays grid-locked', () => {
+    const container = beginWestboundApproach();
+    // A turn up becomes pending mid-corridor (it is legal at the centre).
+    pressKey('ArrowUp');
+    // Advance to 2 px short of the centre at (6,13).
+    window.__pacmanTest.tick(0.19);
+
+    const cut = window.__pacmanTest.cornerCut();
+    expect(cut.x).toBe(0);
+    expect(cut.y).toBeLessThan(0); // leads toward the pending 'up'
+    expect(Math.abs(cut.y)).toBeLessThanOrEqual(4);
+
+    // The lead is render-only: the logic is still grid-locked mid-corridor
+    // and has not turned yet.
+    const state = window.__pacmanTest.getState();
+    expect(state.pacman.x).toBeGreaterThan(6);
+    expect(state.pacman.x).toBeLessThan(7);
+    expect(state.pacman.dir).toBe('left');
+    expect(state.pendingDir).toBe('up');
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('keeps the cut continuous across the turn: full at the centre, decaying to zero', () => {
+    const container = beginWestboundApproach();
+    pressKey('ArrowUp');
+    window.__pacmanTest.tick(0.19); // 2 px short of the centre at (6,13)
+    const approach = window.__pacmanTest.cornerCut();
+    expect(approach.y).toBeLessThan(0);
+
+    // Cross the centre: the turn applies to the logic exactly on the tile,
+    // and the lead hands over to the departure decay without a jump.
+    window.__pacmanTest.tick(0.03);
+    const turned = window.__pacmanTest.getState();
+    expect(turned.pacman.dir).toBe('up');
+    expect(turned.pendingDir).toBeNull();
+    const departure = window.__pacmanTest.cornerCut();
+    expect(departure.y).toBeLessThan(0);
+    expect(Math.abs(departure.y)).toBeLessThanOrEqual(4);
+
+    // The lead eases out across the leg instead of snapping back to the
+    // logic position: the (negative) 'up' offset moves toward zero.
+    window.__pacmanTest.tick(0.15);
+    const later = window.__pacmanTest.cornerCut();
+    expect(Math.abs(later.y)).toBeLessThan(Math.abs(departure.y));
+    expect(later.y).toBeGreaterThan(departure.y);
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('shows no cut when no turn is pending', () => {
+    const container = beginWestboundApproach();
+    window.__pacmanTest.tick(0.05);
+
+    expect(window.__pacmanTest.cornerCut()).toEqual({ x: 0, y: 0 });
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('does not lead when a press re-affirms the current heading (#1021)', () => {
+    const container = beginWestboundApproach();
+    // A queued turn, cancelled by a press of the heading already in effect:
+    // the pending intent re-affirms 'left', so no corner lead may apply.
+    pressKey('ArrowUp');
+    window.__pacmanTest.tick(0.15); // still more than 4 px short of the centre
+    pressKey('ArrowLeft');
+    window.__pacmanTest.tick(0.03); // inside the lead window now
+    expect(window.__pacmanTest.getState().pendingDir).toBe('left');
+    expect(window.__pacmanTest.cornerCut()).toEqual({ x: 0, y: 0 });
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('cancels the lead instead of snapping it when the intent changes mid-lead (#1021)', () => {
+    const container = beginWestboundApproach();
+    pressKey('ArrowUp');
+    window.__pacmanTest.tick(0.19); // 2 px short: the lead builds toward 'up'
+    expect(window.__pacmanTest.cornerCut().y).toBeLessThan(0);
+
+    // A perpendicular replacement inside the lead window must cancel the
+    // lead, not teleport it to the new direction.
+    pressKey('ArrowDown');
+    expect(window.__pacmanTest.cornerCut()).toEqual({ x: 0, y: 0 });
 
     getGame().destroy();
     container.remove();

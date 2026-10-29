@@ -160,6 +160,23 @@
     return true;
   }
 
+  // Face the head of the turn queue the instant a key lands instead of
+  // waiting for the next tick (#1021). Only `direction` (what the eyes and
+  // the next tick follow) changes here - prevSnake/lastTickAt stay
+  // untouched, so segmentPosition keeps sliding continuously and nothing
+  // snaps or teleports. The queue is left intact, so tick() still drains
+  // exactly one entry per tick and movement timing is identical; only the
+  // facing moves earlier. A queued reversal is never applied here: tick()
+  // keeps vetoing it at apply time.
+  function applyQueuedTurnImmediately() {
+    if (paused || gameOver || logicFrame === null) return false;
+    const pending = directionQueue[0];
+    if (!pending || pending === direction || OPPOSITES[pending] === direction) return false;
+    direction = pending;
+    draw();
+    return true;
+  }
+
   // ===================== Game Logic =====================
 
   function initSnake() {
@@ -727,8 +744,17 @@
       return;
     }
 
-    // Ignore all steering until the player has started the run.
-    if (!started) return;
+    // A direction key on the ready screen starts the run and is recorded
+    // as the first input instead of being swallowed (#1021). Space and the
+    // Start button keep working through the ready screen's own handler.
+    if (!started) {
+      const startDir = window.gamesHelpers.parseDirection(e);
+      if (!startDir || !readyScreen) return;
+      readyScreen.start();
+      if (!started) return;
+      if (queueTurn(startDir)) applyQueuedTurnImmediately();
+      return;
+    }
 
     if (gameOver) {
       window.gamesHelpers.handleRestartSpace(e, restart);
@@ -745,10 +771,10 @@
     if (!newDir) return;
 
     e.preventDefault();
-    // Redraw as soon as a turn is accepted: with reduced motion there is no
-    // render loop, and the next tick drains the queue before it draws, so the
-    // buffered-turn mark would otherwise never paint (#1020).
-    if (queueTurn(newDir)) draw();
+    // Face the turn the instant it is accepted (#1021). When it cannot
+    // apply immediately (a queued reversal, or a paused board), redraw so
+    // the buffered-turn mark still paints under reduced motion (#1020).
+    if (queueTurn(newDir) && !applyQueuedTurnImmediately()) draw();
   }
 
   // ===================== Touch / pointer steering (#1019) =====================
@@ -762,8 +788,11 @@
   // doubles as a restart (that stays a tap, see onTap below).
   function applyGestureDirection(dir) {
     if (!started || gameOver) return;
-    // Same immediate redraw as the keyboard path (#1020).
-    if (queueTurn(dir)) draw();
+    // Face the turn the instant it is accepted (#1021), matching the
+    // keyboard path; when it cannot apply immediately (a queued reversal
+    // or a paused board), redraw so the buffered-turn mark still paints
+    // under reduced motion (#1020).
+    if (queueTurn(dir) && !applyQueuedTurnImmediately()) draw();
   }
 
   function handleGestureTap() {
@@ -863,7 +892,10 @@
         // them). Reversals relative to the previous entry are allowed: since
         // the opposite veto moved to apply time (#1017), a live queue can
         // legally contain an entry that tick() will drop as a reversal.
-        if (cur === prev) return false;
+        // The head may equal direction: #1021 faces a queued turn the
+        // instant the key lands, leaving that entry queued for the per-tick
+        // drain, so a snapshot taken before the next tick must still pass.
+        if (cur === prev && i > 0) return false;
         prev = cur;
       }
       // When both nextDirection and queue are present, they must agree.

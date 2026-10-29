@@ -4,6 +4,9 @@
 
   const MAZE_ID = 'maze-1';
   const CELL_SIZE = 20;
+  // Visual corner-cut lead (#1021): how far (px) the sprite starts a legal
+  // pending turn before the tile centre while the logic stays grid-locked.
+  const CORNER_CUT_PX = 4;
   const MAX_LIVES = 3;
   // Legacy cap: the pre-#1018 FIFO never stored more than two directions, so
   // an old queuedDirs snapshot with more entries is corrupt and rejected.
@@ -108,6 +111,10 @@
   // Single intended direction (last press). Held across tiles until it is
   // taken at the first junction where it is legal (#1018).
   let pendingDir = null;
+  // Render-only corner-cut anchor (#1021): the tile the current visual
+  // lead landed on, remembered so the lead can decay across the leg it
+  // belongs to. Never serialized: logic stays grid-locked.
+  let cornerCutAnchor = null;
   let score = 0;
   let lives = MAX_LIVES;
   let level = 1;
@@ -567,6 +574,7 @@
   function resetPositions() {
     pacman = makeEntity(PACMAN_SPAWN.x, PACMAN_SPAWN.y, 'left');
     pendingDir = null;
+    cornerCutAnchor = null;
     ghosts = GHOST_DEFS.map(function (_def, i) { return makeGhost(i); });
   }
 
@@ -749,6 +757,51 @@
     return { x: (ent.x + 0.5) * CELL_SIZE, y: (ent.y + 0.5) * CELL_SIZE };
   }
 
+  // Visual corner-cut lead (#1021): the simulation stays grid-locked (a
+  // queued turn lands exactly on the tile centre), but when a legal turn is
+  // pending at the tile Pac-Man is approaching, the sprite starts that turn
+  // CORNER_CUT_PX before the centre and eases back onto the logic position
+  // over the rest of the leg. Only the draw position moves - logic, eating,
+  // and collisions keep using the grid-locked coordinates. Both phases are
+  // continuous (the lead is full exactly at the centre and reaches zero
+  // before the next one), so the sprite never snaps or teleports.
+  function cornerCutOffset() {
+    const ent = pacman;
+    if (!ent || !ent.a) return { x: 0, y: 0 };
+    const travelled = (Math.abs(ent.x - ent.a.x) + Math.abs(ent.y - ent.a.y)) * CELL_SIZE;
+    const remaining = ent.b ? CELL_SIZE - travelled : 0;
+    // Approach: the pending turn is legal at the tile being approached (or,
+    // between chooseNext calls, at the tile Pac-Man already sits on). A
+    // press that only re-affirms the current heading is not a turn, so it
+    // must not lead the sprite down a straight corridor.
+    const target = ent.b || tileOf(ent);
+    if (pendingDir && pendingDir !== ent.dir && canWalkPacman(target, pendingDir) && remaining <= CORNER_CUT_PX) {
+      // A replacement intent mid-lead would teleport the sprite to the new
+      // direction (#1021): cancel this approach's lead instead of snapping.
+      if (cornerCutAnchor && cornerCutAnchor.x === target.x &&
+          cornerCutAnchor.y === target.y && cornerCutAnchor.dir !== pendingDir) {
+        cornerCutAnchor = { x: target.x, y: target.y, dir: null };
+        return { x: 0, y: 0 };
+      }
+      cornerCutAnchor = { x: target.x, y: target.y, dir: pendingDir };
+      return {
+        x: DIR_DELTA[pendingDir].x * (CORNER_CUT_PX - remaining),
+        y: DIR_DELTA[pendingDir].y * (CORNER_CUT_PX - remaining)
+      };
+    }
+    // Departure: the lead landed at the centre Pac-Man just left; decay it
+    // across the leg so it reaches zero before the next centre.
+    if (cornerCutAnchor &&
+        cornerCutAnchor.x === ent.a.x && cornerCutAnchor.y === ent.a.y &&
+        cornerCutAnchor.dir === ent.dir &&
+        travelled <= CELL_SIZE - CORNER_CUT_PX) {
+      const lead = CORNER_CUT_PX * (1 - travelled / (CELL_SIZE - CORNER_CUT_PX));
+      return { x: DIR_DELTA[ent.dir].x * lead, y: DIR_DELTA[ent.dir].y * lead };
+    }
+    cornerCutAnchor = null;
+    return { x: 0, y: 0 };
+  }
+
   function drawDots() {
     for (let r = 0; r < gridRows; r++) {
       for (let c = 0; c < gridCols; c++) {
@@ -766,6 +819,9 @@
 
   function drawPacman() {
     const pos = px(pacman);
+    const cut = cornerCutOffset();
+    pos.x += cut.x;
+    pos.y += cut.y;
     const radius = CELL_SIZE / 2 - 2;
     const indicator = pendingTurnIndicator();
     const blinking = clockMs < invulnerableUntil && Math.floor(clockMs / 150) % 2 === 1;
@@ -1162,7 +1218,18 @@
     // auto-repeat keep steering while the queue is full or the turn is not
     // yet legal, while a held Space still cannot flicker pause (#1016).
     if (!window.gamesHelpers.beginRealTimeKeydown(e)) return;
-    if (!started) return;
+    const dir = window.gamesHelpers.parseDirection(e);
+
+    // A direction key on the ready screen starts the run and is recorded
+    // as the first input instead of being swallowed (#1021). Space and the
+    // Start button keep working through the ready screen's own handler.
+    if (!started) {
+      if (!dir || !readyScreen) return;
+      readyScreen.start();
+      if (!started) return;
+      queueTurn(dir);
+      return;
+    }
 
     if (gameOver) {
       window.gamesHelpers.handleRestartSpace(e, resetAndStart);
@@ -1171,7 +1238,6 @@
 
     if (window.gamesHelpers.togglePauseOnSpace(e, manualPause, pauseRun, resumeFromManualPause)) return;
 
-    const dir = window.gamesHelpers.parseDirection(e);
     if (dir) {
       e.preventDefault();
       // Auto-repeats of the direction already in effect are not new turns:
@@ -1430,6 +1496,7 @@
         pacman.dir = p.dir || pacman.dir;
         pacman.a = { x: Math.round(pacman.x), y: Math.round(pacman.y) };
         pacman.b = null;
+        cornerCutAnchor = null;
         if ('pendingDir' in p) {
           pendingDir = isValidDirection(p.pendingDir) ? p.pendingDir : null;
         } else if (Array.isArray(p.queuedDirs)) {
@@ -1457,6 +1524,10 @@
       frightenedUntil = clockMs + ms;
       frightenedChain = 0;
     },
+    // Test-only view of the render-only corner-cut lead (#1021). Calling it
+    // runs the same derivation drawPacman uses, so specs can assert the
+    // visual offset without inspecting canvas pixels.
+    cornerCut: function () { return cornerCutOffset(); },
     getState: function () {
       return {
         score: score,
