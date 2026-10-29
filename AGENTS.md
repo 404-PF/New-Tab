@@ -29,7 +29,7 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 - **Script loading**: `New-Tab.html` only contains two `<script>` tags in `<head>` (`src/core/storage.js`) and at the end of `<body>` (`src/core/bootstrap.js`). All other source files are loaded dynamically by `bootstrap.js`. **To add a new source file, append its path to `scriptSources` in `src/core/bootstrap.js` — do not add `<script>` tags to `New-Tab.html`.**
 - **Load order matters**. `bootstrap.js` uses `script.async = false` to preserve order, and `app-manager.js` must execute before `add-app-modal.js`, `context-menu.js`, and `app-folders.js` (see the comment in `bootstrap.js`).
 - **App-grid coordination**: `src/core/app-grid-state.js` exposes `window.__appGridState`, a phase-based state machine (`'idle'` → `'deferred'` → `'rendered'`) that coordinates grid readiness across modules. Call `__appGridState.setPhase('rendered')` when the grid is fully rendered; the object dispatches an `appGridReady` CustomEvent on that transition. `window.appGridReady` is a backward-compatible getter (`=== true` when rendered).
-- **Module style**: Browser code is plain scripts that attach functions to `window.*`. There are no ES module imports in `src/` source files (tests are ES modules and use `import`/`export`). A handful of files (`utils.js`, `app-manager.js`, `add-app-modal.js`, `app-folders.js`, `drag-drop.js`, `context-menu.js`) wrap their top-level code in a strict-mode IIFE. Inside these IIFEs, cross-file globals must be referenced as `window.Foo`, not bare `Foo` — ESLint enforces this via `no-restricted-globals` in `eslint.config.js`.
+- **Module style**: Browser code is plain scripts that attach functions to `window.*`. There are no ES module imports in `src/` source files (tests are ES modules and use `import`/`export`). Many source files wrap their top-level code in an IIFE, most with `'use strict'` (`src/core/storage.js` is IIFE-wrapped but non-strict). Inside strict-mode IIFEs, reference cross-file globals as `window.Foo`, not bare `Foo`; ESLint only checks `AppGridState` and `escapeHtml` in the files listed in `eslint.config.js`.
 - **Storage**: `src/core/storage.js` is a shim that bridges `localStorage` onto `chrome.storage.local` and exposes `window.__storageBridgeReady`. The bootstrap waits on that promise before loading the rest of the scripts.
 - **Service worker**: `backgrounds/service-worker.js` is a separate context; ESLint treats it with browser globals only.
 - **No build artifacts**: nothing is generated from source. `package.json` and `manifest.json` versions are kept in sync manually when preparing a release.
@@ -38,10 +38,11 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 
 - `src/core/` - bootstrap, storage, version, utilities, language/runtime, update check, app-grid state/storage, toast notifications
 - `src/ui/` - settings, app manager, add-app flow, color/font pickers
-- `src/features/` - todo, notes (public API: `initNotes`, `addNote`, `deleteNote`, `updateNoteText`), onboarding, simple mode, drag-drop, app folders, context menu, weather, interactive background
-- `src/ai/` - AI assistant, markdown parser, network/offline detection, OpenRouter client
-- `src/data/` - built-in backgrounds and mottos
+- `src/features/` - todo (todo, todo-app, todo-stats), notes (public API: `initNotes`, `addNote`, `deleteNote`, `updateNoteText`, `updateNoteTag`, `reorderNotes`, `getFilteredNotes`, `setNotesSearchQuery`, `getNotesSearchQuery`, `cancelPendingNoteSaves`), onboarding, simple mode, drag-drop, app folders, app-grid filter, context menu, weather (weather, weather-app, weather-utils), interactive background, games/ (games-app, game-registry, snake, pacman, memory, flappy-bird, 2048, shared), pomodoro (+pomodoro-stats), focus-mode, shortcuts, eye-care-reminder, timezone-clocks, background-rotation, auto-theme, accessibility, data-manager, release-notes
+- `src/ai/` - AI assistant (ai-service, ai-renderer, ai-store), conversation-validator, markdown parser, network/offline detection, OpenRouter client
+- `src/data/` - built-in backgrounds and mottos, custom backgrounds (`custom-backgrounds.js`)
 - `backgrounds/` - service worker and Node thumbnail/video tooling (excluded from coverage)
+- `cloudflare/` - Wrangler worker proxying OpenRouter requests
 - `tests/` - Vitest specs; `tests/setup.js` mocks `chrome.*` and `window.i18n`
 - `docs/` - localized READMEs, contributing guide, store listing copy, privacy policy
 - `_locales/` - extension i18n messages
@@ -89,11 +90,17 @@ Pre-commit hook (`.husky/pre-commit`) runs `eslint .` automatically.
 ## Skills
 
 Local skills under `.agents/skills/` (loaded via the `skill` tool):
-- `prepare-release` - bump display version and update bundled What's New notes
-- `create-pr` - branch prep and PR description
-- `review-pr` - prioritize review findings
-- `resolve-issue` - narrow evidence-first bug fix loop
+- `checkout-branch` - create and switch to a new branch (from a name or issue number)
+- `commit` - stage changes and write clear, conventional commit messages
 - `create-issue` - draft well-scoped issues
+- `create-pr` - branch prep and PR description
+- `patch-findings` - generate fix patches from pre-identified findings
+- `prepare-release` - bump display version and update bundled What's New notes
+- `resolve-issue` - narrow evidence-first bug fix loop
+- `review-changes` - review staged and unstaged changes before committing
+- `review-pr` - prioritize review findings
+- `scan-features` - scan the codebase for feature gaps and open issues
+- `scan-issues` - scan the codebase for bugs, smells, and potential issues
 
 ## Reference Docs
 
