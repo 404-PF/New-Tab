@@ -950,6 +950,12 @@
     canvas.width = GRID_SIZE * CELL_SIZE;
     canvas.height = GRID_SIZE * CELL_SIZE;
     canvas.className = 'games-snake-canvas';
+    // Focusable so a mouse press on the board can take focus away from a
+    // leftover focused button; otherwise Space would re-activate that button
+    // instead of pausing (#1024). Matches pacman.js and flappy-bird.js.
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', t('gamesSnake') || 'Snake');
+    canvas.tabIndex = 0;
     ctx = canvas.getContext('2d');
     bgCache = ctx ? buildBackgroundCache() : null;
     stage.appendChild(canvas);

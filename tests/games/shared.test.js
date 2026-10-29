@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
+import { pointer } from '../helpers/pointer-event.js';
 import {
   installGamepadStub,
   removeGamepadStub,
@@ -528,30 +529,13 @@ describe('gamesHelpers.togglePauseOnSpace (#876)', () => {
 
 // jsdom has no PointerEvent constructor or setPointerCapture, so the tests
 // dispatch MouseEvent with pointer event types (listeners match on type only)
-// and the helper's capture calls are guarded in source. MouseEvent also lacks
-// the pointerType/pointerId fields, so those are defined directly on the
-// event when a test needs them.
+// and the helper's capture calls are guarded in source. The shared pointer()
+// helper in tests/helpers/pointer-event.js defines pointerType/pointerId on
+// the event when a test needs them.
 function makeCanvas() {
   const canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
   return canvas;
-}
-
-function pointer(type, x, y, extra) {
-  const e = new MouseEvent(type, {
-    bubbles: true,
-    cancelable: true,
-    clientX: x,
-    clientY: y,
-    ...extra
-  });
-  if (extra && extra.pointerType !== undefined) {
-    Object.defineProperty(e, 'pointerType', { value: extra.pointerType });
-  }
-  if (extra && extra.pointerId !== undefined) {
-    Object.defineProperty(e, 'pointerId', { value: extra.pointerId });
-  }
-  return e;
 }
 
 describe('gamesHelpers.createSwipeSteering (#1019)', () => {
@@ -662,6 +646,41 @@ describe('gamesHelpers.createSwipeSteering (#1019)', () => {
     canvas.dispatchEvent(pointer('pointerdown', 100, 100, { pointerType: 'mouse', button: 2 }));
     canvas.dispatchEvent(pointer('pointermove', 140, 100));
     expect(onDirection).not.toHaveBeenCalled();
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('steers a primary-button mouse drag and swallows the pointerdown default (#1024)', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection);
+
+    // Holding button 0 and dragging is a steering gesture on desktop, and
+    // the default is swallowed so the drag cannot start a native text
+    // selection around the board.
+    const down = pointer('pointerdown', 100, 100, { pointerType: 'mouse', button: 0 });
+    canvas.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    canvas.dispatchEvent(pointer('pointermove', 130, 100, { pointerType: 'mouse', buttons: 1 }));
+    expect(onDirection).toHaveBeenCalledTimes(1);
+    expect(onDirection).toHaveBeenCalledWith('right');
+
+    steering.destroy();
+    canvas.remove();
+  });
+
+  it('still fires onTap for a primary-button mouse click that never drags (#1024)', () => {
+    const canvas = makeCanvas();
+    const onDirection = vi.fn();
+    const onTap = vi.fn();
+    const steering = window.gamesHelpers.createSwipeSteering(canvas, onDirection, { onTap });
+
+    canvas.dispatchEvent(pointer('pointerdown', 100, 100, { pointerType: 'mouse', button: 0 }));
+    canvas.dispatchEvent(pointer('pointerup', 100, 100, { pointerType: 'mouse', button: 0 }));
+
+    expect(onDirection).not.toHaveBeenCalled();
+    expect(onTap).toHaveBeenCalledTimes(1);
 
     steering.destroy();
     canvas.remove();

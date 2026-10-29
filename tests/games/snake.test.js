@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
+import { pointer } from '../helpers/pointer-event.js';
 import { expectNoStackedKeydownListeners } from '../helpers/keydown-listener-tally.js';
 import {
   installGamepadStub,
@@ -20,23 +21,6 @@ beforeEach(() => {
   localStorage.clear();
   document.querySelectorAll('.games-score-display, .games-snake-canvas, .games-snake-stage, .games-ready-overlay, .games-instructions').forEach(el => el.remove());
 });
-
-// jsdom has no PointerEvent constructor, so pointer gestures are dispatched
-// as MouseEvent with pointer event types (listeners match on type only).
-// MouseEvent lacks pointerId, so it is defined on the event when provided.
-function pointer(type, x, y, extra) {
-  const e = new MouseEvent(type, {
-    bubbles: true,
-    cancelable: true,
-    clientX: x,
-    clientY: y,
-    ...extra
-  });
-  if (extra && extra.pointerId !== undefined) {
-    Object.defineProperty(e, 'pointerId', { value: extra.pointerId });
-  }
-  return e;
-}
 
 describe('Snake Game', () => {
   it('registers with GameRegistry', () => {
@@ -906,6 +890,32 @@ describe('Snake pointer steering and D-pad (#1019)', () => {
 
     game.destroy();
     container.remove();
+  });
+
+  it('moves focus from a focused button to the canvas on a mouse drag (#1024)', () => {
+    const { container, game } = startSnake();
+    const canvas = container.querySelector('.games-snake-canvas');
+
+    // A leftover focused button must lose focus on the first mouse press;
+    // otherwise Space would re-activate the button instead of pausing.
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    button.focus();
+    expect(document.activeElement).toBe(button);
+
+    // A held primary button is a steering gesture, and the swallowed
+    // pointerdown default keeps the drag from starting a native text
+    // selection around the board.
+    const down = pointer('pointerdown', 150, 150, { pointerType: 'mouse', button: 0 });
+    canvas.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(canvas);
+    canvas.dispatchEvent(pointer('pointermove', 150, 100, { pointerType: 'mouse', buttons: 1 }));
+    expect(game.serialize().directionQueue).toContain('up');
+
+    game.destroy();
+    container.remove();
+    button.remove();
   });
 
   it('captures the pointer on down and releases it on end', () => {
