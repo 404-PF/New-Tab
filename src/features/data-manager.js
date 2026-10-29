@@ -72,7 +72,8 @@
     'autoTheme',
     'autoThemeLightTime',
     'autoThemeDarkTime',
-    'aiGroundWithWeb'
+    'aiGroundWithWeb',
+    'todoSortOrder'
   ];
 
   // Object keys whose storage entries mix persistent settings with transient
@@ -669,6 +670,7 @@
     todoReminderLeadTime: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     todoStats: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
     todoStatsEnabled: function (v) { return typeof v === 'boolean'; },
+    todoSortOrder: function (v) { return typeof v === 'string' && ['manual', 'due', 'priority', 'created', 'az'].indexOf(v) !== -1; },
     pomodoroStats: function (v) {
       if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
       if (typeof v.days !== 'object' || v.days === null || Array.isArray(v.days)) return false;
