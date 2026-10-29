@@ -459,8 +459,15 @@
 
       if (wasVisible !== this.isVisible) {
         // Snapshot the callback list so unsubscribe/remove logic during one
-        // handler does not skip the next subscriber.
-        this.callbacks.slice().forEach(cb => cb(this.isVisible));
+        // handler does not skip the next subscriber. Guard each callback so
+        // one throwing subscriber cannot starve the rest.
+        this.callbacks.slice().forEach(cb => {
+          try {
+            cb(this.isVisible);
+          } catch (error) {
+            console.error('visibilityManager subscriber error:', error);
+          }
+        });
       }
     },
 
@@ -494,10 +501,11 @@
   };
 
   // Visibility-aware interval manager.
-  // runImmediately only suppresses the constructor-time call; runOnResume
-  // (default true) additionally suppresses the immediate call on visibility
-  // resume so cadence-sensitive consumers (e.g. background rotation) wait
-  // out the full interval instead of advancing the moment the tab returns.
+  // runImmediately (default false) runs the callback once at construction
+  // time. runOnResume (default true) runs the callback when the tab becomes
+  // visible; pass false to wait out the full interval so cadence-sensitive
+  // consumers (e.g. background rotation) do not advance the moment the tab
+  // returns.
   class VisibilityInterval {
     constructor(callback, interval, runImmediately = false, runOnResume = true) {
       this.callback = callback;
@@ -505,7 +513,7 @@
       this.intervalId = null;
       this.isRunning = false;
 
-      if (runImmediately) callback();
+      if (runImmediately) this.runCallback();
 
       this.start();
 
@@ -514,22 +522,26 @@
         if (visible) {
           this.start();
           // Sync immediately when becoming visible
-          if (runOnResume) callback();
+          if (runOnResume) this.runCallback();
         } else {
           this.stop();
         }
       });
     }
 
+    runCallback() {
+      try {
+        this.callback();
+      } catch (error) {
+        console.error('VisibilityInterval callback error:', error);
+      }
+    }
+
     start() {
       if (this.isRunning || !visibilityManager.isVisible) return;
       this.isRunning = true;
       this.intervalId = setInterval(() => {
-        try {
-          this.callback();
-        } catch (error) {
-          console.error('VisibilityInterval callback error:', error);
-        }
+        this.runCallback();
       }, this.interval);
     }
 
