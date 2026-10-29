@@ -1743,6 +1743,26 @@ describe('Games FPS readout setting (#1036)', () => {
   });
 });
 
+describe('Games toggle refreshes Alt+N app shortcut badges (#1061)', () => {
+  it('applyGamesEnabled re-syncs badges after Games visibility changes', () => {
+    const refresh = vi.fn();
+    const originalShortcuts = window.Shortcuts;
+    window.Shortcuts = { refreshAppShortcutBadges: refresh };
+    try {
+      applyGamesEnabled(false);
+      expect(refresh).toHaveBeenCalledTimes(1);
+      applyGamesEnabled(true);
+      expect(refresh).toHaveBeenCalledTimes(2);
+    } finally {
+      if (originalShortcuts === undefined) {
+        delete window.Shortcuts;
+      } else {
+        window.Shortcuts = originalShortcuts;
+      }
+    }
+  });
+});
+
 describe('What\'s New button in About (#1046)', () => {
   let aboutSection;
   let originalCurrentVersion;
