@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Request a feature using the same structure as generated issues
+about: Request a feature using the standard issue sections
 title: ''
 labels: enhancement
 ---
@@ -25,6 +25,6 @@ labels: enhancement
 
 - [ ] <!-- One verifiable outcome that closes this issue. -->
 
-## Evidence
+### Evidence
 
 <!-- Code references, related issues, screenshots, or links showing the gap. -->

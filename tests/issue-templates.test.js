@@ -12,16 +12,17 @@ const CONTRIBUTING_PATH = resolve(process.cwd(), 'CONTRIBUTING.md');
 const CONTRIBUTING_EN_PATH = resolve(process.cwd(), 'docs/CONTRIBUTING.en.md');
 const CONTRIBUTING_ZH_PATH = resolve(process.cwd(), 'docs/CONTRIBUTING.zh-CN.md');
 
-// Headings must match the generated issue format verbatim so issue-triage,
-// issue-label, and the ### Evidence blocks appended by bug-find/feature-find
-// keep parsing templated and generated issues identically.
+// Templates share a fixed section set. Generated issues are free-form and end
+// with an ### Evidence block appended by bug-find/feature-find, which the
+// templates' Evidence section matches. issue-triage and issue-label pass the
+// raw body through and do not parse headings.
 const ISSUE_HEADINGS = [
   '## Description',
   '## Problem Statement',
   '## Expected Behavior',
   '## Proposed Solution',
   '## Acceptance Criteria',
-  '## Evidence',
+  '### Evidence',
 ];
 
 function frontMatter(text) {
@@ -58,12 +59,12 @@ describe('issue and PR templates (#1032)', () => {
     expect(featureFm).toMatch(/^labels: enhancement$/m);
   });
 
-  it('uses the generated-issue headings verbatim in both templates', () => {
+  it('uses the shared section headings in both templates', () => {
     [bug, feature].forEach((template) => {
       ISSUE_HEADINGS.forEach((heading) => {
         expect(template).toContain(heading);
       });
-      // Each heading appears exactly once, in the generated order.
+      // Each heading appears exactly once, in order.
       let lastIndex = -1;
       ISSUE_HEADINGS.forEach((heading) => {
         const index = template.indexOf(heading);

@@ -137,7 +137,7 @@ The extension supports multiple interface languages. To add a new one:
 
 ## 📝 Submitting Changes
 
-1. File issues with the templates in `.github/ISSUE_TEMPLATE/` (bug report or feature request). They use the same headings as generated issues (`Description`, `Problem Statement`, `Expected Behavior`, `Proposed Solution`, `Acceptance Criteria`, `Evidence`) so the `issue-triage` and `issue-label` workflows parse them consistently.
+1. File issues with the templates in `.github/ISSUE_TEMPLATE/` (bug report or feature request). They use the `Description`, `Problem Statement`, `Expected Behavior`, `Proposed Solution`, `Acceptance Criteria`, and `Evidence` sections. Generated issues are free-form and end with an `Evidence` section, which the templates share.
 2. Make your changes on a feature/fix branch.
 3. Add or update tests for any behavior change.
 4. Run `npm run lint` and `npm test` and make sure they pass.

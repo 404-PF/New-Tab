@@ -130,7 +130,7 @@ Husky 的 pre-commit 钩子也会自动运行 `eslint .`。
 
 ## 📝 提交改动
 
-1. 使用 `.github/ISSUE_TEMPLATE/` 中的模板（bug report 或 feature request）提交 issue。模板与自动生成的 issue 使用相同的标题结构（`Description`、`Problem Statement`、`Expected Behavior`、`Proposed Solution`、`Acceptance Criteria`、`Evidence`），以便 `issue-triage` 与 `issue-label` 工作流保持一致解析。
+1. 使用 `.github/ISSUE_TEMPLATE/` 中的模板（bug report 或 feature request）提交 issue。模板使用 `Description`、`Problem Statement`、`Expected Behavior`、`Proposed Solution`、`Acceptance Criteria`、`Evidence` 结构；自动生成的 issue 为自由格式并以 `Evidence` 结尾，模板与之共享该部分。
 2. 在功能/修复分支上进行改动。
 3. 为任何行为变更添加或更新测试。
 4. 运行 `npm run lint` 与 `npm test`，确保通过。

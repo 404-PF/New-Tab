@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a bug using the same structure as generated issues
+about: Report a bug using the standard issue sections
 title: ''
 labels: bug
 ---
@@ -25,6 +25,6 @@ labels: bug
 
 - [ ] <!-- One verifiable outcome that closes this issue. -->
 
-## Evidence
+### Evidence
 
 <!-- Steps to reproduce, screenshots, logs, or file:line references. -->
