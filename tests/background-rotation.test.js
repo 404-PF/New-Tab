@@ -63,9 +63,9 @@ describe('Background rotation storage', () => {
     expect(BackgroundRotation.getSelection()).toBeNull();
   });
 
-  it('getSelection returns null for empty array', () => {
+  it('getSelection preserves an empty array as an explicit empty selection', () => {
     localStorage.setItem('bgRotationSelection', '[]');
-    expect(BackgroundRotation.getSelection()).toBeNull();
+    expect(BackgroundRotation.getSelection()).toEqual([]);
   });
 });
 
@@ -161,6 +161,27 @@ describe('Background rotation scheduling', () => {
       );
     } finally {
       BackgroundRotation.stop();
+      window.VisibilityInterval = OriginalVisibilityInterval;
+    }
+  });
+
+  it('does not start a timer or advance when the stored selection is empty', () => {
+    localStorage.setItem('bgRotationSelection', '[]');
+    const OriginalVisibilityInterval = window.VisibilityInterval;
+    const VisibilityIntervalMock = vi.fn(function () {
+      return { destroy: vi.fn() };
+    });
+    window.VisibilityInterval = VisibilityIntervalMock;
+    window.applyBg = vi.fn();
+
+    try {
+      BackgroundRotation.start();
+      expect(VisibilityIntervalMock).not.toHaveBeenCalled();
+
+      BackgroundRotation.advance();
+      expect(localStorage.getItem('homepageBg')).toBeNull();
+      expect(window.applyBg).not.toHaveBeenCalled();
+    } finally {
       window.VisibilityInterval = OriginalVisibilityInterval;
     }
   });
@@ -702,15 +723,8 @@ describe('Background rotation save failures', () => {
     expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 
-  it.each([
-    ['null', null],
-    ['an empty saved selection', '[]'],
-  ])('treats %s as "all backgrounds" when comparing the picker', async (_label, stored) => {
-    if (stored === null) {
-      localStorage.removeItem('bgRotationSelection');
-    } else {
-      localStorage.setItem('bgRotationSelection', stored);
-    }
+  it('treats a missing selection as "all backgrounds" when comparing the picker', async () => {
+    localStorage.removeItem('bgRotationSelection');
     BackgroundRotation.renderPicker();
     const checkboxes = pickerContainer.querySelectorAll('input[type="checkbox"]');
     expect(Array.from(checkboxes).every((cb) => cb.checked)).toBe(true);
@@ -732,6 +746,31 @@ describe('Background rotation save failures', () => {
     expect(showToast).toHaveBeenCalledTimes(1);
     const restored = pickerContainer.querySelectorAll('input[type="checkbox"]');
     expect(Array.from(restored).every((cb) => cb.checked)).toBe(true);
+  });
+
+  it('treats an empty saved selection as "none selected" when comparing the picker', async () => {
+    localStorage.setItem('bgRotationSelection', '[]');
+    BackgroundRotation.renderPicker();
+    const checkboxes = pickerContainer.querySelectorAll('input[type="checkbox"]');
+    expect(Array.from(checkboxes).every((cb) => !cb.checked)).toBe(true);
+
+    const raiseSelectionError = async () => {
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+        detail: { key: 'bgRotationSelection', message: 'Failed to persist' },
+      }));
+      await flushDeferredFailureSync();
+    };
+
+    // Picker matches storage (everything unselected): nothing to roll back.
+    await raiseSelectionError();
+    expect(showToast).not.toHaveBeenCalled();
+
+    // Picker is ahead of storage: resync to all-unchecked and report once.
+    checkboxes[1].checked = true;
+    await raiseSelectionError();
+    expect(showToast).toHaveBeenCalledTimes(1);
+    const restored = pickerContainer.querySelectorAll('input[type="checkbox"]');
+    expect(Array.from(restored).every((cb) => !cb.checked)).toBe(true);
   });
 
   it('ignores bridge write errors for unrelated keys', async () => {
