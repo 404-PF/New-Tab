@@ -62,12 +62,19 @@ const AIRenderer = (function() {
     return elements;
   }
 
+  function getChatInputMaxHeight() {
+    const input = elements.input;
+    if (!input) return CHAT_INPUT_MAX_HEIGHT;
+    const computedMax = parseFloat(window.getComputedStyle(input).maxHeight);
+    return Number.isFinite(computedMax) && computedMax > 0 ? computedMax : CHAT_INPUT_MAX_HEIGHT;
+  }
+
   function resizeChatInput() {
     const input = elements.input;
     if (!input) return;
     input.style.height = 'auto';
     const targetHeight = input.scrollHeight + CHAT_INPUT_BORDER_PX;
-    input.style.height = Math.min(targetHeight, CHAT_INPUT_MAX_HEIGHT) + 'px';
+    input.style.height = Math.min(targetHeight, getChatInputMaxHeight()) + 'px';
   }
 
   function hasModal() {
