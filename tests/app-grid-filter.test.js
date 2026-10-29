@@ -295,7 +295,7 @@ describe('app grid filter re-applied on re-render (#1065)', () => {
     // Non-canonical but valid order: proves filtering never rewrites appOrder.
     const seededOrder = [
       'settings-app', 'custom-2', 'ai-app', 'custom-1',
-      'weather-app', 'games-app', 'feedback-app'
+      'weather-app', 'games-app', 'todo-app', 'feedback-app'
     ];
     localStorage.setItem('appOrder', JSON.stringify(seededOrder));
     const orderBefore = JSON.parse(localStorage.getItem('appOrder'));
