@@ -1742,3 +1742,77 @@ describe('Games FPS readout setting (#1036)', () => {
     expect(checkbox().checked).toBe(false);
   });
 });
+
+describe('What\'s New button in About (#1046)', () => {
+  let aboutSection;
+  let originalCurrentVersion;
+
+  beforeAll(() => {
+    injectScript('src/features/release-notes.js');
+  });
+
+  beforeEach(() => {
+    document.querySelectorAll('.settings-section[data-section="about"]').forEach((el) => el.remove());
+    aboutSection = document.createElement('section');
+    aboutSection.className = 'settings-section';
+    aboutSection.setAttribute('data-section', 'about');
+    document.body.appendChild(aboutSection);
+
+    originalCurrentVersion = window.CURRENT_VERSION;
+    window.CURRENT_VERSION = '0.5.4';
+    localStorage.removeItem(window.releaseNotes.LAST_SEEN_VERSION_KEY);
+    localStorage.removeItem(window.releaseNotes.INSTALL_REASON_KEY);
+    window.initAboutSection();
+  });
+
+  afterEach(() => {
+    document.querySelectorAll('.release-notes-modal').forEach((el) => el.remove());
+    aboutSection.remove();
+    window.CURRENT_VERSION = originalCurrentVersion;
+    localStorage.removeItem(window.releaseNotes.LAST_SEEN_VERSION_KEY);
+    localStorage.removeItem(window.releaseNotes.INSTALL_REASON_KEY);
+  });
+
+  it('renders a What\'s New control labeled with the whatsNew i18n key', () => {
+    const button = document.getElementById('whats-new-btn');
+    expect(button).not.toBeNull();
+    expect(button.getAttribute('data-i18n')).toBe('whatsNew');
+    expect(button.textContent).toContain('What\'s New');
+  });
+
+  it('opens the current version release-notes modal without recording lastSeenVersion', () => {
+    document.getElementById('whats-new-btn').click();
+
+    const modal = document.querySelector('.release-notes-modal');
+    expect(modal).not.toBeNull();
+    expect(modal.textContent).toContain('v0.5.4');
+    expect(modal.querySelector('.release-notes-list li').textContent).toContain(
+      'Added multi-select to the Todo list'
+    );
+    expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBeNull();
+  });
+
+  it('leaves an already-seen version untouched so no duplicate upgrade modal follows', () => {
+    localStorage.setItem(window.releaseNotes.LAST_SEEN_VERSION_KEY, '0.5.4');
+
+    document.getElementById('whats-new-btn').click();
+    expect(document.querySelector('.release-notes-modal')).not.toBeNull();
+    expect(localStorage.getItem(window.releaseNotes.LAST_SEEN_VERSION_KEY)).toBe('0.5.4');
+
+    document.querySelector('.release-notes-modal').remove();
+    expect(window.releaseNotes.detectAndShow()).toBe('up-to-date');
+    expect(document.querySelector('.release-notes-modal')).toBeNull();
+  });
+
+  it('does not throw when the release-notes module is unavailable at click time', () => {
+    const originalReleaseNotes = window.releaseNotes;
+    window.releaseNotes = undefined;
+    try {
+      const button = document.getElementById('whats-new-btn');
+      expect(() => button.click()).not.toThrow();
+      expect(document.querySelector('.release-notes-modal')).toBeNull();
+    } finally {
+      window.releaseNotes = originalReleaseNotes;
+    }
+  });
+});

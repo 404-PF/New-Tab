@@ -2396,6 +2396,18 @@ function initAboutSection() {
               </div>
             </div>
           </div>
+
+          <div class="setting-card">
+            <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3l1.9 5.8L20 10l-5.2 3.2L12 19l-2.8-5.8L4 10l6.1-1.2L12 3z"></path>
+              <path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"></path>
+            </svg>
+            <div class="setting-content">
+              <button id="whats-new-btn" class="setting-btn" style="font-size: 13px; padding: 6px 12px;" data-i18n="whatsNew">
+                ${t('whatsNew')}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -2444,6 +2456,24 @@ function initAboutSection() {
         // Reset and start onboarding tour
         window.onboardingTour.reset();
         window.onboardingTour.start();
+      });
+    }
+
+    // Re-open the release-notes modal on demand (#1046). release-notes.js
+    // loads after settings.js in bootstrap.js, so the module is only
+    // guaranteed to exist at click time. Manual re-opens show the modal
+    // without touching lastSeenVersion so the once-per-upgrade logic in
+    // detectAndShow() stays unchanged.
+    const whatsNewButton = document.getElementById('whats-new-btn');
+    if (whatsNewButton) {
+      whatsNewButton.addEventListener('click', function() {
+        if (
+          window.CURRENT_VERSION &&
+          window.releaseNotes &&
+          typeof window.releaseNotes.showReleaseNotesModal === 'function'
+        ) {
+          window.releaseNotes.showReleaseNotesModal(window.CURRENT_VERSION);
+        }
       });
     }
 

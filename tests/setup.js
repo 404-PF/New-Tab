@@ -734,7 +734,8 @@ globalThis.window.i18n = {
       releaseNotes047CustomShortcuts: 'Added customizable keyboard shortcuts',
       releaseNotes047BackgroundRotation: 'Added background rotation and scheduling',
       releaseNotes047TodoPriority: 'Added configurable todo priority levels',
-      releaseNotesFallback: 'Check the full changelog for everything included in this update.'
+      releaseNotesFallback: 'Check the full changelog for everything included in this update.',
+      whatsNew: 'What\'s New'
     };
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
