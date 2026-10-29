@@ -135,6 +135,9 @@ const translations = {
     todoSubtasks: 'Subtasks',
     todoAddSubtask: 'Add subtask...',
     todoSubtaskDelete: 'Delete subtask',
+    todoSubtaskToggleAria: 'Toggle subtask: {text}',
+    todoSubtaskAria: 'Subtask: {text}',
+    todoSubtaskUntitled: 'Untitled',
     todoDeleteTooltip: 'Delete Todo',
     todoSaveError: 'Failed to save todo changes. Your last action was not saved.',
     todoInlinePrevMonth: 'Previous month',
@@ -1655,7 +1658,7 @@ function t(key, replacements) {
   let message = getTranslation(currentLanguage, key);
   if (replacements && typeof replacements === 'object') {
     Object.entries(replacements).forEach(([placeholder, value]) => {
-      message = message.replaceAll(`{${placeholder}}`, value);
+      message = message.replaceAll(`{${placeholder}}`, () => value);
     });
   }
   return message;

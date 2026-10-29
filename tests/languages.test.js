@@ -303,6 +303,27 @@ describe('Todo bulk selection translations (issue #942)', () => {
   });
 });
 
+const TODO_SUBTASK_ARIA_TRANSLATION_KEYS = [
+  'todoSubtaskToggleAria',
+  'todoSubtaskAria',
+  'todoSubtaskUntitled'
+];
+
+describe('Todo subtask aria-label translations (issue #1059)', () => {
+  it('defines every subtask screen-reader string in each supported language', () => {
+    expectTranslationKeys(TODO_SUBTASK_ARIA_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
+
+describe('t() placeholder replacement safety (issue #1059)', () => {
+  it('keeps $&, $` and $\' in user text literal instead of expanding them', () => {
+    const template = window.i18n.t('todoSubtaskToggleAria');
+    const text = 'Costs $& or $\' or $` now';
+    expect(window.i18n.t('todoSubtaskToggleAria', { text }))
+      .toBe(template.split('{text}').join(text));
+  });
+});
+
 const TODO_SORT_TRANSLATION_KEYS = [
   'todoSortLabel',
   'todoSortManual',

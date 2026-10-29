@@ -627,6 +627,9 @@ globalThis.window.i18n = {
       todoSubtasks: 'Subtasks',
       todoAddSubtask: 'Add subtask...',
       todoSubtaskDelete: 'Delete subtask',
+      todoSubtaskToggleAria: 'Toggle subtask: {text}',
+      todoSubtaskAria: 'Subtask: {text}',
+      todoSubtaskUntitled: 'Untitled',
       bootstrapErrorTitle: 'Extension failed to load',
       bootstrapErrorDesc: 'The following module(s) could not be loaded:',
       bootstrapErrorHint: 'If the problem persists, reinstall the extension.',
@@ -734,7 +737,7 @@ globalThis.window.i18n = {
     let message = fallbacks[key] || key;
     if (replacements && typeof replacements === 'object') {
       Object.entries(replacements).forEach(([placeholder, value]) => {
-        message = message.replaceAll(`{${placeholder}}`, value);
+        message = message.replaceAll(`{${placeholder}}`, () => value);
       });
     }
     return message;
