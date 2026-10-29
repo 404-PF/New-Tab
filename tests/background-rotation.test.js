@@ -842,4 +842,49 @@ describe('Background rotation save failures', () => {
     const second = localStorage.getItem('homepageBg');
     expect(second).not.toBe(first);
   });
+
+  it('does not rewind the pool when a later write of the same background fails', async () => {
+    BackgroundRotation.advance();
+    const first = localStorage.getItem('homepageBg');
+
+    failWritesFor('homepageBg', 'async');
+    // The settings page (or an import) re-writes the background the advance
+    // already persisted: its failure must not be misattributed to the still
+    // armed pending advance, even though the value matches.
+    localStorage.setItem('homepageBg', first);
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(showToast).not.toHaveBeenCalled();
+
+    restoreStorageSet();
+    restoreStorageSet = null;
+    BackgroundRotation.advance();
+    const second = localStorage.getItem('homepageBg');
+    expect(second).not.toBe(first);
+  });
+
+  it('still repaints and toasts when a pending homepageBg write fails after rotation stops', async () => {
+    window.applyBg = vi.fn();
+    BackgroundRotation.advance();
+    const first = localStorage.getItem('homepageBg');
+
+    failWritesFor('homepageBg', 'async');
+    BackgroundRotation.advance();
+    // Stopping the timer must not drop the in-flight write record: the
+    // deferred failure still has to repaint the rolled-back background.
+    BackgroundRotation.stop();
+    restoreStorageSet();
+    restoreStorageSet = null;
+    window.applyBg.mockClear();
+    showToast.mockClear();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('homepageBg')).toBe(first);
+    expect(window.applyBg).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
 });
