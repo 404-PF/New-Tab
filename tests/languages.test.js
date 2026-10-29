@@ -315,6 +315,15 @@ describe('Todo subtask aria-label translations (issue #1059)', () => {
   });
 });
 
+describe('t() placeholder replacement safety (issue #1059)', () => {
+  it('keeps $&, $` and $\' in user text literal instead of expanding them', () => {
+    const template = window.i18n.t('todoSubtaskToggleAria');
+    const text = 'Costs $& or $\' or $` now';
+    expect(window.i18n.t('todoSubtaskToggleAria', { text }))
+      .toBe(template.split('{text}').join(text));
+  });
+});
+
 const TODO_SORT_TRANSLATION_KEYS = [
   'todoSortLabel',
   'todoSortManual',

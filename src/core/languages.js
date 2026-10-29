@@ -1658,7 +1658,7 @@ function t(key, replacements) {
   let message = getTranslation(currentLanguage, key);
   if (replacements && typeof replacements === 'object') {
     Object.entries(replacements).forEach(([placeholder, value]) => {
-      message = message.replaceAll(`{${placeholder}}`, value);
+      message = message.replaceAll(`{${placeholder}}`, () => value);
     });
   }
   return message;

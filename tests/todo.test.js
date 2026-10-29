@@ -2432,18 +2432,25 @@ describe('Todo subtasks', () => {
   });
 
   it('subtasks render in the main todo list', () => {
-    addTodo('Parent');
-    const todo = loadTodos()[0];
-    addSubtask(todo.id, 'Sub A');
-    addSubtask(todo.id, 'Sub B');
-    const items = document.querySelectorAll('.todo-item');
-    expect(items).toHaveLength(1);
-    const subtasks = items[0].querySelectorAll('.todo-subtask-item');
-    expect(subtasks).toHaveLength(2);
     // Subtask toggle accessible names come from i18n, not hardcoded English (issue #1059).
-    const checkbox = items[0].querySelector('.todo-subtask-checkbox');
-    expect(checkbox.getAttribute('aria-label')).toBe(window.i18n.t('todoSubtaskToggleAria', { text: 'Sub A' }));
-    expect(checkbox.getAttribute('aria-label')).toBe('Toggle subtask: Sub A');
+    const originalT = window.i18n.t;
+    window.i18n.t = (key, replacements) => (key === 'todoSubtaskToggleAria'
+      ? `Alternar subtarefa: ${replacements ? replacements.text : ''}`
+      : originalT.call(window.i18n, key, replacements));
+    try {
+      addTodo('Parent');
+      const todo = loadTodos()[0];
+      addSubtask(todo.id, 'Sub A');
+      addSubtask(todo.id, 'Sub B');
+      const items = document.querySelectorAll('.todo-item');
+      expect(items).toHaveLength(1);
+      const subtasks = items[0].querySelectorAll('.todo-subtask-item');
+      expect(subtasks).toHaveLength(2);
+      const checkbox = items[0].querySelector('.todo-subtask-checkbox');
+      expect(checkbox.getAttribute('aria-label')).toBe('Alternar subtarefa: Sub A');
+    } finally {
+      window.i18n.t = originalT;
+    }
   });
 
   it('progress badge renders for todos with subtasks', () => {
