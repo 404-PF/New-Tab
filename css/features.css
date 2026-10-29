@@ -1981,6 +1981,7 @@ html.light-pre body:not(.light-theme) .date {
 @media screen and (max-width: 500px) {
   #add-app-modal > div {
     width: 95%;
+    min-width: auto;
     padding: 20px 16px;
     border-radius: 12px;
   }
@@ -2035,7 +2036,7 @@ html.light-pre body:not(.light-theme) .date {
   border-radius: 16px;
   padding: 24px 20px;
   min-width: 400px;
-  max-width: 450px;
+  max-width: min(var(--modal-width-sm), calc(100vw - 32px));
   max-height: var(--overlay-max-height);
   overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
@@ -2168,7 +2169,7 @@ html.light-pre body:not(.light-theme) .date {
   border-radius: 16px;
   padding: 24px 20px;
   min-width: 450px;
-  max-width: 500px;
+  max-width: min(var(--modal-width-md), calc(100vw - 32px));
   max-height: var(--overlay-max-height);
   overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
@@ -2385,7 +2386,7 @@ html.light-pre body:not(.light-theme) .date {
   border-radius: 16px;
   padding: 24px 20px;
   min-width: 400px;
-  max-width: 450px;
+  max-width: min(var(--modal-width-sm), calc(100vw - 32px));
   max-height: var(--overlay-max-height);
   overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
@@ -3085,7 +3086,7 @@ body.light-theme .weather-city-inline input:focus {
   -webkit-backdrop-filter: blur(16px);
   border-radius: 16px;
   min-width: 320px;
-  max-width: 520px;
+  max-width: min(var(--modal-width-md), calc(100vw - 32px));
   width: 90%;
   max-height: var(--overlay-max-height);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
@@ -3556,7 +3557,7 @@ body.light-theme .weather-app-hourly-precip {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  max-width: 480px;
+  max-width: min(var(--modal-width-md), calc(100vw - 32px));
   width: 100%;
   max-height: 85vh;
   overflow-y: auto;
@@ -3756,7 +3757,7 @@ body.light-theme .release-notes-btn-secondary:hover {
   border: 1px solid var(--games-border-subtle);
   border-radius: 16px;
   width: 90%;
-  max-width: 600px;
+  max-width: min(var(--modal-width-md), calc(100vw - 32px));
   max-height: 80vh;
   overflow: hidden;
   display: flex;

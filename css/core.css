@@ -34,9 +34,15 @@
   --engine-hover-border: rgba(33, 150, 243, 0.2);
   --engine-hover-shadow:
     0 8px 24px rgba(33, 150, 243, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
-  --modal-width: 420px;
-  --modal-min-height: 500px;
   --overlay-max-height: calc(100vh - 225px);
+  /* Shared modal width scale (#1073). sm = delete/rename; md = add-app,
+     thumbnail, todo-edit, weather, release-notes, games; lg = settings;
+     xl = ai chat. Each dialog pairs its step with a viewport-safe cap:
+     max-width: min(var(--modal-width-*), calc(100vw - 32px)). */
+  --modal-width-sm: 440px;
+  --modal-width-md: 560px;
+  --modal-width-lg: 720px;
+  --modal-width-xl: 900px;
   /* Shared overlay layers keep drag feedback below context menus. */
   --z-drag-overlay: 3000;
   --z-context-menu: 10003;
@@ -1522,9 +1528,9 @@ body.light-theme .timezone-add-btn {
   background: var(--settings-modal-bg);
   border-radius: 16px;
   padding: 0;
-  width: min(720px, calc(100vw - 32px));
+  width: min(var(--modal-width-lg), calc(100vw - 32px));
   min-width: 280px;
-  max-width: 720px;
+  max-width: var(--modal-width-lg);
   min-height: auto;
   max-height: var(--overlay-max-height);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
@@ -2150,6 +2156,7 @@ body.light-theme .bg-rotation-next-btn:hover {
   border-radius: 16px;
   padding: 24px 20px;
   min-width: 500px;
+  max-width: min(var(--modal-width-md), calc(100vw - 32px));
   max-height: var(--overlay-max-height);
   overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
