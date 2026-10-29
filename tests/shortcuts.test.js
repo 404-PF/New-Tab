@@ -11,6 +11,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   localStorage.removeItem('customShortcuts');
+  localStorage.removeItem('appShortcutsEnabled');
+  localStorage.removeItem('openAppsInNewTab');
   // Reset settings-modal to default state (created by setup.js)
   const settingsModal = document.getElementById('settings-modal');
   if (settingsModal) {
@@ -965,5 +967,270 @@ describe('Shortcuts - languageChanged re-render', () => {
     } finally {
       addSpy.mockRestore();
     }
+  });
+});
+
+describe('Shortcuts - positional app launch (#1061)', () => {
+  let grid;
+  let originalOpen;
+
+  function stubGridState({ order = [], folders = [], hidden = [] } = {}) {
+    window.AppGridState = {
+      getOrder: () => order.slice(),
+      getFolders: () => folders.map((folder) => ({ ...folder, apps: [...(folder.apps || [])] })),
+      getHiddenDefaultApps: () => [...hidden]
+    };
+  }
+
+  function addTile(id, { href = 'https://example.com/' + id, name = id } = {}) {
+    const a = document.createElement('a');
+    a.className = 'app-icon';
+    a.id = id;
+    a.href = href;
+    a.title = name;
+    a.innerHTML = `<div class="icon"><img alt=""></div><span class="app-name">${name}</span>`;
+    grid.appendChild(a);
+    return a;
+  }
+
+  function pressAppShortcut(key) {
+    const event = new KeyboardEvent('keydown', {
+      key,
+      altKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+    return event;
+  }
+
+  function ensureShortcutsContainer() {
+    let container = document.getElementById('shortcuts-options');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+    }
+    return container;
+  }
+
+  beforeEach(() => {
+    grid = document.createElement('div');
+    grid.id = 'app-grid';
+    document.body.appendChild(grid);
+    originalOpen = window.open;
+  });
+
+  afterEach(async () => {
+    grid.remove();
+    delete window.AppGridState;
+    delete window.AppFolders;
+    delete window.openInternalApp;
+    window.open = originalOpen;
+    localStorage.removeItem('appShortcutsEnabled');
+    localStorage.removeItem('openAppsInNewTab');
+    await Shortcuts.reset();
+  });
+
+  it('getAppShortcutMap assigns Alt+N in order, skipping hidden and foldered apps', () => {
+    stubGridState({
+      order: ['hidden-app', 'app-a', 'folder-1', 'foldered-app', 'app-b'],
+      folders: [{ id: 'folder-1', name: 'Folder', apps: ['foldered-app'] }],
+      hidden: ['hidden-app']
+    });
+
+    expect(Shortcuts.getAppShortcutMap()).toEqual({
+      'app-a': 'Alt+1',
+      'folder-1': 'Alt+2',
+      'app-b': 'Alt+3'
+    });
+    expect(Shortcuts.getAppShortcutForId('app-a')).toBe('Alt+1');
+    expect(Shortcuts.getAppShortcutForId('foldered-app')).toBeNull();
+    expect(Shortcuts.getAppShortcutForId('missing')).toBeNull();
+  });
+
+  it('caps positional slots at nine', () => {
+    const order = Array.from({ length: 10 }, (_, i) => 'app-' + (i + 1));
+    stubGridState({ order });
+
+    const map = Shortcuts.getAppShortcutMap();
+    expect(Object.keys(map)).toHaveLength(9);
+    expect(map['app-10']).toBeUndefined();
+  });
+
+  it('Alt+1 launches the first visible tile in a new tab by default', () => {
+    stubGridState({ order: ['app-a', 'app-b'] });
+    addTile('app-a');
+    addTile('app-b');
+    window.open = vi.fn();
+
+    const event = pressAppShortcut('1');
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(window.open).toHaveBeenCalledTimes(1);
+    expect(window.open).toHaveBeenCalledWith(
+      'https://example.com/app-a',
+      '_blank',
+      'noopener,noreferrer'
+    );
+  });
+
+  it('launches in the same tab when openAppsInNewTab is false', () => {
+    localStorage.setItem('openAppsInNewTab', 'false');
+    stubGridState({ order: ['app-a'] });
+    // Hash href keeps jsdom from attempting a real navigation.
+    addTile('app-a', { href: '#section' });
+    window.open = vi.fn();
+
+    pressAppShortcut('1');
+
+    expect(window.open).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe('#section');
+  });
+
+  it('routes internal apps through openInternalApp', () => {
+    stubGridState({ order: ['ai-app'] });
+    window.openInternalApp = vi.fn(() => true);
+
+    pressAppShortcut('1');
+
+    expect(window.openInternalApp).toHaveBeenCalledTimes(1);
+    expect(window.openInternalApp.mock.calls[0][0]).toBe('ai-app');
+  });
+
+  it('a folder slot opens the folder popup instead of navigating', () => {
+    stubGridState({
+      order: ['folder-1', 'app-a'],
+      folders: [{ id: 'folder-1', name: 'Folder', apps: ['foldered-app'] }]
+    });
+    addTile('app-a');
+    window.AppFolders = { openFolderPopup: vi.fn() };
+    window.open = vi.fn();
+
+    pressAppShortcut('1');
+
+    expect(window.AppFolders.openFolderPopup).toHaveBeenCalledWith('folder-1');
+    expect(window.open).not.toHaveBeenCalled();
+  });
+
+  it('ignores Alt+digit while a text input is focused', () => {
+    stubGridState({ order: ['app-a'] });
+    addTile('app-a');
+    window.open = vi.fn();
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    const event = pressAppShortcut('1');
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(window.open).not.toHaveBeenCalled();
+
+    input.remove();
+  });
+
+  it('a global shortcut bound to Alt+1 wins over the positional app slot', async () => {
+    stubGridState({ order: ['app-a'] });
+    addTile('app-a');
+    window.open = vi.fn();
+
+    document.querySelectorAll('.search-bar').forEach((el) => el.remove());
+    const searchBar = document.createElement('div');
+    searchBar.classList.add('search-bar');
+    const searchInput = document.createElement('input');
+    searchBar.appendChild(searchInput);
+    document.body.appendChild(searchBar);
+
+    const container = ensureShortcutsContainer();
+    Shortcuts.renderShortcutsSection();
+    container.querySelector('[data-action="focusSearch"]').click();
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: '1',
+      altKey: true,
+      bubbles: true,
+      cancelable: true
+    }));
+    expect(Shortcuts.load().focusSearch).toBe('Alt+1');
+
+    pressAppShortcut('1');
+
+    expect(document.activeElement).toBe(searchInput);
+    expect(window.open).not.toHaveBeenCalled();
+
+    searchBar.remove();
+    await Shortcuts.reset();
+  });
+
+  it('disabling the positional launcher clears the map and stops launching', () => {
+    stubGridState({ order: ['app-a'] });
+    addTile('app-a');
+    window.open = vi.fn();
+
+    expect(Shortcuts.setAppLaunchEnabled(false)).toBe(true);
+    expect(Shortcuts.appLaunchEnabled()).toBe(false);
+    expect(Shortcuts.getAppShortcutMap()).toEqual({});
+
+    const event = pressAppShortcut('1');
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(window.open).not.toHaveBeenCalled();
+  });
+
+  it('setAppLaunchEnabled round-trips through storage', () => {
+    expect(Shortcuts.appLaunchEnabled()).toBe(true);
+
+    expect(Shortcuts.setAppLaunchEnabled(false)).toBe(true);
+    expect(localStorage.getItem('appShortcutsEnabled')).toBe('false');
+    expect(Shortcuts.appLaunchEnabled()).toBe(false);
+
+    expect(Shortcuts.setAppLaunchEnabled(true)).toBe(true);
+    expect(Shortcuts.appLaunchEnabled()).toBe(true);
+  });
+
+  it('renders a settings toggle that persists the preference', () => {
+    const container = ensureShortcutsContainer();
+    Shortcuts.renderShortcutsSection();
+
+    const checkbox = container.querySelector('input[type="checkbox"]');
+    expect(checkbox).toBeTruthy();
+    expect(checkbox.checked).toBe(true);
+    expect(checkbox.closest('.setting-content').querySelector('label').textContent)
+      .toBe('Launch apps with Alt+1…9');
+
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('appShortcutsEnabled')).toBe('false');
+    expect(Shortcuts.appLaunchEnabled()).toBe(false);
+
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('appShortcutsEnabled')).toBe('true');
+    expect(Shortcuts.appLaunchEnabled()).toBe(true);
+  });
+
+  it('refreshAppShortcutBadges adds, shifts, and removes on-tile badges', () => {
+    stubGridState({ order: ['app-a', 'app-b'] });
+    const tileA = addTile('app-a', { name: 'Alpha' });
+    addTile('app-b', { name: 'Beta' });
+
+    Shortcuts.refreshAppShortcutBadges();
+
+    expect(tileA.querySelector('.app-shortcut-badge').textContent).toBe('Alt+1');
+    expect(tileA.title).toBe('Alpha (Alt+1)');
+    expect(tileA.getAttribute('aria-label')).toBe('Alpha (Alt+1)');
+    expect(document.getElementById('app-b').querySelector('.app-shortcut-badge').textContent)
+      .toBe('Alt+2');
+
+    stubGridState({ order: ['app-b', 'app-a'] });
+    Shortcuts.refreshAppShortcutBadges();
+    expect(document.getElementById('app-b').querySelector('.app-shortcut-badge').textContent)
+      .toBe('Alt+1');
+
+    Shortcuts.setAppLaunchEnabled(false);
+    Shortcuts.refreshAppShortcutBadges();
+    expect(tileA.querySelector('.app-shortcut-badge')).toBeNull();
+    expect(tileA.title).toBe('Alpha');
+    expect(tileA.getAttribute('aria-label')).toBeNull();
   });
 });

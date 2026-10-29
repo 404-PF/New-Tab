@@ -54,9 +54,19 @@
     a.className = 'app-icon folder-icon';
     a.id = folder.id;
     a.draggable = false;
-    a.title = folder.name;
 
+    // Folders occupy a positional Alt+1..9 slot; surface it like app tiles.
+    const shortcutCombo = window.Shortcuts && typeof window.Shortcuts.getAppShortcutForId === 'function'
+      ? window.Shortcuts.getAppShortcutForId(folder.id)
+      : null;
+    const labeledTitle = shortcutCombo ? folder.name + ' (' + shortcutCombo + ')' : folder.name;
+    a.title = labeledTitle;
+    a.setAttribute('aria-label', labeledTitle);
+
+    const badgeHtml = shortcutCombo ? `<span class="app-shortcut-badge">${escapeHtml(shortcutCombo)}</span>` : '';
     a.innerHTML = buildStackedPreviewHtml(folder) + `<span class="app-name">${escapeHtml(folder.name)}</span>`;
+    const preview = a.querySelector('.folder-icon-preview');
+    if (preview && badgeHtml) preview.insertAdjacentHTML('beforeend', badgeHtml);
 
     a.addEventListener('click', function (e) {
       e.preventDefault();

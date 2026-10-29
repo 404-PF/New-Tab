@@ -252,6 +252,10 @@
     "message": "Press a key...",
     "description": "Prompt shown when rebinding a keyboard shortcut"
   },
+  "shortcutAppLaunch": {
+    "message": "Launch apps with Alt+1…9",
+    "description": "Label for the positional app-launch shortcut toggle"
+  },
   "focusMode": {
     "message": "Focus",
     "description": "Label for focus mode"

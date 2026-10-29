@@ -492,6 +492,7 @@ window.i18n.__registerLocale('fr', {
   shortcutToggleNotes: 'Basculer notes',
   shortcutCloseModal: 'Fermer modal',
   shortcutPressAKey: 'Appuyez sur une touche...',
+  shortcutAppLaunch: 'Lancer les applications avec Alt+1…9',
   shortcutSaveError: 'Impossible d’enregistrer les modifications des raccourcis. Votre dernière action n’a pas été enregistrée.',
   featureToggleSaveError: 'Impossible d’enregistrer ce paramètre. Votre dernière action n’a pas été enregistrée.',
 

@@ -492,6 +492,7 @@ window.i18n.__registerLocale('ru', {
   shortcutToggleNotes: 'Переключить заметки',
   shortcutCloseModal: 'Закрыть модальное окно',
   shortcutPressAKey: 'Нажмите клавишу...',
+  shortcutAppLaunch: 'Запуск приложений по Alt+1…9',
   shortcutSaveError: 'Не удалось сохранить изменения горячих клавиш. Последнее действие не было сохранено.',
   featureToggleSaveError: 'Не удалось сохранить эту настройку. Последнее действие не было сохранено.',
 
