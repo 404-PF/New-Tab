@@ -718,6 +718,14 @@
     "message": "Поиск заметок...",
     "description": "Placeholder text for the notes search input"
   },
+  "appGridFilterPlaceholder": {
+    "message": "Фильтр приложений...",
+    "description": "Placeholder text for the app grid filter input"
+  },
+  "appGridFilterAriaLabel": {
+    "message": "Фильтр приложений",
+    "description": "Accessible label for the app grid filter input"
+  },
   "notesNoResults": {
     "message": "Нет подходящих заметок.",
     "description": "Empty state when no notes match the search query"

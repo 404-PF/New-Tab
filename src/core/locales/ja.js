@@ -41,6 +41,8 @@ window.i18n.__registerLocale('ja', {
   enableSearchHistory: '検索履歴を有効にする',
   searchSuggestionsAriaLabel: '検索候補',
   newApp: '新規',
+  appGridFilterPlaceholder: 'アプリを絞り込む...',
+  appGridFilterAriaLabel: 'アプリを絞り込む',
   feedback: 'フィードバック',
   settings: '設定',
   simpleMode: 'シンプル',

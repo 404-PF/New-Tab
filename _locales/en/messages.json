@@ -894,6 +894,14 @@
     "message": "Search notes...",
     "description": "Placeholder text for the notes search input"
   },
+  "appGridFilterPlaceholder": {
+    "message": "Filter apps...",
+    "description": "Placeholder text for the app grid filter input"
+  },
+  "appGridFilterAriaLabel": {
+    "message": "Filter apps",
+    "description": "Accessible label for the app grid filter input"
+  },
   "notesNoResults": {
     "message": "No matching notes.",
     "description": "Empty state when no notes match the search query"

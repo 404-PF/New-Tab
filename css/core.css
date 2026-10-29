@@ -982,6 +982,75 @@ body.light-theme .custom-search-providers-empty {
   margin: 0 auto;
 }
 
+/* App grid type-to-filter (issue #1065) */
+.app-grid-filter {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  margin: 12px auto 0;
+}
+
+.app-grid-filter-icon {
+  position: absolute;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  color: rgba(148, 163, 184, 0.6);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.app-grid-filter-input {
+  width: min(260px, calc(100vw - 40px));
+  padding: 6px 12px 6px 32px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 10px;
+  color: #e2e8f0; /* NOSONAR - transparent bg blends over dark page, contrast is sufficient */
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: background 0.15s, border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.app-grid-filter-input::placeholder {
+  color: rgba(148, 163, 184, 0.5);
+}
+
+.app-grid-filter-input:focus {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.app-grid-filter-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+body.light-theme .app-grid-filter-input {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.15);
+  color: #1e293b;
+}
+
+body.light-theme .app-grid-filter-input::placeholder {
+  color: rgba(15, 23, 42, 0.45);
+}
+
+body.light-theme .app-grid-filter-input:focus {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(79, 70, 229, 0.45);
+}
+
+.app-icon.app-filter-hidden {
+  display: none;
+}
+
+
 .app-icon {
   display: flex;
   flex-direction: column;
@@ -2587,6 +2656,15 @@ body.light-theme .preview-icon.light {
 body.light-theme .app-icon.folder-icon .icon {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Highlight folders that matched the app-grid filter (issue #1065) */
+.app-icon.folder-icon.app-filter-match .icon {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.55);
+}
+
+body.light-theme .app-icon.folder-icon.app-filter-match .icon {
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.6);
 }
 
 .folder-icon-empty svg {

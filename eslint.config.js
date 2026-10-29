@@ -39,6 +39,7 @@ const srcGlobals = {
   AppGridStorage: 'readonly',
   Accessibility: 'readonly',
   AppFolders: 'readonly',
+  AppGridFilter: 'readonly',
   defaultApps: 'readonly',
   VisibilityInterval: 'readonly',
   visibilityManager: 'readonly',
@@ -343,6 +344,7 @@ const testGlobals = {
   getNextDueDate: 'readonly',
   RECURRENCE_VALUES: 'readonly',
   AppFolders: 'readonly',
+  AppGridFilter: 'readonly',
   defaultApps: 'readonly',
   clearCompleted: 'readonly',
   validateTodoData: 'readonly',
@@ -487,6 +489,7 @@ module.exports = [
       'src/features/context-menu.js',
       'src/ui/app-manager.js',
       'src/features/app-folders.js',
+      'src/features/app-grid-filter.js',
       'src/features/drag-drop.js',
       'src/core/utils.js'
     ],
