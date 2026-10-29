@@ -1103,13 +1103,13 @@ describe('Todo drag-and-drop with filter', () => {
     const saved = loadTodos();
     const savedTexts = saved.map(t => t.text);
 
-    // Visible items should be reordered: A, D, B
+    // Visible rows are written back into the slots they already occupied,
+    // so hidden items never move (issue #1060): slots 0, 1, 3 hold the
+    // reordered visible rows A, D, B; slots 2 and 4 keep C and E in place.
     expect(savedTexts[0]).toBe('A');
     expect(savedTexts[1]).toBe('D');
-    expect(savedTexts[2]).toBe('B');
-
-    // Hidden items should maintain their relative order at the end
-    expect(savedTexts[3]).toBe('C');
+    expect(savedTexts[2]).toBe('C');
+    expect(savedTexts[3]).toBe('B');
     expect(savedTexts[4]).toBe('E');
   });
 });

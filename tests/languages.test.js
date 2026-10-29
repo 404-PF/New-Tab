@@ -365,7 +365,10 @@ describe('Todo no-results empty state sweep (issue #1060)', () => {
       <p data-i18n="todoNoResults">No matching todos.</p>
       <small data-i18n="emptyStateDesc">Try adding due dates for better organization.</small>
     `;
-    document.body.appendChild(container);
+    // Insert before the setup's live .empty-state so the empty-state
+    // updater (document.querySelector('.empty-state p')) selects this
+    // fixture and the test covers the production no-results path.
+    document.body.insertBefore(container, document.querySelector('.empty-state'));
     try {
       await window.i18n.applyLanguage('de');
       const paragraph = container.querySelector('p');

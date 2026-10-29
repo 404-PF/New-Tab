@@ -1593,17 +1593,14 @@ function handleDrop(event) {
   const [removed] = filteredTodos.splice(draggedIndex, 1);
   filteredTodos.splice(dropIndex, 0, removed);
 
-  // Rebuild the full todos array: filtered items keep their new
-  // order, hidden (non-filtered) items are appended in their
-  // original relative order so they are never shuffled.
+  // Write the reordered visible rows back into the slots they already
+  // occupy in `todos`, so hidden (non-matching) todos keep their
+  // positions when a pill filter or text search is active (issue #1060).
   const filteredIds = new Set(filteredTodos.map(t => t.id));
-  const reorderedTodos = [...filteredTodos];
-
-  for (const todo of todos) {
-    if (!filteredIds.has(todo.id)) {
-      reorderedTodos.push(todo);
-    }
-  }
+  let visibleCursor = 0;
+  const reorderedTodos = todos.map(todo =>
+    filteredIds.has(todo.id) ? filteredTodos[visibleCursor++] : todo
+  );
 
   // Assign sequential order to ALL todos, not just the filtered subset
   reorderedTodos.forEach((todo, index) => {

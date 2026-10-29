@@ -1546,28 +1546,6 @@ body.light-theme .todo-subtask-progress:where(:not(.todo-section, .notes-section
   background: rgba(0, 0, 0, 0.06);
 }
 
-#todo-search {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  color: #ffffff;
-  padding: 10px 16px;
-  font-size: 14px;
-  outline: none;
-  transition: all 0.2s ease;
-  min-width: 200px;
-}
-
-#todo-search::placeholder {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-#todo-search:focus {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(33, 150, 243, 0.3);
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
-}
-
 #filter-priority,
 #filter-status {
   background: rgba(255, 255, 255, 0.08);
@@ -2610,8 +2588,7 @@ body.light-theme .todo-date-btn.overdue:hover:where(:not(.todo-section, .notes-s
     gap: 8px;
   }
 
-  #todo-search {
-    min-width: auto;
+  .todo-search-input {
     width: 100%;
   }
 
