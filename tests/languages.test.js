@@ -24,6 +24,38 @@ function expectTranslationKeys(keys, options) {
   });
 }
 
+// Asserts a feedback key ships in every _locales/<locale>/messages.json with
+// its own non-empty message and description. Shared by the save-error keys
+// that must exist both as runtime translations and as chrome.i18n messages.
+function expectMessagesJsonKey(key) {
+  const localesDir = resolve(process.cwd(), '_locales');
+  const locales = readdirSync(localesDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+
+  expect(locales.length).toBeGreaterThan(0);
+
+  const english = JSON.parse(
+    readFileSync(resolve(localesDir, 'en', 'messages.json'), 'utf8')
+  )[key].message;
+
+  locales.forEach((locale) => {
+    const file = resolve(localesDir, locale, 'messages.json');
+    const parsed = JSON.parse(readFileSync(file, 'utf8'));
+    expect(parsed, `${locale}:${key}`).toHaveProperty(key);
+    const entry = parsed[key];
+    expect(entry.message, `${locale}`).toBeTypeOf('string');
+    expect(entry.message.trim(), `${locale}`).not.toBe('');
+    expect(entry.description, `${locale}`).toBeTypeOf('string');
+    // en and en_US are the English source strings, so every other locale
+    // must ship its own copy rather than a copy of the English text.
+    if (locale !== 'en' && locale !== 'en_US') {
+      expect(entry.message, `${locale}:${key}`).not.toBe(english);
+    }
+  });
+}
+
 const SEARCH_TRANSLATION_KEYS = [
   'searchWith',
   'searchProviderGoogle',
@@ -503,33 +535,19 @@ describe('Feature toggle save error translation (issue #969)', () => {
   });
 
   it('includes featureToggleSaveError in every _locales messages.json', () => {
-    const localesDir = resolve(process.cwd(), '_locales');
-    const locales = readdirSync(localesDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort();
+    expectMessagesJsonKey('featureToggleSaveError');
+  });
+});
 
-    expect(locales.length).toBeGreaterThan(0);
+// Shared feedback string for game saves whose storage write the bridge
+// rejected (issue #1039).
+describe('Game saves save error translation (issue #1039)', () => {
+  it('defines a localized gameSavesSaveError for every supported language', () => {
+    expectTranslationKeys(['gameSavesSaveError'], { differFromEnglish: true });
+  });
 
-    const english = JSON.parse(
-      readFileSync(resolve(localesDir, 'en', 'messages.json'), 'utf8')
-    ).featureToggleSaveError.message;
-
-    locales.forEach((locale) => {
-      const file = resolve(localesDir, locale, 'messages.json');
-      const parsed = JSON.parse(readFileSync(file, 'utf8'));
-      expect(parsed, `${locale}:featureToggleSaveError`).toHaveProperty('featureToggleSaveError');
-      const entry = parsed.featureToggleSaveError;
-      expect(entry.message, `${locale}`).toBeTypeOf('string');
-      expect(entry.message.trim(), `${locale}`).not.toBe('');
-      expect(entry.description, `${locale}`).toBeTypeOf('string');
-      // en and en_US are the English source strings, so every other locale
-      // must ship its own copy rather than a copy of the English text —
-      // the same rule expectTranslationKeys applies to runtime dictionaries.
-      if (locale !== 'en' && locale !== 'en_US') {
-        expect(entry.message, `${locale}:featureToggleSaveError`).not.toBe(english);
-      }
-    });
+  it('includes gameSavesSaveError in every _locales messages.json', () => {
+    expectMessagesJsonKey('gameSavesSaveError');
   });
 });
 

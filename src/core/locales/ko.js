@@ -199,6 +199,7 @@ window.i18n.__registerLocale('ko', {
   appsSettings: '앱',
   appGridSaveError: '앱 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
   gameStatsSaveError: '게임 통계를 저장하지 못했습니다. 최근 점수가 저장되지 않았습니다.',
+  gameSavesSaveError: '게임 진행 상황을 저장하지 못했습니다. 최근 진행 내용이 저장되지 않았습니다.',
   appsSettingsDesc: '앱 아이콘 사용자 정의',
   iconStyle: '아이콘 스타일',
   iconStyleDesc: '앱 아이콘의 모양과 스타일 선택',

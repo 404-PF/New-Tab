@@ -35,6 +35,10 @@
     "message": "Failed to save game statistics. Your latest score was not saved.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameSavesSaveError": {
+    "message": "Failed to save game progress. Your latest run was not saved.",
+    "description": "Error shown when a game save cannot be persisted"
+  },
   "searchProviderSaveError": {
     "message": "Failed to save search provider changes. Your last action was not saved.",
     "description": "Error shown when custom search provider changes cannot be persisted"

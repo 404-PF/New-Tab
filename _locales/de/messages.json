@@ -35,6 +35,10 @@
     "message": "Spielstatistiken konnten nicht gespeichert werden. Dein letzter Punktestand wurde nicht gespeichert.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameSavesSaveError": {
+    "message": "Spielfortschritte konnten nicht gespeichert werden. Dein letzter Spielstand wurde nicht gespeichert.",
+    "description": "Error shown when a game save cannot be persisted"
+  },
   "searchProviderSaveError": {
     "message": "Änderungen an Suchanbietern konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
     "description": "Error shown when custom search provider changes cannot be persisted"

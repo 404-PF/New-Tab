@@ -492,7 +492,7 @@
         gamesPlayed: gamesPlayed + 1
       };
     });
-    window.GameRegistry?.clearSave?.('flappy-bird');
+    void window.GameRegistry?.clearSave?.('flappy-bird');
     updateScoreHud();
     draw(nowMs());
     startDeathAnimation();
@@ -704,7 +704,7 @@
     if (savedState) {
       restoredRun = applyRestoredState(savedState);
       if (!restoredRun) {
-        window.GameRegistry?.clearSave?.('flappy-bird');
+        void window.GameRegistry?.clearSave?.('flappy-bird');
         resetState();
       }
     }

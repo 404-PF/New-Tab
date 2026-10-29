@@ -186,6 +186,7 @@ window.i18n.__registerLocale('pt', {
   appsSettings: 'Aplicativos',
   appGridSaveError: 'Não foi possível salvar as alterações dos aplicativos. Sua última ação não foi salva.',
   gameStatsSaveError: 'Não foi possível salvar as estatísticas do jogo. Sua última pontuação não foi salva.',
+  gameSavesSaveError: 'Não foi possível salvar o progresso do jogo. Sua última partida não foi salva.',
   appsSettingsDesc: 'Personalizar ícones de aplicativos',
   iconStyle: 'Estilo do ícone',
   iconStyleDesc: 'Escolha a forma e aparência dos ícones dos seus aplicativos',

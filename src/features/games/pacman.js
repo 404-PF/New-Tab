@@ -648,7 +648,7 @@
     manualPause = false;
     stopAnimation();
     window.gamesHelpers.recordRunResult('pacman', score);
-    window.GameRegistry?.clearSave?.('pacman');
+    void window.GameRegistry?.clearSave?.('pacman');
     updateScoreHud();
     draw();
   }
@@ -1361,7 +1361,7 @@
     if (savedState) {
       restoredRun = applyRestoredState(savedState);
       if (!restoredRun) {
-        window.GameRegistry?.clearSave?.('pacman');
+        void window.GameRegistry?.clearSave?.('pacman');
         resetState();
       }
     }

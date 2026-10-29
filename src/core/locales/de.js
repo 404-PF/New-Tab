@@ -186,6 +186,7 @@ window.i18n.__registerLocale('de', {
   appsSettings: 'Apps',
   appGridSaveError: 'App-Änderungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.',
   gameStatsSaveError: 'Spielstatistiken konnten nicht gespeichert werden. Dein letzter Punktestand wurde nicht gespeichert.',
+  gameSavesSaveError: 'Spielfortschritte konnten nicht gespeichert werden. Dein letzter Spielstand wurde nicht gespeichert.',
   appsSettingsDesc: 'App-Symbole anpassen',
   iconStyle: 'Symbolstil',
   iconStyleDesc: 'Wähle Form und Aussehen deiner App-Symbole',

@@ -7,6 +7,7 @@
   const STATS_SAVE_ERROR_FALLBACK = 'Failed to save game statistics. Your latest score was not saved.';
   const MRU_KEY = 'games_recently_played';
   const SAVES_KEY = 'games_saves';
+  const SAVES_SAVE_ERROR_FALLBACK = 'Failed to save game progress. Your latest run was not saved.';
   const MAX_MRU = 20;
   const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
   const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -179,28 +180,129 @@
     }
   }
 
+  // Coalesce bursts: several failed writes in quick succession show one toast.
+  const SAVES_TOAST_COALESCE_MS = 2000;
+  let lastSavesToastAt = -Infinity;
+
+  function showSavesSaveError() {
+    const now = Date.now();
+    if (now - lastSavesToastAt < SAVES_TOAST_COALESCE_MS) return;
+    lastSavesToastAt = now;
+    let message = SAVES_SAVE_ERROR_FALLBACK;
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const translated = window.i18n.t('gameSavesSaveError');
+      if (translated && translated !== 'gameSavesSaveError') message = translated;
+    }
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+      return;
+    }
+    console.warn(message);
+  }
+
+  function failSavesSave(error) {
+    console.warn('Failed to save games_saves:', error || 'storage rejected the write');
+    // Drop the cache so the next read re-serves the value the storage bridge
+    // rolled back to, not the rejected saves.
+    savesCache = null;
+    savesCacheRaw = undefined;
+    showSavesSaveError();
+    return false;
+  }
+
+  // Resolves to whether the saves were persisted. The storage bridge's sync
+  // setItem() accepts chrome.storage writes optimistically and reports
+  // failures later, so use setItemAsync() and check its result.
   function saveSaves(saves) {
+    let serialized;
     try {
-      const serialized = JSON.stringify(saves);
-      localStorage.setItem(SAVES_KEY, serialized);
+      serialized = JSON.stringify(saves);
+    } catch (e) {
+      return Promise.resolve(failSavesSave(e));
+    }
+
+    if (typeof localStorage.setItemAsync === 'function') {
+      let pending;
+      try {
+        pending = localStorage.setItemAsync(SAVES_KEY, serialized);
+      } catch (e) {
+        return Promise.resolve(failSavesSave(e));
+      }
+      // The bridge updated its cache synchronously; mirror that until the
+      // write settles.
       savesCache = saves;
       savesCacheRaw = serialized;
-      return true;
-    } catch (e) {
-      console.warn('Failed to save games_saves:', e);
-      savesCache = null;
-      savesCacheRaw = undefined;
-      return false;
+      return Promise.resolve(pending).then(
+        (persisted) => (persisted === true ? true : failSavesSave()),
+        failSavesSave
+      );
     }
+
+    let accepted;
+    try {
+      // Native Storage#setItem returns void and throws on failure.
+      accepted = localStorage.setItem(SAVES_KEY, serialized) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (e) {
+      return Promise.resolve(failSavesSave(e));
+    }
+    if (!accepted) {
+      return Promise.resolve(failSavesSave());
+    }
+    savesCache = saves;
+    savesCacheRaw = serialized;
+    return Promise.resolve(true);
+  }
+
+  // Saves writes are serialized so each one is confirmed (or rolled back by
+  // the storage bridge) before the next setItemAsync() starts: overlapping
+  // writes would let the second write's rollback target be the first write's
+  // unconfirmed (possibly later rejected) snapshot, resurrecting it in the
+  // bridge cache. Each queued write carries an updater that is applied to the
+  // *stored* saves when that write runs, so a write is never derived from
+  // another write's unconfirmed values.
+  let savesWriteChain = Promise.resolve();
+  let savesWritesInFlight = 0;
+  // Bumped by _reset(): a write enqueued before the reset must neither run
+  // (its updater would write stale saves into post-reset storage) nor
+  // decrement the fresh in-flight counter when it settles, so pre-reset
+  // writes are invalidated instead of leaking across the reset boundary.
+  let savesWriteGeneration = 0;
+
+  // `apply(saves)` mutates a copy of the stored saves and returns false to
+  // skip the write entirely (nothing to persist). Resolves to whether a write
+  // was persisted.
+  function enqueueSavesWrite(apply) {
+    const generation = savesWriteGeneration;
+    const run = () => {
+      if (generation !== savesWriteGeneration) return Promise.resolve(true);
+      let saves;
+      try {
+        saves = { ...loadSaves() };
+        if (apply(saves) === false) return Promise.resolve(true);
+      } catch (e) {
+        return Promise.resolve(failSavesSave(e));
+      }
+      return saveSaves(saves);
+    };
+
+    const settle = () => {
+      if (generation === savesWriteGeneration) savesWritesInFlight -= 1;
+    };
+
+    const write = savesWritesInFlight === 0 ? run() : savesWriteChain.then(run);
+    savesWritesInFlight += 1;
+    savesWriteChain = write.then(settle, settle);
+    return write;
   }
 
   // Persist a snapshot for a game that opted in via serialize(). Callers must
-  // pass a concrete state; returns true when a save was written.
+  // pass a concrete state; resolves to true when a save was written.
   function persistSave(gameId, state) {
-    if (!gameId) return false;
-    const saves = loadSaves();
-    saves[gameId] = { state: state, savedAt: Date.now() };
-    return saveSaves(saves);
+    if (!gameId) return Promise.resolve(false);
+    return enqueueSavesWrite((saves) => {
+      saves[gameId] = { state: state, savedAt: Date.now() };
+      return true;
+    });
   }
 
   // A well-formed envelope carries a restorable snapshot: an object (the
@@ -223,10 +325,13 @@
   }
 
   function clearSave(gameId) {
-    const saves = loadSaves();
-    if (!Object.hasOwn(saves, gameId)) return;
-    delete saves[gameId];
-    saveSaves(saves);
+    return enqueueSavesWrite((saves) => {
+      // Checked when the write runs, so a queued persistSave for the same
+      // game is neither clobbered by an eager skip nor missed by the delete.
+      if (!Object.hasOwn(saves, gameId)) return false;
+      delete saves[gameId];
+      return true;
+    });
   }
 
   // ===================== Crypto-safe Random =====================
@@ -395,7 +500,7 @@
   }
 
   function serializeCurrent() {
-    if (!currentGame || typeof currentGame.serialize !== 'function') return false;
+    if (!currentGame || typeof currentGame.serialize !== 'function') return Promise.resolve(false);
     try {
       const state = currentGame.serialize();
       // Serialize-hook contract:
@@ -408,14 +513,14 @@
       // to signal "discard" itself.
       if (state === null || state === undefined) {
         if (!currentLaunchHadSave) {
-          clearSave(currentGame.id);
+          return clearSave(currentGame.id).then(() => false);
         }
-        return false;
+        return Promise.resolve(false);
       }
       return persistSave(currentGame.id, state);
     } catch (e) {
       console.warn('GameRegistry.serializeCurrent: error serializing', currentGame.id, e);
-      return false;
+      return Promise.resolve(false);
     }
   }
 
@@ -461,7 +566,7 @@
     if (document.hidden) {
       // Opening another tab hides this page without closing the modal; save
       // before pausing so the run survives a reload that never calls close().
-      serializeCurrent();
+      void serializeCurrent();
       if (typeof currentGame.pause === 'function') {
         try {
           currentGame.pause();
@@ -511,9 +616,16 @@
     // A new tab replaces this page without ever closing the games modal, so
     // serialize the current game before the page unloads. pagehide fires on
     // both navigation and tab/window close; bfcache restores skip init()
-    // because `initialized` is still true.
+    // because `initialized` is still true. If a saves write is still in
+    // flight, this save queues behind it (writes are serialized so the
+    // storage bridge cannot roll a rejected snapshot back into a newer
+    // write, #1039): the wait is normally a single chrome.storage callback.
+    // Accepted risk: if the page is torn down before that settles, the
+    // queued write is never issued and the final snapshot is lost —
+    // bypassing the queue here would reintroduce the overlapping-write
+    // rollback serialization exists to prevent.
     window.addEventListener('pagehide', function () {
-      serializeCurrent();
+      void serializeCurrent();
     });
   }
 
@@ -533,6 +645,12 @@
     statsWriteChain = Promise.resolve();
     statsWritesInFlight = 0;
     lastStatsToastAt = -Infinity;
+    lastSavesToastAt = -Infinity;
+    // Invalidate writes enqueued (but not yet run) before this reset, then
+    // start a fresh queue for the next test.
+    savesWriteGeneration += 1;
+    savesWriteChain = Promise.resolve();
+    savesWritesInFlight = 0;
     mruCache = null;
     mruCacheRaw = undefined;
     savesCache = null;

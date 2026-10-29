@@ -65,12 +65,12 @@ describe('GameRegistry saves (#646)', () => {
     expect(localStorage.getItem('games_saves')).toBeNull();
   });
 
-  it('persists a snapshot on destroyCurrent and passes it to the next launch', () => {
+  it('persists a snapshot on destroyCurrent and passes it to the next launch', async () => {
     const game = registerSaveableGame('save-game', { snapshot: { level: 3 } });
     ensureContainer();
     window.GameRegistry.launch('save-game');
     game.setSnapshot({ level: 7 });
-    expect(window.GameRegistry.destroyCurrent()).toBe(true);
+    await expect(window.GameRegistry.destroyCurrent()).resolves.toBe(true);
 
     expect(window.GameRegistry.hasSave('save-game')).toBe(true);
     const raw = JSON.parse(localStorage.getItem('games_saves'));
@@ -84,9 +84,10 @@ describe('GameRegistry saves (#646)', () => {
     // The save stays until the game reaches a terminal state or is cleared.
     expect(window.GameRegistry.hasSave('save-game')).toBe(true);
 
-    // Destroy again first: launch() is a no-op for a running game.
-    window.GameRegistry.destroyCurrent();
-    window.GameRegistry.clearSave('save-game');
+    // Destroy again first: launch() is a no-op for a running game. Awaiting
+    // keeps the clear below behind the serialized save write.
+    await window.GameRegistry.destroyCurrent();
+    await window.GameRegistry.clearSave('save-game');
     expect(window.GameRegistry.hasSave('save-game')).toBe(false);
     expect(JSON.parse(localStorage.getItem('games_saves'))['save-game']).toBeUndefined();
 
@@ -95,32 +96,34 @@ describe('GameRegistry saves (#646)', () => {
     expect(game.initArgs().savedState).toBeUndefined();
   });
 
-  it('reports failed persistence when the saves storage write throws', () => {
+  it('reports failed persistence when the saves storage write throws', async () => {
     registerSaveableGame('failed-save-game', { snapshot: { checkpoint: true } });
     ensureContainer();
     window.GameRegistry.launch('failed-save-game');
 
-    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+    const setAsyncSpy = vi.spyOn(localStorage, 'setItemAsync').mockImplementation(() => {
       throw new Error('storage unavailable');
     });
     try {
-      expect(window.GameRegistry.destroyCurrent()).toBe(false);
-      expect(setItemSpy).toHaveBeenCalledWith('games_saves', expect.any(String));
+      await expect(window.GameRegistry.destroyCurrent()).resolves.toBe(false);
+      expect(setAsyncSpy).toHaveBeenCalledWith('games_saves', expect.any(String));
     } finally {
-      setItemSpy.mockRestore();
+      setAsyncSpy.mockRestore();
     }
 
     expect(window.GameRegistry.hasSave('failed-save-game')).toBe(false);
     expect(window.GameRegistry.getSave('failed-save-game')).toBeNull();
   });
 
-  it('keeps separate snapshots per game', () => {
+  it('keeps separate snapshots per game', async () => {
     registerSaveableGame('save-a', { snapshot: { n: 1 } });
     registerSaveableGame('save-b', { snapshot: { n: 2 } });
     ensureContainer();
     window.GameRegistry.launch('save-a');
     window.GameRegistry.launch('save-b'); // destroys save-a first, serializing its snapshot
-    window.GameRegistry.destroyCurrent(); // serializes save-b
+    // Saves writes are serialized, so wait for save-b's write to land before
+    // reading the stored snapshot.
+    await window.GameRegistry.destroyCurrent(); // serializes save-b
 
     const raw = JSON.parse(localStorage.getItem('games_saves'));
     expect(raw['save-a'].state).toEqual({ n: 1 });
@@ -499,6 +502,180 @@ describe('GameRegistry stats persistence (#783)', () => {
     }
 
     expect(window.GameRegistry.getStats('helper-game').highScore).toBe(1);
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('GameRegistry saves bridge rejection (#1039)', () => {
+  const SAVES_ERROR_MESSAGE = 'Failed to save game progress. Your latest run was not saved.';
+  let originalShowToast;
+  let showToast;
+  let originalSetItemAsync;
+
+  beforeEach(() => {
+    originalShowToast = window.showToast;
+    showToast = vi.fn();
+    window.showToast = showToast;
+    originalSetItemAsync = localStorage.setItemAsync;
+  });
+
+  afterEach(() => {
+    if (originalShowToast === undefined) {
+      delete window.showToast;
+    } else {
+      window.showToast = originalShowToast;
+    }
+    if (originalSetItemAsync) {
+      localStorage.setItemAsync = originalSetItemAsync;
+    } else {
+      delete localStorage.setItemAsync;
+    }
+  });
+
+  // Real bridge path: chrome.storage.local.set reports failure via lastError,
+  // so setItemAsync() settles false after the bridge rolls its cache back.
+  function failChromeSet() {
+    const originalSet = chrome.storage.local.set;
+    chrome.storage.local.set = (items, callback) => {
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      if (callback) callback();
+      chrome.runtime.lastError = null;
+      return Promise.resolve();
+    };
+    return () => {
+      chrome.storage.local.set = originalSet;
+    };
+  }
+
+  function launchSaveable(id, state) {
+    const game = registerSaveableGame(id, state);
+    ensureContainer();
+    window.GameRegistry.launch(id);
+    return game;
+  }
+
+  it('treats a setItemAsync result of false as a failed save', async () => {
+    launchSaveable('saves-false-game', { snapshot: { n: 1 } });
+
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockResolvedValue(false);
+    try {
+      await expect(window.GameRegistry.destroyCurrent()).resolves.toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+
+    // The rejected value must not stay cached: the store never took it.
+    expect(window.GameRegistry.hasSave('saves-false-game')).toBe(false);
+    expect(window.GameRegistry.getSave('saves-false-game')).toBeNull();
+    expect(window.GameRegistry.getAllSaves()).toEqual({});
+    expect(localStorage.getItem('games_saves')).toBeNull();
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(SAVES_ERROR_MESSAGE, 'error');
+  });
+
+  it('drops the rejected snapshot after an async chrome.storage write failure', async () => {
+    const game = launchSaveable('saves-async-game', { snapshot: { mid: 'run' } });
+
+    const restore = failChromeSet();
+    try {
+      await expect(window.GameRegistry.destroyCurrent()).resolves.toBe(false);
+    } finally {
+      restore();
+    }
+
+    // The bridge rolled its optimistic cache back; the registry must not
+    // serve the rejected snapshot from its own cache either.
+    expect(localStorage.getItem('games_saves')).toBeNull();
+    expect(window.GameRegistry.hasSave('saves-async-game')).toBe(false);
+    expect(window.GameRegistry.getAllSaves()).toEqual({});
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(SAVES_ERROR_MESSAGE, 'error');
+
+    // A later successful write still lands without a second toast.
+    window.GameRegistry.launch('saves-async-game');
+    game.setSnapshot({ mid: 'run-2' });
+    await expect(window.GameRegistry.destroyCurrent()).resolves.toBe(true);
+    expect(window.GameRegistry.getSave('saves-async-game').state).toEqual({ mid: 'run-2' });
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('checks the sync setItem return when setItemAsync is unavailable', async () => {
+    launchSaveable('saves-sync-game', { snapshot: { n: 2 } });
+
+    delete localStorage.setItemAsync;
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => false);
+    try {
+      await expect(window.GameRegistry.destroyCurrent()).resolves.toBe(false);
+      expect(spy).toHaveBeenCalledWith('games_saves', expect.any(String));
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(window.GameRegistry.hasSave('saves-sync-game')).toBe(false);
+    expect(window.GameRegistry.getSave('saves-sync-game')).toBeNull();
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(SAVES_ERROR_MESSAGE, 'error');
+  });
+
+  it('drops the rejected snapshot when pagehide serialization is refused', async () => {
+    launchSaveable('saves-pagehide-game', { snapshot: { late: true } });
+
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockResolvedValue(false);
+    try {
+      window.dispatchEvent(new Event('pagehide'));
+      // pagehide cannot consume the async result; wait for the failure side
+      // effects (cache drop + toast) instead of a synchronous return value.
+      await vi.waitFor(() => {
+        expect(showToast).toHaveBeenCalledTimes(1);
+      });
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(window.GameRegistry.hasSave('saves-pagehide-game')).toBe(false);
+    expect(localStorage.getItem('games_saves')).toBeNull();
+    expect(showToast).toHaveBeenCalledWith(SAVES_ERROR_MESSAGE, 'error');
+  });
+
+  it('coalesces a burst of failed saves writes into a single toast', async () => {
+    launchSaveable('saves-burst-game', { snapshot: { n: 1 } });
+
+    const restore = failChromeSet();
+    try {
+      await expect(window.GameRegistry.destroyCurrent()).resolves.toBe(false);
+      window.GameRegistry.launch('saves-burst-game');
+      await expect(window.GameRegistry.destroyCurrent()).resolves.toBe(false);
+    } finally {
+      restore();
+    }
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(window.GameRegistry.hasSave('saves-burst-game')).toBe(false);
+  });
+
+  it('does not resurrect a rejected snapshot when two overlapping saves both fail', async () => {
+    const game = launchSaveable('saves-race-game', { snapshot: { n: 1 } });
+
+    const restore = failChromeSet();
+    try {
+      // Two writes without awaiting the first: saves writes are serialized,
+      // so the second setItemAsync() starts only after the first settles and
+      // cannot use the first rejected snapshot as its rollback target.
+      const first = window.GameRegistry.destroyCurrent();
+      window.GameRegistry.launch('saves-race-game');
+      game.setSnapshot({ n: 2 });
+      const second = window.GameRegistry.destroyCurrent();
+      await expect(first).resolves.toBe(false);
+      await expect(second).resolves.toBe(false);
+    } finally {
+      restore();
+    }
+
+    expect(window.GameRegistry.hasSave('saves-race-game')).toBe(false);
+    expect(window.GameRegistry.getSave('saves-race-game')).toBeNull();
+    expect(window.GameRegistry.getAllSaves()).toEqual({});
+    expect(localStorage.getItem('games_saves')).toBeNull();
+    // Both failures happen in one burst, so the toast is coalesced.
     expect(showToast).toHaveBeenCalledTimes(1);
   });
 });
