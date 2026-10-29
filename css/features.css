@@ -3144,12 +3144,16 @@ body.light-theme .weather-city-inline input:focus {
   align-items: center;
   justify-content: center;
   opacity: 0;
+  /* visibility (not only opacity/pointer-events) keeps the closed modal's
+     settings out of the sequential keyboard focus order. */
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .todo-app-modal.modal-open {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 

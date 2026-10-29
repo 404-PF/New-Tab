@@ -336,6 +336,13 @@
           window.WeatherApp.close();
           return true;
         }
+        // The relocated .todo-section lives inside this modal: only stripping
+        // the class would strand the widget there, so route through
+        // TodoApp.close() like the weather branch above.
+        if (def.selector === '#todo-app-modal' && typeof window.TodoApp === 'object' && typeof window.TodoApp.close === 'function') {
+          window.TodoApp.close();
+          return true;
+        }
         // The confirm dialog owns a pending Promise: only stripping the class
         // would strand it (and the node's 200ms removal), so route through
         // the close hook instead.

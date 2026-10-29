@@ -100,12 +100,12 @@ describe('Todo app modal', () => {
   });
 
   it('applies a saved todoEnabled=true without touching the embedded section', () => {
-    localStorage.setItem('todoEnabled', 'false');
+    localStorage.setItem('todoEnabled', 'true');
     window.TodoApp.open();
 
     window.applyTodoEnabled();
     expect(document.querySelector('.todo-section').style.display).toBe('');
-    expect(document.getElementById('todo-enabled-setting').checked).toBe(false);
+    expect(document.getElementById('todo-enabled-setting').checked).toBe(true);
   });
 
   it('closes when the overlay backdrop is clicked', () => {
@@ -152,6 +152,8 @@ describe('Todo app settings handlers (migrated from settings.js)', () => {
   it('todo-enabled checkbox reports an error and keeps the old value when the write fails', () => {
     window.showFeatureToggleSaveError = vi.fn();
     window.persistFeatureToggle = vi.fn(() => false);
+    // Seed the opposite persisted value so a skipped rollback would show.
+    localStorage.setItem('todoEnabled', 'false');
 
     try {
       const checkbox = document.getElementById('todo-enabled-setting');
@@ -159,9 +161,10 @@ describe('Todo app settings handlers (migrated from settings.js)', () => {
       checkbox.dispatchEvent(new Event('change'));
 
       expect(window.showFeatureToggleSaveError).toHaveBeenCalled();
-      // Rolled-back storage: the section is re-applied from the persisted value.
-      expect(window.loadTodoEnabled()).toBe(true);
-      expect(document.querySelector('.todo-section').style.display).toBe('');
+      // Rolled-back storage: the checkbox and section match the persisted false.
+      expect(checkbox.checked).toBe(false);
+      expect(window.loadTodoEnabled()).toBe(false);
+      expect(document.querySelector('.todo-section').style.display).toBe('none');
     } finally {
       delete window.persistFeatureToggle;
       delete window.showFeatureToggleSaveError;
@@ -182,7 +185,11 @@ describe('Todo app settings handlers (migrated from settings.js)', () => {
       expect(window.scheduleTodoReminderCheck).toHaveBeenCalledWith(null, true);
 
       window.scheduleTodoReminderCheck.mockClear();
+      checkbox.checked = false;
       checkbox.dispatchEvent(new Event('change'));
+
+      expect(localStorage.getItem('todoReminderEnabled')).toBe('false');
+      expect(document.getElementById('todo-reminder-lead-time-option').style.display).toBe('none');
       expect(window.scheduleTodoReminderCheck).toHaveBeenCalledWith(null, false);
     } finally {
       delete window.scheduleTodoReminderCheck;
