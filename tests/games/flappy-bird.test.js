@@ -70,6 +70,30 @@ describe('Flappy Bird registration and ready state', () => {
   });
 });
 
+describe('Flappy Bird FPS readout (#1036)', () => {
+  it('mounts no readout while the setting is off', () => {
+    const container = makeContainer();
+
+    expect(container.querySelector('.games-fps-display')).toBeNull();
+
+    getGame().destroy();
+    container.remove();
+  });
+
+  it('mounts the readout on the stage when the setting is on and tears it down on destroy', () => {
+    localStorage.setItem('games_fps_enabled', 'true');
+    const container = makeContainer();
+
+    const el = container.querySelector('.games-fps-display');
+    expect(el).not.toBeNull();
+    expect(el.closest('.games-flappy-stage')).not.toBeNull();
+
+    getGame().destroy();
+    expect(container.querySelector('.games-fps-display')).toBeNull();
+    container.remove();
+  });
+});
+
 describe('Flappy Bird difficulty helpers', () => {
   it('ramps speed and gap difficulty every five points with hard floors', () => {
     const d = window.__flappyBirdTest;

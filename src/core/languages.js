@@ -54,7 +54,8 @@ const GAMES_ALL_TRANSLATION_KEYS = GAMES_TRANSLATION_KEYS.concat([
   'gamesKeymap',
   'gamesKeymapWasd',
   'gamesKeymapIjkl',
-  'gamesKeymapNumpad'
+  'gamesKeymapNumpad',
+  'gamesFps'
 ]);
 
 function createNoteTagTranslations(
@@ -912,6 +913,28 @@ function applyGamesKeymapMerges(code) {
   Object.assign(target, values);
 }
 
+// Label for the Games FPS-readout checkbox (#1036). Same per-language map
+// pattern as gamesKeymapTranslations so the string stays out of the
+// positional createGamesTranslations arrays.
+const gamesFpsTranslations = {
+  en: { gamesFps: 'Show FPS in games' },
+  zh: { gamesFps: '在游戏中显示 FPS' },
+  ja: { gamesFps: 'ゲームに FPS を表示' },
+  ko: { gamesFps: '게임에 FPS 표시' },
+  es: { gamesFps: 'Mostrar FPS en los juegos' },
+  fr: { gamesFps: 'Afficher les IPS dans les jeux' },
+  de: { gamesFps: 'FPS in Spielen anzeigen' },
+  pt: { gamesFps: 'Mostrar FPS nos jogos' },
+  ru: { gamesFps: 'Показывать FPS в играх' }
+};
+
+function applyGamesFpsMerges(code) {
+  const target = translations[code];
+  const values = gamesFpsTranslations[code];
+  if (!target || !values) return;
+  Object.assign(target, values);
+}
+
 const flappyBirdTranslations = {
   en: {
     gamesFlappyBird: 'Flappy Bird',
@@ -1270,6 +1293,7 @@ function applyLocaleMerges(code) {
   applyGamesReadyMerges(code);
   applyGamesDpadMerges(code);
   applyGamesKeymapMerges(code);
+  applyGamesFpsMerges(code);
   applyFlappyBirdMerges(code);
   applyPacmanMerges(code);
   applyPomodoroMerges(code);

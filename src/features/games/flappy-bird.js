@@ -52,6 +52,9 @@
   let shakeUntil = 0;
   let touchActive = false;
   let suppressClickUntil = 0;
+  // Optional FPS readout (#1036); null while the setting is off. Rides the
+  // animation loop's start/stop so it tracks the active run.
+  let fpsMeter = null;
 
   const t = window.gamesHelpers?.t || function (key) {
     return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key;
@@ -316,6 +319,7 @@
       window.cancelAnimationFrame(rafId);
     }
     rafId = null;
+    fpsMeter?.stop();
   }
 
   function frame(timestamp) {
@@ -352,6 +356,7 @@
     if (typeof window.requestAnimationFrame !== 'function') return;
     lastFrameAt = nowMs();
     rafId = window.requestAnimationFrame(frame);
+    fpsMeter?.start();
   }
 
   function startDeathAnimation() {
@@ -685,6 +690,10 @@
     stage.appendChild(canvas);
     container.appendChild(stage);
 
+    // FPS readout (#1036): mounts only when the setting is on; start/stop
+    // rides the animation loop so it freezes on pause and game over.
+    fpsMeter = window.gamesHelpers?.createFpsMeter?.(stage) || null;
+
     instructionsEl = document.createElement('div');
     instructionsEl.className = 'games-instructions games-flappy-instructions';
     instructionsEl.textContent = tr('gamesFlappyBirdControls');
@@ -741,6 +750,10 @@
     started = false;
     stopAnimation();
     clearStateOverlay();
+    if (fpsMeter) {
+      fpsMeter.destroy();
+      fpsMeter = null;
+    }
 
     document.removeEventListener('keydown', handleKeydown);
     if (canvas) {

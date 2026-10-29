@@ -470,6 +470,10 @@
     "message": "Цифровой блок",
     "description": "Steering keymap option: numpad"
   },
+  "gamesFps": {
+    "message": "Показывать FPS в играх",
+    "description": "Toggle label for showing the FPS readout in games"
+  },
   "gamesPlay": {
     "message": "Играть",
     "description": "Button label to start a game"

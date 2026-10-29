@@ -61,6 +61,7 @@
     'eyeCareReminder',
     'games_enabled',
     'games_keymap',
+    'games_fps_enabled',
     'ai_conversations',
     'ai_current_conversation_id',
     'updateCheckEnabled',
@@ -715,6 +716,7 @@
     // Any string is importable; the games helpers fall back to the default
     // map for an unknown id instead of rejecting the whole backup.
     games_keymap: function (v) { return typeof v === 'string'; },
+    games_fps_enabled: function (v) { return typeof v === 'boolean'; },
     /** Validates the persisted AI conversation collection in a backup. */
     ai_conversations: function (v) {
       return Array.isArray(v) && v.every(isValidAIConversation);

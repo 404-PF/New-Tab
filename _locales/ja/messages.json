@@ -470,6 +470,10 @@
     "message": "テンキー",
     "description": "Steering keymap option: numpad"
   },
+  "gamesFps": {
+    "message": "ゲームに FPS を表示",
+    "description": "Toggle label for showing the FPS readout in games"
+  },
   "gamesPlay": {
     "message": "プレイ",
     "description": "Button label to start a game"

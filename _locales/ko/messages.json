@@ -470,6 +470,10 @@
     "message": "넘패드",
     "description": "Steering keymap option: numpad"
   },
+  "gamesFps": {
+    "message": "게임에 FPS 표시",
+    "description": "Toggle label for showing the FPS readout in games"
+  },
   "gamesPlay": {
     "message": "플레이",
     "description": "Button label to start a game"

@@ -89,6 +89,26 @@ describe('Pac-Man registration and ready state', () => {
   });
 });
 
+describe('Pac-Man FPS readout (#1036)', () => {
+  it('mounts no readout while the setting is off', () => {
+    const container = makeContainer();
+
+    expect(container.querySelector('.games-fps-display')).toBeNull();
+  });
+
+  it('mounts the readout on the stage when the setting is on and tears it down on destroy', () => {
+    localStorage.setItem('games_fps_enabled', 'true');
+    const container = makeContainer();
+
+    const el = container.querySelector('.games-fps-display');
+    expect(el).not.toBeNull();
+    expect(el.closest('.games-pacman-stage')).not.toBeNull();
+
+    getGame().destroy();
+    expect(container.querySelector('.games-fps-display')).toBeNull();
+  });
+});
+
 describe('Pac-Man maze validation', () => {
   it('accepts the built-in maze', () => {
     const result = window.__pacmanTest.validateMaze();

@@ -1701,3 +1701,44 @@ describe('Games steering keymap setting (#1023)', () => {
     expect(window.gamesHelpers.parseDirection({ code: 'KeyI' })).toBe('up');
   });
 });
+
+describe('Games FPS readout setting (#1036)', () => {
+  const checkbox = () => document.getElementById('games-fps-setting');
+
+  it('loadGamesFps defaults to off and reads the persisted preference', () => {
+    localStorage.removeItem('games_fps_enabled');
+    expect(loadGamesFps()).toBe(false);
+
+    localStorage.setItem('games_fps_enabled', 'true');
+    expect(loadGamesFps()).toBe(true);
+
+    localStorage.setItem('games_fps_enabled', 'false');
+    expect(loadGamesFps()).toBe(false);
+  });
+
+  it('toggling the checkbox persists the preference and syncs the control', () => {
+    const box = checkbox();
+
+    box.checked = true;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('games_fps_enabled')).toBe('true');
+    expect(loadGamesFps()).toBe(true);
+    expect(box.checked).toBe(true);
+
+    box.checked = false;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('games_fps_enabled')).toBe('false');
+    expect(loadGamesFps()).toBe(false);
+    expect(box.checked).toBe(false);
+  });
+
+  it('applyGamesFps re-syncs the checkbox from storage', () => {
+    localStorage.setItem('games_fps_enabled', 'true');
+    window.applyGamesFps();
+    expect(checkbox().checked).toBe(true);
+
+    localStorage.setItem('games_fps_enabled', 'false');
+    window.applyGamesFps();
+    expect(checkbox().checked).toBe(false);
+  });
+});

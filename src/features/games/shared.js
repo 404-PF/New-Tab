@@ -24,6 +24,31 @@
     };
   }
 
+  // The FPS readout is opt-in (#1036): default off, persisted under
+  // `games_fps_enabled` (bridged to chrome.storage.local) with the same
+  // localStorage try/catch pattern as isEnabled.
+  if (!window.gamesHelpers.isFpsEnabled) {
+    window.gamesHelpers.isFpsEnabled = function () {
+      try {
+        return localStorage.getItem('games_fps_enabled') === 'true';
+      } catch (_err) {
+        return false;
+      }
+    };
+  }
+
+  if (!window.gamesHelpers.setFpsEnabled) {
+    window.gamesHelpers.setFpsEnabled = function (enabled) {
+      const on = !!enabled;
+      try {
+        localStorage.setItem('games_fps_enabled', on ? 'true' : 'false');
+      } catch (_err) {
+        // ignore storage errors
+      }
+      return on;
+    };
+  }
+
   // Translate a key, falling back to the key itself when it has no message.
   window.gamesHelpers.tr = function (key) {
     return window.gamesHelpers.t(key) || key;
@@ -354,6 +379,82 @@
     document.addEventListener('keydown', onKeydown);
 
     return { start: start, remove: remove };
+  };
+
+  // Optional real-time FPS readout for the animation-driven games (#1036).
+  // The meter owns its own requestAnimationFrame sample loop, so games only
+  // mount/start/stop/destroy it and never feed it frames. The on-screen
+  // value refreshes at most every FPS_UPDATE_MS from a rolling average of
+  // recent frame deltas, which smooths per-frame jitter, and every delta is
+  // clamped so a throttled/backgrounded stretch cannot flash a bogus value
+  // on return. Returns { element, start, stop, destroy } when the
+  // `games_fps_enabled` setting is on, or null when it is off (or when
+  // parentEl / requestAnimationFrame is unavailable), so games can mount
+  // unconditionally and treat null as "feature disabled".
+  const FPS_UPDATE_MS = 250;
+  const FPS_SAMPLE_WINDOW = 30;
+  const FPS_MAX_DELTA_MS = 250;
+  window.gamesHelpers.createFpsMeter = function (parentEl) {
+    if (!parentEl || typeof window.requestAnimationFrame !== 'function') return null;
+    if (!window.gamesHelpers.isFpsEnabled()) return null;
+
+    const el = document.createElement('div');
+    el.className = 'games-fps-display';
+    // A live-updating counter would flood screen readers; it is a
+    // diagnostic overlay, not content.
+    el.setAttribute('aria-hidden', 'true');
+    parentEl.appendChild(el);
+
+    let rafId = null;
+    let lastAt = null;
+    let lastTextAt = 0;
+    let deltaSum = 0;
+    const deltas = [];
+
+    function frame(at) {
+      // Re-arm before sampling so a stop/destroy from a game callback
+      // mid-frame cancels the pending frame instead of resurrecting it.
+      rafId = window.requestAnimationFrame(frame);
+      if (typeof at !== 'number') at = window.gamesHelpers.nowMs();
+      if (lastAt !== null) {
+        const delta = Math.min(Math.max(at - lastAt, 0), FPS_MAX_DELTA_MS);
+        deltas.push(delta);
+        deltaSum += delta;
+        while (deltas.length > FPS_SAMPLE_WINDOW) {
+          deltaSum -= deltas.shift();
+        }
+        if (deltas.length >= 2 && at - lastTextAt >= FPS_UPDATE_MS) {
+          const avg = deltaSum / deltas.length;
+          el.textContent = (avg > 0 ? Math.round(1000 / avg) : 0) + ' FPS';
+          lastTextAt = at;
+        }
+      }
+      lastAt = at;
+    }
+
+    function start() {
+      if (rafId !== null) return;
+      lastAt = null;
+      lastTextAt = 0;
+      deltaSum = 0;
+      deltas.length = 0;
+      rafId = window.requestAnimationFrame(frame);
+    }
+
+    function stop() {
+      if (rafId !== null && typeof window.cancelAnimationFrame === 'function') {
+        window.cancelAnimationFrame(rafId);
+      }
+      rafId = null;
+      lastAt = null;
+    }
+
+    function destroy() {
+      stop();
+      el.remove();
+    }
+
+    return { element: el, start: start, stop: stop, destroy: destroy };
   };
 
   // Pointer-based swipe steering (#1019). Resolves a direction as soon as the

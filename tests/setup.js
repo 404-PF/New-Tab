@@ -670,6 +670,7 @@ globalThis.window.i18n = {
       gamesKeymapWasd: 'Arrow keys + WASD',
       gamesKeymapIjkl: 'IJKL',
       gamesKeymapNumpad: 'Numpad',
+      gamesFps: 'Show FPS in games',
       accessibilityCalendar: 'Calendar',
       accessibilityApp: 'App',
       accessibilityAppActions: 'App actions',
@@ -884,6 +885,7 @@ const gamesKeymapSelect = createStubElement('select', 'games-keymap-setting');
   gamesKeymapSelect.appendChild(option);
 });
 document.body.appendChild(gamesKeymapSelect);
+document.body.appendChild(createStubElement('input', 'games-fps-setting'));
 document.body.appendChild(createStubElement('input', 'weather-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'weather-unit-celsius'));
 document.body.appendChild(createStubElement('input', 'weather-unit-fahrenheit'));

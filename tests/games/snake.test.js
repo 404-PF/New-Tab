@@ -102,6 +102,40 @@ describe('Snake Game', () => {
   });
 });
 
+describe('Snake FPS readout (#1036)', () => {
+  afterEach(() => {
+    localStorage.removeItem('games_fps_enabled');
+  });
+
+  it('mounts no readout while the setting is off', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+
+    expect(container.querySelector('.games-fps-display')).toBeNull();
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('mounts the readout on the stage when the setting is on and tears it down on destroy', () => {
+    localStorage.setItem('games_fps_enabled', 'true');
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+
+    const el = container.querySelector('.games-fps-display');
+    expect(el).not.toBeNull();
+    expect(el.closest('.games-snake-stage')).not.toBeNull();
+
+    game.destroy();
+    expect(container.querySelector('.games-fps-display')).toBeNull();
+    container.remove();
+  });
+});
+
 describe('Snake ready state (#597)', () => {
   it('shows a ready screen on init and does not start until the player starts', () => {
     const container = document.createElement('div');

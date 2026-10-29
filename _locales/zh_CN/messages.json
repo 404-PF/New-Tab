@@ -470,6 +470,10 @@
     "message": "小键盘",
     "description": "Steering keymap option: numpad"
   },
+  "gamesFps": {
+    "message": "在游戏中显示 FPS",
+    "description": "Toggle label for showing the FPS readout in games"
+  },
   "gamesPlay": {
     "message": "开始",
     "description": "Button label to start a game"

@@ -50,6 +50,9 @@
   let started = false;
   let readyScreen = null;
   let bgCache = null;
+  // Optional FPS readout (#1036); null while the setting is off. Lives on
+  // the tick loop's start/stop choke points so it tracks the active run.
+  let fpsMeter = null;
 
   // ===================== Helpers =====================
 
@@ -338,6 +341,7 @@
     }
     logicFrame = null;
     logicAccumulatorMs = 0;
+    fpsMeter?.stop();
   }
 
   function startTick() {
@@ -346,6 +350,7 @@
     logicAccumulatorMs = 0;
     logicLastAt = null;
     logicFrame = window.requestAnimationFrame(stepLogic);
+    fpsMeter?.start();
   }
 
   // ===================== Drawing =====================
@@ -961,6 +966,10 @@
     stage.appendChild(canvas);
     container.appendChild(stage);
 
+    // FPS readout (#1036): mounts only when the setting is on; start/stop
+    // rides the tick loop so it freezes on pause and game over.
+    fpsMeter = window.gamesHelpers?.createFpsMeter?.(stage) || null;
+
     // Pointer swipes steer as soon as they cross the threshold (#1019); the
     // touch-only D-pad (hidden on fine-pointer devices by CSS) queues the
     // same turns for thumbs that cannot reach the board.
@@ -1032,6 +1041,10 @@
     started = false;
     stopTick();
     stopAnimation();
+    if (fpsMeter) {
+      fpsMeter.destroy();
+      fpsMeter = null;
+    }
     document.removeEventListener('keydown', handleKeydown);
     if (swipeSteering) {
       swipeSteering.destroy();
