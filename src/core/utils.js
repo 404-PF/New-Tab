@@ -459,8 +459,15 @@
 
       if (wasVisible !== this.isVisible) {
         // Snapshot the callback list so unsubscribe/remove logic during one
-        // handler does not skip the next subscriber.
-        this.callbacks.slice().forEach(cb => cb(this.isVisible));
+        // handler does not skip the next subscriber. Guard each callback so
+        // one throwing subscriber cannot starve the rest.
+        this.callbacks.slice().forEach(cb => {
+          try {
+            cb(this.isVisible);
+          } catch (error) {
+            console.error('visibilityManager subscriber error:', error);
+          }
+        });
       }
     },
 
@@ -505,7 +512,7 @@
       this.intervalId = null;
       this.isRunning = false;
 
-      if (runImmediately) callback();
+      if (runImmediately) this.runCallback();
 
       this.start();
 
@@ -514,22 +521,26 @@
         if (visible) {
           this.start();
           // Sync immediately when becoming visible
-          if (runOnResume) callback();
+          if (runOnResume) this.runCallback();
         } else {
           this.stop();
         }
       });
     }
 
+    runCallback() {
+      try {
+        this.callback();
+      } catch (error) {
+        console.error('VisibilityInterval callback error:', error);
+      }
+    }
+
     start() {
       if (this.isRunning || !visibilityManager.isVisible) return;
       this.isRunning = true;
       this.intervalId = setInterval(() => {
-        try {
-          this.callback();
-        } catch (error) {
-          console.error('VisibilityInterval callback error:', error);
-        }
+        this.runCallback();
       }, this.interval);
     }
 

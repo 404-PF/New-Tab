@@ -475,6 +475,76 @@ describe('VisibilityInterval', () => {
     }
   });
 
+  it('catches and logs a throwing runImmediately constructor callback and still starts', () => {
+    vi.useFakeTimers();
+
+    const error = new Error('constructor failure');
+    const callback = vi.fn()
+      .mockImplementationOnce(() => {
+        throw error;
+      });
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let interval;
+
+    try {
+      interval = new VisibilityInterval(callback, 1000, true);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(consoleError).toHaveBeenCalledWith('VisibilityInterval callback error:', error);
+      expect(interval.isRunning).toBe(true);
+
+      vi.advanceTimersByTime(1000);
+      expect(callback).toHaveBeenCalledTimes(2);
+      expect(interval.isRunning).toBe(true);
+    } finally {
+      if (interval) interval.destroy();
+      consoleError.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('catches and logs a throwing runOnResume callback without starving later visibility subscribers', () => {
+    vi.useFakeTimers();
+
+    const error = new Error('resume failure');
+    const originalHiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
+    const callback = vi.fn()
+      .mockImplementationOnce(() => {
+        throw error;
+      });
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const laterSubscriber = vi.fn();
+    let interval;
+    let unsubscribe;
+
+    try {
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      interval = new VisibilityInterval(callback, 1000);
+      unsubscribe = visibilityManager.onChange(laterSubscriber);
+
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(consoleError).toHaveBeenCalledWith('VisibilityInterval callback error:', error);
+      expect(laterSubscriber).toHaveBeenCalledWith(true);
+    } finally {
+      if (unsubscribe) unsubscribe();
+      if (interval && typeof interval.destroy === 'function') interval.destroy();
+
+      if (originalHiddenDescriptor) {
+        Object.defineProperty(document, 'hidden', originalHiddenDescriptor);
+      } else {
+        delete document.hidden;
+      }
+      consoleError.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   const visibilityResumeCases = [
     {
       name: 'visibilitychange',
@@ -580,6 +650,41 @@ describe('VisibilityInterval', () => {
 describe('visibilityManager', () => {
   it('is globally available', () => {
     expect(typeof visibilityManager).toBe('object');
+  });
+
+  it('still notifies later subscribers when an earlier subscriber throws', () => {
+    const originalHiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const error = new Error('subscriber failure');
+    const throwingSubscriber = vi.fn(() => {
+      throw error;
+    });
+    const laterSubscriber = vi.fn();
+    let unsubscribeThrowing;
+    let unsubscribeLater;
+
+    try {
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      unsubscribeThrowing = visibilityManager.onChange(throwingSubscriber);
+      unsubscribeLater = visibilityManager.onChange(laterSubscriber);
+
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(throwingSubscriber).toHaveBeenCalledWith(false);
+      expect(laterSubscriber).toHaveBeenCalledWith(false);
+      expect(consoleError).toHaveBeenCalledWith('visibilityManager subscriber error:', error);
+    } finally {
+      if (unsubscribeThrowing) unsubscribeThrowing();
+      if (unsubscribeLater) unsubscribeLater();
+
+      if (originalHiddenDescriptor) {
+        Object.defineProperty(document, 'hidden', originalHiddenDescriptor);
+      } else {
+        delete document.hidden;
+      }
+      consoleError.mockRestore();
+    }
   });
 });
 
