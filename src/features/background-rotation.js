@@ -48,8 +48,10 @@
       const raw = localStorage.getItem(ROTATION_SELECTION_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
+      // Keep an empty array distinct from "never configured" (null): an
+      // explicit empty selection means rotate nothing, not rotate everything.
       if (Array.isArray(parsed)) {
-        return parsed.length > 0 ? parsed : null;
+        return parsed;
       }
       return null;
     } catch (err) {
