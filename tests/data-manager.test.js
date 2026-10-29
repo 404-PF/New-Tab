@@ -389,16 +389,21 @@ describe('DataManager eye-care/games/search-history settings', () => {
   it('merges per-game stats keeping the higher score, and replaces shared saves (issue #1068)', async () => {
     localStorage.setItem('games_stats', JSON.stringify({
       snake: { highScore: 500, gamesPlayed: 10 },
-      '2048': { highScore: 4096, gamesPlayed: 7 }
+      '2048': { highScore: 4096, gamesPlayed: 7 },
+      memory: { bestMoves: 12, bestTime: 30000, gamesPlayed: 4 },
+      pacman: { highScore: 900, gamesPlayed: 2 }
     }));
     localStorage.setItem('games_saves', JSON.stringify({
-      snake: { state: { score: 10 }, savedAt: 1700000000000 }
+      snake: { state: { score: 10 }, savedAt: 1700000000000 },
+      pacman: { state: { score: 1200 }, savedAt: 1700000000500 }
     }));
 
     await importBackup({
       games_stats: {
         snake: { highScore: 100, gamesPlayed: 15 },
-        tetris: { highScore: 300, gamesPlayed: 2 }
+        tetris: { highScore: 300, gamesPlayed: 2 },
+        memory: { bestMoves: 20, bestTime: 25000, gamesPlayed: 1 },
+        pacman: 'bogus'
       },
       games_saves: {
         snake: { state: { score: 40 }, savedAt: 1700000001000 },
@@ -408,15 +413,20 @@ describe('DataManager eye-care/games/search-history settings', () => {
 
     // A backup with a lower best score cannot drop a local high score;
     // gamesPlayed takes the larger count. Local-only ids are untouched.
+    // Memory's bestMoves/bestTime keep the lower value per field, and a
+    // malformed imported entry cannot erase valid local stats.
     expect(JSON.parse(localStorage.getItem('games_stats'))).toEqual({
       snake: { highScore: 500, gamesPlayed: 15 },
       '2048': { highScore: 4096, gamesPlayed: 7 },
+      memory: { bestMoves: 12, bestTime: 25000, gamesPlayed: 4 },
+      pacman: { highScore: 900, gamesPlayed: 2 },
       tetris: { highScore: 300, gamesPlayed: 2 }
     });
     // Saves have no cumulative fields: the imported snapshot replaces the
-    // local entry for a shared id, and local-only ids would survive.
+    // local entry for a shared id, and local-only ids survive the merge.
     expect(JSON.parse(localStorage.getItem('games_saves'))).toEqual({
       snake: { state: { score: 40 }, savedAt: 1700000001000 },
+      pacman: { state: { score: 1200 }, savedAt: 1700000000500 },
       tetris: { state: { score: 5 }, savedAt: 1700000002000 }
     });
   });

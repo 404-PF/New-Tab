@@ -1240,9 +1240,10 @@
                   const localOk = localEntry && typeof localEntry === 'object' && !Array.isArray(localEntry);
                   const incOk = incEntry && typeof incEntry === 'object' && !Array.isArray(incEntry);
                   if (!localOk || !incOk) {
-                    // Nothing comparable on one side: take the imported
-                    // value as-is, matching the generic object merge.
-                    mergedStats[id] = incEntry;
+                    // Nothing comparable on one side: take a valid imported
+                    // value as-is, matching the generic object merge. A
+                    // malformed imported entry never erases a valid local one.
+                    if (incOk) mergedStats[id] = incEntry;
                     return;
                   }
                   const mergedEntry = Object.assign({}, localEntry, incEntry);
@@ -1250,6 +1251,16 @@
                     const localVal = localEntry[field];
                     const incVal = incEntry[field];
                     if (Number.isFinite(localVal) && (!Number.isFinite(incVal) || localVal > incVal)) {
+                      mergedEntry[field] = localVal;
+                    }
+                  });
+                  // Memory records bestMoves/bestTime with Math.min (lower is
+                  // better), so a worse (higher) imported result must not
+                  // replace a local best.
+                  ['bestMoves', 'bestTime'].forEach(function (field) {
+                    const localVal = localEntry[field];
+                    const incVal = incEntry[field];
+                    if (Number.isFinite(localVal) && (!Number.isFinite(incVal) || localVal < incVal)) {
                       mergedEntry[field] = localVal;
                     }
                   });
