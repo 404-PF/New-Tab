@@ -3021,6 +3021,21 @@ describe('Todo import refresh (issue #824)', () => {
     expect(stored[0].recurrence).toBeNull();
     expect(stored[0].dueTime).toBeNull();
   });
+
+  it('reloadTodosState re-reads the imported sort preference and syncs the selector', () => {
+    addTodo('Existing todo');
+    setTodoSort('due');
+    expect(getTodoSort()).toBe('due');
+
+    // Simulate a settings import replacing the stored sort preference.
+    localStorage.setItem('todoSortOrder', 'priority');
+    reloadTodosState();
+
+    expect(getTodoSort()).toBe('priority');
+    expect(document.getElementById('todo-sort-select').value).toBe('priority');
+    // The refresh must not rewrite the value the import just persisted.
+    expect(localStorage.getItem('todoSortOrder')).toBe('priority');
+  });
 });
 
 describe('Todo multi-select and bulk actions (issue #942)', () => {

@@ -1341,6 +1341,20 @@ describe('DataManager todo sort preference (issue #1056)', () => {
     } }).valid).toBe(false);
   });
 
+  it('validates todoSortOrder against window.TODO_SORT_MODES when todo.js is loaded', () => {
+    const original = window.TODO_SORT_MODES;
+    window.TODO_SORT_MODES = ['manual', 'az'];
+    try {
+      const shape = window.DataManager.EXPECTED_SHAPES.todoSortOrder;
+      expect(shape('manual')).toBe(true);
+      expect(shape('az')).toBe(true);
+      expect(shape('priority')).toBe(false);
+    } finally {
+      if (original === undefined) delete window.TODO_SORT_MODES;
+      else window.TODO_SORT_MODES = original;
+    }
+  });
+
   it('round-trips todoSortOrder through export and import', async () => {
     localStorage.setItem('todoSortOrder', 'priority');
 
