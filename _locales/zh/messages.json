@@ -726,6 +726,14 @@
     "message": "還沒有便箋。點擊 + 新增一則！",
     "description": "Empty state when no notes exist"
   },
+  "todoSearchPlaceholder": {
+    "message": "搜索待办事项...",
+    "description": "Placeholder text for the todo list search input"
+  },
+  "todoNoResults": {
+    "message": "没有匹配的待办事项。",
+    "description": "Empty state when todos exist but none match the active filters or search"
+  },
   "todoEditRecurrence": {
     "message": "重复",
     "description": "Label"

@@ -875,6 +875,64 @@ body.light-theme .calendar-day.other-month {
   color: #ffffff;
 }
 
+/* Text search next to the sort selector (issue #1060), styled to match
+   the pill/row controls it sits beside. */
+.todo-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.todo-search-icon {
+  position: absolute;
+  left: 12px;
+  width: 14px;
+  height: 14px;
+  color: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.todo-search-input {
+  width: 170px;
+  padding: 8px 14px 8px 32px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  /* Transparent (not none) so forced-colors mode can still render the
+     system focus indicator when the box-shadow ring is suppressed. */
+  outline: 2px solid transparent;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  box-sizing: border-box;
+}
+
+.todo-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.todo-search-input:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(33, 150, 243, 0.3);
+  color: #ffffff;
+}
+
+.todo-search-input:focus {
+  border-color: rgba(33, 150, 243, 0.5);
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+  color: #ffffff;
+}
+
+.todo-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
 /* Quick Actions */
 .quick-actions {
   display: flex;

@@ -414,12 +414,15 @@ window.i18n.__registerLocale('ja', {
   todoSortPriority: '優先度',
   todoSortCreated: '作成日',
   todoSortAz: 'A-Z',
+  // Todo toolbar text search (issue #1060)
+  todoSearchPlaceholder: 'Todoを検索...',
   clearCompletedText: '完了をクリア',
   clearCompletedConfirmTitle: '完了したTodoをクリアしますか？',
   clearCompletedConfirmMessage: '完了したすべてのTodoが完全に削除されます。この操作は元に戻せません。',
   clearCompletedConfirmButton: '完了をクリア',
   emptyStateTitle: 'まだTodoはありません。上で追加してください！',
   emptyStateDesc: '期限を設定して整理しましょう。',
+  todoNoResults: '一致するTodoはありません。',
   // Todo bulk selection toolbar (issue #942)
   bulkActionsLabel: 'Todo 一括操作',
   bulkComplete: '完了としてマーク',

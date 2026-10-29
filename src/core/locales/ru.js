@@ -401,12 +401,15 @@ window.i18n.__registerLocale('ru', {
   todoSortPriority: 'Приоритет',
   todoSortCreated: 'Дата создания',
   todoSortAz: 'A-Z',
+  // Todo toolbar text search (issue #1060)
+  todoSearchPlaceholder: 'Поиск задач...',
   clearCompletedText: 'Очистить завершённые',
   clearCompletedConfirmTitle: 'Очистить завершённые дела?',
   clearCompletedConfirmMessage: 'Это навсегда удалит все завершённые дела. Это действие нельзя отменить.',
   clearCompletedConfirmButton: 'Очистить завершённые',
   emptyStateTitle: 'Пока нет дел. Добавьте одно выше!',
   emptyStateDesc: 'Попробуйте добавить сроки для лучшей организации.',
+  todoNoResults: 'Нет подходящих задач.',
   // Todo bulk selection toolbar (issue #942)
   bulkActionsLabel: 'Массовые действия с задачами',
   bulkComplete: 'Отметить выполненным',

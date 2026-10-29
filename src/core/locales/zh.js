@@ -452,12 +452,15 @@ window.i18n.__registerLocale('zh', {
   todoSortPriority: '优先级',
   todoSortCreated: '创建时间',
   todoSortAz: 'A-Z',
+  // Todo toolbar text search (issue #1060)
+  todoSearchPlaceholder: '搜索待办事项...',
   clearCompletedText: '清除已完成',
   clearCompletedConfirmTitle: '清除已完成的待办事项？',
   clearCompletedConfirmMessage: '这将永久删除所有已完成的待办事项。此操作无法撤消。',
   clearCompletedConfirmButton: '清除已完成',
   emptyStateTitle: '还没有待办事项。在上方添加一个！',
   emptyStateDesc: '尝试添加到期日期以更好地组织。',
+  todoNoResults: '没有匹配的待办事项。',
   // Todo bulk selection toolbar (issue #942)
   bulkActionsLabel: '批量待办操作',
   bulkComplete: '标记完成',

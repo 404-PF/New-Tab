@@ -401,12 +401,15 @@ window.i18n.__registerLocale('es', {
   todoSortPriority: 'Prioridad',
   todoSortCreated: 'Creado',
   todoSortAz: 'A-Z',
+  // Todo toolbar text search (issue #1060)
+  todoSearchPlaceholder: 'Buscar tareas...',
   clearCompletedText: 'Limpiar completadas',
   clearCompletedConfirmTitle: '¿Limpiar tareas completadas?',
   clearCompletedConfirmMessage: 'Esto eliminará permanentemente todas las tareas completadas. Esta acción no se puede deshacer.',
   clearCompletedConfirmButton: 'Limpiar completadas',
   emptyStateTitle: '¡No hay tareas aún. Agrega una arriba!',
   emptyStateDesc: 'Prueba agregar fechas de vencimiento para organizarte mejor.',
+  todoNoResults: 'No hay tareas que coincidan.',
   // Todo bulk selection toolbar (issue #942)
   bulkActionsLabel: 'Acciones masivas de tareas',
   bulkComplete: 'Marcar como completadas',

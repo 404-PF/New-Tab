@@ -401,12 +401,15 @@ window.i18n.__registerLocale('pt', {
   todoSortPriority: 'Prioridade',
   todoSortCreated: 'Criado',
   todoSortAz: 'A-Z',
+  // Todo toolbar text search (issue #1060)
+  todoSearchPlaceholder: 'Buscar tarefas...',
   clearCompletedText: 'Limpar concluídas',
   clearCompletedConfirmTitle: 'Limpar tarefas concluídas?',
   clearCompletedConfirmMessage: 'Isso removerá permanentemente todas as tarefas concluídas. Esta ação não pode ser desfeita.',
   clearCompletedConfirmButton: 'Limpar concluídas',
   emptyStateTitle: 'Nenhuma tarefa ainda. Adicione uma acima!',
   emptyStateDesc: 'Tente adicionar datas de vencimento para se organizar melhor.',
+  todoNoResults: 'Nenhuma tarefa correspondente.',
   // Todo bulk selection toolbar (issue #942)
   bulkActionsLabel: 'Ações em massa de tarefas',
   bulkComplete: 'Marcar como concluída',

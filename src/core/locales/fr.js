@@ -401,12 +401,15 @@ window.i18n.__registerLocale('fr', {
   todoSortPriority: 'Priorité',
   todoSortCreated: 'Créé',
   todoSortAz: 'A-Z',
+  // Todo toolbar text search (issue #1060)
+  todoSearchPlaceholder: 'Rechercher des tâches...',
   clearCompletedText: 'Effacer terminées',
   clearCompletedConfirmTitle: 'Effacer les tâches terminées ?',
   clearCompletedConfirmMessage: 'Cela supprimera définitivement toutes les tâches terminées. Cette action est irréversible.',
   clearCompletedConfirmButton: 'Effacer terminées',
   emptyStateTitle: 'Pas encore de tâches. Ajoutez-en une ci-dessus !',
   emptyStateDesc: 'Essayez d\'ajouter des dates d\'échéance pour mieux vous organiser.',
+  todoNoResults: 'Aucune tâche correspondante.',
   // Todo bulk selection toolbar (issue #942)
   bulkActionsLabel: 'Actions groupées de tâches',
   bulkComplete: 'Marquer comme terminées',

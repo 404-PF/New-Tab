@@ -18,6 +18,18 @@
   const DEFAULT_TODO_SORT = 'due';
   let currentSort = DEFAULT_TODO_SORT;
 
+  // Keyword query for the toolbar search box (issue #1060). Memory only,
+  // matching the Notes scratchpad search; trimmed on write.
+  let todoSearchQuery = '';
+
+  function getTodoSearchQuery() {
+    return todoSearchQuery;
+  }
+
+  function setTodoSearchQuery(query) {
+    todoSearchQuery = (query || '').trim();
+  }
+
   // Multi-select state for the bulk-actions toolbar (issue #942).
   // `selectionAnchorId` is the row the last selection gesture landed on and
   // anchors Shift-click ranges over `filteredTodos`.
@@ -555,6 +567,19 @@
       });
     }
 
+    // Text search (issue #1060). AND with the pill filters: match the todo
+    // text or any subtask text, case-insensitively. The sort below still runs
+    // on whatever survives, so all five sort modes compose unchanged.
+    if (todoSearchQuery) {
+      const query = todoSearchQuery.toLowerCase();
+      filtered = filtered.filter(todo => {
+        const textMatch = typeof todo.text === 'string' && todo.text.toLowerCase().includes(query);
+        const subtaskMatch = Array.isArray(todo.subtasks) &&
+          todo.subtasks.some(subtask => typeof subtask.text === 'string' && subtask.text.toLowerCase().includes(query));
+        return textMatch || subtaskMatch;
+      });
+    }
+
     filtered.sort((a, b) => {
       if (a.completed !== b.completed) {
         return a.completed ? 1 : -1;
@@ -569,6 +594,26 @@
 
     filteredTodos = filtered;
     return filtered;
+  }
+
+  // Distinguish "no todos exist" from "none match the active filters or
+  // search" the way the Notes scratchpad does (issue #1060), so a query that
+  // narrows the list to nothing never claims the list is empty. Called only
+  // from the empty branch of renderTodos.
+  function updateTodoEmptyStateCopy(emptyState) {
+    const noResults = todos.length > 0;
+    const paragraph = emptyState.querySelector('p');
+    if (paragraph) {
+      const key = noResults ? 'todoNoResults' : 'emptyStateTitle';
+      const fallback = noResults ? 'No matching todos.' : 'No todos yet. Add one above!';
+      paragraph.textContent = window.i18n ? window.i18n.t(key) : fallback;
+      // Keeps the language sweep pointed at the variant that is on screen.
+      paragraph.dataset.i18n = key;
+    }
+    const hint = emptyState.querySelector('small');
+    if (hint) {
+      hint.style.display = noResults ? 'none' : '';
+    }
   }
 
   // Render the todo list with FLIP animation for smooth reordering
@@ -593,6 +638,7 @@
 
     // Show/hide empty state
     if (filteredTodos.length === 0) {
+      updateTodoEmptyStateCopy(emptyState);
       emptyState.style.display = 'flex';
       return;
     }
@@ -1461,6 +1507,14 @@ function handleTodoSortChange() {
   setTodoSort(elements.todoSort ? elements.todoSort.value : DEFAULT_TODO_SORT);
 }
 
+// Handle todo search input (issue #1060). Runs the same applyFilters path the
+// pill clicks use so pruneTodoSelection, bulk actions and drag-drop stay
+// consistent with the narrowed view.
+function handleTodoSearchInput(event) {
+  setTodoSearchQuery(event.target.value);
+  applyFilters();
+}
+
 // Clear input fields
 function clearInputs() {
   if (elements.todoInput) elements.todoInput.value = '';
@@ -2313,7 +2367,8 @@ function initTodo() {
     emptyState: document.getElementById('empty-state'),
     filterStatus: document.getElementById('filter-status'),
     todoFilters: document.querySelector('.todo-filters'),
-    todoSort: document.getElementById('todo-sort-select')
+    todoSort: document.getElementById('todo-sort-select'),
+    todoSearch: document.getElementById('todo-search')
   };
 
   // Check if all elements exist
@@ -2363,6 +2418,17 @@ function initTodo() {
   // on every init, which the DOM de-duplicates.
   if (elements.todoSort) {
     elements.todoSort.addEventListener('change', handleTodoSortChange);
+  }
+
+  // Toolbar search box (issue #1060). Re-registration de-duplicates the same
+  // way; re-sync the input with the in-memory query so a re-init (e.g. after
+  // a settings import) never leaves the box out of step with the filter.
+  if (elements.todoSearch) {
+    elements.todoSearch.addEventListener('input', handleTodoSearchInput);
+    elements.todoSearch.placeholder = window.i18n ? window.i18n.t('todoSearchPlaceholder') : 'Search todos...';
+    if (elements.todoSearch.value !== todoSearchQuery) {
+      elements.todoSearch.value = todoSearchQuery;
+    }
   }
 
   // Priority selector buttons
@@ -3015,6 +3081,9 @@ try {
   window.setTodoSort = setTodoSort;
   window.getTodoSort = getTodoSort;
   window.handleTodoSortChange = handleTodoSortChange;
+  window.setTodoSearchQuery = setTodoSearchQuery;
+  window.getTodoSearchQuery = getTodoSearchQuery;
+  window.handleTodoSearchInput = handleTodoSearchInput;
   // Shared with data-manager.js so the import validator stays in sync with
   // the modes todo.js actually supports (issue #1056).
   window.TODO_SORT_MODES = SORT_MODES;

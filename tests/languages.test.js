@@ -341,6 +341,43 @@ describe('Todo sort selector translations (issue #1013)', () => {
   });
 });
 
+const TODO_SEARCH_TRANSLATION_KEYS = [
+  'todoSearchPlaceholder',
+  'todoNoResults'
+];
+
+describe('Todo search translations (issue #1060)', () => {
+  it('defines every todo search string in each supported language', () => {
+    expectTranslationKeys(TODO_SEARCH_TRANSLATION_KEYS);
+  });
+
+  it('includes the todo search strings in every _locales messages.json', () => {
+    expectMessagesJsonKey('todoSearchPlaceholder');
+    expectMessagesJsonKey('todoNoResults');
+  });
+});
+
+describe('Todo no-results empty state sweep (issue #1060)', () => {
+  it('keeps the no-results variant translated when the language changes', async () => {
+    const container = document.createElement('div');
+    container.className = 'empty-state';
+    container.innerHTML = `
+      <p data-i18n="todoNoResults">No matching todos.</p>
+      <small data-i18n="emptyStateDesc">Try adding due dates for better organization.</small>
+    `;
+    document.body.appendChild(container);
+    try {
+      await window.i18n.applyLanguage('de');
+      const paragraph = container.querySelector('p');
+      expect(paragraph.textContent).toBe(window.i18n.getTranslations('de').todoNoResults);
+      await window.i18n.applyLanguage('ja');
+      expect(paragraph.textContent).toBe(window.i18n.getTranslations('ja').todoNoResults);
+    } finally {
+      container.remove();
+    }
+  });
+});
+
 const MISSING_UI_KEY_TRANSLATIONS = [
   'notesEditTooltip',
   'notesPreviewTooltip',

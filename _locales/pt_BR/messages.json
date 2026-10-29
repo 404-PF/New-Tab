@@ -726,6 +726,14 @@
     "message": "Ainda não há notas. Clique em + para adicionar!",
     "description": "Empty state when no notes exist"
   },
+  "todoSearchPlaceholder": {
+    "message": "Buscar tarefas...",
+    "description": "Placeholder text for the todo list search input"
+  },
+  "todoNoResults": {
+    "message": "Nenhuma tarefa correspondente.",
+    "description": "Empty state when todos exist but none match the active filters or search"
+  },
   "todoEditRecurrence": {
     "message": "Repetir",
     "description": "Label"
