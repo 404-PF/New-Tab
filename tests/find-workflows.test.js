@@ -118,6 +118,36 @@ describe('bug-find/feature-find split (#921)', () => {
   });
 });
 
+describe('find-workflows reference the product scope note (#1031)', () => {
+  let bug;
+  let feature;
+
+  beforeAll(() => {
+    bug = readFileSync(BUG_PATH, 'utf-8');
+    feature = readFileSync(FEATURE_PATH, 'utf-8');
+  });
+
+  it('tells both prompts to check docs/SCOPE.md in the Rules list', () => {
+    [bug, feature].forEach((wf) => {
+      const prompt = wf.match(/<<'OPENCODE_PROMPT_EOF_7f3a9c2e'[\s\S]*?OPENCODE_PROMPT_EOF_7f3a9c2e/);
+      expect(prompt).not.toBeNull();
+      expect(prompt[0]).toContain('- Read docs/SCOPE.md (the product scope note)');
+    });
+    expect(bug).toContain('deprioritize findings outside that scope');
+    expect(feature).toContain('skip or deprioritize proposals outside that scope');
+    // The reference is literal text: the quoted heredoc substitutes only the
+    // placeholders listed in the envsubst call, so no new one is needed.
+    expect(bug).not.toContain('${SCOPE_FILE}');
+    expect(feature).not.toContain('${SCOPE_FILE}');
+  });
+
+  it('keeps the existing prompt scope literals intact', () => {
+    expect(feature).toContain('missing features, feature gaps, and unimplemented ideas');
+    expect(feature).toContain('Feature suggestions only');
+    expect(bug).toContain('Find REAL bugs or clear gaps');
+  });
+});
+
 describe('find-workflows refill after mass-close (#1015)', () => {
   let bug;
   let feature;

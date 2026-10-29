@@ -298,6 +298,7 @@ jobs:
           - Propose at most ${PROPOSE_MAX} issues, best first. Fewer is fine; zero is fine if you find nothing real.
           - Every issue must be backed by evidence you actually read: a repo-relative file path, the 1-based line number, and a short verbatim snippet (one line, copied exactly) from at or near that line.
           - No style nits, no speculative refactors, no duplicates of existing issues.
+          - Read docs/SCOPE.md (the product scope note) first: deprioritize findings outside that scope; dashboard work outranks games-hub polish.
           - Labels must come only from: ${LABELS_LIST}
           - Prefer targeted read/glob/grep calls over broad repo-wide greps. Do NOT run git or gh. Do NOT edit any file other than the output file.
           - Work alone: do NOT use the task tool or spawn subagents; read the files yourself.
