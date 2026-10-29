@@ -2,13 +2,14 @@ import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const SCOPE_PATH = resolve(process.cwd(), 'docs/SCOPE.md');
+// Root files link to docs/SCOPE.md; the docs/ mirrors link to the sibling SCOPE.md.
 const LINKED_FROM = [
-  'README.md',
-  'CONTRIBUTING.md',
-  'docs/README.en-US.md',
-  'docs/README.zh-CN.md',
-  'docs/CONTRIBUTING.en.md',
-  'docs/CONTRIBUTING.zh-CN.md'
+  ['README.md', '](docs/SCOPE.md)'],
+  ['CONTRIBUTING.md', '](docs/SCOPE.md)'],
+  ['docs/README.en-US.md', '](SCOPE.md)'],
+  ['docs/README.zh-CN.md', '](SCOPE.md)'],
+  ['docs/CONTRIBUTING.en.md', '](SCOPE.md)'],
+  ['docs/CONTRIBUTING.zh-CN.md', '](SCOPE.md)']
 ];
 
 function read(rel) {
@@ -38,8 +39,8 @@ describe('product scope note (#1031)', () => {
   });
 
   it('is linked from README and CONTRIBUTING, including their en/zh mirrors', () => {
-    LINKED_FROM.forEach((rel) => {
-      expect(read(rel)).toContain('SCOPE.md');
+    LINKED_FROM.forEach(([rel, target]) => {
+      expect(read(rel)).toContain(target);
     });
   });
 });
