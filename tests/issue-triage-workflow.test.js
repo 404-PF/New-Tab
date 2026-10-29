@@ -2,6 +2,7 @@ import { execFileSync } from 'child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
+import { readOpenCodePermission } from './helpers/open-code-permission.js';
 
 const TRIAGE_PATH = resolve(process.cwd(), '.github/workflows/issue-triage.yml');
 
@@ -12,24 +13,6 @@ const TRIAGE_PATH = resolve(process.cwd(), '.github/workflows/issue-triage.yml')
 const CAN_RUN_BASH = process.platform !== 'win32';
 
 const workflow = readFileSync(TRIAGE_PATH, 'utf-8');
-
-function readOpenCodePermission(wf) {
-  const lines = wf.split('\n');
-  const keyIndex = lines.findIndex((line) => /^\s*OPENCODE_PERMISSION: >-/.test(line));
-  if (keyIndex === -1) {
-    throw new Error('OPENCODE_PERMISSION block not found');
-  }
-  const keyIndent = lines[keyIndex].search(/\S/);
-  const block = [];
-  for (let i = keyIndex + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.trim() !== '' && line.search(/\S/) <= keyIndent) {
-      break;
-    }
-    block.push(line.trim());
-  }
-  return JSON.parse(block.join('\n'));
-}
 
 function extractDispositionRule(wf) {
   const match = wf.match(/# --- BEGIN disposition rule ---[\s\S]*?# --- END disposition rule ---/);
@@ -59,7 +42,7 @@ describe('issue-triage verifies claims and disposes via #1026', () => {
     expect(workflow).toContain('never imply you launched the extension');
     expect(workflow).toContain('clearly marked as manual');
     expect(workflow).toContain('the full suite may not fit the generation timeout');
-    expect(workflow).toContain('npx vitest run tests/<file>.test.js');
+    expect(workflow).toContain('npx --no-install vitest run tests/<file>.test.js');
   });
 
   it('renders Disposition as the final comment section with a strict ACTION allowlist', () => {
@@ -91,17 +74,22 @@ describe('issue-triage verifies claims and disposes via #1026', () => {
     expect(perm.bash['gh issue *']).toBe('deny');
     expect(perm.bash['gh label *']).toBe('deny');
     const readOnly = [
-      'grep *', 'rg *', 'ls *', 'cat *', 'head *', 'tail *', 'wc *', 'find *',
+      'grep *', 'ls *', 'wc *',
       'git log *', 'git blame *', 'git grep *', 'git show *', 'git diff *',
-      'node --version', 'npm test', 'npx vitest run *',
+      'node --version', 'npm test', 'npx --no-install vitest run tests/*.test.js',
     ];
     readOnly.forEach((key) => {
       expect(perm.bash[key]).toBe('allow');
     });
+    // No file-dump allows: cat/head/tail/find/rg could read
+    // /proc/self/environ (OPENCODE_API_KEY) or exec via -exec/--pre.
+    ['cat *', 'head *', 'tail *', 'find *', 'rg *'].forEach((key) => {
+      expect(perm.bash[key]).toBeUndefined();
+    });
     // Every allow is one of the sanctioned read-only patterns (the gh allows
     // stay the pre-existing read/single-comment paths, with ${{ }} templated
     // issue numbers normalized out), so no write or network command can slip in.
-    const allowedShape = /^(?:gh issue view N --json title,body,labels,comments|gh issue comment N --body-file \*|gh label list \*|(?:grep|rg|ls|cat|head|tail|wc|find) \*|git (?:log|blame|grep|show|diff) \*|node --version|npm test|npx vitest run \*)$/;
+    const allowedShape = /^(?:gh issue view N --json title,body,labels,comments|gh issue comment N --body-file \*|gh label list \*|grep \*|ls \*|wc \*|git (?:log|blame|grep|show|diff) \*|node --version|npm test|npx --no-install vitest run tests\/\*.test\.js)$/;
     Object.entries(perm.bash)
       .filter(([, verdict]) => verdict === 'allow')
       .map(([command]) => command.replace(/\$\{\{[^}]*\}\}/g, 'N'))
@@ -110,6 +98,15 @@ describe('issue-triage verifies claims and disposes via #1026', () => {
       });
     // bash must stay present: the free-tier gate rejects tool arrays without it.
     expect(workflow).toContain('free-tier gate rejects requests whose tools array lacks');
+  });
+
+  it('installs the reviewed lockfile before generation so npx never hits the registry', () => {
+    const installIdx = workflow.indexOf('npm ci --ignore-scripts');
+    const generateIdx = workflow.indexOf('- name: Generate triage draft with OpenCode');
+    expect(installIdx).toBeGreaterThan(-1);
+    expect(installIdx).toBeLessThan(generateIdx);
+    // The scoped run must be offline: --no-install plus a tests/*.test.js path.
+    expect(workflow).toContain('"npx --no-install vitest run tests/*.test.js": "allow"');
   });
 
   it('keeps generation credential-free', () => {
@@ -126,6 +123,10 @@ describe('issue-triage verifies claims and disposes via #1026', () => {
     expect(post[0]).toMatch(/secret material/);
     expect(post[0]).toContain('grep -q -E \'^### Verification[[:space:]]*$\' "$BODY_FILE"');
     expect(post[0]).toContain('grep -q -E \'^### Disposition[[:space:]]*$\' "$BODY_FILE"');
+    // Generation keeps OPENCODE_API_KEY in its env, so the single publication
+    // path must refuse a draft that contains the literal key.
+    expect(post[0]).toContain('OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}');
+    expect(post[0]).toContain('grep -qF -- "$OPENCODE_API_KEY" "$BODY_FILE"');
     // Exactly one publication path: the failure report uses --body, so only
     // the Post step may ever post the draft itself.
     const publications = [...workflow.matchAll(/gh issue comment "\$ISSUE_NUMBER" --repo "\$GH_REPO" --body-file/g)];
@@ -185,6 +186,10 @@ describe('issue-triage verifies claims and disposes via #1026', () => {
     expect(disposition[0]).toContain('LABEL=\'invalid\'');
     expect(disposition[0]).toContain('LABEL=\'wontfix\'');
     expect(disposition[0]).toContain('LABEL=\'question\'');
+    // gh issue close --reason takes "not planned" (with a space); the
+    // underscore form is rejected by the CLI and would fail after labeling.
+    expect(disposition[0]).toContain('GH_REASON=\'not planned\'');
+    expect(disposition[0]).not.toContain('not_planned');
     expect(disposition[0]).toMatch(/gh issue close "\$ISSUE_NUMBER" --repo "\$GH_REPO" --reason "\$GH_REASON"/);
     expect(disposition[0]).toContain('Evidence: see the issue-triage comment above');
     // needs-info labels but never closes.
