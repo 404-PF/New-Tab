@@ -279,12 +279,13 @@ describe('DataManager eye-care/games/search-history settings', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('eyeCareReminder');
     expect(window.DataManager.EXPORT_KEYS).toContain('games_enabled');
     expect(window.DataManager.EXPORT_KEYS).toContain('games_keymap');
+    expect(window.DataManager.EXPORT_KEYS).toContain('games_fps_enabled');
     expect(window.DataManager.EXPORT_KEYS).toContain('searchHistoryEnabled');
   });
 
   it('validates the shape of the new keys', () => {
     expect(window.DataManager.validateImportData({ version: 1, data: {
-      eyeCareReminder: EYE_CARE_SETTINGS, games_enabled: false, games_keymap: 'ijkl', searchHistoryEnabled: true
+      eyeCareReminder: EYE_CARE_SETTINGS, games_enabled: false, games_keymap: 'ijkl', games_fps_enabled: true, searchHistoryEnabled: true
     } })).toEqual({ valid: true });
     // Objects carrying legacy/runtime fields stay importable; applyData
     // strips them at write time.
@@ -292,6 +293,7 @@ describe('DataManager eye-care/games/search-history settings', () => {
 
     expect(window.DataManager.EXPECTED_SHAPES.games_enabled(true)).toBe(true);
     expect(window.DataManager.EXPECTED_SHAPES.games_keymap('wasd')).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_fps_enabled(true)).toBe(true);
     expect(window.DataManager.EXPECTED_SHAPES.searchHistoryEnabled(false)).toBe(true);
 
     expect(window.DataManager.EXPECTED_SHAPES.eyeCareReminder(null)).toBe(false);
@@ -301,6 +303,8 @@ describe('DataManager eye-care/games/search-history settings', () => {
     expect(window.DataManager.EXPECTED_SHAPES.eyeCareReminder({ ...EYE_CARE_SETTINGS, intervalMinutes: 25 })).toBe(false);
     expect(window.DataManager.EXPECTED_SHAPES.eyeCareReminder({ ...EYE_CARE_SETTINGS, browserNotification: 1 })).toBe(false);
     expect(window.DataManager.EXPECTED_SHAPES.games_enabled('true')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_fps_enabled('true')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_fps_enabled(null)).toBe(false);
     // The games helpers normalize an unknown keymap id at read time, so any
     // string stays importable — only non-strings are rejected.
     expect(window.DataManager.EXPECTED_SHAPES.games_keymap(true)).toBe(false);

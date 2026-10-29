@@ -406,6 +406,8 @@ const testGlobals = {
   applyGamesEnabled: 'readonly',
   loadGamesKeymap: 'readonly',
   applyGamesKeymap: 'readonly',
+  loadGamesFps: 'readonly',
+  applyGamesFps: 'readonly',
   CURRENT_VERSION_DISPLAY: 'readonly',
   startPomodoro: 'readonly',
   stopPomodoro: 'readonly',

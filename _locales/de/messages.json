@@ -470,6 +470,10 @@
     "message": "Ziffernblock",
     "description": "Steering keymap option: numpad"
   },
+  "gamesFps": {
+    "message": "FPS in Spielen anzeigen",
+    "description": "Toggle label for showing the FPS readout in games"
+  },
   "gamesPlay": {
     "message": "Spielen",
     "description": "Button label to start a game"

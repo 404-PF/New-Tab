@@ -123,6 +123,9 @@
   let gameOver = false;
   let rafId = null;
   let lastFrameAt = 0;
+  // Optional FPS readout (#1036); null while the setting is off. Rides the
+  // animation loop's start/stop so it tracks the active run.
+  let fpsMeter = null;
 
   const { tr, nowMs } = window.gamesHelpers;
 
@@ -912,6 +915,7 @@
   function stopAnimation() {
     if (rafId !== null) window.cancelAnimationFrame?.(rafId);
     rafId = null;
+    fpsMeter?.stop();
   }
 
   function frame(timestamp) {
@@ -930,6 +934,7 @@
     if (typeof window.requestAnimationFrame !== 'function') return;
     lastFrameAt = nowMs();
     rafId = window.requestAnimationFrame(frame);
+    fpsMeter?.start();
   }
 
   // ===================== Save / restore =====================
@@ -1268,6 +1273,10 @@
     stage.appendChild(canvas);
     container.appendChild(stage);
 
+    // FPS readout (#1036): mounts only when the setting is on; start/stop
+    // rides the animation loop so it freezes on pause and game over.
+    fpsMeter = window.gamesHelpers?.createFpsMeter?.(stage) || null;
+
     // Pointer swipes steer as soon as they cross the threshold (#1019); the
     // touch-only D-pad (hidden on fine-pointer devices by CSS) queues the
     // same turns for thumbs that cannot reach the maze.
@@ -1337,6 +1346,10 @@
     started = false;
     stopAnimation();
     stateOverlay.clear();
+    if (fpsMeter) {
+      fpsMeter.destroy();
+      fpsMeter = null;
+    }
 
     toggleInputListeners(false);
 

@@ -50,6 +50,9 @@
   let started = false;
   let readyScreen = null;
   let bgCache = null;
+  // Optional FPS readout (#1036); null while the setting is off. Lives on
+  // the tick loop's start/stop choke points so it tracks the active run.
+  let fpsMeter = null;
 
   // ===================== Helpers =====================
 
@@ -665,6 +668,10 @@
   function startAnimation() {
     if (animFrame === null && !reducedMotion() && typeof window.requestAnimationFrame === 'function') {
       animFrame = window.requestAnimationFrame(animate);
+      // Track actual rendered frames: under reduced motion there is no
+      // render loop, so the meter stays off rather than reporting the
+      // browser RAF rate of the logic loop.
+      fpsMeter?.start();
     }
   }
 
@@ -673,6 +680,7 @@
       window.cancelAnimationFrame(animFrame);
     }
     animFrame = null;
+    fpsMeter?.stop();
   }
 
   function restart() {
@@ -961,6 +969,11 @@
     stage.appendChild(canvas);
     container.appendChild(stage);
 
+    // FPS readout (#1036): mounts only when the setting is on; start/stop
+    // rides the render loop so it freezes on pause and game over, and stays
+    // off under reduced motion where there is no per-frame render loop.
+    fpsMeter = window.gamesHelpers?.createFpsMeter?.(stage) || null;
+
     // Pointer swipes steer as soon as they cross the threshold (#1019); the
     // touch-only D-pad (hidden on fine-pointer devices by CSS) queues the
     // same turns for thumbs that cannot reach the board.
@@ -1032,6 +1045,10 @@
     started = false;
     stopTick();
     stopAnimation();
+    if (fpsMeter) {
+      fpsMeter.destroy();
+      fpsMeter = null;
+    }
     document.removeEventListener('keydown', handleKeydown);
     if (swipeSteering) {
       swipeSteering.destroy();

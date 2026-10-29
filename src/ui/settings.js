@@ -2185,6 +2185,35 @@ if (gamesKeymapSetting) {
   });
 }
 
+// Games FPS readout (#1036). The readout mounts per game launch, so the
+// checkbox only persists the preference; the overlay appears (or disappears)
+// the next time a game starts.
+function loadGamesFps() {
+  try {
+    return localStorage.getItem('games_fps_enabled') === 'true';
+  } catch (_e) {
+    return false;
+  }
+}
+function applyGamesFps(enabledOverride) {
+  const enabled = typeof enabledOverride === 'boolean' ? enabledOverride : loadGamesFps();
+  const checkbox = document.getElementById('games-fps-setting');
+  if (checkbox) checkbox.checked = enabled;
+}
+const gamesFpsSetting = document.getElementById('games-fps-setting');
+if (gamesFpsSetting) {
+  applyGamesFps();
+  gamesFpsSetting.addEventListener('change', function () {
+    const enabled = this.checked;
+    try {
+      localStorage.setItem('games_fps_enabled', enabled);
+    } catch (_e) {
+      // ignore storage errors
+    }
+    applyGamesFps(enabled);
+  });
+}
+
 // Settings menu logic
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];
@@ -2480,6 +2509,7 @@ function initSettings() {
   applyNotesEnabled();
   applyGamesEnabled();
   applyGamesKeymap();
+  applyGamesFps();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
   applyBgOverlaySettings();
@@ -2559,6 +2589,8 @@ window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;
 window.applyGamesKeymap = applyGamesKeymap;
 window.loadGamesKeymap = loadGamesKeymap;
+window.applyGamesFps = applyGamesFps;
+window.loadGamesFps = loadGamesFps;
 window.initSettings = initSettings;
 window.resolveFontAlias = resolveFontAlias;
 

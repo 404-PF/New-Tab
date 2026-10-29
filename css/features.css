@@ -3967,6 +3967,30 @@ body.light-theme .games-hub-card-desc {
   padding: 8px 0 4px;
 }
 
+/* Optional real-time FPS readout (#1036), mounted top-right on the stage
+   when the Show FPS setting is on. Hidden while empty (pre-start, paused
+   with no sample yet). */
+.games-fps-display {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 2;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(10, 10, 24, 0.65);
+  color: var(--games-text-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  user-select: none;
+}
+
+.games-fps-display:empty {
+  display: none;
+}
+
 /* Disabled state */
 .games-app-disabled {
   text-align: center;
@@ -4425,6 +4449,11 @@ body.light-theme .games-dpad-btn:active {
 
 /* Consolidated light theme color overrides */
 body.light-theme :is(.games-back-btn, .games-score-display, .games-2048-cell, .games-memory-stats) {
+  color: #0f172a;
+}
+
+body.light-theme .games-fps-display {
+  background: rgba(255, 255, 255, 0.8);
   color: #0f172a;
 }
 

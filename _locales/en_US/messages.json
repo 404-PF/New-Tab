@@ -486,6 +486,10 @@
     "message": "Numpad",
     "description": "Steering keymap option: numpad"
   },
+  "gamesFps": {
+    "message": "Show FPS in games",
+    "description": "Toggle label for showing the FPS readout in games"
+  },
   "gamesPlay": {
     "message": "Play",
     "description": "Button label to start a game"

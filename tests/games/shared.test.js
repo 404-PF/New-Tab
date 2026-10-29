@@ -1182,3 +1182,140 @@ describe('gamesHelpers.createGamepadSteering (#1022)', () => {
     expect(onDirection).not.toHaveBeenCalled();
   });
 });
+
+describe('gamesHelpers FPS meter (#1036)', () => {
+  let pump = null;
+
+  beforeEach(() => {
+    pump = installFramePump();
+    window.gamesHelpers.setFpsEnabled(false);
+  });
+
+  afterEach(() => {
+    window.gamesHelpers.setFpsEnabled(false);
+    pump.restore();
+  });
+
+  function makeStage() {
+    const stage = document.createElement('div');
+    document.body.appendChild(stage);
+    return stage;
+  }
+
+  it('defaults to off, and createFpsMeter returns null while disabled', () => {
+    // The suite setup writes an explicit false; this case is about the
+    // absent-key default, so clear the key first.
+    localStorage.removeItem('games_fps_enabled');
+    expect(localStorage.getItem('games_fps_enabled')).toBeNull();
+    const stage = makeStage();
+    expect(window.gamesHelpers.isFpsEnabled()).toBe(false);
+    expect(window.gamesHelpers.createFpsMeter(stage)).toBeNull();
+    expect(stage.querySelector('.games-fps-display')).toBeNull();
+    expect(pump.pendingCount()).toBe(0);
+    stage.remove();
+  });
+
+  it('persists the preference under games_fps_enabled', () => {
+    expect(window.gamesHelpers.setFpsEnabled(true)).toBe(true);
+    expect(localStorage.getItem('games_fps_enabled')).toBe('true');
+    expect(window.gamesHelpers.isFpsEnabled()).toBe(true);
+
+    expect(window.gamesHelpers.setFpsEnabled(false)).toBe(false);
+    expect(localStorage.getItem('games_fps_enabled')).toBe('false');
+    expect(window.gamesHelpers.isFpsEnabled()).toBe(false);
+  });
+
+  it('renders a throttled rolling-average readout while running and freezes on stop', () => {
+    window.gamesHelpers.setFpsEnabled(true);
+    const stage = makeStage();
+    const meter = window.gamesHelpers.createFpsMeter(stage);
+
+    const el = stage.querySelector('.games-fps-display');
+    expect(meter.element).toBe(el);
+    expect(el.getAttribute('aria-hidden')).toBe('true');
+    // Nothing shows before the first samples land.
+    expect(el.textContent).toBe('');
+
+    meter.start();
+    // 16 ms frames; the first text refresh comes at the 250 ms throttle.
+    pump.step(16);
+    expect(el.textContent).toBe('63 FPS');
+
+    // stop() cancels the loop and the last value stays frozen.
+    meter.stop();
+    expect(pump.pendingCount()).toBe(0);
+    pump.step(10);
+    expect(el.textContent).toBe('63 FPS');
+
+    meter.destroy();
+    expect(stage.querySelector('.games-fps-display')).toBeNull();
+    expect(pump.pendingCount()).toBe(0);
+    stage.remove();
+  });
+
+  it('start() is idempotent, and a restart resamples from a clean window', () => {
+    window.gamesHelpers.setFpsEnabled(true);
+    const stage = makeStage();
+    const meter = window.gamesHelpers.createFpsMeter(stage);
+
+    meter.start();
+    meter.start();
+    expect(pump.pendingCount()).toBe(1);
+    pump.step(20);
+    expect(meter.element.textContent).not.toBe('');
+
+    meter.stop();
+    // Advance the clock while the meter is stopped so a stale timestamp
+    // from before the pause would skew the resumed average.
+    pump.step(20);
+    meter.start();
+    expect(pump.pendingCount()).toBe(1);
+    // A stale timestamp from before the pause must not leak into the
+    // resumed average (the first frame re-anchors instead of sampling).
+    pump.step(16);
+    expect(meter.element.textContent).toBe('63 FPS');
+
+    meter.destroy();
+    stage.remove();
+  });
+
+  it('returns null without requestAnimationFrame', () => {
+    window.gamesHelpers.setFpsEnabled(true);
+    const savedRaf = Object.getOwnPropertyDescriptor(window, 'requestAnimationFrame');
+    delete window.requestAnimationFrame;
+    try {
+      const stage = makeStage();
+      expect(window.gamesHelpers.createFpsMeter(stage)).toBeNull();
+      expect(stage.querySelector('.games-fps-display')).toBeNull();
+      stage.remove();
+    } finally {
+      Object.defineProperty(window, 'requestAnimationFrame', savedRaf);
+    }
+  });
+
+  it('stop() terminates the loop even without cancelAnimationFrame', () => {
+    window.gamesHelpers.setFpsEnabled(true);
+    const stage = makeStage();
+    const meter = window.gamesHelpers.createFpsMeter(stage);
+
+    meter.start();
+    pump.step(5);
+    expect(pump.pendingCount()).toBe(1);
+
+    const savedCancel = Object.getOwnPropertyDescriptor(window, 'cancelAnimationFrame');
+    delete window.cancelAnimationFrame;
+    try {
+      meter.stop();
+      // The pending frame cannot be cancelled; it must die on arrival
+      // instead of re-arming the loop.
+      pump.step(1);
+      expect(pump.pendingCount()).toBe(0);
+    } finally {
+      Object.defineProperty(window, 'cancelAnimationFrame', savedCancel);
+    }
+
+    meter.destroy();
+    expect(pump.pendingCount()).toBe(0);
+    stage.remove();
+  });
+});

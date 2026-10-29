@@ -470,6 +470,10 @@
     "message": "Pavé numérique",
     "description": "Steering keymap option: numpad"
   },
+  "gamesFps": {
+    "message": "Afficher les IPS dans les jeux",
+    "description": "Toggle label for showing the FPS readout in games"
+  },
   "gamesPlay": {
     "message": "Jouer",
     "description": "Button label to start a game"
