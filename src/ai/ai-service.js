@@ -663,6 +663,7 @@ const AIService = (function() {
 
       if (elements.input) {
         elements.input.value = '';
+        AIRenderer.resizeChatInput();
       }
     }
 
@@ -1135,12 +1136,14 @@ const AIService = (function() {
     }
 
     if (elements.input) {
-      elements.input.addEventListener('keypress', event => {
-        if (event.key === 'Enter' && !event.shiftKey) {
+      elements.input.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
           event.preventDefault();
           handleSend();
         }
       });
+
+      elements.input.addEventListener('input', () => AIRenderer.resizeChatInput());
     }
 
     if (elements.scrollToBottomBtn) {

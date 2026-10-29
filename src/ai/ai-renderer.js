@@ -2,6 +2,8 @@
 
 const AIRenderer = (function() {
   const elements = {};
+  const CHAT_INPUT_MAX_HEIGHT = 200;
+  const CHAT_INPUT_BORDER_PX = 2;
   const TRANSLATION_FALLBACKS = {
     aiGroundWithWeb: 'Ground with web',
     aiGroundWithWebDescription: 'Use live web results for current answers.',
@@ -58,6 +60,14 @@ const AIRenderer = (function() {
 
   function getElements() {
     return elements;
+  }
+
+  function resizeChatInput() {
+    const input = elements.input;
+    if (!input) return;
+    input.style.height = 'auto';
+    const targetHeight = input.scrollHeight + CHAT_INPUT_BORDER_PX;
+    input.style.height = Math.min(targetHeight, CHAT_INPUT_MAX_HEIGHT) + 'px';
   }
 
   function hasModal() {
@@ -1115,6 +1125,7 @@ const AIRenderer = (function() {
   return {
     cacheElements,
     getElements,
+    resizeChatInput,
     hasModal,
     initWebGroundingControl,
     updateWebGroundingControl,

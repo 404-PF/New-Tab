@@ -1383,3 +1383,106 @@ describe('AIService regenerate (#997)', () => {
     expect(container.querySelector('.ai-regenerate')).not.toBeNull();
   });
 });
+
+describe('AI chat multi-line composer (#1047)', () => {
+  let input;
+  let conversation;
+
+  const pressEnter = (init = {}) => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+      ...init
+    });
+    input.dispatchEvent(event);
+    return event;
+  };
+
+  const mockScrollHeight = (value) => {
+    Object.defineProperty(input, 'scrollHeight', {
+      configurable: true,
+      get: () => value
+    });
+  };
+
+  beforeEach(() => {
+    input = document.getElementById('ai-chat-input');
+    input.value = '';
+    input.style.height = '';
+    delete input.scrollHeight;
+
+    conversation = {
+      id: 'conv-composer',
+      title: 'Composer',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+  });
+
+  afterEach(() => {
+    input.style.height = '';
+    delete input.scrollHeight;
+  });
+
+  it('sends on Enter, prevents the default, and preserves newlines', () => {
+    input.value = 'function demo() {\n  return true;\n}';
+    OpenRouterAPI.sendMessageStreaming = async () => ({ success: false, error: 'mock API error' });
+
+    const event = pressEnter();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(conversation.messages[0]).toMatchObject({
+      role: 'user',
+      content: 'function demo() {\n  return true;\n}'
+    });
+    expect(input.value).toBe('');
+  });
+
+  it('does not send on Shift+Enter and leaves the newline to the browser', () => {
+    input.value = 'line one';
+
+    const event = pressEnter({ shiftKey: true });
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(conversation.messages).toHaveLength(0);
+    expect(input.value).toBe('line one');
+  });
+
+  it('does not send Enter while an IME composition is active', () => {
+    input.value = 'composition';
+
+    const event = pressEnter({ isComposing: true });
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(conversation.messages).toHaveLength(0);
+    expect(input.value).toBe('composition');
+  });
+
+  it('auto-grows the composer on input events', () => {
+    mockScrollHeight(98);
+    input.value = 'three\nlines\nhere';
+
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(input.style.height).toBe('100px');
+  });
+
+  it('collapses the composer after a send clears it', () => {
+    mockScrollHeight(150);
+    input.value = 'many\nlines\nhere';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(input.style.height).toBe('152px');
+
+    // jsdom has no layout: the empty composer reports a one-line height again.
+    mockScrollHeight(40);
+    OpenRouterAPI.sendMessageStreaming = async () => ({ success: false, error: 'mock API error' });
+    pressEnter();
+
+    expect(input.value).toBe('');
+    expect(input.style.height).toBe('42px');
+  });
+});
