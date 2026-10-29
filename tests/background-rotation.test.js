@@ -782,4 +782,64 @@ describe('Background rotation save failures', () => {
 
     expect(showToast).not.toHaveBeenCalled();
   });
+
+  it('rolls the pool back and toasts once when the homepageBg write fails synchronously', async () => {
+    BackgroundRotation.advance();
+    const first = localStorage.getItem('homepageBg');
+
+    failWritesFor('homepageBg', 'sync');
+    BackgroundRotation.advance();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('homepageBg')).toBe(first);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expect(showToast).toHaveBeenCalledTimes(1);
+
+    restoreStorageSet();
+    restoreStorageSet = null;
+    BackgroundRotation.advance();
+    const second = localStorage.getItem('homepageBg');
+    expect(second).not.toBe(first);
+  });
+
+  it('rolls the pool back and toasts once after an async homepageBg bridge failure', async () => {
+    BackgroundRotation.advance();
+    const first = localStorage.getItem('homepageBg');
+
+    failWritesFor('homepageBg', 'async');
+    BackgroundRotation.advance();
+    restoreStorageSet();
+    restoreStorageSet = null;
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('homepageBg')).toBe(first);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expect(showToast).toHaveBeenCalledTimes(1);
+
+    BackgroundRotation.advance();
+    const second = localStorage.getItem('homepageBg');
+    expect(second).not.toBe(first);
+  });
+
+  it('does not rewind the pool when a non-rotation homepageBg write fails', async () => {
+    BackgroundRotation.advance();
+    const first = localStorage.getItem('homepageBg');
+
+    failWritesFor('homepageBg', 'async');
+    // Simulate the settings page (or an import) writing a different
+    // background: the failure must not rewind the rotation pool.
+    localStorage.setItem('homepageBg', 'Some Other BG');
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(showToast).not.toHaveBeenCalled();
+
+    restoreStorageSet();
+    restoreStorageSet = null;
+    BackgroundRotation.advance();
+    const second = localStorage.getItem('homepageBg');
+    expect(second).not.toBe(first);
+  });
 });

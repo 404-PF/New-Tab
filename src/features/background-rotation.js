@@ -111,6 +111,15 @@
     }
   }
 
+  function saveHomepageBg(id) {
+    try {
+      return isWriteAccepted(localStorage.setItem('homepageBg', id));
+    } catch (err) {
+      console.warn('saveHomepageBg localStorage error:', err);
+      return false;
+    }
+  }
+
   function getAllBackgrounds() {
     const builtin = Array.isArray(window._backgrounds) ? window._backgrounds : [];
     const customApi = window._customBackgrounds;
@@ -161,6 +170,11 @@
 
   let shuffledPool = [];
   let poolIndex = 0;
+  // The rotation advance whose homepageBg write has not settled yet. Async
+  // bridge failures use this to tell a rotation advance apart from settings,
+  // custom-background, and import writers that share the homepageBg key, so
+  // only rotation failures rewind the pool.
+  let pendingAdvance = null;
 
   function getNextBackground() {
     const pool = getRotatableBackgrounds();
@@ -185,16 +199,39 @@
     return false;
   }
 
-  function advanceBackground() {
-    const bg = getNextBackground();
-    if (!bg) return;
-    localStorage.setItem('homepageBg', bg.id);
+  // Rewind the pool so the next advance retries the entry whose write failed.
+  // indexOf guards the async path: the pool may have been reshuffled between
+  // the advance and the failure being reported.
+  function restorePoolIndexFor(bg) {
+    const index = shuffledPool.indexOf(bg);
+    if (index !== -1) {
+      poolIndex = index;
+    }
+  }
+
+  function applyBackgroundUI() {
     if (typeof window.applyBg === 'function') {
       window.applyBg();
     }
     if (typeof window.applyBgOverlaySettings === 'function') {
       window.applyBgOverlaySettings();
     }
+  }
+
+  function advanceBackground() {
+    const bg = getNextBackground();
+    if (!bg) return;
+    pendingAdvance = { bg: bg };
+    if (!saveHomepageBg(bg.id)) {
+      // Synchronous rejection: roll back now. The bridge also dispatches
+      // storageBridgeWriteError for this write, but its deferred handler
+      // finds pendingAdvance cleared and stays silent, so the toast fires
+      // exactly once.
+      pendingAdvance = null;
+      restorePoolIndexFor(bg);
+      showRotationSaveError();
+    }
+    applyBackgroundUI();
   }
 
   function startRotation() {
@@ -248,6 +285,7 @@
     }
     shuffledPool = [];
     poolIndex = 0;
+    pendingAdvance = null;
   }
 
   function applyRotation() {
@@ -321,11 +359,35 @@
     showRotationSaveError();
   }
 
+  // Async homepageBg failures: the write was optimistically accepted and the
+  // new background may already be painted, so re-apply the rolled-back value.
+  // Only react when the failure belongs to a rotation advance — settings,
+  // custom-background, and import writers share the homepageBg key and must
+  // not rewind the pool (the value match narrows a stale pending advance to
+  // the exact write it issued).
+  function handleHomepageBgSaveFailure(detail) {
+    const pending = pendingAdvance;
+    if (!pending) {
+      return;
+    }
+    if (typeof detail?.value === 'string' && detail.value !== pending.bg.id) {
+      return;
+    }
+    pendingAdvance = null;
+    restorePoolIndexFor(pending.bg);
+    applyBackgroundUI();
+    showRotationSaveError();
+  }
+
   // Async bridge failures: persistSet() optimistically returns true and only
   // reports runtime.lastError here, after which the bridge rolls its cache
   // back. Defer the UI/timer resync so it reads the rolled-back state.
   window.addEventListener('storageBridgeWriteError', function (event) {
     const key = event.detail?.key;
+    if (key === 'homepageBg') {
+      setTimeout(function () { handleHomepageBgSaveFailure(event.detail); }, 0);
+      return;
+    }
     if (!ROTATION_STORAGE_KEYS.has(key)) {
       return;
     }
