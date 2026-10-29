@@ -557,6 +557,7 @@ globalThis.window.i18n = {
       copyMottoCopied: 'Copied',
       copyMottoFailed: 'Failed to copy',
       todoList: 'Todo List',
+      todoApp: 'Todo',
       clearCompletedConfirmTitle: 'Clear Completed Todos?',
       validationPleaseEnter: 'Please enter a URL or search query',
       validationInvalidAppears: 'This URL appears to be invalid. Press Enter to Create',

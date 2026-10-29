@@ -285,6 +285,14 @@
       window.initSettings();
     }
 
+    // The todo settings migrated out of Settings into the Todo app (issue
+    // #1066), so initSettings no longer covers them; re-apply them here so an
+    // import that changed todoEnabled/todoStatsEnabled updates the widget and
+    // the Todo app modal controls without a reload.
+    if (typeof window.applyTodoAppSettings === 'function') {
+      window.applyTodoAppSettings();
+    }
+
     // Re-render the custom background thumbnails and re-apply the homepage
     // background so a restore shows the uploads in Settings → Background and
     // renders the selected one without a tab reload (issue #996).

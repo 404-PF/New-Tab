@@ -119,6 +119,7 @@ const translations = {
     simpleMode: 'Simple',
     focusMode: 'Focus',
     todoList: 'Todo List',
+      todoApp: 'Todo',
     addTodoPlaceholder: 'Add a new todo...',
     dueDate: 'Due Date',
     dueTime: 'Due Time',

@@ -18,6 +18,7 @@ const defaultApps = [
   { id: 'ai-app', nameKey: 'ai', url: '#', icon: 'images/icons/ai.svg', className: 'default-app', isInternal: true },
   { id: 'weather-app', nameKey: 'weather', url: '#', icon: 'images/icons/weather.svg', className: 'default-app', isInternal: true },
   { id: 'games-app', nameKey: 'games', url: '#', icon: 'images/icons/games.svg', className: 'default-app', isInternal: true },
+  { id: 'todo-app', nameKey: 'todoApp', url: '#', icon: 'images/icons/todo.svg', className: 'default-app', isInternal: true },
   { id: 'feedback-app', nameKey: 'feedback', url: 'https://github.com/404-PF/New-Tab/issues/new', icon: 'images/icons/feedback.svg', className: 'default-app' },
   { id: 'settings-app', nameKey: 'settings', url: '#', icon: 'images/icons/settings.svg', className: 'default-app' },
 ];
@@ -31,7 +32,7 @@ const getAllAppData = () => {
   return [...visibleDefaults, ...customApps];
 };
 
-const HANDLED_APP_HANDLER_IDS = new Set(['settings-app', 'ai-app', 'weather-app', 'games-app']);
+const HANDLED_APP_HANDLER_IDS = new Set(['settings-app', 'ai-app', 'weather-app', 'games-app', 'todo-app']);
 
 function getGridElements() {
   return {
@@ -579,6 +580,12 @@ function openInternalApp(appId, event) {
   if (appId === 'games-app') {
     if (window.GamesApp?.open) {
       window.GamesApp.open();
+    }
+    return true;
+  }
+  if (appId === 'todo-app') {
+    if (window.TodoApp && window.TodoApp.open) {
+      window.TodoApp.open();
     }
     return true;
   }

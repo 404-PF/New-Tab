@@ -142,17 +142,6 @@ describe('Timezone settings', () => {
   });
 });
 
-describe('Todo enabled settings', () => {
-  it('loadTodoEnabled returns true by default', () => {
-    expect(loadTodoEnabled()).toBe(true);
-  });
-
-  it('loadTodoEnabled reads localStorage', () => {
-    localStorage.setItem('todoEnabled', 'false');
-    expect(loadTodoEnabled()).toBe(false);
-  });
-});
-
 describe('Eye-care reminder settings', () => {
   it('loads defaults when storage is empty', () => {
     expect(loadEyeCareReminderState()).toEqual({

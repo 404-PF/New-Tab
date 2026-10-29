@@ -5227,6 +5227,13 @@ body[data-focus-mode="true"] .footer-right {
   display: none !important;
 }
 
+/* Focus mode hides the on-page .todo-section, but the app grid and its
+   modals stay reachable (games precedent): show the widget again while it
+   is embedded in the open Todo app modal (issue #1066). */
+body[data-focus-mode="true"] #todo-app-modal .todo-section {
+  display: block !important;
+}
+
 body[data-focus-mode="true"] .container {
   display: flex;
   flex-direction: column;

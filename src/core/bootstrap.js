@@ -61,6 +61,9 @@
     'src/features/onboarding.js',
     'src/features/todo.js',
     'src/features/todo-stats.js',
+    // todo-app.js hosts the migrated todo settings and relocates the todo
+    // widget into its modal, so it loads after todo.js and todo-stats.js.
+    'src/features/todo-app.js',
     'src/features/eye-care-reminder.js',
     'src/features/notes.js',
     'src/features/simple-mode.js',

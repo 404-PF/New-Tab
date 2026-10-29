@@ -36,6 +36,9 @@ beforeAll(() => {
   injectScript('src/features/simple-mode.js');
   injectScript('src/features/focus-mode.js');
   injectScript('src/features/shortcuts.js');
+  // The todo-enabled checkbox handler and window.applyTodoEnabled moved from
+  // settings.js into the Todo app module (#1066).
+  injectScript('src/features/todo-app.js');
 });
 
 beforeEach(() => {

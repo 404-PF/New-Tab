@@ -49,6 +49,7 @@ window.i18n.__registerLocale('zh', {
   simpleMode: '简洁',
   focusMode: '专注',
   todoList: '待办清单',
+  todoApp: '待办',
   addTodoPlaceholder: '添加新待办事项...',
   dueDate: '到期日期',
   dueTime: '到期时间',

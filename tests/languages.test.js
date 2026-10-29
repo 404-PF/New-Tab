@@ -381,6 +381,13 @@ describe('Todo no-results empty state sweep (issue #1060)', () => {
   });
 });
 
+describe('Todo app grid tile translations (issue #1066)', () => {
+  it('defines the todoApp label in each supported language', () => {
+    // Presence-only: ja legitimately ships 'Todo', matching the English source.
+    expectTranslationKeys(['todoApp']);
+  });
+});
+
 const MISSING_UI_KEY_TRANSLATIONS = [
   'notesEditTooltip',
   'notesPreviewTooltip',

@@ -48,6 +48,7 @@ window.i18n.__registerLocale('ja', {
   simpleMode: 'シンプル',
   focusMode: 'フォーカス',
   todoList: 'Todo リスト',
+  todoApp: 'Todo',
   addTodoPlaceholder: '新しいTodoを追加...',
   dueDate: '期限日',
   dueTime: '期限時刻',

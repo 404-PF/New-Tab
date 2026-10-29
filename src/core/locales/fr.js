@@ -48,6 +48,7 @@ window.i18n.__registerLocale('fr', {
   simpleMode: 'Simple',
   focusMode: 'Focus',
   todoList: 'Liste de tâches',
+  todoApp: 'Tâches',
   addTodoPlaceholder: 'Ajouter une nouvelle tâche...',
   dueDate: 'Date d\'échéance',
   dueTime: 'Heure d\'échéance',
