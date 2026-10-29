@@ -320,7 +320,25 @@ describe('DataManager eye-care/games/search-history settings', () => {
   });
 
   it('round-trips game saves, stats, and the MRU list through export and import (issue #1068)', async () => {
-    const saves = { snake: { state: { score: 42 }, savedAt: 1700000000000 } };
+    // A snapshot Snake's validateSavedState accepts (mirrors the fixture in
+    // tests/games/snake.test.js), so the round trip is verified against
+    // playable progress rather than storage shape only.
+    const saves = {
+      snake: {
+        state: {
+          snake: [
+            { x: 10, y: 10 },
+            { x: 9, y: 10 },
+            { x: 8, y: 10 }
+          ],
+          food: { x: 5, y: 5 },
+          direction: 'right',
+          nextDirection: 'up',
+          score: 40
+        },
+        savedAt: 1700000000000
+      }
+    };
     const stats = { snake: { highScore: 100, gamesPlayed: 3 }, '2048': { highScore: 4096, gamesPlayed: 7 } };
     const recentlyPlayed = ['snake', '2048'];
     localStorage.setItem('games_saves', JSON.stringify(saves));
@@ -347,12 +365,31 @@ describe('DataManager eye-care/games/search-history settings', () => {
     expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(recentlyPlayed);
   });
 
+  it('merges the MRU list with recency order and the 20-entry cap (issue #1068)', async () => {
+    // Imported ordering wins; local-only ids follow, deduped.
+    localStorage.setItem('games_recently_played', JSON.stringify(['local-1', 'local-2']));
+    await importBackup({ games_recently_played: ['imported-1', 'local-2', 'imported-2'] }, 'merge');
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(
+      ['imported-1', 'local-2', 'imported-2', 'local-1']
+    );
+
+    // The combined list never exceeds the registry's 20-entry cap.
+    const importedFull = Array.from({ length: 20 }, (_, i) => 'imported-' + i);
+    localStorage.setItem('games_recently_played', JSON.stringify(['local-only-1', 'local-only-2']));
+    await importBackup({ games_recently_played: importedFull }, 'merge');
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(importedFull);
+  });
+
   it('validates the shape of the game data keys (issue #1068)', () => {
     expect(window.DataManager.EXPECTED_SHAPES.games_saves({ snake: { state: { score: 42 }, savedAt: 1700000000000 } })).toBe(true);
     expect(window.DataManager.EXPECTED_SHAPES.games_saves({})).toBe(true);
     expect(window.DataManager.EXPECTED_SHAPES.games_stats({ snake: { highScore: 100, gamesPlayed: 3 } })).toBe(true);
     expect(window.DataManager.EXPECTED_SHAPES.games_recently_played(['snake', '2048'])).toBe(true);
     expect(window.DataManager.EXPECTED_SHAPES.games_recently_played([])).toBe(true);
+    // The registry caps MRU at 20 entries; that cap holds on import too.
+    const twentyIds = Array.from({ length: 20 }, (_, i) => 'game-' + i);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played(twentyIds)).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played(twentyIds.concat('one-too-many'))).toBe(false);
 
     expect(window.DataManager.EXPECTED_SHAPES.games_saves(null)).toBe(false);
     expect(window.DataManager.EXPECTED_SHAPES.games_saves([])).toBe(false);

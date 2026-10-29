@@ -743,7 +743,9 @@
     games_saves: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
     games_stats: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
     // Hub MRU list of game-id strings (loadMRU keeps Array.isArray results).
-    games_recently_played: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
+    // GameRegistry caps MRU at 20 on every launch, so a longer list is not a
+    // real hub state and must not be persisted from a backup.
+    games_recently_played: function (v) { return Array.isArray(v) && v.length <= 20 && v.every(function (item) { return typeof item === 'string'; }); },
     /** Validates the persisted AI conversation collection in a backup. */
     ai_conversations: function (v) {
       return Array.isArray(v) && v.every(isValidAIConversation);
@@ -1136,6 +1138,19 @@
                   mergedZones.push(zoneId);
                 });
                 writeStorage(key, mergedZones, pendingWrites);
+                count++;
+              } else if (key === 'games_recently_played') {
+                // Hub MRU is most-recent-first and capped at 20 by
+                // GameRegistry. Keep the imported ordering, then any
+                // local-only entries, truncated to the same cap.
+                const mruSeen = Object.create(null);
+                const mergedMru = [];
+                incoming.concat(Array.isArray(current) ? current : []).forEach(function (id) {
+                  if (mergedMru.length >= 20 || mruSeen[id]) return;
+                  mruSeen[id] = true;
+                  mergedMru.push(id);
+                });
+                writeStorage(key, mergedMru, pendingWrites);
                 count++;
               } else {
                 // Generic array merge (concatenate unique)
