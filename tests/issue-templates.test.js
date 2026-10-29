@@ -25,6 +25,12 @@ const ISSUE_HEADINGS = [
   '### Evidence',
 ];
 
+// Normalize CRLF so LF-sensitive regexes (front matter, workflow YAML) pass
+// on Windows checkouts that convert line endings.
+function readLf(path) {
+  return readFileSync(path, 'utf-8').replace(/\r\n/g, '\n');
+}
+
 function frontMatter(text) {
   const match = text.match(/^---\n([\s\S]*?)\n---/);
   expect(match).not.toBeNull();
@@ -37,9 +43,9 @@ describe('issue and PR templates (#1032)', () => {
   let pr;
 
   beforeAll(() => {
-    bug = readFileSync(BUG_PATH, 'utf-8');
-    feature = readFileSync(FEATURE_PATH, 'utf-8');
-    pr = readFileSync(PR_PATH, 'utf-8');
+    bug = readLf(BUG_PATH);
+    feature = readLf(FEATURE_PATH);
+    pr = readLf(PR_PATH);
   });
 
   it('adds bug and feature issue templates with valid front matter', () => {
@@ -99,7 +105,7 @@ describe('issue and PR templates (#1032)', () => {
   it('mentions the templates in CONTRIBUTING.md and its localized variants', () => {
     [CONTRIBUTING_PATH, CONTRIBUTING_EN_PATH, CONTRIBUTING_ZH_PATH].forEach((path) => {
       expect(existsSync(path)).toBe(true);
-      const doc = readFileSync(path, 'utf-8');
+      const doc = readLf(path);
       expect(doc).toContain('.github/ISSUE_TEMPLATE/');
       expect(doc).toContain('.github/pull_request_template.md');
     });
@@ -113,10 +119,10 @@ describe('workflows stay compatible with templated issues (#1032)', () => {
   let featureFind;
 
   beforeAll(() => {
-    triage = readFileSync(TRIAGE_PATH, 'utf-8');
-    label = readFileSync(LABEL_PATH, 'utf-8');
-    bugFind = readFileSync(BUG_FIND_PATH, 'utf-8');
-    featureFind = readFileSync(FEATURE_FIND_PATH, 'utf-8');
+    triage = readLf(TRIAGE_PATH);
+    label = readLf(LABEL_PATH);
+    bugFind = readLf(BUG_FIND_PATH);
+    featureFind = readLf(FEATURE_FIND_PATH);
   });
 
   it('runs issue-triage and issue-label on every opened issue', () => {
