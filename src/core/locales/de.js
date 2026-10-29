@@ -401,12 +401,15 @@ window.i18n.__registerLocale('de', {
   todoSortPriority: 'Priorität',
   todoSortCreated: 'Erstellt',
   todoSortAz: 'A-Z',
+  // Todo toolbar text search (issue #1060)
+  todoSearchPlaceholder: 'Aufgaben durchsuchen...',
   clearCompletedText: 'Erledigte löschen',
   clearCompletedConfirmTitle: 'Erledigte Aufgaben löschen?',
   clearCompletedConfirmMessage: 'Dies entfernt dauerhaft alle erledigten Aufgaben. Diese Aktion kann nicht rückgängig gemacht werden.',
   clearCompletedConfirmButton: 'Erledigte löschen',
   emptyStateTitle: 'Noch keine Aufgaben. Füge eine oben hinzu!',
   emptyStateDesc: 'Versuche, Fälligkeitsdaten hinzuzufügen, um dich besser zu organisieren.',
+  todoNoResults: 'Keine passenden Aufgaben.',
   // Todo bulk selection toolbar (issue #942)
   bulkActionsLabel: 'Sammelaktionen für Aufgaben',
   bulkComplete: 'Als erledigt markieren',

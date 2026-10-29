@@ -726,6 +726,14 @@
     "message": "まだメモがありません。+ をクリックして追加してください！",
     "description": "Empty state when no notes exist"
   },
+  "todoSearchPlaceholder": {
+    "message": "Todoを検索...",
+    "description": "Placeholder text for the todo list search input"
+  },
+  "todoNoResults": {
+    "message": "一致するTodoはありません。",
+    "description": "Empty state when todos exist but none match the active filters or search"
+  },
   "todoEditRecurrence": {
     "message": "繰り返し",
     "description": "Label"

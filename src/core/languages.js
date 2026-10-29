@@ -537,12 +537,15 @@ const translations = {
     todoSortPriority: 'Priority',
     todoSortCreated: 'Created',
     todoSortAz: 'A-Z',
+    // Todo toolbar text search (issue #1060)
+    todoSearchPlaceholder: 'Search todos...',
     clearCompletedText: 'Clear Completed',
     clearCompletedConfirmTitle: 'Clear Completed Todos?',
     clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',
     clearCompletedConfirmButton: 'Clear Completed',
     emptyStateTitle: 'No todos yet. Add one above!',
     emptyStateDesc: 'Try adding due dates for better organization.',
+    todoNoResults: 'No matching todos.',
 
     // Todo bulk selection toolbar (issue #942)
     bulkActionsLabel: 'Bulk todo actions',
@@ -1546,10 +1549,13 @@ function updateDynamicTranslations() {
     todoTitle.textContent = getTranslation(currentLanguage, 'todoList');
   }
 
-  // Update empty state messages
+  // Update empty state messages. The key comes from the element itself so a
+  // no-results variant set by renderTodos stays translated (issue #1060);
+  // the default markup carries emptyStateTitle.
   const emptyStateP = document.querySelector('.empty-state p');
   if (emptyStateP) {
-    emptyStateP.textContent = getTranslation(currentLanguage, 'emptyStateTitle');
+    const emptyStateKey = emptyStateP.getAttribute('data-i18n') || 'emptyStateTitle';
+    emptyStateP.textContent = getTranslation(currentLanguage, emptyStateKey);
   }
 
   const emptyStateSmall = document.querySelector('.empty-state small');

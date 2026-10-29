@@ -586,6 +586,8 @@ globalThis.window.i18n = {
       todoSortPriority: 'Priority',
       todoSortCreated: 'Created',
       todoSortAz: 'A-Z',
+      todoSearchPlaceholder: 'Search todos...',
+      todoNoResults: 'No matching todos.',
       shortcutFocusSearch: 'Focus Search',
       shortcutOpenSettings: 'Open Settings',
       shortcutToggleFocusMode: 'Toggle Focus Mode',
@@ -760,7 +762,15 @@ document.body.appendChild(createStubElement('span', 'date'));
 document.body.appendChild(createStubElement('div', 'motto-text'));
 document.body.appendChild(createStubElement('div', 'motto-container'));
 document.body.appendChild(createStubElement('div', 'todo-list'));
-document.body.appendChild(createStubElement('div', 'empty-state'));
+// Mirrors the New-Tab.html empty-state markup (issue #1060) so the
+// "no todos yet" vs "no matching todos" copy is testable.
+const emptyStateStub = createStubElement('div', 'empty-state');
+emptyStateStub.className = 'empty-state';
+emptyStateStub.innerHTML = `
+  <p data-i18n="emptyStateTitle">No todos yet. Add one above!</p>
+  <small data-i18n="emptyStateDesc">Try adding due dates for better organization.</small>
+`;
+document.body.appendChild(emptyStateStub);
 document.body.appendChild(createStubElement('div', 'progress-ring-fill'));
 document.body.appendChild(createStubElement('span', 'progress-text'));
 document.body.appendChild(createStubElement('span', 'badge-all'));
@@ -948,6 +958,14 @@ todoSortSelect.value = 'due';
 document.body.appendChild(todoSortSelect);
 const todoFilters = document.createElement('div');
 todoFilters.className = 'todo-filters';
+// Toolbar search input (issue #1060) mirroring the New-Tab.html markup.
+const todoSearchInput = createStubElement('input', 'todo-search');
+todoSearchInput.className = 'todo-search-input';
+todoSearchInput.type = 'search';
+todoSearchInput.placeholder = 'Search todos...';
+todoSearchInput.setAttribute('data-i18n', 'todoSearchPlaceholder');
+todoSearchInput.setAttribute('data-i18n-aria-label', 'todoSearchPlaceholder');
+todoFilters.appendChild(todoSearchInput);
 document.body.appendChild(todoFilters);
 
 // Bulk selection toolbar stubs mirroring the markup in New-Tab.html (issue #942)

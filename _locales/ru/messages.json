@@ -726,6 +726,14 @@
     "message": "Пока нет заметок. Нажмите + чтобы добавить!",
     "description": "Empty state when no notes exist"
   },
+  "todoSearchPlaceholder": {
+    "message": "Поиск задач...",
+    "description": "Placeholder text for the todo list search input"
+  },
+  "todoNoResults": {
+    "message": "Нет подходящих задач.",
+    "description": "Empty state when todos exist but none match the active filters or search"
+  },
   "todoEditRecurrence": {
     "message": "Повтор",
     "description": "Label"

@@ -726,6 +726,14 @@
     "message": "아직 메모가 없습니다. +를 클릭하여 추가하세요!",
     "description": "Empty state when no notes exist"
   },
+  "todoSearchPlaceholder": {
+    "message": "할 일 검색...",
+    "description": "Placeholder text for the todo list search input"
+  },
+  "todoNoResults": {
+    "message": "일치하는 할 일이 없습니다.",
+    "description": "Empty state when todos exist but none match the active filters or search"
+  },
   "todoEditRecurrence": {
     "message": "반복",
     "description": "Label"
