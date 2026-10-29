@@ -341,7 +341,6 @@
     }
     logicFrame = null;
     logicAccumulatorMs = 0;
-    fpsMeter?.stop();
   }
 
   function startTick() {
@@ -350,7 +349,6 @@
     logicAccumulatorMs = 0;
     logicLastAt = null;
     logicFrame = window.requestAnimationFrame(stepLogic);
-    fpsMeter?.start();
   }
 
   // ===================== Drawing =====================
@@ -670,6 +668,10 @@
   function startAnimation() {
     if (animFrame === null && !reducedMotion() && typeof window.requestAnimationFrame === 'function') {
       animFrame = window.requestAnimationFrame(animate);
+      // Track actual rendered frames: under reduced motion there is no
+      // render loop, so the meter stays off rather than reporting the
+      // browser RAF rate of the logic loop.
+      fpsMeter?.start();
     }
   }
 
@@ -678,6 +680,7 @@
       window.cancelAnimationFrame(animFrame);
     }
     animFrame = null;
+    fpsMeter?.stop();
   }
 
   function restart() {
@@ -967,7 +970,8 @@
     container.appendChild(stage);
 
     // FPS readout (#1036): mounts only when the setting is on; start/stop
-    // rides the tick loop so it freezes on pause and game over.
+    // rides the render loop so it freezes on pause and game over, and stays
+    // off under reduced motion where there is no per-frame render loop.
     fpsMeter = window.gamesHelpers?.createFpsMeter?.(stage) || null;
 
     // Pointer swipes steer as soon as they cross the threshold (#1019); the

@@ -406,15 +406,23 @@
     parentEl.appendChild(el);
 
     let rafId = null;
+    // Bumped on every stop() so a frame left behind by an environment
+    // without cancelAnimationFrame exits instead of re-arming the loop.
+    let generation = 0;
     let lastAt = null;
     let lastTextAt = 0;
     let deltaSum = 0;
     const deltas = [];
 
-    function frame(at) {
+    function frame(at, gen) {
+      // Frames scheduled before a stop()/restart belong to an older
+      // generation and must die out, even when they cannot be cancelled.
+      if (gen !== generation) return;
       // Re-arm before sampling so a stop/destroy from a game callback
       // mid-frame cancels the pending frame instead of resurrecting it.
-      rafId = window.requestAnimationFrame(frame);
+      rafId = window.requestAnimationFrame(function (nextAt) {
+        frame(nextAt, gen);
+      });
       if (typeof at !== 'number') at = window.gamesHelpers.nowMs();
       if (lastAt !== null) {
         const delta = Math.min(Math.max(at - lastAt, 0), FPS_MAX_DELTA_MS);
@@ -438,10 +446,14 @@
       lastTextAt = 0;
       deltaSum = 0;
       deltas.length = 0;
-      rafId = window.requestAnimationFrame(frame);
+      const gen = generation;
+      rafId = window.requestAnimationFrame(function (at) {
+        frame(at, gen);
+      });
     }
 
     function stop() {
+      generation += 1;
       if (rafId !== null && typeof window.cancelAnimationFrame === 'function') {
         window.cancelAnimationFrame(rafId);
       }

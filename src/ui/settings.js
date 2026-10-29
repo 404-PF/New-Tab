@@ -2509,6 +2509,7 @@ function initSettings() {
   applyNotesEnabled();
   applyGamesEnabled();
   applyGamesKeymap();
+  applyGamesFps();
   applyLanguageSetting();
   applyVideoPlaybackSettings();
   applyBgOverlaySettings();

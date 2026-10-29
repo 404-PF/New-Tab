@@ -1203,6 +1203,10 @@ describe('gamesHelpers FPS meter (#1036)', () => {
   }
 
   it('defaults to off, and createFpsMeter returns null while disabled', () => {
+    // The suite setup writes an explicit false; this case is about the
+    // absent-key default, so clear the key first.
+    localStorage.removeItem('games_fps_enabled');
+    expect(localStorage.getItem('games_fps_enabled')).toBeNull();
     const stage = makeStage();
     expect(window.gamesHelpers.isFpsEnabled()).toBe(false);
     expect(window.gamesHelpers.createFpsMeter(stage)).toBeNull();
@@ -1261,6 +1265,9 @@ describe('gamesHelpers FPS meter (#1036)', () => {
     expect(meter.element.textContent).not.toBe('');
 
     meter.stop();
+    // Advance the clock while the meter is stopped so a stale timestamp
+    // from before the pause would skew the resumed average.
+    pump.step(20);
     meter.start();
     expect(pump.pendingCount()).toBe(1);
     // A stale timestamp from before the pause must not leak into the
@@ -1284,5 +1291,31 @@ describe('gamesHelpers FPS meter (#1036)', () => {
     } finally {
       Object.defineProperty(window, 'requestAnimationFrame', savedRaf);
     }
+  });
+
+  it('stop() terminates the loop even without cancelAnimationFrame', () => {
+    window.gamesHelpers.setFpsEnabled(true);
+    const stage = makeStage();
+    const meter = window.gamesHelpers.createFpsMeter(stage);
+
+    meter.start();
+    pump.step(5);
+    expect(pump.pendingCount()).toBe(1);
+
+    const savedCancel = Object.getOwnPropertyDescriptor(window, 'cancelAnimationFrame');
+    delete window.cancelAnimationFrame;
+    try {
+      meter.stop();
+      // The pending frame cannot be cancelled; it must die on arrival
+      // instead of re-arming the loop.
+      pump.step(1);
+      expect(pump.pendingCount()).toBe(0);
+    } finally {
+      Object.defineProperty(window, 'cancelAnimationFrame', savedCancel);
+    }
+
+    meter.destroy();
+    expect(pump.pendingCount()).toBe(0);
+    stage.remove();
   });
 });
