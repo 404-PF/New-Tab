@@ -62,6 +62,9 @@
     'games_enabled',
     'games_keymap',
     'games_fps_enabled',
+    'games_saves',
+    'games_stats',
+    'games_recently_played',
     'ai_conversations',
     'ai_current_conversation_id',
     'updateCheckEnabled',
@@ -734,6 +737,13 @@
     // map for an unknown id instead of rejecting the whole backup.
     games_keymap: function (v) { return typeof v === 'string'; },
     games_fps_enabled: function (v) { return typeof v === 'boolean'; },
+    // Per-game blobs keyed by game id; the games helpers re-validate each
+    // entry at read time (src/features/games/game-registry.js), so only the
+    // container shape is enforced here.
+    games_saves: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
+    games_stats: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
+    // Hub MRU list of game-id strings (loadMRU keeps Array.isArray results).
+    games_recently_played: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
     /** Validates the persisted AI conversation collection in a backup. */
     ai_conversations: function (v) {
       return Array.isArray(v) && v.every(isValidAIConversation);

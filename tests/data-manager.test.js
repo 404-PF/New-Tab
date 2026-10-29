@@ -280,6 +280,9 @@ describe('DataManager eye-care/games/search-history settings', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('games_enabled');
     expect(window.DataManager.EXPORT_KEYS).toContain('games_keymap');
     expect(window.DataManager.EXPORT_KEYS).toContain('games_fps_enabled');
+    expect(window.DataManager.EXPORT_KEYS).toContain('games_saves');
+    expect(window.DataManager.EXPORT_KEYS).toContain('games_stats');
+    expect(window.DataManager.EXPORT_KEYS).toContain('games_recently_played');
     expect(window.DataManager.EXPORT_KEYS).toContain('searchHistoryEnabled');
   });
 
@@ -313,6 +316,64 @@ describe('DataManager eye-care/games/search-history settings', () => {
 
     expect(window.DataManager.validateImportData({ version: 1, data: {
       eyeCareReminder: { ...EYE_CARE_SETTINGS, intervalMinutes: 25 }
+    } }).valid).toBe(false);
+  });
+
+  it('round-trips game saves, stats, and the MRU list through export and import (issue #1068)', async () => {
+    const saves = { snake: { state: { score: 42 }, savedAt: 1700000000000 } };
+    const stats = { snake: { highScore: 100, gamesPlayed: 3 }, '2048': { highScore: 4096, gamesPlayed: 7 } };
+    const recentlyPlayed = ['snake', '2048'];
+    localStorage.setItem('games_saves', JSON.stringify(saves));
+    localStorage.setItem('games_stats', JSON.stringify(stats));
+    localStorage.setItem('games_recently_played', JSON.stringify(recentlyPlayed));
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.games_saves).toEqual(saves);
+    expect(exported.data.games_stats).toEqual(stats);
+    expect(exported.data.games_recently_played).toEqual(recentlyPlayed);
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+
+    // Restore into a profile with no game data at all.
+    localStorage.removeItem('games_saves');
+    localStorage.removeItem('games_stats');
+    localStorage.removeItem('games_recently_played');
+
+    const result = await importBackup(exported.data, 'replace');
+
+    expect(result.type).toBe('success');
+    expect(JSON.parse(localStorage.getItem('games_saves'))).toEqual(saves);
+    expect(JSON.parse(localStorage.getItem('games_stats'))).toEqual(stats);
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(recentlyPlayed);
+  });
+
+  it('validates the shape of the game data keys (issue #1068)', () => {
+    expect(window.DataManager.EXPECTED_SHAPES.games_saves({ snake: { state: { score: 42 }, savedAt: 1700000000000 } })).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_saves({})).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_stats({ snake: { highScore: 100, gamesPlayed: 3 } })).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played(['snake', '2048'])).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played([])).toBe(true);
+
+    expect(window.DataManager.EXPECTED_SHAPES.games_saves(null)).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_saves([])).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_saves('snake')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_stats(null)).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_stats([])).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_stats('snake')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played({})).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played('snake')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.games_recently_played([1, 2])).toBe(false);
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      games_saves: { snake: { state: { score: 42 }, savedAt: 1700000000000 } },
+      games_stats: { snake: { highScore: 100, gamesPlayed: 3 } },
+      games_recently_played: ['snake']
+    } })).toEqual({ valid: true });
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      games_saves: []
+    } }).valid).toBe(false);
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      games_recently_played: { 0: 'snake' }
     } }).valid).toBe(false);
   });
 
