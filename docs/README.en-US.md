@@ -20,6 +20,10 @@ A personalized new tab extension for Chromium-based browsers. It replaces the de
 - English and Simplified Chinese interface support
 - Built-in onboarding tour, update checks, and AI chat with offline fallback
 
+## 🎯 Scope
+
+Who New Tab is for, the top three jobs the dashboard must do best, what the optional Games hub is for, and what is out of scope are written down in [SCOPE.md](SCOPE.md). Check any proposed feature against that note before prioritizing it.
+
 ## 🎮 Games
 
 The optional Games hub includes Snake, 2048, Memory Match, Flappy Bird, and Pac-Man. Each game shares the same modal shell, ready/continue flow, pause handling, local high scores, and cross-session save/restore.
