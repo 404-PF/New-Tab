@@ -41,6 +41,8 @@ window.i18n.__registerLocale('ru', {
   enableSearchHistory: 'Включить историю поиска',
   searchSuggestionsAriaLabel: 'Подсказки поиска',
   newApp: 'Новое',
+  appGridFilterPlaceholder: 'Фильтр приложений...',
+  appGridFilterAriaLabel: 'Фильтр приложений',
   feedback: 'Обратная связь',
   settings: 'Настройки',
   simpleMode: 'Простой',

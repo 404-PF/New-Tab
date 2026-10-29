@@ -42,6 +42,8 @@ window.i18n.__registerLocale('zh', {
   enableSearchHistory: '启用搜索历史记录',
   searchSuggestionsAriaLabel: '搜索建议',
   newApp: '新建',
+  appGridFilterPlaceholder: '筛选应用...',
+  appGridFilterAriaLabel: '筛选应用',
   feedback: '反馈',
   settings: '设置',
   simpleMode: '简洁',

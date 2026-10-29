@@ -658,3 +658,16 @@ describe('Motto button aria-label translations', () => {
     expectTranslationKeys(['refreshMotto', 'copyMotto'], { differFromEnglish: true });
   });
 });
+
+// App grid type-to-filter (issue #1065): the New-Tab.html input above the
+// grid carries a localized placeholder and aria-label.
+describe('App grid filter translations (issue #1065)', () => {
+  it('defines the filter placeholder and aria-label in each supported language', () => {
+    expectTranslationKeys(['appGridFilterPlaceholder', 'appGridFilterAriaLabel'], { differFromEnglish: true });
+  });
+
+  it('includes the filter strings in every _locales messages.json', () => {
+    expectMessagesJsonKey('appGridFilterPlaceholder');
+    expectMessagesJsonKey('appGridFilterAriaLabel');
+  });
+});

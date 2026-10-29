@@ -718,6 +718,14 @@
     "message": "メモを検索...",
     "description": "Placeholder text for the notes search input"
   },
+  "appGridFilterPlaceholder": {
+    "message": "アプリを絞り込む...",
+    "description": "Placeholder text for the app grid filter input"
+  },
+  "appGridFilterAriaLabel": {
+    "message": "アプリを絞り込む",
+    "description": "Accessible label for the app grid filter input"
+  },
   "notesNoResults": {
     "message": "一致するメモがありません。",
     "description": "Empty state when no notes match the search query"

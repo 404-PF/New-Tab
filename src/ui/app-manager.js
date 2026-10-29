@@ -309,6 +309,12 @@ function renderAllApps() {
   // Keep the Settings > Apps built-in visibility checkboxes in sync with
   // whatever hid or restored an app (context menu, import, etc.).
   renderDefaultAppVisibilityList();
+  // Re-apply an active type-to-filter so newly rendered tiles respect it
+  // without mutating order or data (issue #1065). Guarded like the other
+  // post-render hooks in case app-grid-filter.js failed to load.
+  if (window.AppGridFilter && typeof window.AppGridFilter.apply === 'function') {
+    window.AppGridFilter.apply();
+  }
   window.__appGridState.setPhase('rendered');
 }
 

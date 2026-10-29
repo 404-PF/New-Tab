@@ -41,6 +41,8 @@ window.i18n.__registerLocale('es', {
   enableSearchHistory: 'Activar historial de búsqueda',
   searchSuggestionsAriaLabel: 'Sugerencias de búsqueda',
   newApp: 'Nuevo',
+  appGridFilterPlaceholder: 'Filtrar aplicaciones...',
+  appGridFilterAriaLabel: 'Filtrar aplicaciones',
   feedback: 'Comentarios',
   settings: 'Ajustes',
   simpleMode: 'Simple',
