@@ -7,6 +7,7 @@
   const STATS_SAVE_ERROR_FALLBACK = 'Failed to save game statistics. Your latest score was not saved.';
   const MRU_KEY = 'games_recently_played';
   const SAVES_KEY = 'games_saves';
+  const SAVES_SAVE_ERROR_FALLBACK = 'Failed to save game progress. Your latest run was not saved.';
   const MAX_MRU = 20;
   const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
   const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -179,23 +180,81 @@
     }
   }
 
+  // Coalesce bursts: several failed writes in quick succession show one toast.
+  const SAVES_TOAST_COALESCE_MS = 2000;
+  let lastSavesToastAt = -Infinity;
+
+  function showSavesSaveError() {
+    const now = Date.now();
+    if (now - lastSavesToastAt < SAVES_TOAST_COALESCE_MS) return;
+    lastSavesToastAt = now;
+    let message = SAVES_SAVE_ERROR_FALLBACK;
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const translated = window.i18n.t('gameSavesSaveError');
+      if (translated && translated !== 'gameSavesSaveError') message = translated;
+    }
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'error');
+      return;
+    }
+    console.warn(message);
+  }
+
+  function failSavesSave(error) {
+    console.warn('Failed to save games_saves:', error || 'storage rejected the write');
+    // Drop the cache so the next read re-serves the value the storage bridge
+    // rolled back to, not the rejected saves.
+    savesCache = null;
+    savesCacheRaw = undefined;
+    showSavesSaveError();
+    return false;
+  }
+
+  // Resolves to whether the saves were persisted. The storage bridge's sync
+  // setItem() accepts chrome.storage writes optimistically and reports
+  // failures later, so use setItemAsync() and check its result.
   function saveSaves(saves) {
+    let serialized;
     try {
-      const serialized = JSON.stringify(saves);
-      localStorage.setItem(SAVES_KEY, serialized);
+      serialized = JSON.stringify(saves);
+    } catch (e) {
+      return Promise.resolve(failSavesSave(e));
+    }
+
+    if (typeof localStorage.setItemAsync === 'function') {
+      let pending;
+      try {
+        pending = localStorage.setItemAsync(SAVES_KEY, serialized);
+      } catch (e) {
+        return Promise.resolve(failSavesSave(e));
+      }
+      // The bridge updated its cache synchronously; mirror that until the
+      // write settles.
       savesCache = saves;
       savesCacheRaw = serialized;
-      return true;
-    } catch (e) {
-      console.warn('Failed to save games_saves:', e);
-      savesCache = null;
-      savesCacheRaw = undefined;
-      return false;
+      return Promise.resolve(pending).then(
+        (persisted) => (persisted === true ? true : failSavesSave()),
+        failSavesSave
+      );
     }
+
+    let accepted;
+    try {
+      // Native Storage#setItem returns void and throws on failure.
+      accepted = localStorage.setItem(SAVES_KEY, serialized) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (e) {
+      return Promise.resolve(failSavesSave(e));
+    }
+    if (!accepted) {
+      return Promise.resolve(failSavesSave());
+    }
+    savesCache = saves;
+    savesCacheRaw = serialized;
+    return Promise.resolve(true);
   }
 
   // Persist a snapshot for a game that opted in via serialize(). Callers must
-  // pass a concrete state; returns true when a save was written.
+  // pass a concrete state; resolves to true when a save was written.
   function persistSave(gameId, state) {
     if (!gameId) return false;
     const saves = loadSaves();
@@ -533,6 +592,7 @@
     statsWriteChain = Promise.resolve();
     statsWritesInFlight = 0;
     lastStatsToastAt = -Infinity;
+    lastSavesToastAt = -Infinity;
     mruCache = null;
     mruCacheRaw = undefined;
     savesCache = null;

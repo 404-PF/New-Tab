@@ -35,6 +35,10 @@
     "message": "无法保存游戏数据。您最新的成绩未被保存。",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameSavesSaveError": {
+    "message": "无法保存游戏进度。您最新的游戏记录未被保存。",
+    "description": "Error shown when a game save cannot be persisted"
+  },
   "searchProviderSaveError": {
     "message": "无法保存搜索提供商的更改。您上次的操作未被保存。",
     "description": "Error shown when custom search provider changes cannot be persisted"

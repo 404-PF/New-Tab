@@ -35,6 +35,10 @@
     "message": "게임 통계를 저장하지 못했습니다. 최근 점수가 저장되지 않았습니다.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameSavesSaveError": {
+    "message": "게임 진행 상황을 저장하지 못했습니다. 최근 진행 내용이 저장되지 않았습니다.",
+    "description": "Error shown when a game save cannot be persisted"
+  },
   "searchProviderSaveError": {
     "message": "검색 공급자 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
     "description": "Error shown when custom search provider changes cannot be persisted"

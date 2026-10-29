@@ -35,6 +35,10 @@
     "message": "ゲーム統計を保存できませんでした。直前のスコアは保存されていません。",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameSavesSaveError": {
+    "message": "ゲームの進行状況を保存できませんでした。直前のプレイ内容は保存されていません。",
+    "description": "Error shown when a game save cannot be persisted"
+  },
   "searchProviderSaveError": {
     "message": "検索プロバイダーの変更を保存できませんでした。直前の操作は保存されていません。",
     "description": "Error shown when custom search provider changes cannot be persisted"

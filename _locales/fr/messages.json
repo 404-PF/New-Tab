@@ -35,6 +35,10 @@
     "message": "Impossible d’enregistrer les statistiques de jeu. Votre dernier score n’a pas été enregistré.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameSavesSaveError": {
+    "message": "Impossible d’enregistrer la progression du jeu. Votre dernière partie n’a pas été enregistrée.",
+    "description": "Error shown when a game save cannot be persisted"
+  },
   "searchProviderSaveError": {
     "message": "Impossible d’enregistrer les modifications du moteur de recherche. Votre dernière action n’a pas été enregistrée.",
     "description": "Error shown when custom search provider changes cannot be persisted"

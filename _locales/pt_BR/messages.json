@@ -35,6 +35,10 @@
     "message": "Não foi possível salvar as estatísticas do jogo. Sua última pontuação não foi salva.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameSavesSaveError": {
+    "message": "Não foi possível salvar o progresso do jogo. Sua última partida não foi salva.",
+    "description": "Error shown when a game save cannot be persisted"
+  },
   "searchProviderSaveError": {
     "message": "Não foi possível salvar as alterações do mecanismo de busca. Sua última ação não foi salva.",
     "description": "Error shown when custom search provider changes cannot be persisted"

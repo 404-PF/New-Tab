@@ -533,6 +533,43 @@ describe('Feature toggle save error translation (issue #969)', () => {
   });
 });
 
+// Shared feedback string for game saves whose storage write the bridge
+// rejected (issue #1039).
+describe('Game saves save error translation (issue #1039)', () => {
+  it('defines a localized gameSavesSaveError for every supported language', () => {
+    expectTranslationKeys(['gameSavesSaveError'], { differFromEnglish: true });
+  });
+
+  it('includes gameSavesSaveError in every _locales messages.json', () => {
+    const localesDir = resolve(process.cwd(), '_locales');
+    const locales = readdirSync(localesDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+
+    expect(locales.length).toBeGreaterThan(0);
+
+    const english = JSON.parse(
+      readFileSync(resolve(localesDir, 'en', 'messages.json'), 'utf8')
+    ).gameSavesSaveError.message;
+
+    locales.forEach((locale) => {
+      const file = resolve(localesDir, locale, 'messages.json');
+      const parsed = JSON.parse(readFileSync(file, 'utf8'));
+      expect(parsed, `${locale}:gameSavesSaveError`).toHaveProperty('gameSavesSaveError');
+      const entry = parsed.gameSavesSaveError;
+      expect(entry.message, `${locale}`).toBeTypeOf('string');
+      expect(entry.message.trim(), `${locale}`).not.toBe('');
+      expect(entry.description, `${locale}`).toBeTypeOf('string');
+      // en and en_US are the English source strings, so every other locale
+      // must ship its own copy rather than a copy of the English text.
+      if (locale !== 'en' && locale !== 'en_US') {
+        expect(entry.message, `${locale}:gameSavesSaveError`).not.toBe(english);
+      }
+    });
+  });
+});
+
 describe('New-Tab.html i18n key completeness', () => {
   it('resolves every data-i18n key used in New-Tab.html in the en dictionary', () => {
     const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');

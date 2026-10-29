@@ -294,6 +294,7 @@ const translations = {
     appsSettings: 'Apps',
     appGridSaveError: 'Failed to save app changes. Your last action was not saved.',
     gameStatsSaveError: 'Failed to save game statistics. Your latest score was not saved.',
+    gameSavesSaveError: 'Failed to save game progress. Your latest run was not saved.',
     appsSettingsDesc: 'Customize app icons',
     iconStyle: 'Icon Style',
     iconStyleDesc: 'Choose the shape and appearance of your app icons',
