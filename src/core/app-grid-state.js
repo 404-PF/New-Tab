@@ -111,12 +111,15 @@ const AppGridState = {
   },
 
   // Returns true if an existing app (custom or default) has the same canonical URL.
-  hasAppWithUrl(url) {
+  // excludeId skips one app so an in-place URL edit never conflicts with itself.
+  hasAppWithUrl(url, excludeId) {
     if (!url || typeof url !== 'string') return false;
 
     const apps = this.getCustomApps();
     const defaults = window.defaultApps || [];
-    const urls = [...apps, ...defaults].map(app => app.url);
+    const urls = [...apps, ...defaults]
+      .filter(app => app.id !== excludeId)
+      .map(app => app.url);
     // Derive freshness from URL values so imports and in-place edits are covered.
     const key = JSON.stringify([url, urls]);
     if (lastAppUrlCheck?.key === key) return lastAppUrlCheck.result;
@@ -180,6 +183,25 @@ const AppGridState = {
       const idx = apps.findIndex(app => app.id === id);
       if (idx === -1) return null;
       apps[idx].name = newName;
+      return apps;
+    });
+    return !!updatedApps;
+  },
+
+  // Update the URL of a custom app identified by id, in place: keeps the
+  // app's id, name, icon, grid order, and folder membership. Clears any
+  // cached icon so the favicon for the new URL is fetched. Returns false
+  // when the id is unknown, the URL is empty, or another app already uses
+  // that URL.
+  updateAppUrl(id, newUrl) {
+    if (typeof newUrl !== 'string' || newUrl.trim() === '') return false;
+    if (this.hasAppWithUrl(newUrl, id)) return false;
+
+    const updatedApps = this.updateCustomApps((apps) => {
+      const idx = apps.findIndex(app => app.id === id);
+      if (idx === -1) return null;
+      apps[idx].url = newUrl;
+      delete apps[idx].cachedIcon;
       return apps;
     });
     return !!updatedApps;

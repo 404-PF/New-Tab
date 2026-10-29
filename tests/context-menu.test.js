@@ -317,6 +317,7 @@ describe('context menu previews', () => {
 describe('context menu i18n labels', () => {
   const MENU_ITEM_I18N_KEYS = {
     'rename-app': 'renameApp',
+    'edit-app': 'editApp',
     'move-to-folder': 'moveToFolder',
     'remove-from-folder': 'removeFromFolder',
     'change-thumbnail': 'changeThumbnail',
@@ -522,5 +523,116 @@ describe('built-in apps in folders (#1010)', () => {
 
       expect(showMoveToFolderSelector).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('edit app action (#1082)', () => {
+  const removeExistingMenu = () => {
+    const existingMenu = document.getElementById('app-context-menu');
+    if (existingMenu) existingMenu.remove();
+  };
+
+  const openContextMenu = (element) => {
+    element.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      pageX: 32,
+      pageY: 32
+    }));
+  };
+
+  beforeAll(() => {
+    injectScript('src/core/dom-ready.js');
+    removeExistingMenu();
+
+    createModalStubs(createElement);
+
+    window.AppGridState = {
+      getCustomApps: () => [
+        { id: 'app-1', name: 'Example App', url: 'https://example.com' },
+        { id: 'app-2', name: 'Other App', url: 'https://other.example' }
+      ],
+      canHideDefaultApp: (id) => id !== 'settings-app',
+      renameApp: vi.fn(),
+      updateThumbnail: vi.fn(),
+      deleteApp: vi.fn()
+    };
+
+    createElement('a', 'app-1').className = 'app-icon custom-app';
+    createElement('a', 'ai-app').className = 'app-icon default-app';
+
+    injectScript('src/features/context-menu.js');
+  });
+
+  it('offers Edit for a custom app and opens the modal prefilled with that app', () => {
+    const openAddAppModal = vi.fn();
+
+    withWindowOverride('openAddAppModal', openAddAppModal, () => {
+      openContextMenu(document.getElementById('app-1'));
+
+      expect(document.getElementById('edit-app').style.display).toBe('block');
+
+      document.getElementById('edit-app').click();
+
+      expect(openAddAppModal).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ id: 'app-1', url: 'https://example.com' })
+      );
+      expect(document.getElementById('app-context-menu').style.display).toBe('none');
+    });
+  });
+
+  it('does not offer Edit for built-in apps on the grid', () => {
+    openContextMenu(document.getElementById('ai-app'));
+
+    expect(document.getElementById('hide-default-app').style.display).toBe('block');
+    expect(document.getElementById('edit-app').style.display).toBe('none');
+  });
+
+  it('offers Edit for a custom app inside the folder popup', () => {
+    const popupApps = createElement('div', 'folder-popup-apps');
+    const popupTile = document.createElement('a');
+    popupTile.id = 'popup-app-2';
+    popupTile.className = 'app-icon custom-app';
+    popupApps.appendChild(popupTile);
+    const openAddAppModal = vi.fn();
+
+    try {
+      withWindowOverride('AppFolders', { currentFolderId: 'folder-1' }, () => {
+        withWindowOverride('openAddAppModal', openAddAppModal, () => {
+          openContextMenu(popupTile);
+
+          expect(document.getElementById('edit-app').style.display).toBe('block');
+          expect(document.getElementById('remove-from-folder').style.display).toBe('block');
+
+          // The popup- prefix is stripped so the real app id reaches the modal.
+          document.getElementById('edit-app').click();
+          expect(openAddAppModal).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({ id: 'app-2', url: 'https://other.example' })
+          );
+        });
+      });
+    } finally {
+      popupApps.remove();
+    }
+  });
+
+  it('keeps Edit hidden for a built-in app inside the folder popup', () => {
+    const popupApps = createElement('div', 'folder-popup-apps');
+    const popupTile = document.createElement('a');
+    popupTile.id = 'popup-weather-app';
+    popupTile.className = 'app-icon default-app';
+    popupApps.appendChild(popupTile);
+
+    try {
+      withWindowOverride('AppFolders', { currentFolderId: 'folder-1' }, () => {
+        openContextMenu(popupTile);
+
+        expect(document.getElementById('remove-from-folder').style.display).toBe('block');
+        expect(document.getElementById('edit-app').style.display).toBe('none');
+      });
+    } finally {
+      popupApps.remove();
+    }
   });
 });

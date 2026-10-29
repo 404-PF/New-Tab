@@ -181,6 +181,26 @@ function updateAppIcon(id, iconUrl) {
   return true;
 }
 
+/** Re-points one icon's link target in place (after a URL edit). */
+function updateAppLink(id, url) {
+  const element = document.getElementById(id);
+  if (!element) return false;
+  const safeAppUrl = typeof window.getSafeCustomAppUrl === 'function'
+    ? window.getSafeCustomAppUrl(url)
+    : '#';
+  element.setAttribute('href', safeAppUrl);
+  const openInNewTab = loadOpenNewTabSetting();
+  if (openInNewTab && safeAppUrl !== '#') {
+    element.setAttribute('target', '_blank');
+    element.setAttribute('rel', 'noopener noreferrer');
+  } else {
+    element.removeAttribute('target');
+    element.removeAttribute('rel');
+  }
+  invalidateDragIconCache();
+  return true;
+}
+
 /** Re-positions existing icons to match the persisted order; recreates none. */
 function syncAppGridOrder() {
   const { appGrid, addApp } = getGridElements();
@@ -369,6 +389,7 @@ window.addAppIcon = addAppIcon;
 window.removeAppIcon = removeAppIcon;
 window.renameAppIcon = renameAppIcon;
 window.updateAppIcon = updateAppIcon;
+window.updateAppLink = updateAppLink;
 window.syncAppGridOrder = syncAppGridOrder;
 window.renderDefaultAppVisibilityList = renderDefaultAppVisibilityList;
 

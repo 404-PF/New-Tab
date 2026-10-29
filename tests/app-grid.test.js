@@ -247,6 +247,69 @@ describe('AppGridState', () => {
     expect(AppGridState.renameApp('nonexistent', 'Name')).toBe(false);
   });
 
+  it('updateAppUrl updates url, clears cache, and keeps identity fields', () => {
+    const app = { id: 'app-url', url: 'https://old.example', name: 'Keeper', icon: 'icon.png', cachedIcon: 'data:old' };
+    AppGridState.addApp(app);
+    AppGridState.saveOrder(['app-url']);
+
+    expect(AppGridState.updateAppUrl('app-url', 'https://new.example')).toBe(true);
+
+    const updated = AppGridState.getCustomApps()[0];
+    expect(updated.id).toBe('app-url');
+    expect(updated.name).toBe('Keeper');
+    expect(updated.icon).toBe('icon.png');
+    expect(updated.url).toBe('https://new.example');
+    expect(updated.cachedIcon).toBeUndefined();
+    expect(AppGridState.getOrder()).toEqual(['app-url']);
+  });
+
+  it('updateAppUrl returns false when another app already uses the URL', () => {
+    AppGridState.addApp({ id: 'taken', url: 'https://taken.example', name: 'Taken' });
+    AppGridState.addApp({ id: 'editor', url: 'https://editor.example', name: 'Editor' });
+
+    expect(AppGridState.updateAppUrl('editor', 'https://taken.example')).toBe(false);
+    expect(AppGridState.getCustomApps().find(app => app.id === 'editor').url).toBe('https://editor.example');
+  });
+
+  it('updateAppUrl allows keeping its own URL unchanged', () => {
+    AppGridState.addApp({ id: 'self', url: 'https://self.example', name: 'Self' });
+
+    expect(AppGridState.updateAppUrl('self', 'https://self.example')).toBe(true);
+    expect(AppGridState.getCustomApps().find(app => app.id === 'self').url).toBe('https://self.example');
+  });
+
+  it('updateAppUrl returns false for missing id or empty URL', () => {
+    expect(AppGridState.updateAppUrl('nonexistent', 'https://x.example')).toBe(false);
+
+    AppGridState.addApp({ id: 'blank', url: 'https://blank.example', name: 'Blank' });
+    expect(AppGridState.updateAppUrl('blank', '')).toBe(false);
+    expect(AppGridState.updateAppUrl('blank', '   ')).toBe(false);
+    expect(AppGridState.getCustomApps().find(app => app.id === 'blank').url).toBe('https://blank.example');
+  });
+
+  it('updateAppUrl keeps folder membership untouched', () => {
+    AppGridState.addApp({ id: 'foldered', url: 'https://foldered.example', name: 'Foldered' });
+    const folder = AppGridState.createFolder('Group', ['foldered']);
+
+    expect(AppGridState.updateAppUrl('foldered', 'https://moved.example')).toBe(true);
+    expect(AppGridState.getFolders().find(f => f.id === folder.id).apps).toEqual(['foldered']);
+    expect(AppGridState.getCustomApps().find(app => app.id === 'foldered').url).toBe('https://moved.example');
+  });
+
+  it('updateAppUrl rejects a URL claimed by a default app', () => {
+    window.defaultApps = [
+      { id: 'feedback-app', url: 'https://github.com/404-PF/New-Tab/issues/new', nameKey: 'feedback', className: 'default-app' },
+    ];
+    AppGridState.addApp({ id: 'wants-default', url: 'https://wants.example', name: 'Wants' });
+
+    try {
+      expect(AppGridState.updateAppUrl('wants-default', 'https://github.com/404-PF/New-Tab/issues/new')).toBe(false);
+      expect(AppGridState.getCustomApps().find(app => app.id === 'wants-default').url).toBe('https://wants.example');
+    } finally {
+      delete window.defaultApps;
+    }
+  });
+
   it('updateThumbnail updates icon and clears cache', () => {
     const app = { id: 'app3', url: 'https://example.com', name: 'Ex', icon: 'old.png', cachedIcon: 'data:old' };
     AppGridState.addApp(app);
@@ -666,6 +729,15 @@ describe('AppGridState', () => {
     it('returns true when stored URL has explicit default port', () => {
       AppGridState.addApp({ id: 'porty', url: 'https://example.org:443/path', name: 'Porty' });
       expect(AppGridState.hasAppWithUrl('https://example.org/path')).toBe(true);
+    });
+
+    it('returns false when the only match is the excluded app', () => {
+      expect(AppGridState.hasAppWithUrl('https://example.com', 'existing')).toBe(false);
+    });
+
+    it('returns true when a different app matches even with an exclusion', () => {
+      AppGridState.addApp({ id: 'other', url: 'https://other.example', name: 'Other' });
+      expect(AppGridState.hasAppWithUrl('https://other.example', 'existing')).toBe(true);
     });
   });
 
