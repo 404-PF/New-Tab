@@ -501,10 +501,11 @@
   };
 
   // Visibility-aware interval manager.
-  // runImmediately only suppresses the constructor-time call; runOnResume
-  // (default true) additionally suppresses the immediate call on visibility
-  // resume so cadence-sensitive consumers (e.g. background rotation) wait
-  // out the full interval instead of advancing the moment the tab returns.
+  // runImmediately (default false) runs the callback once at construction
+  // time. runOnResume (default true) runs the callback when the tab becomes
+  // visible; pass false to wait out the full interval so cadence-sensitive
+  // consumers (e.g. background rotation) do not advance the moment the tab
+  // returns.
   class VisibilityInterval {
     constructor(callback, interval, runImmediately = false, runOnResume = true) {
       this.callback = callback;
