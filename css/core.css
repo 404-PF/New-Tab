@@ -2155,7 +2155,7 @@ body.light-theme .bg-rotation-next-btn:hover {
   -webkit-backdrop-filter: blur(16px);
   border-radius: 16px;
   padding: 24px 20px;
-  min-width: 500px;
+  min-width: min(500px, calc(100vw - 32px));
   max-width: min(var(--modal-width-md), calc(100vw - 32px));
   max-height: var(--overlay-max-height);
   overflow-y: auto;

@@ -3085,7 +3085,7 @@ body.light-theme .weather-city-inline input:focus {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-radius: 16px;
-  min-width: 320px;
+  min-width: min(320px, calc(100vw - 32px));
   max-width: min(var(--modal-width-md), calc(100vw - 32px));
   width: 90%;
   max-height: var(--overlay-max-height);
@@ -3103,12 +3103,6 @@ body.light-theme .weather-city-inline input:focus {
 .weather-app-modal.modal-open .weather-app-modal-content {
   opacity: 1;
   transform: translateY(0);
-}
-
-@media (min-width: 576px) {
-  .weather-app-modal-content {
-    width: 520px;
-  }
 }
 
 .weather-app-header {

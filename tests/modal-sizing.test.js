@@ -76,6 +76,9 @@ describe('Shared modal width scale (#1073)', () => {
     // Add App used to ship min-width: 500px with no max-width at all, so it
     // overflowed viewports narrower than ~500px.
     expectDeclaration(body, 'max-width', 'min(var(--modal-width-md), calc(100vw - 32px))');
+    // The 500px floor is viewport-aware so the cap keeps its 16px gutters on
+    // viewports from 501px to 531px, where the floor would otherwise win.
+    expectDeclaration(body, 'min-width', 'min(500px, calc(100vw - 32px))');
     expectDeclaration(body, 'max-height', 'var(--overlay-max-height)');
 
     const mq = FEATURES_CSS.match(
@@ -98,7 +101,7 @@ describe('Shared modal width scale (#1073)', () => {
       '#todo-edit-modal content rule in css/app.css'
     );
 
-    expectDeclaration(body, 'min-width', '400px');
+    expectDeclaration(body, 'min-width', 'min(400px, calc(100vw - 32px))');
     expectDeclaration(body, 'max-width', 'min(var(--modal-width-md), calc(100vw - 32px))');
     expectDeclaration(body, 'max-height', 'var(--overlay-max-height)');
   });
@@ -123,7 +126,7 @@ describe('Shared modal width scale (#1073)', () => {
       '.weather-app-modal-content rule in css/features.css'
     );
 
-    expectDeclaration(body, 'min-width', '320px');
+    expectDeclaration(body, 'min-width', 'min(320px, calc(100vw - 32px))');
     expectDeclaration(body, 'max-width', 'min(var(--modal-width-md), calc(100vw - 32px))');
     expectDeclaration(body, 'max-height', 'var(--overlay-max-height)');
   });
@@ -176,7 +179,10 @@ describe('Shared modal width scale (#1073)', () => {
     // The arbitrary px pairs the scale replaced. Anything still matching here
     // is a modal that forgot to opt into a --modal-width-* step. (600px is
     // absent on purpose: .folder-popup-content is not one of the ten modals
-    // and keeps its own literal.)
+    // and keeps its own literal.) The width: entries guard responsive
+    // overrides like the weather modal's retired width: 520px desktop block,
+    // which the max-width forms cannot see; min-/max-width floors are
+    // excluded from the width: match by the leading [^-\w].
     const stalePairs = [
       /max-width:\s*450px;/,
       /max-width:\s*480px;/,
@@ -184,6 +190,7 @@ describe('Shared modal width scale (#1073)', () => {
       /max-width:\s*520px;/,
       /max-width:\s*720px;/,
       /max-width:\s*900px;/,
+      /(?:^|[^-\w])width:\s*(?:450|480|500|520|720|900)px;/,
       /width:\s*min\(720px, calc\(100vw - 32px\)\)/,
     ];
     const combined = CORE_CSS + FEATURES_CSS + APP_CSS;

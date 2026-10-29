@@ -2958,7 +2958,7 @@ body.light-theme .progress-dot.active {
   -webkit-backdrop-filter: blur(16px);
   border-radius: 16px;
   padding: 0;
-  min-width: 400px;
+  min-width: min(400px, calc(100vw - 32px));
   max-width: min(var(--modal-width-md), calc(100vw - 32px));
   max-height: var(--overlay-max-height);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
