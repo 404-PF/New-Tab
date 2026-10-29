@@ -1310,3 +1310,81 @@ describe('DataManager AI grounding preference (issue #1003)', () => {
     }
   });
 });
+
+describe('DataManager todo sort preference (issue #1056)', () => {
+  it('includes todoSortOrder in the export allowlist', () => {
+    expect(window.DataManager.EXPORT_KEYS).toContain('todoSortOrder');
+  });
+
+  it('validates todoSortOrder as one of the known sort modes', () => {
+    const shape = window.DataManager.EXPECTED_SHAPES.todoSortOrder;
+    ['manual', 'due', 'priority', 'created', 'az'].forEach((value) => {
+      expect(shape(value)).toBe(true);
+    });
+    expect(shape('bogus')).toBe(false);
+    expect(shape('')).toBe(false);
+    expect(shape(1)).toBe(false);
+    expect(shape(null)).toBe(false);
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      todoSortOrder: 'priority'
+    } })).toEqual({ valid: true });
+
+    const bogusBackup = window.DataManager.validateImportData({ version: 1, data: {
+      todoSortOrder: 'bogus'
+    } });
+    expect(bogusBackup.valid).toBe(false);
+    expect(bogusBackup.error).toContain('dataImportInvalidShape');
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      todoSortOrder: 1
+    } }).valid).toBe(false);
+  });
+
+  it('validates todoSortOrder against window.TODO_SORT_MODES when todo.js is loaded', () => {
+    const original = window.TODO_SORT_MODES;
+    window.TODO_SORT_MODES = ['manual', 'az'];
+    try {
+      const shape = window.DataManager.EXPECTED_SHAPES.todoSortOrder;
+      expect(shape('manual')).toBe(true);
+      expect(shape('az')).toBe(true);
+      expect(shape('priority')).toBe(false);
+    } finally {
+      if (original === undefined) delete window.TODO_SORT_MODES;
+      else window.TODO_SORT_MODES = original;
+    }
+  });
+
+  it('round-trips todoSortOrder through export and import', async () => {
+    localStorage.setItem('todoSortOrder', 'priority');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.todoSortOrder).toBe('priority');
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+
+    localStorage.removeItem('todoSortOrder');
+    const result = await importBackup(exported.data, 'replace');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('todoSortOrder')).toBe('priority');
+  });
+
+  it('applies todoSortOrder in merge mode', async () => {
+    localStorage.setItem('todoSortOrder', 'due');
+
+    const result = await importBackup({ todoSortOrder: 'az' }, 'merge');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('todoSortOrder')).toBe('az');
+  });
+
+  it('clears todoSortOrder in replace mode when the backup omits it', async () => {
+    localStorage.setItem('todoSortOrder', 'priority');
+
+    await importBackup({ theme: 'dark' }, 'replace');
+
+    expect(localStorage.getItem('todoSortOrder')).toBeNull();
+    expect(localStorage.getItem('theme')).toBe('dark');
+  });
+});

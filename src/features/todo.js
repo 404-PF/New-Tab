@@ -155,6 +155,14 @@
   function reloadTodosState() {
     todos = loadTodos();
     migrateTodos();
+    // Re-read the sort preference too so a settings import that changed
+    // todoSortOrder reorders the list and syncs the selector without a tab
+    // reload (issue #1056). Unlike setTodoSort this does not re-persist the
+    // value: a replace-mode import that cleared the key must stay cleared.
+    currentSort = loadTodoSort();
+    if (elements.todoSort) {
+      elements.todoSort.value = currentSort;
+    }
     // applyFilters also refreshes the progress ring, counts and filter pills.
     applyFilters();
   }
@@ -3007,6 +3015,9 @@ try {
   window.setTodoSort = setTodoSort;
   window.getTodoSort = getTodoSort;
   window.handleTodoSortChange = handleTodoSortChange;
+  // Shared with data-manager.js so the import validator stays in sync with
+  // the modes todo.js actually supports (issue #1056).
+  window.TODO_SORT_MODES = SORT_MODES;
   window.selectedIds = selectedIds;
   window.handleTodoSelect = handleTodoSelect;
   window.handleTodoListClick = handleTodoListClick;

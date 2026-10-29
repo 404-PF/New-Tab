@@ -72,7 +72,8 @@
     'autoTheme',
     'autoThemeLightTime',
     'autoThemeDarkTime',
-    'aiGroundWithWeb'
+    'aiGroundWithWeb',
+    'todoSortOrder'
   ];
 
   // Object keys whose storage entries mix persistent settings with transient
@@ -669,6 +670,14 @@
     todoReminderLeadTime: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     todoStats: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
     todoStatsEnabled: function (v) { return typeof v === 'boolean'; },
+    // Modes come from todo.js (window.TODO_SORT_MODES, issue #1013/#1056);
+    // the literal fallback keeps validation working when todo.js has not
+    // loaded (e.g. unit tests that only inject this module).
+    todoSortOrder: function (v) {
+      if (typeof v !== 'string') return false;
+      const modes = window.TODO_SORT_MODES || ['manual', 'due', 'priority', 'created', 'az'];
+      return modes.indexOf(v) !== -1;
+    },
     pomodoroStats: function (v) {
       if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
       if (typeof v.days !== 'object' || v.days === null || Array.isArray(v.days)) return false;
