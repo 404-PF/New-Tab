@@ -114,14 +114,29 @@ describe('Snake ready state (#597)', () => {
     expect(stage.querySelector('.games-ready-overlay')).not.toBeNull();
     expect(window.__snakeReady.isStarted()).toBe(false);
 
-    // Steering while ready is ignored.
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight' }));
-    expect(window.__snakeReady.isStarted()).toBe(false);
-
     // Space signals readiness.
     document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
     expect(window.__snakeReady.isStarted()).toBe(true);
     expect(stage.querySelector('.games-ready-overlay')).toBeNull();
+
+    game.destroy();
+    container.remove();
+  });
+
+  it('starts on a direction key and records it as the first input (#1021)', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('snake');
+    game.init(container);
+
+    // A direction key on the ready screen starts the run instead of being
+    // swallowed, and the pressed direction is queued and faced at once.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+    expect(window.__snakeReady.isStarted()).toBe(true);
+    expect(container.querySelector('.games-ready-overlay')).toBeNull();
+    const state = game.serialize();
+    expect(state.direction).toBe('up');
+    expect(state.directionQueue).toEqual(['up']);
 
     game.destroy();
     container.remove();
@@ -595,9 +610,12 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight' }));
 
       const samples = sampleFrames(game, 20);
-      const upIdx = samples.findIndex((s) => s && s.direction === 'up');
+      // The first press faces 'up' immediately (#1021), so direction alone
+      // no longer marks the move: find the tick whose head went north.
+      const upIdx = samples.findIndex((s) => s && s.snake[0].y === before.y - 1 && s.snake[0].x === before.x);
       expect(upIdx).toBeGreaterThan(-1);
       // The first queued turn moves the head north one cell.
+      expect(samples[upIdx].direction).toBe('up');
       expect(samples[upIdx].snake[0]).toEqual({ x: before.x, y: before.y - 1 });
       // The second applies on a following tick, moving east again.
       const rightIdx = samples.findIndex((s, i) => i > upIdx && s && s.direction === 'right');
@@ -656,9 +674,11 @@ describe('Snake turn queue depth and apply-time veto (#1017)', () => {
       }
       expect(game.serialize().directionQueue).toEqual([]);
 
-      // A real turn still fits and is applied.
+      // A real turn still fits: queued for the per-tick drain and faced in
+      // the same frame the key lands (#1021).
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
       expect(game.serialize().directionQueue).toEqual(['up']);
+      expect(game.serialize().direction).toBe('up');
       const samples = sampleFrames(game, 15);
       expect(samples.findIndex((s) => s && s.direction === 'up')).toBeGreaterThan(-1);
     });
@@ -852,6 +872,103 @@ describe('Snake buffered-turn indicator (#1020)', () => {
       if (previousMotion === undefined) delete window.prefersReducedMotion;
       else window.prefersReducedMotion = previousMotion;
     }
+  });
+});
+
+describe('Snake immediate turn application (#1021)', () => {
+  let container = null;
+  let game = null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    ({ container, game } = startGame());
+    vi.advanceTimersByTime(200);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    if (game) game.destroy();
+    if (container) container.remove();
+    container = null;
+    game = null;
+  });
+
+  it('faces a legal queued turn in the same frame the key lands', () => {
+    const snakeBefore = game.serialize().snake;
+    expect(game.serialize().direction).toBe('right');
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+
+    // Facing changed with no tick in between. The queue is left intact, so
+    // tick() still drains exactly one entry per tick: only the facing
+    // moved earlier (#1021).
+    const state = game.serialize();
+    expect(state.direction).toBe('up');
+    expect(state.directionQueue).toEqual(['up']);
+    // No cell moved when the turn applied: the interpolation anchors are
+    // untouched, so nothing snaps or teleports.
+    expect(state.snake).toEqual(snakeBefore);
+
+    // The head's next move is exactly one cell north on the next tick.
+    let moved = null;
+    for (let i = 0; i < 15 && !moved; i++) {
+      vi.advanceTimersByTime(16);
+      const sample = game.serialize();
+      if (sample.snake[0].x !== snakeBefore[0].x || sample.snake[0].y !== snakeBefore[0].y) {
+        moved = sample;
+      }
+    }
+    expect(moved).not.toBeNull();
+    expect(moved.snake[0]).toEqual({ x: snakeBefore[0].x, y: snakeBefore[0].y - 1 });
+    expect(moved.direction).toBe('up');
+  });
+
+  it('never applies a reversal immediately', () => {
+    const before = game.serialize().snake[0];
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft' }));
+
+    // Left is accepted into the queue (the enqueue-time opposite veto is
+    // gone, #1017) but reverses the heading: it is never applied on press,
+    // and tick() drops it at apply time.
+    const queued = game.serialize();
+    expect(queued.directionQueue).toEqual(['left']);
+    expect(queued.direction).toBe('right');
+    expect(queued.snake[0]).toEqual(before);
+
+    const samples = [];
+    for (let i = 0; i < 15; i++) {
+      vi.advanceTimersByTime(16);
+      samples.push(game.serialize());
+    }
+    expect(samples.every((s) => s && s.direction === 'right')).toBe(true);
+    expect(samples[samples.length - 1].directionQueue).toEqual([]);
+    // The run kept travelling east: the reversal never executed.
+    expect(samples[samples.length - 1].snake[0].x).toBeGreaterThan(before.x);
+  });
+
+  it('does not apply a queued turn immediately while paused', () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' })); // manual pause
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' }));
+
+    // Paused: the press is queued but the facing does not move, and the
+    // board stays frozen.
+    expect(game.serialize().direction).toBe('right');
+    expect(game.serialize().directionQueue).toEqual(['up']);
+    const frozen = game.serialize().snake;
+    vi.advanceTimersByTime(300);
+    expect(game.serialize().snake).toEqual(frozen);
+
+    // Resuming lets the per-tick drain apply the held turn.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    let advanced = null;
+    for (let i = 0; i < 15 && !advanced; i++) {
+      vi.advanceTimersByTime(16);
+      const sample = game.serialize();
+      if (sample.direction === 'up') advanced = sample;
+    }
+    expect(advanced).not.toBeNull();
+    expect(advanced.directionQueue).toEqual([]);
   });
 });
 

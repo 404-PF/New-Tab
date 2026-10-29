@@ -157,6 +157,23 @@
     return true;
   }
 
+  // Face the head of the turn queue the instant a key lands instead of
+  // waiting for the next tick (#1021). Only `direction` (what the eyes and
+  // the next tick follow) changes here - prevSnake/lastTickAt stay
+  // untouched, so segmentPosition keeps sliding continuously and nothing
+  // snaps or teleports. The queue is left intact, so tick() still drains
+  // exactly one entry per tick and movement timing is identical; only the
+  // facing moves earlier. A queued reversal is never applied here: tick()
+  // keeps vetoing it at apply time.
+  function applyQueuedTurnImmediately() {
+    if (paused || gameOver || logicFrame === null) return false;
+    const pending = directionQueue[0];
+    if (!pending || pending === direction || OPPOSITES[pending] === direction) return false;
+    direction = pending;
+    draw();
+    return true;
+  }
+
   // ===================== Game Logic =====================
 
   function initSnake() {
@@ -719,8 +736,17 @@
       return;
     }
 
-    // Ignore all steering until the player has started the run.
-    if (!started) return;
+    // A direction key on the ready screen starts the run and is recorded
+    // as the first input instead of being swallowed (#1021). Space and the
+    // Start button keep working through the ready screen's own handler.
+    if (!started) {
+      const startDir = window.gamesHelpers.parseDirection(e);
+      if (!startDir || !readyScreen) return;
+      readyScreen.start();
+      if (!started) return;
+      if (queueTurn(startDir)) applyQueuedTurnImmediately();
+      return;
+    }
 
     if (gameOver) {
       window.gamesHelpers.handleRestartSpace(e, restart);
@@ -737,10 +763,10 @@
     if (!newDir) return;
 
     e.preventDefault();
-    // Redraw as soon as a turn is accepted: with reduced motion there is no
-    // render loop, and the next tick drains the queue before it draws, so the
-    // buffered-turn mark would otherwise never paint (#1020).
-    if (queueTurn(newDir)) draw();
+    // Face the turn the instant it is accepted (#1021). When it cannot
+    // apply immediately (a queued reversal, or a paused board), redraw so
+    // the buffered-turn mark still paints under reduced motion (#1020).
+    if (queueTurn(newDir) && !applyQueuedTurnImmediately()) draw();
   }
 
   // ===================== Touch / pointer steering (#1019) =====================
