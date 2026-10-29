@@ -281,7 +281,7 @@
       saveStats();
       // The run reached a terminal state: drop any persisted snapshot so the
       // next launch starts fresh instead of resuming a dead board.
-      window.GameRegistry?.clearSave('2048');
+      void window.GameRegistry?.clearSave('2048');
     }
   }
 
@@ -473,7 +473,7 @@
     if (!restored && savedState !== undefined && savedState !== null) {
       // The handed-down snapshot failed validation: discard that stale save
       // now rather than keeping or re-saving it at teardown.
-      window.GameRegistry?.clearSave('2048');
+      void window.GameRegistry?.clearSave('2048');
     }
 
     document.addEventListener('keydown', handleKeydown);

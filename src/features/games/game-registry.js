@@ -253,13 +253,48 @@
     return Promise.resolve(true);
   }
 
+  // Saves writes are serialized so each one is confirmed (or rolled back by
+  // the storage bridge) before the next setItemAsync() starts: overlapping
+  // writes would let the second write's rollback target be the first write's
+  // unconfirmed (possibly later rejected) snapshot, resurrecting it in the
+  // bridge cache. Each queued write carries an updater that is applied to the
+  // *stored* saves when that write runs, so a write is never derived from
+  // another write's unconfirmed values.
+  let savesWriteChain = Promise.resolve();
+  let savesWritesInFlight = 0;
+
+  // `apply(saves)` mutates a copy of the stored saves and returns false to
+  // skip the write entirely (nothing to persist). Resolves to whether a write
+  // was persisted.
+  function enqueueSavesWrite(apply) {
+    const run = () => {
+      let saves;
+      try {
+        saves = { ...loadSaves() };
+        if (apply(saves) === false) return Promise.resolve(true);
+      } catch (e) {
+        return Promise.resolve(failSavesSave(e));
+      }
+      return saveSaves(saves);
+    };
+
+    const write = savesWritesInFlight === 0 ? run() : savesWriteChain.then(run);
+    savesWritesInFlight += 1;
+    savesWriteChain = write.then(
+      () => { savesWritesInFlight -= 1; },
+      () => { savesWritesInFlight -= 1; }
+    );
+    return write;
+  }
+
   // Persist a snapshot for a game that opted in via serialize(). Callers must
   // pass a concrete state; resolves to true when a save was written.
   function persistSave(gameId, state) {
-    if (!gameId) return false;
-    const saves = loadSaves();
-    saves[gameId] = { state: state, savedAt: Date.now() };
-    return saveSaves(saves);
+    if (!gameId) return Promise.resolve(false);
+    return enqueueSavesWrite((saves) => {
+      saves[gameId] = { state: state, savedAt: Date.now() };
+      return true;
+    });
   }
 
   // A well-formed envelope carries a restorable snapshot: an object (the
@@ -282,10 +317,13 @@
   }
 
   function clearSave(gameId) {
-    const saves = loadSaves();
-    if (!Object.hasOwn(saves, gameId)) return;
-    delete saves[gameId];
-    saveSaves(saves);
+    return enqueueSavesWrite((saves) => {
+      // Checked when the write runs, so a queued persistSave for the same
+      // game is neither clobbered by an eager skip nor missed by the delete.
+      if (!Object.hasOwn(saves, gameId)) return false;
+      delete saves[gameId];
+      return true;
+    });
   }
 
   // ===================== Crypto-safe Random =====================
@@ -454,7 +492,7 @@
   }
 
   function serializeCurrent() {
-    if (!currentGame || typeof currentGame.serialize !== 'function') return false;
+    if (!currentGame || typeof currentGame.serialize !== 'function') return Promise.resolve(false);
     try {
       const state = currentGame.serialize();
       // Serialize-hook contract:
@@ -467,14 +505,14 @@
       // to signal "discard" itself.
       if (state === null || state === undefined) {
         if (!currentLaunchHadSave) {
-          clearSave(currentGame.id);
+          return clearSave(currentGame.id).then(() => false);
         }
-        return false;
+        return Promise.resolve(false);
       }
       return persistSave(currentGame.id, state);
     } catch (e) {
       console.warn('GameRegistry.serializeCurrent: error serializing', currentGame.id, e);
-      return false;
+      return Promise.resolve(false);
     }
   }
 
@@ -520,7 +558,7 @@
     if (document.hidden) {
       // Opening another tab hides this page without closing the modal; save
       // before pausing so the run survives a reload that never calls close().
-      serializeCurrent();
+      void serializeCurrent();
       if (typeof currentGame.pause === 'function') {
         try {
           currentGame.pause();
@@ -572,7 +610,7 @@
     // both navigation and tab/window close; bfcache restores skip init()
     // because `initialized` is still true.
     window.addEventListener('pagehide', function () {
-      serializeCurrent();
+      void serializeCurrent();
     });
   }
 
@@ -593,6 +631,8 @@
     statsWritesInFlight = 0;
     lastStatsToastAt = -Infinity;
     lastSavesToastAt = -Infinity;
+    savesWriteChain = Promise.resolve();
+    savesWritesInFlight = 0;
     mruCache = null;
     mruCacheRaw = undefined;
     savesCache = null;

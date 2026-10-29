@@ -318,7 +318,7 @@
     });
     // The run reached its terminal state: drop any persisted snapshot so the
     // next launch starts fresh instead of resuming a dead run.
-    window.GameRegistry?.clearSave('snake');
+    void window.GameRegistry?.clearSave('snake');
     draw();
   }
 
@@ -1032,7 +1032,7 @@
       if (savedState) {
         // The handed-down snapshot failed validation: discard that stale
         // save now rather than keeping or re-saving it at teardown.
-        window.GameRegistry?.clearSave('snake');
+        void window.GameRegistry?.clearSave('snake');
       }
     }
 

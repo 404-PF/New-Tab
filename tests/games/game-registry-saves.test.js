@@ -84,9 +84,10 @@ describe('GameRegistry saves (#646)', () => {
     // The save stays until the game reaches a terminal state or is cleared.
     expect(window.GameRegistry.hasSave('save-game')).toBe(true);
 
-    // Destroy again first: launch() is a no-op for a running game.
-    window.GameRegistry.destroyCurrent();
-    window.GameRegistry.clearSave('save-game');
+    // Destroy again first: launch() is a no-op for a running game. Awaiting
+    // keeps the clear below behind the serialized save write.
+    await window.GameRegistry.destroyCurrent();
+    void window.GameRegistry.clearSave('save-game');
     expect(window.GameRegistry.hasSave('save-game')).toBe(false);
     expect(JSON.parse(localStorage.getItem('games_saves'))['save-game']).toBeUndefined();
 
@@ -114,13 +115,15 @@ describe('GameRegistry saves (#646)', () => {
     expect(window.GameRegistry.getSave('failed-save-game')).toBeNull();
   });
 
-  it('keeps separate snapshots per game', () => {
+  it('keeps separate snapshots per game', async () => {
     registerSaveableGame('save-a', { snapshot: { n: 1 } });
     registerSaveableGame('save-b', { snapshot: { n: 2 } });
     ensureContainer();
     window.GameRegistry.launch('save-a');
     window.GameRegistry.launch('save-b'); // destroys save-a first, serializing its snapshot
-    window.GameRegistry.destroyCurrent(); // serializes save-b
+    // Saves writes are serialized, so wait for save-b's write to land before
+    // reading the stored snapshot.
+    await window.GameRegistry.destroyCurrent(); // serializes save-b
 
     const raw = JSON.parse(localStorage.getItem('games_saves'));
     expect(raw['save-a'].state).toEqual({ n: 1 });
@@ -648,5 +651,31 @@ describe('GameRegistry saves bridge rejection (#1039)', () => {
 
     expect(showToast).toHaveBeenCalledTimes(1);
     expect(window.GameRegistry.hasSave('saves-burst-game')).toBe(false);
+  });
+
+  it('does not resurrect a rejected snapshot when two overlapping saves both fail', async () => {
+    const game = launchSaveable('saves-race-game', { snapshot: { n: 1 } });
+
+    const restore = failChromeSet();
+    try {
+      // Two writes without awaiting the first: saves writes are serialized,
+      // so the second setItemAsync() starts only after the first settles and
+      // cannot use the first rejected snapshot as its rollback target.
+      const first = window.GameRegistry.destroyCurrent();
+      window.GameRegistry.launch('saves-race-game');
+      game.setSnapshot({ n: 2 });
+      const second = window.GameRegistry.destroyCurrent();
+      await expect(first).resolves.toBe(false);
+      await expect(second).resolves.toBe(false);
+    } finally {
+      restore();
+    }
+
+    expect(window.GameRegistry.hasSave('saves-race-game')).toBe(false);
+    expect(window.GameRegistry.getSave('saves-race-game')).toBeNull();
+    expect(window.GameRegistry.getAllSaves()).toEqual({});
+    expect(localStorage.getItem('games_saves')).toBeNull();
+    // Both failures happen in one burst, so the toast is coalesced.
+    expect(showToast).toHaveBeenCalledTimes(1);
   });
 });
