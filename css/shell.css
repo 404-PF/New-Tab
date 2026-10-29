@@ -124,12 +124,6 @@
   justify-content: flex-end;
 }
 
-/* Modern Add App Modal Styles */
-#add-app-modal > div {
-  padding: 28px 24px;
-  min-width: 520px;
-}
-
 .add-app-header {
   display: flex;
   align-items: center;

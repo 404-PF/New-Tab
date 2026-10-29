@@ -2958,8 +2958,8 @@ body.light-theme .progress-dot.active {
   -webkit-backdrop-filter: blur(16px);
   border-radius: 16px;
   padding: 0;
-  min-width: 400px;
-  max-width: 500px;
+  min-width: min(400px, calc(100vw - 32px));
+  max-width: min(var(--modal-width-md), calc(100vw - 32px));
   max-height: var(--overlay-max-height);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   position: fixed;
@@ -3220,7 +3220,7 @@ body.light-theme .todo-edit-field input[type="text"]:focus:where(:not(.todo-sect
   -webkit-backdrop-filter: blur(20px);
   border-radius: 24px;
   width: 90%;
-  max-width: 900px;
+  max-width: min(var(--modal-width-xl), calc(100vw - 32px));
   height: 80vh;
   max-height: 700px;
   display: flex;

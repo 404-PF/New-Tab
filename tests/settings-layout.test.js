@@ -9,7 +9,7 @@ describe('Settings layout stability (#512)', () => {
   it('uses a stable modal width and reserves scrollbar space', () => {
     const css = readFileSync(CORE_CSS_PATH, 'utf-8');
 
-    expect(css).toMatch(/#settings-modal > div\s*\{[^}]*width:\s*min\(720px, calc\(100vw - 32px\)\)/);
+    expect(css).toMatch(/#settings-modal > div\s*\{[^}]*width:\s*min\(var\(--modal-width-lg\), calc\(100vw - 32px\)\)/);
     expect(css).toMatch(/\.settings-body\s*\{[^}]*overflow-y:\s*auto/);
     expect(css).toMatch(/\.settings-content\s*\{[^}]*min-width:\s*0[^}]*overflow-x:\s*hidden[^}]*overflow-y:\s*auto[^}]*scrollbar-gutter:\s*stable/);
     expect(css).toMatch(/\.settings-section\s*\{[^}]*min-width:\s*0[^}]*overflow-wrap:\s*anywhere/);
