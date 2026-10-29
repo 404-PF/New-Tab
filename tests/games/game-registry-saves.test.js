@@ -691,32 +691,44 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     warnSpy.mockRestore();
   });
 
-  // The storage bridge's setItem returns false for a rejected write while
-  // native Storage#setItem returns void; only the MRU key is failed so
-  // unrelated writes (e.g. saves) still land.
-  function failMRUWrites() {
-    const originalSetItem = localStorage.setItem.bind(localStorage);
-    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
-      if (key === 'games_recently_played') return false;
-      return originalSetItem(key, value);
-    });
-    return () => spy.mockRestore();
+  // Real bridge path: chrome.storage.local.set reports failure via lastError,
+  // so setItemAsync() settles false after the bridge rolls its cache back.
+  // Only the MRU key is failed so unrelated writes still land.
+  function failMRUChromeSet() {
+    const originalSet = chrome.storage.local.set;
+    chrome.storage.local.set = (items, callback) => {
+      if (Object.prototype.hasOwnProperty.call(items, 'games_recently_played')) {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        if (callback) callback();
+        chrome.runtime.lastError = null;
+        return Promise.resolve();
+      }
+      return originalSet.call(chrome.storage.local, items, callback);
+    };
+    return () => {
+      chrome.storage.local.set = originalSet;
+    };
   }
 
   function registerPlainGame(id) {
     window.GameRegistry.register({ id: id, name: id, init: () => {}, destroy: () => {} });
   }
 
-  it('drops the rejected MRU list so the next read re-serves rolled-back state', () => {
+  it('drops the rejected MRU list so the next read re-serves rolled-back state', async () => {
     registerPlainGame('mru-game-a');
     ensureContainer();
     window.GameRegistry.launch('mru-game-a');
     expect(window.GameRegistry.getMRU()).toEqual(['mru-game-a']);
 
-    const restore = failMRUWrites();
+    const restore = failMRUChromeSet();
     try {
       registerPlainGame('mru-game-b');
       window.GameRegistry.launch('mru-game-b');
+      // saveMRU is fire-and-forget; wait for the async rejection handler to
+      // log the warning (the last step of the failure path) before asserting.
+      await vi.waitFor(() => {
+        expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('games_recently_played'))).toBe(true);
+      });
     } finally {
       restore();
     }
@@ -725,19 +737,21 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     // bridge rolled back to, not the one it refused.
     expect(window.GameRegistry.getMRU()).toEqual(['mru-game-a']);
     expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['mru-game-a']);
-    expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('games_recently_played'))).toBe(true);
   });
 
-  it('lands a later MRU write after a rejected one', () => {
+  it('lands a later MRU write after a rejected one', async () => {
     registerPlainGame('mru-game-c');
     ensureContainer();
     window.GameRegistry.launch('mru-game-c');
     expect(window.GameRegistry.getMRU()).toEqual(['mru-game-c']);
 
-    const restore = failMRUWrites();
+    const restore = failMRUChromeSet();
     try {
       registerPlainGame('mru-game-d');
       window.GameRegistry.launch('mru-game-d');
+      await vi.waitFor(() => {
+        expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('games_recently_played'))).toBe(true);
+      });
     } finally {
       restore();
     }
@@ -748,16 +762,63 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     expect(window.GameRegistry.getMRU()).toEqual(['mru-game-e', 'mru-game-c']);
   });
 
+  it('treats a setItemAsync result of false as a failed MRU write', async () => {
+    registerPlainGame('mru-false-a');
+    ensureContainer();
+    window.GameRegistry.launch('mru-false-a');
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-false-a']);
+
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockResolvedValue(false);
+    try {
+      registerPlainGame('mru-false-b');
+      window.GameRegistry.launch('mru-false-b');
+      await vi.waitFor(() => {
+        expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('games_recently_played'))).toBe(true);
+      });
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-false-a']);
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['mru-false-a']);
+  });
+
+  it('checks the sync setItem return when setItemAsync is unavailable', () => {
+    registerPlainGame('mru-sync-a');
+    ensureContainer();
+    window.GameRegistry.launch('mru-sync-a');
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-sync-a']);
+
+    const originalSetItemAsync = localStorage.setItemAsync;
+    delete localStorage.setItemAsync;
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+      if (key === 'games_recently_played') return false;
+      return originalSetItem(key, value);
+    });
+    try {
+      registerPlainGame('mru-sync-b');
+      window.GameRegistry.launch('mru-sync-b');
+    } finally {
+      spy.mockRestore();
+      if (originalSetItemAsync) {
+        localStorage.setItemAsync = originalSetItemAsync;
+      }
+    }
+
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-sync-a']);
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['mru-sync-a']);
+    expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('games_recently_played'))).toBe(true);
+  });
+
   it('drops the MRU cache when the storage write throws', () => {
     registerPlainGame('mru-throw-a');
     ensureContainer();
     window.GameRegistry.launch('mru-throw-a');
     expect(window.GameRegistry.getMRU()).toEqual(['mru-throw-a']);
 
-    const originalSetItem = localStorage.setItem.bind(localStorage);
-    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
-      if (key === 'games_recently_played') throw new Error('storage unavailable');
-      return originalSetItem(key, value);
+    const spy = vi.spyOn(localStorage, 'setItemAsync').mockImplementation(() => {
+      throw new Error('storage unavailable');
     });
     try {
       registerPlainGame('mru-throw-b');

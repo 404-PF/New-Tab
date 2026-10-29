@@ -146,12 +146,38 @@
     mruCacheRaw = undefined;
   }
 
+  // MRU writes observe async bridge rejections so a rejected touch cannot
+  // keep ordering games by a list the storage layer refused. The bridge
+  // accepts chrome.storage writes optimistically via sync setItem(), so use
+  // setItemAsync() and clear the cache when the write settles false or
+  // rejects.
   function saveMRU(mru) {
     let serialized;
     try {
       serialized = JSON.stringify(mru);
     } catch (e) {
       failMRUWrite(e);
+      return;
+    }
+
+    if (typeof localStorage.setItemAsync === 'function') {
+      let pending;
+      try {
+        pending = localStorage.setItemAsync(MRU_KEY, serialized);
+      } catch (e) {
+        failMRUWrite(e);
+        return;
+      }
+      // The bridge updated its cache synchronously; mirror that until the
+      // write settles.
+      mruCache = mru;
+      mruCacheRaw = serialized;
+      Promise.resolve(pending).then(
+        (persisted) => {
+          if (persisted !== true) failMRUWrite();
+        },
+        failMRUWrite
+      );
       return;
     }
 
