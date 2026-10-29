@@ -39,7 +39,6 @@ const srcGlobals = {
   AppGridStorage: 'readonly',
   Accessibility: 'readonly',
   AppFolders: 'readonly',
-  AppGridFilter: 'readonly',
   defaultApps: 'readonly',
   VisibilityInterval: 'readonly',
   visibilityManager: 'readonly',

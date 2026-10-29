@@ -181,20 +181,15 @@ describe('app grid type-to-filter (#1065)', () => {
     expect(folder.classList.contains('app-filter-match')).toBe(false);
   });
 
-  it('matches built-in tiles by their translated display name', () => {
-    const originalT = window.i18n.t;
-    try {
-      window.i18n.t = key => (key === 'settings' ? 'Einstellungen' : key);
-      // Mirrors what createAppIconElement writes at render time.
-      const title = window.AppGridState.getAppDisplayName({ nameKey: 'settings' });
-      const settingsTile = addTile('settings-app', title);
+  it('re-applies the active filter when tiles are added outside a re-render', async () => {
+    setFilter('git');
+    addTile('custom-1', 'GitHub');
+    addTile('custom-2', 'Notion');
+    // The #app-grid MutationObserver re-applies the query on childList changes.
+    await new Promise(resolve => setTimeout(resolve, 0));
 
-      setFilter('einstel');
-
-      expect(settingsTile.classList.contains('app-filter-hidden')).toBe(false);
-    } finally {
-      window.i18n.t = originalT;
-    }
+    expect(document.getElementById('custom-1').classList.contains('app-filter-hidden')).toBe(false);
+    expect(document.getElementById('custom-2').classList.contains('app-filter-hidden')).toBe(true);
   });
 
   it('clearing the filter restores the complete grid in the same order', () => {
@@ -273,11 +268,37 @@ describe('app grid filter re-applied on re-render (#1065)', () => {
     expect(document.getElementById('new-app').classList.contains('app-filter-hidden')).toBe(false);
   });
 
+  it('matches built-in tiles by their translated display name', () => {
+    const originalT = window.i18n.t;
+    try {
+      window.i18n.t = key => (key === 'settings' ? 'Einstellungen' : key);
+      // Real render path: renderAllApps -> createAppIconElement writes the
+      // translated display name into the tile title the filter matches on.
+      window.renderAllApps();
+      const settingsTile = document.getElementById('settings-app');
+      expect(settingsTile).toBeTruthy();
+
+      setFilter('einstel');
+
+      expect(settingsTile.classList.contains('app-filter-hidden')).toBe(false);
+      expect(document.getElementById('ai-app').classList.contains('app-filter-hidden')).toBe(true);
+    } finally {
+      window.i18n.t = originalT;
+    }
+  });
+
   it('restores the full ordered grid when the filter is cleared before a re-render', () => {
     localStorage.setItem('customApps', JSON.stringify([
       { id: 'custom-1', name: 'GitHub', url: 'https://github.test', icon: 'gh.png' },
       { id: 'custom-2', name: 'Notion', url: 'https://notion.test', icon: 'no.png' }
     ]));
+    // Non-canonical but valid order: proves filtering never rewrites appOrder.
+    const seededOrder = [
+      'settings-app', 'custom-2', 'ai-app', 'custom-1',
+      'weather-app', 'games-app', 'feedback-app'
+    ];
+    localStorage.setItem('appOrder', JSON.stringify(seededOrder));
+    const orderBefore = JSON.parse(localStorage.getItem('appOrder'));
 
     setFilter('git');
     window.renderAllApps();
@@ -285,14 +306,12 @@ describe('app grid filter re-applied on re-render (#1065)', () => {
     window.renderAllApps();
 
     const children = gridChildren().map(element => element.id);
-    expect(children).toEqual([
-      'ai-app', 'weather-app', 'games-app', 'feedback-app', 'settings-app',
-      'custom-1', 'custom-2', 'new-app'
-    ]);
+    expect(children).toEqual([...seededOrder, 'new-app']);
     children.forEach(id => {
       expect(document.getElementById(id).classList.contains('app-filter-hidden')).toBe(false);
     });
     // No data mutation: persisted order and apps are untouched by filtering.
+    expect(JSON.parse(localStorage.getItem('appOrder'))).toEqual(orderBefore);
     expect(JSON.parse(localStorage.getItem('customApps'))).toHaveLength(2);
   });
 });

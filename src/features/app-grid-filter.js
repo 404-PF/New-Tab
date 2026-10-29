@@ -14,6 +14,7 @@
   const FILTER_INPUT_ID = 'app-grid-filter';
   const HIDDEN_CLASS = 'app-filter-hidden';
   const MATCH_CLASS = 'app-filter-match';
+  let gridObserver = null;
 
   function getInput() {
     return document.getElementById(FILTER_INPUT_ID);
@@ -57,9 +58,8 @@
     if (!grid) return false;
     const input = getInput();
     const query = normalize(input ? input.value : '');
-    const folders = query && window.AppGridState && Array.isArray(window.AppGridState.getFolders())
-      ? window.AppGridState.getFolders()
-      : [];
+    const storedFolders = query && window.AppGridState ? window.AppGridState.getFolders() : [];
+    const folders = Array.isArray(storedFolders) ? storedFolders : [];
     const folderById = Object.fromEntries(folders.map(folder => [folder.id, folder]));
 
     Array.from(grid.children).forEach(element => {
@@ -89,6 +89,17 @@
     if (!input) return false;
     input.removeEventListener('input', handleFilterInput);
     input.addEventListener('input', handleFilterInput);
+    // Tiles added or replaced outside renderAllApps (add-app tile, restoring
+    // a hidden built-in, folder create/replace) must respect an active query.
+    if (gridObserver) {
+      gridObserver.disconnect();
+      gridObserver = null;
+    }
+    const grid = getGrid();
+    if (grid) {
+      gridObserver = new MutationObserver(() => applyAppGridFilter());
+      gridObserver.observe(grid, { childList: true });
+    }
     return true;
   }
 

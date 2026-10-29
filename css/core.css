@@ -1011,7 +1011,8 @@ body.light-theme .custom-search-providers-empty {
   color: #e2e8f0; /* NOSONAR - transparent bg blends over dark page, contrast is sufficient */
   font-size: 13px;
   font-family: inherit;
-  outline: none;
+  outline: 2px solid transparent; /* keeps a forced-colors focus indicator (issue #1065) */
+  outline-offset: 2px;
   transition: background 0.15s, border-color 0.15s;
   box-sizing: border-box;
 }
