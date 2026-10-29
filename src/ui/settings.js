@@ -2403,7 +2403,6 @@ function initAboutSection() {
               <path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"></path>
             </svg>
             <div class="setting-content">
-              <label data-i18n="whatsNew">${t('whatsNew')}</label>
               <button id="whats-new-btn" class="setting-btn" style="font-size: 13px; padding: 6px 12px;" data-i18n="whatsNew">
                 ${t('whatsNew')}
               </button>
