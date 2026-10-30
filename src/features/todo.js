@@ -553,6 +553,8 @@
             return todo.completed;
           case 'overdue':
             return !todo.completed && todo.dueDate && isOverdue(todo.dueDate, todo.dueTime);
+          case 'today':
+            return !todo.completed && !!todo.dueDate && todo.dueDate === formatDateISO(new Date());
           default:
             return true;
         }
@@ -1213,6 +1215,26 @@ function applyFilters() {
   updateBulkActions();
 }
 
+// The Today filter and badge compare due dates against the current local
+// day, so both go stale if the page stays open across local midnight. Re-arm
+// a one-shot timeout for the next midnight; each fire re-applies the filters
+// (results, pills and badges) and schedules the night after that.
+let midnightRefreshTimer = null;
+
+function scheduleTodoMidnightRefresh() {
+  if (midnightRefreshTimer) {
+    clearTimeout(midnightRefreshTimer);
+    midnightRefreshTimer = null;
+  }
+  const now = new Date();
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  midnightRefreshTimer = setTimeout(() => {
+    midnightRefreshTimer = null;
+    applyFilters();
+    scheduleTodoMidnightRefresh();
+  }, nextMidnight.getTime() - now.getTime());
+}
+
 function updateFilters() {
   currentFilters.status = elements.filterStatus?.value || 'all';
   clearTodoSelection();
@@ -1253,6 +1275,8 @@ function updateFilterCounts() {
   const pending = todos.filter(t => !t.completed).length;
   const completed = todos.filter(t => t.completed).length;
   const overdue = todos.filter(t => !t.completed && t.dueDate && isOverdue(t.dueDate, t.dueTime)).length;
+  const today = formatDateISO(new Date());
+  const dueToday = todos.filter(t => !t.completed && t.dueDate === today).length;
   const high = todos.filter(t => (t.priority || 'medium') === 'high').length;
   const low = todos.filter(t => (t.priority || 'medium') === 'low').length;
   
@@ -1260,6 +1284,7 @@ function updateFilterCounts() {
   const badgePending = document.getElementById('badge-pending');
   const badgeCompleted = document.getElementById('badge-completed');
   const badgeOverdue = document.getElementById('badge-overdue');
+  const badgeToday = document.getElementById('badge-today');
   const badgeHigh = document.getElementById('badge-high');
   const badgeLow = document.getElementById('badge-low');
   const todoCount = document.getElementById('todo-count');
@@ -1268,6 +1293,7 @@ function updateFilterCounts() {
   if (badgePending) badgePending.textContent = pending;
   if (badgeCompleted) badgeCompleted.textContent = completed;
   if (badgeOverdue) badgeOverdue.textContent = overdue;
+  if (badgeToday) badgeToday.textContent = dueToday;
   if (badgeHigh) badgeHigh.textContent = high;
   if (badgeLow) badgeLow.textContent = low;
   if (todoCount) todoCount.textContent = `${completed}/${all}`;
@@ -2558,6 +2584,10 @@ function initTodo() {
   // Initialize progress ring and counts
   updateProgressRing();
   updateFilterCounts();
+
+  // Re-run the filters at the next local midnight so the Today list and
+  // badge never go stale overnight (issue #1085).
+  scheduleTodoMidnightRefresh();
 
   return true;
 }

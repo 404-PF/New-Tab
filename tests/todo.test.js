@@ -372,6 +372,91 @@ describe('Todo filtering', () => {
     expect(filtered[0].text).toBe('Overdue');
   });
 
+  it('filters todos due today', () => {
+    const today = formatDateISO(new Date());
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    addTodo('Due today');
+    addTodo('Due tomorrow');
+    addTodo('Due yesterday');
+    addTodo('No date');
+    const list = loadTodos();
+    editTodo(list[0].id, 'Due today', null, today);
+    editTodo(list[1].id, 'Due tomorrow', null, formatDateISO(tomorrow));
+    editTodo(list[2].id, 'Due yesterday', null, formatDateISO(yesterday));
+
+    setFilter('today');
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('Due today');
+  });
+
+  it('excludes completed todos from the today filter', () => {
+    const today = formatDateISO(new Date());
+    addTodo('Open today');
+    addTodo('Done today');
+    const list = loadTodos();
+    editTodo(list[0].id, 'Open today', null, today);
+    editTodo(list[1].id, 'Done today', null, today);
+    toggleTodo(list[1].id);
+    setFilter('today');
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('Open today');
+  });
+
+  it('today filter composes with priority and search', () => {
+    const today = formatDateISO(new Date());
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    addTodo('Today high work', today, 'high');
+    addTodo('Today low work', today, 'low');
+    addTodo('Tomorrow high work', formatDateISO(tomorrow), 'high');
+
+    currentFilters.status = 'today';
+    currentFilters.priority = 'high';
+    try {
+      const byPriority = filterTodos();
+      expect(byPriority).toHaveLength(1);
+      expect(byPriority[0].text).toBe('Today high work');
+
+      // Priority is still active; a search narrows the same view further.
+      setTodoSearchQuery('low');
+      expect(filterTodos()).toHaveLength(0);
+      setTodoSearchQuery('high work');
+      expect(filterTodos()).toHaveLength(1);
+    } finally {
+      setTodoSearchQuery('');
+      currentFilters.status = 'all';
+      currentFilters.priority = 'all';
+    }
+  });
+
+  it('refreshes the today view and badge at local midnight', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 23, 59, 50)); // Sep 15, 2026 23:59:50
+
+    try {
+      // Re-init under fake timers so the midnight refresh timer is armed
+      // against the faked clock instead of the real one.
+      initTodo();
+      addTodo('Due today', '2026-09-15');
+      setFilter('today');
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+      expect(document.getElementById('badge-today').textContent).toBe('1');
+
+      // Cross midnight into Sep 16; the scheduled refresh reruns applyFilters.
+      vi.advanceTimersByTime(11000);
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(0);
+      expect(document.getElementById('badge-today').textContent).toBe('0');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('sorts incomplete before completed', () => {
     addTodo('Later');
     addTodo('Sooner');

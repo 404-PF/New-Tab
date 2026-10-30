@@ -391,6 +391,7 @@ globalThis.window.i18n = {
       filterPending: 'Pending',
       filterCompleted: 'Completed',
       filterOverdue: 'Overdue',
+      filterToday: 'Today',
       clearCompletedText: 'Clear Completed',
       emptyStateTitle: 'No todos yet. Add one above!',
       emptyStateDesc: 'Try adding due dates for better organization.',
@@ -786,6 +787,7 @@ document.body.appendChild(createStubElement('span', 'badge-all'));
 document.body.appendChild(createStubElement('span', 'badge-pending'));
 document.body.appendChild(createStubElement('span', 'badge-completed'));
 document.body.appendChild(createStubElement('span', 'badge-overdue'));
+document.body.appendChild(createStubElement('span', 'badge-today'));
 document.body.appendChild(createStubElement('span', 'todo-count'));
 document.body.appendChild(createStubElement('div', 'calendar-month'));
 document.body.appendChild(createStubElement('div', 'calendar-year'));

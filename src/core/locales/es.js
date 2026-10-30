@@ -394,6 +394,7 @@ window.i18n.__registerLocale('es', {
   filterPending: 'Pendientes',
   filterCompleted: 'Completadas',
   filterOverdue: 'Vencidas',
+  filterToday: 'Hoy',
   priorityHigh: 'Alta',
   priorityMedium: 'Media',
   priorityLow: 'Baja',
