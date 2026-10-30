@@ -175,9 +175,16 @@
   // unconfirmed values.
   let mruWriteChain = Promise.resolve();
   let mruWritesInFlight = 0;
+  // Bumped by _reset(): a touch enqueued before the reset must neither run
+  // (it would write a stale MRU list into post-reset storage) nor decrement
+  // the fresh in-flight counter when it settles, so pre-reset touches are
+  // invalidated instead of leaking across the reset boundary.
+  let mruWriteGeneration = 0;
 
   function touchMRU(gameId) {
+    const generation = mruWriteGeneration;
     const run = () => {
+      if (generation !== mruWriteGeneration) return Promise.resolve(true);
       const mru = loadMRU();
       const idx = mru.indexOf(gameId);
       if (idx !== -1) mru.splice(idx, 1);
@@ -187,7 +194,7 @@
     };
 
     const settle = () => {
-      mruWritesInFlight -= 1;
+      if (generation === mruWriteGeneration) mruWritesInFlight -= 1;
     };
 
     const write = mruWritesInFlight === 0 ? run() : mruWriteChain.then(run);
@@ -495,7 +502,7 @@
       destroyCurrent({ serialize: false });
       return false;
     }
-    touchMRU(gameId);
+    void touchMRU(gameId);
     return true;
   }
 
@@ -647,10 +654,13 @@
     lastStatsToastAt = -Infinity;
     lastSavesToastAt = -Infinity;
     // Invalidate writes enqueued (but not yet run) before this reset, then
-    // start a fresh queue for the next test.
+    // start fresh queues for the next test.
     savesWriteGeneration += 1;
     savesWriteChain = Promise.resolve();
     savesWritesInFlight = 0;
+    mruWriteGeneration += 1;
+    mruWriteChain = Promise.resolve();
+    mruWritesInFlight = 0;
     mruCache = null;
     mruCacheRaw = undefined;
     savesCache = null;

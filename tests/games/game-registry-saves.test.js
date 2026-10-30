@@ -706,20 +706,27 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     });
   }
 
-  it('drops the rejected MRU list so the next read re-serves rolled-back state', async () => {
-    registerPlainGame('mru-game-a');
+  // Seeds the MRU with a successful launch of seedId, then launches failId
+  // while games_recently_played writes are failing and waits for the
+  // rejection warning.
+  async function seedMRUThenFailTouch(seedId, failId) {
+    registerPlainGame(seedId);
     ensureContainer();
-    window.GameRegistry.launch('mru-game-a');
-    expect(window.GameRegistry.getMRU()).toEqual(['mru-game-a']);
+    window.GameRegistry.launch(seedId);
+    expect(window.GameRegistry.getMRU()).toEqual([seedId]);
 
     const restore = failStorageWritesFor('games_recently_played', 'async');
     try {
-      registerPlainGame('mru-game-b');
-      window.GameRegistry.launch('mru-game-b');
+      registerPlainGame(failId);
+      window.GameRegistry.launch(failId);
       await waitForMRUWarnings(1);
     } finally {
       restore();
     }
+  }
+
+  it('drops the rejected MRU list so the next read re-serves rolled-back state', async () => {
+    await seedMRUThenFailTouch('mru-game-a', 'mru-game-b');
 
     // The rejected touch must not stay cached: reads serve the list the
     // bridge rolled back to, not the one it refused.
@@ -728,19 +735,7 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
   });
 
   it('lands a later MRU write after a rejected one', async () => {
-    registerPlainGame('mru-game-c');
-    ensureContainer();
-    window.GameRegistry.launch('mru-game-c');
-    expect(window.GameRegistry.getMRU()).toEqual(['mru-game-c']);
-
-    const restore = failStorageWritesFor('games_recently_played', 'async');
-    try {
-      registerPlainGame('mru-game-d');
-      window.GameRegistry.launch('mru-game-d');
-      await waitForMRUWarnings(1);
-    } finally {
-      restore();
-    }
+    await seedMRUThenFailTouch('mru-game-c', 'mru-game-d');
     expect(window.GameRegistry.getMRU()).toEqual(['mru-game-c']);
 
     registerPlainGame('mru-game-e');
