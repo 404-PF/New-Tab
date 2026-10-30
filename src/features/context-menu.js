@@ -349,6 +349,11 @@ document.getElementById('edit-app').addEventListener('click', function () {
   const apps = window.AppGridState.getCustomApps();
   const currentApp = apps.find(app => app.id === contextTargetId);
   if (!currentApp) return;
+  // The folder popup (z-index 9000) would cover the Add App modal (1001).
+  if (contextMenuTrigger === 'folder-app' && window.AppFolders &&
+      typeof window.AppFolders.closeFolderPopup === 'function') {
+    window.AppFolders.closeFolderPopup();
+  }
   if (typeof window.openAddAppModal === 'function') {
     window.openAddAppModal(currentApp);
   }

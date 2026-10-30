@@ -635,4 +635,31 @@ describe('edit app action (#1082)', () => {
       popupApps.remove();
     }
   });
+
+  it('closes the folder popup before opening the Edit modal', () => {
+    const popupApps = createElement('div', 'folder-popup-apps');
+    const popupTile = document.createElement('a');
+    popupTile.id = 'popup-app-1';
+    popupTile.className = 'app-icon custom-app';
+    popupApps.appendChild(popupTile);
+    const openAddAppModal = vi.fn();
+    const closeFolderPopup = vi.fn();
+
+    try {
+      withWindowOverride('AppFolders', { currentFolderId: 'folder-1', closeFolderPopup }, () => {
+        withWindowOverride('openAddAppModal', openAddAppModal, () => {
+          openContextMenu(popupTile);
+          document.getElementById('edit-app').click();
+
+          // The popup (z-index 9000) must close before the modal (1001) opens.
+          expect(closeFolderPopup).toHaveBeenCalledTimes(1);
+          expect(openAddAppModal).toHaveBeenCalledTimes(1);
+          expect(closeFolderPopup.mock.invocationCallOrder[0])
+            .toBeLessThan(openAddAppModal.mock.invocationCallOrder[0]);
+        });
+      });
+    } finally {
+      popupApps.remove();
+    }
+  });
 });

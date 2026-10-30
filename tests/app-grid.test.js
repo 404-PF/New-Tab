@@ -739,6 +739,20 @@ describe('AppGridState', () => {
       AppGridState.addApp({ id: 'other', url: 'https://other.example', name: 'Other' });
       expect(AppGridState.hasAppWithUrl('https://other.example', 'existing')).toBe(true);
     });
+
+    it('still flags a default-app URL when a custom app shares the excluded id', () => {
+      // A custom record reusing a built-in id must not exclude the built-in's
+      // URL from the duplicate check (issue #1082 review).
+      AppGridState.addApp({
+        id: 'feedback-app',
+        url: 'https://colliding.example',
+        name: 'Colliding'
+      });
+      expect(AppGridState.hasAppWithUrl(
+        'https://github.com/404-PF/New-Tab/issues/new',
+        'feedback-app'
+      )).toBe(true);
+    });
   });
 
   it('addApp rejects duplicate URL', () => {

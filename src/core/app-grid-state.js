@@ -117,9 +117,12 @@ const AppGridState = {
 
     const apps = this.getCustomApps();
     const defaults = window.defaultApps || [];
-    const urls = [...apps, ...defaults]
-      .filter(app => app.id !== excludeId)
-      .map(app => app.url);
+    // Exclude only the edited custom record; default-app URLs are always
+    // checked, even when a custom app reuses a built-in's id.
+    const urls = [
+      ...apps.filter(app => app.id !== excludeId).map(app => app.url),
+      ...defaults.map(app => app.url),
+    ];
     // Derive freshness from URL values so imports and in-place edits are covered.
     const key = JSON.stringify([url, urls]);
     if (lastAppUrlCheck?.key === key) return lastAppUrlCheck.result;

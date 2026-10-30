@@ -332,11 +332,20 @@ async function saveEditedAppUrl(id, url) {
   const updated = window.AppGridState.getCustomApps().find(app => app.id === id) || previous;
 
   // An auto-derived favicon follows the app's URL; a custom thumbnail is kept.
+  // Quick-add defaults store domain=google.com while the URL hostname is
+  // www.google.com, so compare with the www. prefix stripped from both sides.
   let iconUrl = updated ? updated.icon : '';
-  if (previous && previous.icon && previous.icon === getFaviconUrl(previous.url)) {
+  const previousFavicon = getFaviconUrl(previous && previous.url);
+  if (previous && previous.icon && previousFavicon &&
+      previous.icon.replace(/domain=www\./, 'domain=') === previousFavicon.replace(/domain=www\./, 'domain=')) {
     const nextIcon = getFaviconUrl(normalized);
     if (nextIcon) {
-      window.AppGridState.updateThumbnail(id, nextIcon);
+      if (!window.AppGridState.updateThumbnail(id, nextIcon)) {
+        // Roll back the URL change so the URL and auto-derived icon cannot diverge.
+        window.AppGridState.updateAppUrl(id, previous.url);
+        showAddAppSaveError();
+        return;
+      }
       iconUrl = nextIcon;
     }
   }

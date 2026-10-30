@@ -754,6 +754,57 @@ describe('Add app modal edit mode (#1082)', () => {
     expect(updated.cachedIcon).toBeUndefined();
   });
 
+  it('updates the favicon for a quick-added app whose icon omits the www. prefix', async () => {
+    // Mirrors the built-in quick-add Google record: domain=google.com while
+    // the URL hostname is www.google.com (issue #1082 review).
+    seedApp({
+      url: 'https://www.google.com',
+      icon: 'https://www.google.com/s2/favicons?domain=google.com&sz=64'
+    });
+
+    window.initAddAppModal();
+    window.openAddAppModal('custom-app-edit');
+
+    const input = document.getElementById('add-app-url');
+    input.value = 'https://www.example.com';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    document.getElementById('add-app-confirm').click();
+    await flushMicrotasks();
+
+    const updated = window.AppGridState.getCustomApps()[0];
+    expect(updated.url).toBe('https://www.example.com');
+    expect(updated.icon).toBe('https://www.google.com/s2/favicons?domain=www.example.com&sz=64');
+  });
+
+  it('rolls back the URL and keeps the modal open when the favicon write fails', async () => {
+    const app = seedApp();
+    const originalUpdateThumbnail = window.AppGridState.updateThumbnail;
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+
+    try {
+      window.AppGridState.updateThumbnail = vi.fn(() => false);
+      window.showToast = showToast;
+
+      window.initAddAppModal();
+      window.openAddAppModal(app);
+
+      const input = document.getElementById('add-app-url');
+      input.value = 'https://renamed.example';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('add-app-confirm').click();
+      await flushMicrotasks();
+
+      expect(showToast).toHaveBeenCalled();
+      expect(document.getElementById('add-app-modal').classList.contains('modal-open')).toBe(true);
+      expect(window.AppGridState.getCustomApps().find(a => a.id === 'custom-app-edit').url)
+        .toBe('https://editable.example');
+    } finally {
+      window.AppGridState.updateThumbnail = originalUpdateThumbnail;
+      window.showToast = originalShowToast;
+    }
+  });
+
   it('blocks saving a URL that another app already uses', async () => {
     vi.useFakeTimers();
     try {
@@ -847,5 +898,46 @@ describe('Add app modal edit mode (#1082)', () => {
       window.AppGridState.updateAppUrl = originalUpdateAppUrl;
       window.showToast = originalShowToast;
     }
+  });
+});
+
+describe('Add app modal edit mode tile refresh (#1082)', () => {
+  beforeAll(() => {
+    // Real grid mutators so a stale tile after an edit is detectable.
+    injectScript('src/core/dom-ready.js');
+    injectScript('src/ui/app-manager.js');
+  });
+
+  it('updates the rendered tile link and image after an in-place URL edit', async () => {
+    const app = {
+      id: 'custom-app-edit',
+      name: 'Editable',
+      url: 'https://editable.example',
+      icon: 'https://www.google.com/s2/favicons?domain=editable.example&sz=64'
+    };
+    expect(window.AppGridState.addApp(app)).toBe(true);
+
+    document.body.insertAdjacentHTML('afterbegin', `
+      <div class="app-grid" id="app-grid">
+        <a id="custom-app-edit" class="app-icon custom-app" href="https://editable.example">
+          <div class="icon"><img src="https://www.google.com/s2/favicons?domain=editable.example&sz=64" alt="Editable"></div>
+          <span class="app-name">Editable</span>
+        </a>
+      </div>
+    `);
+
+    window.initAddAppModal();
+    window.openAddAppModal('custom-app-edit');
+
+    const input = document.getElementById('add-app-url');
+    input.value = 'https://renamed.example';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    document.getElementById('add-app-confirm').click();
+    await flushMicrotasks();
+
+    const tile = document.getElementById('custom-app-edit');
+    expect(tile.getAttribute('href')).toBe('https://renamed.example');
+    expect(tile.querySelector('.icon img').getAttribute('src'))
+      .toBe('https://www.google.com/s2/favicons?domain=renamed.example&sz=64');
   });
 });
