@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from '../helpers/inject-script.js';
+import { failStorageWritesFor } from '../helpers/storage-write-failures.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
@@ -691,27 +692,18 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     warnSpy.mockRestore();
   });
 
-  // Real bridge path: chrome.storage.local.set reports failure via lastError,
-  // so setItemAsync() settles false after the bridge rolls its cache back.
-  // Only the MRU key is failed so unrelated writes still land.
-  function failMRUChromeSet() {
-    const originalSet = chrome.storage.local.set;
-    chrome.storage.local.set = (items, callback) => {
-      if (Object.prototype.hasOwnProperty.call(items, 'games_recently_played')) {
-        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
-        if (callback) callback();
-        chrome.runtime.lastError = null;
-        return Promise.resolve();
-      }
-      return originalSet.call(chrome.storage.local, items, callback);
-    };
-    return () => {
-      chrome.storage.local.set = originalSet;
-    };
-  }
-
   function registerPlainGame(id) {
     window.GameRegistry.register({ id: id, name: id, init: () => {}, destroy: () => {} });
+  }
+
+  // saveMRU is fire-and-forget; the rejection path is observable through the
+  // console.warn it emits once the queued write settles.
+  function waitForMRUWarnings(count) {
+    return vi.waitFor(() => {
+      expect(
+        warnSpy.mock.calls.filter((call) => String(call[0]).includes('games_recently_played')).length
+      ).toBeGreaterThanOrEqual(count);
+    });
   }
 
   it('drops the rejected MRU list so the next read re-serves rolled-back state', async () => {
@@ -720,15 +712,11 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     window.GameRegistry.launch('mru-game-a');
     expect(window.GameRegistry.getMRU()).toEqual(['mru-game-a']);
 
-    const restore = failMRUChromeSet();
+    const restore = failStorageWritesFor('games_recently_played', 'async');
     try {
       registerPlainGame('mru-game-b');
       window.GameRegistry.launch('mru-game-b');
-      // saveMRU is fire-and-forget; wait for the async rejection handler to
-      // log the warning (the last step of the failure path) before asserting.
-      await vi.waitFor(() => {
-        expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('games_recently_played'))).toBe(true);
-      });
+      await waitForMRUWarnings(1);
     } finally {
       restore();
     }
@@ -745,13 +733,11 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     window.GameRegistry.launch('mru-game-c');
     expect(window.GameRegistry.getMRU()).toEqual(['mru-game-c']);
 
-    const restore = failMRUChromeSet();
+    const restore = failStorageWritesFor('games_recently_played', 'async');
     try {
       registerPlainGame('mru-game-d');
       window.GameRegistry.launch('mru-game-d');
-      await vi.waitFor(() => {
-        expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('games_recently_played'))).toBe(true);
-      });
+      await waitForMRUWarnings(1);
     } finally {
       restore();
     }
@@ -760,6 +746,29 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     registerPlainGame('mru-game-e');
     window.GameRegistry.launch('mru-game-e');
     expect(window.GameRegistry.getMRU()).toEqual(['mru-game-e', 'mru-game-c']);
+  });
+
+  it('does not resurrect a rejected MRU entry when rapid launches both fail', async () => {
+    registerPlainGame('mru-race-a');
+    ensureContainer();
+    window.GameRegistry.launch('mru-race-a');
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-race-a']);
+
+    const restore = failStorageWritesFor('games_recently_played', 'async');
+    try {
+      registerPlainGame('mru-race-b');
+      registerPlainGame('mru-race-c');
+      // Touches are serialized, so the second rejection cannot roll the
+      // bridge cache back to the first rejected (also-refused) list.
+      window.GameRegistry.launch('mru-race-b');
+      window.GameRegistry.launch('mru-race-c');
+      await waitForMRUWarnings(2);
+    } finally {
+      restore();
+    }
+
+    expect(window.GameRegistry.getMRU()).toEqual(['mru-race-a']);
+    expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['mru-race-a']);
   });
 
   it('treats a setItemAsync result of false as a failed MRU write', async () => {
@@ -772,9 +781,7 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     try {
       registerPlainGame('mru-false-b');
       window.GameRegistry.launch('mru-false-b');
-      await vi.waitFor(() => {
-        expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('games_recently_played'))).toBe(true);
-      });
+      await waitForMRUWarnings(1);
     } finally {
       spy.mockRestore();
     }
@@ -783,7 +790,7 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['mru-false-a']);
   });
 
-  it('checks the sync setItem return when setItemAsync is unavailable', () => {
+  it('checks the sync setItem return when setItemAsync is unavailable', async () => {
     registerPlainGame('mru-sync-a');
     ensureContainer();
     window.GameRegistry.launch('mru-sync-a');
@@ -799,6 +806,9 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     try {
       registerPlainGame('mru-sync-b');
       window.GameRegistry.launch('mru-sync-b');
+      // The touch queues behind the in-flight write for mru-sync-a; wait for
+      // it to run against the mocked sync setItem before restoring.
+      await waitForMRUWarnings(1);
     } finally {
       spy.mockRestore();
       if (originalSetItemAsync) {
@@ -808,10 +818,9 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
 
     expect(window.GameRegistry.getMRU()).toEqual(['mru-sync-a']);
     expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['mru-sync-a']);
-    expect(warnSpy.mock.calls.some((call) => String(call[0]).includes('games_recently_played'))).toBe(true);
   });
 
-  it('drops the MRU cache when the storage write throws', () => {
+  it('drops the MRU cache when the storage write throws', async () => {
     registerPlainGame('mru-throw-a');
     ensureContainer();
     window.GameRegistry.launch('mru-throw-a');
@@ -823,6 +832,9 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     try {
       registerPlainGame('mru-throw-b');
       expect(() => window.GameRegistry.launch('mru-throw-b')).not.toThrow();
+      // The touch queues behind the in-flight write for mru-throw-a; wait
+      // for the throwing touch before restoring the spy.
+      await waitForMRUWarnings(1);
     } finally {
       spy.mockRestore();
     }
