@@ -49,6 +49,13 @@
     return window.i18n ? window.i18n.t(key) : key;
   }
 
+  // Guard the shared helper: toast.js may fail to load (#969, #1081).
+  function reportSettingsSaveError() {
+    if (typeof window.showFeatureToggleSaveError === 'function') {
+      window.showFeatureToggleSaveError();
+    }
+  }
+
   // ===================== Storage =====================
 
   // Safe localStorage accessors — degrade gracefully when storage is unavailable
@@ -63,8 +70,10 @@
 
   const _safeSet = function(key, value) {
     try {
-      localStorage.setItem(key, value);
-      return true;
+      // The storage bridge's setItem returns false for a rejected write; the
+      // native Storage API returns undefined. Only an explicit false is a
+      // failure (#1081).
+      return localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (e) {
       console.warn('Failed to write to localStorage:', e);
       return false;
@@ -77,7 +86,7 @@
     },
 
     saveEnabled(value) {
-      _safeSet('weatherEnabled', value ? 'true' : 'false');
+      return _safeSet('weatherEnabled', value ? 'true' : 'false');
     },
 
     loadUnit() {
@@ -86,7 +95,7 @@
     },
 
     saveUnit(value) {
-      _safeSet('weatherUnit', value);
+      return _safeSet('weatherUnit', value);
     },
 
     loadLocationMode() {
@@ -94,7 +103,7 @@
     },
 
     saveLocationMode(value) {
-      _safeSet('weatherLocationMode', value);
+      return _safeSet('weatherLocationMode', value);
     },
 
     loadManualCity() {
@@ -102,7 +111,7 @@
     },
 
     saveManualCity(value) {
-      _safeSet('weatherManualCity', value);
+      return _safeSet('weatherManualCity', value);
     },
 
     loadCache() {
@@ -417,10 +426,17 @@
 
     // Persist any in-flight manual city input before reading stored value,
     // so the refresh always uses what the user actually typed (not just
-    // what was previously saved on blur/Enter).
+    // what was previously saved on blur/Enter). Skip when the input already
+    // matches storage: the Enter/blur handlers save before triggering this
+    // refresh, and writing the same city a second time would let two
+    // rejected callbacks roll back to the first optimistic value, retaining
+    // the rejected city with no save error reported (#1081).
     const manualInput = document.getElementById('weather-manual-city');
     if (manualInput) {
-      WeatherStorage.saveManualCity(manualInput.value.trim());
+      const pendingCity = manualInput.value.trim();
+      if (pendingCity !== WeatherStorage.loadManualCity()) {
+        WeatherStorage.saveManualCity(pendingCity);
+      }
     }
 
     const unit = WeatherStorage.loadUnit();
@@ -626,8 +642,13 @@
 
     if (enabledCheckbox) {
       enabledCheckbox.addEventListener('change', function() {
-        WeatherStorage.saveEnabled(this.checked);
+        const persisted = WeatherStorage.saveEnabled(this.checked);
+        // Always re-apply so a rejected write snaps the checkbox and widget
+        // visibility back to the persisted state (#1081).
         applyWeatherSettings();
+        if (!persisted) {
+          reportSettingsSaveError();
+        }
       });
     }
 
@@ -638,7 +659,11 @@
         const btn = e.target.closest('.weather-choice-button');
         if (!btn || btn.classList.contains('active')) return;
         const value = btn.dataset.value;
-        WeatherStorage.saveUnit(value);
+        if (!WeatherStorage.saveUnit(value)) {
+          applyWeatherSettings();
+          reportSettingsSaveError();
+          return;
+        }
         // Sync active state within group
         unitGroup.querySelectorAll('.weather-choice-button').forEach(function(b) {
           const isActive = b === btn;
@@ -667,7 +692,11 @@
         const btn = e.target.closest('.weather-choice-button');
         if (!btn || btn.classList.contains('active')) return;
         const value = btn.dataset.value;
-        WeatherStorage.saveLocationMode(value);
+        if (!WeatherStorage.saveLocationMode(value)) {
+          applyWeatherSettings();
+          reportSettingsSaveError();
+          return;
+        }
         // Sync active state within group
         modeGroup.querySelectorAll('.weather-choice-button').forEach(function(b) {
           const isActive = b === btn;
@@ -686,14 +715,22 @@
           event.preventDefault();
           const trimmed = this.value.trim();
           if (trimmed === WeatherStorage.loadManualCity()) return;
-          WeatherStorage.saveManualCity(trimmed);
+          if (!WeatherStorage.saveManualCity(trimmed)) {
+            this.value = WeatherStorage.loadManualCity();
+            reportSettingsSaveError();
+            return;
+          }
           refreshWeatherSafely(true);
         }
       });
       manualInput.addEventListener('blur', function() {
         const trimmed = this.value.trim();
         if (trimmed === WeatherStorage.loadManualCity()) return;
-        WeatherStorage.saveManualCity(trimmed);
+        if (!WeatherStorage.saveManualCity(trimmed)) {
+          this.value = WeatherStorage.loadManualCity();
+          reportSettingsSaveError();
+          return;
+        }
         refreshWeatherSafely(true);
       });
     }

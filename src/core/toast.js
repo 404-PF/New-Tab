@@ -181,6 +181,23 @@ function showFeatureToggleSaveError() {
   }
 }
 
+// Weather rollback resync (#1081): re-applying the controls alone is not
+// enough — a refresh started with the rejected setting can still land stale
+// weather after the rollback, so force one more refresh from the persisted
+// settings. applySettings runs first so the manual-city input is restored
+// before the refresh re-reads it.
+function resyncWeatherSettings() {
+  if (!window.WeatherWidget || typeof window.WeatherWidget.applySettings !== 'function') {
+    return;
+  }
+  window.WeatherWidget.applySettings();
+  if (typeof window.WeatherWidget.refresh === 'function') {
+    Promise.resolve(window.WeatherWidget.refresh(true)).catch(function (error) {
+      console.warn('Weather refresh after settings rollback failed:', error);
+    });
+  }
+}
+
 // Controls that must resync when the bridge rolls a rejected write back after
 // setItem already returned true (the async runtime.lastError path, #969).
 const FEATURE_TOGGLE_RESYNC = {
@@ -211,7 +228,26 @@ const FEATURE_TOGGLE_RESYNC = {
     if (typeof window.refreshEyeCareReminder === 'function') {
       window.refreshEyeCareReminder();
     }
-  }
+  },
+  autoTheme: function () {
+    if (typeof window.refreshAutoTheme === 'function') {
+      window.refreshAutoTheme();
+    }
+  },
+  autoThemeLightTime: function () {
+    if (typeof window.refreshAutoTheme === 'function') {
+      window.refreshAutoTheme();
+    }
+  },
+  autoThemeDarkTime: function () {
+    if (typeof window.refreshAutoTheme === 'function') {
+      window.refreshAutoTheme();
+    }
+  },
+  weatherEnabled: resyncWeatherSettings,
+  weatherUnit: resyncWeatherSettings,
+  weatherLocationMode: resyncWeatherSettings,
+  weatherManualCity: resyncWeatherSettings
 };
 
 // True when a control still shows the rejected value the bridge has already
@@ -247,6 +283,41 @@ function featureToggleControlDesynced(key) {
       } catch {
         return true;
       }
+    }
+    case 'autoTheme': {
+      const checkbox = document.getElementById('auto-theme-toggle');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
+    }
+    case 'autoThemeLightTime': {
+      // Mirror the module's fallback defaults (auto-theme.js).
+      const input = document.getElementById('auto-theme-light-time');
+      return Boolean(input) && input.value !== (localStorage.getItem(key) || '07:00');
+    }
+    case 'autoThemeDarkTime': {
+      const input = document.getElementById('auto-theme-dark-time');
+      return Boolean(input) && input.value !== (localStorage.getItem(key) || '19:00');
+    }
+    case 'weatherEnabled': {
+      const checkbox = document.getElementById('weather-enabled-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
+    }
+    case 'weatherUnit': {
+      const stored = localStorage.getItem(key) === 'fahrenheit' ? 'fahrenheit' : 'celsius';
+      const buttons = document.querySelectorAll('[data-weather-choice="unit"] .weather-choice-button');
+      return Array.prototype.some.call(buttons, function (btn) {
+        return btn.classList.contains('active') !== (btn.dataset.value === stored);
+      });
+    }
+    case 'weatherLocationMode': {
+      const stored = localStorage.getItem(key) || 'auto';
+      const buttons = document.querySelectorAll('[data-weather-choice="mode"] .weather-choice-button');
+      return Array.prototype.some.call(buttons, function (btn) {
+        return btn.classList.contains('active') !== (btn.dataset.value === stored);
+      });
+    }
+    case 'weatherManualCity': {
+      const input = document.getElementById('weather-manual-city');
+      return Boolean(input) && input.value !== (localStorage.getItem(key) || '');
     }
   }
   return false;
