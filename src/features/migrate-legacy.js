@@ -229,10 +229,13 @@
     return { overlay, primaryBtn };
   }
 
-  function initLegacyMigration() {
+  // `force` is a test-only bypass (window.__migrateLegacyTest.forceInit):
+  // production always reaches this through window.onDomReady with no argument,
+  // so the MIGRATION_ENABLED gate still applies to every shipped build.
+  function initLegacyMigration(force) {
     warnIfMisconfigured();
 
-    if (!isLegacyMigrationEnabled()) {
+    if (force !== true && !isLegacyMigrationEnabled()) {
       return;
     }
     if (isRemindLaterActive()) {
@@ -308,6 +311,20 @@
       }
     }
   }
+
+  // Test seam (see tests/migrate-legacy.test.js): the takeover is gated behind
+  // MIGRATION_ENABLED, so specs use forceInit to build the overlay and drive
+  // the Escape / Tab focus-trap handlers, and isRemindLaterActive to assert the
+  // 7-day TTL directly. Inert for production callers.
+  window.__migrateLegacyTest = {
+    isRemindLaterActive: isRemindLaterActive,
+    markRemindLater: markRemindLater,
+    forceInit: function () {
+      return initLegacyMigration(true);
+    },
+    REMIND_LATER_KEY: REMIND_LATER_KEY,
+    REMIND_LATER_TTL_MS: REMIND_LATER_TTL_MS
+  };
 
   window.onDomReady(initLegacyMigration);
 })();
