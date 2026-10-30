@@ -79,43 +79,56 @@
     return false;
   }
 
-  // Resolves to whether the stats were persisted. The storage bridge's sync
+  // Shared write path for the tracked JSON stores (stats, saves, MRU).
+  // Resolves to whether the value persisted. The storage bridge's sync
   // setItem() accepts chrome.storage writes optimistically and reports
-  // failures later, so use setItemAsync() and check its result.
-  function saveStats(stats) {
+  // failures later, so prefer setItemAsync() and treat a settled-false or
+  // rejected write as a failure. `commit` mirrors the bridge's optimistic
+  // cache update; `fail` rolls this module's cache back to the value the
+  // bridge restored.
+  function writeTrackedJSON(key, value, commit, fail) {
     let serialized;
     try {
-      serialized = JSON.stringify(stats);
+      serialized = JSON.stringify(value);
     } catch (e) {
-      return Promise.resolve(failStatsSave(e));
+      return Promise.resolve(fail(e));
     }
 
     if (typeof localStorage.setItemAsync === 'function') {
       let pending;
       try {
-        pending = localStorage.setItemAsync(STATS_KEY, serialized);
+        pending = localStorage.setItemAsync(key, serialized);
       } catch (e) {
-        return Promise.resolve(failStatsSave(e));
+        return Promise.resolve(fail(e));
       }
       // The bridge updated its cache synchronously; mirror that until the
       // write settles.
-      statsCache = stats;
-      statsCacheRaw = serialized;
+      commit(value, serialized);
       return Promise.resolve(pending).then(
-        (persisted) => (persisted === true ? true : failStatsSave()),
-        failStatsSave
+        (persisted) => (persisted === true ? true : fail()),
+        fail
       );
     }
 
+    let accepted;
     try {
       // Native Storage#setItem returns void and throws on failure.
-      localStorage.setItem(STATS_KEY, serialized);
+      accepted = localStorage.setItem(key, serialized) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (e) {
-      return Promise.resolve(failStatsSave(e));
+      return Promise.resolve(fail(e));
     }
-    statsCache = stats;
-    statsCacheRaw = serialized;
+    if (!accepted) {
+      return Promise.resolve(fail());
+    }
+    commit(value, serialized);
     return Promise.resolve(true);
+  }
+
+  function saveStats(stats) {
+    return writeTrackedJSON(STATS_KEY, stats, (cached, raw) => {
+      statsCache = cached;
+      statsCacheRaw = raw;
+    }, failStatsSave);
   }
 
   function loadMRU() {
@@ -138,26 +151,56 @@
     }
   }
 
-  function saveMRU(mru) {
-    try {
-      const serialized = JSON.stringify(mru);
-      localStorage.setItem(MRU_KEY, serialized);
-      mruCache = mru;
-      mruCacheRaw = serialized;
-    } catch (e) {
-      console.warn('Failed to save games_recently_played:', e);
-      mruCache = null;
-      mruCacheRaw = undefined;
-    }
+  function failMRUWrite(error) {
+    console.warn('Failed to save games_recently_played:', error || 'storage rejected the write');
+    // Drop the cache so the next read re-serves the value the storage bridge
+    // rolled back to, not the rejected list.
+    mruCache = null;
+    mruCacheRaw = undefined;
+    return false;
   }
 
+  function saveMRU(mru) {
+    return writeTrackedJSON(MRU_KEY, mru, (cached, raw) => {
+      mruCache = cached;
+      mruCacheRaw = raw;
+    }, failMRUWrite);
+  }
+
+  // MRU touches are serialized so each write is confirmed (or rolled back by
+  // the storage bridge) before the next touch derives from stored state:
+  // overlapping writes would let a later rejection roll the bridge cache back
+  // to an earlier, also-rejected list. Each queued touch applies to the
+  // *stored* MRU when it runs, so a touch never derives from another touch's
+  // unconfirmed values.
+  let mruWriteChain = Promise.resolve();
+  let mruWritesInFlight = 0;
+  // Bumped by _reset(): a touch enqueued before the reset must neither run
+  // (it would write a stale MRU list into post-reset storage) nor decrement
+  // the fresh in-flight counter when it settles, so pre-reset touches are
+  // invalidated instead of leaking across the reset boundary.
+  let mruWriteGeneration = 0;
+
   function touchMRU(gameId) {
-    const mru = loadMRU();
-    const idx = mru.indexOf(gameId);
-    if (idx !== -1) mru.splice(idx, 1);
-    mru.unshift(gameId);
-    if (mru.length > MAX_MRU) mru.length = MAX_MRU;
-    saveMRU(mru);
+    const generation = mruWriteGeneration;
+    const run = () => {
+      if (generation !== mruWriteGeneration) return Promise.resolve(true);
+      const mru = loadMRU();
+      const idx = mru.indexOf(gameId);
+      if (idx !== -1) mru.splice(idx, 1);
+      mru.unshift(gameId);
+      if (mru.length > MAX_MRU) mru.length = MAX_MRU;
+      return saveMRU(mru);
+    };
+
+    const settle = () => {
+      if (generation === mruWriteGeneration) mruWritesInFlight -= 1;
+    };
+
+    const write = mruWritesInFlight === 0 ? run() : mruWriteChain.then(run);
+    mruWritesInFlight += 1;
+    mruWriteChain = write.then(settle, settle);
+    return write;
   }
 
   function loadSaves() {
@@ -210,47 +253,11 @@
     return false;
   }
 
-  // Resolves to whether the saves were persisted. The storage bridge's sync
-  // setItem() accepts chrome.storage writes optimistically and reports
-  // failures later, so use setItemAsync() and check its result.
   function saveSaves(saves) {
-    let serialized;
-    try {
-      serialized = JSON.stringify(saves);
-    } catch (e) {
-      return Promise.resolve(failSavesSave(e));
-    }
-
-    if (typeof localStorage.setItemAsync === 'function') {
-      let pending;
-      try {
-        pending = localStorage.setItemAsync(SAVES_KEY, serialized);
-      } catch (e) {
-        return Promise.resolve(failSavesSave(e));
-      }
-      // The bridge updated its cache synchronously; mirror that until the
-      // write settles.
-      savesCache = saves;
-      savesCacheRaw = serialized;
-      return Promise.resolve(pending).then(
-        (persisted) => (persisted === true ? true : failSavesSave()),
-        failSavesSave
-      );
-    }
-
-    let accepted;
-    try {
-      // Native Storage#setItem returns void and throws on failure.
-      accepted = localStorage.setItem(SAVES_KEY, serialized) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (e) {
-      return Promise.resolve(failSavesSave(e));
-    }
-    if (!accepted) {
-      return Promise.resolve(failSavesSave());
-    }
-    savesCache = saves;
-    savesCacheRaw = serialized;
-    return Promise.resolve(true);
+    return writeTrackedJSON(SAVES_KEY, saves, (cached, raw) => {
+      savesCache = cached;
+      savesCacheRaw = raw;
+    }, failSavesSave);
   }
 
   // Saves writes are serialized so each one is confirmed (or rolled back by
@@ -495,7 +502,7 @@
       destroyCurrent({ serialize: false });
       return false;
     }
-    touchMRU(gameId);
+    void touchMRU(gameId);
     return true;
   }
 
@@ -647,10 +654,13 @@
     lastStatsToastAt = -Infinity;
     lastSavesToastAt = -Infinity;
     // Invalidate writes enqueued (but not yet run) before this reset, then
-    // start a fresh queue for the next test.
+    // start fresh queues for the next test.
     savesWriteGeneration += 1;
     savesWriteChain = Promise.resolve();
     savesWritesInFlight = 0;
+    mruWriteGeneration += 1;
+    mruWriteChain = Promise.resolve();
+    mruWritesInFlight = 0;
     mruCache = null;
     mruCacheRaw = undefined;
     savesCache = null;
