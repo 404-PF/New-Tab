@@ -342,6 +342,42 @@
     }
   }
 
+  // True when a control still shows the rejected value the bridge has
+  // already rolled back (mirrors toast.js's featureToggleControlDesynced for
+  // the auto-theme keys).
+  function controlDesynced(key) {
+    if (key === STORAGE_KEY_ENABLED) {
+      const toggle = document.getElementById('auto-theme-toggle');
+      return Boolean(toggle) && toggle.checked !== loadEnabled();
+    }
+    const lightInput = document.getElementById('auto-theme-light-time');
+    const darkInput = document.getElementById('auto-theme-dark-time');
+    if (key === STORAGE_KEY_LIGHT_TIME) {
+      return Boolean(lightInput) && lightInput.value !== loadLightTime();
+    }
+    return Boolean(darkInput) && darkInput.value !== loadDarkTime();
+  }
+
+  // Fallback half of #1081: when toast.js failed to load, its centralized
+  // storageBridgeWriteError listener does not exist, so an async rejection
+  // (setItem already returned true) would strand the toggle, time inputs,
+  // and scheduler on the rejected value. Register this mirror only while
+  // persistSetting's fallback path is in play, so it can never duplicate the
+  // centralized listener when toast.js did load.
+  if (typeof window.persistFeatureToggle !== 'function') {
+    window.addEventListener('storageBridgeWriteError', function (event) {
+      const key = event && event.detail ? event.detail.key : null;
+      if (key !== STORAGE_KEY_ENABLED && key !== STORAGE_KEY_LIGHT_TIME && key !== STORAGE_KEY_DARK_TIME) return;
+      // Wait a macrotask for the bridge to roll its cache back, then skip
+      // when the synchronous failure path already reapplied the controls.
+      setTimeout(function () {
+        if (!controlDesynced(key)) return;
+        refresh();
+        reportSaveError();
+      });
+    });
+  }
+
   // Expose for settings.js to call after initSettings
   window.initAutoTheme = init;
 

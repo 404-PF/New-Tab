@@ -407,4 +407,56 @@ describe('weather settings report rejected writes (#1081)', () => {
     expect(window.showToast).toHaveBeenCalledTimes(1);
     expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
+
+  it('async weather rollback forces a refresh from the persisted settings', async () => {
+    localStorage.setItem('weatherEnabled', 'false');
+    localStorage.setItem('weatherUnit', 'celsius');
+    failWriteFor('weatherUnit', 'async');
+
+    const refreshSpy = vi.spyOn(window.WeatherWidget, 'refresh')
+      .mockImplementation(() => Promise.resolve(undefined));
+
+    try {
+      document.querySelector('[data-weather-choice="unit"] .weather-choice-button[data-value="fahrenheit"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
+
+      // Re-applying the controls is not enough: a refresh started with the
+      // rejected setting can still render stale weather after the rollback,
+      // so the resync must also force a refresh from persisted settings.
+      expect(refreshSpy).toHaveBeenCalledWith(true);
+    } finally {
+      refreshSpy.mockRestore();
+    }
+  });
+
+  it('a manual-city change resyncs the input and toasts once after an async lastError rollback', async () => {
+    // Weather must be enabled so the Enter handler's refresh runs:
+    // runRefreshWeather re-reads the in-flight input, and persisting the
+    // same city a second time would let two rejections roll back to the
+    // first optimistic value, retaining the rejected city unreported.
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherLocationMode', 'manual');
+    localStorage.setItem('weatherManualCity', 'Paris');
+    failWriteFor('weatherManualCity', 'async');
+
+    const input = document.getElementById('weather-manual-city');
+    input.value = 'London';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    // Accepted optimistically; the refresh re-reads the input but must not
+    // write the same city a second time.
+    expect(localStorage.getItem('weatherManualCity')).toBe('London');
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('weatherManualCity')).toBe('Paris');
+    expect(input.value).toBe('Paris');
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
 });

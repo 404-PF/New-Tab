@@ -181,6 +181,23 @@ function showFeatureToggleSaveError() {
   }
 }
 
+// Weather rollback resync (#1081): re-applying the controls alone is not
+// enough — a refresh started with the rejected setting can still land stale
+// weather after the rollback, so force one more refresh from the persisted
+// settings. applySettings runs first so the manual-city input is restored
+// before the refresh re-reads it.
+function resyncWeatherSettings() {
+  if (!window.WeatherWidget || typeof window.WeatherWidget.applySettings !== 'function') {
+    return;
+  }
+  window.WeatherWidget.applySettings();
+  if (typeof window.WeatherWidget.refresh === 'function') {
+    Promise.resolve(window.WeatherWidget.refresh(true)).catch(function (error) {
+      console.warn('Weather refresh after settings rollback failed:', error);
+    });
+  }
+}
+
 // Controls that must resync when the bridge rolls a rejected write back after
 // setItem already returned true (the async runtime.lastError path, #969).
 const FEATURE_TOGGLE_RESYNC = {
@@ -227,26 +244,10 @@ const FEATURE_TOGGLE_RESYNC = {
       window.refreshAutoTheme();
     }
   },
-  weatherEnabled: function () {
-    if (window.WeatherWidget && typeof window.WeatherWidget.applySettings === 'function') {
-      window.WeatherWidget.applySettings();
-    }
-  },
-  weatherUnit: function () {
-    if (window.WeatherWidget && typeof window.WeatherWidget.applySettings === 'function') {
-      window.WeatherWidget.applySettings();
-    }
-  },
-  weatherLocationMode: function () {
-    if (window.WeatherWidget && typeof window.WeatherWidget.applySettings === 'function') {
-      window.WeatherWidget.applySettings();
-    }
-  },
-  weatherManualCity: function () {
-    if (window.WeatherWidget && typeof window.WeatherWidget.applySettings === 'function') {
-      window.WeatherWidget.applySettings();
-    }
-  }
+  weatherEnabled: resyncWeatherSettings,
+  weatherUnit: resyncWeatherSettings,
+  weatherLocationMode: resyncWeatherSettings,
+  weatherManualCity: resyncWeatherSettings
 };
 
 // True when a control still shows the rejected value the bridge has already

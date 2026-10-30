@@ -426,10 +426,17 @@
 
     // Persist any in-flight manual city input before reading stored value,
     // so the refresh always uses what the user actually typed (not just
-    // what was previously saved on blur/Enter).
+    // what was previously saved on blur/Enter). Skip when the input already
+    // matches storage: the Enter/blur handlers save before triggering this
+    // refresh, and writing the same city a second time would let two
+    // rejected callbacks roll back to the first optimistic value, retaining
+    // the rejected city with no save error reported (#1081).
     const manualInput = document.getElementById('weather-manual-city');
     if (manualInput) {
-      WeatherStorage.saveManualCity(manualInput.value.trim());
+      const pendingCity = manualInput.value.trim();
+      if (pendingCity !== WeatherStorage.loadManualCity()) {
+        WeatherStorage.saveManualCity(pendingCity);
+      }
     }
 
     const unit = WeatherStorage.loadUnit();
