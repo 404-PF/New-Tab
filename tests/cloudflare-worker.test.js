@@ -131,6 +131,16 @@ describe('OpenRouter proxy hardening (#1086)', () => {
     expect(upstreamFetch).not.toHaveBeenCalled();
   });
 
+  it('enforces the cap in UTF-8 bytes, not UTF-16 code units, for non-ASCII bodies', async () => {
+    // 40000 two-byte characters: under 64 K code units but over 64 KB of UTF-8.
+    const res = await postRequest(
+      chatBody({ messages: [{ role: 'user', content: 'é'.repeat(40000) }] })
+    );
+
+    expect(res.status).toBe(413);
+    expect(upstreamFetch).not.toHaveBeenCalled();
+  });
+
   it('rejects an unparseable body', async () => {
     const res = await postRequest('{not json');
 
@@ -172,5 +182,39 @@ describe('OpenRouter proxy hardening (#1086)', () => {
 
     const res = await postRequest(chatBody());
     expect(res.status).toBe(200);
+  });
+
+  it('prefers the durable RATE_LIMITER binding over the in-memory window', async () => {
+    const limit = vi.fn().mockResolvedValue({ success: false });
+    const env = { ...WORKER_ENV, RATE_LIMITER: { limit } };
+
+    const res = await postRequest(chatBody(), { env });
+
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get('Retry-After'))).toBeGreaterThan(0);
+    expect(limit).toHaveBeenCalledTimes(1);
+    expect(limit.mock.calls[0][0]).toEqual({ key: expect.any(String) });
+    expect(upstreamFetch).not.toHaveBeenCalled();
+  });
+
+  it('forwards a request the RATE_LIMITER binding allows', async () => {
+    const limit = vi.fn().mockResolvedValue({ success: true });
+    const env = { ...WORKER_ENV, RATE_LIMITER: { limit } };
+
+    const res = await postRequest(chatBody(), { env });
+
+    expect(res.status).toBe(200);
+    expect(limit).toHaveBeenCalledTimes(1);
+    expect(upstreamFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the in-memory window when the RATE_LIMITER binding throws', async () => {
+    const limit = vi.fn().mockRejectedValue(new Error('limiter unavailable'));
+    const env = { ...WORKER_ENV, RATE_LIMITER: { limit } };
+
+    const res = await postRequest(chatBody(), { env });
+
+    expect(res.status).toBe(200);
+    expect(upstreamFetch).toHaveBeenCalledTimes(1);
   });
 });

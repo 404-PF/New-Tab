@@ -13,7 +13,8 @@
  *   EXTENSION_TOKEN     Shared secret for the X-New-Tab-Token check below;
  *                       must match CONFIG.extensionToken in
  *                       src/ai/openrouter.js. Set it before deploying:
- *                       while it is unset every POST fails closed (401).
+ *                       while it is unset unauthorized POSTs fail closed
+ *                       with 401.
  *
  * Access control (#1086):
  *   - POSTs must carry the X-New-Tab-Token header matching EXTENSION_TOKEN
@@ -24,13 +25,15 @@
  *     do not send the header and lose AI access once EXTENSION_TOKEN is
  *     set (they must update). A grace period was rejected because it would
  *     keep the proxy open to free-riding for its whole duration.
- *   - Per-IP fixed-window rate limit (best effort within one isolate)
- *     returns 429 with Retry-After, which the extension client honours.
- *     Configure a Cloudflare dashboard Rate-Limiting rule on the worker
- *     route for a durable cross-isolate limit; it is not expressible in
- *     the committed free-plan wrangler.toml.
- *   - Request bodies are capped (MAX_BODY_BYTES / MAX_MESSAGES) before the
- *     upstream call, alongside the existing max_tokens cap.
+ *   - Per-IP rate limit: the worker prefers the durable [[ratelimits]]
+ *     binding declared in wrangler.toml (shared across isolates in a
+ *     Cloudflare location; approximate, free plan) and falls back to an
+ *     in-memory per-isolate fixed window when the binding is absent.
+ *     Limited requests get 429 with Retry-After, which the extension
+ *     client honours.
+ *   - Request bodies are streamed with a UTF-8 byte cap (MAX_BODY_BYTES)
+ *     and a message-count cap (MAX_MESSAGES) before the upstream call,
+ *     alongside the existing max_tokens cap.
  *
  * Web search uses Tavily's keyless mode (X-Tavily-Access-Mode: keyless):
  * free, rate-limited, no account or key.
@@ -69,18 +72,18 @@ function json(status, body, extra = {}) {
   });
 }
 
-// Best-effort per-IP fixed window: one Map per isolate, so a dashboard
-// Rate-Limiting rule remains the durable cross-isolate control.
+// Fallback per-IP fixed window: one Map per isolate, used only when the
+// durable [[ratelimits]] binding in wrangler.toml is not configured.
 const rateLimitBuckets = new Map();
 let rateLimitLastSweep = 0;
 
 /**
- * Count a request against the caller's per-IP fixed window.
+ * Count a request against the caller's per-IP fixed window (isolate-local).
  * @param {string} ip - Client IP (CF-Connecting-IP)
  * @param {number} now - Current epoch milliseconds
  * @returns {number|null} Retry-After seconds when limited, otherwise null
  */
-function checkRateLimit(ip, now) {
+function checkRateLimitInMemory(ip, now) {
   if (now - rateLimitLastSweep >= RATE_LIMIT_WINDOW_MS) {
     rateLimitLastSweep = now;
     for (const [key, bucket] of rateLimitBuckets) {
@@ -103,6 +106,72 @@ function checkRateLimit(ip, now) {
 
   const remainingMs = bucket.start + RATE_LIMIT_WINDOW_MS - now;
   return Math.max(1, Math.ceil(remainingMs / 1000));
+}
+
+/**
+ * Count a request against the caller's per-IP limit. Prefers the durable
+ * RATE_LIMITER binding (counters shared across isolates in a location);
+ * falls back to the isolate-local window when the binding is absent or
+ * fails, so a limiter outage never takes the proxy down.
+ * @param {string} ip - Client IP (CF-Connecting-IP)
+ * @param {Object} env - Worker env (may carry the RATE_LIMITER binding)
+ * @param {number} now - Current epoch milliseconds
+ * @returns {Promise<number|null>} Retry-After seconds when limited, otherwise null
+ */
+async function checkRateLimit(ip, env, now) {
+  const limiter = env?.RATE_LIMITER;
+  if (limiter && typeof limiter.limit === 'function') {
+    try {
+      const { success } = await limiter.limit({ key: ip });
+      if (!success) {
+        return Math.ceil(RATE_LIMIT_WINDOW_MS / 1000);
+      }
+      return null;
+    } catch (error) {
+      console.warn('RATE_LIMITER binding failed, falling back to in-memory limit:', error);
+    }
+  }
+  return checkRateLimitInMemory(ip, now);
+}
+
+/**
+ * Read the request body as text while counting UTF-8 bytes, cancelling the
+ * stream as soon as MAX_BODY_BYTES is crossed so an oversized body is never
+ * fully buffered. rawBody.length would count UTF-16 code units, which
+ * undercounts multi-byte input.
+ * @param {Request} request - Incoming request
+ * @returns {Promise<{text?: string, tooLarge?: boolean}>} Decoded body, or tooLarge
+ */
+async function readBodyText(request) {
+  const body = request.body;
+  if (!body) {
+    return { text: '' };
+  }
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let received = 0;
+  let text = '';
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    received += value.byteLength;
+    if (received > MAX_BODY_BYTES) {
+      try {
+        await reader.cancel();
+      } catch {
+        // Ignore cancel failures; the 413 response is what matters.
+      }
+      return { tooLarge: true };
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+
+  text += decoder.decode();
+  return { text };
 }
 
 function lastUserText(messages) {
@@ -176,7 +245,7 @@ export default {
     }
 
     const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
-    const retryAfterSeconds = checkRateLimit(clientIp, Date.now());
+    const retryAfterSeconds = await checkRateLimit(clientIp, env, Date.now());
     if (retryAfterSeconds !== null) {
       return json(
         429,
@@ -196,20 +265,20 @@ export default {
       return json(413, { error: { message: 'Request body too large', code: 413 } });
     }
 
-    let rawBody;
+    let bodyRead;
     try {
-      rawBody = await request.text();
+      bodyRead = await readBodyText(request);
     } catch {
       return json(400, { error: { message: 'Invalid JSON body', code: 400 } });
     }
 
-    if (rawBody.length > MAX_BODY_BYTES) {
+    if (bodyRead.tooLarge) {
       return json(413, { error: { message: 'Request body too large', code: 413 } });
     }
 
     let body;
     try {
-      body = JSON.parse(rawBody);
+      body = JSON.parse(bodyRead.text);
     } catch {
       return json(400, { error: { message: 'Invalid JSON body', code: 400 } });
     }

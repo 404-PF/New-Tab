@@ -7,11 +7,21 @@ compatibility_date = "2026-10-01"
 #   wrangler secret put EXTENSION_TOKEN
 #     Shared secret for the X-New-Tab-Token check; it must match
 #     CONFIG.extensionToken in src/ai/openrouter.js. Set it before the
-#     first deploy of this worker code: while the secret is unset every
-#     POST is rejected with 401 (fail closed), and extension builds older
-#     than the token header lose AI access once it is set (accepted
-#     compatibility break - they must update).
+#     first deploy of this worker code: while the secret is unset
+#     unauthorized POSTs return 401 (or 429 if the IP is rate-limited), and
+#     extension builds older than the token header lose AI access once set
+#     (accepted compatibility break - they must update).
 #
-# Rate limiting: worker.js applies a best-effort per-IP window per isolate;
-# add a Cloudflare dashboard Rate-Limiting rule on this worker's route for
-# a durable cross-isolate limit (not expressible in this free-plan file).
+# Rate limiting: durable per-IP limit via the Rate Limiting binding (GA,
+# free plan; requires Wrangler >= 4.36.0). Counters are shared across
+# isolates in a Cloudflare location and approximate; worker.js keeps an
+# in-memory per-isolate window as fallback when the binding is absent.
+# namespace_id must be a positive integer unique to this Cloudflare
+# account; change it if it collides with another Worker's limiter.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60
