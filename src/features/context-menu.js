@@ -86,6 +86,13 @@ renameItem.setAttribute('data-i18n', 'renameApp');
 renameItem.textContent = translateLabel('renameApp', 'Rename');
 addHover(renameItem);
 
+const editItem = document.createElement('div');
+editItem.id = 'edit-app';
+editItem.className = 'context-menu-item context-menu-app-item';
+editItem.setAttribute('data-i18n', 'editApp');
+editItem.textContent = translateLabel('editApp', 'Edit');
+addHover(editItem);
+
 const moveToFolderItem = document.createElement('div');
 moveToFolderItem.id = 'move-to-folder';
 moveToFolderItem.className = 'context-menu-item context-menu-app-item';
@@ -153,6 +160,7 @@ sortAlphabeticallyItem.textContent = translateLabel('sortAlphabetically', 'Sort 
 addHover(sortAlphabeticallyItem);
 
 contextMenu.appendChild(renameItem);
+contextMenu.appendChild(editItem);
 contextMenu.appendChild(moveToFolderItem);
 contextMenu.appendChild(removeFromFolderItem);
 contextMenu.appendChild(changeThumbnailItem);
@@ -237,6 +245,10 @@ document.addEventListener('contextmenu', function (e) {
     contextTargetId = popupAppIcon.id.replace(/^popup-/, '');
     contextTargetFolderId = window.AppFolders ? window.AppFolders.currentFolderId : null;
     setContextMenuItems('folder-app');
+    // Custom apps inside a folder can edit their URL in place too (issue #1082).
+    if (popupAppIcon.classList.contains('custom-app')) {
+      editItem.style.display = 'block';
+    }
     positionContextMenu(e);
     return;
   }
@@ -324,6 +336,27 @@ document.getElementById('rename-app').addEventListener('click', function () {
     activeRenameInput.select();
   }, 100);
   
+  contextMenu.style.display = 'none';
+  document.body.classList.remove('context-menu-open');
+});
+
+// Edit URL — opens the Add App modal prefilled with this app's URL and
+// saves the change in place (issue #1082). Also offered for custom apps
+// inside a folder popup, where the folder UI picks up the new URL/icon.
+document.getElementById('edit-app').addEventListener('click', function () {
+  if (contextMenuTrigger !== 'custom-app' && contextMenuTrigger !== 'folder-app') return;
+  if (!contextTargetId) return;
+  const apps = window.AppGridState.getCustomApps();
+  const currentApp = apps.find(app => app.id === contextTargetId);
+  if (!currentApp) return;
+  // The folder popup (z-index 9000) would cover the Add App modal (1001).
+  if (contextMenuTrigger === 'folder-app' && window.AppFolders &&
+      typeof window.AppFolders.closeFolderPopup === 'function') {
+    window.AppFolders.closeFolderPopup();
+  }
+  if (typeof window.openAddAppModal === 'function') {
+    window.openAddAppModal(currentApp);
+  }
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');
 });

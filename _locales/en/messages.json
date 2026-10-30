@@ -324,6 +324,14 @@
     "message": "Enter a new name for this app",
     "description": "Description shown in the rename app modal"
   },
+  "editAppTitle": {
+    "message": "Edit App",
+    "description": "Title of the edit app URL modal"
+  },
+  "editAppDescription": {
+    "message": "Enter a new URL for this app",
+    "description": "Description shown in the edit app URL modal"
+  },
   "enterAppName": {
     "message": "App name",
     "description": "Placeholder for the rename app name input"

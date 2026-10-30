@@ -636,3 +636,308 @@ describe('Add app preview debounce', () => {
     expect(scan).toHaveBeenCalledExactlyOnceWith('https://valid-again.example/');
   });
 });
+
+describe('Add app modal edit mode (#1082)', () => {
+  function seedApp(overrides) {
+    const app = {
+      id: 'custom-app-edit',
+      name: 'Editable',
+      url: 'https://editable.example',
+      icon: 'https://www.google.com/s2/favicons?domain=editable.example&sz=64',
+      ...overrides
+    };
+    expect(window.AppGridState.addApp(app)).toBe(true);
+    return app;
+  }
+
+  // The shared beforeEach stub has no modal header or confirm label; edit
+  // mode swaps both, so tests that assert them add the real markup first.
+  function addModalChrome() {
+    document.getElementById('add-app-modal').insertAdjacentHTML('afterbegin', `
+      <div class="add-app-header-text">
+        <h3 data-i18n="newAppTitle">Add New App</h3>
+        <p data-i18n="newAppDescription">Enter a website URL to add it to your apps</p>
+      </div>
+    `);
+    document.getElementById('add-app-confirm').innerHTML = '<span data-i18n="create">Create</span>';
+  }
+
+  it('prefills the URL, hides quick-add, and swaps the modal chrome', () => {
+    const app = seedApp();
+    addModalChrome();
+
+    window.initAddAppModal();
+    window.openAddAppModal(app);
+
+    const modal = document.getElementById('add-app-modal');
+    expect(document.getElementById('add-app-url').value).toBe('https://editable.example');
+    expect(document.getElementById('add-app-section').hidden).toBe(true);
+    expect(modal.querySelector('h3').getAttribute('data-i18n')).toBe('editAppTitle');
+    expect(modal.querySelector('h3').textContent).toBe('Edit App');
+    expect(modal.querySelector('.add-app-header-text p').getAttribute('data-i18n')).toBe('editAppDescription');
+    expect(document.querySelector('#add-app-confirm span').getAttribute('data-i18n')).toBe('save');
+    expect(document.querySelector('#add-app-confirm span').textContent).toBe('Save');
+    // The prefilled URL is its own app's URL, so it must not self-conflict.
+    expect(document.getElementById('add-app-confirm').disabled).toBe(false);
+  });
+
+  it('saves an unchanged URL without a self-duplicate conflict', async () => {
+    seedApp();
+
+    window.initAddAppModal();
+    window.openAddAppModal('custom-app-edit');
+    expect(document.getElementById('add-app-confirm').disabled).toBe(false);
+
+    document.getElementById('add-app-confirm').click();
+    await flushMicrotasks();
+
+    expect(window.AppGridState.getCustomApps()).toHaveLength(1);
+    expect(window.AppGridState.getCustomApps()[0]).toMatchObject({
+      id: 'custom-app-edit',
+      url: 'https://editable.example'
+    });
+    expect(document.getElementById('add-app-modal').classList.contains('modal-open')).toBe(false);
+  });
+
+  it('updates the URL in place and refreshes the tile link and auto-derived icon', async () => {
+    seedApp({ cachedIcon: 'data:cached' });
+    const updateAppLink = vi.fn();
+    const updateAppIcon = vi.fn();
+
+    window.initAddAppModal();
+    window.openAddAppModal('custom-app-edit');
+
+    const input = document.getElementById('add-app-url');
+    input.value = 'https://renamed.example';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    window.updateAppLink = updateAppLink;
+    window.updateAppIcon = updateAppIcon;
+    try {
+      document.getElementById('add-app-confirm').click();
+      await flushMicrotasks();
+    } finally {
+      delete window.updateAppLink;
+      delete window.updateAppIcon;
+    }
+
+    const updated = window.AppGridState.getCustomApps()[0];
+    expect(updated.id).toBe('custom-app-edit');
+    expect(updated.name).toBe('Editable');
+    expect(updated.url).toBe('https://renamed.example');
+    expect(updated.cachedIcon).toBeUndefined();
+    // Auto-derived favicons follow the new host; the tile link follows too.
+    expect(updated.icon).toBe('https://www.google.com/s2/favicons?domain=renamed.example&sz=64');
+    expect(updateAppLink).toHaveBeenCalledExactlyOnceWith('custom-app-edit', 'https://renamed.example');
+    expect(updateAppIcon).toHaveBeenCalledExactlyOnceWith(
+      'custom-app-edit',
+      'https://www.google.com/s2/favicons?domain=renamed.example&sz=64'
+    );
+    expect(document.getElementById('add-app-modal').classList.contains('modal-open')).toBe(false);
+  });
+
+  it('keeps a custom thumbnail when the URL changes', async () => {
+    seedApp({ icon: 'https://cdn.example/custom.png', cachedIcon: 'data:custom' });
+
+    window.initAddAppModal();
+    window.openAddAppModal('custom-app-edit');
+
+    const input = document.getElementById('add-app-url');
+    input.value = 'https://renamed.example';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    document.getElementById('add-app-confirm').click();
+    await flushMicrotasks();
+
+    const updated = window.AppGridState.getCustomApps()[0];
+    expect(updated.url).toBe('https://renamed.example');
+    expect(updated.icon).toBe('https://cdn.example/custom.png');
+    expect(updated.cachedIcon).toBeUndefined();
+  });
+
+  it('updates the favicon for a quick-added app whose icon omits the www. prefix', async () => {
+    // Mirrors the built-in quick-add Google record: domain=google.com while
+    // the URL hostname is www.google.com (issue #1082 review).
+    seedApp({
+      url: 'https://www.google.com',
+      icon: 'https://www.google.com/s2/favicons?domain=google.com&sz=64'
+    });
+
+    window.initAddAppModal();
+    window.openAddAppModal('custom-app-edit');
+
+    const input = document.getElementById('add-app-url');
+    input.value = 'https://www.example.com';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    document.getElementById('add-app-confirm').click();
+    await flushMicrotasks();
+
+    const updated = window.AppGridState.getCustomApps()[0];
+    expect(updated.url).toBe('https://www.example.com');
+    expect(updated.icon).toBe('https://www.google.com/s2/favicons?domain=www.example.com&sz=64');
+  });
+
+  it('rolls back the URL and keeps the modal open when the favicon write fails', async () => {
+    const app = seedApp();
+    const originalUpdateThumbnail = window.AppGridState.updateThumbnail;
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+
+    try {
+      window.AppGridState.updateThumbnail = vi.fn(() => false);
+      window.showToast = showToast;
+
+      window.initAddAppModal();
+      window.openAddAppModal(app);
+
+      const input = document.getElementById('add-app-url');
+      input.value = 'https://renamed.example';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('add-app-confirm').click();
+      await flushMicrotasks();
+
+      expect(showToast).toHaveBeenCalled();
+      expect(document.getElementById('add-app-modal').classList.contains('modal-open')).toBe(true);
+      expect(window.AppGridState.getCustomApps().find(a => a.id === 'custom-app-edit').url)
+        .toBe('https://editable.example');
+    } finally {
+      window.AppGridState.updateThumbnail = originalUpdateThumbnail;
+      window.showToast = originalShowToast;
+    }
+  });
+
+  it('blocks saving a URL that another app already uses', async () => {
+    vi.useFakeTimers();
+    try {
+      seedApp();
+      expect(window.AppGridState.addApp({
+        id: 'other-user',
+        name: 'OtherUser',
+        url: 'https://taken.example'
+      })).toBe(true);
+
+      window.initAddAppModal();
+      window.openAddAppModal('custom-app-edit');
+
+      const input = document.getElementById('add-app-url');
+      const confirm = document.getElementById('add-app-confirm');
+      input.value = 'https://taken.example';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      vi.advanceTimersByTime(150);
+
+      expect(confirm.disabled).toBe(true);
+      expect(document.querySelector('.add-app-validation-message').classList.contains('duplicate')).toBe(true);
+
+      input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+      await flushMicrotasks();
+
+      expect(window.AppGridState.getCustomApps().find(app => app.id === 'custom-app-edit').url)
+        .toBe('https://editable.example');
+      expect(document.getElementById('add-app-modal').classList.contains('modal-open')).toBe(true);
+    } finally {
+      window.resetAddAppModalState();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it('falls back to create mode for unknown ids', () => {
+    seedApp();
+
+    window.initAddAppModal();
+    window.openAddAppModal('does-not-exist');
+
+    expect(document.getElementById('add-app-url').value).toBe('');
+    expect(document.getElementById('add-app-section').hidden).toBe(false);
+  });
+
+  it('restores create-mode chrome after closing an edit session', () => {
+    const app = seedApp();
+    addModalChrome();
+
+    window.initAddAppModal();
+    window.openAddAppModal(app);
+    expect(document.querySelector('#add-app-confirm span').textContent).toBe('Save');
+
+    window.closeAddAppModal();
+
+    const modal = document.getElementById('add-app-modal');
+    expect(modal.querySelector('h3').getAttribute('data-i18n')).toBe('newAppTitle');
+    expect(modal.querySelector('h3').textContent).toBe('Add New App');
+    expect(document.querySelector('#add-app-confirm span').getAttribute('data-i18n')).toBe('create');
+    expect(document.querySelector('#add-app-confirm span').textContent).toBe('Create');
+    expect(document.getElementById('add-app-section').hidden).toBe(false);
+  });
+
+  it('keeps the modal open and shows a save error when the update fails', async () => {
+    const app = seedApp();
+    const originalUpdateAppUrl = window.AppGridState.updateAppUrl;
+    const originalShowToast = window.showToast;
+    const showToast = vi.fn();
+
+    try {
+      window.AppGridState.updateAppUrl = vi.fn(() => false);
+      window.showToast = showToast;
+
+      window.initAddAppModal();
+      window.openAddAppModal(app);
+
+      const input = document.getElementById('add-app-url');
+      input.value = 'https://renamed.example';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('add-app-confirm').click();
+      await flushMicrotasks();
+
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save app changes. Your last action was not saved.',
+        'error'
+      );
+      expect(document.getElementById('add-app-modal').classList.contains('modal-open')).toBe(true);
+      expect(window.AppGridState.getCustomApps().find(a => a.id === 'custom-app-edit').url)
+        .toBe('https://editable.example');
+    } finally {
+      window.AppGridState.updateAppUrl = originalUpdateAppUrl;
+      window.showToast = originalShowToast;
+    }
+  });
+});
+
+describe('Add app modal edit mode tile refresh (#1082)', () => {
+  beforeAll(() => {
+    // Real grid mutators so a stale tile after an edit is detectable.
+    injectScript('src/core/dom-ready.js');
+    injectScript('src/ui/app-manager.js');
+  });
+
+  it('updates the rendered tile link and image after an in-place URL edit', async () => {
+    const app = {
+      id: 'custom-app-edit',
+      name: 'Editable',
+      url: 'https://editable.example',
+      icon: 'https://www.google.com/s2/favicons?domain=editable.example&sz=64'
+    };
+    expect(window.AppGridState.addApp(app)).toBe(true);
+
+    document.body.insertAdjacentHTML('afterbegin', `
+      <div class="app-grid" id="app-grid">
+        <a id="custom-app-edit" class="app-icon custom-app" href="https://editable.example">
+          <div class="icon"><img src="https://www.google.com/s2/favicons?domain=editable.example&sz=64" alt="Editable"></div>
+          <span class="app-name">Editable</span>
+        </a>
+      </div>
+    `);
+
+    window.initAddAppModal();
+    window.openAddAppModal('custom-app-edit');
+
+    const input = document.getElementById('add-app-url');
+    input.value = 'https://renamed.example';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    document.getElementById('add-app-confirm').click();
+    await flushMicrotasks();
+
+    const tile = document.getElementById('custom-app-edit');
+    expect(tile.getAttribute('href')).toBe('https://renamed.example');
+    expect(tile.querySelector('.icon img').getAttribute('src'))
+      .toBe('https://www.google.com/s2/favicons?domain=renamed.example&sz=64');
+  });
+});

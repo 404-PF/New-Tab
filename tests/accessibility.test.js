@@ -509,6 +509,47 @@ describe('Accessibility - app grid keyboard interaction', () => {
     expect(settingsEvent.defaultPrevented).toBe(false);
   });
 
+  it('restores focus to the tile after Edit opens and closes the app modal (#1082)', async () => {
+    const grid = document.getElementById('app-grid');
+    grid.innerHTML = '';
+    const cell = createAppTile(grid, 'app-1', 'App 1', 'app-icon custom-app');
+    window.Accessibility.refreshGrid();
+
+    // Plain stubs: this suite only exercises accessibility.js, which needs
+    // the menu item and modal to exist in the DOM.
+    const menu = document.createElement('div');
+    menu.id = 'app-context-menu';
+    menu.innerHTML =
+      '<div id="rename-app" class="context-menu-item">Rename</div>' +
+      '<div id="edit-app" class="context-menu-item">Edit</div>';
+    document.body.appendChild(menu);
+
+    const modal = document.createElement('div');
+    modal.id = 'add-app-modal';
+    document.body.appendChild(modal);
+
+    try {
+      cell.focus();
+      cell.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+
+      // Clicking Edit arms pendingModalOpener with the keyboard/menu opener.
+      document.getElementById('edit-app').click();
+
+      modal.classList.add('modal-open');
+      window.Accessibility.refresh();
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      modal.classList.remove('modal-open');
+      window.Accessibility.refresh();
+      await vi.waitFor(() => expect(document.activeElement).toBe(cell));
+    } finally {
+      modal.classList.remove('modal-open');
+      menu.remove();
+      modal.remove();
+      window.Accessibility.refresh();
+    }
+  });
+
   it('keeps multi-row arrow navigation and Home/End intact (#867)', () => {
     const grid = document.getElementById('app-grid');
     grid.innerHTML = '';

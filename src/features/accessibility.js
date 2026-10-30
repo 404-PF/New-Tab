@@ -39,7 +39,7 @@
   let listAnnouncementTimer = null;
   let lastFilterAnnouncementAt = 0;
   let initialized = false;
-  const MODAL_MENU_ACTIONS = new Set(['rename-app', 'move-to-folder', 'change-thumbnail', 'delete-app']);
+  const MODAL_MENU_ACTIONS = new Set(['rename-app', 'edit-app', 'move-to-folder', 'change-thumbnail', 'delete-app']);
 
   function translate(key, fallback, replacements) {
     if (window.i18n && typeof window.i18n.t === 'function') {

@@ -38,6 +38,9 @@ let addAppPreviewTimer = null;
 // Last settled preview's duplicate verdict, keyed by effective URL: a
 // revalidation pass reuses it so an unchanged URL keeps its answer.
 let duplicatePreviewUrl = null;
+// Non-null while the modal is editing an existing app's URL in place
+// (issue #1082); null means create mode.
+let editingAppId = null;
 
 let addAppElementsCache = null;
 let addAppModalInitialized = false;
@@ -46,6 +49,7 @@ let isQuickAddInProgress = false;
 
 function resetAddAppModalState() {
   duplicatePreviewUrl = null;
+  editingAppId = null;
   clearTimeout(addAppPreviewTimer);
   addAppPreviewTimer = null;
   addAppElementsCache = null;
@@ -111,7 +115,7 @@ function normalizeAppName(name) {
   return (name || '').trim().toLowerCase();
 }
 
-function getExistingAppUrls() {
+function getExistingAppUrls(excludeAppId) {
   const urlSet = new Set();
   const nameSet = new Set();
 
@@ -120,10 +124,12 @@ function getExistingAppUrls() {
     try {
       const customApps = window.AppGridState.getCustomApps();
       customApps.forEach((app) => {
-        if (app && app.url) {
+        // The app being edited must not count as its own duplicate.
+        if (!app || app.id === excludeAppId) return;
+        if (app.url) {
           urlSet.add(window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url)));
         }
-        if (app && app.name) {
+        if (app.name) {
           const normalized = normalizeAppName(app.name);
           if (normalized) nameSet.add(normalized);
         }
@@ -208,6 +214,8 @@ function closeAddAppModal() {
     addAppConfirm.disabled = true;
   }
 
+  editingAppId = null;
+  applyAddAppModalMode(false);
   isQuickAddInProgress = false;
   resetPreviewState();
 }
@@ -292,8 +300,73 @@ async function saveCustomApp(appData) {
 }
 
 async function addAppFromInput(url) {
+  if (editingAppId) {
+    await saveEditedAppUrl(editingAppId, url);
+    return;
+  }
   const appData = createAppData(url, extractAppName(url), getFaviconUrl(url));
   await saveCustomApp(appData);
+}
+
+// Resolves the custom-app record being edited. Accepts a full app record or
+// an id; returns null when the id is unknown so callers fall back to create
+// mode.
+function resolveEditingApp(appOrId) {
+  const id = typeof appOrId === 'string' ? appOrId : appOrId && appOrId.id;
+  if (!id || !window.AppGridState) return null;
+  return window.AppGridState.getCustomApps().find(app => app.id === id) || null;
+}
+
+// Persists an in-place URL edit: keeps the app's grid slot, folder
+// membership, name, and (custom) thumbnail; only the URL and any
+// auto-derived favicon change. The modal stays open on failure.
+async function saveEditedAppUrl(id, url) {
+  const previous = window.AppGridState.getCustomApps().find(app => app.id === id);
+  const normalized = normalizeAppUrl(url);
+
+  if (!window.AppGridState.updateAppUrl(id, normalized)) {
+    showAddAppSaveError();
+    return;
+  }
+
+  const updated = window.AppGridState.getCustomApps().find(app => app.id === id) || previous;
+
+  // An auto-derived favicon follows the app's URL; a custom thumbnail is kept.
+  // Quick-add defaults store domain=google.com while the URL hostname is
+  // www.google.com, so compare with the www. prefix stripped from both sides.
+  let iconUrl = updated ? updated.icon : '';
+  const previousFavicon = getFaviconUrl(previous && previous.url);
+  if (previous && previous.icon && previousFavicon &&
+      previous.icon.replace(/domain=www\./, 'domain=') === previousFavicon.replace(/domain=www\./, 'domain=')) {
+    const nextIcon = getFaviconUrl(normalized);
+    if (nextIcon) {
+      if (!window.AppGridState.updateThumbnail(id, nextIcon)) {
+        // Roll back the URL change so the URL and auto-derived icon cannot diverge.
+        window.AppGridState.updateAppUrl(id, previous.url);
+        showAddAppSaveError();
+        return;
+      }
+      iconUrl = nextIcon;
+    }
+  }
+
+  if (typeof window.updateAppLink === 'function') window.updateAppLink(id, normalized);
+  if (typeof window.updateAppIcon === 'function' && iconUrl) window.updateAppIcon(id, iconUrl);
+
+  // A foldered app has no grid tile; its stacked preview and popup tiles
+  // must pick up the new URL/icon instead.
+  if (window.AppFolders && typeof window.AppFolders.refreshFolderUI === 'function') {
+    const folder = window.AppGridState.getFolders()
+      .find(f => Array.isArray(f.apps) && f.apps.includes(id));
+    if (folder) {
+      window.AppFolders.refreshFolderUI(folder.id);
+      if (typeof window.AppFolders.renderFolderAppsInPopup === 'function') {
+        window.AppFolders.renderFolderAppsInPopup();
+      }
+    }
+  }
+
+  closeAddAppModal();
 }
 
 async function addDefaultApp(app) {
@@ -481,10 +554,15 @@ function renderAddAppPreviewFields(url, fullUrl, isValid) {
 }
 
 // Settles the duplicate verdict for the shown preview, cached by effective
-// URL so an unchanged URL keeps its answer across passes.
+// URL so an unchanged URL keeps its answer across passes. The app being
+// edited is excluded so its own URL never reads as a duplicate of itself.
 function settleAddAppDuplicateVerdict(fullUrl, isCreatable) {
-  duplicatePreviewUrl = isCreatable && window.AppGridState?.hasAppWithUrl(fullUrl)
-    ? fullUrl : null;
+  const conflicting = isCreatable && window.AppGridState
+    ? (editingAppId
+      ? window.AppGridState.hasAppWithUrl(fullUrl, editingAppId)
+      : window.AppGridState.hasAppWithUrl(fullUrl))
+    : false;
+  duplicatePreviewUrl = conflicting ? fullUrl : null;
 }
 
 // Duplicate notice when the settled verdict says so, otherwise the raw
@@ -517,7 +595,7 @@ function revalidateSettledDuplicateVerdict(fullUrl) {
   if (duplicatePreviewUrl !== fullUrl) {
     return;
   }
-  const { urls } = getExistingAppUrls();
+  const { urls } = getExistingAppUrls(editingAppId);
   if (window.AppGridState?.getCanonicalUrl && urls.has(window.AppGridState.getCanonicalUrl(fullUrl))) {
     return;
   }
@@ -549,22 +627,69 @@ function settlePendingPreviewBeforeSubmit() {
   return !addAppConfirm?.disabled;
 }
 
-function openAddAppModal() {
+// Swaps the modal chrome between create and edit copy. Updating the
+// data-i18n attributes keeps later applyLanguage() sweeps in sync with the
+// active mode. Missing elements are tolerated so test stubs and partial
+// DOMs degrade gracefully.
+function applyAddAppModalMode(editing) {
+  const { addAppModal, addAppSection, addAppConfirm } = getAddAppElements();
+  const title = addAppModal ? addAppModal.querySelector('h3') : null;
+  const description = addAppModal ? addAppModal.querySelector('.add-app-header-text p') : null;
+  const confirmLabel = addAppConfirm ? addAppConfirm.querySelector('span[data-i18n]') : null;
+  const translate = (key, fallback) => (
+    window.i18n && window.i18n.t ? window.i18n.t(key) : fallback
+  );
+
+  if (title) {
+    const titleKey = editing ? 'editAppTitle' : 'newAppTitle';
+    title.setAttribute('data-i18n', titleKey);
+    title.textContent = translate(titleKey, editing ? 'Edit App' : 'Add New App');
+  }
+  if (description) {
+    const descriptionKey = editing ? 'editAppDescription' : 'newAppDescription';
+    description.setAttribute('data-i18n', descriptionKey);
+    description.textContent = translate(
+      descriptionKey,
+      editing ? 'Enter a new URL for this app' : 'Enter a website URL to add it to your apps'
+    );
+  }
+  if (confirmLabel) {
+    const confirmKey = editing ? 'save' : 'create';
+    confirmLabel.setAttribute('data-i18n', confirmKey);
+    confirmLabel.textContent = translate(confirmKey, editing ? 'Save' : 'Create');
+  }
+  if (addAppSection) {
+    addAppSection.hidden = editing;
+  }
+}
+
+// Opens the modal for creating a new app, or — when appOrId resolves to an
+// existing custom app — for editing that app's URL in place (issue #1082).
+function openAddAppModal(appOrId) {
   const { addAppModal, addAppUrlInput, addAppConfirm } = getAddAppElements();
+  const editingApp = resolveEditingApp(appOrId);
+  editingAppId = editingApp ? editingApp.id : null;
 
   if (addAppModal) {
     addAppModal.classList.add('modal-open');
   }
+  applyAddAppModalMode(!!editingAppId);
+  resetPreviewState();
   if (addAppUrlInput) {
-    addAppUrlInput.value = '';
+    addAppUrlInput.value = editingApp ? String(editingApp.url || '') : '';
     addAppUrlInput.focus();
   }
   if (addAppConfirm) {
     addAppConfirm.disabled = true;
   }
 
-  renderDefaultAppsList();
-  resetPreviewState();
+  if (editingAppId) {
+    // Validate the prefilled URL immediately so its duplicate verdict
+    // (excluding this app) settles before the user interacts.
+    updatePreview();
+  } else {
+    renderDefaultAppsList();
+  }
 }
 
 function bindAddAppModal() {
