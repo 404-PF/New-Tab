@@ -530,6 +530,7 @@ const translations = {
     filterPending: 'Pending',
     filterCompleted: 'Completed',
     filterOverdue: 'Overdue',
+    filterToday: 'Today',
     priorityHigh: 'High',
     priorityMedium: 'Medium',
     priorityLow: 'Low',
@@ -1597,6 +1598,7 @@ function updateDynamicTranslations() {
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="pending"]'), 'filterPending');
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="completed"]'), 'filterCompleted');
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="overdue"]'), 'filterOverdue');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="today"]'), 'filterToday');
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="high"]'), 'priorityHigh');
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="low"]'), 'priorityLow');
   

@@ -407,6 +407,7 @@ window.i18n.__registerLocale('ko', {
   filterPending: '미완료',
   filterCompleted: '완료',
   filterOverdue: '기한 초과',
+  filterToday: '오늘',
   priorityHigh: '높음',
   priorityMedium: '보통',
   priorityLow: '낮음',

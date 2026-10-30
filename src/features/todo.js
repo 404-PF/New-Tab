@@ -553,6 +553,8 @@
             return todo.completed;
           case 'overdue':
             return !todo.completed && todo.dueDate && isOverdue(todo.dueDate, todo.dueTime);
+          case 'today':
+            return !todo.completed && !!todo.dueDate && todo.dueDate === formatDateISO(new Date());
           default:
             return true;
         }
@@ -1253,6 +1255,8 @@ function updateFilterCounts() {
   const pending = todos.filter(t => !t.completed).length;
   const completed = todos.filter(t => t.completed).length;
   const overdue = todos.filter(t => !t.completed && t.dueDate && isOverdue(t.dueDate, t.dueTime)).length;
+  const today = formatDateISO(new Date());
+  const dueToday = todos.filter(t => !t.completed && t.dueDate === today).length;
   const high = todos.filter(t => (t.priority || 'medium') === 'high').length;
   const low = todos.filter(t => (t.priority || 'medium') === 'low').length;
   
@@ -1260,6 +1264,7 @@ function updateFilterCounts() {
   const badgePending = document.getElementById('badge-pending');
   const badgeCompleted = document.getElementById('badge-completed');
   const badgeOverdue = document.getElementById('badge-overdue');
+  const badgeToday = document.getElementById('badge-today');
   const badgeHigh = document.getElementById('badge-high');
   const badgeLow = document.getElementById('badge-low');
   const todoCount = document.getElementById('todo-count');
@@ -1268,6 +1273,7 @@ function updateFilterCounts() {
   if (badgePending) badgePending.textContent = pending;
   if (badgeCompleted) badgeCompleted.textContent = completed;
   if (badgeOverdue) badgeOverdue.textContent = overdue;
+  if (badgeToday) badgeToday.textContent = dueToday;
   if (badgeHigh) badgeHigh.textContent = high;
   if (badgeLow) badgeLow.textContent = low;
   if (todoCount) todoCount.textContent = `${completed}/${all}`;

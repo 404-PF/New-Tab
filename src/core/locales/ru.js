@@ -394,6 +394,7 @@ window.i18n.__registerLocale('ru', {
   filterPending: 'Ожидающие',
   filterCompleted: 'Завершённые',
   filterOverdue: 'Просроченные',
+  filterToday: 'Сегодня',
   priorityHigh: 'Высокий',
   priorityMedium: 'Средний',
   priorityLow: 'Низкий',

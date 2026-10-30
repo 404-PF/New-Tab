@@ -445,6 +445,7 @@ window.i18n.__registerLocale('zh', {
   filterPending: '待处理',
   filterCompleted: '已完成',
   filterOverdue: '已逾期',
+  filterToday: '今天',
   priorityHigh: '高',
   priorityMedium: '中',
   priorityLow: '低',

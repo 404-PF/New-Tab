@@ -407,6 +407,7 @@ window.i18n.__registerLocale('ja', {
   filterPending: '未完了',
   filterCompleted: '完了',
   filterOverdue: '期限切れ',
+  filterToday: '今日',
   priorityHigh: '高',
   priorityMedium: '中',
   priorityLow: '低',
