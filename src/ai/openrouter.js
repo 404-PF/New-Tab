@@ -13,6 +13,12 @@ const OpenRouterAPI = (function() {
     // Run: cd cloudflare && wrangler deploy
     // Then copy the worker URL here
     baseURL: 'https://new-tab-openrouter-proxy.lucas20220605.workers.dev',
+    // Shared secret sent as the X-New-Tab-Token header (#1086). The worker
+    // rejects POSTs whose header does not match its EXTENSION_TOKEN secret
+    // (wrangler secret put EXTENSION_TOKEN), so keep the two in sync when
+    // rotating. It ships in extension code and only raises the cost of
+    // abuse; the worker's per-IP rate limit is the real control.
+    extensionToken: 'fb811b3363fc4db6a13de62632e5ccc0d048c517a8618b80',
     model: 'openrouter/free',
     maxTokens: 4096,
     maxRetries: 2,
@@ -153,7 +159,8 @@ const OpenRouterAPI = (function() {
       'Content-Type': 'application/json',
       'Accept': 'text/event-stream',
       'HTTP-Referer': window.location.href,
-      'X-Title': 'New Tab AI Assistant'
+      'X-Title': 'New Tab AI Assistant',
+      'X-New-Tab-Token': CONFIG.extensionToken
     };
   }
 

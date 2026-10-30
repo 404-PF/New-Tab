@@ -4,3 +4,14 @@ compatibility_date = "2026-10-01"
 
 # Secrets (not stored here):
 #   wrangler secret put OPENROUTER_API_KEY
+#   wrangler secret put EXTENSION_TOKEN
+#     Shared secret for the X-New-Tab-Token check; it must match
+#     CONFIG.extensionToken in src/ai/openrouter.js. Set it before the
+#     first deploy of this worker code: while the secret is unset every
+#     POST is rejected with 401 (fail closed), and extension builds older
+#     than the token header lose AI access once it is set (accepted
+#     compatibility break - they must update).
+#
+# Rate limiting: worker.js applies a best-effort per-IP window per isolate;
+# add a Cloudflare dashboard Rate-Limiting rule on this worker's route for
+# a durable cross-isolate limit (not expressible in this free-plan file).

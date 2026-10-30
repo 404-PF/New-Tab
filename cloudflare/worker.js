@@ -10,6 +10,27 @@
  *
  * Secrets (wrangler secret put <NAME>):
  *   OPENROUTER_API_KEY  OpenRouter key (free models only, $0 limit is fine)
+ *   EXTENSION_TOKEN     Shared secret for the X-New-Tab-Token check below;
+ *                       must match CONFIG.extensionToken in
+ *                       src/ai/openrouter.js. Set it before deploying:
+ *                       while it is unset every POST fails closed (401).
+ *
+ * Access control (#1086):
+ *   - POSTs must carry the X-New-Tab-Token header matching EXTENSION_TOKEN
+ *     or they are rejected with 401. The token ships in extension code, so
+ *     it only raises the cost of abuse - it is not authentication; the
+ *     per-IP rate limit below is the real control.
+ *   - Compatibility decision: extension builds released before this change
+ *     do not send the header and lose AI access once EXTENSION_TOKEN is
+ *     set (they must update). A grace period was rejected because it would
+ *     keep the proxy open to free-riding for its whole duration.
+ *   - Per-IP fixed-window rate limit (best effort within one isolate)
+ *     returns 429 with Retry-After, which the extension client honours.
+ *     Configure a Cloudflare dashboard Rate-Limiting rule on the worker
+ *     route for a durable cross-isolate limit; it is not expressible in
+ *     the committed free-plan wrangler.toml.
+ *   - Request bodies are capped (MAX_BODY_BYTES / MAX_MESSAGES) before the
+ *     upstream call, alongside the existing max_tokens cap.
  *
  * Web search uses Tavily's keyless mode (X-Tavily-Access-Mode: keyless):
  * free, rate-limited, no account or key.
@@ -25,11 +46,18 @@ const MAX_RESULTS_CAP = 5;
 const SEARCH_TIMEOUT_MS = 8000;
 const MAX_QUERY_CHARS = 400;
 const MAX_SNIPPET_CHARS = 1200;
+const TOKEN_HEADER = 'X-New-Tab-Token';
+// system prompt + last 10 history messages + current user message (mirrors
+// the caps src/ai/openrouter.js applies client-side).
+const MAX_MESSAGES = 12;
+const MAX_BODY_BYTES = 64 * 1024;
+const RATE_LIMIT_WINDOW_MS = 60000;
+const RATE_LIMIT_MAX_REQUESTS = 20;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Accept, HTTP-Referer, X-Title',
+  'Access-Control-Allow-Headers': 'Content-Type, Accept, HTTP-Referer, X-Title, X-New-Tab-Token',
   'Access-Control-Expose-Headers': 'X-Grounding, Retry-After',
   'Access-Control-Max-Age': '86400'
 };
@@ -39,6 +67,42 @@ function json(status, body, extra = {}) {
     status,
     headers: { 'Content-Type': 'application/json', ...CORS_HEADERS, ...extra }
   });
+}
+
+// Best-effort per-IP fixed window: one Map per isolate, so a dashboard
+// Rate-Limiting rule remains the durable cross-isolate control.
+const rateLimitBuckets = new Map();
+let rateLimitLastSweep = 0;
+
+/**
+ * Count a request against the caller's per-IP fixed window.
+ * @param {string} ip - Client IP (CF-Connecting-IP)
+ * @param {number} now - Current epoch milliseconds
+ * @returns {number|null} Retry-After seconds when limited, otherwise null
+ */
+function checkRateLimit(ip, now) {
+  if (now - rateLimitLastSweep >= RATE_LIMIT_WINDOW_MS) {
+    rateLimitLastSweep = now;
+    for (const [key, bucket] of rateLimitBuckets) {
+      if (now - bucket.start >= RATE_LIMIT_WINDOW_MS) {
+        rateLimitBuckets.delete(key);
+      }
+    }
+  }
+
+  let bucket = rateLimitBuckets.get(ip);
+  if (!bucket || now - bucket.start >= RATE_LIMIT_WINDOW_MS) {
+    bucket = { start: now, count: 0 };
+    rateLimitBuckets.set(ip, bucket);
+  }
+
+  bucket.count += 1;
+  if (bucket.count <= RATE_LIMIT_MAX_REQUESTS) {
+    return null;
+  }
+
+  const remainingMs = bucket.start + RATE_LIMIT_WINDOW_MS - now;
+  return Math.max(1, Math.ceil(remainingMs / 1000));
 }
 
 function lastUserText(messages) {
@@ -111,9 +175,41 @@ export default {
       return json(405, { error: { message: 'Method not allowed', code: 405 } });
     }
 
+    const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const retryAfterSeconds = checkRateLimit(clientIp, Date.now());
+    if (retryAfterSeconds !== null) {
+      return json(
+        429,
+        { error: { message: 'Too many requests', code: 429 } },
+        { 'Retry-After': String(retryAfterSeconds) }
+      );
+    }
+
+    const presentedToken = request.headers.get(TOKEN_HEADER);
+    const expectedToken = typeof env?.EXTENSION_TOKEN === 'string' ? env.EXTENSION_TOKEN : '';
+    if (!expectedToken || presentedToken !== expectedToken) {
+      return json(401, { error: { message: 'Unauthorized', code: 401 } });
+    }
+
+    const declaredLength = Number(request.headers.get('Content-Length'));
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+      return json(413, { error: { message: 'Request body too large', code: 413 } });
+    }
+
+    let rawBody;
+    try {
+      rawBody = await request.text();
+    } catch {
+      return json(400, { error: { message: 'Invalid JSON body', code: 400 } });
+    }
+
+    if (rawBody.length > MAX_BODY_BYTES) {
+      return json(413, { error: { message: 'Request body too large', code: 413 } });
+    }
+
     let body;
     try {
-      body = await request.json();
+      body = JSON.parse(rawBody);
     } catch {
       return json(400, { error: { message: 'Invalid JSON body', code: 400 } });
     }
@@ -125,6 +221,9 @@ export default {
     const messages = Array.isArray(body.messages) ? body.messages : [];
     if (messages.length === 0) {
       return json(400, { error: { message: 'messages is required', code: 400 } });
+    }
+    if (messages.length > MAX_MESSAGES) {
+      return json(400, { error: { message: `messages exceeds limit of ${MAX_MESSAGES}`, code: 400 } });
     }
 
     const model = ALLOWED_MODELS.has(body.model) ? body.model : 'openrouter/free';

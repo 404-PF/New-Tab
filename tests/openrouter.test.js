@@ -821,6 +821,22 @@ describe('OpenRouter non-JSON error bodies (#866)', () => {
   });
 });
 
+describe('OpenRouter proxy token (#1086)', () => {
+  it('sends the shared-secret X-New-Tab-Token header on every request', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: {"choices":[{"delta":{"content":"Hi"}}]}\n'
+    ]));
+
+    const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+    expect(result).toMatchObject({ success: true, content: 'Hi' });
+    const headers = globalThis.fetch.mock.calls[0][1].headers;
+    expect(typeof OpenRouterAPI.config.extensionToken).toBe('string');
+    expect(OpenRouterAPI.config.extensionToken.length).toBeGreaterThan(0);
+    expect(headers['X-New-Tab-Token']).toBe(OpenRouterAPI.config.extensionToken);
+  });
+});
+
 describe('OpenRouter web grounding (#707)', () => {
   it('adds the web plugin with five results when grounding is enabled', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
