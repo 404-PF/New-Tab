@@ -3207,11 +3207,31 @@ body.light-theme .weather-city-inline input:focus {
 }
 
 /* The relocated on-page widget fills the modal instead of the page's
-   narrow centered column. */
+   narrow centered column. The modal content (.todo-app-modal-content) already
+   owns a backdrop-filter and clips the embedded widget with overflow:hidden. A
+   backdrop-filter element nested inside another backdrop-filter element that
+   also clips with overflow:hidden cannot sample the page behind the modal and
+   renders near-transparent in Chrome, so the whole todo list shows the blurred
+   page through it (#1066). Drop the widget's own backdrop-filter stack and let
+   the modal surface show through instead. */
 #todo-app-widget-host .todo-section {
   max-width: none;
   width: 100%;
   margin: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#todo-app-widget-host .todo-input-container,
+#todo-app-widget-host .todo-item,
+#todo-app-widget-host .date-picker-trigger,
+#todo-app-widget-host .todo-due-time-input,
+#todo-app-widget-host .filter-pill,
+#todo-app-widget-host .todo-sort-select,
+#todo-app-widget-host .todo-search-input {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* Simple mode hide */
