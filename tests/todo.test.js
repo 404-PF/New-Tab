@@ -418,18 +418,43 @@ describe('Todo filtering', () => {
 
     currentFilters.status = 'today';
     currentFilters.priority = 'high';
-    const byPriority = filterTodos();
-    expect(byPriority).toHaveLength(1);
-    expect(byPriority[0].text).toBe('Today high work');
+    try {
+      const byPriority = filterTodos();
+      expect(byPriority).toHaveLength(1);
+      expect(byPriority[0].text).toBe('Today high work');
 
-    // Priority is still active; a search narrows the same view further.
-    setTodoSearchQuery('low');
-    expect(filterTodos()).toHaveLength(0);
-    setTodoSearchQuery('high work');
-    expect(filterTodos()).toHaveLength(1);
-    setTodoSearchQuery('');
-    currentFilters.status = 'all';
-    currentFilters.priority = 'all';
+      // Priority is still active; a search narrows the same view further.
+      setTodoSearchQuery('low');
+      expect(filterTodos()).toHaveLength(0);
+      setTodoSearchQuery('high work');
+      expect(filterTodos()).toHaveLength(1);
+    } finally {
+      setTodoSearchQuery('');
+      currentFilters.status = 'all';
+      currentFilters.priority = 'all';
+    }
+  });
+
+  it('refreshes the today view and badge at local midnight', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 23, 59, 50)); // Sep 15, 2026 23:59:50
+
+    try {
+      // Re-init under fake timers so the midnight refresh timer is armed
+      // against the faked clock instead of the real one.
+      initTodo();
+      addTodo('Due today', '2026-09-15');
+      setFilter('today');
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+      expect(document.getElementById('badge-today').textContent).toBe('1');
+
+      // Cross midnight into Sep 16; the scheduled refresh reruns applyFilters.
+      vi.advanceTimersByTime(11000);
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(0);
+      expect(document.getElementById('badge-today').textContent).toBe('0');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('sorts incomplete before completed', () => {

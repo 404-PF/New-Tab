@@ -1215,6 +1215,26 @@ function applyFilters() {
   updateBulkActions();
 }
 
+// The Today filter and badge compare due dates against the current local
+// day, so both go stale if the page stays open across local midnight. Re-arm
+// a one-shot timeout for the next midnight; each fire re-applies the filters
+// (results, pills and badges) and schedules the night after that.
+let midnightRefreshTimer = null;
+
+function scheduleTodoMidnightRefresh() {
+  if (midnightRefreshTimer) {
+    clearTimeout(midnightRefreshTimer);
+    midnightRefreshTimer = null;
+  }
+  const now = new Date();
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  midnightRefreshTimer = setTimeout(() => {
+    midnightRefreshTimer = null;
+    applyFilters();
+    scheduleTodoMidnightRefresh();
+  }, nextMidnight.getTime() - now.getTime());
+}
+
 function updateFilters() {
   currentFilters.status = elements.filterStatus?.value || 'all';
   clearTodoSelection();
@@ -2564,6 +2584,10 @@ function initTodo() {
   // Initialize progress ring and counts
   updateProgressRing();
   updateFilterCounts();
+
+  // Re-run the filters at the next local midnight so the Today list and
+  // badge never go stale overnight (issue #1085).
+  scheduleTodoMidnightRefresh();
 
   return true;
 }
