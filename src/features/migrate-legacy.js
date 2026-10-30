@@ -229,9 +229,10 @@
     return { overlay, primaryBtn };
   }
 
-  // `force` is a test-only bypass (window.__migrateLegacyTest.forceInit):
-  // production always reaches this through window.onDomReady with no argument,
-  // so the MIGRATION_ENABLED gate still applies to every shipped build.
+  // `force` is a test-only bypass (window.__migrateLegacyTest.forceInit, which
+  // is exported only under jsdom — see the seam guard below): production always
+  // reaches this through window.onDomReady with no argument, so the
+  // MIGRATION_ENABLED gate still applies to every shipped build.
   function initLegacyMigration(force) {
     warnIfMisconfigured();
 
@@ -315,16 +316,22 @@
   // Test seam (see tests/migrate-legacy.test.js): the takeover is gated behind
   // MIGRATION_ENABLED, so specs use forceInit to build the overlay and drive
   // the Escape / Tab focus-trap handlers, and isRemindLaterActive to assert the
-  // 7-day TTL directly. Inert for production callers.
-  window.__migrateLegacyTest = {
-    isRemindLaterActive: isRemindLaterActive,
-    markRemindLater: markRemindLater,
-    forceInit: function () {
-      return initLegacyMigration(true);
-    },
-    REMIND_LATER_KEY: REMIND_LATER_KEY,
-    REMIND_LATER_TTL_MS: REMIND_LATER_TTL_MS
-  };
+  // 7-day TTL directly. The export — and with it the forceInit bypass of
+  // MIGRATION_ENABLED — exists only under jsdom, the Vitest environment, which
+  // cannot occur in the extension build (the shipped page always runs as
+  // chrome-extension:// with Chrome's user agent), so production callers can
+  // never reach the seam.
+  if (window.navigator && window.navigator.userAgent.includes('jsdom')) {
+    window.__migrateLegacyTest = {
+      isRemindLaterActive: isRemindLaterActive,
+      markRemindLater: markRemindLater,
+      forceInit: function () {
+        return initLegacyMigration(true);
+      },
+      REMIND_LATER_KEY: REMIND_LATER_KEY,
+      REMIND_LATER_TTL_MS: REMIND_LATER_TTL_MS
+    };
+  }
 
   window.onDomReady(initLegacyMigration);
 })();

@@ -4,7 +4,8 @@
 // MIGRATION_ENABLED (false in this repo), so specs drive the overlay through
 // the window.__migrateLegacyTest seam: forceInit builds the dialog and wires
 // the Escape / Tab focus-trap handlers, and isRemindLaterActive exposes the
-// 7-day "remind me later" TTL directly.
+// 7-day "remind me later" TTL directly. The source exports the seam only under
+// jsdom, so it never ships reachable in the extension build.
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
@@ -88,6 +89,35 @@ describe('isRemindLaterActive (7-day TTL)', () => {
 
     localStorage.setItem(seam().REMIND_LATER_KEY, '-5');
     expect(seam().isRemindLaterActive()).toBe(false);
+  });
+});
+
+describe('seam availability', () => {
+  it('is not exported outside the jsdom test environment', () => {
+    // The seam (and its forceInit bypass of MIGRATION_ENABLED) must be
+    // unreachable in the shipped extension build, where the user agent is
+    // Chrome's, never jsdom's.
+    const nav = window.navigator;
+    const ownDescriptor = Object.prototype.hasOwnProperty.call(nav, 'userAgent')
+      ? Object.getOwnPropertyDescriptor(nav, 'userAgent')
+      : null;
+    delete window.__migrateLegacyTest;
+    try {
+      Object.defineProperty(nav, 'userAgent', {
+        configurable: true,
+        value: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+      });
+      injectScript('src/features/migrate-legacy.js');
+      expect(window.__migrateLegacyTest).toBeUndefined();
+    } finally {
+      if (ownDescriptor) {
+        Object.defineProperty(nav, 'userAgent', ownDescriptor);
+      } else {
+        delete nav.userAgent;
+      }
+      injectScript('src/features/migrate-legacy.js');
+    }
+    expect(window.__migrateLegacyTest).toBeDefined();
   });
 });
 
