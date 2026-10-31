@@ -344,7 +344,7 @@ window.i18n.__registerLocale('zh', {
   releaseNotes056AiMultiline: 'AI 聊天：发送前可撰写多行提示',
   releaseNotes056GamesControls: '游戏：Snake 和 Pac-Man 支持游戏手柄、拖动操控、自定义按键映射，以及可选的 FPS 显示',
   releaseNotes056BackupFixes: '设置备份现在会保留游戏进度和待办排序，导入时会重新应用背景轮换',
-  releaseNotes056WhatsNewRecap: '现在可在“设置”和“关于”中查看“新功能”摘要',
+  releaseNotes056WhatsNewRecap: '现在可在“设置”和“关于”中查看“更新内容”摘要',
   releaseNotes055SystemTheme: '新增系统主题，自动跟随设备的浅色或深色模式',
   releaseNotes055TodoSortOrder: '待办清单支持选择排序方式：手动、截止日期、优先级、创建时间和 A-Z',
   releaseNotes055BuiltInAppsFolders: '内置应用现在也可以移动到文件夹中',

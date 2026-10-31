@@ -297,7 +297,7 @@ window.i18n.__registerLocale('de', {
   updateNotificationViewRelease: 'Release ansehen',
   releaseNotesTitle: 'Neuheiten',
   releaseNotesBody: 'New-Tab wurde auf v{version} aktualisiert. Hier sind die wichtigsten Änderungen:',
-  releaseNotes056AppShortcuts: 'App-Raster: Jedem App ein Tastenkürzel zuweisen und ihn mit dieser Tastenkombination starten',
+  releaseNotes056AppShortcuts: 'App-Raster: Jeder App ein Tastenkürzel zuweisen und sie mit dieser Tastenkombination starten',
   releaseNotes056EditAppUrl: 'App-Raster: Die URL einer eigenen App direkt bearbeiten, statt sie zu entfernen und neu hinzuzufügen',
   releaseNotes056TodoSearchToday: 'Todo-Liste: Aufgaben nach Stichwort filtern und in der Heute-Ansicht nur heute fällige Aufgaben sehen',
   releaseNotes056AiMultiline: 'KI-Chat: Mehrzeilige Eingaben vor dem Senden verfassen',
