@@ -718,14 +718,6 @@
     "message": "Pesquisar notas...",
     "description": "Placeholder text for the notes search input"
   },
-  "appGridFilterPlaceholder": {
-    "message": "Filtrar aplicativos...",
-    "description": "Placeholder text for the app grid filter input"
-  },
-  "appGridFilterAriaLabel": {
-    "message": "Filtrar aplicativos",
-    "description": "Accessible label for the app grid filter input"
-  },
   "notesNoResults": {
     "message": "Nenhuma nota correspondente.",
     "description": "Empty state when no notes match the search query"

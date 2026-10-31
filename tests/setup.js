@@ -342,8 +342,6 @@ globalThis.window.i18n = {
       notesEmpty: 'No notes yet. Click + to add one!',
       notesSearchPlaceholder: 'Search notes...',
       notesNoResults: 'No matching notes.',
-      appGridFilterPlaceholder: 'Filter apps...',
-      appGridFilterAriaLabel: 'Filter apps',
       clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',
       cancel: 'Cancel',
       save: 'Save',

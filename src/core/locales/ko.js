@@ -41,8 +41,6 @@ window.i18n.__registerLocale('ko', {
   enableSearchHistory: '검색 기록 사용',
   searchSuggestionsAriaLabel: '검색 제안',
   newApp: '새로 만들기',
-  appGridFilterPlaceholder: '앱 필터...',
-  appGridFilterAriaLabel: '앱 필터',
   feedback: '피드백',
   settings: '설정',
   simpleMode: '심플',

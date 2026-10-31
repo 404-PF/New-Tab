@@ -718,14 +718,6 @@
     "message": "메모 검색...",
     "description": "Placeholder text for the notes search input"
   },
-  "appGridFilterPlaceholder": {
-    "message": "앱 필터...",
-    "description": "Placeholder text for the app grid filter input"
-  },
-  "appGridFilterAriaLabel": {
-    "message": "앱 필터",
-    "description": "Accessible label for the app grid filter input"
-  },
   "notesNoResults": {
     "message": "일치하는 메모가 없습니다.",
     "description": "Empty state when no notes match the search query"

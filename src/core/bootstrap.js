@@ -52,10 +52,6 @@
     'src/features/data-manager.js',
     'src/features/context-menu.js',
     'src/features/app-folders.js',
-    // app-grid-filter.js reads AppFolders at apply time only, but loads after
-    // app-folders.js so window.AppFolders is available when the first filter
-    // input event fires (issue #1065).
-    'src/features/app-grid-filter.js',
     'src/core/update-checker.js',
     'src/features/release-notes.js',
     'src/features/onboarding.js',
