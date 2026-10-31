@@ -5302,11 +5302,6 @@ body.simple-mode #app-grid {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* The app-grid filter lives outside #app-grid, so it needs its own hide (issue #1065) */
-body.simple-mode .app-grid-filter {
-  display: none !important;
-}
-
 body.simple-mode .todo-section {
   display: none !important;
   opacity: 0;

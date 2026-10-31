@@ -718,14 +718,6 @@
     "message": "搜尋便箋...",
     "description": "Placeholder text for the notes search input"
   },
-  "appGridFilterPlaceholder": {
-    "message": "筛选应用...",
-    "description": "Placeholder text for the app grid filter input"
-  },
-  "appGridFilterAriaLabel": {
-    "message": "筛选应用",
-    "description": "Accessible label for the app grid filter input"
-  },
   "notesNoResults": {
     "message": "沒有相符的便箋。",
     "description": "Empty state when no notes match the search query"

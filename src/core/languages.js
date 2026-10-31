@@ -112,8 +112,6 @@ const translations = {
     enableSearchHistory: 'Enable search history',
     searchSuggestionsAriaLabel: 'Search suggestions',
     newApp: 'New',
-    appGridFilterPlaceholder: 'Filter apps...',
-    appGridFilterAriaLabel: 'Filter apps',
     feedback: 'Feedback',
     settings: 'Settings',
     simpleMode: 'Simple',
