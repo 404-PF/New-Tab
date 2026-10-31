@@ -181,6 +181,14 @@ describe('Storage/copy failure translations', () => {
   });
 });
 
+describe('Legacy migration takeover translations', () => {
+  it('defines a localized migrateLegacySaveError for every supported language', () => {
+    // differFromEnglish: the save-failure announcement shown by the
+    // migrate-legacy overlay must be localized, not the English fallback.
+    expectTranslationKeys(['migrateLegacySaveError'], { differFromEnglish: true });
+  });
+});
+
 const AI_COPY_LABEL_TRANSLATION_KEYS = [
   'copySuccess',
   'copyFailedShort'

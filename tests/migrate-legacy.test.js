@@ -27,6 +27,13 @@ function pressKey(key, shiftKey) {
   return event;
 }
 
+// The remind-later write settles on the microtask queue (the chrome.storage
+// mock answers set() synchronously), so one macrotask hop drains the whole
+// setItemAsync -> markRemindLater -> dismissal chain.
+function flushRemindLater() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 beforeAll(() => {
   // warnIfMisconfigured intentionally logs under the non-canonical test
   // extension ID; keep the suite output clean.
@@ -44,14 +51,18 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-afterEach(() => {
+afterEach(async () => {
   // Escape both removes the document keydown listener installed by
-  // initLegacyMigration and drops the overlay, so nothing leaks between tests.
+  // initLegacyMigration and drops the overlay, so nothing leaks between
+  // tests. Restore mocks first so a spec that left setItemAsync mocked
+  // cannot block this dismissal, then flush the async write before clearing
+  // storage so the timestamp cannot leak into the next test.
+  vi.restoreAllMocks();
   if (getOverlay()) {
     pressKey('Escape');
+    await flushRemindLater();
   }
   localStorage.clear();
-  vi.restoreAllMocks();
 });
 
 describe('isRemindLaterActive (7-day TTL)', () => {
@@ -192,14 +203,24 @@ describe('overlay focus trap and dismissal', () => {
     expect(getOverlay()).not.toBeNull();
   });
 
-  it('Escape dismisses the overlay and persists remind-later', () => {
+  it('Escape dismisses the overlay and persists remind-later', async () => {
     seam().forceInit();
     pressKey('Escape');
+    await flushRemindLater();
     expect(getOverlay()).toBeNull();
     expect(seam().isRemindLaterActive()).toBe(true);
   });
 
-  it('restores focus to the previously focused element on dismiss', () => {
+  it('keeps the takeover open and surfaces the save error when the write fails', async () => {
+    seam().forceInit();
+    vi.spyOn(localStorage, 'setItemAsync').mockResolvedValue(false);
+    pressKey('Escape');
+    await flushRemindLater();
+    expect(getOverlay()).not.toBeNull();
+    expect(document.getElementById('legacy-migration-save-error').hidden).toBe(false);
+  });
+
+  it('restores focus to the previously focused element on dismiss', async () => {
     const opener = document.createElement('button');
     opener.id = 'migration-focus-opener';
     document.body.appendChild(opener);
@@ -211,6 +232,7 @@ describe('overlay focus trap and dismissal', () => {
       expect(document.activeElement).not.toBe(opener);
 
       pressKey('Escape');
+      await flushRemindLater();
       expect(getOverlay()).toBeNull();
       expect(document.activeElement).toBe(opener);
     } finally {

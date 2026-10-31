@@ -90,23 +90,49 @@
     }
   }
 
-  // Returns true only when the dismissal actually persisted. The storage
-  // bridge answers a rejected write with `false` (see src/core/storage.js),
-  // so callers must gate the takeover dismissal on this result — closing the
-  // overlay after a rejected write would only make it reappear on the next
-  // new tab while the user believes they suppressed it.
-  function markRemindLater() {
-    try {
-      if (localStorage.setItem(REMIND_LATER_KEY, String(Date.now())) !== false) {
-        return true;
-      }
-    } catch {
-      /* localStorage may be unavailable; fall through to the warning. */
-    }
+  // The bridge's setItem answers a rejected write with `false` while native
+  // Storage#setItem returns void, so only an explicit false counts as failure
+  // (same rule as isWriteAccepted in src/core/main.js).
+  function isWriteAccepted(result) {
+    return result !== false;
+  }
+
+  function warnRemindLaterFailed() {
     console.warn(
       '[migrate-legacy] Failed to persist the remind-later dismissal; the takeover stays open so the write can be retried.'
     );
     return false;
+  }
+
+  // Resolves true only after the dismissal is confirmed in chrome.storage.
+  // The storage bridge (src/core/storage.js) accepts the write optimistically
+  // and rolls the timestamp back when the later confirmation fails, so
+  // callers must await this settled result before dismissing — closing the
+  // overlay first would make it reappear on the next new tab while the user
+  // believes they suppressed it.
+  function markRemindLater() {
+    let write;
+    try {
+      const value = String(Date.now());
+      write =
+        typeof localStorage.setItemAsync === 'function'
+          ? localStorage.setItemAsync(REMIND_LATER_KEY, value)
+          : Promise.resolve(localStorage.setItem(REMIND_LATER_KEY, value));
+    } catch {
+      // localStorage may be unavailable; report it as a failed save.
+      return Promise.resolve(warnRemindLaterFailed());
+    }
+    return write.then(
+      function (saved) {
+        if (isWriteAccepted(saved)) {
+          return true;
+        }
+        return warnRemindLaterFailed();
+      },
+      function () {
+        return warnRemindLaterFailed();
+      }
+    );
   }
 
   function isRemindLaterActive() {
@@ -227,11 +253,13 @@
         'cursor:pointer;background:transparent;color:#cfcfe6;font-size:0.92rem;'
     );
     remindBtn.addEventListener('click', function () {
-      if (!markRemindLater()) {
-        showSaveError();
-        return;
-      }
-      onDismiss();
+      markRemindLater().then(function (saved) {
+        if (!saved) {
+          showSaveError();
+          return;
+        }
+        onDismiss();
+      });
     });
     remindBtn.addEventListener('mouseover', function () {
       remindBtn.style.borderColor = '#55557a';
@@ -304,13 +332,15 @@
     function onDocumentKeydown(event) {
       if (event.key === 'Escape') {
         // Same rule as the remind-later button: only dismiss once the write
-        // landed, otherwise the takeover would reappear on the next new tab
-        // while the user believes they dismissed it.
-        if (markRemindLater()) {
-          dismissOverlay();
-        } else {
-          showSaveError();
-        }
+        // has settled successfully, otherwise the takeover would reappear on
+        // the next new tab while the user believes they dismissed it.
+        markRemindLater().then(function (saved) {
+          if (saved) {
+            dismissOverlay();
+          } else {
+            showSaveError();
+          }
+        });
         return;
       }
       if (event.key !== 'Tab') {
