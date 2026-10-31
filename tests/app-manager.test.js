@@ -48,7 +48,7 @@ beforeEach(() => {
 
 describe('app manager', () => {
   it('exposes immutable default apps and repairs duplicate custom app IDs while rendering', () => {
-    expect(window.defaultApps.map(app => app.id)).toEqual(['ai-app', 'weather-app', 'games-app', 'todo-app', 'feedback-app', 'settings-app']);
+    expect(window.defaultApps.map(app => app.id)).toEqual(['ai-app', 'weather-app', 'games-app', 'feedback-app', 'settings-app']);
     localStorage.setItem('customApps', JSON.stringify([
       { id: 'custom-1', name: 'One', url: 'https://one.test', icon: 'one.png' },
       { id: 'custom-1', name: 'Duplicate', url: 'https://two.test', icon: 'two.png' }
@@ -56,9 +56,9 @@ describe('app manager', () => {
 
     window.renderAllApps();
 
-    expect(document.querySelectorAll('#app-grid .app-icon')).toHaveLength(7);
+    expect(document.querySelectorAll('#app-grid .app-icon')).toHaveLength(6);
     expect(JSON.parse(localStorage.getItem('appOrder'))).toEqual([
-      'ai-app', 'weather-app', 'games-app', 'todo-app', 'feedback-app', 'settings-app', 'custom-1'
+      'ai-app', 'weather-app', 'games-app', 'feedback-app', 'settings-app', 'custom-1'
     ]);
   });
 
@@ -95,7 +95,7 @@ describe('app manager', () => {
 
       const appIds = Array.from(container.querySelectorAll('input[type="checkbox"]'))
         .map(checkbox => checkbox.dataset.appId);
-      expect(appIds).toEqual(['ai-app', 'weather-app', 'games-app', 'todo-app', 'feedback-app']);
+      expect(appIds).toEqual(['ai-app', 'weather-app', 'games-app', 'feedback-app']);
 
       const weatherCheckbox = container.querySelector('[data-app-id="weather-app"]');
       weatherCheckbox.checked = false;
@@ -276,13 +276,15 @@ describe('app manager', () => {
       expect(window.openInternalApp('feedback-app')).toBe(false);
       expect(window.openInternalApp('custom-nope')).toBe(false);
 
-      // Todo app modal (issue #1066) goes through the same shared launcher.
+      // While the standalone Todo tile is disabled (#1111), the reserved
+      // todo-app id must not launch the modal even if a stored or imported
+      // custom record reuses it; it falls through to normal navigation.
       const todoOpen = vi.fn();
       withWindowOverride('TodoApp', { open: todoOpen }, () => {
         const todoClick = new MouseEvent('click', { bubbles: true, cancelable: true });
-        expect(window.openInternalApp('todo-app', todoClick)).toBe(true);
-        expect(todoClick.defaultPrevented).toBe(true);
-        expect(todoOpen).toHaveBeenCalledOnce();
+        expect(window.openInternalApp('todo-app', todoClick)).toBe(false);
+        expect(todoClick.defaultPrevented).toBe(false);
+        expect(todoOpen).not.toHaveBeenCalled();
       });
     });
   });
@@ -318,7 +320,7 @@ describe('app grid item-scoped mutators (#934)', () => {
 
     const grid = document.getElementById('app-grid');
     const before = Array.from(grid.children);
-    expect(before).toHaveLength(57);
+    expect(before).toHaveLength(56);
 
     const removeSpy = vi.spyOn(grid, 'removeChild');
     const insertSpy = vi.spyOn(grid, 'insertBefore');
