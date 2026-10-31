@@ -90,12 +90,23 @@
     }
   }
 
+  // Returns true only when the dismissal actually persisted. The storage
+  // bridge answers a rejected write with `false` (see src/core/storage.js),
+  // so callers must gate the takeover dismissal on this result — closing the
+  // overlay after a rejected write would only make it reappear on the next
+  // new tab while the user believes they suppressed it.
   function markRemindLater() {
     try {
-      localStorage.setItem(REMIND_LATER_KEY, String(Date.now()));
+      if (localStorage.setItem(REMIND_LATER_KEY, String(Date.now())) !== false) {
+        return true;
+      }
     } catch {
-      /* localStorage may be unavailable; ignore. */
+      /* localStorage may be unavailable; fall through to the warning. */
     }
+    console.warn(
+      '[migrate-legacy] Failed to persist the remind-later dismissal; the takeover stays open so the write can be retried.'
+    );
+    return false;
   }
 
   function isRemindLaterActive() {
@@ -104,6 +115,7 @@
       return (
         Number.isFinite(dismissedAt) &&
         dismissedAt > 0 &&
+        dismissedAt <= Date.now() &&
         Date.now() - dismissedAt < REMIND_LATER_TTL_MS
       );
     } catch {
@@ -120,7 +132,12 @@
     overlay.setAttribute(
       'style',
       'position:fixed;inset:0;z-index:2147483646;pointer-events:all;' +
-        'display:flex;align-items:center;justify-content:center;' +
+        // Scroll instead of flex-centering: with align-items/justify-content
+        // centered, a card taller than the viewport overflows equally at the
+        // top and bottom, and a position:fixed overlay cannot scroll to the
+        // unreachable part. Auto margins on the card keep it centered when it
+        // fits and let the overlay scroll when it does not.
+        'display:flex;overflow-y:auto;' +
         'background:rgba(10,10,20,0.92);color:#f2f2f2;' +
         'font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;' +
         'padding:1.5rem;box-sizing:border-box;'
@@ -129,7 +146,7 @@
     const card = document.createElement('div');
     card.setAttribute(
       'style',
-      'max-width:440px;width:100%;background:#17172a;border:1px solid #2c2c44;' +
+      'max-width:440px;width:100%;margin:auto;background:#17172a;border:1px solid #2c2c44;' +
         'border-radius:14px;padding:1.75rem 1.75rem 1.5rem;text-align:center;' +
         'box-shadow:0 18px 50px rgba(0,0,0,0.45);'
     );
@@ -162,6 +179,26 @@
       'margin:0 0 1.5rem;font-size:0.82rem;line-height:1.45;opacity:0.55;'
     );
 
+    // Inline (not toast) because the takeover sits at z-index 2147483646,
+    // above the toast layer's 4000, so a toast would render behind it. role
+    // + hidden-toggle announces the failure to screen readers.
+    const saveError = document.createElement('p');
+    saveError.id = 'legacy-migration-save-error';
+    saveError.setAttribute('role', 'alert');
+    saveError.hidden = true;
+    saveError.textContent = t(
+      'migrateLegacySaveError',
+      'Failed to save "Remind me later". Your storage may be full — try again.'
+    );
+    saveError.setAttribute(
+      'style',
+      'margin:0 0 1rem;font-size:0.85rem;line-height:1.45;color:#ff9b9b;'
+    );
+
+    function showSaveError() {
+      saveError.hidden = false;
+    }
+
     const actions = document.createElement('div');
     actions.setAttribute('style', 'display:flex;flex-direction:column;gap:0.6rem;');
 
@@ -190,7 +227,10 @@
         'cursor:pointer;background:transparent;color:#cfcfe6;font-size:0.92rem;'
     );
     remindBtn.addEventListener('click', function () {
-      markRemindLater();
+      if (!markRemindLater()) {
+        showSaveError();
+        return;
+      }
       onDismiss();
     });
     remindBtn.addEventListener('mouseover', function () {
@@ -223,10 +263,11 @@
     card.appendChild(title);
     card.appendChild(message);
     card.appendChild(note);
+    card.appendChild(saveError);
     card.appendChild(actions);
     overlay.appendChild(card);
 
-    return { overlay, primaryBtn };
+    return { overlay, primaryBtn, showSaveError };
   }
 
   // `force` is a test-only bypass (window.__migrateLegacyTest.forceInit, which
@@ -249,7 +290,7 @@
     }
 
     const previouslyFocused = document.activeElement;
-    const { overlay, primaryBtn } = buildMigrationOverlay(dismissOverlay);
+    const { overlay, primaryBtn, showSaveError } = buildMigrationOverlay(dismissOverlay);
 
     // The dialog is aria-modal, so Tab must not move into the blocked page
     // behind it: cycle focus among the overlay's own buttons.
@@ -262,8 +303,14 @@
     // in dismissOverlay.
     function onDocumentKeydown(event) {
       if (event.key === 'Escape') {
-        markRemindLater();
-        dismissOverlay();
+        // Same rule as the remind-later button: only dismiss once the write
+        // landed, otherwise the takeover would reappear on the next new tab
+        // while the user believes they dismissed it.
+        if (markRemindLater()) {
+          dismissOverlay();
+        } else {
+          showSaveError();
+        }
         return;
       }
       if (event.key !== 'Tab') {
