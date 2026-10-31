@@ -122,9 +122,9 @@ describe('OpenRouter proxy hardening (#1086)', () => {
     expect(upstreamFetch).not.toHaveBeenCalled();
   });
 
-  it('rejects a body larger than 64 KB before calling OpenRouter', async () => {
+  it('rejects a body larger than the worker cap before calling OpenRouter', async () => {
     const res = await postRequest(
-      chatBody({ messages: [{ role: 'user', content: 'x'.repeat(64 * 1024 + 1) }] })
+      chatBody({ messages: [{ role: 'user', content: 'x'.repeat(256 * 1024 + 1) }] })
     );
 
     expect(res.status).toBe(413);
@@ -132,9 +132,9 @@ describe('OpenRouter proxy hardening (#1086)', () => {
   });
 
   it('enforces the cap in UTF-8 bytes, not UTF-16 code units, for non-ASCII bodies', async () => {
-    // 40000 two-byte characters: under 64 K code units but over 64 KB of UTF-8.
+    // 140000 two-byte characters: under 256 K code units but over 256 KiB of UTF-8.
     const res = await postRequest(
-      chatBody({ messages: [{ role: 'user', content: 'é'.repeat(40000) }] })
+      chatBody({ messages: [{ role: 'user', content: 'é'.repeat(140000) }] })
     );
 
     expect(res.status).toBe(413);
@@ -187,13 +187,14 @@ describe('OpenRouter proxy hardening (#1086)', () => {
   it('prefers the durable RATE_LIMITER binding over the in-memory window', async () => {
     const limit = vi.fn().mockResolvedValue({ success: false });
     const env = { ...WORKER_ENV, RATE_LIMITER: { limit } };
+    const ip = nextIp();
 
-    const res = await postRequest(chatBody(), { env });
+    const res = await postRequest(chatBody(), { env, ip });
 
     expect(res.status).toBe(429);
     expect(Number(res.headers.get('Retry-After'))).toBeGreaterThan(0);
     expect(limit).toHaveBeenCalledTimes(1);
-    expect(limit.mock.calls[0][0]).toEqual({ key: expect.any(String) });
+    expect(limit.mock.calls[0][0]).toEqual({ key: ip });
     expect(upstreamFetch).not.toHaveBeenCalled();
   });
 
@@ -211,10 +212,30 @@ describe('OpenRouter proxy hardening (#1086)', () => {
   it('falls back to the in-memory window when the RATE_LIMITER binding throws', async () => {
     const limit = vi.fn().mockRejectedValue(new Error('limiter unavailable'));
     const env = { ...WORKER_ENV, RATE_LIMITER: { limit } };
+    const ip = nextIp();
 
-    const res = await postRequest(chatBody(), { env });
+    // RATE_LIMIT_MAX_REQUESTS is 20: requests 1-20 succeed via the
+    // in-memory fallback, request 21 is limited without reaching OpenRouter.
+    for (let i = 0; i < 20; i++) {
+      const res = await postRequest(chatBody(), { env, ip });
+      expect(res.status).toBe(200);
+    }
 
-    expect(res.status).toBe(200);
-    expect(upstreamFetch).toHaveBeenCalledTimes(1);
+    const limited = await postRequest(chatBody(), { env, ip });
+    expect(limited.status).toBe(429);
+    expect(limit).toHaveBeenCalledTimes(21);
+    expect(upstreamFetch).toHaveBeenCalledTimes(20);
+  });
+
+  it('rejects an unauthenticated POST without charging the rate limit', async () => {
+    const limit = vi.fn().mockResolvedValue({ success: true });
+    const env = { ...WORKER_ENV, RATE_LIMITER: { limit } };
+    const ip = nextIp();
+
+    const res = await postRequest(chatBody(), { env, ip, token: null });
+
+    expect(res.status).toBe(401);
+    expect(limit).not.toHaveBeenCalled();
+    expect(upstreamFetch).not.toHaveBeenCalled();
   });
 });

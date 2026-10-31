@@ -8,7 +8,7 @@ compatibility_date = "2026-10-01"
 #     Shared secret for the X-New-Tab-Token check; it must match
 #     CONFIG.extensionToken in src/ai/openrouter.js. Set it before the
 #     first deploy of this worker code: while the secret is unset
-#     unauthorized POSTs return 401 (or 429 if the IP is rate-limited), and
+#     unauthorized POSTs return 401 before any rate-limit charge, and
 #     extension builds older than the token header lose AI access once set
 #     (accepted compatibility break - they must update).
 #

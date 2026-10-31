@@ -20,7 +20,9 @@
  *   - POSTs must carry the X-New-Tab-Token header matching EXTENSION_TOKEN
  *     or they are rejected with 401. The token ships in extension code, so
  *     it only raises the cost of abuse - it is not authentication; the
- *     per-IP rate limit below is the real control.
+ *     per-IP rate limit below is the real control. The token is checked
+ *     before the rate limit so unauthenticated traffic cannot exhaust an
+ *     IP's quota and starve legitimate users sharing that IP.
  *   - Compatibility decision: extension builds released before this change
  *     do not send the header and lose AI access once EXTENSION_TOKEN is
  *     set (they must update). A grace period was rejected because it would
@@ -53,7 +55,12 @@ const TOKEN_HEADER = 'X-New-Tab-Token';
 // system prompt + last 10 history messages + current user message (mirrors
 // the caps src/ai/openrouter.js applies client-side).
 const MAX_MESSAGES = 12;
-const MAX_BODY_BYTES = 64 * 1024;
+// Cap the body at 256 KiB: enough for the largest request the client can
+// build (system prompt + up to 10 history messages + current user message,
+// where each assistant reply can run to 4096 tokens, ~12 KiB of CJK at
+// worst, plus JSON overhead), while still bounding how much a single
+// request can make the worker buffer.
+const MAX_BODY_BYTES = 256 * 1024;
 const RATE_LIMIT_WINDOW_MS = 60000;
 const RATE_LIMIT_MAX_REQUESTS = 20;
 
@@ -244,6 +251,14 @@ export default {
       return json(405, { error: { message: 'Method not allowed', code: 405 } });
     }
 
+    const presentedToken = request.headers.get(TOKEN_HEADER);
+    const expectedToken = typeof env?.EXTENSION_TOKEN === 'string' ? env.EXTENSION_TOKEN : '';
+    if (!expectedToken || presentedToken !== expectedToken) {
+      return json(401, { error: { message: 'Unauthorized', code: 401 } });
+    }
+
+    // Rate-limit after the token check so unauthenticated requests cannot
+    // exhaust an IP's quota and starve legitimate users sharing the IP.
     const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
     const retryAfterSeconds = await checkRateLimit(clientIp, env, Date.now());
     if (retryAfterSeconds !== null) {
@@ -252,12 +267,6 @@ export default {
         { error: { message: 'Too many requests', code: 429 } },
         { 'Retry-After': String(retryAfterSeconds) }
       );
-    }
-
-    const presentedToken = request.headers.get(TOKEN_HEADER);
-    const expectedToken = typeof env?.EXTENSION_TOKEN === 'string' ? env.EXTENSION_TOKEN : '';
-    if (!expectedToken || presentedToken !== expectedToken) {
-      return json(401, { error: { message: 'Unauthorized', code: 401 } });
     }
 
     const declaredLength = Number(request.headers.get('Content-Length'));
