@@ -821,6 +821,37 @@ describe('OpenRouter non-JSON error bodies (#866)', () => {
   });
 });
 
+describe('OpenRouter proxy token (#1086)', () => {
+  it('sends the shared-secret X-New-Tab-Token header on every request', async () => {
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalRetryDelay = OpenRouterAPI.config.retryDelay;
+    try {
+      OpenRouterAPI.config.maxRetries = 1;
+      OpenRouterAPI.config.retryDelay = 0;
+      // Fail the first attempt with a retryable 429 so the header is
+      // asserted on both the initial request and the retry.
+      globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce(createNonJsonErrorResponse(429))
+        .mockResolvedValueOnce(createStreamingResponse([
+          'data: {"choices":[{"delta":{"content":"Hi"}}]}\n'
+        ]));
+
+      const result = await OpenRouterAPI.sendMessageStreaming('hello');
+
+      expect(result).toMatchObject({ success: true, content: 'Hi' });
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+      expect(typeof OpenRouterAPI.config.extensionToken).toBe('string');
+      expect(OpenRouterAPI.config.extensionToken.length).toBeGreaterThan(0);
+      for (const [, options] of globalThis.fetch.mock.calls) {
+        expect(options.headers['X-New-Tab-Token']).toBe(OpenRouterAPI.config.extensionToken);
+      }
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.retryDelay = originalRetryDelay;
+    }
+  });
+});
+
 describe('OpenRouter web grounding (#707)', () => {
   it('adds the web plugin with five results when grounding is enabled', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
