@@ -276,13 +276,15 @@ describe('app manager', () => {
       expect(window.openInternalApp('feedback-app')).toBe(false);
       expect(window.openInternalApp('custom-nope')).toBe(false);
 
-      // Todo app modal (issue #1066) goes through the same shared launcher.
+      // While the standalone Todo tile is disabled (#1111), the reserved
+      // todo-app id must not launch the modal even if a stored or imported
+      // custom record reuses it; it falls through to normal navigation.
       const todoOpen = vi.fn();
       withWindowOverride('TodoApp', { open: todoOpen }, () => {
         const todoClick = new MouseEvent('click', { bubbles: true, cancelable: true });
-        expect(window.openInternalApp('todo-app', todoClick)).toBe(true);
-        expect(todoClick.defaultPrevented).toBe(true);
-        expect(todoOpen).toHaveBeenCalledOnce();
+        expect(window.openInternalApp('todo-app', todoClick)).toBe(false);
+        expect(todoClick.defaultPrevented).toBe(false);
+        expect(todoOpen).not.toHaveBeenCalled();
       });
     });
   });

@@ -20,8 +20,10 @@ const defaultApps = [
   { id: 'games-app', nameKey: 'games', url: '#', icon: 'images/icons/games.svg', className: 'default-app', isInternal: true },
   // Standalone Todo app temporarily disabled for this version (issue #1066):
   // removing the tile is the only launch path, so nothing can open the modal.
-  // The on-page todo widget stays available via todoEnabled. Re-add this line
-  // to restore the app.
+  // The on-page todo widget stays available via todoEnabled. The modal-hosted
+  // todo settings (reminders, lead time, daily stats) are unreachable until
+  // the tile returns; accepted for this version and tracked with the restore
+  // in #1111. Re-add this line to restore the app.
   // { id: 'todo-app', nameKey: 'todoApp', url: '#', icon: 'images/icons/todo.svg', className: 'default-app', isInternal: true },
   { id: 'feedback-app', nameKey: 'feedback', url: 'https://github.com/404-PF/New-Tab/issues/new', icon: 'images/icons/feedback.svg', className: 'default-app' },
   { id: 'settings-app', nameKey: 'settings', url: '#', icon: 'images/icons/settings.svg', className: 'default-app' },
@@ -595,6 +597,13 @@ window.onDomReady(initDefaultAppVisibilitySettings);
 // through to normal link navigation.
 function openInternalApp(appId, event) {
   if (!HANDLED_APP_HANDLER_IDS.has(appId)) return false;
+  // The standalone Todo tile is temporarily disabled (#1111): while the
+  // built-in record is absent from defaultApps, ignore the reserved
+  // todo-app id so persisted or imported custom records that reuse it
+  // cannot relaunch the modal (they fall through to normal navigation).
+  if (appId === 'todo-app' && !defaultApps.some(app => app.id === 'todo-app')) {
+    return false;
+  }
   if (event && typeof event.preventDefault === 'function') event.preventDefault();
 
   if (appId === 'settings-app') {

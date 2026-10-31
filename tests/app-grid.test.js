@@ -926,7 +926,7 @@ describe('renderAllApps order validation', () => {
     // repair pass should drop the foreign ID and keep the rest of the
     // user's order (including non-canonical positioning of defaults).
     AppGridState.addApp({ id: 'custom-known', url: 'https://a.com', name: 'Custom' });
-    const corrupted = ['feedback-app', 'weather-app', 'ai-app', 'games-app', 'settings-app', 'custom-known', 'foreign-id'];
+    const corrupted = ['feedback-app', 'weather-app', 'ai-app', 'games-app', 'todo-app', 'settings-app', 'custom-known', 'foreign-id'];
     AppGridStorage.saveOrder(corrupted);
 
     window.renderAllApps();
@@ -934,6 +934,7 @@ describe('renderAllApps order validation', () => {
     const order = AppGridState.getOrder();
     expect(order).toEqual(['feedback-app', 'weather-app', 'ai-app', 'games-app', 'settings-app', 'custom-known']);
     expect(order).not.toContain('foreign-id');
+    expect(order).not.toContain('todo-app');
   });
 
   it('recovers cleanly when order is null without throwing (#257 regression)', () => {
