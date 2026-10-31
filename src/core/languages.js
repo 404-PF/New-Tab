@@ -1294,6 +1294,97 @@ function applyAccessibilityMerges(code) {
   Object.assign(target, values);
 }
 
+const MIGRATE_LEGACY_TRANSLATIONS = {
+  en: {
+    migrateLegacyTitle: 'New Tab has moved',
+    migrateLegacyMessage: 'This version is no longer updated. Install the new version to keep getting updates and features.',
+    migrateLegacyNote: 'Your settings stay in this version, so reconfigure them once in the new one.',
+    migrateLegacyInstall: 'Install the new version',
+    migrateLegacyLater: 'Remind me later',
+    migrateLegacySaveError: 'Failed to save "Remind me later". Your storage may be full — try again.',
+    migrateLegacyRemove: 'Remove this old version'
+  },
+  zh: {
+    migrateLegacyTitle: 'New Tab 已迁移',
+    migrateLegacyMessage: '此版本已不再更新。安装新版本以继续获得更新和功能。',
+    migrateLegacyNote: '此版本中的设置会保留，请在新版本中重新配置一次。',
+    migrateLegacyInstall: '安装新版本',
+    migrateLegacyLater: '稍后提醒我',
+    migrateLegacySaveError: '无法保存“稍后提醒”。存储空间可能已满 — 请重试。',
+    migrateLegacyRemove: '移除此旧版本'
+  },
+  ja: {
+    migrateLegacyTitle: 'New Tab は移行しました',
+    migrateLegacyMessage: 'このバージョンは更新されなくなりました。アップデートと機能を得続けるには新しいバージョンをインストールしてください。',
+    migrateLegacyNote: '設定はこのバージョンに残ります。新しいバージョンで一度設定し直してください。',
+    migrateLegacyInstall: '新しいバージョンをインストール',
+    migrateLegacyLater: 'あとで再通知',
+    migrateLegacySaveError: '「あとで再通知」の保存に失敗しました。ストレージが満杯かもしれません — もう一度お試しください。',
+    migrateLegacyRemove: 'この古いバージョンを削除'
+  },
+  ko: {
+    migrateLegacyTitle: 'New Tab이 이전되었습니다',
+    migrateLegacyMessage: '이 버전은 더 이상 업데이트되지 않습니다. 업데이트와 기능을 계속 받으려면 새 버전을 설치하세요.',
+    migrateLegacyNote: '설정은 이 버전에 남아 있습니다. 새 버전에서 한 번 다시 설정하세요.',
+    migrateLegacyInstall: '새 버전 설치',
+    migrateLegacyLater: '나중에 알림',
+    migrateLegacySaveError: '‘나중에 알림’ 저장에 실패했습니다. 저장 공간이 가득 찼을 수 있습니다 — 다시 시도하세요.',
+    migrateLegacyRemove: '이 오래된 버전 제거'
+  },
+  es: {
+    migrateLegacyTitle: 'New Tab se ha mudado',
+    migrateLegacyMessage: 'Esta versión ya no se actualiza. Instala la nueva versión para seguir recibiendo actualizaciones y funciones.',
+    migrateLegacyNote: 'Tus ajustes se quedan en esta versión; reconfigúralos una vez en la nueva.',
+    migrateLegacyInstall: 'Instalar la nueva versión',
+    migrateLegacyLater: 'Recordármelo más tarde',
+    migrateLegacySaveError: 'No se pudo guardar "Recordármelo más tarde". Es posible que el almacenamiento esté lleno: inténtalo de nuevo.',
+    migrateLegacyRemove: 'Eliminar esta versión antigua'
+  },
+  fr: {
+    migrateLegacyTitle: 'New Tab a déménagé',
+    migrateLegacyMessage: 'Cette version n’est plus mise à jour. Installez la nouvelle version pour continuer à recevoir les mises à jour et les fonctionnalités.',
+    migrateLegacyNote: 'Vos réglages restent dans cette version ; reconfigurez-les une fois dans la nouvelle.',
+    migrateLegacyInstall: 'Installer la nouvelle version',
+    migrateLegacyLater: 'Me le rappeler plus tard',
+    migrateLegacySaveError: 'Impossible d’enregistrer « Me le rappeler plus tard ». Le stockage est peut-être plein — réessayez.',
+    migrateLegacyRemove: 'Supprimer cette ancienne version'
+  },
+  de: {
+    migrateLegacyTitle: 'New Tab ist umgezogen',
+    migrateLegacyMessage: 'Diese Version wird nicht mehr aktualisiert. Installieren Sie die neue Version, um weiterhin Updates und Funktionen zu erhalten.',
+    migrateLegacyNote: 'Ihre Einstellungen bleiben in dieser Version – richten Sie sie einmal in der neuen ein.',
+    migrateLegacyInstall: 'Neue Version installieren',
+    migrateLegacyLater: 'Später erinnern',
+    migrateLegacySaveError: '„Später erinnern“ konnte nicht gespeichert werden. Der Speicher ist möglicherweise voll – versuchen Sie es erneut.',
+    migrateLegacyRemove: 'Diese alte Version entfernen'
+  },
+  pt: {
+    migrateLegacyTitle: 'O New Tab mudou',
+    migrateLegacyMessage: 'Esta versão não é mais atualizada. Instale a nova versão para continuar recebendo atualizações e recursos.',
+    migrateLegacyNote: 'Suas configurações permanecem nesta versão; reconfigure-as uma vez na nova.',
+    migrateLegacyInstall: 'Instalar a nova versão',
+    migrateLegacyLater: 'Lembrar mais tarde',
+    migrateLegacySaveError: 'Falha ao salvar "Lembrar mais tarde". O armazenamento pode estar cheio — tente novamente.',
+    migrateLegacyRemove: 'Remover esta versão antiga'
+  },
+  ru: {
+    migrateLegacyTitle: 'New Tab переехал',
+    migrateLegacyMessage: 'Эта версия больше не обновляется. Установите новую версию, чтобы продолжать получать обновления и функции.',
+    migrateLegacyNote: 'Ваши настройки остаются в этой версии — настройте их заново в новой.',
+    migrateLegacyInstall: 'Установить новую версию',
+    migrateLegacyLater: 'Напомнить позже',
+    migrateLegacySaveError: 'Не удалось сохранить «Напомнить позже». Возможно, хранилище заполнено — попробуйте ещё раз.',
+    migrateLegacyRemove: 'Удалить эту старую версию'
+  }
+};
+
+function applyMigrateLegacyMerges(code) {
+  const target = translations[code];
+  const values = MIGRATE_LEGACY_TRANSLATIONS[code];
+  if (!target || !values) return;
+  Object.assign(target, values);
+}
+
 // Runs every feature-string merge pass for a single locale. en runs it at
 // evaluation time; registerLocale() runs it again for a locale whose table
 // arrives from src/core/locales/<code>.js so lazily loaded locales get the
@@ -1313,6 +1404,7 @@ function applyLocaleMerges(code) {
   applyPacmanMerges(code);
   applyPomodoroMerges(code);
   applyAccessibilityMerges(code);
+  applyMigrateLegacyMerges(code);
 }
 
 applyLocaleMerges('en');

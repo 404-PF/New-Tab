@@ -84,7 +84,11 @@
     'src/features/shortcuts.js',
     'src/features/auto-theme.js',
     'src/features/games/games-app.js',
-    'src/features/accessibility.js'
+    'src/features/accessibility.js',
+    // Loaded last: it only activates in the legacy-publisher build
+    // (MIGRATION_ENABLED), where it shows a "this extension has moved" takeover
+    // pointing old-listing users at the current listing.
+    'src/features/migrate-legacy.js'
   ];
 
   function loadScript(source) {
