@@ -874,5 +874,13 @@
   "accessibilityTodoListUpdatedOne": {
     "message": "Lista de tarefas atualizada. {count} item exibido.",
     "description": "Singular announcement after the todo list is updated"
+  },
+  "aiSend": {
+    "message": "Enviar",
+    "description": "Accessible label for the AI chat send button"
+  },
+  "close": {
+    "message": "Fechar",
+    "description": "Accessible label for the folder popup close button"
   }
 }

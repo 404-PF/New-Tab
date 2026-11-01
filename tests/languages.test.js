@@ -676,3 +676,35 @@ describe('Motto button aria-label translations', () => {
     expectTranslationKeys(['refreshMotto', 'copyMotto'], { differFromEnglish: true });
   });
 });
+
+// Icon-only shell buttons (issue #1088): add todo, add note, AI send/stop and
+// the folder popup close glyph must expose localized accessible names instead
+// of a bare "button" announcement.
+describe('Icon-only shell button accessible names (issue #1088)', () => {
+  const SHELL_BUTTON_ARIA_LABELS = {
+    'add-todo-btn': { ariaLabel: 'Add Todo', key: 'addTodo' },
+    'add-note-btn': { ariaLabel: 'Add note', key: 'addNoteTooltip' },
+    'ai-chat-send': { ariaLabel: 'Send', key: 'aiSend' },
+    'ai-chat-stop': { ariaLabel: 'Stop', key: 'aiStopStreaming' },
+    'folder-popup-close-btn': { ariaLabel: 'Close', key: 'close' }
+  };
+
+  it('wires each icon-only button to a static aria-label and data-i18n-aria-label', () => {
+    const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
+    Object.entries(SHELL_BUTTON_ARIA_LABELS).forEach(([id, { ariaLabel, key }]) => {
+      const match = html.match(new RegExp(`<button[^>]*id="${id}"[^>]*>`));
+      expect(match, id).toBeTruthy();
+      expect(match[0], id).toContain(`aria-label="${ariaLabel}"`);
+      expect(match[0], id).toContain(`data-i18n-aria-label="${key}"`);
+    });
+  });
+
+  it('defines every shell button label in each supported language', () => {
+    expectTranslationKeys(Object.values(SHELL_BUTTON_ARIA_LABELS).map((entry) => entry.key));
+  });
+
+  it('includes the new aiSend and close keys in every _locales messages.json', () => {
+    expectMessagesJsonKey('aiSend');
+    expectMessagesJsonKey('close');
+  });
+});

@@ -171,7 +171,7 @@
               </div>
             </div>
             <input type="time" id="todo-due-time" class="todo-due-time-input" aria-label="Due time" data-i18n-aria-label="dueTime" disabled />
-            <button id="add-todo-btn">
+            <button id="add-todo-btn" aria-label="Add Todo" data-i18n-aria-label="addTodo">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -345,7 +345,7 @@
   <div class="notes-section">
     <div class="notes-header">
       <h3 class="notes-title" data-i18n="notesTitle">Notes</h3>
-      <button id="add-note-btn" class="notes-add-btn">
+      <button id="add-note-btn" class="notes-add-btn" aria-label="Add note" data-i18n-aria-label="addNoteTooltip">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -1526,13 +1526,13 @@
         
         <div class="ai-chat-input-container">
           <textarea id="ai-chat-input" rows="1" placeholder="Ask me anything..." data-i18n-placeholder="aiPlaceholder" maxlength="2000"></textarea>
-          <button id="ai-chat-send" class="ai-chat-send-btn">
+          <button id="ai-chat-send" class="ai-chat-send-btn" aria-label="Send" data-i18n-aria-label="aiSend">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
             </svg>
           </button>
-          <button id="ai-chat-stop" class="ai-chat-stop-btn" style="display: none;">
+          <button id="ai-chat-stop" class="ai-chat-stop-btn" style="display: none;" aria-label="Stop" data-i18n-aria-label="aiStopStreaming">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="6" y="6" width="12" height="12" rx="2"></rect>
             </svg>
@@ -1818,7 +1818,7 @@
             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
           </svg>
         </button>
-        <button id="folder-popup-close-btn" class="folder-popup-close-btn">&times;</button>
+        <button id="folder-popup-close-btn" class="folder-popup-close-btn" aria-label="Close" data-i18n-aria-label="close">&times;</button>
       </div>
       <div class="folder-popup-apps" id="folder-popup-apps"></div>
     </div>
