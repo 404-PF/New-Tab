@@ -1,4 +1,10 @@
 const CHECK_INTERVAL_MINUTES = 1;
+// MV3 periodInMinutes alarms are best-effort and routinely fire slightly late
+// (battery saver, batching). A check landing up to one interval past `due`
+// still counts as current, so a late alarm delivers instead of silently
+// dropping the reminder (#1090). Anything beyond this stays skipped to keep
+// the anti-stale-banner guarantee.
+const REMINDER_LATE_GRACE_MINUTES = CHECK_INTERVAL_MINUTES;
 // SYNC: This alarm name must match the hardcoded string in src/features/todo.js fallback
 const ALARM_NAME = 'todoReminderCheck';
 // SYNC: These two migration constants must match the ones in
@@ -247,7 +253,11 @@ function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, lea
   }
   const due = parseDueDate(todo.dueDate, todo.dueTime);
   const reminderTime = new Date(due.getTime() - Math.max(leadTime, CHECK_INTERVAL_MINUTES) * 60 * 1000);
-  if (now < reminderTime || now > due) {
+  const graceEnd = new Date(due.getTime() + REMINDER_LATE_GRACE_MINUTES * 60 * 1000);
+  // #1090: tolerate checks up to one interval past `due` (MV3 alarms fire
+  // late routinely) so a late-but-recent check still delivers; the notified
+  // key is recorded below either way, so the grace path never repeats.
+  if (now < reminderTime || now > graceEnd) {
     return { skip: true, warnedUpdated: false };
   }
   const timePart = todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime) ? '_' + todo.dueTime : '';
