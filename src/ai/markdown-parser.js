@@ -72,14 +72,12 @@ const MarkdownParser = (function() {
    * @returns {string} Cache key
    */
   function getCacheKey(markdown) {
-    // Simple hash function for cache key
-    let hash = 0;
-    for (let i = 0; i < markdown.length; i++) {
-      const char = markdown.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return `md_${hash}_${markdown.length}`;
+    // Key the cache on the raw markdown string. The cache is bounded to
+    // 100 entries so the memory cost is negligible, and unlike a 32-bit
+    // hash + length key this can never collide across distinct inputs
+    // (e.g. 'aa' and 'bB' both hashed to 3104 with length 2), which would
+    // silently render another message's cached HTML.
+    return markdown;
   }
 
   // ============== Syntax Highlighting ==============
@@ -355,14 +353,21 @@ const MarkdownParser = (function() {
     let highlighted = escapeHTML(code);
     const patterns = syntaxPatterns[language];
 
-    // Store original strings to avoid double-escaping
+    // Store original strings to avoid double-escaping. Placeholder tokens
+    // use the same unguessable PUA + random-namespace scheme as the block
+    // and inline tokens: a fresh namespace per call means user code that
+    // merely looks like a placeholder (e.g. a literal __PLACEHOLDER_0__)
+    // can never be substituted for generated markup, and the highlight
+    // span always lands on the real string/comment occurrence.
+    const highlightNs = makeTokenNamespace();
+    const highlightToken = (index) => `\uE000${highlightNs}H${index}\uE000`;
     const placeholders = [];
     let placeholderIndex = 0;
 
     // Extract and protect strings first
     if (patterns.strings) {
       highlighted = highlighted.replace(patterns.strings, (match) => {
-        const placeholder = `__PLACEHOLDER_${placeholderIndex++}__`;
+        const placeholder = highlightToken(placeholderIndex++);
         placeholders.push({ placeholder, value: `<span class="syntax-string">${match}</span>` });
         return placeholder;
       });
@@ -371,7 +376,7 @@ const MarkdownParser = (function() {
     // Extract and protect comments
     if (patterns.comments) {
       highlighted = highlighted.replace(patterns.comments, (match) => {
-        const placeholder = `__PLACEHOLDER_${placeholderIndex++}__`;
+        const placeholder = highlightToken(placeholderIndex++);
         placeholders.push({ placeholder, value: `<span class="syntax-comment">${match}</span>` });
         return placeholder;
       });
@@ -407,9 +412,12 @@ const MarkdownParser = (function() {
       highlighted = highlighted.replace(patterns.variables, '<span class="syntax-variable">$1</span>');
     }
 
-    // Restore placeholders
+    // Restore placeholders. A function replacement avoids $& / $1
+    // interpolation of the stored HTML, and only tokens carrying this
+    // call's random namespace are restored — identical-looking user text
+    // is left alone.
     for (const { placeholder, value } of placeholders) {
-      highlighted = highlighted.replace(placeholder, value);
+      highlighted = highlighted.replace(placeholder, () => value);
     }
 
     return highlighted;

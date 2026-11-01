@@ -832,3 +832,77 @@ describe('MarkdownParser inline code spans', () => {
     expect(img.querySelector('code')).toBeNull();
   });
 });
+
+describe('MarkdownParser cache-key collisions (issue #1091)', () => {
+  it('renders distinct HTML for same-length inputs that shared a 32-bit hash key', () => {
+    // 'aa' and 'bB' both hash to 3104 with length 2, so the old
+    // md_${hash}_${length} cache key returned the first message's cached
+    // HTML when the second input was parsed.
+    const first = MarkdownParser.parse('aa');
+    const second = MarkdownParser.parse('bB');
+
+    expect(first).toContain('aa');
+    expect(second).toContain('bB');
+    expect(second).not.toContain('aa');
+    expect(second).not.toBe(first);
+  });
+
+  it('still serves cached HTML for identical markdown', () => {
+    const first = MarkdownParser.parse('hello world');
+    const second = MarkdownParser.parse('hello world');
+
+    expect(second).toBe(first);
+    expect(MarkdownParser.getCacheStats().size).toBe(1);
+  });
+});
+
+describe('MarkdownParser highlight placeholder collisions (issue #1091)', () => {
+  function parseToContainer(markdown) {
+    const container = document.createElement('div');
+    container.innerHTML = MarkdownParser.parse(markdown);
+    return container;
+  }
+
+  it('keeps a literal __PLACEHOLDER_0__ in code intact and highlights the real string', () => {
+    // Before the fix, highlightCode emitted guessable __PLACEHOLDER_N__
+    // tokens and restored them with a first-occurrence .replace(), so the
+    // real string's highlight span landed on the forged literal text and
+    // the actual placeholder was left raw in the output.
+    const container = parseToContainer('```javascript\nconst forged = __PLACEHOLDER_0__;\nconst real = "hello";\n```');
+    const code = container.querySelector('div.md-code-block code');
+
+    expect(code).not.toBeNull();
+
+    // The forged literal survives unchanged on its own line
+    const textLines = code.textContent.split('\n');
+    const forgedLine = textLines.find((line) => line.includes('forged'));
+    expect(forgedLine).toContain('__PLACEHOLDER_0__');
+    expect(forgedLine).not.toContain('"hello"');
+
+    // The highlight span wraps the real quoted string on its own line
+    const htmlLines = code.innerHTML.split('\n');
+    const spanLine = htmlLines.find((line) => line.includes('syntax-string'));
+    expect(spanLine).not.toBeNull();
+    expect(spanLine).toContain('"hello"');
+    expect(spanLine).toContain('real');
+    expect(spanLine).not.toContain('__PLACEHOLDER_0__');
+
+    // Exactly one string span, and no unguessable tokens left in the output
+    const stringSpans = code.querySelectorAll('span.syntax-string');
+    expect(stringSpans).toHaveLength(1);
+    expect(stringSpans[0].textContent).toBe('"hello"');
+    expect(code.innerHTML).not.toContain('\uE000');
+  });
+
+  it('highlights multiple strings and comments without disturbing lookalike text', () => {
+    const container = parseToContainer('```javascript\n// __PLACEHOLDER_1__ note\nconst a = "x"; // trailing\n```');
+    const code = container.querySelector('div.md-code-block code');
+
+    expect(code).not.toBeNull();
+    expect(code.textContent).toContain('__PLACEHOLDER_1__');
+    expect(code.querySelectorAll('span.syntax-comment')).toHaveLength(2);
+    expect(code.querySelectorAll('span.syntax-string')).toHaveLength(1);
+    expect(code.querySelector('span.syntax-string').textContent).toBe('"x"');
+    expect(code.innerHTML).not.toContain('\uE000');
+  });
+});
