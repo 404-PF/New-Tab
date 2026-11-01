@@ -461,6 +461,51 @@ describe('Memory save validation regressions (review #654)', () => {
   });
 });
 
+describe('Memory reveal-window race (#1087)', () => {
+  // Known face-down deck: cards 0/1 = 🐶, 2/3 = 🐱, 4/5 = 🐭, ... so a test
+  // can click two specific pairs without depending on the shuffled layout.
+  function makeFaceDownState() {
+    const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'];
+    const cards = [];
+    emojis.forEach((emoji) => {
+      cards.push({ emoji: emoji, flipped: false, matched: false });
+      cards.push({ emoji: emoji, flipped: false, matched: false });
+    });
+    return { cards: cards, moves: 0, elapsedMs: 0 };
+  }
+
+  it('keeps the first matched pair face-up when a second pair is flipped within the 200 ms reveal window', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const game = window.GameRegistry.get('memory');
+    game.init(container, makeFaceDownState());
+    expect(window.__memoryReady.isStarted()).toBe(true);
+
+    vi.useFakeTimers();
+    try {
+      const cards = container.querySelectorAll('.games-memory-card');
+      cards[0].click();
+      cards[1].click(); // 🐶 pair matched; its face-up render waits 200 ms.
+      cards[2].click();
+      cards[3].click(); // 🐱 pair matched inside that window (#1087 orphan).
+      vi.advanceTimersByTime(300);
+
+      [0, 1].forEach((idx) => {
+        expect(cards[idx].classList.contains('games-memory-card-matched')).toBe(true);
+        expect(cards[idx].textContent).toBe('🐶');
+      });
+      [2, 3].forEach((idx) => {
+        expect(cards[idx].classList.contains('games-memory-card-matched')).toBe(true);
+        expect(cards[idx].textContent).toBe('🐱');
+      });
+    } finally {
+      vi.useRealTimers();
+      game.destroy();
+      container.remove();
+    }
+  });
+});
+
 describe('Memory pausedAt lifecycle (review #654 round 2)', () => {
   it('resumes measuring from wall clock after a pause/resume cycle', () => {
     vi.useFakeTimers();

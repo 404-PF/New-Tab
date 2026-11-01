@@ -76,6 +76,14 @@
   }
 
   function checkMatch() {
+    // Settle a pair still waiting on its reveal timeout before this pair can
+    // overwrite pendingResolve, otherwise the earlier pair's face-up render is
+    // orphaned for the rest of the run (#1087). Guarded so the defensive
+    // fallback in finalizePendingPair never touches the pair checked below,
+    // and called before matched++ so a settling pair can't trigger endGame
+    // early while the current pair is still unresolved.
+    if (pendingResolve) finalizePendingPair();
+
     const a = flipped[0];
     const b = flipped[1];
 
@@ -453,9 +461,10 @@
   }
 
   // Settle a pair whose reveal timeout hasn't fired yet so the board is
-  // consistent for serialization or while hidden. Shared by pause() and
-  // serialize(). Also handles the orphaned-pair softlock (#632) where an
-  // earlier timeout cleared pendingResolve before the later pair resolved.
+  // consistent for serialization, while hidden, or before checkMatch lets a
+  // new pair overwrite pendingResolve (#1087). Also handles the orphaned-pair
+  // softlock (#632) where an earlier timeout cleared pendingResolve before the
+  // later pair resolved.
   function finalizePendingPair() {
     clearPendingTimeouts();
     if (!pendingResolve) {
