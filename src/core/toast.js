@@ -247,7 +247,31 @@ const FEATURE_TOGGLE_RESYNC = {
   weatherEnabled: resyncWeatherSettings,
   weatherUnit: resyncWeatherSettings,
   weatherLocationMode: resyncWeatherSettings,
-  weatherManualCity: resyncWeatherSettings
+  weatherManualCity: resyncWeatherSettings,
+  // Settings added by #1089 (search provider, search history, language,
+  // update check). All helpers resolve through window with typeof guards so
+  // a module that failed to load degrades to "no resync" instead of a throw.
+  searchProvider: function () {
+    if (typeof window.refreshProviderBar === 'function') {
+      window.refreshProviderBar();
+    }
+  },
+  searchHistoryEnabled: function () {
+    if (typeof window.resyncSearchHistorySetting === 'function') {
+      window.resyncSearchHistorySetting();
+    }
+  },
+  language: function () {
+    const stored = localStorage.getItem('language');
+    if (stored && window.i18n && typeof window.i18n.applyLanguage === 'function') {
+      window.i18n.applyLanguage(stored);
+    }
+  },
+  updateCheckEnabled: function () {
+    if (window.updateChecker && typeof window.updateChecker.resyncEnabledSetting === 'function') {
+      window.updateChecker.resyncEnabledSetting();
+    }
+  }
 };
 
 // True when a control still shows the rejected value the bridge has already
@@ -318,6 +342,31 @@ function featureToggleControlDesynced(key) {
     case 'weatherManualCity': {
       const input = document.getElementById('weather-manual-city');
       return Boolean(input) && input.value !== (localStorage.getItem(key) || '');
+    }
+    case 'searchProvider': {
+      const bar = document.getElementById('search-provider-bar');
+      if (!bar) return false;
+      const stored = typeof window.loadActiveProvider === 'function'
+        ? window.loadActiveProvider()
+        : (localStorage.getItem(key) || 'google');
+      const activeBtn = bar.querySelector('.search-provider-btn.active');
+      return Boolean(activeBtn) && activeBtn.dataset.provider !== stored;
+    }
+    case 'searchHistoryEnabled': {
+      const checkbox = document.getElementById('search-history-enabled-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'language': {
+      const stored = localStorage.getItem(key);
+      if (!stored) return false;
+      const current = window.i18n && typeof window.i18n.currentLanguage === 'function'
+        ? window.i18n.currentLanguage()
+        : document.documentElement.lang;
+      return current !== stored;
+    }
+    case 'updateCheckEnabled': {
+      const checkbox = document.getElementById('update-check-enabled');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
     }
   }
   return false;

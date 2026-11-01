@@ -2319,7 +2319,15 @@ function initAboutSection() {
 
     if (updateEnabledCheckbox && window.updateChecker) {
       updateEnabledCheckbox.addEventListener('change', function() {
-        updateChecker.setEnabled(this.checked);
+        const persisted = updateChecker.setEnabled(this.checked);
+        if (!persisted) {
+          // The bridge rejected the write: snap the checkbox back to the
+          // persisted value and surface the shared save error (#1089).
+          this.checked = updateChecker.isEnabled();
+          if (typeof window.showFeatureToggleSaveError === 'function') {
+            window.showFeatureToggleSaveError();
+          }
+        }
         // Refresh the about section to show updated status
         setTimeout(() => initAboutSection(), 100);
       });

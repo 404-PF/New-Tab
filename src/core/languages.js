@@ -1446,9 +1446,15 @@ function getTranslation(lang, key) {
   return key;
 }
 
-// Save language to localStorage
+// Save language to localStorage. Returns whether the storage bridge accepted
+// the write; it rejects with an explicit false instead of throwing (#969).
 function saveLanguage(lang) {
-  localStorage.setItem('language', lang);
+  try {
+    return localStorage.setItem('language', lang) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+  } catch (error) {
+    console.warn('Failed to save language:', error);
+    return false;
+  }
 }
 
 // --- Lazy locale loading (issue #927) -------------------------------------
@@ -1544,8 +1550,21 @@ function registerLocale(code, table) {
 // (always the case for en) the sweep stays synchronous, so the default
 // profile keeps its previous behavior and makes no extra requests.
 function applyLanguage(lang) {
+  if (!saveLanguage(lang)) {
+    const stored = localStorage.getItem('language');
+    if (stored && stored !== lang) {
+      // A rejected write that would desync the UI from storage (#1089):
+      // surface the failure and keep applying the persisted language so a
+      // reload cannot silently snap back.
+      if (typeof window.showFeatureToggleSaveError === 'function') {
+        window.showFeatureToggleSaveError();
+      }
+      lang = stored;
+    }
+    // A rejected redundant re-save of the already-persisted value (the
+    // boot-time applyLanguage pass) changes nothing, so sweep silently.
+  }
   currentLanguage = lang;
-  saveLanguage(lang);
 
   // Update document lang attribute
   document.documentElement.lang = lang;
