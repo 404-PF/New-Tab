@@ -10,6 +10,32 @@
  *
  * Secrets (wrangler secret put <NAME>):
  *   OPENROUTER_API_KEY  OpenRouter key (free models only, $0 limit is fine)
+ *   EXTENSION_TOKEN     Shared secret for the X-New-Tab-Token check below;
+ *                       must match CONFIG.extensionToken in
+ *                       src/ai/openrouter.js. Set it before deploying:
+ *                       while it is unset unauthorized POSTs fail closed
+ *                       with 401.
+ *
+ * Access control (#1086):
+ *   - POSTs must carry the X-New-Tab-Token header matching EXTENSION_TOKEN
+ *     or they are rejected with 401. The token ships in extension code, so
+ *     it only raises the cost of abuse - it is not authentication; the
+ *     per-IP rate limit below is the real control. The token is checked
+ *     before the rate limit so unauthenticated traffic cannot exhaust an
+ *     IP's quota and starve legitimate users sharing that IP.
+ *   - Compatibility decision: extension builds released before this change
+ *     do not send the header and lose AI access once EXTENSION_TOKEN is
+ *     set (they must update). A grace period was rejected because it would
+ *     keep the proxy open to free-riding for its whole duration.
+ *   - Per-IP rate limit: the worker prefers the durable [[ratelimits]]
+ *     binding declared in wrangler.toml (shared across isolates in a
+ *     Cloudflare location; approximate, free plan) and falls back to an
+ *     in-memory per-isolate fixed window when the binding is absent.
+ *     Limited requests get 429 with Retry-After, which the extension
+ *     client honours.
+ *   - Request bodies are streamed with a UTF-8 byte cap (MAX_BODY_BYTES)
+ *     and a message-count cap (MAX_MESSAGES) before the upstream call,
+ *     alongside the existing max_tokens cap.
  *
  * Web search uses Tavily's keyless mode (X-Tavily-Access-Mode: keyless):
  * free, rate-limited, no account or key.
@@ -25,11 +51,23 @@ const MAX_RESULTS_CAP = 5;
 const SEARCH_TIMEOUT_MS = 8000;
 const MAX_QUERY_CHARS = 400;
 const MAX_SNIPPET_CHARS = 1200;
+const TOKEN_HEADER = 'X-New-Tab-Token';
+// system prompt + last 10 history messages + current user message (mirrors
+// the caps src/ai/openrouter.js applies client-side).
+const MAX_MESSAGES = 12;
+// Cap the body at 256 KiB: enough for the largest request the client can
+// build (system prompt + up to 10 history messages + current user message,
+// where each assistant reply can run to 4096 tokens, ~12 KiB of CJK at
+// worst, plus JSON overhead), while still bounding how much a single
+// request can make the worker buffer.
+const MAX_BODY_BYTES = 256 * 1024;
+const RATE_LIMIT_WINDOW_MS = 60000;
+const RATE_LIMIT_MAX_REQUESTS = 20;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Accept, HTTP-Referer, X-Title',
+  'Access-Control-Allow-Headers': 'Content-Type, Accept, HTTP-Referer, X-Title, X-New-Tab-Token',
   'Access-Control-Expose-Headers': 'X-Grounding, Retry-After',
   'Access-Control-Max-Age': '86400'
 };
@@ -39,6 +77,108 @@ function json(status, body, extra = {}) {
     status,
     headers: { 'Content-Type': 'application/json', ...CORS_HEADERS, ...extra }
   });
+}
+
+// Fallback per-IP fixed window: one Map per isolate, used only when the
+// durable [[ratelimits]] binding in wrangler.toml is not configured.
+const rateLimitBuckets = new Map();
+let rateLimitLastSweep = 0;
+
+/**
+ * Count a request against the caller's per-IP fixed window (isolate-local).
+ * @param {string} ip - Client IP (CF-Connecting-IP)
+ * @param {number} now - Current epoch milliseconds
+ * @returns {number|null} Retry-After seconds when limited, otherwise null
+ */
+function checkRateLimitInMemory(ip, now) {
+  if (now - rateLimitLastSweep >= RATE_LIMIT_WINDOW_MS) {
+    rateLimitLastSweep = now;
+    for (const [key, bucket] of rateLimitBuckets) {
+      if (now - bucket.start >= RATE_LIMIT_WINDOW_MS) {
+        rateLimitBuckets.delete(key);
+      }
+    }
+  }
+
+  let bucket = rateLimitBuckets.get(ip);
+  if (!bucket || now - bucket.start >= RATE_LIMIT_WINDOW_MS) {
+    bucket = { start: now, count: 0 };
+    rateLimitBuckets.set(ip, bucket);
+  }
+
+  bucket.count += 1;
+  if (bucket.count <= RATE_LIMIT_MAX_REQUESTS) {
+    return null;
+  }
+
+  const remainingMs = bucket.start + RATE_LIMIT_WINDOW_MS - now;
+  return Math.max(1, Math.ceil(remainingMs / 1000));
+}
+
+/**
+ * Count a request against the caller's per-IP limit. Prefers the durable
+ * RATE_LIMITER binding (counters shared across isolates in a location);
+ * falls back to the isolate-local window when the binding is absent or
+ * fails, so a limiter outage never takes the proxy down.
+ * @param {string} ip - Client IP (CF-Connecting-IP)
+ * @param {Object} env - Worker env (may carry the RATE_LIMITER binding)
+ * @param {number} now - Current epoch milliseconds
+ * @returns {Promise<number|null>} Retry-After seconds when limited, otherwise null
+ */
+async function checkRateLimit(ip, env, now) {
+  const limiter = env?.RATE_LIMITER;
+  if (limiter && typeof limiter.limit === 'function') {
+    try {
+      const { success } = await limiter.limit({ key: ip });
+      if (!success) {
+        return Math.ceil(RATE_LIMIT_WINDOW_MS / 1000);
+      }
+      return null;
+    } catch (error) {
+      console.warn('RATE_LIMITER binding failed, falling back to in-memory limit:', error);
+    }
+  }
+  return checkRateLimitInMemory(ip, now);
+}
+
+/**
+ * Read the request body as text while counting UTF-8 bytes, cancelling the
+ * stream as soon as MAX_BODY_BYTES is crossed so an oversized body is never
+ * fully buffered. rawBody.length would count UTF-16 code units, which
+ * undercounts multi-byte input.
+ * @param {Request} request - Incoming request
+ * @returns {Promise<{text?: string, tooLarge?: boolean}>} Decoded body, or tooLarge
+ */
+async function readBodyText(request) {
+  const body = request.body;
+  if (!body) {
+    return { text: '' };
+  }
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let received = 0;
+  let text = '';
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    received += value.byteLength;
+    if (received > MAX_BODY_BYTES) {
+      try {
+        await reader.cancel();
+      } catch {
+        // Ignore cancel failures; the 413 response is what matters.
+      }
+      return { tooLarge: true };
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+
+  text += decoder.decode();
+  return { text };
 }
 
 function lastUserText(messages) {
@@ -111,9 +251,43 @@ export default {
       return json(405, { error: { message: 'Method not allowed', code: 405 } });
     }
 
+    const presentedToken = request.headers.get(TOKEN_HEADER);
+    const expectedToken = typeof env?.EXTENSION_TOKEN === 'string' ? env.EXTENSION_TOKEN : '';
+    if (!expectedToken || presentedToken !== expectedToken) {
+      return json(401, { error: { message: 'Unauthorized', code: 401 } });
+    }
+
+    // Rate-limit after the token check so unauthenticated requests cannot
+    // exhaust an IP's quota and starve legitimate users sharing the IP.
+    const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const retryAfterSeconds = await checkRateLimit(clientIp, env, Date.now());
+    if (retryAfterSeconds !== null) {
+      return json(
+        429,
+        { error: { message: 'Too many requests', code: 429 } },
+        { 'Retry-After': String(retryAfterSeconds) }
+      );
+    }
+
+    const declaredLength = Number(request.headers.get('Content-Length'));
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+      return json(413, { error: { message: 'Request body too large', code: 413 } });
+    }
+
+    let bodyRead;
+    try {
+      bodyRead = await readBodyText(request);
+    } catch {
+      return json(400, { error: { message: 'Invalid JSON body', code: 400 } });
+    }
+
+    if (bodyRead.tooLarge) {
+      return json(413, { error: { message: 'Request body too large', code: 413 } });
+    }
+
     let body;
     try {
-      body = await request.json();
+      body = JSON.parse(bodyRead.text);
     } catch {
       return json(400, { error: { message: 'Invalid JSON body', code: 400 } });
     }
@@ -125,6 +299,9 @@ export default {
     const messages = Array.isArray(body.messages) ? body.messages : [];
     if (messages.length === 0) {
       return json(400, { error: { message: 'messages is required', code: 400 } });
+    }
+    if (messages.length > MAX_MESSAGES) {
+      return json(400, { error: { message: `messages exceeds limit of ${MAX_MESSAGES}`, code: 400 } });
     }
 
     const model = ALLOWED_MODELS.has(body.model) ? body.model : 'openrouter/free';
