@@ -227,10 +227,27 @@ describe('issue-implement commits as the PAT owner (#1113)', () => {
 
   it('derives the git identity from gh api user instead of hardcoding the bot', () => {
     expect(workflow).not.toMatch(/git config user\.name 'github-actions\[bot\]'/);
-    expect(workflow).not.toMatch(/41898282\+github-actions\[bot\]@users\.noreply\.github\.com/);
+    expect(workflow).not.toMatch(/git config user\.email '41898282\+github-actions\[bot\]@users\.noreply\.github\.com'/);
     for (const line of identityLines) {
       expect(workflow).toContain(line);
     }
+  });
+
+  it('retries the identity lookup and falls back to the bot identity so a failed lookup cannot abort the run', () => {
+    // A transient gh api failure must not stop the run before the PR
+    // opens: retry, then fall back to the static bot identity. pr-merge
+    // supplies the squash message verbatim, so the fallback author
+    // mismatch still yields no Co-authored-by trailer on main.
+    expect(workflow).toContain('for _attempt in 1 2 3; do');
+    expect(workflow).toContain('USER_JSON="$(GH_TOKEN="$GH_PAT" gh api user)" && break');
+    expect(workflow).toContain('sleep 5');
+    const fallbackIdx = workflow.indexOf('NAME=\'github-actions[bot]\'');
+    const emailFallbackIdx = workflow.indexOf('EMAIL=\'41898282+github-actions[bot]@users.noreply.github.com\'');
+    const configIdx = workflow.indexOf('git config user.name "$NAME"');
+    expect(fallbackIdx).toBeGreaterThan(-1);
+    expect(emailFallbackIdx).toBeGreaterThan(-1);
+    expect(configIdx).toBeGreaterThan(fallbackIdx);
+    expect(configIdx).toBeGreaterThan(emailFallbackIdx);
   });
 
   it('mirrors the identity-derivation lines in pr-drive exactly', () => {
