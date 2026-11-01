@@ -537,8 +537,21 @@ jobs:
           fi
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # Commit as the PAT owner, mirroring pr-drive's push step: the
+          # squash merge on main runs as the same account, so GitHub's
+          # generated squash message lists no mismatched author and appends
+          # no Co-authored-by: github-actions[bot] trailer. gh is a separate
+          # process; the token goes only into its environment for this call
+          # (GH_PAT is hard-required above).
+          USER_JSON="$(GH_TOKEN="$GH_PAT" gh api user)"
+          LOGIN="$(jq -r .login <<<"$USER_JSON")"
+          UID_NUM="$(jq -r .id <<<"$USER_JSON")"
+          EMAIL="$(jq -r '.email // empty' <<<"$USER_JSON")"
+          [ -n "$EMAIL" ] || EMAIL="${UID_NUM}+${LOGIN}@users.noreply.github.com"
+          NAME="$(jq -r '.name // empty' <<<"$USER_JSON")"
+          [ -n "$NAME" ] || NAME="$LOGIN"
+          git config user.name "$NAME"
+          git config user.email "$EMAIL"
           git checkout -b "$BRANCH"
           # Scan the staged diff, which includes new files. grep -E reads the
           # whole stream; grep -q would exit on the first match, SIGPIPE git
