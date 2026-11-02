@@ -26,7 +26,7 @@ class UpdateChecker {
     let message = this.t(key);
 
     Object.entries(replacements).forEach(([placeholder, value]) => {
-      message = message.replace(`{${placeholder}}`, value);
+      message = message.replaceAll(`{${placeholder}}`, () => value);
     });
 
     return message;

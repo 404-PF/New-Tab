@@ -2070,6 +2070,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement, newDueTime) {
 
   // Re-run filters so overdue view refreshes immediately
   applyFilters();
+  refreshInlineDatePickers();
   scheduleTodoReminderCheck(todoId);
 }
 

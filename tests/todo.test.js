@@ -2836,6 +2836,38 @@ describe('Date picker month navigation', () => {
   });
 });
 
+describe('Inline picker re-anchor after time-only edit (issue #1092)', () => {
+  it('rebinds the open picker to the rebuilt row when only the time changes', () => {
+    addTodo('Pay rent', '2026-01-31');
+    renderTodos();
+
+    const dueDateElement = document.querySelector('.todo-due-date.clickable');
+    expect(dueDateElement).not.toBeNull();
+    dueDateElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const picker = document.querySelector('.inline-date-picker');
+    expect(picker).not.toBeNull();
+    expect(picker._dueDateElement).toBe(dueDateElement);
+
+    const todoId = picker.dataset.todoId;
+    const timeInput = picker.querySelector('.inline-due-time');
+    expect(timeInput).not.toBeNull();
+    timeInput.value = '15:30';
+    timeInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // applyFilters() re-rendered the rows, so the pre-edit anchor is detached.
+    // The picker must be re-bound to the rebuilt row, otherwise scroll/resize
+    // repositioning measures a detached node (all-zero rect) and snaps the
+    // picker to the viewport corner.
+    const rebuiltAnchor = document.querySelector(`.todo-due-date[data-todo-id="${todoId}"]`);
+    expect(rebuiltAnchor).not.toBeNull();
+    expect(rebuiltAnchor).not.toBe(dueDateElement);
+    expect(picker._dueDateElement).toBe(rebuiltAnchor);
+    expect(document.contains(picker._dueDateElement)).toBe(true);
+    expect(document.querySelector('.inline-date-picker')).toBe(picker);
+  });
+});
+
 describe('Custom date picker open/close (issue #810)', () => {
   const pickerIds = [
     'date-picker-trigger', 'selected-date-text', 'todo-due-date', 'todo-due-time',
