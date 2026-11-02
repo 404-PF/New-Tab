@@ -875,6 +875,82 @@ describe('DataManager pomodoroStats date keys (issue #764)', () => {
   });
 });
 
+describe('DataManager todoStats shape (issue #1130)', () => {
+  it('rejects non-numeric day values and bad streak types', () => {
+    const shape = window.DataManager.EXPECTED_SHAPES.todoStats;
+    expect(shape({
+      days: { '2026-11-02': 'lots' },
+      currentStreak: {},
+      longestStreak: 'x'
+    })).toBe(false);
+    expect(shape({ days: { 'not-a-date': 1 } })).toBe(false);
+    expect(shape({ days: { '2026-02-30': 1 } })).toBe(false);
+    expect(shape({ days: 'not-an-object' })).toBe(false);
+    expect(shape({ days: null })).toBe(false);
+    expect(shape({ days: [] })).toBe(false);
+    expect(shape({ days: { '2026-11-02': -1 } })).toBe(false);
+    expect(shape({ days: { '2026-11-02': 1.5 } })).toBe(false);
+    expect(shape({ currentStreak: {} })).toBe(false);
+    expect(shape({ currentStreak: 'x' })).toBe(false);
+    expect(shape({ currentStreak: -1 })).toBe(false);
+    expect(shape({ currentStreak: NaN })).toBe(false);
+    expect(shape({ currentStreak: Infinity })).toBe(false);
+    expect(shape({ longestStreak: 'x' })).toBe(false);
+    expect(shape({ longestStreak: -1 })).toBe(false);
+    expect(shape(null)).toBe(false);
+    expect(shape([])).toBe(false);
+    expect(shape('stats')).toBe(false);
+  });
+
+  it('accepts realistic exported payloads and minimal payloads', () => {
+    const shape = window.DataManager.EXPECTED_SHAPES.todoStats;
+    expect(shape({
+      days: { '2026-11-02': 3 },
+      currentStreak: 1,
+      longestStreak: 5,
+      completedIds: { '2026-11-02': ['todo-1'] }
+    })).toBe(true);
+    expect(shape({})).toBe(true);
+    expect(shape({ days: {} })).toBe(true);
+    expect(shape({ days: { '2026-11-02': 0 }, currentStreak: 0, longestStreak: 0 })).toBe(true);
+  });
+
+  it('validates completedIds as ISO date keys mapping to string arrays', () => {
+    const shape = window.DataManager.EXPECTED_SHAPES.todoStats;
+    expect(shape({ completedIds: { '2026-11-02': ['a', 'b'] } })).toBe(true);
+    expect(shape({ completedIds: { '2026-11-02': [] } })).toBe(true);
+    expect(shape({ completedIds: { '2026-11-02': 'not-an-array' } })).toBe(false);
+    expect(shape({ completedIds: { '2026-11-02': [1] } })).toBe(false);
+    expect(shape({ completedIds: { 'not-a-date': ['a'] } })).toBe(false);
+    expect(shape({ completedIds: 'bad' })).toBe(false);
+    expect(shape({ completedIds: [] })).toBe(false);
+    expect(shape({ completedIds: null })).toBe(false);
+  });
+
+  it('surfaces a dataImportInvalidShape error for a corrupted todoStats backup', () => {
+    const rejected = window.DataManager.validateImportData({ version: 1, data: {
+      todoStats: { days: { '2026-11-02': 'lots' }, currentStreak: {}, longestStreak: 'x' }
+    } });
+    expect(rejected.valid).toBe(false);
+    expect(rejected.error).toContain('dataImportInvalidShape');
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      todoStats: {
+        days: { '2026-11-02': 3 },
+        currentStreak: 1,
+        longestStreak: 5,
+        completedIds: { '2026-11-02': ['todo-1'] }
+      }
+    } })).toEqual({ valid: true });
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      todoStats: {}
+    } })).toEqual({ valid: true });
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      todoStats: { days: {} }
+    } })).toEqual({ valid: true });
+  });
+});
+
 describe('DataManager focus-mode and auto-theme settings (issue #838)', () => {
   it('includes focus mode and auto-theme keys in the export allowlist', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('focusMode');

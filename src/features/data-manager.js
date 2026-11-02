@@ -626,6 +626,18 @@
     return true;
   }
 
+  // todoStats.completedIds: ISO date -> array of todo id strings
+  // (recordCompletion in todo-stats.js keeps only today's ids).
+  function isValidTodoCompletedIds(map) {
+    if (typeof map !== 'object' || map === null || Array.isArray(map)) return false;
+    for (const entry of Object.entries(map)) {
+      if (!isValidISODate(entry[0])) return false;
+      if (!Array.isArray(entry[1])) return false;
+      if (!entry[1].every(function (id) { return typeof id === 'string'; })) return false;
+    }
+    return true;
+  }
+
   function isValidFolderEntry(folder) {
     if (typeof folder !== 'object' || folder === null || Array.isArray(folder)) return false;
     if (typeof folder.id !== 'string' || folder.id.trim() === '') return false;
@@ -692,7 +704,24 @@
     todoEnabled: function (v) { return typeof v === 'boolean'; },
     todoReminderEnabled: function (v) { return typeof v === 'boolean'; },
     todoReminderLeadTime: function (v) { return typeof v === 'string' || typeof v === 'number'; },
-    todoStats: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
+    // Strict shape: day counts must be non-negative integers so a corrupt
+    // backup cannot render non-numeric text in the focus-stats panel
+    // (issue #1130). Absent optional fields stay valid (emptyStats() has
+    // no completedIds; a minimal {} payload round-trips).
+    todoStats: function (v) {
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+      if (v.days !== undefined) {
+        if (typeof v.days !== 'object' || v.days === null || Array.isArray(v.days)) return false;
+        for (const entry of Object.entries(v.days)) {
+          if (!isValidISODate(entry[0])) return false;
+          if (!isNonNegativeInteger(entry[1])) return false;
+        }
+      }
+      if (v.currentStreak !== undefined && !(Number.isFinite(v.currentStreak) && v.currentStreak >= 0)) return false;
+      if (v.longestStreak !== undefined && !(Number.isFinite(v.longestStreak) && v.longestStreak >= 0)) return false;
+      if (v.completedIds !== undefined && !isValidTodoCompletedIds(v.completedIds)) return false;
+      return true;
+    },
     todoStatsEnabled: function (v) { return typeof v === 'boolean'; },
     // Modes come from todo.js (window.TODO_SORT_MODES, issue #1013/#1056);
     // the literal fallback keeps validation working when todo.js has not
