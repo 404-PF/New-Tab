@@ -415,8 +415,13 @@ const MarkdownParser = (function() {
     // Restore placeholders. A function replacement avoids $& / $1
     // interpolation of the stored HTML, and only tokens carrying this
     // call's random namespace are restored — identical-looking user text
-    // is left alone.
-    for (const { placeholder, value } of placeholders) {
+    // is left alone. Restore in reverse creation order: a comment matched
+    // over an already-protected string embeds that string's token inside
+    // the comment's stored HTML, so the outer comment must be restored
+    // first to expose the inner token for its own restore pass (same
+    // reason as restoreBlockTokens).
+    for (let i = placeholders.length - 1; i >= 0; i--) {
+      const { placeholder, value } = placeholders[i];
       highlighted = highlighted.replace(placeholder, () => value);
     }
 

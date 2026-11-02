@@ -894,15 +894,58 @@ describe('MarkdownParser highlight placeholder collisions (issue #1091)', () => 
     expect(code.innerHTML).not.toContain('\uE000');
   });
 
-  it('highlights multiple strings and comments without disturbing lookalike text', () => {
-    const container = parseToContainer('```javascript\n// __PLACEHOLDER_1__ note\nconst a = "x"; // trailing\n```');
+  it('keeps a __PLACEHOLDER_1__ lookalike in code from stealing the trailing comment highlight', () => {
+    // Before the fix, comments were also protected with guessable
+    // __PLACEHOLDER_N__ tokens restored by first-occurrence .replace(), so a
+    // literal lookalike placed in ordinary code (where it survives the
+    // comment pass) ahead of the real token wrapped the lookalike in the
+    // comment span and left the actual trailing comment raw in the output.
+    const container = parseToContainer('```javascript\nconst forged = __PLACEHOLDER_1__;\nconst a = "x"; // trailing\n// second comment\n```');
     const code = container.querySelector('div.md-code-block code');
 
     expect(code).not.toBeNull();
-    expect(code.textContent).toContain('__PLACEHOLDER_1__');
+
+    // The forged literal in ordinary code survives unchanged and is not
+    // wrapped in a comment span
+    const forgedTextLine = code.textContent.split('\n').find((line) => line.includes('forged'));
+    expect(forgedTextLine).toContain('__PLACEHOLDER_1__');
+    expect(forgedTextLine).not.toContain('// trailing');
+
+    const forgedHtmlLine = code.innerHTML.split('\n').find((line) => line.includes('forged'));
+    expect(forgedHtmlLine).not.toContain('syntax-comment');
+
+    // The actual trailing comment stays wrapped by syntax-comment on the
+    // line carrying the real string — under the pre-fix implementation the
+    // span landed on the forged literal instead and this line kept a raw
+    // placeholder
+    const trailingHtmlLine = code.innerHTML.split('\n').find((line) => line.includes('syntax-string'));
+    expect(trailingHtmlLine).not.toBeNull();
+    expect(trailingHtmlLine).toContain('syntax-comment');
+    expect(trailingHtmlLine).toContain('// trailing');
+
     expect(code.querySelectorAll('span.syntax-comment')).toHaveLength(2);
     expect(code.querySelectorAll('span.syntax-string')).toHaveLength(1);
     expect(code.querySelector('span.syntax-string').textContent).toBe('"x"');
     expect(code.innerHTML).not.toContain('\uE000');
+  });
+
+  it('restores a string nested inside a comment without leaking placeholder tokens', () => {
+    // Strings are protected before comments, so a comment containing a
+    // quoted string embeds the string's placeholder inside the comment's
+    // stored HTML. Restoring in creation order skips the inner token (it is
+    // no longer in the text) and leaves it raw inside the rendered comment;
+    // restoring in reverse creation order exposes the outer comment first,
+    // then restores the inner string token.
+    const container = parseToContainer('```javascript\nconst a = 1; // say "hi"\n```');
+    const code = container.querySelector('div.md-code-block code');
+
+    expect(code).not.toBeNull();
+    expect(code.innerHTML).not.toContain('\uE000');
+
+    const comments = code.querySelectorAll('span.syntax-comment');
+    expect(comments).toHaveLength(1);
+    expect(comments[0].textContent).toBe('// say "hi"');
+    expect(code.querySelector('span.syntax-comment span.syntax-string')).not.toBeNull();
+    expect(code.querySelector('span.syntax-string').textContent).toBe('"hi"');
   });
 });
