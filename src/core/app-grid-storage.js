@@ -61,7 +61,7 @@ function writeJson(key, value) {
 
 // Fallback copy of utils.js's normalizeCustomAppUrl. It only runs when this
 // file is injected in isolation without utils.js (some tests do that);
-// bootstrap.js always loads utils.js first, so production never reaches it.
+// bootstrap.js loads utils.js first, but Promise.allSettled still runs this file if utils.js fails to load.
 // Keep in sync with src/core/utils.js normalizeCustomAppUrl.
 function normalizeCustomAppUrlFallback(url) {
   if (typeof url !== 'string') return null;

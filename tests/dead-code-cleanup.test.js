@@ -34,7 +34,7 @@ describe('dead code cleanup (#1093)', () => {
 
     it('still normalizes app URLs via the documented test-injection fallback', () => {
       expect(window.normalizeCustomAppUrl).toBeUndefined();
-      expect(AppGridStorage.saveCustomApps([{ id: 'a', url: 'https://example.com' }])).toBe(true);
+      expect(AppGridStorage.saveCustomApps([{ id: 'a', url: 'example.com' }])).toBe(true);
       expect(AppGridStorage.loadCustomApps()[0].url).toBe('https://example.com');
     });
   });
