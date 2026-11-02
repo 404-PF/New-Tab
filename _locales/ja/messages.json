@@ -874,5 +874,13 @@
   "accessibilityTodoListUpdatedOne": {
     "message": "ToDoリストを更新しました。{count}件を表示しています。",
     "description": "Singular announcement after the todo list is updated"
+  },
+  "aiSend": {
+    "message": "送信",
+    "description": "Accessible label for the AI chat send button"
+  },
+  "close": {
+    "message": "閉じる",
+    "description": "Accessible label for the folder popup close button"
   }
 }

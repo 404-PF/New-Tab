@@ -874,5 +874,13 @@
   "accessibilityTodoListUpdatedOne": {
     "message": "待辦清單已更新。已顯示 {count} 項。",
     "description": "Accessibility label or announcement"
+  },
+  "aiSend": {
+    "message": "发送",
+    "description": "Accessible label for the AI chat send button"
+  },
+  "close": {
+    "message": "关闭",
+    "description": "Accessible label for the folder popup close button"
   }
 }
