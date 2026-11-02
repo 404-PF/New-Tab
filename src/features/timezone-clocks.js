@@ -75,12 +75,36 @@
         return true;
       });
       if (!valid) return false;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(zones));
-      return true;
+      const result = localStorage.setItem(STORAGE_KEY, JSON.stringify(zones));
+      return result !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (_e) {
       console.warn('Failed to save extra time zones');
       return false;
     }
+  }
+
+  // Shared failure feedback: toast.js may fail to load, so resolve the
+  // reporter through window instead of assuming the helper exists.
+  function reportSaveError() {
+    if (typeof window.showFeatureToggleSaveError === 'function') {
+      window.showFeatureToggleSaveError();
+    }
+  }
+
+  // True when the rendered clock chips already match the persisted zone
+  // list. The synchronous-failure path reports through saveTimeZones'
+  // return value, so the storageBridgeWriteError listener below must not
+  // toast a second time for the same write (#1127).
+  function extraClocksMatchPersisted() {
+    const container = document.getElementById('extra-timezones');
+    if (!container) return true;
+    const chips = container.querySelectorAll('.timezone-chip');
+    const zones = loadTimeZones();
+    if (chips.length !== zones.length) return false;
+    for (let i = 0; i < zones.length; i++) {
+      if (chips[i].dataset.zone !== zones[i]) return false;
+    }
+    return true;
   }
 
   function getZoneInfo(zoneId) {
@@ -239,7 +263,9 @@
       if (removeBtn) {
         const chip = removeBtn.closest('.timezone-chip');
         if (chip) {
-          removeTimeZone(chip.dataset.zone);
+          if (removeTimeZone(chip.dataset.zone) === false) {
+            reportSaveError();
+          }
         }
       }
     });
@@ -265,6 +291,26 @@
   window.MAX_TIMEZONES = MAX_TIMEZONES;
 
   window.addEventListener('languageChanged', renderExtraClocks);
+
+  // Async half of #1127: chrome.storage reports a failed write through
+  // runtime.lastError after setItem already returned true, so the optimistic
+  // chip lingers until the bridge rolls its cache back and dispatches
+  // storageBridgeWriteError. Wait one macrotask for that rollback to land,
+  // then re-render both lists and surface the shared save error when the
+  // rendered chips no longer match storage.
+  window.addEventListener('storageBridgeWriteError', function (event) {
+    if (!event || !event.detail || event.detail.key !== STORAGE_KEY) return;
+    setTimeout(function () {
+      const desynced = !extraClocksMatchPersisted();
+      renderExtraClocks();
+      if (typeof window.renderTimezoneCurrentList === 'function') {
+        window.renderTimezoneCurrentList();
+      }
+      if (desynced) {
+        reportSaveError();
+      }
+    });
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initTimezoneClocks);

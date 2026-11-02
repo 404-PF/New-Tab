@@ -1269,15 +1269,21 @@ function initTimezoneSettings() {
 
   addBtn.addEventListener('click', function () {
     if (!selectedZoneId) return;
-    if (window.addTimeZone) window.addTimeZone(selectedZoneId);
+    const added = window.addTimeZone ? window.addTimeZone(selectedZoneId) : true;
     renderCurrentTimezones();
+    if (added === false) {
+      reportFeatureToggleSaveError();
+    }
   });
 
   currentList.addEventListener('click', function (e) {
     const btn = e.target.closest('button[data-zone]');
     if (btn) {
-      if (window.removeTimeZone) window.removeTimeZone(btn.dataset.zone);
+      const removed = window.removeTimeZone ? window.removeTimeZone(btn.dataset.zone) : true;
       renderCurrentTimezones();
+      if (removed === false) {
+        reportFeatureToggleSaveError();
+      }
     }
   });
 

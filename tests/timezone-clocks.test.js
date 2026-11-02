@@ -1,8 +1,92 @@
 import { injectScript } from './helpers/inject-script.js';
+import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
+
+// #1127: the storage bridge's setItem returns false instead of throwing on a
+// rejected write, so saveTimeZones must propagate that result, the settings
+// add/remove handlers must surface it, and an async runtime.lastError rollback
+// must resync the chips instead of leaving a ghost clock behind.
+
+const SAVE_ERROR_MESSAGE = 'Failed to save this setting. Your last action was not saved.';
+
+const restorers = [];
 
 beforeAll(() => {
+  // The settings timezone controls must exist before settings.js binds its
+  // add/remove handlers at load time.
+  const picker = document.createElement('input');
+  picker.id = 'timezone-picker';
+  const optionsList = document.createElement('div');
+  optionsList.id = 'timezone-options';
+  const addButton = document.createElement('button');
+  addButton.id = 'add-timezone-btn';
+  const currentList = document.createElement('div');
+  currentList.id = 'timezone-current-list';
+  document.body.append(picker, optionsList, addButton, currentList);
+
+  injectScript('src/core/motion.js');
+  injectScript('src/ui/color-picker.js');
+  injectScript('src/ui/font-picker.js');
+  injectScript('src/core/toast.js');
   injectScript('src/features/timezone-clocks.js');
+  injectScript('src/ui/settings.js');
 });
+
+beforeEach(() => {
+  window.showToast = vi.fn();
+});
+
+afterEach(async () => {
+  // Drain any storageBridgeWriteError resync timers this test scheduled so
+  // they cannot fire against the next test's reset DOM/storage state.
+  await flushDeferredFailureSync();
+  await flushDeferredFailureSync();
+  while (restorers.length > 0) {
+    restorers.pop()();
+  }
+  const clock = document.getElementById('clock');
+  if (clock) clock.remove();
+  delete window.showToast;
+});
+
+function failWriteFor(key, mode) {
+  const restore = failStorageWritesFor(key, mode);
+  restorers.push(restore);
+  return restore;
+}
+
+// Fresh #clock host so each test gets exactly one container (and one click
+// listener), then re-render both lists from the persisted zone state.
+function setupClocks(zones) {
+  const existing = document.getElementById('clock');
+  if (existing) existing.remove();
+  const clock = document.createElement('div');
+  clock.id = 'clock';
+  document.body.appendChild(clock);
+  window.initTimezoneClocks();
+  if (zones) {
+    localStorage.setItem('extraTimeZones', JSON.stringify(zones));
+  }
+  window.renderExtraClocks();
+  if (typeof window.renderTimezoneCurrentList === 'function') {
+    window.renderTimezoneCurrentList();
+  }
+  return clock;
+}
+
+function selectChicago() {
+  const picker = document.getElementById('timezone-picker');
+  picker.dispatchEvent(new Event('focus'));
+  const option = document.querySelector('#timezone-options button[data-zone="America/Chicago"]');
+  option.click();
+}
+
+function clockChips() {
+  return document.querySelectorAll('#extra-timezones .timezone-chip');
+}
+
+function settingsChips() {
+  return document.querySelectorAll('#timezone-current-list .timezone-current-chip');
+}
 
 describe('timezone clocks', () => {
   it('re-renders generated controls when the language changes', () => {
@@ -34,5 +118,91 @@ describe('timezone clocks', () => {
 
     window.i18n = originalI18n;
     clock.remove();
+  });
+
+  it('reports a rejected write instead of pretending it saved (#1127)', () => {
+    setupClocks(['America/New_York']);
+
+    const falseSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => false);
+    try {
+      expect(window.saveTimeZones(['America/Chicago'])).toBe(false);
+      expect(window.addTimeZone('America/Chicago')).toBe(false);
+      expect(window.removeTimeZone('America/New_York')).toBe(false);
+      expect(window.addTimeZone('Not/A_Zone')).toBe(false);
+    } finally {
+      falseSpy.mockRestore();
+    }
+
+    expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['America/New_York']);
+    expect(clockChips().length).toBe(1);
+    expect(clockChips()[0].dataset.zone).toBe('America/New_York');
+    expect(settingsChips().length).toBe(1);
+  });
+
+  it('keeps the chip and surfaces an error when the chip remove write is rejected (#1127)', async () => {
+    setupClocks(['America/New_York']);
+    failWriteFor('extraTimeZones', 'sync');
+
+    document.querySelector('#extra-timezones .timezone-remove').click();
+    await flushDeferredFailureSync();
+
+    expect(clockChips().length).toBe(1);
+    expect(clockChips()[0].dataset.zone).toBe('America/New_York');
+    expect(settingsChips().length).toBe(1);
+    expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['America/New_York']);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('surfaces a rejected settings add instead of silently re-rendering (#1127)', async () => {
+    setupClocks();
+    failWriteFor('extraTimeZones', 'sync');
+
+    selectChicago();
+    document.getElementById('add-timezone-btn').click();
+    await flushDeferredFailureSync();
+
+    expect(clockChips().length).toBe(0);
+    expect(settingsChips().length).toBe(0);
+    expect(localStorage.getItem('extraTimeZones')).toBe(null);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('surfaces a rejected settings remove instead of silently re-rendering (#1127)', async () => {
+    setupClocks(['America/New_York']);
+    failWriteFor('extraTimeZones', 'sync');
+
+    document.querySelector('#timezone-current-list button[data-zone="America/New_York"]').click();
+    await flushDeferredFailureSync();
+
+    expect(clockChips().length).toBe(1);
+    expect(settingsChips().length).toBe(1);
+    expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['America/New_York']);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('resyncs the chips and toasts once after an async lastError rollback (#1127)', async () => {
+    setupClocks();
+    failWriteFor('extraTimeZones', 'async');
+
+    selectChicago();
+    document.getElementById('add-timezone-btn').click();
+
+    // The bridge accepted the write optimistically; the failure only arrives
+    // through runtime.lastError in the chrome.storage callback.
+    expect(clockChips().length).toBe(1);
+    expect(settingsChips().length).toBe(1);
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(clockChips().length).toBe(0);
+    expect(settingsChips().length).toBe(0);
+    expect(localStorage.getItem('extraTimeZones')).toBe(null);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 });
