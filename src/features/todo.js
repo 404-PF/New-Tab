@@ -1235,12 +1235,6 @@ function scheduleTodoMidnightRefresh() {
   }, nextMidnight.getTime() - now.getTime());
 }
 
-function updateFilters() {
-  currentFilters.status = elements.filterStatus?.value || 'all';
-  clearTodoSelection();
-  applyFilters();
-}
-
 // Update filter pill UI
 function updateFilterUI() {
   const pills = document.querySelectorAll('.filter-pill');
@@ -2388,7 +2382,6 @@ function initTodo() {
     addTodoBtn: document.getElementById('add-todo-btn'),
     todoList: document.getElementById('todo-list'),
     emptyState: document.getElementById('empty-state'),
-    filterStatus: document.getElementById('filter-status'),
     todoFilters: document.querySelector('.todo-filters'),
     todoSort: document.getElementById('todo-sort-select'),
     todoSearch: document.getElementById('todo-search')
@@ -2423,13 +2416,6 @@ function initTodo() {
       }
     });
   }
-  if (elements.todoDueDate) {
-    // hidden input value changes via CustomDatePicker; watch via MutationObserver style poll on calendar close
-    const observer = new MutationObserver(() => syncDueTimeInputState());
-    // observe attribute changes on todoDueDate
-    observer.observe(elements.todoDueDate, { attributes: true, attributeFilter: ['value'] });
-    // also hook custom picker changes: monkey-patch its methods after init
-  }
 
   // Filter listeners - pill style
   const filterPills = document.querySelectorAll('.filter-pill');
@@ -2462,11 +2448,6 @@ function initTodo() {
       btn.classList.add('active');
     });
   });
-  
-  // Keep legacy dropdown support
-  if (elements.filterStatus) {
-    elements.filterStatus.addEventListener('change', updateFilters);
-  }
   
   // Quick action buttons
   const clearCompletedBtn = document.getElementById('clear-completed');

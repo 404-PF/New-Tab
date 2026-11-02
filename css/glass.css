@@ -454,7 +454,6 @@ body.light-theme :is(
   .search-bar input,
   #todo-input,
   #todo-due-date,
-  #filter-status,
   .settings-section input:not([type="checkbox"]):not([type="radio"]),
   .settings-section select,
   .todo-edit-field input,

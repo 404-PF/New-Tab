@@ -59,23 +59,10 @@ function writeJson(key, value) {
   }
 }
 
-function isCustomSchemeLocal(url) {
-  if (typeof window.isCustomScheme === 'function') return window.isCustomScheme(url);
-
-  const trimmed = String(url || '').trim();
-  if (!trimmed || trimmed === '#' || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/')) return true;
-  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
-
-  const colonIdx = trimmed.indexOf(':');
-  const before = trimmed.slice(0, colonIdx);
-  const after = trimmed.slice(colonIdx + 1);
-  const looksLikeHostPort = (before.includes('.') || /^localhost$/i.test(before) || /^(\d{1,3}\.){3}\d{1,3}$/.test(before) || /^[a-zA-Z0-9-]+$/.test(before)) &&
-    /^\d+(\/|$|\?|#)/.test(after);
-  return !looksLikeHostPort;
-}
-
-window.__fallbackIsCustomScheme = isCustomSchemeLocal;
-
+// Fallback copy of utils.js's normalizeCustomAppUrl. It only runs when this
+// file is injected in isolation without utils.js (some tests do that);
+// bootstrap.js loads utils.js first, but Promise.allSettled still runs this file if utils.js fails to load.
+// Keep in sync with src/core/utils.js normalizeCustomAppUrl.
 function normalizeCustomAppUrlFallback(url) {
   if (typeof url !== 'string') return null;
 

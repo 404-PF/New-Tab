@@ -705,12 +705,6 @@ const AIService = (function() {
       return container.querySelector('[data-message-id="' + assistantMsg.id + '"] .ai-message-text');
     }
 
-    function getLiveStreamingEl() {
-      const container = document.getElementById('ai-chat-container');
-      if (!container || !assistantMsg.id) return null;
-      return container.querySelector('[data-message-id="' + assistantMsg.id + '"]');
-    }
-
     function getLiveStoredMessage() {
       if (!assistantMsg.id) return null;
       for (let index = 0; index < AIStore.state.conversations.length; index++) {
@@ -887,28 +881,12 @@ const AIService = (function() {
           if (liveEl) liveEl.classList.remove('ai-message-streaming');
         }
 
-        {
-          const liveEl = getLiveStreamingEl();
-          const copyBtn = liveEl?.querySelector('.ai-message-copy');
-          if (copyBtn && accumulatedContent) {
-            copyBtn.dataset.content = accumulatedContent.replace(/<[^<>]*>/g, '').trim();
-          }
-        }
-
         rerenderOnSaveFailure(AIStore.saveConversations());
         renderConversationUI();
       } else if (result.aborted) {
         if (assistantMsg?.isStreaming) {
           syncStreamingFlag(false);
           syncContentToStore(accumulatedContent || '[Cancelled]');
-        }
-
-        {
-          const liveEl = getLiveStreamingEl();
-          const copyBtn = liveEl?.querySelector('.ai-message-copy');
-          if (copyBtn && accumulatedContent) {
-            copyBtn.dataset.content = accumulatedContent.replace(/<[^<>]*>/g, '').trim();
-          }
         }
 
         rerenderOnSaveFailure(AIStore.saveConversations());
@@ -929,14 +907,6 @@ const AIService = (function() {
           if (assistantMsg?.isStreaming) {
             syncStreamingFlag(false);
             syncContentToStore(failedPartialContent);
-          }
-
-          {
-            const liveEl = getLiveStreamingEl();
-            const copyBtn = liveEl?.querySelector('.ai-message-copy');
-            if (copyBtn) {
-              copyBtn.dataset.content = failedPartialContent.replace(/<[^<>]*>/g, '').trim();
-            }
           }
 
           rerenderOnSaveFailure(AIStore.saveConversations());
@@ -1100,32 +1070,6 @@ const AIService = (function() {
     renderConversationUI();
   }
 
-  async function quickSearch(query) {
-    if (!query || !query.trim()) return '';
-
-    const networkStatus = NetworkDetector.getStatus();
-
-    try {
-      const result = networkStatus.isOffline
-        ? OfflineMode.getResponse(query)
-        : await OpenRouterAPI.quickSearch(query);
-
-      if (result.success) {
-        return result.content;
-      }
-
-      console.error('AI Search error:', result.error);
-      return '';
-    } catch (error) {
-      console.error('AI Search error:', error);
-      return '';
-    }
-  }
-
-  function isAvailable() {
-    return !!OpenRouterAPI && !NetworkDetector.getStatus().isOffline;
-  }
-
   function initEventListeners() {
     if (elements.sendBtn) {
       elements.sendBtn.addEventListener('click', handleSend);
@@ -1247,8 +1191,6 @@ const AIService = (function() {
     sendMessage,
     regenerate,
     stopStreaming,
-    quickSearch,
-    isAvailable,
     exportConversation,
     exportAllConversations,
     renameConversation

@@ -294,16 +294,6 @@
 
   // --- Blob URL management ---
 
-  function getBlobUrl(id) {
-    if (blobUrlCache[id]) return Promise.resolve(blobUrlCache[id]);
-    return getCustomBackground(id).then(function (bg) {
-      if (!bg) return null;
-      const url = URL.createObjectURL(bg.data);
-      blobUrlCache[id] = url;
-      return url;
-    });
-  }
-
   function revokeBlobUrl(id) {
     if (blobUrlCache[id]) {
       URL.revokeObjectURL(blobUrlCache[id]);
@@ -1055,7 +1045,6 @@
     get: getCustomBackground,
     save: saveCustomBackground,
     render: renderCustomBackgrounds,
-    getBlobUrl: getBlobUrl,
     revokeAll: revokeAllBlobUrls,
     showConfirmDialog: showConfirmDialog,
     closeConfirmDialog: closeConfirmDialog,
