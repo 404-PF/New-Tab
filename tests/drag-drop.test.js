@@ -269,3 +269,85 @@ describe('App grid drag-and-drop of built-in apps into folders (#1010)', () => {
     }
   });
 });
+
+describe('App grid drag-and-drop first-icon offsetTop (issue #1092)', () => {
+  const dataTransfer = {
+    effectAllowed: '',
+    dropEffect: '',
+    setData: () => {},
+    setDragImage: () => {}
+  };
+
+  beforeAll(() => {
+    injectScript('src/core/app-grid-storage.js');
+    injectScript('src/core/app-grid-state.js');
+  });
+
+  beforeEach(() => {
+    localStorage.clear();
+    document.querySelectorAll('#app-grid').forEach((el) => el.remove());
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it('honors a first icon flush at offsetTop 0 instead of substituting the 30px fallback', () => {
+    // buildGrid stubs every icon with offsetTop 0, which the old
+    // `offsetTop || 30` treated as missing and replaced with a phantom 30 px,
+    // shifting drop-index math one row upward near the top of the grid.
+    AppGridStorage.saveOrder(['A', 'B', 'C', 'D', 'E']);
+    AppGridStorage.saveCustomApps([
+      { id: 'A', url: 'https://a.example', name: 'A' },
+      { id: 'B', url: 'https://b.example', name: 'B' },
+      { id: 'C', url: 'https://c.example', name: 'C' },
+      { id: 'D', url: 'https://d.example', name: 'D' },
+      { id: 'E', url: 'https://e.example', name: 'E' }
+    ]);
+
+    const { grid, icons } = buildGrid([
+      { id: 'A', className: 'app-icon custom-app' },
+      { id: 'B', className: 'app-icon custom-app' },
+      { id: 'C', className: 'app-icon custom-app' },
+      { id: 'D', className: 'app-icon custom-app' },
+      { id: 'E', className: 'app-icon custom-app' }
+    ]);
+
+    vi.stubGlobal('requestAnimationFrame', (cb) => {
+      cb();
+      return 0;
+    });
+
+    try {
+      injectScript('src/features/drag-drop.js');
+
+      const dragStart = new Event('dragstart', { bubbles: true });
+      Object.defineProperty(dragStart, 'dataTransfer', { value: dataTransfer });
+      icons.B.dispatchEvent(dragStart);
+
+      // With the getGridLayout fallbacks (gap 50, padding 70) and 60px icons,
+      // row 1 starts at y=110 when the first icon's offsetTop of 0 is honored.
+      // The phantom-30 offset used to push this point into row 0, dropping B
+      // to the front instead of after the remaining icons.
+      const dragOver = new Event('dragover', { bubbles: true });
+      Object.defineProperties(dragOver, {
+        dataTransfer: { value: dataTransfer },
+        clientX: { value: 75 },
+        clientY: { value: 115 }
+      });
+      document.body.dispatchEvent(dragOver);
+
+      const drop = new Event('drop', { bubbles: true });
+      Object.defineProperty(drop, 'dataTransfer', { value: dataTransfer });
+      grid.dispatchEvent(drop);
+
+      expect(AppGridState.getOrder()).toEqual(['A', 'C', 'D', 'E', 'B']);
+    } finally {
+      grid.dispatchEvent(new Event('dragend', { bubbles: true }));
+      grid.remove();
+      vi.unstubAllGlobals();
+    }
+  });
+});
