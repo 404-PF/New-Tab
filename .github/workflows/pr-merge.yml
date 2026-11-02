@@ -476,14 +476,24 @@ jobs:
               deny 'a review requested changes during evaluation; merge aborted'
               DECISION='blocked'
             else
+              # Supply the squash message verbatim from the re-fetched PR
+              # title/body. A caller-supplied message is used as-is: GitHub
+              # only appends Co-authored-by trailers to messages it generates
+              # itself, and the generated message would list mismatched
+              # PR-branch commit authors (e.g. github-actions[bot] from
+              # issue-implement) as co-authors. Supplying the message is the
+              # deterministic opt-out and holds even if PAT_TOKEN ever falls
+              # back to GITHUB_TOKEN and the author mismatch inverts.
               jq -n \
-                --arg q 'mutation($id: ID!, $oid: GitObjectID!, $method: PullRequestMergeMethod!) {
-                  mergePullRequest(input: {pullRequestId: $id, expectedHeadOid: $oid, mergeMethod: $method}) {
+                --arg q 'mutation($id: ID!, $oid: GitObjectID!, $method: PullRequestMergeMethod!, $headline: String!, $body: String) {
+                  mergePullRequest(input: {pullRequestId: $id, expectedHeadOid: $oid, mergeMethod: $method, commitHeadline: $headline, commitBody: $body}) {
                     pullRequest { merged }
                   }
                 }' \
                 --arg id "$PR_NODE_ID" --arg oid "$HEAD_SHA" --arg method SQUASH \
-                '{query: $q, variables: {id: $id, oid: $oid, method: $method}}' \
+                --arg headline "$(jq -r .title <<<"$FINAL_JSON")" \
+                --arg body "$(jq -r '.body // ""' <<<"$FINAL_JSON")" \
+                '{query: $q, variables: {id: $id, oid: $oid, method: $method, headline: $headline, body: $body}}' \
                 > "$CTX/merge-request.json"
               # PAT_TOKEN so the resulting push to main triggers post-merge
               # workflows: pushes made with GITHUB_TOKEN are recursion-

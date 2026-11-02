@@ -3,6 +3,7 @@ import { resolve } from 'path';
 import { execFileSync } from 'child_process';
 
 const WORKFLOW_PATH = resolve(process.cwd(), '.github/workflows/issue-implement.yml');
+const DRIVE_PATH = resolve(process.cwd(), '.github/workflows/pr-drive.yml');
 
 // The naming rule is bash, so behavioral tests execute the extracted block.
 // The rule avoids bash-4-only constructs (e.g. ${var,,}), so it runs under
@@ -203,5 +204,67 @@ describe.skipIf(!CAN_RUN_BASH)('issue-implement naming rule behavior (#966)', ()
       expect(prefixes.length).toBeLessThanOrEqual(1);
       expect(subject).toMatch(/^(feat|fix|perf|refactor|docs|test|chore|ci|build|style|revert)(\([a-z0-9-]+\))?: /);
     }
+  });
+});
+
+describe('issue-implement commits as the PAT owner (#1113)', () => {
+  // Branch commits authored as github-actions[bot] while pr-merge squashes
+  // as the GH_PAT owner make GitHub append a
+  // Co-authored-by: github-actions[bot] trailer to the squash commit on
+  // main. Aligning the commit identity with the PAT owner — the same
+  // derivation pr-drive already uses — removes the mismatch.
+  const identityLines = [
+    'USER_JSON="$(GH_TOKEN="$GH_PAT" gh api user)"',
+    'LOGIN="$(jq -r .login <<<"$USER_JSON")"',
+    'UID_NUM="$(jq -r .id <<<"$USER_JSON")"',
+    'EMAIL="$(jq -r \'.email // empty\' <<<"$USER_JSON")"',
+    '[ -n "$EMAIL" ] || EMAIL="${UID_NUM}+${LOGIN}@users.noreply.github.com"',
+    'NAME="$(jq -r \'.name // empty\' <<<"$USER_JSON")"',
+    '[ -n "$NAME" ] || NAME="$LOGIN"',
+    'git config user.name "$NAME"',
+    'git config user.email "$EMAIL"',
+  ];
+
+  it('derives the git identity from gh api user instead of hardcoding the bot', () => {
+    expect(workflow).not.toMatch(/git config user\.name 'github-actions\[bot\]'/);
+    expect(workflow).not.toMatch(/git config user\.email '41898282\+github-actions\[bot\]@users\.noreply\.github\.com'/);
+    for (const line of identityLines) {
+      expect(workflow).toContain(line);
+    }
+  });
+
+  it('retries the identity lookup and falls back to the bot identity so a failed lookup cannot abort the run', () => {
+    // A transient gh api failure must not stop the run before the PR
+    // opens: retry, then fall back to the static bot identity. pr-merge
+    // supplies the squash message verbatim, so the fallback author
+    // mismatch still yields no Co-authored-by trailer on main.
+    expect(workflow).toContain('for _attempt in 1 2 3; do');
+    expect(workflow).toContain('USER_JSON="$(GH_TOKEN="$GH_PAT" gh api user)" && break');
+    expect(workflow).toContain('sleep 5');
+    expect(workflow).toMatch(
+      /if \[ -z "\$LOGIN" \] \|\| \[ "\$LOGIN" = 'null' \]; then\s+NAME='github-actions\[bot\]'\s+EMAIL='41898282\+github-actions\[bot\]@users\.noreply\.github\.com'\s+fi/,
+    );
+    const configIdx = workflow.indexOf('git config user.name "$NAME"');
+    expect(configIdx).toBeGreaterThan(workflow.indexOf('if [ -z "$LOGIN" ]'));
+  });
+
+  it('mirrors the identity-derivation lines in pr-drive exactly', () => {
+    // Same fallbacks (public email, else id+login noreply; name, else
+    // login) so both PAT-authored commits share one identity regardless of
+    // the account profile state.
+    const drive = readFileSync(DRIVE_PATH, 'utf-8');
+    for (const line of identityLines) {
+      expect(drive).toContain(line);
+    }
+  });
+
+  it('looks up the identity only after the GH_PAT hard-error guarantees the token', () => {
+    const patErrorIdx = workflow.indexOf('GH_PAT secret is not set');
+    const identityIdx = workflow.indexOf('gh api user');
+    expect(patErrorIdx).toBeGreaterThan(-1);
+    expect(identityIdx).toBeGreaterThan(patErrorIdx);
+    // The token stays a plain shell variable (export -n); gh receives it
+    // only through the one-call env prefix above.
+    expect(workflow).toContain('export -n GH_PAT');
   });
 });

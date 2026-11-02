@@ -250,9 +250,27 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
   it('merges via GraphQL mergePullRequest with expectedHeadOid and SQUASH', () => {
     // Plain `gh pr merge` cannot pass expectedHeadOid, so it must not appear.
     expect(merge).not.toMatch(/gh pr merge/);
-    expect(merge).toContain('mergePullRequest(input: {pullRequestId: $id, expectedHeadOid: $oid, mergeMethod: $method})');
+    expect(merge).toContain('mergePullRequest(input: {pullRequestId: $id, expectedHeadOid: $oid, mergeMethod: $method, commitHeadline: $headline, commitBody: $body})');
     expect(merge).toMatch(/--arg oid "\$HEAD_SHA" --arg method SQUASH/);
-    expect(merge).toContain('{query: $q, variables: {id: $id, oid: $oid, method: $method}}');
+    expect(merge).toContain('{query: $q, variables: {id: $id, oid: $oid, method: $method, headline: $headline, body: $body}}');
+  });
+
+  it('supplies the squash message verbatim so GitHub appends no Co-authored-by trailer (#1113)', () => {
+    // GitHub generates the squash message itself only when the caller omits
+    // one, and it collects mismatched PR-branch commit authors (e.g.
+    // github-actions[bot] from issue-implement) into Co-authored-by
+    // trailers on the generated message. A caller-supplied message is used
+    // verbatim with no trailers appended, so the mutation must declare
+    // commitHeadline/commitBody variables and pass them through.
+    expect(merge).toMatch(/\$headline: String!/);
+    expect(merge).toMatch(/\$body: String/);
+    expect(merge).toContain('commitHeadline: $headline, commitBody: $body');
+    // The message comes from the PR title/body in FINAL_JSON, which is the
+    // re-fetch immediately before the mutation — the same object the
+    // state/draft/base/head re-check gates read, so the message cannot be
+    // staler than the verified state.
+    expect(merge).toContain('--arg headline "$(jq -r .title <<<"$FINAL_JSON")"');
+    expect(merge).toContain('--arg body "$(jq -r \'.body // ""\' <<<"$FINAL_JSON")"');
   });
 
   it('revalidates every mutable merge predicate immediately before merging', () => {
