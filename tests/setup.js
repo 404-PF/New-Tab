@@ -630,6 +630,8 @@ globalThis.window.i18n = {
       weatherForecast: '7-Day Forecast',
       weatherFeelsLike: 'Feels like',
       weatherWind: 'Wind',
+      weatherWindKmh: 'km/h',
+      weatherWindMph: 'mph',
       weatherHumidity: 'Humidity',
       weatherWidgetCloseLabel: 'Close weather widget',
       enableFocusMode: 'Enable focus mode',

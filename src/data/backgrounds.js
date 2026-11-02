@@ -172,7 +172,7 @@ const backgroundsMap = {
   'Tyndall - Morning Light': {
     title: 'Tyndall - Morning Light',
     thumb: 'backgrounds/thumbs/Tyndall-Morning_Light.jpeg', // Actual video thumbnail
-    url: 'backgrounds/live_backgrounds/Tyndall-Morning Light.mp4',
+    url: 'backgrounds/live_backgrounds/Tyndall-Morning-Light.mp4',
     type: 'video'
   },
 };

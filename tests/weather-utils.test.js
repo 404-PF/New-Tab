@@ -17,6 +17,8 @@ describe('WeatherUtils', () => {
     expect(typeof window.WeatherUtils.getWeatherIcon).toBe('function');
     expect(typeof window.WeatherUtils.getTemp).toBe('function');
     expect(typeof window.WeatherUtils.getTempUnit).toBe('function');
+    expect(typeof window.WeatherUtils.getWindSpeed).toBe('function');
+    expect(typeof window.WeatherUtils.getWindUnit).toBe('function');
     expect(typeof window.WeatherUtils.getLang).toBe('function');
     expect(typeof window.WeatherUtils.normalizeLang).toBe('function');
   });
@@ -39,6 +41,48 @@ describe('WeatherUtils', () => {
     it('returns the degree symbol for each unit', () => {
       expect(window.WeatherUtils.getTempUnit('celsius')).toBe('°C');
       expect(window.WeatherUtils.getTempUnit('fahrenheit')).toBe('°F');
+    });
+  });
+
+  describe('getWindUnit', () => {
+    it('returns km/h for Celsius and mph for Fahrenheit', () => {
+      expect(window.WeatherUtils.getWindUnit('celsius')).toBe('km/h');
+      expect(window.WeatherUtils.getWindUnit('fahrenheit')).toBe('mph');
+    });
+
+    it('prefers the localized i18n suffix when available', () => {
+      const originalT = window.i18n.t;
+      window.i18n.t = (key) => (key === 'weatherWindKmh' ? 'км/ч' : originalT(key));
+      try {
+        expect(window.WeatherUtils.getWindUnit('celsius')).toBe('км/ч');
+      } finally {
+        window.i18n.t = originalT;
+      }
+    });
+
+    it('falls back to the ASCII symbol when i18n is unavailable', () => {
+      const originalI18n = window.i18n;
+      window.i18n = undefined;
+      try {
+        expect(window.WeatherUtils.getWindUnit('celsius')).toBe('km/h');
+        expect(window.WeatherUtils.getWindUnit('fahrenheit')).toBe('mph');
+      } finally {
+        window.i18n = originalI18n;
+      }
+    });
+  });
+
+  describe('getWindSpeed', () => {
+    it('keeps km/h values for the Celsius unit', () => {
+      expect(window.WeatherUtils.getWindSpeed(12.4, 'celsius')).toBe('12 km/h');
+      expect(window.WeatherUtils.getWindSpeed(12.5, 'celsius')).toBe('13 km/h');
+    });
+
+    it('converts km/h to mph for the Fahrenheit unit', () => {
+      // 8 km/h ÷ 1.609344 ≈ 4.97 → 5 mph
+      expect(window.WeatherUtils.getWindSpeed(8, 'fahrenheit')).toBe('5 mph');
+      // 16.09344 km/h = 10 mph exactly
+      expect(window.WeatherUtils.getWindSpeed(16.09344, 'fahrenheit')).toBe('10 mph');
     });
   });
 

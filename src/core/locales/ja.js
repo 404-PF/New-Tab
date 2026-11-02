@@ -259,6 +259,8 @@ window.i18n.__registerLocale('ja', {
   weatherForecast: '7日間の予報',
   weatherFeelsLike: '体感温度',
   weatherWind: '風速',
+  weatherWindKmh: 'km/h',
+  weatherWindMph: 'mph',
   weatherHumidity: '湿度',
   weatherHourly: '時間別予報',
   weatherNow: '現在',

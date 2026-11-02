@@ -55,4 +55,14 @@ describe('built-in background asset paths', () => {
       expect(thumb.startsWith('backgrounds/thumbs/')).toBe(true);
     });
   });
+
+  // Keep built-in asset names free of spaces (see issue #1094) so the
+  // filenames match the renamed live wallpapers and avoid encoding edge cases.
+  it('keeps asset paths free of raw spaces', () => {
+    const assets = fileAssetPaths();
+    expect(assets.length).toBeGreaterThan(0);
+    assets.forEach((asset) => {
+      expect(asset).not.toContain(' ');
+    });
+  });
 });

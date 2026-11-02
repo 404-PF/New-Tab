@@ -246,6 +246,8 @@ window.i18n.__registerLocale('ru', {
   weatherForecast: 'Прогноз на 7 дней',
   weatherFeelsLike: 'Ощущается как',
   weatherWind: 'Ветер',
+  weatherWindKmh: 'км/ч',
+  weatherWindMph: 'миль/ч',
   weatherHumidity: 'Влажность',
   weatherHourly: 'Почасовой прогноз',
   weatherNow: 'Сейчас',
