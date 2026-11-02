@@ -331,7 +331,7 @@ describe('Todo stats storage bridge write failures', () => {
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   }
 
-  it('sync rejection of recordTodoCompletion reports failure and does not leave a bumped count', () => {
+  it('sync rejection of recordTodoCompletion reports failure and does not leave a bumped count', async () => {
     saveTodoStats({ days: { [getToday()]: 1 }, currentStreak: 1, longestStreak: 1 });
     failWritesFor('todoStats', 'sync');
 
@@ -341,9 +341,15 @@ describe('Todo stats storage bridge write failures', () => {
     expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
     expect(loadTodoStats().days[getToday()]).toBe(1);
     expect(document.getElementById('todo-stats-today').textContent).toBe('1');
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('todo-stats-today').textContent).toBe('1');
   });
 
-  it('async rejection repaints the panel from the rolled-back store', async () => {
+  it('async rejection repaints the panel from the rolled-back store and reports it', async () => {
     saveTodoStats({ days: { [getToday()]: 1 }, currentStreak: 1, longestStreak: 1 });
     failWritesFor('todoStats', 'async');
 
@@ -357,9 +363,11 @@ describe('Todo stats storage bridge write failures', () => {
 
     expect(loadTodoStats().days[getToday()]).toBe(1);
     expect(document.getElementById('todo-stats-today').textContent).toBe('1');
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 
-  it('clearTodoStats reports a rejected clear instead of silently restoring the old stats', () => {
+  it('clearTodoStats reports a rejected clear instead of silently restoring the old stats', async () => {
     saveTodoStats({ days: { [getToday()]: 3 }, currentStreak: 1, longestStreak: 1 });
     failWritesFor('todoStats', 'sync');
 
@@ -368,6 +376,12 @@ describe('Todo stats storage bridge write failures', () => {
     expect(window.showToast).toHaveBeenCalledTimes(1);
     expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
     expect(loadTodoStats().days[getToday()]).toBe(3);
+    expect(document.getElementById('todo-stats-today').textContent).toBe('3');
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
     expect(document.getElementById('todo-stats-today').textContent).toBe('3');
   });
 });

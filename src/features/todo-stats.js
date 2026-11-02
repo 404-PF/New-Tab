@@ -287,11 +287,33 @@
     if (!saved) showStatsSaveError();
   }
 
+  // A synchronous bridge failure both dispatches storageBridgeWriteError and
+  // makes setItem return false, so the save caller has already repainted from
+  // the rolled-back store and toasted. Only an async rejection (setItem
+  // returned true) leaves the panel showing the rejected value, so compare
+  // before repainting and notify just for that — same pattern as todo.js.
+  function statsPanelDesynced() {
+    if (!isStatsEnabled()) return false;
+    const stats = loadStats();
+    recalculateStreaks(stats);
+    const expected = [
+      ['todo-stats-today', getCompletedToday(stats)],
+      ['todo-stats-week', getCompletedThisWeek(stats)],
+      ['todo-stats-current-streak', stats.currentStreak],
+      ['todo-stats-longest-streak', stats.longestStreak]
+    ];
+    return expected.some(function (entry) {
+      const el = document.getElementById(entry[0]);
+      return Boolean(el) && el.textContent !== String(entry[1]);
+    });
+  }
+
   window.addEventListener('storageBridgeWriteError', (event) => {
     if (event?.detail?.key !== STORAGE_KEY) return;
     setTimeout(() => {
-      loadStats();
+      const desynced = statsPanelDesynced();
       renderStats();
+      if (desynced) showStatsSaveError();
     }, 0);
   });
 
