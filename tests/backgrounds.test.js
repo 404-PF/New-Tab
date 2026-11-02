@@ -55,4 +55,14 @@ describe('built-in background asset paths', () => {
       expect(thumb.startsWith('backgrounds/thumbs/')).toBe(true);
     });
   });
+
+  // A raw space is invalid per RFC 3986 (issue #1094); keep asset paths
+  // percent-encoding-free so fetch()-style consumers cannot 404 them.
+  it('keeps asset paths free of raw spaces', () => {
+    const assets = fileAssetPaths();
+    expect(assets.length).toBeGreaterThan(0);
+    assets.forEach((asset) => {
+      expect(asset).not.toContain(' ');
+    });
+  });
 });

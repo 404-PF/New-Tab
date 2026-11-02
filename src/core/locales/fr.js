@@ -246,6 +246,8 @@ window.i18n.__registerLocale('fr', {
   weatherForecast: 'Prévisions sur 7 jours',
   weatherFeelsLike: 'Ressenti',
   weatherWind: 'Vent',
+  weatherWindKmh: 'km/h',
+  weatherWindMph: 'mph',
   weatherHumidity: 'Humidité',
   weatherHourly: 'Prévisions horaires',
   weatherNow: 'Maintenant',

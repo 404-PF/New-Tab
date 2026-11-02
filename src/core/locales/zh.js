@@ -281,6 +281,8 @@ window.i18n.__registerLocale('zh', {
   weatherForecast: '7天预报',
   weatherFeelsLike: '体感温度',
   weatherWind: '风速',
+  weatherWindKmh: '公里/小时',
+  weatherWindMph: '英里/小时',
   weatherHumidity: '湿度',
   weatherHourly: '逐时预报',
   weatherNow: '现在',

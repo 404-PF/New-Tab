@@ -77,6 +77,8 @@ describe('Weather app', () => {
 
     const detailCards = body.querySelectorAll('.weather-app-detail-card');
     expect(detailCards.length).toBe(3);
+    // Celsius mode keeps the wind speed in km/h (issue #1094).
+    expect(detailCards[1].querySelector('.weather-app-detail-value').textContent).toContain('12 km/h');
   });
 
   it('renders cached weather when the widget toggle is off', () => {
@@ -221,6 +223,11 @@ describe('Weather app', () => {
     expect(tempEl.textContent).toContain('\u00B0F');
     // Verify conversion: 20°C should be converted to 68°F
     expect(tempEl.textContent).toContain('68');
+
+    // Wind follows the same unit toggle: 8 km/h ≈ 5 mph (issue #1094).
+    const windCard = body.querySelectorAll('.weather-app-detail-card')[1];
+    expect(windCard.querySelector('.weather-app-detail-value').textContent).toContain('5 mph');
+    expect(windCard.querySelector('.weather-app-detail-value').textContent).not.toContain('km/h');
   });
 
   it('re-renders when weatherCacheUpdated event is dispatched', () => {

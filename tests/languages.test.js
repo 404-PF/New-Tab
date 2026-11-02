@@ -206,6 +206,15 @@ describe('Search unavailable fallback translations (#973)', () => {
   });
 });
 
+// Wind unit suffixes rendered by WeatherUtils.getWindSpeed (issue #1094).
+describe('Weather wind unit translations', () => {
+  it('defines the wind unit suffixes in each supported language', () => {
+    // Presence-only: 'km/h' and 'mph' are the standard symbols in most
+    // locales and legitimately match the English source.
+    expectTranslationKeys(['weatherWindKmh', 'weatherWindMph']);
+  });
+});
+
 describe('Pomodoro translations', () => {
   it('falls back to English for every supported language', () => {
     const languages = window.i18n.getSupportedLanguages();

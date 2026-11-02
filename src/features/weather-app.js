@@ -21,6 +21,7 @@
     getWeatherIcon,
     getTemp,
     getTempUnit,
+    getWindSpeed,
     getLang,
     normalizeLang
   } = window.WeatherUtils;
@@ -174,7 +175,7 @@
       ? getTemp(currentDetail.apparent_temperature, unit) + tempUnit
       : null;
     const windSpeed = typeof currentDetail.wind_speed_10m === 'number'
-      ? Math.round(currentDetail.wind_speed_10m) + ' km/h'
+      ? getWindSpeed(currentDetail.wind_speed_10m, unit)
       : null;
     const humidity = typeof currentDetail.relative_humidity_2m === 'number'
       ? Math.round(currentDetail.relative_humidity_2m) + '%'

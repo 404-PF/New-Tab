@@ -366,6 +366,8 @@ const translations = {
     weatherForecast: '7-Day Forecast',
     weatherFeelsLike: 'Feels like',
     weatherWind: 'Wind',
+    weatherWindKmh: 'km/h',
+    weatherWindMph: 'mph',
     weatherHumidity: 'Humidity',
     weatherHourly: 'Hourly Forecast',
     weatherNow: 'Now',

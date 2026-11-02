@@ -259,6 +259,8 @@ window.i18n.__registerLocale('ko', {
   weatherForecast: '7일 예보',
   weatherFeelsLike: '체감 온도',
   weatherWind: '풍속',
+  weatherWindKmh: 'km/h',
+  weatherWindMph: 'mph',
   weatherHumidity: '습도',
   weatherHourly: '시간별 예보',
   weatherNow: '지금',

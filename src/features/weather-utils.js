@@ -77,6 +77,31 @@
     return unit === 'fahrenheit' ? '°F' : '°C';
   }
 
+  // Localized wind-unit suffix for the active temperature unit preference,
+  // falling back to the ASCII symbols when i18n is unavailable or the key
+  // is missing (issue #1094).
+  function getWindUnit(unit) {
+    const fallback = unit === 'fahrenheit' ? 'mph' : 'km/h';
+    const key = unit === 'fahrenheit' ? 'weatherWindMph' : 'weatherWindKmh';
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const suffix = window.i18n.t(key);
+      if (typeof suffix === 'string' && suffix !== '' && suffix !== key) {
+        return suffix;
+      }
+    }
+    return fallback;
+  }
+
+  // Format a wind speed (provided by the API in km/h), converting to mph
+  // when the temperature unit preference is Fahrenheit so the unit follows
+  // the same toggle as the temperatures (issue #1094).
+  function getWindSpeed(kmh, unit) {
+    if (unit === 'fahrenheit') {
+      return Math.round(kmh / 1.609344) + ' ' + getWindUnit(unit);
+    }
+    return Math.round(kmh) + ' ' + getWindUnit(unit);
+  }
+
   // Map a WMO weather code to its condition info (icon type + localized labels)
   function getWeatherInfo(code) {
     const info = WEATHER_CODES[code];
@@ -105,6 +130,8 @@
     getWeatherIcon: getWeatherIcon,
     getTemp: getTemp,
     getTempUnit: getTempUnit,
+    getWindSpeed: getWindSpeed,
+    getWindUnit: getWindUnit,
     getLang: getLang,
     normalizeLang: normalizeLang
   };
