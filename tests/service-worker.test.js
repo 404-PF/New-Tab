@@ -307,6 +307,138 @@ describe('service worker todo reminders', () => {
     expect(chrome.notifications._notifications['todo_reminder_later']).toBeUndefined();
     expect(await chrome.storage.local.get('todoReminderNotified')).toEqual({ todoReminderNotified: {} });
   });
+
+  it('fires and records a reminder when a leadTime-0 check lands late within grace (issue #1090)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // The end-of-day due instant is 23:59:59.990; land ~30 s after it, the
+    // routine MV3 late-fire case the hard cutoff used to drop silently.
+    vi.setSystemTime(new Date(2026, 7, 12, 0, 0, 30));
+
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '0',
+      todoReminderNotified: {},
+      todos: JSON.stringify([
+        { id: 'late', text: 'Pay rent', completed: false, dueDate: '2026-08-11' }
+      ])
+    });
+
+    await checkReminders();
+
+    const notification = chrome.notifications._notifications['todo_reminder_late'];
+    expect(notification).toBeTruthy();
+    expect(notification.message).toContain('Pay rent');
+    const data = await chrome.storage.local.get('todoReminderNotified');
+    expect(data.todoReminderNotified['late_2026-08-11']).toBeGreaterThan(0);
+  });
+
+  it('does not re-notify a late reminder recorded within grace', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 12, 0, 0, 30));
+
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '0',
+      todoReminderNotified: { 'late_2026-08-11': Date.now() },
+      todos: JSON.stringify([
+        { id: 'late', text: 'Pay rent', completed: false, dueDate: '2026-08-11' }
+      ])
+    });
+
+    await checkReminders();
+
+    expect(chrome.notifications._notifications['todo_reminder_late']).toBeUndefined();
+    expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+  });
+
+  it('still skips a leadTime-0 check beyond the grace window (issue #1090)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // 2+ minutes past the due instant: well beyond the one-interval grace,
+    // so the anti-stale guarantee must still win.
+    vi.setSystemTime(new Date(2026, 7, 12, 0, 2, 0));
+
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '0',
+      todoReminderNotified: {},
+      todos: JSON.stringify([
+        { id: 'stale', text: 'Pay rent', completed: false, dueDate: '2026-08-11' }
+      ])
+    });
+
+    await checkReminders();
+
+    expect(chrome.notifications._notifications['todo_reminder_stale']).toBeUndefined();
+    expect(await chrome.storage.local.get('todoReminderNotified')).toEqual({ todoReminderNotified: {} });
+  });
+
+  it('still skips a leadTime-0 check 75 s after due, just past the one-interval grace (issue #1090)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // 75 s past the end-of-day due instant: above the 60 s grace, below a 90 s grace.
+    vi.setSystemTime(new Date(2026, 7, 12, 0, 1, 15));
+
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '0',
+      todoReminderNotified: {},
+      todos: JSON.stringify([
+        { id: 'edge', text: 'Pay rent', completed: false, dueDate: '2026-08-11' }
+      ])
+    });
+
+    await checkReminders();
+
+    expect(chrome.notifications._notifications['todo_reminder_edge']).toBeUndefined();
+    expect(await chrome.storage.local.get('todoReminderNotified')).toEqual({ todoReminderNotified: {} });
+  });
+
+  it('retries a durable pending mark past the grace window (issue #1090 review)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // 75 s past due: beyond the one-interval grace for fresh candidates, but
+    // a durable PENDING_NOTIFIED_MARK whose confirmation never landed must
+    // still be retried instead of being stranded un-retried forever.
+    vi.setSystemTime(new Date(2026, 7, 12, 0, 1, 15));
+
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '0',
+      todoReminderNotified: { 'stranded_2026-08-11': 'pending' },
+      todos: JSON.stringify([
+        { id: 'stranded', text: 'Pay rent', completed: false, dueDate: '2026-08-11' }
+      ])
+    });
+
+    await checkReminders();
+
+    const notification = chrome.notifications._notifications['todo_reminder_stranded'];
+    expect(notification).toBeTruthy();
+    expect(notification.message).toContain('Pay rent');
+    const data = await chrome.storage.local.get('todoReminderNotified');
+    expect(data.todoReminderNotified['stranded_2026-08-11']).toBeGreaterThan(0);
+  });
+
+  it('fires and records a dueTime todo late within grace (issue #1090)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // dueTime 23:00 pins the due instant to 23:00:00.000; land 30 s late.
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 0, 30));
+
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: '0',
+      todoReminderNotified: {},
+      todos: JSON.stringify([
+        { id: 'timed', text: 'Standup', completed: false, dueDate: '2026-08-11', dueTime: '23:00' }
+      ])
+    });
+
+    await checkReminders();
+
+    const notification = chrome.notifications._notifications['todo_reminder_timed'];
+    expect(notification).toBeTruthy();
+    expect(notification.message).toContain('Standup');
+    const data = await chrome.storage.local.get('todoReminderNotified');
+    expect(data.todoReminderNotified['timed_2026-08-11_23:00']).toBeGreaterThan(0);
+  });
 });
 
 describe('service worker toolbar action (issue #944)', () => {
