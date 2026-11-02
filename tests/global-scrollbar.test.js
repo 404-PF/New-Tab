@@ -67,7 +67,7 @@ describe('Shared slim scrollbars (#989, #1098)', () => {
     // again in both the standard and WebKit branches.
     expect(CORE_CSS).not.toMatch(/(?<!body )\*\s*\{\s*scrollbar-width/);
     expect(CORE_CSS).not.toMatch(/(?<!body )\*::-webkit-scrollbar/);
-    expect(CORE_CSS).not.toMatch(/\bhtml\b\s*[,:{]/);
+    expect(CORE_CSS.replace(/:root\s*\{[^}]*\}/, '')).not.toMatch(/(\bhtml|:root)\b\s*[,:{]/);
 
     // The light-theme root mirror only existed to theme the viewport
     // scrollbar, so it is gone with it; body.light-theme keeps the
