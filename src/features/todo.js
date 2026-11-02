@@ -1888,18 +1888,20 @@ function createCalendarHtml(currentDate, selectedDateString, selectedDueTime) {
 
 // Bind global listeners once per picker (no setTimeout)
 function bindGlobalPickerListeners(pickerContainer, dueDateElement) {
+  const getAnchor = () => pickerContainer._dueDateElement || dueDateElement;
+
   const handleOutsideClick = (e) => {
-    if (!pickerContainer.contains(e.target) && !dueDateElement.contains(e.target)) {
+    if (!pickerContainer.contains(e.target) && !getAnchor().contains(e.target)) {
       closeInlineDatePicker(pickerContainer);
     }
   };
 
   const handleResize = () => {
-    positionPickerRelativeToElement(pickerContainer, dueDateElement);
+    positionPickerRelativeToElement(pickerContainer, getAnchor());
   };
 
   const handleScroll = () => {
-    positionPickerRelativeToElement(pickerContainer, dueDateElement);
+    positionPickerRelativeToElement(pickerContainer, getAnchor());
   };
 
   pickerContainer._handleOutsideClick = handleOutsideClick;
@@ -1915,6 +1917,8 @@ function bindGlobalPickerListeners(pickerContainer, dueDateElement) {
 function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
   const todo = todos.find(t => t.id === todoId);
   if (!todo) return;
+
+  const getAnchor = () => pickerContainer._dueDateElement || dueDateElement;
 
   const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? parseLocalDate(todo.dueDate) : new Date());
 
@@ -1951,7 +1955,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
       const selectedDate = parseLocalDate(dayElement.dataset.date);
       const timeInput = pickerContainer.querySelector('.inline-due-time');
       const existingTime = timeInput?.value || todo.dueTime;
-      updateTodoDueDate(todoId, selectedDate, dueDateElement, existingTime);
+      updateTodoDueDate(todoId, selectedDate, getAnchor(), existingTime);
       closeInlineDatePicker(pickerContainer);
     });
   }
@@ -1964,9 +1968,9 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
       e.stopPropagation();
       const val = timeInput.value || null;
       if (!todo.dueDate) return;
-      updateTodoDueDate(todoId, parseLocalDate(todo.dueDate), dueDateElement, val);
+      updateTodoDueDate(todoId, parseLocalDate(todo.dueDate), getAnchor(), val);
       // keep picker open for time change, but re-render display
-      updateDueDateDisplay(dueDateElement, todo.dueDate, todo.dueTime);
+      updateDueDateDisplay(getAnchor(), todo.dueDate, todo.dueTime);
     });
   }
 
@@ -1977,7 +1981,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
   if (clearBtn) {
     clearBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      updateTodoDueDate(todoId, null, dueDateElement, null);
+      updateTodoDueDate(todoId, null, getAnchor(), null);
       closeInlineDatePicker(pickerContainer);
     });
   }
@@ -1987,7 +1991,7 @@ function setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement) {
       e.stopPropagation();
       const timeInput2 = pickerContainer.querySelector('.inline-due-time');
       const existingTime = timeInput2?.value || todo.dueTime;
-      updateTodoDueDate(todoId, new Date(), dueDateElement, existingTime);
+      updateTodoDueDate(todoId, new Date(), getAnchor(), existingTime);
       closeInlineDatePicker(pickerContainer);
     });
   }
@@ -2006,7 +2010,7 @@ function updateInlineCalendar(pickerContainer, currentDate, selectedDateString, 
   setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement);
 }
 
-function refreshInlineDatePickers() {
+function refreshInlineDatePickers(rebuildHtml = true) {
   document.querySelectorAll('.inline-date-picker').forEach(pickerContainer => {
     const todoId = pickerContainer.dataset.todoId;
     const todo = todos.find(t => t.id === todoId);
@@ -2018,10 +2022,13 @@ function refreshInlineDatePickers() {
       return;
     }
 
-    const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? parseLocalDate(todo.dueDate) : new Date());
-    pickerContainer._currentDate = currentDate;
     pickerContainer._dueDateElement = dueDateElement;
     positionPickerRelativeToElement(pickerContainer, dueDateElement);
+
+    if (!rebuildHtml) return;
+
+    const currentDate = pickerContainer._currentDate ? new Date(pickerContainer._currentDate) : (todo.dueDate ? parseLocalDate(todo.dueDate) : new Date());
+    pickerContainer._currentDate = currentDate;
     pickerContainer.innerHTML = createCalendarHtml(currentDate, todo.dueDate, todo.dueTime);
     setupInlineCalendarHandlers(pickerContainer, todoId, dueDateElement);
   });
@@ -2064,7 +2071,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement, newDueTime) {
 
   // Re-run filters so overdue view refreshes immediately
   applyFilters();
-  refreshInlineDatePickers();
+  refreshInlineDatePickers(false);
   scheduleTodoReminderCheck(todoId);
 }
 

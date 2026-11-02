@@ -2852,6 +2852,8 @@ describe('Inline picker re-anchor after time-only edit (issue #1092)', () => {
     const todoId = picker.dataset.todoId;
     const timeInput = picker.querySelector('.inline-due-time');
     expect(timeInput).not.toBeNull();
+    timeInput.focus();
+    expect(document.activeElement).toBe(timeInput);
     timeInput.value = '15:30';
     timeInput.dispatchEvent(new Event('change', { bubbles: true }));
 
@@ -2865,6 +2867,11 @@ describe('Inline picker re-anchor after time-only edit (issue #1092)', () => {
     expect(picker._dueDateElement).toBe(rebuiltAnchor);
     expect(document.contains(picker._dueDateElement)).toBe(true);
     expect(document.querySelector('.inline-date-picker')).toBe(picker);
+
+    // Re-anchoring must not rebuild the calendar: replacing it mid-change
+    // would swap out the time input and drop keyboard focus.
+    expect(picker.querySelector('.inline-due-time')).toBe(timeInput);
+    expect(document.activeElement).toBe(timeInput);
   });
 });
 
