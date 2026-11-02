@@ -273,6 +273,16 @@ const FEATURE_TOGGLE_RESYNC = {
     if (window.updateChecker && typeof window.updateChecker.resyncEnabledSetting === 'function') {
       window.updateChecker.resyncEnabledSetting();
     }
+  },
+  // #1129: the settings write re-derived the live timer phase from the
+  // rejected duration, so both the inputs and the timer must snap back.
+  pomodoro: function () {
+    if (typeof window.resyncPomodoroSettings === 'function') {
+      window.resyncPomodoroSettings();
+    }
+    if (typeof window.resyncPomodoroTimer === 'function') {
+      window.resyncPomodoroTimer();
+    }
   }
 };
 
@@ -370,6 +380,20 @@ function featureToggleControlDesynced(key) {
     case 'updateCheckEnabled': {
       const checkbox = document.getElementById('update-check-enabled');
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'pomodoro': {
+      if (typeof window.loadPomodoroDurations !== 'function') return false;
+      const stored = window.loadPomodoroDurations();
+      const enabled = document.getElementById('pomodoro-enabled-setting');
+      const work = document.getElementById('pomodoro-work-duration');
+      const shortBreak = document.getElementById('pomodoro-short-break-duration');
+      const longBreak = document.getElementById('pomodoro-long-break-duration');
+      const sessions = document.getElementById('pomodoro-sessions-before-long');
+      return (Boolean(enabled) && enabled.checked !== stored.enabled) ||
+        (Boolean(work) && work.value !== String(stored.workDuration)) ||
+        (Boolean(shortBreak) && shortBreak.value !== String(stored.shortBreakDuration)) ||
+        (Boolean(longBreak) && longBreak.value !== String(stored.longBreakDuration)) ||
+        (Boolean(sessions) && sessions.value !== String(stored.sessionsBeforeLongBreak));
     }
   }
   return false;

@@ -69,8 +69,9 @@
 
   function saveSettings(settings) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      return true;
+      // The storage bridge reports a rejected write by returning false instead
+      // of throwing, so the result must be inspected (#1129).
+      return localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (_e) {
       console.warn('Failed to save Pomodoro settings:', _e);
       return false;
@@ -466,6 +467,7 @@
     const nextPhase = getNextPhase();
     state.phase = nextPhase;
     state.timeRemaining = getPhaseDuration(nextPhase);
+    state.appliedPhaseDuration = state.timeRemaining;
     state.deadline = Date.now() + state.timeRemaining * 1000;
     state.ownerId = TAB_ID;
     state.ownerLeaseExpiresAt = Date.now() + LEASE_DURATION_MS;
@@ -540,6 +542,7 @@
     state.phase = PHASES.WORK;
     state.todoId = todoId;
     state.timeRemaining = getPhaseDuration(PHASES.WORK);
+    state.appliedPhaseDuration = state.timeRemaining;
     state.deadline = Date.now() + state.timeRemaining * 1000;
     state.paused = false;
     state.pauseReason = null;
@@ -918,6 +921,7 @@
       _isLeader = true;
       stopCoordinationInterval();
       state.timeRemaining = getPhaseDuration(state.phase);
+      state.appliedPhaseDuration = state.timeRemaining;
       state.deadline = Date.now() + state.timeRemaining * 1000;
       state.paused = false;
       state.pauseReason = null;
@@ -1017,12 +1021,14 @@
     const settings = loadSettings();
     const previousDuration = state.active ? getPhaseDuration(state.phase) : null;
     Object.assign(settings, durations);
-    saveSettings(settings);
+    const persisted = saveSettings(settings);
+    if (!persisted) return false;
     if (state.active) {
       const newDuration = getPhaseDuration(state.phase);
       if (newDuration !== previousDuration) {
         const epoch = ++_stateEpoch;
         state.timeRemaining = newDuration;
+        state.appliedPhaseDuration = newDuration;
         state.deadline = Date.now() + newDuration * 1000;
         saveTimerState();
         updateWidget();
@@ -1034,6 +1040,29 @@
         }));
       }
     }
+    return true;
+  }
+
+  // The live phase may have been re-derived from a duration the bridge later
+  // rolled back, so snap it to the persisted settings instead of letting the
+  // widget and the pomodoro key disagree (#1129).
+  function resyncPomodoroTimer() {
+    if (!state.active || typeof state.appliedPhaseDuration !== 'number') return;
+    const settingsDuration = getPhaseDuration(state.phase);
+    if (state.appliedPhaseDuration === settingsDuration) return;
+
+    const epoch = ++_stateEpoch;
+    state.appliedPhaseDuration = settingsDuration;
+    state.timeRemaining = settingsDuration;
+    state.deadline = Date.now() + settingsDuration * 1000;
+    saveTimerState();
+    updateWidget();
+
+    runTimerAction('resyncDurations', () => withLeadershipLock(async function () {
+      if (epoch !== _stateEpoch || !state.active) return false;
+      await saveTimerStateAsync();
+      return true;
+    }));
   }
 
   window.startPomodoro = startTimer;
@@ -1043,6 +1072,7 @@
   window.applyPomodoroEnabled = applyPomodoroEnabled;
   window.loadPomodoroDurations = loadPomodoroDurations;
   window.savePomodoroDurations = savePomodoroDurations;
+  window.resyncPomodoroTimer = resyncPomodoroTimer;
   window.addFocusButtonToTodoActions = addFocusButtonToTodoActions;
 
   if (document.readyState === 'loading') {
