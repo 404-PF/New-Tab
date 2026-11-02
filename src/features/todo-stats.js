@@ -58,9 +58,18 @@
     statsCacheRaw = undefined;
     statsCache = null;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+      return localStorage.setItem(STORAGE_KEY, JSON.stringify(stats)) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (e) {
       console.warn('Failed to save todo stats:', e);
+      return false;
+    }
+  }
+
+  function showStatsSaveError() {
+    if (typeof window.showToast === 'function') {
+      window.showToast(window.i18n ? window.i18n.t('todoSaveError') : 'Failed to save todo changes. Your last action was not saved.', 'error');
+    } else {
+      console.warn('showToast unavailable: failed to save todo stats');
     }
   }
 
@@ -164,8 +173,9 @@
     stats.days[today] = (stats.days[today] || 0) + 1;
     recalculateStreaks(stats);
     pruneOldDays(stats);
-    saveStats(stats);
+    const saved = saveStats(stats);
     renderStats();
+    if (!saved) showStatsSaveError();
   }
 
   function getCompletedToday(stats) {
@@ -272,9 +282,18 @@
   }
 
   function clearStats() {
-    saveStats({ days: {}, currentStreak: 0, longestStreak: 0 });
+    const saved = saveStats({ days: {}, currentStreak: 0, longestStreak: 0 });
     renderStats();
+    if (!saved) showStatsSaveError();
   }
+
+  window.addEventListener('storageBridgeWriteError', (event) => {
+    if (event?.detail?.key !== STORAGE_KEY) return;
+    setTimeout(() => {
+      loadStats();
+      renderStats();
+    }, 0);
+  });
 
   function initTodoStats() {
     applyStatsVisibility();
