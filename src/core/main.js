@@ -554,9 +554,12 @@ function loadActiveProvider() {
 function saveActiveProvider(providerId) {
   let persisted;
   try {
-    // The storage bridge returns false instead of throwing on a rejected
-    // write (#969); only an explicit false is a failure.
-    persisted = isWriteAccepted(localStorage.setItem(SEARCH_PROVIDER_STORAGE_KEY, providerId));
+    // Route through the shared helper so the sync-rejection rule (#969)
+    // lives in one place; fall back to the local check when toast.js is
+    // unavailable.
+    persisted = typeof window.persistFeatureToggle === 'function'
+      ? window.persistFeatureToggle(SEARCH_PROVIDER_STORAGE_KEY, providerId)
+      : isWriteAccepted(localStorage.setItem(SEARCH_PROVIDER_STORAGE_KEY, providerId));
   } catch (e) {
     console.warn('Failed to save search provider:', e);
     persisted = false;
@@ -1464,9 +1467,12 @@ function initSearchEngine() {
     searchHistoryEnabledSetting.addEventListener('change', function () {
       let persisted;
       try {
-        // The bridge returns false instead of throwing on a rejected write
-        // (#969); an unchecked false would desync the toggle from storage (#1089).
-        persisted = isWriteAccepted(localStorage.setItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked));
+        // Route through the shared helper so the sync-rejection rule (#969)
+        // lives in one place; an unchecked failure would desync the toggle
+        // from storage (#1089).
+        persisted = typeof window.persistFeatureToggle === 'function'
+          ? window.persistFeatureToggle(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked)
+          : isWriteAccepted(localStorage.setItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked));
       } catch (e) {
         console.warn('Failed to save search history enabled setting:', e);
         persisted = false;

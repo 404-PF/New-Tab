@@ -262,8 +262,10 @@ const FEATURE_TOGGLE_RESYNC = {
     }
   },
   language: function () {
-    const stored = localStorage.getItem('language');
-    if (stored && window.i18n && typeof window.i18n.applyLanguage === 'function') {
+    // A missing key is the default English profile (#1089), so a rollback
+    // that leaves no key still resyncs the UI back to English.
+    const stored = localStorage.getItem('language') || 'en';
+    if (window.i18n && typeof window.i18n.applyLanguage === 'function') {
       window.i18n.applyLanguage(stored);
     }
   },
@@ -357,8 +359,9 @@ function featureToggleControlDesynced(key) {
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
     }
     case 'language': {
-      const stored = localStorage.getItem(key);
-      if (!stored) return false;
+      // A missing key is the default English profile (#1089); comparing to
+      // it lets a rollback that removed the key still report the desync.
+      const stored = localStorage.getItem(key) || 'en';
       const current = window.i18n && typeof window.i18n.currentLanguage === 'function'
         ? window.i18n.currentLanguage()
         : document.documentElement.lang;

@@ -1404,8 +1404,12 @@ document.addEventListener('change', function (e) {
     window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolveTheme(selectedTheme) } }));
   } else if (e.target.name === 'language') {
     const selectedLanguage = e.target.value;
-    localStorage.setItem('language', selectedLanguage);
-    applyLanguageSetting();
+    // applyLanguage saves the selection itself and reports a rejected write
+    // (#1089); a pre-write plus re-read here would replace a failed
+    // selection with the old value and hide the failure.
+    if (window.i18n && window.i18n.applyLanguage) {
+      window.i18n.applyLanguage(selectedLanguage);
+    }
   }
 });
 

@@ -1551,11 +1551,12 @@ function registerLocale(code, table) {
 // profile keeps its previous behavior and makes no extra requests.
 function applyLanguage(lang) {
   if (!saveLanguage(lang)) {
-    const stored = localStorage.getItem('language');
-    if (stored && stored !== lang) {
-      // A rejected write that would desync the UI from storage (#1089):
-      // surface the failure and keep applying the persisted language so a
-      // reload cannot silently snap back.
+    // A rejected write that would desync the UI from storage (#1089):
+    // surface the failure and keep applying the persisted language so a
+    // reload cannot silently snap back. A missing key (nothing was ever
+    // persisted) falls back to the default 'en'.
+    const stored = localStorage.getItem('language') || 'en';
+    if (stored !== lang) {
       if (typeof window.showFeatureToggleSaveError === 'function') {
         window.showFeatureToggleSaveError();
       }
