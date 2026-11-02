@@ -56,8 +56,8 @@ describe('built-in background asset paths', () => {
     });
   });
 
-  // A raw space is invalid per RFC 3986 (issue #1094); keep asset paths
-  // percent-encoding-free so fetch()-style consumers cannot 404 them.
+  // Keep built-in asset names free of spaces (see issue #1094) so the
+  // filenames match the renamed live wallpapers and avoid encoding edge cases.
   it('keeps asset paths free of raw spaces', () => {
     const assets = fileAssetPaths();
     expect(assets.length).toBeGreaterThan(0);

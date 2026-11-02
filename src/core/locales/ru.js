@@ -247,7 +247,7 @@ window.i18n.__registerLocale('ru', {
   weatherFeelsLike: 'Ощущается как',
   weatherWind: 'Ветер',
   weatherWindKmh: 'км/ч',
-  weatherWindMph: 'ми/ч',
+  weatherWindMph: 'миль/ч',
   weatherHumidity: 'Влажность',
   weatherHourly: 'Почасовой прогноз',
   weatherNow: 'Сейчас',
