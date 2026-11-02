@@ -11,15 +11,8 @@ body.light-theme {
   --settings-modal-bg: rgba(255, 255, 255, 0.98);
   --settings-menu-bg: rgba(0, 0, 0, 0.03);
   --settings-text-color: rgba(55, 65, 81, 0.9);
-  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
-  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
-}
-
-/* The viewport scrollbar is painted on :root, which does not inherit
-   custom properties from body — mirror the light scrollbar tokens onto
-   the root while body.light-theme is active so the page scrollbar
-   follows the theme too (#989). */
-html:has(body.light-theme) {
+  /* In-component scrollbars only: the dashboard viewport scrollbar is
+     native and no longer reads these tokens (#1098). */
   --scrollbar-thumb: rgba(0, 0, 0, 0.2);
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
 }
