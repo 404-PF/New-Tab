@@ -1,4 +1,5 @@
 import { injectScript } from './helpers/inject-script.js';
+import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
 beforeAll(() => {
   injectScript('src/core/dom-ready.js');
@@ -296,5 +297,91 @@ describe('Todo stats retention', () => {
     const stats = loadTodoStats();
     expect(stats.longestStreak).toBe(1);
     expect(Number.isFinite(stats.longestStreak)).toBe(true);
+  });
+});
+
+describe('Todo stats storage bridge write failures', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save todo changes. Your last action was not saved.';
+  let restoreStorageSet = null;
+  let warnSpy = null;
+
+  beforeEach(() => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    window.showToast = vi.fn();
+  });
+
+  afterEach(async () => {
+    // Drain any storageBridgeWriteError resync timers this test scheduled so
+    // they cannot fire against the next test's reset DOM/storage state.
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    if (restoreStorageSet) {
+      restoreStorageSet();
+      restoreStorageSet = null;
+    }
+    if (warnSpy) {
+      warnSpy.mockRestore();
+      warnSpy = null;
+    }
+    delete window.showToast;
+  });
+
+  function failWritesFor(key, mode) {
+    restoreStorageSet = failStorageWritesFor(key, mode);
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  }
+
+  it('sync rejection of recordTodoCompletion reports failure and does not leave a bumped count', async () => {
+    saveTodoStats({ days: { [getToday()]: 1 }, currentStreak: 1, longestStreak: 1 });
+    failWritesFor('todoStats', 'sync');
+
+    recordTodoCompletion();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expect(loadTodoStats().days[getToday()]).toBe(1);
+    expect(document.getElementById('todo-stats-today').textContent).toBe('1');
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('todo-stats-today').textContent).toBe('1');
+  });
+
+  it('async rejection repaints the panel from the rolled-back store and reports it', async () => {
+    saveTodoStats({ days: { [getToday()]: 1 }, currentStreak: 1, longestStreak: 1 });
+    failWritesFor('todoStats', 'async');
+
+    recordTodoCompletion();
+    expect(loadTodoStats().days[getToday()]).toBe(2);
+    expect(document.getElementById('todo-stats-today').textContent).toBe('2');
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(loadTodoStats().days[getToday()]).toBe(1);
+    expect(document.getElementById('todo-stats-today').textContent).toBe('1');
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('clearTodoStats reports a rejected clear instead of silently restoring the old stats', async () => {
+    saveTodoStats({ days: { [getToday()]: 3 }, currentStreak: 1, longestStreak: 1 });
+    failWritesFor('todoStats', 'sync');
+
+    clearTodoStats();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expect(loadTodoStats().days[getToday()]).toBe(3);
+    expect(document.getElementById('todo-stats-today').textContent).toBe('3');
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('todo-stats-today').textContent).toBe('3');
   });
 });

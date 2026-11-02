@@ -58,9 +58,18 @@
     statsCacheRaw = undefined;
     statsCache = null;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+      return localStorage.setItem(STORAGE_KEY, JSON.stringify(stats)) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (e) {
       console.warn('Failed to save todo stats:', e);
+      return false;
+    }
+  }
+
+  function showStatsSaveError() {
+    if (typeof window.showToast === 'function') {
+      window.showToast(window.i18n ? window.i18n.t('todoSaveError') : 'Failed to save todo changes. Your last action was not saved.', 'error');
+    } else {
+      console.warn('showToast unavailable: failed to save todo stats');
     }
   }
 
@@ -164,8 +173,9 @@
     stats.days[today] = (stats.days[today] || 0) + 1;
     recalculateStreaks(stats);
     pruneOldDays(stats);
-    saveStats(stats);
+    const saved = saveStats(stats);
     renderStats();
+    if (!saved) showStatsSaveError();
   }
 
   function getCompletedToday(stats) {
@@ -272,9 +282,40 @@
   }
 
   function clearStats() {
-    saveStats({ days: {}, currentStreak: 0, longestStreak: 0 });
+    const saved = saveStats({ days: {}, currentStreak: 0, longestStreak: 0 });
     renderStats();
+    if (!saved) showStatsSaveError();
   }
+
+  // A synchronous bridge failure both dispatches storageBridgeWriteError and
+  // makes setItem return false, so the save caller has already repainted from
+  // the rolled-back store and toasted. Only an async rejection (setItem
+  // returned true) leaves the panel showing the rejected value, so compare
+  // before repainting and notify just for that — same pattern as todo.js.
+  function statsPanelDesynced() {
+    if (!isStatsEnabled()) return false;
+    const stats = loadStats();
+    recalculateStreaks(stats);
+    const expected = [
+      ['todo-stats-today', getCompletedToday(stats)],
+      ['todo-stats-week', getCompletedThisWeek(stats)],
+      ['todo-stats-current-streak', stats.currentStreak],
+      ['todo-stats-longest-streak', stats.longestStreak]
+    ];
+    return expected.some(function (entry) {
+      const el = document.getElementById(entry[0]);
+      return Boolean(el) && el.textContent !== String(entry[1]);
+    });
+  }
+
+  window.addEventListener('storageBridgeWriteError', (event) => {
+    if (event?.detail?.key !== STORAGE_KEY) return;
+    setTimeout(() => {
+      const desynced = statsPanelDesynced();
+      renderStats();
+      if (desynced) showStatsSaveError();
+    }, 0);
+  });
 
   function initTodoStats() {
     applyStatsVisibility();
