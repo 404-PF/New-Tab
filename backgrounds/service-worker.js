@@ -243,6 +243,15 @@ function handleInvalidDueDate(todo, warnedInvalidDueDates) {
   return { skip: true, warnedUpdated };
 }
 
+/**
+ * Decides whether a todo is eligible for a reminder on this check.
+ *
+ * Returns a skip decision, or a candidate carrying the notified key and due
+ * display text. Fresh candidates are bounded by [reminderTime, graceEnd]
+ * (one check interval of late tolerance per #1090); a durable
+ * PENDING_NOTIFIED_MARK whose confirmation never landed stays retryable even
+ * past graceEnd so a failed notification/cleanup near due cannot strand it.
+ */
 function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, leadTime) {
   if (todo.completed || todo.dueDate === null || todo.dueDate === undefined) {
     return { skip: true, warnedUpdated: false };
@@ -254,17 +263,20 @@ function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, lea
   const due = parseDueDate(todo.dueDate, todo.dueTime);
   const reminderTime = new Date(due.getTime() - Math.max(leadTime, CHECK_INTERVAL_MINUTES) * 60 * 1000);
   const graceEnd = new Date(due.getTime() + REMINDER_LATE_GRACE_MINUTES * 60 * 1000);
-  // #1090: tolerate checks up to one interval past `due` (MV3 alarms fire
-  // late routinely) so a late-but-recent check still delivers; the notified
-  // key is recorded below either way, so the grace path never repeats.
-  if (now < reminderTime || now > graceEnd) {
-    return { skip: true, warnedUpdated: false };
-  }
   const timePart = todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime) ? '_' + todo.dueTime : '';
   const notifiedKey = todo.id + '_' + todo.dueDate + timePart;
   // A PENDING_NOTIFIED_MARK is a claim whose confirmation never landed, so it
-  // stays retryable instead of suppressing the reminder forever.
-  if (notified[notifiedKey] && notified[notifiedKey] !== PENDING_NOTIFIED_MARK) {
+  // stays retryable instead of suppressing the reminder forever. It must be
+  // detected before the late cutoff, or a failed notification/cleanup near the
+  // due time would strand the durable mark un-retried past the grace window.
+  const pendingRetry = notified[notifiedKey] === PENDING_NOTIFIED_MARK;
+  // #1090: tolerate checks up to one interval past `due` (MV3 alarms fire
+  // late routinely) so a late-but-recent check still delivers; the notified
+  // key is recorded below either way, so the grace path never repeats.
+  if (now < reminderTime || (now > graceEnd && !pendingRetry)) {
+    return { skip: true, warnedUpdated: false };
+  }
+  if (notified[notifiedKey] && !pendingRetry) {
     return { skip: true, warnedUpdated: false };
   }
   let dueDisplay = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
