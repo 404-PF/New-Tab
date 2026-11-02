@@ -141,10 +141,11 @@
 
     // Calculate position relative to grid
     const relativeX = e.clientX - gridRect.left - layout.paddingLeft;
-    // NOTE: the || operator had lower precedence, causing a constant 30 when
-    // the subtraction evaluated to 0 or NaN.  Parentheses fix the order.
-    const relativeY = e.clientY - gridRect.top -
-      (grid.querySelector('.app-icon')?.offsetTop || 30);
+    const firstIconEl = grid.querySelector('.app-icon');
+    const firstIconOffsetTop = firstIconEl && Number.isFinite(firstIconEl.offsetTop)
+      ? firstIconEl.offsetTop
+      : 30;
+    const relativeY = e.clientY - gridRect.top - firstIconOffsetTop;
     
     // Calculate row and column
     const col = Math.max(0, Math.floor(relativeX / itemWidth));

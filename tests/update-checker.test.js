@@ -527,6 +527,37 @@ describe('UpdateChecker', () => {
     });
   });
 
+  describe('formatMessage placeholder safety (issue #1092)', () => {
+    it('keeps $&, $`, $\' and $$ in replacement values literal', () => {
+      const originalT = window.i18n.t;
+      window.i18n.t = (key) => (key === 'updateManualNewVersion'
+        ? 'New version {version} available'
+        : originalT(key));
+
+      try {
+        const version = '2.0.0 ($& $` $\' $$ $1)';
+        expect(checker.formatMessage('updateManualNewVersion', { version }))
+          .toBe(`New version ${version} available`);
+      } finally {
+        window.i18n.t = originalT;
+      }
+    });
+
+    it('replaces every occurrence of the same placeholder', () => {
+      const originalT = window.i18n.t;
+      window.i18n.t = (key) => (key === 'lastCheckedHoursAgo'
+        ? '{n} hour(s) ago, checked {n} time(s)'
+        : originalT(key));
+
+      try {
+        expect(checker.formatMessage('lastCheckedHoursAgo', { n: 2 }))
+          .toBe('2 hour(s) ago, checked 2 time(s)');
+      } finally {
+        window.i18n.t = originalT;
+      }
+    });
+  });
+
   describe('notification content security', () => {
     it('renders untrusted content as text on the toast (#890)', () => {
       const payload = '<img src=x onerror=alert(1)>';
