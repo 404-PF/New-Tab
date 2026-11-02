@@ -1,8 +1,10 @@
 // tests/global-scrollbar.test.js
-// #989: one slim scroll-bar treatment for every scrollable surface,
-// sourced from :root custom properties in css/core.css instead of the
-// three divergent per-component blocks that used to live in css/app.css
-// and css/features.css.
+// #989: one slim scroll-bar treatment for in-component scrollable
+// surfaces, sourced from :root custom properties in css/core.css
+// instead of the three divergent per-component blocks that used to live
+// in css/app.css and css/features.css. #1098: the rules are scoped to
+// body and its descendants so the dashboard viewport scroller (html)
+// keeps the browser's native scrollbar.
 
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -17,7 +19,7 @@ const CORE_CSS = readFileSync(CORE_CSS_PATH, 'utf-8');
 const FEATURES_CSS = readFileSync(FEATURES_CSS_PATH, 'utf-8');
 const APP_CSS = readFileSync(APP_CSS_PATH, 'utf-8');
 
-describe('Shared slim scrollbars (#989)', () => {
+describe('Shared slim scrollbars (#989, #1098)', () => {
   it('defines the scrollbar tokens once on :root from the AI chat reference', () => {
     const root = CORE_CSS.match(/:root\s*\{([^}]*)\}/);
     expect(root, ':root block in css/core.css').toBeTruthy();
@@ -30,12 +32,12 @@ describe('Shared slim scrollbars (#989)', () => {
     expect(body).toMatch(/--scrollbar-thumb-hover:\s*rgba\(255, 255, 255, 0\.3\)/);
   });
 
-  it('styles every surface with one global rule set reading the variables', () => {
-    expect(CORE_CSS).toMatch(/\*\s*\{\s*scrollbar-width:\s*thin;\s*scrollbar-color:\s*var\(--scrollbar-thumb\)\s+var\(--scrollbar-track\);/);
-    expect(CORE_CSS).toMatch(/\*::-webkit-scrollbar\s*\{\s*width:\s*var\(--scrollbar-size\);\s*height:\s*var\(--scrollbar-size\);/);
-    expect(CORE_CSS).toMatch(/\*::-webkit-scrollbar-track\s*\{\s*background:\s*var\(--scrollbar-track\);/);
-    expect(CORE_CSS).toMatch(/\*::-webkit-scrollbar-thumb\s*\{\s*background:\s*var\(--scrollbar-thumb\);\s*border-radius:\s*var\(--scrollbar-radius\);/);
-    expect(CORE_CSS).toMatch(/\*::-webkit-scrollbar-thumb:hover\s*\{\s*background:\s*var\(--scrollbar-thumb-hover\);/);
+  it('styles component surfaces with one scoped rule set reading the variables', () => {
+    expect(CORE_CSS).toMatch(/body,\s*body \*\s*\{\s*scrollbar-width:\s*thin;\s*scrollbar-color:\s*var\(--scrollbar-thumb\)\s+var\(--scrollbar-track\);/);
+    expect(CORE_CSS).toMatch(/body::-webkit-scrollbar,\s*body \*::-webkit-scrollbar\s*\{\s*width:\s*var\(--scrollbar-size\);\s*height:\s*var\(--scrollbar-size\);/);
+    expect(CORE_CSS).toMatch(/body::-webkit-scrollbar-track,\s*body \*::-webkit-scrollbar-track\s*\{\s*background:\s*var\(--scrollbar-track\);/);
+    expect(CORE_CSS).toMatch(/body::-webkit-scrollbar-thumb,\s*body \*::-webkit-scrollbar-thumb\s*\{\s*background:\s*var\(--scrollbar-thumb\);\s*border-radius:\s*var\(--scrollbar-radius\);/);
+    expect(CORE_CSS).toMatch(/body::-webkit-scrollbar-thumb:hover,\s*body \*::-webkit-scrollbar-thumb:hover\s*\{\s*background:\s*var\(--scrollbar-thumb-hover\);/);
   });
 
   it('mirrors the dark values to black-on-light in the light theme', () => {
@@ -59,12 +61,18 @@ describe('Shared slim scrollbars (#989)', () => {
     expect(webkitIndex, 'WebKit @supports branch in css/core.css').toBeGreaterThan(notWebkitIndex);
   });
 
-  it('mirrors the light scrollbar tokens onto the root for the viewport scrollbar', () => {
-    const rootLight = FEATURES_CSS.match(/html:has\(body\.light-theme\)\s*\{([^}]*)\}/);
-    expect(rootLight, 'html:has(body.light-theme) block in css/features.css').toBeTruthy();
+  it('keeps the root scroller on the browser default scrollbar (#1098)', () => {
+    // The scoped selectors must never reach html/the viewport: an
+    // unscoped universal rule would style the dashboard page scrollbar
+    // again in both the standard and WebKit branches.
+    expect(CORE_CSS).not.toMatch(/(?<!body )\*\s*\{\s*scrollbar-width/);
+    expect(CORE_CSS).not.toMatch(/(?<!body )\*::-webkit-scrollbar/);
+    expect(CORE_CSS.replace(/:root\s*\{[^}]*\}/, '')).not.toMatch(/(\bhtml|:root)\b\s*[,:{]/);
 
-    expect(rootLight[1]).toMatch(/--scrollbar-thumb:\s*rgba\(0, 0, 0, 0\.2\)/);
-    expect(rootLight[1]).toMatch(/--scrollbar-thumb-hover:\s*rgba\(0, 0, 0, 0\.3\)/);
+    // The light-theme root mirror only existed to theme the viewport
+    // scrollbar, so it is gone with it; body.light-theme keeps the
+    // token overrides for in-component bars.
+    expect(FEATURES_CSS).not.toMatch(/html:has\(body\.light-theme\)/);
   });
 
   it('removes the former AI chat and AI topics per-component blocks', () => {

@@ -60,7 +60,10 @@
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
 }
 
-/* One slim scroll-bar treatment for every scrollable surface (#989).
+/* One slim scroll-bar treatment for every in-component scrollable
+   surface (#989). The selectors are scoped to body and its
+   descendants so the root scroller (html) — the dashboard viewport —
+   keeps the browser's native scrollbar (#1098).
    The two branches are mutually exclusive: when a browser supports
    scrollbar-width/scrollbar-color AND ::-webkit-scrollbar-thumb
    (Chromium/Safari), setting the standard properties makes it ignore
@@ -71,28 +74,33 @@
    Hover brightening is a documented WebKit-only exception kept in the
    WebKit branch. */
 @supports not selector(::-webkit-scrollbar-thumb) {
-  * {
+  body,
+  body * {
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
 }
 
 @supports selector(::-webkit-scrollbar-thumb) {
-  *::-webkit-scrollbar {
+  body::-webkit-scrollbar,
+  body *::-webkit-scrollbar {
     width: var(--scrollbar-size);
     height: var(--scrollbar-size);
   }
 
-  *::-webkit-scrollbar-track {
+  body::-webkit-scrollbar-track,
+  body *::-webkit-scrollbar-track {
     background: var(--scrollbar-track);
   }
 
-  *::-webkit-scrollbar-thumb {
+  body::-webkit-scrollbar-thumb,
+  body *::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb);
     border-radius: var(--scrollbar-radius);
   }
 
-  *::-webkit-scrollbar-thumb:hover {
+  body::-webkit-scrollbar-thumb:hover,
+  body *::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-thumb-hover);
   }
 }
