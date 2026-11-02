@@ -696,6 +696,7 @@ jobs:
             fi
           else
             echo "::error::Could not compare HEAD with $HEAD_SHA (git merge-base exit $ancestry_rc); refusing to push."
+            echo 'pushed=failed' >> "$GITHUB_OUTPUT"
             exit 1
           fi
           exit 0
