@@ -522,6 +522,21 @@ function clearSearchHistory() {
   }
 }
 
+// #1089: restore the search-history toggle and the suggestions panel after
+// the storage bridge rolls a rejected write back (the async runtime.lastError
+// path handled by toast.js).
+function resyncSearchHistorySetting() {
+  const checkbox = document.getElementById('search-history-enabled-setting');
+  if (checkbox) {
+    checkbox.checked = isSearchHistoryEnabled();
+  }
+  if (isSearchHistoryEnabled()) {
+    renderSearchHistorySuggestions();
+  } else {
+    hideSearchHistorySuggestions();
+  }
+}
+
 let activeProviderId = null;
 
 function loadActiveProvider() {
@@ -537,12 +552,29 @@ function loadActiveProvider() {
 }
 
 function saveActiveProvider(providerId) {
+  let persisted;
   try {
-    localStorage.setItem(SEARCH_PROVIDER_STORAGE_KEY, providerId);
+    // Route through the shared helper so the sync-rejection rule (#969)
+    // lives in one place; fall back to the local check when toast.js is
+    // unavailable.
+    persisted = typeof window.persistFeatureToggle === 'function'
+      ? window.persistFeatureToggle(SEARCH_PROVIDER_STORAGE_KEY, providerId)
+      : isWriteAccepted(localStorage.setItem(SEARCH_PROVIDER_STORAGE_KEY, providerId));
   } catch (e) {
     console.warn('Failed to save search provider:', e);
+    persisted = false;
+  }
+  if (!persisted) {
+    // Keep the in-memory selection on the value that actually persisted so
+    // the bar cannot silently snap back on reload (#1089).
+    activeProviderId = loadActiveProvider();
+    if (typeof window.showFeatureToggleSaveError === 'function') {
+      window.showFeatureToggleSaveError();
+    }
+    return false;
   }
   activeProviderId = providerId;
+  return true;
 }
 
 function isValidProviderUrl(url) {
@@ -930,7 +962,9 @@ function cycleSearchProvider(step) {
   const nextIndex = (currentIndex + direction + providers.length) % providers.length;
   const nextProviderId = providers[nextIndex];
 
-  saveActiveProvider(nextProviderId);
+  if (!saveActiveProvider(nextProviderId)) {
+    return null;
+  }
   updateProviderSelection();
   announceSearchProvider(nextProviderId);
 
@@ -1143,7 +1177,11 @@ function initProviderBar() {
   bar.addEventListener('click', function (event) {
     const btn = event.target.closest('.search-provider-btn');
     if (!btn) return;
-    saveActiveProvider(btn.dataset.provider);
+    if (!saveActiveProvider(btn.dataset.provider)) {
+      // Rejected write: the bar still shows the persisted provider, so skip
+      // the announce/permission follow-ups for the selection that never landed.
+      return;
+    }
     updateProviderSelection();
     announceSearchProvider(btn.dataset.provider);
     // Request the optional host permission for a custom suggestions endpoint
@@ -1427,10 +1465,24 @@ function initSearchEngine() {
   if (searchHistoryEnabledSetting) {
     searchHistoryEnabledSetting.checked = isSearchHistoryEnabled();
     searchHistoryEnabledSetting.addEventListener('change', function () {
+      let persisted;
       try {
-        localStorage.setItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked);
+        // Route through the shared helper so the sync-rejection rule (#969)
+        // lives in one place; an unchecked failure would desync the toggle
+        // from storage (#1089).
+        persisted = typeof window.persistFeatureToggle === 'function'
+          ? window.persistFeatureToggle(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked)
+          : isWriteAccepted(localStorage.setItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked));
       } catch (e) {
         console.warn('Failed to save search history enabled setting:', e);
+        persisted = false;
+      }
+      if (!persisted) {
+        this.checked = isSearchHistoryEnabled();
+        if (typeof window.showFeatureToggleSaveError === 'function') {
+          window.showFeatureToggleSaveError();
+        }
+        return;
       }
       if (this.checked) {
         renderSearchHistorySuggestions();
@@ -1585,6 +1637,7 @@ window.fetchRemoteSearchSuggestions = fetchRemoteSearchSuggestions;
 window.scheduleSearchSuggestionsFetch = scheduleSearchSuggestionsFetch;
 window.updateProviderSelection = updateProviderSelection;
 window.refreshProviderBar = refreshProviderBar;
+window.resyncSearchHistorySetting = resyncSearchHistorySetting;
 window.BUILT_IN_PROVIDERS = BUILT_IN_PROVIDERS;
 
 // Set the motto and button functionality after the page has finished loading

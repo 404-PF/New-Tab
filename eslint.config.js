@@ -220,6 +220,9 @@ const srcGlobals = {
   // src/core/locales/<code>.js tables (issue #927).
   createGamesTranslations: 'readonly',
   createNoteTagTranslations: 'readonly',
+  // Storage-write resync helper (issue #1089) used by toast.js's
+  // FEATURE_TOGGLE_RESYNC table.
+  resyncSearchHistorySetting: 'readonly',
 };
 
 const testGlobals = {
@@ -451,6 +454,8 @@ const testGlobals = {
   fetchRemoteSearchSuggestions: 'readonly',
   scheduleSearchSuggestionsFetch: 'readonly',
   updateProviderSelection: 'readonly',
+  // Storage-write resync helper (issue #1089), mirrors srcGlobals.
+  resyncSearchHistorySetting: 'readonly',
 };
 
 const commonRules = {

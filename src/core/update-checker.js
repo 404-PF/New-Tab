@@ -37,9 +37,28 @@ class UpdateChecker {
     return localStorage.getItem('updateCheckEnabled') !== 'false';
   }
 
-  // Enable/disable update checking
+  // Enable/disable update checking. Returns whether the storage bridge
+  // accepted the write; it rejects with an explicit false instead of
+  // throwing (#969), which callers must surface and roll back for (#1089).
   setEnabled(enabled) {
-    localStorage.setItem('updateCheckEnabled', enabled);
+    try {
+      return localStorage.setItem('updateCheckEnabled', enabled) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (error) {
+      console.warn('Failed to save updateCheckEnabled:', error);
+      return false;
+    }
+  }
+
+  // Restore the About-section update checkbox after the bridge rolls a
+  // rejected write back (the async runtime.lastError path in toast.js).
+  resyncEnabledSetting() {
+    const checkbox = document.getElementById('update-check-enabled');
+    if (checkbox) {
+      checkbox.checked = this.isEnabled();
+    }
+    if (typeof window.initAboutSection === 'function') {
+      window.initAboutSection();
+    }
   }
 
   // Get last check time

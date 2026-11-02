@@ -1404,8 +1404,12 @@ document.addEventListener('change', function (e) {
     window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolveTheme(selectedTheme) } }));
   } else if (e.target.name === 'language') {
     const selectedLanguage = e.target.value;
-    localStorage.setItem('language', selectedLanguage);
-    applyLanguageSetting();
+    // applyLanguage saves the selection itself and reports a rejected write
+    // (#1089); a pre-write plus re-read here would replace a failed
+    // selection with the old value and hide the failure.
+    if (window.i18n && window.i18n.applyLanguage) {
+      window.i18n.applyLanguage(selectedLanguage);
+    }
   }
 });
 
@@ -2319,7 +2323,15 @@ function initAboutSection() {
 
     if (updateEnabledCheckbox && window.updateChecker) {
       updateEnabledCheckbox.addEventListener('change', function() {
-        updateChecker.setEnabled(this.checked);
+        const persisted = updateChecker.setEnabled(this.checked);
+        if (!persisted) {
+          // The bridge rejected the write: snap the checkbox back to the
+          // persisted value and surface the shared save error (#1089).
+          this.checked = updateChecker.isEnabled();
+          if (typeof window.showFeatureToggleSaveError === 'function') {
+            window.showFeatureToggleSaveError();
+          }
+        }
         // Refresh the about section to show updated status
         setTimeout(() => initAboutSection(), 100);
       });
