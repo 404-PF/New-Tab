@@ -700,7 +700,7 @@ describe('Icon-only shell button accessible names (issue #1088)', () => {
   });
 
   it('defines every shell button label in each supported language', () => {
-    expectTranslationKeys(Object.values(SHELL_BUTTON_ARIA_LABELS).map((entry) => entry.key));
+    expectTranslationKeys(Object.values(SHELL_BUTTON_ARIA_LABELS).map((entry) => entry.key), { differFromEnglish: true });
   });
 
   it('includes the new aiSend and close keys in every _locales messages.json', () => {
