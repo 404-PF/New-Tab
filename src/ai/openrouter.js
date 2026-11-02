@@ -615,14 +615,6 @@ const OpenRouterAPI = (function() {
       error: getTranslation('aiNetworkError')
     };
   }
-  /**
-   * Quick search (single message, no history)
-   * @param {string} query - Search query
-   * @returns {Promise<Object>} Result object
-   */
-  async function quickSearch(query) {
-    return sendMessageStreaming(query, []);
-  }
 
   if (globalThis.chrome?.storage?.onChanged?.addListener) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -649,8 +641,7 @@ const OpenRouterAPI = (function() {
     invalidateWebGroundingCache,
 
     // API
-    sendMessageStreaming,
-    quickSearch
+    sendMessageStreaming
   };
 
 })();

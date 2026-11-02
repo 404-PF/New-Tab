@@ -1000,21 +1000,6 @@ const flappyBirdTranslations = {
     gamesFlappyBird: 'Flappy Bird',
     gamesFlappyBirdDesc: 'Игра Flappy Bird. Проведите птицу между трубами!',
     gamesFlappyBirdControls: 'Нажимайте ↑ / W или касайтесь/кликайте для взмаха; Пробел ставит на паузу/продолжает'
-  },
-  en_US: {
-    gamesFlappyBird: 'Flappy Bird',
-    gamesFlappyBirdDesc: 'Flappy Bird game. Guide the bird through the pipes!',
-    gamesFlappyBirdControls: 'Press ↑ / W or tap/click to flap; Space pauses/resumes'
-  },
-  pt_BR: {
-    gamesFlappyBird: 'Flappy Bird',
-    gamesFlappyBirdDesc: 'Jogo Flappy Bird. Guie o pássaro entre os canos!',
-    gamesFlappyBirdControls: 'Pressione ↑ / W ou toque/clique para bater as asas; Espaço pausa/retoma'
-  },
-  zh_CN: {
-    gamesFlappyBird: 'Flappy Bird',
-    gamesFlappyBirdDesc: 'Flappy Bird 游戏。引导小鸟穿过水管！',
-    gamesFlappyBirdControls: '按 ↑ / W 或点击/触摸拍翅；空格暂停/继续'
   }
 };
 
@@ -1079,24 +1064,6 @@ const pacmanTranslations = {
     gamesPacmanDesc: 'Лабиринт Pac-Man. Съешьте все точки и избегайте призраков!',
     gamesPacmanControls: 'Стрелки или WASD для движения, пробел для паузы',
     gamesLives: 'Жизни'
-  },
-  en_US: {
-    gamesPacman: 'Pac-Man',
-    gamesPacmanDesc: 'Pac-Man maze game. Eat every dot and dodge the ghosts!',
-    gamesPacmanControls: 'Arrow keys or WASD to move, Space to pause',
-    gamesLives: 'Lives'
-  },
-  pt_BR: {
-    gamesPacman: 'Pac-Man',
-    gamesPacmanDesc: 'Jogo de labirinto Pac-Man. Coma todos os pontos e fuja dos fantasmas!',
-    gamesPacmanControls: 'Setas ou WASD para mover, espaço para pausar',
-    gamesLives: 'Vidas'
-  },
-  zh_CN: {
-    gamesPacman: 'Pac-Man',
-    gamesPacmanDesc: 'Pac-Man 游戏。吃掉所有豆子并躲避幽灵！',
-    gamesPacmanControls: '方向键或 WASD 移动，空格键暂停',
-    gamesLives: '生命'
   }
 };
 

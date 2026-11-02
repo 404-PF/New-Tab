@@ -1546,8 +1546,7 @@ body.light-theme .todo-subtask-progress:where(:not(.todo-section, .notes-section
   background: rgba(0, 0, 0, 0.06);
 }
 
-#filter-priority,
-#filter-status {
+#filter-priority {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
@@ -1559,13 +1558,11 @@ body.light-theme .todo-subtask-progress:where(:not(.todo-section, .notes-section
   transition: all 0.2s ease;
 }
 
-#filter-priority:hover,
-#filter-status:hover {
+#filter-priority:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 
-#filter-priority:focus,
-#filter-status:focus {
+#filter-priority:focus {
   border-color: #2196f3;
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
 }
@@ -2464,12 +2461,6 @@ body.light-theme .toast-notification .toast-action:hover {
 /* Light theme adjustments.
    Frosted-glass surfaces for todo/notes live in css/glass.css (loaded last);
    only non-surface color/interaction overrides belong here. */
-body.light-theme #filter-status {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: #1f2937;
-}
-
 body.light-theme .bulk-btn {
   background: #f3f4f6;
   border-color: rgba(0, 0, 0, 0.1);

@@ -144,6 +144,16 @@ describe('AIService message normalization', () => {
   });
 });
 
+describe('dead code cleanup (#1093)', () => {
+  it('does not expose the removed quickSearch/isAvailable helpers', () => {
+    expect(AIService.quickSearch).toBeUndefined();
+    expect(AIService.isAvailable).toBeUndefined();
+    expect(OpenRouterAPI.quickSearch).toBeUndefined();
+    expect(typeof OpenRouterAPI.sendMessageStreaming).toBe('function');
+    expect(typeof AIService.sendMessage).toBe('function');
+  });
+});
+
 describe('AIService error path length guard (#282)', () => {
   it('does not pop messages when the API returns a non-success result on a 0-message conversation', async () => {
     // Seed an empty conversation

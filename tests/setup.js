@@ -955,7 +955,6 @@ document.body.appendChild(createStubElement('button', 'focus-mode-indicator'));
 // Todo elements required for initTodo to run
 document.body.appendChild(createStubElement('input', 'todo-input'));
 document.body.appendChild(createStubElement('button', 'add-todo-btn'));
-document.body.appendChild(createStubElement('select', 'filter-status'));
 // Sort selector stub mirroring the markup in New-Tab.html (issue #1013)
 const todoSortSelect = createStubElement('select', 'todo-sort-select');
 ['manual', 'due', 'priority', 'created', 'az'].forEach(value => {

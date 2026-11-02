@@ -612,13 +612,6 @@
     return /^https?:\/\//i.test(String(url || '').trim());
   }
 
-  function hasHttpSchemeSafe(url) {
-    if (typeof window.hasHttpScheme === 'function' && window.hasHttpScheme !== hasHttpSchemeSafe) {
-      return window.hasHttpScheme(url);
-    }
-    return /^https?:\/\//i.test(String(url || '').trim());
-  }
-
   const SAFE_CUSTOM_APP_SCHEMES = new Set([
     'tel',
     'sms',
@@ -733,7 +726,6 @@
   window.isSearchQuery = isSearchQuery;
   window.normalizeUrl = normalizeUrl;
   window.hasHttpScheme = hasHttpScheme;
-  window.hasHttpSchemeSafe = hasHttpSchemeSafe;
   window.isCustomScheme = isCustomScheme;
   window.isSafeCustomAppScheme = isSafeCustomAppScheme;
   window.normalizeCustomAppUrl = normalizeCustomAppUrl;
