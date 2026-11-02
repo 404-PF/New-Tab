@@ -352,11 +352,18 @@ jobs:
           export GIT_COMMITTER_EMAIL='41898282+github-actions[bot]@users.noreply.github.com'
 
           # Behind main? Only then rebase; otherwise keep the fast-forward path.
+          # merge-base --is-ancestor exits 0 (ancestor), 1 (not ancestor), or
+          # >=128 (object error, e.g. origin/main unresolvable). Capture the
+          # code instead of letting an `if` conflate 1 and 128: an error must
+          # fail the step, never silently fall into a rebase whose result is
+          # later force-pushed.
           REBASED=false
           REBASE_STATE=none
-          if git merge-base --is-ancestor origin/main HEAD; then
+          ancestry_rc=0
+          git merge-base --is-ancestor origin/main HEAD || ancestry_rc=$?
+          if [ "$ancestry_rc" -eq 0 ]; then
             echo 'Branch already contains origin/main; no rebase needed.'
-          else
+          elif [ "$ancestry_rc" -eq 1 ]; then
             REBASED=true
             if git rebase origin/main >/dev/null 2>&1; then
               REBASE_STATE=clean
@@ -364,6 +371,9 @@ jobs:
               REBASE_STATE=conflict
             fi
             echo "Branch was behind origin/main; rebase: $REBASE_STATE"
+          else
+            echo "::error::Could not compare HEAD with origin/main (git merge-base exit $ancestry_rc); refusing to rebase."
+            exit 1
           fi
 
           rebase_in_progress() { [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; }
@@ -562,9 +572,11 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       # GH_PAT is only in this step and the thread step. Agent edits are
-      # committed here as the PAT owner. Push is a plain fast-forward, or
-      # --force-with-lease against the head SHA fetched at the start when the
-      # branch was rebased.
+      # committed here as the PAT owner. Push mode is decided at push time
+      # from real divergence: fast-forward while HEAD is still a descendant
+      # of the head SHA captured at run start, forced update otherwise
+      # (history was rewritten, e.g. by a rebase). Both modes lease-pin to
+      # that head SHA so a concurrently moved remote is rejected.
       # A rejected push is a lost race, not a broken drive: it records
       # pushed=rejected and exits 0 so the summary below still reports the
       # round. Rejection needs evidence: git must report a rejected update
@@ -580,7 +592,6 @@ jobs:
           # push .github edits) and Pull requests read/write for the thread step.
           GH_PAT: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
-          REBASED: ${{ steps.loop.outputs.rebased }}
           ROUNDS: ${{ steps.loop.outputs.rounds }}
         run: |
           set -euo pipefail
@@ -642,8 +653,34 @@ jobs:
           push_rejected() {
             grep -Eq '\[remote rejected\]|\[rejected\]' "$PUSH_LOG"
           }
-          if [ "$REBASED" = 'true' ]; then
-            echo 'pushed=attempted' >> "$GITHUB_OUTPUT"
+          echo 'pushed=attempted' >> "$GITHUB_OUTPUT"
+          # Decide force vs fast-forward from the real divergence: if HEAD is
+          # still a descendant of the head SHA this run started from, only
+          # commits were appended and a plain push is a safe fast-forward.
+          # Anything else (a rebase rewrote history) needs a forced update.
+          # Both paths lease-pin to HEAD_SHA so a concurrently moved remote
+          # (e.g. reset to an older ancestor) is rejected instead of
+          # overwritten. merge-base exits 0 (ancestor), 1 (not ancestor) or
+          # >=128 (object error): only 1 may select the forced path, and an
+          # error must fail the step rather than be treated as rewritten
+          # history.
+          ancestry_rc=0
+          git merge-base --is-ancestor "$HEAD_SHA" HEAD || ancestry_rc=$?
+          if [ "$ancestry_rc" -eq 0 ]; then
+            if git_pr push --force-with-lease="refs/heads/$HEAD_REF:$HEAD_SHA" "$REPO_URL" "HEAD:refs/heads/$HEAD_REF" 2>&1 | tee "$PUSH_LOG"; then
+              echo 'pushed=fast-forward' >> "$GITHUB_OUTPUT"
+            else
+              REMOTE_HEAD="$(git_pr ls-remote "$REPO_URL" "refs/heads/$HEAD_REF" | cut -f1)" || REMOTE_HEAD=''
+              if [ -n "$REMOTE_HEAD" ] && [ "$REMOTE_HEAD" != "$HEAD_SHA" ] && push_rejected; then
+                echo '::warning::Push rejected; the branch moved since this run started. Skipping the push.'
+                echo 'pushed=rejected' >> "$GITHUB_OUTPUT"
+              else
+                echo '::error::Push failed; not a lost race.'
+                echo 'pushed=failed' >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+            fi
+          elif [ "$ancestry_rc" -eq 1 ]; then
             if git_pr push --force-with-lease="refs/heads/$HEAD_REF:$HEAD_SHA" "$REPO_URL" "HEAD:refs/heads/$HEAD_REF" 2>&1 | tee "$PUSH_LOG"; then
               echo 'pushed=rebase' >> "$GITHUB_OUTPUT"
             else
@@ -658,20 +695,9 @@ jobs:
               fi
             fi
           else
-            echo 'pushed=attempted' >> "$GITHUB_OUTPUT"
-            if git_pr push "$REPO_URL" "HEAD:refs/heads/$HEAD_REF" 2>&1 | tee "$PUSH_LOG"; then
-              echo 'pushed=fast-forward' >> "$GITHUB_OUTPUT"
-            else
-              REMOTE_HEAD="$(git_pr ls-remote "$REPO_URL" "refs/heads/$HEAD_REF" | cut -f1)" || REMOTE_HEAD=''
-              if [ -n "$REMOTE_HEAD" ] && [ "$REMOTE_HEAD" != "$HEAD_SHA" ] && push_rejected; then
-                echo '::warning::Push rejected; the branch moved since this run started. Skipping the push.'
-                echo 'pushed=rejected' >> "$GITHUB_OUTPUT"
-              else
-                echo '::error::Push failed; not a lost race.'
-                echo 'pushed=failed' >> "$GITHUB_OUTPUT"
-                exit 1
-              fi
-            fi
+            echo "::error::Could not compare HEAD with $HEAD_SHA (git merge-base exit $ancestry_rc); refusing to push."
+            echo 'pushed=failed' >> "$GITHUB_OUTPUT"
+            exit 1
           fi
           exit 0
 

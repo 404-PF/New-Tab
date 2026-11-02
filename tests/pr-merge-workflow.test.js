@@ -367,3 +367,86 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toMatch(/dry run: every requirement holds; would squash-merge/);
   });
 });
+
+describe('pr-drive force-pushes only when history actually diverged (#1097)', () => {
+  let drive;
+
+  beforeAll(() => {
+    drive = readFileSync(DRIVE_PATH, 'utf-8');
+  });
+
+  const pushStep = () => {
+    const match = drive.match(/ {6}- name: Commit and push\n[\s\S]*?(?= {6}- name: )/);
+    expect(match).not.toBeNull();
+    return match[0];
+  };
+
+  it('decides push mode at push time from HEAD_SHA ancestry, not the run-start REBASED snapshot', () => {
+    const push = pushStep();
+    expect(push).toContain('git merge-base --is-ancestor "$HEAD_SHA" HEAD || ancestry_rc=$?');
+    // The push step no longer consumes the run-start flag in any form: no
+    // rebased env, no REBASED branch.
+    expect(push).not.toMatch(/REBASED/);
+    expect(drive).not.toContain('REBASED: ${{ steps.loop.outputs.rebased }}');
+    expect(drive).not.toMatch(/if \[ "\$REBASED" = 'true' \]/);
+    // The loop step keeps the flag as a reporting-only output.
+    expect(drive).toContain('rebased=$REBASED');
+  });
+
+  it('lets only merge-base exit 1 select the forced path and treats other statuses as fatal', () => {
+    const push = pushStep();
+    const capture = push.indexOf('git merge-base --is-ancestor "$HEAD_SHA" HEAD || ancestry_rc=$?');
+    const fastForwardBranch = push.indexOf('if [ "$ancestry_rc" -eq 0 ]; then');
+    const divergedBranch = push.indexOf('elif [ "$ancestry_rc" -eq 1 ]; then');
+    const abort = push.indexOf('::error::Could not compare HEAD');
+    expect(capture).toBeGreaterThanOrEqual(0);
+    expect(capture).toBeLessThan(fastForwardBranch);
+    expect(fastForwardBranch).toBeLessThan(divergedBranch);
+    expect(divergedBranch).toBeLessThan(abort);
+    // Safe polarity: exit 0 fast-forwards, exit 1 forces, and the error
+    // branch after them aborts without ever reaching a push.
+    const fastForwardBody = push.slice(fastForwardBranch, divergedBranch);
+    const divergedBody = push.slice(divergedBranch, abort);
+    const abortBody = push.slice(abort);
+    expect(fastForwardBody).toContain('git_pr push');
+    expect(fastForwardBody).toContain('\'pushed=fast-forward\' >> "$GITHUB_OUTPUT"');
+    expect(divergedBody).toContain('git_pr push');
+    expect(divergedBody).toContain('\'pushed=rebase\' >> "$GITHUB_OUTPUT"');
+    expect(abortBody).toContain('git merge-base exit $ancestry_rc');
+    expect(abortBody).toContain('exit 1');
+    expect(abortBody).not.toContain('git_pr push');
+  });
+
+  it('keeps the appended-commits path a fast-forward and the diverged path a forced update, both lease-pinned to HEAD_SHA', () => {
+    const push = pushStep();
+    // Both push modes carry the explicit lease pin, so a concurrently moved
+    // remote is rejected instead of overwritten on either path.
+    const pushCommands = push.match(/git_pr push [^\n]+/g) || [];
+    expect(pushCommands).toHaveLength(2);
+    for (const command of pushCommands) {
+      expect(command).toContain('--force-with-lease="refs/heads/$HEAD_REF:$HEAD_SHA"');
+    }
+    expect(push).toContain('\'pushed=fast-forward\' >> "$GITHUB_OUTPUT"');
+    expect(push).toContain('\'pushed=rebase\' >> "$GITHUB_OUTPUT"');
+    // Both paths keep the lost-race rejection handling.
+    expect(push.match(/pushed=rejected' >> "\$GITHUB_OUTPUT"/g)).toHaveLength(2);
+  });
+
+  it('keeps the nothing-to-push short-circuit ahead of any push', () => {
+    const shortCircuit = 'if [ "$(git rev-parse HEAD)" = "$HEAD_SHA" ]; then';
+    expect(drive).toContain(shortCircuit);
+    expect(drive.indexOf(shortCircuit)).toBeGreaterThanOrEqual(0);
+    expect(drive.indexOf('git_pr push')).toBeGreaterThanOrEqual(0);
+    expect(drive.indexOf(shortCircuit)).toBeLessThan(drive.indexOf('git_pr push'));
+  });
+
+  it('fails the loop step when the run-start ancestry check errors instead of silently rebasing', () => {
+    // merge-base --is-ancestor exits 1 when behind and >=128 on an object
+    // error; only 1 may set REBASED=true, anything else must abort instead
+    // of rebasing into a forced push.
+    expect(drive).toContain('git merge-base --is-ancestor origin/main HEAD || ancestry_rc=$?');
+    expect(drive).not.toMatch(/if git merge-base --is-ancestor origin\/main HEAD; then/);
+    expect(drive).toMatch(/elif \[ "\$ancestry_rc" -eq 1 \]; then\n\s+REBASED=true/);
+    expect(drive).toMatch(/else\n\s+echo "::error::Could not compare HEAD[^\n]*merge-base exit \$ancestry_rc[^\n]*"\n\s+exit 1/);
+  });
+});
