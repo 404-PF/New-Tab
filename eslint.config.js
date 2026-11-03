@@ -233,6 +233,8 @@ const testGlobals = {
   AppGridStorage: 'readonly',
   AppGridState: 'readonly',
   Accessibility: 'readonly',
+  LiquidGlass: 'readonly',
+  LiquidGlassMaps: 'readonly',
   __appGridState: 'readonly',
   renderCustomApps: 'readonly',
   renderAllApps: 'readonly',
