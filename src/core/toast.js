@@ -283,6 +283,9 @@ const FEATURE_TOGGLE_RESYNC = {
     if (typeof window.resyncPomodoroTimer === 'function') {
       window.resyncPomodoroTimer();
     }
+    if (typeof window.renderTodos === 'function') {
+      window.renderTodos();
+    }
   }
 };
 
