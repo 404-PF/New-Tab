@@ -1703,6 +1703,24 @@ function updatePomodoroDurationSettingsVisibility(durationSettings, enabled) {
   }
 }
 
+// Re-apply the Focus Timer enable state only after the settings write has
+// settled. A one-task delay is not a settlement: the bridge can still roll an
+// optimistic write back later, and applying the optimistic "disabled" value
+// stops a running timer that the rollback then leaves stopped (#1129/#1134).
+// When the bridge exposes no settlement signal, fall back to a macrotask so
+// behaviour matches the pre-settlement implementation.
+function applyPomodoroEnabledAfterSettled() {
+  if (typeof localStorage.whenWriteSettled === 'function') {
+    localStorage.whenWriteSettled('pomodoro').then(function () {
+      if (typeof window.applyPomodoroEnabled === 'function') window.applyPomodoroEnabled();
+    });
+    return;
+  }
+  setTimeout(function () {
+    if (typeof window.applyPomodoroEnabled === 'function') window.applyPomodoroEnabled();
+  });
+}
+
 function initPomodoroEnabledSetting(enabledCheckbox, durationSettings) {
   if (!enabledCheckbox || typeof loadPomodoroEnabled !== 'function') return;
 
@@ -1711,9 +1729,16 @@ function initPomodoroEnabledSetting(enabledCheckbox, durationSettings) {
   enabledCheckbox.addEventListener('change', function () {
     const settings = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations() : {};
     settings.enabled = this.checked;
-    if (typeof savePomodoroDurations === 'function') savePomodoroDurations(settings);
-    updatePomodoroDurationSettingsVisibility(durationSettings, this.checked);
-    if (typeof window.applyPomodoroEnabled === 'function') window.applyPomodoroEnabled();
+    const persisted = typeof savePomodoroDurations === 'function'
+      ? savePomodoroDurations(settings) !== false
+      : true;
+    if (!persisted) {
+      resyncPomodoroSettings();
+      reportFeatureToggleSaveError();
+    } else {
+      updatePomodoroDurationSettingsVisibility(durationSettings, this.checked);
+    }
+    applyPomodoroEnabledAfterSettled();
     if (typeof window.renderTodos === 'function') window.renderTodos();
   });
 }
@@ -1727,7 +1752,35 @@ function initPomodoroDurationInput(input, setting, min, max, defaultValue) {
   input.addEventListener('change', function () {
     const value = Math.max(min, Math.min(max, Number.parseInt(this.value, 10) || defaultValue));
     this.value = value;
-    if (typeof savePomodoroDurations === 'function') savePomodoroDurations({ [setting]: value });
+    const persisted = typeof savePomodoroDurations === 'function'
+      ? savePomodoroDurations({ [setting]: value }) !== false
+      : true;
+    if (!persisted) {
+      resyncPomodoroSettings();
+      reportFeatureToggleSaveError();
+    }
+  });
+}
+
+// Re-apply the Focus Timer inputs and enable checkbox from the persisted
+// settings after a rejected write (#1129), mirroring the other
+// FEATURE_TOGGLE_RESYNC controls.
+function resyncPomodoroSettings() {
+  if (typeof loadPomodoroDurations !== 'function') return;
+  const settings = loadPomodoroDurations();
+  const enabledCheckbox = document.getElementById('pomodoro-enabled-setting');
+  const durationSettings = document.getElementById('pomodoro-duration-settings');
+  if (enabledCheckbox) enabledCheckbox.checked = settings.enabled;
+  updatePomodoroDurationSettingsVisibility(durationSettings, settings.enabled);
+  const inputs = {
+    'pomodoro-work-duration': 'workDuration',
+    'pomodoro-short-break-duration': 'shortBreakDuration',
+    'pomodoro-long-break-duration': 'longBreakDuration',
+    'pomodoro-sessions-before-long': 'sessionsBeforeLongBreak'
+  };
+  Object.keys(inputs).forEach(function (id) {
+    const input = document.getElementById(id);
+    if (input) input.value = settings[inputs[id]];
   });
 }
 
@@ -2515,6 +2568,7 @@ window.loadLanguageSetting = loadLanguageSetting;
 window.renderLanguageOptions = renderLanguageOptions;
 window.loadPomodoroStatsEnabled = loadPomodoroStatsEnabled;
 window.applyPomodoroStatsEnabled = applyPomodoroStatsEnabled;
+window.resyncPomodoroSettings = resyncPomodoroSettings;
 window.loadEyeCareReminderState = loadEyeCareReminderState;
 window.saveEyeCareReminderState = saveEyeCareReminderState;
 window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;

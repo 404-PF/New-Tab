@@ -27,6 +27,7 @@
   const STORAGE_WRITE_ERROR_EVENT = 'storageBridgeWriteError';
   let writeSequence = 0;
   const pendingWriteGenerations = new Map();
+  const writeSettlementWaiters = new Map();
   const pendingRemoveRollbackSnapshots = new Map();
   // Keys that have already reported a failed sync write, so the callback-reported
   // and promise-rejection-reported paths cannot both roll the same write back.
@@ -574,6 +575,26 @@
     Promise.resolve(result).catch(onRejection);
   }
 
+  // Release the whenWriteSettled(key) waiters once no write for the key is
+  // still pending. A settle of an older generation that a newer write
+  // superseded keeps the waiters queued, so a caller never re-reads storage
+  // while an optimistic value is still in flux.
+  function flushWriteSettlementWaiters(key) {
+    if (pendingWriteGenerations.has(key)) {
+      return;
+    }
+
+    const waiters = writeSettlementWaiters.get(key);
+    if (!waiters || waiters.length === 0) {
+      return;
+    }
+
+    writeSettlementWaiters.delete(key);
+    waiters.forEach(function (waiter) {
+      waiter.resolve();
+    });
+  }
+
   // Shared failure side of a sync set: report, roll the optimistic cache back to
   // the previous value, and clear the pending bookkeeping. Guarded so the
   // callback-reported and rejection-reported paths cannot both run.
@@ -604,6 +625,7 @@
     }
     cleanupMutationGeneration(key, generation);
     finalizeClearOperations();
+    flushWriteSettlementWaiters(key);
   }
 
   function persistSet(key, value, hadPreviousValue, previousValue) {
@@ -631,6 +653,7 @@
         }
         cleanupMutationGeneration(key, generation);
         finalizeClearOperations();
+        flushWriteSettlementWaiters(key);
       });
       observeStorageRejection(result, (error) => {
         rollbackSet(key, error, mutation, value, hadPreviousValue, previousValue);
@@ -935,6 +958,51 @@
       }
 
       return null;
+    },
+
+    // Resolve once every pending write for key has settled, so a caller can
+    // re-read storage instead of guessing at a macrotask boundary (#1134). The
+    // cache already holds the optimistic value while a write is in flight; a
+    // rollback restores it before the matching flush runs. Resolves true when
+    // nothing is pending (or after the safety timeout), never rejects.
+    whenWriteSettled(key) {
+      if (!pendingWriteGenerations.has(key)) {
+        return Promise.resolve(true);
+      }
+
+      return new Promise(function (resolve) {
+        const waiter = {
+          settled: false,
+          timeoutId: null,
+          resolve: function () {
+            if (waiter.settled) return;
+            waiter.settled = true;
+            if (waiter.timeoutId !== null) {
+              clearTimeout(waiter.timeoutId);
+            }
+            const waiters = writeSettlementWaiters.get(key);
+            if (waiters) {
+              const index = waiters.indexOf(waiter);
+              if (index !== -1) waiters.splice(index, 1);
+              if (waiters.length === 0) writeSettlementWaiters.delete(key);
+            }
+            resolve(true);
+          }
+        };
+
+        const waiters = writeSettlementWaiters.get(key);
+        if (waiters) {
+          waiters.push(waiter);
+        } else {
+          writeSettlementWaiters.set(key, [waiter]);
+        }
+
+        // A callback that never arrives (invalidated extension context) must
+        // not strand the caller; the rollback may already have happened.
+        waiter.timeoutId = setTimeout(function () {
+          waiter.resolve();
+        }, STORAGE_BRIDGE_TIMEOUT_MS);
+      });
     },
 
     setItem(key, value) {
