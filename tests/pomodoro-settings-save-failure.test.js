@@ -93,6 +93,30 @@ function failWriteFor(key, mode) {
   return restore;
 }
 
+// Deliver the rejection two macrotasks after the write, so it lands after the
+// enable-apply's own deferral instead of racing ahead of it (#1134).
+function failWriteLate(key) {
+  const area = chrome.storage.local;
+  const originalSet = area.set;
+  area.set = function (items, callback) {
+    if (!Object.prototype.hasOwnProperty.call(items, key)) {
+      return originalSet.call(area, items, callback);
+    }
+    setTimeout(() => {
+      setTimeout(() => {
+        chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+        try {
+          if (typeof callback === 'function') callback();
+        } finally {
+          chrome.runtime.lastError = null;
+        }
+      }, 0);
+    }, 0);
+    return undefined;
+  };
+  restorers.push(() => { area.set = originalSet; });
+}
+
 function changeDurationInput(value) {
   const input = document.getElementById('pomodoro-work-duration');
   input.value = String(value);
@@ -268,6 +292,39 @@ describe('Focus Timer settings controls report rejected writes (#1129)', () => {
     expect(JSON.parse(localStorage.getItem('pomodoro')).enabled).toBe(true);
     expect(checkbox.checked).toBe(true);
     const timerState = JSON.parse(localStorage.getItem('pomodoro_state'));
+    expect(timerState.active).toBe(true);
+    expect(timerState.timeRemaining).toBe(25 * 60);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('holds the running countdown until a rejection that lands after the apply deferral settles (#1134)', async () => {
+    seedSettings({ enabled: true, workDuration: 25 });
+    window.startPomodoro('todo-1');
+    // The timer state is persisted by the async leadership claim.
+    await flushDeferredFailureSync();
+    expect(JSON.parse(localStorage.getItem('pomodoro_state')).timeRemaining).toBe(25 * 60);
+
+    failWriteLate('pomodoro');
+    const checkbox = document.getElementById('pomodoro-enabled-setting');
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // The write is accepted optimistically; nothing may stop the timer yet.
+    expect(JSON.parse(localStorage.getItem('pomodoro')).enabled).toBe(false);
+    expect(checkbox.checked).toBe(false);
+
+    // Hop 1 is where a fixed one-task delay would have applied the optimistic
+    // "disabled" value; hop 2 delivers the rejection and the rollback; hop 3
+    // lets the rollback resync run.
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(JSON.parse(localStorage.getItem('pomodoro')).enabled).toBe(true);
+    expect(checkbox.checked).toBe(true);
+    const timerState = JSON.parse(localStorage.getItem('pomodoro_state'));
+    expect(timerState).not.toBeNull();
     expect(timerState.active).toBe(true);
     expect(timerState.timeRemaining).toBe(25 * 60);
     expect(window.showToast).toHaveBeenCalledTimes(1);

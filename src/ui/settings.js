@@ -1703,6 +1703,24 @@ function updatePomodoroDurationSettingsVisibility(durationSettings, enabled) {
   }
 }
 
+// Re-apply the Focus Timer enable state only after the settings write has
+// settled. A one-task delay is not a settlement: the bridge can still roll an
+// optimistic write back later, and applying the optimistic "disabled" value
+// stops a running timer that the rollback then leaves stopped (#1129/#1134).
+// When the bridge exposes no settlement signal, fall back to a macrotask so
+// behaviour matches the pre-settlement implementation.
+function applyPomodoroEnabledAfterSettled() {
+  if (typeof localStorage.whenWriteSettled === 'function') {
+    localStorage.whenWriteSettled('pomodoro').then(function () {
+      if (typeof window.applyPomodoroEnabled === 'function') window.applyPomodoroEnabled();
+    });
+    return;
+  }
+  setTimeout(function () {
+    if (typeof window.applyPomodoroEnabled === 'function') window.applyPomodoroEnabled();
+  });
+}
+
 function initPomodoroEnabledSetting(enabledCheckbox, durationSettings) {
   if (!enabledCheckbox || typeof loadPomodoroEnabled !== 'function') return;
 
@@ -1720,12 +1738,7 @@ function initPomodoroEnabledSetting(enabledCheckbox, durationSettings) {
     } else {
       updatePomodoroDurationSettingsVisibility(durationSettings, this.checked);
     }
-    // Defer the apply so a write the bridge only rolls back asynchronously
-    // cannot stop a running timer against the persisted value (#1129); by the
-    // time this runs storage holds either the final or the rolled-back state.
-    setTimeout(function () {
-      if (typeof window.applyPomodoroEnabled === 'function') window.applyPomodoroEnabled();
-    });
+    applyPomodoroEnabledAfterSettled();
     if (typeof window.renderTodos === 'function') window.renderTodos();
   });
 }
