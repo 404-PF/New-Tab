@@ -242,7 +242,7 @@
     observer = new MutationObserver((records) => {
       records.forEach((record) => {
         record.removedNodes.forEach((node) => {
-          collectMarked(node).forEach((el) => release(el));
+          Array.from(enhanced).filter((el) => node.contains(el)).forEach((el) => release(el));
         });
         record.addedNodes.forEach((node) => {
           collectMarked(node).forEach((el) => enhance(el));
