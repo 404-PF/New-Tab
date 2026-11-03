@@ -65,6 +65,11 @@
     }
   }
 
+  // True only while saveTimeZones is inside the bridge's setItem call. A
+  // synchronous rejection dispatches storageBridgeWriteError from there, and
+  // saveTimeZones' return value is what the caller reports through (#1127).
+  let savingZones = false;
+
   function saveTimeZones(zones) {
     try {
       if (!Array.isArray(zones) || zones.length > MAX_TIMEZONES) return false;
@@ -75,7 +80,13 @@
         return true;
       });
       if (!valid) return false;
-      const result = localStorage.setItem(STORAGE_KEY, JSON.stringify(zones));
+      let result;
+      savingZones = true;
+      try {
+        result = localStorage.setItem(STORAGE_KEY, JSON.stringify(zones));
+      } finally {
+        savingZones = false;
+      }
       return result !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (_e) {
       console.warn('Failed to save extra time zones');
@@ -89,22 +100,6 @@
     if (typeof window.showFeatureToggleSaveError === 'function') {
       window.showFeatureToggleSaveError();
     }
-  }
-
-  // True when the rendered clock chips already match the persisted zone
-  // list. The synchronous-failure path reports through saveTimeZones'
-  // return value, so the storageBridgeWriteError listener below must not
-  // toast a second time for the same write (#1127).
-  function extraClocksMatchPersisted() {
-    const container = document.getElementById('extra-timezones');
-    if (!container) return true;
-    const chips = container.querySelectorAll('.timezone-chip');
-    const zones = loadTimeZones();
-    if (chips.length !== zones.length) return false;
-    for (let i = 0; i < zones.length; i++) {
-      if (chips[i].dataset.zone !== zones[i]) return false;
-    }
-    return true;
   }
 
   function getZoneInfo(zoneId) {
@@ -296,17 +291,20 @@
   // runtime.lastError after setItem already returned true, so the optimistic
   // chip lingers until the bridge rolls its cache back and dispatches
   // storageBridgeWriteError. Wait one macrotask for that rollback to land,
-  // then re-render both lists and surface the shared save error when the
-  // rendered chips no longer match storage.
+  // then re-render both lists. The synchronous failure path dispatches from
+  // inside saveTimeZones and is already reported through its return value, so
+  // only that one is suppressed here; every late async failure is surfaced,
+  // even when a later timezone action has restored the chips to the persisted
+  // list in the meantime.
   window.addEventListener('storageBridgeWriteError', function (event) {
     if (!event || !event.detail || event.detail.key !== STORAGE_KEY) return;
+    const reportedByCaller = savingZones;
     setTimeout(function () {
-      const desynced = !extraClocksMatchPersisted();
       renderExtraClocks();
       if (typeof window.renderTimezoneCurrentList === 'function') {
         window.renderTimezoneCurrentList();
       }
-      if (desynced) {
+      if (!reportedByCaller) {
         reportSaveError();
       }
     });

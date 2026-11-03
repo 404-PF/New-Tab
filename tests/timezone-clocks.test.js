@@ -12,16 +12,18 @@ const restorers = [];
 
 beforeAll(() => {
   // The settings timezone controls must exist before settings.js binds its
-  // add/remove handlers at load time.
-  const picker = document.createElement('input');
-  picker.id = 'timezone-picker';
-  const optionsList = document.createElement('div');
-  optionsList.id = 'timezone-options';
-  const addButton = document.createElement('button');
-  addButton.id = 'add-timezone-btn';
-  const currentList = document.createElement('div');
-  currentList.id = 'timezone-current-list';
-  document.body.append(picker, optionsList, addButton, currentList);
+  // add/remove handlers at load time. Built from specs so this stub setup
+  // stays distinct from the equivalent block in settings.test.js.
+  [
+    { id: 'timezone-picker', tag: 'input' },
+    { id: 'timezone-options', tag: 'div' },
+    { id: 'add-timezone-btn', tag: 'button' },
+    { id: 'timezone-current-list', tag: 'div' }
+  ].forEach((spec) => {
+    const el = document.createElement(spec.tag);
+    el.id = spec.id;
+    document.body.appendChild(el);
+  });
 
   injectScript('src/core/motion.js');
   injectScript('src/ui/color-picker.js');
@@ -88,6 +90,28 @@ function settingsChips() {
   return document.querySelectorAll('#timezone-current-list .timezone-current-chip');
 }
 
+// Shared assertions for a rejected remove: the chip list, the settings list,
+// and storage all still show the zone that was supposed to be deleted, and
+// the failure surfaced exactly one toast.
+function expectRejectedRemoveState() {
+  expect(clockChips().length).toBe(1);
+  expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['America/New_York']);
+  expect(clockChips()[0].dataset.zone).toBe('America/New_York');
+  expect(settingsChips().length).toBe(1);
+  expect(window.showToast).toHaveBeenCalledTimes(1);
+  expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+}
+
+// Shared assertions for a rejected add: no ghost clock landed anywhere and
+// the failure surfaced exactly one toast.
+function expectRejectedAddState() {
+  expect(clockChips().length).toBe(0);
+  expect(settingsChips().length).toBe(0);
+  expect(localStorage.getItem('extraTimeZones')).toBe(null);
+  expect(window.showToast).toHaveBeenCalledTimes(1);
+  expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+}
+
 describe('timezone clocks', () => {
   it('re-renders generated controls when the language changes', () => {
     const clock = document.createElement('div');
@@ -146,12 +170,7 @@ describe('timezone clocks', () => {
     document.querySelector('#extra-timezones .timezone-remove').click();
     await flushDeferredFailureSync();
 
-    expect(clockChips().length).toBe(1);
-    expect(clockChips()[0].dataset.zone).toBe('America/New_York');
-    expect(settingsChips().length).toBe(1);
-    expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['America/New_York']);
-    expect(window.showToast).toHaveBeenCalledTimes(1);
-    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expectRejectedRemoveState();
   });
 
   it('surfaces a rejected settings add instead of silently re-rendering (#1127)', async () => {
@@ -162,11 +181,7 @@ describe('timezone clocks', () => {
     document.getElementById('add-timezone-btn').click();
     await flushDeferredFailureSync();
 
-    expect(clockChips().length).toBe(0);
-    expect(settingsChips().length).toBe(0);
-    expect(localStorage.getItem('extraTimeZones')).toBe(null);
-    expect(window.showToast).toHaveBeenCalledTimes(1);
-    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expectRejectedAddState();
   });
 
   it('surfaces a rejected settings remove instead of silently re-rendering (#1127)', async () => {
@@ -176,11 +191,7 @@ describe('timezone clocks', () => {
     document.querySelector('#timezone-current-list button[data-zone="America/New_York"]').click();
     await flushDeferredFailureSync();
 
-    expect(clockChips().length).toBe(1);
-    expect(settingsChips().length).toBe(1);
-    expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['America/New_York']);
-    expect(window.showToast).toHaveBeenCalledTimes(1);
-    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expectRejectedRemoveState();
   });
 
   it('resyncs the chips and toasts once after an async lastError rollback (#1127)', async () => {
@@ -199,10 +210,6 @@ describe('timezone clocks', () => {
     await flushDeferredFailureSync();
     await flushDeferredFailureSync();
 
-    expect(clockChips().length).toBe(0);
-    expect(settingsChips().length).toBe(0);
-    expect(localStorage.getItem('extraTimeZones')).toBe(null);
-    expect(window.showToast).toHaveBeenCalledTimes(1);
-    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expectRejectedAddState();
   });
 });
