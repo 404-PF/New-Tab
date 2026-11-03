@@ -258,7 +258,12 @@
       if (removeBtn) {
         const chip = removeBtn.closest('.timezone-chip');
         if (chip) {
-          if (removeTimeZone(chip.dataset.zone) === false) {
+          const zoneId = chip.dataset.zone;
+          if (loadTimeZones().indexOf(zoneId) === -1) {
+            renderExtraClocks();
+            return;
+          }
+          if (removeTimeZone(zoneId) === false) {
             reportSaveError();
           }
         }
@@ -302,7 +307,7 @@
     setTimeout(function () {
       renderExtraClocks();
       if (typeof window.renderTimezoneCurrentList === 'function') {
-        window.renderTimezoneCurrentList();
+        window.renderTimezoneCurrentList({ preservePicker: true });
       }
       if (!reportedByCaller) {
         reportSaveError();
