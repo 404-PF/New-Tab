@@ -1,0 +1,51 @@
+/* Liquid glass structure. Every rule is scoped to body.glass-liquid, which
+   src/ui/liquid-glass.js adds only when the glassStyle setting is 'liquid' and
+   the capability probe passes. Classic styling is untouched otherwise. */
+
+/* No isolation or negative z-index here: an isolated ancestor becomes a
+   backdrop root and would stop .glass__warp from sampling content behind it. */
+body.glass-liquid [data-liquid-glass] {
+  position: relative;
+}
+
+body.glass-liquid .glass__warp,
+body.glass-liquid .glass__highlight,
+body.glass-liquid .glass__over-light,
+body.glass-liquid .glass__hover {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+body.glass-liquid .glass__warp {
+  overflow: hidden;
+  backdrop-filter: var(--lg-filter);
+  -webkit-backdrop-filter: var(--lg-filter);
+}
+
+body.glass-liquid .glass__highlight {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+body.glass-liquid .glass__over-light {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 55%);
+  opacity: 0.6;
+}
+
+body.glass-liquid .glass__hover {
+  background: rgba(255, 255, 255, 0);
+  transition: background-color 0.2s ease;
+}
+
+body.glass-liquid [data-liquid-glass]:hover > .glass__hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.glass-liquid .glass__hover {
+    transition: none;
+  }
+}

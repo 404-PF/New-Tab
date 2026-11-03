@@ -40,6 +40,11 @@
     'src/ui/add-app.js',
     'src/ui/color-picker.js',
     'src/ui/font-picker.js',
+    // liquid-glass-maps.js must load before liquid-glass.js, and both before
+    // popover-producing consumers (context-menu.js, app-folders.js) so the
+    // observer sees them in their initial state.
+    'src/data/liquid-glass-maps.js',
+    'src/ui/liquid-glass.js',
     'src/features/interactive-background.js',
     // Non-en locale tables are intentionally NOT listed here: languages.js
     // lazy-loads src/core/locales/<code>.js through ensureLocale() so a new
