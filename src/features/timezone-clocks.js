@@ -261,6 +261,9 @@
           const zoneId = chip.dataset.zone;
           if (loadTimeZones().indexOf(zoneId) === -1) {
             renderExtraClocks();
+            if (typeof window.renderTimezoneCurrentList === 'function') {
+              window.renderTimezoneCurrentList();
+            }
             return;
           }
           if (removeTimeZone(zoneId) === false) {
