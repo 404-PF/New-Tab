@@ -4,7 +4,7 @@
 
 /* No isolation or negative z-index here: an isolated ancestor becomes a
    backdrop root and would stop .glass__warp from sampling content behind it. */
-body.glass-liquid [data-liquid-glass] {
+:where(body.glass-liquid [data-liquid-glass]) {
   position: relative;
 }
 

@@ -39,8 +39,6 @@ const srcGlobals = {
   AppGridStorage: 'readonly',
   Accessibility: 'readonly',
   AppFolders: 'readonly',
-  LiquidGlass: 'readonly',
-  LiquidGlassMaps: 'readonly',
   defaultApps: 'readonly',
   VisibilityInterval: 'readonly',
   visibilityManager: 'readonly',

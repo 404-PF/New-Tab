@@ -184,6 +184,8 @@
     const filterId = ensureFilter(mapName, sizeClass);
     if (!filterId) return false;
 
+    if (el.querySelector(':scope > .' + WARP_CLASS)) stripLayers(el);
+
     const size = SIZE_CLASSES[sizeClass];
     const warp = document.createElement('span');
     warp.className = WARP_CLASS;
@@ -201,10 +203,15 @@
       el.appendChild(span);
     });
 
-    el.setAttribute(ATTR, sizeClass);
     el.classList.add('glass--liquid');
     enhanced.add(el);
     return true;
+  }
+
+  function stripLayers(el) {
+    el.querySelectorAll(':scope > .' + LAYER_CLASSES.join(', :scope > .')).forEach((node) => {
+      node.remove();
+    });
   }
 
   function release(el) {
@@ -213,9 +220,7 @@
       return true;
     }
     if (!(el instanceof Element) || !enhanced.has(el)) return false;
-    el.querySelectorAll(':scope > .' + LAYER_CLASSES.join(', :scope > .')).forEach((node) => {
-      node.remove();
-    });
+    stripLayers(el);
     el.classList.remove('glass--liquid');
     enhanced.delete(el);
     return true;
@@ -237,13 +242,17 @@
     observer = new MutationObserver((records) => {
       records.forEach((record) => {
         record.removedNodes.forEach((node) => {
-          collectMarked(node).forEach((el) => enhanced.delete(el));
+          collectMarked(node).forEach((el) => release(el));
         });
         record.addedNodes.forEach((node) => {
           collectMarked(node).forEach((el) => enhance(el));
         });
-        if (record.type === 'attributes' && record.target.hasAttribute(ATTR)) {
-          enhance(record.target);
+        if (record.type === 'attributes') {
+          if (record.target.hasAttribute(ATTR)) {
+            enhance(record.target);
+          } else {
+            release(record.target);
+          }
         }
       });
     });
@@ -268,6 +277,10 @@
 
   function teardown() {
     stopObserver();
+    if (unsubscribeMotion) {
+      unsubscribeMotion();
+      unsubscribeMotion = null;
+    }
     releaseAll();
     document.body.classList.remove(ROOT_CLASS);
   }
@@ -283,7 +296,10 @@
         }
       });
     }
-    if (!isLiquid()) return;
+    if (!isLiquid()) {
+      teardown();
+      return;
+    }
     document.body.classList.add(ROOT_CLASS);
     startObserver();
     if (!isReducedMotion()) enhanceAll();

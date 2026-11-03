@@ -54,13 +54,21 @@ describe('liquid glass core module (#1108)', () => {
       loadLiquidGlass();
       const first = window.LiquidGlassMaps.build('standard', 64, 64, 10);
       expect(first).toMatch(/^data:image\/png/);
+      const callsAfterFirst = getContextSpy.mock.calls.length;
       expect(window.LiquidGlassMaps.build('standard', 64, 64, 10)).toBe(first);
+      expect(getContextSpy.mock.calls.length).toBe(callsAfterFirst);
       expect(window.LiquidGlassMaps.names).toEqual(['standard', 'polar', 'prominent']);
     });
 
-    it('returns an empty string for unknown maps or when no canvas is available', () => {
+    it('returns an empty string for unknown or inherited map names', () => {
       loadLiquidGlass();
       expect(window.LiquidGlassMaps.build('shader')).toBe('');
+      expect(window.LiquidGlassMaps.build('constructor')).toBe('');
+      expect(window.LiquidGlassMaps.build('__proto__')).toBe('');
+    });
+
+    it('returns an empty string when no canvas is available', () => {
+      loadLiquidGlass();
       getContextSpy.mockImplementation(() => null);
       window.LiquidGlassMaps._clearCacheForTests();
       expect(window.LiquidGlassMaps.build('polar', 16, 16, 4)).toBe('');
@@ -77,6 +85,16 @@ describe('liquid glass core module (#1108)', () => {
       const lg = loadLiquidGlass({ style: 'classic' });
       expect(lg.isLiquid()).toBe(false);
       expect(lg.getGlassStyle()).toBe('classic');
+    });
+
+    it('defaults to classic when the glassStyle key is missing', () => {
+      localStorage.removeItem('glassStyle');
+      globalThis.CSS = { supports: () => true };
+      injectScript('src/data/liquid-glass-maps.js');
+      injectScript('src/ui/liquid-glass.js');
+      const lg = window.LiquidGlass;
+      expect(lg.getGlassStyle()).toBe('classic');
+      expect(lg.isLiquid()).toBe(false);
     });
 
     it('falls back silently when the capability probe fails', () => {
@@ -145,6 +163,20 @@ describe('liquid glass core module (#1108)', () => {
       lg.release(el);
       expect(lg.enhance(el)).toBe(true);
       expect(el.querySelectorAll('.glass__warp')).toHaveLength(1);
+    });
+
+    it('does not duplicate layers when a marked element is removed and re-added', async () => {
+      const lg = loadLiquidGlass();
+      lg.init();
+      const el = marked();
+      await vi.waitFor(() => expect(el.querySelector('.glass__warp')).not.toBeNull());
+      const parent = el.parentNode;
+      el.remove();
+      await new Promise((r) => setTimeout(r, 0));
+      parent.appendChild(el);
+      await new Promise((r) => setTimeout(r, 0));
+      expect(el.querySelectorAll('.glass__warp')).toHaveLength(1);
+      expect(el.querySelectorAll('.glass__highlight')).toHaveLength(1);
     });
 
     it('does nothing under reduced motion', () => {

@@ -75,7 +75,7 @@
   // Returns a PNG data URL for the named map, or '' when a 2D canvas is
   // unavailable (e.g. non-browser test environments).
   function build(name, w = DEFAULT_SIZE, h = DEFAULT_SIZE, radius = DEFAULT_RADIUS) {
-    if (!generators[name]) return '';
+    if (!Object.hasOwn(generators, name)) return '';
     const key = `${name}:${w}x${h}:${radius}`;
     if (!cache.has(key)) {
       cache.set(key, render(name, w, h, radius));
