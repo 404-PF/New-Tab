@@ -1203,7 +1203,8 @@ function initTimezoneSettings() {
     picker.setAttribute('aria-expanded', String(matches.length > 0));
   }
 
-  function renderCurrentTimezones() {
+  function renderCurrentTimezones(options) {
+    const preservePicker = Boolean(options && options.preservePicker);
     const saved = window.loadTimeZones ? window.loadTimeZones() : [];
     currentList.innerHTML = '';
     saved.forEach(function (zoneId) {
@@ -1238,10 +1239,12 @@ function initTimezoneSettings() {
       chip.appendChild(removeBtn);
       currentList.appendChild(chip);
     });
-    selectedZoneId = '';
-    picker.value = '';
-    optionsList.hidden = true;
-    picker.setAttribute('aria-expanded', 'false');
+    if (!preservePicker) {
+      selectedZoneId = '';
+      picker.value = '';
+      optionsList.hidden = true;
+      picker.setAttribute('aria-expanded', 'false');
+    }
     updateAddButton();
   }
 
@@ -1269,15 +1272,28 @@ function initTimezoneSettings() {
 
   addBtn.addEventListener('click', function () {
     if (!selectedZoneId) return;
-    if (window.addTimeZone) window.addTimeZone(selectedZoneId);
+    const saved = window.loadTimeZones ? window.loadTimeZones() : [];
+    if (saved.length >= (window.MAX_TIMEZONES || 5) || saved.indexOf(selectedZoneId) !== -1) {
+      renderCurrentTimezones();
+      return;
+    }
+    const added = window.addTimeZone ? window.addTimeZone(selectedZoneId) : true;
     renderCurrentTimezones();
+    if (added === false) {
+      reportFeatureToggleSaveError();
+    }
   });
 
   currentList.addEventListener('click', function (e) {
     const btn = e.target.closest('button[data-zone]');
     if (btn) {
-      if (window.removeTimeZone) window.removeTimeZone(btn.dataset.zone);
+      const zoneId = btn.dataset.zone;
+      const wasSaved = window.loadTimeZones ? window.loadTimeZones().indexOf(zoneId) !== -1 : true;
+      const removed = window.removeTimeZone ? window.removeTimeZone(zoneId) : true;
       renderCurrentTimezones();
+      if (removed === false && wasSaved) {
+        reportFeatureToggleSaveError();
+      }
     }
   });
 
