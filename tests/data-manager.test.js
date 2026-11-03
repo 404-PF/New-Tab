@@ -895,8 +895,10 @@ describe('DataManager todoStats shape (issue #1130)', () => {
     expect(shape({ currentStreak: -1 })).toBe(false);
     expect(shape({ currentStreak: NaN })).toBe(false);
     expect(shape({ currentStreak: Infinity })).toBe(false);
+    expect(shape({ currentStreak: 1.5 })).toBe(false);
     expect(shape({ longestStreak: 'x' })).toBe(false);
     expect(shape({ longestStreak: -1 })).toBe(false);
+    expect(shape({ longestStreak: 1.5 })).toBe(false);
     expect(shape(null)).toBe(false);
     expect(shape([])).toBe(false);
     expect(shape('stats')).toBe(false);

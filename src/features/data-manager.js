@@ -704,10 +704,10 @@
     todoEnabled: function (v) { return typeof v === 'boolean'; },
     todoReminderEnabled: function (v) { return typeof v === 'boolean'; },
     todoReminderLeadTime: function (v) { return typeof v === 'string' || typeof v === 'number'; },
-    // Strict shape: day counts must be non-negative integers so a corrupt
-    // backup cannot render non-numeric text in the focus-stats panel
-    // (issue #1130). Absent optional fields stay valid (emptyStats() has
-    // no completedIds; a minimal {} payload round-trips).
+    // Strict shape: day counts and streaks must be non-negative integers so
+    // a corrupt backup cannot render fractional or non-numeric text in the
+    // focus-stats panel (issue #1130). Absent optional fields stay valid
+    // (emptyStats() has no completedIds; a minimal {} payload round-trips).
     todoStats: function (v) {
       if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
       if (v.days !== undefined) {
@@ -717,8 +717,8 @@
           if (!isNonNegativeInteger(entry[1])) return false;
         }
       }
-      if (v.currentStreak !== undefined && !(Number.isFinite(v.currentStreak) && v.currentStreak >= 0)) return false;
-      if (v.longestStreak !== undefined && !(Number.isFinite(v.longestStreak) && v.longestStreak >= 0)) return false;
+      if (v.currentStreak !== undefined && !(Number.isInteger(v.currentStreak) && v.currentStreak >= 0)) return false;
+      if (v.longestStreak !== undefined && !(Number.isInteger(v.longestStreak) && v.longestStreak >= 0)) return false;
       if (v.completedIds !== undefined && !isValidTodoCompletedIds(v.completedIds)) return false;
       return true;
     },
