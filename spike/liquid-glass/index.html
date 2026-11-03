@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liquid Glass P0 spike (#1107)</title>
+  <!--
+    Standalone prototype. Not wired into the packaged extension:
+    no manifest, bootstrap, or style.css reference points here.
+    Open directly in Chrome/Edge stable (file:// or local static server).
+  -->
+  <style>
+    html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; color: #fff; background: #000; overflow: hidden; }
+
+    #scene { position: fixed; inset: 0; z-index: 0; }
+    #scene.photo {
+      background:
+        radial-gradient(circle at 20% 30%, #ff7a59 0, transparent 35%),
+        radial-gradient(circle at 80% 20%, #4f8bff 0, transparent 40%),
+        radial-gradient(circle at 60% 85%, #2fd38a 0, transparent 40%),
+        linear-gradient(135deg, #1b1033, #3a1c4f);
+    }
+    #scene video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+    #scene.video video { display: block; }
+
+    .panel {
+      position: fixed; top: 12px; left: 12px; z-index: 10; width: 300px;
+      padding: 12px; border-radius: 12px; background: rgba(0,0,0,.6); font-size: 13px; line-height: 1.4;
+    }
+    .panel button, .panel select { margin: 2px 4px 2px 0; }
+    #results { white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 11px; margin-top: 8px; }
+
+    #grid-wrap {
+      position: fixed; left: 340px; top: 0; right: 0; bottom: 0; z-index: 1; overflow-y: auto;
+    }
+    .app-grid {
+      display: grid; grid-template-columns: repeat(6, 120px); gap: 24px; padding: 40px; justify-content: center;
+    }
+    .app-icon {
+      width: 120px; height: 120px; border-radius: 28px; display: flex; align-items: center; justify-content: center;
+      font-size: 36px; box-sizing: border-box; position: relative;
+      background: rgba(255,255,255,.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 8px 24px rgba(0,0,0,.25);
+    }
+    /* Mode: displacement. backdrop-filter url() references the SVG filter below. */
+    body.mode-displace .app-icon {
+      backdrop-filter: url(#lg-displace) blur(2px) saturate(160%);
+      -webkit-backdrop-filter: url(#lg-displace) blur(2px) saturate(160%);
+    }
+    /* Mode: fallback. Plain blur/saturate, same as css/glass.css tokens. */
+    body.mode-fallback .app-icon {
+      backdrop-filter: blur(12px) saturate(160%);
+      -webkit-backdrop-filter: blur(12px) saturate(160%);
+    }
+    body.mode-none .app-icon { backdrop-filter: none; }
+
+    .drag-probe {
+      position: fixed; right: 16px; bottom: 16px; width: 160px; height: 160px; border-radius: 40px; z-index: 5;
+      background: rgba(255,255,255,.1); pointer-events: auto; cursor: grab;
+    }
+    body.mode-displace .drag-probe { backdrop-filter: url(#lg-displace) blur(2px) saturate(160%); }
+    body.mode-fallback .drag-probe { backdrop-filter: blur(12px) saturate(160%); }
+  </style>
+</head>
+<body class="mode-displace">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <!--
+        Displacement map is generated at runtime (see buildDisplacementMap) and
+        applied with per-channel scales for a cheap chromatic-aberration split.
+        Technique adapted from rdev/liquid-glass-react (MIT), src/utils.ts.
+      -->
+      <filter id="lg-displace" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feImage id="lg-map" x="0" y="0" width="100%" height="100%" result="map" preserveAspectRatio="none" />
+        <feDisplacementMap in="SourceGraphic" in2="map" scale="-40" xChannelSelector="R" yChannelSelector="G" result="dR" />
+        <feColorMatrix in="dR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="rOnly" />
+        <feDisplacementMap in="SourceGraphic" in2="map" scale="-42" xChannelSelector="R" yChannelSelector="G" result="dG" />
+        <feColorMatrix in="dG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="gOnly" />
+        <feDisplacementMap in="SourceGraphic" in2="map" scale="-44" xChannelSelector="R" yChannelSelector="G" result="dB" />
+        <feColorMatrix in="dB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="bOnly" />
+        <feBlend in="rOnly" in2="gOnly" mode="screen" result="rg" />
+        <feBlend in="rg" in2="bOnly" mode="screen" />
+      </filter>
+    </defs>
+  </svg>
+
+  <div id="scene" class="photo"><video id="bg-video" muted loop playsinline></video></div>
+
+  <div class="panel">
+    <strong>Liquid Glass P0 spike (#1107)</strong><br />
+    Gate: &ge; 55 FPS avg, &lt; 5% dropped frames, Chrome/Edge stable, iGPU.<br /><br />
+    <label>Background
+      <select id="bg-select">
+        <option value="photo">Photo (CSS gradient)</option>
+        <option value="video">Video (pick a file)</option>
+      </select>
+    </label>
+    <input type="file" id="video-file" accept="video/*" style="display:none" />
+    <br />
+    <label>Glass mode
+      <select id="mode-select">
+        <option value="mode-displace">Displacement (SVG)</option>
+        <option value="mode-fallback">Fallback (blur)</option>
+        <option value="mode-none">None (control)</option>
+      </select>
+    </label>
+    <br />
+    <button id="run-btn">Run 10s measurement</button>
+    <button id="copy-btn">Copy results</button>
+    <div id="probe"></div>
+    <div id="results">No run yet.</div>
+  </div>
+
+  <div id="grid-wrap">
+    <div class="app-grid" id="app-grid"></div>
+  </div>
+  <div class="drag-probe" id="drag-probe" title="Drag me during a run"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var MEASURE_MS = 10000;
+      var TARGET_FPS = 55;
+      var MAX_DROPPED_RATIO = 0.05;
+      var FRAME_INTERVAL = 1000 / 60;
+
+      var grid = document.getElementById('app-grid');
+      var gridWrap = document.getElementById('grid-wrap');
+      var scene = document.getElementById('scene');
+      var video = document.getElementById('bg-video');
+      var results = document.getElementById('results');
+      var probeEl = document.getElementById('probe');
+      var dragProbe = document.getElementById('drag-probe');
+      var lastRun = null;
+
+      var GLYPHS = ['\u2600', '\u266B', '\u2709', '\u2601', '\u2605', '\u26A1', '\u2692', '\u270E', '\u2615', '\u263E'];
+      for (var i = 0; i < 30; i++) {
+        var icon = document.createElement('div');
+        icon.className = 'app-icon';
+        icon.textContent = GLYPHS[i % GLYPHS.length];
+        grid.appendChild(icon);
+      }
+
+      function buildDisplacementMap(w, h, radius) {
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        var img = ctx.createImageData(w, h);
+        var d = img.data;
+        for (var y = 0; y < h; y++) {
+          for (var x = 0; x < w; x++) {
+            var dx = Math.min(x, w - 1 - x);
+            var dy = Math.min(y, h - 1 - y);
+            var edge = Math.min(dx, dy);
+            var t = Math.max(0, 1 - edge / radius);
+            var bulge = t * t;
+            var nx = (x < w / 2 ? 1 : -1) * bulge;
+            var ny = (y < h / 2 ? 1 : -1) * bulge;
+            var idx = (y * w + x) * 4;
+            d[idx] = 128 + nx * 127;
+            d[idx + 1] = 128 + ny * 127;
+            d[idx + 2] = 128;
+            d[idx + 3] = 255;
+          }
+        }
+        ctx.putImageData(img, 0, 0);
+        return canvas.toDataURL('image/png');
+      }
+
+      var mapEl = document.getElementById('lg-map');
+      mapEl.setAttribute('href', buildDisplacementMap(256, 256, 40));
+
+      function setMode(mode) {
+        document.body.className = mode;
+      }
+
+      function setBackground(kind) {
+        if (kind === 'video') {
+          scene.className = 'video';
+          if (!video.src) {
+            document.getElementById('video-file').click();
+          }
+        } else {
+          scene.className = 'photo';
+          video.pause();
+        }
+      }
+
+      document.getElementById('bg-select').addEventListener('change', function (e) {
+        setBackground(e.target.value);
+      });
+      document.getElementById('video-file').addEventListener('change', function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (!f) return;
+        video.src = URL.createObjectURL(f);
+        video.play().catch(function () {});
+        scene.className = 'video';
+      });
+      document.getElementById('mode-select').addEventListener('change', function (e) {
+        setMode(e.target.value);
+      });
+
+      function probe() {
+        var lines = [];
+        lines.push('backdrop-filter blur: ' + CSS.supports('backdrop-filter', 'blur(1px)'));
+        lines.push('backdrop-filter url(): ' + CSS.supports('backdrop-filter', 'url(#lg-displace)'));
+        lines.push('UA: ' + (navigator.userAgentData ? navigator.userAgentData.brands.map(function (b) { return b.brand + ' ' + b.version; }).join(', ') : navigator.userAgent));
+        probeEl.textContent = lines.join('\n');
+      }
+      probe();
+
+      // Simulated motion: scroll sinusoidally and drag the probe with a pointer-like path.
+      function startMotion(durationMs, onDone) {
+        var start = performance.now();
+        var maxScroll = Math.max(0, gridWrap.scrollHeight - gridWrap.clientHeight);
+        var dragStart = performance.now();
+        (function step(now) {
+          var t = now - start;
+          if (t < durationMs) {
+            gridWrap.scrollTop = (Math.sin(t / 600) * 0.5 + 0.5) * maxScroll;
+            var p = (now - dragStart) / 1200;
+            dragProbe.style.transform = 'translate(' + (Math.sin(p) * 60) + 'px,' + (Math.cos(p * 1.3) * 60) + 'px)';
+            requestAnimationFrame(step);
+          } else {
+            gridWrap.scrollTop = 0;
+            dragProbe.style.transform = '';
+            onDone();
+          }
+        })(start);
+      }
+
+      // Sampler: frame interval from rAF timestamps. A frame is "dropped" when its
+      // interval exceeds 1.5x the 60 Hz vblank interval (~25 ms).
+      function measure(durationMs, done) {
+        var frames = [];
+        var last = null;
+        var begin = performance.now();
+        var hiddenSeen = false;
+        function tick(now) {
+          if (document.hidden) hiddenSeen = true;
+          if (last !== null) frames.push(now - last);
+          last = now;
+          if (now - begin < durationMs) {
+            requestAnimationFrame(tick);
+          } else {
+            done(frames, hiddenSeen);
+          }
+        }
+        requestAnimationFrame(tick);
+      }
+
+      function summarize(frames) {
+        if (frames.length === 0) return { frames: 0, avgFps: 0, droppedPct: 100 };
+        var total = frames.reduce(function (a, b) { return a + b; }, 0);
+        var dropped = frames.filter(function (f) { return f > FRAME_INTERVAL * 1.5; }).length;
+        return {
+          frames: frames.length,
+          avgFps: Math.round((frames.length / (total / 1000)) * 10) / 10,
+          droppedPct: Math.round((dropped / frames.length) * 1000) / 10
+        };
+      }
+
+      document.getElementById('run-btn').addEventListener('click', function () {
+        var mode = document.body.className;
+        var bg = scene.className || 'photo';
+        results.textContent = 'Measuring ' + mode + ' over ' + bg + '...';
+        measure(MEASURE_MS, function (frames, hidden) {
+          startMotion(MEASURE_MS, function () {});
+          var s = summarize(frames);
+          var pass = s.avgFps >= TARGET_FPS && (s.droppedPct / 100) < MAX_DROPPED_RATIO;
+          lastRun = {
+            timestamp: new Date().toISOString(),
+            mode: mode,
+            background: bg,
+            hiddenDuringRun: hidden,
+            frames: s.frames,
+            avgFps: s.avgFps,
+            droppedPct: s.droppedPct,
+            verdictForMode: pass ? 'meets gate' : 'misses gate'
+          };
+          results.textContent = JSON.stringify(lastRun, null, 2);
+        });
+      });
+
+      document.getElementById('copy-btn').addEventListener('click', function () {
+        if (!lastRun) { results.textContent = 'Run a measurement first.'; return; }
+        navigator.clipboard.writeText(JSON.stringify(lastRun, null, 2));
+      });
+    })();
+  </script>
+</body>
+</html>
