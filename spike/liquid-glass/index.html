@@ -181,6 +181,8 @@
           scene.className = 'video';
           if (!video.src) {
             document.getElementById('video-file').click();
+          } else {
+            video.play().catch(function () {});
           }
         } else {
           scene.className = 'photo';
@@ -194,6 +196,7 @@
       document.getElementById('video-file').addEventListener('change', function (e) {
         var f = e.target.files && e.target.files[0];
         if (!f) return;
+        if (video.src) URL.revokeObjectURL(video.src);
         video.src = URL.createObjectURL(f);
         video.play().catch(function () {});
         scene.className = 'video';
@@ -254,20 +257,29 @@
       function summarize(frames) {
         if (frames.length === 0) return { frames: 0, avgFps: 0, droppedPct: 100 };
         var total = frames.reduce(function (a, b) { return a + b; }, 0);
-        var dropped = frames.filter(function (f) { return f > FRAME_INTERVAL * 1.5; }).length;
+        var missed = 0;
+        frames.forEach(function (f) {
+          if (f > FRAME_INTERVAL * 1.5) missed += Math.round(f / FRAME_INTERVAL) - 1;
+        });
+        var expected = frames.length + missed;
         return {
           frames: frames.length,
           avgFps: Math.round((frames.length / (total / 1000)) * 10) / 10,
-          droppedPct: Math.round((dropped / frames.length) * 1000) / 10
+          droppedPct: Math.round((missed / expected) * 1000) / 10
         };
       }
 
-      document.getElementById('run-btn').addEventListener('click', function () {
+      var runBtn = document.getElementById('run-btn');
+      var copyBtn = document.getElementById('copy-btn');
+
+      runBtn.addEventListener('click', function () {
+        if (runBtn.disabled) return;
+        runBtn.disabled = true;
         var mode = document.body.className;
         var bg = scene.className || 'photo';
         results.textContent = 'Measuring ' + mode + ' over ' + bg + '...';
+        startMotion(MEASURE_MS, function () {});
         measure(MEASURE_MS, function (frames, hidden) {
-          startMotion(MEASURE_MS, function () {});
           var s = summarize(frames);
           var pass = s.avgFps >= TARGET_FPS && (s.droppedPct / 100) < MAX_DROPPED_RATIO;
           lastRun = {
@@ -281,12 +293,22 @@
             verdictForMode: pass ? 'meets gate' : 'misses gate'
           };
           results.textContent = JSON.stringify(lastRun, null, 2);
+          runBtn.disabled = false;
         });
       });
 
-      document.getElementById('copy-btn').addEventListener('click', function () {
+      copyBtn.addEventListener('click', function () {
         if (!lastRun) { results.textContent = 'Run a measurement first.'; return; }
-        navigator.clipboard.writeText(JSON.stringify(lastRun, null, 2));
+        var text = JSON.stringify(lastRun, null, 2);
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+          results.textContent = 'Clipboard unavailable. Copy manually:\n' + text;
+          return;
+        }
+        navigator.clipboard.writeText(text).then(function () {
+          results.textContent = 'Copied.\n' + text;
+        }, function () {
+          results.textContent = 'Copy failed. Copy manually:\n' + text;
+        });
       });
     })();
   </script>

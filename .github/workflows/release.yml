@@ -190,7 +190,7 @@ jobs:
           set -euo pipefail
           : "${BUILD_DIR:?BUILD_DIR is not set or empty — aborting}"
           cd "$BUILD_DIR"
-          rm -rf .github .husky .agents tests ISSUES screenshots
+          rm -rf .github .husky .agents tests ISSUES screenshots spike
           rm -f .gitignore .nvmrc vitest.config.js eslint.config.js
           rm -f package.json package-lock.json
 
