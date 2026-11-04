@@ -349,6 +349,20 @@ describe('settings checkboxes report rejected writes (#969)', () => {
     expect(checkbox.checked).toBe(false);
     expect(window.showToast).not.toHaveBeenCalled();
   });
+
+  it('glass-style select keeps the value, restores the select, and toasts', () => {
+    localStorage.setItem('glassStyle', 'classic');
+    failWriteFor('glassStyle');
+
+    const select = document.getElementById('glass-style-setting');
+    select.value = 'liquid';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('glassStyle')).toBe('classic');
+    expect(select.value).toBe('classic');
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
 });
 
 describe('async runtime.lastError rollback restores controls (#969)', () => {
