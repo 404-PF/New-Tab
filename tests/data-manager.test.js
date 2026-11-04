@@ -1616,6 +1616,99 @@ describe('DataManager todo sort preference (issue #1056)', () => {
   });
 });
 
+describe('DataManager app-launch toggle backup (issue #1136)', () => {
+  it('includes appShortcutsEnabled in the export allowlist', () => {
+    expect(window.DataManager.EXPORT_KEYS).toContain('appShortcutsEnabled');
+  });
+
+  it('validates appShortcutsEnabled as a boolean', () => {
+    const shape = window.DataManager.EXPECTED_SHAPES.appShortcutsEnabled;
+    expect(shape(true)).toBe(true);
+    expect(shape(false)).toBe(true);
+    expect(shape('true')).toBe(false);
+    expect(shape('false')).toBe(false);
+    expect(shape(1)).toBe(false);
+    expect(shape(null)).toBe(false);
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      appShortcutsEnabled: false
+    } })).toEqual({ valid: true });
+
+    const stringBackup = window.DataManager.validateImportData({ version: 1, data: {
+      appShortcutsEnabled: 'false'
+    } });
+    expect(stringBackup.valid).toBe(false);
+    expect(stringBackup.error).toContain('dataImportInvalidShape');
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      appShortcutsEnabled: 1
+    } }).valid).toBe(false);
+  });
+
+  it('round-trips appShortcutsEnabled through export and import', async () => {
+    localStorage.setItem('appShortcutsEnabled', 'false');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.appShortcutsEnabled).toBe(false);
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+
+    localStorage.removeItem('appShortcutsEnabled');
+    const result = await importBackup(exported.data, 'replace');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('appShortcutsEnabled')).toBe('false');
+  });
+
+  it('applies appShortcutsEnabled in merge mode', async () => {
+    localStorage.setItem('appShortcutsEnabled', 'true');
+
+    const result = await importBackup({ appShortcutsEnabled: false }, 'merge');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('appShortcutsEnabled')).toBe('false');
+  });
+
+  it('clears appShortcutsEnabled in replace mode when the backup omits it', async () => {
+    localStorage.setItem('appShortcutsEnabled', 'false');
+
+    await importBackup({ theme: 'dark' }, 'replace');
+
+    expect(localStorage.getItem('appShortcutsEnabled')).toBeNull();
+    expect(localStorage.getItem('theme')).toBe('dark');
+  });
+
+  it('keeps every persisted Settings toggle key in the export allowlist', () => {
+    // Regression guard for #1136: every persisted Settings toggle (written via
+    // a literal or a module constant like APP_SHORTCUTS_KEY) must round-trip.
+    const settingsToggleKeys = [
+      'appShortcutsEnabled',
+      'customShortcuts',
+      'focusMode',
+      'simpleMode',
+      'notesEnabled',
+      'eyeCareReminder',
+      'games_enabled',
+      'games_fps_enabled',
+      'updateCheckEnabled',
+      'searchHistoryEnabled',
+      'todoEnabled',
+      'todoReminderEnabled',
+      'todoStatsEnabled',
+      'pomodoroStatsEnabled',
+      'weatherEnabled',
+      'bgRotationEnabled',
+      'openAppsInNewTab',
+      'videoAutoplay',
+      'autoTheme',
+      'aiGroundWithWeb'
+    ];
+    settingsToggleKeys.forEach((key) => {
+      expect(window.DataManager.EXPORT_KEYS).toContain(key);
+    });
+  });
+});
+
 describe('DataManager background rotation re-apply (issue #1080)', () => {
   let rotation;
 
