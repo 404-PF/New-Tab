@@ -475,7 +475,7 @@ window.i18n.__registerLocale('zh', {
   todoSearchPlaceholder: '搜索待办事项...',
   clearCompletedText: '清除已完成',
   clearCompletedConfirmTitle: '清除已完成的待办事项？',
-  clearCompletedConfirmMessage: '这将永久删除所有已完成的待办事项。此操作无法撤消。',
+  clearCompletedConfirmMessage: '这将删除所有已完成的待办事项。此操作可在几秒内撤销。',
   clearCompletedConfirmButton: '清除已完成',
   emptyStateTitle: '还没有待办事项。在上方添加一个！',
   emptyStateDesc: '尝试添加到期日期以更好地组织。',

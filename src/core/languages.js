@@ -560,7 +560,7 @@ const translations = {
     todoSearchPlaceholder: 'Search todos...',
     clearCompletedText: 'Clear Completed',
     clearCompletedConfirmTitle: 'Clear Completed Todos?',
-    clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',
+    clearCompletedConfirmMessage: 'This will remove all completed todos. You can undo this for a few seconds after clearing.',
     clearCompletedConfirmButton: 'Clear Completed',
     emptyStateTitle: 'No todos yet. Add one above!',
     emptyStateDesc: 'Try adding due dates for better organization.',

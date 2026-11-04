@@ -131,9 +131,14 @@ function showToast(message, type = '', options = {}) {
     autoHideTimeoutId = setTimeout(() => {
       autoHideTimeoutId = null;
       clearAutoHide();
-      // The countdown is over: the toast is on its way out, so release
-      // caller state now rather than after the fade (a visibility pause
-      // delays this callback, which is exactly the lifetime callers want).
+      // The countdown is over: the toast is on its way out, so drop the
+      // action button first — it would otherwise stay clickable during the
+      // 300 ms fade and fire a handler whose state is already gone (e.g. an
+      // expired Undo) — then release caller state now rather than after the
+      // fade (a visibility pause delays this callback, which is exactly the
+      // lifetime callers want).
+      const actionButton = toast.querySelector('.toast-action');
+      if (actionButton) actionButton.remove();
       notifyDismiss();
       toast.classList.remove('show');
       fadeOutTimeoutId = setTimeout(() => {

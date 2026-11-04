@@ -345,7 +345,7 @@ globalThis.window.i18n = {
       notesEmpty: 'No notes yet. Click + to add one!',
       notesSearchPlaceholder: 'Search notes...',
       notesNoResults: 'No matching notes.',
-      clearCompletedConfirmMessage: 'This will permanently remove all completed todos. This action cannot be undone.',
+      clearCompletedConfirmMessage: 'This will remove all completed todos. You can undo this for a few seconds after clearing.',
       cancel: 'Cancel',
       save: 'Save',
       create: 'Create',

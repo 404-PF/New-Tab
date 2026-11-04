@@ -424,7 +424,7 @@ window.i18n.__registerLocale('pt', {
   todoSearchPlaceholder: 'Buscar tarefas...',
   clearCompletedText: 'Limpar concluídas',
   clearCompletedConfirmTitle: 'Limpar tarefas concluídas?',
-  clearCompletedConfirmMessage: 'Isso removerá permanentemente todas as tarefas concluídas. Esta ação não pode ser desfeita.',
+  clearCompletedConfirmMessage: 'Isso removerá todas as tarefas concluídas. Você pode desfazer esta ação por alguns segundos.',
   clearCompletedConfirmButton: 'Limpar concluídas',
   emptyStateTitle: 'Nenhuma tarefa ainda. Adicione uma acima!',
   emptyStateDesc: 'Tente adicionar datas de vencimento para se organizar melhor.',

@@ -437,7 +437,7 @@ window.i18n.__registerLocale('ja', {
   todoSearchPlaceholder: 'Todoを検索...',
   clearCompletedText: '完了をクリア',
   clearCompletedConfirmTitle: '完了したTodoをクリアしますか？',
-  clearCompletedConfirmMessage: '完了したすべてのTodoが完全に削除されます。この操作は元に戻せません。',
+  clearCompletedConfirmMessage: '完了したすべてのTodoが削除されます。この操作は数秒以内であれば元に戻せます。',
   clearCompletedConfirmButton: '完了をクリア',
   emptyStateTitle: 'まだTodoはありません。上で追加してください！',
   emptyStateDesc: '期限を設定して整理しましょう。',

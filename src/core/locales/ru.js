@@ -424,7 +424,7 @@ window.i18n.__registerLocale('ru', {
   todoSearchPlaceholder: 'Поиск задач...',
   clearCompletedText: 'Очистить завершённые',
   clearCompletedConfirmTitle: 'Очистить завершённые дела?',
-  clearCompletedConfirmMessage: 'Это навсегда удалит все завершённые дела. Это действие нельзя отменить.',
+  clearCompletedConfirmMessage: 'Это удалит все завершённые дела. Это действие можно отменить в течение нескольких секунд.',
   clearCompletedConfirmButton: 'Очистить завершённые',
   emptyStateTitle: 'Пока нет дел. Добавьте одно выше!',
   emptyStateDesc: 'Попробуйте добавить сроки для лучшей организации.',

@@ -437,7 +437,7 @@ window.i18n.__registerLocale('ko', {
   todoSearchPlaceholder: '할 일 검색...',
   clearCompletedText: '완료 항목 지우기',
   clearCompletedConfirmTitle: '완료된 할 일을 지우시겠습니까?',
-  clearCompletedConfirmMessage: '완료된 모든 할 일이 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.',
+  clearCompletedConfirmMessage: '완료된 모든 할 일이 삭제됩니다. 이 작업은 몇 초 동안 실행 취소할 수 있습니다.',
   clearCompletedConfirmButton: '완료 항목 지우기',
   emptyStateTitle: '아직 할 일이 없습니다. 위에서 추가하세요!',
   emptyStateDesc: '마감일을 설정하여 더 잘 정리해보세요.',

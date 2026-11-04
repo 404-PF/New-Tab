@@ -424,7 +424,7 @@ window.i18n.__registerLocale('fr', {
   todoSearchPlaceholder: 'Rechercher des tâches...',
   clearCompletedText: 'Effacer terminées',
   clearCompletedConfirmTitle: 'Effacer les tâches terminées ?',
-  clearCompletedConfirmMessage: 'Cela supprimera définitivement toutes les tâches terminées. Cette action est irréversible.',
+  clearCompletedConfirmMessage: 'Cela supprimera toutes les tâches terminées. Vous pourrez annuler cette action pendant quelques secondes.',
   clearCompletedConfirmButton: 'Effacer terminées',
   emptyStateTitle: 'Pas encore de tâches. Ajoutez-en une ci-dessus !',
   emptyStateDesc: 'Essayez d\'ajouter des dates d\'échéance pour mieux vous organiser.',

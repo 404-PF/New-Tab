@@ -424,7 +424,7 @@ window.i18n.__registerLocale('de', {
   todoSearchPlaceholder: 'Aufgaben durchsuchen...',
   clearCompletedText: 'Erledigte löschen',
   clearCompletedConfirmTitle: 'Erledigte Aufgaben löschen?',
-  clearCompletedConfirmMessage: 'Dies entfernt dauerhaft alle erledigten Aufgaben. Diese Aktion kann nicht rückgängig gemacht werden.',
+  clearCompletedConfirmMessage: 'Dies entfernt alle erledigten Aufgaben. Die Aktion kann noch einige Sekunden lang rückgängig gemacht werden.',
   clearCompletedConfirmButton: 'Erledigte löschen',
   emptyStateTitle: 'Noch keine Aufgaben. Füge eine oben hinzu!',
   emptyStateDesc: 'Versuche, Fälligkeitsdaten hinzuzufügen, um dich besser zu organisieren.',

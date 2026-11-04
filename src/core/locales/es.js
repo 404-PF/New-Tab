@@ -424,7 +424,7 @@ window.i18n.__registerLocale('es', {
   todoSearchPlaceholder: 'Buscar tareas...',
   clearCompletedText: 'Limpiar completadas',
   clearCompletedConfirmTitle: '¿Limpiar tareas completadas?',
-  clearCompletedConfirmMessage: 'Esto eliminará permanentemente todas las tareas completadas. Esta acción no se puede deshacer.',
+  clearCompletedConfirmMessage: 'Esto eliminará todas las tareas completadas. Puedes deshacer esta acción durante unos segundos.',
   clearCompletedConfirmButton: 'Limpiar completadas',
   emptyStateTitle: '¡No hay tareas aún. Agrega una arriba!',
   emptyStateDesc: 'Prueba agregar fechas de vencimiento para organizarte mejor.',
