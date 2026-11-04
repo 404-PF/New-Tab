@@ -647,8 +647,8 @@ body.light-theme .date-picker-trigger.selected {
   border-color: rgba(33, 150, 243, 0.4);
 }
 
-/* Opaque light surface lives here, not in glass.css, whose :not(.todo-section …)
-   guard excludes this subtree from the shared light glass cascade (issue #855). */
+/* Opaque light surface lives here: glass.css's shared light groups no longer
+   target .custom-calendar, so this rule owns the picker background (issue #855). */
 body.light-theme .custom-calendar {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.1);

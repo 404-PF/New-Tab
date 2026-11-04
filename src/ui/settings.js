@@ -2632,6 +2632,7 @@ window.applyGamesKeymap = applyGamesKeymap;
 window.loadGamesKeymap = loadGamesKeymap;
 window.applyGamesFps = applyGamesFps;
 window.loadGamesFps = loadGamesFps;
+window.applyGlassStyle = applyGlassStyle;
 window.initSettings = initSettings;
 window.resolveFontAlias = resolveFontAlias;
 

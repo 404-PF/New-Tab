@@ -117,7 +117,10 @@ body.light-theme :is(
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
-/* Dialogs, popovers, menus, and folder panels share one elevated surface. */
+/* Dialogs, popovers, menus, and folder panels share one elevated surface.
+   .custom-calendar is deliberately absent: glass.css loads after app.css, so
+   this group's translucent fill would beat the opaque #ffffff picker surface
+   at equal-or-higher specificity (issue #855). */
 body.light-theme :is(
   #settings-modal > div,
   #add-app-modal > div,
@@ -137,7 +140,6 @@ body.light-theme :is(
   .app-context-menu,
   .engine-dropdown,
   .search-history-panel,
-  .custom-calendar,
   .timezone-options,
   .bg-rotation-picker
 ) {
@@ -483,7 +485,6 @@ body.light-theme textarea::placeholder {
   opacity: 1;
 }
 
-/* #809: Todo and Notes are identical in the light and dark themes. Light
-   rules that would reach them are scoped with the zero-specificity
-   :where(:not(...)) suffix above, so the dark-theme base rules in app.css
-   apply unchanged inside .todo-section and .notes-section. */
+/* #1109 unifies the glass tokens: the light rules above are no longer scoped
+   away from Todo and Notes with :where(:not(...)), so they apply inside
+   .todo-section and .notes-section like every other surface. */

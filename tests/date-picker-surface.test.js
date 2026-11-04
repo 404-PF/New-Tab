@@ -46,8 +46,10 @@ describe('Todo date picker opaque surface and stacking (issue #855)', () => {
     const glassGroups = [
       ...glassCss().matchAll(/body\.light-theme :is\(((?:[^()]|\([^()]*\))*)\)[^{]*\{/g),
     ];
+    // No shared glass group may target the picker: glass.css loads after
+    // app.css, so any hit would override the opaque #ffffff surface (issue #855).
     const calendarGroup = glassGroups.find((group) => group[1].includes('.custom-calendar'));
-    expect(calendarGroup).toBeDefined();
+    expect(calendarGroup).toBeUndefined();
   });
 
   it('restyles the calendar chrome for the light surface so controls stay readable', () => {
@@ -98,10 +100,9 @@ describe('Todo date picker opaque surface and stacking (issue #855)', () => {
     const rule = css.match(/\.todo-edit-date-picker \.custom-calendar\s*\{([^}]*)\}/);
 
     expect(rule).not.toBeNull();
-    // Only stacking/position overrides here, so the dark-theme surface comes
-    // from the shared .custom-calendar rule. In light mode the edit modal sits
-    // outside .todo-section, so glass.css's elevated frosted surface applies
-    // to it intentionally, matching the rest of the modal.
+    // Only stacking/position overrides here, so the surface comes from the
+    // shared .custom-calendar rules: #141414 in dark theme and the opaque
+    // #ffffff in light theme; no glass group targets the picker.
     expect(rule[1]).not.toMatch(/background:/);
   });
 });
