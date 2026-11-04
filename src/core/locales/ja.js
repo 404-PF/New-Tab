@@ -70,6 +70,10 @@ window.i18n.__registerLocale('ja', {
   todoSubtaskUntitled: '無題',
   todoDeleteTooltip: 'Todoを削除',
   todoSaveError: 'Todoの変更を保存できませんでした。直前の操作は保存されていません。',
+  // Delete undo toast (issue #1135)
+  todoDeletedUndo: 'タスクを削除しました。',
+  todosDeletedUndo: '{count} 件のタスクを削除しました。',
+  todoUndo: '元に戻す',
   todoInlinePrevMonth: '前月',
   todoInlineNextMonth: '翌月',
   addTodo: 'Todoを追加',

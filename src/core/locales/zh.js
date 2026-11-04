@@ -71,6 +71,10 @@ window.i18n.__registerLocale('zh', {
   todoSubtaskUntitled: '未命名',
   todoDeleteTooltip: '删除待办',
   todoSaveError: '无法保存待办更改。您上次的操作未被保存。',
+  // Delete undo toast (issue #1135)
+  todoDeletedUndo: '待办已删除。',
+  todosDeletedUndo: '已删除 {count} 个待办。',
+  todoUndo: '撤销',
   todoInlinePrevMonth: '上个月',
   todoInlineNextMonth: '下个月',
   addTodo: '添加待办',

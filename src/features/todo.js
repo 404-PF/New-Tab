@@ -36,6 +36,13 @@
   const selectedIds = new Set();
   let selectionAnchorId = null;
 
+  // Undo window for deletes (issue #1135). A single slot holds one group of
+  // removed todos with their pre-delete indices: a later delete replaces it
+  // (last wins, mirroring the single-toast model in toast.js) and the timer
+  // drops the state once the undo window lapses.
+  const TODO_UNDO_WINDOW_MS = 8000;
+  let pendingUndo = null;
+
   // Animation config
   const STAGGER_DELAY = 0.05; // seconds between each item
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -1086,9 +1093,70 @@
   }
 
 
+  // Drop the stored undo group. Runs when a new delete replaces it, when the
+  // window lapses, and before every restore attempt so nothing restores twice.
+  function clearPendingTodoUndo() {
+    if (pendingUndo && pendingUndo.timer) {
+      clearTimeout(pendingUndo.timer);
+    }
+    pendingUndo = null;
+  }
+
+  // Re-insert the removed todo(s) at their recorded indices, refresh the
+  // current filter/search/sort view and re-schedule reminders. The slot is
+  // consumed before touching the list, so a second activation (or an expired
+  // window) restores nothing.
+  function restorePendingTodoUndo() {
+    if (!pendingUndo) return;
+
+    const entries = pendingUndo.items.slice().sort((a, b) => a.index - b.index);
+    clearPendingTodoUndo();
+
+    const previousTodos = cloneTodos(todos);
+    entries.forEach(entry => {
+      // Skip ids that are already back (e.g. a bridge rollback resynced them).
+      if (todos.some(todo => todo.id === entry.todo.id)) return;
+      todos.splice(Math.min(Math.max(entry.index, 0), todos.length), 0, entry.todo);
+    });
+
+    if (!saveTodos(todos)) {
+      todos = previousTodos;
+      applyFilters();
+      showTodoSaveError();
+      return;
+    }
+
+    applyFilters();
+    scheduleTodoReminderCheck();
+  }
+
+  // Offer an Undo toast after a successful delete (issue #1135). Only the
+  // success path reaches this: a rejected write keeps the existing error
+  // toast and never arms the undo slot.
+  function offerTodoUndo(items) {
+    clearPendingTodoUndo();
+    pendingUndo = {
+      items,
+      timer: setTimeout(() => {
+        pendingUndo = null;
+      }, TODO_UNDO_WINDOW_MS)
+    };
+
+    if (typeof window.showToast !== 'function') return;
+    const message = items.length === 1
+      ? (window.i18n ? window.i18n.t('todoDeletedUndo') : 'Todo deleted.')
+      : (window.i18n ? window.i18n.t('todosDeletedUndo', { count: items.length }) : items.length + ' todos deleted.');
+    const label = window.i18n ? window.i18n.t('todoUndo') : 'Undo';
+    window.showToast(message, 'info', {
+      duration: TODO_UNDO_WINDOW_MS,
+      action: { label, onClick: restorePendingTodoUndo }
+    });
+  }
+
   // Delete a todo
   function deleteTodo(id) {
     const previousTodos = cloneTodos(todos);
+    const removedIndex = todos.findIndex(t => t.id === id);
     todos = todos.filter(t => t.id !== id);
     if (!saveTodos(todos)) {
       todos = previousTodos;
@@ -1099,6 +1167,9 @@
 
     applyFilters();
     scheduleTodoReminderCheck(id);
+    if (removedIndex !== -1) {
+      offerTodoUndo([{ todo: previousTodos[removedIndex], index: removedIndex }]);
+    }
   }
 
   // Subtask management
@@ -1418,6 +1489,11 @@ function bulkDeleteSelected() {
   if (selectedIds.size === 0) return;
 
   const previousTodos = cloneTodos(todos);
+  // Record the removed slice with its original indices so one Undo re-inserts
+  // the whole group in order (issue #1135).
+  const removed = previousTodos
+    .map((todo, index) => ({ todo, index }))
+    .filter(entry => selectedIds.has(entry.todo.id));
   todos = todos.filter(todo => !selectedIds.has(todo.id));
 
   if (!saveTodos(todos)) {
@@ -1430,6 +1506,9 @@ function bulkDeleteSelected() {
   clearTodoSelection();
   applyFilters();
   scheduleTodoReminderCheck();
+  if (removed.length > 0) {
+    offerTodoUndo(removed);
+  }
 }
 
 // Quick actions

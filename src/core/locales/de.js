@@ -70,6 +70,10 @@ window.i18n.__registerLocale('de', {
   todoSubtaskUntitled: 'Ohne Titel',
   todoDeleteTooltip: 'Aufgabe löschen',
   todoSaveError: 'Aufgabenänderungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.',
+  // Delete undo toast (issue #1135)
+  todoDeletedUndo: 'Aufgabe gelöscht.',
+  todosDeletedUndo: '{count} Aufgaben gelöscht.',
+  todoUndo: 'Rückgängig',
   todoInlinePrevMonth: 'Vorheriger Monat',
   todoInlineNextMonth: 'Nächster Monat',
   addTodo: 'Aufgabe hinzufügen',

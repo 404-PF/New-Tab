@@ -70,6 +70,10 @@ window.i18n.__registerLocale('ru', {
   todoSubtaskUntitled: 'Без названия',
   todoDeleteTooltip: 'Удалить дело',
   todoSaveError: 'Не удалось сохранить изменения дела. Последнее действие не было сохранено.',
+  // Delete undo toast (issue #1135)
+  todoDeletedUndo: 'Задача удалена.',
+  todosDeletedUndo: 'Удалено задач: {count}.',
+  todoUndo: 'Отменить',
   todoInlinePrevMonth: 'Предыдущий месяц',
   todoInlineNextMonth: 'Следующий месяц',
   addTodo: 'Добавить дело',

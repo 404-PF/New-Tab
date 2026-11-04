@@ -141,6 +141,10 @@ const translations = {
     todoSubtaskUntitled: 'Untitled',
     todoDeleteTooltip: 'Delete Todo',
     todoSaveError: 'Failed to save todo changes. Your last action was not saved.',
+    // Delete undo toast (issue #1135)
+    todoDeletedUndo: 'Todo deleted.',
+    todosDeletedUndo: '{count} todos deleted.',
+    todoUndo: 'Undo',
     todoInlinePrevMonth: 'Previous month',
     todoInlineNextMonth: 'Next month',
     addTodo: 'Add Todo',

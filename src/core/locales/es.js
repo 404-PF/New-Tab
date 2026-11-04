@@ -70,6 +70,10 @@ window.i18n.__registerLocale('es', {
   todoSubtaskUntitled: 'Sin título',
   todoDeleteTooltip: 'Eliminar tarea',
   todoSaveError: 'No se pudieron guardar los cambios de la tarea. La última acción no se guardó.',
+  // Delete undo toast (issue #1135)
+  todoDeletedUndo: 'Tarea eliminada.',
+  todosDeletedUndo: 'Se eliminaron {count} tareas.',
+  todoUndo: 'Deshacer',
   todoInlinePrevMonth: 'Mes anterior',
   todoInlineNextMonth: 'Mes siguiente',
   addTodo: 'Agregar tarea',

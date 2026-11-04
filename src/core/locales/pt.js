@@ -70,6 +70,10 @@ window.i18n.__registerLocale('pt', {
   todoSubtaskUntitled: 'Sem título',
   todoDeleteTooltip: 'Excluir tarefa',
   todoSaveError: 'Não foi possível salvar as alterações da tarefa. Sua última ação não foi salva.',
+  // Delete undo toast (issue #1135)
+  todoDeletedUndo: 'Tarefa excluída.',
+  todosDeletedUndo: '{count} tarefas excluídas.',
+  todoUndo: 'Desfazer',
   todoInlinePrevMonth: 'Mês anterior',
   todoInlineNextMonth: 'Próximo mês',
   addTodo: 'Adicionar tarefa',

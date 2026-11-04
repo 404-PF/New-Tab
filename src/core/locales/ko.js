@@ -70,6 +70,10 @@ window.i18n.__registerLocale('ko', {
   todoSubtaskUntitled: '제목 없음',
   todoDeleteTooltip: '할 일 삭제',
   todoSaveError: '할 일 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
+  // Delete undo toast (issue #1135)
+  todoDeletedUndo: '할 일을 삭제했습니다.',
+  todosDeletedUndo: '할 일 {count}개를 삭제했습니다.',
+  todoUndo: '실행 취소',
   todoInlinePrevMonth: '이전 달',
   todoInlineNextMonth: '다음 달',
   addTodo: '할 일 추가',

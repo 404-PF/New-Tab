@@ -3393,3 +3393,222 @@ describe('Todo multi-select and bulk actions (issue #942)', () => {
     setItemSpy.mockRestore();
   });
 });
+
+describe('Todo delete undo (issue #1135)', () => {
+  beforeEach(() => {
+    // The suite-wide filters/search/selection are memory-only and earlier
+    // blocks leave them behind; start each undo case from a clean view.
+    currentFilters.status = 'all';
+    currentFilters.priority = 'all';
+    setTodoSearchQuery('');
+    clearTodoSelection();
+  });
+
+  function undoToastAction() {
+    return document.querySelector('.toast-notification .toast-action');
+  }
+
+  it('deleteTodo shows an Undo toast that restores the todo at its former index', () => {
+    addTodo('One');
+    addTodo('Two', '2026-12-31', 'high', 'weekly', '09:30');
+    addTodo('Three');
+    const targetId = loadTodos().find(todo => todo.text === 'Two').id;
+    addSubtask(targetId, 'Step one');
+    const storedTarget = loadTodos().find(todo => todo.text === 'Two');
+
+    const showToastSpy = vi.spyOn(window, 'showToast');
+    try {
+      deleteTodo(storedTarget.id);
+
+      const toast = document.querySelector('.toast-notification');
+      expect(toast).not.toBeNull();
+      expect(toast.classList.contains('toast-info')).toBe(true);
+      expect(toast.textContent).toContain('Todo deleted.');
+      expect(showToastSpy).toHaveBeenCalledWith(
+        'Todo deleted.',
+        'info',
+        expect.objectContaining({
+          duration: 8000,
+          action: expect.objectContaining({ label: 'Undo' })
+        })
+      );
+
+      const action = toast.querySelector('.toast-action');
+      expect(action).not.toBeNull();
+      expect(action.textContent).toBe('Undo');
+      expect(loadTodos().map(todo => todo.text)).toEqual(['One', 'Three']);
+
+      action.click();
+
+      const restored = loadTodos();
+      expect(restored.map(todo => todo.text)).toEqual(['One', 'Two', 'Three']);
+      expect(restored[1]).toEqual(expect.objectContaining({
+        id: storedTarget.id,
+        text: 'Two',
+        priority: 'high',
+        dueDate: '2026-12-31',
+        dueTime: '09:30',
+        recurrence: 'weekly',
+        order: storedTarget.order
+      }));
+      expect(restored[1].subtasks).toHaveLength(1);
+      expect(restored[1].subtasks[0].text).toBe('Step one');
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(3);
+      // The action dismisses its own toast.
+      expect(document.querySelector('.toast-notification')).toBeNull();
+    } finally {
+      showToastSpy.mockRestore();
+    }
+  });
+
+  it('bulk delete keeps the removed todos as one undoable group', () => {
+    addTodo('One');
+    addTodo('Two');
+    addTodo('Three');
+    const [idOne, , idThree] = loadTodos().map(todo => todo.id);
+
+    selectedIds.add(idOne);
+    selectedIds.add(idThree);
+    bulkDeleteSelected();
+
+    expect(loadTodos().map(todo => todo.text)).toEqual(['Two']);
+    expect(selectedIds.size).toBe(0);
+    const toast = document.querySelector('.toast-notification');
+    expect(toast).not.toBeNull();
+    expect(toast.textContent).toContain('2 todos deleted.');
+
+    const action = undoToastAction();
+    expect(action).not.toBeNull();
+    action.click();
+
+    expect(loadTodos().map(todo => todo.text)).toEqual(['One', 'Two', 'Three']);
+    expect(document.querySelectorAll('.todo-item')).toHaveLength(3);
+  });
+
+  it('lets the undo window lapse so the todo stays deleted', () => {
+    vi.useFakeTimers();
+    try {
+      addTodo('Delete me');
+      const id = loadTodos()[0].id;
+
+      deleteTodo(id);
+      const action = undoToastAction();
+      expect(action).not.toBeNull();
+
+      vi.advanceTimersByTime(8000);
+
+      action.click();
+
+      expect(loadTodos()).toHaveLength(0);
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a failed save during undo shows only the error toast and never restores twice', () => {
+    addTodo('One');
+    addTodo('Two');
+    const id = loadTodos().find(todo => todo.text === 'One').id;
+
+    deleteTodo(id);
+    const action = undoToastAction();
+    expect(action).not.toBeNull();
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      action.click();
+
+      // The failed restore rolls back to the post-delete list and re-uses the
+      // existing error toast, which carries no Undo action.
+      expect(loadTodos().map(todo => todo.text)).toEqual(['Two']);
+      const toast = document.querySelector('.toast-notification');
+      expect(toast?.textContent).toContain('Failed to save todo changes');
+      expect(toast?.querySelector('.toast-action')).toBeNull();
+      expect(document.querySelectorAll('.toast-notification')).toHaveLength(1);
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+
+    // The undo group was consumed before the failed write, so nothing can
+    // restore it a second time.
+    expect(undoToastAction()).toBeNull();
+  });
+
+  it('a failed delete shows only the save error and offers no undo', () => {
+    addTodo('One');
+    const id = loadTodos()[0].id;
+
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      deleteTodo(id);
+
+      expect(loadTodos()).toHaveLength(1);
+      const toast = document.querySelector('.toast-notification');
+      expect(toast?.textContent).toContain('Failed to save todo changes');
+      expect(toast?.querySelector('.toast-action')).toBeNull();
+    } finally {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('undo re-applies the current filter and re-schedules reminders', () => {
+    addTodo('Pending one');
+    addTodo('Done one');
+    const doneId = loadTodos().find(todo => todo.text === 'Done one').id;
+    toggleTodo(doneId);
+    currentFilters.status = 'completed';
+
+    try {
+      deleteTodo(doneId);
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(0);
+
+      const sendMessageSpy = vi.spyOn(chrome.runtime, 'sendMessage');
+      try {
+        const action = undoToastAction();
+        expect(action).not.toBeNull();
+        action.click();
+        expect(sendMessageSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'syncTodos' })
+        );
+      } finally {
+        sendMessageSpy.mockRestore();
+      }
+
+      expect(loadTodos().map(todo => todo.text)).toEqual(['Pending one', 'Done one']);
+      // The completed filter is still active, so only the restored row renders.
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+      expect(document.querySelector('.todo-text')?.textContent).toBe('Done one');
+    } finally {
+      currentFilters.status = 'all';
+    }
+  });
+
+  it('a second delete replaces the previous undo group (last wins)', () => {
+    addTodo('First');
+    addTodo('Second');
+    const [idFirst, idSecond] = loadTodos().map(todo => todo.id);
+
+    deleteTodo(idFirst);
+    deleteTodo(idSecond);
+
+    expect(loadTodos()).toHaveLength(0);
+    expect(document.querySelectorAll('.toast-notification')).toHaveLength(1);
+    const action = undoToastAction();
+    expect(action).not.toBeNull();
+
+    action.click();
+
+    expect(loadTodos().map(todo => todo.text)).toEqual(['Second']);
+  });
+});

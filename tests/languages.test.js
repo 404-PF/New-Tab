@@ -181,6 +181,14 @@ describe('Storage/copy failure translations', () => {
   });
 });
 
+// Delete undo toast (issue #1135): the single/bulk delete Undo toast resolves
+// its message and action label through window.i18n at runtime.
+describe('Todo delete undo translations (issue #1135)', () => {
+  it('defines a localized undo toast and action label for every supported language', () => {
+    expectTranslationKeys(['todoDeletedUndo', 'todosDeletedUndo', 'todoUndo'], { differFromEnglish: true });
+  });
+});
+
 describe('Legacy migration takeover translations', () => {
   it('defines a localized migrateLegacySaveError for every supported language', () => {
     // differFromEnglish: the save-failure announcement shown by the

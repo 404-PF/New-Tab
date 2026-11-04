@@ -70,6 +70,10 @@ window.i18n.__registerLocale('fr', {
   todoSubtaskUntitled: 'Sans titre',
   todoDeleteTooltip: 'Supprimer la tâche',
   todoSaveError: 'Impossible d’enregistrer les modifications de la tâche. Votre dernière action n’a pas été enregistrée.',
+  // Delete undo toast (issue #1135)
+  todoDeletedUndo: 'Tâche supprimée.',
+  todosDeletedUndo: '{count} tâches supprimées.',
+  todoUndo: 'Annuler',
   todoInlinePrevMonth: 'Mois précédent',
   todoInlineNextMonth: 'Mois suivant',
   addTodo: 'Ajouter une tâche',
