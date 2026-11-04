@@ -16,7 +16,7 @@ describe('Todo date picker opaque surface and stacking (issue #855)', () => {
     expect(rule[1]).toMatch(/background:\s*#141414;/);
     expect(rule[1]).not.toMatch(/background:\s*rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\.(8|9)/);
     // backdrop-filter stays as a progressive enhancement over the opaque fill.
-    expect(rule[1]).toMatch(/backdrop-filter:\s*blur\(20px\)/);
+    expect(rule[1]).toMatch(/backdrop-filter:\s*blur\(var\(--glass-blur\)\)/);
   });
 
   it('matches the inline date picker surface so the variants stay consistent', () => {
@@ -41,18 +41,15 @@ describe('Todo date picker opaque surface and stacking (issue #855)', () => {
     expect(css).toMatch(
       /body\.light-theme \.custom-calendar\s*\{[^}]*background:\s*#ffffff;/
     );
-    // glass.css deliberately excludes the .todo-section subtree from the shared
-    // light glass groups, so the light surface has to live in app.css.
+    // The opaque light surface lives in app.css, not glass.css.
     expect(glassCss()).not.toMatch(/body\.light-theme \.custom-calendar\s*\{/);
-    // The grouped rule that does carry .custom-calendar must keep the
-    // .todo-section exclusion; without it the shared translucent glass
-    // background would override the opaque light surface for the picker.
     const glassGroups = [
       ...glassCss().matchAll(/body\.light-theme :is\(((?:[^()]|\([^()]*\))*)\)[^{]*\{/g),
     ];
+    // No shared glass group may target the picker: glass.css loads after
+    // app.css, so any hit would override the opaque #ffffff surface (issue #855).
     const calendarGroup = glassGroups.find((group) => group[1].includes('.custom-calendar'));
-    expect(calendarGroup).toBeDefined();
-    expect(calendarGroup[0]).toMatch(/:not\(\.todo-section/);
+    expect(calendarGroup).toBeUndefined();
   });
 
   it('restyles the calendar chrome for the light surface so controls stay readable', () => {
@@ -103,10 +100,9 @@ describe('Todo date picker opaque surface and stacking (issue #855)', () => {
     const rule = css.match(/\.todo-edit-date-picker \.custom-calendar\s*\{([^}]*)\}/);
 
     expect(rule).not.toBeNull();
-    // Only stacking/position overrides here, so the dark-theme surface comes
-    // from the shared .custom-calendar rule. In light mode the edit modal sits
-    // outside .todo-section, so glass.css's elevated frosted surface applies
-    // to it intentionally, matching the rest of the modal.
+    // Only stacking/position overrides here, so the surface comes from the
+    // shared .custom-calendar rules: #141414 in dark theme and the opaque
+    // #ffffff in light theme; no glass group targets the picker.
     expect(rule[1]).not.toMatch(/background:/);
   });
 });

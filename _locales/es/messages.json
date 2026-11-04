@@ -478,6 +478,18 @@
     "message": "Mostrar FPS en los juegos",
     "description": "Toggle label for showing the FPS readout in games"
   },
+  "glassStyle": {
+    "message": "Estilo de cristal",
+    "description": "Label for the glass style select in General settings"
+  },
+  "glassStyleClassic": {
+    "message": "Clásico",
+    "description": "Glass style option: classic blur glass"
+  },
+  "glassStyleLiquid": {
+    "message": "Cristal líquido",
+    "description": "Glass style option: liquid glass refraction"
+  },
   "gamesPlay": {
     "message": "Jugar",
     "description": "Button label to start a game"

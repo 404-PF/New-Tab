@@ -13,7 +13,7 @@ function luminance([r, g, b]) {
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
-describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
+describe('Light-theme glassmorphism for Todo and Notes (#809, #1109)', () => {
   it('loads glass.css after app.css so light glass wins equal-specificity rules', () => {
     const style = readFileSync(STYLE_CSS_PATH, 'utf-8');
     const appIndex = style.indexOf('css/app.css');
@@ -40,42 +40,21 @@ describe('Light-theme glassmorphism for Todo and Notes (#809)', () => {
     );
   });
 
-  it('keeps Todo and Notes widgets out of the shared light glass groups', () => {
-    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
-    // Several shared :is() groups contain an ID, which gives every member
-    // ID-level specificity and would override the dark-mirror block.
-    const widgets = /^\s*\.(todo-section|notes-section|todo-input-container|todo-item|note-item|notes-add-btn|notes-search-input|filter-pill|todo-stats-toggle)(\.active)?,?\s*$/m;
-    const groups = [...css.matchAll(/body\.light-theme :is\(((?:[^()]|\([^()]*\))*)\)[^{]*\{/g)];
-    expect(groups.length).toBeGreaterThan(0);
-    groups.forEach((group) => expect(group[1]).not.toMatch(widgets));
-  });
-
-  it('mirrors the dark theme blur radii on light panels and cards', () => {
+  it('drives Todo and Notes blur from the shared glass tokens in both themes', () => {
     const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
     const appCss = readFileSync(APP_CSS_PATH, 'utf-8');
 
-    const darkPanelBlur = appCss.match(
-      /\.todo-section\s*\{[^}]*backdrop-filter:\s*blur\((\d+px)\)/
-    );
-    const darkCardBlur = appCss.match(
-      /\.todo-item\s*\{[^}]*backdrop-filter:\s*blur\((\d+px)\)/
-    );
-    const panelBlur = css.match(/--glass-blur:\s*(\d+px)/);
-    const cardBlur = css.match(/--glass-blur-card:\s*(\d+px)/);
-
-    expect(darkPanelBlur).not.toBeNull();
-    expect(darkCardBlur).not.toBeNull();
-    expect(panelBlur).not.toBeNull();
-    expect(cardBlur).not.toBeNull();
-    expect(panelBlur[1]).toBe(darkPanelBlur[1]);
-    expect(cardBlur[1]).toBe(darkCardBlur[1]);
+    expect(appCss).toMatch(/\.todo-section\s*\{[^}]*backdrop-filter:\s*blur\(var\(--glass-blur\)\)/);
+    expect(appCss).toMatch(/\.todo-item\s*\{[^}]*backdrop-filter:\s*blur\(var\(--glass-blur-card\)\)/);
+    expect(css).toMatch(/:root\s*\{[^}]*--glass-blur:\s*\d+px/);
+    expect(css).toMatch(/:root\s*\{[^}]*--glass-blur-card:\s*\d+px/);
+    expect(css).not.toMatch(/body\.light-theme\s*\{[^}]*--glass-blur(-card)?:/);
   });
-
   it('keeps dark-theme base todo/notes rules untouched in app.css', () => {
     const appCss = readFileSync(APP_CSS_PATH, 'utf-8');
 
     expect(appCss).toMatch(
-      /\.todo-section\s*\{[^}]*background:\s*rgba\(255, 255, 255, 0\.02\);[^}]*backdrop-filter:\s*blur\(20px\)/
+      /\.todo-section\s*\{[^}]*background:\s*rgba\(255, 255, 255, 0\.02\);[^}]*backdrop-filter:\s*blur\(var\(--glass-blur\)\)/
     );
     expect(appCss).toMatch(/\.notes-section\s*\{\s*width: var\(--todo-list-width, 75%\);/);
     expect(appCss).toMatch(/\.note-item\s*\{[^}]*background:\s*rgba\(255, 255, 255, 0\.06\)/);
@@ -115,10 +94,6 @@ describe('Light-theme frosted panel contrast', () => {
 });
 
 const CSS_FILES = ['css/shell.css', 'css/core.css', 'css/features.css', 'css/app.css', 'css/glass.css'];
-const WIDGET_EXCLUSION =
-  ':where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *))';
-const WIDGET_NAME = /\.(todo|note|filter-(pill|badge))|#(todo|notes)/;
-
 function selectorParts(selector) {
   const parts = [];
   let depth = 0;
@@ -147,34 +122,19 @@ function themedSelectors() {
   });
 }
 
-describe('Light-theme Todo and Notes parity with the dark theme (#809)', () => {
-  it('scopes every light-theme selector naming a Todo or Notes element out of the widgets', () => {
-    const offenders = themedSelectors().filter(
-      ({ part }) => part.includes('light-theme') && WIDGET_NAME.test(part) && !part.includes(WIDGET_EXCLUSION)
-    );
-    expect(offenders).toEqual([]);
-  });
-
-  it('scopes generic light-theme control rules out of the widgets', () => {
-    const parts = themedSelectors().map(({ part }) => part);
-    [
-      'body.light-theme button:focus-visible',
-      'body.light-theme select:focus-visible',
-      'body.light-theme input',
-      'body.light-theme textarea',
-    ].forEach((prefix) => {
-      const matching = parts.filter((p) => p.startsWith(prefix));
-      expect(matching.length, prefix).toBeGreaterThan(0);
-      matching.forEach((p) => expect(p, p).toContain(':where(:not('));
+describe('Light-theme Todo and Notes share the unified glass tokens (#1109)', () => {
+  it('no longer scopes light-theme Todo/Notes selectors out of the widgets', () => {
+    CSS_FILES.forEach((file) => {
+      const css = readFileSync(resolve(process.cwd(), file), 'utf-8');
+      expect(css, file).not.toMatch(/:where\(:not\(\.todo-section/);
     });
   });
 
-  it('places the zero-specificity exclusion before any pseudo-element', () => {
+  it('places any :where() exclusion before a pseudo-element', () => {
     themedSelectors()
       .filter(({ part }) => part.includes('::'))
       .forEach(({ part }) => {
         expect(part, part).not.toMatch(/::[\w-]+(\([^)]*\))?:where/);
-        // Pseudo-elements are invalid inside :is()/:where() and drop the rule.
         expect(part, part).not.toMatch(/:(is|where)\([^)]*::/);
       });
   });
@@ -189,6 +149,26 @@ describe('Light-theme Todo and Notes parity with the dark theme (#809)', () => {
   });
 });
 
+describe('Unified glass tokens (#1109)', () => {
+  it('defines the liquid tokens in dark, light and @supports layers', () => {
+    const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
+    ['--glass-displacement', '--glass-aberration', '--glass-elasticity'].forEach((token) => {
+      const root = css.match(/^:root\s*\{[^}]*\}/m)[0];
+      const light = css.match(/^body\.light-theme\s*\{[^}]*\}/m)[0];
+      const supports = css.match(/@supports \(backdrop-filter[^{]*\{[\s\S]*?\n\}/)[0];
+      expect(root, token).toContain(token + ':');
+      expect(light, token).toContain(token + ':');
+      expect(supports, token).toContain(token + ':');
+    });
+  });
+
+  it('leaves no bare blur(<px>) in the migrated stylesheets', () => {
+    ['css/core.css', 'css/app.css', 'css/features.css'].forEach((file) => {
+      const css = readFileSync(resolve(process.cwd(), file), 'utf-8');
+      expect(css, file).not.toMatch(/backdrop-filter:[^;]*blur\(\d/);
+    });
+  });
+});
 const SHELL_CSS_PATH = resolve(process.cwd(), 'css/shell.css');
 const FEATURES_CSS_PATH = resolve(process.cwd(), 'css/features.css');
 const NEW_TAB_HTML_PATH = resolve(process.cwd(), 'New-Tab.html');

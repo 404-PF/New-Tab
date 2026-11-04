@@ -29,6 +29,9 @@
   --glass-blur-card: 15px;
   --glass-overlay-blur: 10px;
   --glass-saturate: 135%;
+  --glass-displacement: 60;
+  --glass-aberration: 0.15;
+  --glass-elasticity: 0.35;
   --glass-radius-md: 16px;
   --glass-text-primary: rgba(255, 255, 255, 0.95);
   --glass-text-secondary: rgba(226, 232, 240, 0.82);
@@ -65,6 +68,9 @@ body.light-theme {
   --glass-text-muted: #475569;
   --glass-text-placeholder: #64748b;
   --settings-text-color: #1f2937;
+  --glass-displacement: 60;
+  --glass-aberration: 0.15;
+  --glass-elasticity: 0.35;
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
@@ -74,6 +80,9 @@ body.light-theme {
     --glass-surface-subtle: rgba(255, 255, 255, 0.07);
     --glass-control: rgba(255, 255, 255, 0.08);
     --glass-control-hover: rgba(255, 255, 255, 0.15);
+    --glass-displacement: 60;
+    --glass-aberration: 0.15;
+    --glass-elasticity: 0.35;
   }
 
   body.light-theme {
@@ -82,6 +91,9 @@ body.light-theme {
     --glass-surface-subtle: rgba(255, 255, 255, 0.34);
     --glass-control: rgba(255, 255, 255, 0.4);
     --glass-control-hover: rgba(255, 255, 255, 0.62);
+    --glass-displacement: 60;
+    --glass-aberration: 0.15;
+    --glass-elasticity: 0.35;
   }
 }
 
@@ -97,7 +109,7 @@ body.light-theme :is(
   .todo-stats-panel,
   .setting-card,
   .bg-subsection
-):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+) {
   background: var(--glass-surface);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
@@ -105,7 +117,10 @@ body.light-theme :is(
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
-/* Dialogs, popovers, menus, and folder panels share one elevated surface. */
+/* Dialogs, popovers, menus, and folder panels share one elevated surface.
+   .custom-calendar is deliberately absent: glass.css loads after app.css, so
+   this group's translucent fill would beat the opaque #ffffff picker surface
+   at equal-or-higher specificity (issue #855). */
 body.light-theme :is(
   #settings-modal > div,
   #add-app-modal > div,
@@ -125,10 +140,9 @@ body.light-theme :is(
   .app-context-menu,
   .engine-dropdown,
   .search-history-panel,
-  .custom-calendar,
   .timezone-options,
   .bg-rotation-picker
-):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+) {
   background: var(--glass-surface-elevated);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-md);
@@ -161,7 +175,7 @@ body.light-theme :is(
   #rename-app-modal,
   #thumbnail-app-modal,
   #delete-app-modal
-):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+) {
   background: var(--glass-overlay);
   -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
   backdrop-filter: blur(var(--glass-overlay-blur));
@@ -210,7 +224,7 @@ body.light-theme :is(
   .todo-edit-field input,
   .todo-edit-field select,
   .weather-city-inline input
-):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+) {
   background: var(--glass-control);
   border-color: var(--glass-border-subtle);
   color: var(--glass-text-primary);
@@ -230,7 +244,7 @@ body.light-theme :is(
   .font-option,
   .color-swatch,
   .games-hub-card
-):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+) {
   background: var(--glass-surface-subtle);
   border-color: var(--glass-border-subtle);
   -webkit-backdrop-filter: blur(var(--glass-blur-card)) saturate(var(--glass-saturate));
@@ -255,7 +269,7 @@ body.light-theme :is(
   .todo-stats-panel,
   .setting-card,
   .bg-subsection
-):hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+):hover {
   border-color: var(--glass-border-hover);
   box-shadow: var(--glass-shadow-hover);
 }
@@ -275,7 +289,7 @@ body.light-theme :is(
   .timezone-add-btn,
   .btn-secondary,
   .ai-confirm-cancel
-):is(:hover, :active, .active):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+):is(:hover, :active, .active) {
   background: var(--glass-control-hover);
   border-color: var(--glass-border-hover);
 }
@@ -287,7 +301,7 @@ body.light-theme :is(
 body.light-theme :is(
   #refresh-motto-btn,
   #copy-motto-btn
-):is(:hover, :active):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+):is(:hover, :active) {
   background: var(--glass-control-hover);
   border-color: var(--glass-border-hover);
 }
@@ -317,14 +331,14 @@ body.light-theme :is(
 }
 
 /* Focus-visible remains explicit on every interactive control. */
-body.light-theme button:focus-visible:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)),
-body.light-theme select:focus-visible:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)),
-body.light-theme textarea:not(.note-textarea):focus-visible:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)),
-body.light-theme .notes-search-input:focus-visible:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)),
+body.light-theme button:focus-visible,
+body.light-theme select:focus-visible,
+body.light-theme textarea:not(.note-textarea):focus-visible,
+body.light-theme .notes-search-input:focus-visible,
 body.light-theme :is(
   .settings-section select,
   .todo-edit-field select
-):focus-within:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+):focus-within {
   outline: 2px solid rgba(33, 150, 243, 0.72);
   outline-offset: 2px;
   box-shadow: var(--glass-focus-ring);
@@ -335,7 +349,7 @@ body.light-theme :is([aria-invalid="true"], .add-app-preview.invalid, .add-app-v
   box-shadow: var(--glass-danger-ring);
 }
 
-body.light-theme :is(button:disabled, input:disabled, select:disabled, textarea:disabled, .disabled):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+body.light-theme :is(button:disabled, input:disabled, select:disabled, textarea:disabled, .disabled) {
   opacity: 0.55;
   cursor: not-allowed;
   filter: saturate(0.7);
@@ -345,7 +359,7 @@ body.light-theme :is(.btn-primary, .btn-danger, .ai-confirm-primary, .ai-confirm
   outline-color: rgba(255, 255, 255, 0.9);
 }
 
-body.light-theme :is(.btn-danger, .ai-confirm-delete, .quick-action-btn.danger, .delete-item):focus-visible:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+body.light-theme :is(.btn-danger, .ai-confirm-delete, .quick-action-btn.danger, .delete-item):focus-visible {
   box-shadow: var(--glass-danger-ring);
 }
 
@@ -362,26 +376,26 @@ body.light-theme :is(.app-icon.folder-icon.drag-over-folder-rejected .icon, .del
   border-color: rgba(244, 67, 54, 0.52);
 }
 
-body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion) {
   background: rgba(255, 255, 255, 0.38);
   border-color: rgba(15, 23, 42, 0.12);
   color: #475569;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
-body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion):hover:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion):hover {
   background: rgba(199, 210, 254, 0.72);
   border-color: rgba(99, 102, 241, 0.42);
   color: #312e81;
 }
 
-body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion).active:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+body.light-theme :is(.note-tag-filter-btn, .note-tag-suggestion).active {
   background: rgba(129, 140, 248, 0.3);
   border-color: rgba(99, 102, 241, 0.56);
   color: #020617;
 }
 
-body.light-theme .note-tag-btn.has-tag:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+body.light-theme .note-tag-btn.has-tag {
   background: rgba(99, 102, 241, 0.16);
   border-color: rgba(99, 102, 241, 0.48);
   color: #020617;
@@ -399,7 +413,7 @@ body.light-theme :is(
   .ai-message-text,
   .note-textarea,
   .note-preview
-):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+) {
   color: var(--glass-text-primary);
 }
 
@@ -430,7 +444,7 @@ body.light-theme :is(
   .ai-welcome-subtitle,
   .ai-chat-title,
   .ai-topics-header
-):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+) {
   color: var(--glass-text-secondary);
 }
 
@@ -446,7 +460,7 @@ body.light-theme :is(
   .folder-popup-close-btn,
   .ai-topic-icon svg,
   .ai-topics-no-results
-):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+) {
   color: var(--glass-text-muted);
 }
 
@@ -461,17 +475,16 @@ body.light-theme :is(
   .todo-edit-subtask-input,
   .ai-topics-search input,
   #ai-chat-input
-):where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+) {
   color: var(--glass-text-primary);
 }
 
-body.light-theme input:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *))::placeholder,
-body.light-theme textarea:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *))::placeholder {
+body.light-theme input::placeholder,
+body.light-theme textarea::placeholder {
   color: var(--glass-text-placeholder);
   opacity: 1;
 }
 
-/* #809: Todo and Notes are identical in the light and dark themes. Light
-   rules that would reach them are scoped with the zero-specificity
-   :where(:not(...)) suffix above, so the dark-theme base rules in app.css
-   apply unchanged inside .todo-section and .notes-section. */
+/* #1109 unifies the glass tokens: the light rules above are no longer scoped
+   away from Todo and Notes with :where(:not(...)), so they apply inside
+   .todo-section and .notes-section like every other surface. */

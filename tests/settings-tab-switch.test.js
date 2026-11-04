@@ -54,8 +54,8 @@ describe('Settings modal entrance blur (#875)', () => {
 
     const openRule = css.match(/#settings-modal\.modal-open\s*\{[^}]*\}/);
     expect(openRule).not.toBeNull();
-    expect(openRule[0]).toMatch(/backdrop-filter:\s*blur\(16px\)/);
-    expect(openRule[0]).toMatch(/-webkit-backdrop-filter:\s*blur\(16px\)/);
+    expect(openRule[0]).toMatch(/backdrop-filter:\s*blur\(var\(--glass-blur\)\)/);
+    expect(openRule[0]).toMatch(/-webkit-backdrop-filter:\s*blur\(var\(--glass-blur\)\)/);
     // The blur lands only after the fade finishes, so the overlay never
     // re-blurs on every animation frame. Engines that only honor the
     // prefixed property must be delayed by the same amount.
