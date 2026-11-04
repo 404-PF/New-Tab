@@ -3564,9 +3564,14 @@ describe('Todo delete undo (issue #1135)', () => {
 
   it('undo re-applies the current filter and re-schedules reminders', () => {
     addTodo('Pending one');
-    addTodo('Done one');
+    // Reminder-carrying fields so the re-schedule payload can be checked for
+    // more than the message type.
+    addTodo('Done one', '2026-12-31', 'medium', null, '09:30');
     const doneId = loadTodos().find(todo => todo.text === 'Done one').id;
     toggleTodo(doneId);
+    // Attach the recurrence after completion: completing a recurring todo
+    // rolls its due date forward and resets completed instead of staying done.
+    editTodo(doneId, 'Done one', 'medium', '2026-12-31', 'weekly', '09:30');
     currentFilters.status = 'completed';
 
     try {
@@ -3581,6 +3586,19 @@ describe('Todo delete undo (issue #1135)', () => {
         expect(sendMessageSpy).toHaveBeenCalledWith(
           expect.objectContaining({ type: 'syncTodos' })
         );
+
+        // The reminder sync must carry the restored todo itself, reminder
+        // fields included, not just the message type.
+        const syncCall = sendMessageSpy.mock.calls.find(([message]) => message?.type === 'syncTodos');
+        expect(syncCall).toBeDefined();
+        const syncedTodos = JSON.parse(syncCall[0].todos);
+        expect(syncedTodos.map(todo => todo.text)).toEqual(['Pending one', 'Done one']);
+        expect(syncedTodos.find(todo => todo.text === 'Done one')).toEqual(expect.objectContaining({
+          completed: true,
+          dueDate: '2026-12-31',
+          dueTime: '09:30',
+          recurrence: 'weekly'
+        }));
       } finally {
         sendMessageSpy.mockRestore();
       }
@@ -3610,5 +3628,110 @@ describe('Todo delete undo (issue #1135)', () => {
     action.click();
 
     expect(loadTodos().map(todo => todo.text)).toEqual(['Second']);
+  });
+
+  it('a later notification releases the undo slot along with its toast', () => {
+    addTodo('First');
+    addTodo('Second');
+    const [idFirst] = loadTodos().map(todo => todo.id);
+
+    deleteTodo(idFirst);
+    const staleAction = undoToastAction();
+    expect(staleAction).not.toBeNull();
+
+    // Any new toast replaces the Undo toast (single-toast model in toast.js).
+    window.showToast('Something else happened', 'info');
+    expect(document.querySelector('.toast-notification .toast-action')).toBeNull();
+
+    // The detached Undo button can still dispatch its click, but the slot was
+    // released with the toast, so nothing restores with no control on screen.
+    staleAction.click();
+    expect(loadTodos().map(todo => todo.text)).toEqual(['Second']);
+  });
+
+  it('keeps the undo slot alive while the toast countdown is paused', () => {
+    vi.useFakeTimers();
+    const originalVisibilityManager = window.visibilityManager;
+    const subscribers = new Set();
+    let visible = true;
+    window.visibilityManager = {
+      get isVisible() {
+        return visible;
+      },
+      onChange(callback) {
+        subscribers.add(callback);
+        return () => subscribers.delete(callback);
+      }
+    };
+
+    try {
+      addTodo('Delete me');
+      deleteTodo(loadTodos()[0].id);
+      const action = undoToastAction();
+      expect(action).not.toBeNull();
+
+      // The tab hides: the toast pauses its countdown, so the undo window must
+      // pause with it instead of lapsing on wall-clock time.
+      visible = false;
+      subscribers.forEach(callback => callback(false));
+      vi.advanceTimersByTime(30000);
+
+      visible = true;
+      subscribers.forEach(callback => callback(true));
+      action.click();
+
+      expect(loadTodos().map(todo => todo.text)).toEqual(['Delete me']);
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+    } finally {
+      window.visibilityManager = originalVisibilityManager;
+      vi.useRealTimers();
+    }
+  });
+
+  it('clear completed routes through the same undo slot', () => {
+    addTodo('Keep');
+    addTodo('Done one', '2026-12-31', 'medium', null, '09:30');
+    const doneId = loadTodos().find(todo => todo.text === 'Done one').id;
+    toggleTodo(doneId);
+
+    clearCompleted();
+    document.getElementById('clear-completed-confirm').click();
+
+    expect(loadTodos().map(todo => todo.text)).toEqual(['Keep']);
+    const toast = document.querySelector('.toast-notification');
+    expect(toast).not.toBeNull();
+    expect(toast.textContent).toContain('Todo deleted.');
+
+    const action = undoToastAction();
+    expect(action).not.toBeNull();
+    action.click();
+
+    expect(loadTodos().map(todo => todo.text)).toEqual(['Keep', 'Done one']);
+    expect(loadTodos()[1]).toEqual(expect.objectContaining({
+      completed: true,
+      dueDate: '2026-12-31',
+      dueTime: '09:30'
+    }));
+  });
+
+  it('clear completed invalidates an earlier delete undo group', () => {
+    addTodo('Delete me');
+    addTodo('Keep');
+    addTodo('Done one');
+    const [idDelete] = loadTodos().map(todo => todo.id);
+    deleteTodo(idDelete);
+    const doneId = loadTodos().find(todo => todo.text === 'Done one').id;
+    toggleTodo(doneId);
+
+    clearCompleted();
+    document.getElementById('clear-completed-confirm').click();
+
+    // The clear's own Undo replaced the earlier delete's group, so undoing
+    // restores only what the clear removed — never the stale group.
+    const action = undoToastAction();
+    expect(action).not.toBeNull();
+    action.click();
+
+    expect(loadTodos().map(todo => todo.text)).toEqual(['Keep', 'Done one']);
   });
 });

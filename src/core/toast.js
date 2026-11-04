@@ -17,6 +17,10 @@ let activeToastHandle = null;
 // options.duration: override hide delay in ms (default 2000)
 // options.action: optional { label, onClick } rendered as a button via
 //   textContent (never innerHTML) so the provider stays XSS-safe
+// options.onDismiss: optional callback fired exactly once when the toast
+//   leaves the screen — auto-hide, replacement by a newer toast, or an
+//   explicit dismiss — so callers can release state whose lifetime must
+//   match the toast (e.g. an undo slot)
 // Returns { dismiss, element } so callers can remove their own toast.
 function showToast(message, type = '', options = {}) {
   // Replace the visible toast so notifications never pile up.
@@ -65,6 +69,21 @@ function showToast(message, type = '', options = {}) {
     }
   };
 
+  // Notify the caller once the toast is gone, whichever path removed it.
+  // Guarded so replacement, auto-hide and explicit dismissal cannot double-fire.
+  let dismissNotified = false;
+  const notifyDismiss = () => {
+    if (dismissNotified) return;
+    dismissNotified = true;
+    if (typeof options.onDismiss === 'function') {
+      try {
+        options.onDismiss();
+      } catch (error) {
+        console.warn('[toast] onDismiss callback failed:', error);
+      }
+    }
+  };
+
   // Immediate removal: cancel every timer and drop the element at once.
   handle.dismiss = () => {
     clearAutoHide();
@@ -74,6 +93,7 @@ function showToast(message, type = '', options = {}) {
     }
     toast.remove();
     forgetHandle();
+    notifyDismiss();
   };
 
   if (options.action && options.action.label) {
@@ -111,6 +131,10 @@ function showToast(message, type = '', options = {}) {
     autoHideTimeoutId = setTimeout(() => {
       autoHideTimeoutId = null;
       clearAutoHide();
+      // The countdown is over: the toast is on its way out, so release
+      // caller state now rather than after the fade (a visibility pause
+      // delays this callback, which is exactly the lifetime callers want).
+      notifyDismiss();
       toast.classList.remove('show');
       fadeOutTimeoutId = setTimeout(() => {
         fadeOutTimeoutId = null;
