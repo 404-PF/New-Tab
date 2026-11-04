@@ -1678,6 +1678,22 @@ describe('DataManager app-launch toggle backup (issue #1136)', () => {
     expect(localStorage.getItem('theme')).toBe('dark');
   });
 
+  it('re-renders the Shortcuts section after a successful import', async () => {
+    const original = window.Shortcuts;
+    const renderShortcutsSection = vi.fn();
+    window.Shortcuts = { renderShortcutsSection };
+
+    try {
+      const result = await importBackup({ appShortcutsEnabled: false }, 'merge');
+
+      expect(result.type).toBe('success');
+      expect(renderShortcutsSection).toHaveBeenCalledTimes(1);
+    } finally {
+      if (original === undefined) delete window.Shortcuts;
+      else window.Shortcuts = original;
+    }
+  });
+
   it('keeps every persisted Settings toggle key in the export allowlist', () => {
     // Regression guard for #1136: every persisted Settings toggle (written via
     // a literal or a module constant like APP_SHORTCUTS_KEY) must round-trip.
@@ -1700,6 +1716,8 @@ describe('DataManager app-launch toggle backup (issue #1136)', () => {
       'bgRotationEnabled',
       'openAppsInNewTab',
       'videoAutoplay',
+      'videoMuted',
+      'videoPauseHidden',
       'autoTheme',
       'aiGroundWithWeb'
     ];

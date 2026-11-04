@@ -297,6 +297,13 @@
       window.applyTodoAppSettings();
     }
 
+    // Re-render the Shortcuts section so an open Settings modal shows the
+    // imported customShortcuts bindings and the appShortcutsEnabled toggle
+    // instead of their pre-import state (issue #1136).
+    if (window.Shortcuts && typeof window.Shortcuts.renderShortcutsSection === 'function') {
+      window.Shortcuts.renderShortcutsSection();
+    }
+
     // Re-render the custom background thumbnails and re-apply the homepage
     // background so a restore shows the uploads in Settings → Background and
     // renders the selected one without a tab reload (issue #996).
