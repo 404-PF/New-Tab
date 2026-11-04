@@ -2187,6 +2187,43 @@ if (gamesFpsSetting) {
   });
 }
 
+// Glass style (#1109): classic blur glass vs. liquid glass refraction.
+function loadGlassStyle() {
+  try {
+    return localStorage.getItem('glassStyle') === 'liquid' ? 'liquid' : 'classic';
+  } catch (_e) {
+    return 'classic';
+  }
+}
+function applyGlassStyle() {
+  const select = document.getElementById('glass-style-setting');
+  if (select) select.value = loadGlassStyle();
+  if (window.LiquidGlass && typeof window.LiquidGlass.init === 'function') {
+    window.LiquidGlass.init();
+  }
+  window.dispatchEvent(new CustomEvent('glassStyleChanged', { detail: { style: loadGlassStyle() } }));
+}
+const glassStyleSetting = document.getElementById('glass-style-setting');
+if (glassStyleSetting) {
+  applyGlassStyle();
+  glassStyleSetting.addEventListener('change', function () {
+    const value = this.value === 'liquid' ? 'liquid' : 'classic';
+    let persisted;
+    try {
+      persisted = typeof window.persistFeatureToggle === 'function'
+        ? window.persistFeatureToggle('glassStyle', value)
+        : localStorage.setItem('glassStyle', value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (e) {
+      console.warn('Failed to save glassStyle:', e);
+      persisted = false;
+    }
+    applyGlassStyle();
+    if (persisted === false && typeof window.showFeatureToggleSaveError === 'function') {
+      window.showFeatureToggleSaveError();
+    }
+  });
+}
+
 // Settings menu logic
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];

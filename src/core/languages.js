@@ -959,6 +959,26 @@ function applyGamesFpsMerges(code) {
   Object.assign(target, values);
 }
 
+// Glass style setting (#1109).
+const glassStyleTranslations = {
+  en: { glassStyle: 'Glass style', glassStyleClassic: 'Classic', glassStyleLiquid: 'Liquid glass' },
+  zh: { glassStyle: '玻璃樣式', glassStyleClassic: '經典', glassStyleLiquid: '液態玻璃' },
+  ja: { glassStyle: 'ガラススタイル', glassStyleClassic: 'クラシック', glassStyleLiquid: 'リキッドグラス' },
+  ko: { glassStyle: '글래스 스타일', glassStyleClassic: '클래식', glassStyleLiquid: '리퀴드 글래스' },
+  es: { glassStyle: 'Estilo de cristal', glassStyleClassic: 'Clásico', glassStyleLiquid: 'Liquid Glass' },
+  fr: { glassStyle: 'Style de verre', glassStyleClassic: 'Classique', glassStyleLiquid: 'Liquid Glass' },
+  de: { glassStyle: 'Glasstil', glassStyleClassic: 'Klassisch', glassStyleLiquid: 'Liquid Glass' },
+  pt: { glassStyle: 'Estilo de vidro', glassStyleClassic: 'Clássico', glassStyleLiquid: 'Liquid Glass' },
+  ru: { glassStyle: 'Стиль стекла', glassStyleClassic: 'Классический', glassStyleLiquid: 'Liquid Glass' }
+};
+
+function applyGlassStyleMerges(code) {
+  const target = translations[code];
+  const values = glassStyleTranslations[code];
+  if (!target || !values) return;
+  Object.assign(target, values);
+}
+
 const flappyBirdTranslations = {
   en: {
     gamesFlappyBird: 'Flappy Bird',
@@ -1376,6 +1396,7 @@ function applyLocaleMerges(code) {
   applyGamesDpadMerges(code);
   applyGamesKeymapMerges(code);
   applyGamesFpsMerges(code);
+  applyGlassStyleMerges(code);
   applyFlappyBirdMerges(code);
   applyPacmanMerges(code);
   applyPomodoroMerges(code);

@@ -478,6 +478,18 @@
     "message": "Afficher les IPS dans les jeux",
     "description": "Toggle label for showing the FPS readout in games"
   },
+  "glassStyle": {
+    "message": "Style de verre",
+    "description": "Label for the glass style select in General settings"
+  },
+  "glassStyleClassic": {
+    "message": "Classique",
+    "description": "Glass style option: classic blur glass"
+  },
+  "glassStyleLiquid": {
+    "message": "Liquid Glass",
+    "description": "Glass style option: liquid glass refraction"
+  },
   "gamesPlay": {
     "message": "Jouer",
     "description": "Button label to start a game"

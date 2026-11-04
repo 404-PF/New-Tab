@@ -297,7 +297,7 @@ body.light-theme .settings-section select option {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(var(--glass-overlay-blur));
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -308,7 +308,7 @@ body.light-theme .settings-section select option {
 .ai-confirm-content {
   position: relative;
   background: rgba(30, 30, 30, 0.95);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 28px 24px;
@@ -498,7 +498,7 @@ body.light-theme #import-todos-dialog .ai-confirm-icon {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(var(--glass-overlay-blur));
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -509,7 +509,7 @@ body.light-theme #import-todos-dialog .ai-confirm-icon {
 .bg-confirm-content {
   position: relative;
   background: rgba(30, 30, 30, 0.95);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 28px 24px;
@@ -683,8 +683,8 @@ body.light-theme .upload-bg-btn:hover {
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(var(--glass-overlay-blur));
+  -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
   z-index: var(--z-context-menu);
   min-width: 180px;
   font-size: 14px;
@@ -1062,8 +1062,8 @@ body.light-theme .setting-card button:hover {
   position: fixed;
   width: 260px;
   background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1246,8 +1246,8 @@ body.light-theme .color-hex {
   width: 260px;
   max-height: 280px;
   background: var(--settings-modal-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2008,8 +2008,8 @@ html.light-pre body:not(.light-theme) .date {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   z-index: 1003;
   align-items: center;
   justify-content: center;
@@ -2024,8 +2024,8 @@ html.light-pre body:not(.light-theme) .date {
 
 #rename-app-modal > div {
   background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
   padding: 24px 20px;
   min-width: 400px;
@@ -2141,8 +2141,8 @@ html.light-pre body:not(.light-theme) .date {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   z-index: 1003;
   align-items: center;
   justify-content: center;
@@ -2157,8 +2157,8 @@ html.light-pre body:not(.light-theme) .date {
 
 #thumbnail-app-modal > div {
   background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
   padding: 24px 20px;
   min-width: 450px;
@@ -2358,8 +2358,8 @@ html.light-pre body:not(.light-theme) .date {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   z-index: 1003;
   align-items: center;
   justify-content: center;
@@ -2374,8 +2374,8 @@ html.light-pre body:not(.light-theme) .date {
 
 #delete-app-modal > div {
   background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
   padding: 24px 20px;
   min-width: 400px;
@@ -2736,8 +2736,8 @@ body.light-theme .delete-preview-name {
   gap: 12px;
   padding: 10px 16px;
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--glass-blur-card));
+  -webkit-backdrop-filter: blur(var(--glass-blur-card));
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   z-index: 998;
@@ -3058,8 +3058,8 @@ body.light-theme .weather-city-inline input:focus {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   z-index: 1000;
   align-items: center;
   justify-content: center;
@@ -3075,8 +3075,8 @@ body.light-theme .weather-city-inline input:focus {
 
 .weather-app-modal-content {
   background: var(--settings-modal-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
   min-width: min(320px, calc(100vw - 32px));
   max-width: min(var(--modal-width-md), calc(100vw - 32px));
@@ -3126,8 +3126,8 @@ body.light-theme .weather-city-inline input:focus {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   z-index: 1000;
   align-items: center;
   justify-content: center;
@@ -3147,8 +3147,8 @@ body.light-theme .weather-city-inline input:focus {
 
 .todo-app-modal-content {
   background: var(--settings-modal-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
   min-width: 320px;
   max-width: 640px;
@@ -3233,13 +3233,13 @@ body.simple-mode #todo-app-modal {
 }
 
 /* Light theme */
-body.light-theme .todo-app-modal-content:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+body.light-theme .todo-app-modal-content {
   background: rgba(255, 255, 255, 0.92);
   border-color: rgba(0, 0, 0, 0.08);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
 }
 
-body.light-theme .todo-app-title:where(:not(.todo-section, .notes-section, .todo-section *, .notes-section *)) {
+body.light-theme .todo-app-title {
   color: rgba(31, 41, 55, 0.95);
 }
 
@@ -3657,8 +3657,8 @@ body.light-theme .weather-app-hourly-precip {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(var(--glass-overlay-blur));
+  -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
   z-index: 5000;
   padding: 20px;
   box-sizing: border-box;
@@ -3855,8 +3855,8 @@ body.light-theme .release-notes-btn-secondary:hover {
 
 .games-app-modal::backdrop {
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .games-app-modal[open] {
@@ -3865,8 +3865,8 @@ body.light-theme .release-notes-btn-secondary:hover {
 
 .games-app-modal-content {
   background: var(--settings-modal-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--games-border-subtle);
   border-radius: 16px;
   width: 90%;
@@ -3888,14 +3888,14 @@ body.light-theme .release-notes-btn-secondary:hover {
 /* Light Theme: Apply Glassmorphism */
 body.light-theme .games-app-modal::backdrop {
   background: rgba(15, 23, 42, 0.22);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
+  backdrop-filter: blur(var(--glass-overlay-blur));
 }
 
 body.light-theme .games-app-modal-content {
   background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(18px) saturate(135%);
-  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(135%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(135%);
   border-color: rgba(15, 23, 42, 0.14);
   color: #0f172a;
 }

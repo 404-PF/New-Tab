@@ -88,8 +88,8 @@ describe('Shared top-middle pop-up shell (#877, #890)', () => {
     expectDeclaration(body, 'left', '50%');
     expectDeclaration(body, 'transform', 'translateX(-50%)');
     expectDeclaration(body, 'background', 'rgba(0, 0, 0, 0.9)');
-    expectDeclaration(body, 'backdrop-filter', 'blur(16px)');
-    expectDeclaration(body, '-webkit-backdrop-filter', 'blur(16px)');
+    expectDeclaration(body, 'backdrop-filter', 'blur(var(--glass-blur))');
+    expectDeclaration(body, '-webkit-backdrop-filter', 'blur(var(--glass-blur))');
     expectDeclaration(body, 'color', 'white');
     expectDeclaration(body, 'border', '1px solid rgba(255, 255, 255, 0.1)');
     expectDeclaration(body, 'border-radius', '12px');

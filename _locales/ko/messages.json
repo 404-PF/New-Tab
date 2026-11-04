@@ -478,6 +478,18 @@
     "message": "게임에 FPS 표시",
     "description": "Toggle label for showing the FPS readout in games"
   },
+  "glassStyle": {
+    "message": "글래스 스타일",
+    "description": "Label for the glass style select in General settings"
+  },
+  "glassStyleClassic": {
+    "message": "클래식",
+    "description": "Glass style option: classic blur glass"
+  },
+  "glassStyleLiquid": {
+    "message": "리퀴드 글래스",
+    "description": "Glass style option: liquid glass refraction"
+  },
   "gamesPlay": {
     "message": "플레이",
     "description": "Button label to start a game"
