@@ -1672,8 +1672,9 @@ describe('DataManager app-launch toggle backup (issue #1136)', () => {
   it('clears appShortcutsEnabled in replace mode when the backup omits it', async () => {
     localStorage.setItem('appShortcutsEnabled', 'false');
 
-    await importBackup({ theme: 'dark' }, 'replace');
+    const replaced = await importBackup({ theme: 'dark' }, 'replace');
 
+    expect(replaced.type).toBe('success');
     expect(localStorage.getItem('appShortcutsEnabled')).toBeNull();
     expect(localStorage.getItem('theme')).toBe('dark');
   });
