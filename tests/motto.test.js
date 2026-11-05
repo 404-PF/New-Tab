@@ -1,12 +1,16 @@
 import { injectScript } from './helpers/inject-script.js';
 import vm from 'vm';
 
-const SUPPORTED_LANGUAGE_CODES = ['en', 'zh', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru'];
-
 describe('motto data', () => {
   let mottoData;
+  let supportedLanguageCodes;
 
   beforeAll(() => {
+    // Read the UI language codes from the same source the app uses so a newly
+    // added language cannot ship without a motto collection check.
+    injectScript('src/core/languages.js');
+    supportedLanguageCodes = window.i18n.getSupportedLanguages().map(language => language.code);
+
     const context = vm.createContext({});
     injectScript('src/data/motto.js', context);
     injectScript('tests/helpers/expose-motto-data.js', context);
@@ -20,7 +24,7 @@ describe('motto data', () => {
   });
 
   it('defines a motto collection for every supported UI language', () => {
-    SUPPORTED_LANGUAGE_CODES.forEach(code => {
+    supportedLanguageCodes.forEach(code => {
       expect(Array.isArray(mottoData[code]), `missing mottos for ${code}`).toBe(true);
       expect(mottoData[code].length).toBe(66);
       expect(
@@ -31,13 +35,18 @@ describe('motto data', () => {
   });
 
   it('keeps every locale aligned with the English collection', () => {
-    SUPPORTED_LANGUAGE_CODES.forEach(code => {
+    supportedLanguageCodes.forEach(code => {
       expect(mottoData[code].length, `length mismatch for ${code}`).toBe(mottoData.en.length);
+      if (code !== 'en') {
+        mottoData[code].forEach((motto, index) => {
+          expect(motto, `${code} motto ${index} is still English`).not.toBe(mottoData.en[index]);
+        });
+      }
     });
   });
 
   it('formats every entry with the attribution separator', () => {
-    SUPPORTED_LANGUAGE_CODES.forEach(code => {
+    supportedLanguageCodes.forEach(code => {
       mottoData[code].forEach(motto => {
         expect(motto, `bad separator in ${code}: ${motto}`).toContain('————');
       });
