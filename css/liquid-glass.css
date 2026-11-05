@@ -77,3 +77,24 @@ body.glass-liquid .app-icon .icon[data-liquid-glass] > svg {
   position: relative;
   z-index: 1;
 }
+
+/* #1162: light theme. No chromatic split (it reads as a rainbow fringe on
+   bright backdrops), plus a neutral tint and softer highlights. */
+body.light-theme.glass-liquid .glass__warp[style*="--lg-filter-flat"] {
+  backdrop-filter: var(--lg-filter-flat);
+  -webkit-backdrop-filter: var(--lg-filter-flat);
+}
+
+body.light-theme.glass-liquid .glass__highlight {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+body.light-theme.glass-liquid .glass__over-light {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 60%);
+}
+
+body.light-theme.glass-liquid .app-icon:not(.drag-over):not(.drag-over-folder):not(.drag-over-folder-rejected) .icon[data-liquid-glass] {
+  background: rgba(255, 255, 255, 0.28);
+}
