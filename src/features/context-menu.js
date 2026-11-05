@@ -412,12 +412,53 @@ document.getElementById('remove-from-folder').addEventListener('click', function
 // bridge dispatches storageBridgeWriteError before rolling its cache back —
 // wait a macrotask for that rollback, then re-sync the folder popup/tile and
 // drop any grid icon storage again reports as foldered, so grid and folder
-// agree without a reload.
+// agree without a reload. The same pass covers the other appFolders writes:
+// a rejected create-folder leaves its freshly inserted tile orphaned, and the
+// folders that lost a duplicate tile are refreshed by id so a popup that
+// closed or switched folders before the timer ran cannot leave them stale.
 window.addEventListener('storageBridgeWriteError', function (event) {
   const key = event && event.detail ? event.detail.key : null;
   if (key !== 'appFolders' && key !== 'appOrder') return;
   setTimeout(function () {
+    const folders = window.AppGridState && typeof window.AppGridState.getFolders === 'function'
+      ? window.AppGridState.getFolders()
+      : null;
+    const affectedFolderIds = [];
+    if (folders && typeof window.removeAppIcon === 'function') {
+      folders.forEach(function (folder) {
+        if (!Array.isArray(folder.apps)) return;
+        let droppedDuplicate = false;
+        folder.apps.forEach(function (appId) {
+          // removeAppIcon only detaches grid children, so a stray element that
+          // merely reuses the app id is left alone.
+          if (document.getElementById(appId)) {
+            window.removeAppIcon(appId);
+            droppedDuplicate = true;
+          }
+        });
+        // The success path already refreshed this tile as if the app had
+        // left; remember it so the rollback repaints the stacked preview even
+        // when the popup closed or another folder opened before this timer.
+        if (droppedDuplicate) affectedFolderIds.push(folder.id);
+      });
+    }
+    // A rejected create-folder write rolls storage back after
+    // addFolderIconToGrid already inserted the tile: drop the orphan icon so
+    // the grid never shows a folder storage no longer knows about.
+    if (folders) {
+      document.querySelectorAll('#app-grid .folder-icon').forEach(function (icon) {
+        const stillExists = folders.some(function (folder) { return folder.id === icon.id; });
+        if (!stillExists) icon.remove();
+      });
+    }
     if (window.AppFolders) {
+      // Refresh the folders that actually lost a duplicate tile first, then
+      // re-sync whatever popup is open so its title and contents stay paired.
+      if (typeof window.AppFolders.refreshFolderUI === 'function') {
+        affectedFolderIds.forEach(function (folderId) {
+          window.AppFolders.refreshFolderUI(folderId);
+        });
+      }
       if (typeof window.AppFolders.renderFolderAppsInPopup === 'function') {
         window.AppFolders.renderFolderAppsInPopup();
       }
@@ -425,18 +466,6 @@ window.addEventListener('storageBridgeWriteError', function (event) {
         window.AppFolders.refreshFolderUI();
       }
     }
-    if (!window.AppGridState || typeof window.AppGridState.getFolders !== 'function' ||
-        typeof window.removeAppIcon !== 'function') {
-      return;
-    }
-    window.AppGridState.getFolders().forEach(function (folder) {
-      if (!Array.isArray(folder.apps)) return;
-      folder.apps.forEach(function (appId) {
-        // removeAppIcon only detaches grid children, so a stray element that
-        // merely reuses the app id is left alone.
-        if (document.getElementById(appId)) window.removeAppIcon(appId);
-      });
-    });
   });
 });
 

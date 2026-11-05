@@ -1009,6 +1009,11 @@ describe('remove from folder storage failures (#1137)', () => {
                 .toBeGreaterThan(rendersAfterClick);
               expect(refreshFolderUI.mock.calls.length)
                 .toBeGreaterThan(refreshesAfterClick);
+              // The affected folder is refreshed by id, not only through the
+              // popup's currentFolderId, so a closed or switched popup cannot
+              // leave the original folder tile stale.
+              expect(refreshFolderUI.mock.calls.slice(refreshesAfterClick))
+                .toContainEqual(['folder-1']);
               expect(removeAppIcon).toHaveBeenCalledWith('weather-app');
               expect(document.getElementById('weather-app')).toBeNull();
               expect(showToast).toHaveBeenCalledTimes(1);
@@ -1020,6 +1025,42 @@ describe('remove from folder storage failures (#1137)', () => {
       popupApps.remove();
       const strayIcon = document.getElementById('weather-app');
       if (strayIcon) strayIcon.remove();
+    }
+  });
+
+  it('drops the orphaned folder icon when a create-folder write fails (#1137)', () => {
+    seedFolderWithWeatherApp();
+    restoreWrites = failStorageWritesFor('appFolders', 'async');
+
+    const grid = createElement('div', 'app-grid');
+    try {
+      // promptCreateFolder(): persist the folder optimistically, then insert
+      // its tile — chrome.storage rejects the write a macrotask later.
+      const folder = window.AppGridState.createFolder('New Folder', []);
+      expect(folder).not.toBeNull();
+
+      const orphan = document.createElement('a');
+      orphan.id = folder.id;
+      orphan.className = 'app-icon folder-icon';
+      grid.appendChild(orphan);
+      const survivor = document.createElement('a');
+      survivor.id = 'folder-1';
+      survivor.className = 'app-icon folder-icon';
+      grid.appendChild(survivor);
+
+      // Advance by 1ms, not 0: the resync is scheduled from inside the
+      // failure timer's callback, and a delay-0 timer scheduled during a tick
+      // only becomes due on the next 1ms boundary.
+      vi.advanceTimersByTime(1);
+      expect(window.AppGridState.getFolders().some((f) => f.id === folder.id)).toBe(false);
+      vi.advanceTimersByTime(1);
+
+      // The rolled-back folder's tile is gone; folders storage still knows
+      // about keep their tiles.
+      expect(document.getElementById(folder.id)).toBeNull();
+      expect(document.getElementById('folder-1')).not.toBeNull();
+    } finally {
+      grid.remove();
     }
   });
 });
