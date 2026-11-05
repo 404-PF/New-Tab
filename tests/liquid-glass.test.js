@@ -198,7 +198,12 @@ describe('liquid glass core module (#1108)', () => {
 
       const defs = document.querySelectorAll('#liquid-glass-defs filter');
       const ids = Array.from(defs).map((f) => f.id);
-      expect(ids).toEqual(['lg-standard-icon', 'lg-standard-panel']);
+      expect(ids).toEqual([
+        'lg-standard-icon',
+        'lg-standard-icon-flat',
+        'lg-standard-panel',
+        'lg-standard-panel-flat'
+      ]);
       expect(document.querySelectorAll('#liquid-glass-defs')).toHaveLength(1);
     });
 
