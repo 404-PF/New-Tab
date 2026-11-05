@@ -259,7 +259,7 @@
 
   function cleanupDragSession() {
     const sourceElement = dragState.sourceElement;
-
+    document.body.classList.remove('glass-drag-active');
     if (sourceElement) {
       sourceElement.classList.remove('dragging');
     }
@@ -352,6 +352,7 @@
 
     // Cache layout measurements at drag start to avoid repeated reflows
     dragState.cachedLayout = getGridLayout();
+    document.body.classList.add('glass-drag-active');
     window.addEventListener('resize', handleLayoutResize);
 
     // Use requestAnimationFrame so the browser captures the drag image
@@ -490,6 +491,7 @@
         // Only patch the grid when the move persisted; otherwise the visible
         // grid would disagree with the folders that storage still holds.
         if (moved && typeof window.removeAppIcon === 'function') {
+          cleanupDragSession();
           window.removeAppIcon(sourceId);
           if (typeof window.AppFolders.refreshFolderUI === 'function') {
             window.AppFolders.refreshFolderUI(folderId);

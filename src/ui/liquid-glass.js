@@ -245,6 +245,7 @@
           Array.from(enhanced).filter((el) => node.contains(el)).forEach((el) => release(el));
         });
         record.addedNodes.forEach((node) => {
+          if (node instanceof Element) markAppIcons(node);
           collectMarked(node).forEach((el) => enhance(el));
         });
         if (record.type === 'attributes') {
@@ -275,8 +276,225 @@
     Array.from(enhanced).forEach((el) => release(el));
   }
 
+  // ---- T3 app icons -------------------------------------------------------
+
+  const ICON_SELECTOR = '#app-grid .app-icon .icon';
+  let iconListenerAttached = false;
+
+  function isGridRendered() {
+    return !!(window.__appGridState && window.__appGridState.phase === 'rendered');
+  }
+
+  function markAppIcons(root) {
+    if (!isGridRendered() || !isLiquid() || isReducedMotion()) return;
+    if (hasEntranceAnimation(document.getElementById('app-grid'))) return;
+    const scope = root || document;
+    const icons = scope.querySelectorAll ? Array.from(scope.querySelectorAll(ICON_SELECTOR)) : [];
+    if (scope.matches && scope.matches(ICON_SELECTOR)) icons.push(scope);
+    icons.forEach((icon) => {
+      if (!icon.hasAttribute(ATTR)) icon.setAttribute(ATTR, 'icon');
+    });
+  }
+
+  function hasEntranceAnimation(el) {
+    if (!el || typeof el.getAnimations !== 'function') return false;
+    return el.getAnimations().some((a) => /^fadeSlideUp/.test(a.animationName || ''));
+  }
+
+  // Icons are enhanced only after the grid entrance animation has finished so
+  // the warped backdrop never runs during fadeSlideUp.
+  function enhanceIconsWhenSettled() {
+    const grid = document.getElementById('app-grid');
+    if (grid && hasEntranceAnimation(grid)) {
+      const cleanup = () => {
+        grid.removeEventListener('animationend', done);
+        grid.removeEventListener('animationcancel', done);
+      };
+      const done = (e) => {
+        if (e.target !== grid || !/^fadeSlideUp/.test(e.animationName || '')) return;
+        cleanup();
+        markAppIcons();
+      };
+      grid.addEventListener('animationend', done);
+      grid.addEventListener('animationcancel', done);
+      return;
+    }
+    markAppIcons();
+  }
+
+  function onAppGridReady() {
+    enhanceIconsWhenSettled();
+  }
+
+  function startIcons() {
+    if (!iconListenerAttached) {
+      window.addEventListener('appGridReady', onAppGridReady);
+      iconListenerAttached = true;
+    }
+    if (isGridRendered()) enhanceIconsWhenSettled();
+  }
+
+  function stopIcons() {
+    if (iconListenerAttached) {
+      window.removeEventListener('appGridReady', onAppGridReady);
+      iconListenerAttached = false;
+    }
+    document.querySelectorAll(ICON_SELECTOR + `[${ATTR}]`).forEach((icon) => {
+      icon.removeAttribute(ATTR);
+    });
+  }
+
+  // ---- T1 mouse elasticity ------------------------------------------------
+
+  const ELASTIC_SELECTORS = [
+    '.search-bar-wrapper',
+    '#motto-container',
+    '#weather-widget',
+    '#clock',
+    '#focus-mode-indicator'
+  ];
+  const ELASTIC_RADIUS = 320;
+  const ELASTIC_MAX = 6;
+  const SPRING = 0.14;
+  const DAMPING = 0.72;
+  const SETTLE = 0.05;
+
+  // el -> { x, y, vx, vy, tx, ty }
+  const springs = new Map();
+  let pointer = null;
+  let frame = 0;
+  let elasticityOn = false;
+  let unsubscribeVisibility = null;
+  let pageVisible = true;
+
+  function isDragging() {
+    return document.body.classList.contains('glass-drag-active');
+  }
+
+  function isFrozen(el) {
+    return isDragging() || hasEntranceAnimation(el);
+  }
+
+  function canAnimate() {
+    return elasticityOn && pageVisible && !isReducedMotion() && isLiquid() && !isDragging();
+  }
+
+  function applyOffset(el, x, y) {
+    // Individual `translate` composes with existing `transform` (for example
+    // the translateX(-50%) centering on #motto-container).
+    if (Math.abs(x) < SETTLE && Math.abs(y) < SETTLE) {
+      el.style.removeProperty('translate');
+    } else {
+      el.style.translate = `${x.toFixed(2)}px ${y.toFixed(2)}px`;
+    }
+  }
+
+  function computeTarget(el) {
+    if (!pointer || isFrozen(el)) return { tx: 0, ty: 0 };
+    const rect = el.getBoundingClientRect();
+    if (!rect.width && !rect.height) return { tx: 0, ty: 0 };
+    const s = springs.get(el);
+    const dx = pointer.x - (rect.left + rect.width / 2 - (s ? s.x : 0));
+    const dy = pointer.y - (rect.top + rect.height / 2 - (s ? s.y : 0));
+    const dist = Math.hypot(dx, dy);
+    if (dist > ELASTIC_RADIUS || dist === 0) return { tx: 0, ty: 0 };
+    const pull = (1 - dist / ELASTIC_RADIUS) * ELASTIC_MAX;
+    return { tx: (dx / dist) * pull, ty: (dy / dist) * pull };
+  }
+
+  function step() {
+    frame = 0;
+    if (!canAnimate()) {
+      resetElasticity();
+      return;
+    }
+    let moving = false;
+    springs.forEach((s, el) => {
+      const { tx, ty } = computeTarget(el);
+      s.vx = (s.vx + (tx - s.x) * SPRING) * DAMPING;
+      s.vy = (s.vy + (ty - s.y) * SPRING) * DAMPING;
+      s.x += s.vx;
+      s.y += s.vy;
+      const settled = Math.abs(s.vx) < 0.01 && Math.abs(s.vy) < 0.01 &&
+        Math.abs(tx - s.x) < SETTLE && Math.abs(ty - s.y) < SETTLE;
+      if (settled) {
+        s.x = tx;
+        s.y = ty;
+        s.vx = 0;
+        s.vy = 0;
+      } else {
+        moving = true;
+      }
+      applyOffset(el, s.x, s.y);
+    });
+    if (moving) schedule();
+  }
+
+  function schedule() {
+    if (!frame && canAnimate()) frame = requestAnimationFrame(step);
+  }
+
+  function onPointerMove(e) {
+    pointer = { x: e.clientX, y: e.clientY };
+    schedule();
+  }
+
+  function onPointerLeave() {
+    pointer = null;
+    schedule();
+  }
+
+  function resetElasticity() {
+    if (frame) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+    }
+    springs.forEach((s, el) => {
+      s.x = s.y = s.vx = s.vy = 0;
+      el.style.removeProperty('translate');
+    });
+  }
+
+  function startElasticity() {
+    if (elasticityOn) return;
+    elasticityOn = true;
+    ELASTIC_SELECTORS.forEach((sel) => {
+      const el = document.querySelector(sel);
+      if (el) springs.set(el, { x: 0, y: 0, vx: 0, vy: 0 });
+    });
+    document.addEventListener('pointermove', onPointerMove, { passive: true });
+    document.documentElement.addEventListener('pointerleave', onPointerLeave);
+    document.addEventListener('dragstart', resetElasticity);
+    pageVisible = !(window.visibilityManager && window.visibilityManager.isVisible === false);
+    if (window.visibilityManager && typeof window.visibilityManager.onChange === 'function') {
+      unsubscribeVisibility = window.visibilityManager.onChange((visible) => {
+        pageVisible = visible;
+        if (!visible) {
+          resetElasticity();
+        }
+      });
+    }
+  }
+
+  function stopElasticity() {
+    if (!elasticityOn) return;
+    resetElasticity();
+    elasticityOn = false;
+    springs.clear();
+    pointer = null;
+    document.removeEventListener('pointermove', onPointerMove);
+    document.documentElement.removeEventListener('pointerleave', onPointerLeave);
+    document.removeEventListener('dragstart', resetElasticity);
+    if (unsubscribeVisibility) {
+      unsubscribeVisibility();
+      unsubscribeVisibility = null;
+    }
+  }
+
   function teardown() {
     stopObserver();
+    stopIcons();
+    stopElasticity();
     if (unsubscribeMotion) {
       unsubscribeMotion();
       unsubscribeMotion = null;
@@ -291,8 +509,11 @@
       unsubscribeMotion = window.onReducedMotionChange((reduced) => {
         if (reduced) {
           releaseAll();
+          stopElasticity();
         } else if (isLiquid()) {
+          markAppIcons();
           enhanceAll();
+          startElasticity();
         }
       });
     }
@@ -302,7 +523,11 @@
     }
     document.body.classList.add(ROOT_CLASS);
     startObserver();
-    if (!isReducedMotion()) enhanceAll();
+    startIcons();
+    if (!isReducedMotion()) {
+      enhanceAll();
+      startElasticity();
+    }
   }
 
   if (document.readyState === 'loading') {
