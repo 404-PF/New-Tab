@@ -1,19 +1,21 @@
 import { readFileSync } from 'node:fs';
 
 describe('liquid glass icon tile layering (#1155)', () => {
-  const css = readFileSync('css/liquid-glass.css', 'utf8');
+  const css = readFileSync('css/liquid-glass.css', 'utf8').replace(/\r\n/g, '\n');
   const js = readFileSync('src/ui/liquid-glass.js', 'utf8');
+  const tile = 'body.glass-liquid .app-icon .icon[data-liquid-glass]';
+  const dragStates = ['drag-over', 'drag-over-folder', 'drag-over-folder-rejected'];
 
-  it('makes the icon tile background see-through in liquid mode', () => {
-    expect(css).toMatch(
-      /body\.glass-liquid \.app-icon:not\(\.drag-over\)[^{]*\.icon\[data-liquid-glass\]\s*\{\s*background: rgba\(255, 255, 255, 0\.04\);/
-    );
+  it('makes the icon tile background see-through outside drag states', () => {
+    const exclusions = dragStates.map((s) => `:not(.${s})`).join('');
+    const selector = `body.glass-liquid .app-icon${exclusions} .icon[data-liquid-glass]`;
+    expect(css).toContain(`${selector} {\n  background: rgba(255, 255, 255, 0.04);`);
   });
 
-  it('stacks the glyph above the warp layer', () => {
-    expect(css).toMatch(
-      /\.icon\[data-liquid-glass\] > img,[\s\S]*?> svg\s*\{\s*position: relative;\s*z-index: 1;/
-    );
+  it.each(['img', 'svg'])('stacks the %s glyph above the warp layer', (tag) => {
+    const block = css.split('}').find((b) => b.includes(`${tile} > ${tag}`));
+    expect(block).toBeDefined();
+    expect(block).toMatch(/position: relative;\s*z-index: 1;/);
   });
 
   it('uses a gentle displacement scale for icon tiles', () => {
