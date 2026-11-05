@@ -6,13 +6,13 @@ describe('liquid glass icon tile layering (#1155)', () => {
 
   it('makes the icon tile background see-through in liquid mode', () => {
     expect(css).toMatch(
-      /body\.glass-liquid \.app-icon \.icon\[data-liquid-glass\]\s*\{\s*background: rgba\(255, 255, 255, 0\.04\);/
+      /body\.glass-liquid \.app-icon:not\(\.drag-over\)[^{]*\.icon\[data-liquid-glass\]\s*\{\s*background: rgba\(255, 255, 255, 0\.04\);/
     );
   });
 
   it('stacks the glyph above the warp layer', () => {
     expect(css).toMatch(
-      /\.icon\[data-liquid-glass\] > img\s*\{\s*position: relative;\s*z-index: 1;/
+      /\.icon\[data-liquid-glass\] > img,[\s\S]*?> svg\s*\{\s*position: relative;\s*z-index: 1;/
     );
   });
 

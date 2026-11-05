@@ -68,11 +68,12 @@ body.glass-liquid .app-grid.dodging .app-icon .glass__warp {
 }
 
 /* #1155: let the wallpaper through the tile and keep the glyph and badge above the warp layer. */
-body.glass-liquid .app-icon .icon[data-liquid-glass] {
+body.glass-liquid .app-icon:not(.drag-over):not(.drag-over-folder):not(.drag-over-folder-rejected) .icon[data-liquid-glass] {
   background: rgba(255, 255, 255, 0.04);
 }
 
-body.glass-liquid .app-icon .icon[data-liquid-glass] > img {
+body.glass-liquid .app-icon .icon[data-liquid-glass] > img,
+body.glass-liquid .app-icon .icon[data-liquid-glass] > svg {
   position: relative;
   z-index: 1;
 }
