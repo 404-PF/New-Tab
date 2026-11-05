@@ -597,6 +597,8 @@ const APP_MODAL_TRANSLATION_KEYS = [
   'enterAppName',
   'changeThumbnailDescription',
   'enterIconUrl',
+  'uploadImage',
+  'thumbnailImageTooLarge',
   'deleteAppTitle',
   'deleteAppMessage',
   'delete',
@@ -614,6 +616,24 @@ describe('App and todo modal translations', () => {
     // Assert getTranslations() directly: t() falls back to English (or echoes
     // the key), which would hide a missing entry behind a passing assertion.
     expectTranslationKeys(APP_MODAL_TRANSLATION_KEYS);
+  });
+});
+
+// Change Thumbnail modal upload control (issue #1139): the local image
+// picker button label and the oversized-file rejection message.
+const THUMBNAIL_UPLOAD_TRANSLATION_KEYS = [
+  'uploadImage',
+  'thumbnailImageTooLarge'
+];
+
+describe('Change thumbnail upload translations (issue #1139)', () => {
+  it('defines the upload strings in each supported language', () => {
+    expectTranslationKeys(THUMBNAIL_UPLOAD_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+
+  it('includes the upload strings in every _locales messages.json', () => {
+    expectMessagesJsonKey('uploadImage');
+    expectMessagesJsonKey('thumbnailImageTooLarge');
   });
 });
 

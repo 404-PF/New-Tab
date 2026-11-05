@@ -224,6 +224,14 @@
     "message": "No se pudieron guardar los ajustes de rotación de fondo. La última acción no se guardó.",
     "description": "Error shown when background rotation settings cannot be persisted"
   },
+  "uploadImage": {
+    "message": "Subir imagen",
+    "description": "Label for the button that opens a local image picker in the change thumbnail modal"
+  },
+  "thumbnailImageTooLarge": {
+    "message": "Esta imagen es demasiado grande. Elige una imagen menor de 1 MB.",
+    "description": "Error shown when the chosen app icon image exceeds the upload size limit"
+  },
   "uploadBackground": {
     "message": "Subir fondo",
     "description": "Tooltip for the upload background image button"

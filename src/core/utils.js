@@ -329,6 +329,13 @@
 
     // Get icon URL with caching
     async getIconWithCache(iconUrl) {
+      // data: URLs already carry their payload, so caching one would persist a
+      // second copy of it (plus a key proportional to its size) in localStorage,
+      // defeating upload size caps like MAX_THUMBNAIL_ICON_FILE_BYTES (#1139).
+      if (typeof iconUrl === 'string' && iconUrl.startsWith('data:')) {
+        return iconUrl;
+      }
+
       // Check cache first
       const cached = this.loadIconFromCache(iconUrl);
       if (cached) return cached;

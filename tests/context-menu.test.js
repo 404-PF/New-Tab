@@ -20,6 +20,8 @@ const MODAL_STUBS = [
   ['input', 'thumbnail-app-input'],
   ['button', 'thumbnail-app-cancel'],
   ['button', 'thumbnail-app-confirm'],
+  ['button', 'thumbnail-app-upload'],
+  ['input', 'thumbnail-app-file-input'],
   ['div', 'thumbnail-preview-icon'],
   ['span', 'thumbnail-preview-name'],
   ['div', 'delete-app-modal'],
@@ -661,5 +663,147 @@ describe('edit app action (#1082)', () => {
     } finally {
       popupApps.remove();
     }
+  });
+});
+
+describe('change thumbnail local upload (#1139)', () => {
+  const THUMBNAIL_STUB_IDS = [
+    'thumbnail-app-modal',
+    'thumbnail-app-input',
+    'thumbnail-app-cancel',
+    'thumbnail-app-confirm',
+    'thumbnail-app-upload',
+    'thumbnail-app-file-input',
+    'thumbnail-preview-icon',
+    'thumbnail-preview-name'
+  ];
+
+  const removeExistingMenu = () => {
+    const existingMenu = document.getElementById('app-context-menu');
+    if (existingMenu) existingMenu.remove();
+  };
+
+  // Earlier describes accumulated listeners on their own copies of these
+  // stubs; drop every copy so this describe's fresh elements are the only
+  // ones the re-injected handlers bind to.
+  const resetThumbnailStubs = () => {
+    THUMBNAIL_STUB_IDS.forEach((id) => {
+      document.querySelectorAll('#' + id).forEach((el) => el.remove());
+    });
+    createModalStubs(createElement);
+  };
+
+  const setFileSelection = (input, file) => {
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  };
+
+  // jsdom's FileReader finishes on two setImmediate hops, and this file only
+  // fakes setTimeout/clearTimeout — so yielding real immediates drains it.
+  const flushFileReader = async () => {
+    for (let i = 0; i < 5; i++) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  };
+
+  let originalShowToast;
+
+  beforeAll(() => {
+    injectScript('src/core/dom-ready.js');
+    injectScript('src/core/languages.js');
+    injectScript('src/core/utils.js');
+    removeExistingMenu();
+    resetThumbnailStubs();
+
+    window.AppGridState = {
+      getCustomApps: () => [{ id: 'app-1', name: 'Example App', icon: 'https://example.com/icon.png' }],
+      renameApp: vi.fn(),
+      updateThumbnail: vi.fn(),
+      deleteApp: vi.fn()
+    };
+
+    injectScript('src/features/context-menu.js');
+  });
+
+  beforeEach(() => {
+    originalShowToast = window.showToast;
+    window.showToast = vi.fn();
+  });
+
+  afterEach(() => {
+    if (originalShowToast === undefined) {
+      delete window.showToast;
+    } else {
+      window.showToast = originalShowToast;
+    }
+    document.querySelectorAll('.toast-notification').forEach((el) => el.remove());
+  });
+
+  it('opens a local file picker from the Upload image button', () => {
+    const fileInput = document.getElementById('thumbnail-app-file-input');
+    const clickSpy = vi.spyOn(fileInput, 'click').mockImplementation(() => {});
+
+    try {
+      document.getElementById('thumbnail-app-upload').click();
+      expect(clickSpy).toHaveBeenCalledOnce();
+    } finally {
+      clickSpy.mockRestore();
+    }
+  });
+
+  it('previews a selected image and saves it through the existing confirm path', async () => {
+    const thumbnailInput = document.getElementById('thumbnail-app-input');
+    const fileInput = document.getElementById('thumbnail-app-file-input');
+    const previewIcon = document.getElementById('thumbnail-preview-icon');
+    window.thumbnailAppId = 'app-1';
+
+    setFileSelection(fileInput, new File(['icon-bytes'], 'logo.png', { type: 'image/png' }));
+    fileInput.dispatchEvent(new Event('change'));
+    await flushFileReader();
+
+    const expectedDataUrl = 'data:image/png;base64,' + btoa('icon-bytes');
+    expect(thumbnailInput.value).toBe(expectedDataUrl);
+
+    const previewImage = previewIcon.querySelector('img');
+    expect(previewImage).not.toBeNull();
+    expect(previewImage.getAttribute('src')).toBe(expectedDataUrl);
+
+    document.getElementById('thumbnail-app-confirm').click();
+
+    expect(window.AppGridState.updateThumbnail)
+      .toHaveBeenCalledExactlyOnceWith('app-1', expectedDataUrl);
+    expect(window.thumbnailAppId).toBeNull();
+  });
+
+  it('rejects non-image files with a localized toast', () => {
+    const thumbnailInput = document.getElementById('thumbnail-app-input');
+    const fileInput = document.getElementById('thumbnail-app-file-input');
+    thumbnailInput.value = 'https://example.com/existing.png';
+
+    setFileSelection(fileInput, new File(['plain text'], 'notes.txt', { type: 'text/plain' }));
+    fileInput.dispatchEvent(new Event('change'));
+
+    expect(window.showToast)
+      .toHaveBeenCalledExactlyOnceWith('Please select an image file.', 'error');
+    expect(thumbnailInput.value).toBe('https://example.com/existing.png');
+  });
+
+  it('rejects oversized image files with a localized toast', () => {
+    const thumbnailInput = document.getElementById('thumbnail-app-input');
+    const fileInput = document.getElementById('thumbnail-app-file-input');
+    thumbnailInput.value = 'https://example.com/existing.png';
+
+    const oversized = new File(
+      [new Uint8Array(1024 * 1024 + 1)],
+      'huge.png',
+      { type: 'image/png' }
+    );
+    setFileSelection(fileInput, oversized);
+    fileInput.dispatchEvent(new Event('change'));
+
+    expect(window.showToast).toHaveBeenCalledExactlyOnceWith(
+      'This image is too large. Please choose an image smaller than 1 MB.',
+      'error'
+    );
+    expect(thumbnailInput.value).toBe('https://example.com/existing.png');
   });
 });

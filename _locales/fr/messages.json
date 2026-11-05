@@ -224,6 +224,14 @@
     "message": "Impossible d’enregistrer les paramètres de rotation d’arrière-plan. Votre dernière action n’a pas été enregistrée.",
     "description": "Error shown when background rotation settings cannot be persisted"
   },
+  "uploadImage": {
+    "message": "Importer une image",
+    "description": "Label for the button that opens a local image picker in the change thumbnail modal"
+  },
+  "thumbnailImageTooLarge": {
+    "message": "Cette image est trop grande. Veuillez choisir une image de moins de 1 Mo.",
+    "description": "Error shown when the chosen app icon image exceeds the upload size limit"
+  },
   "uploadBackground": {
     "message": "Importer un arrière-plan",
     "description": "Tooltip for the upload background image button"

@@ -108,6 +108,8 @@ window.i18n.__registerLocale('zh', {
   changeThumbnailTitle: '更改缩略图',
   changeThumbnailDescription: '输入应用图标的图片URL',
   enterIconUrl: 'https://example.com/icon.png',
+  uploadImage: '上传图片',
+  thumbnailImageTooLarge: '图片太大。请选择小于 1 MB 的图片。',
   deleteAppTitle: '删除应用？',
   deleteAppMessage: '该应用将从此列表中永久删除。',
   delete: '删除',

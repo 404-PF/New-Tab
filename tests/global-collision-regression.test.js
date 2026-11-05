@@ -37,6 +37,8 @@ describe('cross-file global collision prevention', () => {
     createEl('input', 'thumbnail-app-input');
     createEl('button', 'thumbnail-app-cancel');
     createEl('button', 'thumbnail-app-confirm');
+    createEl('button', 'thumbnail-app-upload');
+    createEl('input', 'thumbnail-app-file-input');
     createEl('div', 'thumbnail-preview-icon');
     createEl('span', 'thumbnail-preview-name');
     createEl('div', 'delete-app-modal');
