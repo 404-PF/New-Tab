@@ -51,6 +51,7 @@
     'iconSize',
     'appsButtonCurvature',
     'customShortcuts',
+    'appShortcutsEnabled',
     'onboardingCompleted',
     'onboardingStep',
     'weatherEnabled',
@@ -294,6 +295,13 @@
     // the Todo app modal controls without a reload.
     if (typeof window.applyTodoAppSettings === 'function') {
       window.applyTodoAppSettings();
+    }
+
+    // Re-render the Shortcuts section so an open Settings modal shows the
+    // imported customShortcuts bindings and the appShortcutsEnabled toggle
+    // instead of their pre-import state (issue #1136).
+    if (window.Shortcuts && typeof window.Shortcuts.renderShortcutsSection === 'function') {
+      window.Shortcuts.renderShortcutsSection();
     }
 
     // Re-render the custom background thumbnails and re-apply the homepage
@@ -752,6 +760,7 @@
     iconSize: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     appsButtonCurvature: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     customShortcuts: function (v) { return typeof v === 'object' && v !== null && !Array.isArray(v); },
+    appShortcutsEnabled: function (v) { return typeof v === 'boolean'; },
     onboardingCompleted: function (v) { return typeof v === 'boolean'; },
     onboardingStep: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     weatherEnabled: function (v) { return typeof v === 'boolean'; },
