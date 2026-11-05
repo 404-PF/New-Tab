@@ -385,18 +385,59 @@ document.getElementById('remove-from-folder').addEventListener('click', function
   if (!contextTargetId) return;
   const folderId = contextTargetFolderId;
   if (folderId) {
-    window.AppGridState.removeAppFromFolder(folderId, contextTargetId);
-    if (window.AppFolders) {
-      window.AppFolders.renderFolderAppsInPopup();
-      // The stacked preview on the folder tile must drop the removed app too.
-      if (typeof window.AppFolders.refreshFolderUI === 'function') {
-        window.AppFolders.refreshFolderUI(folderId);
+    const removed = window.AppGridState.removeAppFromFolder(folderId, contextTargetId);
+    // Only patch the UI when the write persisted (mirrors app-folders.js /
+    // drag-drop.js): on failure storage still holds the app inside the
+    // folder, so re-adding its tile would show it in both places (#1137).
+    // The failed write already surfaces the shared appGridSaveError toast
+    // through the bridge's storageBridgeWriteError listener.
+    if (removed) {
+      if (window.AppFolders) {
+        window.AppFolders.renderFolderAppsInPopup();
+        // The stacked preview on the folder tile must drop the removed app too.
+        if (typeof window.AppFolders.refreshFolderUI === 'function') {
+          window.AppFolders.refreshFolderUI(folderId);
+        }
       }
+      if (typeof window.addAppIcon === 'function') window.addAppIcon(contextTargetId);
     }
-    if (typeof window.addAppIcon === 'function') window.addAppIcon(contextTargetId);
   }
   contextMenu.style.display = 'none';
   document.body.classList.remove('context-menu-open');
+});
+
+// Async half of #1137: chrome.storage can reject the folder write through
+// runtime.lastError after removeAppFromFolder already returned true, so the
+// success-path patch above has already put the tile back on the grid. The
+// bridge dispatches storageBridgeWriteError before rolling its cache back —
+// wait a macrotask for that rollback, then re-sync the folder popup/tile and
+// drop any grid icon storage again reports as foldered, so grid and folder
+// agree without a reload.
+window.addEventListener('storageBridgeWriteError', function (event) {
+  const key = event && event.detail ? event.detail.key : null;
+  if (key !== 'appFolders' && key !== 'appOrder') return;
+  setTimeout(function () {
+    if (window.AppFolders) {
+      if (typeof window.AppFolders.renderFolderAppsInPopup === 'function') {
+        window.AppFolders.renderFolderAppsInPopup();
+      }
+      if (typeof window.AppFolders.refreshFolderUI === 'function') {
+        window.AppFolders.refreshFolderUI();
+      }
+    }
+    if (!window.AppGridState || typeof window.AppGridState.getFolders !== 'function' ||
+        typeof window.removeAppIcon !== 'function') {
+      return;
+    }
+    window.AppGridState.getFolders().forEach(function (folder) {
+      if (!Array.isArray(folder.apps)) return;
+      folder.apps.forEach(function (appId) {
+        // removeAppIcon only detaches grid children, so a stray element that
+        // merely reuses the app id is left alone.
+        if (document.getElementById(appId)) window.removeAppIcon(appId);
+      });
+    });
+  });
 });
 
 // Move to Folder
