@@ -464,6 +464,7 @@
     });
     document.addEventListener('pointermove', onPointerMove, { passive: true });
     document.documentElement.addEventListener('pointerleave', onPointerLeave);
+    document.addEventListener('dragstart', resetElasticity);
     pageVisible = !(window.visibilityManager && window.visibilityManager.isVisible === false);
     if (window.visibilityManager && typeof window.visibilityManager.onChange === 'function') {
       unsubscribeVisibility = window.visibilityManager.onChange((visible) => {
@@ -483,6 +484,7 @@
     pointer = null;
     document.removeEventListener('pointermove', onPointerMove);
     document.documentElement.removeEventListener('pointerleave', onPointerLeave);
+    document.removeEventListener('dragstart', resetElasticity);
     if (unsubscribeVisibility) {
       unsubscribeVisibility();
       unsubscribeVisibility = null;

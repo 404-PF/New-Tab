@@ -71,11 +71,35 @@ describe('liquid glass icons + elasticity (#1110)', () => {
   };
   const move = (x, y) => document.dispatchEvent(new MouseEvent('pointermove', { clientX: x, clientY: y }));
 
-  it('does not enhance icons before the grid is rendered, then does on appGridReady', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+
+  it('does not enhance icons before the grid is rendered, then does on appGridReady', async () => {
     loadLiquidGlass();
     const icon = document.querySelector('.icon');
     expect(icon.hasAttribute('data-liquid-glass')).toBe(false);
     window.__appGridState.setPhase('rendered');
+    expect(icon.getAttribute('data-liquid-glass')).toBe('icon');
+    await settle();
+    expect(icon.querySelector('.glass__warp')).not.toBeNull();
+    expect(icon.classList.contains('glass--liquid')).toBe(true);
+  });
+
+  it('waits for the fadeSlideUp entrance animation before enhancing icons', () => {
+    loadLiquidGlass();
+    const grid = document.getElementById('app-grid');
+    const icon = document.querySelector('.icon');
+    let running = true;
+    grid.getAnimations = () => (running ? [{ animationName: 'fadeSlideUp' }] : []);
+    window.__appGridState.setPhase('rendered');
+    expect(icon.hasAttribute('data-liquid-glass')).toBe(false);
+    const other = new Event('animationend', { bubbles: true });
+    other.animationName = 'dropBounce';
+    icon.dispatchEvent(other);
+    expect(icon.hasAttribute('data-liquid-glass')).toBe(false);
+    running = false;
+    const done = new Event('animationend');
+    done.animationName = 'fadeSlideUp';
+    grid.dispatchEvent(done);
     expect(icon.getAttribute('data-liquid-glass')).toBe('icon');
   });
 
@@ -86,8 +110,9 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     a.className = 'app-icon';
     a.innerHTML = '<span class="icon"></span>';
     document.getElementById('app-grid').appendChild(a);
-    await new Promise((r) => setTimeout(r, 0));
+    await settle();
     expect(a.querySelector('.icon').getAttribute('data-liquid-glass')).toBe('icon');
+    expect(a.querySelector('.glass__warp')).not.toBeNull();
   });
 
   it('drag-drop toggles the highlight-only degradation state', () => {
@@ -99,11 +124,32 @@ describe('liquid glass icons + elasticity (#1110)', () => {
   });
 
   it('applies elasticity via translate (never transform) on T1 targets', () => {
+    const ids = ['search-bar-wrapper', 'motto-container', 'weather-widget', 'focus-mode-indicator'];
+    document.getElementById('clock').insertAdjacentHTML('afterend',
+      '<div class="search-bar-wrapper"></div>' +
+      ids.slice(1).map((id) => '<div id="' + id + '"></div>').join(''));
+    const targets = [
+      document.querySelector('.search-bar-wrapper'),
+      ...ids.slice(1).map((id) => document.getElementById(id)),
+      document.getElementById('clock')
+    ];
+    targets.forEach((el) => { el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 }); });
+    loadLiquidGlass();
+    move(150, 50);
+    flush();
+    targets.forEach((el) => {
+      expect(el.style.translate).not.toBe('');
+      expect(el.style.transform).toBe('');
+    });
+  });
+
+  it('resets elasticity offsets when an app drag starts', () => {
     loadLiquidGlass();
     move(150, 50);
     flush();
     expect(document.getElementById('clock').style.translate).not.toBe('');
-    expect(document.getElementById('clock').style.transform).toBe('');
+    document.dispatchEvent(new Event('dragstart', { bubbles: true }));
+    expect(document.getElementById('clock').style.translate).toBe('');
   });
 
   it('freezes elasticity while dragging', () => {
