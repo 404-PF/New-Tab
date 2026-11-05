@@ -491,6 +491,7 @@
         // Only patch the grid when the move persisted; otherwise the visible
         // grid would disagree with the folders that storage still holds.
         if (moved && typeof window.removeAppIcon === 'function') {
+          cleanupDragSession();
           window.removeAppIcon(sourceId);
           if (typeof window.AppFolders.refreshFolderUI === 'function') {
             window.AppFolders.refreshFolderUI(folderId);

@@ -287,6 +287,7 @@
 
   function markAppIcons(root) {
     if (!isGridRendered() || !isLiquid() || isReducedMotion()) return;
+    if (hasEntranceAnimation(document.getElementById('app-grid'))) return;
     const scope = root || document;
     const icons = scope.querySelectorAll ? Array.from(scope.querySelectorAll(ICON_SELECTOR)) : [];
     if (scope.matches && scope.matches(ICON_SELECTOR)) icons.push(scope);
@@ -305,9 +306,17 @@
   function enhanceIconsWhenSettled() {
     const grid = document.getElementById('app-grid');
     if (grid && hasEntranceAnimation(grid)) {
-      const done = () => markAppIcons();
-      grid.addEventListener('animationend', done, { once: true });
-      grid.addEventListener('animationcancel', done, { once: true });
+      const cleanup = () => {
+        grid.removeEventListener('animationend', done);
+        grid.removeEventListener('animationcancel', done);
+      };
+      const done = (e) => {
+        if (e.target !== grid || !/^fadeSlideUp/.test(e.animationName || '')) return;
+        cleanup();
+        markAppIcons();
+      };
+      grid.addEventListener('animationend', done);
+      grid.addEventListener('animationcancel', done);
       return;
     }
     markAppIcons();
@@ -367,7 +376,7 @@
   }
 
   function canAnimate() {
-    return elasticityOn && pageVisible && !isReducedMotion() && isLiquid();
+    return elasticityOn && pageVisible && !isReducedMotion() && isLiquid() && !isDragging();
   }
 
   function applyOffset(el, x, y) {
@@ -384,8 +393,9 @@
     if (!pointer || isFrozen(el)) return { tx: 0, ty: 0 };
     const rect = el.getBoundingClientRect();
     if (!rect.width && !rect.height) return { tx: 0, ty: 0 };
-    const dx = pointer.x - (rect.left + rect.width / 2);
-    const dy = pointer.y - (rect.top + rect.height / 2);
+    const s = springs.get(el);
+    const dx = pointer.x - (rect.left + rect.width / 2 - (s ? s.x : 0));
+    const dy = pointer.y - (rect.top + rect.height / 2 - (s ? s.y : 0));
     const dist = Math.hypot(dx, dy);
     if (dist > ELASTIC_RADIUS || dist === 0) return { tx: 0, ty: 0 };
     const pull = (1 - dist / ELASTIC_RADIUS) * ELASTIC_MAX;
