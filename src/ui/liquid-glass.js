@@ -23,7 +23,7 @@
   const ROOT_CLASS = 'glass-liquid';
 
   const SIZE_CLASSES = {
-    icon: { mapSize: 128, radius: 24, scale: 40, blur: 2 },
+    icon: { mapSize: 128, radius: 24, scale: 12, blur: 1 },
     panel: { mapSize: 256, radius: 48, scale: 60, blur: 12 },
     pill: { mapSize: 128, radius: 32, scale: 30, blur: 8 }
   };
