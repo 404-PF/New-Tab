@@ -9,6 +9,7 @@ import { injectScript } from './helpers/inject-script.js';
 const SET_ERROR = 'set rejected';
 const REMOVE_ERROR = 'remove rejected';
 const CLEAR_ERROR = 'clear rejected';
+const GET_ERROR = 'get rejected';
 
 async function createHarness({ clearRejects = false, rejectSets = true } = {}) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
@@ -158,7 +159,7 @@ describe('storage bridge promise rejections', () => {
       const events = collectWriteErrors(dom);
 
       // Both writes reject. 'first' becomes the previous value the second write
-      // must restore to, so exactly one of the two rollbacks must win and the
+      // must restore to, so exactly one of those rollbacks must win and the
       // surviving value must be 'first' — the value the cache held when the
       // last write was issued.
       dom.window.localStorage.setItem('testKey', 'first');
@@ -167,6 +168,63 @@ describe('storage bridge promise rejections', () => {
 
       expect(events).toHaveLength(2);
       expect(dom.window.localStorage.getItem('testKey')).toBe('first');
+    } finally {
+      dom.window.close();
+    }
+  });
+});
+
+describe('storage bridge hydration get rejection', () => {
+  it('settles the bridge immediately when the get promise rejects without a callback', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://example.com',
+      runScripts: 'dangerously'
+    });
+
+    try {
+      dom.window.chrome = {
+        runtime: { lastError: null },
+        storage: {
+          onChanged: {
+            addListener() {},
+            removeListener() {},
+            hasListener() {
+              return false;
+            }
+          },
+          local: {
+            get() {
+              // Rejects without ever invoking the callback, so only the
+              // promise rejection path can settle the hydration.
+              return Promise.reject(new Error(GET_ERROR));
+            },
+            set(items, callback) {
+              callback?.();
+            },
+            remove(keys, callback) {
+              callback?.();
+            },
+            clear(callback) {
+              callback?.();
+            }
+          }
+        }
+      };
+
+      injectScript('src/core/storage.js', dom.getInternalVMContext());
+
+      // Without rejection handling the bridge only settles via the 3 s
+      // safety timeout; racing proves it settles on the rejection instead.
+      const outcome = await Promise.race([
+        dom.window.__storageBridgeReady.then(() => 'settled'),
+        new Promise((resolve) => {
+          setTimeout(() => resolve('stalled'), 500);
+        })
+      ]);
+
+      expect(outcome).toBe('settled');
+      expect(dom.window.localStorage.setItem('postRejection', 'ok')).toBe(true);
+      expect(dom.window.localStorage.getItem('postRejection')).toBe('ok');
     } finally {
       dom.window.close();
     }

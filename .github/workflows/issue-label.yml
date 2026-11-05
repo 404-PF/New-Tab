@@ -114,7 +114,7 @@ jobs:
       # wrapper exits 1 and every run fails at `opencode run`.
       - name: Install OpenCode
         if: github.event_name != 'issue_comment' || steps.gate.outputs.proceed == 'true'
-        run: npm install -g opencode-ai@1.19.5
+        run: npm install -g opencode-ai@1.19.4
 
       - name: Fetch existing labels
         id: labels

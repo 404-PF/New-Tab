@@ -373,7 +373,15 @@
       });
       if (getResult && typeof getResult.catch === 'function') {
         getResult.catch((error) => {
+          const wasGetPending = hydrationGetPending;
+          hydrationGetPending = false;
           console.warn('Failed to read chrome.storage:', error);
+          if (hydrationFinished) {
+            lateHydrationPending = false;
+            hydrationMutations.clear();
+          } else if (wasGetPending) {
+            resolveStorageReady();
+          }
         });
       }
     } catch (error) {
