@@ -49,3 +49,20 @@ body.glass-liquid [data-liquid-glass]:hover > .glass__hover {
     transition: none;
   }
 }
+
+/* Highlight-only degradation (#1110): no warped backdrop on app icons while a
+   drag, drag-over, dodge or drop-bounce animation is running. drag-drop.js
+   toggles body.glass-drag-active; the other states are element classes. */
+body.glass-liquid.glass-drag-active .app-icon .glass__warp,
+body.glass-liquid .app-icon.drag-over .glass__warp,
+body.glass-liquid .app-icon.drag-over-folder .glass__warp,
+body.glass-liquid .app-icon.drag-drop-landed .glass__warp,
+body.glass-liquid .app-grid.dodging .app-icon .glass__warp {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.glass-liquid .app-icon .glass__warp {
+    display: none;
+  }
+}
