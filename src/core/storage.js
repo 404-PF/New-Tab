@@ -314,7 +314,7 @@
 
     hydrationGetPending = true;
     try {
-      storageArea.get(null, (items) => {
+      const getResult = storageArea.get(null, (items) => {
         hydrationGetPending = false;
         if (hydrationFinished) {
           // Arrived after the safety timeout already resolved the bridge
@@ -371,6 +371,11 @@
         hydrationFinished = true;
         resolveStorageReady();
       });
+      if (getResult && typeof getResult.catch === 'function') {
+        getResult.catch((error) => {
+          console.warn('Failed to read chrome.storage:', error);
+        });
+      }
     } catch (error) {
       hydrationGetPending = false;
       console.warn('Failed to initialize chrome.storage bridge:', error);
