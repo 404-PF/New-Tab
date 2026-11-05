@@ -226,11 +226,11 @@
   },
   "uploadImage": {
     "message": "Subir imagen",
-    "description": "Etiqueta del botón que abre un selector de imágenes locales en el modal Cambiar miniatura"
+    "description": "Label for the button that opens a local image picker in the change thumbnail modal"
   },
   "thumbnailImageTooLarge": {
     "message": "Esta imagen es demasiado grande. Elige una imagen menor de 1 MB.",
-    "description": "Error que se muestra cuando la imagen del icono supera el límite de tamaño"
+    "description": "Error shown when the chosen app icon image exceeds the upload size limit"
   },
   "uploadBackground": {
     "message": "Subir fondo",

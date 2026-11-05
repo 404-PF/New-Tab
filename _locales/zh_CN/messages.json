@@ -226,11 +226,11 @@
   },
   "uploadImage": {
     "message": "上传图片",
-    "description": "在更换缩略图对话框中打开本地图片选择器的按钮标签"
+    "description": "Label for the button that opens a local image picker in the change thumbnail modal"
   },
   "thumbnailImageTooLarge": {
     "message": "图片太大。请选择小于 1 MB 的图片。",
-    "description": "图标图片超出大小限制时显示的错误"
+    "description": "Error shown when the chosen app icon image exceeds the upload size limit"
   },
   "uploadBackground": {
     "message": "上传背景",

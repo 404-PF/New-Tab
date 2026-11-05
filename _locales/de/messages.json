@@ -226,11 +226,11 @@
   },
   "uploadImage": {
     "message": "Bild hochladen",
-    "description": "Beschriftung der Schaltfläche, die im Dialog zum Ändern des Thumbnails einen lokalen Bildauswähler öffnet"
+    "description": "Label for the button that opens a local image picker in the change thumbnail modal"
   },
   "thumbnailImageTooLarge": {
     "message": "Dieses Bild ist zu groß. Bitte wähle ein Bild kleiner als 1 MB.",
-    "description": "Fehlermeldung, wenn das gewählte App-Symbol die Größenbeschränkung überschreitet"
+    "description": "Error shown when the chosen app icon image exceeds the upload size limit"
   },
   "uploadBackground": {
     "message": "Hintergrund hochladen",

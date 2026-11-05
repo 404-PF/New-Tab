@@ -226,11 +226,11 @@
   },
   "uploadImage": {
     "message": "Загрузить изображение",
-    "description": "Подпись кнопки, открывающей выбор локального изображения в диалоге изменения миниатюры"
+    "description": "Label for the button that opens a local image picker in the change thumbnail modal"
   },
   "thumbnailImageTooLarge": {
     "message": "Это изображение слишком большое. Выберите изображение меньше 1 МБ.",
-    "description": "Ошибка, отображаемая, когда изображение значка превышает ограничение размера"
+    "description": "Error shown when the chosen app icon image exceeds the upload size limit"
   },
   "uploadBackground": {
     "message": "Загрузить фон",

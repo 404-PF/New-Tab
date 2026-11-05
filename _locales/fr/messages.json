@@ -226,11 +226,11 @@
   },
   "uploadImage": {
     "message": "Importer une image",
-    "description": "Libellé du bouton qui ouvre un sélecteur d'images locales dans la boîte de dialogue Changer la vignette"
+    "description": "Label for the button that opens a local image picker in the change thumbnail modal"
   },
   "thumbnailImageTooLarge": {
     "message": "Cette image est trop grande. Veuillez choisir une image de moins de 1 Mo.",
-    "description": "Erreur affichée lorsque l'image de l'icône dépasse la limite de taille"
+    "description": "Error shown when the chosen app icon image exceeds the upload size limit"
   },
   "uploadBackground": {
     "message": "Importer un arrière-plan",

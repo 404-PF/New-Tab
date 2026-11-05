@@ -226,11 +226,11 @@
   },
   "uploadImage": {
     "message": "이미지 업로드",
-    "description": "썸네일 변경 대화 상자에서 로컬 이미지 선택기를 여는 버튼의 레이블"
+    "description": "Label for the button that opens a local image picker in the change thumbnail modal"
   },
   "thumbnailImageTooLarge": {
     "message": "이 이미지가 너무 큽니다. 1 MB 미만의 이미지를 선택하세요.",
-    "description": "아이콘 이미지가 크기 제한을 초과할 때 표시되는 오류"
+    "description": "Error shown when the chosen app icon image exceeds the upload size limit"
   },
   "uploadBackground": {
     "message": "배경 업로드",

@@ -226,11 +226,11 @@
   },
   "uploadImage": {
     "message": "画像をアップロード",
-    "description": "サムネイル変更ダイアローグでローカル画像選択を開くボタンのラベル"
+    "description": "Label for the button that opens a local image picker in the change thumbnail modal"
   },
   "thumbnailImageTooLarge": {
     "message": "この画像は大きすぎます。1 MB以下の画像を選択してください。",
-    "description": "アイコン画像がサイズ制限を超えた場合に表示されるエラー"
+    "description": "Error shown when the chosen app icon image exceeds the upload size limit"
   },
   "uploadBackground": {
     "message": "背景をアップロード",

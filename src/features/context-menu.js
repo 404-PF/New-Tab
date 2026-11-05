@@ -645,7 +645,7 @@ function initThumbnailModalHandlers() {
       thumbnailInput.dispatchEvent(new Event('input', { bubbles: true }));
     };
     reader.onerror = function() {
-      console.warn('Failed to read uploaded thumbnail file:', file.name);
+      showThumbnailUploadMessage('customBgProcessError', 'Failed to process the file. Please try a different file.');
     };
     reader.readAsDataURL(file);
   });
