@@ -2274,6 +2274,38 @@ html.light-pre body:not(.light-theme) .date {
   background: rgba(31, 41, 55, 0.7);
 }
 
+.thumbnail-app-upload-row {
+  margin-bottom: 16px;
+}
+
+#thumbnail-app-upload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px dashed rgba(107, 114, 128, 0.6);
+  border-radius: 10px;
+  background: rgba(31, 41, 55, 0.3);
+  color: rgba(203, 213, 225, 0.85);
+  font-size: 0.95em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#thumbnail-app-upload:hover {
+  border-color: #06b6d4;
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.08);
+}
+
+#thumbnail-app-upload svg {
+  width: 18px;
+  height: 18px;
+}
+
 .thumbnail-app-preview {
   display: flex;
   align-items: center;
@@ -2591,6 +2623,18 @@ body.light-theme .thumbnail-app-input-wrapper input:focus {
   border-color: #06b6d4;
   background: rgba(255, 255, 255, 1);
   box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+body.light-theme #thumbnail-app-upload {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.2);
+  color: rgba(55, 65, 81, 0.85);
+}
+
+body.light-theme #thumbnail-app-upload:hover {
+  border-color: #06b6d4;
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.08);
 }
 
 body.light-theme .thumbnail-app-preview {

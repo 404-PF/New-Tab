@@ -107,6 +107,8 @@ window.i18n.__registerLocale('de', {
   changeThumbnailTitle: 'Miniaturbild ändern',
   changeThumbnailDescription: 'Gib eine Bild-URL für das App-Symbol ein',
   enterIconUrl: 'https://example.com/icon.png',
+  uploadImage: 'Bild hochladen',
+  thumbnailImageTooLarge: 'Dieses Bild ist zu groß. Bitte wähle ein Bild kleiner als 1 MB.',
   deleteAppTitle: 'App löschen?',
   deleteAppMessage: 'Diese App wird dauerhaft aus deiner Liste entfernt.',
   delete: 'Löschen',

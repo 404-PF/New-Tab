@@ -224,6 +224,14 @@
     "message": "Hintergrundrotations-Einstellungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
     "description": "Error shown when background rotation settings cannot be persisted"
   },
+  "uploadImage": {
+    "message": "Bild hochladen",
+    "description": "Beschriftung der Schaltfläche, die im Dialog zum Ändern des Thumbnails einen lokalen Bildauswähler öffnet"
+  },
+  "thumbnailImageTooLarge": {
+    "message": "Dieses Bild ist zu groß. Bitte wähle ein Bild kleiner als 1 MB.",
+    "description": "Fehlermeldung, wenn das gewählte App-Symbol die Größenbeschränkung überschreitet"
+  },
   "uploadBackground": {
     "message": "Hintergrund hochladen",
     "description": "Tooltip for the upload background image button"

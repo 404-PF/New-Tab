@@ -107,6 +107,8 @@ window.i18n.__registerLocale('ko', {
   changeThumbnailTitle: '썸네일 변경',
   changeThumbnailDescription: '앱 아이콘의 이미지 URL을 입력하세요',
   enterIconUrl: 'https://example.com/icon.png',
+  uploadImage: '이미지 업로드',
+  thumbnailImageTooLarge: '이 이미지가 너무 큽니다. 1 MB 미만의 이미지를 선택하세요.',
   deleteAppTitle: '앱을 삭제하시겠습니까?',
   deleteAppMessage: '이 앱이 목록에서 영구적으로 삭제됩니다.',
   delete: '삭제',

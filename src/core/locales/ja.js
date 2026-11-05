@@ -107,6 +107,8 @@ window.i18n.__registerLocale('ja', {
   changeThumbnailTitle: 'サムネイルを変更',
   changeThumbnailDescription: 'アプリアイコンの画像URLを入力してください',
   enterIconUrl: 'https://example.com/icon.png',
+  uploadImage: '画像をアップロード',
+  thumbnailImageTooLarge: 'この画像は大きすぎます。1 MB以下の画像を選択してください。',
   deleteAppTitle: 'アプリを削除しますか？',
   deleteAppMessage: 'このアプリはリストから完全に削除されます。',
   delete: '削除',

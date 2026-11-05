@@ -107,6 +107,8 @@ window.i18n.__registerLocale('fr', {
   changeThumbnailTitle: 'Changer la vignette',
   changeThumbnailDescription: 'Saisissez une URL d\'image pour l\'icône de l\'application',
   enterIconUrl: 'https://example.com/icon.png',
+  uploadImage: 'Importer une image',
+  thumbnailImageTooLarge: 'Cette image est trop grande. Veuillez choisir une image de moins de 1 Mo.',
   deleteAppTitle: 'Supprimer l\'application ?',
   deleteAppMessage: 'Cette application sera définitivement supprimée de votre liste.',
   delete: 'Supprimer',

@@ -224,6 +224,14 @@
     "message": "背景ローテーションの設定を保存できませんでした。直前の操作は保存されていません。",
     "description": "Error shown when background rotation settings cannot be persisted"
   },
+  "uploadImage": {
+    "message": "画像をアップロード",
+    "description": "サムネイル変更ダイアローグでローカル画像選択を開くボタンのラベル"
+  },
+  "thumbnailImageTooLarge": {
+    "message": "この画像は大きすぎます。1 MB以下の画像を選択してください。",
+    "description": "アイコン画像がサイズ制限を超えた場合に表示されるエラー"
+  },
   "uploadBackground": {
     "message": "背景をアップロード",
     "description": "Tooltip for the upload background image button"

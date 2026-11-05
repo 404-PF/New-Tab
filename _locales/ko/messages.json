@@ -224,6 +224,14 @@
     "message": "배경 회전 설정을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
     "description": "Error shown when background rotation settings cannot be persisted"
   },
+  "uploadImage": {
+    "message": "이미지 업로드",
+    "description": "썸네일 변경 대화 상자에서 로컬 이미지 선택기를 여는 버튼의 레이블"
+  },
+  "thumbnailImageTooLarge": {
+    "message": "이 이미지가 너무 큽니다. 1 MB 미만의 이미지를 선택하세요.",
+    "description": "아이콘 이미지가 크기 제한을 초과할 때 표시되는 오류"
+  },
   "uploadBackground": {
     "message": "배경 업로드",
     "description": "Tooltip for the upload background image button"

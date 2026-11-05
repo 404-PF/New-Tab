@@ -8,6 +8,24 @@ let contextTargetFolderId = null;
 let contextMenuInitialized = false;
 const runContextMenuOnDomReady = window.onDomReady;
 
+// Uploaded app icons are stored as data: URLs inside customApps, so cap the
+// source file to keep localStorage, chrome.storage.local and the settings
+// export from ballooning (issue #1139).
+const MAX_THUMBNAIL_ICON_FILE_BYTES = 1024 * 1024;
+
+// Localized user-facing message for thumbnail upload validation, mirroring
+// showUploadValidation in src/data/custom-backgrounds.js.
+function showThumbnailUploadMessage(key, fallback) {
+  const message = window.i18n && typeof window.i18n.t === 'function'
+    ? window.i18n.t(key)
+    : fallback;
+  if (typeof window.showToast === 'function') {
+    window.showToast(message, 'error');
+  } else if (typeof window.alert === 'function') {
+    window.alert(message);
+  }
+}
+
 function createFallbackIconSvg() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');
@@ -557,11 +575,15 @@ function initThumbnailModalHandlers() {
   const thumbnailInput = document.getElementById('thumbnail-app-input');
   const thumbnailCancel = document.getElementById('thumbnail-app-cancel');
   const thumbnailConfirm = document.getElementById('thumbnail-app-confirm');
+  const thumbnailUpload = document.getElementById('thumbnail-app-upload');
+  const thumbnailFileInput = document.getElementById('thumbnail-app-file-input');
   const missingElements = getMissingElementIds({
     'thumbnail-app-modal': thumbnailModal,
     'thumbnail-app-input': thumbnailInput,
     'thumbnail-app-cancel': thumbnailCancel,
-    'thumbnail-app-confirm': thumbnailConfirm
+    'thumbnail-app-confirm': thumbnailConfirm,
+    'thumbnail-app-upload': thumbnailUpload,
+    'thumbnail-app-file-input': thumbnailFileInput
   });
 
   if (missingElements) {
@@ -574,14 +596,60 @@ function initThumbnailModalHandlers() {
     thumbnailModal.classList.remove('modal-open');
     window.thumbnailAppId = null;
   });
-  
+
   // Update preview when input changes
   thumbnailInput.addEventListener('input', function() {
     const iconUrl = this.value.trim();
     const previewIcon = document.getElementById('thumbnail-preview-icon');
     setContextMenuPreviewIcon(previewIcon, iconUrl);
   });
-  
+
+  // Upload a local image file as the app icon (issue #1139). The data URL is
+  // written back through the text input, so the existing input listener,
+  // preview and confirm handler stay the single save path.
+  thumbnailUpload.addEventListener('click', function() {
+    thumbnailFileInput.click();
+  });
+
+  thumbnailFileInput.addEventListener('change', function() {
+    const file = this.files && this.files[0];
+    // Clear so picking the same file again re-fires the change event.
+    this.value = '';
+    if (!file) return;
+
+    if (!file.type || !file.type.startsWith('image/')) {
+      // Context-free string already localized for the custom background picker.
+      showThumbnailUploadMessage('customBgSelectImage', 'Please select an image file.');
+      return;
+    }
+
+    if (file.size > MAX_THUMBNAIL_ICON_FILE_BYTES) {
+      showThumbnailUploadMessage(
+        'thumbnailImageTooLarge',
+        'This image is too large. Please choose an image smaller than 1 MB.'
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function() {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+      const safeIcon = typeof window.validateIconUrl === 'function'
+        ? window.validateIconUrl(dataUrl)
+        : dataUrl;
+      if (!safeIcon) {
+        console.warn('Rejected uploaded thumbnail icon:', dataUrl.slice(0, 64));
+        return;
+      }
+      thumbnailInput.value = safeIcon;
+      thumbnailInput.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    reader.onerror = function() {
+      console.warn('Failed to read uploaded thumbnail file:', file.name);
+    };
+    reader.readAsDataURL(file);
+  });
+
   // Close modal on confirm
   thumbnailConfirm.addEventListener('click', function() {
     const newIcon = thumbnailInput.value.trim();

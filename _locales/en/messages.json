@@ -360,6 +360,14 @@
     "message": "Options",
     "description": "Sub-header for rotation controls in the Rotation section"
   },
+  "uploadImage": {
+    "message": "Upload image",
+    "description": "Label for the button that opens a local image picker in the change thumbnail modal"
+  },
+  "thumbnailImageTooLarge": {
+    "message": "This image is too large. Please choose an image smaller than 1 MB.",
+    "description": "Error shown when the chosen app icon image exceeds the upload size limit"
+  },
   "uploadBackground": {
     "message": "Upload Background",
     "description": "Tooltip for the upload background image button"

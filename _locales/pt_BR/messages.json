@@ -224,6 +224,14 @@
     "message": "Não foi possível salvar as configurações de rotação de fundo. Sua última ação não foi salva.",
     "description": "Error shown when background rotation settings cannot be persisted"
   },
+  "uploadImage": {
+    "message": "Enviar imagem",
+    "description": "Rótulo do botão que abre um seletor de imagens locais na janela Alterar miniatura"
+  },
+  "thumbnailImageTooLarge": {
+    "message": "Esta imagem é muito grande. Escolha uma imagem menor que 1 MB.",
+    "description": "Erro exibido quando a imagem do ícone excede o limite de tamanho"
+  },
   "uploadBackground": {
     "message": "Carregar plano de fundo",
     "description": "Tooltip for the upload background image button"

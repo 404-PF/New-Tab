@@ -107,6 +107,8 @@ window.i18n.__registerLocale('ru', {
   changeThumbnailTitle: 'Изменить миниатюру',
   changeThumbnailDescription: 'Введите URL изображения для значка приложения',
   enterIconUrl: 'https://example.com/icon.png',
+  uploadImage: 'Загрузить изображение',
+  thumbnailImageTooLarge: 'Это изображение слишком большое. Выберите изображение меньше 1 МБ.',
   deleteAppTitle: 'Удалить приложение?',
   deleteAppMessage: 'Приложение будет безвозвратно удалено из вашего списка.',
   delete: 'Удалить',

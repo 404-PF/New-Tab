@@ -107,6 +107,8 @@ window.i18n.__registerLocale('pt', {
   changeThumbnailTitle: 'Alterar miniatura',
   changeThumbnailDescription: 'Digite uma URL de imagem para o ícone do aplicativo',
   enterIconUrl: 'https://example.com/icon.png',
+  uploadImage: 'Enviar imagem',
+  thumbnailImageTooLarge: 'Esta imagem é muito grande. Escolha uma imagem menor que 1 MB.',
   deleteAppTitle: 'Excluir aplicativo?',
   deleteAppMessage: 'Este aplicativo será removido permanentemente da sua lista.',
   delete: 'Excluir',

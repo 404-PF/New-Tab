@@ -178,6 +178,8 @@ const translations = {
     changeThumbnailTitle: 'Change Thumbnail',
     changeThumbnailDescription: 'Enter an image URL for the app icon',
     enterIconUrl: 'https://example.com/icon.png',
+    uploadImage: 'Upload image',
+    thumbnailImageTooLarge: 'This image is too large. Please choose an image smaller than 1 MB.',
     deleteAppTitle: 'Delete App?',
     deleteAppMessage: 'This app will be permanently removed from your list.',
     delete: 'Delete',
