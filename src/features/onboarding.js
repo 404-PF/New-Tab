@@ -424,6 +424,11 @@ class OnboardingTour {
             <input type="radio" name="onboarding-theme" value="system" ${storedTheme === 'system' ? 'checked' : ''} />
             <span class="label">${window.i18n ? window.i18n.t('system') : 'System'}</span>
           </label>
+          <label class="theme-option modern">
+            <div class="preview-icon liquid"></div>
+            <input type="radio" name="onboarding-theme" value="liquid-glass" ${storedTheme === 'liquid-glass' ? 'checked' : ''} />
+            <span class="label">${window.i18n ? window.i18n.t('liquidGlass') : 'Liquid Glass'}</span>
+          </label>
         </div>
       `;
     } else {
@@ -639,6 +644,9 @@ class OnboardingTour {
           } else {
             // Fallback: directly apply theme
             document.body.classList.toggle('light-theme', resolvedTheme === 'light');
+            if (window.LiquidGlass && typeof window.LiquidGlass.init === 'function') {
+              window.LiquidGlass.init();
+            }
           }
           // Notify other components of theme change
           window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolvedTheme } }));

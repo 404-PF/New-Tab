@@ -13,8 +13,7 @@ const TOGGLE_STORAGE_KEYS = [
   'todoEnabled',
   'notesEnabled',
   'eyeCareReminder',
-  'customShortcuts',
-  'glassStyle'
+  'customShortcuts'
 ];
 
 const restorers = [];
@@ -27,14 +26,6 @@ const restorers = [];
   el.id = id;
   document.body.appendChild(el);
 });
-const glassStyleSelect = document.createElement('select');
-glassStyleSelect.id = 'glass-style-setting';
-['classic', 'liquid'].forEach((value) => {
-  const option = document.createElement('option');
-  option.value = value;
-  glassStyleSelect.appendChild(option);
-});
-document.body.appendChild(glassStyleSelect);
 
 beforeAll(() => {
   injectScript('src/core/motion.js');
@@ -349,20 +340,6 @@ describe('settings checkboxes report rejected writes (#969)', () => {
     expect(checkbox.checked).toBe(false);
     expect(window.showToast).not.toHaveBeenCalled();
   });
-
-  it('glass-style select keeps the value, restores the select, and toasts', () => {
-    localStorage.setItem('glassStyle', 'classic');
-    failWriteFor('glassStyle');
-
-    const select = document.getElementById('glass-style-setting');
-    select.value = 'liquid';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-
-    expect(localStorage.getItem('glassStyle')).toBe('classic');
-    expect(select.value).toBe('classic');
-    expect(window.showToast).toHaveBeenCalledTimes(1);
-    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
-  });
 });
 
 describe('async runtime.lastError rollback restores controls (#969)', () => {
@@ -425,29 +402,6 @@ describe('async runtime.lastError rollback restores controls (#969)', () => {
     expect(localStorage.getItem('simpleMode')).toBe('false');
     expect(checkbox.checked).toBe(false);
     expect(document.body.classList.contains('simple-mode')).toBe(false);
-    expect(window.showToast).toHaveBeenCalledTimes(1);
-    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
-  });
-
-  it('glass-style select resyncs and toasts after an async lastError rollback', async () => {
-    localStorage.setItem('glassStyle', 'classic');
-    failWriteFor('glassStyle', 'async');
-
-    const select = document.getElementById('glass-style-setting');
-    select.value = 'liquid';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-
-    // The bridge accepted the optimistic write; the select follows it until
-    // the failure rolls storage back.
-    expect(localStorage.getItem('glassStyle')).toBe('liquid');
-    expect(select.value).toBe('liquid');
-    expect(window.showToast).not.toHaveBeenCalled();
-
-    await flushDeferredFailureSync();
-    await flushDeferredFailureSync();
-
-    expect(localStorage.getItem('glassStyle')).toBe('classic');
-    expect(select.value).toBe('classic');
     expect(window.showToast).toHaveBeenCalledTimes(1);
     expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });

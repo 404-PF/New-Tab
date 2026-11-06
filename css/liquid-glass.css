@@ -1,6 +1,6 @@
 /* Liquid glass structure. Every rule is scoped to body.glass-liquid, which
-   src/ui/liquid-glass.js adds only when the glassStyle setting is 'liquid' and
-   the capability probe passes. Classic styling is untouched otherwise. */
+   src/ui/liquid-glass.js adds only while the standalone liquid-glass theme is
+   active and the capability probe passes. Other themes are untouched. */
 
 /* No isolation or negative z-index here: an isolated ancestor becomes a
    backdrop root and would stop .glass__warp from sampling content behind it. */
@@ -76,23 +76,4 @@ body.glass-liquid .app-icon .icon[data-liquid-glass] > img,
 body.glass-liquid .app-icon .icon[data-liquid-glass] > svg {
   position: relative;
   z-index: 1;
-}
-
-/* Light theme uses the same tile look as dark. glass.css's light group targets
-   `.icon` inside :is(... #motto-container ...), so its specificity includes an
-   id and beats the class-only rule above; anchor on #app-grid to win. Its
-   backdrop-filter must go too: a backdrop-filtered parent becomes a backdrop
-   root and the warp layer would sample a flat gray instead of the wallpaper.
-   The border and shadow match the dark tile's (core.css .icon). */
-body.light-theme.glass-liquid #app-grid .app-icon:not(.drag-over):not(.drag-over-folder):not(.drag-over-folder-rejected) .icon[data-liquid-glass] {
-  background: rgba(255, 255, 255, 0.04);
-  border: none;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-
-/* Keep core.css's pressed-state shadow, which the rule above would otherwise override. */
-body.light-theme.glass-liquid #app-grid .app-icon:active:not(.drag-over):not(.drag-over-folder):not(.drag-over-folder-rejected) .icon[data-liquid-glass] {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }

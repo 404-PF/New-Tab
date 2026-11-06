@@ -1310,6 +1310,39 @@ if (document.readyState === 'loading') {
 // Theme
 const SYSTEM_THEME_QUERY = '(prefers-color-scheme: dark)';
 
+const LIQUID_GLASS_THEME = 'liquid-glass';
+
+// The Glass style select (#1109) became the standalone liquid-glass theme.
+// Carry an existing 'liquid' choice over once per page load. The legacy key is
+// dropped only after the bridge confirms the theme write settled: queueing the
+// write returns true, but an async failure rolls the theme back later, and the
+// key must survive that so the preference is retried on the next load.
+function migrateGlassStyle() {
+  try {
+    const legacy = localStorage.getItem('glassStyle');
+    if (legacy === null) return;
+    const previousTheme = localStorage.getItem('theme');
+    if (legacy !== 'liquid' || previousTheme === LIQUID_GLASS_THEME) {
+      localStorage.removeItem('glassStyle');
+      return;
+    }
+    if (localStorage.setItem('theme', LIQUID_GLASS_THEME) === false) return; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    const settled = typeof localStorage.whenWriteSettled === 'function'
+      ? localStorage.whenWriteSettled('theme')
+      : Promise.resolve();
+    settled.then(function () {
+      // Unchanged from before means the write rolled back; any other value
+      // means the migration landed or the user has since picked a theme.
+      if (localStorage.getItem('theme') === previousTheme) return;
+      localStorage.removeItem('glassStyle');
+    }).catch(function (e) {
+      console.warn('Failed to finish glassStyle migration:', e);
+    });
+  } catch (e) {
+    console.warn('Failed to migrate glassStyle:', e);
+  }
+}
+
 function loadTheme() {
   return localStorage.getItem('theme') || 'dark';
 }
@@ -1341,12 +1374,15 @@ function applyTheme() {
   document.documentElement.classList.toggle('light-pre', theme === 'light');
   // Radios reflect the stored value so "System" stays selected while the
   // effective theme comes from the OS.
-  const darkRadio = document.querySelector('input[name="theme"][value="dark"]');
-  const lightRadio = document.querySelector('input[name="theme"][value="light"]');
-  const systemRadio = document.querySelector('input[name="theme"][value="system"]');
-  if (darkRadio) darkRadio.checked = stored === 'dark';
-  if (lightRadio) lightRadio.checked = stored === 'light';
-  if (systemRadio) systemRadio.checked = stored === 'system';
+  ['dark', 'light', 'system', LIQUID_GLASS_THEME].forEach(function (value) {
+    const radio = document.querySelector('input[name="theme"][value="' + value + '"]');
+    if (radio) radio.checked = stored === value;
+  });
+  // The liquid-glass theme is a standalone theme: LiquidGlass adds or removes
+  // body.glass-liquid and its layers from the stored theme.
+  if (window.LiquidGlass && typeof window.LiquidGlass.init === 'function') {
+    window.LiquidGlass.init();
+  }
 }
 
 // Live-update the effective theme when the OS preference flips and the stored
@@ -1409,15 +1445,32 @@ function applyLanguageSetting() {
   }
 }
 
+// Persist and apply a user-selected theme. The bridge's setItem returns false
+// on a rejected write and rolls its cache back, so applyTheme() then restores
+// the previously stored theme (radio, body class, Liquid Glass) and the
+// listeners are told the restored effective theme, not the rejected one.
+function commitTheme(selectedTheme) {
+  let persisted;
+  try {
+    persisted = localStorage.setItem('theme', selectedTheme) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+  } catch (e) {
+    console.warn('Failed to save theme:', e);
+    persisted = false;
+  }
+  applyTheme();
+  // Dispatch custom event for AI chat and other components to respond.
+  // 'system' is resolved so listeners always receive a concrete theme.
+  window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolveTheme(loadTheme()) } }));
+  if (!persisted && typeof window.showFeatureToggleSaveError === 'function') {
+    window.showFeatureToggleSaveError();
+  }
+  return persisted;
+}
+
 // Event listeners for theme and language
 document.addEventListener('change', function (e) {
   if (e.target.name === 'theme') {
-    const selectedTheme = e.target.value;
-    localStorage.setItem('theme', selectedTheme);
-    applyTheme();
-    // Dispatch custom event for AI chat and other components to respond.
-    // 'system' is resolved so listeners always receive a concrete theme.
-    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolveTheme(selectedTheme) } }));
+    commitTheme(e.target.value);
   } else if (e.target.name === 'language') {
     const selectedLanguage = e.target.value;
     // applyLanguage saves the selection itself and reports a rejected write
@@ -2187,43 +2240,6 @@ if (gamesFpsSetting) {
   });
 }
 
-// Glass style (#1109): classic blur glass vs. liquid glass refraction.
-function loadGlassStyle() {
-  try {
-    return localStorage.getItem('glassStyle') === 'liquid' ? 'liquid' : 'classic';
-  } catch (_e) {
-    return 'classic';
-  }
-}
-function applyGlassStyle() {
-  const select = document.getElementById('glass-style-setting');
-  if (select) select.value = loadGlassStyle();
-  if (window.LiquidGlass && typeof window.LiquidGlass.init === 'function') {
-    window.LiquidGlass.init();
-  }
-  window.dispatchEvent(new CustomEvent('glassStyleChanged', { detail: { style: loadGlassStyle() } }));
-}
-const glassStyleSetting = document.getElementById('glass-style-setting');
-if (glassStyleSetting) {
-  applyGlassStyle();
-  glassStyleSetting.addEventListener('change', function () {
-    const value = this.value === 'liquid' ? 'liquid' : 'classic';
-    let persisted;
-    try {
-      persisted = typeof window.persistFeatureToggle === 'function'
-        ? window.persistFeatureToggle('glassStyle', value)
-        : localStorage.setItem('glassStyle', value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (e) {
-      console.warn('Failed to save glassStyle:', e);
-      persisted = false;
-    }
-    applyGlassStyle();
-    if (persisted === false && typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    }
-  });
-}
-
 // Settings menu logic
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];
@@ -2547,6 +2563,7 @@ function initSettings() {
   applyClockFormatSetting();
   applyDateStyle();
   applyDateFormatSetting();
+  migrateGlassStyle();
   applyTheme();
   applyPomodoroStatsEnabled();
   applyEyeCareReminderSettings();
@@ -2617,6 +2634,8 @@ window.loadDateFormatSetting = loadDateFormatSetting;
 window.loadTheme = loadTheme;
 window.resolveTheme = resolveTheme;
 window.applyTheme = applyTheme;
+window.migrateGlassStyle = migrateGlassStyle;
+window.commitTheme = commitTheme;
 window.loadLanguageSetting = loadLanguageSetting;
 window.renderLanguageOptions = renderLanguageOptions;
 window.loadPomodoroStatsEnabled = loadPomodoroStatsEnabled;
@@ -2632,7 +2651,6 @@ window.applyGamesKeymap = applyGamesKeymap;
 window.loadGamesKeymap = loadGamesKeymap;
 window.applyGamesFps = applyGamesFps;
 window.loadGamesFps = loadGamesFps;
-window.applyGlassStyle = applyGlassStyle;
 window.initSettings = initSettings;
 window.resolveFontAlias = resolveFontAlias;
 

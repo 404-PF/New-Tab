@@ -965,22 +965,22 @@ function applyGamesFpsMerges(code) {
   Object.assign(target, values);
 }
 
-// Glass style setting (#1109).
-const glassStyleTranslations = {
-  en: { glassStyle: 'Glass style', glassStyleClassic: 'Classic', glassStyleLiquid: 'Liquid glass' },
-  zh: { glassStyle: '玻璃样式', glassStyleClassic: '经典', glassStyleLiquid: '液态玻璃' },
-  ja: { glassStyle: 'ガラススタイル', glassStyleClassic: 'クラシック', glassStyleLiquid: 'リキッドグラス' },
-  ko: { glassStyle: '글래스 스타일', glassStyleClassic: '클래식', glassStyleLiquid: '리퀴드 글래스' },
-  es: { glassStyle: 'Estilo de cristal', glassStyleClassic: 'Clásico', glassStyleLiquid: 'Cristal líquido' },
-  fr: { glassStyle: 'Style de verre', glassStyleClassic: 'Classique', glassStyleLiquid: 'Verre liquide' },
-  de: { glassStyle: 'Glasstil', glassStyleClassic: 'Klassisch', glassStyleLiquid: 'Flüssiges Glas' },
-  pt: { glassStyle: 'Estilo de vidro', glassStyleClassic: 'Clássico', glassStyleLiquid: 'Vidro líquido' },
-  ru: { glassStyle: 'Стиль стекла', glassStyleClassic: 'Классический', glassStyleLiquid: 'Жидкое стекло' }
+// Liquid Glass theme label (#1109).
+const liquidGlassTranslations = {
+  en: { liquidGlass: 'Liquid Glass' },
+  zh: { liquidGlass: '液态玻璃' },
+  ja: { liquidGlass: 'リキッドグラス' },
+  ko: { liquidGlass: '리퀴드 글래스' },
+  es: { liquidGlass: 'Cristal líquido' },
+  fr: { liquidGlass: 'Verre liquide' },
+  de: { liquidGlass: 'Flüssiges Glas' },
+  pt: { liquidGlass: 'Vidro líquido' },
+  ru: { liquidGlass: 'Жидкое стекло' }
 };
 
-function applyGlassStyleMerges(code) {
+function applyLiquidGlassMerges(code) {
   const target = translations[code];
-  const values = glassStyleTranslations[code];
+  const values = liquidGlassTranslations[code];
   if (!target || !values) return;
   Object.assign(target, values);
 }
@@ -1402,7 +1402,7 @@ function applyLocaleMerges(code) {
   applyGamesDpadMerges(code);
   applyGamesKeymapMerges(code);
   applyGamesFpsMerges(code);
-  applyGlassStyleMerges(code);
+  applyLiquidGlassMerges(code);
   applyFlappyBirdMerges(code);
   applyPacmanMerges(code);
   applyPomodoroMerges(code);

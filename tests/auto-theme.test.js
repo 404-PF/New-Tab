@@ -53,16 +53,16 @@ describe('automatic theme switching', () => {
     expect(document.getElementById('auto-theme-times').style.display).toBe('none');
   });
 
-  it('keeps a stored system theme through a scheduled boundary (issue #1011)', () => {
+  it.each(['system', 'liquid-glass'])('keeps %s through a scheduled boundary (issue #1011)', (storedTheme) => {
     vi.useFakeTimers();
     const created = [];
     try {
-      // Night: the schedule wants dark while the stored choice stays 'system'.
+      // Night: the schedule wants dark while the stored choice stays put.
       vi.setSystemTime(new Date('2026-01-01T22:00:00'));
       localStorage.setItem('autoTheme', 'true');
       localStorage.setItem('autoThemeLightTime', '07:00');
       localStorage.setItem('autoThemeDarkTime', '19:00');
-      localStorage.setItem('theme', 'system');
+      localStorage.setItem('theme', storedTheme);
       window.loadTheme = () => localStorage.getItem('theme');
       window.applyTheme = vi.fn();
 
@@ -79,13 +79,14 @@ describe('automatic theme switching', () => {
         document.body.appendChild(fixtureHost);
         created.push(fixtureHost);
       }
-      if (!document.querySelector('input[name="theme"][value="system"]')) {
-        const systemRadio = document.createElement('input');
-        systemRadio.type = 'radio';
-        systemRadio.name = 'theme';
-        systemRadio.value = 'system';
-        document.body.appendChild(systemRadio);
-        created.push(systemRadio);
+      const selector = `input[name="theme"][value="${storedTheme}"]`;
+      if (!document.querySelector(selector)) {
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'theme';
+        radio.value = storedTheme;
+        document.body.appendChild(radio);
+        created.push(radio);
       }
       if (typeof window.refreshAutoTheme !== 'function') {
         injectScript('src/features/auto-theme.js');
@@ -97,9 +98,9 @@ describe('automatic theme switching', () => {
       toggle.checked = true;
       toggle.dispatchEvent(new Event('change'));
 
-      expect(localStorage.getItem('theme')).toBe('system');
+      expect(localStorage.getItem('theme')).toBe(storedTheme);
       expect(window.applyTheme).not.toHaveBeenCalled();
-      expect(document.querySelector('input[name="theme"][value="system"]').checked).toBe(true);
+      expect(document.querySelector(selector).checked).toBe(true);
       expect(document.querySelector('input[name="theme"][value="dark"]').checked).toBe(false);
     } finally {
       created.forEach((el) => el.remove());

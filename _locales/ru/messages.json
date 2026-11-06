@@ -486,17 +486,9 @@
     "message": "Показывать FPS в играх",
     "description": "Toggle label for showing the FPS readout in games"
   },
-  "glassStyle": {
-    "message": "Стиль стекла",
-    "description": "Label for the glass style select in General settings"
-  },
-  "glassStyleClassic": {
-    "message": "Классический",
-    "description": "Glass style option: classic blur glass"
-  },
-  "glassStyleLiquid": {
+  "liquidGlass": {
     "message": "Жидкое стекло",
-    "description": "Glass style option: liquid glass refraction"
+    "description": "Theme option: standalone liquid glass theme"
   },
   "gamesPlay": {
     "message": "Играть",
