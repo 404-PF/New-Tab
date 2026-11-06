@@ -1033,32 +1033,44 @@ describe('remove from folder storage failures (#1137)', () => {
     restoreWrites = failStorageWritesFor('appFolders', 'async');
 
     const grid = createElement('div', 'app-grid');
+    const refreshAppShortcutBadges = vi.fn();
     try {
-      // promptCreateFolder(): persist the folder optimistically, then insert
-      // its tile — chrome.storage rejects the write a macrotask later.
-      const folder = window.AppGridState.createFolder('New Folder', []);
-      expect(folder).not.toBeNull();
+      withWindowOverride('Shortcuts', { refreshAppShortcutBadges }, () => {
+        // promptCreateFolder(): persist the folder optimistically, then insert
+        // its tile — chrome.storage rejects the write a macrotask later.
+        const folder = window.AppGridState.createFolder('New Folder', []);
+        expect(folder).not.toBeNull();
+        // The appFolders write fails but the paired appOrder write succeeds,
+        // so the ghost id is persisted until the rollback drops it.
+        expect(JSON.parse(localStorage.getItem('appOrder'))).toContain(folder.id);
 
-      const orphan = document.createElement('a');
-      orphan.id = folder.id;
-      orphan.className = 'app-icon folder-icon';
-      grid.appendChild(orphan);
-      const survivor = document.createElement('a');
-      survivor.id = 'folder-1';
-      survivor.className = 'app-icon folder-icon';
-      grid.appendChild(survivor);
+        const orphan = document.createElement('a');
+        orphan.id = folder.id;
+        orphan.className = 'app-icon folder-icon';
+        grid.appendChild(orphan);
+        const survivor = document.createElement('a');
+        survivor.id = 'folder-1';
+        survivor.className = 'app-icon folder-icon';
+        grid.appendChild(survivor);
 
-      // Advance by 1ms, not 0: the resync is scheduled from inside the
-      // failure timer's callback, and a delay-0 timer scheduled during a tick
-      // only becomes due on the next 1ms boundary.
-      vi.advanceTimersByTime(1);
-      expect(window.AppGridState.getFolders().some((f) => f.id === folder.id)).toBe(false);
-      vi.advanceTimersByTime(1);
+        // Advance by 1ms, not 0: the resync is scheduled from inside the
+        // failure timer's callback, and a delay-0 timer scheduled during a tick
+        // only becomes due on the next 1ms boundary.
+        vi.advanceTimersByTime(1);
+        expect(window.AppGridState.getFolders().some((f) => f.id === folder.id)).toBe(false);
+        vi.advanceTimersByTime(1);
 
-      // The rolled-back folder's tile is gone; folders storage still knows
-      // about keep their tiles.
-      expect(document.getElementById(folder.id)).toBeNull();
-      expect(document.getElementById('folder-1')).not.toBeNull();
+        // The rolled-back folder's tile is gone; folders storage still knows
+        // about keep their tiles.
+        expect(document.getElementById(folder.id)).toBeNull();
+        expect(document.getElementById('folder-1')).not.toBeNull();
+        // The ghost id no longer sits in appOrder (it would consume an Alt+N
+        // slot), and the on-tile shortcut badges were resynced to match.
+        const order = JSON.parse(localStorage.getItem('appOrder'));
+        expect(order).not.toContain(folder.id);
+        expect(order).toContain('folder-1');
+        expect(refreshAppShortcutBadges).toHaveBeenCalledTimes(1);
+      });
     } finally {
       grid.remove();
     }

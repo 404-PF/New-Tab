@@ -445,11 +445,36 @@ window.addEventListener('storageBridgeWriteError', function (event) {
     // A rejected create-folder write rolls storage back after
     // addFolderIconToGrid already inserted the tile: drop the orphan icon so
     // the grid never shows a folder storage no longer knows about.
+    const ghostFolderIds = [];
     if (folders) {
       document.querySelectorAll('#app-grid .folder-icon').forEach(function (icon) {
         const stillExists = folders.some(function (folder) { return folder.id === icon.id; });
-        if (!stillExists) icon.remove();
+        if (!stillExists) {
+          icon.remove();
+          ghostFolderIds.push(icon.id);
+        }
       });
+    }
+    // The paired appOrder write can succeed while appFolders fails, so the
+    // removed folder's id can survive in appOrder: the ghost would consume an
+    // Alt+N slot and resolve to a folder storage no longer knows about until
+    // reload. Drop it with its tile and resync the on-tile shortcut badges.
+    if (ghostFolderIds.length && window.AppGridState &&
+        typeof window.AppGridState.getOrder === 'function' &&
+        typeof window.AppGridState.updateOrder === 'function') {
+      const order = window.AppGridState.getOrder();
+      const ghostsInOrder = Array.isArray(order)
+        ? ghostFolderIds.filter(function (id) { return order.indexOf(id) !== -1; })
+        : [];
+      if (ghostsInOrder.length) {
+        const cleanedOrder = window.AppGridState.updateOrder(function (currentOrder) {
+          return currentOrder.filter(function (id) { return ghostsInOrder.indexOf(id) === -1; });
+        });
+        if (cleanedOrder && window.Shortcuts &&
+            typeof window.Shortcuts.refreshAppShortcutBadges === 'function') {
+          window.Shortcuts.refreshAppShortcutBadges();
+        }
+      }
     }
     if (window.AppFolders) {
       // Refresh the folders that actually lost a duplicate tile first, then
