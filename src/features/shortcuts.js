@@ -803,7 +803,16 @@
       resetBtn.addEventListener('click', resetShortcuts);
     }
 
-    renderShortcutsSection();
+    // bootstrap.js loads this module ahead of languages.js so the badges can
+    // be baked into the first paint (issue #1144), so when the script
+    // sequence runs after DOMContentLoaded (storage-bridge timeout) this init
+    // sees no window.i18n yet. Skip the first paint in that case: the
+    // languageChanged listener registered above renders the section as soon
+    // as settings.js' startup applyLanguage() sweep runs, instead of writing
+    // raw i18n keys into the settings panel first.
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      renderShortcutsSection();
+    }
 
     // Issue #1144: the grid can be painted by app-manager.js before this
     // module executes, so the Alt+1..9 badges were never baked in and only

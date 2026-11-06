@@ -1350,6 +1350,8 @@ describe('Shortcuts - startup badge paint (#1144)', () => {
 
   it('loads shortcuts.js before app-manager.js so the first paint can bake badges', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/core/bootstrap.js'), 'utf8');
+    expect(source).toContain('src/features/shortcuts.js');
+    expect(source).toContain('src/ui/app-manager.js');
     expect(source.indexOf('src/features/shortcuts.js'))
       .toBeLessThan(source.indexOf('src/ui/app-manager.js'));
   });
@@ -1427,5 +1429,40 @@ describe('Shortcuts - startup badge paint (#1144)', () => {
     }
     expect(tileA.querySelector('.app-shortcut-badge').textContent).toBe('Alt+1');
     expect(tileA.title).toBe('Alpha (Alt+1)');
+  });
+
+  it('holds the first render until i18n exists instead of painting raw keys', () => {
+    // bootstrap.js runs shortcuts.js ahead of languages.js, so a boot whose
+    // script sequence starts after DOMContentLoaded initializes Shortcuts
+    // while window.i18n is still undefined.
+    let container = document.getElementById('shortcuts-options');
+    let created = false;
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+      created = true;
+    }
+    container.innerHTML = '';
+    const originalI18n = window.i18n;
+    try {
+      window.i18n = undefined;
+      injectScript('src/features/shortcuts.js');
+      expect(container.children.length).toBe(0);
+
+      // settings.js' startup applyLanguage() sweep delivers i18n; its
+      // languageChanged dispatch must paint translated labels instead of
+      // leaving the section empty or key-shaped.
+      window.i18n = originalI18n;
+      window.dispatchEvent(new CustomEvent('languageChanged'));
+      const focusLabel = container.querySelector('[data-action="focusSearch"]')
+        .closest('.setting-content')
+        .querySelector('label');
+      expect(focusLabel.textContent).toBe('Focus Search');
+    } finally {
+      window.i18n = originalI18n;
+      if (created) container.remove();
+      else container.innerHTML = '';
+    }
   });
 });

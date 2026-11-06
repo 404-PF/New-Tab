@@ -36,7 +36,9 @@
     // Promise.all starts all downloads in parallel.
     // shortcuts.js loads ahead of app-manager.js so createAppIconElement can
     // bake the Alt+1..9 badges into the first paint (issue #1144); the
-    // window.Shortcuts guards keep an early render harmless either way.
+    // window.Shortcuts guards keep an early render harmless either way, and
+    // shortcuts.js holds its own first paint until the i18n runtime that
+    // languages.js installs later in this list is available.
     'src/features/shortcuts.js',
     'src/ui/app-manager.js',
     'src/features/drag-drop.js',
