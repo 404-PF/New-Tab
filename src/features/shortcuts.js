@@ -7,6 +7,12 @@
   const APP_SHORTCUTS_KEY = 'appShortcutsEnabled';
   const APP_SHORTCUT_MAX_SLOT = 9;
 
+  // Bounds for the fallback paint in scheduleSectionRenderFallback(): init
+  // holds its first render until window.i18n exists, and a non-English locale
+  // load that stalls would otherwise keep languageChanged from ever firing.
+  const SECTION_RENDER_FALLBACK_DELAY_MS = 2000;
+  const SECTION_RENDER_FALLBACK_MAX_WAITS = 8;
+
   const DEFAULT_SHORTCUTS = {
     focusSearch: '/',
     openSettings: 'Ctrl+,',
@@ -781,6 +787,45 @@
     });
   });
 
+  // Fallback for the held first paint in initShortcuts(): a healthy boot
+  // renders through the languageChanged event the startup applyLanguage()
+  // sweep in settings.js dispatches, but a non-English locale load that stalls
+  // keeps that sweep from ever settling and would leave the section empty
+  // forever. Check on a bounded delay instead of waiting indefinitely: paint
+  // once only when the section is still empty and window.i18n has been
+  // installed for a full delay, so the startup sweep always wins the race and
+  // the fallback never double-renders behind a languageChanged paint. When the
+  // translations do arrive later, languageChanged owns that repaint as usual.
+  function scheduleSectionRenderFallback() {
+    let waits = 0;
+    let i18nSeen = false;
+    const check = function () {
+      const container = document.getElementById('shortcuts-options');
+      if (container && container.children.length > 0) return;
+      const hasI18n = window.i18n && typeof window.i18n.t === 'function';
+      if (!hasI18n) {
+        // languages.js has not landed yet; its startup sweep will fire
+        // languageChanged once it does, so only keep polling for a bounded
+        // time in case that script sequence never completes.
+        waits += 1;
+        if (waits < SECTION_RENDER_FALLBACK_MAX_WAITS) {
+          setTimeout(check, SECTION_RENDER_FALLBACK_DELAY_MS);
+        }
+        return;
+      }
+      if (i18nSeen) {
+        if (container) renderShortcutsSection();
+        return;
+      }
+      // First sighting: grant the startup applyLanguage() sweep one more
+      // delay to paint through languageChanged before this fallback renders.
+      i18nSeen = true;
+      setTimeout(check, SECTION_RENDER_FALLBACK_DELAY_MS);
+    };
+    setTimeout(check, SECTION_RENDER_FALLBACK_DELAY_MS);
+  }
+
+  /** Wires shortcut storage, rendering, and app-badge refresh once per page load. */
   function initShortcuts() {
     if (initialized) return;
     initialized = true;
@@ -809,9 +854,13 @@
     // sees no window.i18n yet. Skip the first paint in that case: the
     // languageChanged listener registered above renders the section as soon
     // as settings.js' startup applyLanguage() sweep runs, instead of writing
-    // raw i18n keys into the settings panel first.
+    // raw i18n keys into the settings panel first. If that sweep never settles
+    // (a non-English locale load that stalls), scheduleSectionRenderFallback()
+    // paints the section on a bounded delay rather than leaving it empty.
     if (window.i18n && typeof window.i18n.t === 'function') {
       renderShortcutsSection();
+    } else {
+      scheduleSectionRenderFallback();
     }
 
     // Issue #1144: the grid can be painted by app-manager.js before this

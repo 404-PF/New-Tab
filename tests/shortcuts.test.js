@@ -1481,4 +1481,44 @@ describe('Shortcuts - startup badge paint (#1144)', () => {
       else container.innerHTML = '';
     }
   });
+
+  it('falls back to a bounded render when the startup locale load stalls', () => {
+    let container = document.getElementById('shortcuts-options');
+    let created = false;
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+      created = true;
+    }
+    container.innerHTML = '';
+    const originalI18n = window.i18n;
+    vi.useFakeTimers();
+    try {
+      // Boot after DOMContentLoaded: init runs while window.i18n is still
+      // missing, so the first paint is held and the fallback is armed.
+      window.i18n = undefined;
+      injectScript('src/features/shortcuts.js');
+      expect(container.children.length).toBe(0);
+
+      // languages.js installs window.i18n, but the non-English locale load
+      // behind the startup applyLanguage() sweep never settles, so
+      // languageChanged never fires. The bounded fallback must still paint
+      // (with the English strings getTranslation() falls back to) instead of
+      // leaving the section empty forever.
+      window.i18n = originalI18n;
+      vi.advanceTimersByTime(60000);
+
+      const focusBtn = container.querySelector('[data-action="focusSearch"]');
+      expect(focusBtn).not.toBeNull();
+      expect(focusBtn.closest('.setting-content').querySelector('label').textContent)
+        .toBe('Focus Search');
+      expect(container.querySelector('#app-shortcuts-enabled-setting')).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+      window.i18n = originalI18n;
+      if (created) container.remove();
+      else container.innerHTML = '';
+    }
+  });
 });
