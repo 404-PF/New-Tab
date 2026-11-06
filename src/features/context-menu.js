@@ -477,6 +477,18 @@ window.addEventListener('storageBridgeWriteError', function (event) {
       }
     }
     if (window.AppFolders) {
+      // Inverse of the ghost pass: a rejected folder deletion rolls appFolders
+      // back after the success path already dropped the folder tile and put
+      // its apps back on the grid, and the duplicate pass above then removed
+      // those app tiles again. Recreate any tile storage knows about but the
+      // grid lost so the folder and its apps stay reachable without a reload.
+      if (folders && typeof window.AppFolders.addFolderIconToGrid === 'function') {
+        folders.forEach(function (folder) {
+          if (!document.getElementById(folder.id)) {
+            window.AppFolders.addFolderIconToGrid(folder);
+          }
+        });
+      }
       // Refresh the folders that actually lost a duplicate tile first, then
       // re-sync whatever popup is open so its title and contents stay paired.
       if (typeof window.AppFolders.refreshFolderUI === 'function') {

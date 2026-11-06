@@ -424,6 +424,7 @@
 
   window.AppFolders = {
     createFolderIconElement,
+    addFolderIconToGrid,
     openFolderPopup,
     closeFolderPopup,
     promptCreateFolder,
