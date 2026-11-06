@@ -1310,6 +1310,22 @@ if (document.readyState === 'loading') {
 // Theme
 const SYSTEM_THEME_QUERY = '(prefers-color-scheme: dark)';
 
+const LIQUID_GLASS_THEME = 'liquid-glass';
+
+// The Glass style select (#1109) became the standalone liquid-glass theme.
+// Carry an existing 'liquid' choice over once, and drop the stale key only
+// after the theme write succeeded.
+function migrateGlassStyle() {
+  try {
+    const legacy = localStorage.getItem('glassStyle');
+    if (legacy === null) return;
+    if (legacy === 'liquid' && localStorage.setItem('theme', LIQUID_GLASS_THEME) === false) return; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    localStorage.removeItem('glassStyle');
+  } catch (e) {
+    console.warn('Failed to migrate glassStyle:', e);
+  }
+}
+
 function loadTheme() {
   return localStorage.getItem('theme') || 'dark';
 }
@@ -1333,6 +1349,7 @@ function resolveTheme(theme) {
 }
 
 function applyTheme() {
+  migrateGlassStyle();
   const stored = loadTheme();
   const theme = resolveTheme(stored);
   document.body.classList.toggle('light-theme', theme === 'light');
@@ -1341,12 +1358,15 @@ function applyTheme() {
   document.documentElement.classList.toggle('light-pre', theme === 'light');
   // Radios reflect the stored value so "System" stays selected while the
   // effective theme comes from the OS.
-  const darkRadio = document.querySelector('input[name="theme"][value="dark"]');
-  const lightRadio = document.querySelector('input[name="theme"][value="light"]');
-  const systemRadio = document.querySelector('input[name="theme"][value="system"]');
-  if (darkRadio) darkRadio.checked = stored === 'dark';
-  if (lightRadio) lightRadio.checked = stored === 'light';
-  if (systemRadio) systemRadio.checked = stored === 'system';
+  ['dark', 'light', 'system', LIQUID_GLASS_THEME].forEach(function (value) {
+    const radio = document.querySelector('input[name="theme"][value="' + value + '"]');
+    if (radio) radio.checked = stored === value;
+  });
+  // The liquid-glass theme is a standalone theme: LiquidGlass adds or removes
+  // body.glass-liquid and its layers from the stored theme.
+  if (window.LiquidGlass && typeof window.LiquidGlass.init === 'function') {
+    window.LiquidGlass.init();
+  }
 }
 
 // Live-update the effective theme when the OS preference flips and the stored
@@ -2187,43 +2207,6 @@ if (gamesFpsSetting) {
   });
 }
 
-// Glass style (#1109): classic blur glass vs. liquid glass refraction.
-function loadGlassStyle() {
-  try {
-    return localStorage.getItem('glassStyle') === 'liquid' ? 'liquid' : 'classic';
-  } catch (_e) {
-    return 'classic';
-  }
-}
-function applyGlassStyle() {
-  const select = document.getElementById('glass-style-setting');
-  if (select) select.value = loadGlassStyle();
-  if (window.LiquidGlass && typeof window.LiquidGlass.init === 'function') {
-    window.LiquidGlass.init();
-  }
-  window.dispatchEvent(new CustomEvent('glassStyleChanged', { detail: { style: loadGlassStyle() } }));
-}
-const glassStyleSetting = document.getElementById('glass-style-setting');
-if (glassStyleSetting) {
-  applyGlassStyle();
-  glassStyleSetting.addEventListener('change', function () {
-    const value = this.value === 'liquid' ? 'liquid' : 'classic';
-    let persisted;
-    try {
-      persisted = typeof window.persistFeatureToggle === 'function'
-        ? window.persistFeatureToggle('glassStyle', value)
-        : localStorage.setItem('glassStyle', value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (e) {
-      console.warn('Failed to save glassStyle:', e);
-      persisted = false;
-    }
-    applyGlassStyle();
-    if (persisted === false && typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    }
-  });
-}
-
 // Settings menu logic
 const settingsMenu = document.querySelector('.settings-menu');
 let settingsMenuItems = [];
@@ -2632,7 +2615,6 @@ window.applyGamesKeymap = applyGamesKeymap;
 window.loadGamesKeymap = loadGamesKeymap;
 window.applyGamesFps = applyGamesFps;
 window.loadGamesFps = loadGamesFps;
-window.applyGlassStyle = applyGlassStyle;
 window.initSettings = initSettings;
 window.resolveFontAlias = resolveFontAlias;
 

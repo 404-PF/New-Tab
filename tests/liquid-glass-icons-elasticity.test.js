@@ -12,7 +12,7 @@ function fakeCanvasContext() {
 }
 
 function loadLiquidGlass() {
-  localStorage.setItem('glassStyle', 'liquid');
+  localStorage.setItem('theme', 'liquid-glass');
   globalThis.CSS = { supports: () => true };
   globalThis.SVGFilterElement = function SVGFilterElement() {};
   injectScript('src/data/liquid-glass-maps.js');
@@ -183,7 +183,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
   });
 
   it('does nothing in classic mode', () => {
-    localStorage.setItem('glassStyle', 'classic');
+    localStorage.setItem('theme', 'dark');
     injectScript('src/data/liquid-glass-maps.js');
     injectScript('src/ui/liquid-glass.js');
     move(150, 50);

@@ -486,17 +486,9 @@
     "message": "在游戏中显示 FPS",
     "description": "Toggle label for showing the FPS readout in games"
   },
-  "glassStyle": {
-    "message": "玻璃样式",
-    "description": "Label for the glass style select in General settings"
-  },
-  "glassStyleClassic": {
-    "message": "经典",
-    "description": "Glass style option: classic blur glass"
-  },
-  "glassStyleLiquid": {
+  "liquidGlass": {
     "message": "液态玻璃",
-    "description": "Glass style option: liquid glass refraction"
+    "description": "Theme option: standalone liquid glass theme"
   },
   "gamesPlay": {
     "message": "开始",

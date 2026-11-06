@@ -1,10 +1,9 @@
 // src/ui/liquid-glass.js - Liquid glass core: structure injection, shared SVG
 // filter registry, capability probe, and MutationObserver pickup.
 //
-// Activation is opt-in via localStorage `glassStyle` ('liquid' | 'classic',
-// default 'classic'). The settings control ships separately; until then the
-// page stays on Classic blur styling. When the probe fails or the style is
-// 'classic', every entry point here is a no-op.
+// Activation is the standalone `liquid-glass` theme (localStorage `theme`),
+// chosen alongside dark and light in Settings > Themes. For any other theme,
+// or when the probe fails, every entry point here is a no-op.
 //
 // Consumers mark elements with `data-liquid-glass="icon|panel|pill"` (or call
 // `LiquidGlass.enhance(el, opts)`); the observer enhances marked elements that
@@ -13,7 +12,8 @@
 (function () {
   'use strict';
 
-  const STORAGE_KEY = 'glassStyle';
+  const STORAGE_KEY = 'theme';
+  const LIQUID_THEME = 'liquid-glass';
   const ATTR = 'data-liquid-glass';
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const DEFS_ID = 'liquid-glass-defs';
@@ -41,9 +41,9 @@
 
   function getGlassStyle() {
     try {
-      return localStorage.getItem(STORAGE_KEY) === 'liquid' ? 'liquid' : 'classic';
+      return localStorage.getItem(STORAGE_KEY) === LIQUID_THEME ? 'liquid' : 'classic';
     } catch (e) {
-      console.warn('Failed to read glassStyle:', e);
+      console.warn('Failed to read theme:', e);
       return 'classic';
     }
   }

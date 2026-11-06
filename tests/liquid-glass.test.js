@@ -8,7 +8,7 @@ function fakeCanvasContext() {
 }
 
 function loadLiquidGlass({ style = 'liquid', supported = true } = {}) {
-  localStorage.setItem('glassStyle', style);
+  localStorage.setItem('theme', style === 'liquid' ? 'liquid-glass' : 'dark');
   globalThis.CSS = { supports: () => supported };
   globalThis.SVGFilterElement = supported ? function SVGFilterElement() {} : undefined;
   if (!supported) delete globalThis.SVGFilterElement;
@@ -76,19 +76,19 @@ describe('liquid glass core module (#1108)', () => {
   });
 
   describe('isLiquid and probe', () => {
-    it('is true only when glassStyle is liquid and the probe passes', () => {
+    it('is true only when the theme is liquid-glass and the probe passes', () => {
       const lg = loadLiquidGlass();
       expect(lg.isLiquid()).toBe(true);
     });
 
-    it('stays classic by default and when glassStyle is unset', () => {
+    it('stays classic for the dark theme', () => {
       const lg = loadLiquidGlass({ style: 'classic' });
       expect(lg.isLiquid()).toBe(false);
       expect(lg.getGlassStyle()).toBe('classic');
     });
 
-    it('defaults to classic when the glassStyle key is missing', () => {
-      localStorage.removeItem('glassStyle');
+    it('stays classic when the theme key is missing', () => {
+      localStorage.removeItem('theme');
       globalThis.CSS = { supports: () => true };
       injectScript('src/data/liquid-glass-maps.js');
       injectScript('src/ui/liquid-glass.js');

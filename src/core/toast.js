@@ -315,13 +315,6 @@ const FEATURE_TOGGLE_RESYNC = {
     if (typeof window.renderTodos === 'function') {
       window.renderTodos();
     }
-  },
-  // #1109: an async glassStyle rollback must restore the select and the
-  // active LiquidGlass state, not just the stored value.
-  glassStyle: function () {
-    if (typeof window.applyGlassStyle === 'function') {
-      window.applyGlassStyle();
-    }
   }
 };
 
@@ -433,11 +426,6 @@ function featureToggleControlDesynced(key) {
         (Boolean(shortBreak) && shortBreak.value !== String(stored.shortBreakDuration)) ||
         (Boolean(longBreak) && longBreak.value !== String(stored.longBreakDuration)) ||
         (Boolean(sessions) && sessions.value !== String(stored.sessionsBeforeLongBreak));
-    }
-    case 'glassStyle': {
-      const select = document.getElementById('glass-style-setting');
-      const stored = localStorage.getItem(key) === 'liquid' ? 'liquid' : 'classic';
-      return Boolean(select) && select.value !== stored;
     }
   }
   return false;

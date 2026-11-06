@@ -2507,6 +2507,13 @@ body.light-theme .bg-rotation-next-btn:hover {
   border: 2px solid rgba(107, 114, 128, 0.6);
 }
 
+.preview-icon.liquid {
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.12) 45%, transparent 70%),
+    linear-gradient(135deg, #38bdf8, #a78bfa);
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
 .theme-option.modern .label {
   font-size: 12px;
   font-weight: 500;

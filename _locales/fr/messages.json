@@ -486,17 +486,9 @@
     "message": "Afficher les IPS dans les jeux",
     "description": "Toggle label for showing the FPS readout in games"
   },
-  "glassStyle": {
-    "message": "Style de verre",
-    "description": "Label for the glass style select in General settings"
-  },
-  "glassStyleClassic": {
-    "message": "Classique",
-    "description": "Glass style option: classic blur glass"
-  },
-  "glassStyleLiquid": {
+  "liquidGlass": {
     "message": "Verre liquide",
-    "description": "Glass style option: liquid glass refraction"
+    "description": "Theme option: standalone liquid glass theme"
   },
   "gamesPlay": {
     "message": "Jouer",

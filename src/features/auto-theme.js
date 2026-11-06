@@ -155,12 +155,10 @@
 
   function syncRadioButtons() {
     const theme = (window.loadTheme && window.loadTheme()) || 'dark';
-    const darkRadio = document.querySelector('input[name="theme"][value="dark"]');
-    const lightRadio = document.querySelector('input[name="theme"][value="light"]');
-    const systemRadio = document.querySelector('input[name="theme"][value="system"]');
-    if (darkRadio) darkRadio.checked = theme === 'dark';
-    if (lightRadio) lightRadio.checked = theme === 'light';
-    if (systemRadio) systemRadio.checked = theme === 'system';
+    ['dark', 'light', 'system', 'liquid-glass'].forEach(function (value) {
+      const radio = document.querySelector('input[name="theme"][value="' + value + '"]');
+      if (radio) radio.checked = theme === value;
+    });
   }
 
   function updateTimesVisibility() {
