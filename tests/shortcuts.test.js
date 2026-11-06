@@ -1,5 +1,7 @@
 // tests/shortcuts.test.js
 
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -1305,5 +1307,125 @@ describe('Shortcuts - positional app launch (#1061)', () => {
     expect(tileA.querySelector('.app-shortcut-badge')).toBeNull();
     expect(tileA.title).toBe('Alpha');
     expect(tileA.getAttribute('aria-label')).toBe('Alpha');
+  });
+});
+
+describe('Shortcuts - startup badge paint (#1144)', () => {
+  let grid;
+  let order;
+
+  function addTile(id, name) {
+    const a = document.createElement('a');
+    a.className = 'app-icon';
+    a.id = id;
+    a.href = 'https://example.com/' + id;
+    a.title = name;
+    a.innerHTML = `<div class="icon"><img alt=""></div><span class="app-name">${name}</span>`;
+    grid.appendChild(a);
+    return a;
+  }
+
+  function fireGridReady() {
+    window.dispatchEvent(new CustomEvent('appGridReady'));
+  }
+
+  beforeEach(() => {
+    grid = document.createElement('div');
+    grid.id = 'app-grid';
+    document.body.appendChild(grid);
+    order = ['app-a', 'app-b'];
+    window.AppGridState = {
+      getOrder: () => order.slice(),
+      getFolders: () => [],
+      getHiddenDefaultApps: () => []
+    };
+  });
+
+  afterEach(() => {
+    grid.remove();
+    delete window.AppGridState;
+    delete window.__appGridState;
+    localStorage.removeItem('appShortcutsEnabled');
+  });
+
+  it('loads shortcuts.js before app-manager.js so the first paint can bake badges', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/core/bootstrap.js'), 'utf8');
+    expect(source.indexOf('src/features/shortcuts.js'))
+      .toBeLessThan(source.indexOf('src/ui/app-manager.js'));
+  });
+
+  it('paints badges when appGridReady fires after a grid rendered without Shortcuts', () => {
+    const tileA = addTile('app-a', 'Alpha');
+    const tileB = addTile('app-b', 'Beta');
+    // First paint ran while window.Shortcuts was still missing, so no
+    // badges were baked in by createAppIconElement.
+    expect(tileA.querySelector('.app-shortcut-badge')).toBeNull();
+
+    fireGridReady();
+
+    expect(tileA.querySelector('.app-shortcut-badge').textContent).toBe('Alt+1');
+    expect(tileA.title).toBe('Alpha (Alt+1)');
+    expect(tileA.getAttribute('aria-label')).toBe('Alpha (Alt+1)');
+    expect(tileB.querySelector('.app-shortcut-badge').textContent).toBe('Alt+2');
+  });
+
+  it('keeps tiles unbadged through appGridReady when appShortcutsEnabled is false', () => {
+    localStorage.setItem('appShortcutsEnabled', 'false');
+    const tileA = addTile('app-a', 'Alpha');
+    const tileB = addTile('app-b', 'Beta');
+
+    fireGridReady();
+
+    expect(tileA.querySelector('.app-shortcut-badge')).toBeNull();
+    expect(tileA.title).toBe('Alpha');
+    expect(tileA.getAttribute('aria-label')).toBe('Alpha');
+    expect(tileB.querySelector('.app-shortcut-badge')).toBeNull();
+    expect(tileB.title).toBe('Beta');
+  });
+
+  it('shifts badges to the new order when a drop refreshes them', () => {
+    addTile('app-a', 'Alpha');
+    addTile('app-b', 'Beta');
+    fireGridReady();
+    expect(document.getElementById('app-a').querySelector('.app-shortcut-badge').textContent)
+      .toBe('Alt+1');
+
+    // A drop re-positions the tiles and ends in syncAppGridOrder() ->
+    // refreshShortcutBadges() (app-manager.js), the seam drag-drop.js uses.
+    order = ['app-b', 'app-a'];
+    Shortcuts.refreshAppShortcutBadges();
+
+    expect(document.getElementById('app-b').querySelector('.app-shortcut-badge').textContent)
+      .toBe('Alt+1');
+    expect(document.getElementById('app-a').querySelector('.app-shortcut-badge').textContent)
+      .toBe('Alt+2');
+  });
+
+  it('stays unbadged through a reorder while the toggle is off', () => {
+    localStorage.setItem('appShortcutsEnabled', 'false');
+    const tileA = addTile('app-a', 'Alpha');
+    addTile('app-b', 'Beta');
+    fireGridReady();
+
+    order = ['app-b', 'app-a'];
+    Shortcuts.refreshAppShortcutBadges();
+
+    expect(tileA.querySelector('.app-shortcut-badge')).toBeNull();
+    expect(tileA.title).toBe('Alpha');
+  });
+
+  it('refreshes badges immediately when shortcuts.js loads after the grid rendered', () => {
+    const tileA = addTile('app-a', 'Alpha');
+    window.__appGridState = { phase: 'rendered' };
+    try {
+      // Re-run the module the way bootstrap would when the first paint
+      // already happened: initShortcuts must sync badges right away instead
+      // of waiting for an appGridReady event that already fired.
+      injectScript('src/features/shortcuts.js');
+    } finally {
+      delete window.__appGridState;
+    }
+    expect(tileA.querySelector('.app-shortcut-badge').textContent).toBe('Alt+1');
+    expect(tileA.title).toBe('Alpha (Alt+1)');
   });
 });

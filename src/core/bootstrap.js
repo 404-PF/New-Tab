@@ -34,6 +34,10 @@
     // and app-folders.js. This ordering currently relies on script.async = false
     // in loadScript(), which preserves insertion/execution order even though
     // Promise.all starts all downloads in parallel.
+    // shortcuts.js loads ahead of app-manager.js so createAppIconElement can
+    // bake the Alt+1..9 badges into the first paint (issue #1144); the
+    // window.Shortcuts guards keep an early render harmless either way.
+    'src/features/shortcuts.js',
     'src/ui/app-manager.js',
     'src/features/drag-drop.js',
     'src/ui/add-app-modal.js',
@@ -82,7 +86,6 @@
     'src/features/weather.js',
     'src/features/weather-app.js',
     'src/features/background-rotation.js',
-    'src/features/shortcuts.js',
     'src/features/auto-theme.js',
     'src/features/games/games-app.js',
     'src/features/accessibility.js',

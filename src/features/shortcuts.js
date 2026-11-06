@@ -804,6 +804,16 @@
     }
 
     renderShortcutsSection();
+
+    // Issue #1144: the grid can be painted by app-manager.js before this
+    // module executes, so the Alt+1..9 badges were never baked in and only
+    // the first in-place mutation (a drag drop) painted them. Sync now when
+    // the grid is already up; cover the opposite ordering through the
+    // appGridReady event that app-grid-state.js dispatches on first render.
+    if (window.__appGridState && window.__appGridState.phase === 'rendered') {
+      refreshAppShortcutBadges();
+    }
+    window.addEventListener('appGridReady', refreshAppShortcutBadges);
   }
 
   if (document.readyState === 'loading') {
