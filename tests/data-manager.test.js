@@ -1879,4 +1879,56 @@ describe('DataManager todoStats merge (issue #1143)', () => {
     expect(result.type).toBe('success');
     expect(JSON.parse(localStorage.getItem('todoStats'))).toEqual(incoming);
   });
+
+  it('unions completedIds even when the backup omits days', async () => {
+    localStorage.setItem('todoStats', JSON.stringify({
+      days: { '2026-11-01': 2 },
+      currentStreak: 1,
+      completedIds: { '2026-11-01': ['local-1'], '2026-11-02': ['local-2'] }
+    }));
+
+    const result = await importBackup({
+      todoStats: {
+        currentStreak: 4,
+        completedIds: { '2026-11-01': ['imported-1'] }
+      }
+    }, 'merge');
+
+    expect(result.type).toBe('success');
+    // The days guard must not gate the union: without it the generic merge
+    // replaced the local completedIds map and dropped its ids.
+    expect(JSON.parse(localStorage.getItem('todoStats'))).toEqual({
+      days: { '2026-11-01': 2 },
+      currentStreak: 4,
+      completedIds: {
+        '2026-11-01': ['local-1', 'imported-1'],
+        '2026-11-02': ['local-2']
+      }
+    });
+  });
+
+  it('drops non-string local completed ids so the merged backup stays valid', async () => {
+    localStorage.setItem('todoStats', JSON.stringify({
+      days: { '2026-11-01': 1 },
+      completedIds: { '2026-11-01': ['local-1', 42], '2026-11-02': [null] }
+    }));
+
+    const result = await importBackup({
+      todoStats: {
+        days: { '2026-11-01': 3 },
+        completedIds: { '2026-11-01': ['imported-1'] }
+      }
+    }, 'merge');
+
+    expect(result.type).toBe('success');
+    const merged = JSON.parse(localStorage.getItem('todoStats'));
+    expect(merged).toEqual({
+      days: { '2026-11-01': 3 },
+      completedIds: {
+        '2026-11-01': ['local-1', 'imported-1'],
+        '2026-11-02': []
+      }
+    });
+    expect(window.DataManager.EXPECTED_SHAPES.todoStats(merged)).toBe(true);
+  });
 });

@@ -1228,15 +1228,26 @@
             } else if (typeof incoming === 'object' && incoming !== null && !Array.isArray(incoming)) {
               // Object: shallow merge
               const currentObj = (typeof current === 'object' && current !== null && !Array.isArray(current)) ? Object.assign({}, current) : {};
-              if (key === 'todoStats' && currentObj.days && incoming.days) {
-                // Deep-merge todoStats.days: take the higher count per date
-                const mergedDays = Object.assign({}, currentObj.days);
-                Object.keys(incoming.days).forEach(function (date) {
-                  const localCount = mergedDays[date] || 0;
-                  const incomingCount = incoming.days[date] || 0;
-                  mergedDays[date] = Math.max(localCount, incomingCount);
-                });
-                currentObj.days = mergedDays;
+              if (key === 'todoStats') {
+                // days, completedIds, and the scalar fields are merged
+                // independently: the backup validator permits a valid stats
+                // object without `days`, and requiring both `days` maps made
+                // the completedIds union unreachable, so the generic merge
+                // replaced the local map and dropped its ids (issue #1143).
+                if (currentObj.days && incoming.days) {
+                  // Deep-merge todoStats.days: take the higher count per date
+                  const mergedDays = Object.assign({}, currentObj.days);
+                  Object.keys(incoming.days).forEach(function (date) {
+                    const localCount = mergedDays[date] || 0;
+                    const incomingCount = incoming.days[date] || 0;
+                    mergedDays[date] = Math.max(localCount, incomingCount);
+                  });
+                  currentObj.days = mergedDays;
+                } else if (incoming.days) {
+                  // One side has no days map: adopt the backup's as-is, the
+                  // same adoption the generic object merge performed.
+                  currentObj.days = incoming.days;
+                }
                 // Union completedIds per date so same-day dedupe recorded by
                 // either profile survives the import (issue #1143). The
                 // backup validator already rejects malformed maps; these
@@ -1246,11 +1257,23 @@
                     ? currentObj.completedIds
                     : {};
                   const mergedIds = Object.assign({}, localIdsRoot);
+                  // Local storage is never validated, so drop non-string ids
+                  // before unioning: a stray number or null would otherwise
+                  // survive into the merged backup and fail
+                  // isValidTodoCompletedIds when that backup is re-imported.
+                  const keepStringIds = function (ids) {
+                    const cleaned = [];
+                    (Array.isArray(ids) ? ids : []).forEach(function (id) {
+                      if (typeof id === 'string' && cleaned.indexOf(id) === -1) cleaned.push(id);
+                    });
+                    return cleaned;
+                  };
+                  Object.keys(mergedIds).forEach(function (date) {
+                    mergedIds[date] = keepStringIds(mergedIds[date]);
+                  });
                   Object.keys(incoming.completedIds).forEach(function (date) {
-                    const localIds = Array.isArray(mergedIds[date]) ? mergedIds[date] : [];
-                    const incIds = Array.isArray(incoming.completedIds[date]) ? incoming.completedIds[date] : [];
-                    const union = localIds.slice();
-                    incIds.forEach(function (id) {
+                    const union = keepStringIds(mergedIds[date]);
+                    keepStringIds(incoming.completedIds[date]).forEach(function (id) {
                       if (union.indexOf(id) === -1) union.push(id);
                     });
                     mergedIds[date] = union;
