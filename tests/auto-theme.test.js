@@ -106,4 +106,50 @@ describe('automatic theme switching', () => {
       vi.useRealTimers();
     }
   });
+
+  it('keeps a stored liquid-glass theme through a scheduled boundary', () => {
+    vi.useFakeTimers();
+    const created = [];
+    try {
+      vi.setSystemTime(new Date('2026-01-01T22:00:00'));
+      localStorage.setItem('autoTheme', 'true');
+      localStorage.setItem('autoThemeLightTime', '07:00');
+      localStorage.setItem('autoThemeDarkTime', '19:00');
+      localStorage.setItem('theme', 'liquid-glass');
+      window.loadTheme = () => localStorage.getItem('theme');
+      window.applyTheme = vi.fn();
+
+      if (!document.getElementById('auto-theme-toggle')) {
+        const fixtureHost = document.createElement('div');
+        fixtureHost.innerHTML = `
+          <input id="auto-theme-toggle" type="checkbox"><input id="auto-theme-light-time">
+          <input id="auto-theme-dark-time"><div id="auto-theme-times"></div>
+          <label class="theme-option"></label><input name="theme" value="light"><input name="theme" value="dark">
+        `;
+        document.body.appendChild(fixtureHost);
+        created.push(fixtureHost);
+      }
+      const liquidRadio = document.createElement('input');
+      liquidRadio.type = 'radio';
+      liquidRadio.name = 'theme';
+      liquidRadio.value = 'liquid-glass';
+      document.body.appendChild(liquidRadio);
+      created.push(liquidRadio);
+      if (typeof window.refreshAutoTheme !== 'function') {
+        injectScript('src/features/auto-theme.js');
+      }
+
+      const toggle = document.getElementById('auto-theme-toggle');
+      toggle.checked = true;
+      toggle.dispatchEvent(new Event('change'));
+
+      expect(localStorage.getItem('theme')).toBe('liquid-glass');
+      expect(window.applyTheme).not.toHaveBeenCalled();
+      expect(liquidRadio.checked).toBe(true);
+      expect(document.querySelector('input[name="theme"][value="dark"]').checked).toBe(false);
+    } finally {
+      created.forEach((el) => el.remove());
+      vi.useRealTimers();
+    }
+  });
 });

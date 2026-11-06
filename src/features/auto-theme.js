@@ -143,8 +143,11 @@
       lastScheduledTheme = theme;
       // A stored 'system' theme (issue #1011) takes precedence over the
       // schedule: track the boundary but let the OS preference decide the
-      // effective theme instead of overwriting the stored value.
-      if (window.loadTheme && window.loadTheme() === 'system') {
+      // effective theme instead of overwriting the stored value. The
+      // standalone liquid-glass theme is likewise an explicit choice that the
+      // dark/light schedule must not replace.
+      const storedTheme = window.loadTheme && window.loadTheme();
+      if (storedTheme === 'system' || storedTheme === 'liquid-glass') {
         syncRadioButtons();
         return;
       }
@@ -231,15 +234,17 @@
     // Apply the manually chosen theme and record it, but leave auto enabled.
     // The next scheduled check will overwrite it if the time has changed.
     const selectedTheme = e.target.value;
-    try {
-      localStorage.setItem('theme', selectedTheme);
-    } catch {
-      // localStorage unavailable
+    if (typeof window.commitTheme === 'function') {
+      window.commitTheme(selectedTheme);
+    } else {
+      try {
+        localStorage.setItem('theme', selectedTheme);
+      } catch {
+        // localStorage unavailable
+      }
+      if (window.applyTheme) window.applyTheme();
+      window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
     }
-    if (window.applyTheme) window.applyTheme();
-    // Resolve 'system' so listeners always receive a concrete dark/light value
-    const resolvedTheme = window.resolveTheme ? window.resolveTheme(selectedTheme) : selectedTheme;
-    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolvedTheme } }));
     // Prevent the settings.js change handler from double-applying
     e.stopImmediatePropagation();
   }

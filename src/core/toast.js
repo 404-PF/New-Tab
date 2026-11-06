@@ -258,6 +258,17 @@ const FEATURE_TOGGLE_RESYNC = {
       window.refreshEyeCareReminder();
     }
   },
+  // The theme write is applied optimistically (radio, body class, Liquid
+  // Glass), so an async rollback must re-apply the persisted theme and tell
+  // listeners the restored effective theme.
+  theme: function () {
+    if (typeof window.applyTheme === 'function') {
+      window.applyTheme();
+    }
+    if (typeof window.loadTheme === 'function' && typeof window.resolveTheme === 'function') {
+      window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: window.resolveTheme(window.loadTheme()) } }));
+    }
+  },
   autoTheme: function () {
     if (typeof window.refreshAutoTheme === 'function') {
       window.refreshAutoTheme();
@@ -412,6 +423,14 @@ function featureToggleControlDesynced(key) {
     case 'updateCheckEnabled': {
       const checkbox = document.getElementById('update-check-enabled');
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'theme': {
+      if (typeof window.applyTheme !== 'function') return false;
+      const stored = localStorage.getItem(key) || 'dark';
+      const checked = document.querySelector('input[name="theme"]:checked');
+      if (checked && checked.value !== stored) return true;
+      const effective = typeof window.resolveTheme === 'function' ? window.resolveTheme(stored) : stored;
+      return document.body.classList.contains('light-theme') !== (effective === 'light');
     }
     case 'pomodoro': {
       if (typeof window.loadPomodoroDurations !== 'function') return false;

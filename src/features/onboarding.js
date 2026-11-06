@@ -644,6 +644,9 @@ class OnboardingTour {
           } else {
             // Fallback: directly apply theme
             document.body.classList.toggle('light-theme', resolvedTheme === 'light');
+            if (window.LiquidGlass && typeof window.LiquidGlass.init === 'function') {
+              window.LiquidGlass.init();
+            }
           }
           // Notify other components of theme change
           window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolvedTheme } }));

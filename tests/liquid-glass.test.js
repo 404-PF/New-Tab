@@ -7,8 +7,8 @@ function fakeCanvasContext() {
   };
 }
 
-function loadLiquidGlass({ style = 'liquid', supported = true } = {}) {
-  localStorage.setItem('theme', style === 'liquid' ? 'liquid-glass' : 'dark');
+function loadLiquidGlass({ style = 'liquid', theme, supported = true } = {}) {
+  localStorage.setItem('theme', theme || (style === 'liquid' ? 'liquid-glass' : 'dark'));
   globalThis.CSS = { supports: () => supported };
   globalThis.SVGFilterElement = supported ? function SVGFilterElement() {} : undefined;
   if (!supported) delete globalThis.SVGFilterElement;
@@ -85,6 +85,16 @@ describe('liquid glass core module (#1108)', () => {
       const lg = loadLiquidGlass({ style: 'classic' });
       expect(lg.isLiquid()).toBe(false);
       expect(lg.getGlassStyle()).toBe('classic');
+    });
+
+    it.each(['light', 'system'])('stays classic for the %s theme', (theme) => {
+      const lg = loadLiquidGlass({ theme });
+      expect(lg.isLiquid()).toBe(false);
+      expect(lg.getGlassStyle()).toBe('classic');
+      expect(document.body.classList.contains('glass-liquid')).toBe(false);
+      const el = marked();
+      expect(lg.enhance(el)).toBe(false);
+      expect(el.querySelector('.glass__warp')).toBeNull();
     });
 
     it('stays classic when the theme key is missing', () => {

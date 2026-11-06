@@ -3,7 +3,7 @@
 //
 // Activation is the standalone `liquid-glass` theme (localStorage `theme`),
 // chosen alongside dark and light in Settings > Themes. For any other theme,
-// or when the probe fails, every entry point here is a no-op.
+// or when the probe fails, enhance() does nothing and init() tears down any existing glass.
 //
 // Consumers mark elements with `data-liquid-glass="icon|panel|pill"` (or call
 // `LiquidGlass.enhance(el, opts)`); the observer enhances marked elements that
