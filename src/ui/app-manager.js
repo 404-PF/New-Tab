@@ -461,6 +461,41 @@ function persistAppGridSetting(key, value, done) {
   armAppGridWriteTail(key, next);
 }
 
+// Shared removal for the Settings > Apps Reset action (#1142 review): the
+// bridge's removeItem reports nothing, so prefer removeItemAsync (mirrors
+// shortcuts.js) and resolve through a promise the per-key tail can chain on.
+function removeAppGridSetting(key) {
+  try {
+    if (typeof localStorage.removeItemAsync === 'function') {
+      return Promise.resolve(localStorage.removeItemAsync(key));
+    }
+    localStorage.removeItem(key);
+    return Promise.resolve(true); // NOSONAR - native removeItem returns void and cannot report failure.
+  } catch (error) {
+    console.warn('Failed to remove ' + key + ':', error);
+    return Promise.resolve(false);
+  }
+}
+
+// The Reset action rides the same per-key tail as the selection writes
+// (#1142 review): removing the key while a selection was still queued would
+// let that queued write re-add the key afterwards and undo the reset. done
+// runs once the removal settles, and the resulting promise becomes the new
+// tail so a selection clicked right after Reset still waits for the key to
+// be gone.
+function resetAppGridSetting(key, done) {
+  const remove = function () {
+    return removeAppGridSetting(key).then(function (persisted) {
+      done(persisted !== false);
+    });
+  };
+  const previous = appGridWriteTails.get(key);
+  const tail = (previous ? previous.then(remove) : remove()).catch(function (error) {
+    console.warn('Failed to apply queued reset for ' + key + ':', error);
+  });
+  armAppGridWriteTail(key, tail);
+}
+
 // Shared failure feedback for a rejected Settings > Apps write (#1142).
 function reportAppGridSaveError() {
   if (typeof window.showFeatureToggleSaveError === 'function') {
@@ -559,9 +594,15 @@ function initIconSize() {
 
   const iconSizeReset = document.getElementById('icon-size-reset');
   if (iconSizeReset) {
-    iconSizeReset.addEventListener('click', function() {
-      localStorage.removeItem('iconSize');
-      applyIconSize();
+    iconSizeReset.addEventListener('click', function () {
+      // Serialized through the per-key tail so a selection queued just before
+      // Reset cannot re-add the key afterwards and undo it (#1142 review).
+      resetAppGridSetting('iconSize', function (persisted) {
+        // Re-apply either way so a rejected removal snaps the buttons back
+        // to the restored value instead of leaving them desynced (#1142).
+        applyIconSize();
+        if (!persisted) reportAppGridSaveError();
+      });
     });
   }
 

@@ -614,6 +614,11 @@ describe('app-grid Settings > Apps writes report rejected writes (#1142)', () =>
       document.body.appendChild(radio);
     });
 
+    const iconSizeReset = document.createElement('button');
+    iconSizeReset.type = 'button';
+    iconSizeReset.id = 'icon-size-reset';
+    document.body.appendChild(iconSizeReset);
+
     // app-manager registers through window.onDomReady and reads
     // window.__appGridState at injection; report the grid as already
     // rendered so the deferred render path stays out of these storage tests.
@@ -805,5 +810,41 @@ describe('app-grid Settings > Apps writes report rejected writes (#1142)', () =>
     expect(getCurvatureRadio('20').checked).toBe(true);
     expect(window.showToast).toHaveBeenCalledTimes(1);
     expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('icon-size Reset removes the key and snaps the buttons back to the default', async () => {
+    localStorage.setItem('iconSize', '48');
+    window.applyIconSize();
+    expect(getSizeButton(48).classList.contains('active')).toBe(true);
+
+    document.getElementById('icon-size-reset').click();
+    // The removal is optimistic: the cache drops the key immediately.
+    expect(localStorage.getItem('iconSize')).toBeNull();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('iconSize')).toBeNull();
+    expect(getSizeButton(48).classList.contains('active')).toBe(false);
+    expect(getSizeButton(60).classList.contains('active')).toBe(true);
+    expect(window.showToast).not.toHaveBeenCalled();
+  });
+
+  it('icon-size Reset is not undone by a selection queued before it (#1142 review)', async () => {
+    getSizeButton(72).click();
+    // Queued behind the in-flight 72 write; Reset must queue behind both so
+    // the queued selection can never re-add the key after the removal.
+    getSizeButton(48).click();
+    document.getElementById('icon-size-reset').click();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('iconSize')).toBeNull();
+    expect(getSizeButton(72).classList.contains('active')).toBe(false);
+    expect(getSizeButton(48).classList.contains('active')).toBe(false);
+    expect(getSizeButton(60).classList.contains('active')).toBe(true);
+    expect(window.showToast).not.toHaveBeenCalled();
   });
 });
