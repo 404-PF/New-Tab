@@ -146,7 +146,7 @@
       // effective theme instead of overwriting the stored value. The
       // standalone liquid-glass theme is likewise an explicit choice that the
       // dark/light schedule must not replace.
-      const storedTheme = window.loadTheme && window.loadTheme();
+      const storedTheme = window.loadTheme?.();
       if (storedTheme === 'system' || storedTheme === 'liquid-glass') {
         syncRadioButtons();
         return;
