@@ -7,8 +7,9 @@ function fakeCanvasContext() {
   };
 }
 
-function loadLiquidGlass({ style = 'liquid', theme, supported = true } = {}) {
-  localStorage.setItem('theme', theme || (style === 'liquid' ? 'liquid-glass' : 'dark'));
+function loadLiquidGlass({ style = 'liquid', theme = 'dark', supported = true } = {}) {
+  localStorage.setItem('theme', theme);
+  localStorage.setItem('liquidGlassEnabled', style === 'liquid' ? 'true' : 'false');
   globalThis.CSS = { supports: () => supported };
   globalThis.SVGFilterElement = supported ? function SVGFilterElement() {} : undefined;
   if (!supported) delete globalThis.SVGFilterElement;
@@ -76,35 +77,36 @@ describe('liquid glass core module (#1108)', () => {
   });
 
   describe('isLiquid and probe', () => {
-    it('is true only when the theme is liquid-glass and the probe passes', () => {
+    it('is true when the setting is on and the probe passes', () => {
       const lg = loadLiquidGlass();
       expect(lg.isLiquid()).toBe(true);
     });
 
-    it('stays classic for the dark theme', () => {
+    it('stays classic when the setting is off', () => {
       const lg = loadLiquidGlass({ style: 'classic' });
       expect(lg.isLiquid()).toBe(false);
       expect(lg.getGlassStyle()).toBe('classic');
     });
 
-    it.each(['light', 'system'])('stays classic for the %s theme', (theme) => {
+    it.each(['dark', 'light', 'system'])('enhances the %s theme', (theme) => {
       const lg = loadLiquidGlass({ theme });
-      expect(lg.isLiquid()).toBe(false);
-      expect(lg.getGlassStyle()).toBe('classic');
-      expect(document.body.classList.contains('glass-liquid')).toBe(false);
+      expect(lg.isLiquid()).toBe(true);
+      expect(lg.getGlassStyle()).toBe('liquid');
+      expect(document.body.classList.contains('glass-liquid')).toBe(true);
       const el = marked();
-      expect(lg.enhance(el)).toBe(false);
-      expect(el.querySelector('.glass__warp')).toBeNull();
+      expect(lg.enhance(el)).toBe(true);
+      expect(el.querySelector('.glass__warp')).not.toBeNull();
     });
 
-    it('stays classic when the theme key is missing', () => {
-      localStorage.removeItem('theme');
+    it('defaults to on when the setting key is missing', () => {
+      localStorage.removeItem('liquidGlassEnabled');
       globalThis.CSS = { supports: () => true };
+      globalThis.SVGFilterElement = function SVGFilterElement() {};
       injectScript('src/data/liquid-glass-maps.js');
       injectScript('src/ui/liquid-glass.js');
       const lg = window.LiquidGlass;
-      expect(lg.getGlassStyle()).toBe('classic');
-      expect(lg.isLiquid()).toBe(false);
+      expect(lg.getGlassStyle()).toBe('liquid');
+      expect(lg.isLiquid()).toBe(true);
     });
 
     it('falls back silently when the capability probe fails', () => {

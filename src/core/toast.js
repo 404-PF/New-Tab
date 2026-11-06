@@ -258,15 +258,20 @@ const FEATURE_TOGGLE_RESYNC = {
       window.refreshEyeCareReminder();
     }
   },
-  // The theme write is applied optimistically (radio, body class, Liquid
-  // Glass), so an async rollback must re-apply the persisted theme and tell
-  // listeners the restored effective theme.
+  // The theme write is applied optimistically (radio, body class), so an async
+  // rollback must re-apply the persisted theme and tell listeners the restored
+  // effective theme.
   theme: function () {
     if (typeof window.applyTheme === 'function') {
       window.applyTheme();
     }
     if (typeof window.loadTheme === 'function' && typeof window.resolveTheme === 'function') {
       window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: window.resolveTheme(window.loadTheme()) } }));
+    }
+  },
+  liquidGlassEnabled: function () {
+    if (typeof window.applyLiquidGlassEnabled === 'function') {
+      window.applyLiquidGlassEnabled();
     }
   },
   autoTheme: function () {
@@ -443,9 +448,13 @@ function featureToggleControlDesynced(key) {
       const checkbox = document.getElementById('update-check-enabled');
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
     }
+    case 'liquidGlassEnabled': {
+      const checkbox = document.getElementById('liquid-glass-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
     case 'theme': {
       if (typeof window.applyTheme !== 'function') return false;
-      const stored = localStorage.getItem(key) || 'dark';
+      const stored = typeof window.loadTheme === 'function' ? window.loadTheme() : (localStorage.getItem(key) || 'dark');
       const checked = document.querySelector('input[name="theme"]:checked');
       if (checked && checked.value !== stored) return true;
       const effective = typeof window.resolveTheme === 'function' ? window.resolveTheme(stored) : stored;

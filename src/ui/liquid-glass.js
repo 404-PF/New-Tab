@@ -1,9 +1,10 @@
 // src/ui/liquid-glass.js - Liquid glass core: structure injection, shared SVG
 // filter registry, capability probe, and MutationObserver pickup.
 //
-// Activation is the standalone `liquid-glass` theme (localStorage `theme`),
-// chosen alongside dark and light in Settings > Themes. For any other theme,
-// or when the probe fails, enhance() does nothing and init() tears down any existing glass.
+// Liquid Glass is an enhancement of the dark and light themes. It is on unless
+// the Settings > Themes toggle (localStorage `liquidGlassEnabled`) is 'false'.
+// When the toggle is off or the probe fails, enhance() does nothing and init()
+// tears down any existing glass.
 //
 // Consumers mark elements with `data-liquid-glass="icon|panel|pill"` (or call
 // `LiquidGlass.enhance(el, opts)`); the observer enhances marked elements that
@@ -12,8 +13,7 @@
 (function () {
   'use strict';
 
-  const STORAGE_KEY = 'theme';
-  const LIQUID_THEME = 'liquid-glass';
+  const STORAGE_KEY = 'liquidGlassEnabled';
   const ATTR = 'data-liquid-glass';
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const DEFS_ID = 'liquid-glass-defs';
@@ -41,10 +41,10 @@
 
   function getGlassStyle() {
     try {
-      return localStorage.getItem(STORAGE_KEY) === LIQUID_THEME ? 'liquid' : 'classic';
+      return localStorage.getItem(STORAGE_KEY) === 'false' ? 'classic' : 'liquid';
     } catch (e) {
-      console.warn('Failed to read theme:', e);
-      return 'classic';
+      console.warn('Failed to read Liquid Glass setting:', e);
+      return 'liquid';
     }
   }
 

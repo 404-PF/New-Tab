@@ -1,6 +1,6 @@
 /* Liquid glass structure. Every rule is scoped to body.glass-liquid, which
-   src/ui/liquid-glass.js adds only while the standalone liquid-glass theme is
-   active and the capability probe passes. Other themes are untouched. */
+   src/ui/liquid-glass.js adds only while the Liquid Glass setting is on and
+   the capability probe passes. It enhances both the dark and light themes. */
 
 /* No isolation or negative z-index here: an isolated ancestor becomes a
    backdrop root and would stop .glass__warp from sampling content behind it. */

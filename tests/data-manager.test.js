@@ -956,6 +956,7 @@ describe('DataManager todoStats shape (issue #1130)', () => {
 describe('DataManager focus-mode and auto-theme settings (issue #838)', () => {
   it('includes focus mode and auto-theme keys in the export allowlist', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('focusMode');
+    expect(window.DataManager.EXPORT_KEYS).toContain('liquidGlassEnabled');
     expect(window.DataManager.EXPORT_KEYS).toContain('autoTheme');
     expect(window.DataManager.EXPORT_KEYS).toContain('autoThemeLightTime');
     expect(window.DataManager.EXPORT_KEYS).toContain('autoThemeDarkTime');

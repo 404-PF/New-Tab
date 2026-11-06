@@ -488,7 +488,7 @@
   },
   "liquidGlass": {
     "message": "リキッドグラス",
-    "description": "Theme option: standalone liquid glass theme"
+    "description": "Settings toggle: liquid glass effect for the dark and light themes"
   },
   "gamesPlay": {
     "message": "プレイ",

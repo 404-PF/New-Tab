@@ -53,7 +53,7 @@ describe('automatic theme switching', () => {
     expect(document.getElementById('auto-theme-times').style.display).toBe('none');
   });
 
-  it.each(['system', 'liquid-glass'])('keeps %s through a scheduled boundary (issue #1011)', (storedTheme) => {
+  it.each(['system'])('keeps %s through a scheduled boundary (issue #1011)', (storedTheme) => {
     vi.useFakeTimers();
     const created = [];
     try {

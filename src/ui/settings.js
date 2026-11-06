@@ -1310,41 +1310,48 @@ if (document.readyState === 'loading') {
 // Theme
 const SYSTEM_THEME_QUERY = '(prefers-color-scheme: dark)';
 
-const LIQUID_GLASS_THEME = 'liquid-glass';
+const LEGACY_LIQUID_GLASS_THEME = 'liquid-glass';
 
-// The Glass style select (#1109) became the standalone liquid-glass theme.
-// Carry an existing 'liquid' choice over once per page load. The legacy key is
-// dropped only after the bridge confirms the theme write settled: queueing the
-// write returns true, but an async failure rolls the theme back later, and the
-// key must survive that so the preference is retried on the next load.
+// Liquid Glass used to be a standalone 'liquid-glass' theme (and before that a
+// Glass style select, #1109). It is now an enhancement of the dark and light
+// themes, on by default, so the legacy theme value maps to its dark base and
+// the obsolete glassStyle key is dropped. loadTheme() applies the same mapping
+// when the rewrite is rejected, so a failed write never strands the old value.
 function migrateGlassStyle() {
   try {
-    const legacy = localStorage.getItem('glassStyle');
-    if (legacy === null) return;
-    const previousTheme = localStorage.getItem('theme');
-    if (legacy !== 'liquid' || previousTheme === LIQUID_GLASS_THEME) {
-      localStorage.removeItem('glassStyle');
-      return;
+    localStorage.removeItem('glassStyle');
+    if (localStorage.getItem('theme') === LEGACY_LIQUID_GLASS_THEME) {
+      localStorage.setItem('theme', 'dark');
     }
-    if (localStorage.setItem('theme', LIQUID_GLASS_THEME) === false) return; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    const settled = typeof localStorage.whenWriteSettled === 'function'
-      ? localStorage.whenWriteSettled('theme')
-      : Promise.resolve();
-    settled.then(function () {
-      // Unchanged from before means the write rolled back; any other value
-      // means the migration landed or the user has since picked a theme.
-      if (localStorage.getItem('theme') === previousTheme) return;
-      localStorage.removeItem('glassStyle');
-    }).catch(function (e) {
-      console.warn('Failed to finish glassStyle migration:', e);
-    });
   } catch (e) {
-    console.warn('Failed to migrate glassStyle:', e);
+    console.warn('Failed to migrate legacy Liquid Glass settings:', e);
   }
 }
 
 function loadTheme() {
-  return localStorage.getItem('theme') || 'dark';
+  const stored = localStorage.getItem('theme') || 'dark';
+  return stored === LEGACY_LIQUID_GLASS_THEME ? 'dark' : stored;
+}
+
+// Liquid Glass effect toggle: on unless explicitly stored as 'false'.
+function loadLiquidGlassEnabled() {
+  try {
+    return localStorage.getItem('liquidGlassEnabled') !== 'false';
+  } catch (_e) {
+    return true;
+  }
+}
+
+function syncLiquidGlassControl() {
+  const checkbox = document.getElementById('liquid-glass-setting');
+  if (checkbox) checkbox.checked = loadLiquidGlassEnabled();
+}
+
+function applyLiquidGlassEnabled() {
+  syncLiquidGlassControl();
+  if (window.LiquidGlass && typeof window.LiquidGlass.init === 'function') {
+    window.LiquidGlass.init();
+  }
 }
 
 function getSystemThemeMql() {
@@ -1374,12 +1381,12 @@ function applyTheme() {
   document.documentElement.classList.toggle('light-pre', theme === 'light');
   // Radios reflect the stored value so "System" stays selected while the
   // effective theme comes from the OS.
-  ['dark', 'light', 'system', LIQUID_GLASS_THEME].forEach(function (value) {
+  ['dark', 'light', 'system'].forEach(function (value) {
     const radio = document.querySelector('input[name="theme"][value="' + value + '"]');
     if (radio) radio.checked = stored === value;
   });
-  // The liquid-glass theme is a standalone theme: LiquidGlass adds or removes
-  // body.glass-liquid and its layers from the stored theme.
+  // Liquid Glass enhances the dark and light themes: LiquidGlass adds or
+  // removes body.glass-liquid and its layers from the stored setting.
   if (window.LiquidGlass && typeof window.LiquidGlass.init === 'function') {
     window.LiquidGlass.init();
   }
@@ -1447,7 +1454,7 @@ function applyLanguageSetting() {
 
 // Persist and apply a user-selected theme. The bridge's setItem returns false
 // on a rejected write and rolls its cache back, so applyTheme() then restores
-// the previously stored theme (radio, body class, Liquid Glass) and the
+// the previously stored theme (radio, body class) and the
 // listeners are told the restored effective theme, not the rejected one.
 function commitTheme(selectedTheme) {
   let persisted;
@@ -1465,6 +1472,25 @@ function commitTheme(selectedTheme) {
     window.showFeatureToggleSaveError();
   }
   return persisted;
+}
+
+const liquidGlassSetting = document.getElementById('liquid-glass-setting');
+if (liquidGlassSetting) {
+  liquidGlassSetting.addEventListener('change', function () {
+    let persisted;
+    try {
+      persisted = typeof window.persistFeatureToggle === 'function'
+        ? window.persistFeatureToggle('liquidGlassEnabled', this.checked)
+        : localStorage.setItem('liquidGlassEnabled', this.checked) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (e) {
+      console.warn('Failed to save liquidGlassEnabled:', e);
+      persisted = false;
+    }
+    applyLiquidGlassEnabled();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
+  });
 }
 
 // Event listeners for theme and language
@@ -2565,6 +2591,7 @@ function initSettings() {
   applyDateFormatSetting();
   migrateGlassStyle();
   applyTheme();
+  syncLiquidGlassControl();
   applyPomodoroStatsEnabled();
   applyEyeCareReminderSettings();
   applyNotesEnabled();
@@ -2635,6 +2662,8 @@ window.loadTheme = loadTheme;
 window.resolveTheme = resolveTheme;
 window.applyTheme = applyTheme;
 window.migrateGlassStyle = migrateGlassStyle;
+window.loadLiquidGlassEnabled = loadLiquidGlassEnabled;
+window.applyLiquidGlassEnabled = applyLiquidGlassEnabled;
 window.commitTheme = commitTheme;
 window.loadLanguageSetting = loadLanguageSetting;
 window.renderLanguageOptions = renderLanguageOptions;

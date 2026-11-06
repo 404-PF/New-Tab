@@ -4,7 +4,7 @@ import { injectScript } from './helpers/inject-script.js';
 import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
 const themeRadio = (value) => document.querySelector(`input[name="theme"][value="${value}"]`);
-const THEMES = ['dark', 'light', 'system', 'liquid-glass'];
+const THEMES = ['dark', 'light', 'system'];
 const SAVE_ERROR_MESSAGE = 'Failed to save this setting. Your last action was not saved.';
 const restorers = [];
 
@@ -19,11 +19,22 @@ function select(value) {
   radio.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+function liquidToggle() {
+  return document.getElementById('liquid-glass-setting');
+}
+
+function toggleLiquid(checked) {
+  const checkbox = liquidToggle();
+  checkbox.checked = checked;
+  checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 beforeAll(() => {
   injectScript('src/core/motion.js');
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');
   injectScript('src/core/toast.js');
+  document.body.insertAdjacentHTML('beforeend', '<input type="checkbox" id="liquid-glass-setting">');
   injectScript('src/ui/settings.js');
 });
 
@@ -49,44 +60,65 @@ afterEach(async () => {
   delete window.showToast;
 });
 
-describe('Liquid Glass standalone theme', () => {
-  it('ships the radio and preview in New-Tab.html and drops the Glass style select', () => {
+describe('Liquid Glass setting', () => {
+  it('ships the toggle in New-Tab.html and drops the standalone theme radio and Glass style select', () => {
     const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
-    expect(html).toMatch(/<input type="radio" name="theme" value="liquid-glass" \/>/);
-    expect(html).toMatch(/<div class="preview-icon liquid"><\/div>/);
+    expect(html).toMatch(/<input type="checkbox" id="liquid-glass-setting" checked \/>/);
     expect(html).toMatch(/data-i18n="liquidGlass">Liquid Glass</);
+    expect(html).not.toContain('value="liquid-glass"');
+    expect(html).not.toContain('preview-icon liquid');
     expect(html).not.toContain('glass-style-setting');
   });
 
-  it('styles the liquid preview icon', () => {
-    const coreCss = readFileSync(resolve(process.cwd(), 'css/core.css'), 'utf8');
-    expect(coreCss).toMatch(/\.preview-icon\.liquid\s*\{/);
+  it('defaults to on', () => {
+    expect(window.loadLiquidGlassEnabled()).toBe(true);
+    window.applyLiquidGlassEnabled();
+    expect(liquidToggle().checked).toBe(true);
+    expect(window.LiquidGlass.init).toHaveBeenCalled();
   });
 
-  it('applyTheme checks the liquid-glass radio, keeps the dark base, and re-inits LiquidGlass', () => {
-    localStorage.setItem('theme', 'liquid-glass');
+  it('turning the toggle off stores false and re-inits LiquidGlass', () => {
+    toggleLiquid(false);
+    expect(localStorage.getItem('liquidGlassEnabled')).toBe('false');
+    expect(window.loadLiquidGlassEnabled()).toBe(false);
+    expect(window.LiquidGlass.init).toHaveBeenCalled();
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    toggleLiquid(true);
+    expect(localStorage.getItem('liquidGlassEnabled')).toBe('true');
+    expect(window.loadLiquidGlassEnabled()).toBe(true);
+  });
+
+  it('restores the checkbox and toasts when the write is rejected', () => {
+    restorers.push(failStorageWritesFor('liquidGlassEnabled'));
+    toggleLiquid(false);
+    expect(window.loadLiquidGlassEnabled()).toBe(true);
+    expect(liquidToggle().checked).toBe(true);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('applyTheme keeps the dark base and re-inits LiquidGlass', () => {
+    localStorage.setItem('theme', 'dark');
     window.applyTheme();
-    expect(themeRadio('liquid-glass').checked).toBe(true);
-    expect(themeRadio('dark').checked).toBe(false);
+    expect(themeRadio('dark').checked).toBe(true);
     expect(document.body.classList.contains('light-theme')).toBe(false);
     expect(window.LiquidGlass.init).toHaveBeenCalled();
   });
 
-  it('resolveTheme passes liquid-glass through unchanged', () => {
-    expect(window.resolveTheme('liquid-glass')).toBe('liquid-glass');
+  it('treats a stored legacy liquid-glass theme as dark', () => {
+    localStorage.setItem('theme', 'liquid-glass');
+    expect(window.loadTheme()).toBe('dark');
+    window.applyTheme();
+    expect(themeRadio('dark').checked).toBe(true);
+    expect(document.body.classList.contains('light-theme')).toBe(false);
   });
 
-  it('selecting the radio stores the theme and dispatches themeChanged', () => {
-    const onThemeChanged = vi.fn();
-    window.addEventListener('themeChanged', onThemeChanged);
-    try {
-      select('liquid-glass');
-      expect(localStorage.getItem('theme')).toBe('liquid-glass');
-      expect(onThemeChanged.mock.calls[0][0].detail.theme).toBe('liquid-glass');
-      expect(window.showToast).not.toHaveBeenCalled();
-    } finally {
-      window.removeEventListener('themeChanged', onThemeChanged);
-    }
+  it('selecting a theme radio does not touch the Liquid Glass setting', () => {
+    toggleLiquid(false);
+    select('light');
+    expect(localStorage.getItem('theme')).toBe('light');
+    expect(localStorage.getItem('liquidGlassEnabled')).toBe('false');
+    expect(document.body.classList.contains('light-theme')).toBe(true);
   });
 });
 
@@ -97,10 +129,10 @@ describe('rejected theme writes', () => {
     const onThemeChanged = vi.fn();
     window.addEventListener('themeChanged', onThemeChanged);
     try {
-      select('liquid-glass');
+      select('light');
 
       expect(localStorage.getItem('theme')).toBe('dark');
-      expect(themeRadio('liquid-glass').checked).toBe(false);
+      expect(themeRadio('light').checked).toBe(false);
       expect(themeRadio('dark').checked).toBe(true);
       expect(onThemeChanged).toHaveBeenCalledTimes(1);
       expect(onThemeChanged.mock.calls[0][0].detail.theme).toBe('dark');
@@ -117,12 +149,12 @@ describe('rejected theme writes', () => {
     const onThemeChanged = vi.fn();
     window.addEventListener('themeChanged', onThemeChanged);
     try {
-      select('liquid-glass');
+      select('light');
 
       // The bridge accepted the optimistic write; the UI follows it until the
       // failure rolls storage back.
-      expect(localStorage.getItem('theme')).toBe('liquid-glass');
-      expect(themeRadio('liquid-glass').checked).toBe(true);
+      expect(localStorage.getItem('theme')).toBe('light');
+      expect(themeRadio('light').checked).toBe(true);
       expect(window.showToast).not.toHaveBeenCalled();
       window.LiquidGlass.init.mockClear();
 
@@ -130,7 +162,7 @@ describe('rejected theme writes', () => {
 
       expect(localStorage.getItem('theme')).toBe('dark');
       expect(themeRadio('dark').checked).toBe(true);
-      expect(themeRadio('liquid-glass').checked).toBe(false);
+      expect(themeRadio('light').checked).toBe(false);
       expect(window.LiquidGlass.init).toHaveBeenCalled();
       expect(onThemeChanged.mock.calls.at(-1)[0].detail.theme).toBe('dark');
       expect(window.showToast).toHaveBeenCalledTimes(1);
@@ -139,53 +171,50 @@ describe('rejected theme writes', () => {
       window.removeEventListener('themeChanged', onThemeChanged);
     }
   });
+
+  it('resyncs the Liquid Glass checkbox and toasts once after an async rollback', async () => {
+    restorers.push(failStorageWritesFor('liquidGlassEnabled', 'async'));
+    toggleLiquid(false);
+    expect(localStorage.getItem('liquidGlassEnabled')).toBe('false');
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await settle();
+
+    expect(localStorage.getItem('liquidGlassEnabled')).not.toBe('false');
+    expect(liquidToggle().checked).toBe(true);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
 });
 
-describe('glassStyle migration', () => {
-  it('moves a legacy liquid choice to the theme once the write settled', async () => {
+describe('legacy Liquid Glass migration', () => {
+  it('moves the standalone liquid-glass theme to dark', () => {
+    localStorage.setItem('theme', 'liquid-glass');
+    window.migrateGlassStyle();
+    expect(localStorage.getItem('theme')).toBe('dark');
+  });
+
+  it('leaves dark, light and system themes alone', () => {
+    ['dark', 'light', 'system'].forEach((theme) => {
+      localStorage.setItem('theme', theme);
+      window.migrateGlassStyle();
+      expect(localStorage.getItem('theme')).toBe(theme);
+    });
+  });
+
+  it('drops the obsolete glassStyle key without changing the theme', () => {
     localStorage.setItem('theme', 'light');
     localStorage.setItem('glassStyle', 'liquid');
     window.migrateGlassStyle();
-    await settle();
-    expect(localStorage.getItem('theme')).toBe('liquid-glass');
+    expect(localStorage.getItem('theme')).toBe('light');
     expect(localStorage.getItem('glassStyle')).toBeNull();
   });
 
-  it('keeps the legacy key when the theme write is rejected synchronously', async () => {
-    localStorage.setItem('theme', 'light');
-    localStorage.setItem('glassStyle', 'liquid');
+  it('keeps reading the legacy theme as dark when the rewrite is rejected', () => {
+    localStorage.setItem('theme', 'liquid-glass');
     restorers.push(failStorageWritesFor('theme'));
     window.migrateGlassStyle();
-    await settle();
-    expect(localStorage.getItem('theme')).toBe('light');
-    expect(localStorage.getItem('glassStyle')).toBe('liquid');
-  });
-
-  it('keeps the legacy key when the theme write rolls back asynchronously', async () => {
-    localStorage.setItem('theme', 'light');
-    localStorage.setItem('glassStyle', 'liquid');
-    restorers.push(failStorageWritesFor('theme', 'async'));
-    window.migrateGlassStyle();
-    await settle();
-    await settle();
-    expect(localStorage.getItem('theme')).toBe('light');
-    expect(localStorage.getItem('glassStyle')).toBe('liquid');
-  });
-
-  it('drops a legacy classic value without touching the theme', () => {
-    localStorage.setItem('theme', 'light');
-    localStorage.setItem('glassStyle', 'classic');
-    window.migrateGlassStyle();
-    expect(localStorage.getItem('theme')).toBe('light');
-    expect(localStorage.getItem('glassStyle')).toBeNull();
-  });
-
-  it('does not run from applyTheme, so a leftover legacy key cannot override later picks', () => {
-    localStorage.setItem('theme', 'dark');
-    localStorage.setItem('glassStyle', 'liquid');
-    window.applyTheme();
-    expect(localStorage.getItem('theme')).toBe('dark');
-    expect(localStorage.getItem('glassStyle')).toBe('liquid');
+    expect(window.loadTheme()).toBe('dark');
   });
 });
 
@@ -214,28 +243,33 @@ describe('theme switching with the real LiquidGlass module', () => {
     delete globalThis.SVGFilterElement;
   });
 
-  it('adds the effect for liquid-glass and removes it when another theme is picked', () => {
+  it('enhances both dark and light themes and removes the effect when the setting is turned off', () => {
     const panel = document.createElement('div');
     panel.setAttribute('data-liquid-glass', 'panel');
     document.body.appendChild(panel);
-    expect(document.body.classList.contains('glass-liquid')).toBe(false);
-    expect(panel.querySelector('.glass__warp')).toBeNull();
-
-    select('liquid-glass');
+    window.LiquidGlass.init();
     expect(document.body.classList.contains('glass-liquid')).toBe(true);
     expect(panel.querySelector('.glass__warp')).not.toBeNull();
 
     select('light');
-    expect(document.body.classList.contains('glass-liquid')).toBe(false);
     expect(document.body.classList.contains('light-theme')).toBe(true);
+    expect(document.body.classList.contains('glass-liquid')).toBe(true);
+    expect(panel.querySelector('.glass__warp')).not.toBeNull();
+
+    select('system');
+    expect(document.body.classList.contains('glass-liquid')).toBe(true);
+
+    toggleLiquid(false);
+    expect(document.body.classList.contains('glass-liquid')).toBe(false);
     expect(panel.querySelector('.glass__warp')).toBeNull();
     expect(panel.classList.contains('glass--liquid')).toBe(false);
 
-    select('liquid-glass');
-    expect(panel.querySelector('.glass__warp')).not.toBeNull();
-    select('system');
+    select('dark');
     expect(document.body.classList.contains('glass-liquid')).toBe(false);
-    expect(panel.querySelector('.glass__warp')).toBeNull();
+
+    toggleLiquid(true);
+    expect(document.body.classList.contains('glass-liquid')).toBe(true);
+    expect(panel.querySelector('.glass__warp')).not.toBeNull();
 
     panel.remove();
   });
