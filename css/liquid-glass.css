@@ -78,23 +78,16 @@ body.glass-liquid .app-icon .icon[data-liquid-glass] > svg {
   z-index: 1;
 }
 
-/* #1162: light theme. No chromatic split (it reads as a rainbow fringe on
-   bright backdrops), plus a neutral tint and softer highlights. */
-body.light-theme.glass-liquid .glass__warp[style*="--lg-filter-flat"] {
-  backdrop-filter: var(--lg-filter-flat);
-  -webkit-backdrop-filter: var(--lg-filter-flat);
-}
-
-body.light-theme.glass-liquid .glass__highlight {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.45);
-}
-
-body.light-theme.glass-liquid .glass__over-light {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 60%);
-}
-
-body.light-theme.glass-liquid .app-icon:not(.drag-over):not(.drag-over-folder):not(.drag-over-folder-rejected) .icon[data-liquid-glass] {
-  background: rgba(255, 255, 255, 0.28);
+/* Light theme uses the same tile look as dark. glass.css's light group targets
+   `.icon` inside :is(... #motto-container ...), so its specificity includes an
+   id and beats the class-only rule above; anchor on #app-grid to win. Its
+   backdrop-filter must go too: a backdrop-filtered parent becomes a backdrop
+   root and the warp layer would sample a flat gray instead of the wallpaper.
+   The border and shadow match the dark tile's (core.css .icon). */
+body.light-theme.glass-liquid #app-grid .app-icon:not(.drag-over):not(.drag-over-folder):not(.drag-over-folder-rejected) .icon[data-liquid-glass] {
+  background: rgba(255, 255, 255, 0.04);
+  border: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }

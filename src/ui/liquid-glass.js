@@ -94,8 +94,8 @@
   }
 
   // One <filter> per {map, sizeClass} pair; reused by every element that asks.
-  function ensureFilter(mapName, sizeClass, flat) {
-    const key = `${mapName}:${sizeClass}${flat ? ':flat' : ''}`;
+  function ensureFilter(mapName, sizeClass) {
+    const key = `${mapName}:${sizeClass}`;
     if (filterIds.has(key)) return filterIds.get(key);
 
     const size = SIZE_CLASSES[sizeClass];
@@ -105,7 +105,7 @@
     if (!mapUrl) return null;
 
     const defs = ensureDefs();
-    const id = `lg-${mapName}-${sizeClass}${flat ? '-flat' : ''}`;
+    const id = `lg-${mapName}-${sizeClass}`;
     const filter = document.createElementNS(SVG_NS, 'filter');
     filter.setAttribute('id', id);
     filter.setAttribute('x', '0');
@@ -128,8 +128,8 @@
     // chromatic-aberration split (see spike/liquid-glass/index.html).
     const channels = [
       { name: 'r', scale: size.scale, matrix: '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0' },
-      { name: 'g', scale: size.scale + (flat ? 0 : 2), matrix: '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0' },
-      { name: 'b', scale: size.scale + (flat ? 0 : 4), matrix: '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0' }
+      { name: 'g', scale: size.scale + 2, matrix: '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0' },
+      { name: 'b', scale: size.scale + 4, matrix: '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0' }
     ];
     const blendInputs = [];
     channels.forEach((c) => {
@@ -183,7 +183,6 @@
     const mapName = (opts && opts.map) || DEFAULT_MAP;
     const filterId = ensureFilter(mapName, sizeClass);
     if (!filterId) return false;
-    const flatId = ensureFilter(mapName, sizeClass, true);
 
     if (el.querySelector(':scope > .' + WARP_CLASS)) stripLayers(el);
 
@@ -195,9 +194,6 @@
       '--lg-filter',
       `blur(${size.blur}px) saturate(160%) url(#${filterId})`
     );
-    if (flatId) {
-      warp.style.setProperty('--lg-filter-flat', `blur(${size.blur}px) saturate(110%) url(#${flatId})`);
-    }
     el.insertBefore(warp, el.firstChild);
 
     OVERLAY_CLASSES.forEach((cls) => {
