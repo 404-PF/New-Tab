@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 import { withWindowOverride } from './helpers/window-override.js';
+import { failStorageWritesFor } from './helpers/storage-write-failures.js';
 
 const createElement = (tag, id) => {
   const element = document.createElement(tag);
@@ -510,6 +511,43 @@ describe('built-in apps in folders (#1010)', () => {
     }
   });
 
+  it('skips the folder and grid patches when removeAppFromFolder fails (#1137)', () => {
+    const popupApps = createElement('div', 'folder-popup-apps');
+    const popupTile = document.createElement('a');
+    popupTile.id = 'popup-weather-app';
+    popupTile.className = 'app-icon default-app';
+    popupApps.appendChild(popupTile);
+
+    const renderFolderAppsInPopup = vi.fn();
+    const refreshFolderUI = vi.fn();
+    const addAppIcon = vi.fn();
+    const originalRemoveAppFromFolder = window.AppGridState.removeAppFromFolder;
+    window.AppGridState.removeAppFromFolder = vi.fn(() => false);
+
+    try {
+      withWindowOverride('AppFolders', {
+        currentFolderId: 'folder-1',
+        renderFolderAppsInPopup,
+        refreshFolderUI
+      }, () => {
+        withWindowOverride('addAppIcon', addAppIcon, () => {
+          openContextMenu(popupTile);
+          document.getElementById('remove-from-folder').click();
+
+          expect(window.AppGridState.removeAppFromFolder)
+            .toHaveBeenCalledExactlyOnceWith('folder-1', 'weather-app');
+          expect(renderFolderAppsInPopup).not.toHaveBeenCalled();
+          expect(refreshFolderUI).not.toHaveBeenCalled();
+          expect(addAppIcon).not.toHaveBeenCalled();
+          expect(document.getElementById('app-context-menu').style.display).toBe('none');
+        });
+      });
+    } finally {
+      window.AppGridState.removeAppFromFolder = originalRemoveAppFromFolder;
+      popupApps.remove();
+    }
+  });
+
   it('ignores Move to Folder when the menu was opened from the grid background', () => {
     const showMoveToFolderSelector = vi.fn();
 
@@ -805,5 +843,321 @@ describe('change thumbnail local upload (#1139)', () => {
       'error'
     );
     expect(thumbnailInput.value).toBe('https://example.com/existing.png');
+  });
+});
+
+describe('remove from folder storage failures (#1137)', () => {
+  const removeExistingMenu = () => {
+    const existingMenu = document.getElementById('app-context-menu');
+    if (existingMenu) existingMenu.remove();
+  };
+
+  const openContextMenu = (element) => {
+    element.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      pageX: 32,
+      pageY: 32
+    }));
+  };
+
+  const seedFolderWithWeatherApp = () => {
+    localStorage.setItem('appOrder', JSON.stringify(['folder-1']));
+    localStorage.setItem('appFolders', JSON.stringify([
+      { id: 'folder-1', name: 'Folder', apps: ['weather-app'] }
+    ]));
+  };
+
+  const createPopupTile = () => {
+    const existing = document.getElementById('folder-popup-apps');
+    if (existing) existing.remove();
+    const popupApps = createElement('div', 'folder-popup-apps');
+    const popupTile = document.createElement('a');
+    popupTile.id = 'popup-weather-app';
+    popupTile.className = 'app-icon default-app';
+    popupApps.appendChild(popupTile);
+    return { popupApps, popupTile };
+  };
+
+  let restoreWrites = null;
+
+  beforeAll(() => {
+    injectScript('src/core/dom-ready.js');
+    removeExistingMenu();
+    injectScript('src/core/app-grid-storage.js');
+    injectScript('src/core/app-grid-state.js');
+    injectScript('src/features/context-menu.js');
+  });
+
+  afterEach(() => {
+    if (restoreWrites) {
+      restoreWrites();
+      restoreWrites = null;
+    }
+    const strayIcon = document.getElementById('weather-app');
+    if (strayIcon) strayIcon.remove();
+  });
+
+  it('shows one save-error toast and skips the UI patches on a synchronous write failure', () => {
+    seedFolderWithWeatherApp();
+    restoreWrites = failStorageWritesFor('appFolders', 'sync');
+
+    const { popupApps, popupTile } = createPopupTile();
+    const renderFolderAppsInPopup = vi.fn();
+    const refreshFolderUI = vi.fn();
+    const addAppIcon = vi.fn();
+    const removeAppIcon = vi.fn();
+    const showToast = vi.fn();
+
+    try {
+      withWindowOverride('showToast', showToast, () => {
+        withWindowOverride('AppFolders', {
+          currentFolderId: 'folder-1',
+          renderFolderAppsInPopup,
+          refreshFolderUI
+        }, () => {
+          withWindowOverride('addAppIcon', addAppIcon, () => {
+            withWindowOverride('removeAppIcon', removeAppIcon, () => {
+              openContextMenu(popupTile);
+              document.getElementById('remove-from-folder').click();
+
+              // The synchronous rejection rolled the cache back and raised
+              // the shared appGridSaveError toast exactly once; the handler
+              // must not have patched the folder popup or the grid.
+              expect(renderFolderAppsInPopup).not.toHaveBeenCalled();
+              expect(addAppIcon).not.toHaveBeenCalled();
+              expect(showToast).toHaveBeenCalledTimes(1);
+              expect(showToast).toHaveBeenCalledWith(
+                'Failed to save app changes. Your last action was not saved.',
+                'error',
+                { duration: 3000 }
+              );
+              expect(JSON.parse(localStorage.getItem('appFolders'))[0].apps)
+                .toContain('weather-app');
+
+              // The deferred resync re-renders the (unchanged) popup but must
+              // not touch the grid: the app never left the folder.
+              vi.advanceTimersByTime(0);
+              expect(renderFolderAppsInPopup).toHaveBeenCalled();
+              expect(removeAppIcon).not.toHaveBeenCalled();
+            });
+          });
+        });
+      });
+    } finally {
+      popupApps.remove();
+    }
+  });
+
+  it('re-syncs the folder popup and drops the duplicate grid tile after an async rejected write', () => {
+    seedFolderWithWeatherApp();
+    restoreWrites = failStorageWritesFor('appFolders', 'async');
+
+    const { popupApps, popupTile } = createPopupTile();
+    const renderFolderAppsInPopup = vi.fn();
+    const refreshFolderUI = vi.fn();
+    const addAppIcon = vi.fn((id) => {
+      const icon = document.createElement('a');
+      icon.id = id;
+      icon.className = 'app-icon default-app';
+      document.body.appendChild(icon);
+    });
+    const removeAppIcon = vi.fn((id) => {
+      const icon = document.getElementById(id);
+      if (!icon) return false;
+      icon.remove();
+      return true;
+    });
+    const showToast = vi.fn();
+
+    try {
+      withWindowOverride('showToast', showToast, () => {
+        withWindowOverride('AppFolders', {
+          currentFolderId: 'folder-1',
+          renderFolderAppsInPopup,
+          refreshFolderUI
+        }, () => {
+          withWindowOverride('addAppIcon', addAppIcon, () => {
+            withWindowOverride('removeAppIcon', removeAppIcon, () => {
+              openContextMenu(popupTile);
+              document.getElementById('remove-from-folder').click();
+
+              // persistSet accepts the write optimistically, so the success
+              // path already put the tile back on the grid...
+              expect(window.AppGridState.getFolders()[0].apps)
+                .not.toContain('weather-app');
+              expect(addAppIcon).toHaveBeenCalledWith('weather-app');
+              expect(document.getElementById('weather-app')).not.toBeNull();
+
+              const rendersAfterClick = renderFolderAppsInPopup.mock.calls.length;
+              const refreshesAfterClick = refreshFolderUI.mock.calls.length;
+
+              // ...then chrome.storage reports runtime.lastError: the bridge
+              // rolls its cache back (the app is foldered again)...
+              // Advance by 1ms, not 0: the resync is scheduled from inside
+              // the failure timer's callback, and a delay-0 timer scheduled
+              // during a tick only becomes due on the next 1ms boundary.
+              vi.advanceTimersByTime(1);
+              expect(JSON.parse(localStorage.getItem('appFolders'))[0].apps)
+                .toContain('weather-app');
+
+              // ...and the deferred resync makes grid and folder agree again
+              // without a reload, with only the single existing error toast.
+              vi.advanceTimersByTime(1);
+              expect(renderFolderAppsInPopup.mock.calls.length)
+                .toBeGreaterThan(rendersAfterClick);
+              expect(refreshFolderUI.mock.calls.length)
+                .toBeGreaterThan(refreshesAfterClick);
+              // The affected folder is refreshed by id, not only through the
+              // popup's currentFolderId, so a closed or switched popup cannot
+              // leave the original folder tile stale.
+              expect(refreshFolderUI.mock.calls.slice(refreshesAfterClick))
+                .toContainEqual(['folder-1']);
+              expect(removeAppIcon).toHaveBeenCalledWith('weather-app');
+              expect(document.getElementById('weather-app')).toBeNull();
+              expect(showToast).toHaveBeenCalledTimes(1);
+            });
+          });
+        });
+      });
+    } finally {
+      popupApps.remove();
+      const strayIcon = document.getElementById('weather-app');
+      if (strayIcon) strayIcon.remove();
+    }
+  });
+
+  it('drops the orphaned folder icon when a create-folder write fails (#1137)', () => {
+    seedFolderWithWeatherApp();
+    restoreWrites = failStorageWritesFor('appFolders', 'async');
+
+    const grid = createElement('div', 'app-grid');
+    const refreshAppShortcutBadges = vi.fn();
+    try {
+      withWindowOverride('Shortcuts', { refreshAppShortcutBadges }, () => {
+        // promptCreateFolder(): persist the folder optimistically, then insert
+        // its tile — chrome.storage rejects the write a macrotask later.
+        const folder = window.AppGridState.createFolder('New Folder', []);
+        expect(folder).not.toBeNull();
+        // The appFolders write fails but the paired appOrder write succeeds,
+        // so the ghost id is persisted until the rollback drops it.
+        expect(JSON.parse(localStorage.getItem('appOrder'))).toContain(folder.id);
+
+        const orphan = document.createElement('a');
+        orphan.id = folder.id;
+        orphan.className = 'app-icon folder-icon';
+        grid.appendChild(orphan);
+        const survivor = document.createElement('a');
+        survivor.id = 'folder-1';
+        survivor.className = 'app-icon folder-icon';
+        grid.appendChild(survivor);
+
+        // Advance by 1ms, not 0: the resync is scheduled from inside the
+        // failure timer's callback, and a delay-0 timer scheduled during a tick
+        // only becomes due on the next 1ms boundary.
+        vi.advanceTimersByTime(1);
+        expect(window.AppGridState.getFolders().some((f) => f.id === folder.id)).toBe(false);
+        vi.advanceTimersByTime(1);
+
+        // The rolled-back folder's tile is gone; folders storage still knows
+        // about keep their tiles.
+        expect(document.getElementById(folder.id)).toBeNull();
+        expect(document.getElementById('folder-1')).not.toBeNull();
+        // The ghost id no longer sits in appOrder (it would consume an Alt+N
+        // slot), and the on-tile shortcut badges were resynced to match.
+        const order = JSON.parse(localStorage.getItem('appOrder'));
+        expect(order).not.toContain(folder.id);
+        expect(order).toContain('folder-1');
+        expect(refreshAppShortcutBadges).toHaveBeenCalledTimes(1);
+      });
+    } finally {
+      grid.remove();
+    }
+  });
+
+  it('restores the folder tile after a failed folder deletion rollback (#1137)', () => {
+    seedFolderWithWeatherApp();
+    restoreWrites = failStorageWritesFor('appFolders', 'async');
+
+    // Exercise the real addFolderIconToGrid rendering path. escapeHtml is
+    // captured from window at app-folders load time; utils.js (loaded by an
+    // earlier describe) provides it, so only inject it when missing.
+    if (typeof window.escapeHtml !== 'function') {
+      injectScript('src/core/utils.js');
+    }
+    injectScript('src/features/app-folders.js');
+
+    // Earlier describes may have left an #app-grid behind; start clean so
+    // getElementById resolves to the grid this test owns.
+    const staleGrid = document.getElementById('app-grid');
+    if (staleGrid) staleGrid.remove();
+    const staleNewApp = document.getElementById('new-app');
+    if (staleNewApp) staleNewApp.remove();
+
+    const grid = createElement('div', 'app-grid');
+    const newApp = createElement('a', 'new-app');
+    grid.appendChild(newApp);
+    const folderTile = document.createElement('a');
+    folderTile.id = 'folder-1';
+    folderTile.className = 'app-icon folder-icon';
+    grid.appendChild(folderTile);
+    const appTile = document.createElement('a');
+    appTile.id = 'weather-app';
+    appTile.className = 'app-icon default-app';
+    grid.appendChild(appTile);
+
+    const showToast = vi.fn();
+    const removeAppIcon = vi.fn((id) => {
+      const icon = document.getElementById(id);
+      if (!icon) return false;
+      icon.remove();
+      return true;
+    });
+
+    try {
+      withWindowOverride('showToast', showToast, () => {
+        withWindowOverride('removeAppIcon', removeAppIcon, () => {
+          // promptDeleteFolder's success path: deleteFolder accepts the
+          // optimistic appFolders write, the UI drops the folder tile, and
+          // the released apps get their grid tiles back.
+          expect(window.AppGridState.deleteFolder('folder-1')).toBe(true);
+          folderTile.remove();
+
+          // chrome.storage rejects the appFolders write a macrotask later and
+          // rolls storage back to the pre-delete state (folder + apps).
+          // Advance by 1ms, not 0: the resync is scheduled from inside the
+          // failure timer's callback, and a delay-0 timer scheduled during a
+          // tick only becomes due on the next 1ms boundary.
+          vi.advanceTimersByTime(1);
+          expect(JSON.parse(localStorage.getItem('appFolders')).some(
+            (folder) => folder.id === 'folder-1'
+          )).toBe(true);
+
+          // The deferred resync drops the released app tile again (storage
+          // says the app is foldered) and recreates the folder tile the
+          // delete removed, so the folder and its apps stay reachable.
+          vi.advanceTimersByTime(1);
+          expect(removeAppIcon).toHaveBeenCalledWith('weather-app');
+          expect(document.getElementById('weather-app')).toBeNull();
+          const restored = document.getElementById('folder-1');
+          expect(restored).not.toBeNull();
+          expect(restored.classList.contains('folder-icon')).toBe(true);
+          expect(restored.parentElement).toBe(grid);
+          // The paired appOrder write succeeded while appFolders rolled back,
+          // so the resync must also restore the folder's order slot ahead of
+          // its released apps or Alt+N slots and later renders lose it.
+          const orderAfterRestore = JSON.parse(localStorage.getItem('appOrder'));
+          expect(orderAfterRestore).toContain('folder-1');
+          expect(orderAfterRestore.indexOf('folder-1'))
+            .toBeLessThan(orderAfterRestore.indexOf('weather-app'));
+          expect(showToast).toHaveBeenCalledTimes(1);
+        });
+      });
+    } finally {
+      grid.remove();
+      const strayIcon = document.getElementById('weather-app');
+      if (strayIcon) strayIcon.remove();
+    }
   });
 });
