@@ -387,8 +387,36 @@ window.updateAppLink = updateAppLink;
 window.syncAppGridOrder = syncAppGridOrder;
 window.renderDefaultAppVisibilityList = renderDefaultAppVisibilityList;
 
+// Settings > Apps apply helpers (export for toast.js resync, issue #1142)
+window.applyOpenNewTabSetting = applyOpenNewTabSetting;
+window.applyIconSize = applyIconSize;
+window.applyCurvature = applyCurvature;
+
 // Re-render when language changes
 window.addEventListener('languageChanged', renderAllApps);
+
+// Shared write check for the Settings > Apps controls (#969, #1142): the
+// storage bridge's setItem returns false instead of throwing on a rejected
+// write, so the result must be inspected rather than relying on catch alone.
+function persistAppGridSetting(key, value) {
+  let persisted;
+  try {
+    persisted = typeof window.persistFeatureToggle === 'function'
+      ? window.persistFeatureToggle(key, value)
+      : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+  } catch (error) {
+    console.warn('Failed to save ' + key + ':', error);
+    persisted = false;
+  }
+  return persisted;
+}
+
+// Shared failure feedback for a rejected Settings > Apps write (#1142).
+function reportAppGridSaveError() {
+  if (typeof window.showFeatureToggleSaveError === 'function') {
+    window.showFeatureToggleSaveError();
+  }
+}
 
 // Load and apply open in new tab setting
 function loadOpenNewTabSetting() {
@@ -413,8 +441,11 @@ function applyOpenNewTabSetting() {
 const openNewTabSetting = document.getElementById('open-new-tab-setting');
 if (openNewTabSetting) {
   openNewTabSetting.addEventListener('change', function () {
-    localStorage.setItem('openAppsInNewTab', this.checked);
+    const persisted = persistAppGridSetting('openAppsInNewTab', this.checked);
+    // Re-apply either way: after a rejected write it restores the checkbox
+    // to the rolled-back value instead of leaving it desynced (#1142).
     applyOpenNewTabSetting();
+    if (!persisted) reportAppGridSaveError();
   });
 }
 
@@ -466,8 +497,10 @@ function initIconSize() {
       if (!button) return;
       const size = parseInt(button.dataset.size, 10);
       if (!Number.isFinite(size)) return;
-      localStorage.setItem('iconSize', size);
+      const persisted = persistAppGridSetting('iconSize', size);
+      // Re-apply either way so a rejected write snaps the active button back.
       applyIconSize();
+      if (!persisted) reportAppGridSaveError();
     });
   }
 
@@ -510,8 +543,10 @@ const curvatureRadios = document.querySelectorAll('input[name="curvature"]');
 curvatureRadios.forEach((radio) => {
   radio.addEventListener('change', function () {
     if (this.checked) {
-      localStorage.setItem('appsButtonCurvature', this.value);
+      const persisted = persistAppGridSetting('appsButtonCurvature', this.value);
+      // Re-apply either way so a rejected write snaps the radios back.
       applyCurvature();
+      if (!persisted) reportAppGridSaveError();
     }
   });
 });

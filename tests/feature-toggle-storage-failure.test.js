@@ -13,7 +13,10 @@ const TOGGLE_STORAGE_KEYS = [
   'todoEnabled',
   'notesEnabled',
   'eyeCareReminder',
-  'customShortcuts'
+  'customShortcuts',
+  'openAppsInNewTab',
+  'iconSize',
+  'appsButtonCurvature'
 ];
 
 const restorers = [];
@@ -580,5 +583,199 @@ describe('toggle handlers tolerate a missing toast.js helper (#969)', () => {
 
     expect(localStorage.getItem('todoEnabled')).toBe('false');
     expect(document.getElementById('todo-enabled-setting').checked).toBe(false);
+  });
+});
+
+describe('app-grid Settings > Apps writes report rejected writes (#1142)', () => {
+  beforeAll(() => {
+    // The Settings > Apps controls must exist before app-manager.js binds
+    // its change handlers at injection time.
+    const openNewTab = document.createElement('input');
+    openNewTab.type = 'checkbox';
+    openNewTab.id = 'open-new-tab-setting';
+    document.body.appendChild(openNewTab);
+
+    const iconSizeGroup = document.createElement('div');
+    iconSizeGroup.setAttribute('data-size-group', 'icon');
+    [48, 60, 72].forEach((size) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'size-choice-button';
+      button.dataset.size = String(size);
+      iconSizeGroup.appendChild(button);
+    });
+    document.body.appendChild(iconSizeGroup);
+
+    [8, 15, 20, 50].forEach((value) => {
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'curvature';
+      radio.value = String(value);
+      document.body.appendChild(radio);
+    });
+
+    // app-manager registers through window.onDomReady and reads
+    // window.__appGridState at injection; report the grid as already
+    // rendered so the deferred render path stays out of these storage tests.
+    window.onDomReady = (callback) => callback();
+    window.__appGridState = { phase: 'rendered', setPhase: vi.fn() };
+    injectScript('src/ui/app-manager.js');
+  });
+
+  beforeEach(() => {
+    // The file-level hook cleared the keys; snap the controls back to their
+    // defaults so every test starts from a known state.
+    window.applyOpenNewTabSetting();
+    window.applyIconSize();
+    window.applyCurvature();
+  });
+
+  const getOpenNewTabCheckbox = () => document.getElementById('open-new-tab-setting');
+  const getSizeButton = (size) =>
+    document.querySelector(`[data-size-group="icon"] .size-choice-button[data-size="${size}"]`);
+  const getCurvatureRadio = (value) =>
+    document.querySelector(`input[name="curvature"][value="${value}"]`);
+
+  it('open-in-new-tab checkbox keeps the value, restores the checkbox, and toasts', () => {
+    localStorage.setItem('openAppsInNewTab', 'false');
+    window.applyOpenNewTabSetting();
+    failWriteFor('openAppsInNewTab');
+
+    const checkbox = getOpenNewTabCheckbox();
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('openAppsInNewTab')).toBe('false');
+    expect(checkbox.checked).toBe(false);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('open-in-new-tab checkbox persists an accepted write without toasting', () => {
+    const checkbox = getOpenNewTabCheckbox();
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('openAppsInNewTab')).toBe('false');
+    expect(checkbox.checked).toBe(false);
+    expect(window.showToast).not.toHaveBeenCalled();
+  });
+
+  it('open-in-new-tab checkbox resyncs and toasts after an async lastError rollback', async () => {
+    localStorage.setItem('openAppsInNewTab', 'false');
+    window.applyOpenNewTabSetting();
+    failWriteFor('openAppsInNewTab', 'async');
+
+    const checkbox = getOpenNewTabCheckbox();
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // The bridge accepted the write optimistically; the failure only arrives
+    // through runtime.lastError in the chrome.storage callback.
+    expect(localStorage.getItem('openAppsInNewTab')).toBe('true');
+    expect(checkbox.checked).toBe(true);
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('openAppsInNewTab')).toBe('false');
+    expect(checkbox.checked).toBe(false);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('icon-size button keeps the value, restores the active button, and toasts', () => {
+    localStorage.setItem('iconSize', '48');
+    window.applyIconSize();
+    failWriteFor('iconSize');
+
+    getSizeButton(72).click();
+
+    expect(localStorage.getItem('iconSize')).toBe('48');
+    expect(getSizeButton(48).classList.contains('active')).toBe(true);
+    expect(getSizeButton(72).classList.contains('active')).toBe(false);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('icon-size button persists an accepted write without toasting', () => {
+    getSizeButton(72).click();
+
+    expect(localStorage.getItem('iconSize')).toBe('72');
+    expect(getSizeButton(72).classList.contains('active')).toBe(true);
+    expect(getSizeButton(48).classList.contains('active')).toBe(false);
+    expect(window.showToast).not.toHaveBeenCalled();
+  });
+
+  it('icon-size button resyncs and toasts after an async lastError rollback', async () => {
+    localStorage.setItem('iconSize', '48');
+    window.applyIconSize();
+    failWriteFor('iconSize', 'async');
+
+    getSizeButton(72).click();
+
+    expect(localStorage.getItem('iconSize')).toBe('72');
+    expect(getSizeButton(72).classList.contains('active')).toBe(true);
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('iconSize')).toBe('48');
+    expect(getSizeButton(48).classList.contains('active')).toBe(true);
+    expect(getSizeButton(72).classList.contains('active')).toBe(false);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('curvature radio keeps the value, restores the radio, and toasts', () => {
+    localStorage.setItem('appsButtonCurvature', '20');
+    window.applyCurvature();
+    failWriteFor('appsButtonCurvature');
+
+    const radio = getCurvatureRadio('50');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('appsButtonCurvature')).toBe('20');
+    expect(radio.checked).toBe(false);
+    expect(getCurvatureRadio('20').checked).toBe(true);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('curvature radio persists an accepted write without toasting', () => {
+    const radio = getCurvatureRadio('50');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('appsButtonCurvature')).toBe('50');
+    expect(radio.checked).toBe(true);
+    expect(getCurvatureRadio('20').checked).toBe(false);
+    expect(window.showToast).not.toHaveBeenCalled();
+  });
+
+  it('curvature radio resyncs and toasts after an async lastError rollback', async () => {
+    localStorage.setItem('appsButtonCurvature', '20');
+    window.applyCurvature();
+    failWriteFor('appsButtonCurvature', 'async');
+
+    const radio = getCurvatureRadio('50');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('appsButtonCurvature')).toBe('50');
+    expect(radio.checked).toBe(true);
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('appsButtonCurvature')).toBe('20');
+    expect(radio.checked).toBe(false);
+    expect(getCurvatureRadio('20').checked).toBe(true);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 });

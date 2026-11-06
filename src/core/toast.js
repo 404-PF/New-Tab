@@ -326,6 +326,25 @@ const FEATURE_TOGGLE_RESYNC = {
     if (typeof window.renderTodos === 'function') {
       window.renderTodos();
     }
+  },
+  // #1142: the three Settings > Apps app-grid writes must resync their
+  // controls after an async rollback like every other feature toggle.
+  // Helpers resolve through window with typeof guards so a module that
+  // failed to load degrades to "no resync" instead of a throw.
+  openAppsInNewTab: function () {
+    if (typeof window.applyOpenNewTabSetting === 'function') {
+      window.applyOpenNewTabSetting();
+    }
+  },
+  iconSize: function () {
+    if (typeof window.applyIconSize === 'function') {
+      window.applyIconSize();
+    }
+  },
+  appsButtonCurvature: function () {
+    if (typeof window.applyCurvature === 'function') {
+      window.applyCurvature();
+    }
   }
 };
 
@@ -445,6 +464,32 @@ function featureToggleControlDesynced(key) {
         (Boolean(shortBreak) && shortBreak.value !== String(stored.shortBreakDuration)) ||
         (Boolean(longBreak) && longBreak.value !== String(stored.longBreakDuration)) ||
         (Boolean(sessions) && sessions.value !== String(stored.sessionsBeforeLongBreak));
+    }
+    case 'openAppsInNewTab': {
+      const checkbox = document.getElementById('open-new-tab-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'iconSize': {
+      // Mirror loadIconSize's default and closest-option snap (app-manager.js)
+      // so the comparison matches what the size buttons actually show.
+      const options = [48, 60, 72];
+      const parsed = parseInt(localStorage.getItem(key) || '60', 10);
+      const stored = Number.isFinite(parsed)
+        ? options.reduce((closest, option) => {
+            return Math.abs(option - parsed) < Math.abs(closest - parsed) ? option : closest;
+          }, options[0])
+        : 60;
+      const buttons = document.querySelectorAll('[data-size-group="icon"] .size-choice-button');
+      return Array.prototype.some.call(buttons, function (btn) {
+        return btn.classList.contains('active') !== (parseInt(btn.dataset.size, 10) === stored);
+      });
+    }
+    case 'appsButtonCurvature': {
+      const stored = localStorage.getItem(key) || '20';
+      const radios = document.querySelectorAll('input[name="curvature"]');
+      return Array.prototype.some.call(radios, function (radio) {
+        return radio.checked !== (radio.value === stored);
+      });
     }
   }
   return false;

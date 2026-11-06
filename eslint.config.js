@@ -224,6 +224,11 @@ const srcGlobals = {
   // Storage-write resync helper (issue #1089) used by toast.js's
   // FEATURE_TOGGLE_RESYNC table.
   resyncSearchHistorySetting: 'readonly',
+  // Settings > Apps apply helpers (issue #1142) exported by app-manager.js
+  // and called by toast.js's FEATURE_TOGGLE_RESYNC table.
+  applyOpenNewTabSetting: 'readonly',
+  applyIconSize: 'readonly',
+  applyCurvature: 'readonly',
 };
 
 const testGlobals = {
@@ -460,6 +465,10 @@ const testGlobals = {
   updateProviderSelection: 'readonly',
   // Storage-write resync helper (issue #1089), mirrors srcGlobals.
   resyncSearchHistorySetting: 'readonly',
+  // Settings > Apps apply helpers (issue #1142), mirrors srcGlobals.
+  applyOpenNewTabSetting: 'readonly',
+  applyIconSize: 'readonly',
+  applyCurvature: 'readonly',
 };
 
 const commonRules = {
