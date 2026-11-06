@@ -1269,6 +1269,10 @@
                     return cleaned;
                   };
                   Object.keys(mergedIds).forEach(function (date) {
+                    if (!isValidISODate(date)) {
+                      delete mergedIds[date];
+                      return;
+                    }
                     mergedIds[date] = keepStringIds(mergedIds[date]);
                   });
                   Object.keys(incoming.completedIds).forEach(function (date) {
