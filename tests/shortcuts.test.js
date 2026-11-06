@@ -1447,14 +1447,30 @@ describe('Shortcuts - startup badge paint (#1144)', () => {
     const originalI18n = window.i18n;
     try {
       window.i18n = undefined;
-      injectScript('src/features/shortcuts.js');
+      // Earlier injectScript() runs in this file left their own
+      // languageChanged listeners on the shared window, so a bare dispatch
+      // could paint the section even if this injection registered nothing.
+      // Capture only the listeners this injection adds and invoke those.
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      let languageChangedListeners;
+      try {
+        injectScript('src/features/shortcuts.js');
+        languageChangedListeners = addSpy.mock.calls
+          .filter(([eventName]) => eventName === 'languageChanged')
+          .map(([, listener]) => listener);
+      } finally {
+        addSpy.mockRestore();
+      }
+      expect(languageChangedListeners.length).toBeGreaterThan(0);
       expect(container.children.length).toBe(0);
 
-      // settings.js' startup applyLanguage() sweep delivers i18n; its
-      // languageChanged dispatch must paint translated labels instead of
+      // settings.js' startup applyLanguage() sweep delivers i18n; the
+      // listener registered above must paint translated labels instead of
       // leaving the section empty or key-shaped.
       window.i18n = originalI18n;
-      window.dispatchEvent(new CustomEvent('languageChanged'));
+      languageChangedListeners.forEach((listener) => {
+        listener.call(window, new CustomEvent('languageChanged'));
+      });
       const focusLabel = container.querySelector('[data-action="focusSearch"]')
         .closest('.setting-content')
         .querySelector('label');
