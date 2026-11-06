@@ -1237,6 +1237,32 @@
                   mergedDays[date] = Math.max(localCount, incomingCount);
                 });
                 currentObj.days = mergedDays;
+                // Union completedIds per date so same-day dedupe recorded by
+                // either profile survives the import (issue #1143). The
+                // backup validator already rejects malformed maps; these
+                // guards only keep a bad local entry from poisoning the merge.
+                if (incoming.completedIds && typeof incoming.completedIds === 'object' && !Array.isArray(incoming.completedIds)) {
+                  const localIdsRoot = currentObj.completedIds && typeof currentObj.completedIds === 'object' && !Array.isArray(currentObj.completedIds)
+                    ? currentObj.completedIds
+                    : {};
+                  const mergedIds = Object.assign({}, localIdsRoot);
+                  Object.keys(incoming.completedIds).forEach(function (date) {
+                    const localIds = Array.isArray(mergedIds[date]) ? mergedIds[date] : [];
+                    const incIds = Array.isArray(incoming.completedIds[date]) ? incoming.completedIds[date] : [];
+                    const union = localIds.slice();
+                    incIds.forEach(function (id) {
+                      if (union.indexOf(id) === -1) union.push(id);
+                    });
+                    mergedIds[date] = union;
+                  });
+                  currentObj.completedIds = mergedIds;
+                }
+                // Fold in the remaining incoming fields (currentStreak,
+                // longestStreak, ...) the way the pomodoroStats branch does,
+                // so a backup's stats are not silently discarded (issue #1143).
+                Object.keys(incoming).forEach(function (k) {
+                  if (k !== 'days' && k !== 'completedIds') currentObj[k] = incoming[k];
+                });
                 writeStorage(key, currentObj, pendingWrites);
               } else if (key === 'pomodoroStats') {
                 const merged = Object.assign({}, currentObj);
