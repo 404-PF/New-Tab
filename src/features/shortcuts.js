@@ -374,6 +374,15 @@
     });
   }
 
+  // Reveals the Alt+N tile badges only while Alt is physically held.
+  function syncAltHeldClass(e) {
+    if (document.body) document.body.classList.toggle('alt-held', !!e.altKey);
+  }
+
+  function clearAltHeldClass() {
+    if (document.body) document.body.classList.remove('alt-held');
+  }
+
   function focusSearchBar() {
     const input = document.querySelector('.search-bar input');
     if (input) input.focus();
@@ -831,6 +840,11 @@
     initialized = true;
     activeShortcuts = loadShortcuts();
     document.addEventListener('keydown', handleKeydown);
+    document.addEventListener('keydown', syncAltHeldClass);
+    document.addEventListener('keyup', syncAltHeldClass);
+    // keyup never arrives when focus leaves the page while Alt is down.
+    window.addEventListener('blur', clearAltHeldClass);
+    document.addEventListener('visibilitychange', clearAltHeldClass);
 
     // Generated row labels use plain textContent (no data-i18n), so re-render
     // on language change. Cancel any in-progress rebind first so its key

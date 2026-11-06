@@ -1284,6 +1284,18 @@ describe('Shortcuts - positional app launch (#1061)', () => {
     expect(Shortcuts.appLaunchEnabled()).toBe(true);
   });
 
+  it('toggles body.alt-held with the Alt key and clears it on blur', () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: true, bubbles: true }));
+    expect(document.body.classList.contains('alt-held')).toBe(true);
+
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt', altKey: false, bubbles: true }));
+    expect(document.body.classList.contains('alt-held')).toBe(false);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: true, bubbles: true }));
+    window.dispatchEvent(new Event('blur'));
+    expect(document.body.classList.contains('alt-held')).toBe(false);
+  });
+
   it('refreshAppShortcutBadges adds, shifts, and removes on-tile badges', () => {
     stubGridState({ order: ['app-a', 'app-b'] });
     const tileA = addTile('app-a', { name: 'Alpha' });
