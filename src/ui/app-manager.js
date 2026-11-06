@@ -387,8 +387,121 @@ window.updateAppLink = updateAppLink;
 window.syncAppGridOrder = syncAppGridOrder;
 window.renderDefaultAppVisibilityList = renderDefaultAppVisibilityList;
 
+// Settings > Apps apply helpers (export for toast.js resync, issue #1142)
+window.applyOpenNewTabSetting = applyOpenNewTabSetting;
+window.applyIconSize = applyIconSize;
+window.applyCurvature = applyCurvature;
+
 // Re-render when language changes
 window.addEventListener('languageChanged', renderAllApps);
+
+// Per-key tail of the last Settings > Apps write. A follow-up write waits for
+// it to settle so its rollback target is always a settled value: issuing a
+// second write while the first is in flight would capture the first write's
+// optimistic value, and a cascade of rejections would then resync the control
+// to that stale value (#1142 review).
+const appGridWriteTails = new Map();
+
+// Shared write for the Settings > Apps controls (#969, #1142): the storage
+// bridge's setItem returns false instead of throwing on a rejected write, so
+// the result must be inspected rather than relying on catch alone.
+function writeAppGridSetting(key, value) {
+  let persisted;
+  try {
+    persisted = typeof window.persistFeatureToggle === 'function'
+      ? window.persistFeatureToggle(key, value)
+      : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+  } catch (error) {
+    console.warn('Failed to save ' + key + ':', error);
+    persisted = false;
+  }
+  return persisted;
+}
+
+// Resolves once the bridge reports no pending write for key. Native
+// localStorage settles synchronously, so without the bridge's settlement
+// signal there is nothing left to wait for.
+function settleAppGridWrite(key) {
+  if (typeof localStorage.whenWriteSettled === 'function') {
+    return localStorage.whenWriteSettled(key);
+  }
+  return Promise.resolve(true);
+}
+
+function armAppGridWriteTail(key, tail) {
+  appGridWriteTails.set(key, tail);
+  tail.then(function () {
+    if (appGridWriteTails.get(key) === tail) {
+      appGridWriteTails.delete(key);
+    }
+  });
+}
+
+// Writes the value serialized per key, then runs done(persisted). Both run
+// synchronously when no write for the key is in flight; a follow-up write
+// chains behind the in-flight one and runs only after it settles, so two
+// rapid rejected changes can never roll back to each other's optimistic
+// value (#1142 review).
+function persistAppGridSetting(key, value, done) {
+  const previous = appGridWriteTails.get(key);
+  if (!previous) {
+    const persisted = writeAppGridSetting(key, value);
+    armAppGridWriteTail(key, settleAppGridWrite(key));
+    done(persisted);
+    return;
+  }
+  const next = previous.then(function () {
+    const persisted = writeAppGridSetting(key, value);
+    return settleAppGridWrite(key).then(function () {
+      done(persisted);
+    });
+  }).catch(function (error) {
+    console.warn('Failed to apply queued save for ' + key + ':', error);
+  });
+  armAppGridWriteTail(key, next);
+}
+
+// Shared removal for the Settings > Apps Reset action (#1142 review): the
+// bridge's removeItem reports nothing, so prefer removeItemAsync (mirrors
+// shortcuts.js) and resolve through a promise the per-key tail can chain on.
+function removeAppGridSetting(key) {
+  try {
+    if (typeof localStorage.removeItemAsync === 'function') {
+      return Promise.resolve(localStorage.removeItemAsync(key));
+    }
+    localStorage.removeItem(key);
+    return Promise.resolve(true); // NOSONAR - native removeItem returns void and cannot report failure.
+  } catch (error) {
+    console.warn('Failed to remove ' + key + ':', error);
+    return Promise.resolve(false);
+  }
+}
+
+// The Reset action rides the same per-key tail as the selection writes
+// (#1142 review): removing the key while a selection was still queued would
+// let that queued write re-add the key afterwards and undo the reset. done
+// runs once the removal settles, and the resulting promise becomes the new
+// tail so a selection clicked right after Reset still waits for the key to
+// be gone.
+function resetAppGridSetting(key, done) {
+  const remove = function () {
+    return removeAppGridSetting(key).then(function (persisted) {
+      done(persisted !== false);
+    });
+  };
+  const previous = appGridWriteTails.get(key);
+  const tail = (previous ? previous.then(remove) : remove()).catch(function (error) {
+    console.warn('Failed to apply queued reset for ' + key + ':', error);
+  });
+  armAppGridWriteTail(key, tail);
+}
+
+// Shared failure feedback for a rejected Settings > Apps write (#1142).
+function reportAppGridSaveError() {
+  if (typeof window.showFeatureToggleSaveError === 'function') {
+    window.showFeatureToggleSaveError();
+  }
+}
 
 // Load and apply open in new tab setting
 function loadOpenNewTabSetting() {
@@ -413,8 +526,13 @@ function applyOpenNewTabSetting() {
 const openNewTabSetting = document.getElementById('open-new-tab-setting');
 if (openNewTabSetting) {
   openNewTabSetting.addEventListener('change', function () {
-    localStorage.setItem('openAppsInNewTab', this.checked);
-    applyOpenNewTabSetting();
+    const checked = this.checked;
+    persistAppGridSetting('openAppsInNewTab', checked, function (persisted) {
+      // Re-apply either way: after a rejected write it restores the checkbox
+      // to the rolled-back value instead of leaving it desynced (#1142).
+      applyOpenNewTabSetting();
+      if (!persisted) reportAppGridSaveError();
+    });
   });
 }
 
@@ -466,16 +584,25 @@ function initIconSize() {
       if (!button) return;
       const size = parseInt(button.dataset.size, 10);
       if (!Number.isFinite(size)) return;
-      localStorage.setItem('iconSize', size);
-      applyIconSize();
+      persistAppGridSetting('iconSize', size, function (persisted) {
+        // Re-apply either way so a rejected write snaps the active button back.
+        applyIconSize();
+        if (!persisted) reportAppGridSaveError();
+      });
     });
   }
 
   const iconSizeReset = document.getElementById('icon-size-reset');
   if (iconSizeReset) {
-    iconSizeReset.addEventListener('click', function() {
-      localStorage.removeItem('iconSize');
-      applyIconSize();
+    iconSizeReset.addEventListener('click', function () {
+      // Serialized through the per-key tail so a selection queued just before
+      // Reset cannot re-add the key afterwards and undo it (#1142 review).
+      resetAppGridSetting('iconSize', function (persisted) {
+        // Re-apply either way so a rejected removal snaps the buttons back
+        // to the restored value instead of leaving them desynced (#1142).
+        applyIconSize();
+        if (!persisted) reportAppGridSaveError();
+      });
     });
   }
 
@@ -510,8 +637,12 @@ const curvatureRadios = document.querySelectorAll('input[name="curvature"]');
 curvatureRadios.forEach((radio) => {
   radio.addEventListener('change', function () {
     if (this.checked) {
-      localStorage.setItem('appsButtonCurvature', this.value);
-      applyCurvature();
+      const value = this.value;
+      persistAppGridSetting('appsButtonCurvature', value, function (persisted) {
+        // Re-apply either way so a rejected write snaps the radios back.
+        applyCurvature();
+        if (!persisted) reportAppGridSaveError();
+      });
     }
   });
 });
