@@ -729,6 +729,34 @@ describe('app-grid Settings > Apps writes report rejected writes (#1142)', () =>
     expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });
 
+  it('two rapid rejected icon-size writes resync to the last accepted value', async () => {
+    localStorage.setItem('iconSize', '48');
+    window.applyIconSize();
+    failWriteFor('iconSize', 'async');
+
+    getSizeButton(72).click();
+    getSizeButton(60).click();
+
+    // The second write is serialized behind the first, so storage still
+    // holds the first write's optimistic value and nothing has toasted yet.
+    expect(localStorage.getItem('iconSize')).toBe('72');
+    expect(getSizeButton(72).classList.contains('active')).toBe(true);
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    // Both writes were rejected: the control must show the last accepted
+    // value (48), never the intermediate optimistic 72.
+    expect(localStorage.getItem('iconSize')).toBe('48');
+    expect(getSizeButton(48).classList.contains('active')).toBe(true);
+    expect(getSizeButton(72).classList.contains('active')).toBe(false);
+    expect(getSizeButton(60).classList.contains('active')).toBe(false);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
   it('curvature radio keeps the value, restores the radio, and toasts', () => {
     localStorage.setItem('appsButtonCurvature', '20');
     window.applyCurvature();

@@ -395,10 +395,17 @@ window.applyCurvature = applyCurvature;
 // Re-render when language changes
 window.addEventListener('languageChanged', renderAllApps);
 
-// Shared write check for the Settings > Apps controls (#969, #1142): the
-// storage bridge's setItem returns false instead of throwing on a rejected
-// write, so the result must be inspected rather than relying on catch alone.
-function persistAppGridSetting(key, value) {
+// Per-key tail of the last Settings > Apps write. A follow-up write waits for
+// it to settle so its rollback target is always a settled value: issuing a
+// second write while the first is in flight would capture the first write's
+// optimistic value, and a cascade of rejections would then resync the control
+// to that stale value (#1142 review).
+const appGridWriteTails = new Map();
+
+// Shared write for the Settings > Apps controls (#969, #1142): the storage
+// bridge's setItem returns false instead of throwing on a rejected write, so
+// the result must be inspected rather than relying on catch alone.
+function writeAppGridSetting(key, value) {
   let persisted;
   try {
     persisted = typeof window.persistFeatureToggle === 'function'
@@ -409,6 +416,49 @@ function persistAppGridSetting(key, value) {
     persisted = false;
   }
   return persisted;
+}
+
+// Resolves once the bridge reports no pending write for key. Native
+// localStorage settles synchronously, so without the bridge's settlement
+// signal there is nothing left to wait for.
+function settleAppGridWrite(key) {
+  if (typeof localStorage.whenWriteSettled === 'function') {
+    return localStorage.whenWriteSettled(key);
+  }
+  return Promise.resolve(true);
+}
+
+function armAppGridWriteTail(key, tail) {
+  appGridWriteTails.set(key, tail);
+  tail.then(function () {
+    if (appGridWriteTails.get(key) === tail) {
+      appGridWriteTails.delete(key);
+    }
+  });
+}
+
+// Writes the value serialized per key, then runs done(persisted). Both run
+// synchronously when no write for the key is in flight; a follow-up write
+// chains behind the in-flight one and runs only after it settles, so two
+// rapid rejected changes can never roll back to each other's optimistic
+// value (#1142 review).
+function persistAppGridSetting(key, value, done) {
+  const previous = appGridWriteTails.get(key);
+  if (!previous) {
+    const persisted = writeAppGridSetting(key, value);
+    armAppGridWriteTail(key, settleAppGridWrite(key));
+    done(persisted);
+    return;
+  }
+  const next = previous.then(function () {
+    const persisted = writeAppGridSetting(key, value);
+    return settleAppGridWrite(key).then(function () {
+      done(persisted);
+    });
+  }).catch(function (error) {
+    console.warn('Failed to apply queued save for ' + key + ':', error);
+  });
+  armAppGridWriteTail(key, next);
 }
 
 // Shared failure feedback for a rejected Settings > Apps write (#1142).
@@ -441,11 +491,13 @@ function applyOpenNewTabSetting() {
 const openNewTabSetting = document.getElementById('open-new-tab-setting');
 if (openNewTabSetting) {
   openNewTabSetting.addEventListener('change', function () {
-    const persisted = persistAppGridSetting('openAppsInNewTab', this.checked);
-    // Re-apply either way: after a rejected write it restores the checkbox
-    // to the rolled-back value instead of leaving it desynced (#1142).
-    applyOpenNewTabSetting();
-    if (!persisted) reportAppGridSaveError();
+    const checked = this.checked;
+    persistAppGridSetting('openAppsInNewTab', checked, function (persisted) {
+      // Re-apply either way: after a rejected write it restores the checkbox
+      // to the rolled-back value instead of leaving it desynced (#1142).
+      applyOpenNewTabSetting();
+      if (!persisted) reportAppGridSaveError();
+    });
   });
 }
 
@@ -497,10 +549,11 @@ function initIconSize() {
       if (!button) return;
       const size = parseInt(button.dataset.size, 10);
       if (!Number.isFinite(size)) return;
-      const persisted = persistAppGridSetting('iconSize', size);
-      // Re-apply either way so a rejected write snaps the active button back.
-      applyIconSize();
-      if (!persisted) reportAppGridSaveError();
+      persistAppGridSetting('iconSize', size, function (persisted) {
+        // Re-apply either way so a rejected write snaps the active button back.
+        applyIconSize();
+        if (!persisted) reportAppGridSaveError();
+      });
     });
   }
 
@@ -543,10 +596,12 @@ const curvatureRadios = document.querySelectorAll('input[name="curvature"]');
 curvatureRadios.forEach((radio) => {
   radio.addEventListener('change', function () {
     if (this.checked) {
-      const persisted = persistAppGridSetting('appsButtonCurvature', this.value);
-      // Re-apply either way so a rejected write snaps the radios back.
-      applyCurvature();
-      if (!persisted) reportAppGridSaveError();
+      const value = this.value;
+      persistAppGridSetting('appsButtonCurvature', value, function (persisted) {
+        // Re-apply either way so a rejected write snaps the radios back.
+        applyCurvature();
+        if (!persisted) reportAppGridSaveError();
+      });
     }
   });
 });
