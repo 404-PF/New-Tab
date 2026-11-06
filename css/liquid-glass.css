@@ -91,3 +91,8 @@ body.light-theme.glass-liquid #app-grid .app-icon:not(.drag-over):not(.drag-over
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+
+/* Keep core.css's pressed-state shadow, which the rule above would otherwise override. */
+body.light-theme.glass-liquid #app-grid .app-icon:active:not(.drag-over):not(.drag-over-folder):not(.drag-over-folder-rejected) .icon[data-liquid-glass] {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
