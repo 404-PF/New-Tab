@@ -1144,6 +1144,13 @@ describe('remove from folder storage failures (#1137)', () => {
           expect(restored).not.toBeNull();
           expect(restored.classList.contains('folder-icon')).toBe(true);
           expect(restored.parentElement).toBe(grid);
+          // The paired appOrder write succeeded while appFolders rolled back,
+          // so the resync must also restore the folder's order slot ahead of
+          // its released apps or Alt+N slots and later renders lose it.
+          const orderAfterRestore = JSON.parse(localStorage.getItem('appOrder'));
+          expect(orderAfterRestore).toContain('folder-1');
+          expect(orderAfterRestore.indexOf('folder-1'))
+            .toBeLessThan(orderAfterRestore.indexOf('weather-app'));
           expect(showToast).toHaveBeenCalledTimes(1);
         });
       });

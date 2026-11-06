@@ -485,6 +485,23 @@ window.addEventListener('storageBridgeWriteError', function (event) {
       if (folders && typeof window.AppFolders.addFolderIconToGrid === 'function') {
         folders.forEach(function (folder) {
           if (!document.getElementById(folder.id)) {
+            const order = window.AppGridState && typeof window.AppGridState.getOrder === 'function'
+              ? window.AppGridState.getOrder()
+              : null;
+            if (Array.isArray(order) && !order.includes(folder.id) &&
+                typeof window.AppGridState.updateOrder === 'function') {
+              const savedOrder = window.AppGridState.updateOrder(function (currentOrder) {
+                const appIndex = Array.isArray(folder.apps)
+                  ? folder.apps.findIndex(function (appId) { return currentOrder.includes(appId); })
+                  : -1;
+                currentOrder.splice(appIndex === -1 ? currentOrder.length : appIndex, 0, folder.id);
+                return currentOrder;
+              });
+              if (savedOrder && window.Shortcuts &&
+                  typeof window.Shortcuts.refreshAppShortcutBadges === 'function') {
+                window.Shortcuts.refreshAppShortcutBadges();
+              }
+            }
             window.AppFolders.addFolderIconToGrid(folder);
           }
         });
