@@ -153,7 +153,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     expect(document.getElementById('clock').style.translate).toBe('');
   });
 
-  it('freezes elasticity while dragging', () => {
+  itWhenLiquidEnabled('freezes elasticity while dragging', () => {
     loadLiquidGlass();
     document.body.classList.add('glass-drag-active');
     move(150, 50);
@@ -161,7 +161,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     expect(document.getElementById('clock').style.translate).toBe('');
   });
 
-  it('disables and clears elasticity under reduced motion', () => {
+  itWhenLiquidEnabled('disables and clears elasticity under reduced motion', () => {
     loadLiquidGlass();
     move(150, 50);
     flush();

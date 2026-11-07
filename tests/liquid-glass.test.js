@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
 import { itWhenLiquidDisabled, itWhenLiquidEnabled } from './helpers/liquid-glass-flag.js';
 
@@ -268,11 +270,20 @@ describe('liquid glass core module (#1108)', () => {
 
     itWhenLiquidDisabled('keeps the effect off when the feature flag is disabled, even with the setting on', () => {
       const lg = loadLiquidGlass();
-      marked('div', 'panel');
+      const el = marked('div', 'panel');
       lg.init();
       expect(lg.isLiquid()).toBe(false);
+      expect(lg.enhance(el)).toBe(false);
       expect(document.body.classList.contains('glass-liquid')).toBe(false);
       expect(document.querySelector('.glass__warp')).toBeNull();
+    });
+
+    it('hides the Liquid Glass settings card in the production styles', () => {
+      const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
+      const cardOpen = html.match(/<div class="setting-card" hidden>[\s\S]*?id="liquid-glass-setting"/);
+      expect(cardOpen).not.toBeNull();
+      const featuresCss = readFileSync(resolve(process.cwd(), 'css/features.css'), 'utf8');
+      expect(featuresCss).toMatch(/\.setting-card\[hidden\]\s*\{\s*display:\s*none;?\s*\}/);
     });
 
     it('leaves classic pages untouched on init', () => {
