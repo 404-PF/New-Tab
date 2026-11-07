@@ -278,12 +278,10 @@ describe('liquid glass core module (#1108)', () => {
       expect(document.querySelector('.glass__warp')).toBeNull();
     });
 
-    it('hides the Liquid Glass settings card in the production styles', () => {
+    it('shows the Liquid Glass settings card in the production markup', () => {
       const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
-      const cardOpen = html.match(/<div class="setting-card" hidden>[\s\S]*?id="liquid-glass-setting"/);
+      const cardOpen = html.match(/<div class="setting-card">\s*<div class="setting-content">\s*<label for="liquid-glass-setting"/);
       expect(cardOpen).not.toBeNull();
-      const featuresCss = readFileSync(resolve(process.cwd(), 'css/features.css'), 'utf8');
-      expect(featuresCss).toMatch(/\.setting-card\[hidden\]\s*\{\s*display:\s*none;?\s*\}/);
     });
 
     it('leaves classic pages untouched on init', () => {
