@@ -12,6 +12,7 @@
   const EXPORT_KEYS = [
     'theme',
     'language',
+    'liquidGlassEnabled',
     'simpleMode',
     'homepageBg',
     'clockColor',
@@ -675,6 +676,7 @@
 
   const EXPECTED_SHAPES = {
     theme: function (v) { return typeof v === 'string'; },
+    liquidGlassEnabled: function (v) { return typeof v === 'boolean'; },
     language: function (v) { return typeof v === 'string'; },
     simpleMode: function (v) { return typeof v === 'boolean'; },
     homepageBg: function (v) { return typeof v === 'string'; },

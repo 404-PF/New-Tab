@@ -143,11 +143,9 @@
       lastScheduledTheme = theme;
       // A stored 'system' theme (issue #1011) takes precedence over the
       // schedule: track the boundary but let the OS preference decide the
-      // effective theme instead of overwriting the stored value. The
-      // standalone liquid-glass theme is likewise an explicit choice that the
-      // dark/light schedule must not replace.
+      // effective theme instead of overwriting the stored value.
       const storedTheme = window.loadTheme?.();
-      if (storedTheme === 'system' || storedTheme === 'liquid-glass') {
+      if (storedTheme === 'system') {
         syncRadioButtons();
         return;
       }
@@ -158,7 +156,7 @@
 
   function syncRadioButtons() {
     const theme = (window.loadTheme && window.loadTheme()) || 'dark';
-    ['dark', 'light', 'system', 'liquid-glass'].forEach(function (value) {
+    ['dark', 'light', 'system'].forEach(function (value) {
       const radio = document.querySelector('input[name="theme"][value="' + value + '"]');
       if (radio) radio.checked = theme === value;
     });

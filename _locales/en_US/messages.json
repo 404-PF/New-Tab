@@ -504,7 +504,7 @@
   },
   "liquidGlass": {
     "message": "Liquid Glass",
-    "description": "Theme option: standalone liquid glass theme"
+    "description": "Settings toggle: liquid glass effect for the dark and light themes"
   },
   "gamesPlay": {
     "message": "Play",

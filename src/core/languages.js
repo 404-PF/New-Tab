@@ -965,7 +965,7 @@ function applyGamesFpsMerges(code) {
   Object.assign(target, values);
 }
 
-// Liquid Glass theme label (#1109).
+// Liquid Glass setting label (#1109).
 const liquidGlassTranslations = {
   en: { liquidGlass: 'Liquid Glass' },
   zh: { liquidGlass: '液态玻璃' },
