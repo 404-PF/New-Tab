@@ -1193,6 +1193,13 @@ body.light-theme .drag-placeholder {
   white-space: nowrap;
   pointer-events: none;
   z-index: 1;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+/* Badges only show while Alt is held (shortcuts.js toggles the body class). */
+body.alt-held .app-shortcut-badge {
+  opacity: 1;
 }
 
 /* Folder previews clip their stacked icons; keep the badge inside. */
