@@ -18,6 +18,20 @@ describe('liquid glass icon tile layering (#1155)', () => {
     expect(block).toMatch(/position: relative;\s*z-index: 1;/);
   });
 
+  it('drops the tile own backdrop-filter so the warp layer samples the wallpaper', () => {
+    const selector = 'body.glass-liquid [data-liquid-glass].glass--liquid';
+    expect(css).toMatch(new RegExp(`${selector.replace(/[.[\]]/g, '\\$&')} \\{[^}]*backdrop-filter: none;`));
+  });
+
+  it('keeps enhanced tiles out of the light theme fill so they share the dark theme tokens', () => {
+    const glass = readFileSync('css/glass.css', 'utf8');
+    const features = readFileSync('css/features.css', 'utf8');
+    expect(glass).toContain('.icon:not(.glass--liquid),');
+    expect(glass.match(/\.icon:not\(\.glass--liquid\),/g)).toHaveLength(2);
+    expect(glass).not.toMatch(/^\s*\.icon,\s*$/m);
+    expect(features).toContain('body.light-theme .icon:not(.glass--liquid) {');
+  });
+
   it('uses a gentle displacement scale for icon tiles', () => {
     const m = js.match(/icon: \{[^}]*scale: (\d+)/);
     expect(Number(m[1])).toBeLessThanOrEqual(14);

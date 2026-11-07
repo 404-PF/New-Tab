@@ -18,6 +18,14 @@ body.glass-liquid .glass__hover {
   pointer-events: none;
 }
 
+/* An element's own backdrop-filter makes it a backdrop root, so the warp child
+   would sample only the tile (flat grey) instead of the wallpaper. Folder tiles
+   carry one in core.css; drop it on enhanced elements. */
+body.glass-liquid [data-liquid-glass].glass--liquid {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 body.glass-liquid .glass__warp {
   overflow: hidden;
   backdrop-filter: var(--lg-filter);
@@ -76,4 +84,9 @@ body.glass-liquid .app-icon .icon[data-liquid-glass] > img,
 body.glass-liquid .app-icon .icon[data-liquid-glass] > svg {
   position: relative;
   z-index: 1;
+}
+
+/* Folder tiles take the dark theme's border so both themes match. */
+body.glass-liquid.light-theme .app-icon.folder-icon .icon[data-liquid-glass].glass--liquid {
+  border-color: rgba(255, 255, 255, 0.15);
 }

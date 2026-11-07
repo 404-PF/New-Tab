@@ -177,7 +177,7 @@ describe('Motto action buttons share the pill glass treatment (#975)', () => {
   it('includes both buttons in the light-theme primary surface group', () => {
     const css = readFileSync(GLASS_CSS_PATH, 'utf-8');
     const match = css.match(
-      /body\.light-theme :is\(([^)]*)\)[^{]*\{[^}]*background:\s*var\(--glass-surface\)/
+      /body\.light-theme :is\(((?:[^()]|\([^)]*\))*)\)[^{]*\{[^}]*background:\s*var\(--glass-surface\)/
     );
     expect(match).not.toBeNull();
     expect(match[1]).toContain('#motto-container');
