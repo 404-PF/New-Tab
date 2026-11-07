@@ -11,6 +11,7 @@
   //   lastUpdateCheck (transient)
   const EXPORT_KEYS = [
     'theme',
+    'language',
     'liquidGlassEnabled',
     'simpleMode',
     'homepageBg',

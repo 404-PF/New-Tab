@@ -41,6 +41,8 @@ beforeAll(() => {
 beforeEach(() => {
   document.body.classList.remove('light-theme', 'glass-liquid');
   localStorage.removeItem('glassStyle');
+  localStorage.removeItem('liquidGlassEnabled');
+  liquidToggle().checked = true;
   if (!document.querySelector('input[name="theme"]')) {
     document.body.insertAdjacentHTML('beforeend', THEMES.map((value) => (
       `<input type="radio" name="theme" value="${value}">`
@@ -214,6 +216,14 @@ describe('legacy Liquid Glass migration', () => {
     localStorage.setItem('theme', 'liquid-glass');
     restorers.push(failStorageWritesFor('theme'));
     window.migrateGlassStyle();
+    expect(window.loadTheme()).toBe('dark');
+  });
+
+  it('keeps reading the legacy theme as dark when the rewrite is rejected asynchronously', async () => {
+    localStorage.setItem('theme', 'liquid-glass');
+    restorers.push(failStorageWritesFor('theme', 'async'));
+    window.migrateGlassStyle();
+    await settle();
     expect(window.loadTheme()).toBe('dark');
   });
 });
