@@ -22,11 +22,57 @@ on:
         description: 'Pull request number to drive'
         required: true
         type: number
+  schedule:
+    # Every 30 minutes: start a new drive round on each open same-repo PR
+    # that has no drive running. A round ends when the loop stops; the next
+    # tick starts the next round until the PR merges or closes.
+    - cron: '*/30 * * * *'
 
 # Concurrency is declared on the drive job, not here, so an unauthorized
 # /drive comment can never cancel an authorized run (same as issue-implement).
 
 jobs:
+  # Scheduled runs never reach authorize (its if excludes schedule); this job
+  # dispatches a normal workflow_dispatch run per PR instead.
+  auto-drive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      pull-requests: read
+
+    steps:
+      - name: Dispatch a drive round for each open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Skip a PR while its drive is queued or running. The drive
+          # concurrency group cancels the older run, so overlapping would
+          # cut a round short.
+          ACTIVE_FILE="$RUNNER_TEMP/active-drives.txt"
+          gh run list --repo "$GH_REPO" --workflow pr-drive.yml --limit 100 \
+            --json status,displayTitle \
+            --jq '.[] | select(.status != "completed") | .displayTitle' > "$ACTIVE_FILE"
+
+          # Skip a PR while its drive is queued or running (the drive
+          # concurrency group would cancel the older run), and skip PRs
+          # labelled wip (paused with /wip).
+          gh pr list --repo "$GH_REPO" --state open --limit 1000 \
+            --json number,baseRefName,isCrossRepository,labels \
+            --jq '.[] | select(.baseRefName == "main" and (.isCrossRepository | not)
+              and ((.labels | map(.name) | index("wip")) | not)) | .number' \
+            | while read -r PR_NUMBER; do
+                if grep -qxF "pr-drive #$PR_NUMBER" "$ACTIVE_FILE"; then
+                  echo "PR #$PR_NUMBER: a drive is still active; skipping."
+                  continue
+                fi
+                gh workflow run pr-drive.yml --repo "$GH_REPO" -f pr_number="$PR_NUMBER"
+                echo "PR #$PR_NUMBER: dispatched a drive round."
+              done
+
   authorize:
     runs-on: ubuntu-latest
     timeout-minutes: 10

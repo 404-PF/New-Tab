@@ -1,0 +1,88 @@
+name: wip-pause
+
+# A "/wip" comment on an issue or pull request pauses its scheduled automation
+# (issue-implement auto-dispatch and pr-drive auto-drive) by adding the "wip"
+# label. Those schedulers skip labelled items. Remove the label to resume.
+# Manual /implement and /drive runs are not affected.
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  pause:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    if: >
+      github.event.comment.user.type != 'Bot' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+      startsWith(github.event.comment.body, '/wip')
+
+    steps:
+      - name: Check /wip command and permission
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+          # Used ONLY for the permission lookup below (GITHUB_TOKEN cannot read
+          # collaborator permissions).
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          set -euo pipefail
+          export -n GH_PAT
+          first_line="$(printf '%s' "$COMMENT_BODY" | sed -n '1s/[[:space:]]*$//p')"
+          case "$first_line" in
+            /wip|/wip[[:space:]]*) ;;
+            *)
+              echo 'Not a /wip command, skipping.'
+              echo 'proceed=false' >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+
+          # Same rule as /drive: OWNER is trusted; others need admin, maintain,
+          # or write. A missing GH_PAT or failed lookup denies (fail closed).
+          AUTHORIZED=false
+          if [ "$AUTHOR_ASSOCIATION" = 'OWNER' ]; then
+            AUTHORIZED=true
+          elif [ -z "${GH_PAT:-}" ]; then
+            echo 'GH_PAT is not set; cannot verify non-owner permission, denying /wip request.'
+          elif PERMISSION="$(GH_TOKEN="$GH_PAT" gh api "repos/$GITHUB_REPOSITORY/collaborators/$COMMENT_AUTHOR/permission" --jq .permission 2>/dev/null)"; then
+            echo "Permission for $COMMENT_AUTHOR: $PERMISSION"
+            case "$PERMISSION" in
+              admin|maintain|write) AUTHORIZED=true ;;
+            esac
+          else
+            echo "Permission check failed for $COMMENT_AUTHOR; denying /wip request."
+          fi
+
+          if [ "$AUTHORIZED" != true ]; then
+            echo 'User not authorized, exiting.'
+            echo 'proceed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content='eyes' >/dev/null || true
+          echo 'proceed=true' >> "$GITHUB_OUTPUT"
+
+      - name: Add wip label
+        if: steps.gate.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          IS_PR: ${{ github.event.issue.pull_request != null }}
+        run: |
+          set -euo pipefail
+          gh label create wip --repo "$GH_REPO" --color FBCA04 \
+            --description 'Paused: scheduled automation skips this item' --force >/dev/null
+          gh issue edit "$NUMBER" --repo "$GH_REPO" --add-label wip >/dev/null
+          KIND=issue
+          [ "$IS_PR" = 'true' ] && KIND='pull request'
+          gh issue comment "$NUMBER" --repo "$GH_REPO" \
+            --body "Paused: this $KIND is labelled \`wip\`, so scheduled automation will skip it. Remove the label to resume."
