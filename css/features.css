@@ -733,6 +733,10 @@ body.light-theme .upload-bg-btn:hover {
 }
 
 /* Modern Date Settings */
+.setting-card[hidden] {
+  display: none;
+}
+
 .setting-card {
   display: flex;
   align-items: center;

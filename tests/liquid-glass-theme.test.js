@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
+import { itWhenLiquidEnabled } from './helpers/liquid-glass-flag.js';
 import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
 const themeRadio = (value) => document.querySelector(`input[name="theme"][value="${value}"]`);
@@ -253,7 +254,7 @@ describe('theme switching with the real LiquidGlass module', () => {
     delete globalThis.SVGFilterElement;
   });
 
-  it('enhances both dark and light themes and removes the effect when the setting is turned off', () => {
+  itWhenLiquidEnabled('enhances both dark and light themes and removes the effect when the setting is turned off', () => {
     const panel = document.createElement('div');
     panel.setAttribute('data-liquid-glass', 'panel');
     document.body.appendChild(panel);

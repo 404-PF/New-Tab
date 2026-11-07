@@ -1,4 +1,7 @@
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
+import { itWhenLiquidDisabled, itWhenLiquidEnabled } from './helpers/liquid-glass-flag.js';
 
 function fakeCanvasContext() {
   return {
@@ -77,7 +80,7 @@ describe('liquid glass core module (#1108)', () => {
   });
 
   describe('isLiquid and probe', () => {
-    it('is true when the setting is on and the probe passes', () => {
+    itWhenLiquidEnabled('is true when the setting is on and the probe passes', () => {
       const lg = loadLiquidGlass();
       expect(lg.isLiquid()).toBe(true);
     });
@@ -88,7 +91,7 @@ describe('liquid glass core module (#1108)', () => {
       expect(lg.getGlassStyle()).toBe('classic');
     });
 
-    it.each(['dark', 'light', 'system'])('enhances the %s theme', (theme) => {
+    itWhenLiquidEnabled.each(['dark', 'light', 'system'])('enhances the %s theme', (theme) => {
       const lg = loadLiquidGlass({ theme });
       expect(lg.isLiquid()).toBe(true);
       expect(lg.getGlassStyle()).toBe('liquid');
@@ -98,7 +101,7 @@ describe('liquid glass core module (#1108)', () => {
       expect(el.querySelector('.glass__warp')).not.toBeNull();
     });
 
-    it('defaults to on when the setting key is missing', () => {
+    itWhenLiquidEnabled('defaults to on when the setting key is missing', () => {
       localStorage.removeItem('liquidGlassEnabled');
       globalThis.CSS = { supports: () => true };
       globalThis.SVGFilterElement = function SVGFilterElement() {};
@@ -117,7 +120,7 @@ describe('liquid glass core module (#1108)', () => {
       expect(el.querySelector('.glass__warp')).toBeNull();
     });
 
-    it('logs the probe result once', () => {
+    itWhenLiquidEnabled('logs the probe result once', () => {
       const lg = loadLiquidGlass();
       lg.isLiquid();
       lg.isLiquid();
@@ -126,7 +129,7 @@ describe('liquid glass core module (#1108)', () => {
   });
 
   describe('enhance and release', () => {
-    it('injects the warp layer and highlight spans', () => {
+    itWhenLiquidEnabled('injects the warp layer and highlight spans', () => {
       const lg = loadLiquidGlass();
       const el = marked();
       expect(lg.enhance(el)).toBe(true);
@@ -137,7 +140,7 @@ describe('liquid glass core module (#1108)', () => {
       expect(el.classList.contains('glass--liquid')).toBe(true);
     });
 
-    it('references a shared filter through the warp layer filter variable', () => {
+    itWhenLiquidEnabled('references a shared filter through the warp layer filter variable', () => {
       const lg = loadLiquidGlass();
       const el = marked('div', 'icon');
       lg.enhance(el);
@@ -145,7 +148,7 @@ describe('liquid glass core module (#1108)', () => {
       expect(warp.style.getPropertyValue('--lg-filter')).toContain('url(#lg-standard-icon)');
     });
 
-    it('is idempotent', () => {
+    itWhenLiquidEnabled('is idempotent', () => {
       const lg = loadLiquidGlass();
       const el = marked();
       lg.enhance(el);
@@ -154,7 +157,7 @@ describe('liquid glass core module (#1108)', () => {
       expect(el.querySelectorAll('.glass__highlight')).toHaveLength(1);
     });
 
-    it('release removes the injected nodes and is safe to repeat', () => {
+    itWhenLiquidEnabled('release removes the injected nodes and is safe to repeat', () => {
       const lg = loadLiquidGlass();
       const el = marked();
       el.appendChild(document.createTextNode('label'));
@@ -168,7 +171,7 @@ describe('liquid glass core module (#1108)', () => {
       expect(lg.release(document.createElement('div'))).toBe(false);
     });
 
-    it('re-enhances after release', () => {
+    itWhenLiquidEnabled('re-enhances after release', () => {
       const lg = loadLiquidGlass();
       const el = marked();
       lg.enhance(el);
@@ -177,7 +180,7 @@ describe('liquid glass core module (#1108)', () => {
       expect(el.querySelectorAll('.glass__warp')).toHaveLength(1);
     });
 
-    it('does not duplicate layers when a marked element is removed and re-added', async () => {
+    itWhenLiquidEnabled('does not duplicate layers when a marked element is removed and re-added', async () => {
       const lg = loadLiquidGlass();
       lg.init();
       const el = marked();
@@ -201,7 +204,7 @@ describe('liquid glass core module (#1108)', () => {
   });
 
   describe('filter registry', () => {
-    it('creates exactly one filter per map and size class', () => {
+    itWhenLiquidEnabled('creates exactly one filter per map and size class', () => {
       const lg = loadLiquidGlass();
       lg.enhance(marked('div', 'icon'));
       lg.enhance(marked('div', 'icon'));
@@ -214,7 +217,7 @@ describe('liquid glass core module (#1108)', () => {
       expect(document.querySelectorAll('#liquid-glass-defs')).toHaveLength(1);
     });
 
-    it('wires the displacement chain into each filter', () => {
+    itWhenLiquidEnabled('wires the displacement chain into each filter', () => {
       const lg = loadLiquidGlass();
       lg.enhance(marked('div', 'pill'));
       const filter = document.getElementById('lg-standard-pill');
@@ -224,7 +227,7 @@ describe('liquid glass core module (#1108)', () => {
   });
 
   describe('MutationObserver pickup', () => {
-    it('enhances marked popovers added after init', async () => {
+    itWhenLiquidEnabled('enhances marked popovers added after init', async () => {
       const lg = loadLiquidGlass();
       lg.init();
       const popover = document.createElement('div');
@@ -257,12 +260,30 @@ describe('liquid glass core module (#1108)', () => {
   });
 
   describe('init and reduced motion', () => {
-    it('adds the body class and enhances existing marked elements when liquid', () => {
+    itWhenLiquidEnabled('adds the body class and enhances existing marked elements when liquid', () => {
       const lg = loadLiquidGlass();
       const el = marked();
       lg.init();
       expect(document.body.classList.contains('glass-liquid')).toBe(true);
       expect(el.querySelector('.glass__warp')).not.toBeNull();
+    });
+
+    itWhenLiquidDisabled('keeps the effect off when the feature flag is disabled, even with the setting on', () => {
+      const lg = loadLiquidGlass();
+      const el = marked('div', 'panel');
+      lg.init();
+      expect(lg.isLiquid()).toBe(false);
+      expect(lg.enhance(el)).toBe(false);
+      expect(document.body.classList.contains('glass-liquid')).toBe(false);
+      expect(document.querySelector('.glass__warp')).toBeNull();
+    });
+
+    it('hides the Liquid Glass settings card in the production styles', () => {
+      const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
+      const cardOpen = html.match(/<div class="setting-card" hidden>[\s\S]*?id="liquid-glass-setting"/);
+      expect(cardOpen).not.toBeNull();
+      const featuresCss = readFileSync(resolve(process.cwd(), 'css/features.css'), 'utf8');
+      expect(featuresCss).toMatch(/\.setting-card\[hidden\]\s*\{\s*display:\s*none;?\s*\}/);
     });
 
     it('leaves classic pages untouched on init', () => {
