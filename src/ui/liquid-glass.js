@@ -504,8 +504,22 @@
     document.body.classList.remove(ROOT_CLASS);
   }
 
+  function syncSettingsCard() {
+    const checkbox = document.getElementById('liquid-glass-setting');
+    const card = checkbox && checkbox.closest('.setting-card');
+    if (card) card.hidden = !getProbe().supported;
+  }
+
+  function onStorageChange(e) {
+    if (e.key !== STORAGE_KEY) return;
+    const checkbox = document.getElementById('liquid-glass-setting');
+    if (checkbox) checkbox.checked = getGlassStyle() === 'liquid';
+    init();
+  }
+
   function init() {
     if (!document.body) return;
+    syncSettingsCard();
     if (typeof window.onReducedMotionChange === 'function' && !unsubscribeMotion) {
       unsubscribeMotion = window.onReducedMotionChange((reduced) => {
         if (reduced) {
@@ -530,6 +544,8 @@
       startElasticity();
     }
   }
+
+  window.addEventListener('storage', onStorageChange);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
