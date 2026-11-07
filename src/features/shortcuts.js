@@ -840,8 +840,9 @@
     initialized = true;
     activeShortcuts = loadShortcuts();
     document.addEventListener('keydown', handleKeydown);
-    document.addEventListener('keydown', syncAltHeldClass);
-    document.addEventListener('keyup', syncAltHeldClass);
+    // Capture phase: the rebind handler stops propagation of every keydown.
+    document.addEventListener('keydown', syncAltHeldClass, true);
+    document.addEventListener('keyup', syncAltHeldClass, true);
     // keyup never arrives when focus leaves the page while Alt is down.
     window.addEventListener('blur', clearAltHeldClass);
     document.addEventListener('visibilitychange', clearAltHeldClass);

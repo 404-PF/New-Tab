@@ -1296,6 +1296,25 @@ describe('Shortcuts - positional app launch (#1061)', () => {
     expect(document.body.classList.contains('alt-held')).toBe(false);
   });
 
+  it('clears body.alt-held when the tab becomes hidden', () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: true, bubbles: true }));
+    expect(document.body.classList.contains('alt-held')).toBe(true);
+
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(document.body.classList.contains('alt-held')).toBe(false);
+  });
+
+  it('tracks Alt while shortcut rebinding swallows keydown events', () => {
+    const stopper = (e) => e.stopPropagation();
+    document.addEventListener('keydown', stopper, true);
+    try {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: true, bubbles: true }));
+      expect(document.body.classList.contains('alt-held')).toBe(true);
+    } finally {
+      document.removeEventListener('keydown', stopper, true);
+    }
+  });
+
   it('refreshAppShortcutBadges adds, shifts, and removes on-tile badges', () => {
     stubGridState({ order: ['app-a', 'app-b'] });
     const tileA = addTile('app-a', { name: 'Alpha' });
