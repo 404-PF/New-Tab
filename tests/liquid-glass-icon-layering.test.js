@@ -18,18 +18,35 @@ describe('liquid glass icon tile layering (#1155)', () => {
     expect(block).toMatch(/position: relative;\s*z-index: 1;/);
   });
 
-  it('drops the tile own backdrop-filter so the warp layer samples the wallpaper', () => {
-    const selector = 'body.glass-liquid [data-liquid-glass].glass--liquid';
-    expect(css).toMatch(new RegExp(`${selector.replace(/[.[\]]/g, '\\$&')} \\{[^}]*backdrop-filter: none;`));
+  it('drops the own backdrop-filter of every enhanced element, prefixed and unprefixed', () => {
+    const block = css.split('}').find((b) => /body\.glass-liquid \.glass--liquid \{/.test(b));
+    expect(block).toBeDefined();
+    expect(block).toMatch(/(^|[\s;{])backdrop-filter: none;/);
+    expect(block).toMatch(/-webkit-backdrop-filter: none;/);
   });
 
-  it('keeps enhanced tiles out of the light theme fill so they share the dark theme tokens', () => {
+  it('restores the original blur where the warp layer is hidden', () => {
+    expect(css).toMatch(/\.app-icon\.drag-over \.icon\.glass--liquid \{[^}]*backdrop-filter: blur\(var\(--glass-blur-card\)\)/);
+    expect(css).toMatch(/\.app-icon\.folder-icon\.drag-over-folder \.icon\.glass--liquid[^{]*\{[^}]*backdrop-filter: blur\(var\(--glass-overlay-blur\)\)/);
+  });
+
+  it('keeps the folder drop and rejection outlines out of the dark-theme border reset', () => {
+    expect(css).toContain(
+      'body.glass-liquid.light-theme .app-icon.folder-icon:not(.drag-over-folder):not(.drag-over-folder-rejected) .icon[data-liquid-glass].glass--liquid {'
+    );
+  });
+
+  it('excludes exactly the enhanced tiles from every light theme .icon surface and hover rule', () => {
+    const mirror = '.icon:not(:where(.app-icon .icon[data-liquid-glass].glass--liquid))';
+    ['css/glass.css', 'css/features.css'].forEach((file) => {
+      const source = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+      const selectors = source.split('{').map((chunk) => chunk.split('}').pop());
+      const bare = selectors.filter((s) => /(^|[\s(,])\.icon(?![\w-])(?!:not)/.test(s) && !/\.app-icon[\w.-]*\s+\.icon/.test(s));
+      expect(bare, file).toEqual([]);
+    });
     const glass = readFileSync('css/glass.css', 'utf8');
-    const features = readFileSync('css/features.css', 'utf8');
-    expect(glass).toContain('.icon:not(.glass--liquid),');
-    expect(glass.match(/\.icon:not\(\.glass--liquid\),/g)).toHaveLength(2);
-    expect(glass).not.toMatch(/^\s*\.icon,\s*$/m);
-    expect(features).toContain('body.light-theme .icon:not(.glass--liquid) {');
+    expect(glass.split(mirror).length - 1).toBe(2);
+    expect(readFileSync('css/features.css', 'utf8')).toContain(`body.light-theme ${mirror} {`);
   });
 
   it('uses a gentle displacement scale for icon tiles', () => {

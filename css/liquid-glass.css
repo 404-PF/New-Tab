@@ -20,10 +20,24 @@ body.glass-liquid .glass__hover {
 
 /* An element's own backdrop-filter makes it a backdrop root, so the warp child
    would sample only the tile (flat grey) instead of the wallpaper. Folder tiles
-   carry one in core.css; drop it on enhanced elements. */
-body.glass-liquid [data-liquid-glass].glass--liquid {
+   carry one in core.css; drop it on every enhanced element, then restore the
+   original blur in the states where the warp layer is hidden. */
+body.glass-liquid .glass--liquid {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+body.glass-liquid .app-icon.drag-over .icon.glass--liquid {
+  -webkit-backdrop-filter: blur(var(--glass-blur-card));
+  backdrop-filter: blur(var(--glass-blur-card));
+}
+
+body.glass-liquid.glass-drag-active .app-icon.folder-icon .icon.glass--liquid,
+body.glass-liquid .app-icon.folder-icon.drag-over-folder .icon.glass--liquid,
+body.glass-liquid .app-icon.folder-icon.drag-drop-landed .icon.glass--liquid,
+body.glass-liquid .app-grid.dodging .app-icon.folder-icon .icon.glass--liquid {
+  -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
+  backdrop-filter: blur(var(--glass-overlay-blur));
 }
 
 body.glass-liquid .glass__warp {
@@ -86,7 +100,8 @@ body.glass-liquid .app-icon .icon[data-liquid-glass] > svg {
   z-index: 1;
 }
 
-/* Folder tiles take the dark theme's border so both themes match. */
-body.glass-liquid.light-theme .app-icon.folder-icon .icon[data-liquid-glass].glass--liquid {
+/* Folder tiles take the dark theme's border so both themes match; the drop
+   and rejection outlines keep their own colours. */
+body.glass-liquid.light-theme .app-icon.folder-icon:not(.drag-over-folder):not(.drag-over-folder-rejected) .icon[data-liquid-glass].glass--liquid {
   border-color: rgba(255, 255, 255, 0.15);
 }

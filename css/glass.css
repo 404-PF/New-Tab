@@ -102,7 +102,7 @@ body.light-theme {
    liquid-glass.css) instead of the light theme's frosted fill. */
 body.light-theme :is(
   .search-bar,
-  .icon:not(.glass--liquid),
+  .icon:not(:where(.app-icon .icon[data-liquid-glass].glass--liquid)),
   .weather-widget,
   .focus-mode-indicator,
   #motto-container,
@@ -264,7 +264,7 @@ body.light-theme :is(.settings-menu, .ai-chat-sidebar) {
 /* Shared hover and active states. */
 body.light-theme :is(
   .search-bar,
-  .icon:not(.glass--liquid),
+  .icon:not(:where(.app-icon .icon[data-liquid-glass].glass--liquid)),
   .weather-widget,
   .focus-mode-indicator,
   #motto-container,
