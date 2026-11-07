@@ -1,8 +1,9 @@
 // src/ui/liquid-glass.js - Liquid glass core: structure injection, shared SVG
 // filter registry, capability probe, and MutationObserver pickup.
 //
-// Liquid Glass is an enhancement of the dark and light themes. It is on unless
-// the Settings > Themes toggle (localStorage `liquidGlassEnabled`) is 'false'.
+// Liquid Glass is an enhancement of the dark and light themes. It is currently
+// disabled via LIQUID_GLASS_ENABLED. When enabled, it is on unless the
+// Settings > Themes toggle (localStorage `liquidGlassEnabled`) is 'false'.
 // When the toggle is off or the probe fails, enhance() does nothing and init()
 // tears down any existing glass.
 //
@@ -13,6 +14,9 @@
 (function () {
   'use strict';
 
+  // Temporarily disabled for this release. With the flag off, isLiquid() is
+  // always false, init() tears down any glass, and the Settings toggle is hidden.
+  const LIQUID_GLASS_ENABLED = false;
   const STORAGE_KEY = 'liquidGlassEnabled';
   const ATTR = 'data-liquid-glass';
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -69,7 +73,7 @@
   }
 
   function isLiquid() {
-    return getGlassStyle() === 'liquid' && getProbe().supported;
+    return LIQUID_GLASS_ENABLED && getGlassStyle() === 'liquid' && getProbe().supported;
   }
 
   function isReducedMotion() {

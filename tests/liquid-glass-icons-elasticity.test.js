@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { injectScript } from './helpers/inject-script.js';
+import { itWhenLiquidEnabled } from './helpers/liquid-glass-flag.js';
 
 const css = readFileSync('css/liquid-glass.css', 'utf8');
 const dragSrc = readFileSync('src/features/drag-drop.js', 'utf8');
@@ -73,7 +74,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
 
   const settle = () => new Promise((r) => setTimeout(r, 0));
 
-  it('does not enhance icons before the grid is rendered, then does on appGridReady', async () => {
+  itWhenLiquidEnabled('does not enhance icons before the grid is rendered, then does on appGridReady', async () => {
     loadLiquidGlass();
     const icon = document.querySelector('.icon');
     expect(icon.hasAttribute('data-liquid-glass')).toBe(false);
@@ -84,7 +85,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     expect(icon.classList.contains('glass--liquid')).toBe(true);
   });
 
-  it('waits for the fadeSlideUp entrance animation before enhancing icons', () => {
+  itWhenLiquidEnabled('waits for the fadeSlideUp entrance animation before enhancing icons', () => {
     loadLiquidGlass();
     const grid = document.getElementById('app-grid');
     const icon = document.querySelector('.icon');
@@ -103,7 +104,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     expect(icon.getAttribute('data-liquid-glass')).toBe('icon');
   });
 
-  it('enhances icons added after render', async () => {
+  itWhenLiquidEnabled('enhances icons added after render', async () => {
     loadLiquidGlass();
     window.__appGridState.setPhase('rendered');
     const a = document.createElement('a');
@@ -123,7 +124,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     expect(css).toContain('.app-icon.drag-drop-landed .glass__warp');
   });
 
-  it('applies elasticity via translate (never transform) on T1 targets', () => {
+  itWhenLiquidEnabled('applies elasticity via translate (never transform) on T1 targets', () => {
     const ids = ['search-bar-wrapper', 'motto-container', 'weather-widget', 'focus-mode-indicator'];
     document.getElementById('clock').insertAdjacentHTML('afterend',
       '<div class="search-bar-wrapper"></div>' +
@@ -143,7 +144,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     });
   });
 
-  it('resets elasticity offsets when an app drag starts', () => {
+  itWhenLiquidEnabled('resets elasticity offsets when an app drag starts', () => {
     loadLiquidGlass();
     move(150, 50);
     flush();
@@ -172,7 +173,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     expect(document.getElementById('clock').style.translate).toBe('');
   });
 
-  it('pauses and resets when the tab hides', () => {
+  itWhenLiquidEnabled('pauses and resets when the tab hides', () => {
     loadLiquidGlass();
     move(150, 50);
     flush();
