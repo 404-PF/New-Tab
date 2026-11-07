@@ -330,7 +330,7 @@ window.i18n.__registerLocale('ko', {
   releaseNotes057TodoUndo: '할 일 목록: 방금 삭제한 작업을 실행 취소할 수 있습니다',
   releaseNotes057StandaloneTodo: '독립형 할 일 앱을 다시 사용할 수 있습니다',
   releaseNotes057EnglishMottos: '번역된 명언이 없는 언어에서는 일일 명언이 영어로 표시됩니다',
-  releaseNotes057SettingsFixes: '수정: 뽀모도로 설정과 할 일 집중 통계가 안정적으로 저장됩니다',
+  releaseNotes057SettingsFixes: '수정: 포모도로 설정과 할 일 집중 통계가 안정적으로 저장됩니다',
   releaseNotes057Accessibility: '아이콘만 있는 버튼에 스크린 리더용 레이블이 추가되었습니다',
   releaseNotes055SystemTheme: '기기의 밝은 모드와 어두운 모드를 따르는 시스템 테마가 추가되었습니다',
   releaseNotes055TodoSortOrder: '할 일 목록에서 정렬 순서를 선택할 수 있습니다: 수동, 마감일, 우선순위, 생성일, A-Z',
