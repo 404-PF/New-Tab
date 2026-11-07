@@ -220,7 +220,7 @@ jobs:
       issues: write
       pull-requests: write
       actions: read
-      checks: read
+      checks: write
     env:
       PR_NUMBER: ${{ needs.authorize.outputs.pr_number }}
       HEAD_REF: ${{ needs.authorize.outputs.head_ref }}
@@ -230,6 +230,24 @@ jobs:
       # Lets the failure report tell a job-level timeout from a superseded run.
       - name: Record job start time
         run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
+      # Visible pr-drive check on the head commit (Checks section). pr-merge
+      # waits while it is in progress. Best effort: a failure here must not
+      # stop the drive.
+      - name: Start pr-drive check run
+        id: check
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          CHECK_ID="$(jq -n --arg sha "$HEAD_SHA" --arg url "$RUN_URL" \
+            '{name: "pr-drive", head_sha: $sha, status: "in_progress", details_url: $url,
+              output: {title: "Drive running", summary: "pr-drive is driving this PR. Progress: \($url)"}}' \
+            | gh api -X POST "repos/$GH_REPO/check-runs" --input - --jq .id)"
+          echo "check_id=$CHECK_ID" >> "$GITHUB_OUTPUT"
 
       # persist-credentials:false keeps GITHUB_TOKEN out of .git/config so the
       # agent cannot read it. fetch-depth:0 brings origin/main for the rebase.
@@ -873,3 +891,30 @@ jobs:
           fi
           gh pr comment "$PR_NUMBER" --repo "$GH_REPO" \
             --body "PR drive failed or timed out. See the workflow run: $RUN_URL"
+
+      # Completes the check started above. Always "neutral" unless the drive
+      # reached "nothing left to drive" ("success"), so a stopped or failed
+      # drive never blocks merging on its own; the other checks still do.
+      - name: Finish pr-drive check run
+        if: always() && steps.check.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          CHECK_ID: ${{ steps.check.outputs.check_id }}
+          ROUNDS: ${{ steps.loop.outputs.rounds }}
+          STOP_REASON: ${{ steps.loop.outputs.stop_reason }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          if [ "$STOP_REASON" = 'nothing left to drive' ]; then
+            CONCLUSION=success
+            TITLE='Nothing left to drive'
+          else
+            CONCLUSION=neutral
+            TITLE="Drive stopped: ${STOP_REASON:-did not finish}"
+          fi
+          jq -n --arg c "$CONCLUSION" --arg t "$TITLE" --arg r "${ROUNDS:-0}" --arg url "$RUN_URL" \
+            '{status: "completed", conclusion: $c, details_url: $url,
+              output: {title: $t, summary: "Rounds: \($r). Run: \($url)"}}' \
+            | gh api -X PATCH "repos/$GH_REPO/check-runs/$CHECK_ID" --input - >/dev/null || \
+            echo '::warning::Could not complete the pr-drive check run.'
