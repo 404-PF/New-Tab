@@ -116,7 +116,7 @@ body.light-theme .context-menu-item.last-child {
   border-bottom: none;
 }
 
-body.light-theme .icon {
+body.light-theme .icon:not(:where(.app-icon .icon[data-liquid-glass].glass--liquid)) {
   background: #fff;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
   border: 1px solid #f0f0f0;

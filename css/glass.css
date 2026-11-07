@@ -97,10 +97,12 @@ body.light-theme {
   }
 }
 
-/* Primary surfaces retain visible background depth. */
+/* Primary surfaces retain visible background depth. Enhanced Liquid Glass
+   tiles are excluded so they keep the dark theme's tile tokens (see
+   liquid-glass.css) instead of the light theme's frosted fill. */
 body.light-theme :is(
   .search-bar,
-  .icon,
+  .icon:not(:where(.app-icon .icon[data-liquid-glass].glass--liquid)),
   .weather-widget,
   .focus-mode-indicator,
   #motto-container,
@@ -262,7 +264,7 @@ body.light-theme :is(.settings-menu, .ai-chat-sidebar) {
 /* Shared hover and active states. */
 body.light-theme :is(
   .search-bar,
-  .icon,
+  .icon:not(:where(.app-icon .icon[data-liquid-glass].glass--liquid)),
   .weather-widget,
   .focus-mode-indicator,
   #motto-container,
