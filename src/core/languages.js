@@ -590,6 +590,11 @@ const translations = {
     importReadError: 'Failed to read the selected file.',
     importSuccess: 'Imported {count} todos successfully.',
     importNoNewTodos: 'No new todos to import.',
+    exportNotes: 'Export',
+    importNotes: 'Import',
+    notesImportSuccess: 'Imported {count} notes successfully.',
+    notesImportNoNew: 'No new notes to import.',
+    notesImportInvalid: 'Invalid notes data. Please select a valid JSON file.',
 
     // Data Manager
     data: 'Data',

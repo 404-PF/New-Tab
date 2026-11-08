@@ -504,6 +504,11 @@ window.i18n.__registerLocale('zh', {
   importReadError: '无法读取选定的文件。',
   importSuccess: '已成功导入 {count} 个待办事项。',
   importNoNewTodos: '没有新的待办事项可导入。',
+  exportNotes: '导出',
+  importNotes: '导入',
+  notesImportSuccess: '已成功导入 {count} 条便签。',
+  notesImportNoNew: '没有新的便签可导入。',
+  notesImportInvalid: '无效的便签数据。请选择有效的 JSON 文件。',
 
   // Data Manager
   data: '数据',
