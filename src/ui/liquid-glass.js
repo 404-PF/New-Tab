@@ -222,7 +222,9 @@
       teardown();
       return true;
     }
-    if (!(el instanceof Element) || !enhanced.has(el)) return false;
+    if (!(el instanceof Element)) return false;
+    cancelEntranceWaiter(el);
+    if (!enhanced.has(el)) return false;
     stripLayers(el);
     el.classList.remove('glass--liquid');
     enhanced.delete(el);
@@ -253,6 +255,17 @@
     el.addEventListener('animationcancel', onSettled);
   }
 
+  // Dropping an element (marker removed, node detached, teardown) must also
+  // drop its pending entrance callback, otherwise the waiter can enhance it
+  // again after the observer released it.
+  function cancelEntranceWaiter(el) {
+    const onSettled = entranceWaiters.get(el);
+    if (!onSettled) return;
+    el.removeEventListener('animationend', onSettled);
+    el.removeEventListener('animationcancel', onSettled);
+    entranceWaiters.delete(el);
+  }
+
   // Widgets such as #weather-widget rebuild their innerHTML and reset their
   // className on every render, wiping the injected layers and the marker
   // class; rebuild them so the warp survives a data update (#1157).
@@ -264,7 +277,9 @@
     if (!isLiquid() || isReducedMotion()) return;
     if (hasEntranceAnimation(el)) {
       whenEntranceSettled(el, () => {
-        if (isLiquid() && !isReducedMotion()) enhance(el);
+        // The marker can be removed while the entrance is still running;
+        // never restore layers onto an element the observer already released.
+        if (el.hasAttribute(ATTR) && isLiquid() && !isReducedMotion()) enhance(el);
       });
       return;
     }
@@ -607,6 +622,10 @@
     if (typeof window.onReducedMotionChange === 'function' && !unsubscribeMotion) {
       unsubscribeMotion = window.onReducedMotionChange((reduced) => {
         if (reduced) {
+          // Same cleanup as Classic: drop the hero markers too, otherwise
+          // :where(body.glass-liquid [data-liquid-glass]) keeps applying the
+          // relative-position rule to every hero while the effect is off.
+          stopHeroWidgets();
           releaseAll();
           stopElasticity();
         } else if (isLiquid()) {

@@ -28,6 +28,20 @@ function buildGrid() {
   clock.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 });
 }
 
+function buildHeroTargets() {
+  const ids = ['search-bar-wrapper', 'motto-container', 'weather-widget', 'focus-mode-indicator'];
+  document.getElementById('clock').insertAdjacentHTML('afterend',
+    '<div class="search-bar-wrapper"></div>' +
+    ids.slice(1).map((id) => '<div id="' + id + '"></div>').join(''));
+  const targets = [
+    document.querySelector('.search-bar-wrapper'),
+    ...ids.slice(1).map((id) => document.getElementById(id)),
+    document.getElementById('clock')
+  ];
+  targets.forEach((el) => { el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 }); });
+  return targets;
+}
+
 describe('liquid glass icons + elasticity (#1110)', () => {
   beforeAll(() => {
     injectScript('src/core/app-grid-state.js');
@@ -125,16 +139,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
   });
 
   itWhenLiquidEnabled('applies elasticity via translate (never transform) on T1 targets', () => {
-    const ids = ['search-bar-wrapper', 'motto-container', 'weather-widget', 'focus-mode-indicator'];
-    document.getElementById('clock').insertAdjacentHTML('afterend',
-      '<div class="search-bar-wrapper"></div>' +
-      ids.slice(1).map((id) => '<div id="' + id + '"></div>').join(''));
-    const targets = [
-      document.querySelector('.search-bar-wrapper'),
-      ...ids.slice(1).map((id) => document.getElementById(id)),
-      document.getElementById('clock')
-    ];
-    targets.forEach((el) => { el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 }); });
+    const targets = buildHeroTargets();
     loadLiquidGlass();
     move(150, 50);
     flush();
@@ -145,16 +150,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
   });
 
   itWhenLiquidEnabled('keeps the glass layers in place while elasticity moves a hero', () => {
-    const ids = ['search-bar-wrapper', 'motto-container', 'weather-widget', 'focus-mode-indicator'];
-    document.getElementById('clock').insertAdjacentHTML('afterend',
-      '<div class="search-bar-wrapper"></div>' +
-      ids.slice(1).map((id) => '<div id="' + id + '"></div>').join(''));
-    const targets = [
-      document.querySelector('.search-bar-wrapper'),
-      ...ids.slice(1).map((id) => document.getElementById(id)),
-      document.getElementById('clock')
-    ];
-    targets.forEach((el) => { el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 }); });
+    const targets = buildHeroTargets();
     loadLiquidGlass();
     move(150, 50);
     flush();
@@ -163,6 +159,10 @@ describe('liquid glass icons + elasticity (#1110)', () => {
       expect(el.classList.contains('glass--liquid')).toBe(true);
       expect(el.querySelector(':scope > .glass__warp')).not.toBeNull();
       expect(el.querySelector(':scope > .glass__highlight')).not.toBeNull();
+      el.querySelectorAll(':scope > .glass__warp, :scope > .glass__highlight').forEach((layer) => {
+        expect(layer.style.translate).toBe('');
+        expect(layer.style.transform).toBe('');
+      });
     });
   });
 

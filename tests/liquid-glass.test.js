@@ -331,6 +331,13 @@ describe('liquid glass core module (#1108)', () => {
       );
     }
 
+    function expectHeroesUnmarked() {
+      HERO_MARKS.forEach(([selector]) => {
+        expect(document.querySelector(selector).hasAttribute('data-liquid-glass')).toBe(false);
+      });
+      expect(document.querySelector('.glass__warp')).toBeNull();
+    }
+
     itWhenLiquidEnabled('marks all five heroes and injects warp plus highlight layers', () => {
       buildHeroes();
       const lg = loadLiquidGlass();
@@ -389,6 +396,32 @@ describe('liquid glass core module (#1108)', () => {
       expect(weather.querySelector('.weather-current')).not.toBeNull();
     });
 
+    itWhenLiquidEnabled('cancels a pending layer restore when the marker is removed mid-entrance', async () => {
+      buildHeroes();
+      const lg = loadLiquidGlass();
+      lg.init();
+      const weather = document.getElementById('weather-widget');
+      expect(weather.querySelector(':scope > .glass__warp')).not.toBeNull();
+
+      // Re-render while the widget still reports a running entrance: the
+      // observer releases the old layers and defers the rebuild.
+      weather.getAnimations = () => [{ animationName: 'fadeSlideUp' }];
+      weather.className = 'weather-widget weather-data';
+      weather.innerHTML = '<div class="weather-current"><span class="weather-temp">21</span></div>';
+      await new Promise((r) => setTimeout(r, 0));
+      expect(weather.querySelector(':scope > .glass__warp')).toBeNull();
+
+      // Marker goes away before the entrance settles: the pending callback
+      // must not re-enhance the now-unmarked widget.
+      weather.removeAttribute('data-liquid-glass');
+      await new Promise((r) => setTimeout(r, 0));
+      const done = new Event('animationend');
+      done.animationName = 'fadeSlideUp';
+      weather.dispatchEvent(done);
+      expect(weather.querySelector('.glass__warp')).toBeNull();
+      expect(weather.classList.contains('glass--liquid')).toBe(false);
+    });
+
     it('leaves the heroes untouched in classic mode', () => {
       buildHeroes();
       const lg = loadLiquidGlass({ style: 'classic' });
@@ -406,10 +439,7 @@ describe('liquid glass core module (#1108)', () => {
       buildHeroes();
       const lg = loadLiquidGlass({ supported: false });
       lg.init();
-      HERO_MARKS.forEach(([selector]) => {
-        expect(document.querySelector(selector).hasAttribute('data-liquid-glass')).toBe(false);
-      });
-      expect(document.querySelector('.glass__warp')).toBeNull();
+      expectHeroesUnmarked();
     });
 
     it('leaves the heroes untouched under reduced motion', () => {
@@ -417,10 +447,7 @@ describe('liquid glass core module (#1108)', () => {
       window.prefersReducedMotion = () => true;
       const lg = loadLiquidGlass();
       lg.init();
-      HERO_MARKS.forEach(([selector]) => {
-        expect(document.querySelector(selector).hasAttribute('data-liquid-glass')).toBe(false);
-      });
-      expect(document.querySelector('.glass__warp')).toBeNull();
+      expectHeroesUnmarked();
     });
 
     it('restores the markers when reduced motion turns back off', () => {
@@ -438,6 +465,24 @@ describe('liquid glass core module (#1108)', () => {
       handler(false);
       expect(document.querySelector('#clock').getAttribute('data-liquid-glass')).toBe('panel');
       expect(document.querySelector('#clock').querySelector('.glass__warp')).not.toBeNull();
+    });
+
+    itWhenLiquidEnabled('drops the hero markers when reduced motion turns on at runtime', () => {
+      buildHeroes();
+      let handler;
+      window.onReducedMotionChange = (fn) => {
+        handler = fn;
+        return () => {};
+      };
+      window.prefersReducedMotion = () => false;
+      const lg = loadLiquidGlass();
+      lg.init();
+      expect(document.querySelector('#clock').getAttribute('data-liquid-glass')).toBe('panel');
+      expect(document.querySelector('.glass__warp')).not.toBeNull();
+      window.prefersReducedMotion = () => true;
+      handler(true);
+      expectHeroesUnmarked();
+      expect(document.querySelector('#clock').classList.contains('glass--liquid')).toBe(false);
     });
 
     describe('css neutralization', () => {
@@ -463,6 +508,13 @@ describe('liquid glass core module (#1108)', () => {
           /body\.glass-liquid #motto-container\.glass--liquid\s*\{[^}]*backdrop-filter:\s*none/
         );
         expect(css).toContain('body.glass-liquid.light-theme #motto-container.glass--liquid');
+      });
+
+      it('keeps the ID-lifted glass.css light surfaces off the enhanced heroes', () => {
+        const glass = readFileSync('css/glass.css', 'utf8');
+        expect(glass).toContain('.search-bar:not(:where(.search-bar-wrapper.glass--liquid .search-bar))');
+        expect(glass).toContain('.weather-widget:not(:where(.weather-widget.glass--liquid))');
+        expect(glass).toContain('.focus-mode-indicator:not(:where(.focus-mode-indicator.glass--liquid))');
       });
 
       it('lifts hero content above the injected layers', () => {
