@@ -193,6 +193,27 @@ describe('Notes import', () => {
     expect(validateNotesData({ notes: [{ id: 'a', text: 'x' }, { id: 'a', text: 'y' }] })).toBe(false);
     expect(validateNotesData({ notes: [{ id: 'a', text: 'x', order: 'bad' }] })).toBe(false);
     expect(validateNotesData({ notes: [{ id: 'a', text: 'x', tag: 5 }] })).toBe(false);
+    expect(validateNotesData({ notes: [{ id: 'a"] b', text: 'x' }] })).toBe(false);
+    expect(validateNotesData({ notes: [{ id: 'a b', text: 'x' }] })).toBe(false);
+  });
+
+  it('preserves an imported empty note through focus and blur', async () => {
+    setNotes([]);
+    initNotes();
+
+    await importNotesFile({
+      version: 1,
+      notes: [{ id: 'empty-1', text: '', tag: 'keep', order: 0 }]
+    });
+
+    expect(getNotes()).toHaveLength(1);
+    const ta = document.querySelector('.note-textarea[data-id="empty-1"]');
+    expect(ta).not.toBeNull();
+
+    ta.dispatchEvent(new Event('blur', { bubbles: true }));
+
+    expect(getNotes()).toHaveLength(1);
+    expect(getNotes()[0]).toMatchObject({ id: 'empty-1', text: '', tag: 'keep' });
   });
 
   it('round-trips through export and import', async () => {

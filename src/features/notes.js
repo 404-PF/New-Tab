@@ -413,7 +413,7 @@
         const text = ta.value || '';
         if (text) {
           updateNoteText(id, text);
-        } else {
+        } else if (!isImportedEmptyNote(id)) {
           deleteNote(id);
         }
       }
@@ -467,6 +467,11 @@
     if (ta) {
       ta.focus();
     }
+  }
+
+  function isImportedEmptyNote(id) {
+    const note = notes.find(n => n.id === id);
+    return !!(note && note.importedEmpty);
   }
 
   function deleteNote(id) {
@@ -582,7 +587,7 @@
         const text = ta.value || '';
         if (text) {
           updateNoteText(id, text);
-        } else {
+        } else if (!isImportedEmptyNote(id)) {
           deleteNote(id);
           return;
         }
@@ -944,7 +949,7 @@
         updateNoteText(id, text);
       } else if (wasPreview) {
         const note = notes.find(n => n.id === id);
-        if (hadPending || (note && note.text)) {
+        if ((hadPending || (note && note.text)) && !isImportedEmptyNote(id)) {
           deleteNote(id);
         }
       }
@@ -952,7 +957,9 @@
     }
     const text = ta.value || '';
     if (!text) {
-      deleteNote(ta.dataset.id);
+      if (!isImportedEmptyNote(id)) {
+        deleteNote(id);
+      }
       return;
     }
     updateNoteText(ta.dataset.id, text);
@@ -1017,7 +1024,7 @@
     a.download = `new-tab-notes-${dateStr}.json`;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
@@ -1035,7 +1042,7 @@
     const seenIds = new Set();
     for (const item of items) {
       if (!item || typeof item !== 'object') return false;
-      if (typeof item.id !== 'string' || !item.id) return false;
+      if (typeof item.id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(item.id)) return false;
       if (seenIds.has(item.id)) return false;
       seenIds.add(item.id);
       if (typeof item.text !== 'string') return false;
@@ -1067,6 +1074,9 @@
         updatedAt: item.updatedAt || new Date().toISOString()
       };
       notes.push(note);
+      if (!note.text) {
+        note.importedEmpty = true;
+      }
       existingIds.add(note.id);
       addedCount += 1;
     }
