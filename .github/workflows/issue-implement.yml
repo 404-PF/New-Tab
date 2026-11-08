@@ -10,8 +10,9 @@ on:
         required: true
         type: number
   schedule:
-    # Every 30 minutes: dispatch the oldest eligible issue while open PRs <= 10.
-    - cron: '*/30 * * * *'
+    # Every 30 minutes, off the :00/:30 peak when GitHub drops scheduled runs.
+    # Dispatches the oldest eligible issue while open PRs <= 10.
+    - cron: '7,37 * * * *'
 
 # Concurrency is declared on the implement job, not here. A workflow-level
 # group is taken before the permission gate runs, so a read-only MEMBER or
@@ -46,9 +47,10 @@ jobs:
             exit 0
           fi
 
-          # One implement at a time: the scheduler run itself is excluded.
-          # Every status is queried server-side so a long history cannot hide
-          # an active run.
+          # At most MAX_CONCURRENT implement runs at once: the scheduler run
+          # itself is excluded. Every status is queried server-side so a long
+          # history cannot hide an active run.
+          MAX_CONCURRENT=5
           ACTIVE=0
           for STATUS in queued in_progress waiting requested pending; do
             COUNT="$(gh run list --repo "$GH_REPO" --workflow issue-implement.yml --status "$STATUS" --limit 1000 \
@@ -56,8 +58,8 @@ jobs:
               --jq "[.[] | select((.databaseId | tostring) != \"$SELF_RUN_ID\")] | length")"
             ACTIVE=$((ACTIVE + COUNT))
           done
-          if [ "$ACTIVE" -gt 0 ]; then
-            echo "$ACTIVE issue-implement run(s) still active; waiting for the next tick."
+          if [ "$ACTIVE" -ge "$MAX_CONCURRENT" ]; then
+            echo "$ACTIVE issue-implement run(s) active (max $MAX_CONCURRENT); waiting for the next tick."
             exit 0
           fi
 
