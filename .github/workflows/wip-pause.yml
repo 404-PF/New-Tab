@@ -15,6 +15,10 @@ jobs:
     timeout-minutes: 10
     permissions:
       issues: write
+      # A /wip comment on a pull request writes through the PR issue
+      # endpoints, which require pull-requests: write as well; issues: write
+      # alone 403s on the label add and the confirmation comment.
+      pull-requests: write
     if: >
       github.event.comment.user.type != 'Bot' &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
@@ -79,8 +83,14 @@ jobs:
           IS_PR: ${{ github.event.issue.pull_request != null }}
         run: |
           set -euo pipefail
+          # Create the label only when it is missing. --force would overwrite
+          # an existing label's colour and description with our defaults every
+          # time, discarding any customisation made in the repo settings.
           gh label create wip --repo "$GH_REPO" --color FBCA04 \
-            --description 'Paused: scheduled automation skips this item' --force >/dev/null
+            --description 'Paused: scheduled automation skips this item' \
+            >/dev/null 2>&1 || true
+          # If creation genuinely failed (for example a permissions problem)
+          # the label is missing and this edit fails loudly instead.
           gh issue edit "$NUMBER" --repo "$GH_REPO" --add-label wip >/dev/null
           KIND=issue
           [ "$IS_PR" = 'true' ] && KIND='pull request'
