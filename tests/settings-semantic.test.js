@@ -1,0 +1,139 @@
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { injectScript } from './helpers/inject-script.js';
+
+function installMockService(state) {
+  window.EmbeddingService = {
+    _state: state || { status: 'idle', progress: 0, error: '', modelId: 'test-model' },
+    getStatus: function () { return { ...this._state }; },
+    isReady: function () { return this._state.status === 'ready'; },
+    ensureModel: function () {
+      this._state = { status: 'ready', progress: 1, error: '', modelId: 'test-model' };
+      document.dispatchEvent(new CustomEvent('embedding-status'));
+      return Promise.resolve({ id: 'harrier-int8' });
+    },
+    cancelLoad: function () {
+      this._state = { status: 'idle', progress: 0, error: '', modelId: 'test-model' };
+      document.dispatchEvent(new CustomEvent('embedding-status'));
+    },
+    deleteModel: function () {
+      this._state = { status: 'idle', progress: 0, error: '', modelId: 'test-model' };
+      document.dispatchEvent(new CustomEvent('embedding-status'));
+      return Promise.resolve(true);
+    }
+  };
+}
+
+beforeAll(() => {
+  injectScript('src/core/motion.js');
+  injectScript('src/ai/embeddings/embedding-registry.js');
+  injectScript('src/ai/embeddings/harrier-provider.js');
+  injectScript('src/ai/embeddings/notes-vector-cache.js');
+  injectScript('src/ai/embeddings/embedding-service.js');
+  injectScript('src/ai/embeddings/notes-semantic-search.js');
+  injectScript('src/ui/color-picker.js');
+  injectScript('src/ui/font-picker.js');
+  injectScript('src/ui/settings.js');
+  injectScript('src/core/dom-ready.js');
+  injectScript('src/core/utils.js');
+  injectScript('src/core/toast.js');
+});
+
+beforeEach(() => {
+  localStorage.clear();
+  try { delete window.EmbeddingService; } catch { /* ignore */ }
+  window.initNotesSemanticSetting();
+  window.applyNotesSemanticEnabled();
+});
+
+describe('Semantic search settings', () => {
+  it('is disabled by default', () => {
+    expect(window.loadNotesSemanticEnabled()).toBe(false);
+    expect(document.getElementById('notes-semantic-enabled-setting').checked).toBe(false);
+  });
+
+  it('reads the persisted flag', () => {
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    expect(window.loadNotesSemanticEnabled()).toBe(true);
+  });
+
+  it('starts the model download on opt-in and shows ready state', async () => {
+    installMockService();
+    const checkbox = document.getElementById('notes-semantic-enabled-setting');
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+    // ensureModel resolves on a microtask; flush it.
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    window.applyNotesSemanticEnabled();
+    expect(document.getElementById('notes-semantic-delete').hidden).toBe(false);
+    expect(document.getElementById('notes-semantic-progress').hidden).toBe(true);
+    expect(document.getElementById('notes-semantic-settings-status').textContent).toContain('ready');
+  });
+
+  it('unchecks the toggle when host permission is denied', async () => {
+    installMockService();
+    const originalRequest = chrome.permissions.request;
+    chrome.permissions.request = async function () { return false; };
+    try {
+      const checkbox = document.getElementById('notes-semantic-enabled-setting');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+      expect(checkbox.checked).toBe(false);
+    } finally {
+      chrome.permissions.request = originalRequest;
+    }
+  });
+
+  it('shows progress while downloading', () => {
+    installMockService({ status: 'loading', progress: 0.42, error: '', modelId: 'test-model' });
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    window.applyNotesSemanticEnabled();
+    const progress = document.getElementById('notes-semantic-progress');
+    expect(progress.hidden).toBe(false);
+    expect(Number(progress.value)).toBe(42);
+    expect(document.getElementById('notes-semantic-cancel').hidden).toBe(false);
+  });
+
+  it('cancel resets the flag', () => {
+    installMockService({ status: 'loading', progress: 0.5, error: '', modelId: 'test-model' });
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    window.applyNotesSemanticEnabled();
+    document.getElementById('notes-semantic-cancel').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+  });
+
+  it('delete clears the model and resets the flag', async () => {
+    installMockService({ status: 'ready', progress: 1, error: '', modelId: 'test-model' });
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    window.applyNotesSemanticEnabled();
+    document.getElementById('notes-semantic-delete').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+  });
+
+  it('primes a fresh import for resume and leaves settled states alone', () => {
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.removeItem('notesSemanticDownload');
+    window.primeNotesSemanticImport();
+    expect(localStorage.getItem('notesSemanticDownload')).toBe('loading');
+    localStorage.setItem('notesSemanticDownload', 'ready');
+    window.primeNotesSemanticImport();
+    expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
+    localStorage.setItem('notesSemanticEnabled', 'false');
+    localStorage.removeItem('notesSemanticDownload');
+    window.primeNotesSemanticImport();
+    expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
+  });
+
+  it('clears a leftover marker when the import disables the flag', () => {
+    localStorage.setItem('notesSemanticEnabled', 'false');
+    localStorage.setItem('notesSemanticDownload', 'ready');
+    window.primeNotesSemanticImport();
+    expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
+  });
+});

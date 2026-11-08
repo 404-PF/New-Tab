@@ -270,6 +270,11 @@ const FEATURE_TOGGLE_RESYNC = {
       window.applyNotesEnabled();
     }
   },
+  notesSemanticEnabled: function () {
+    if (typeof window.applyNotesSemanticEnabled === 'function') {
+      window.applyNotesSemanticEnabled();
+    }
+  },
   eyeCareReminder: function () {
     if (typeof window.applyEyeCareReminderSettings === 'function') {
       window.applyEyeCareReminderSettings();
@@ -606,6 +611,10 @@ function featureToggleControlDesynced(key) {
     case 'notesEnabled': {
       const checkbox = document.getElementById('notes-enabled-setting');
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'notesSemanticEnabled': {
+      const checkbox = document.getElementById('notes-semantic-enabled-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
     }
     case 'eyeCareReminder': {
       try {

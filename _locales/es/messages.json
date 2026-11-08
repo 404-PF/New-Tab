@@ -734,6 +734,50 @@
     "message": "No hay notas coincidentes.",
     "description": "Empty state when no notes match the search query"
   },
+  "notesSemanticEnable": {
+    "message": "Enable semantic notes search",
+    "description": "Label for the semantic notes search toggle"
+  },
+  "notesSemanticDesc": {
+    "message": "On-device Harrier model (~300MB) downloads once after opt-in for typo-tolerant, semantic matching.",
+    "description": "Description for the semantic notes search setting"
+  },
+  "notesSemanticDownloading": {
+    "message": "Downloading on-device model… {percent}%",
+    "description": "Status while the embedding model downloads; {percent} is 0-100"
+  },
+  "notesSemanticReady": {
+    "message": "Semantic search ready (on-device).",
+    "description": "Status when the embedding model is ready"
+  },
+  "notesSemanticError": {
+    "message": "Model failed to load. Check connection and retry.",
+    "description": "Status when the embedding model fails to load"
+  },
+  "notesSemanticCancel": {
+    "message": "Cancel download",
+    "description": "Button to cancel the model download"
+  },
+  "notesSemanticDelete": {
+    "message": "Delete model",
+    "description": "Button to delete the downloaded model"
+  },
+  "notesSemanticSearching": {
+    "message": "Semantic search…",
+    "description": "Notes search status while semantic re-ranking"
+  },
+  "notesSemanticLoading": {
+    "message": "Loading on-device model…",
+    "description": "Notes search status while the model loads"
+  },
+  "notesSemanticStarting": {
+    "message": "Starting download…",
+    "description": "Status when the model download starts"
+  },
+  "notesSemanticPermissionDenied": {
+    "message": "Model download needs Hugging Face access, which was not granted.",
+    "description": "Error when the user denies the optional host permission for the model download"
+  },
   "notesEmpty": {
     "message": "Aún no hay notas. ¡Haz clic en + para agregar una!",
     "description": "Empty state when no notes exist"

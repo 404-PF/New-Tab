@@ -1876,6 +1876,463 @@ if (notesEnabledSetting) {
   });
 }
 
+// Semantic notes search (issue #1186): lazy opt-in. The ~300MB Harrier INT8
+// model downloads only after the user checks this box, with determinate
+// progress + cancel + delete. Vectors live in IndexedDB, never localStorage.
+function loadNotesSemanticEnabled() {
+  try {
+    return localStorage.getItem('notesSemanticEnabled') === 'true';
+  } catch (e) {
+    console.warn('Failed to read notesSemanticEnabled:', e);
+    return false;
+  }
+}
+
+function getSemanticSettingsElements() {
+  return {
+    checkbox: document.getElementById('notes-semantic-enabled-setting'),
+    progress: document.getElementById('notes-semantic-progress'),
+    cancelBtn: document.getElementById('notes-semantic-cancel'),
+    deleteBtn: document.getElementById('notes-semantic-delete'),
+    status: document.getElementById('notes-semantic-settings-status')
+  };
+}
+
+function tSemantic(key, fallback, replacements) {
+  try {
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const value = replacements
+        ? window.i18n.t(key, replacements)
+        : window.i18n.t(key);
+      if (value && value !== key) return value;
+    }
+  } catch { /* ignore */ }
+  return fallback;
+}
+
+function renderNotesSemanticSettings() {
+  const els = getSemanticSettingsElements();
+  const enabled = loadNotesSemanticEnabled();
+  let svcStatus = { status: 'idle', progress: 0, error: '' };
+  try {
+    if (window.EmbeddingService && typeof window.EmbeddingService.getStatus === 'function') {
+      svcStatus = window.EmbeddingService.getStatus();
+    }
+  } catch { /* ignore service missing */ }
+
+  if (els.checkbox) els.checkbox.checked = enabled;
+  const loading = enabled && svcStatus.status === 'loading';
+  const ready = enabled && svcStatus.status === 'ready';
+  const error = enabled && svcStatus.status === 'error';
+
+  if (els.progress) {
+    els.progress.hidden = !loading;
+    if (loading) {
+      els.progress.value = Math.round((svcStatus.progress || 0) * 100);
+    }
+  }
+  if (els.cancelBtn) els.cancelBtn.hidden = !loading;
+  if (els.deleteBtn) els.deleteBtn.hidden = !(ready || error);
+
+  if (els.status) {
+    let text;
+    if (!enabled) {
+      text = '';
+    } else if (loading) {
+      const pct = Math.round((svcStatus.progress || 0) * 100);
+      text = tSemantic('notesSemanticDownloading', 'Downloading on-device model… ' + pct + '%', { percent: pct });
+    } else if (ready) {
+      text = tSemantic('notesSemanticReady', 'Semantic search ready (on-device).');
+    } else if (error) {
+      text = tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
+    } else {
+      text = tSemantic('notesSemanticStarting', 'Starting download…');
+    }
+    els.status.textContent = text;
+  }
+}
+
+function applyNotesSemanticEnabled() {
+  renderNotesSemanticSettings();
+}
+
+// The embedding modules stay out of the bootstrap scriptSources path
+// (issue #1186): they load on demand the first time the user opts in,
+// mirroring the games-app lazy loader. Twin implementation lives in
+// src/features/notes.js (ensureEmbeddingScripts); keep the source list in
+// sync. Duplication matches the existing loadScript precedent shared by
+// bootstrap.js and games-app.js.
+const EMBEDDING_SCRIPT_SOURCES = [
+  'src/ai/embeddings/embedding-registry.js',
+  'src/ai/embeddings/harrier-provider.js',
+  'src/ai/embeddings/notes-vector-cache.js',
+  'src/ai/embeddings/embedding-service.js',
+  'src/ai/embeddings/notes-semantic-search.js'
+];
+
+let embeddingScriptsPromise = null;
+
+function embeddingScriptsLoaded() {
+  try {
+    return !!(window.EmbeddingRegistry && window.HarrierProvider
+      && window.NotesVectorCache && window.EmbeddingService && window.NotesSemanticSearch);
+  } catch {
+    return false;
+  }
+}
+
+function loadEmbeddingScript(src) {
+  return new Promise(function (resolve, reject) {
+    const fail = function (message) {
+      reject(new Error(message || ('Failed to load ' + src)));
+    };
+    try {
+      const existing = document.querySelector('script[data-embeddings-src="' + src + '"]');
+      if (existing) {
+        // Another caller (e.g. Notes) is already loading this module: wait
+        // for ITS load instead of resolving early (see twin in notes.js).
+        if (existing.dataset.embeddingsLoaded === 'true') {
+          resolve();
+          return;
+        }
+        existing.addEventListener('load', function () { resolve(); });
+        existing.addEventListener('error', function () { fail(); });
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = false;
+      script.dataset.embeddingsSrc = src;
+      script.addEventListener('load', function () {
+        script.dataset.embeddingsLoaded = 'true';
+        resolve();
+      });
+      script.addEventListener('error', function () {
+        // Remove the dead tag so the next attempt recreates it instead of
+        // attaching to a tag that will never fire again.
+        if (script.parentNode) {
+          try { script.parentNode.removeChild(script); } catch { /* ignore */ }
+        }
+        fail();
+      });
+      document.body.appendChild(script);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+function ensureEmbeddingScripts() {
+  if (embeddingScriptsLoaded()) return Promise.resolve();
+  if (embeddingScriptsPromise) return embeddingScriptsPromise;
+  let chain = Promise.resolve();
+  EMBEDDING_SCRIPT_SOURCES.forEach(function (src) {
+    chain = chain.then(function () { return loadEmbeddingScript(src); });
+  });
+  embeddingScriptsPromise = chain.catch(function (err) {
+    embeddingScriptsPromise = null;
+    throw err;
+  });
+  return embeddingScriptsPromise;
+}
+
+function startSemanticDownload(requestPermission) {
+  const els = getSemanticSettingsElements();
+  // Passive resumes (page load, no gesture) must stay silent: an error toast
+  // on every New Tab load with no interaction is spam. The Settings status
+  // line still reflects the failure; explicit opt-ins keep their toasts.
+  const passive = requestPermission === false;
+  renderNotesSemanticSettings();
+  ensureEmbeddingScripts().then(function () {
+    return ensureModelHostPermission(!passive);
+  }).then(function (granted) {
+    if (!granted) {
+      const persisted = persistSetting('notesSemanticEnabled', false);
+      clearSemanticDownloadState();
+      renderNotesSemanticSettings();
+      if (!persisted) {
+        reportFeatureToggleSaveError();
+      }
+      if (!passive && typeof window.showToast === 'function') {
+        window.showToast(
+          tSemantic('notesSemanticPermissionDenied', 'Model download needs Hugging Face access, which was not granted.'),
+          'error'
+        );
+      }
+      return;
+    }
+    startSemanticModelDownload(els, passive);
+  }).catch(function (err) {
+    console.warn('Failed to load embedding modules:', err);
+    // A dead runtime must not strand the toggle on with "Starting…"
+    // forever: reset the flag (and toast only on the gestured path).
+    persistSetting('notesSemanticEnabled', false);
+    clearSemanticDownloadState();
+    renderNotesSemanticSettings();
+    if (!passive && typeof window.showToast === 'function') {
+      window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+    }
+  });
+}
+
+// Host access for the model download is requested at opt-in time via the
+// already-declared blanket optional_host_permissions (https://*/*), so
+// installing the extension never prompts for Hugging Face access. The extra
+// origins cover the Hub API plus its weight CDNs (LFS / Xet mirrors); a
+// redirect outside this set surfaces as a load error with retry instead of
+// hanging.
+const MODEL_ORIGINS = [
+  'https://huggingface.co/*',
+  'https://*.huggingface.co/*',
+  'https://hf.co/*',
+  'https://*.hf.co/*'
+];
+
+function ensureModelHostPermission(requestIfMissing) {
+  try {
+    const perms = window.chrome && window.chrome.permissions;
+    // No permissions API (tests without the mock, non-Chromium hosts):
+    // nothing to gate on, attempt the download and let it report.
+    if (!perms || typeof perms.contains !== 'function' || typeof perms.request !== 'function') {
+      return Promise.resolve(true);
+    }
+    const query = { origins: MODEL_ORIGINS };
+    return perms.contains(query).then(function (has) {
+      if (has) return true;
+      // Page-load resumes carry no user gesture, so they only proceed when
+      // access was already granted; the toggle path asks explicitly.
+      if (!requestIfMissing) return false;
+      return perms.request(query).then(function (granted) {
+        return !!granted;
+      }, function () { return false; });
+      // Fail closed: a broken check must not launch a ~300MB fetch that is
+      // guaranteed to fail; the denied path shows the retryable error.
+    }, function () { return false; });
+  } catch {
+    return Promise.resolve(true);
+  }
+}
+
+// Transient download marker (not a settings toggle: never exported). Lets a
+// reload resume an *interrupted* download without re-fetching ~300MB after
+// every browser restart for a finished or failed one.
+const SEMANTIC_DOWNLOAD_STATE_KEY = 'notesSemanticDownload';
+
+function readSemanticDownloadState() {
+  try {
+    return localStorage.getItem(SEMANTIC_DOWNLOAD_STATE_KEY);
+  } catch (e) {
+    console.warn('Failed to read semantic download state:', e);
+    return null;
+  }
+}
+
+function writeSemanticDownloadState(value) {
+  try {
+    if (value === null) {
+      localStorage.removeItem(SEMANTIC_DOWNLOAD_STATE_KEY);
+    } else {
+      localStorage.setItem(SEMANTIC_DOWNLOAD_STATE_KEY, value);
+    }
+  } catch (e) {
+    console.warn('Failed to persist semantic download state:', e);
+  }
+}
+
+function clearSemanticDownloadState() {
+  writeSemanticDownloadState(null);
+}
+
+function startSemanticModelDownload(els, passive) {
+  const silent = passive === true;
+  try {
+    if (!window.EmbeddingService || typeof window.EmbeddingService.ensureModel !== 'function') {
+      // Modules loaded but the service never materialized: same reset as a
+      // load failure so the toggle cannot stick on "Starting…".
+      persistSetting('notesSemanticEnabled', false);
+      writeSemanticDownloadState('error');
+      renderNotesSemanticSettings();
+      if (!silent && typeof window.showToast === 'function') {
+        window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+      }
+      return;
+    }
+    writeSemanticDownloadState('loading');
+    window.EmbeddingService.ensureModel({
+      onProgress: function () {
+        renderNotesSemanticSettings();
+      }
+    }).then(function () {
+      writeSemanticDownloadState('ready');
+      renderNotesSemanticSettings();
+      if (!silent && typeof window.showToast === 'function') {
+        window.showToast(tSemantic('notesSemanticReady', 'Semantic search ready (on-device).'), 'success');
+      }
+    }).catch(function (err) {
+      if (err && err.name === 'AbortError') {
+        clearSemanticDownloadState();
+      } else {
+        writeSemanticDownloadState('error');
+      }
+      renderNotesSemanticSettings();
+      if (err && err.name === 'AbortError') return;
+      if (!silent && typeof window.showToast === 'function') {
+        window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+      }
+    });
+  } catch (e) {
+    console.warn('Failed to start semantic model download:', e);
+  }
+  renderNotesSemanticSettings();
+}
+
+function initNotesSemanticSetting() {
+  const els = getSemanticSettingsElements();
+  if (els.checkbox && !els.checkbox.dataset.semanticBound) {
+    els.checkbox.dataset.semanticBound = 'true';
+    els.checkbox.addEventListener('change', function () {
+      const persisted = persistSetting('notesSemanticEnabled', this.checked);
+      renderNotesSemanticSettings();
+      if (!persisted) {
+        reportFeatureToggleSaveError();
+        return;
+      }
+      if (this.checked) {
+        startSemanticDownload();
+      } else {
+        try {
+          if (window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
+            window.EmbeddingService.cancelLoad();
+          }
+        } catch { /* ignore */ }
+        // Toggle-off is a deliberate stop, not an interruption: drop the
+        // resume marker so a later load cannot mistake it for a crash.
+        clearSemanticDownloadState();
+        renderNotesSemanticSettings();
+      }
+    });
+  }
+  if (els.cancelBtn && !els.cancelBtn.dataset.semanticBound) {
+    els.cancelBtn.dataset.semanticBound = 'true';
+    els.cancelBtn.addEventListener('click', function () {
+      try {
+        if (window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
+          window.EmbeddingService.cancelLoad();
+        }
+      } catch { /* ignore */ }
+      clearSemanticDownloadState();
+      const persisted = persistSetting('notesSemanticEnabled', false);
+      renderNotesSemanticSettings();
+      if (!persisted) {
+        reportFeatureToggleSaveError();
+      }
+    });
+  }
+  if (els.deleteBtn && !els.deleteBtn.dataset.semanticBound) {
+    els.deleteBtn.dataset.semanticBound = 'true';
+    els.deleteBtn.addEventListener('click', function () {
+      // Ordering matters: persist + clear only after the async delete
+      // settles. A reload mid-delete then resumes from a truthful state,
+      // and a failed delete keeps the flag so the error (with its Delete
+      // button) stays retryable instead of masking leftover files.
+      const finishDelete = function (ok) {
+        if (ok) {
+          clearSemanticDownloadState();
+        }
+        // On failure re-persist the unchanged flag: a no-op write that still
+        // surfaces a simultaneous bridge rejection via the shared reporting.
+        const persisted = persistSetting('notesSemanticEnabled', ok ? false : loadNotesSemanticEnabled());
+        renderNotesSemanticSettings();
+        if (!persisted) {
+          reportFeatureToggleSaveError();
+        }
+      };
+      try {
+        if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
+          window.EmbeddingService.deleteModel().then(function () {
+            finishDelete(true);
+          }).catch(function (err) {
+            console.warn('Failed to delete embedding model:', err);
+            finishDelete(false);
+            if (typeof window.showToast === 'function') {
+              window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+            }
+          });
+          return;
+        }
+      } catch { /* ignore */ }
+      finishDelete(true);
+    });
+  }
+  try {
+    document.removeEventListener('embedding-status', renderNotesSemanticSettings);
+  } catch { /* ignore */ }
+  try {
+    document.addEventListener('embedding-status', renderNotesSemanticSettings);
+  } catch { /* ignore */ }
+  renderNotesSemanticSettings();
+  // Resume when the marker says the model should be here: 'loading' (a
+  // previous page died mid-fetch) or 'ready' (browser restart dropped the
+  // in-memory service; Cache Storage usually still holds the weights, so
+  // re-init is a fast cache hit — a rare eviction re-downloads in the
+  // background with progress visible in Settings). A null marker with the
+  // flag on (manual storage edit, or a restore that bypassed the prime
+  // below) is treated like 'loading' when nothing is running yet. 'error'
+  // never auto-retries: re-fetching ~300MB on every New Tab load would burn
+  // metered data — the user retries by toggling off and on. Already-ready
+  // services are skipped outright: without this, every initSettings() call
+  // (language change, import, settings re-open) would churn loading→ready
+  // and toast success with no action taken. Permission is not requested
+  // here (no gesture on page load); the resume proceeds only if already
+  // granted, else it silently resets the flag via the denied path.
+  try {
+    if (loadNotesSemanticEnabled()) {
+      let alreadyReady = false;
+      try {
+        alreadyReady = !!(window.EmbeddingService
+          && typeof window.EmbeddingService.isReady === 'function'
+          && window.EmbeddingService.isReady());
+      } catch { alreadyReady = false; }
+      if (!alreadyReady) {
+        const downloadState = readSemanticDownloadState();
+        if (downloadState === 'loading' || downloadState === 'ready' || downloadState === null) {
+          startSemanticDownload(false);
+        }
+      }
+    }
+  } catch { /* ignore */ }
+}
+
+// Called by the data-manager import flow before it re-runs initSettings: a
+// backup carries the opt-in flag but never the model bytes (Cache Storage
+// and vectors are device-local), so a fresh profile must not keep a flag
+// pointing at nothing. Priming the marker to 'loading' lets the normal
+// resume path decide: already-granted (same profile) → re-init from cache;
+// never-granted (fresh profile) → silent reset to off. Absent settings
+// module (tests) degrades to a no-op via the typeof guard at the call site.
+function primeNotesSemanticImport() {
+  try {
+    // A disabled flag must not keep a leftover marker: the marker is
+    // transient (never exported), so an imported `false` would otherwise
+    // strand a stale 'ready'/'loading' entry until the next opt-in.
+    if (localStorage.getItem('notesSemanticEnabled') !== 'true') {
+      clearSemanticDownloadState();
+      return;
+    }
+    if (localStorage.getItem(SEMANTIC_DOWNLOAD_STATE_KEY) === null) {
+      writeSemanticDownloadState('loading');
+    }
+  } catch (e) {
+    console.warn('Failed to prime semantic download state:', e);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNotesSemanticSetting);
+} else {
+  initNotesSemanticSetting();
+}
+
 // Pomodoro settings
 function updatePomodoroDurationSettingsVisibility(durationSettings, enabled) {
   if (durationSettings) {
@@ -2743,6 +3200,7 @@ function initSettings() {
   applyPomodoroStatsEnabled();
   applyEyeCareReminderSettings();
   applyNotesEnabled();
+  initNotesSemanticSetting();
   applyGamesEnabled();
   applyGamesKeymap();
   applyGamesFps();
@@ -2823,6 +3281,10 @@ window.loadEyeCareReminderState = loadEyeCareReminderState;
 window.saveEyeCareReminderState = saveEyeCareReminderState;
 window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;
 window.applyNotesEnabled = applyNotesEnabled;
+window.loadNotesSemanticEnabled = loadNotesSemanticEnabled;
+window.applyNotesSemanticEnabled = applyNotesSemanticEnabled;
+window.initNotesSemanticSetting = initNotesSemanticSetting;
+window.primeNotesSemanticImport = primeNotesSemanticImport;
 window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;
 window.applyGamesKeymap = applyGamesKeymap;

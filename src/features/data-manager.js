@@ -44,6 +44,7 @@
     'pomodoroStatsEnabled',
     'notes',
     'notesEnabled',
+    'notesSemanticEnabled',
     'appOrder',
     'customApps',
     'appFolders',
@@ -283,6 +284,15 @@
     }
     if (typeof window.renderAllApps === 'function') {
       window.renderAllApps();
+    }
+
+    // A backup carries the semantic-search opt-in flag but never the model
+    // bytes (Cache Storage + vectors are device-local). Prime the transient
+    // download marker BEFORE the initSettings() below so its resume path
+    // decides: same profile (granted/cached) → re-init; fresh profile →
+    // silent reset to off instead of a stuck "Starting…".
+    if (typeof window.primeNotesSemanticImport === 'function') {
+      window.primeNotesSemanticImport();
     }
 
     // Refresh the UI
@@ -754,6 +764,7 @@
     pomodoroStatsEnabled: function (v) { return typeof v === 'boolean'; },
     notes: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     notesEnabled: function (v) { return typeof v === 'boolean'; },
+    notesSemanticEnabled: function (v) { return typeof v === 'boolean'; },
     appOrder: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
     customApps: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     appFolders: function (v) { return Array.isArray(v) && v.every(isValidFolderEntry); },

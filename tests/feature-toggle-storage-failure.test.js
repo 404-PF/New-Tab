@@ -12,6 +12,7 @@ const TOGGLE_STORAGE_KEYS = [
   'focusMode',
   'todoEnabled',
   'notesEnabled',
+  'notesSemanticEnabled',
   'eyeCareReminder',
   'customShortcuts',
   'openAppsInNewTab',

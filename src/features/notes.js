@@ -219,6 +219,384 @@
     return filtered;
   }
 
+  // Semantic retrieval (issue #1186): hybrid single-box search. The sync
+  // getFilteredNotes above stays the keyword fast-path; this async layer
+  // cosine re-ranks once the opt-in Harrier model is ready. Tag filter
+  // always applies first.
+  let _semanticGeneration = 0;
+  // Ids in currently displayed order (sync keyword pass or semantic
+  // re-rank). Drag/keyboard reorder resolves against these, never against a
+  // stale filter pass.
+  let _lastRenderedIds = [];
+
+  // Any notes mutation invalidates in-flight semantic reranks: ranked
+  // results capture `base` at start, so a delete/edit/reorder/add racing
+  // inference would otherwise render ghosts or stale order on resolve.
+  function bumpSemanticGeneration() {
+    _semanticGeneration += 1;
+  }
+
+  function isNotesSemanticEnabled() {
+    try {
+      if (typeof window.loadNotesSemanticEnabled === 'function') {
+        return window.loadNotesSemanticEnabled();
+      }
+      return localStorage.getItem('notesSemanticEnabled') === 'true';
+    } catch (e) {
+      console.warn('Failed to read semantic search flag:', e);
+      return false;
+    }
+  }
+
+  function isNotesSemanticReady() {
+    try {
+      if (!isNotesSemanticEnabled()) return false;
+      if (window.EmbeddingService && typeof window.EmbeddingService.isReady === 'function') {
+        return window.EmbeddingService.isReady();
+      }
+    } catch { /* ignore */ }
+    return false;
+  }
+
+  function getVisibleNotes() {
+    if (Array.isArray(_lastRenderedIds) && _lastRenderedIds.length > 0) {
+      const byId = new Map(notes.map(n => [n.id, n]));
+      const mapped = _lastRenderedIds.map(id => byId.get(id)).filter(Boolean);
+      if (mapped.length === _lastRenderedIds.length) return mapped;
+    }
+    return getFilteredNotes();
+  }
+
+  function getTagFilteredNotes() {
+    if (_activeTagFilter !== null) {
+      return notes.filter(n => n.tag === _activeTagFilter);
+    }
+    return notes.slice();
+  }
+
+  function getSemanticModelId() {
+    try {
+      if (window.EmbeddingService && typeof window.EmbeddingService.getStatus === 'function') {
+        const s = window.EmbeddingService.getStatus();
+        if (s && s.modelId) return s.modelId;
+      }
+    } catch { /* ignore */ }
+    try {
+      if (window.HarrierProvider && window.HarrierProvider.HARRIER_MODEL_ID) {
+        return window.HarrierProvider.HARRIER_MODEL_ID;
+      }
+    } catch { /* ignore */ }
+    return 'onnx-community/harrier-oss-v1-270m-ONNX';
+  }
+
+  function noteToEmbeddingText(note) {
+    const tag = typeof note.tag === 'string' && note.tag ? note.tag + ' ' : '';
+    const text = typeof note.text === 'string' ? note.text : '';
+    // Coarse pre-cap only (bounds hashing/transport); the exact 512-token
+    // truncate happens in embedding-service.js via the real tokenizer.
+    return (tag + text).slice(0, 4000);
+  }
+
+  function hideSemanticStatus(el) {
+    el.hidden = true;
+    el.textContent = '';
+    // A stale data-i18n would re-translate (and reveal) a hidden node on
+    // language change; clear it alongside hiding.
+    try {
+      delete el.dataset.i18n;
+    } catch { /* ignore */ }
+  }
+
+  function updateSemanticStatus(mode) {
+    const el = document.getElementById('notes-semantic-status');
+    if (!el) return;
+    if (!isNotesSemanticEnabled() || !_activeSearchQuery) {
+      hideSemanticStatus(el);
+      return;
+    }
+    let key;
+    let fallback;
+    if (mode === 'searching') {
+      key = 'notesSemanticSearching';
+      fallback = 'Semantic search…';
+    } else if (mode === 'loading') {
+      key = 'notesSemanticLoading';
+      fallback = 'Loading on-device model…';
+    } else {
+      hideSemanticStatus(el);
+      return;
+    }
+    el.hidden = false;
+    try {
+      el.textContent = window.i18n ? window.i18n.t(key) : fallback;
+    } catch {
+      el.textContent = fallback;
+    }
+    el.dataset.i18n = key;
+  }
+
+  function getFilteredNotesRanked() {
+    const query = _activeSearchQuery;
+    if (!query || !isNotesSemanticEnabled() || !isNotesSemanticReady()) {
+      return Promise.resolve(getFilteredNotes());
+    }
+    let ranker;
+    try {
+      ranker = window.NotesSemanticSearch || null;
+    } catch { ranker = null; }
+    let service = null;
+    try {
+      service = window.EmbeddingService || null;
+    } catch { service = null; }
+    let cache = null;
+    try {
+      cache = window.NotesVectorCache || null;
+    } catch { cache = null; }
+    if (!ranker || !service || !cache) {
+      return Promise.resolve(getFilteredNotes());
+    }
+    const base = getTagFilteredNotes();
+    if (base.length === 0) return Promise.resolve([]);
+    const modelId = getSemanticModelId();
+    const inputs = base.map(noteToEmbeddingText);
+
+    function embedQuery(q) {
+      return service.embedQuery(q);
+    }
+
+    // Batch: one cache pass for all notes, then a single embedTexts call for
+    // every cache miss — not N inferences. Partial failures keep the cached
+    // vectors and null the rest (cosine 0) instead of dropping to keyword.
+    return Promise.all(base.map(function (note, i) {
+      return cache.getCachedVector(note.id, inputs[i], modelId).catch(function () { return null; });
+    })).then(function (cached) {
+      const vectors = new Array(base.length);
+      const missIndexes = [];
+      cached.forEach(function (record, i) {
+        if (record && Array.isArray(record.vector) && record.vector.length > 0) {
+          vectors[i] = record.vector;
+        } else if (!inputs[i].trim()) {
+          vectors[i] = null;
+        } else {
+          vectors[i] = null;
+          missIndexes.push(i);
+        }
+      });
+      if (missIndexes.length === 0) return vectors;
+      return service.embedTexts(missIndexes.map(function (i) { return inputs[i]; })).then(function (missed) {
+        missIndexes.forEach(function (noteIndex, j) {
+          const vec = Array.isArray(missed) && Array.isArray(missed[j]) ? missed[j] : null;
+          if (vec && vec.length > 0) {
+            vectors[noteIndex] = vec;
+            cache.putCachedVector(base[noteIndex].id, inputs[noteIndex], modelId, vec)
+              .catch(function () { /* ignore */ });
+          }
+        });
+        return vectors;
+      }).catch(function () { return vectors; });
+    }).then(function (vectors) {
+      const byId = new Map();
+      base.forEach(function (note, i) { byId.set(note.id, vectors[i] || null); });
+      return ranker.rankNotesForQuery(base, query, {
+        embedQuery,
+        getNoteVector: function (note) { return Promise.resolve(byId.get(note.id) || null); }
+      });
+    }).catch(function () {
+      return getFilteredNotes();
+    });
+  }
+
+  function invalidateNoteVector(noteId) {
+    try {
+      if (window.NotesVectorCache && typeof window.NotesVectorCache.deleteCachedVectorsForNote === 'function') {
+        window.NotesVectorCache.deleteCachedVectorsForNote(noteId).catch(function () { /* ignore */ });
+      }
+    } catch { /* ignore */ }
+  }
+
+  // The embedding modules stay out of the bootstrap scriptSources path
+  // (issue #1186): they load on demand the first time semantic search is
+  // enabled, mirroring the games-app lazy loader. Twin implementation lives
+  // in src/ui/settings.js (ensureEmbeddingScripts); keep the source list in
+  // sync. Duplication matches the existing loadScript precedent shared by
+  // bootstrap.js and games-app.js.
+  const EMBEDDING_SCRIPT_SOURCES = [
+    'src/ai/embeddings/embedding-registry.js',
+    'src/ai/embeddings/harrier-provider.js',
+    'src/ai/embeddings/notes-vector-cache.js',
+    'src/ai/embeddings/embedding-service.js',
+    'src/ai/embeddings/notes-semantic-search.js'
+  ];
+
+  let _embeddingScriptsPromise = null;
+
+  function embeddingScriptsLoaded() {
+    try {
+      return !!(window.EmbeddingRegistry && window.HarrierProvider
+        && window.NotesVectorCache && window.EmbeddingService && window.NotesSemanticSearch);
+    } catch {
+      return false;
+    }
+  }
+
+  function loadEmbeddingScript(src) {
+    return new Promise(function (resolve, reject) {
+      const fail = function (message) {
+        reject(new Error(message || ('Failed to load ' + src)));
+      };
+      try {
+        const existing = document.querySelector('script[data-embeddings-src="' + src + '"]');
+        if (existing) {
+          // Another caller (e.g. Settings) is already loading this module:
+          // wait for ITS load instead of resolving early. Resolving here
+          // would recurse schedule→ensure in microtasks and starve the
+          // module-execution task forever.
+          if (existing.dataset.embeddingsLoaded === 'true') {
+            resolve();
+            return;
+          }
+          existing.addEventListener('load', function () { resolve(); });
+          existing.addEventListener('error', function () { fail(); });
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = false;
+        script.dataset.embeddingsSrc = src;
+        script.addEventListener('load', function () {
+          script.dataset.embeddingsLoaded = 'true';
+          resolve();
+        });
+        script.addEventListener('error', function () {
+          // Remove the dead tag so the next attempt recreates it instead of
+          // attaching to a tag that will never fire again.
+          if (script.parentNode) {
+            try { script.parentNode.removeChild(script); } catch { /* ignore */ }
+          }
+          fail();
+        });
+        document.body.appendChild(script);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  function ensureEmbeddingScripts() {
+    if (embeddingScriptsLoaded()) return Promise.resolve();
+    if (_embeddingScriptsPromise) return _embeddingScriptsPromise;
+    let chain = Promise.resolve();
+    EMBEDDING_SCRIPT_SOURCES.forEach(function (src) {
+      chain = chain.then(function () { return loadEmbeddingScript(src); });
+    });
+    _embeddingScriptsPromise = chain.catch(function (err) {
+      _embeddingScriptsPromise = null;
+      throw err;
+    });
+    return _embeddingScriptsPromise;
+  }
+
+  // Debounced so fast typing issues one inference pass per pause, not one
+  // per keystroke. The generation counter drops stale results; the debounce
+  // avoids starting the in-flight work at all.
+  const SEMANTIC_RERANK_DEBOUNCE_MS = 200;
+  let _semanticDebounceId = null;
+
+  function clearSemanticDebounce() {
+    if (_semanticDebounceId) {
+      clearTimeout(_semanticDebounceId);
+      _semanticDebounceId = null;
+    }
+  }
+
+  function scheduleSemanticRerank() {
+    if (!_activeSearchQuery || !isNotesSemanticEnabled()) {
+      clearSemanticDebounce();
+      updateSemanticStatus('idle');
+      return;
+    }
+    if (!embeddingScriptsLoaded()) {
+      // First enable: fetch the small embedding modules in the background,
+      // then re-rank. The 300MB model itself still downloads only via the
+      // Settings opt-in flow (embedding-service.js).
+      updateSemanticStatus('loading');
+      const queryAtStart = _activeSearchQuery;
+      ensureEmbeddingScripts().then(function () {
+        if (queryAtStart === _activeSearchQuery) scheduleSemanticRerank();
+      }).catch(function () {
+        updateSemanticStatus('idle');
+      });
+      return;
+    }
+    if (!isNotesSemanticReady()) {
+      clearSemanticDebounce();
+      updateSemanticStatus('loading');
+      return;
+    }
+    clearSemanticDebounce();
+    const scheduledQuery = _activeSearchQuery;
+    updateSemanticStatus('searching');
+    _semanticDebounceId = setTimeout(function () {
+      _semanticDebounceId = null;
+      if (scheduledQuery !== _activeSearchQuery) return;
+      runSemanticRerank(scheduledQuery);
+    }, SEMANTIC_RERANK_DEBOUNCE_MS);
+  }
+
+  function runSemanticRerank(queryAtStart) {
+    const generation = ++_semanticGeneration;
+    getFilteredNotesRanked().then(function (ranked) {
+      if (generation !== _semanticGeneration) return;
+      if (queryAtStart !== _activeSearchQuery) return;
+      updateSemanticStatus('idle');
+      // Never wipe an in-progress edit: if the user is typing in a note,
+      // keep the sync render (the next renderNotes will re-rank anyway).
+      const activeEl = document.activeElement;
+      if (activeEl && activeEl.classList && activeEl.classList.contains('note-textarea')
+        && activeEl.closest('#notes-list')) {
+        return;
+      }
+      // Second-pass render: only re-render when the order actually changed
+      // on screen, to avoid focus churn while typing.
+      const currentIds = Array.isArray(_lastRenderedIds) ? _lastRenderedIds : [];
+      const sameOrder = ranked.length === currentIds.length
+        && ranked.every(function (n, i) { return currentIds[i] === n.id; });
+      if (sameOrder) return;
+      renderSemanticResults(ranked);
+    }).catch(function () {
+      if (generation === _semanticGeneration) updateSemanticStatus('idle');
+    });
+  }
+
+  function renderSemanticResults(ranked) {
+    const notesList = elements.notesList || document.getElementById('notes-list');
+    const notesEmpty = elements.notesEmpty || document.getElementById('notes-empty');
+    if (!notesList || !notesEmpty) return;
+    notesList.innerHTML = '';
+    // Mirror renderNotes(): drop preview state for ids that no longer exist.
+    const activeIds = new Set(notes.map(n => n.id));
+    for (const key of Object.keys(notePreviewModes)) {
+      if (!activeIds.has(key)) delete notePreviewModes[key];
+    }
+    // Like renderNotes(): a second-pass rerank must not jump the scroll.
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    if (ranked.length === 0) {
+      notesEmpty.style.display = 'block';
+      updateNotesEmptyState(notesEmpty, notes.length === 0);
+      _lastRenderedIds = [];
+      return;
+    }
+    notesEmpty.style.display = 'none';
+    ranked.forEach(function (note, index) {
+      notesList.appendChild(createNoteCard(note, index));
+    });
+    _lastRenderedIds = ranked.map(n => n.id);
+    if (window.scrollX !== scrollX || window.scrollY !== scrollY) {
+      window.scrollTo(scrollX, scrollY);
+    }
+  }
+
   function updateNotesEmptyState(emptyEl, isEmpty) {
     const emptyParagraph = emptyEl.querySelector('p');
     if (!emptyParagraph) return;
@@ -268,9 +646,11 @@
     if (filtered.length === 0) {
       notesEmpty.style.display = 'block';
       updateNotesEmptyState(notesEmpty, notes.length === 0);
+      _lastRenderedIds = [];
       if (scrollPos && (window.scrollX !== scrollPos.x || window.scrollY !== scrollPos.y)) {
         window.scrollTo(scrollPos.x, scrollPos.y);
       }
+      scheduleSemanticRerank();
       return;
     }
 
@@ -280,6 +660,9 @@
       const card = createNoteCard(note, index);
       notesList.appendChild(card);
     });
+    // The order the user actually sees: reorder/drag operate on this so a
+    // semantic re-rank never makes a drag move the wrong slot.
+    _lastRenderedIds = filtered.map(n => n.id);
 
     if (isEditingNote && activeId) {
       if (scrollPos && (window.scrollX !== scrollPos.x || window.scrollY !== scrollPos.y)) {
@@ -306,6 +689,7 @@
         window.scrollTo(scrollPos.x, scrollPos.y);
       }
     }
+    scheduleSemanticRerank();
   }
 
   function createNoteCard(note, index) {
@@ -456,6 +840,7 @@
       renderNotes();
       return;
     }
+    bumpSemanticGeneration();
     _suppressRenderPreserve = true;
     renderNotes();
     _suppressRenderPreserve = false;
@@ -482,6 +867,8 @@
       renderNotes();
       return;
     }
+    invalidateNoteVector(id);
+    bumpSemanticGeneration();
     renderNotes();
   }
 
@@ -494,7 +881,15 @@
     if (!saveNotes(notes)) {
       notes = previousNotes;
       renderNotes();
+      return;
     }
+    invalidateNoteVector(id);
+    // Drop in-flight reranks (their base predates this edit) but deliberately
+    // do NOT re-render or schedule one: the textarea is focused, and typing
+    // must never churn the list. The displayed order goes stale w.r.t. the
+    // edited content until the next search keystroke re-ranks; membership
+    // cannot go stale since edits never add or remove notes.
+    bumpSemanticGeneration();
   }
 
   function updateNoteTag(id, tag) {
@@ -508,12 +903,16 @@
       renderNotes();
       return;
     }
+    invalidateNoteVector(id);
+    bumpSemanticGeneration();
     renderNotes();
   }
 
   function reorderNotes(fromIndex, toIndex) {
     if (fromIndex === toIndex) return;
-    const filtered = getFilteredNotes();
+    // Operate on the displayed order (sync pass or semantic re-rank), so a
+    // drag while ranked moves the card the user actually grabbed.
+    const filtered = getVisibleNotes();
     if (fromIndex < 0 || fromIndex >= filtered.length || toIndex < 0 || toIndex > filtered.length) return;
 
     const previousNotes = notes.map(n => ({ ...n }));
@@ -548,6 +947,7 @@
       }
       return;
     }
+    bumpSemanticGeneration();
     renderNotes();
     if (shouldRestoreFocus) {
       document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
@@ -841,7 +1241,7 @@
 
     if (!overId || !sourceId || overId === sourceId) return;
 
-    const filtered = getFilteredNotes();
+    const filtered = getVisibleNotes();
     const fromIndex = filtered.findIndex(n => n.id === sourceId);
     const overIndex = filtered.findIndex(n => n.id === overId);
     const toIndex = overIndex + (insertAfter ? 1 : 0);
@@ -965,7 +1365,7 @@
       const card = grip.closest('.note-item');
       if (!card) return;
 
-      const filtered = getFilteredNotes();
+      const filtered = getVisibleNotes();
       const fromIndex = filtered.findIndex(note => note.id === card.dataset.id);
       if (fromIndex !== -1) {
         const toIndex = fromIndex + (e.key === 'ArrowUp' ? -1 : 2);
@@ -995,6 +1395,11 @@
   }
 
   function initNotes() {
+    // Drop any rerank debounced before re-init (e.g. between tests) so a
+    // stale timer cannot render into the fresh state, and invalidate any
+    // inference already in flight for the same reason.
+    clearSemanticDebounce();
+    bumpSemanticGeneration();
     const notesSection = document.querySelector('.notes-section');
     if (!notesSection) {
       return;
@@ -1042,6 +1447,8 @@
     document.addEventListener('keydown', handleNotesKeydown);
     document.addEventListener('mousedown', handlePreviewMouseDown, true);
     document.addEventListener('dragstart', handleDragStart, true);
+    // 'embedding-status' is subscribed once at file scope below; DOM
+    // dedupes identical listeners, so initNotes must not re-add it here.
   }
 
   window.addEventListener('beforeunload', () => {
@@ -1057,8 +1464,14 @@
     if (elements.notesSearch) {
       elements.notesSearch.placeholder = window.i18n ? window.i18n.t('notesSearchPlaceholder') : 'Search notes...';
     }
+    // renderNotes() re-ranks (debounced) and sets the correct semantic
+    // status for the current ready state; do not force one here.
     renderNotes();
   });
+
+  try {
+    document.addEventListener('embedding-status', scheduleSemanticRerank);
+  } catch { /* ignore */ }
 
   const runNotesOnDomReady = window.onDomReady;
   runNotesOnDomReady(initNotes);
@@ -1072,6 +1485,9 @@ try {
   window.updateNoteTag = updateNoteTag;
   window.reorderNotes = reorderNotes;
   window.getFilteredNotes = getFilteredNotes;
+  window.getFilteredNotesRanked = getFilteredNotesRanked;
+  window.isNotesSemanticEnabled = isNotesSemanticEnabled;
+  window.isNotesSemanticReady = isNotesSemanticReady;
   window.setNotesSearchQuery = setSearchQuery;
   window.getNotesSearchQuery = getSearchQuery;
   window.cancelPendingNoteSaves = cancelPendingNoteSaves;

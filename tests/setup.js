@@ -345,6 +345,17 @@ globalThis.window.i18n = {
       notesEmpty: 'No notes yet. Click + to add one!',
       notesSearchPlaceholder: 'Search notes...',
       notesNoResults: 'No matching notes.',
+      notesSemanticEnable: 'Enable semantic notes search',
+      notesSemanticDesc: 'On-device Harrier model (~300MB) downloads once after opt-in for typo-tolerant, semantic matching.',
+      notesSemanticDownloading: 'Downloading on-device model… {percent}%',
+      notesSemanticReady: 'Semantic search ready (on-device).',
+      notesSemanticError: 'Model failed to load. Check connection and retry.',
+      notesSemanticCancel: 'Cancel download',
+      notesSemanticDelete: 'Delete model',
+      notesSemanticSearching: 'Semantic search…',
+      notesSemanticLoading: 'Loading on-device model…',
+      notesSemanticStarting: 'Starting download…',
+      notesSemanticPermissionDenied: 'Model download needs Hugging Face access, which was not granted.',
       clearCompletedConfirmMessage: 'This will remove all completed todos. You can undo this for a few seconds after clearing.',
       cancel: 'Cancel',
       save: 'Save',
@@ -1034,10 +1045,24 @@ notesSection.innerHTML = `
       <input id="notes-search" class="notes-search-input" type="search" data-i18n="notesSearchPlaceholder" data-i18n-aria-label="notesSearchPlaceholder" placeholder="Search notes..." autocomplete="off" spellcheck="false" aria-label="Search notes" />
     </div>
     <div class="notes-tag-filter" id="notes-tag-filter"></div>
+  <div class="notes-semantic-status" id="notes-semantic-status" hidden></div>
   <div class="notes-list" id="notes-list"></div>
   <div class="notes-empty" id="notes-empty"><p>No notes yet.</p></div>
 `;
 document.body.appendChild(notesSection);
+
+// Semantic settings stubs (issue #1186) mirroring New-Tab.html.
+const semanticToggle = createStubElement('input', 'notes-semantic-enabled-setting');
+semanticToggle.type = 'checkbox';
+document.body.appendChild(semanticToggle);
+const semanticProgress = createStubElement('progress', 'notes-semantic-progress');
+semanticProgress.max = 100;
+semanticProgress.value = 0;
+semanticProgress.hidden = true;
+document.body.appendChild(semanticProgress);
+document.body.appendChild(createStubElement('button', 'notes-semantic-cancel'));
+document.body.appendChild(createStubElement('button', 'notes-semantic-delete'));
+document.body.appendChild(createStubElement('div', 'notes-semantic-settings-status'));
 
 // ------------------------------------------------------------------
 // Reset between test files
