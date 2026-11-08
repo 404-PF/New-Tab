@@ -227,6 +227,26 @@ function resyncWeatherSettings() {
   }
 }
 
+// Shared resync callers for the #1149 entries below. Reusing one function
+// reference per helper keeps the map free of copy-pasted blocks (Sonar
+// duplication gate) while preserving the typeof guard for modules that
+// failed to load.
+function resyncClockDateStyleSafe() {
+  if (typeof window.resyncClockDateStyle === 'function') {
+    window.resyncClockDateStyle();
+  }
+}
+function resyncVideoPlaybackSafe() {
+  if (typeof window.applyVideoPlaybackSettings === 'function') {
+    window.applyVideoPlaybackSettings();
+  }
+}
+function resyncBgOverlaySafe() {
+  if (typeof window.applyBgOverlaySettings === 'function') {
+    window.applyBgOverlaySettings();
+  }
+}
+
 // Controls that must resync when the bridge rolls a rejected write back after
 // setItem already returned true (the async runtime.lastError path, #969).
 const FEATURE_TOGGLE_RESYNC = {
@@ -350,13 +370,226 @@ const FEATURE_TOGGLE_RESYNC = {
     if (typeof window.applyCurvature === 'function') {
       window.applyCurvature();
     }
+  },
+    // #1149: the Settings-modal clock/date, video, background, overlay/stats
+    // and Games writes below check the bridge result on the sync path; these
+    // entries cover the async runtime.lastError rollback the same way.
+    // Clock/date style and format share one resync helper (settings.js)
+    // that also re-renders the clock from the restored format.
+    clockColor: resyncClockDateStyleSafe,
+    clockFont: resyncClockDateStyleSafe,
+    clockSize: resyncClockDateStyleSafe,
+    clockFormat: resyncClockDateStyleSafe,
+    dateColor: resyncClockDateStyleSafe,
+    dateFont: resyncClockDateStyleSafe,
+    dateSize: resyncClockDateStyleSafe,
+    dateFormat: resyncClockDateStyleSafe,
+    videoAutoplay: resyncVideoPlaybackSafe,
+    videoMuted: resyncVideoPlaybackSafe,
+    videoPauseHidden: resyncVideoPlaybackSafe,
+    homepageBg: function () {
+      if (typeof window.applyBg === 'function') {
+        window.applyBg();
+      }
+    },
+    bgOverlayOpacity: resyncBgOverlaySafe,
+    bgOverlayBlur: resyncBgOverlaySafe,
+    bgTint: resyncBgOverlaySafe,
+    bgTintStrength: resyncBgOverlaySafe,
+    pomodoroStatsEnabled: function () {
+      if (typeof window.applyPomodoroStatsEnabled === 'function') {
+        window.applyPomodoroStatsEnabled();
+      }
+    },
+    games_enabled: function () {
+      if (typeof window.applyGamesEnabled === 'function') {
+        window.applyGamesEnabled();
+      }
+    },
+    games_keymap: function () {
+      // The no-override path is write-free, so rollback never issues a
+      // second storage write for the rolled-back value.
+      if (typeof window.applyGamesKeymap === 'function') {
+        window.applyGamesKeymap();
+      }
+    },
+    games_fps_enabled: function () {
+      if (typeof window.applyGamesFps === 'function') {
+        window.applyGamesFps();
+      }
+    }
+  };
+
+// Pure-read helpers for the desync comparison below (#1149 review). The
+// loaders in settings.js self-heal out-of-range values via setItem, so the
+// rollback path must not call them — a detector write could dispatch a
+// second storageBridgeWriteError. These mirror the loader defaults and
+// normalization without writing.
+function desyncStoredColor(key, fallback) {
+  return localStorage.getItem(key) || fallback;
+}
+function desyncStoredFont(key) {
+  const raw = localStorage.getItem(key);
+  const resolved = raw && typeof window.resolveFontAlias === 'function'
+    ? window.resolveFontAlias(raw)
+    : raw;
+  return resolved || window.FONT_DEFAULT || '';
+}
+function desyncStoredFormat(key, valid) {
+  const raw = localStorage.getItem(key);
+  return valid.includes(raw) ? raw : 'auto';
+}
+function desyncClosestSize(key, fallback, options) {
+  const parsed = Number.parseInt(localStorage.getItem(key) || String(fallback), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  // Prefer the shared snap helper so the detector and the loaders cannot
+  // drift apart if the option sets change (#1149 review).
+  if (typeof window.getClosestSettingSize === 'function') {
+    return window.getClosestSettingSize(parsed, options);
   }
-};
+  return options.reduce(function (closest, option) {
+    return Math.abs(option - parsed) < Math.abs(closest - parsed) ? option : closest;
+  }, options[0]);
+}
+function desyncClampedInt(key, fallback, min, max) {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return fallback;
+  const parsed = /^-?\d+$/.test(raw) ? Number(raw) : Number.NaN;
+  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+}
+function desyncOverlayTint(key, fallback) {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return fallback;
+  const normalized = raw.trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(normalized) ? normalized : fallback;
+}
+
+// Shared one-liner comparisons for the #1149 desync checks. Each case below
+// stays a single call so the new switch cannot reintroduce copy-pasted
+// blocks (Sonar duplication gate).
+function desyncCheckboxControl(checkboxId, key, activeIsTrue) {
+  const checkbox = document.getElementById(checkboxId);
+  if (!checkbox) return false;
+  const stored = localStorage.getItem(key);
+  const expected = activeIsTrue ? stored === 'true' : stored !== 'false';
+  return checkbox.checked !== expected;
+}
+function desyncClockDateReady() {
+  // Without the settings resync helper the control cannot be restored,
+  // so stay silent like the theme case instead of toasting alone.
+  return typeof window.resyncClockDateStyle === 'function';
+}
+function desyncColorControl(pickerId, key, fallback) {
+  if (!desyncClockDateReady()) return false;
+  const picker = document.getElementById(pickerId);
+  return Boolean(picker) && picker.value !== desyncStoredColor(key, fallback);
+}
+function desyncFontControl(pickerId, key) {
+  if (!desyncClockDateReady()) return false;
+  const picker = document.getElementById(pickerId);
+  return Boolean(picker) && picker.value !== desyncStoredFont(key);
+}
+function desyncFormatControl(pickerId, key, valid) {
+  if (!desyncClockDateReady()) return false;
+  const picker = document.getElementById(pickerId);
+  return Boolean(picker) && picker.value !== desyncStoredFormat(key, valid);
+}
+function desyncSizeControl(group, key, fallback, options) {
+  if (!desyncClockDateReady()) return false;
+  const stored = desyncClosestSize(key, fallback, options);
+  const buttons = document.querySelectorAll('[data-size-group="' + group + '"] .size-choice-button');
+  return Array.prototype.some.call(buttons, function (btn) {
+    return btn.classList.contains('active') !== (Number.parseInt(btn.dataset.size, 10) === stored);
+  });
+}
+function desyncVideoControl(checkboxId, key) {
+  if (typeof window.applyVideoPlaybackSettings !== 'function') return false;
+  return desyncCheckboxControl(checkboxId, key, false);
+}
+function desyncOverlayInputControl(inputId, key, fallback, min, max) {
+  if (typeof window.applyBgOverlaySettings !== 'function') return false;
+  const input = document.getElementById(inputId);
+  return Boolean(input) && input.value !== String(desyncClampedInt(key, fallback, min, max));
+}
+function desyncTintControl(inputId, key, fallback) {
+  if (typeof window.applyBgOverlaySettings !== 'function') return false;
+  const input = document.getElementById(inputId);
+  return Boolean(input) && input.value !== desyncOverlayTint(key, fallback);
+}
+
+// #1149 desync checks split out so featureToggleControlDesynced stays under
+// Sonar's 30-case limit, and split again so each helper stays under the
+// cognitive-complexity limit. Each returns true/false for its keys and null
+// for anything else so the caller can fall through.
+function checkClockDateDesynced(key) {
+  switch (key) {
+    case 'clockColor': return desyncColorControl('clock-color-picker', key, '#ffffff');
+    case 'clockFont': return desyncFontControl('clock-font-picker', key);
+    case 'clockSize': return desyncSizeControl('clock', key, 80, [60, 80, 100]);
+    case 'clockFormat': return desyncFormatControl('clock-format-picker', key, ['auto', '12h', '24h']);
+    case 'dateColor': return desyncColorControl('date-color-picker', key, '#ffffff');
+    case 'dateFont': return desyncFontControl('date-font-picker', key);
+    case 'dateSize': return desyncSizeControl('date', key, 24, [20, 24, 30]);
+    case 'dateFormat': return desyncFormatControl('date-format-picker', key, ['auto', 'long', 'compact', 'numeric']);
+    default: return null;
+  }
+}
+function checkMediaSettingsDesynced(key) {
+  switch (key) {
+    case 'videoAutoplay': return desyncVideoControl('video-autoplay-setting', key);
+    case 'videoMuted': return desyncVideoControl('video-muted-setting', key);
+    case 'videoPauseHidden': return desyncVideoControl('video-pause-hidden-setting', key);
+    case 'homepageBg': return desyncHomepageBgControl(key);
+    case 'bgOverlayOpacity': return desyncOverlayInputControl('bg-overlay-dim', key, 0, 0, 80);
+    case 'bgOverlayBlur': return desyncOverlayInputControl('bg-overlay-blur', key, 0, 0, 12);
+    case 'bgTint': return desyncTintControl('bg-tint-color', key, '#000000');
+    case 'bgTintStrength': return desyncOverlayInputControl('bg-tint-strength', key, 0, 0, 50);
+    case 'pomodoroStatsEnabled': {
+      if (typeof window.applyPomodoroStatsEnabled !== 'function') return false;
+      return desyncCheckboxControl('pomodoro-stats-enabled-setting', key, true);
+    }
+    case 'games_enabled': {
+      if (typeof window.applyGamesEnabled !== 'function') return false;
+      return desyncCheckboxControl('games-enabled-setting', key, false);
+    }
+    case 'games_keymap': return desyncGamesKeymapControl(key);
+    case 'games_fps_enabled': {
+      if (typeof window.applyGamesFps !== 'function') return false;
+      return desyncCheckboxControl('games-fps-setting', key, true);
+    }
+    default: return null;
+  }
+}
+function desyncHomepageBgControl(key) {
+  if (typeof window.applyBg !== 'function') return false;
+  const stored = typeof window.loadBg === 'function'
+    ? window.loadBg()
+    : (localStorage.getItem(key) || 'Water Beside Forest');
+  const current = document.body.dataset.bg;
+  // Uninitialized pages (no data-bg yet) have nothing to compare.
+  if (current === undefined) return false;
+  return current !== stored;
+}
+function desyncGamesKeymapControl(key) {
+  if (typeof window.applyGamesKeymap !== 'function') return false;
+  const stored = typeof window.loadGamesKeymap === 'function'
+    ? window.loadGamesKeymap()
+    : (localStorage.getItem(key) || 'wasd');
+  const select = document.getElementById('games-keymap-setting');
+  return Boolean(select) && select.value !== stored;
+}
+function checkRecentSettingsDesynced(key) {
+  const clockDate = checkClockDateDesynced(key);
+  if (clockDate !== null) return clockDate;
+  return checkMediaSettingsDesynced(key);
+}
 
 // True when a control still shows the rejected value the bridge has already
 // rolled back. The synchronous-failure path re-applies the control and toasts
 // before this runs, so comparing first keeps that path from reporting twice.
 function featureToggleControlDesynced(key) {
+  const recent = checkRecentSettingsDesynced(key);
+  if (recent !== null) return recent;
   switch (key) {
     case 'simpleMode': {
       const checkbox = document.getElementById('simple-mode-checkbox');
@@ -482,7 +715,7 @@ function featureToggleControlDesynced(key) {
       // Mirror loadIconSize's default and closest-option snap (app-manager.js)
       // so the comparison matches what the size buttons actually show.
       const options = [48, 60, 72];
-      const parsed = parseInt(localStorage.getItem(key) || '60', 10);
+      const parsed = Number.parseInt(localStorage.getItem(key) || '60', 10);
       const stored = Number.isFinite(parsed)
         ? options.reduce((closest, option) => {
             return Math.abs(option - parsed) < Math.abs(closest - parsed) ? option : closest;
@@ -490,7 +723,7 @@ function featureToggleControlDesynced(key) {
         : 60;
       const buttons = document.querySelectorAll('[data-size-group="icon"] .size-choice-button');
       return Array.prototype.some.call(buttons, function (btn) {
-        return btn.classList.contains('active') !== (parseInt(btn.dataset.size, 10) === stored);
+        return btn.classList.contains('active') !== (Number.parseInt(btn.dataset.size, 10) === stored);
       });
     }
     case 'appsButtonCurvature': {
@@ -512,6 +745,18 @@ function featureToggleControlDesynced(key) {
 window.addEventListener('storageBridgeWriteError', function (event) {
   const key = event?.detail?.key;
   if (!Object.prototype.hasOwnProperty.call(FEATURE_TOGGLE_RESYNC, key)) return;
+
+  // Rotation advances share the homepageBg key: their failures are owned
+  // by background-rotation.js (pool rewind + rotation-specific toast), so
+  // the generic handler stays silent instead of toasting a second time.
+  if (key === 'homepageBg' && window.BackgroundRotation &&
+      typeof window.BackgroundRotation.ownsPendingHomepageBgWrite === 'function') {
+    try {
+      if (window.BackgroundRotation.ownsPendingHomepageBgWrite(event?.detail?.value)) return;
+    } catch {
+      // Fall through to the generic resync when the ownership check fails.
+    }
+  }
 
   setTimeout(function () {
     if (!featureToggleControlDesynced(key)) return;

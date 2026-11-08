@@ -30,6 +30,54 @@ const restorers = [];
   document.body.appendChild(el);
 });
 
+// #1149: settings-modal controls bound by settings.js at injection time, so
+// these must also exist before beforeAll runs. Color/font/format pickers and
+// the games/pomodoro checkboxes already come from tests/setup.js.
+['dark', 'light', 'system'].forEach((value) => {
+  const radio = document.createElement('input');
+  radio.type = 'radio';
+  radio.name = 'theme';
+  radio.value = value;
+  document.body.appendChild(radio);
+});
+['video-autoplay-setting', 'video-muted-setting', 'video-pause-hidden-setting'].forEach((id) => {
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.id = id;
+  document.body.appendChild(checkbox);
+});
+[['clock', [60, 80, 100]], ['date', [20, 24, 30]]].forEach(([group, sizes]) => {
+  const container = document.createElement('div');
+  container.setAttribute('data-size-group', group);
+  sizes.forEach((size) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'size-choice-button';
+    button.dataset.size = String(size);
+    container.appendChild(button);
+  });
+  document.body.appendChild(container);
+});
+['bg-overlay-dim', 'bg-overlay-blur', 'bg-tint-strength', 'bg-tint-color'].forEach((id) => {
+  const input = document.createElement('input');
+  input.id = id;
+  document.body.appendChild(input);
+});
+// Font/format selects ship without options in tests/setup.js; give them the
+// options the tests exercise so value round-trips work like the real page.
+const FONT_DEFAULT = '\'Times New Roman\', Times, serif';
+[['clock-font-picker', [FONT_DEFAULT, 'Arial']],
+  ['date-font-picker', [FONT_DEFAULT, 'Arial']],
+  ['clock-format-picker', ['auto', '12h', '24h']],
+  ['date-format-picker', ['auto', 'long', 'compact', 'numeric']]].forEach(([id, values]) => {
+  const select = document.getElementById(id);
+  values.forEach((value) => {
+    const option = document.createElement('option');
+    option.value = value;
+    select.appendChild(option);
+  });
+});
+
 beforeAll(() => {
   injectScript('src/core/motion.js');
   injectScript('src/ui/color-picker.js');
@@ -846,5 +894,742 @@ describe('app-grid Settings > Apps writes report rejected writes (#1142)', () =>
     expect(getSizeButton(48).classList.contains('active')).toBe(false);
     expect(getSizeButton(60).classList.contains('active')).toBe(true);
     expect(window.showToast).not.toHaveBeenCalled();
+  });
+});
+
+describe('settings modal reports rejected writes (#1149)', () => {
+  const STORAGE_KEYS_1149 = [
+    'theme',
+    'clockColor', 'clockFont', 'clockSize', 'clockFormat',
+    'dateColor', 'dateFont', 'dateSize', 'dateFormat',
+    'videoAutoplay', 'videoMuted', 'videoPauseHidden',
+    'homepageBg',
+    'bgOverlayOpacity', 'bgOverlayBlur', 'bgTint', 'bgTintStrength',
+    'pomodoroStatsEnabled',
+    'games_enabled', 'games_keymap', 'games_fps_enabled'
+  ];
+
+  beforeEach(() => {
+    // Snap every control back to its stored default so each test starts
+    // from a known state.
+    STORAGE_KEYS_1149.forEach((key) => localStorage.removeItem(key));
+    window.applyTheme();
+    window.applyVideoPlaybackSettings();
+    window.applyGamesEnabled();
+    window.applyGamesKeymap();
+    window.applyGamesFps();
+    window.applyPomodoroStatsEnabled();
+    window.resyncClockDateStyle();
+    window.applyBg();
+  });
+
+  const getThemeRadio = (value) =>
+    document.querySelector(`input[name="theme"][value="${value}"]`);
+  const getClockSizeButton = (size) =>
+    document.querySelector(`[data-size-group="clock"] .size-choice-button[data-size="${size}"]`);
+  const getDateSizeButton = (size) =>
+    document.querySelector(`[data-size-group="date"] .size-choice-button[data-size="${size}"]`);
+
+  function makeBgThumb(id) {
+    const thumb = document.createElement('div');
+    thumb.className = 'bg-thumb';
+    thumb.setAttribute('data-bg', id);
+    document.body.appendChild(thumb);
+    return thumb;
+  }
+
+  describe('theme (regression: already fixed via commitTheme)', () => {
+    it('keeps the stored theme, restores the radio, and toasts', () => {
+      localStorage.setItem('theme', 'dark');
+      window.applyTheme();
+      failWriteFor('theme');
+
+      const radio = getThemeRadio('light');
+      radio.checked = true;
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('theme')).toBe('dark');
+      expect(getThemeRadio('dark').checked).toBe(true);
+      expect(getThemeRadio('light').checked).toBe(false);
+      expect(document.body.classList.contains('light-theme')).toBe(false);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('persists an accepted write without toasting', () => {
+      const radio = getThemeRadio('light');
+      radio.checked = true;
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('theme')).toBe('light');
+      expect(radio.checked).toBe(true);
+      expect(document.body.classList.contains('light-theme')).toBe(true);
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('resyncs and toasts after an async lastError rollback', async () => {
+      localStorage.setItem('theme', 'dark');
+      window.applyTheme();
+      failWriteFor('theme', 'async');
+
+      const radio = getThemeRadio('light');
+      radio.checked = true;
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('theme')).toBe('light');
+      expect(window.showToast).not.toHaveBeenCalled();
+
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
+
+      expect(localStorage.getItem('theme')).toBe('dark');
+      expect(getThemeRadio('dark').checked).toBe(true);
+      expect(getThemeRadio('light').checked).toBe(false);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+  });
+
+  describe('clock color', () => {
+    it('keeps the stored color, restores the picker, and toasts', () => {
+      localStorage.setItem('clockColor', '#ffffff');
+      failWriteFor('clockColor');
+
+      const picker = document.getElementById('clock-color-picker');
+      picker.value = '#000000';
+      picker.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('clockColor')).toBe('#ffffff');
+      expect(picker.value).toBe('#ffffff');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('persists an accepted write without toasting', () => {
+      const picker = document.getElementById('clock-color-picker');
+      picker.value = '#000000';
+      picker.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('clockColor')).toBe('#000000');
+      expect(picker.value).toBe('#000000');
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('resyncs and toasts after an async lastError rollback', async () => {
+      localStorage.setItem('clockColor', '#ffffff');
+      failWriteFor('clockColor', 'async');
+
+      const picker = document.getElementById('clock-color-picker');
+      picker.value = '#000000';
+      picker.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('clockColor')).toBe('#000000');
+      expect(window.showToast).not.toHaveBeenCalled();
+
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
+
+      expect(localStorage.getItem('clockColor')).toBe('#ffffff');
+      expect(picker.value).toBe('#ffffff');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+  });
+
+  describe('video autoplay', () => {
+    it('keeps the stored value, restores the checkbox, and toasts', () => {
+      failWriteFor('videoAutoplay');
+
+      const checkbox = document.getElementById('video-autoplay-setting');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('videoAutoplay')).toBeNull();
+      expect(checkbox.checked).toBe(true);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('persists an accepted write without toasting', () => {
+      const checkbox = document.getElementById('video-autoplay-setting');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('videoAutoplay')).toBe('false');
+      expect(checkbox.checked).toBe(false);
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('resyncs and toasts after an async lastError rollback', async () => {
+      failWriteFor('videoAutoplay', 'async');
+
+      const checkbox = document.getElementById('video-autoplay-setting');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('videoAutoplay')).toBe('false');
+      expect(window.showToast).not.toHaveBeenCalled();
+
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
+
+      expect(localStorage.getItem('videoAutoplay')).toBeNull();
+      expect(checkbox.checked).toBe(true);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+  });
+
+  describe('games enabled', () => {
+    it('keeps the stored value, restores the checkbox, and toasts', () => {
+      failWriteFor('games_enabled');
+
+      const checkbox = document.getElementById('games-enabled-setting');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_enabled')).toBeNull();
+      expect(checkbox.checked).toBe(true);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('persists an accepted write without toasting', () => {
+      const checkbox = document.getElementById('games-enabled-setting');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_enabled')).toBe('false');
+      expect(checkbox.checked).toBe(false);
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('resyncs and toasts after an async lastError rollback', async () => {
+      failWriteFor('games_enabled', 'async');
+
+      const checkbox = document.getElementById('games-enabled-setting');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_enabled')).toBe('false');
+      expect(window.showToast).not.toHaveBeenCalled();
+
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
+
+      expect(localStorage.getItem('games_enabled')).toBeNull();
+      expect(checkbox.checked).toBe(true);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+  });
+
+  describe('remaining clock/date controls', () => {
+    it('clock font keeps the value, restores the picker, and toasts', () => {
+      localStorage.setItem('clockFont', 'Arial');
+      failWriteFor('clockFont');
+
+      const picker = document.getElementById('clock-font-picker');
+      picker.value = FONT_DEFAULT;
+      picker.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('clockFont')).toBe('Arial');
+      expect(picker.value).toBe('Arial');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('clock font persists an accepted write without toasting', () => {
+      const picker = document.getElementById('clock-font-picker');
+      picker.value = 'Arial';
+      picker.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('clockFont')).toBe('Arial');
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('clock size keeps the value, restores the buttons, and toasts', () => {
+      localStorage.setItem('clockSize', '60');
+      failWriteFor('clockSize');
+
+      getClockSizeButton(100).click();
+
+      expect(localStorage.getItem('clockSize')).toBe('60');
+      expect(getClockSizeButton(60).classList.contains('active')).toBe(true);
+      expect(getClockSizeButton(100).classList.contains('active')).toBe(false);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('clock size persists an accepted write without toasting', () => {
+      getClockSizeButton(100).click();
+
+      expect(localStorage.getItem('clockSize')).toBe('100');
+      expect(getClockSizeButton(100).classList.contains('active')).toBe(true);
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('clock format keeps the value, restores the picker, and toasts', () => {
+      localStorage.setItem('clockFormat', 'auto');
+      failWriteFor('clockFormat');
+
+      const picker = document.getElementById('clock-format-picker');
+      picker.value = '24h';
+      picker.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('clockFormat')).toBe('auto');
+      expect(picker.value).toBe('auto');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('clock format persists an accepted write without toasting', () => {
+      const picker = document.getElementById('clock-format-picker');
+      picker.value = '24h';
+      picker.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('clockFormat')).toBe('24h');
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('date color keeps the value, restores the picker, and toasts', () => {
+      localStorage.setItem('dateColor', '#ffffff');
+      failWriteFor('dateColor');
+
+      const picker = document.getElementById('date-color-picker');
+      picker.value = '#000000';
+      picker.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('dateColor')).toBe('#ffffff');
+      expect(picker.value).toBe('#ffffff');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('date color persists an accepted write without toasting', () => {
+      const picker = document.getElementById('date-color-picker');
+      picker.value = '#000000';
+      picker.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('dateColor')).toBe('#000000');
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('date font keeps the value, restores the picker, and toasts', () => {
+      localStorage.setItem('dateFont', 'Arial');
+      failWriteFor('dateFont');
+
+      const picker = document.getElementById('date-font-picker');
+      picker.value = FONT_DEFAULT;
+      picker.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('dateFont')).toBe('Arial');
+      expect(picker.value).toBe('Arial');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('date size keeps the value, restores the buttons, and toasts', () => {
+      localStorage.setItem('dateSize', '20');
+      failWriteFor('dateSize');
+
+      getDateSizeButton(30).click();
+
+      expect(localStorage.getItem('dateSize')).toBe('20');
+      expect(getDateSizeButton(20).classList.contains('active')).toBe(true);
+      expect(getDateSizeButton(30).classList.contains('active')).toBe(false);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('date format keeps the value, restores the picker, and toasts', () => {
+      localStorage.setItem('dateFormat', 'auto');
+      failWriteFor('dateFormat');
+
+      const picker = document.getElementById('date-format-picker');
+      picker.value = 'long';
+      picker.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('dateFormat')).toBe('auto');
+      expect(picker.value).toBe('auto');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+  });
+
+  describe('remaining video, background and overlay controls', () => {
+    it('video muted keeps the value, restores the checkbox, and toasts', () => {
+      failWriteFor('videoMuted');
+
+      const checkbox = document.getElementById('video-muted-setting');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('videoMuted')).toBeNull();
+      expect(checkbox.checked).toBe(true);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('video muted persists an accepted write without toasting', () => {
+      const checkbox = document.getElementById('video-muted-setting');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('videoMuted')).toBe('false');
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('video pause-hidden keeps the value, restores the checkbox, and toasts', () => {
+      failWriteFor('videoPauseHidden');
+
+      const checkbox = document.getElementById('video-pause-hidden-setting');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('videoPauseHidden')).toBeNull();
+      expect(checkbox.checked).toBe(true);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('homepage background keeps the value, restores the selection, and toasts', () => {
+      localStorage.setItem('homepageBg', 'Water Beside Forest');
+      window.applyBg();
+      failWriteFor('homepageBg');
+
+      const thumb = makeBgThumb('Bamboo Forest');
+      try {
+        thumb.click();
+
+        expect(localStorage.getItem('homepageBg')).toBe('Water Beside Forest');
+        expect(document.body.getAttribute('data-bg')).toBe('Water Beside Forest');
+        expect(window.showToast).toHaveBeenCalledTimes(1);
+        expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+      } finally {
+        thumb.remove();
+      }
+    });
+
+    it('homepage background persists an accepted write without toasting', () => {
+      const thumb = makeBgThumb('Bamboo Forest');
+      try {
+        thumb.click();
+
+        expect(localStorage.getItem('homepageBg')).toBe('Bamboo Forest');
+        expect(document.body.getAttribute('data-bg')).toBe('Bamboo Forest');
+        expect(window.showToast).not.toHaveBeenCalled();
+      } finally {
+        thumb.remove();
+      }
+    });
+
+    it('homepage background resyncs and toasts after an async lastError rollback', async () => {
+      localStorage.setItem('homepageBg', 'Water Beside Forest');
+      window.applyBg();
+      failWriteFor('homepageBg', 'async');
+
+      const thumb = makeBgThumb('Bamboo Forest');
+      try {
+        thumb.click();
+
+        expect(localStorage.getItem('homepageBg')).toBe('Bamboo Forest');
+        expect(window.showToast).not.toHaveBeenCalled();
+
+        await flushDeferredFailureSync();
+        await flushDeferredFailureSync();
+
+        expect(localStorage.getItem('homepageBg')).toBe('Water Beside Forest');
+        expect(document.body.getAttribute('data-bg')).toBe('Water Beside Forest');
+        expect(window.showToast).toHaveBeenCalledTimes(1);
+        expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+      } finally {
+        thumb.remove();
+      }
+    });
+
+    it('overlay dim keeps the value, restores the slider, and toasts', () => {
+      failWriteFor('bgOverlayOpacity');
+
+      const input = document.getElementById('bg-overlay-dim');
+      input.value = '40';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('bgOverlayOpacity')).toBeNull();
+      expect(input.value).toBe('0');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('overlay dim persists an accepted write without toasting', () => {
+      const input = document.getElementById('bg-overlay-dim');
+      input.value = '40';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('bgOverlayOpacity')).toBe('40');
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('overlay dim resyncs and toasts after an async lastError rollback', async () => {
+      failWriteFor('bgOverlayOpacity', 'async');
+
+      const input = document.getElementById('bg-overlay-dim');
+      input.value = '40';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('bgOverlayOpacity')).toBe('40');
+      expect(window.showToast).not.toHaveBeenCalled();
+
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
+
+      expect(localStorage.getItem('bgOverlayOpacity')).toBeNull();
+      expect(input.value).toBe('0');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('overlay blur keeps the value, restores the slider, and toasts', () => {
+      failWriteFor('bgOverlayBlur');
+
+      const input = document.getElementById('bg-overlay-blur');
+      input.value = '6';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('bgOverlayBlur')).toBeNull();
+      expect(input.value).toBe('0');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('overlay tint keeps the value, restores the picker, and toasts', () => {
+      localStorage.setItem('bgTint', '#ff0000');
+      window.applyBgOverlaySettings();
+      failWriteFor('bgTint');
+
+      const input = document.getElementById('bg-tint-color');
+      input.value = '#00ff00';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('bgTint')).toBe('#ff0000');
+      expect(input.value).toBe('#ff0000');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('tint strength keeps the value, restores the slider, and toasts', () => {
+      failWriteFor('bgTintStrength');
+
+      const input = document.getElementById('bg-tint-strength');
+      input.value = '25';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(localStorage.getItem('bgTintStrength')).toBeNull();
+      expect(input.value).toBe('0');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+  });
+
+  describe('pomodoro stats and games preferences', () => {
+    it('pomodoro stats keeps the value, restores the checkbox, and toasts', () => {
+      failWriteFor('pomodoroStatsEnabled');
+
+      const checkbox = document.getElementById('pomodoro-stats-enabled-setting');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('pomodoroStatsEnabled')).toBeNull();
+      expect(checkbox.checked).toBe(false);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('pomodoro stats persists an accepted write without toasting', () => {
+      const checkbox = document.getElementById('pomodoro-stats-enabled-setting');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('pomodoroStatsEnabled')).toBe('true');
+      expect(checkbox.checked).toBe(true);
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('pomodoro stats resyncs and toasts after an async lastError rollback', async () => {
+      failWriteFor('pomodoroStatsEnabled', 'async');
+
+      const checkbox = document.getElementById('pomodoro-stats-enabled-setting');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('pomodoroStatsEnabled')).toBe('true');
+      expect(window.showToast).not.toHaveBeenCalled();
+
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
+
+      expect(localStorage.getItem('pomodoroStatsEnabled')).toBeNull();
+      expect(checkbox.checked).toBe(false);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('games keymap keeps the value, restores the select, and toasts', () => {
+      localStorage.setItem('games_keymap', 'wasd');
+      failWriteFor('games_keymap');
+
+      const select = document.getElementById('games-keymap-setting');
+      select.value = 'ijkl';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_keymap')).toBe('wasd');
+      expect(select.value).toBe('wasd');
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('games keymap persists an accepted write without toasting', () => {
+      const select = document.getElementById('games-keymap-setting');
+      select.value = 'numpad';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_keymap')).toBe('numpad');
+      expect(select.value).toBe('numpad');
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('games fps keeps the value, restores the checkbox, and toasts', () => {
+      failWriteFor('games_fps_enabled');
+
+      const checkbox = document.getElementById('games-fps-setting');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_fps_enabled')).toBeNull();
+      expect(checkbox.checked).toBe(false);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+
+    it('games fps persists an accepted write without toasting', () => {
+      const checkbox = document.getElementById('games-fps-setting');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_fps_enabled')).toBe('true');
+      expect(checkbox.checked).toBe(true);
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('games fps resyncs and toasts after an async lastError rollback', async () => {
+      failWriteFor('games_fps_enabled', 'async');
+
+      const checkbox = document.getElementById('games-fps-setting');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_fps_enabled')).toBe('true');
+      expect(window.showToast).not.toHaveBeenCalled();
+
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
+
+      expect(localStorage.getItem('games_fps_enabled')).toBeNull();
+      expect(checkbox.checked).toBe(false);
+      expect(window.showToast).toHaveBeenCalledTimes(1);
+      expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    });
+  });
+
+  describe('games keymap with helpers loaded (#1149)', () => {
+    beforeAll(() => {
+      injectScript('src/features/games/shared.js');
+    });
+
+    afterAll(() => {
+      delete window.gamesHelpers;
+    });
+
+    it('reports a rejected write, rolls back the live map, and toasts', () => {
+      localStorage.setItem('games_keymap', 'wasd');
+      window.gamesHelpers.setKeymap('wasd');
+      failWriteFor('games_keymap');
+
+      // The rejection resync must be write-free: no second setItem for the
+      // value storage already holds (#1149 review).
+      const originalSetKeymap = window.gamesHelpers.setKeymap;
+      const setKeymapSpy = vi.fn((id) => originalSetKeymap(id));
+      window.gamesHelpers.setKeymap = setKeymapSpy;
+      try {
+        const select = document.getElementById('games-keymap-setting');
+        select.value = 'numpad';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(setKeymapSpy).toHaveBeenCalledTimes(1);
+        expect(localStorage.getItem('games_keymap')).toBe('wasd');
+        expect(select.value).toBe('wasd');
+        expect(window.gamesHelpers.getKeymap()).toBe('wasd');
+        expect(window.showToast).toHaveBeenCalledTimes(1);
+        expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+      } finally {
+        window.gamesHelpers.setKeymap = originalSetKeymap;
+      }
+    });
+
+    it('persists an accepted write and applies the live map without toasting', () => {
+      const select = document.getElementById('games-keymap-setting');
+      select.value = 'ijkl';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('games_keymap')).toBe('ijkl');
+      expect(select.value).toBe('ijkl');
+      expect(window.gamesHelpers.getKeymap()).toBe('ijkl');
+      expect(window.showToast).not.toHaveBeenCalled();
+    });
+
+    it('resyncs and toasts after an async lastError rollback without a second write', async () => {
+      localStorage.setItem('games_keymap', 'wasd');
+      window.gamesHelpers.applyKeymap('wasd');
+      failWriteFor('games_keymap', 'async');
+
+      // The rejection resync must be write-free: no second setItem for the
+      // value storage already holds (#1149 review). Spying on setKeymap
+      // alone would miss a direct setItem during rollback, so count the
+      // bridged chrome.storage.local.set calls for this key as well.
+      const storageArea = chrome.storage.local;
+      const failingSet = storageArea.set;
+      let keymapStorageWrites = 0;
+      storageArea.set = function (items, callback) {
+        if (Object.prototype.hasOwnProperty.call(items, 'games_keymap')) {
+          keymapStorageWrites += 1;
+        }
+        return failingSet.call(storageArea, items, callback);
+      };
+      restorers.push(() => { storageArea.set = failingSet; });
+      const originalSetKeymap = window.gamesHelpers.setKeymap;
+      const setKeymapSpy = vi.fn((id) => originalSetKeymap(id));
+      window.gamesHelpers.setKeymap = setKeymapSpy;
+      try {
+        const select = document.getElementById('games-keymap-setting');
+        select.value = 'numpad';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(localStorage.getItem('games_keymap')).toBe('numpad');
+        expect(window.showToast).not.toHaveBeenCalled();
+
+        await flushDeferredFailureSync();
+        await flushDeferredFailureSync();
+
+        expect(localStorage.getItem('games_keymap')).toBe('wasd');
+        expect(select.value).toBe('wasd');
+        expect(window.gamesHelpers.getKeymap()).toBe('wasd');
+        expect(setKeymapSpy).toHaveBeenCalledTimes(1);
+        expect(keymapStorageWrites).toBe(1);
+        expect(window.showToast).toHaveBeenCalledTimes(1);
+        expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+      } finally {
+        window.gamesHelpers.setKeymap = originalSetKeymap;
+      }
+    });
   });
 });

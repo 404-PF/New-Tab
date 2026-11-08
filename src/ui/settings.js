@@ -45,6 +45,21 @@ const VIDEO_AUTOPLAY_KEY = 'videoAutoplay';
 const VIDEO_MUTED_KEY = 'videoMuted';
 const VIDEO_PAUSE_HIDDEN_KEY = 'videoPauseHidden';
 
+// Shared checked write for Settings-modal controls (#1149): the storage
+// bridge returns false instead of throwing on a rejected write, so check
+// the result via persistFeatureToggle when available, falling back to a
+// direct setItem. Returns whether the write was accepted.
+function persistSetting(key, value) {
+  try {
+    return typeof window.persistFeatureToggle === 'function'
+      ? window.persistFeatureToggle(key, value)
+      : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+  } catch (e) {
+    console.warn('Failed to save ' + key + ':', e);
+    return false;
+  }
+}
+
 function loadVideoAutoplay() {
   return localStorage.getItem(VIDEO_AUTOPLAY_KEY) !== 'false';
 }
@@ -161,8 +176,13 @@ function bindBgOverlayInput(input, key) {
   if (!input || input.dataset.overlayBound === 'true') return;
   input.dataset.overlayBound = 'true';
   input.addEventListener('input', function () {
-    localStorage.setItem(key, input.value);
+    // The bridge returns false instead of throwing on a rejected write
+    // (#1149), so check the result and re-apply the rolled-back value.
+    const persisted = persistSetting(key, input.value);
     applyBgOverlaySettings();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 
@@ -176,6 +196,10 @@ function initBgOverlaySettings() {
   if (resetBtn && resetBtn.dataset.overlayBound !== 'true') {
     resetBtn.dataset.overlayBound = 'true';
     resetBtn.addEventListener('click', function () {
+      // Intentionally unchecked: the bridge's removeItem returns void, so a
+      // sync rejection is invisible here. A failed removal still rolls back
+      // and is covered by the async storageBridgeWriteError resync+toast
+      // path (#1149 follow-up: sync feedback for removals).
       localStorage.removeItem(BG_OVERLAY_OPACITY_KEY);
       localStorage.removeItem(BG_OVERLAY_BLUR_KEY);
       localStorage.removeItem(BG_TINT_KEY);
@@ -906,9 +930,16 @@ function applyBg() {
 // Delegate click events for backgrounds
 document.addEventListener('click', function (e) {
   const t = e.target.closest && e.target.closest('.bg-thumb');
-  if (t && t.getAttribute('data-bg')) {
-    localStorage.setItem('homepageBg', t.getAttribute('data-bg'));
+  const bgId = t?.dataset.bg;
+  if (bgId) {
+    // The bridge returns false instead of throwing on a rejected write
+    // (#1149): applyBg() re-reads storage so a rejection restores the
+    // previous background, then report the failure.
+    const persisted = persistSetting('homepageBg', bgId);
     applyBg();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   }
 });
 
@@ -999,14 +1030,22 @@ const clockStyleReset = document.getElementById('clock-style-reset');
 
 if (clockColorPicker) {
   clockColorPicker.addEventListener('input', function () {
-    localStorage.setItem('clockColor', this.value);
+    // The bridge returns false instead of throwing on a rejected write
+    // (#1149): re-apply the rolled-back style and report the failure.
+    const persisted = persistSetting('clockColor', this.value);
     applyClockStyle();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 if (clockFontPicker) {
   clockFontPicker.addEventListener('change', function () {
-    localStorage.setItem('clockFont', this.value);
+    const persisted = persistSetting('clockFont', this.value);
     applyClockStyle();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 const clockSizeGroup = document.querySelector('[data-size-group="clock"]');
@@ -1016,12 +1055,19 @@ if (clockSizeGroup) {
     if (!button) return;
     const size = parseInt(button.dataset.size, 10);
     if (!Number.isFinite(size)) return;
-    localStorage.setItem('clockSize', size);
+    const persisted = persistSetting('clockSize', size);
     applyClockStyle();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 if (clockStyleReset) {
   clockStyleReset.addEventListener('click', function () {
+    // Intentionally unchecked: the bridge's removeItem returns void, so a
+    // sync rejection is invisible here. A failed removal still rolls back
+    // and is covered by the async storageBridgeWriteError resync+toast
+    // path (#1149 follow-up: sync feedback for removals).
     localStorage.removeItem('clockColor');
     localStorage.removeItem('clockFont');
     localStorage.removeItem('clockSize');
@@ -1038,9 +1084,15 @@ if (clockStyleReset) {
 const clockFormatPicker = document.getElementById('clock-format-picker');
 if (clockFormatPicker) {
   clockFormatPicker.addEventListener('change', function () {
-    localStorage.setItem('clockFormat', this.value);
+    const persisted = persistSetting('clockFormat', this.value);
+    // Re-apply either way: after a rejected write the getters re-read the
+    // rolled-back value instead of leaving the picker desynced (#1149).
+    applyClockFormatSetting();
     if (window.refreshClockSettings) window.refreshClockSettings();
     if (window.updateTime) updateTime();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 
@@ -1094,6 +1146,29 @@ function applyDateFormatSetting() {
   }
 }
 
+// Shared resync for the clock/date style and format controls after an async
+// runtime.lastError rollback (#1149). The apply* helpers re-read the
+// rolled-back storage, and the refresh/updateTime calls re-render the clock
+// from the restored format. Resolves through window with guards so a missing
+// module degrades to "no resync" instead of a throw.
+// Note: the loaders self-heal out-of-range values via setItem, so a rollback
+// resync can itself issue a corrected write when storage holds a value the
+// loader would normalize. That write is intentional (the next apply would do
+// it anyway) and converges: if it is also rejected, its own bridge event is
+// handled the same way.
+function resyncClockDateStyle() {
+  if (typeof applyClockStyle === 'function') applyClockStyle();
+  if (typeof applyClockFormatSetting === 'function') applyClockFormatSetting();
+  if (typeof applyDateStyle === 'function') applyDateStyle();
+  if (typeof applyDateFormatSetting === 'function') applyDateFormatSetting();
+  if (window.refreshClockSettings && typeof window.refreshClockSettings === 'function') {
+    window.refreshClockSettings();
+  }
+  if (window.updateTime && typeof window.updateTime === 'function') {
+    window.updateTime();
+  }
+}
+
 // Event listeners for date
 const dateColorPicker = document.getElementById('date-color-picker');
 const dateFontPicker = document.getElementById('date-font-picker');
@@ -1101,14 +1176,22 @@ const dateStyleReset = document.getElementById('date-style-reset');
 
 if (dateColorPicker) {
   dateColorPicker.addEventListener('input', function () {
-    localStorage.setItem('dateColor', this.value);
+    // The bridge returns false instead of throwing on a rejected write
+    // (#1149): re-apply the rolled-back style and report the failure.
+    const persisted = persistSetting('dateColor', this.value);
     applyDateStyle();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 if (dateFontPicker) {
   dateFontPicker.addEventListener('change', function () {
-    localStorage.setItem('dateFont', this.value);
+    const persisted = persistSetting('dateFont', this.value);
     applyDateStyle();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 const dateSizeGroup = document.querySelector('[data-size-group="date"]');
@@ -1118,12 +1201,19 @@ if (dateSizeGroup) {
     if (!button) return;
     const size = parseInt(button.dataset.size, 10);
     if (!Number.isFinite(size)) return;
-    localStorage.setItem('dateSize', size);
+    const persisted = persistSetting('dateSize', size);
     applyDateStyle();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 if (dateStyleReset) {
   dateStyleReset.addEventListener('click', function () {
+    // Intentionally unchecked: the bridge's removeItem returns void, so a
+    // sync rejection is invisible here. A failed removal still rolls back
+    // and is covered by the async storageBridgeWriteError resync+toast
+    // path (#1149 follow-up: sync feedback for removals).
     localStorage.removeItem('dateColor');
     localStorage.removeItem('dateFont');
     localStorage.removeItem('dateSize');
@@ -1140,9 +1230,15 @@ if (dateStyleReset) {
 const dateFormatPicker = document.getElementById('date-format-picker');
 if (dateFormatPicker) {
   dateFormatPicker.addEventListener('change', function () {
-    localStorage.setItem('dateFormat', this.value);
+    const persisted = persistSetting('dateFormat', this.value);
+    // Re-apply either way: after a rejected write the getters re-read the
+    // rolled-back value instead of leaving the picker desynced (#1149).
+    applyDateFormatSetting();
     if (window.refreshClockSettings) window.refreshClockSettings();
     if (window.updateTime) updateTime();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
   });
 }
 
@@ -1457,19 +1553,13 @@ function applyLanguageSetting() {
 // the previously stored theme (radio, body class) and the
 // listeners are told the restored effective theme, not the rejected one.
 function commitTheme(selectedTheme) {
-  let persisted;
-  try {
-    persisted = localStorage.setItem('theme', selectedTheme) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-  } catch (e) {
-    console.warn('Failed to save theme:', e);
-    persisted = false;
-  }
+  const persisted = persistSetting('theme', selectedTheme);
   applyTheme();
   // Dispatch custom event for AI chat and other components to respond.
   // 'system' is resolved so listeners always receive a concrete theme.
   window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolveTheme(loadTheme()) } }));
-  if (!persisted && typeof window.showFeatureToggleSaveError === 'function') {
-    window.showFeatureToggleSaveError();
+  if (!persisted) {
+    reportFeatureToggleSaveError();
   }
   return persisted;
 }
@@ -1477,15 +1567,7 @@ function commitTheme(selectedTheme) {
 const liquidGlassSetting = document.getElementById('liquid-glass-setting');
 if (liquidGlassSetting) {
   liquidGlassSetting.addEventListener('change', function () {
-    let persisted;
-    try {
-      persisted = typeof window.persistFeatureToggle === 'function'
-        ? window.persistFeatureToggle('liquidGlassEnabled', this.checked)
-        : localStorage.setItem('liquidGlassEnabled', this.checked) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (e) {
-      console.warn('Failed to save liquidGlassEnabled:', e);
-      persisted = false;
-    }
+    const persisted = persistSetting('liquidGlassEnabled', this.checked);
     applyLiquidGlassEnabled();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1519,7 +1601,15 @@ document.addEventListener('change', function (e) {
   const videoPauseHiddenSetting = document.getElementById('video-pause-hidden-setting');
 
   if (e.target === videoAutoplaySetting) {
-    localStorage.setItem(VIDEO_AUTOPLAY_KEY, videoAutoplaySetting.checked);
+    // The bridge returns false instead of throwing on a rejected write
+    // (#1149): resync the checkboxes from the rolled-back value and skip
+    // the media side-effects so the video does not flash the new state.
+    const persisted = persistSetting(VIDEO_AUTOPLAY_KEY, videoAutoplaySetting.checked);
+    if (!persisted) {
+      applyVideoPlaybackSettings();
+      reportFeatureToggleSaveError();
+      return;
+    }
     const videoEl = document.getElementById('bg-video');
     const thumbnailEl = document.getElementById('bg-thumbnail');
     if (videoEl && videoEl.currentSrc) {
@@ -1563,14 +1653,24 @@ document.addEventListener('change', function (e) {
       }
     }
   } else if (e.target === videoMutedSetting) {
-    localStorage.setItem(VIDEO_MUTED_KEY, videoMutedSetting.checked);
+    const persisted = persistSetting(VIDEO_MUTED_KEY, videoMutedSetting.checked);
+    if (!persisted) {
+      applyVideoPlaybackSettings();
+      reportFeatureToggleSaveError();
+      return;
+    }
     // Apply mute state immediately to active video
     const videoEl = document.getElementById('bg-video');
     if (videoEl && videoEl.currentSrc) {
       videoEl.muted = videoMutedSetting.checked;
     }
   } else if (e.target === videoPauseHiddenSetting) {
-    localStorage.setItem(VIDEO_PAUSE_HIDDEN_KEY, videoPauseHiddenSetting.checked);
+    const persisted = persistSetting(VIDEO_PAUSE_HIDDEN_KEY, videoPauseHiddenSetting.checked);
+    if (!persisted) {
+      applyVideoPlaybackSettings();
+      reportFeatureToggleSaveError();
+      return;
+    }
     // No immediate action needed — takes effect on next visibility change
   }
 });
@@ -1589,13 +1689,14 @@ function applyPomodoroStatsEnabled(enabledOverride) {
 const pomodoroStatsEnabledSetting = document.getElementById('pomodoro-stats-enabled-setting');
 if (pomodoroStatsEnabledSetting) {
   pomodoroStatsEnabledSetting.addEventListener('change', function () {
-    const enabled = this.checked;
-    try {
-      localStorage.setItem('pomodoroStatsEnabled', enabled);
-    } catch (_e) {
-      // ignore storage errors
+    // The bridge returns false instead of throwing on a rejected write
+    // (#1149): re-apply without the override so the checkbox and stats
+    // panel snap back to the rolled-back value.
+    const persisted = persistSetting('pomodoroStatsEnabled', this.checked);
+    applyPomodoroStatsEnabled();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
     }
-    applyPomodoroStatsEnabled(enabled);
   });
 }
 
@@ -1657,15 +1758,7 @@ function saveEyeCareReminderState(updates) {
     ...current,
     ...updates
   };
-  let persisted;
-  try {
-    persisted = typeof window.persistFeatureToggle === 'function'
-      ? window.persistFeatureToggle('eyeCareReminder', JSON.stringify(next))
-      : localStorage.setItem('eyeCareReminder', JSON.stringify(next)) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-  } catch (e) {
-    console.warn('Failed to save eyeCareReminder:', e);
-    persisted = false;
-  }
+  const persisted = persistSetting('eyeCareReminder', JSON.stringify(next));
   if (!persisted) {
     return false;
   }
@@ -1775,15 +1868,7 @@ if (notesEnabledSetting) {
   notesEnabledSetting.addEventListener('change', function () {
     // Guard the shared helper: toast.js may fail to load, and an unguarded
     // call would throw before the write (#969 review thread).
-    let persisted;
-    try {
-      persisted = typeof window.persistFeatureToggle === 'function'
-        ? window.persistFeatureToggle('notesEnabled', this.checked)
-        : localStorage.setItem('notesEnabled', this.checked) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (e) {
-      console.warn('Failed to save notesEnabled:', e);
-      persisted = false;
-    }
+    const persisted = persistSetting('notesEnabled', this.checked);
     applyNotesEnabled();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -2166,15 +2251,22 @@ function loadGamesEnabled() {
 // instead of keeping a stale inline display.
 function applyGamesEnabled(enabledOverride) {
   const enabled = typeof enabledOverride === 'boolean' ? enabledOverride : loadGamesEnabled();
-  const gamesApp = document.getElementById('games-app');
-  if (gamesApp) {
-    gamesApp.style.display = enabled ? '' : 'none';
-  }
-  const checkbox = document.getElementById('games-enabled-setting');
-  if (checkbox) checkbox.checked = enabled;
+  syncGamesEnabledDisplay(enabled);
   if (!enabled && window.GamesApp && typeof window.GamesApp.close === 'function') {
     window.GamesApp.close();
   }
+}
+// Tile/checkbox/badges sync without the destructive close. The change handler
+// uses this for an optimistic disable so an async rollback preserves the
+// running session; the close runs only after the write settles (#1149 review).
+function syncGamesEnabledDisplay(enabled) {
+  const effective = typeof enabled === 'boolean' ? enabled : loadGamesEnabled();
+  const gamesApp = document.getElementById('games-app');
+  if (gamesApp) {
+    gamesApp.style.display = effective ? '' : 'none';
+  }
+  const checkbox = document.getElementById('games-enabled-setting');
+  if (checkbox) checkbox.checked = effective;
   // Disabling Games drops its tile from the Alt+1..9 map (shortcuts.js skips
   // a hidden games-app), so later tiles shift slots; re-sync on-tile badges.
   // Guarded: shortcuts.js may not have loaded yet during early renders.
@@ -2187,12 +2279,34 @@ if (gamesEnabledSetting) {
   gamesEnabledSetting.checked = loadGamesEnabled();
   gamesEnabledSetting.addEventListener('change', function () {
     const enabled = this.checked;
-    try {
-      localStorage.setItem('games_enabled', enabled);
-    } catch (_e) {
-      // ignore storage errors
+    // The bridge returns false instead of throwing on a rejected write
+    // (#1149): re-apply without the override so the tile and checkbox snap
+    // back to the rolled-back value, and only preload on success.
+    const persisted = persistSetting('games_enabled', enabled);
+    if (!persisted) {
+      applyGamesEnabled();
+      reportFeatureToggleSaveError();
+      return;
     }
-    applyGamesEnabled(enabled);
+    if (!enabled && typeof localStorage.whenWriteSettled === 'function') {
+      // Optimistic disable: hide the tile now but defer the destructive
+      // close until the write settles. An async rollback restores the stored
+      // enabled value, and the storageBridgeWriteError resync then shows the
+      // tile and toasts — this waiter must not resync first, or the desync
+      // check would see no difference and stay silent.
+      syncGamesEnabledDisplay(false);
+      localStorage.whenWriteSettled('games_enabled').then(function () {
+        if (loadGamesEnabled() !== false) return;
+        if (window.GamesApp && typeof window.GamesApp.close === 'function') {
+          try { window.GamesApp.close(); } catch (_closeErr) { /* ignore close errors */ }
+        }
+        if (window.Shortcuts && typeof window.Shortcuts.refreshAppShortcutBadges === 'function') {
+          try { window.Shortcuts.refreshAppShortcutBadges(); } catch (_badgeErr) { /* ignore */ }
+        }
+      });
+      return;
+    }
+    applyGamesEnabled();
     if (enabled && window.GamesApp && typeof window.GamesApp.preload === 'function') {
       try { window.GamesApp.preload().catch(function () {}); } catch (_e) { /* ignore preload errors */ }
     }
@@ -2212,10 +2326,21 @@ function loadGamesKeymap() {
   return 'wasd';
 }
 function applyGamesKeymap(idOverride) {
-  const keymap = typeof idOverride === 'string' ? idOverride : loadGamesKeymap();
+  const hasOverride = typeof idOverride === 'string';
+  const keymap = hasOverride ? idOverride : loadGamesKeymap();
   const select = document.getElementById('games-keymap-setting');
   if (select) select.value = keymap;
-  if (window.gamesHelpers && typeof window.gamesHelpers.setKeymap === 'function') {
+  if (!(window.gamesHelpers && typeof window.gamesHelpers.setKeymap === 'function')) return;
+  if (hasOverride) {
+    window.gamesHelpers.setKeymap(keymap);
+    return;
+  }
+  // Read-only sync: restore the select and the live helpers map from the
+  // rolled-back stored value without issuing a second storage write for a
+  // value storage already holds (#1149 review).
+  if (typeof window.gamesHelpers.applyKeymap === 'function') {
+    window.gamesHelpers.applyKeymap(keymap);
+  } else {
     window.gamesHelpers.setKeymap(keymap);
   }
 }
@@ -2225,15 +2350,37 @@ if (gamesKeymapSetting) {
   gamesKeymapSetting.addEventListener('change', function () {
     const keymap = this.value;
     // gamesHelpers.setKeymap persists the choice itself when the helpers
-    // are loaded; write directly only as the fallback when they are not.
-    if (!(window.gamesHelpers && typeof window.gamesHelpers.setKeymap === 'function')) {
+    // are loaded (returning false when the bridge rejects the write,
+    // #1149); write directly only as the fallback when they are not.
+    let persisted;
+    let resolved = keymap;
+    if (window.gamesHelpers && typeof window.gamesHelpers.setKeymap === 'function') {
       try {
-        localStorage.setItem('games_keymap', keymap);
-      } catch (_e) {
-        // ignore storage errors
+        resolved = window.gamesHelpers.setKeymap(keymap);
+        persisted = resolved !== false;
+      } catch (e) {
+        console.warn('Failed to save games_keymap:', e);
+        persisted = false;
       }
+    } else {
+      persisted = persistSetting('games_keymap', keymap);
+      // Normalize like the helpers path: an unknown id reads back as the
+      // default, so the select must show the resolved value, not the raw
+      // input (#1149 review).
+      if (persisted) resolved = loadGamesKeymap();
     }
-    applyGamesKeymap(keymap);
+    if (!persisted) {
+      applyGamesKeymap();
+      reportFeatureToggleSaveError();
+      return;
+    }
+    // Success: the write path above already applied the live map (helpers)
+    // or persisted the value (fallback), and the select already shows the
+    // choice — only re-sync the select with the resolved (normalized) id.
+    if (typeof resolved === 'string') {
+      const select = document.getElementById('games-keymap-setting');
+      if (select && select.value !== resolved) select.value = resolved;
+    }
   });
 }
 
@@ -2256,13 +2403,14 @@ const gamesFpsSetting = document.getElementById('games-fps-setting');
 if (gamesFpsSetting) {
   applyGamesFps();
   gamesFpsSetting.addEventListener('change', function () {
-    const enabled = this.checked;
-    try {
-      localStorage.setItem('games_fps_enabled', enabled);
-    } catch (_e) {
-      // ignore storage errors
+    // The bridge returns false instead of throwing on a rejected write
+    // (#1149): re-apply without the override so the checkbox snaps back
+    // to the rolled-back value.
+    const persisted = persistSetting('games_fps_enabled', this.checked);
+    applyGamesFps();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
     }
-    applyGamesFps(enabled);
   });
 }
 
@@ -2658,6 +2806,7 @@ window.getClosestSettingSize = getClosestSettingSize;
 window.loadClockFormatSetting = loadClockFormatSetting;
 window.loadDateStyle = loadDateStyle;
 window.loadDateFormatSetting = loadDateFormatSetting;
+window.resyncClockDateStyle = resyncClockDateStyle;
 window.loadTheme = loadTheme;
 window.resolveTheme = resolveTheme;
 window.applyTheme = applyTheme;
@@ -2682,6 +2831,9 @@ window.applyGamesFps = applyGamesFps;
 window.loadGamesFps = loadGamesFps;
 window.initSettings = initSettings;
 window.resolveFontAlias = resolveFontAlias;
+// Read by the toast.js desync detector so font comparison needs no
+// normalizing loader call on the rollback path (#1149 review).
+window.FONT_DEFAULT = FONT_DEFAULT;
 
 })();
 
