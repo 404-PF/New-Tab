@@ -373,6 +373,23 @@
     showRotationSaveError();
   }
 
+  // True when a homepageBg failure belongs to the pending rotation advance.
+  // Exposed so the generic toast.js async resync can stay silent for
+  // rotation-owned writes and leave the error to this module's
+  // rotation-specific handler (otherwise one failed advance toasts twice).
+  // Mirrors handleHomepageBgSaveFailure's value attribution without
+  // retiring the record.
+  function ownsPendingHomepageBgWrite(value) {
+    const pending = pendingAdvance;
+    if (!pending) {
+      return false;
+    }
+    if (typeof value === 'string' && value !== pending.bg.id) {
+      return false;
+    }
+    return true;
+  }
+
   // Async homepageBg failures: the write was optimistically accepted and the
   // new background may already be painted, so re-apply the rolled-back value.
   // Only react when the failure belongs to a rotation advance — settings,
@@ -584,5 +601,6 @@
     stop: stopRotation,
     renderPicker: renderBackgroundPicker,
     initUI: initRotationUI,
+    ownsPendingHomepageBgWrite: ownsPendingHomepageBgWrite,
   };
 })();

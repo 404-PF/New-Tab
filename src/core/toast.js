@@ -733,6 +733,18 @@ window.addEventListener('storageBridgeWriteError', function (event) {
   const key = event?.detail?.key;
   if (!Object.prototype.hasOwnProperty.call(FEATURE_TOGGLE_RESYNC, key)) return;
 
+  // Rotation advances share the homepageBg key: their failures are owned
+  // by background-rotation.js (pool rewind + rotation-specific toast), so
+  // the generic handler stays silent instead of toasting a second time.
+  if (key === 'homepageBg' && window.BackgroundRotation &&
+      typeof window.BackgroundRotation.ownsPendingHomepageBgWrite === 'function') {
+    try {
+      if (window.BackgroundRotation.ownsPendingHomepageBgWrite(event?.detail?.value)) return;
+    } catch {
+      // Fall through to the generic resync when the ownership check fails.
+    }
+  }
+
   setTimeout(function () {
     if (!featureToggleControlDesynced(key)) return;
     FEATURE_TOGGLE_RESYNC[key]();
