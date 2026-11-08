@@ -1593,7 +1593,19 @@ describe('settings modal reports rejected writes (#1149)', () => {
       failWriteFor('games_keymap', 'async');
 
       // The rejection resync must be write-free: no second setItem for the
-      // value storage already holds (#1149 review).
+      // value storage already holds (#1149 review). Spying on setKeymap
+      // alone would miss a direct setItem during rollback, so count the
+      // bridged chrome.storage.local.set calls for this key as well.
+      const storageArea = chrome.storage.local;
+      const failingSet = storageArea.set;
+      let keymapStorageWrites = 0;
+      storageArea.set = function (items, callback) {
+        if (Object.prototype.hasOwnProperty.call(items, 'games_keymap')) {
+          keymapStorageWrites += 1;
+        }
+        return failingSet.call(storageArea, items, callback);
+      };
+      restorers.push(() => { storageArea.set = failingSet; });
       const originalSetKeymap = window.gamesHelpers.setKeymap;
       const setKeymapSpy = vi.fn((id) => originalSetKeymap(id));
       window.gamesHelpers.setKeymap = setKeymapSpy;
@@ -1612,6 +1624,7 @@ describe('settings modal reports rejected writes (#1149)', () => {
         expect(select.value).toBe('wasd');
         expect(window.gamesHelpers.getKeymap()).toBe('wasd');
         expect(setKeymapSpy).toHaveBeenCalledTimes(1);
+        expect(keymapStorageWrites).toBe(1);
         expect(window.showToast).toHaveBeenCalledTimes(1);
         expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
       } finally {

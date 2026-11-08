@@ -227,6 +227,26 @@ function resyncWeatherSettings() {
   }
 }
 
+// Shared resync callers for the #1149 entries below. Reusing one function
+// reference per helper keeps the map free of copy-pasted blocks (Sonar
+// duplication gate) while preserving the typeof guard for modules that
+// failed to load.
+function resyncClockDateStyleSafe() {
+  if (typeof window.resyncClockDateStyle === 'function') {
+    window.resyncClockDateStyle();
+  }
+}
+function resyncVideoPlaybackSafe() {
+  if (typeof window.applyVideoPlaybackSettings === 'function') {
+    window.applyVideoPlaybackSettings();
+  }
+}
+function resyncBgOverlaySafe() {
+  if (typeof window.applyBgOverlaySettings === 'function') {
+    window.applyBgOverlaySettings();
+  }
+}
+
 // Controls that must resync when the bridge rolls a rejected write back after
 // setItem already returned true (the async runtime.lastError path, #969).
 const FEATURE_TOGGLE_RESYNC = {
@@ -354,90 +374,28 @@ const FEATURE_TOGGLE_RESYNC = {
     // #1149: the Settings-modal clock/date, video, background, overlay/stats
     // and Games writes below check the bridge result on the sync path; these
     // entries cover the async runtime.lastError rollback the same way.
-    // Helpers resolve through window with typeof guards so a module that
-    // failed to load degrades to "no resync" instead of a throw.
     // Clock/date style and format share one resync helper (settings.js)
     // that also re-renders the clock from the restored format.
-    clockColor: function () {
-      if (typeof window.resyncClockDateStyle === 'function') {
-        window.resyncClockDateStyle();
-      }
-    },
-    clockFont: function () {
-      if (typeof window.resyncClockDateStyle === 'function') {
-        window.resyncClockDateStyle();
-      }
-    },
-    clockSize: function () {
-      if (typeof window.resyncClockDateStyle === 'function') {
-        window.resyncClockDateStyle();
-      }
-    },
-    clockFormat: function () {
-      if (typeof window.resyncClockDateStyle === 'function') {
-        window.resyncClockDateStyle();
-      }
-    },
-    dateColor: function () {
-      if (typeof window.resyncClockDateStyle === 'function') {
-        window.resyncClockDateStyle();
-      }
-    },
-    dateFont: function () {
-      if (typeof window.resyncClockDateStyle === 'function') {
-        window.resyncClockDateStyle();
-      }
-    },
-    dateSize: function () {
-      if (typeof window.resyncClockDateStyle === 'function') {
-        window.resyncClockDateStyle();
-      }
-    },
-    dateFormat: function () {
-      if (typeof window.resyncClockDateStyle === 'function') {
-        window.resyncClockDateStyle();
-      }
-    },
-    videoAutoplay: function () {
-      if (typeof window.applyVideoPlaybackSettings === 'function') {
-        window.applyVideoPlaybackSettings();
-      }
-    },
-    videoMuted: function () {
-      if (typeof window.applyVideoPlaybackSettings === 'function') {
-        window.applyVideoPlaybackSettings();
-      }
-    },
-    videoPauseHidden: function () {
-      if (typeof window.applyVideoPlaybackSettings === 'function') {
-        window.applyVideoPlaybackSettings();
-      }
-    },
+    clockColor: resyncClockDateStyleSafe,
+    clockFont: resyncClockDateStyleSafe,
+    clockSize: resyncClockDateStyleSafe,
+    clockFormat: resyncClockDateStyleSafe,
+    dateColor: resyncClockDateStyleSafe,
+    dateFont: resyncClockDateStyleSafe,
+    dateSize: resyncClockDateStyleSafe,
+    dateFormat: resyncClockDateStyleSafe,
+    videoAutoplay: resyncVideoPlaybackSafe,
+    videoMuted: resyncVideoPlaybackSafe,
+    videoPauseHidden: resyncVideoPlaybackSafe,
     homepageBg: function () {
       if (typeof window.applyBg === 'function') {
         window.applyBg();
       }
     },
-    bgOverlayOpacity: function () {
-      if (typeof window.applyBgOverlaySettings === 'function') {
-        window.applyBgOverlaySettings();
-      }
-    },
-    bgOverlayBlur: function () {
-      if (typeof window.applyBgOverlaySettings === 'function') {
-        window.applyBgOverlaySettings();
-      }
-    },
-    bgTint: function () {
-      if (typeof window.applyBgOverlaySettings === 'function') {
-        window.applyBgOverlaySettings();
-      }
-    },
-    bgTintStrength: function () {
-      if (typeof window.applyBgOverlaySettings === 'function') {
-        window.applyBgOverlaySettings();
-      }
-    },
+    bgOverlayOpacity: resyncBgOverlaySafe,
+    bgOverlayBlur: resyncBgOverlaySafe,
+    bgTint: resyncBgOverlaySafe,
+    bgTintStrength: resyncBgOverlaySafe,
     pomodoroStatsEnabled: function () {
       if (typeof window.applyPomodoroStatsEnabled === 'function') {
         window.applyPomodoroStatsEnabled();
@@ -506,10 +464,119 @@ function desyncOverlayTint(key, fallback) {
   return /^#[0-9a-f]{6}$/.test(normalized) ? normalized : fallback;
 }
 
+// Shared one-liner comparisons for the #1149 desync checks. Each case below
+// stays a single call so the new switch cannot reintroduce copy-pasted
+// blocks (Sonar duplication gate).
+function desyncCheckboxControl(checkboxId, key, activeIsTrue) {
+  const checkbox = document.getElementById(checkboxId);
+  if (!checkbox) return false;
+  const stored = localStorage.getItem(key);
+  const expected = activeIsTrue ? stored === 'true' : stored !== 'false';
+  return checkbox.checked !== expected;
+}
+function desyncClockDateReady() {
+  // Without the settings resync helper the control cannot be restored,
+  // so stay silent like the theme case instead of toasting alone.
+  return typeof window.resyncClockDateStyle === 'function';
+}
+function desyncColorControl(pickerId, key, fallback) {
+  if (!desyncClockDateReady()) return false;
+  const picker = document.getElementById(pickerId);
+  return Boolean(picker) && picker.value !== desyncStoredColor(key, fallback);
+}
+function desyncFontControl(pickerId, key) {
+  if (!desyncClockDateReady()) return false;
+  const picker = document.getElementById(pickerId);
+  return Boolean(picker) && picker.value !== desyncStoredFont(key);
+}
+function desyncFormatControl(pickerId, key, valid) {
+  if (!desyncClockDateReady()) return false;
+  const picker = document.getElementById(pickerId);
+  return Boolean(picker) && picker.value !== desyncStoredFormat(key, valid);
+}
+function desyncSizeControl(group, key, fallback, options) {
+  if (!desyncClockDateReady()) return false;
+  const stored = desyncClosestSize(key, fallback, options);
+  const buttons = document.querySelectorAll('[data-size-group="' + group + '"] .size-choice-button');
+  return Array.prototype.some.call(buttons, function (btn) {
+    return btn.classList.contains('active') !== (Number.parseInt(btn.dataset.size, 10) === stored);
+  });
+}
+function desyncVideoControl(checkboxId, key) {
+  if (typeof window.applyVideoPlaybackSettings !== 'function') return false;
+  return desyncCheckboxControl(checkboxId, key, false);
+}
+function desyncOverlayInputControl(inputId, key, fallback, min, max) {
+  if (typeof window.applyBgOverlaySettings !== 'function') return false;
+  const input = document.getElementById(inputId);
+  return Boolean(input) && input.value !== String(desyncClampedInt(key, fallback, min, max));
+}
+function desyncTintControl(inputId, key, fallback) {
+  if (typeof window.applyBgOverlaySettings !== 'function') return false;
+  const input = document.getElementById(inputId);
+  return Boolean(input) && input.value !== desyncOverlayTint(key, fallback);
+}
+
+// #1149 desync checks split out so featureToggleControlDesynced stays under
+// Sonar's 30-case limit. Returns true/false for the 20 new keys and null for
+// every older key so the caller can fall through to its own switch.
+function checkRecentSettingsDesynced(key) {
+  switch (key) {
+    case 'clockColor': return desyncColorControl('clock-color-picker', key, '#ffffff');
+    case 'clockFont': return desyncFontControl('clock-font-picker', key);
+    case 'clockSize': return desyncSizeControl('clock', key, 80, [60, 80, 100]);
+    case 'clockFormat': return desyncFormatControl('clock-format-picker', key, ['auto', '12h', '24h']);
+    case 'dateColor': return desyncColorControl('date-color-picker', key, '#ffffff');
+    case 'dateFont': return desyncFontControl('date-font-picker', key);
+    case 'dateSize': return desyncSizeControl('date', key, 24, [20, 24, 30]);
+    case 'dateFormat': return desyncFormatControl('date-format-picker', key, ['auto', 'long', 'compact', 'numeric']);
+    case 'videoAutoplay': return desyncVideoControl('video-autoplay-setting', key);
+    case 'videoMuted': return desyncVideoControl('video-muted-setting', key);
+    case 'videoPauseHidden': return desyncVideoControl('video-pause-hidden-setting', key);
+    case 'homepageBg': {
+      if (typeof window.applyBg !== 'function') return false;
+      const stored = typeof window.loadBg === 'function'
+        ? window.loadBg()
+        : (localStorage.getItem(key) || 'Water Beside Forest');
+      const current = document.body.dataset.bg;
+      // Uninitialized pages (no data-bg yet) have nothing to compare.
+      if (current === undefined) return false;
+      return current !== stored;
+    }
+    case 'bgOverlayOpacity': return desyncOverlayInputControl('bg-overlay-dim', key, 0, 0, 80);
+    case 'bgOverlayBlur': return desyncOverlayInputControl('bg-overlay-blur', key, 0, 0, 12);
+    case 'bgTint': return desyncTintControl('bg-tint-color', key, '#000000');
+    case 'bgTintStrength': return desyncOverlayInputControl('bg-tint-strength', key, 0, 0, 50);
+    case 'pomodoroStatsEnabled': {
+      if (typeof window.applyPomodoroStatsEnabled !== 'function') return false;
+      return desyncCheckboxControl('pomodoro-stats-enabled-setting', key, true);
+    }
+    case 'games_enabled': {
+      if (typeof window.applyGamesEnabled !== 'function') return false;
+      return desyncCheckboxControl('games-enabled-setting', key, false);
+    }
+    case 'games_keymap': {
+      if (typeof window.applyGamesKeymap !== 'function') return false;
+      const stored = typeof window.loadGamesKeymap === 'function'
+        ? window.loadGamesKeymap()
+        : (localStorage.getItem(key) || 'wasd');
+      const select = document.getElementById('games-keymap-setting');
+      return Boolean(select) && select.value !== stored;
+    }
+    case 'games_fps_enabled': {
+      if (typeof window.applyGamesFps !== 'function') return false;
+      return desyncCheckboxControl('games-fps-setting', key, true);
+    }
+    default: return null;
+  }
+}
+
 // True when a control still shows the rejected value the bridge has already
 // rolled back. The synchronous-failure path re-applies the control and toasts
 // before this runs, so comparing first keeps that path from reporting twice.
 function featureToggleControlDesynced(key) {
+  const recent = checkRecentSettingsDesynced(key);
+  if (recent !== null) return recent;
   switch (key) {
     case 'simpleMode': {
       const checkbox = document.getElementById('simple-mode-checkbox');
@@ -635,7 +702,7 @@ function featureToggleControlDesynced(key) {
       // Mirror loadIconSize's default and closest-option snap (app-manager.js)
       // so the comparison matches what the size buttons actually show.
       const options = [48, 60, 72];
-      const parsed = parseInt(localStorage.getItem(key) || '60', 10);
+      const parsed = Number.parseInt(localStorage.getItem(key) || '60', 10);
       const stored = Number.isFinite(parsed)
         ? options.reduce((closest, option) => {
             return Math.abs(option - parsed) < Math.abs(closest - parsed) ? option : closest;
@@ -643,7 +710,7 @@ function featureToggleControlDesynced(key) {
         : 60;
       const buttons = document.querySelectorAll('[data-size-group="icon"] .size-choice-button');
       return Array.prototype.some.call(buttons, function (btn) {
-        return btn.classList.contains('active') !== (parseInt(btn.dataset.size, 10) === stored);
+        return btn.classList.contains('active') !== (Number.parseInt(btn.dataset.size, 10) === stored);
       });
     }
     case 'appsButtonCurvature': {
@@ -652,136 +719,6 @@ function featureToggleControlDesynced(key) {
       return Array.prototype.some.call(radios, function (radio) {
         return radio.checked !== (radio.value === stored);
       });
-    }
-    case 'clockColor': {
-      // Without the settings resync helper the control cannot be restored,
-      // so stay silent like the theme case instead of toasting alone.
-      if (typeof window.resyncClockDateStyle !== 'function') return false;
-      const stored = desyncStoredColor(key, '#ffffff');
-      const picker = document.getElementById('clock-color-picker');
-      return Boolean(picker) && picker.value !== stored;
-    }
-    case 'clockFont': {
-      if (typeof window.resyncClockDateStyle !== 'function') return false;
-      const stored = desyncStoredFont(key);
-      const picker = document.getElementById('clock-font-picker');
-      return Boolean(picker) && picker.value !== stored;
-    }
-    case 'clockSize': {
-      if (typeof window.resyncClockDateStyle !== 'function') return false;
-      // Mirror loadClockStyle's default and closest-option snap so the
-      // comparison matches what the size buttons actually show.
-      const stored = desyncClosestSize(key, 80, [60, 80, 100]);
-      const buttons = document.querySelectorAll('[data-size-group="clock"] .size-choice-button');
-      return Array.prototype.some.call(buttons, function (btn) {
-        return btn.classList.contains('active') !== (Number.parseInt(btn.dataset.size, 10) === stored);
-      });
-    }
-    case 'clockFormat': {
-      if (typeof window.resyncClockDateStyle !== 'function') return false;
-      const stored = desyncStoredFormat(key, ['auto', '12h', '24h']);
-      const picker = document.getElementById('clock-format-picker');
-      return Boolean(picker) && picker.value !== stored;
-    }
-    case 'dateColor': {
-      if (typeof window.resyncClockDateStyle !== 'function') return false;
-      const stored = desyncStoredColor(key, '#ffffff');
-      const picker = document.getElementById('date-color-picker');
-      return Boolean(picker) && picker.value !== stored;
-    }
-    case 'dateFont': {
-      if (typeof window.resyncClockDateStyle !== 'function') return false;
-      const stored = desyncStoredFont(key);
-      const picker = document.getElementById('date-font-picker');
-      return Boolean(picker) && picker.value !== stored;
-    }
-    case 'dateSize': {
-      if (typeof window.resyncClockDateStyle !== 'function') return false;
-      // Mirror loadDateStyle's default and closest-option snap so the
-      // comparison matches what the size buttons actually show.
-      const stored = desyncClosestSize(key, 24, [20, 24, 30]);
-      const buttons = document.querySelectorAll('[data-size-group="date"] .size-choice-button');
-      return Array.prototype.some.call(buttons, function (btn) {
-        return btn.classList.contains('active') !== (Number.parseInt(btn.dataset.size, 10) === stored);
-      });
-    }
-    case 'dateFormat': {
-      if (typeof window.resyncClockDateStyle !== 'function') return false;
-      const stored = desyncStoredFormat(key, ['auto', 'long', 'compact', 'numeric']);
-      const picker = document.getElementById('date-format-picker');
-      return Boolean(picker) && picker.value !== stored;
-    }
-    case 'videoAutoplay': {
-      if (typeof window.applyVideoPlaybackSettings !== 'function') return false;
-      const checkbox = document.getElementById('video-autoplay-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
-    }
-    case 'videoMuted': {
-      if (typeof window.applyVideoPlaybackSettings !== 'function') return false;
-      const checkbox = document.getElementById('video-muted-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
-    }
-    case 'videoPauseHidden': {
-      if (typeof window.applyVideoPlaybackSettings !== 'function') return false;
-      const checkbox = document.getElementById('video-pause-hidden-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
-    }
-    case 'homepageBg': {
-      if (typeof window.applyBg !== 'function') return false;
-      const stored = typeof window.loadBg === 'function'
-        ? window.loadBg()
-        : (localStorage.getItem(key) || 'Water Beside Forest');
-      const current = document.body.dataset.bg;
-      // Uninitialized pages (no data-bg yet) have nothing to compare.
-      if (current === undefined) return false;
-      return current !== stored;
-    }
-    case 'bgOverlayOpacity': {
-      if (typeof window.applyBgOverlaySettings !== 'function') return false;
-      const stored = desyncClampedInt(key, 0, 0, 80);
-      const input = document.getElementById('bg-overlay-dim');
-      return Boolean(input) && input.value !== String(stored);
-    }
-    case 'bgOverlayBlur': {
-      if (typeof window.applyBgOverlaySettings !== 'function') return false;
-      const stored = desyncClampedInt(key, 0, 0, 12);
-      const input = document.getElementById('bg-overlay-blur');
-      return Boolean(input) && input.value !== String(stored);
-    }
-    case 'bgTint': {
-      if (typeof window.applyBgOverlaySettings !== 'function') return false;
-      const stored = desyncOverlayTint(key, '#000000');
-      const input = document.getElementById('bg-tint-color');
-      return Boolean(input) && input.value !== stored;
-    }
-    case 'bgTintStrength': {
-      if (typeof window.applyBgOverlaySettings !== 'function') return false;
-      const stored = desyncClampedInt(key, 0, 0, 50);
-      const input = document.getElementById('bg-tint-strength');
-      return Boolean(input) && input.value !== String(stored);
-    }
-    case 'pomodoroStatsEnabled': {
-      if (typeof window.applyPomodoroStatsEnabled !== 'function') return false;
-      const checkbox = document.getElementById('pomodoro-stats-enabled-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
-    }
-    case 'games_enabled': {
-      if (typeof window.applyGamesEnabled !== 'function') return false;
-      const checkbox = document.getElementById('games-enabled-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
-    }
-    case 'games_keymap': {
-      if (typeof window.applyGamesKeymap !== 'function') return false;
-      const stored = typeof window.loadGamesKeymap === 'function'
-        ? window.loadGamesKeymap()
-        : (localStorage.getItem(key) || 'wasd');
-      const select = document.getElementById('games-keymap-setting');
-      return Boolean(select) && select.value !== stored;
-    }
-    case 'games_fps_enabled': {
-      if (typeof window.applyGamesFps !== 'function') return false;
-      const checkbox = document.getElementById('games-fps-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
     }
   }
   return false;

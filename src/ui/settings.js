@@ -930,7 +930,7 @@ function applyBg() {
 // Delegate click events for backgrounds
 document.addEventListener('click', function (e) {
   const t = e.target.closest && e.target.closest('.bg-thumb');
-  const bgId = t && t.dataset.bg;
+  const bgId = t?.dataset.bg;
   if (bgId) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): applyBg() re-reads storage so a rejection restores the
