@@ -518,9 +518,10 @@ function desyncTintControl(inputId, key, fallback) {
 }
 
 // #1149 desync checks split out so featureToggleControlDesynced stays under
-// Sonar's 30-case limit. Returns true/false for the 20 new keys and null for
-// every older key so the caller can fall through to its own switch.
-function checkRecentSettingsDesynced(key) {
+// Sonar's 30-case limit, and split again so each helper stays under the
+// cognitive-complexity limit. Each returns true/false for its keys and null
+// for anything else so the caller can fall through.
+function checkClockDateDesynced(key) {
   switch (key) {
     case 'clockColor': return desyncColorControl('clock-color-picker', key, '#ffffff');
     case 'clockFont': return desyncFontControl('clock-font-picker', key);
@@ -530,19 +531,15 @@ function checkRecentSettingsDesynced(key) {
     case 'dateFont': return desyncFontControl('date-font-picker', key);
     case 'dateSize': return desyncSizeControl('date', key, 24, [20, 24, 30]);
     case 'dateFormat': return desyncFormatControl('date-format-picker', key, ['auto', 'long', 'compact', 'numeric']);
+    default: return null;
+  }
+}
+function checkMediaSettingsDesynced(key) {
+  switch (key) {
     case 'videoAutoplay': return desyncVideoControl('video-autoplay-setting', key);
     case 'videoMuted': return desyncVideoControl('video-muted-setting', key);
     case 'videoPauseHidden': return desyncVideoControl('video-pause-hidden-setting', key);
-    case 'homepageBg': {
-      if (typeof window.applyBg !== 'function') return false;
-      const stored = typeof window.loadBg === 'function'
-        ? window.loadBg()
-        : (localStorage.getItem(key) || 'Water Beside Forest');
-      const current = document.body.dataset.bg;
-      // Uninitialized pages (no data-bg yet) have nothing to compare.
-      if (current === undefined) return false;
-      return current !== stored;
-    }
+    case 'homepageBg': return desyncHomepageBgControl(key);
     case 'bgOverlayOpacity': return desyncOverlayInputControl('bg-overlay-dim', key, 0, 0, 80);
     case 'bgOverlayBlur': return desyncOverlayInputControl('bg-overlay-blur', key, 0, 0, 12);
     case 'bgTint': return desyncTintControl('bg-tint-color', key, '#000000');
@@ -555,20 +552,36 @@ function checkRecentSettingsDesynced(key) {
       if (typeof window.applyGamesEnabled !== 'function') return false;
       return desyncCheckboxControl('games-enabled-setting', key, false);
     }
-    case 'games_keymap': {
-      if (typeof window.applyGamesKeymap !== 'function') return false;
-      const stored = typeof window.loadGamesKeymap === 'function'
-        ? window.loadGamesKeymap()
-        : (localStorage.getItem(key) || 'wasd');
-      const select = document.getElementById('games-keymap-setting');
-      return Boolean(select) && select.value !== stored;
-    }
+    case 'games_keymap': return desyncGamesKeymapControl(key);
     case 'games_fps_enabled': {
       if (typeof window.applyGamesFps !== 'function') return false;
       return desyncCheckboxControl('games-fps-setting', key, true);
     }
     default: return null;
   }
+}
+function desyncHomepageBgControl(key) {
+  if (typeof window.applyBg !== 'function') return false;
+  const stored = typeof window.loadBg === 'function'
+    ? window.loadBg()
+    : (localStorage.getItem(key) || 'Water Beside Forest');
+  const current = document.body.dataset.bg;
+  // Uninitialized pages (no data-bg yet) have nothing to compare.
+  if (current === undefined) return false;
+  return current !== stored;
+}
+function desyncGamesKeymapControl(key) {
+  if (typeof window.applyGamesKeymap !== 'function') return false;
+  const stored = typeof window.loadGamesKeymap === 'function'
+    ? window.loadGamesKeymap()
+    : (localStorage.getItem(key) || 'wasd');
+  const select = document.getElementById('games-keymap-setting');
+  return Boolean(select) && select.value !== stored;
+}
+function checkRecentSettingsDesynced(key) {
+  const clockDate = checkClockDateDesynced(key);
+  if (clockDate !== null) return clockDate;
+  return checkMediaSettingsDesynced(key);
 }
 
 // True when a control still shows the rejected value the bridge has already
