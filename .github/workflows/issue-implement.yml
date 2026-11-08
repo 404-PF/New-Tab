@@ -47,36 +47,62 @@ jobs:
           fi
 
           # One implement at a time: the scheduler run itself is excluded.
-          ACTIVE="$(gh run list --repo "$GH_REPO" --workflow issue-implement.yml --limit 100 \
-            --json databaseId,status \
-            --jq "[.[] | select(.status != \"completed\" and (.databaseId | tostring) != \"$SELF_RUN_ID\")] | length")"
+          # Every status is queried server-side so a long history cannot hide
+          # an active run.
+          ACTIVE=0
+          for STATUS in queued in_progress waiting requested pending; do
+            COUNT="$(gh run list --repo "$GH_REPO" --workflow issue-implement.yml --status "$STATUS" --limit 1000 \
+              --json databaseId \
+              --jq "[.[] | select((.databaseId | tostring) != \"$SELF_RUN_ID\")] | length")"
+            ACTIVE=$((ACTIVE + COUNT))
+          done
           if [ "$ACTIVE" -gt 0 ]; then
             echo "$ACTIVE issue-implement run(s) still active; waiting for the next tick."
             exit 0
           fi
 
           # Issues already handled: referenced by any PR ("Fixes #N", open or
-          # closed), or commented on by this workflow's bot.
+          # closed), or commented on by this workflow's bot. Paginates the full
+          # PR history instead of stopping at the first page.
           HANDLED_FILE="$RUNNER_TEMP/handled-issues.txt"
-          gh pr list --repo "$GH_REPO" --state all --limit 1000 --json body --jq '.[].body // ""' \
+          gh api "repos/$GH_REPO/pulls?state=all&per_page=100" --paginate --jq '.[].body // ""' \
             | { grep -oE 'Fixes #[0-9]+' || true; } \
             | { grep -oE '[0-9]+' || true; } \
             | sort -u > "$HANDLED_FILE"
 
-          # Oldest first. Bot comments that mark an earlier /implement attempt
-          # (opened PR, no-change result, or failure) exclude the issue.
-          CANDIDATES="$(gh issue list --repo "$GH_REPO" --state open --limit 1000 --json number,createdAt,comments,labels \
-            --jq '[.[] | select((.labels | map(.name) | index("wip")) | not)
-              | select(([.comments[] | select(.author.login == "github-actions" or .author.login == "github-actions[bot]") | .body]
-              | any(test("Opened https://|/implement|Issue implementation failed"))) | not)]
-              | sort_by(.createdAt) | .[].number')"
+          # Open issues in oldest-first order, paginated through GraphQL so
+          # more than 1,000 open issues cannot hide the oldest eligible one.
+          # Only maintainers' issues qualify: the dispatched run is
+          # workflow_dispatch and skips the /implement permission gate.
+          ISSUES_JSON="$(gh api graphql --paginate -F owner="${GH_REPO%%/*}" -F name="${GH_REPO#*/}" -f query='
+            query($owner: String!, $name: String!, $endCursor: String) {
+              repository(owner: $owner, name: $name) {
+                issues(first: 100, states: OPEN, orderBy: {field: CREATED_AT, direction: ASC}, after: $endCursor) {
+                  pageInfo { hasNextPage endCursor }
+                  nodes { number authorAssociation labels(first: 100) { nodes { name } } }
+                }
+              }
+            }' | jq -s '[.[].data.repository.issues.nodes[]]')"
+          CANDIDATES="$(jq -r '.[]
+            | select(.authorAssociation as $a | ["OWNER", "MEMBER", "COLLABORATOR"] | index($a))
+            | select(([.labels.nodes[].name] | index("wip")) | not)
+            | .number' <<<"$ISSUES_JSON")"
 
           TARGET=''
           for NUM in $CANDIDATES; do
-            if ! grep -qx "$NUM" "$HANDLED_FILE"; then
-              TARGET="$NUM"
-              break
+            if grep -qx "$NUM" "$HANDLED_FILE"; then
+              continue
             fi
+            # Bot comments that mark an earlier /implement attempt (recorded
+            # start, opened PR, no-change result, or failure) exclude the issue.
+            # Paginated so a prior result after comment 100 is still seen.
+            BOT_COMMENTS="$(gh api "repos/$GH_REPO/issues/$NUM/comments?per_page=100" --paginate \
+              --jq '.[] | select(.user.login == "github-actions" or .user.login == "github-actions[bot]") | .body')"
+            if grep -qE 'Opened https://|/implement|Issue implementation failed' <<<"$BOT_COMMENTS"; then
+              continue
+            fi
+            TARGET="$NUM"
+            break
           done
           if [ -z "$TARGET" ]; then
             echo 'No eligible issue to implement.'
@@ -293,6 +319,20 @@ jobs:
             "$CONTEXT_DIR/issue-raw.json" > "$GITHUB_WORKSPACE/.tmp/triage-comment.md" || true
           echo "issue-file=$GITHUB_WORKSPACE/.tmp/issue-context.md" >> "$GITHUB_OUTPUT"
           echo "triage-file=$GITHUB_WORKSPACE/.tmp/triage-comment.md" >> "$GITHUB_OUTPUT"
+
+      # Record the attempt before implementation starts, so a no-change or
+      # failed run still excludes this issue from the scheduler. Fails closed:
+      # if the comment cannot be posted, the run stops before OpenCode starts.
+      - name: Record implementation attempt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
+            --body "Started a /implement attempt for this issue. Run: $RUN_URL"
 
       - name: Implement fix with OpenCode
         id: implement
