@@ -1218,6 +1218,7 @@ function ensureSearchHistoryPanel() {
     searchHistoryPanel = document.createElement('div');
     searchHistoryPanel.className = 'search-history-panel';
     searchHistoryPanel.id = 'search-history-panel';
+    searchHistoryPanel.setAttribute('data-liquid-glass', 'panel');
     searchHistoryPanel.hidden = true;
     searchHistoryPanel.innerHTML = `
       <div class="search-history-header">

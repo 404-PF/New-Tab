@@ -81,6 +81,7 @@ function setContextMenuPreviewIcon(previewIcon, iconUrl) {
 const contextMenu = document.createElement('div');
 contextMenu.id = 'app-context-menu';
 contextMenu.className = 'app-context-menu';
+contextMenu.setAttribute('data-liquid-glass', 'panel');
 
 // Common helper to add hover
 function addHover(el) {

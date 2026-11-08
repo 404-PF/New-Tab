@@ -195,3 +195,96 @@ body.glass-liquid :is(
   position: relative;
   z-index: 1;
 }
+
+/* ---- Tier-2 surfaces (#1158) ---------------------------------------------
+   The settings dialog, Add App dialog, folder popup, context menu, search
+   history popover and toasts carry data-liquid-glass="panel" (static markup
+   or set at JS creation), so every selector below stays inert until
+   body.glass-liquid is on AND the element has been enhanced. */
+
+/* The warp already blurs and saturates whatever it samples, so a surface's
+   own backdrop-filter would stack a second live blur under it. The :is()
+   group keeps an id-level argument, which is what out-specifies the
+   light-theme elevated-surface group in glass.css (that group's
+   specificity also comes from its own :is() maximum). It keys on
+   .glass--liquid rather than the attribute so a marked-but-unenhanced
+   element (reduced motion, failed probe) keeps the classic blur it has
+   always had. */
+body.glass-liquid :is(
+  #settings-modal > div,
+  #add-app-modal > div,
+  .folder-popup-content,
+  .app-context-menu,
+  .search-history-panel,
+  .toast-notification
+).glass--liquid {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Warp and overlay spans are absolutely positioned, so they paint over the
+   surface's in-flow text and controls. Raise every direct child above the
+   warp the way #1155 raised the icon glyphs; the glass__* spans keep their
+   own stacking order relative to each other. */
+body.glass-liquid :is(
+  #settings-modal > div,
+  #add-app-modal > div,
+  .folder-popup-content,
+  .app-context-menu,
+  .search-history-panel,
+  .toast-notification
+).glass--liquid > *:not(.glass__warp):not(.glass__highlight):not(.glass__over-light):not(.glass__hover) {
+  position: relative;
+  z-index: 1;
+}
+
+/* The warp waits out each surface's entrance — the #875 delayed-blur rule
+   restated for the refraction layer — so the backdrop is never re-sampled
+   on every animated frame. The open state carries the delay; closing drops
+   it together with the state, which is why the base rules declare no
+   transition of their own. */
+body.glass-liquid #settings-modal:not(.modal-open) > div.glass--liquid .glass__warp,
+body.glass-liquid #add-app-modal:not(.modal-open) > div.glass--liquid .glass__warp,
+body.glass-liquid .toast-notification:not(.show).glass--liquid .glass__warp {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.glass-liquid #settings-modal.modal-open > div.glass--liquid .glass__warp {
+  -webkit-backdrop-filter: var(--lg-filter);
+  backdrop-filter: var(--lg-filter);
+  transition: backdrop-filter 0.01s linear 0.18s, -webkit-backdrop-filter 0.01s linear 0.18s;
+}
+
+body.glass-liquid #add-app-modal.modal-open > div.glass--liquid .glass__warp {
+  -webkit-backdrop-filter: var(--lg-filter);
+  backdrop-filter: var(--lg-filter);
+  transition: backdrop-filter 0.01s linear 0.3s, -webkit-backdrop-filter 0.01s linear 0.3s;
+}
+
+body.glass-liquid .toast-notification.show.glass--liquid .glass__warp {
+  -webkit-backdrop-filter: var(--lg-filter);
+  backdrop-filter: var(--lg-filter);
+  transition: backdrop-filter 0.01s linear 0.3s, -webkit-backdrop-filter 0.01s linear 0.3s;
+}
+
+/* The context menu opens with the menuFadeIn keyframe instead of a class
+   toggle, so its warp waits out the 0.2s fade with a delayed animation of
+   its own. display:none discards the animation; re-showing the menu
+   restarts it from the delay, exactly like menuFadeIn itself. */
+body.glass-liquid .app-context-menu.glass--liquid .glass__warp {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  animation: liquidGlassWarpIn 0.01s linear 0.2s forwards;
+}
+
+@keyframes liquidGlassWarpIn {
+  from {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  to {
+    -webkit-backdrop-filter: var(--lg-filter);
+    backdrop-filter: var(--lg-filter);
+  }
+}
