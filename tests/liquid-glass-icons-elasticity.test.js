@@ -144,6 +144,28 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     });
   });
 
+  itWhenLiquidEnabled('keeps the glass layers in place while elasticity moves a hero', () => {
+    const ids = ['search-bar-wrapper', 'motto-container', 'weather-widget', 'focus-mode-indicator'];
+    document.getElementById('clock').insertAdjacentHTML('afterend',
+      '<div class="search-bar-wrapper"></div>' +
+      ids.slice(1).map((id) => '<div id="' + id + '"></div>').join(''));
+    const targets = [
+      document.querySelector('.search-bar-wrapper'),
+      ...ids.slice(1).map((id) => document.getElementById(id)),
+      document.getElementById('clock')
+    ];
+    targets.forEach((el) => { el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 }); });
+    loadLiquidGlass();
+    move(150, 50);
+    flush();
+    targets.forEach((el) => {
+      expect(el.style.translate).not.toBe('');
+      expect(el.classList.contains('glass--liquid')).toBe(true);
+      expect(el.querySelector(':scope > .glass__warp')).not.toBeNull();
+      expect(el.querySelector(':scope > .glass__highlight')).not.toBeNull();
+    });
+  });
+
   itWhenLiquidEnabled('resets elasticity offsets when an app drag starts', () => {
     loadLiquidGlass();
     move(150, 50);
