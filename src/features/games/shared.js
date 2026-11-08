@@ -121,6 +121,17 @@
     return activeKeymapId;
   };
 
+  // Apply a keymap id to the live steering maps without persisting it.
+  // Resync paths (the settings select, the async rollback listener) use
+  // this so restoring the rolled-back value never issues a second storage
+  // write for a value storage already holds (#1149).
+  if (!window.gamesHelpers.applyKeymap) {
+    window.gamesHelpers.applyKeymap = function (id) {
+      applyKeymap(id);
+      return activeKeymapId;
+    };
+  }
+
   // Switch the steering keymap. An unknown id falls back to the default
   // without throwing. The choice is persisted under `games_keymap` (with a
   // localStorage try/catch, mirroring isEnabled) so it survives reloads;
@@ -129,10 +140,24 @@
   window.gamesHelpers.setKeymap = function (id) {
     const resolved = normalizeKeymapId(id);
     applyKeymap(resolved);
+    // The storage bridge returns false instead of throwing on a rejected
+    // write (#1149): report the failure so the settings handler can resync
+    // the select and toast instead of silently reverting on reload.
+    let persisted;
     try {
-      localStorage.setItem('games_keymap', resolved);
-    } catch (_err) {
-      // ignore storage errors
+      persisted = localStorage.setItem('games_keymap', resolved) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch {
+      persisted = false;
+    }
+    if (!persisted) {
+      // Roll the live map back to the stored value so the active steering
+      // matches what a reload will show.
+      try {
+        applyKeymap(localStorage.getItem('games_keymap'));
+      } catch {
+        applyKeymap(null);
+      }
+      return false;
     }
     return resolved;
   };

@@ -350,8 +350,161 @@ const FEATURE_TOGGLE_RESYNC = {
     if (typeof window.applyCurvature === 'function') {
       window.applyCurvature();
     }
+  },
+    // #1149: the Settings-modal clock/date, video, background, overlay/stats
+    // and Games writes below check the bridge result on the sync path; these
+    // entries cover the async runtime.lastError rollback the same way.
+    // Helpers resolve through window with typeof guards so a module that
+    // failed to load degrades to "no resync" instead of a throw.
+    // Clock/date style and format share one resync helper (settings.js)
+    // that also re-renders the clock from the restored format.
+    clockColor: function () {
+      if (typeof window.resyncClockDateStyle === 'function') {
+        window.resyncClockDateStyle();
+      }
+    },
+    clockFont: function () {
+      if (typeof window.resyncClockDateStyle === 'function') {
+        window.resyncClockDateStyle();
+      }
+    },
+    clockSize: function () {
+      if (typeof window.resyncClockDateStyle === 'function') {
+        window.resyncClockDateStyle();
+      }
+    },
+    clockFormat: function () {
+      if (typeof window.resyncClockDateStyle === 'function') {
+        window.resyncClockDateStyle();
+      }
+    },
+    dateColor: function () {
+      if (typeof window.resyncClockDateStyle === 'function') {
+        window.resyncClockDateStyle();
+      }
+    },
+    dateFont: function () {
+      if (typeof window.resyncClockDateStyle === 'function') {
+        window.resyncClockDateStyle();
+      }
+    },
+    dateSize: function () {
+      if (typeof window.resyncClockDateStyle === 'function') {
+        window.resyncClockDateStyle();
+      }
+    },
+    dateFormat: function () {
+      if (typeof window.resyncClockDateStyle === 'function') {
+        window.resyncClockDateStyle();
+      }
+    },
+    videoAutoplay: function () {
+      if (typeof window.applyVideoPlaybackSettings === 'function') {
+        window.applyVideoPlaybackSettings();
+      }
+    },
+    videoMuted: function () {
+      if (typeof window.applyVideoPlaybackSettings === 'function') {
+        window.applyVideoPlaybackSettings();
+      }
+    },
+    videoPauseHidden: function () {
+      if (typeof window.applyVideoPlaybackSettings === 'function') {
+        window.applyVideoPlaybackSettings();
+      }
+    },
+    homepageBg: function () {
+      if (typeof window.applyBg === 'function') {
+        window.applyBg();
+      }
+    },
+    bgOverlayOpacity: function () {
+      if (typeof window.applyBgOverlaySettings === 'function') {
+        window.applyBgOverlaySettings();
+      }
+    },
+    bgOverlayBlur: function () {
+      if (typeof window.applyBgOverlaySettings === 'function') {
+        window.applyBgOverlaySettings();
+      }
+    },
+    bgTint: function () {
+      if (typeof window.applyBgOverlaySettings === 'function') {
+        window.applyBgOverlaySettings();
+      }
+    },
+    bgTintStrength: function () {
+      if (typeof window.applyBgOverlaySettings === 'function') {
+        window.applyBgOverlaySettings();
+      }
+    },
+    pomodoroStatsEnabled: function () {
+      if (typeof window.applyPomodoroStatsEnabled === 'function') {
+        window.applyPomodoroStatsEnabled();
+      }
+    },
+    games_enabled: function () {
+      if (typeof window.applyGamesEnabled === 'function') {
+        window.applyGamesEnabled();
+      }
+    },
+    games_keymap: function () {
+      // The no-override path is write-free, so rollback never issues a
+      // second storage write for the rolled-back value.
+      if (typeof window.applyGamesKeymap === 'function') {
+        window.applyGamesKeymap();
+      }
+    },
+    games_fps_enabled: function () {
+      if (typeof window.applyGamesFps === 'function') {
+        window.applyGamesFps();
+      }
+    }
+  };
+
+// Pure-read helpers for the desync comparison below (#1149 review). The
+// loaders in settings.js self-heal out-of-range values via setItem, so the
+// rollback path must not call them — a detector write could dispatch a
+// second storageBridgeWriteError. These mirror the loader defaults and
+// normalization without writing.
+function desyncStoredColor(key, fallback) {
+  return localStorage.getItem(key) || fallback;
+}
+function desyncStoredFont(key) {
+  const raw = localStorage.getItem(key);
+  const resolved = raw && typeof window.resolveFontAlias === 'function'
+    ? window.resolveFontAlias(raw)
+    : raw;
+  return resolved || window.FONT_DEFAULT || '';
+}
+function desyncStoredFormat(key, valid) {
+  const raw = localStorage.getItem(key);
+  return valid.indexOf(raw) !== -1 ? raw : 'auto';
+}
+function desyncClosestSize(key, fallback, options) {
+  const parsed = parseInt(localStorage.getItem(key) || String(fallback), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  // Prefer the shared snap helper so the detector and the loaders cannot
+  // drift apart if the option sets change (#1149 review).
+  if (typeof window.getClosestSettingSize === 'function') {
+    return window.getClosestSettingSize(parsed, options);
   }
-};
+  return options.reduce(function (closest, option) {
+    return Math.abs(option - parsed) < Math.abs(closest - parsed) ? option : closest;
+  }, options[0]);
+}
+function desyncClampedInt(key, fallback, min, max) {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return fallback;
+  const parsed = /^-?\d+$/.test(raw) ? Number(raw) : NaN;
+  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+}
+function desyncOverlayTint(key, fallback) {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return fallback;
+  const normalized = raw.trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(normalized) ? normalized : fallback;
+}
 
 // True when a control still shows the rejected value the bridge has already
 // rolled back. The synchronous-failure path re-applies the control and toasts
@@ -499,6 +652,136 @@ function featureToggleControlDesynced(key) {
       return Array.prototype.some.call(radios, function (radio) {
         return radio.checked !== (radio.value === stored);
       });
+    }
+    case 'clockColor': {
+      // Without the settings resync helper the control cannot be restored,
+      // so stay silent like the theme case instead of toasting alone.
+      if (typeof window.resyncClockDateStyle !== 'function') return false;
+      const stored = desyncStoredColor(key, '#ffffff');
+      const picker = document.getElementById('clock-color-picker');
+      return Boolean(picker) && picker.value !== stored;
+    }
+    case 'clockFont': {
+      if (typeof window.resyncClockDateStyle !== 'function') return false;
+      const stored = desyncStoredFont(key);
+      const picker = document.getElementById('clock-font-picker');
+      return Boolean(picker) && picker.value !== stored;
+    }
+    case 'clockSize': {
+      if (typeof window.resyncClockDateStyle !== 'function') return false;
+      // Mirror loadClockStyle's default and closest-option snap so the
+      // comparison matches what the size buttons actually show.
+      const stored = desyncClosestSize(key, 80, [60, 80, 100]);
+      const buttons = document.querySelectorAll('[data-size-group="clock"] .size-choice-button');
+      return Array.prototype.some.call(buttons, function (btn) {
+        return btn.classList.contains('active') !== (parseInt(btn.dataset.size, 10) === stored);
+      });
+    }
+    case 'clockFormat': {
+      if (typeof window.resyncClockDateStyle !== 'function') return false;
+      const stored = desyncStoredFormat(key, ['auto', '12h', '24h']);
+      const picker = document.getElementById('clock-format-picker');
+      return Boolean(picker) && picker.value !== stored;
+    }
+    case 'dateColor': {
+      if (typeof window.resyncClockDateStyle !== 'function') return false;
+      const stored = desyncStoredColor(key, '#ffffff');
+      const picker = document.getElementById('date-color-picker');
+      return Boolean(picker) && picker.value !== stored;
+    }
+    case 'dateFont': {
+      if (typeof window.resyncClockDateStyle !== 'function') return false;
+      const stored = desyncStoredFont(key);
+      const picker = document.getElementById('date-font-picker');
+      return Boolean(picker) && picker.value !== stored;
+    }
+    case 'dateSize': {
+      if (typeof window.resyncClockDateStyle !== 'function') return false;
+      // Mirror loadDateStyle's default and closest-option snap so the
+      // comparison matches what the size buttons actually show.
+      const stored = desyncClosestSize(key, 24, [20, 24, 30]);
+      const buttons = document.querySelectorAll('[data-size-group="date"] .size-choice-button');
+      return Array.prototype.some.call(buttons, function (btn) {
+        return btn.classList.contains('active') !== (parseInt(btn.dataset.size, 10) === stored);
+      });
+    }
+    case 'dateFormat': {
+      if (typeof window.resyncClockDateStyle !== 'function') return false;
+      const stored = desyncStoredFormat(key, ['auto', 'long', 'compact', 'numeric']);
+      const picker = document.getElementById('date-format-picker');
+      return Boolean(picker) && picker.value !== stored;
+    }
+    case 'videoAutoplay': {
+      if (typeof window.applyVideoPlaybackSettings !== 'function') return false;
+      const checkbox = document.getElementById('video-autoplay-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'videoMuted': {
+      if (typeof window.applyVideoPlaybackSettings !== 'function') return false;
+      const checkbox = document.getElementById('video-muted-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'videoPauseHidden': {
+      if (typeof window.applyVideoPlaybackSettings !== 'function') return false;
+      const checkbox = document.getElementById('video-pause-hidden-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'homepageBg': {
+      if (typeof window.applyBg !== 'function') return false;
+      const stored = typeof window.loadBg === 'function'
+        ? window.loadBg()
+        : (localStorage.getItem(key) || 'Water Beside Forest');
+      const current = document.body.getAttribute('data-bg');
+      // Uninitialized pages (no data-bg yet) have nothing to compare.
+      if (current === null) return false;
+      return current !== stored;
+    }
+    case 'bgOverlayOpacity': {
+      if (typeof window.applyBgOverlaySettings !== 'function') return false;
+      const stored = desyncClampedInt(key, 0, 0, 80);
+      const input = document.getElementById('bg-overlay-dim');
+      return Boolean(input) && input.value !== String(stored);
+    }
+    case 'bgOverlayBlur': {
+      if (typeof window.applyBgOverlaySettings !== 'function') return false;
+      const stored = desyncClampedInt(key, 0, 0, 12);
+      const input = document.getElementById('bg-overlay-blur');
+      return Boolean(input) && input.value !== String(stored);
+    }
+    case 'bgTint': {
+      if (typeof window.applyBgOverlaySettings !== 'function') return false;
+      const stored = desyncOverlayTint(key, '#000000');
+      const input = document.getElementById('bg-tint-color');
+      return Boolean(input) && input.value !== stored;
+    }
+    case 'bgTintStrength': {
+      if (typeof window.applyBgOverlaySettings !== 'function') return false;
+      const stored = desyncClampedInt(key, 0, 0, 50);
+      const input = document.getElementById('bg-tint-strength');
+      return Boolean(input) && input.value !== String(stored);
+    }
+    case 'pomodoroStatsEnabled': {
+      if (typeof window.applyPomodoroStatsEnabled !== 'function') return false;
+      const checkbox = document.getElementById('pomodoro-stats-enabled-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
+    }
+    case 'games_enabled': {
+      if (typeof window.applyGamesEnabled !== 'function') return false;
+      const checkbox = document.getElementById('games-enabled-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'games_keymap': {
+      if (typeof window.applyGamesKeymap !== 'function') return false;
+      const stored = typeof window.loadGamesKeymap === 'function'
+        ? window.loadGamesKeymap()
+        : (localStorage.getItem(key) || 'wasd');
+      const select = document.getElementById('games-keymap-setting');
+      return Boolean(select) && select.value !== stored;
+    }
+    case 'games_fps_enabled': {
+      if (typeof window.applyGamesFps !== 'function') return false;
+      const checkbox = document.getElementById('games-fps-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
     }
   }
   return false;
