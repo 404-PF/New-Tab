@@ -479,10 +479,10 @@ function desyncStoredFont(key) {
 }
 function desyncStoredFormat(key, valid) {
   const raw = localStorage.getItem(key);
-  return valid.indexOf(raw) !== -1 ? raw : 'auto';
+  return valid.includes(raw) ? raw : 'auto';
 }
 function desyncClosestSize(key, fallback, options) {
-  const parsed = parseInt(localStorage.getItem(key) || String(fallback), 10);
+  const parsed = Number.parseInt(localStorage.getItem(key) || String(fallback), 10);
   if (!Number.isFinite(parsed)) return fallback;
   // Prefer the shared snap helper so the detector and the loaders cannot
   // drift apart if the option sets change (#1149 review).
@@ -496,7 +496,7 @@ function desyncClosestSize(key, fallback, options) {
 function desyncClampedInt(key, fallback, min, max) {
   const raw = localStorage.getItem(key);
   if (raw === null) return fallback;
-  const parsed = /^-?\d+$/.test(raw) ? Number(raw) : NaN;
+  const parsed = /^-?\d+$/.test(raw) ? Number(raw) : Number.NaN;
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
 }
 function desyncOverlayTint(key, fallback) {
@@ -674,7 +674,7 @@ function featureToggleControlDesynced(key) {
       const stored = desyncClosestSize(key, 80, [60, 80, 100]);
       const buttons = document.querySelectorAll('[data-size-group="clock"] .size-choice-button');
       return Array.prototype.some.call(buttons, function (btn) {
-        return btn.classList.contains('active') !== (parseInt(btn.dataset.size, 10) === stored);
+        return btn.classList.contains('active') !== (Number.parseInt(btn.dataset.size, 10) === stored);
       });
     }
     case 'clockFormat': {
@@ -702,7 +702,7 @@ function featureToggleControlDesynced(key) {
       const stored = desyncClosestSize(key, 24, [20, 24, 30]);
       const buttons = document.querySelectorAll('[data-size-group="date"] .size-choice-button');
       return Array.prototype.some.call(buttons, function (btn) {
-        return btn.classList.contains('active') !== (parseInt(btn.dataset.size, 10) === stored);
+        return btn.classList.contains('active') !== (Number.parseInt(btn.dataset.size, 10) === stored);
       });
     }
     case 'dateFormat': {
@@ -731,9 +731,9 @@ function featureToggleControlDesynced(key) {
       const stored = typeof window.loadBg === 'function'
         ? window.loadBg()
         : (localStorage.getItem(key) || 'Water Beside Forest');
-      const current = document.body.getAttribute('data-bg');
+      const current = document.body.dataset.bg;
       // Uninitialized pages (no data-bg yet) have nothing to compare.
-      if (current === null) return false;
+      if (current === undefined) return false;
       return current !== stored;
     }
     case 'bgOverlayOpacity': {

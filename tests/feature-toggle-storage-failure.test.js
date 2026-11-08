@@ -1586,5 +1586,37 @@ describe('settings modal reports rejected writes (#1149)', () => {
       expect(window.gamesHelpers.getKeymap()).toBe('ijkl');
       expect(window.showToast).not.toHaveBeenCalled();
     });
+
+    it('resyncs and toasts after an async lastError rollback without a second write', async () => {
+      localStorage.setItem('games_keymap', 'wasd');
+      window.gamesHelpers.applyKeymap('wasd');
+      failWriteFor('games_keymap', 'async');
+
+      // The rejection resync must be write-free: no second setItem for the
+      // value storage already holds (#1149 review).
+      const originalSetKeymap = window.gamesHelpers.setKeymap;
+      const setKeymapSpy = vi.fn((id) => originalSetKeymap(id));
+      window.gamesHelpers.setKeymap = setKeymapSpy;
+      try {
+        const select = document.getElementById('games-keymap-setting');
+        select.value = 'numpad';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(localStorage.getItem('games_keymap')).toBe('numpad');
+        expect(window.showToast).not.toHaveBeenCalled();
+
+        await flushDeferredFailureSync();
+        await flushDeferredFailureSync();
+
+        expect(localStorage.getItem('games_keymap')).toBe('wasd');
+        expect(select.value).toBe('wasd');
+        expect(window.gamesHelpers.getKeymap()).toBe('wasd');
+        expect(setKeymapSpy).toHaveBeenCalledTimes(1);
+        expect(window.showToast).toHaveBeenCalledTimes(1);
+        expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+      } finally {
+        window.gamesHelpers.setKeymap = originalSetKeymap;
+      }
+    });
   });
 });

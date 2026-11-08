@@ -125,12 +125,13 @@
   // Resync paths (the settings select, the async rollback listener) use
   // this so restoring the rolled-back value never issues a second storage
   // write for a value storage already holds (#1149).
-  if (!window.gamesHelpers.applyKeymap) {
-    window.gamesHelpers.applyKeymap = function (id) {
-      applyKeymap(id);
-      return activeKeymapId;
-    };
-  }
+  // Assigned unconditionally: on a double evaluation the closure is fresh,
+  // so a stale guarded assignment would keep updating the previous maps
+  // while parseDirection reads the new ones.
+  window.gamesHelpers.applyKeymap = function (id) {
+    applyKeymap(id);
+    return activeKeymapId;
+  };
 
   // Switch the steering keymap. An unknown id falls back to the default
   // without throwing. The choice is persisted under `games_keymap` (with a
