@@ -84,8 +84,11 @@ jobs:
                 # No drive is running, so an in-progress pr-drive check on the
                 # head is orphaned (its completion PATCH failed). Complete it so
                 # pr-merge stops denying merges on this head.
-                STALE_IDS="$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs?check_name=pr-drive&filter=latest" \
-                  --jq '.check_runs[] | select(.status != "completed") | .id' || true)"
+                if ! STALE_IDS="$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs?check_name=pr-drive&filter=latest" \
+                  --jq '.check_runs[] | select(.status != "completed") | .id')"; then
+                  echo "::warning::PR #$PR_NUMBER: could not inspect pr-drive check runs; skipping."
+                  continue
+                fi
                 for CHECK_ID in $STALE_IDS; do
                   jq -n '{status: "completed", conclusion: "neutral",
                     output: {title: "Drive stopped: no drive was running", summary: "Reconciled by the pr-drive scheduler."}}' \
