@@ -230,6 +230,9 @@ const srcGlobals = {
   // Storage-write resync helper (issue #1089) used by toast.js's
   // FEATURE_TOGGLE_RESYNC table.
   resyncSearchHistorySetting: 'readonly',
+  // Storage-write resync helper (issue #1167) used by toast.js's
+  // FEATURE_TOGGLE_RESYNC table.
+  resyncTodoSort: 'readonly',
 };
 
 const testGlobals = {
@@ -336,6 +339,7 @@ const testGlobals = {
   currentFilters: 'readonly',
   setTodoSort: 'readonly',
   getTodoSort: 'readonly',
+  resyncTodoSort: 'readonly',
   handleTodoSortChange: 'readonly',
   setTodoSearchQuery: 'readonly',
   getTodoSearchQuery: 'readonly',

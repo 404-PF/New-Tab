@@ -157,6 +157,17 @@
     return currentSort;
   }
 
+  // Re-read the persisted sort preference and repaint the selector and list
+  // after a rejected write (#1167), mirroring the other FEATURE_TOGGLE_RESYNC
+  // controls. Never re-persists: the key still holds the last accepted value.
+  function resyncTodoSort() {
+    currentSort = loadTodoSort();
+    if (elements.todoSort) {
+      elements.todoSort.value = currentSort;
+    }
+    applyFilters();
+  }
+
   window.addEventListener('storageBridgeWriteError', (event) => {
     if (event?.detail?.key !== 'todos') return;
 
@@ -1633,7 +1644,16 @@ function handleFilterPillClick(event) {
 
 // Handle sort selector changes (issue #1013)
 function handleTodoSortChange() {
-  setTodoSort(elements.todoSort ? elements.todoSort.value : DEFAULT_TODO_SORT);
+  const persisted = setTodoSort(elements.todoSort ? elements.todoSort.value : DEFAULT_TODO_SORT);
+  if (!persisted) {
+    // The bridge rejected the write: snap the select and the in-memory sort
+    // back to the value that actually persisted and surface the shared save
+    // error instead of silently reverting on reload (#1167).
+    resyncTodoSort();
+    if (typeof window.showFeatureToggleSaveError === 'function') {
+      window.showFeatureToggleSaveError();
+    }
+  }
 }
 
 // Handle todo search input (issue #1060). Runs the same applyFilters path the
@@ -3205,6 +3225,7 @@ try {
   window.currentFilters = currentFilters;
   window.setTodoSort = setTodoSort;
   window.getTodoSort = getTodoSort;
+  window.resyncTodoSort = resyncTodoSort;
   window.handleTodoSortChange = handleTodoSortChange;
   window.setTodoSearchQuery = setTodoSearchQuery;
   window.getTodoSearchQuery = getTodoSearchQuery;
