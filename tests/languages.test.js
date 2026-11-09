@@ -426,6 +426,20 @@ describe('Notes/todo tooltip and AI search empty state translations', () => {
   });
 });
 
+const NOTES_EXPORT_IMPORT_TRANSLATION_KEYS = [
+  'exportNotes',
+  'importNotes',
+  'notesImportSuccess',
+  'notesImportNoNew',
+  'notesImportInvalid'
+];
+
+describe('Notes export/import translations', () => {
+  it('defines notes export/import strings in every supported language', () => {
+    expectTranslationKeys(NOTES_EXPORT_IMPORT_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+});
+
 describe('Games translations', () => {
   it('defines every games string in each supported language', () => {
     expectTranslationKeys(GAMES_TRANSLATION_KEYS);

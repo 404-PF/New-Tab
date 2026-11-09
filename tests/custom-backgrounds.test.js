@@ -494,9 +494,12 @@ describe('custom backgrounds upload validation (issue #967)', () => {
 
     try {
       button.click();
-      // tests/setup.js pre-creates #data-import-file; the upload flow appends
-      // its own un-id'd file input, so exclude the setup stub explicitly.
-      const input = document.querySelector('input[type="file"]:not(#data-import-file)');
+      // tests/setup.js pre-creates #data-import-file and #notes-import-file;
+      // the upload flow appends its own un-id'd file input, so exclude the
+      // setup stubs explicitly.
+      const input = document.querySelector(
+        'input[type="file"]:not(#data-import-file):not(#notes-import-file)'
+      );
       expect(input).not.toBeNull();
       Object.defineProperty(input, 'files', { value: [file], configurable: true });
       input.dispatchEvent(new Event('change'));

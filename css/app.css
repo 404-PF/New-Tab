@@ -5384,6 +5384,25 @@ body.simple-mode .date {
   margin-bottom: 12px;
 }
 
+.notes-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .notes-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .notes-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
+  }
+}
+
 .notes-title {
   font-size: 18px;
   font-weight: 600;

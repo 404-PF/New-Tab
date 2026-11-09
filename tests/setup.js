@@ -345,6 +345,12 @@ globalThis.window.i18n = {
       notesEmpty: 'No notes yet. Click + to add one!',
       notesSearchPlaceholder: 'Search notes...',
       notesNoResults: 'No matching notes.',
+      exportNotes: 'Export',
+      importNotes: 'Import',
+      notesImportSuccess: 'Imported {count} notes successfully.',
+      notesImportNoNew: 'No new notes to import.',
+      notesImportInvalid: 'Invalid notes data. Please select a valid JSON file.',
+      importReadError: 'Failed to read the selected file.',
       clearCompletedConfirmMessage: 'This will remove all completed todos. You can undo this for a few seconds after clearing.',
       cancel: 'Cancel',
       save: 'Save',
@@ -1028,7 +1034,12 @@ notesSection.className = 'notes-section';
 notesSection.innerHTML = `
   <div class="notes-header">
     <h3 class="notes-title">Notes</h3>
-    <button id="add-note-btn" class="notes-add-btn">+</button>
+    <div class="notes-header-actions">
+      <button class="quick-action-btn" id="export-notes"><span>Export</span></button>
+      <button class="quick-action-btn" id="import-notes"><span>Import</span></button>
+      <input type="file" id="notes-import-file" accept=".json" style="display:none">
+      <button id="add-note-btn" class="notes-add-btn">+</button>
+    </div>
   </div>
       <div class="notes-search-wrapper">
       <input id="notes-search" class="notes-search-input" type="search" data-i18n="notesSearchPlaceholder" data-i18n-aria-label="notesSearchPlaceholder" placeholder="Search notes..." autocomplete="off" spellcheck="false" aria-label="Search notes" />
