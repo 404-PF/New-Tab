@@ -98,13 +98,16 @@ body.light-theme {
 }
 
 /* Primary surfaces retain visible background depth. Enhanced Liquid Glass
-   tiles are excluded so they keep the dark theme's tile tokens (see
-   liquid-glass.css) instead of the light theme's frosted fill. */
+   tiles and hero widgets are excluded so they keep the dark theme's tile
+   tokens (see liquid-glass.css) instead of the light theme's frosted fill:
+   the IDs inside this :is() lift the group to ID specificity, which would
+   otherwise outrank the hero neutralization and leave the backdrop-filter
+   running over the warp. */
 body.light-theme :is(
-  .search-bar,
+  .search-bar:not(:where(.search-bar-wrapper.glass--liquid .search-bar)),
   .icon:not(:where(.app-icon .icon[data-liquid-glass].glass--liquid)),
-  .weather-widget,
-  .focus-mode-indicator,
+  .weather-widget:not(:where(.weather-widget.glass--liquid)),
+  .focus-mode-indicator:not(:where(.focus-mode-indicator.glass--liquid)),
   #motto-container,
   #refresh-motto-btn,
   #copy-motto-btn,
