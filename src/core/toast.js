@@ -273,6 +273,13 @@ const FEATURE_TOGGLE_RESYNC = {
       window.applyTodoEnabled();
     }
   },
+  // #1167: the sort change is applied optimistically to the select and the
+  // in-memory order, so an async rollback must repaint both from storage.
+  todoSortOrder: function () {
+    if (typeof window.resyncTodoSort === 'function') {
+      window.resyncTodoSort();
+    }
+  },
   notesEnabled: function () {
     if (typeof window.applyNotesEnabled === 'function') {
       window.applyNotesEnabled();
@@ -610,6 +617,16 @@ function featureToggleControlDesynced(key) {
     case 'todoEnabled': {
       const checkbox = document.getElementById('todo-enabled-setting');
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'todoSortOrder': {
+      const select = document.getElementById('todo-sort-select');
+      // Mirror todo.js's normalizeTodoSort: resyncTodoSort restores the
+      // select to the normalized value, so an unsupported legacy entry must
+      // compare as the default instead of reporting the failure twice (#1167).
+      const modes = window.TODO_SORT_MODES || ['manual', 'due', 'priority', 'created', 'az'];
+      const stored = localStorage.getItem(key);
+      const expected = modes.includes(stored) ? stored : 'due';
+      return Boolean(select) && select.value !== expected;
     }
     case 'notesEnabled': {
       const checkbox = document.getElementById('notes-enabled-setting');

@@ -3108,6 +3108,145 @@ describe('Todo storage bridge write failures', () => {
   });
 });
 
+describe('Todo sort preference reports rejected writes (#1167)', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save this setting. Your last action was not saved.';
+
+  let restoreStorageSet = null;
+  let warnSpy = null;
+  let originalShowToast = null;
+
+  beforeEach(() => {
+    localStorage.setItem('todoSortOrder', 'due');
+    initTodo();
+    // Stub the toast provider so both the sync path (handleTodoSortChange)
+    // and the async resync path can be counted precisely; the real toast
+    // replaces the visible node, so DOM counting cannot detect a second call.
+    originalShowToast = window.showToast;
+    window.showToast = vi.fn();
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(async () => {
+    // Drain any storageBridgeWriteError resync timers this test scheduled so
+    // they cannot fire against the next test's reset DOM/storage state.
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    if (restoreStorageSet) {
+      restoreStorageSet();
+      restoreStorageSet = null;
+    }
+    if (warnSpy) {
+      warnSpy.mockRestore();
+      warnSpy = null;
+    }
+    window.showToast = originalShowToast;
+    originalShowToast = null;
+  });
+
+  function changeSort(value) {
+    const select = document.getElementById('todo-sort-select');
+    select.value = value;
+    select.dispatchEvent(new Event('change'));
+    return select;
+  }
+
+  it('keeps the stored value, restores the select, and toasts once on a sync rejection', async () => {
+    restoreStorageSet = failStorageWritesFor('todoSortOrder', 'sync');
+
+    const select = changeSort('manual');
+
+    expect(localStorage.getItem('todoSortOrder')).toBe('due');
+    expect(select.value).toBe('due');
+    expect(getTodoSort()).toBe('due');
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+
+    // The bridge also dispatched storageBridgeWriteError; the desync check
+    // must not report the already-restored select a second time.
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('todoSortOrder')).toBe('due');
+    expect(select.value).toBe('due');
+    expect(getTodoSort()).toBe('due');
+  });
+
+  it('normalizes an unsupported stored sort so the deferred check stays silent', async () => {
+    // An invalid legacy entry would otherwise compare as a mismatch after
+    // resyncTodoSort restores the default, toasting the same failure twice.
+    localStorage.setItem('todoSortOrder', 'bogus');
+    restoreStorageSet = failStorageWritesFor('todoSortOrder', 'sync');
+
+    const select = changeSort('manual');
+
+    expect(localStorage.getItem('todoSortOrder')).toBe('bogus');
+    expect(select.value).toBe('due');
+    expect(getTodoSort()).toBe('due');
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(select.value).toBe('due');
+    expect(getTodoSort()).toBe('due');
+  });
+
+  it('persists an accepted sort write without toasting', async () => {
+    const select = changeSort('manual');
+
+    expect(localStorage.getItem('todoSortOrder')).toBe('manual');
+    expect(select.value).toBe('manual');
+    expect(getTodoSort()).toBe('manual');
+
+    await flushDeferredFailureSync();
+
+    expect(window.showToast).not.toHaveBeenCalled();
+  });
+
+  it('resyncs the select, repaints the list, and toasts once after an async lastError rollback', async () => {
+    // Seed todos whose manual order differs from their due-date order so the
+    // rollback must repaint the list, not just the selector (#1167).
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'later', text: 'Later due', completed: false, createdAt: '2026-01-01T00:00:00.000Z', dueDate: '2026-12-31', order: 0 },
+      { id: 'sooner', text: 'Sooner due', completed: false, createdAt: '2026-01-02T00:00:00.000Z', dueDate: '2026-01-05', order: 1 }
+    ]));
+    initTodo();
+
+    const renderedTexts = () => [...document.querySelectorAll('.todo-item .todo-text')]
+      .map((el) => el.textContent);
+
+    // The stored sort is `due`, so the list starts in due-date order.
+    expect(renderedTexts()).toEqual(['Sooner due', 'Later due']);
+
+    restoreStorageSet = failStorageWritesFor('todoSortOrder', 'async');
+
+    const select = changeSort('manual');
+
+    // The bridge accepted the write optimistically; the failure only arrives
+    // through runtime.lastError in the chrome.storage callback.
+    expect(localStorage.getItem('todoSortOrder')).toBe('manual');
+    expect(select.value).toBe('manual');
+    expect(getTodoSort()).toBe('manual');
+    expect(window.showToast).not.toHaveBeenCalled();
+    // Optimistic manual order: insertion order, not due dates.
+    expect(renderedTexts()).toEqual(['Later due', 'Sooner due']);
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('todoSortOrder')).toBe('due');
+    expect(select.value).toBe('due');
+    expect(getTodoSort()).toBe('due');
+    // Without applyFilters() in resyncTodoSort the rows would stay in the
+    // rejected manual order even though the selector recovered.
+    expect(renderedTexts()).toEqual(['Sooner due', 'Later due']);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+});
+
 describe('Todo import refresh (issue #824)', () => {
   it('reloadTodosState re-reads storage and re-renders without re-binding listeners', () => {
     addTodo('Existing todo');
