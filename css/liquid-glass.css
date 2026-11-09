@@ -227,11 +227,10 @@ body.glass-liquid :is(
   background: transparent;
 }
 
-/* Light theme restates the fill: app.css's light toast type colours sit at
-   the same specificity as the rule above, and glass.css's elevated group
-   carries an id-level argument of its own. liquid-glass.css loads last so
-   the ties would break our way anyway; this removes the reliance on load
-   order. */
+/* Light theme restates the fill so it does not rest on the rule above
+   beating glass.css's elevated group by a single element — that group also
+   carries an id-level :is() argument of its own. The restatement wins on
+   class count outright instead. */
 body.glass-liquid.light-theme :is(
   #settings-modal > div,
   #add-app-modal > div,
@@ -261,9 +260,13 @@ body.glass-liquid :is(
 
 /* The warp waits out each surface's entrance — the #875 delayed-blur rule
    restated for the refraction layer — so the backdrop is never re-sampled
-   on every animated frame. The open state carries the delay; closing drops
-   it together with the state, which is why the base rules declare no
-   transition of their own. */
+   on every animated frame. `none` and the SVG url() inside var(--lg-filter)
+   are a discrete value pair, so the delay needs the explicit discrete
+   transition (`allow-discrete`, the same treatment .settings-section gives
+   content-visibility in core.css): without it the transition never starts
+   and the filter would land with the class instead of after the fade. The
+   open state carries the delay; closing drops it together with the state,
+   which is why the base rules declare no transition of their own. */
 body.glass-liquid #settings-modal:not(.modal-open) > div.glass--liquid .glass__warp,
 body.glass-liquid #add-app-modal:not(.modal-open) > div.glass--liquid .glass__warp,
 body.glass-liquid .toast-notification:not(.show).glass--liquid .glass__warp {
@@ -274,19 +277,22 @@ body.glass-liquid .toast-notification:not(.show).glass--liquid .glass__warp {
 body.glass-liquid #settings-modal.modal-open > div.glass--liquid .glass__warp {
   -webkit-backdrop-filter: var(--lg-filter);
   backdrop-filter: var(--lg-filter);
-  transition: backdrop-filter 0.01s linear 0.18s, -webkit-backdrop-filter 0.01s linear 0.18s;
+  transition: backdrop-filter 0.01s linear 0.18s allow-discrete,
+    -webkit-backdrop-filter 0.01s linear 0.18s allow-discrete;
 }
 
 body.glass-liquid #add-app-modal.modal-open > div.glass--liquid .glass__warp {
   -webkit-backdrop-filter: var(--lg-filter);
   backdrop-filter: var(--lg-filter);
-  transition: backdrop-filter 0.01s linear 0.3s, -webkit-backdrop-filter 0.01s linear 0.3s;
+  transition: backdrop-filter 0.01s linear 0.3s allow-discrete,
+    -webkit-backdrop-filter 0.01s linear 0.3s allow-discrete;
 }
 
 body.glass-liquid .toast-notification.show.glass--liquid .glass__warp {
   -webkit-backdrop-filter: var(--lg-filter);
   backdrop-filter: var(--lg-filter);
-  transition: backdrop-filter 0.01s linear 0.3s, -webkit-backdrop-filter 0.01s linear 0.3s;
+  transition: backdrop-filter 0.01s linear 0.3s allow-discrete,
+    -webkit-backdrop-filter 0.01s linear 0.3s allow-discrete;
 }
 
 /* The context menu opens with the menuFadeIn keyframe instead of a class
@@ -359,4 +365,13 @@ body.glass-liquid .toast-notification.toast-info.glass--liquid > .glass__warp {
 
 body.glass-liquid .toast-notification.toast-warning.glass--liquid > .glass__warp {
   background: rgba(255, 152, 0, 0.7);
+}
+
+/* The panel fill above is only a 0.55 tint, so over a bright wallpaper the
+   subtitle's 0.5-alpha colour lands on a far lighter backdrop than the
+   near-opaque Classic fill gave it (the opacity fade has always dipped
+   contrast the same way in Classic). Restate it at the glass secondary
+   weight while the effect is on so it stays readable on any wallpaper. */
+body.glass-liquid:not(.light-theme) #add-app-modal > div.glass--liquid .add-app-header-text p {
+  color: var(--glass-text-secondary);
 }

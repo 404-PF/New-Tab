@@ -2739,6 +2739,17 @@ body.light-theme .app-icon.folder-icon .icon {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
+/* Escape hatch for tiny windows (#1158): the header plus the grid's 80px
+   floor stop fitting inside 80vh somewhere around 260px of viewport height,
+   and with overflow: hidden the grid's top would clip out of reach. Below
+   that band the card scrolls again; everywhere else the grid scrolls itself
+   first, so the card never overflows and the glass layers still stay put. */
+@media (max-height: 320px) {
+  .folder-popup-content {
+    overflow-y: auto;
+  }
+}
+
 body.light-theme .folder-popup-content {
   background: rgba(255, 255, 255, 0.97);
   border-color: rgba(0, 0, 0, 0.1);

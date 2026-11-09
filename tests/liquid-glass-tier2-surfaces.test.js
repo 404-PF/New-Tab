@@ -16,10 +16,14 @@ const LIQUID_CSS = read('css/liquid-glass.css');
 
 // Each tier-2 rule below is a standalone `body.glass-liquid ...` block; the
 // comments are stripped first so the match starts on the selector itself.
+// Selector runs collapse to single spaces first, so a reflow (e.g. the
+// newline before `).glass--liquid`) does not change which rule is found.
+const collapse = (s) => s.replace(/\s+/g, ' ');
+
 function cssBlock(fragment) {
-  const block = LIQUID_CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+  const block = collapse(LIQUID_CSS.replace(/\/\*[\s\S]*?\*\//g, ''))
     .split('}')
-    .find((b) => b.includes(fragment));
+    .find((b) => b.includes(collapse(fragment)));
   expect(block, `liquid-glass.css block containing "${fragment}"`).toBeDefined();
   return block.trim();
 }
@@ -85,7 +89,8 @@ describe('tier-2 classic blur suppression (#1158)', () => {
 
 describe('tier-2 liquid fill and tint (#1158)', () => {
   const strip = () => LIQUID_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
-  const blockWith = (fragment) => strip().split('}').find((b) => b.includes(fragment));
+  const blockWith = (fragment) =>
+    collapse(strip()).split('}').find((b) => b.includes(collapse(fragment)));
 
   it('drops the near-opaque surface fill alongside the classic blur, keyed on .glass--liquid', () => {
     const block = blockWith('.toast-notification\n).glass--liquid {');
@@ -135,9 +140,12 @@ describe('tier-2 liquid fill and tint (#1158)', () => {
     // The light base tint must precede the type tints so a typed
     // light-theme toast resolves to its type colour.
     const source = strip();
-    expect(
-      source.indexOf('body.glass-liquid.light-theme .toast-notification.glass--liquid > .glass__warp')
-    ).toBeLessThan(source.indexOf('.toast-error.glass--liquid > .glass__warp'));
+    const lightToastIndex = source.indexOf(
+      'body.glass-liquid.light-theme .toast-notification.glass--liquid > .glass__warp'
+    );
+    const typeIndex = source.indexOf('.toast-error.glass--liquid > .glass__warp');
+    expect(lightToastIndex).toBeGreaterThanOrEqual(0);
+    expect(typeIndex).toBeGreaterThan(lightToastIndex);
   });
 });
 
@@ -171,23 +179,23 @@ describe('tier-2 entrance gating (#1158, mirroring #875)', () => {
 
     const open = cssBlock('#settings-modal.modal-open > div.glass--liquid');
     expect(open).toContain('backdrop-filter: var(--lg-filter)');
-    expect(open).toContain(
-      'transition: backdrop-filter 0.01s linear 0.18s, -webkit-backdrop-filter 0.01s linear 0.18s'
+    expect(open).toMatch(
+      /transition: backdrop-filter 0\.01s linear 0\.18s allow-discrete,\s+-webkit-backdrop-filter 0\.01s linear 0\.18s allow-discrete/
     );
   });
 
   it('holds the warp back while the add-app dialog is closed, 0.3s after opening', () => {
     const open = cssBlock('#add-app-modal.modal-open > div.glass--liquid');
-    expect(open).toContain(
-      'transition: backdrop-filter 0.01s linear 0.3s, -webkit-backdrop-filter 0.01s linear 0.3s'
+    expect(open).toMatch(
+      /transition: backdrop-filter 0\.01s linear 0\.3s allow-discrete,\s+-webkit-backdrop-filter 0\.01s linear 0\.3s allow-discrete/
     );
     expect(cssBlock('#add-app-modal:not(.modal-open)')).toContain('backdrop-filter: none');
   });
 
   it('holds the warp back until the toast is shown, 0.3s after the show class lands', () => {
     const open = cssBlock('.toast-notification.show.glass--liquid');
-    expect(open).toContain(
-      'transition: backdrop-filter 0.01s linear 0.3s, -webkit-backdrop-filter 0.01s linear 0.3s'
+    expect(open).toMatch(
+      /transition: backdrop-filter 0\.01s linear 0\.3s allow-discrete,\s+-webkit-backdrop-filter 0\.01s linear 0\.3s allow-discrete/
     );
     const closed = cssBlock('.toast-notification:not(.show)');
     expect(closed).toContain('backdrop-filter: none');
@@ -220,6 +228,11 @@ describe('tier-2 entrance gating (#1158, mirroring #875)', () => {
       const block = stripped.split('}').find((b) => b.includes(fragment));
       expect(block, `block for ${fragment}`).toBeDefined();
       expect(block.trim().startsWith('body.glass-liquid'), `${fragment} must start with body.glass-liquid`).toBe(true);
+      if (fragment === '#settings-modal:not(.modal-open)') {
+        for (const selector of block.split('{')[0].split(',')) {
+          expect(selector.trim().startsWith('body.glass-liquid'), `closed-state selector ${selector}`).toBe(true);
+        }
+      }
     }
   });
 });
