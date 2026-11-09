@@ -83,6 +83,64 @@ describe('tier-2 classic blur suppression (#1158)', () => {
   });
 });
 
+describe('tier-2 liquid fill and tint (#1158)', () => {
+  const strip = () => LIQUID_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  const blockWith = (fragment) => strip().split('}').find((b) => b.includes(fragment));
+
+  it('drops the near-opaque surface fill alongside the classic blur, keyed on .glass--liquid', () => {
+    const block = blockWith('.toast-notification\n).glass--liquid {');
+    expect(block).toContain('background: transparent');
+    expect(block).toMatch(/\)\.glass--liquid \{/);
+  });
+
+  it('restates the transparent fill for the light theme instead of leaning on load order', () => {
+    const block = blockWith('body.glass-liquid.light-theme :is(');
+    expect(block).toBeDefined();
+    expect(block.trim().startsWith('body.glass-liquid.light-theme :is(')).toBe(true);
+    expect(block).toContain('background: transparent');
+    expect(block).toContain('.toast-notification');
+  });
+
+  it('rides the tint on the warp layer, one rule per theme for the panels', () => {
+    const dark = blockWith(').glass--liquid > .glass__warp {');
+    expect(dark).toBeDefined();
+    expect(dark).toContain('rgba(15, 23, 42, 0.55)');
+    expect(dark).not.toContain('light-theme');
+
+    const light = strip()
+      .split('}')
+      .find(
+        (b) =>
+          b.includes('.glass__warp') &&
+          b.includes('light-theme') &&
+          b.includes('rgba(255, 255, 255, 0.6)')
+      );
+    expect(light, 'light-theme warp tint block').toBeDefined();
+    expect(light).toContain('rgba(255, 255, 255, 0.6)');
+    expect(light).not.toContain('toast-notification');
+  });
+
+  it('keeps each toast type colour as its warp tint, after the base tints', () => {
+    const types = [
+      ['toast-error', '220, 53, 69'],
+      ['toast-success', '40, 167, 69'],
+      ['toast-info', '33, 150, 243'],
+      ['toast-warning', '255, 152, 0']
+    ];
+    for (const [type, rgb] of types) {
+      const block = blockWith(`.${type}.glass--liquid > .glass__warp`);
+      expect(block, `warp tint for ${type}`).toBeDefined();
+      expect(block).toContain(`background: rgba(${rgb}, 0.7)`);
+    }
+    // The light base tint must precede the type tints so a typed
+    // light-theme toast resolves to its type colour.
+    const source = strip();
+    expect(
+      source.indexOf('body.glass-liquid.light-theme .toast-notification.glass--liquid > .glass__warp')
+    ).toBeLessThan(source.indexOf('.toast-error.glass--liquid > .glass__warp'));
+  });
+});
+
 describe('tier-2 content stacking (#1158, mirroring #1155)', () => {
   it('raises every direct child above the warp on all six surfaces', () => {
     const block = cssBlock('.glass--liquid > *:not(.glass__warp)');

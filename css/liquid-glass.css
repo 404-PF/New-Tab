@@ -209,7 +209,11 @@ body.glass-liquid :is(
    specificity also comes from its own :is() maximum). It keys on
    .glass--liquid rather than the attribute so a marked-but-unenhanced
    element (reduced motion, failed probe) keeps the classic blur it has
-   always had. */
+   always had.
+   The same rule drops the near-opaque fill: the warp is a child of the
+   surface, so an opaque background would be all its backdrop filter could
+   sample and the Tier-2 refraction would never see the wallpaper. Text
+   legibility moves to the tint on the warp layer below. */
 body.glass-liquid :is(
   #settings-modal > div,
   #add-app-modal > div,
@@ -220,6 +224,23 @@ body.glass-liquid :is(
 ).glass--liquid {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  background: transparent;
+}
+
+/* Light theme restates the fill: app.css's light toast type colours sit at
+   the same specificity as the rule above, and glass.css's elevated group
+   carries an id-level argument of its own. liquid-glass.css loads last so
+   the ties would break our way anyway; this removes the reliance on load
+   order. */
+body.glass-liquid.light-theme :is(
+  #settings-modal > div,
+  #add-app-modal > div,
+  .folder-popup-content,
+  .app-context-menu,
+  .search-history-panel,
+  .toast-notification
+).glass--liquid {
+  background: transparent;
 }
 
 /* Warp and overlay spans are absolutely positioned, so they paint over the
@@ -287,4 +308,55 @@ body.glass-liquid .app-context-menu.glass--liquid .glass__warp {
     -webkit-backdrop-filter: var(--lg-filter);
     backdrop-filter: var(--lg-filter);
   }
+}
+
+/* The transparent fill above would hand text an unpredictable backdrop, so
+   the tint rides the warp layer: it paints over the warp's own filtered
+   backdrop (the refraction still shows through at this alpha) and under the
+   raised content children. Dark surfaces tint toward the dark theme's panel
+   hue, light surfaces toward white. Toast type colours are identical in
+   both themes, so those rules need no theme restatement; they come last so
+   they out-order the light base tint on a typed light-theme toast. */
+body.glass-liquid :is(
+  #settings-modal > div,
+  #add-app-modal > div,
+  .folder-popup-content,
+  .app-context-menu,
+  .search-history-panel
+).glass--liquid > .glass__warp {
+  background: rgba(15, 23, 42, 0.55);
+}
+
+body.glass-liquid.light-theme :is(
+  #settings-modal > div,
+  #add-app-modal > div,
+  .folder-popup-content,
+  .app-context-menu,
+  .search-history-panel
+).glass--liquid > .glass__warp {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+body.glass-liquid .toast-notification.glass--liquid > .glass__warp {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+body.glass-liquid.light-theme .toast-notification.glass--liquid > .glass__warp {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+body.glass-liquid .toast-notification.toast-error.glass--liquid > .glass__warp {
+  background: rgba(220, 53, 69, 0.7);
+}
+
+body.glass-liquid .toast-notification.toast-success.glass--liquid > .glass__warp {
+  background: rgba(40, 167, 69, 0.7);
+}
+
+body.glass-liquid .toast-notification.toast-info.glass--liquid > .glass__warp {
+  background: rgba(33, 150, 243, 0.7);
+}
+
+body.glass-liquid .toast-notification.toast-warning.glass--liquid > .glass__warp {
+  background: rgba(255, 152, 0, 0.7);
 }
