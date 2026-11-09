@@ -237,6 +237,26 @@ describe('Pomodoro translations', () => {
   });
 });
 
+const FOCUS_STATS_SUMMARY_TRANSLATION_KEYS = [
+  'pomodoroStatsTotal',
+  'pomodoroStatsTrend',
+  'pomodoroStatsBestDay',
+  'pomodoroStatsRollingAvg',
+  'pomodoroStatsByTodo',
+  'pomodoroStatsExport',
+  'pomodoroStatsExportSuccess'
+];
+
+describe('Focus stats summary translations (issue #1171)', () => {
+  it('defines every focus stats summary label for all supported languages', () => {
+    expectTranslationKeys(FOCUS_STATS_SUMMARY_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+
+  it('ships every focus stats summary key in each _locales messages.json', () => {
+    FOCUS_STATS_SUMMARY_TRANSLATION_KEYS.forEach((key) => expectMessagesJsonKey(key));
+  });
+});
+
 describe('Custom background error translations', () => {
   // Inspect getTranslations() directly rather than t(): t() silently falls
   // back to the English string when a locale omits the key, so a missing

@@ -242,6 +242,48 @@
     if (tm) tm.textContent = String(minutesToday(store));
     if (wm) wm.textContent = String(minutesWeek(store));
     paintHeatmap(store);
+    paintSummary();
+  }
+  // Compact day-over-day trend for the summary card: arrow plus signed
+  // session delta (e.g. "↑ +2"), language-neutral so no translation is needed.
+  function formatTrend(trend) {
+    const arrow = trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→';
+    const delta = trend.deltaSessions;
+    return arrow + ' ' + (delta > 0 ? '+' + delta : String(delta));
+  }
+  // Minutes-by-todo for the current week, resolved through todo.js when it is
+  // available. todo.js loads after this module, so a missing loadTodos (or a
+  // missing todo for an id) degrades to a dash / the raw id instead of
+  // throwing; the panel repaints once every bootstrap script has run.
+  function formatMinutesByTodo() {
+    const agg = window.getPomodoroMinutesByTodoThisWeek();
+    const ids = Object.keys(agg);
+    if (ids.length === 0 || typeof window.loadTodos !== 'function') return '—';
+    let todos;
+    try { todos = window.loadTodos(); } catch { todos = null; }
+    if (!Array.isArray(todos)) todos = [];
+    ids.sort(function (a, b) { return agg[b] - agg[a]; });
+    const parts = ids.map(function (id) {
+      const todo = todos.find(function (entry) { return entry && String(entry.id) === id; });
+      const label = todo && typeof todo.text === 'string' && todo.text ? todo.text : id;
+      return label + ': ' + window.formatPomodoroDuration(agg[id]);
+    });
+    return parts.join(' · ');
+  }
+  // Summary row below the heatmap: 30-day total, day-over-day trend, best
+  // day, 7-day rolling average and per-todo focus minutes (issue #1171).
+  function paintSummary() {
+    const total = document.getElementById('pomodoro-stats-total');
+    const trend = document.getElementById('pomodoro-stats-trend');
+    const best = document.getElementById('pomodoro-stats-best-day');
+    const avg = document.getElementById('pomodoro-stats-rolling-avg');
+    const byTodo = document.getElementById('pomodoro-stats-by-todo');
+    if (total) total.textContent = window.getPomodoroTotalFormatted().formatted;
+    if (trend) trend.textContent = formatTrend(window.getPomodoroTrend());
+    const bestDay = window.getPomodoroBestDay();
+    if (best) best.textContent = bestDay && bestDay.sessions > 0 ? bestDay.date + ' (' + bestDay.sessions + ')' : '—';
+    if (avg) avg.textContent = String(window.getPomodoroRollingAverage(7));
+    if (byTodo) byTodo.textContent = formatMinutesByTodo();
   }
   function syncVisibility(enabledOverride) {
     const panel = document.getElementById('pomodoro-stats-panel');
@@ -262,6 +304,25 @@
       ? persisted.then(finishWipe)
       : finishWipe(persisted);
   }
+  // Download the 30-day window as a date,sessions,minutes CSV file. Follows
+  // the proven Blob/anchor pattern from data-manager.js.
+  function exportCsv() {
+    const blob = new Blob([window.exportPomodoroStatsCsv()], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'focus-stats-' + todayISO() + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    if (typeof window.showToast === 'function') {
+      const raw = window.i18n && typeof window.i18n.t === 'function'
+        ? window.i18n.t('pomodoroStatsExportSuccess')
+        : null;
+      window.showToast(raw && raw !== 'pomodoroStatsExportSuccess' ? raw : 'Focus stats exported.', 'success');
+    }
+  }
   function boot() {
     syncVisibility();
     const btn = document.getElementById('pomodoro-stats-toggle');
@@ -272,13 +333,19 @@
       panel.style.display = hidden ? '' : 'none';
       if (!hidden) btn.classList.remove('active');
       else btn.classList.add('active');
+      // Reopen repaints so the summary reflects the latest sessions.
+      if (hidden) paint();
     });
     const clear = document.getElementById('pomodoro-stats-clear');
     if (clear) clear.addEventListener('click', wipe);
+    const exportBtn = document.getElementById('pomodoro-stats-export');
+    if (exportBtn) exportBtn.addEventListener('click', exportCsv);
+    // First paint runs before todo.js executes (it loads later in
+    // bootstrap's scriptSources), so the per-todo labels resolve once every
+    // bootstrap script has finished — the window load event.
+    window.addEventListener('load', paint, { once: true });
     window.addEventListener('pomodoroSessionCompleted', function (ev) { record(ev.detail); });
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
   window.loadPomodoroStats = function () { return cloneStore(read()); };
   window.savePomodoroStats = write;
   window.recordPomodoroSession = record;
@@ -461,4 +528,9 @@
     const dir = ds > 0 ? 'up' : ds < 0 ? 'down' : 'flat';
     return { deltaSessions: ds, deltaMinutes: dm, direction: dir };
   };
+  // Boot last: the initial paint() reads the window.* helpers assigned above
+  // (getPomodoroTotalFormatted, getPomodoroTrend, ...), so it must not run
+  // before they exist.
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();

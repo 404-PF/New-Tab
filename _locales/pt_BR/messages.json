@@ -832,6 +832,34 @@
     "message": "Alternar painel de estatísticas de foco",
     "description": "Aria label for pomodoro stats toggle"
   },
+  "pomodoroStatsTotal": {
+    "message": "Total (30 dias)",
+    "description": "Label for the 30-day focus stats total"
+  },
+  "pomodoroStatsTrend": {
+    "message": "Tendência vs ontem",
+    "description": "Label for the day-over-day focus stats trend"
+  },
+  "pomodoroStatsBestDay": {
+    "message": "Melhor dia",
+    "description": "Label for the best focus stats day"
+  },
+  "pomodoroStatsRollingAvg": {
+    "message": "Média 7 dias (sessões/dia)",
+    "description": "Label for the 7-day rolling average focus stats"
+  },
+  "pomodoroStatsByTodo": {
+    "message": "Minutos por tarefa esta semana",
+    "description": "Label for the minutes-by-todo focus stats list"
+  },
+  "pomodoroStatsExport": {
+    "message": "Exportar CSV",
+    "description": "Button that exports focus stats as CSV"
+  },
+  "pomodoroStatsExportSuccess": {
+    "message": "Estatísticas de foco exportadas.",
+    "description": "Toast shown after focus stats CSV export succeeds"
+  },
   "gamesLoading": {
     "message": "Carregando jogos…",
     "description": "Loading state shown while game scripts are being fetched"

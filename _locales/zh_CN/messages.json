@@ -832,6 +832,34 @@
     "message": "切换专注统计面板",
     "description": "Aria label for pomodoro stats toggle"
   },
+  "pomodoroStatsTotal": {
+    "message": "30 天总计",
+    "description": "Label for the 30-day focus stats total"
+  },
+  "pomodoroStatsTrend": {
+    "message": "较昨日趋势",
+    "description": "Label for the day-over-day focus stats trend"
+  },
+  "pomodoroStatsBestDay": {
+    "message": "最佳一天",
+    "description": "Label for the best focus stats day"
+  },
+  "pomodoroStatsRollingAvg": {
+    "message": "7 日平均（次/天）",
+    "description": "Label for the 7-day rolling average focus stats"
+  },
+  "pomodoroStatsByTodo": {
+    "message": "本周各任务时长",
+    "description": "Label for the minutes-by-todo focus stats list"
+  },
+  "pomodoroStatsExport": {
+    "message": "导出 CSV",
+    "description": "Button that exports focus stats as CSV"
+  },
+  "pomodoroStatsExportSuccess": {
+    "message": "专注统计已导出。",
+    "description": "Toast shown after focus stats CSV export succeeds"
+  },
   "gamesLoading": {
     "message": "正在加载游戏…",
     "description": "Loading state shown while game scripts are being fetched"
