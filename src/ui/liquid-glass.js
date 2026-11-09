@@ -223,6 +223,13 @@
 
     el.classList.add('glass--liquid');
     enhanced.add(el);
+    // #1159: an ancestor can be marked after a child is already enhanced (the
+    // observer only enhances the element that changed), which would leave both
+    // warp layers active. Release enhanced descendants now that this element
+    // is a backdrop root for them.
+    Array.from(enhanced).forEach((child) => {
+      if (child !== el && el.contains(child)) release(child);
+    });
     return true;
   }
 

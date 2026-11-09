@@ -35,7 +35,6 @@ describe('feature panel marking (#1159)', () => {
   it.each([
     ['todo section', /<div class="todo-section" data-liquid-glass="panel">/],
     ['notes section', /<div class="notes-section" data-liquid-glass="panel">/],
-    ['extra timezones', /<div id="extra-timezones" class="extra-timezones" data-liquid-glass="panel">/],
     ['ai chat modal', /<div id="ai-chat-modal" data-liquid-glass="panel">/],
     ['weather app modal', /<div id="weather-app-modal"[^>]*data-liquid-glass="panel">/],
     ['todo app modal', /<div id="todo-app-modal"[^>]*data-liquid-glass="panel">/],
@@ -48,6 +47,11 @@ describe('feature panel marking (#1159)', () => {
   it('leaves the settings modal unmarked so #875 keeps its blur handoff', () => {
     const html = readRepoFile('New-Tab.html');
     expect(html).not.toMatch(/settings-modal[^>]*data-liquid-glass/);
+  });
+
+  it('leaves the timezone container unmarked so renderExtraClocks never clears glass layers', () => {
+    const html = readRepoFile('New-Tab.html');
+    expect(html).not.toMatch(/id="extra-timezones"[^>]*data-liquid-glass/);
   });
 
   it.each([
@@ -72,6 +76,9 @@ describe('feature panel layering CSS (#1159)', () => {
   it('sinks the warp below in-flow content and gives enhanced panels a stacking context', () => {
     expect(css).toMatch(/:where\(body\.glass-liquid \.glass--liquid\)\s*\{\s*z-index:\s*0;/);
     expect(css).toMatch(/body\.glass-liquid \.glass__warp\s*\{\s*z-index:\s*-1;/);
+    expect(css).toMatch(
+      /body\.glass-liquid \.glass__over-light,\s*body\.glass-liquid \.glass__hover\s*\{\s*z-index:\s*-1;/
+    );
   });
 
   it('keeps marked dialogs on the UA top-layer layout', () => {
@@ -81,6 +88,12 @@ describe('feature panel layering CSS (#1159)', () => {
   it('drops the panel blurs that out-specify the generic reset', () => {
     expect(css).toMatch(
       /body\.glass-liquid #ai-chat-modal\.glass--liquid,\s*body\.glass-liquid \.release-notes-dialog\.glass--liquid\s*\{\s*-webkit-backdrop-filter:\s*none;\s*backdrop-filter:\s*none;/
+    );
+  });
+
+  it('drops the release-notes overlay blur so the dialog warp samples the wallpaper', () => {
+    expect(css).toMatch(
+      /body\.glass-liquid \.release-notes-modal:has\(\.release-notes-dialog\.glass--liquid\)\s*\{\s*-webkit-backdrop-filter:\s*none;\s*backdrop-filter:\s*none;/
     );
   });
 
@@ -185,7 +198,25 @@ describe('feature panel enhancement (#1159)', () => {
     expect(hub.querySelector('.glass__warp')).toBeNull();
   });
 
-  it('does not enhance panels under reduced motion', () => {
+  itWhenLiquidEnabled('releases an enhanced marked child when its ancestor is enhanced later', () => {
+    const lg = loadLiquidGlass();
+    const dialog = document.createElement('div');
+    dialog.setAttribute('data-liquid-glass', 'panel');
+    document.body.appendChild(dialog);
+    const hub = document.createElement('div');
+    hub.setAttribute('data-liquid-glass', 'panel');
+    dialog.appendChild(hub);
+
+    expect(lg.enhance(hub)).toBe(true);
+    expect(hub.querySelector('.glass__warp')).not.toBeNull();
+
+    expect(lg.enhance(dialog)).toBe(true);
+    expect(dialog.querySelector(':scope > .glass__warp')).not.toBeNull();
+    expect(hub.querySelector('.glass__warp')).toBeNull();
+    expect(hub.classList.contains('glass--liquid')).toBe(false);
+  });
+
+  itWhenLiquidEnabled('does not enhance panels under reduced motion', () => {
     const lg = loadLiquidGlass();
     window.prefersReducedMotion = () => true;
     const panel = markedPanel();

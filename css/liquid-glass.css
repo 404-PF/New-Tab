@@ -389,6 +389,14 @@ body.glass-liquid .glass__warp {
   z-index: -1;
 }
 
+/* The over-light and hover spans are absolutely positioned with z-index auto,
+   so they paint above in-flow panel text in the same stacking context. Sink
+   them with the warp; the highlight stays put since it is edge-only. */
+body.glass-liquid .glass__over-light,
+body.glass-liquid .glass__hover {
+  z-index: -1;
+}
+
 /* Marked dialogs keep the UA top-layer layout: the zero-specificity
    position: relative above is an author declaration and would otherwise beat
    the UA dialog:modal { position: fixed }, breaking the centering. */
@@ -405,3 +413,10 @@ body.glass-liquid .release-notes-dialog.glass--liquid {
   backdrop-filter: none;
 }
 
+/* #1159: the release-notes overlay's own blur makes it a backdrop root, so
+   the dialog's warp inside it could only sample the overlay rather than the
+   wallpaper behind it. Drop the overlay blur once the dialog is enhanced. */
+body.glass-liquid .release-notes-modal:has(.release-notes-dialog.glass--liquid) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
