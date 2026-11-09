@@ -39,7 +39,15 @@ function showToast(message, type = '', options = {}) {
     toast.classList.add('toast-' + type);
   }
   toast.setAttribute('role', 'alert');
-  toast.textContent = message;
+  // Marked for the liquid glass pipeline (#1158). The attribute alone is
+  // inert: enhancement only happens while body.glass-liquid is on. The
+  // message rides in a span so it is an element child that can be stacked
+  // above the warp layer (a bare text node cannot be raised by CSS).
+  toast.setAttribute('data-liquid-glass', 'panel');
+  const messageEl = document.createElement('span');
+  messageEl.className = 'toast-message';
+  messageEl.textContent = message;
+  toast.appendChild(messageEl);
 
   let autoHideTimeoutId = null;
   let fadeOutTimeoutId = null;
