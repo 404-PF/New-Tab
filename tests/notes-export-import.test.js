@@ -216,6 +216,84 @@ describe('Notes import', () => {
     expect(getNotes()[0]).toMatchObject({ id: 'empty-1', text: '', tag: 'keep' });
   });
 
+  async function importEmptyNoteForGuard(id) {
+    await importNotesFile({ version: 1, notes: [{ id, text: '', tag: '', order: 0 }] });
+    const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
+    expect(ta).not.toBeNull();
+    return ta;
+  }
+
+  function typeThenClear(ta) {
+    ta.value = 'draft';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.value = '';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  it('preserves an imported empty note when the preview toggle runs with a pending save', async () => {
+    const ta = await importEmptyNoteForGuard('empty-toggle');
+
+    typeThenClear(ta);
+    document.querySelector('.note-preview-btn[data-id="empty-toggle"]').click();
+
+    expect(getNotes()).toHaveLength(1);
+    expect(getNotes()[0]).toMatchObject({ id: 'empty-toggle', text: '' });
+  });
+
+  it('deletes an imported note from the preview toggle once its stored text is non-empty', async () => {
+    const ta = await importEmptyNoteForGuard('empty-toggle-2');
+    updateNoteText('empty-toggle-2', 'filled');
+
+    typeThenClear(ta);
+    document.querySelector('.note-preview-btn[data-id="empty-toggle-2"]').click();
+
+    expect(getNotes()).toHaveLength(0);
+  });
+
+  it('preserves an imported empty note on preview mousedown blur with a pending save', async () => {
+    const ta = await importEmptyNoteForGuard('empty-mdown');
+
+    typeThenClear(ta);
+    document.querySelector('.note-preview-btn[data-id="empty-mdown"]')
+      .dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    ta.dispatchEvent(new Event('blur', { bubbles: true }));
+
+    expect(getNotes()).toHaveLength(1);
+    expect(getNotes()[0]).toMatchObject({ id: 'empty-mdown', text: '' });
+  });
+
+  it('deletes an imported note on preview mousedown blur once its stored text is non-empty', async () => {
+    const ta = await importEmptyNoteForGuard('empty-mdown-2');
+    updateNoteText('empty-mdown-2', 'filled');
+
+    typeThenClear(ta);
+    document.querySelector('.note-preview-btn[data-id="empty-mdown-2"]')
+      .dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    ta.dispatchEvent(new Event('blur', { bubbles: true }));
+
+    expect(getNotes()).toHaveLength(0);
+  });
+
+  it('preserves an imported empty note when flushPendingSaves runs', async () => {
+    const ta = await importEmptyNoteForGuard('empty-flush');
+
+    typeThenClear(ta);
+    window.dispatchEvent(new Event('beforeunload'));
+
+    expect(getNotes()).toHaveLength(1);
+    expect(getNotes()[0]).toMatchObject({ id: 'empty-flush', text: '' });
+  });
+
+  it('deletes an imported note during flushPendingSaves once its stored text is non-empty', async () => {
+    const ta = await importEmptyNoteForGuard('empty-flush-2');
+    updateNoteText('empty-flush-2', 'filled');
+
+    typeThenClear(ta);
+    window.dispatchEvent(new Event('beforeunload'));
+
+    expect(getNotes()).toHaveLength(0);
+  });
+
   it('round-trips through export and import', async () => {
     setNotes([
       { id: 'rt-1', text: 'Alpha', tag: 'a', order: 0, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },

@@ -471,7 +471,10 @@
 
   function isImportedEmptyNote(id) {
     const note = notes.find(n => n.id === id);
-    return !!(note && note.importedEmpty);
+    // Only guard while the stored text is still empty: once the user fills
+    // the note, clearing it must delete/save again so stale text cannot
+    // return from storage after a reload.
+    return !!(note && note.importedEmpty && !note.text);
   }
 
   function deleteNote(id) {
