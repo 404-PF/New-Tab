@@ -140,6 +140,20 @@ jobs:
   authorize:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Serialize the concurrent-run cap with every other authorized entry
+    # (workflow_dispatch and /implement): the cap below is a check-then-act
+    # snapshot, so two overlapping requests could each see four active runs
+    # and both proceed above MAX_CONCURRENT. Under this group only one
+    # authorize runs at a time, and every run that passes stays an active
+    # non-schedule run — the reservation held for its whole implement run —
+    # so the next serialized count includes it and the ceiling holds.
+    # queue: max keeps every waiting request queued instead of letting a
+    # newer one replace the single pending slot and silently drop an
+    # /implement (same pattern as find-issues and issue-milestone).
+    concurrency:
+      group: issue-implement-capacity
+      cancel-in-progress: false
+      queue: max
     permissions:
       actions: read
       issues: write
@@ -214,7 +228,10 @@ jobs:
       # and /implement), not only the scheduler. Scheduled runs are
       # auto-dispatch only and never implement, so they are excluded: the
       # scheduler run that just dispatched this one may still be active.
-      # Self is excluded so this run does not count itself.
+      # Self is excluded so this run does not count itself. The job-level
+      # concurrency group above serializes this snapshot with every other
+      # entry, so concurrent requests cannot each see the same below-cap
+      # count and both proceed.
       - name: Enforce concurrent run cap
         id: cap
         if: >
