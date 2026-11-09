@@ -3172,6 +3172,27 @@ describe('Todo sort preference reports rejected writes (#1167)', () => {
     expect(getTodoSort()).toBe('due');
   });
 
+  it('normalizes an unsupported stored sort so the deferred check stays silent', async () => {
+    // An invalid legacy entry would otherwise compare as a mismatch after
+    // resyncTodoSort restores the default, toasting the same failure twice.
+    localStorage.setItem('todoSortOrder', 'bogus');
+    restoreStorageSet = failStorageWritesFor('todoSortOrder', 'sync');
+
+    const select = changeSort('manual');
+
+    expect(localStorage.getItem('todoSortOrder')).toBe('bogus');
+    expect(select.value).toBe('due');
+    expect(getTodoSort()).toBe('due');
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(select.value).toBe('due');
+    expect(getTodoSort()).toBe('due');
+  });
+
   it('persists an accepted sort write without toasting', async () => {
     const select = changeSort('manual');
 
@@ -3184,7 +3205,21 @@ describe('Todo sort preference reports rejected writes (#1167)', () => {
     expect(window.showToast).not.toHaveBeenCalled();
   });
 
-  it('resyncs the select and toasts once after an async lastError rollback', async () => {
+  it('resyncs the select, repaints the list, and toasts once after an async lastError rollback', async () => {
+    // Seed todos whose manual order differs from their due-date order so the
+    // rollback must repaint the list, not just the selector (#1167).
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'later', text: 'Later due', completed: false, createdAt: '2026-01-01T00:00:00.000Z', dueDate: '2026-12-31', order: 0 },
+      { id: 'sooner', text: 'Sooner due', completed: false, createdAt: '2026-01-02T00:00:00.000Z', dueDate: '2026-01-05', order: 1 }
+    ]));
+    initTodo();
+
+    const renderedTexts = () => [...document.querySelectorAll('.todo-item .todo-text')]
+      .map((el) => el.textContent);
+
+    // The stored sort is `due`, so the list starts in due-date order.
+    expect(renderedTexts()).toEqual(['Sooner due', 'Later due']);
+
     restoreStorageSet = failStorageWritesFor('todoSortOrder', 'async');
 
     const select = changeSort('manual');
@@ -3195,6 +3230,8 @@ describe('Todo sort preference reports rejected writes (#1167)', () => {
     expect(select.value).toBe('manual');
     expect(getTodoSort()).toBe('manual');
     expect(window.showToast).not.toHaveBeenCalled();
+    // Optimistic manual order: insertion order, not due dates.
+    expect(renderedTexts()).toEqual(['Later due', 'Sooner due']);
 
     await flushDeferredFailureSync();
     await flushDeferredFailureSync();
@@ -3202,6 +3239,9 @@ describe('Todo sort preference reports rejected writes (#1167)', () => {
     expect(localStorage.getItem('todoSortOrder')).toBe('due');
     expect(select.value).toBe('due');
     expect(getTodoSort()).toBe('due');
+    // Without applyFilters() in resyncTodoSort the rows would stay in the
+    // rejected manual order even though the selector recovered.
+    expect(renderedTexts()).toEqual(['Sooner due', 'Later due']);
     expect(window.showToast).toHaveBeenCalledTimes(1);
     expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });

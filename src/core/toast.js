@@ -620,7 +620,13 @@ function featureToggleControlDesynced(key) {
     }
     case 'todoSortOrder': {
       const select = document.getElementById('todo-sort-select');
-      return Boolean(select) && select.value !== (localStorage.getItem(key) || 'due');
+      // Mirror todo.js's normalizeTodoSort: resyncTodoSort restores the
+      // select to the normalized value, so an unsupported legacy entry must
+      // compare as the default instead of reporting the failure twice (#1167).
+      const modes = window.TODO_SORT_MODES || ['manual', 'due', 'priority', 'created', 'az'];
+      const stored = localStorage.getItem(key);
+      const expected = modes.includes(stored) ? stored : 'due';
+      return Boolean(select) && select.value !== expected;
     }
     case 'notesEnabled': {
       const checkbox = document.getElementById('notes-enabled-setting');

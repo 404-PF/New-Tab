@@ -1652,6 +1652,11 @@ function handleTodoSortChange() {
     resyncTodoSort();
     if (typeof window.showFeatureToggleSaveError === 'function') {
       window.showFeatureToggleSaveError();
+    } else {
+      // toast.js failed to load; bootstrap's full-screen error overlay
+      // already covers that state, so follow the repo convention and only
+      // log here instead of inventing a second notification channel (#1167).
+      console.warn('showFeatureToggleSaveError unavailable: todo sort save failed');
     }
   }
 }
