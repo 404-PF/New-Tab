@@ -422,6 +422,24 @@ describe('liquid glass core module (#1108)', () => {
       expect(weather.classList.contains('glass--liquid')).toBe(false);
     });
 
+    itWhenLiquidEnabled('cancels a pending entrance waiter when the hero is detached', async () => {
+      buildHeroes();
+      const clock = document.getElementById('clock');
+      clock.getAnimations = () => [{ animationName: 'fadeSlideUp' }];
+      loadLiquidGlass();
+      expect(clock.hasAttribute('data-liquid-glass')).toBe(false);
+
+      // Detaching before the entrance settles must drop the waiter: the
+      // removal path only released enhanced elements, so a replaced hero
+      // stayed registered and could still be marked after detachment.
+      clock.remove();
+      await new Promise((r) => setTimeout(r, 0));
+      const done = new Event('animationend');
+      done.animationName = 'fadeSlideUp';
+      clock.dispatchEvent(done);
+      expect(clock.hasAttribute('data-liquid-glass')).toBe(false);
+    });
+
     it('leaves the heroes untouched in classic mode', () => {
       buildHeroes();
       const lg = loadLiquidGlass({ style: 'classic' });

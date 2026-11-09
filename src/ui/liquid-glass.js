@@ -298,6 +298,12 @@
       records.forEach((record) => {
         record.removedNodes.forEach((node) => {
           Array.from(enhanced).filter((el) => node.contains(el)).forEach((el) => release(el));
+          // release() only covers enhanced elements; a detached hero whose
+          // entrance waiter is still pending must drop that waiter too,
+          // otherwise the removed subtree stays retained in the map.
+          Array.from(entranceWaiters.keys())
+            .filter((el) => node.contains(el))
+            .forEach((el) => cancelEntranceWaiter(el));
         });
         record.addedNodes.forEach((node) => {
           if (node instanceof Element) markAppIcons(node);
