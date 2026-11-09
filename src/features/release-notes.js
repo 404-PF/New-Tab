@@ -315,7 +315,7 @@
       : '';
 
     overlay.innerHTML = `
-      <div class="release-notes-dialog" role="dialog" aria-modal="true" aria-labelledby="release-notes-title">
+      <div class="release-notes-dialog" data-liquid-glass="panel" role="dialog" aria-modal="true" aria-labelledby="release-notes-title">
         <div class="release-notes-header">
           <div class="release-notes-icon">🎉</div>
           <h2 class="release-notes-title" id="release-notes-title">${escapeHtml(title)}</h2>

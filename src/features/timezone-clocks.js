@@ -160,6 +160,7 @@
       const chip = document.createElement('div');
       chip.className = 'timezone-chip';
       chip.dataset.zone = zoneId;
+      chip.setAttribute('data-liquid-glass', 'panel');
 
       const cityEl = document.createElement('span');
       cityEl.className = 'timezone-city';

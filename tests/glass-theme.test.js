@@ -172,6 +172,7 @@ describe('Unified glass tokens (#1109)', () => {
 const SHELL_CSS_PATH = resolve(process.cwd(), 'css/shell.css');
 const FEATURES_CSS_PATH = resolve(process.cwd(), 'css/features.css');
 const NEW_TAB_HTML_PATH = resolve(process.cwd(), 'New-Tab.html');
+const LIQUID_CSS_PATH = resolve(process.cwd(), 'css/liquid-glass.css');
 
 describe('Motto action buttons share the pill glass treatment (#975)', () => {
   it('includes both buttons in the light-theme primary surface group', () => {
@@ -273,5 +274,34 @@ describe('Motto action buttons share the pill glass treatment (#975)', () => {
     expect(html).toMatch(
       /id="copy-motto-btn"[^>]*aria-label="Copy motto"[^>]*data-i18n-aria-label="copyMotto"/
     );
+  });
+});
+
+describe('Liquid handoff for feature panels (#809, #1159)', () => {
+  it('keeps the Classic Todo blur rule in app.css with no liquid coupling', () => {
+    const appCss = readFileSync(APP_CSS_PATH, 'utf-8');
+    expect(appCss).toMatch(
+      /\.todo-section\s*\{[^}]*backdrop-filter:\s*blur\(var\(--glass-blur\)\)/
+    );
+    expect(appCss).not.toMatch(/glass-liquid/);
+  });
+
+  it('neutralizes the panel blurs only under body.glass-liquid', () => {
+    const liquidCss = readFileSync(LIQUID_CSS_PATH, 'utf-8');
+    expect(liquidCss).toMatch(
+      /body\.glass-liquid \.glass--liquid\s*\{\s*-webkit-backdrop-filter:\s*none;\s*backdrop-filter:\s*none;/
+    );
+    expect(liquidCss).toMatch(/body\.glass-liquid #ai-chat-modal\.glass--liquid/);
+    expect(liquidCss).toMatch(/body\.glass-liquid \.release-notes-dialog\.glass--liquid/);
+    expect(liquidCss).not.toMatch(/(^|\n)\s*\.todo-section\s*\{[^}]*backdrop-filter:\s*none/);
+  });
+
+  it('leaves the #875 settings blur handoff and the unmarked settings modal alone', () => {
+    const glassCss = readFileSync(GLASS_CSS_PATH, 'utf-8');
+    expect(glassCss).toMatch(
+      /body\.light-theme #settings-modal > div\s*\{\s*-webkit-backdrop-filter:\s*none/
+    );
+    const html = readFileSync(NEW_TAB_HTML_PATH, 'utf-8');
+    expect(html).not.toMatch(/settings-modal[^>]*data-liquid-glass/);
   });
 });
