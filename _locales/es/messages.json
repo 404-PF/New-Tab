@@ -208,6 +208,10 @@
     "message": "Diario",
     "description": "Rotation interval option"
   },
+  "bgRotationNewtab": {
+    "message": "Con cada pestaña nueva",
+    "description": "Rotation interval option"
+  },
   "bgRotationPicker": {
     "message": "Seleccionar fondos para rotar",
     "description": "Label for the background picker in rotation settings"

@@ -192,6 +192,7 @@ window.i18n.__registerLocale('de', {
   bgRotation1hour: '1 Stunde',
   bgRotationHourly: 'Stündlich',
   bgRotationDaily: 'Täglich',
+  bgRotationNewtab: 'Bei jedem neuen Tab',
   bgRotationPicker: 'Hintergründe zum Rotieren auswählen',
   bgRotationUploads: 'Deine Uploads',
   bgRotationNext: 'Nächster Hintergrund',

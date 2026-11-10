@@ -208,6 +208,10 @@
     "message": "Quotidien",
     "description": "Rotation interval option"
   },
+  "bgRotationNewtab": {
+    "message": "À chaque nouvel onglet",
+    "description": "Rotation interval option"
+  },
   "bgRotationPicker": {
     "message": "Sélectionner les arrière-plans à tourner",
     "description": "Label for the background picker in rotation settings"

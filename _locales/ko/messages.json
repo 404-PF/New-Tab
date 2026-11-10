@@ -208,6 +208,10 @@
     "message": "매일",
     "description": "Rotation interval option"
   },
+  "bgRotationNewtab": {
+    "message": "새 탭마다",
+    "description": "Rotation interval option"
+  },
   "bgRotationPicker": {
     "message": "회전할 배경 선택",
     "description": "Label for the background picker in rotation settings"

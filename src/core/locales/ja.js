@@ -205,6 +205,7 @@ window.i18n.__registerLocale('ja', {
   bgRotation1hour: '1時間',
   bgRotationHourly: '毎時',
   bgRotationDaily: '毎日',
+  bgRotationNewtab: '新しいタブごと',
   bgRotationPicker: 'ローテーションする背景を選択',
   bgRotationUploads: 'アップロードした背景',
   bgRotationNext: '次の背景',

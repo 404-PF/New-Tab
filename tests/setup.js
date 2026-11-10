@@ -501,6 +501,7 @@ globalThis.window.i18n = {
       bgRotation1hour: '1 hour',
       bgRotationHourly: 'Every hour on the hour',
       bgRotationDaily: 'Daily',
+      bgRotationNewtab: 'Every new tab',
       bgRotationPicker: 'Select backgrounds to rotate',
       bgRotationNext: 'Next Background',
       appGridSaveError: 'Failed to save app changes. Your last action was not saved.',

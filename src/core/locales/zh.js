@@ -219,6 +219,7 @@ window.i18n.__registerLocale('zh', {
   bgRotation1hour: '1 小时',
   bgRotationHourly: '每小时整点',
   bgRotationDaily: '每日',
+  bgRotationNewtab: '每个新标签页',
   bgRotationPicker: '选择要轮播的背景',
   bgRotationUploads: '上传的背景',
   bgRotationNext: '下一个背景',

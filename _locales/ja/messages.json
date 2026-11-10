@@ -208,6 +208,10 @@
     "message": "毎日",
     "description": "Rotation interval option"
   },
+  "bgRotationNewtab": {
+    "message": "新しいタブごと",
+    "description": "Rotation interval option"
+  },
   "bgRotationPicker": {
     "message": "ローテーションする背景を選択",
     "description": "Label for the background picker in rotation settings"

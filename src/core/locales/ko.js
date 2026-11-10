@@ -205,6 +205,7 @@ window.i18n.__registerLocale('ko', {
   bgRotation1hour: '1시간',
   bgRotationHourly: '매시',
   bgRotationDaily: '매일',
+  bgRotationNewtab: '새 탭마다',
   bgRotationPicker: '회전할 배경 선택',
   bgRotationUploads: '업로드한 배경',
   bgRotationNext: '다음 배경',

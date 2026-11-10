@@ -305,6 +305,20 @@ describe('Rotation uploads translations', () => {
   });
 });
 
+// "Every new tab" rotation cadence (issue #1173): the interval option
+// ships localized in every supported language and in every chrome.i18n
+// messages.json (the New-Tab.html data-i18n completeness check above
+// resolves the same key against the en dictionary).
+describe('Background rotation new-tab cadence translations (issue #1173)', () => {
+  it('defines a localized bgRotationNewtab for every supported language', () => {
+    expectTranslationKeys(['bgRotationNewtab'], { differFromEnglish: true });
+  });
+
+  it('includes bgRotationNewtab in every _locales messages.json', () => {
+    expectMessagesJsonKey('bgRotationNewtab');
+  });
+});
+
 describe('AI translations', () => {
   // Inspect getTranslations() directly rather than t(): t() silently falls
   // back to English when a locale lacks the key, which would hide a stale
