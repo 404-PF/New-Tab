@@ -1041,6 +1041,43 @@ describe('Background rotation "Every new tab" cadence (issue #1173)', () => {
     expect(['Test BG 1', 'Test BG 2']).toContain(localStorage.getItem('homepageBg'));
   });
 
+  it('advances past the background left on screen by the previous tab', () => {
+    // Simulate the next fresh document: the pool's shuffled head may land
+    // on the background already shown, which would not visibly advance.
+    localStorage.setItem('homepageBg', 'Test BG 1');
+    injectScript('src/features/background-rotation.js');
+
+    expect(localStorage.getItem('homepageBg')).toBe('Test BG 2');
+  });
+
+  it('defers the load advance until an upload-only selection resolves', () => {
+    const uploads = [];
+    window._customBackgrounds = {
+      isCustom: (id) => typeof id === 'string' && id.startsWith('custom_'),
+      getCachedList: () => uploads,
+      refresh: () => Promise.resolve(uploads),
+    };
+    localStorage.setItem('bgRotationSelection', JSON.stringify(['custom_image_1', 'custom_image_2']));
+    const before = localStorage.getItem('homepageBg');
+    injectScript('src/features/background-rotation.js');
+
+    try {
+      // The custom-background cache is still empty, so the load advance
+      // must wait instead of consuming its one chance for this document.
+      expect(localStorage.getItem('homepageBg')).toBe(before);
+
+      uploads.push(
+        { id: 'custom_image_1', title: 'Photo', type: 'image', thumb: 'c1.jpg' },
+        { id: 'custom_image_2', title: 'Shot', type: 'image', thumb: 'c2.jpg' }
+      );
+      document.dispatchEvent(new CustomEvent('custombackgroundschanged'));
+
+      expect(['custom_image_1', 'custom_image_2']).toContain(localStorage.getItem('homepageBg'));
+    } finally {
+      delete window._customBackgrounds;
+    }
+  });
+
   it('arms no timer for the newtab cadence', () => {
     // The load path itself must not have constructed one either.
     expect(VisibilityIntervalMock).not.toHaveBeenCalled();
@@ -1072,6 +1109,10 @@ describe('Background rotation "Every new tab" cadence (issue #1173)', () => {
 
   it('does not advance when the interval is re-selected through the UI handler', () => {
     const select = createIntervalSelect();
+    // Start from another cadence so the handler really transitions into
+    // 'newtab' instead of re-saving the value already stored.
+    localStorage.setItem('bgRotationInterval', '30min');
+    select.value = '30min';
     BackgroundRotation.initUI();
     const before = localStorage.getItem('homepageBg');
 

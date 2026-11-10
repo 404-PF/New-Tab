@@ -25,7 +25,9 @@
 
   let rotationTimer = null;
   // The 'newtab' cadence advances the pool once per fresh document load.
-  // init() consumes this flag; applyRotation()/startRotation() re-run for
+  // init() consumes this flag (except while the pool is still empty
+  // awaiting the async upload cache, where the custombackgroundschanged
+  // retry consumes it); applyRotation()/startRotation() re-run for
   // settings changes, picker edits, and post-import refreshes but never
   // reach the load path, so those defer the advance to the next load. No
   // focus/visibility/pageshow listener exists, so returning to an existing
@@ -329,17 +331,41 @@
     }
   }
 
+  // Point the next advance past the background that is already displayed,
+  // so a fresh tab visibly changes even when the shuffled head matches
+  // homepageBg. startRotation() has just primed the pool for the 'newtab'
+  // cadence, so poolIndex marks the entry getNextBackground() will return.
+  function skipShownBackgroundOnNextAdvance() {
+    if (shuffledPool.length <= 1) return;
+    const current = readHomepageBg();
+    if (!current) return;
+    if (shuffledPool[poolIndex] && shuffledPool[poolIndex].id === current) {
+      poolIndex = (poolIndex + 1) % shuffledPool.length;
+    }
+  }
+
   // Advance exactly once for the 'newtab' cadence, gated to the first
-  // apply of this document. Only init() calls this: settings changes,
-  // picker edits, and imports re-enter applyRotation()/startRotation()
-  // but never the load path, so they defer the advance to the next load.
+  // apply of this document. init() and the custom-background cache retry
+  // call this: settings changes, picker edits, and imports re-enter
+  // applyRotation()/startRotation() but never the load path, so they defer
+  // the advance to the next load.
   function advanceOnceOnLoad() {
     if (loadAdvanceConsumed) return;
+    if (!loadEnabled() || loadInterval() !== 'newtab') {
+      loadAdvanceConsumed = true;
+      return;
+    }
+    const pool = getRotatableBackgrounds();
+    // An empty pool can mean the async custom-background cache has not
+    // landed yet for an upload-only selection. Stay unconsumed so the
+    // custombackgroundschanged retry can still complete this load advance;
+    // a persisted empty selection simply never reaches that path.
+    if (pool.length === 0) return;
     loadAdvanceConsumed = true;
-    if (!loadEnabled() || loadInterval() !== 'newtab') return;
     // startRotation() skips a pool of one; mirror that so a single
     // background never churns homepageBg.
-    if (getRotatableBackgrounds().length <= 1) return;
+    if (pool.length <= 1) return;
+    skipShownBackgroundOnNextAdvance();
     advanceBackground();
   }
 
@@ -592,7 +618,7 @@
     initRotationUI();
     applyRotation();
     // After applyRotation(): for 'newtab' it has already primed the pool,
-    // so the load advance consumes the first entry instead of reshuffling.
+    // so the load advance picks from it instead of reshuffling.
     advanceOnceOnLoad();
 
     // Keep the picker in sync when the upload metadata cache lands or
@@ -603,6 +629,10 @@
     document.addEventListener('custombackgroundschanged', function () {
       renderBackgroundPicker();
       applyRotation();
+      // The cache may have just resolved an upload-only selection: retry
+      // the load advance that advanceOnceOnLoad() deferred while the pool
+      // was still empty (still gated by its one-time flag).
+      advanceOnceOnLoad();
     });
 
     // Re-render so the uploads divider follows the active language.
