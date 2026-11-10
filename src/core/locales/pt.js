@@ -192,6 +192,7 @@ window.i18n.__registerLocale('pt', {
   bgRotation1hour: '1 hora',
   bgRotationHourly: 'A cada hora',
   bgRotationDaily: 'Diariamente',
+  bgRotationNewtab: 'A cada nova aba',
   bgRotationPicker: 'Selecionar fundos para rotacionar',
   bgRotationUploads: 'Seus envios',
   bgRotationNext: 'Próximo fundo',

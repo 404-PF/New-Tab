@@ -192,6 +192,7 @@ window.i18n.__registerLocale('ru', {
   bgRotation1hour: '1 час',
   bgRotationHourly: 'Каждый час',
   bgRotationDaily: 'Ежедневно',
+  bgRotationNewtab: 'При каждой новой вкладке',
   bgRotationPicker: 'Выберите фоны для смены',
   bgRotationUploads: 'Ваши загрузки',
   bgRotationNext: 'Следующий фон',

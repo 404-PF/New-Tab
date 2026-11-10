@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
 import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
@@ -967,5 +969,158 @@ describe('Background rotation UI sync exposure (issue #1080)', () => {
     BackgroundRotation.syncUI();
 
     expect(addListener).not.toHaveBeenCalled();
+  });
+});
+
+describe('Background rotation "Every new tab" cadence (issue #1173)', () => {
+  // Each test re-injects the module so its IIFE and init() run again —
+  // exactly what a fresh new-tab document load does. The instance from
+  // the previous injection is stopped in afterEach so no timer from it
+  // can outlive the test; its leftover window/document listeners stay
+  // inert because these tests never dispatch the events they handle
+  // beyond the rollback path asserted below (whose deferred handlers
+  // find the UI already resynced and return silently).
+  let previousRotation;
+  let OriginalVisibilityInterval;
+  let VisibilityIntervalMock;
+  let applyBg;
+  let intervalSelect;
+  let restoreWrites = null;
+
+  beforeEach(() => {
+    localStorage.setItem('bgRotationEnabled', 'true');
+    localStorage.setItem('bgRotationInterval', 'newtab');
+    localStorage.removeItem('bgRotationSelection');
+    window._backgrounds = [
+      { id: 'Test BG 1', title: 'Test BG 1', thumb: 'thumb1.jpg', url: 'img1.jpg' },
+      { id: 'Test BG 2', title: 'Test BG 2', thumb: 'thumb2.jpg', url: 'img2.jpg' },
+    ];
+    applyBg = vi.fn();
+    window.applyBg = applyBg;
+    OriginalVisibilityInterval = window.VisibilityInterval;
+    VisibilityIntervalMock = vi.fn(function () {
+      return { destroy: vi.fn() };
+    });
+    window.VisibilityInterval = VisibilityIntervalMock;
+    previousRotation = window.BackgroundRotation;
+    injectScript('src/features/background-rotation.js');
+  });
+
+  afterEach(async () => {
+    // Settle deferred bridge-failure handlers while every instance is
+    // still listening so they cannot fire during a later test.
+    await flushDeferredFailureSync();
+    BackgroundRotation.stop();
+    if (previousRotation) previousRotation.stop();
+    window.VisibilityInterval = OriginalVisibilityInterval;
+    if (intervalSelect) {
+      intervalSelect.remove();
+      intervalSelect = null;
+    }
+    if (restoreWrites) {
+      restoreWrites();
+      restoreWrites = null;
+    }
+    delete window.showToast;
+  });
+
+  function createIntervalSelect() {
+    intervalSelect = document.createElement('select');
+    intervalSelect.id = 'bg-rotation-interval';
+    ['5min', '15min', '30min', '1hour', 'hourly', 'daily', 'newtab'].forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      intervalSelect.appendChild(option);
+    });
+    document.body.appendChild(intervalSelect);
+    return intervalSelect;
+  }
+
+  it('advances the pool exactly once on a fresh load and repaints', () => {
+    expect(applyBg).toHaveBeenCalledTimes(1);
+    expect(['Test BG 1', 'Test BG 2']).toContain(localStorage.getItem('homepageBg'));
+  });
+
+  it('arms no timer for the newtab cadence', () => {
+    // The load path itself must not have constructed one either.
+    expect(VisibilityIntervalMock).not.toHaveBeenCalled();
+
+    const setIntervalSpy = vi.spyOn(window, 'setInterval');
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
+    try {
+      BackgroundRotation.start();
+
+      expect(VisibilityIntervalMock).not.toHaveBeenCalled();
+      expect(setIntervalSpy).not.toHaveBeenCalled();
+      expect(setTimeoutSpy).not.toHaveBeenCalled();
+    } finally {
+      setIntervalSpy.mockRestore();
+      setTimeoutSpy.mockRestore();
+    }
+  });
+
+  it('does not advance on settings changes or an import-style re-apply', () => {
+    const before = localStorage.getItem('homepageBg');
+
+    BackgroundRotation.start();
+    BackgroundRotation.apply();
+    BackgroundRotation.syncUI();
+
+    expect(applyBg).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('homepageBg')).toBe(before);
+  });
+
+  it('does not advance when the interval is re-selected through the UI handler', () => {
+    const select = createIntervalSelect();
+    BackgroundRotation.initUI();
+    const before = localStorage.getItem('homepageBg');
+
+    select.value = 'newtab';
+    select.dispatchEvent(new Event('change'));
+
+    expect(applyBg).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('homepageBg')).toBe(before);
+    expect(VisibilityIntervalMock).not.toHaveBeenCalled();
+  });
+
+  it('never advances on focus, visibilitychange, or pageshow (#788)', () => {
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('focus'));
+    document.dispatchEvent(new Event('focus'));
+    window.dispatchEvent(new Event('pageshow'));
+
+    expect(applyBg).toHaveBeenCalledTimes(1);
+  });
+
+  it('syncs the interval select to the stored newtab value', () => {
+    const select = createIntervalSelect();
+    select.value = '30min';
+
+    BackgroundRotation.syncUI();
+
+    expect(select.value).toBe('newtab');
+  });
+
+  it('rolls the interval select back to newtab when the write fails', () => {
+    const select = createIntervalSelect();
+    BackgroundRotation.initUI();
+    window.showToast = vi.fn();
+    restoreWrites = failStorageWritesFor('bgRotationInterval');
+
+    select.value = '5min';
+    select.dispatchEvent(new Event('change'));
+
+    expect(BackgroundRotation.getInterval()).toBe('newtab');
+    expect(select.value).toBe('newtab');
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(applyBg).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers the newtab option in the interval select markup', () => {
+    const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
+
+    expect(html).toMatch(
+      /<option value="newtab" data-i18n="bgRotationNewtab">Every new tab<\/option>/
+    );
   });
 });

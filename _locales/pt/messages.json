@@ -208,6 +208,10 @@
     "message": "Diariamente",
     "description": "Rotation interval option"
   },
+  "bgRotationNewtab": {
+    "message": "A cada nova aba",
+    "description": "Rotation interval option"
+  },
   "bgRotationPicker": {
     "message": "Selecionar fundos para rotacionar",
     "description": "Label for the background picker in rotation settings"

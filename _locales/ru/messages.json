@@ -208,6 +208,10 @@
     "message": "Ежедневно",
     "description": "Rotation interval option"
   },
+  "bgRotationNewtab": {
+    "message": "При каждой новой вкладке",
+    "description": "Rotation interval option"
+  },
   "bgRotationPicker": {
     "message": "Выберите фоны для смены",
     "description": "Label for the background picker in rotation settings"

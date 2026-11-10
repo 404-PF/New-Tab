@@ -208,6 +208,10 @@
     "message": "每日",
     "description": "Rotation interval option"
   },
+  "bgRotationNewtab": {
+    "message": "每个新标签页",
+    "description": "Rotation interval option"
+  },
   "bgRotationPicker": {
     "message": "选择要轮播的背景",
     "description": "Label for the background picker in rotation settings"

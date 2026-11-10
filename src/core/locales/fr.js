@@ -192,6 +192,7 @@ window.i18n.__registerLocale('fr', {
   bgRotation1hour: '1 heure',
   bgRotationHourly: 'Toute heure',
   bgRotationDaily: 'Quotidien',
+  bgRotationNewtab: 'À chaque nouvel onglet',
   bgRotationPicker: 'Sélectionner les arrière-plans à tourner',
   bgRotationUploads: 'Vos importations',
   bgRotationNext: 'Arrière-plan suivant',

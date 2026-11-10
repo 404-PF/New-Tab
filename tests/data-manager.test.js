@@ -1803,6 +1803,22 @@ describe('DataManager background rotation re-apply (issue #1080)', () => {
     expectRotationRefreshed(2);
   });
 
+  it('round-trips the newtab interval through export and import (issue #1173)', async () => {
+    localStorage.setItem('bgRotationInterval', 'newtab');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.bgRotationInterval).toBe('newtab');
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+
+    localStorage.removeItem('bgRotationInterval');
+    const result = await importBackup(exported.data, 'merge');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('bgRotationInterval')).toBe('newtab');
+    expectRotationRefreshed(1);
+  });
+
   it('still succeeds when window.BackgroundRotation is unavailable', async () => {
     rotation.restore();
     delete window.BackgroundRotation;

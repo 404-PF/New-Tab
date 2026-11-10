@@ -24,6 +24,13 @@
   const ROTATION_SAVE_ERROR_FALLBACK = 'Failed to save background rotation settings. Your last action was not saved.';
 
   let rotationTimer = null;
+  // The 'newtab' cadence advances the pool once per fresh document load.
+  // init() consumes this flag; applyRotation()/startRotation() re-run for
+  // settings changes, picker edits, and post-import refreshes but never
+  // reach the load path, so those defer the advance to the next load. No
+  // focus/visibility/pageshow listener exists, so returning to an existing
+  // tab never advances (#788).
+  let loadAdvanceConsumed = false;
 
   function loadEnabled() {
     try {
@@ -254,6 +261,18 @@
     if (pool.length <= 1) return;
 
     const intervalKey = loadInterval();
+
+    if (intervalKey === 'newtab') {
+      // Cadence with no timer: prime the pool for advanceBackground() and
+      // arm nothing. The advance happens once per document load in
+      // advanceOnceOnLoad(), never here — startRotation() also runs for
+      // settings changes, picker edits, and imports, which must not
+      // advance until the next load.
+      shuffledPool = shuffleArray(pool);
+      poolIndex = 0;
+      return;
+    }
+
     const intervalMs = INTERVAL_OPTIONS[intervalKey] || INTERVAL_OPTIONS['30min'];
 
     if (intervalKey === 'hourly') {
@@ -308,6 +327,20 @@
     } else {
       stopRotation();
     }
+  }
+
+  // Advance exactly once for the 'newtab' cadence, gated to the first
+  // apply of this document. Only init() calls this: settings changes,
+  // picker edits, and imports re-enter applyRotation()/startRotation()
+  // but never the load path, so they defer the advance to the next load.
+  function advanceOnceOnLoad() {
+    if (loadAdvanceConsumed) return;
+    loadAdvanceConsumed = true;
+    if (!loadEnabled() || loadInterval() !== 'newtab') return;
+    // startRotation() skips a pool of one; mirror that so a single
+    // background never churns homepageBg.
+    if (getRotatableBackgrounds().length <= 1) return;
+    advanceBackground();
   }
 
   function syncRotationUI() {
@@ -558,6 +591,9 @@
   function init() {
     initRotationUI();
     applyRotation();
+    // After applyRotation(): for 'newtab' it has already primed the pool,
+    // so the load advance consumes the first entry instead of reshuffling.
+    advanceOnceOnLoad();
 
     // Keep the picker in sync when the upload metadata cache lands or
     // changes (upload/delete paths dispatch this after re-rendering).
