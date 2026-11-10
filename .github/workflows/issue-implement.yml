@@ -150,6 +150,15 @@ jobs:
     # queue: max keeps every waiting request queued instead of letting a
     # newer one replace the single pending slot and silently drop an
     # /implement (same pattern as find-issues and issue-milestone).
+    # GitHub caps this queue at 100 pending jobs and cancels anything
+    # beyond it. A cancelled authorize job runs no steps, so an
+    # in-workflow overflow notice or retry cannot exist. Reaching the
+    # ceiling needs 100+ authorized entries waiting at once (write-capable
+    # /implement comments plus scheduler or manual dispatches), which this
+    # repo does not generate; each authorize run drains the queue in
+    # seconds. A request GitHub does cancel stays recoverable: no attempt
+    # marker was written, so re-commenting re-enters the group and the
+    # scheduler re-dispatches an untouched issue on its next 30-minute tick.
     concurrency:
       group: issue-implement-capacity
       cancel-in-progress: false
