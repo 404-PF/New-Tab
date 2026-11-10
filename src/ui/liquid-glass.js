@@ -177,8 +177,23 @@
     return SIZE_CLASSES[candidate] ? candidate : DEFAULT_SIZE_CLASS;
   }
 
+  // #1066: the on-page todo widget is relocated into the app modal while it
+  // is open; a warp layer there would nest inside the modal surface's
+  // backdrop-filter and sample it instead of the page. #1159: a marked child
+  // never enhances inside an already enhanced ancestor for the same reason —
+  // its warp would refract the ancestor's warped output, not the page.
+  function isExcluded(el) {
+    if (el.closest('#todo-app-widget-host')) return true;
+    const parent = el.parentElement;
+    return Boolean(parent) && Boolean(parent.closest('.glass--liquid'));
+  }
+
   function enhance(el, opts) {
     if (!(el instanceof Element)) return false;
+    if (isExcluded(el)) {
+      release(el);
+      return false;
+    }
     if (enhanced.has(el)) return true;
     if (!isLiquid() || isReducedMotion()) return false;
 
@@ -208,6 +223,13 @@
 
     el.classList.add('glass--liquid');
     enhanced.add(el);
+    // #1159: an ancestor can be marked after a child is already enhanced (the
+    // observer only enhances the element that changed), which would leave both
+    // warp layers active. Release enhanced descendants now that this element
+    // is a backdrop root for them.
+    Array.from(enhanced).forEach((child) => {
+      if (child !== el && el.contains(child)) release(child);
+    });
     return true;
   }
 
