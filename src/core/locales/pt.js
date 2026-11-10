@@ -522,6 +522,7 @@ window.i18n.__registerLocale('pt', {
   shortcutToggleSimpleMode: 'Alternar modo simples',
   shortcutToggleTodo: 'Alternar lista tarefas',
   shortcutToggleNotes: 'Alternar notas',
+  shortcutOpenAi: 'Abrir assistente IA',
   shortcutCloseModal: 'Fechar modal',
   shortcutPressAKey: 'Pressione uma tecla...',
   shortcutAppLaunch: 'Iniciar apps com Alt+1…9',

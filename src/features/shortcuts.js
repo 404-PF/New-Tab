@@ -20,6 +20,7 @@
     toggleSimpleMode: 'Ctrl+Shift+S',
     toggleTodo: 'Ctrl+Shift+T',
     toggleNotes: 'Ctrl+Shift+N',
+    openAi: 'Ctrl+Shift+A',
     closeModal: 'Escape'
   };
 
@@ -30,6 +31,7 @@
     toggleSimpleMode: 'shortcutToggleSimpleMode',
     toggleTodo: 'shortcutToggleTodo',
     toggleNotes: 'shortcutToggleNotes',
+    openAi: 'shortcutOpenAi',
     closeModal: 'shortcutCloseModal'
   };
 
@@ -393,6 +395,31 @@
     if (modal) modal.classList.add('modal-open');
   }
 
+  // Opens the AI assistant through the same handler as the ai-app grid tile
+  // (issue #1185) and closes it when it is already open, matching the
+  // Todo/Notes toggle behaviour. Both targets are resolved at keydown time:
+  // bootstrap.js loads this module before app-manager.js and ai-service.js.
+  function openAiAssistant(event) {
+    const modal = document.getElementById('ai-chat-modal');
+    const isOpen = !!modal && modal.classList.contains('ai-modal-open');
+
+    if (isOpen) {
+      if (window.AIService && typeof window.AIService.close === 'function') {
+        window.AIService.close();
+      } else if (modal) {
+        modal.classList.remove('ai-modal-open');
+      }
+      return;
+    }
+
+    if (typeof window.openInternalApp === 'function' && window.openInternalApp('ai-app', event)) {
+      return;
+    }
+    if (window.AIService && typeof window.AIService.open === 'function') {
+      window.AIService.open();
+    }
+  }
+
   // Guard the shared helper: toast.js may fail to load, and an unguarded
   // call would throw before the write (#969 review thread).
   function persistToggleOrFallback(key, value) {
@@ -546,7 +573,7 @@
     return false;
   }
 
-  function executeAction(action) {
+  function executeAction(action, event) {
     switch (action) {
       case 'focusSearch':
         focusSearchBar();
@@ -565,6 +592,9 @@
         break;
       case 'toggleNotes':
         toggleNotes();
+        break;
+      case 'openAi':
+        openAiAssistant(event);
         break;
       case 'closeModal':
         closeModal();
@@ -596,7 +626,7 @@
     for (const action in activeShortcuts) {
       if (activeShortcuts[action] === combo) {
         e.preventDefault();
-        executeAction(action);
+        executeAction(action, e);
         return;
       }
     }

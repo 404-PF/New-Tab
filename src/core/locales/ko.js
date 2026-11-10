@@ -535,6 +535,7 @@ window.i18n.__registerLocale('ko', {
   shortcutToggleSimpleMode: '심플 모드 전환',
   shortcutToggleTodo: '할 일 목록 전환',
   shortcutToggleNotes: '메모 전환',
+  shortcutOpenAi: 'AI 어시스턴트 열기',
   shortcutCloseModal: '모달 닫기',
   shortcutPressAKey: '키를 누르세요...',
   shortcutAppLaunch: 'Alt+1…9로 앱 실행',

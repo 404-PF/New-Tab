@@ -54,6 +54,10 @@
     "message": "Не удалось сохранить изменения горячих клавиш. Последнее действие не было сохранено.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
   },
+  "shortcutOpenAi": {
+    "message": "Открыть ИИ-ассистент",
+    "description": "Label for the open AI assistant shortcut action"
+  },
   "customBackgroundsLoadError": {
     "message": "Не удалось загрузить пользовательские фоны. Повторите попытку.",
     "description": "Error shown when custom backgrounds cannot be listed"

@@ -522,6 +522,7 @@ window.i18n.__registerLocale('ru', {
   shortcutToggleSimpleMode: 'Переключить простой режим',
   shortcutToggleTodo: 'Переключить список дел',
   shortcutToggleNotes: 'Переключить заметки',
+  shortcutOpenAi: 'Открыть ИИ-ассистент',
   shortcutCloseModal: 'Закрыть модальное окно',
   shortcutPressAKey: 'Нажмите клавишу...',
   shortcutAppLaunch: 'Запуск приложений по Alt+1…9',

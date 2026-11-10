@@ -32,6 +32,7 @@ describe('Shortcuts - defaults', () => {
     expect(shortcuts.toggleSimpleMode).toBe('Ctrl+Shift+S');
     expect(shortcuts.toggleTodo).toBe('Ctrl+Shift+T');
     expect(shortcuts.toggleNotes).toBe('Ctrl+Shift+N');
+    expect(shortcuts.openAi).toBe('Ctrl+Shift+A');
     expect(shortcuts.closeModal).toBe('Escape');
   });
 
@@ -473,6 +474,159 @@ describe('Shortcuts - executeAction', () => {
     expect(applyCalled).toBe(true);
 
     delete window.applyNotesEnabled;
+  });
+});
+
+describe('Shortcuts - openAi AI assistant shortcut (#1185)', () => {
+  let modal;
+  let createdModal;
+  let originalAIService;
+  let originalOpenInternalApp;
+
+  function pressOpenAi() {
+    const event = new KeyboardEvent('keydown', {
+      key: 'A',
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+    return event;
+  }
+
+  function ensureShortcutsContainer() {
+    let container = document.getElementById('shortcuts-options');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+    }
+    return container;
+  }
+
+  beforeEach(() => {
+    modal = document.getElementById('ai-chat-modal');
+    if (modal) {
+      createdModal = false;
+    } else {
+      modal = document.createElement('div');
+      modal.id = 'ai-chat-modal';
+      document.body.appendChild(modal);
+      createdModal = true;
+    }
+    modal.className = '';
+
+    originalAIService = window.AIService;
+    originalOpenInternalApp = window.openInternalApp;
+    window.AIService = {
+      open: vi.fn(() => modal.classList.add('ai-modal-open')),
+      close: vi.fn(() => modal.classList.remove('ai-modal-open'))
+    };
+    delete window.openInternalApp;
+  });
+
+  afterEach(async () => {
+    if (originalAIService === undefined) {
+      delete window.AIService;
+    } else {
+      window.AIService = originalAIService;
+    }
+    if (originalOpenInternalApp === undefined) {
+      delete window.openInternalApp;
+    } else {
+      window.openInternalApp = originalOpenInternalApp;
+    }
+    if (createdModal) modal.remove();
+    localStorage.removeItem('customShortcuts');
+    localStorage.removeItem('appShortcutsEnabled');
+    await Shortcuts.reset();
+  });
+
+  it('renders an openAi row with the default combo and its translated label', () => {
+    const container = ensureShortcutsContainer();
+    Shortcuts.renderShortcutsSection();
+
+    const btn = container.querySelector('[data-action="openAi"]');
+    expect(btn).toBeTruthy();
+    expect(btn.textContent).toBe('Ctrl+Shift+A');
+    expect(btn.closest('.setting-content').querySelector('label').textContent)
+      .toBe('Open AI Assistant');
+  });
+
+  it('routes the combo through the ai-app tile handler and opens the modal', () => {
+    const openInternalApp = vi.fn((appId) => {
+      if (appId === 'ai-app') {
+        window.AIService.open();
+        return true;
+      }
+      return false;
+    });
+    window.openInternalApp = openInternalApp;
+
+    const event = pressOpenAi();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(openInternalApp).toHaveBeenCalledTimes(1);
+    expect(openInternalApp.mock.calls[0][0]).toBe('ai-app');
+    expect(window.AIService.open).toHaveBeenCalledTimes(1);
+    expect(modal.classList.contains('ai-modal-open')).toBe(true);
+  });
+
+  it('opens and closes the modal like the Todo/Notes toggles', () => {
+    pressOpenAi();
+    expect(window.AIService.open).toHaveBeenCalledTimes(1);
+    expect(modal.classList.contains('ai-modal-open')).toBe(true);
+
+    const secondPress = pressOpenAi();
+    expect(secondPress.defaultPrevented).toBe(true);
+    expect(window.AIService.close).toHaveBeenCalledTimes(1);
+    expect(modal.classList.contains('ai-modal-open')).toBe(false);
+  });
+
+  it('executeAction toggles the modal when only AIService is available', () => {
+    Shortcuts.executeAction('openAi');
+    expect(window.AIService.open).toHaveBeenCalledTimes(1);
+    expect(modal.classList.contains('ai-modal-open')).toBe(true);
+
+    Shortcuts.executeAction('openAi');
+    expect(window.AIService.close).toHaveBeenCalledTimes(1);
+    expect(modal.classList.contains('ai-modal-open')).toBe(false);
+  });
+
+  it('strips the open class when AIService.close is unavailable', () => {
+    modal.classList.add('ai-modal-open');
+    window.AIService = { open: vi.fn() };
+
+    Shortcuts.executeAction('openAi');
+
+    expect(modal.classList.contains('ai-modal-open')).toBe(false);
+    expect(window.AIService.open).not.toHaveBeenCalled();
+  });
+
+  it('works regardless of the positional Alt+1..9 launcher toggle', () => {
+    localStorage.setItem('appShortcutsEnabled', 'false');
+
+    pressOpenAi();
+
+    expect(modal.classList.contains('ai-modal-open')).toBe(true);
+  });
+
+  it('rebinds openAi and persists the new combo under customShortcuts', () => {
+    const container = ensureShortcutsContainer();
+    Shortcuts.renderShortcutsSection();
+    container.querySelector('[data-action="openAi"]').click();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'J',
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    }));
+
+    expect(Shortcuts.load().openAi).toBe('Ctrl+Shift+J');
+    expect(container.querySelector('[data-action="openAi"]').textContent).toBe('Ctrl+Shift+J');
   });
 });
 

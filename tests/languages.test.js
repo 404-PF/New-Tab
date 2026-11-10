@@ -695,6 +695,19 @@ describe('Game saves save error translation (issue #1039)', () => {
   });
 });
 
+// Named AI assistant shortcut (issue #1185): the Settings -> Shortcuts row
+// label ships in every runtime locale table and every chrome.i18n
+// messages.json.
+describe('AI assistant shortcut translations (issue #1185)', () => {
+  it('defines a localized shortcutOpenAi for every supported language', () => {
+    expectTranslationKeys(['shortcutOpenAi'], { differFromEnglish: true });
+  });
+
+  it('includes shortcutOpenAi in every _locales messages.json', () => {
+    expectMessagesJsonKey('shortcutOpenAi');
+  });
+});
+
 describe('New-Tab.html i18n key completeness', () => {
   it('resolves every data-i18n key used in New-Tab.html in the en dictionary', () => {
     const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');

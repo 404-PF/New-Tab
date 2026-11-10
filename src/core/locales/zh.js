@@ -579,6 +579,7 @@ window.i18n.__registerLocale('zh', {
   shortcutToggleSimpleMode: '切换简洁模式',
   shortcutToggleTodo: '切换待办清单',
   shortcutToggleNotes: '切换便签',
+  shortcutOpenAi: '打开 AI 助手',
   shortcutCloseModal: '关闭对话框',
   shortcutPressAKey: '按下按键...',
   shortcutAppLaunch: '使用 Alt+1…9 启动应用',
