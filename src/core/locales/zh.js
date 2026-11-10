@@ -178,6 +178,7 @@ window.i18n.__registerLocale('zh', {
   reminderLeadTime1hour: '1小时前',
   reminderLeadTime1day: '1天前',
   enableNotes: '启用便签本',
+  enableMotto: '启用每日格言',
   enableFocusMode: '启用专注模式',
   focusModeExit: '退出专注模式',
 

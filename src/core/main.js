@@ -1601,6 +1601,14 @@ function checkFooterOverlap() {
 
   const mottoRect = motto.getBoundingClientRect();
 
+  // A hidden motto (#mottoEnabled off, focus mode) reports a zero rect, which
+  // would read as "overlaps everything" and fade footer-left out (#1174).
+  if (mottoRect.width === 0 && mottoRect.height === 0) {
+    if (footerLeft) footerLeft.style.opacity = '';
+    if (footerRight) footerRight.style.opacity = '';
+    return;
+  }
+
   if (footerLeft) {
     const leftRect = footerLeft.getBoundingClientRect();
     // Check if the right edge of footer-left is past the left edge of motto (with 5px buffer)

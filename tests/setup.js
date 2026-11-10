@@ -940,6 +940,7 @@ document.body.appendChild(createStubElement('input', 'date-color-picker'));
 document.body.appendChild(createStubElement('select', 'date-font-picker'));
 document.body.appendChild(createStubElement('select', 'date-format-picker'));
 document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'motto-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-stats-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'pomodoro-stats-enabled-setting'));

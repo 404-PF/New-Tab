@@ -157,6 +157,7 @@ window.i18n.__registerLocale('de', {
   reminderLeadTime1hour: '1 Stunde vorher',
   reminderLeadTime1day: '1 Tag vorher',
   enableNotes: 'Notizblock aktivieren',
+  enableMotto: 'Tägliches Motto aktivieren',
   enableFocusMode: 'Fokusmodus aktivieren',
   focusModeExit: 'Fokusmodus beenden',
   backgroundSettings: 'Hintergrund',

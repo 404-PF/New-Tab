@@ -157,6 +157,7 @@ window.i18n.__registerLocale('ru', {
   reminderLeadTime1hour: 'За 1 час',
   reminderLeadTime1day: 'За 1 день',
   enableNotes: 'Включить блокнот',
+  enableMotto: 'Включить ежедневный девиз',
   enableFocusMode: 'Включить режим фокуса',
   focusModeExit: 'Выйти из режима фокуса',
   backgroundSettings: 'Фон',
