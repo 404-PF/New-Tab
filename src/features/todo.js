@@ -1374,6 +1374,7 @@ function updateFilterCounts() {
   const today = formatDateISO(new Date());
   const dueToday = todos.filter(t => !t.completed && t.dueDate === today).length;
   const high = todos.filter(t => (t.priority || 'medium') === 'high').length;
+  const medium = todos.filter(t => (t.priority || 'medium') === 'medium').length;
   const low = todos.filter(t => (t.priority || 'medium') === 'low').length;
   
   const badgeAll = document.getElementById('badge-all');
@@ -1382,6 +1383,7 @@ function updateFilterCounts() {
   const badgeOverdue = document.getElementById('badge-overdue');
   const badgeToday = document.getElementById('badge-today');
   const badgeHigh = document.getElementById('badge-high');
+  const badgeMedium = document.getElementById('badge-medium');
   const badgeLow = document.getElementById('badge-low');
   const todoCount = document.getElementById('todo-count');
   
@@ -1391,6 +1393,7 @@ function updateFilterCounts() {
   if (badgeOverdue) badgeOverdue.textContent = overdue;
   if (badgeToday) badgeToday.textContent = dueToday;
   if (badgeHigh) badgeHigh.textContent = high;
+  if (badgeMedium) badgeMedium.textContent = medium;
   if (badgeLow) badgeLow.textContent = low;
   if (todoCount) todoCount.textContent = `${completed}/${all}`;
 }

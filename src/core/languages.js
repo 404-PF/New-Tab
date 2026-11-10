@@ -1726,6 +1726,7 @@ function updateDynamicTranslations() {
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="overdue"]'), 'filterOverdue');
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="today"]'), 'filterToday');
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="high"]'), 'priorityHigh');
+  updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="medium"]'), 'priorityMedium');
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="low"]'), 'priorityLow');
   
   // Update quick action button text
