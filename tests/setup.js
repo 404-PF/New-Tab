@@ -905,6 +905,7 @@ document.body.appendChild(subtaskInput);
 
 // Priority filter badge stubs
 document.body.appendChild(createStubElement('span', 'badge-high'));
+document.body.appendChild(createStubElement('span', 'badge-medium'));
 document.body.appendChild(createStubElement('span', 'badge-low'));
 
 document.body.appendChild(createStubElement('div', 'settings-modal'));

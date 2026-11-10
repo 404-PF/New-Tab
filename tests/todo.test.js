@@ -1659,6 +1659,28 @@ describe('Todo priority', () => {
     setPriorityFilter('all');
   });
 
+  it('filterTodos filters by medium priority', () => {
+    addTodo('High', null, 'high');
+    addTodo('Medium', null, 'medium');
+    addTodo('Low', null, 'low');
+    setPriorityFilter('medium');
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('Medium');
+    setPriorityFilter('all');
+  });
+
+  it('updateFilterCounts counts medium-priority todos in badge-medium', () => {
+    addTodo('High', null, 'high');
+    addTodo('Medium one', null, 'medium');
+    addTodo('Medium two');
+    addTodo('Low', null, 'low');
+    // addTodo re-runs applyFilters, which refreshes the badge counts.
+    expect(document.getElementById('badge-high').textContent).toBe('1');
+    expect(document.getElementById('badge-medium').textContent).toBe('2');
+    expect(document.getElementById('badge-low').textContent).toBe('1');
+  });
+
   it('filterTodos returns all when priority filter is all', () => {
     addTodo('High', null, 'high');
     addTodo('Medium', null, 'medium');
@@ -1713,6 +1735,22 @@ describe('Todo priority', () => {
     const filtered = filterTodos();
     expect(filtered).toHaveLength(1);
     expect(filtered[0].text).toBe('A');
+    currentFilters.priority = 'all';
+  });
+
+  it('handleFilterPillClick handles medium priority pill', () => {
+    addTodo('A', null, 'high');
+    addTodo('B', null, 'medium');
+    addTodo('C', null, 'low');
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill';
+    pill.dataset.filter = 'medium';
+    pill.dataset.filterType = 'priority';
+    handleFilterPillClick({ target: pill });
+    expect(currentFilters.priority).toBe('medium');
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('B');
     currentFilters.priority = 'all';
   });
 
