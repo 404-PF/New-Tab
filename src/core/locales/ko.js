@@ -170,6 +170,7 @@ window.i18n.__registerLocale('ko', {
   reminderLeadTime1hour: '1시간 전',
   reminderLeadTime1day: '1일 전',
   enableNotes: '메모장 사용',
+  enableMotto: '매일 명언 사용',
   enableFocusMode: '집중 모드 사용',
   focusModeExit: '집중 모드 종료',
   backgroundSettings: '배경',

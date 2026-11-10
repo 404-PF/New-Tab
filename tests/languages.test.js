@@ -742,6 +742,14 @@ describe('Motto button aria-label translations', () => {
   });
 });
 
+// Settings > General motto toggle (issue #1174): the new enableMotto label
+// must resolve in every language, not just English.
+describe('Motto toggle label translations (issue #1174)', () => {
+  it('defines the enableMotto label in each supported language', () => {
+    expectTranslationKeys(['enableMotto'], { differFromEnglish: true });
+  });
+});
+
 // Icon-only shell buttons (issue #1088): add todo, add note, AI send/stop and
 // the folder popup close glyph must expose localized accessible names instead
 // of a bare "button" announcement.

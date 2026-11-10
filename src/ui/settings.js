@@ -1876,6 +1876,36 @@ if (notesEnabledSetting) {
   });
 }
 
+// Motto enabled
+function loadMottoEnabled() {
+  return localStorage.getItem('mottoEnabled') !== 'false';
+}
+function applyMottoEnabled() {
+  const enabled = loadMottoEnabled();
+  const mottoContainer = document.getElementById('motto-container');
+  if (mottoContainer) {
+    mottoContainer.style.display = enabled ? '' : 'none';
+  }
+  const mottoEnabledSetting = document.getElementById('motto-enabled-setting');
+  if (mottoEnabledSetting) mottoEnabledSetting.checked = enabled;
+  // A hidden motto reports a zero rect, so the footer overlap pass has to
+  // re-run instead of leaving footer-left faded out (#1174).
+  if (typeof window.checkFooterOverlap === 'function') {
+    window.checkFooterOverlap();
+  }
+}
+
+const mottoEnabledSetting = document.getElementById('motto-enabled-setting');
+if (mottoEnabledSetting) {
+  mottoEnabledSetting.addEventListener('change', function () {
+    const persisted = persistSetting('mottoEnabled', this.checked);
+    applyMottoEnabled();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
+  });
+}
+
 // Pomodoro settings
 function updatePomodoroDurationSettingsVisibility(durationSettings, enabled) {
   if (durationSettings) {
@@ -2743,6 +2773,7 @@ function initSettings() {
   applyPomodoroStatsEnabled();
   applyEyeCareReminderSettings();
   applyNotesEnabled();
+  applyMottoEnabled();
   applyGamesEnabled();
   applyGamesKeymap();
   applyGamesFps();
@@ -2823,6 +2854,7 @@ window.loadEyeCareReminderState = loadEyeCareReminderState;
 window.saveEyeCareReminderState = saveEyeCareReminderState;
 window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;
 window.applyNotesEnabled = applyNotesEnabled;
+window.applyMottoEnabled = applyMottoEnabled;
 window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;
 window.applyGamesKeymap = applyGamesKeymap;

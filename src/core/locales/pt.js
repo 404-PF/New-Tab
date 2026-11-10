@@ -157,6 +157,7 @@ window.i18n.__registerLocale('pt', {
   reminderLeadTime1hour: '1 hora antes',
   reminderLeadTime1day: '1 dia antes',
   enableNotes: 'Ativar bloco de notas',
+  enableMotto: 'Ativar lema diário',
   enableFocusMode: 'Ativar modo foco',
   focusModeExit: 'Sair do modo foco',
   backgroundSettings: 'Fundo',
