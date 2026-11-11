@@ -11,7 +11,7 @@ on:
   issues:
     types: [closed, deleted, transferred]
   schedule:
-    - cron: '47 */6 * * *'
+    - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
       target_count:

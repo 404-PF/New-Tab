@@ -29,11 +29,10 @@ on:
         type: string
         default: 'false'
   schedule:
-    # Every 30 minutes, off the :00/:30 peak when GitHub drops scheduled runs.
-    # Starts a new drive round on each open same-repo PR that has no drive
-    # running. A round ends when the loop stops; the next tick starts the next
-    # round until the PR merges or closes.
-    - cron: '7,37 * * * *'
+    # Every 30 minutes. Starts a new drive round on each open same-repo PR
+    # that has no drive running. A round ends when the loop stops; the next
+    # tick starts the next round until the PR merges or closes.
+    - cron: '*/30 * * * *'
 
 # Concurrency is declared on the drive job, not here, so an unauthorized
 # /drive comment can never cancel an authorized run (same as issue-implement).
