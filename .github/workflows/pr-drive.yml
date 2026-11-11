@@ -185,6 +185,29 @@ jobs:
       - name: Record job start time
         run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
+      # Complete any pr-drive check left in_progress by a prior run (canceled
+      # run or a failed completion PATCH). An unfinished check keeps pr-merge
+      # denying merges on this head; the scheduler that used to reconcile
+      # them is gone, so every new drive cleans up first.
+      - name: Reconcile stale pr-drive checks
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! STALE_IDS="$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs?check_name=pr-drive&filter=all" \
+            --jq '.check_runs[] | select(.status != "completed") | .id')"; then
+            echo '::warning::Could not inspect pr-drive check runs for reconciliation.'
+            exit 0
+          fi
+          for CHECK_ID in $STALE_IDS; do
+            jq -n '{status: "completed", conclusion: "neutral",
+              output: {title: "Drive superseded", summary: "Reconciled before a new pr-drive run."}}' \
+              | gh api -X PATCH "repos/$GH_REPO/check-runs/$CHECK_ID" --input - >/dev/null \
+              || echo "::warning::Could not reconcile pr-drive check run $CHECK_ID."
+          done
+
       # Visible pr-drive check on the head commit (Checks section). pr-merge
       # waits while it is in progress. Best effort: a failure here must not
       # stop the drive.
@@ -880,7 +903,7 @@ jobs:
             fi
             sleep 5
           done
-          [ "$PATCHED" = true ] || echo '::warning::Could not complete the pr-drive check run; it may stay in progress and hold up pr-merge.'
+          [ "$PATCHED" = true ] || echo '::warning::Could not complete the pr-drive check run; it may stay in progress and hold up pr-merge until the next /drive reconciles it.'
 
       # A check completed with GITHUB_TOKEN does not re-trigger pr-merge, and a
       # no-commit drive does not push either. Ask pr-merge to evaluate this PR
