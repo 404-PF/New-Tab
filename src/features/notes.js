@@ -571,11 +571,13 @@
         return;
       }
       // Second-pass render: only re-render when the order actually changed
-      // on screen, to avoid focus churn while typing.
+      // on screen, to avoid focus churn while typing. An empty result must
+      // still render so the hidden empty state (see renderNotes) is restored
+      // instead of leaving a blank list when both passes are empty.
       const currentIds = Array.isArray(_lastRenderedIds) ? _lastRenderedIds : [];
       const sameOrder = ranked.length === currentIds.length
         && ranked.every(function (n, i) { return currentIds[i] === n.id; });
-      if (sameOrder) return;
+      if (sameOrder && ranked.length > 0) return;
       renderSemanticResults(ranked);
     }).catch(function () {
       if (generation === _semanticGeneration) updateSemanticStatus('idle');
@@ -929,6 +931,17 @@
 
   function reorderNotes(fromIndex, toIndex) {
     if (fromIndex === toIndex) return;
+    // Semantic relevance order is computed, not user-owned: the next rerank
+    // would undo a move made inside it. Leave relevance view first (clearing
+    // the query like addNote does) so the manual order persists on screen.
+    if (_semanticRankedView) {
+      setSearchQuery('');
+      try {
+        const searchInput = elements.notesSearch || document.getElementById('notes-search');
+        if (searchInput) searchInput.value = '';
+      } catch { /* ignore */ }
+      updateSemanticStatus('idle');
+    }
     // Operate on the displayed order (sync pass or semantic re-rank), so a
     // drag while ranked moves the card the user actually grabbed.
     const filtered = getVisibleNotes();

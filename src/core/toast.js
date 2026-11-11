@@ -271,14 +271,30 @@ const FEATURE_TOGGLE_RESYNC = {
     }
   },
   notesSemanticEnabled: function () {
+    let enabled = false;
     try {
-      if (localStorage.getItem('notesSemanticEnabled') !== 'true'
+      enabled = localStorage.getItem('notesSemanticEnabled') === 'true';
+    } catch { /* ignore */ }
+    try {
+      if (!enabled
         && window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
         window.EmbeddingService.cancelLoad();
       }
     } catch { /* ignore */ }
     if (typeof window.applyNotesSemanticEnabled === 'function') {
       window.applyNotesSemanticEnabled();
+    }
+    // Rollback-to-enabled (a toggle-off write was rejected): the optimistic
+    // toggle-off cancelled the in-flight load and cleared its marker, so
+    // re-rendering alone strands the UI on "Starting download…" with no
+    // worker. Re-enter the passive resume path so the download restarts (or
+    // the error state shows) instead of stalling until the next toggle.
+    if (enabled) {
+      try {
+        if (typeof window.initNotesSemanticSetting === 'function') {
+          window.initNotesSemanticSetting();
+        }
+      } catch { /* ignore */ }
     }
   },
   eyeCareReminder: function () {

@@ -269,24 +269,32 @@
 
   function makeProgressCallback(onProgress, generation) {
     const fileProgress = new Map();
+    let aggregateProgress = null;
     return function (info) {
       try {
         // Stale chain (cancel → re-enable): ignore late progress so the UI
         // cannot show loading again after cancel.
         if (typeof generation === 'number' && loadGeneration !== generation) return;
-        // Transformers.js reports progress as a 0-100 percentage.
+        // Transformers.js reports progress as a 0-100 percentage. The
+        // aggregate `progress_total` event already accounts for every file,
+        // so prefer it outright and only average per-file progress while no
+        // aggregate value has arrived yet.
         if (info && info.status === 'progress_total' && typeof info.progress === 'number') {
-          fileProgress.set('__overall__', Math.min(1, Math.max(0, info.progress / 100)));
+          aggregateProgress = Math.min(1, Math.max(0, info.progress / 100));
         } else if (info && typeof info.file === 'string' && typeof info.progress === 'number') {
           fileProgress.set(info.file, Math.min(1, Math.max(0, info.progress / 100)));
         } else if (info && typeof info.progress === 'number') {
-          fileProgress.set('__overall__', Math.min(1, Math.max(0, info.progress / 100)));
+          aggregateProgress = Math.min(1, Math.max(0, info.progress / 100));
         }
-        let overall = 0;
-        if (fileProgress.size > 0) {
+        let overall;
+        if (aggregateProgress !== null) {
+          overall = aggregateProgress;
+        } else if (fileProgress.size > 0) {
           let sum = 0;
           fileProgress.forEach(function (v) { sum += v; });
           overall = sum / fileProgress.size;
+        } else {
+          overall = 0;
         }
         setState('loading', overall);
         if (typeof onProgress === 'function') {

@@ -639,10 +639,10 @@
                       <path d="M11 8a3 3 0 0 0-3 3"></path>
                     </svg>
                     <div class="setting-content">
-                      <label for="notes-semantic-enabled-setting" data-i18n="notesSemanticEnable">Enable semantic notes search</label>
+                      <label id="notes-semantic-enabled-label" for="notes-semantic-enabled-setting" data-i18n="notesSemanticEnable">Enable semantic notes search</label>
                       <input type="checkbox" id="notes-semantic-enabled-setting" />
                       <div class="setting-description" data-i18n="notesSemanticDesc">On-device Harrier model (~300MB) downloads once after opt-in for typo-tolerant, semantic matching.</div>
-                      <progress id="notes-semantic-progress" class="notes-semantic-progress" max="100" value="0" hidden aria-label="Model download progress"></progress>
+                      <progress id="notes-semantic-progress" class="notes-semantic-progress" max="100" value="0" hidden aria-labelledby="notes-semantic-enabled-label"></progress>
                       <div class="notes-semantic-actions">
                         <button type="button" id="notes-semantic-cancel" class="setting-btn" data-i18n="notesSemanticCancel" hidden>Cancel download</button>
                         <button type="button" id="notes-semantic-delete" class="setting-btn danger" data-i18n="notesSemanticDelete" hidden>Delete model</button>
