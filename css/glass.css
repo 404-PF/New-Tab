@@ -104,7 +104,7 @@ body.light-theme {
    otherwise outrank the hero neutralization and leave the backdrop-filter
    running over the warp. */
 body.light-theme :is(
-  .search-bar:not(:where(.search-bar-wrapper.glass--liquid .search-bar)),
+  .search-bar,
   .icon:not(:where(.app-icon .icon[data-liquid-glass].glass--liquid)),
   .weather-widget:not(:where(.weather-widget.glass--liquid)),
   .focus-mode-indicator:not(:where(.focus-mode-indicator.glass--liquid)),
