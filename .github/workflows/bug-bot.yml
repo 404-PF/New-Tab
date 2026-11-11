@@ -1,4 +1,4 @@
-name: bug-find
+name: bug-bot
 
 # An OpenCode agent looks for real bugs or gaps in the codebase and proposes
 # issues. A token-free validator checks every proposal against the checked-out
@@ -62,10 +62,7 @@ jobs:
           # up to +5h late). Free-tier agent churn from the extra issue-event
           # runs is capped by the pre-agent pool recount in the find job.
           COOLDOWN_SECONDS=$(( 2 * 3600 ))
-          MARKER='<!-- bug-find -->'
-          # Issues filed by the pre-rename workflow carry the old marker; the
-          # cooldown counts both so the first post-rename run cannot bypass it.
-          LEGACY_MARKER='<!-- issue-find -->'
+          MARKER='<!-- bug-bot -->'
 
           TARGET=10
           MAX_NEW=5
@@ -81,7 +78,7 @@ jobs:
                 admin|maintain|write) AUTHORIZED=true ;;
               esac
             fi
-            [ "$AUTHORIZED" = true ] || { echo "::error::$ACTOR is not authorized to dispatch bug-find."; exit 1; }
+            [ "$AUTHORIZED" = true ] || { echo "::error::$ACTOR is not authorized to dispatch bug-bot."; exit 1; }
             TARGET="${INPUT_TARGET:-10}"
             MAX_NEW="${INPUT_MAX_NEW:-5}"
           fi
@@ -101,15 +98,15 @@ jobs:
           echo "Open issues: $CURRENT, target: $TARGET, max_new: $MAX_NEW, to_file: $TO_FILE"
           [ "$TO_FILE" -gt 0 ] || skip 'At or above target; nothing to file.'
 
-          # Cooldown from the newest issue carrying either marker (new or
-          # pre-rename). Manual dispatch overrides it.
+          # Cooldown from the newest issue carrying the marker. Manual
+          # dispatch overrides it.
           if [ "$EVENT_NAME" != 'workflow_dispatch' ]; then
             # GraphQL issues() with no states filter covers every state and
             # never includes PRs.
             # shellcheck disable=SC2016 # GraphQL variables, not shell
             LAST="$(gh api graphql -F owner="${GH_REPO%%/*}" -F name="${GH_REPO#*/}" \
               -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { issues(first: 100, orderBy: {field: CREATED_AT, direction: DESC}) { nodes { createdAt body } } } }' \
-              | jq -r --arg m "$MARKER" --arg lm "$LEGACY_MARKER" '[.data.repository.issues.nodes[] | select(((.body // "") | contains($m)) or ((.body // "") | contains($lm)))][0].createdAt // empty')"
+              | jq -r --arg m "$MARKER" '[.data.repository.issues.nodes[] | select((.body // "") | contains($m))][0].createdAt // empty')"
             if [ -n "$LAST" ]; then
               AGE=$(( $(date +%s) - $(date -d "$LAST" +%s) ))
               [ "$AGE" -ge "$COOLDOWN_SECONDS" ] || skip "Cooldown: last marked issue was filed $((AGE / 60)) min ago."
@@ -120,7 +117,7 @@ jobs:
   find:
     needs: gate
     if: needs.gate.result == 'success' && fromJSON(needs.gate.outputs.to_file || '0') > 0
-    # Shared concurrency group: both find workflows refill the same open-issue
+    # Shared concurrency group: both bot workflows refill the same open-issue
     # target, so their find jobs must never run at the same time (a shared
     # group is repository-wide across workflows). queue: max keeps every
     # pending issue-event refill queued instead of replaced, since the default
@@ -146,7 +143,7 @@ jobs:
       TARGET: ${{ needs.gate.outputs.target }}
       MAX_NEW: ${{ needs.gate.outputs.max_new }}
       DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
-      MARKER: '<!-- bug-find -->'
+      MARKER: '<!-- bug-bot -->'
     steps:
       # Lets the failure report tell a job-level timeout from a cancellation.
       - name: Record job start time
@@ -221,8 +218,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          mkdir -p "$GITHUB_WORKSPACE/.tmp" "$RUNNER_TEMP/bug-find"
-          STATE="$RUNNER_TEMP/bug-find"
+          mkdir -p "$GITHUB_WORKSPACE/.tmp" "$RUNNER_TEMP/bug-bot"
+          STATE="$RUNNER_TEMP/bug-bot"
           gh issue list --repo "$GH_REPO" --state open --limit 1000 --json number,title > "$STATE/open.json"
           gh issue list --repo "$GH_REPO" --state closed --limit 1000 --json number,title > "$STATE/closed.json"
           jq -s 'add | map(.title)' "$STATE/open.json" "$STATE/closed.json" > "$STATE/existing-titles.json"
@@ -321,7 +318,7 @@ jobs:
         id: validate
         env:
           PROPOSED: ${{ github.workspace }}/.tmp/proposed-issues.jsonl
-          STATE_DIR: ${{ runner.temp }}/bug-find
+          STATE_DIR: ${{ runner.temp }}/bug-bot
         run: |
           set -euo pipefail
           python3 - <<'VALIDATOR_EOF'
@@ -349,7 +346,7 @@ jobs:
           def strip_markers(s):
               s = re.sub(r'<!--.*?-->', '', s, flags=re.S)
               s = s.replace('<!--', '').replace('-->', '')
-              return re.sub(r'bug-find', 'bug find', s, flags=re.I)
+              return re.sub(r'bug-bot', 'bug bot', s, flags=re.I)
 
           def tokens(t):
               return {w for w in re.findall(r'[a-z0-9]+', t.lower()) if len(w) > 2}
@@ -473,7 +470,7 @@ jobs:
           # Fine-grained PAT, Issues read/write on this repo.
           GH_PAT: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
-          VALIDATED: ${{ runner.temp }}/bug-find/validated.json
+          VALIDATED: ${{ runner.temp }}/bug-bot/validated.json
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -483,11 +480,11 @@ jobs:
             jq -r --argjson i "$1" --arg marker "$MARKER" --arg run "$RUN_URL" '.[$i] |
               .body, "", "### Evidence",
               (.evidence[] | "- `\(.file):\(.line)`: `\(.snippet | gsub("`"; "\u0027"))`"),
-              "", $marker, "Filed automatically by bug-find: \($run)"' "$VALIDATED"
+              "", $marker, "Filed automatically by bug-bot: \($run)"' "$VALIDATED"
           }
           if [ "$DRY_RUN" = 'true' ]; then
             {
-              echo "## bug-find dry run: $N proposed issue(s)"
+              echo "## bug-bot dry run: $N proposed issue(s)"
               for i in $(seq 0 $((N - 1))); do
                 echo ''
                 echo "### $(jq -r --argjson i "$i" '.[$i].title' "$VALIDATED")"
@@ -515,10 +512,10 @@ jobs:
               echo "Open issues reached the target ($CURRENT >= $TARGET); stopping."
               break
             fi
-            render "$i" > "$RUNNER_TEMP/bug-find/body.md"
-            jq --argjson i "$i" --rawfile body "$RUNNER_TEMP/bug-find/body.md" \
-              '.[$i] | {title, labels, body: $body}' "$VALIDATED" > "$RUNNER_TEMP/bug-find/req.json"
-            URL="$(GH_TOKEN="$GH_PAT" gh api "repos/$GH_REPO/issues" --input "$RUNNER_TEMP/bug-find/req.json" --jq .html_url)"
+            render "$i" > "$RUNNER_TEMP/bug-bot/body.md"
+            jq --argjson i "$i" --rawfile body "$RUNNER_TEMP/bug-bot/body.md" \
+              '.[$i] | {title, labels, body: $body}' "$VALIDATED" > "$RUNNER_TEMP/bug-bot/req.json"
+            URL="$(GH_TOKEN="$GH_PAT" gh api "repos/$GH_REPO/issues" --input "$RUNNER_TEMP/bug-bot/req.json" --jq .html_url)"
             echo "Created $URL"
             echo "- $URL" >> "$GITHUB_STEP_SUMMARY"
             CREATED=$((CREATED + 1))
@@ -535,9 +532,9 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           FILED: ${{ steps.validate.outputs.count }}
         run: |
-          echo "::error::bug-find agent step failed or timed out; ${FILED:-0} validated proposal(s) were still processed. See $RUN_URL"
+          echo "::error::bug-bot agent step failed or timed out; ${FILED:-0} validated proposal(s) were still processed. See $RUN_URL"
           {
-            echo '## bug-find agent failed or timed out'
+            echo '## bug-bot agent failed or timed out'
             echo "Partial results: ${FILED:-0} validated proposal(s) were processed."
             echo "See the workflow run: $RUN_URL"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -561,6 +558,6 @@ jobs:
               exit 0
             fi
           fi
-          echo "::error::bug-find failed or timed out. See $RUN_URL"
-          echo "## bug-find failed or timed out" >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::bug-bot failed or timed out. See $RUN_URL"
+          echo "## bug-bot failed or timed out" >> "$GITHUB_STEP_SUMMARY"
           echo "See the workflow run: $RUN_URL" >> "$GITHUB_STEP_SUMMARY"

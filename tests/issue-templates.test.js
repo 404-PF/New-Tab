@@ -6,14 +6,14 @@ const FEATURE_PATH = resolve(process.cwd(), '.github/ISSUE_TEMPLATE/feature_requ
 const PR_PATH = resolve(process.cwd(), '.github/pull_request_template.md');
 const TRIAGE_PATH = resolve(process.cwd(), '.github/workflows/issue-triage.yml');
 const LABEL_PATH = resolve(process.cwd(), '.github/workflows/issue-label.yml');
-const BUG_FIND_PATH = resolve(process.cwd(), '.github/workflows/bug-find.yml');
-const FEATURE_FIND_PATH = resolve(process.cwd(), '.github/workflows/feature-find.yml');
+const BUG_BOT_PATH = resolve(process.cwd(), '.github/workflows/bug-bot.yml');
+const FEATURE_BOT_PATH = resolve(process.cwd(), '.github/workflows/feature-bot.yml');
 const CONTRIBUTING_PATH = resolve(process.cwd(), 'CONTRIBUTING.md');
 const CONTRIBUTING_EN_PATH = resolve(process.cwd(), 'docs/CONTRIBUTING.en.md');
 const CONTRIBUTING_ZH_PATH = resolve(process.cwd(), 'docs/CONTRIBUTING.zh-CN.md');
 
 // Templates share a fixed section set. Generated issues are free-form and end
-// with an ### Evidence block appended by bug-find/feature-find, which the
+// with an ### Evidence block appended by bug-bot/feature-bot, which the
 // templates' Evidence section matches. issue-triage and issue-label pass the
 // raw body through and do not parse headings.
 const ISSUE_HEADINGS = [
@@ -97,8 +97,8 @@ describe('issue and PR templates (#1032)', () => {
       expect(template).not.toContain('<!-- pr-merge -->');
       expect(template).not.toContain('<!-- pr-drive -->');
       expect(template).not.toContain('<!-- issue-triage -->');
-      expect(template).not.toContain('<!-- bug-find -->');
-      expect(template).not.toContain('<!-- feature-find -->');
+      expect(template).not.toContain('<!-- bug-bot -->');
+      expect(template).not.toContain('<!-- feature-bot -->');
     });
   });
 
@@ -115,14 +115,14 @@ describe('issue and PR templates (#1032)', () => {
 describe('workflows stay compatible with templated issues (#1032)', () => {
   let triage;
   let label;
-  let bugFind;
-  let featureFind;
+  let bugBot;
+  let featureBot;
 
   beforeAll(() => {
     triage = readLf(TRIAGE_PATH);
     label = readLf(LABEL_PATH);
-    bugFind = readLf(BUG_FIND_PATH);
-    featureFind = readLf(FEATURE_FIND_PATH);
+    bugBot = readLf(BUG_BOT_PATH);
+    featureBot = readLf(FEATURE_BOT_PATH);
   });
 
   it('runs issue-triage and issue-label on every opened issue', () => {
@@ -142,7 +142,7 @@ describe('workflows stay compatible with templated issues (#1032)', () => {
   });
 
   it('still appends the ### Evidence block to generated issues', () => {
-    [bugFind, featureFind].forEach((wf) => {
+    [bugBot, featureBot].forEach((wf) => {
       expect(wf).toContain('.body, "", "### Evidence",');
     });
   });
