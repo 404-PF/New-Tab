@@ -24,6 +24,17 @@
 const js = require('@eslint/js');
 const globals = require('globals');
 
+// Focus stats summary globals shared by the source and test global maps.
+const pomodoroStatsSummaryGlobals = {
+  exportPomodoroStatsCsv: 'readonly',
+  getPomodoroTrend: 'readonly',
+  getPomodoroTotalFormatted: 'readonly',
+  getPomodoroWeeklyBreakdown: 'readonly',
+  getPomodoroBestDay: 'readonly',
+  getPomodoroRollingAverage: 'readonly',
+  getPomodoroMinutesByTodoThisWeek: 'readonly',
+};
+
 const srcGlobals = {
   ...globals.browser,
   chrome: 'readonly',
@@ -197,13 +208,7 @@ const srcGlobals = {
   getPomodoroMinutesThisWeek: 'readonly',
   getPomodoroHeatmapData: 'readonly',
   getPomodoroHeatLevel: 'readonly',
-  exportPomodoroStatsCsv: 'readonly',
-  getPomodoroTrend: 'readonly',
-  getPomodoroTotalFormatted: 'readonly',
-  getPomodoroWeeklyBreakdown: 'readonly',
-  getPomodoroBestDay: 'readonly',
-  getPomodoroRollingAverage: 'readonly',
-  getPomodoroMinutesByTodoThisWeek: 'readonly',
+  ...pomodoroStatsSummaryGlobals,
   getFilteredNotes: 'readonly',
   setNotesSearchQuery: 'readonly',
   getNotesSearchQuery: 'readonly',
@@ -411,13 +416,7 @@ const testGlobals = {
   getPomodoroMinutesThisWeek: 'readonly',
   getPomodoroHeatmapData: 'readonly',
   getPomodoroHeatLevel: 'readonly',
-  exportPomodoroStatsCsv: 'readonly',
-  getPomodoroTrend: 'readonly',
-  getPomodoroTotalFormatted: 'readonly',
-  getPomodoroWeeklyBreakdown: 'readonly',
-  getPomodoroBestDay: 'readonly',
-  getPomodoroRollingAverage: 'readonly',
-  getPomodoroMinutesByTodoThisWeek: 'readonly',
+  ...pomodoroStatsSummaryGlobals,
   checkReminders: 'readonly',
   handleStartup: 'readonly',
   initNotes: 'readonly',

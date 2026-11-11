@@ -837,7 +837,7 @@
     "description": "Label for the 30-day focus stats total"
   },
   "pomodoroStatsTrend": {
-    "message": "Тренд к вчера",
+    "message": "Тренд к вчерашнему дню",
     "description": "Label for the day-over-day focus stats trend"
   },
   "pomodoroStatsBestDay": {

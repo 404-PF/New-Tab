@@ -252,9 +252,9 @@
     return arrow + ' ' + (delta > 0 ? '+' + delta : String(delta));
   }
   // Minutes-by-todo for the current week, resolved through todo.js when it is
-  // available. todo.js loads after this module, so a missing loadTodos (or a
-  // missing todo for an id) degrades to a dash / the raw id instead of
-  // throwing; the panel repaints once every bootstrap script has run.
+  // available. todo.js loads after this module, so a missing loadTodos degrades
+  // to a dash instead of throwing; the panel repaints once every bootstrap
+  // script has run (see the bootstrapComplete listener in boot()).
   function formatMinutesByTodo() {
     const agg = window.getPomodoroMinutesByTodoThisWeek();
     const ids = Object.keys(agg);
@@ -263,11 +263,15 @@
     try { todos = window.loadTodos(); } catch { todos = null; }
     if (!Array.isArray(todos)) todos = [];
     ids.sort(function (a, b) { return agg[b] - agg[a]; });
-    const parts = ids.map(function (id) {
+    // A task deleted since its minutes were recorded has no name to show, so
+    // it is left out rather than exposing the internal todo id.
+    const parts = [];
+    ids.forEach(function (id) {
       const todo = todos.find(function (entry) { return entry && String(entry.id) === id; });
-      const label = todo && typeof todo.text === 'string' && todo.text ? todo.text : id;
-      return label + ': ' + window.formatPomodoroDuration(agg[id]);
+      if (!todo || typeof todo.text !== 'string' || !todo.text) return;
+      parts.push(todo.text + ': ' + window.formatPomodoroDuration(agg[id]));
     });
+    if (parts.length === 0) return '—';
     return parts.join(' · ');
   }
   // Summary row below the heatmap: 30-day total, day-over-day trend, best
@@ -342,8 +346,10 @@
     if (exportBtn) exportBtn.addEventListener('click', exportCsv);
     // First paint runs before todo.js executes (it loads later in
     // bootstrap's scriptSources), so the per-todo labels resolve once every
-    // bootstrap script has finished — the window load event.
-    window.addEventListener('load', paint, { once: true });
+    // bootstrap script has finished. bootstrap.js dispatches that signal; the
+    // window load event is not reliable here because bootstrap waits on the
+    // storage bridge before it injects the remaining scripts.
+    window.addEventListener('bootstrapComplete', paint, { once: true });
     window.addEventListener('pomodoroSessionCompleted', function (ev) { record(ev.detail); });
   }
   window.loadPomodoroStats = function () { return cloneStore(read()); };

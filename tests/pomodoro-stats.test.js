@@ -617,6 +617,37 @@ describe('Focus stats summary row (issue #1171)', () => {
     expect(document.getElementById('pomodoro-stats-by-todo').textContent).toBe('—');
   });
 
+  it('leaves tasks deleted since recording out of minutes-by-todo', () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    savePomodoroStats({
+      days: { [getToday()]: { sessions: 2, minutes: 50 } },
+      byDateTodos: { [getToday()]: { 'todo-1': 25, 'deleted-todo-id': 25 } }
+    });
+    window.loadTodos = () => [{ id: 'todo-1', text: 'Write tests' }];
+    try {
+      renderPomodoroStats();
+      expect(document.getElementById('pomodoro-stats-by-todo').textContent).toBe('Write tests: 25m');
+      expect(document.getElementById('pomodoro-stats-by-todo').textContent).not.toContain('deleted-todo-id');
+    } finally {
+      delete window.loadTodos;
+    }
+  });
+
+  it('repaints minutes-by-todo once bootstrap has finished loading todo.js', () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    delete window.loadTodos;
+    savePomodoroStats({ days: {}, byDateTodos: { [getToday()]: { 'todo-1': 25 } } });
+    renderPomodoroStats();
+    expect(document.getElementById('pomodoro-stats-by-todo').textContent).toBe('—');
+    window.loadTodos = () => [{ id: 'todo-1', text: 'Write tests' }];
+    try {
+      window.dispatchEvent(new CustomEvent('bootstrapComplete'));
+      expect(document.getElementById('pomodoro-stats-by-todo').textContent).toBe('Write tests: 25m');
+    } finally {
+      delete window.loadTodos;
+    }
+  });
+
   it('repaints the summary when the panel is reopened', () => {
     localStorage.setItem('pomodoroStatsEnabled', 'true');
     applyPomodoroStatsVisibility();
