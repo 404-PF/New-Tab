@@ -2163,13 +2163,10 @@ function ensureModelHostPermission(requestIfMissing) {
   // and Chrome rejects the request. request() resolves true when already
   // granted, so skipping contains() never double-prompts.
   if (requestIfMissing) {
-    let req;
-    try {
-      req = perms.request(query);
-    } catch {
-      return Promise.resolve(false);
-    }
-    return Promise.resolve(req).then(function (granted) {
+    // No try/catch here: a synchronous throw propagates to the caller's
+    // .catch (fail closed), and wrapping the promise in try triggers
+    // S4822 without adding coverage (rejection is already handled below).
+    return Promise.resolve(perms.request(query)).then(function (granted) {
       return !!granted;
     }, function () { return false; });
   }
