@@ -306,4 +306,245 @@ describe('liquid glass core module (#1108)', () => {
       expect(el.querySelector('.glass__warp')).toBeNull();
     });
   });
+
+  describe('hero widgets (#1157)', () => {
+    const HERO_MARKS = [
+      ['#motto-container', 'panel'],
+      ['#weather-widget', 'panel'],
+      ['#focus-mode-indicator', 'pill']
+    ];
+
+    function buildHeroes() {
+      document.body.insertAdjacentHTML('beforeend',
+        '<div id="weather-widget" class="weather-widget" style="display: none;"></div>' +
+        '<button type="button" id="focus-mode-indicator" class="focus-mode-indicator" hidden></button>' +
+        '<div class="container">' +
+        '<div id="clock" class="clock"><span id="clock-time"></span><span id="date"></span></div>' +
+        '<div class="search-bar-wrapper" role="search">' +
+        '<div class="search-bar"><input type="text"></div>' +
+        '<div class="search-provider-bar"></div>' +
+        '</div>' +
+        '</div>' +
+        '<div id="motto-container"><span id="motto-text"></span><div class="motto-buttons"></div></div>'
+      );
+    }
+
+    function expectHeroesUnmarked() {
+      HERO_MARKS.forEach(([selector]) => {
+        expect(document.querySelector(selector).hasAttribute('data-liquid-glass')).toBe(false);
+      });
+      expect(document.querySelector('.glass__warp')).toBeNull();
+    }
+
+    itWhenLiquidEnabled('marks the three heroes, leaves the search bar and clock plain, and injects warp plus highlight layers', () => {
+      buildHeroes();
+      const lg = loadLiquidGlass();
+      lg.init();
+      HERO_MARKS.forEach(([selector, sizeClass]) => {
+        const el = document.querySelector(selector);
+        expect(el.getAttribute('data-liquid-glass')).toBe(sizeClass);
+        expect(el.classList.contains('glass--liquid')).toBe(true);
+        expect(el.querySelector(':scope > .glass__warp')).not.toBeNull();
+        expect(el.querySelector(':scope > .glass__highlight')).not.toBeNull();
+        expect(el.querySelector(':scope > .glass__over-light')).not.toBeNull();
+        expect(el.querySelector(':scope > .glass__hover')).not.toBeNull();
+      });
+      ['.search-bar-wrapper', '#clock'].forEach((selector) => {
+        const el = document.querySelector(selector);
+        expect(el.hasAttribute('data-liquid-glass')).toBe(false);
+        expect(el.classList.contains('glass--liquid')).toBe(false);
+        expect(el.querySelector('.glass__warp')).toBeNull();
+      });
+    });
+
+    itWhenLiquidEnabled('defers marking a hero that is still in its fadeSlideUp entrance', async () => {
+      buildHeroes();
+      const motto = document.getElementById('motto-container');
+      let running = true;
+      motto.getAnimations = () => (running ? [{ animationName: 'fadeSlideUp' }] : []);
+      loadLiquidGlass();
+      expect(motto.hasAttribute('data-liquid-glass')).toBe(false);
+      expect(motto.querySelector('.glass__warp')).toBeNull();
+      expect(document.getElementById('weather-widget').getAttribute('data-liquid-glass')).toBe('panel');
+
+      const other = new Event('animationend', { bubbles: true });
+      other.animationName = 'dropBounce';
+      motto.dispatchEvent(other);
+      expect(motto.hasAttribute('data-liquid-glass')).toBe(false);
+
+      running = false;
+      const done = new Event('animationend');
+      done.animationName = 'fadeSlideUp';
+      motto.dispatchEvent(done);
+      expect(motto.getAttribute('data-liquid-glass')).toBe('panel');
+      await vi.waitFor(() => expect(motto.querySelector('.glass__warp')).not.toBeNull());
+    });
+
+    itWhenLiquidEnabled('rebuilds the layers when a hero re-renders its contents', async () => {
+      buildHeroes();
+      const lg = loadLiquidGlass();
+      lg.init();
+      const weather = document.getElementById('weather-widget');
+      expect(weather.querySelector(':scope > .glass__warp')).not.toBeNull();
+
+      // weather.js resets className and replaces innerHTML on every render,
+      // which strips the injected layers and the marker class.
+      weather.className = 'weather-widget weather-data';
+      weather.innerHTML = '<div class="weather-current"><span class="weather-temp">21</span></div>';
+      expect(weather.querySelector(':scope > .glass__warp')).toBeNull();
+
+      await vi.waitFor(() => {
+        expect(weather.querySelector(':scope > .glass__warp')).not.toBeNull();
+        expect(weather.classList.contains('glass--liquid')).toBe(true);
+      });
+      expect(weather.querySelector('.weather-current')).not.toBeNull();
+    });
+
+    itWhenLiquidEnabled('cancels a pending layer restore when the marker is removed mid-entrance', async () => {
+      buildHeroes();
+      const lg = loadLiquidGlass();
+      lg.init();
+      const weather = document.getElementById('weather-widget');
+      expect(weather.querySelector(':scope > .glass__warp')).not.toBeNull();
+
+      // Re-render while the widget still reports a running entrance: the
+      // observer releases the old layers and defers the rebuild.
+      weather.getAnimations = () => [{ animationName: 'fadeSlideUp' }];
+      weather.className = 'weather-widget weather-data';
+      weather.innerHTML = '<div class="weather-current"><span class="weather-temp">21</span></div>';
+      await new Promise((r) => setTimeout(r, 0));
+      expect(weather.querySelector(':scope > .glass__warp')).toBeNull();
+
+      // Marker goes away before the entrance settles: the pending callback
+      // must not re-enhance the now-unmarked widget.
+      weather.removeAttribute('data-liquid-glass');
+      await new Promise((r) => setTimeout(r, 0));
+      const done = new Event('animationend');
+      done.animationName = 'fadeSlideUp';
+      weather.dispatchEvent(done);
+      expect(weather.querySelector('.glass__warp')).toBeNull();
+      expect(weather.classList.contains('glass--liquid')).toBe(false);
+    });
+
+    itWhenLiquidEnabled('cancels a pending entrance waiter when the hero is detached', async () => {
+      buildHeroes();
+      const motto = document.getElementById('motto-container');
+      motto.getAnimations = () => [{ animationName: 'fadeSlideUp' }];
+      loadLiquidGlass();
+      expect(motto.hasAttribute('data-liquid-glass')).toBe(false);
+
+      // Detaching before the entrance settles must drop the waiter: the
+      // removal path only released enhanced elements, so a replaced hero
+      // stayed registered and could still be marked after detachment.
+      motto.remove();
+      await new Promise((r) => setTimeout(r, 0));
+      const done = new Event('animationend');
+      done.animationName = 'fadeSlideUp';
+      motto.dispatchEvent(done);
+      expect(motto.hasAttribute('data-liquid-glass')).toBe(false);
+    });
+
+    it('leaves the heroes untouched in classic mode', () => {
+      buildHeroes();
+      const lg = loadLiquidGlass({ style: 'classic' });
+      lg.init();
+      HERO_MARKS.forEach(([selector]) => {
+        const el = document.querySelector(selector);
+        expect(el.hasAttribute('data-liquid-glass')).toBe(false);
+        expect(el.classList.contains('glass--liquid')).toBe(false);
+        expect(el.querySelector('.glass__warp')).toBeNull();
+      });
+      expect(document.body.classList.contains('glass-liquid')).toBe(false);
+    });
+
+    it('leaves the heroes untouched when the capability probe fails', () => {
+      buildHeroes();
+      const lg = loadLiquidGlass({ supported: false });
+      lg.init();
+      expectHeroesUnmarked();
+    });
+
+    it('leaves the heroes untouched under reduced motion', () => {
+      buildHeroes();
+      window.prefersReducedMotion = () => true;
+      const lg = loadLiquidGlass();
+      lg.init();
+      expectHeroesUnmarked();
+    });
+
+    it('restores the markers when reduced motion turns back off', () => {
+      buildHeroes();
+      let handler;
+      window.onReducedMotionChange = (fn) => {
+        handler = fn;
+        return () => {};
+      };
+      window.prefersReducedMotion = () => true;
+      const lg = loadLiquidGlass();
+      lg.init();
+      expect(document.querySelector('#motto-container').hasAttribute('data-liquid-glass')).toBe(false);
+      window.prefersReducedMotion = () => false;
+      handler(false);
+      expect(document.querySelector('#motto-container').getAttribute('data-liquid-glass')).toBe('panel');
+      expect(document.querySelector('#motto-container').querySelector('.glass__warp')).not.toBeNull();
+    });
+
+    itWhenLiquidEnabled('drops the hero markers when reduced motion turns on at runtime', () => {
+      buildHeroes();
+      let handler;
+      window.onReducedMotionChange = (fn) => {
+        handler = fn;
+        return () => {};
+      };
+      window.prefersReducedMotion = () => false;
+      const lg = loadLiquidGlass();
+      lg.init();
+      expect(document.querySelector('#motto-container').getAttribute('data-liquid-glass')).toBe('panel');
+      expect(document.querySelector('.glass__warp')).not.toBeNull();
+      window.prefersReducedMotion = () => true;
+      handler(true);
+      expectHeroesUnmarked();
+      expect(document.querySelector('#motto-container').classList.contains('glass--liquid')).toBe(false);
+    });
+
+    describe('css neutralization', () => {
+      const css = readFileSync('css/liquid-glass.css', 'utf8');
+
+      it('keeps the search bar and clock out of the hero styling', () => {
+        expect(css).not.toContain('search-bar-wrapper');
+        expect(css).not.toMatch(/#clock/);
+      });
+
+      it('outranks the ID-scoped light-theme motto backdrop stack', () => {
+        expect(css).toMatch(
+          /body\.glass-liquid #motto-container\.glass--liquid\s*\{[^}]*backdrop-filter:\s*none/
+        );
+        expect(css).toContain('body.glass-liquid.light-theme #motto-container.glass--liquid');
+      });
+
+      it('keeps the ID-lifted glass.css light surfaces off the enhanced heroes', () => {
+        const glass = readFileSync('css/glass.css', 'utf8');
+        expect(glass).toContain('.search-bar,');
+        expect(glass).not.toContain('.search-bar:not(');
+        expect(glass).toContain('.weather-widget:not(:where(.weather-widget.glass--liquid))');
+        expect(glass).toContain('.focus-mode-indicator:not(:where(.focus-mode-indicator.glass--liquid))');
+      });
+
+      it('lifts hero content above the injected layers', () => {
+        expect(css).toMatch(
+          /#focus-mode-indicator\s*\)\.glass--liquid > :not\(\.glass__warp\)[^{]*\{[^}]*z-index:\s*1/
+        );
+      });
+
+      it('scopes every hero rule to body.glass-liquid so Classic is untouched', () => {
+        const noComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+        noComments.split('}').forEach((chunk) => {
+          const selector = chunk.split('{')[0].trim();
+          if (!selector || selector.startsWith('@')) return;
+          const touchesHero = /motto-container|weather-widget|focus-mode-indicator/.test(selector);
+          if (touchesHero) expect(selector).toContain('body.glass-liquid');
+        });
+      });
+    });
+  });
 });

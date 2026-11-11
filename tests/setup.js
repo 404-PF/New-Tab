@@ -356,6 +356,12 @@ globalThis.window.i18n = {
       notesSemanticLoading: 'Loading on-device model…',
       notesSemanticStarting: 'Starting download…',
       notesSemanticPermissionDenied: 'Model download needs Hugging Face access, which was not granted.',
+      exportNotes: 'Export',
+      importNotes: 'Import',
+      notesImportSuccess: 'Imported {count} notes successfully.',
+      notesImportNoNew: 'No new notes to import.',
+      notesImportInvalid: 'Invalid notes data. Please select a valid JSON file.',
+      importReadError: 'Failed to read the selected file.',
       clearCompletedConfirmMessage: 'This will remove all completed todos. You can undo this for a few seconds after clearing.',
       cancel: 'Cancel',
       save: 'Save',
@@ -470,6 +476,14 @@ globalThis.window.i18n = {
       pomodoroMinutesThisWeek: 'Minutes This Week',
       pomodoroStatsToggle: 'Focus stats',
       pomodoroStatsToggleAriaLabel: 'Toggle focus statistics panel',
+      pomodoroStatsTotal: '30-Day Total',
+      pomodoroStatsTrend: 'Trend vs Yesterday',
+      pomodoroStatsBestDay: 'Best Day',
+      pomodoroStatsRollingAvg: '7-Day Avg (sessions/day)',
+      pomodoroStatsByTodo: 'Minutes by Task This Week',
+      pomodoroStatsExport: 'Export CSV',
+      pomodoroStatsSessionsUnit: 'sessions',
+      pomodoroStatsExportSuccess: 'Focus stats download started.',
       clearStats: 'Clear Stats',
       completedToday: 'Completed Today',
       completedThisWeek: 'This Week',
@@ -506,6 +520,7 @@ globalThis.window.i18n = {
       bgRotation1hour: '1 hour',
       bgRotationHourly: 'Every hour on the hour',
       bgRotationDaily: 'Daily',
+      bgRotationNewtab: 'Every new tab',
       bgRotationPicker: 'Select backgrounds to rotate',
       bgRotationNext: 'Next Background',
       appGridSaveError: 'Failed to save app changes. Your last action was not saved.',
@@ -616,6 +631,7 @@ globalThis.window.i18n = {
       shortcutToggleSimpleMode: 'Toggle Simple Mode',
       shortcutToggleTodo: 'Toggle Todo List',
       shortcutToggleNotes: 'Toggle Notes',
+      shortcutOpenAi: 'Open AI Assistant',
       shortcutCloseModal: 'Close Modal / Dialog',
       shortcutPressAKey: 'Press a key...',
       shortcutAppLaunch: 'Launch apps with Alt+1…9',
@@ -910,6 +926,7 @@ document.body.appendChild(subtaskInput);
 
 // Priority filter badge stubs
 document.body.appendChild(createStubElement('span', 'badge-high'));
+document.body.appendChild(createStubElement('span', 'badge-medium'));
 document.body.appendChild(createStubElement('span', 'badge-low'));
 
 document.body.appendChild(createStubElement('div', 'settings-modal'));
@@ -943,6 +960,7 @@ document.body.appendChild(createStubElement('input', 'date-color-picker'));
 document.body.appendChild(createStubElement('select', 'date-font-picker'));
 document.body.appendChild(createStubElement('select', 'date-format-picker'));
 document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'motto-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-stats-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'pomodoro-stats-enabled-setting'));
@@ -1025,6 +1043,12 @@ document.body.appendChild(createStubElement('span', 'pomodoro-stats-today-minute
 document.body.appendChild(createStubElement('span', 'pomodoro-stats-week-minutes'));
 document.body.appendChild(createStubElement('div', 'pomodoro-stats-heatmap'));
 document.body.appendChild(createStubElement('button', 'pomodoro-stats-clear'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-total'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-trend'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-best-day'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-rolling-avg'));
+document.body.appendChild(createStubElement('div', 'pomodoro-stats-by-todo'));
+document.body.appendChild(createStubElement('button', 'pomodoro-stats-export'));
 document.body.appendChild(createStubElement('input', 'custom-search-provider-name'));
 document.body.appendChild(createStubElement('input', 'custom-search-provider-url'));
 document.body.appendChild(createStubElement('input', 'custom-search-provider-suggestions-url'));
@@ -1039,7 +1063,12 @@ notesSection.className = 'notes-section';
 notesSection.innerHTML = `
   <div class="notes-header">
     <h3 class="notes-title">Notes</h3>
-    <button id="add-note-btn" class="notes-add-btn">+</button>
+    <div class="notes-header-actions">
+      <button class="quick-action-btn" id="export-notes"><span>Export</span></button>
+      <button class="quick-action-btn" id="import-notes"><span>Import</span></button>
+      <input type="file" id="notes-import-file" accept=".json" style="display:none">
+      <button id="add-note-btn" class="notes-add-btn">+</button>
+    </div>
   </div>
       <div class="notes-search-wrapper">
       <input id="notes-search" class="notes-search-input" type="search" data-i18n="notesSearchPlaceholder" data-i18n-aria-label="notesSearchPlaceholder" placeholder="Search notes..." autocomplete="off" spellcheck="false" aria-label="Search notes" />

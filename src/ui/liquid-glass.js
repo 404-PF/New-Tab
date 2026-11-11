@@ -8,7 +8,9 @@
 //
 // Consumers mark elements with `data-liquid-glass="icon|panel|pill"` (or call
 // `LiquidGlass.enhance(el, opts)`); the observer enhances marked elements that
-// are added to the DOM later, such as JS-built popovers.
+// are added to the DOM later, such as JS-built popovers. The T1 hero widgets
+// (motto, weather, focus indicator) and the app icons mark
+// themselves through markHeroWidgets()/markAppIcons().
 
 (function () {
   'use strict';
@@ -175,8 +177,23 @@
     return SIZE_CLASSES[candidate] ? candidate : DEFAULT_SIZE_CLASS;
   }
 
+  // #1066: the on-page todo widget is relocated into the app modal while it
+  // is open; a warp layer there would nest inside the modal surface's
+  // backdrop-filter and sample it instead of the page. #1159: a marked child
+  // never enhances inside an already enhanced ancestor for the same reason —
+  // its warp would refract the ancestor's warped output, not the page.
+  function isExcluded(el) {
+    if (el.closest('#todo-app-widget-host')) return true;
+    const parent = el.parentElement;
+    return Boolean(parent) && Boolean(parent.closest('.glass--liquid'));
+  }
+
   function enhance(el, opts) {
     if (!(el instanceof Element)) return false;
+    if (isExcluded(el)) {
+      release(el);
+      return false;
+    }
     if (enhanced.has(el)) return true;
     if (!isLiquid() || isReducedMotion()) return false;
 
@@ -206,6 +223,13 @@
 
     el.classList.add('glass--liquid');
     enhanced.add(el);
+    // #1159: an ancestor can be marked after a child is already enhanced (the
+    // observer only enhances the element that changed), which would leave both
+    // warp layers active. Release enhanced descendants now that this element
+    // is a backdrop root for them.
+    Array.from(enhanced).forEach((child) => {
+      if (child !== el && el.contains(child)) release(child);
+    });
     return true;
   }
 
@@ -220,7 +244,9 @@
       teardown();
       return true;
     }
-    if (!(el instanceof Element) || !enhanced.has(el)) return false;
+    if (!(el instanceof Element)) return false;
+    cancelEntranceWaiter(el);
+    if (!enhanced.has(el)) return false;
     stripLayers(el);
     el.classList.remove('glass--liquid');
     enhanced.delete(el);
@@ -230,6 +256,56 @@
   function enhanceAll(root) {
     const scope = root || document;
     scope.querySelectorAll(`[${ATTR}]`).forEach((el) => enhance(el));
+  }
+
+  // Runs cb once el's fadeSlideUp* entrance animation has finished. Events
+  // bubbling from children or for other animations are ignored, and pending
+  // callbacks are tracked so teardown can cancel them (#1157).
+  const entranceWaiters = new Map();
+
+  function whenEntranceSettled(el, cb) {
+    if (entranceWaiters.has(el)) return;
+    const onSettled = (e) => {
+      if (e.target !== el || !/^fadeSlideUp/.test(e.animationName || '')) return;
+      el.removeEventListener('animationend', onSettled);
+      el.removeEventListener('animationcancel', onSettled);
+      entranceWaiters.delete(el);
+      cb();
+    };
+    entranceWaiters.set(el, onSettled);
+    el.addEventListener('animationend', onSettled);
+    el.addEventListener('animationcancel', onSettled);
+  }
+
+  // Dropping an element (marker removed, node detached, teardown) must also
+  // drop its pending entrance callback, otherwise the waiter can enhance it
+  // again after the observer released it.
+  function cancelEntranceWaiter(el) {
+    const onSettled = entranceWaiters.get(el);
+    if (!onSettled) return;
+    el.removeEventListener('animationend', onSettled);
+    el.removeEventListener('animationcancel', onSettled);
+    entranceWaiters.delete(el);
+  }
+
+  // Widgets such as #weather-widget rebuild their innerHTML and reset their
+  // className on every render, wiping the injected layers and the marker
+  // class; rebuild them so the warp survives a data update (#1157).
+  function restoreLayers(el) {
+    if (!enhanced.has(el)) return;
+    const warp = el.querySelector(':scope > .' + WARP_CLASS);
+    if (warp && el.classList.contains('glass--liquid')) return;
+    release(el);
+    if (!isLiquid() || isReducedMotion()) return;
+    if (hasEntranceAnimation(el)) {
+      whenEntranceSettled(el, () => {
+        // The marker can be removed while the entrance is still running;
+        // never restore layers onto an element the observer already released.
+        if (el.hasAttribute(ATTR) && isLiquid() && !isReducedMotion()) enhance(el);
+      });
+      return;
+    }
+    enhance(el);
   }
 
   function collectMarked(node) {
@@ -244,6 +320,12 @@
       records.forEach((record) => {
         record.removedNodes.forEach((node) => {
           Array.from(enhanced).filter((el) => node.contains(el)).forEach((el) => release(el));
+          // release() only covers enhanced elements; a detached hero whose
+          // entrance waiter is still pending must drop that waiter too,
+          // otherwise the removed subtree stays retained in the map.
+          Array.from(entranceWaiters.keys())
+            .filter((el) => node.contains(el))
+            .forEach((el) => cancelEntranceWaiter(el));
         });
         record.addedNodes.forEach((node) => {
           if (node instanceof Element) markAppIcons(node);
@@ -255,6 +337,10 @@
           } else {
             release(record.target);
           }
+        } else if (record.target instanceof Element) {
+          // childList: an enhanced element whose children were swapped out
+          // (weather re-render, icon badge rebuild) needs its layers back.
+          restoreLayers(record.target);
         }
       });
     });
@@ -345,15 +431,18 @@
     });
   }
 
-  // ---- T1 mouse elasticity ------------------------------------------------
+  // ---- T1 hero widgets + mouse elasticity --------------------------------
 
-  const ELASTIC_SELECTORS = [
-    '.search-bar-wrapper',
-    '#motto-container',
-    '#weather-widget',
-    '#clock',
-    '#focus-mode-indicator'
+  // The tier-1 hero surfaces (#1157) are marked with their own size class so
+  // enhanceAll()/the observer inject the glass layers exactly like the app
+  // icons; the same selectors drive mouse elasticity. The search bar and clock
+  // are not heroes and stay on the plain Classic markup.
+  const HERO_GLASS = [
+    { selector: '#motto-container', sizeClass: 'panel' },
+    { selector: '#weather-widget', sizeClass: 'panel' },
+    { selector: '#focus-mode-indicator', sizeClass: 'pill' }
   ];
+  const ELASTIC_SELECTORS = HERO_GLASS.map((hero) => hero.selector);
   const ELASTIC_RADIUS = 320;
   const ELASTIC_MAX = 6;
   const SPRING = 0.14;
@@ -492,9 +581,46 @@
     }
   }
 
+  // Marks the hero widgets with their size class (like markAppIcons does for
+  // tiles) so the observer/enhanceAll inject the layers. A widget still
+  // running its fadeSlideUp entrance waits for animationend first so the warp
+  // never renders mid-entrance (#1157).
+  function markHeroWidgets() {
+    if (!isLiquid() || isReducedMotion()) return;
+    HERO_GLASS.forEach((hero) => {
+      const el = document.querySelector(hero.selector);
+      if (!el || el.hasAttribute(ATTR) || entranceWaiters.has(el)) return;
+      if (hasEntranceAnimation(el)) {
+        whenEntranceSettled(el, () => {
+          if (isLiquid() && !isReducedMotion() && !el.hasAttribute(ATTR)) {
+            el.setAttribute(ATTR, hero.sizeClass);
+          }
+        });
+        return;
+      }
+      el.setAttribute(ATTR, hero.sizeClass);
+    });
+  }
+
+  // Drops the markers the hero widgets gained so Classic mode is left with
+  // the plain markup and no liquid-glass state.
+  function stopHeroWidgets() {
+    entranceWaiters.forEach((onSettled, el) => {
+      el.removeEventListener('animationend', onSettled);
+      el.removeEventListener('animationcancel', onSettled);
+    });
+    entranceWaiters.clear();
+    ELASTIC_SELECTORS.forEach((sel) => {
+      document.querySelectorAll(`${sel}[${ATTR}]`).forEach((el) => {
+        el.removeAttribute(ATTR);
+      });
+    });
+  }
+
   function teardown() {
     stopObserver();
     stopIcons();
+    stopHeroWidgets();
     stopElasticity();
     if (unsubscribeMotion) {
       unsubscribeMotion();
@@ -523,10 +649,15 @@
     if (typeof window.onReducedMotionChange === 'function' && !unsubscribeMotion) {
       unsubscribeMotion = window.onReducedMotionChange((reduced) => {
         if (reduced) {
+          // Same cleanup as Classic: drop the hero markers too, otherwise
+          // :where(body.glass-liquid [data-liquid-glass]) keeps applying the
+          // relative-position rule to every hero while the effect is off.
+          stopHeroWidgets();
           releaseAll();
           stopElasticity();
         } else if (isLiquid()) {
           markAppIcons();
+          markHeroWidgets();
           enhanceAll();
           startElasticity();
         }
@@ -540,6 +671,7 @@
     startObserver();
     startIcons();
     if (!isReducedMotion()) {
+      markHeroWidgets();
       enhanceAll();
       startElasticity();
     }

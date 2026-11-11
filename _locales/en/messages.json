@@ -160,6 +160,10 @@
     "message": "Daily",
     "description": "Rotation interval option"
   },
+  "bgRotationNewtab": {
+    "message": "Every new tab",
+    "description": "Rotation interval option"
+  },
   "bgRotationPicker": {
     "message": "Select backgrounds to rotate",
     "description": "Label for the background picker in rotation settings"
@@ -243,6 +247,10 @@
   "shortcutToggleNotes": {
     "message": "Toggle Notes",
     "description": "Label for the toggle notes shortcut action"
+  },
+  "shortcutOpenAi": {
+    "message": "Open AI Assistant",
+    "description": "Label for the open AI assistant shortcut action"
   },
   "shortcutCloseModal": {
     "message": "Close Modal / Dialog",
@@ -1043,6 +1051,38 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "Toggle focus statistics panel",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "pomodoroStatsTotal": {
+    "message": "30-Day Total",
+    "description": "Label for the 30-day focus stats total"
+  },
+  "pomodoroStatsTrend": {
+    "message": "Trend vs Yesterday",
+    "description": "Label for the day-over-day focus stats trend"
+  },
+  "pomodoroStatsBestDay": {
+    "message": "Best Day",
+    "description": "Label for the best focus stats day"
+  },
+  "pomodoroStatsRollingAvg": {
+    "message": "7-Day Avg (sessions/day)",
+    "description": "Label for the 7-day rolling average focus stats"
+  },
+  "pomodoroStatsByTodo": {
+    "message": "Minutes by Task This Week",
+    "description": "Label for the minutes-by-todo focus stats list"
+  },
+  "pomodoroStatsExport": {
+    "message": "Export CSV",
+    "description": "Button that exports focus stats as CSV"
+  },
+  "pomodoroStatsSessionsUnit": {
+    "message": "sessions",
+    "description": "Unit word after the session count in the focus stats total"
+  },
+  "pomodoroStatsExportSuccess": {
+    "message": "Focus stats download started.",
+    "description": "Toast shown after focus stats CSV download is started"
   },
   "gamesLoading": {
     "message": "Loading games…",

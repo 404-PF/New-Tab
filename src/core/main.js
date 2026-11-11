@@ -1218,6 +1218,7 @@ function ensureSearchHistoryPanel() {
     searchHistoryPanel = document.createElement('div');
     searchHistoryPanel.className = 'search-history-panel';
     searchHistoryPanel.id = 'search-history-panel';
+    searchHistoryPanel.setAttribute('data-liquid-glass', 'panel');
     searchHistoryPanel.hidden = true;
     searchHistoryPanel.innerHTML = `
       <div class="search-history-header">
@@ -1599,6 +1600,14 @@ function checkFooterOverlap() {
   if (!motto || (!footerLeft && !footerRight)) return;
 
   const mottoRect = motto.getBoundingClientRect();
+
+  // A hidden motto (#mottoEnabled off, focus mode) reports a zero rect, which
+  // would read as "overlaps everything" and fade footer-left out (#1174).
+  if (mottoRect.width === 0 && mottoRect.height === 0) {
+    if (footerLeft) footerLeft.style.opacity = '';
+    if (footerRight) footerRight.style.opacity = '';
+    return;
+  }
 
   if (footerLeft) {
     const leftRect = footerLeft.getBoundingClientRect();

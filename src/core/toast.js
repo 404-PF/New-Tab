@@ -39,7 +39,15 @@ function showToast(message, type = '', options = {}) {
     toast.classList.add('toast-' + type);
   }
   toast.setAttribute('role', 'alert');
-  toast.textContent = message;
+  // Marked for the liquid glass pipeline (#1158). The attribute alone is
+  // inert: enhancement only happens while body.glass-liquid is on. The
+  // message rides in a span so it is an element child that can be stacked
+  // above the warp layer (a bare text node cannot be raised by CSS).
+  toast.setAttribute('data-liquid-glass', 'panel');
+  const messageEl = document.createElement('span');
+  messageEl.className = 'toast-message';
+  messageEl.textContent = message;
+  toast.appendChild(messageEl);
 
   let autoHideTimeoutId = null;
   let fadeOutTimeoutId = null;
@@ -265,6 +273,13 @@ const FEATURE_TOGGLE_RESYNC = {
       window.applyTodoEnabled();
     }
   },
+  // #1167: the sort change is applied optimistically to the select and the
+  // in-memory order, so an async rollback must repaint both from storage.
+  todoSortOrder: function () {
+    if (typeof window.resyncTodoSort === 'function') {
+      window.resyncTodoSort();
+    }
+  },
   notesEnabled: function () {
     if (typeof window.applyNotesEnabled === 'function') {
       window.applyNotesEnabled();
@@ -295,6 +310,11 @@ const FEATURE_TOGGLE_RESYNC = {
           window.initNotesSemanticSetting();
         }
       } catch { /* ignore */ }
+    }
+  },
+  mottoEnabled: function () {
+    if (typeof window.applyMottoEnabled === 'function') {
+      window.applyMottoEnabled();
     }
   },
   eyeCareReminder: function () {
@@ -630,6 +650,16 @@ function featureToggleControlDesynced(key) {
       const checkbox = document.getElementById('todo-enabled-setting');
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
     }
+    case 'todoSortOrder': {
+      const select = document.getElementById('todo-sort-select');
+      // Mirror todo.js's normalizeTodoSort: resyncTodoSort restores the
+      // select to the normalized value, so an unsupported legacy entry must
+      // compare as the default instead of reporting the failure twice (#1167).
+      const modes = window.TODO_SORT_MODES || ['manual', 'due', 'priority', 'created', 'az'];
+      const stored = localStorage.getItem(key);
+      const expected = modes.includes(stored) ? stored : 'due';
+      return Boolean(select) && select.value !== expected;
+    }
     case 'notesEnabled': {
       const checkbox = document.getElementById('notes-enabled-setting');
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
@@ -638,6 +668,7 @@ function featureToggleControlDesynced(key) {
       const checkbox = document.getElementById('notes-semantic-enabled-setting');
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
     }
+    case 'mottoEnabled': return desyncCheckboxControl('motto-enabled-setting', key, false);
     case 'eyeCareReminder': {
       try {
         const state = JSON.parse(localStorage.getItem(key) || '{}');

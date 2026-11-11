@@ -294,6 +294,7 @@
     widget = document.createElement('div');
     widget.id = 'pomodoro-widget';
     widget.className = 'pomodoro-widget';
+    widget.setAttribute('data-liquid-glass', 'panel');
 
     const display = document.createElement('div');
     display.className = 'pomodoro-display';

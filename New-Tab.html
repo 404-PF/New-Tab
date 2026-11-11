@@ -90,7 +90,7 @@
       </div>
 
       <!-- Todo List Section -->
-      <div class="todo-section">
+      <div class="todo-section" data-liquid-glass="panel">
       <div class="todo-header">
           <div class="todo-header-left">
             <h3 class="todo-title" data-i18n="todoList">Todo List</h3>
@@ -205,6 +205,10 @@
               <button type="button" class="filter-pill" data-filter="high" data-filter-type="priority">
                 <span class="filter-label" data-i18n="priorityHigh">High</span>
                 <span class="filter-badge" id="badge-high">0</span>
+              </button>
+              <button type="button" class="filter-pill" data-filter="medium" data-filter-type="priority">
+                <span class="filter-label" data-i18n="priorityMedium">Medium</span>
+                <span class="filter-badge" id="badge-medium">0</span>
               </button>
               <button type="button" class="filter-pill" data-filter="low" data-filter-type="priority">
                 <span class="filter-label" data-i18n="priorityLow">Low</span>
@@ -337,20 +341,62 @@
             <span class="todo-heatmap-label" data-i18n="last30Days">Last 30 Days</span>
             <div class="todo-heatmap" id="pomodoro-stats-heatmap"></div>
           </div>
+          <div class="todo-stats-grid pomodoro-stats-summary">
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-total">—</span>
+              <span class="todo-stat-label" data-i18n="pomodoroStatsTotal">30-Day Total</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-trend">—</span>
+              <span class="todo-stat-label" data-i18n="pomodoroStatsTrend">Trend vs Yesterday</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-best-day">—</span>
+              <span class="todo-stat-label" data-i18n="pomodoroStatsBestDay">Best Day</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-rolling-avg">—</span>
+              <span class="todo-stat-label" data-i18n="pomodoroStatsRollingAvg">7-Day Avg (sessions/day)</span>
+            </div>
+          </div>
+          <div class="todo-heatmap-section">
+            <span class="todo-heatmap-label" data-i18n="pomodoroStatsByTodo">Minutes by Task This Week</span>
+            <span class="pomodoro-stats-by-todo" id="pomodoro-stats-by-todo">—</span>
+          </div>
+          <button type="button" class="todo-stats-export" id="pomodoro-stats-export" data-i18n="pomodoroStatsExport">Export CSV</button>
         </div>
 
       </div>
 
       <!-- Notes Section -->
-  <div class="notes-section">
+  <div class="notes-section" data-liquid-glass="panel">
     <div class="notes-header">
       <h3 class="notes-title" data-i18n="notesTitle">Notes</h3>
-      <button id="add-note-btn" class="notes-add-btn" aria-label="Add note" data-i18n-aria-label="addNoteTooltip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
+      <div class="notes-header-actions">
+        <button class="quick-action-btn" id="export-notes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7,10 12,15 17,10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span data-i18n="exportNotes">Export</span>
+        </button>
+        <button class="quick-action-btn" id="import-notes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7,8 12,3 17,8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <span data-i18n="importNotes">Import</span>
+        </button>
+        <input type="file" id="notes-import-file" accept=".json" style="display:none" aria-label="Import" data-i18n-aria-label="importNotes">
+        <button id="add-note-btn" class="notes-add-btn" aria-label="Add note" data-i18n-aria-label="addNoteTooltip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </div>
     </div>
         <div class="notes-search-wrapper">
       <svg class="notes-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -483,7 +529,7 @@
 
   <!-- Settings Modal -->
   <div id="settings-modal">
-    <div>
+    <div data-liquid-glass="panel">
       <div class="settings-body">
         <nav class="settings-menu">
           <button type="button" class="settings-menu-item selected" data-section="general" data-i18n="general">
@@ -648,6 +694,18 @@
                         <button type="button" id="notes-semantic-delete" class="setting-btn danger" data-i18n="notesSemanticDelete" hidden>Delete model</button>
                       </div>
                       <div id="notes-semantic-settings-status" class="notes-semantic-settings-status" aria-live="polite"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="general-option">
+                  <div class="setting-card">
+                    <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
+                      <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
+                    </svg>
+                    <div class="setting-content">
+                      <label for="motto-enabled-setting" data-i18n="enableMotto">Enable daily motto</label>
+                      <input type="checkbox" id="motto-enabled-setting" />
                     </div>
                   </div>
                 </div>
@@ -919,6 +977,7 @@
                       <option value="1hour" data-i18n="bgRotation1hour">1 hour</option>
                       <option value="hourly" data-i18n="bgRotationHourly">Every hour on the hour</option>
                       <option value="daily" data-i18n="bgRotationDaily">Daily</option>
+                      <option value="newtab" data-i18n="bgRotationNewtab">Every new tab</option>
                     </select>
                   </div>
                 </div>
@@ -1474,7 +1533,7 @@
   </div>
 
   <!-- AI Chat Modal -->
-  <div id="ai-chat-modal">
+  <div id="ai-chat-modal" data-liquid-glass="panel">
     <div class="ai-chat-modal-content">
       <!-- Left Sidebar - Topics Navigation -->
       <div class="ai-chat-sidebar">
@@ -1598,76 +1657,81 @@
 
   <!-- Add App Modal -->
   <div id="add-app-modal">
-    <div>
-      <div class="add-app-header">
-        <div class="add-app-header-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="12" y1="8" x2="12" y2="16"></line>
-            <line x1="8" y1="12" x2="16" y2="12"></line>
-          </svg>
-        </div>
-        <div class="add-app-header-text">
-          <h3 data-i18n="newAppTitle">Add New App</h3>
-          <p data-i18n="newAppDescription">Enter a website URL to add it to your apps</p>
-        </div>
-      </div>
-      
-      <div class="add-app-input-wrapper">
-        <div class="add-app-input-container">
-          <div class="add-app-input-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M18 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3m1 15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7h14ZM5 9V6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3Z"/><circle cx="8" cy="7.03" r="1" fill="currentColor"/><circle cx="12" cy="7.03" r="1" fill="currentColor"/></svg>
-          </div>
-          <input id="add-app-url" type="text" placeholder="https://example.com" data-i18n="enterUrl" />
-          <div class="add-app-url-validation">
-            <svg class="valid-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="20,6 9,17 4,12"></polyline>
-            </svg>
-            <svg class="invalid-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="15" y1="9" x2="9" y2="15"></line>
-              <line x1="9" y1="9" x2="15" y2="15"></line>
+    <div data-liquid-glass="panel">
+      <!-- Scroll lives on an inner wrapper (#1158): the marked panel must not
+           scroll, or its absolutely positioned glass layers would scroll away
+           with the form. -->
+      <div class="add-app-scroll">
+        <div class="add-app-header">
+          <div class="add-app-header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
             </svg>
           </div>
+          <div class="add-app-header-text">
+            <h3 data-i18n="newAppTitle">Add New App</h3>
+            <p data-i18n="newAppDescription">Enter a website URL to add it to your apps</p>
+          </div>
         </div>
-        <div class="add-app-validation-message"></div>
-      </div>
 
-      <div class="add-app-preview" id="add-app-preview">
-        <div class="add-app-preview-icon" id="preview-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-            <polyline points="21,15 16,10 5,21"></polyline>
-          </svg>
+        <div class="add-app-input-wrapper">
+          <div class="add-app-input-container">
+            <div class="add-app-input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M18 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3m1 15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7h14ZM5 9V6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3Z"/><circle cx="8" cy="7.03" r="1" fill="currentColor"/><circle cx="12" cy="7.03" r="1" fill="currentColor"/></svg>
+            </div>
+            <input id="add-app-url" type="text" placeholder="https://example.com" data-i18n="enterUrl" />
+            <div class="add-app-url-validation">
+              <svg class="valid-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20,6 9,17 4,12"></polyline>
+              </svg>
+              <svg class="invalid-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+            </div>
+          </div>
+          <div class="add-app-validation-message"></div>
         </div>
-        <div class="add-app-preview-info">
-          <span class="preview-name" id="preview-name">App Name</span>
-          <span class="preview-url" id="preview-url">https://example.com</span>
+
+        <div class="add-app-preview" id="add-app-preview">
+          <div class="add-app-preview-icon" id="preview-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21,15 16,10 5,21"></polyline>
+            </svg>
+          </div>
+          <div class="add-app-preview-info">
+            <span class="preview-name" id="preview-name">App Name</span>
+            <span class="preview-url" id="preview-url">https://example.com</span>
+          </div>
         </div>
-      </div>
 
-      <div id="add-app-section" class="add-app-section">
-        <h4 data-i18n="quickAdd">Quick Add</h4>
-        <p data-i18n="quickAddDesc">Popular apps to get you started</p>
-        <div id="default-apps-list"></div>
-      </div>
+        <div id="add-app-section" class="add-app-section">
+          <h4 data-i18n="quickAdd">Quick Add</h4>
+          <p data-i18n="quickAddDesc">Popular apps to get you started</p>
+          <div id="default-apps-list"></div>
+        </div>
 
-      <div class="add-app-actions">
-        <button id="add-app-cancel" class="btn-secondary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-          <span data-i18n="cancel">Cancel</span>
-        </button>
-        <button id="add-app-confirm" class="btn-primary" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          <span data-i18n="create">Create</span>
-        </button>
+        <div class="add-app-actions">
+          <button id="add-app-cancel" class="btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            <span data-i18n="cancel">Cancel</span>
+          </button>
+          <button id="add-app-confirm" class="btn-primary" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span data-i18n="create">Create</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1848,7 +1912,7 @@
 
   <!-- Folder Popup -->
   <div id="folder-popup" class="folder-popup" style="display:none;">
-    <div class="folder-popup-content">
+    <div class="folder-popup-content" data-liquid-glass="panel">
       <div class="folder-popup-header">
         <h2 class="folder-popup-title" id="folder-popup-title"></h2>
         <button id="folder-popup-rename-btn" class="folder-popup-rename-btn" data-i18n="renameFolder">
@@ -1871,7 +1935,7 @@
   </div>
 
   <!-- Weather App Modal -->
-  <div id="weather-app-modal" class="weather-app-modal" role="dialog" aria-modal="true">
+  <div id="weather-app-modal" class="weather-app-modal" role="dialog" aria-modal="true" data-liquid-glass="panel">
     <div class="weather-app-modal-content">
       <div class="weather-app-header">
         <h2 class="weather-app-title" data-i18n="weatherApp">Weather</h2>
@@ -1881,7 +1945,7 @@
   </div>
 
   <!-- Todo App Modal (issue #1066) -->
-  <div id="todo-app-modal" class="todo-app-modal" role="dialog" aria-modal="true" aria-labelledby="todo-app-title">
+  <div id="todo-app-modal" class="todo-app-modal" role="dialog" aria-modal="true" aria-labelledby="todo-app-title" data-liquid-glass="panel">
     <div class="todo-app-modal-content">
       <div class="todo-app-header">
         <h2 id="todo-app-title" class="todo-app-title" data-i18n="todoList">Todo List</h2>
@@ -1952,12 +2016,12 @@
   </div>
 
   <!-- Games App Modal -->
-  <dialog id="games-app-modal" class="games-app-modal" aria-labelledby="games-hub-title" aria-modal="true">
+  <dialog id="games-app-modal" class="games-app-modal" aria-labelledby="games-hub-title" aria-modal="true" data-liquid-glass="panel">
     <div class="games-app-modal-content">
       <div class="games-hub-header">
         <h2 id="games-hub-title" class="games-hub-title" data-i18n="games">Games</h2>
       </div>
-      <div class="games-hub-content" id="games-hub-content"></div>
+      <div class="games-hub-content" id="games-hub-content" data-liquid-glass="panel"></div>
     </div>
   </dialog>
 

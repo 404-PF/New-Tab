@@ -54,6 +54,10 @@
     "message": "Не удалось сохранить изменения горячих клавиш. Последнее действие не было сохранено.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
   },
+  "shortcutOpenAi": {
+    "message": "Открыть ИИ-ассистента",
+    "description": "Label for the open AI assistant shortcut action"
+  },
   "customBackgroundsLoadError": {
     "message": "Не удалось загрузить пользовательские фоны. Повторите попытку.",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -206,6 +210,10 @@
   },
   "bgRotationDaily": {
     "message": "Ежедневно",
+    "description": "Rotation interval option"
+  },
+  "bgRotationNewtab": {
+    "message": "При каждой новой вкладке",
     "description": "Rotation interval option"
   },
   "bgRotationPicker": {
@@ -871,6 +879,38 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "Переключить панель статистики фокуса",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "pomodoroStatsTotal": {
+    "message": "Итого за 30 дней",
+    "description": "Label for the 30-day focus stats total"
+  },
+  "pomodoroStatsTrend": {
+    "message": "Тренд к вчерашнему дню",
+    "description": "Label for the day-over-day focus stats trend"
+  },
+  "pomodoroStatsBestDay": {
+    "message": "Лучший день",
+    "description": "Label for the best focus stats day"
+  },
+  "pomodoroStatsRollingAvg": {
+    "message": "Среднее за 7 дней (сессий/день)",
+    "description": "Label for the 7-day rolling average focus stats"
+  },
+  "pomodoroStatsByTodo": {
+    "message": "Минуты по задачам за неделю",
+    "description": "Label for the minutes-by-todo focus stats list"
+  },
+  "pomodoroStatsExport": {
+    "message": "Экспорт CSV",
+    "description": "Button that exports focus stats as CSV"
+  },
+  "pomodoroStatsSessionsUnit": {
+    "message": "сессий",
+    "description": "Unit word after the session count in the focus stats total"
+  },
+  "pomodoroStatsExportSuccess": {
+    "message": "Загрузка статистики фокуса начата.",
+    "description": "Toast shown after focus stats CSV download is started"
   },
   "gamesLoading": {
     "message": "Загрузка игр…",

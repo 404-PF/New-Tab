@@ -24,6 +24,17 @@
 const js = require('@eslint/js');
 const globals = require('globals');
 
+// Focus stats summary globals shared by the source and test global maps.
+const pomodoroStatsSummaryGlobals = {
+  exportPomodoroStatsCsv: 'readonly',
+  getPomodoroTrend: 'readonly',
+  getPomodoroTotalFormatted: 'readonly',
+  getPomodoroWeeklyBreakdown: 'readonly',
+  getPomodoroBestDay: 'readonly',
+  getPomodoroRollingAverage: 'readonly',
+  getPomodoroMinutesByTodoThisWeek: 'readonly',
+};
+
 const srcGlobals = {
   ...globals.browser,
   chrome: 'readonly',
@@ -153,6 +164,7 @@ const srcGlobals = {
   applyTodoAppSettings: 'readonly',
   TodoApp: 'readonly',
   applyNotesEnabled: 'readonly',
+  applyMottoEnabled: 'readonly',
   resyncClockDateStyle: 'readonly',
   WeatherApp: 'readonly',
   WeatherUtils: 'readonly',
@@ -196,6 +208,7 @@ const srcGlobals = {
   getPomodoroMinutesThisWeek: 'readonly',
   getPomodoroHeatmapData: 'readonly',
   getPomodoroHeatLevel: 'readonly',
+  ...pomodoroStatsSummaryGlobals,
   getFilteredNotes: 'readonly',
   getFilteredNotesRanked: 'readonly',
   isNotesSemanticEnabled: 'readonly',
@@ -203,14 +216,11 @@ const srcGlobals = {
   setNotesSearchQuery: 'readonly',
   getNotesSearchQuery: 'readonly',
   cancelPendingNoteSaves: 'readonly',
-  loadNotesSemanticEnabled: 'readonly',
-  applyNotesSemanticEnabled: 'readonly',
-  primeNotesSemanticImport: 'readonly',
-  EmbeddingRegistry: 'readonly',
-  HarrierProvider: 'readonly',
-  EmbeddingService: 'readonly',
-  NotesVectorCache: 'readonly',
-  NotesSemanticSearch: 'readonly',
+  exportNotes: 'readonly',
+  importNotes: 'readonly',
+  validateNotesData: 'readonly',
+  mergeImportedNotes: 'readonly',
+  handleNotesImportFile: 'readonly',
   module: 'readonly',
   exports: 'readonly',
   BUILT_IN_PROVIDERS: 'readonly',
@@ -236,6 +246,9 @@ const srcGlobals = {
   // Storage-write resync helper (issue #1089) used by toast.js's
   // FEATURE_TOGGLE_RESYNC table.
   resyncSearchHistorySetting: 'readonly',
+  // Storage-write resync helper (issue #1167) used by toast.js's
+  // FEATURE_TOGGLE_RESYNC table.
+  resyncTodoSort: 'readonly',
 };
 
 const testGlobals = {
@@ -342,6 +355,7 @@ const testGlobals = {
   currentFilters: 'readonly',
   setTodoSort: 'readonly',
   getTodoSort: 'readonly',
+  resyncTodoSort: 'readonly',
   handleTodoSortChange: 'readonly',
   setTodoSearchQuery: 'readonly',
   getTodoSearchQuery: 'readonly',
@@ -405,6 +419,7 @@ const testGlobals = {
   getPomodoroMinutesThisWeek: 'readonly',
   getPomodoroHeatmapData: 'readonly',
   getPomodoroHeatLevel: 'readonly',
+  ...pomodoroStatsSummaryGlobals,
   checkReminders: 'readonly',
   handleStartup: 'readonly',
   initNotes: 'readonly',
@@ -428,11 +443,17 @@ const testGlobals = {
   EmbeddingService: 'readonly',
   NotesVectorCache: 'readonly',
   NotesSemanticSearch: 'readonly',
+  exportNotes: 'readonly',
+  importNotes: 'readonly',
+  validateNotesData: 'readonly',
+  mergeImportedNotes: 'readonly',
+  handleNotesImportFile: 'readonly',
   Shortcuts: 'readonly',
   applyTodoEnabled: 'readonly',
   applyTodoAppSettings: 'readonly',
   TodoApp: 'readonly',
   applyNotesEnabled: 'readonly',
+  applyMottoEnabled: 'readonly',
   resyncClockDateStyle: 'readonly',
   showFeatureToggleSaveError: 'readonly',
   WeatherApp: 'readonly',

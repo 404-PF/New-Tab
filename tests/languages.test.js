@@ -27,7 +27,8 @@ function expectTranslationKeys(keys, options) {
 // Asserts a feedback key ships in every _locales/<locale>/messages.json with
 // its own non-empty message and description. Shared by the save-error keys
 // that must exist both as runtime translations and as chrome.i18n messages.
-function expectMessagesJsonKey(key) {
+function expectMessagesJsonKey(key, options) {
+  const allowEnglishCopy = Boolean(options && options.allowEnglishCopy);
   const localesDir = resolve(process.cwd(), '_locales');
   const locales = readdirSync(localesDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -50,7 +51,7 @@ function expectMessagesJsonKey(key) {
     expect(entry.description, `${locale}`).toBeTypeOf('string');
     // en and en_US are the English source strings, so every other locale
     // must ship its own copy rather than a copy of the English text.
-    if (locale !== 'en' && locale !== 'en_US') {
+    if (!allowEnglishCopy && locale !== 'en' && locale !== 'en_US') {
       expect(entry.message, `${locale}:${key}`).not.toBe(english);
     }
   });
@@ -237,6 +238,33 @@ describe('Pomodoro translations', () => {
   });
 });
 
+const FOCUS_STATS_SUMMARY_TRANSLATION_KEYS = [
+  'pomodoroStatsTotal',
+  'pomodoroStatsTrend',
+  'pomodoroStatsBestDay',
+  'pomodoroStatsRollingAvg',
+  'pomodoroStatsByTodo',
+  'pomodoroStatsExport',
+  'pomodoroStatsExportSuccess'
+];
+
+describe('Focus stats summary translations (issue #1171)', () => {
+  it('defines every focus stats summary label for all supported languages', () => {
+    expectTranslationKeys(FOCUS_STATS_SUMMARY_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+
+  // The session unit is a plain noun that is spelled the same in some
+  // languages (e.g. French "sessions"), so it is only required to exist.
+  it('defines the session unit for all supported languages', () => {
+    expectTranslationKeys(['pomodoroStatsSessionsUnit']);
+  });
+
+  it('ships every focus stats summary key in each _locales messages.json', () => {
+    FOCUS_STATS_SUMMARY_TRANSLATION_KEYS.forEach((key) => expectMessagesJsonKey(key));
+    expectMessagesJsonKey('pomodoroStatsSessionsUnit', { allowEnglishCopy: true });
+  });
+});
+
 describe('Custom background error translations', () => {
   // Inspect getTranslations() directly rather than t(): t() silently falls
   // back to the English string when a locale omits the key, so a missing
@@ -302,6 +330,20 @@ describe('Rotation uploads translations', () => {
   it('resolves the active-language value at runtime', () => {
     window.i18n.applyLanguage('de');
     expect(window.i18n.t('bgRotationUploads')).toBe(ROTATION_UPLOADS_EXPECTED.de);
+  });
+});
+
+// "Every new tab" rotation cadence (issue #1173): the interval option
+// ships localized in every supported language and in every chrome.i18n
+// messages.json (the New-Tab.html data-i18n completeness check above
+// resolves the same key against the en dictionary).
+describe('Background rotation new-tab cadence translations (issue #1173)', () => {
+  it('defines a localized bgRotationNewtab for every supported language', () => {
+    expectTranslationKeys(['bgRotationNewtab'], { differFromEnglish: true });
+  });
+
+  it('includes bgRotationNewtab in every _locales messages.json', () => {
+    expectMessagesJsonKey('bgRotationNewtab');
   });
 });
 
@@ -423,6 +465,20 @@ const MISSING_UI_KEY_TRANSLATIONS = [
 describe('Notes/todo tooltip and AI search empty state translations', () => {
   it('defines every raw-key bug key in each supported language', () => {
     expectTranslationKeys(MISSING_UI_KEY_TRANSLATIONS, { differFromEnglish: true });
+  });
+});
+
+const NOTES_EXPORT_IMPORT_TRANSLATION_KEYS = [
+  'exportNotes',
+  'importNotes',
+  'notesImportSuccess',
+  'notesImportNoNew',
+  'notesImportInvalid'
+];
+
+describe('Notes export/import translations', () => {
+  it('defines notes export/import strings in every supported language', () => {
+    expectTranslationKeys(NOTES_EXPORT_IMPORT_TRANSLATION_KEYS, { differFromEnglish: true });
   });
 });
 
@@ -667,6 +723,16 @@ describe('Game saves save error translation (issue #1039)', () => {
   });
 });
 
+// Named AI assistant shortcut (issue #1185): the Settings -> Shortcuts row
+// label ships in every runtime locale table and every chrome.i18n
+// messages.json.
+describe('AI assistant shortcut translations (issue #1185)', () => {
+  it('defines a localized shortcutOpenAi in every runtime table and messages.json', () => {
+    expectTranslationKeys(['shortcutOpenAi'], { differFromEnglish: true });
+    expectMessagesJsonKey('shortcutOpenAi');
+  });
+});
+
 describe('New-Tab.html i18n key completeness', () => {
   it('resolves every data-i18n key used in New-Tab.html in the en dictionary', () => {
     const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
@@ -711,6 +777,14 @@ describe('New-Tab.html i18n key completeness', () => {
 describe('Motto button aria-label translations', () => {
   it('defines every motto button label in each supported language', () => {
     expectTranslationKeys(['refreshMotto', 'copyMotto'], { differFromEnglish: true });
+  });
+});
+
+// Settings > General motto toggle (issue #1174): the new enableMotto label
+// must resolve in every language, not just English.
+describe('Motto toggle label translations (issue #1174)', () => {
+  it('defines the enableMotto label in each supported language', () => {
+    expectTranslationKeys(['enableMotto'], { differFromEnglish: true });
   });
 });
 

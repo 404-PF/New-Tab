@@ -2,11 +2,14 @@ import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { readOpenCodePermission } from './helpers/open-code-permission.js';
 
-const BUG_PATH = resolve(process.cwd(), '.github/workflows/bug-find.yml');
-const FEATURE_PATH = resolve(process.cwd(), '.github/workflows/feature-find.yml');
-const OLD_PATH = resolve(process.cwd(), '.github/workflows/issue-find.yml');
+const BUG_PATH = resolve(process.cwd(), '.github/workflows/bug-bot.yml');
+const FEATURE_PATH = resolve(process.cwd(), '.github/workflows/feature-bot.yml');
+const WORKFLOW_DIR = resolve(process.cwd(), '.github/workflows');
+// Pre-rename markers. Issues filed before the rename carry them, and the
+// cooldown scans must keep counting them. Nothing else may reference the old names.
+const LEGACY_MARKERS = ['<!-- bug-find -->', '<!-- issue-find -->', '<!-- feature-find -->'];
 
-describe('bug-find/feature-find split (#921)', () => {
+describe('bug-bot/feature-bot split (#921)', () => {
   let bug;
   let feature;
 
@@ -15,27 +18,46 @@ describe('bug-find/feature-find split (#921)', () => {
     feature = readFileSync(FEATURE_PATH, 'utf-8');
   });
 
-  it('replaces issue-find.yml with bug-find.yml and feature-find.yml', () => {
-    expect(existsSync(OLD_PATH)).toBe(false);
-    expect(bug).toMatch(/^name: bug-find$/m);
-    expect(feature).toMatch(/^name: feature-find$/m);
+  it('names the workflows bug-bot.yml and feature-bot.yml', () => {
+    expect(bug).toMatch(/^name: bug-bot$/m);
+    expect(feature).toMatch(/^name: feature-bot$/m);
+  });
+
+  it('leaves no pre-rename workflow files or names behind', () => {
+    ['bug-find.yml', 'feature-find.yml', 'issue-find.yml'].forEach((name) => {
+      expect(existsSync(resolve(WORKFLOW_DIR, name))).toBe(false);
+    });
+    expect(bug).not.toMatch(/^name: (?:bug|issue)-find$/m);
+    expect(feature).not.toMatch(/^name: (?:feature|issue)-find$/m);
+  });
+
+  it('references the old names only as legacy cooldown markers', () => {
+    [bug, feature].forEach((wf) => {
+      const stripped = LEGACY_MARKERS.reduce((text, marker) => text.split(marker).join(''), wf);
+      expect(stripped).not.toMatch(/\b(?:bug|feature|issue)-find\b/);
+    });
+  });
+
+  it('counts pre-rename markers in both cooldown scans', () => {
+    expect(bug).toMatch(/LEGACY_MARKER='<!-- bug-find -->'/);
+    expect(bug).toMatch(/OLDEST_MARKER='<!-- issue-find -->'/);
+    expect(bug).toMatch(/contains\(\$m\) or contains\(\$lm\) or contains\(\$om\)/);
+    expect(feature).toMatch(/LEGACY_MARKER='<!-- feature-find -->'/);
+    expect(feature).toMatch(/contains\(\$m\) or contains\(\$lm\)/);
   });
 
   it('keeps markers and state dirs independent with one shared concurrency group', () => {
-    expect(bug).toMatch(/MARKER='<!-- bug-find -->'/);
-    expect(bug).toMatch(/MARKER: '<!-- bug-find -->'/);
-    expect(bug).toContain('$RUNNER_TEMP/bug-find');
-    expect(bug).toContain('${{ runner.temp }}/bug-find');
-    expect(bug).not.toMatch(/feature-find/);
-    expect(bug).toMatch(/LEGACY_MARKER='<!-- issue-find -->'/);
-    expect(bug).not.toMatch(/group: issue-find/);
-    expect(bug).not.toMatch(/(?:RUNNER_TEMP\/issue-find|runner\.temp \}\}\/issue-find)/);
+    expect(bug).toMatch(/MARKER='<!-- bug-bot -->'/);
+    expect(bug).toMatch(/MARKER: '<!-- bug-bot -->'/);
+    expect(bug).toContain('$RUNNER_TEMP/bug-bot');
+    expect(bug).toContain('${{ runner.temp }}/bug-bot');
+    expect(bug).not.toMatch(/feature-bot/);
 
-    expect(feature).toMatch(/MARKER='<!-- feature-find -->'/);
-    expect(feature).toMatch(/MARKER: '<!-- feature-find -->'/);
-    expect(feature).toContain('$RUNNER_TEMP/feature-find');
-    expect(feature).toContain('${{ runner.temp }}/feature-find');
-    expect(feature).not.toMatch(/issue-find|bug-find/);
+    expect(feature).toMatch(/MARKER='<!-- feature-bot -->'/);
+    expect(feature).toMatch(/MARKER: '<!-- feature-bot -->'/);
+    expect(feature).toContain('$RUNNER_TEMP/feature-bot');
+    expect(feature).toContain('${{ runner.temp }}/feature-bot');
+    expect(feature).not.toMatch(/bug-bot/);
 
     // Both find jobs share one group (they refill the same open-issue target)
     // and queue every pending run instead of letting a burst replace it.
@@ -44,9 +66,9 @@ describe('bug-find/feature-find split (#921)', () => {
     });
   });
 
-  it('offsets the schedules and serializes both find jobs through the shared group', () => {
-    expect(bug).toMatch(/cron: '17 \*\/6 \* \* \*'/);
-    expect(feature).toMatch(/cron: '47 \*\/6 \* \* \*'/);
+  it('runs both schedules on the hour and serializes both find jobs through the shared group', () => {
+    expect(bug).toMatch(/cron: '0 \*\/6 \* \* \*'/);
+    expect(feature).toMatch(/cron: '0 \*\/6 \* \* \*'/);
     expect(bug).toMatch(/group: find-issues/);
     expect(feature).toMatch(/group: find-issues/);
   });
@@ -64,7 +86,7 @@ describe('bug-find/feature-find split (#921)', () => {
     });
   });
 
-  it('scopes the feature-find prompt to feature gaps, not bugs', () => {
+  it('scopes the feature-bot prompt to feature gaps, not bugs', () => {
     expect(feature).toContain('missing features, feature gaps, and unimplemented ideas');
     expect(feature).toContain('Feature suggestions only');
     expect(feature).not.toMatch(/Find REAL bugs or clear gaps/);
@@ -73,10 +95,10 @@ describe('bug-find/feature-find split (#921)', () => {
     expect(bug).toContain('"labels": ["bug"]');
   });
 
-  it('gives the feature-find validator enhancement and feature fallback labels', () => {
+  it('gives the feature-bot validator enhancement and feature fallback labels', () => {
     expect(feature).toMatch(/FALLBACK_LABELS = \{[^}]*'enhancement'[^}]*'feature'[^}]*\}/);
-    expect(feature).toMatch(/re\.sub\(r'feature-find', 'feature find'/);
-    expect(bug).toMatch(/re\.sub\(r'bug-find', 'bug find'/);
+    expect(feature).toMatch(/re\.sub\(r'feature-bot', 'feature bot'/);
+    expect(bug).toMatch(/re\.sub\(r'bug-bot', 'bug bot'/);
   });
 
   it('keeps the evidence contract and title dedupe in both validators', () => {
@@ -94,7 +116,7 @@ describe('bug-find/feature-find split (#921)', () => {
       expect(wf).toMatch(/"date -u": "allow"/);
       expect(wf).not.toMatch(/"date(?: \*|)": "allow"/);
       expect(wf).toMatch(/"gh \*": "deny"/);
-      // Subagents hung the agent step until its timeout (bug-find runs on
+      // Subagents hung the agent step until its timeout (the bug bot hung on
       // 2026-10-25); the agent must work alone.
       const permission = readOpenCodePermission(wf);
       expect(permission.task).toBe('deny');
@@ -118,7 +140,7 @@ describe('bug-find/feature-find split (#921)', () => {
   });
 });
 
-describe('find-workflows reference the product scope note (#1031)', () => {
+describe('bot-workflows reference the product scope note (#1031)', () => {
   let bug;
   let feature;
 
@@ -148,7 +170,7 @@ describe('find-workflows reference the product scope note (#1031)', () => {
   });
 });
 
-describe('find-workflows refill after mass-close (#1015)', () => {
+describe('bot-workflows refill after mass-close (#1015)', () => {
   let bug;
   let feature;
 
@@ -164,8 +186,6 @@ describe('find-workflows refill after mass-close (#1015)', () => {
       // Manual dispatch still bypasses the cooldown.
       expect(wf).toMatch(/if \[ "\$EVENT_NAME" != 'workflow_dispatch' \]; then/);
     });
-    // The legacy-marker counting that guards the first post-rename run stays.
-    expect(bug).toMatch(/LEGACY_MARKER='<!-- issue-find -->'/);
   });
 
   it('recounts the open pool under the concurrency slot before the agent', () => {

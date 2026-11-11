@@ -574,3 +574,166 @@ describe('Pomodoro stats retention', () => {
     expect(stats.days[isoDaysAgo(34)]).toBeUndefined();
   });
 });
+
+describe('Focus stats summary row (issue #1171)', () => {
+  it('paints total, trend, best day, rolling average and minutes-by-todo', () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    savePomodoroStats({
+      days: { [getToday()]: { sessions: 2, minutes: 50 } },
+      byDateTodos: { [getToday()]: { 'todo-1': 25, 'todo-2': 50 } }
+    });
+    window.loadTodos = () => [
+      { id: 'todo-1', text: 'Write tests' },
+      { id: 'todo-2', text: 'Review PR' }
+    ];
+    try {
+      renderPomodoroStats();
+      expect(document.getElementById('pomodoro-stats-total').textContent).toBe('50m / 2 sessions');
+      // Today versus an empty yesterday: up by two sessions.
+      expect(document.getElementById('pomodoro-stats-trend').textContent).toBe('↑ +2');
+      expect(document.getElementById('pomodoro-stats-best-day').textContent).toBe(`${getToday()} (2)`);
+      expect(document.getElementById('pomodoro-stats-rolling-avg').textContent).toBe('0.3');
+      expect(document.getElementById('pomodoro-stats-by-todo').textContent).toBe('Review PR: 50m · Write tests: 25m');
+    } finally {
+      delete window.loadTodos;
+    }
+  });
+
+  it('shows dashes and zeros when no focus data exists', () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    renderPomodoroStats();
+    expect(document.getElementById('pomodoro-stats-total').textContent).toBe('0m / 0 sessions');
+    expect(document.getElementById('pomodoro-stats-trend').textContent).toBe('→ 0');
+    expect(document.getElementById('pomodoro-stats-best-day').textContent).toBe('—');
+    expect(document.getElementById('pomodoro-stats-rolling-avg').textContent).toBe('0');
+    expect(document.getElementById('pomodoro-stats-by-todo').textContent).toBe('—');
+  });
+
+  it('degrades minutes-by-todo to a dash while todo.js is not loaded', () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    delete window.loadTodos;
+    savePomodoroStats({ days: {}, byDateTodos: { [getToday()]: { 'todo-1': 25 } } });
+    renderPomodoroStats();
+    expect(document.getElementById('pomodoro-stats-by-todo').textContent).toBe('—');
+  });
+
+  it('leaves tasks deleted since recording out of minutes-by-todo', () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    savePomodoroStats({
+      days: { [getToday()]: { sessions: 2, minutes: 50 } },
+      byDateTodos: { [getToday()]: { 'todo-1': 25, 'deleted-todo-id': 25 } }
+    });
+    window.loadTodos = () => [{ id: 'todo-1', text: 'Write tests' }];
+    try {
+      renderPomodoroStats();
+      expect(document.getElementById('pomodoro-stats-by-todo').textContent).toBe('Write tests: 25m');
+      expect(document.getElementById('pomodoro-stats-by-todo').textContent).not.toContain('deleted-todo-id');
+    } finally {
+      delete window.loadTodos;
+    }
+  });
+
+  it('repaints minutes-by-todo once bootstrap has finished loading todo.js', () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    delete window.loadTodos;
+    savePomodoroStats({ days: {}, byDateTodos: { [getToday()]: { 'todo-1': 25 } } });
+    renderPomodoroStats();
+    expect(document.getElementById('pomodoro-stats-by-todo').textContent).toBe('—');
+    window.loadTodos = () => [{ id: 'todo-1', text: 'Write tests' }];
+    try {
+      window.dispatchEvent(new CustomEvent('bootstrapComplete'));
+      expect(document.getElementById('pomodoro-stats-by-todo').textContent).toBe('Write tests: 25m');
+    } finally {
+      delete window.loadTodos;
+    }
+  });
+
+  it('repaints the summary when the panel is reopened', () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    applyPomodoroStatsVisibility();
+    savePomodoroStats({ days: { [getToday()]: { sessions: 1, minutes: 25 } }, byDateTodos: {} });
+    renderPomodoroStats();
+    expect(document.getElementById('pomodoro-stats-total').textContent).toBe('25m / 1 sessions');
+
+    savePomodoroStats({ days: { [getToday()]: { sessions: 3, minutes: 75 } }, byDateTodos: {} });
+    const panel = document.getElementById('pomodoro-stats-panel');
+    panel.style.display = 'none';
+    document.getElementById('pomodoro-stats-toggle').click();
+    expect(panel.style.display).toBe('');
+    expect(document.getElementById('pomodoro-stats-total').textContent).toBe('1h 15m / 3 sessions');
+  });
+
+  it('clearing stats resets the summary row', async () => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    savePomodoroStats({
+      days: { [getToday()]: { sessions: 2, minutes: 50 } },
+      byDateTodos: { [getToday()]: { 'todo-1': 25 } }
+    });
+    renderPomodoroStats();
+    expect(document.getElementById('pomodoro-stats-total').textContent).toBe('50m / 2 sessions');
+    await clearPomodoroStats();
+    expect(document.getElementById('pomodoro-stats-total').textContent).toBe('0m / 0 sessions');
+    expect(document.getElementById('pomodoro-stats-best-day').textContent).toBe('—');
+  });
+});
+
+describe('Focus stats CSV export (issue #1171)', () => {
+  it('exportPomodoroStatsCsv returns a header plus 30 day rows', () => {
+    savePomodoroStats({
+      days: {
+        [getToday()]: { sessions: 2, minutes: 50 },
+        [isoDaysAgo(1)]: { sessions: 1, minutes: 25 }
+      },
+      byDateTodos: {}
+    });
+    const lines = window.exportPomodoroStatsCsv().split('\n');
+    expect(lines[0]).toBe('date,sessions,minutes');
+    expect(lines).toHaveLength(31);
+    expect(lines[lines.length - 1]).toBe(`${getToday()},2,50`);
+    expect(lines[lines.length - 2]).toBe(`${isoDaysAgo(1)},1,25`);
+  });
+
+  it('the export button downloads the CSV with a dated filename', async () => {
+    const origCreateObjectURL = URL.createObjectURL;
+    const origRevokeObjectURL = URL.revokeObjectURL;
+    let capturedCsv = null;
+    let capturedName = null;
+    let capturedType = null;
+    URL.createObjectURL = (blob) => {
+      capturedType = blob.type;
+      const reader = new FileReader();
+      reader.onload = () => { capturedCsv = reader.result; };
+      reader.readAsText(blob);
+      return 'blob:mock-url';
+    };
+    URL.revokeObjectURL = () => {};
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+      capturedName = this.download;
+    });
+    const toastSpy = vi.fn();
+    window.showToast = toastSpy;
+    // The export schedules URL.revokeObjectURL on a timer; fake only setTimeout
+    // so the timer can be cleared before the URL mocks are restored.
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+
+    try {
+      document.getElementById('pomodoro-stats-export').click();
+      await vi.waitFor(() => expect(capturedCsv).not.toBeNull());
+      const lines = capturedCsv.split('\n');
+      expect(lines[0]).toBe('date,sessions,minutes');
+      expect(lines).toHaveLength(31);
+      expect(capturedName).toBe(`focus-stats-${getToday()}.csv`);
+      expect(capturedType).toBe('text/csv');
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(toastSpy).toHaveBeenCalledWith('Focus stats download started.', 'success');
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      clickSpy.mockRestore();
+      URL.createObjectURL = origCreateObjectURL;
+      URL.revokeObjectURL = origRevokeObjectURL;
+      delete window.showToast;
+      document.querySelectorAll('.toast-notification').forEach((el) => el.remove());
+    }
+  });
+});

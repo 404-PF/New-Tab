@@ -2137,7 +2137,12 @@ body.light-theme .bg-rotation-next-btn:hover {
   min-width: min(500px, calc(100vw - 32px));
   max-width: min(var(--modal-width-md), calc(100vw - 32px));
   max-height: var(--overlay-max-height);
-  overflow-y: auto;
+  /* The dialog itself never scrolls: the glass layers (#1158) are
+     absolutely positioned children of this panel and would scroll away
+     with the form. The inner wrapper owns the scrollbar instead. */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   position: fixed;
   top: 50%;
@@ -2146,6 +2151,11 @@ body.light-theme .bg-rotation-next-btn:hover {
   opacity: 0;
   transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.add-app-scroll {
+  min-height: 0;
+  overflow-y: auto;
 }
 #add-app-modal.modal-open > div {
   opacity: 1;
@@ -2720,8 +2730,24 @@ body.light-theme .app-icon.folder-icon .icon {
   max-width: 600px;
   width: 90%;
   max-height: 80vh;
-  overflow-y: auto;
+  /* The card never scrolls itself (#1158): its glass layers are
+     absolutely positioned children and would scroll away with the grid.
+     The apps grid below owns the scrollbar; the header stays pinned. */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* Escape hatch for tiny windows (#1158): the header plus the grid's 80px
+   floor stop fitting inside 80vh somewhere around 260px of viewport height,
+   and with overflow: hidden the grid's top would clip out of reach. Below
+   that band the card scrolls again; everywhere else the grid scrolls itself
+   first, so the card never overflows and the glass layers still stay put. */
+@media (max-height: 320px) {
+  .folder-popup-content {
+    overflow-y: auto;
+  }
 }
 
 body.light-theme .folder-popup-content {
@@ -2737,6 +2763,9 @@ body.light-theme .folder-popup-content {
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  /* Flex-shrink floor: the header must not squash when the apps grid
+     below it takes the card's height and scrolls (#1158). */
+  flex-shrink: 0;
 }
 
 body.light-theme .folder-popup-header {
@@ -2814,6 +2843,10 @@ body.light-theme .folder-popup-close-btn:hover {
   gap: clamp(16px, 3vw, 28px);
   justify-content: center;
   min-height: 80px;
+  /* The card's scroller (#1158): shrinks inside the fixed-height card
+     (floor is the min-height above) so the glass layers on the card stay
+     put while the grid scrolls. */
+  overflow-y: auto;
 }
 
 .folder-popup-empty {

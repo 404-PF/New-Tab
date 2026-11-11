@@ -23,9 +23,19 @@ function loadLiquidGlass() {
 
 function buildGrid() {
   document.body.innerHTML =
-    '<div id="clock"></div><div id="app-grid"><a class="app-icon"><span class="icon"></span></a></div>';
-  const clock = document.getElementById('clock');
-  clock.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 });
+    '<div id="clock"></div><div id="motto-container"></div>' +
+    '<div id="app-grid"><a class="app-icon"><span class="icon"></span></a></div>';
+  const motto = document.getElementById('motto-container');
+  motto.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 });
+}
+
+function buildHeroTargets() {
+  document.getElementById('motto-container').insertAdjacentHTML('afterend',
+    '<div id="weather-widget"></div><div id="focus-mode-indicator"></div>');
+  const targets = ['motto-container', 'weather-widget', 'focus-mode-indicator']
+    .map((id) => document.getElementById(id));
+  targets.forEach((el) => { el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 }); });
+  return targets;
 }
 
 describe('liquid glass icons + elasticity (#1110)', () => {
@@ -125,16 +135,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
   });
 
   itWhenLiquidEnabled('applies elasticity via translate (never transform) on T1 targets', () => {
-    const ids = ['search-bar-wrapper', 'motto-container', 'weather-widget', 'focus-mode-indicator'];
-    document.getElementById('clock').insertAdjacentHTML('afterend',
-      '<div class="search-bar-wrapper"></div>' +
-      ids.slice(1).map((id) => '<div id="' + id + '"></div>').join(''));
-    const targets = [
-      document.querySelector('.search-bar-wrapper'),
-      ...ids.slice(1).map((id) => document.getElementById(id)),
-      document.getElementById('clock')
-    ];
-    targets.forEach((el) => { el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 }); });
+    const targets = buildHeroTargets();
     loadLiquidGlass();
     move(150, 50);
     flush();
@@ -144,13 +145,45 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     });
   });
 
+  itWhenLiquidEnabled('leaves the search bar and clock out of elasticity', () => {
+    buildHeroTargets();
+    document.getElementById('clock').getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 });
+    document.getElementById('app-grid').insertAdjacentHTML('beforebegin',
+      '<div class="search-bar-wrapper"></div>');
+    const search = document.querySelector('.search-bar-wrapper');
+    search.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 });
+    loadLiquidGlass();
+    move(150, 50);
+    flush();
+    expect(document.getElementById('clock').style.translate).toBe('');
+    expect(search.style.translate).toBe('');
+    expect(search.hasAttribute('data-liquid-glass')).toBe(false);
+  });
+
+  itWhenLiquidEnabled('keeps the glass layers in place while elasticity moves a hero', () => {
+    const targets = buildHeroTargets();
+    loadLiquidGlass();
+    move(150, 50);
+    flush();
+    targets.forEach((el) => {
+      expect(el.style.translate).not.toBe('');
+      expect(el.classList.contains('glass--liquid')).toBe(true);
+      expect(el.querySelector(':scope > .glass__warp')).not.toBeNull();
+      expect(el.querySelector(':scope > .glass__highlight')).not.toBeNull();
+      el.querySelectorAll(':scope > .glass__warp, :scope > .glass__highlight').forEach((layer) => {
+        expect(layer.style.translate).toBe('');
+        expect(layer.style.transform).toBe('');
+      });
+    });
+  });
+
   itWhenLiquidEnabled('resets elasticity offsets when an app drag starts', () => {
     loadLiquidGlass();
     move(150, 50);
     flush();
-    expect(document.getElementById('clock').style.translate).not.toBe('');
+    expect(document.getElementById('motto-container').style.translate).not.toBe('');
     document.dispatchEvent(new Event('dragstart', { bubbles: true }));
-    expect(document.getElementById('clock').style.translate).toBe('');
+    expect(document.getElementById('motto-container').style.translate).toBe('');
   });
 
   itWhenLiquidEnabled('freezes elasticity while dragging', () => {
@@ -158,7 +191,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     document.body.classList.add('glass-drag-active');
     move(150, 50);
     flush();
-    expect(document.getElementById('clock').style.translate).toBe('');
+    expect(document.getElementById('motto-container').style.translate).toBe('');
   });
 
   itWhenLiquidEnabled('disables and clears elasticity under reduced motion', () => {
@@ -167,10 +200,10 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     flush();
     window.prefersReducedMotion = () => true;
     reducedCb(true);
-    expect(document.getElementById('clock').style.translate).toBe('');
+    expect(document.getElementById('motto-container').style.translate).toBe('');
     move(150, 50);
     flush();
-    expect(document.getElementById('clock').style.translate).toBe('');
+    expect(document.getElementById('motto-container').style.translate).toBe('');
   });
 
   itWhenLiquidEnabled('pauses and resets when the tab hides', () => {
@@ -178,7 +211,7 @@ describe('liquid glass icons + elasticity (#1110)', () => {
     move(150, 50);
     flush();
     visibilityCb(false);
-    expect(document.getElementById('clock').style.translate).toBe('');
+    expect(document.getElementById('motto-container').style.translate).toBe('');
     move(150, 50);
     expect(rafQueue.filter((f) => f.name === 'step')).toHaveLength(0);
   });

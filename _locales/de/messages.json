@@ -54,6 +54,10 @@
     "message": "Tastenkombinationen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
   },
+  "shortcutOpenAi": {
+    "message": "KI-Assistent öffnen",
+    "description": "Label for the open AI assistant shortcut action"
+  },
   "customBackgroundsLoadError": {
     "message": "Benutzerdefinierte Hintergründe konnten nicht geladen werden. Bitte versuche es erneut.",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -206,6 +210,10 @@
   },
   "bgRotationDaily": {
     "message": "Täglich",
+    "description": "Rotation interval option"
+  },
+  "bgRotationNewtab": {
+    "message": "Bei jedem neuen Tab",
     "description": "Rotation interval option"
   },
   "bgRotationPicker": {
@@ -871,6 +879,38 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "Fokus-Statistik-Panel umschalten",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "pomodoroStatsTotal": {
+    "message": "30-Tage-Gesamt",
+    "description": "Label for the 30-day focus stats total"
+  },
+  "pomodoroStatsTrend": {
+    "message": "Trend gegenüber gestern",
+    "description": "Label for the day-over-day focus stats trend"
+  },
+  "pomodoroStatsBestDay": {
+    "message": "Bester Tag",
+    "description": "Label for the best focus stats day"
+  },
+  "pomodoroStatsRollingAvg": {
+    "message": "7-Tage-Ø (Sitzungen/Tag)",
+    "description": "Label for the 7-day rolling average focus stats"
+  },
+  "pomodoroStatsByTodo": {
+    "message": "Minuten pro Aufgabe diese Woche",
+    "description": "Label for the minutes-by-todo focus stats list"
+  },
+  "pomodoroStatsExport": {
+    "message": "CSV exportieren",
+    "description": "Button that exports focus stats as CSV"
+  },
+  "pomodoroStatsSessionsUnit": {
+    "message": "Sitzungen",
+    "description": "Unit word after the session count in the focus stats total"
+  },
+  "pomodoroStatsExportSuccess": {
+    "message": "Download der Fokus-Statistiken gestartet.",
+    "description": "Toast shown after focus stats CSV download is started"
   },
   "gamesLoading": {
     "message": "Spiele werden geladen…",

@@ -1707,6 +1707,7 @@ describe('DataManager app-launch toggle backup (issue #1136)', () => {
       'simpleMode',
       'notesEnabled',
       'notesSemanticEnabled',
+      'mottoEnabled',
       'eyeCareReminder',
       'games_enabled',
       'games_fps_enabled',
@@ -1802,6 +1803,22 @@ describe('DataManager background rotation re-apply (issue #1080)', () => {
     }, 'merge');
     expect(selectionResult.type).toBe('success');
     expectRotationRefreshed(2);
+  });
+
+  it('round-trips the newtab interval through export and import (issue #1173)', async () => {
+    localStorage.setItem('bgRotationInterval', 'newtab');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.bgRotationInterval).toBe('newtab');
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+
+    localStorage.removeItem('bgRotationInterval');
+    const result = await importBackup(exported.data, 'merge');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('bgRotationInterval')).toBe('newtab');
+    expectRotationRefreshed(1);
   });
 
   it('still succeeds when window.BackgroundRotation is unavailable', async () => {

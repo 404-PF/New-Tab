@@ -54,6 +54,10 @@
     "message": "No se pudieron guardar los cambios de los atajos. La última acción no se guardó.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
   },
+  "shortcutOpenAi": {
+    "message": "Abrir asistente de IA",
+    "description": "Label for the open AI assistant shortcut action"
+  },
   "customBackgroundsLoadError": {
     "message": "No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.",
     "description": "Error shown when custom backgrounds cannot be listed"
@@ -206,6 +210,10 @@
   },
   "bgRotationDaily": {
     "message": "Diario",
+    "description": "Rotation interval option"
+  },
+  "bgRotationNewtab": {
+    "message": "Con cada pestaña nueva",
     "description": "Rotation interval option"
   },
   "bgRotationPicker": {
@@ -871,6 +879,38 @@
   "pomodoroStatsToggleAriaLabel": {
     "message": "Alternar panel de estadísticas de enfoque",
     "description": "Aria label for pomodoro stats toggle"
+  },
+  "pomodoroStatsTotal": {
+    "message": "Total (30 días)",
+    "description": "Label for the 30-day focus stats total"
+  },
+  "pomodoroStatsTrend": {
+    "message": "Tendencia vs ayer",
+    "description": "Label for the day-over-day focus stats trend"
+  },
+  "pomodoroStatsBestDay": {
+    "message": "Mejor día",
+    "description": "Label for the best focus stats day"
+  },
+  "pomodoroStatsRollingAvg": {
+    "message": "Promedio 7 días (sesiones/día)",
+    "description": "Label for the 7-day rolling average focus stats"
+  },
+  "pomodoroStatsByTodo": {
+    "message": "Minutos por tarea esta semana",
+    "description": "Label for the minutes-by-todo focus stats list"
+  },
+  "pomodoroStatsExport": {
+    "message": "Exportar CSV",
+    "description": "Button that exports focus stats as CSV"
+  },
+  "pomodoroStatsSessionsUnit": {
+    "message": "sesiones",
+    "description": "Unit word after the session count in the focus stats total"
+  },
+  "pomodoroStatsExportSuccess": {
+    "message": "Descarga de estadísticas de enfoque iniciada.",
+    "description": "Toast shown after focus stats CSV download is started"
   },
   "gamesLoading": {
     "message": "Cargando juegos…",

@@ -189,6 +189,7 @@ window.i18n.__registerLocale('zh', {
   reminderLeadTime1hour: '1小时前',
   reminderLeadTime1day: '1天前',
   enableNotes: '启用便签本',
+  enableMotto: '启用每日格言',
   enableFocusMode: '启用专注模式',
   focusModeExit: '退出专注模式',
 
@@ -230,6 +231,7 @@ window.i18n.__registerLocale('zh', {
   bgRotation1hour: '1 小时',
   bgRotationHourly: '每小时整点',
   bgRotationDaily: '每日',
+  bgRotationNewtab: '每个新标签页',
   bgRotationPicker: '选择要轮播的背景',
   bgRotationUploads: '上传的背景',
   bgRotationNext: '下一个背景',
@@ -515,6 +517,11 @@ window.i18n.__registerLocale('zh', {
   importReadError: '无法读取选定的文件。',
   importSuccess: '已成功导入 {count} 个待办事项。',
   importNoNewTodos: '没有新的待办事项可导入。',
+  exportNotes: '导出',
+  importNotes: '导入',
+  notesImportSuccess: '已成功导入 {count} 条便签。',
+  notesImportNoNew: '没有新的便签可导入。',
+  notesImportInvalid: '无效的便签数据。请选择有效的 JSON 文件。',
 
   // Data Manager
   data: '数据',
@@ -583,6 +590,7 @@ window.i18n.__registerLocale('zh', {
   shortcutToggleSimpleMode: '切换简洁模式',
   shortcutToggleTodo: '切换待办清单',
   shortcutToggleNotes: '切换便签',
+  shortcutOpenAi: '打开 AI 助手',
   shortcutCloseModal: '关闭对话框',
   shortcutPressAKey: '按下按键...',
   shortcutAppLaunch: '使用 Alt+1…9 启动应用',

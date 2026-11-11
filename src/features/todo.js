@@ -157,6 +157,17 @@
     return currentSort;
   }
 
+  // Re-read the persisted sort preference and repaint the selector and list
+  // after a rejected write (#1167), mirroring the other FEATURE_TOGGLE_RESYNC
+  // controls. Never re-persists: the key still holds the last accepted value.
+  function resyncTodoSort() {
+    currentSort = loadTodoSort();
+    if (elements.todoSort) {
+      elements.todoSort.value = currentSort;
+    }
+    applyFilters();
+  }
+
   window.addEventListener('storageBridgeWriteError', (event) => {
     if (event?.detail?.key !== 'todos') return;
 
@@ -1363,6 +1374,7 @@ function updateFilterCounts() {
   const today = formatDateISO(new Date());
   const dueToday = todos.filter(t => !t.completed && t.dueDate === today).length;
   const high = todos.filter(t => (t.priority || 'medium') === 'high').length;
+  const medium = todos.filter(t => (t.priority || 'medium') === 'medium').length;
   const low = todos.filter(t => (t.priority || 'medium') === 'low').length;
   
   const badgeAll = document.getElementById('badge-all');
@@ -1371,6 +1383,7 @@ function updateFilterCounts() {
   const badgeOverdue = document.getElementById('badge-overdue');
   const badgeToday = document.getElementById('badge-today');
   const badgeHigh = document.getElementById('badge-high');
+  const badgeMedium = document.getElementById('badge-medium');
   const badgeLow = document.getElementById('badge-low');
   const todoCount = document.getElementById('todo-count');
   
@@ -1380,6 +1393,7 @@ function updateFilterCounts() {
   if (badgeOverdue) badgeOverdue.textContent = overdue;
   if (badgeToday) badgeToday.textContent = dueToday;
   if (badgeHigh) badgeHigh.textContent = high;
+  if (badgeMedium) badgeMedium.textContent = medium;
   if (badgeLow) badgeLow.textContent = low;
   if (todoCount) todoCount.textContent = `${completed}/${all}`;
 }
@@ -1633,7 +1647,21 @@ function handleFilterPillClick(event) {
 
 // Handle sort selector changes (issue #1013)
 function handleTodoSortChange() {
-  setTodoSort(elements.todoSort ? elements.todoSort.value : DEFAULT_TODO_SORT);
+  const persisted = setTodoSort(elements.todoSort ? elements.todoSort.value : DEFAULT_TODO_SORT);
+  if (!persisted) {
+    // The bridge rejected the write: snap the select and the in-memory sort
+    // back to the value that actually persisted and surface the shared save
+    // error instead of silently reverting on reload (#1167).
+    resyncTodoSort();
+    if (typeof window.showFeatureToggleSaveError === 'function') {
+      window.showFeatureToggleSaveError();
+    } else {
+      // toast.js failed to load; bootstrap's full-screen error overlay
+      // already covers that state, so follow the repo convention and only
+      // log here instead of inventing a second notification channel (#1167).
+      console.warn('showFeatureToggleSaveError unavailable: todo sort save failed');
+    }
+  }
 }
 
 // Handle todo search input (issue #1060). Runs the same applyFilters path the
@@ -3205,6 +3233,7 @@ try {
   window.currentFilters = currentFilters;
   window.setTodoSort = setTodoSort;
   window.getTodoSort = getTodoSort;
+  window.resyncTodoSort = resyncTodoSort;
   window.handleTodoSortChange = handleTodoSortChange;
   window.setTodoSearchQuery = setTodoSearchQuery;
   window.getTodoSearchQuery = getTodoSearchQuery;

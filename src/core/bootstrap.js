@@ -214,6 +214,11 @@
     if (failedSources.length > 0) {
       showErrorOverlay(failedSources);
     }
+
+    // Every bootstrap script has now executed. Modules that read another
+    // module's globals during their first paint (pomodoro-stats reads todo.js)
+    // listen for this to repaint.
+    window.dispatchEvent(new CustomEvent('bootstrapComplete'));
   }).catch((error) => {
     console.error('Failed to bootstrap New-Tab scripts:', error);
   });

@@ -149,6 +149,25 @@
   border-color: rgba(244, 67, 54, 0.3);
 }
 
+.todo-stats-export {
+  display: block;
+  margin: 14px 0 0 auto;
+  font-size: 0.75em;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.todo-stats-export:hover {
+  background: rgba(33, 150, 243, 0.15);
+  color: #2196f3;
+  border-color: rgba(33, 150, 243, 0.3);
+}
+
 .todo-stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -184,6 +203,16 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.pomodoro-stats-summary {
+  margin-top: 14px;
+}
+
+.pomodoro-stats-by-todo {
+  font-size: 0.8em;
+  color: rgba(255, 255, 255, 0.7);
+  overflow-wrap: anywhere;
 }
 
 .todo-heatmap-label {
@@ -245,7 +274,8 @@ body.light-theme .heatmap-cell[data-level="3"] {
 @media (prefers-reduced-motion: reduce) {
   .heatmap-cell,
   .todo-stats-toggle,
-  .todo-stats-clear {
+  .todo-stats-clear,
+  .todo-stats-export {
     transition: none;
   }
 }
@@ -5382,6 +5412,25 @@ body.simple-mode .date {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
+}
+
+.notes-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .notes-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .notes-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
+  }
 }
 
 .notes-title {

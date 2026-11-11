@@ -13,6 +13,7 @@ const TOGGLE_STORAGE_KEYS = [
   'todoEnabled',
   'notesEnabled',
   'notesSemanticEnabled',
+  'mottoEnabled',
   'eyeCareReminder',
   'customShortcuts',
   'openAppsInNewTab',
@@ -103,6 +104,7 @@ beforeEach(() => {
     'focus-mode-setting',
     'todo-enabled-setting',
     'notes-enabled-setting',
+    'motto-enabled-setting',
     'eye-care-enabled-setting',
     'eye-care-browser-notification-setting'
   ];
@@ -392,6 +394,31 @@ describe('settings checkboxes report rejected writes (#969)', () => {
     expect(checkbox.checked).toBe(false);
     expect(window.showToast).not.toHaveBeenCalled();
   });
+
+  it('motto-enabled checkbox keeps the value, restores the checkbox, and toasts', () => {
+    localStorage.setItem('mottoEnabled', 'true');
+    failWriteFor('mottoEnabled');
+
+    const checkbox = document.getElementById('motto-enabled-setting');
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('mottoEnabled')).toBe('true');
+    expect(checkbox.checked).toBe(true);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('motto-enabled checkbox persists an accepted write without toasting', () => {
+    const checkbox = document.getElementById('motto-enabled-setting');
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('mottoEnabled')).toBe('false');
+    expect(checkbox.checked).toBe(false);
+    expect(document.getElementById('motto-container').style.display).toBe('none');
+    expect(window.showToast).not.toHaveBeenCalled();
+  });
 });
 
 describe('async runtime.lastError rollback restores controls (#969)', () => {
@@ -431,6 +458,27 @@ describe('async runtime.lastError rollback restores controls (#969)', () => {
 
     expect(localStorage.getItem('notesEnabled')).toBe('true');
     expect(checkbox.checked).toBe(true);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+
+  it('motto-enabled checkbox resyncs and toasts after an async lastError rollback', async () => {
+    localStorage.setItem('mottoEnabled', 'true');
+    failWriteFor('mottoEnabled', 'async');
+
+    const checkbox = document.getElementById('motto-enabled-setting');
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(localStorage.getItem('mottoEnabled')).toBe('false');
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(localStorage.getItem('mottoEnabled')).toBe('true');
+    expect(checkbox.checked).toBe(true);
+    expect(document.getElementById('motto-container').style.display).not.toBe('none');
     expect(window.showToast).toHaveBeenCalledTimes(1);
     expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
   });

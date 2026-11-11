@@ -817,7 +817,7 @@
         const text = ta.value || '';
         if (text) {
           updateNoteText(id, text);
-        } else {
+        } else if (!isImportedEmptyNote(id)) {
           deleteNote(id);
         }
       }
@@ -872,6 +872,14 @@
     if (ta) {
       ta.focus();
     }
+  }
+
+  function isImportedEmptyNote(id) {
+    const note = notes.find(n => n.id === id);
+    // Only guard while the stored text is still empty: once the user fills
+    // the note, clearing it must delete/save again so stale text cannot
+    // return from storage after a reload.
+    return !!(note && note.importedEmpty && !note.text);
   }
 
   function deleteNote(id) {
@@ -1014,7 +1022,7 @@
         const text = ta.value || '';
         if (text) {
           updateNoteText(id, text);
-        } else {
+        } else if (!isImportedEmptyNote(id)) {
           deleteNote(id);
           return;
         }
@@ -1376,7 +1384,7 @@
         updateNoteText(id, text);
       } else if (wasPreview) {
         const note = notes.find(n => n.id === id);
-        if (hadPending || (note && note.text)) {
+        if ((hadPending || (note && note.text)) && !isImportedEmptyNote(id)) {
           deleteNote(id);
         }
       }
@@ -1384,7 +1392,9 @@
     }
     const text = ta.value || '';
     if (!text) {
-      deleteNote(ta.dataset.id);
+      if (!isImportedEmptyNote(id)) {
+        deleteNote(id);
+      }
       return;
     }
     updateNoteText(ta.dataset.id, text);
@@ -1426,6 +1436,139 @@
     renderNotes();
   }
 
+  function formatDateISO(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function exportNotes() {
+    flushPendingSaves();
+    const exportData = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      count: notes.length,
+      notes: notes.map(n => ({ ...n }))
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const dateStr = formatDateISO(new Date());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `new-tab-notes-${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
+  function importNotes() {
+    const fileInput = document.getElementById('notes-import-file');
+    if (!fileInput) return;
+    fileInput.value = '';
+    fileInput.click();
+  }
+
+  function validateNotesData(data) {
+    if (!data || typeof data !== 'object') return false;
+    const items = data.notes;
+    if (!Array.isArray(items)) return false;
+    const seenIds = new Set();
+    for (const item of items) {
+      if (!item || typeof item !== 'object') return false;
+      if (typeof item.id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(item.id)) return false;
+      if (seenIds.has(item.id)) return false;
+      seenIds.add(item.id);
+      if (typeof item.text !== 'string') return false;
+      if (item.tag !== undefined && item.tag !== null && typeof item.tag !== 'string') return false;
+      if (item.order !== undefined && item.order !== null && (typeof item.order !== 'number' || !Number.isFinite(item.order))) return false;
+      if (item.createdAt !== undefined && item.createdAt !== null && typeof item.createdAt !== 'string') return false;
+      if (item.updatedAt !== undefined && item.updatedAt !== null && typeof item.updatedAt !== 'string') return false;
+    }
+    return true;
+  }
+
+  function mergeImportedNotes(importedItems) {
+    // Persist any in-flight debounced edits first so a merge cannot drop them.
+    flushPendingSaves();
+    const previousNotes = notes.map(n => ({ ...n }));
+    const existingIds = new Set(notes.map(n => n.id));
+    let maxOrder = notes.reduce((max, n) => Math.max(max, Number.isFinite(n.order) ? n.order : -1), -1);
+    let addedCount = 0;
+
+    for (const item of importedItems) {
+      if (existingIds.has(item.id)) continue;
+      maxOrder += 1;
+      const note = {
+        id: item.id,
+        text: item.text,
+        tag: typeof item.tag === 'string' ? item.tag : '',
+        order: maxOrder,
+        createdAt: item.createdAt || new Date().toISOString(),
+        updatedAt: item.updatedAt || new Date().toISOString()
+      };
+      notes.push(note);
+      if (!note.text) {
+        note.importedEmpty = true;
+      }
+      existingIds.add(note.id);
+      addedCount += 1;
+    }
+
+    if (addedCount === 0) {
+      if (typeof showToast === 'function') {
+        showToast(window.i18n ? window.i18n.t('notesImportNoNew') : 'No new notes to import.', 'info');
+      }
+      return 0;
+    }
+
+    if (!saveNotes(notes)) {
+      notes = previousNotes;
+      renderNotes();
+      return 0;
+    }
+
+    renderNotes();
+    if (typeof showToast === 'function') {
+      const msg = window.i18n
+        ? window.i18n.t('notesImportSuccess', { count: addedCount })
+        : 'Imported ' + addedCount + ' notes successfully.';
+      showToast(msg, 'success');
+    }
+    return addedCount;
+  }
+
+  function handleNotesImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onerror = function() {
+      console.error('Failed to read notes import file');
+      if (typeof showToast === 'function') {
+        showToast(window.i18n ? window.i18n.t('importReadError') : 'Failed to read the selected file.', 'error');
+      }
+    };
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!validateNotesData(data)) {
+          if (typeof showToast === 'function') {
+            showToast(window.i18n ? window.i18n.t('notesImportInvalid') : 'Invalid notes data. Please select a valid JSON file.', 'error');
+          }
+          return;
+        }
+        mergeImportedNotes(data.notes);
+      } catch (err) {
+        console.error('Failed to parse notes import file:', err);
+        if (typeof showToast === 'function') {
+          showToast(window.i18n ? window.i18n.t('notesImportInvalid') : 'Invalid notes data. Please select a valid JSON file.', 'error');
+        }
+      }
+    };
+    reader.readAsText(file);
+  }
+
   function initNotes() {
     // Drop any rerank debounced before re-init (e.g. between tests) so a
     // stale timer cannot render into the fresh state, and invalidate any
@@ -1442,6 +1585,9 @@
     elements.notesEmpty = document.getElementById('notes-empty');
     elements.addNoteBtn = document.getElementById('add-note-btn');
     elements.notesSearch = document.getElementById('notes-search');
+    elements.exportNotesBtn = document.getElementById('export-notes');
+    elements.importNotesBtn = document.getElementById('import-notes');
+    elements.notesImportFile = document.getElementById('notes-import-file');
 
     if (!elements.notesList || !elements.notesEmpty) {
       return;
@@ -1455,6 +1601,21 @@
       elements.addNoteBtn.removeEventListener('click', addNote);
       elements.addNoteBtn.addEventListener('click', addNote);
       elements.addNoteBtn.title = window.i18n ? window.i18n.t('addNoteTooltip') : 'Add note';
+    }
+
+    if (elements.exportNotesBtn) {
+      elements.exportNotesBtn.removeEventListener('click', exportNotes);
+      elements.exportNotesBtn.addEventListener('click', exportNotes);
+    }
+
+    if (elements.importNotesBtn) {
+      elements.importNotesBtn.removeEventListener('click', importNotes);
+      elements.importNotesBtn.addEventListener('click', importNotes);
+    }
+
+    if (elements.notesImportFile) {
+      elements.notesImportFile.removeEventListener('change', handleNotesImportFile);
+      elements.notesImportFile.addEventListener('change', handleNotesImportFile);
     }
 
     if (elements.notesSearch) {
@@ -1523,6 +1684,11 @@ try {
   window.setNotesSearchQuery = setSearchQuery;
   window.getNotesSearchQuery = getSearchQuery;
   window.cancelPendingNoteSaves = cancelPendingNoteSaves;
+  window.exportNotes = exportNotes;
+  window.importNotes = importNotes;
+  window.validateNotesData = validateNotesData;
+  window.mergeImportedNotes = mergeImportedNotes;
+  window.handleNotesImportFile = handleNotesImportFile;
 } catch {
   // ignore
 }
