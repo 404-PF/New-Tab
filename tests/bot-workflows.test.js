@@ -1,9 +1,13 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { readOpenCodePermission } from './helpers/open-code-permission.js';
 
 const BUG_PATH = resolve(process.cwd(), '.github/workflows/bug-bot.yml');
 const FEATURE_PATH = resolve(process.cwd(), '.github/workflows/feature-bot.yml');
+const WORKFLOW_DIR = resolve(process.cwd(), '.github/workflows');
+// Pre-rename markers. Issues filed before the rename carry them, and the
+// cooldown scans must keep counting them. Nothing else may reference the old names.
+const LEGACY_MARKERS = ['<!-- bug-find -->', '<!-- issue-find -->', '<!-- feature-find -->'];
 
 describe('bug-bot/feature-bot split (#921)', () => {
   let bug;
@@ -17,6 +21,29 @@ describe('bug-bot/feature-bot split (#921)', () => {
   it('names the workflows bug-bot.yml and feature-bot.yml', () => {
     expect(bug).toMatch(/^name: bug-bot$/m);
     expect(feature).toMatch(/^name: feature-bot$/m);
+  });
+
+  it('leaves no pre-rename workflow files or names behind', () => {
+    ['bug-find.yml', 'feature-find.yml', 'issue-find.yml'].forEach((name) => {
+      expect(existsSync(resolve(WORKFLOW_DIR, name))).toBe(false);
+    });
+    expect(bug).not.toMatch(/^name: (?:bug|issue)-find$/m);
+    expect(feature).not.toMatch(/^name: (?:feature|issue)-find$/m);
+  });
+
+  it('references the old names only as legacy cooldown markers', () => {
+    [bug, feature].forEach((wf) => {
+      const stripped = LEGACY_MARKERS.reduce((text, marker) => text.split(marker).join(''), wf);
+      expect(stripped).not.toMatch(/\b(?:bug|feature|issue)-find\b/);
+    });
+  });
+
+  it('counts pre-rename markers in both cooldown scans', () => {
+    expect(bug).toMatch(/LEGACY_MARKER='<!-- bug-find -->'/);
+    expect(bug).toMatch(/OLDEST_MARKER='<!-- issue-find -->'/);
+    expect(bug).toMatch(/contains\(\$m\) or contains\(\$lm\) or contains\(\$om\)/);
+    expect(feature).toMatch(/LEGACY_MARKER='<!-- feature-find -->'/);
+    expect(feature).toMatch(/contains\(\$m\) or contains\(\$lm\)/);
   });
 
   it('keeps markers and state dirs independent with one shared concurrency group', () => {

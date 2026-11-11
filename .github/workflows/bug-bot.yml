@@ -63,6 +63,10 @@ jobs:
           # runs is capped by the pre-agent pool recount in the find job.
           COOLDOWN_SECONDS=$(( 2 * 3600 ))
           MARKER='<!-- bug-bot -->'
+          # Issues filed before the rename carry the old markers. The cooldown
+          # counts them too so the first post-rename run cannot bypass it.
+          LEGACY_MARKER='<!-- bug-find -->'
+          OLDEST_MARKER='<!-- issue-find -->'
 
           TARGET=10
           MAX_NEW=5
@@ -106,7 +110,7 @@ jobs:
             # shellcheck disable=SC2016 # GraphQL variables, not shell
             LAST="$(gh api graphql -F owner="${GH_REPO%%/*}" -F name="${GH_REPO#*/}" \
               -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { issues(first: 100, orderBy: {field: CREATED_AT, direction: DESC}) { nodes { createdAt body } } } }' \
-              | jq -r --arg m "$MARKER" '[.data.repository.issues.nodes[] | select((.body // "") | contains($m))][0].createdAt // empty')"
+              | jq -r --arg m "$MARKER" --arg lm "$LEGACY_MARKER" --arg om "$OLDEST_MARKER" '[.data.repository.issues.nodes[] | select((.body // "") | contains($m) or contains($lm) or contains($om))][0].createdAt // empty')"
             if [ -n "$LAST" ]; then
               AGE=$(( $(date +%s) - $(date -d "$LAST" +%s) ))
               [ "$AGE" -ge "$COOLDOWN_SECONDS" ] || skip "Cooldown: last marked issue was filed $((AGE / 60)) min ago."
