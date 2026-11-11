@@ -1,6 +1,6 @@
 # Product Scope
 
-The short answer to three questions the backlog keeps asking: who New Tab is for, what it must do better than the browser's default page, and what deliberately stays out. Check proposed issues against this note before prioritizing them — the `bug-find` and `feature-find` workflows reference it in their prompts.
+The short answer to three questions the backlog keeps asking: who New Tab is for, what it must do better than the browser's default page, and what deliberately stays out. Check proposed issues against this note before prioritizing them — the `bug-bot` and `feature-bot` workflows reference it in their prompts.
 
 ## Core user
 
