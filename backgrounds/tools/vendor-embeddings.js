@@ -136,6 +136,13 @@ function main() {
   wasmFiles.forEach(function (f) {
     copyFile(path.join(ortBase, f), path.join(VENDOR, 'onnxruntime-web', f));
   });
+  // ORT's ESM entry dynamically imports its ort-wasm-*.mjs glue modules:
+  // copying only .wasm leaves the packaged runtime unable to start.
+  fs.readdirSync(ortBase).filter(function (f) {
+    return f.startsWith('ort-wasm-') && f.endsWith('.mjs');
+  }).forEach(function (f) {
+    copyFile(path.join(ortBase, f), path.join(VENDOR, 'onnxruntime-web', f));
+  });
   console.log('NOTE: copied all .wasm files; trim to the binary your testing');
   console.log('confirms (single-threaded ORT needs no threaded variants) before');
   console.log('committing, then update this script\'s copy step if filenames change.');

@@ -267,14 +267,20 @@
     });
   }
 
-  function makeProgressCallback(onProgress) {
+  function makeProgressCallback(onProgress, generation) {
     const fileProgress = new Map();
     return function (info) {
       try {
-        if (info && typeof info.file === 'string' && typeof info.progress === 'number') {
-          fileProgress.set(info.file, Math.min(1, Math.max(0, info.progress)));
+        // Stale chain (cancel → re-enable): ignore late progress so the UI
+        // cannot show loading again after cancel.
+        if (typeof generation === 'number' && loadGeneration !== generation) return;
+        // Transformers.js reports progress as a 0-100 percentage.
+        if (info && info.status === 'progress_total' && typeof info.progress === 'number') {
+          fileProgress.set('__overall__', Math.min(1, Math.max(0, info.progress / 100)));
+        } else if (info && typeof info.file === 'string' && typeof info.progress === 'number') {
+          fileProgress.set(info.file, Math.min(1, Math.max(0, info.progress / 100)));
         } else if (info && typeof info.progress === 'number') {
-          fileProgress.set('__overall__', Math.min(1, Math.max(0, info.progress)));
+          fileProgress.set('__overall__', Math.min(1, Math.max(0, info.progress / 100)));
         }
         let overall = 0;
         if (fileProgress.size > 0) {
@@ -453,7 +459,7 @@
       } catch { /* ignore */ }
 
       const consts = getHarrierConsts();
-      const progressCallback = makeProgressCallback(onProgress);
+      const progressCallback = makeProgressCallback(onProgress, generation);
       return vendor.pipeline('feature-extraction', consts.modelId, {
         dtype: 'int8',
         device: 'wasm',
@@ -517,6 +523,7 @@
   function deleteModel() {
     cancelLoad();
     liveProvider = null;
+    loadPromise = null;
     const consts = getHarrierConsts();
     const clearVectors = (function () {
       try {
@@ -535,11 +542,10 @@
       return Promise.resolve(false);
     })();
     return Promise.all([clearVectors, clearCache]).then(function () {
-      try {
-        if (window.__embeddingVendor) {
-          window.__embeddingVendor = undefined;
-        }
-      } catch { /* ignore */ }
+      // Preserve window.__embeddingVendor: the browser module map caches
+      // vendor/embedding-loader.mjs, so a re-injected script with the same
+      // URL never re-runs and the next enable would wait for the load
+      // timeout. The bridge is stateless, so keeping it is safe.
       setState('idle', 0);
       return true;
     });

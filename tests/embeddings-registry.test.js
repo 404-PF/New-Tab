@@ -79,6 +79,17 @@ describe('EmbeddingRegistry', () => {
     expect(window.EmbeddingRegistry.getActiveEmbeddingProviderId()).toBe('zero');
   });
 
+  it('activates the persisted provider even when registered second', () => {
+    window.EmbeddingRegistry.registerEmbeddingProvider(validDef('one'));
+    window.EmbeddingRegistry.registerEmbeddingProvider(validDef('two'));
+    window.EmbeddingRegistry.setActiveEmbeddingProvider('two');
+    window.EmbeddingRegistry._resetForTests();
+    window.EmbeddingRegistry.registerEmbeddingProvider(validDef('one'));
+    expect(window.EmbeddingRegistry.getActiveEmbeddingProviderId()).toBe('one');
+    window.EmbeddingRegistry.registerEmbeddingProvider(validDef('two'));
+    expect(window.EmbeddingRegistry.getActiveEmbeddingProviderId()).toBe('two');
+  });
+
   it('replaces an existing provider without duplicating', () => {
     expect(window.EmbeddingRegistry.registerEmbeddingProvider(validDef('a'))).toBe(true);
     const live = validDef('a');

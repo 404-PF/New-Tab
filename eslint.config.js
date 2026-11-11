@@ -505,7 +505,7 @@ const commonRules = {
 
 module.exports = [
   {
-    ignores: ['coverage/**', 'node_modules/**', 'eslint.config.js', '.tmp/**', 'vendor/**'],
+    ignores: ['coverage/**', 'node_modules/**', 'eslint.config.js', '.tmp/**', 'vendor/transformers/**', 'vendor/onnxruntime-*/**', 'vendor/onnxruntime-common/**'],
   },
   js.configs.recommended,
   {
@@ -591,6 +591,18 @@ module.exports = [
       sourceType: 'module',
       globals: {
         ...globals.worker,
+      },
+    },
+    rules: {
+      ...commonRules,
+    },
+  },
+  {
+    files: ['vendor/embedding-loader.mjs'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
       },
     },
     rules: {

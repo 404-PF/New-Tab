@@ -216,23 +216,11 @@ jobs:
           // literals; only plausible path-like specifiers count.
           const plausible = /^[./][\w./-]+$/;
           const queue = roots.slice();
-          // Extensionless relative imports never resolve in browsers, so a
-          // resolvable candidate is required, not just the literal path.
+          // Extensionless relative imports never resolve in browsers.
           function resolveSpec(dir, spec) {
             const base = path.normalize(path.join(dir, spec));
-            if (base.endsWith('.js') || base.endsWith('.mjs')) {
-              return fs.existsSync(base) ? base : null;
-            }
-            const candidates = [
-              base + '.js',
-              base + '.mjs',
-              path.join(base, 'index.js'),
-              path.join(base, 'index.mjs')
-            ];
-            for (const cand of candidates) {
-              if (fs.existsSync(cand)) return cand;
-            }
-            return null;
+            if (!base.endsWith('.js') && !base.endsWith('.mjs')) return null;
+            return fs.existsSync(base) ? base : null;
           }
           while (queue.length > 0) {
             const file = queue.pop();

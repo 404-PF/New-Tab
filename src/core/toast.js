@@ -271,6 +271,12 @@ const FEATURE_TOGGLE_RESYNC = {
     }
   },
   notesSemanticEnabled: function () {
+    try {
+      if (localStorage.getItem('notesSemanticEnabled') !== 'true'
+        && window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
+        window.EmbeddingService.cancelLoad();
+      }
+    } catch { /* ignore */ }
     if (typeof window.applyNotesSemanticEnabled === 'function') {
       window.applyNotesSemanticEnabled();
     }

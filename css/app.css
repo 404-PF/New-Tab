@@ -5696,6 +5696,10 @@ body.light-theme .note-tag-filter-btn.active {
   margin: -4px 0 10px;
 }
 
+body.light-theme .notes-semantic-status {
+  color: rgba(71, 85, 105, 0.95);
+}
+
 .notes-semantic-status[hidden] {
   display: none;
 }

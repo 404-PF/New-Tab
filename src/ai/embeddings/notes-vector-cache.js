@@ -44,12 +44,11 @@
     if (!hasIndexedDB()) {
       return Promise.reject(new Error('IndexedDB unavailable'));
     }
-    dbPromise = new Promise(function (resolve, reject) {
+    const pending = new Promise(function (resolve, reject) {
       let request;
       try {
         request = indexedDB.open(DB_NAME, DB_VERSION);
       } catch (e) {
-        dbPromise = null;
         reject(e);
         return;
       }
@@ -65,11 +64,14 @@
         resolve(e.target.result);
       };
       request.onerror = function (e) {
-        dbPromise = null;
         reject(e.target.error || new Error('Failed to open vector cache'));
       };
     });
-    return dbPromise;
+    dbPromise = pending;
+    pending.catch(function () {
+      if (dbPromise === pending) dbPromise = null;
+    });
+    return pending;
   }
 
   function _resetForTests() {

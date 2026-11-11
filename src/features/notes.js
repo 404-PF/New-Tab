@@ -228,6 +228,10 @@
   // re-rank). Drag/keyboard reorder resolves against these, never against a
   // stale filter pass.
   let _lastRenderedIds = [];
+  // True while the list shows semantic relevance order (computed, not
+  // user-owned): manual reorder is disabled there so the next re-rank does
+  // not undo the move.
+  let _semanticRankedView = false;
 
   // Any notes mutation invalidates in-flight semantic reranks: ranked
   // results capture `base` at start, so a delete/edit/reorder/add racing
@@ -513,6 +517,10 @@
     if (!_activeSearchQuery || !isNotesSemanticEnabled()) {
       clearSemanticDebounce();
       updateSemanticStatus('idle');
+      if (_semanticRankedView) {
+        _semanticRankedView = false;
+        renderNotes();
+      }
       return;
     }
     if (!embeddingScriptsLoaded()) {
@@ -530,7 +538,13 @@
     }
     if (!isNotesSemanticReady()) {
       clearSemanticDebounce();
-      updateSemanticStatus('loading');
+      let loading;
+      try {
+        loading = window.EmbeddingService && typeof window.EmbeddingService.getStatus === 'function'
+          ? window.EmbeddingService.getStatus().status === 'loading'
+          : false;
+      } catch { loading = false; }
+      updateSemanticStatus(loading ? 'loading' : 'idle');
       return;
     }
     clearSemanticDebounce();
@@ -585,6 +599,7 @@
       notesEmpty.style.display = 'block';
       updateNotesEmptyState(notesEmpty, notes.length === 0);
       _lastRenderedIds = [];
+      _semanticRankedView = false;
       return;
     }
     notesEmpty.style.display = 'none';
@@ -592,6 +607,7 @@
       notesList.appendChild(createNoteCard(note, index));
     });
     _lastRenderedIds = ranked.map(n => n.id);
+    _semanticRankedView = true;
     if (window.scrollX !== scrollX || window.scrollY !== scrollY) {
       window.scrollTo(scrollX, scrollY);
     }
@@ -609,6 +625,7 @@
   function renderNotes() {
     const { notesList, notesEmpty } = elements;
     if (!notesList || !notesEmpty) return;
+    _semanticRankedView = false;
 
     const active = document.activeElement;
     const isEditingNote = !_suppressRenderPreserve && active
@@ -644,8 +661,9 @@
     const filtered = getFilteredNotes();
 
     if (filtered.length === 0) {
-      notesEmpty.style.display = 'block';
-      updateNotesEmptyState(notesEmpty, notes.length === 0);
+      const semanticPending = notes.length > 0 && _activeSearchQuery && isNotesSemanticReady();
+      notesEmpty.style.display = semanticPending ? 'none' : 'block';
+      if (!semanticPending) updateNotesEmptyState(notesEmpty, notes.length === 0);
       _lastRenderedIds = [];
       if (scrollPos && (window.scrollX !== scrollPos.x || window.scrollY !== scrollPos.y)) {
         window.scrollTo(scrollPos.x, scrollPos.y);
@@ -890,6 +908,7 @@
     // edited content until the next search keystroke re-ranks; membership
     // cannot go stale since edits never add or remove notes.
     bumpSemanticGeneration();
+    updateSemanticStatus('idle');
   }
 
   function updateNoteTag(id, tag) {

@@ -110,7 +110,8 @@
           const score = hybridScore(keyword, cosine, alpha);
           return { note, score, cosine, keyword };
         }).catch(function () {
-          return { note, score: keywordScore(note, q), cosine: 0, keyword: keywordScore(note, q) };
+          const keyword = keywordScore(note, q);
+          return { note, score: hybridScore(keyword, 0, alpha), cosine: 0, keyword };
         });
       });
       return Promise.all(jobs).then(function (scored) {

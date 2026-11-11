@@ -57,6 +57,19 @@ describe('EmbeddingService state machine', () => {
     expect(await window.EmbeddingService.embedQuery('cat')).toEqual([1, 0]);
   });
 
+  it('sends the Harrier instruction prefix for queries', async () => {
+    const seen = [];
+    window.__embeddingTestHooks = {
+      pipelineFactory: function (docs) {
+        seen.push(docs.slice());
+        return Promise.resolve(docs.map(function () { return [1, 0]; }));
+      }
+    };
+    await window.EmbeddingService.ensureModel();
+    await window.EmbeddingService.embedQuery('cat');
+    expect(seen[0][0]).toBe(window.HarrierProvider.formatHarrierQuery('cat'));
+  });
+
   it('rejects embed calls before ready', async () => {
     await expect(window.EmbeddingService.embedTexts(['x'])).rejects.toThrow('not ready');
     await expect(window.EmbeddingService.embedQuery('x')).rejects.toThrow('not ready');
@@ -223,6 +236,16 @@ describe('EmbeddingService state machine', () => {
     expect(await window.EmbeddingService.deleteModel()).toBe(true);
     expect(window.EmbeddingService.isReady()).toBe(false);
     expect(window.EmbeddingService.getStatus().status).toBe('idle');
+  });
+
+  it('reloads the model after deleteModel', async () => {
+    window.__embeddingTestHooks = { pipelineFactory: mockFactoryFor({}) };
+    await window.EmbeddingService.ensureModel();
+    await window.EmbeddingService.deleteModel();
+    const provider = await window.EmbeddingService.ensureModel();
+    expect(provider).not.toBeNull();
+    expect(window.EmbeddingService.isReady()).toBe(true);
+    expect(window.EmbeddingService.getStatus().status).toBe('ready');
   });
 
   it('reads the semantic opt-in flag', () => {

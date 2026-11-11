@@ -73,9 +73,9 @@
     return true;
   }
 
-  // pipelineFactory: async (text, opts) => Float32Array|number[] for injection
-  // in tests. Production wiring is done by embedding-service.js once the
-  // Transformers pipeline is loaded.
+  // pipelineFactory: async (docs, opts) => Promise<number[][]>, one vector
+  // per input, for injection in tests. Production wiring is done by
+  // embedding-service.js once the Transformers pipeline is loaded.
   function createHarrierProvider(pipelineFactory) {
     const runPipeline = typeof pipelineFactory === 'function' ? pipelineFactory : null;
 
@@ -112,8 +112,18 @@
     try {
       const registry = window.EmbeddingRegistry;
       if (!registry || typeof registry.registerEmbeddingProvider !== 'function') return false;
-      if (registry.getEmbeddingProvider(HARRIER_PROVIDER_ID)) return true;
-      return registry.registerEmbeddingProvider(createHarrierProvider(pipelineFactory || null));
+      const existing = typeof registry.getEmbeddingProvider === 'function'
+        ? registry.getEmbeddingProvider(HARRIER_PROVIDER_ID)
+        : null;
+      if (existing) {
+        if (typeof pipelineFactory !== 'function') return true;
+        if (typeof registry.replaceEmbeddingProvider === 'function') {
+          return registry.replaceEmbeddingProvider(createHarrierProvider(pipelineFactory));
+        }
+        return true;
+      }
+      if (typeof pipelineFactory !== 'function') return false;
+      return registry.registerEmbeddingProvider(createHarrierProvider(pipelineFactory));
     } catch (e) {
       console.warn('Failed to register Harrier provider:', e);
       return false;

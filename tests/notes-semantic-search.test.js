@@ -44,10 +44,11 @@ describe('NotesSemanticSearch math', () => {
 
   it('ranks higher scores first with stable order fallback', () => {
     const ranked = window.NotesSemanticSearch.rankByScores([
+      { note: notes[2], score: 0.2 },
       { note: notes[1], score: 0.2 },
       { note: notes[0], score: 0.9 }
     ]);
-    expect(ranked.map((s) => s.note.id)).toEqual(['1', '2']);
+    expect(ranked.map((s) => s.note.id)).toEqual(['1', '2', '3']);
   });
 });
 

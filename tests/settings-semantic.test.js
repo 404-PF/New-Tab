@@ -109,10 +109,19 @@ describe('Semantic search settings', () => {
 
   it('delete clears the model and resets the flag', async () => {
     installMockService({ status: 'ready', progress: 1, error: '', modelId: 'test-model' });
+    let deleteCalled = false;
+    const originalDelete = window.EmbeddingService.deleteModel;
+    window.EmbeddingService.deleteModel = function () {
+      deleteCalled = true;
+      return originalDelete.apply(this, arguments);
+    };
     localStorage.setItem('notesSemanticEnabled', 'true');
     window.applyNotesSemanticEnabled();
     document.getElementById('notes-semantic-delete').dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(deleteCalled).toBe(true);
+    expect(window.EmbeddingService.getStatus().status).toBe('idle');
     expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
   });
 

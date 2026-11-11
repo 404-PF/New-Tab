@@ -1945,6 +1945,8 @@ function renderNotesSemanticSettings() {
       text = tSemantic('notesSemanticReady', 'Semantic search ready (on-device).');
     } else if (error) {
       text = tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
+    } else if (readSemanticDownloadState() === 'error') {
+      text = tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
     } else {
       text = tSemantic('notesSemanticStarting', 'Starting download…');
     }
@@ -2036,16 +2038,31 @@ function ensureEmbeddingScripts() {
   return embeddingScriptsPromise;
 }
 
+let semanticStartGeneration = 0;
+
 function startSemanticDownload(requestPermission) {
   const els = getSemanticSettingsElements();
   // Passive resumes (page load, no gesture) must stay silent: an error toast
   // on every New Tab load with no interaction is spam. The Settings status
   // line still reflects the failure; explicit opt-ins keep their toasts.
   const passive = requestPermission === false;
+  const startGeneration = ++semanticStartGeneration;
   renderNotesSemanticSettings();
-  ensureEmbeddingScripts().then(function () {
-    return ensureModelHostPermission(!passive);
+  // Permission first: chrome.permissions.request needs the checkbox's user
+  // gesture, and the script chain can outlive it. Re-check the opt-in flag
+  // after each async hop so an off-toggle mid-setup cancels the start.
+  ensureModelHostPermission(!passive).then(function (granted) {
+    if (startGeneration !== semanticStartGeneration) return false;
+    if (!granted) return false;
+    if (!loadNotesSemanticEnabled()) return false;
+    return ensureEmbeddingScripts().then(function () {
+      if (startGeneration !== semanticStartGeneration) return false;
+      if (!loadNotesSemanticEnabled()) return false;
+      return true;
+    });
   }).then(function (granted) {
+    if (startGeneration !== semanticStartGeneration) return;
+    if (!loadNotesSemanticEnabled()) return;
     if (!granted) {
       const persisted = persistSetting('notesSemanticEnabled', false);
       clearSemanticDownloadState();
@@ -2200,6 +2217,7 @@ function initNotesSemanticSetting() {
       if (this.checked) {
         startSemanticDownload();
       } else {
+        semanticStartGeneration += 1;
         try {
           if (window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
             window.EmbeddingService.cancelLoad();
@@ -2215,6 +2233,7 @@ function initNotesSemanticSetting() {
   if (els.cancelBtn && !els.cancelBtn.dataset.semanticBound) {
     els.cancelBtn.dataset.semanticBound = 'true';
     els.cancelBtn.addEventListener('click', function () {
+      semanticStartGeneration += 1;
       try {
         if (window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
           window.EmbeddingService.cancelLoad();

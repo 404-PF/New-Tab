@@ -53,8 +53,10 @@
       return false;
     }
     providers.set(def.id, Object.freeze({ ...def }));
-    if (activeProviderId === null) {
-      const persisted = readPersistedActiveId();
+    const persisted = readPersistedActiveId();
+    if (persisted && persisted === def.id) {
+      activeProviderId = persisted;
+    } else if (activeProviderId === null) {
       if (persisted && providers.has(persisted)) {
         activeProviderId = persisted;
       } else {

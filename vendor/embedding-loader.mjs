@@ -32,6 +32,10 @@ try {
 try {
   if (env) {
     env.allowLocalModels = false;
+    const wasm = env.backends && env.backends.onnx && env.backends.onnx.wasm;
+    if (wasm) {
+      wasm.wasmPaths = new URL('./onnxruntime-web/', import.meta.url).href;
+    }
   }
 } catch {
   // ignore

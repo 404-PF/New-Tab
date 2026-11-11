@@ -1045,7 +1045,7 @@ notesSection.innerHTML = `
       <input id="notes-search" class="notes-search-input" type="search" data-i18n="notesSearchPlaceholder" data-i18n-aria-label="notesSearchPlaceholder" placeholder="Search notes..." autocomplete="off" spellcheck="false" aria-label="Search notes" />
     </div>
     <div class="notes-tag-filter" id="notes-tag-filter"></div>
-  <div class="notes-semantic-status" id="notes-semantic-status" hidden></div>
+  <div class="notes-semantic-status" id="notes-semantic-status" hidden aria-live="polite"></div>
   <div class="notes-list" id="notes-list"></div>
   <div class="notes-empty" id="notes-empty"><p>No notes yet.</p></div>
 `;
@@ -1060,8 +1060,12 @@ semanticProgress.max = 100;
 semanticProgress.value = 0;
 semanticProgress.hidden = true;
 document.body.appendChild(semanticProgress);
-document.body.appendChild(createStubElement('button', 'notes-semantic-cancel'));
-document.body.appendChild(createStubElement('button', 'notes-semantic-delete'));
+const semanticCancel = createStubElement('button', 'notes-semantic-cancel');
+semanticCancel.hidden = true;
+document.body.appendChild(semanticCancel);
+const semanticDelete = createStubElement('button', 'notes-semantic-delete');
+semanticDelete.hidden = true;
+document.body.appendChild(semanticDelete);
 document.body.appendChild(createStubElement('div', 'notes-semantic-settings-status'));
 
 // ------------------------------------------------------------------

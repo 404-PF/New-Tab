@@ -76,8 +76,7 @@ describe('HarrierProvider registration', () => {
     expect(seen[0].docs).toEqual(['hello']);
     const q = await provider.embedQuery('hello');
     expect(q).toEqual([1, 0]);
-    expect(seen[1].docs[0]).toContain('hello');
-    expect(seen[1].docs[0]).not.toBe('hello');
+    expect(seen[1].docs[0]).toBe(window.HarrierProvider.formatHarrierQuery('hello'));
   });
 
   it('rejects without a loaded pipeline', async () => {
@@ -87,10 +86,24 @@ describe('HarrierProvider registration', () => {
   });
 
   it('registers into the generic registry', () => {
-    expect(window.HarrierProvider.registerHarrierProvider(null)).toBe(true);
+    const factory = function (docs) {
+      return Promise.resolve(docs.map(function () { return [1, 0]; }));
+    };
+    expect(window.HarrierProvider.registerHarrierProvider(factory)).toBe(true);
     expect(window.EmbeddingRegistry.getEmbeddingProvider('harrier-int8')).not.toBeNull();
-    // Second call is idempotent.
+    // Second call without a factory is idempotent.
     expect(window.HarrierProvider.registerHarrierProvider(null)).toBe(true);
     expect(window.EmbeddingRegistry.listEmbeddingProviders()).toHaveLength(1);
+    // A real factory passed after a stub replaces it.
+    const factory2 = function (docs) {
+      return Promise.resolve(docs.map(function () { return [0, 1]; }));
+    };
+    expect(window.HarrierProvider.registerHarrierProvider(factory2)).toBe(true);
+    expect(window.EmbeddingRegistry.listEmbeddingProviders()).toHaveLength(1);
+  });
+
+  it('does not register a stub without a factory', () => {
+    expect(window.HarrierProvider.registerHarrierProvider(null)).toBe(false);
+    expect(window.EmbeddingRegistry.getEmbeddingProvider('harrier-int8')).toBeNull();
   });
 });
