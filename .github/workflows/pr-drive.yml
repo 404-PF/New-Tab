@@ -22,88 +22,11 @@ on:
         description: 'Pull request number to drive'
         required: true
         type: number
-      # Set by auto-drive. Scheduled drives must not cancel a manual drive.
-      auto:
-        description: 'Scheduled drive (set by the scheduler)'
-        required: false
-        type: string
-        default: 'false'
-  schedule:
-    # Every 30 minutes. Starts a new drive round on each open same-repo PR
-    # that has no drive running. A round ends when the loop stops; the next
-    # tick starts the next round until the PR merges or closes.
-    - cron: '*/30 * * * *'
 
 # Concurrency is declared on the drive job, not here, so an unauthorized
 # /drive comment can never cancel an authorized run (same as issue-implement).
 
 jobs:
-  # Scheduled runs never reach authorize (its if excludes schedule); this job
-  # dispatches a normal workflow_dispatch run per PR instead.
-  auto-drive:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # One scheduler at a time. Overlapping ticks would both dispatch the same PR.
-    concurrency:
-      group: pr-drive-auto-scheduler
-      cancel-in-progress: false
-    permissions:
-      actions: write
-      checks: write
-      pull-requests: read
-
-    steps:
-      - name: Dispatch a drive round for each open PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          # Skip a PR while its drive is queued or running. The drive
-          # concurrency group cancels the older run, so overlapping would
-          # cut a round short. Every status is queried server-side, so a
-          # long history cannot hide an active drive.
-          ACTIVE_FILE="$RUNNER_TEMP/active-drives.txt"
-          : > "$ACTIVE_FILE"
-          for STATUS in queued in_progress waiting requested pending; do
-            gh run list --repo "$GH_REPO" --workflow pr-drive.yml --status "$STATUS" --limit 1000 \
-              --json displayTitle --jq '.[].displayTitle' >> "$ACTIVE_FILE"
-          done
-
-          # Skip PRs labelled wip (paused with /wip).
-          gh pr list --repo "$GH_REPO" --state open --limit 1000 \
-            --json number,baseRefName,isCrossRepository,labels,headRefOid \
-            --jq '.[] | select(.baseRefName == "main" and (.isCrossRepository | not)
-              and ((.labels | map(.name) | index("wip")) | not)) | "\(.number) \(.headRefOid)"' \
-            | while read -r PR_NUMBER HEAD_SHA; do
-                if grep -qxF "pr-drive #$PR_NUMBER" "$ACTIVE_FILE"; then
-                  echo "PR #$PR_NUMBER: a drive is still active; skipping."
-                  continue
-                fi
-                # No drive is running, so an in-progress pr-drive check on the
-                # head is orphaned (its completion PATCH failed). Complete it so
-                # pr-merge stops denying merges on this head.
-                if ! STALE_IDS="$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs?check_name=pr-drive&filter=latest" \
-                  --jq '.check_runs[] | select(.status != "completed") | .id')"; then
-                  echo "::warning::PR #$PR_NUMBER: could not inspect pr-drive check runs; skipping."
-                  continue
-                fi
-                for CHECK_ID in $STALE_IDS; do
-                  jq -n '{status: "completed", conclusion: "neutral",
-                    output: {title: "Drive stopped: no drive was running", summary: "Reconciled by the pr-drive scheduler."}}' \
-                    | gh api -X PATCH "repos/$GH_REPO/check-runs/$CHECK_ID" --input - >/dev/null \
-                    || echo "::warning::Could not reconcile pr-drive check run $CHECK_ID."
-                done
-                # Scheduled drives queue behind a manual drive (auto=true) and
-                # never cancel it. A failed dispatch skips only this PR.
-                if gh workflow run pr-drive.yml --repo "$GH_REPO" -f pr_number="$PR_NUMBER" -f auto=true; then
-                  echo "PR #$PR_NUMBER: dispatched a drive round."
-                else
-                  echo "::warning::PR #$PR_NUMBER: could not dispatch a drive round; continuing."
-                fi
-              done
-
   authorize:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -229,14 +152,12 @@ jobs:
     needs: authorize
     if: needs.authorize.result == 'success' && needs.authorize.outputs.proceed == 'true'
     concurrency:
-      # One drive per PR. A newer manual /drive cancels the older run. A
-      # scheduled drive (auto=true) queues instead, so it never cancels a
-      # manual drive that started after the scheduler's snapshot.
+      # One drive per PR. A newer /drive cancels the older run.
       group: >-
         ${{ (needs.authorize.outputs.proceed == 'true'
           && format('pr-drive-{0}', needs.authorize.outputs.pr_number))
           || format('pr-drive-unauthorized-{0}', github.run_id) }}
-      cancel-in-progress: ${{ github.event.inputs.auto != 'true' }}
+      cancel-in-progress: true
     # Name pinned so the single-entry matrix below doesn't rename the job.
     name: drive
     # Single source for the timeouts: timeout-minutes cannot read env, but it
@@ -959,7 +880,7 @@ jobs:
             fi
             sleep 5
           done
-          [ "$PATCHED" = true ] || echo '::warning::Could not complete the pr-drive check run; auto-drive will reconcile it.'
+          [ "$PATCHED" = true ] || echo '::warning::Could not complete the pr-drive check run; it may stay in progress and hold up pr-merge.'
 
       # A check completed with GITHUB_TOKEN does not re-trigger pr-merge, and a
       # no-commit drive does not push either. Ask pr-merge to evaluate this PR
