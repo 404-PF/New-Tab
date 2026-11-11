@@ -1,5 +1,5 @@
 // backgrounds/tools/vendor-embeddings.js - Populate vendor/ ESM runtime (issue #1186)
-// Usage: npm install --no-save @huggingface/transformers onnxruntime-web
+// Usage: npm ci --ignore-scripts (installs pinned devDependencies)
 //        node backgrounds/tools/vendor-embeddings.js
 // Copies the ESM builds + ORT WASM into vendor/ so the extension stays
 // self-hosted (MV3 script-src 'self' bans CDN). Model weights are never

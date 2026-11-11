@@ -26,9 +26,13 @@ user enables semantic search. Nothing in `vendor/` is in the
 ## Populate
 
 ```bash
-npm install --no-save @huggingface/transformers onnxruntime-web
+npm ci --ignore-scripts
 node backgrounds/tools/vendor-embeddings.js
 ```
+
+The npm packages (`@huggingface/transformers`, `onnxruntime-web`) are pinned
+in `devDependencies`, so `npm ci` installs the integrity-verified tree from
+`package-lock.json`.
 
 The script copies the ESM builds + WASM into the layout above and verifies
 `embedding-loader.mjs` resolves. Tested with `@huggingface/transformers`
@@ -42,10 +46,11 @@ delete in Settings.
 
 ## Release requirement
 
-`release.yml` packages `git archive HEAD`, so only **committed** files ship:
-populate + commit `vendor/` before tagging, or the release workflow's
-vendor-runtime check fails the run. The model weights stay out of git —
-only the JS/WASM runtime ships.
+`release.yml` builds the vendor runtime at release time from the pinned
+`devDependencies` (`npm ci --ignore-scripts` + `vendor-embeddings.js`) and
+overlays it onto the `git archive` tree, so large binaries never bloat git.
+Only the tiny loader (`vendor/embedding-loader.mjs`) is tracked. The model
+weights stay out of git — only the JS/WASM runtime ships.
 
 Before committing, verify on a real browser (unpacked extension):
 1. Enable semantic search in Settings → status reaches "ready"

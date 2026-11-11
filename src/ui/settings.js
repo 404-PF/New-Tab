@@ -2163,15 +2163,20 @@ function ensureModelHostPermission(requestIfMissing) {
   // and Chrome rejects the request. request() resolves true when already
   // granted, so skipping contains() never double-prompts.
   if (requestIfMissing) {
-    // No try/catch here: a synchronous throw propagates to the caller's
-    // .catch (fail closed), and wrapping the promise in try triggers
-    // S4822 without adding coverage (rejection is already handled below).
-    return Promise.resolve(perms.request(query)).then(function (granted) {
+    // perms.request() may throw synchronously (e.g. expired user gesture).
+    // Promise.resolve(perms.request()) would let that throw escape
+    // startSemanticDownload's .catch (it is evaluated before the promise
+    // exists). The Promise constructor captures a sync throw as a rejection
+    // instead, so the toggle resets via the normal failure path. No
+    // try/catch here to avoid S4822 (rejection is handled below).
+    return new Promise(function (resolve) { resolve(perms.request(query)); }).then(function (granted) {
       return !!granted;
     }, function () { return false; });
   }
   // Passive resumes carry no gesture: only proceed when already granted.
-  return Promise.resolve(perms.contains(query)).then(function (has) {
+  // Same sync-throw guard as above so a throwing contains() rejects instead
+  // of escaping the caller's .catch.
+  return new Promise(function (resolve) { resolve(perms.contains(query)); }).then(function (has) {
     return !!has;
   }, function () { return false; });
 }
@@ -2304,8 +2309,13 @@ function bindSemanticDelete(els) {
     };
     try {
       if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
-        window.EmbeddingService.deleteModel().then(function () {
-          finishDelete(true);
+        window.EmbeddingService.deleteModel().then(function (ok) {
+          // deleteModel resolves false when vector or cache cleanup fails:
+          // keep the toggle so the leftover data stays visible/retryable.
+          finishDelete(ok !== false);
+          if (ok === false && typeof window.showToast === 'function') {
+            window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+          }
         }).catch(function (err) {
           console.warn('Failed to delete embedding model:', err);
           finishDelete(false);

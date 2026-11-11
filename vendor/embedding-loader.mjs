@@ -5,7 +5,7 @@
 // demand (lazy opt-in only, never in bootstrap scriptSources).
 //
 // Populate vendor/ with:
-//   npm install --no-save @huggingface/transformers onnxruntime-web
+//   npm ci --ignore-scripts (pinned devDependencies)
 //   node backgrounds/tools/vendor-embeddings.js  (see vendor/README.md)
 //
 // Expected layout after population:

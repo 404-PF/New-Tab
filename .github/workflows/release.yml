@@ -175,12 +175,14 @@ jobs:
 
       # The on-device embedding runtime (issue #1186) is self-hosted under
       # vendor/ because MV3 bans CDN. The JS/WASM runtime is built at release
-      # time (npm + vendor-embeddings.js) so large binaries never bloat git;
-      # only the tiny loader (vendor/embedding-loader.mjs) is tracked.
+      # time (vendor-embeddings.js) so large binaries never bloat git; only
+      # the tiny loader (vendor/embedding-loader.mjs) is tracked. The npm
+      # packages are pinned in devDependencies, so the `npm ci
+      # --ignore-scripts` step above already installed the integrity-verified
+      # tree from package-lock.json — no registry resolution here.
       - name: Populate embedding vendor runtime
         run: |
           set -euo pipefail
-          npm install --no-save --ignore-scripts @huggingface/transformers@4.3.2 onnxruntime-web@1.31.1
           node backgrounds/tools/vendor-embeddings.js
           for f in vendor/embedding-loader.mjs vendor/transformers/transformers.js vendor/onnxruntime-web/ort.web.mjs vendor/onnxruntime-web/ort.webgpu.min.mjs; do
             if [ ! -f "$f" ]; then
@@ -270,11 +272,24 @@ jobs:
           git archive --format=tar HEAD | tar x -C "$BUILD_DIR"
           # git archive ships tracked files only; overlay the release-time
           # vendor runtime (built above, never committed) so the opt-in works.
+          # Fail closed: any missing copy aborts the release instead of
+          # shipping a ZIP without the embedding runtime.
           mkdir -p "$BUILD_DIR/vendor"
-          cp vendor/embedding-loader.mjs "$BUILD_DIR/vendor/" 2>/dev/null || true
-          if [ -d vendor/transformers ]; then mkdir -p "$BUILD_DIR/vendor/transformers"; cp vendor/transformers/* "$BUILD_DIR/vendor/transformers/" 2>/dev/null || true; fi
-          if [ -d vendor/onnxruntime-web ]; then mkdir -p "$BUILD_DIR/vendor/onnxruntime-web"; cp vendor/onnxruntime-web/* "$BUILD_DIR/vendor/onnxruntime-web/" 2>/dev/null || true; fi
-          if [ -d vendor/onnxruntime-common ]; then mkdir -p "$BUILD_DIR/vendor/onnxruntime-common"; cp vendor/onnxruntime-common/* "$BUILD_DIR/vendor/onnxruntime-common/" 2>/dev/null || true; fi
+          cp vendor/embedding-loader.mjs "$BUILD_DIR/vendor/"
+          mkdir -p "$BUILD_DIR/vendor/transformers" "$BUILD_DIR/vendor/onnxruntime-web" "$BUILD_DIR/vendor/onnxruntime-common"
+          cp vendor/transformers/* "$BUILD_DIR/vendor/transformers/"
+          cp vendor/onnxruntime-web/* "$BUILD_DIR/vendor/onnxruntime-web/"
+          cp vendor/onnxruntime-common/* "$BUILD_DIR/vendor/onnxruntime-common/"
+          for f in vendor/embedding-loader.mjs vendor/transformers/transformers.js vendor/onnxruntime-web/ort.web.mjs vendor/onnxruntime-web/ort.webgpu.min.mjs; do
+            if [ ! -f "$BUILD_DIR/$f" ]; then
+              echo "::error::Missing $BUILD_DIR/$f after vendor overlay"
+              exit 1
+            fi
+          done
+          if ! ls "$BUILD_DIR"/vendor/onnxruntime-web/*.wasm >/dev/null 2>&1; then
+            echo "::error::Missing $BUILD_DIR/vendor/onnxruntime-web/*.wasm after vendor overlay"
+            exit 1
+          fi
           echo "BUILD_DIR=$BUILD_DIR" >> "$GITHUB_ENV"
 
       - name: Strip development-only files

@@ -550,8 +550,10 @@
         vectorClearFn = window.NotesVectorCache.clearCachedVectors;
       }
     } catch { vectorClearFn = null; }
+    // Wrap the call so a synchronous throw becomes a rejection instead of
+    // escaping deleteModel synchronously (no try/catch return, per S4822).
     const clearVectors = vectorClearFn
-      ? vectorClearFn.call(window.NotesVectorCache, consts.modelId)
+      ? new Promise(function (resolve) { resolve(vectorClearFn.call(window.NotesVectorCache, consts.modelId)); })
       : Promise.resolve(true);
     let cacheDeleteFn = null;
     try {
@@ -561,9 +563,9 @@
     } catch { cacheDeleteFn = null; }
     // caches.delete resolves false when absent (success) and only rejects
     // on failure; normalize absent to true so a missing cache does not
-    // report a failed delete.
+    // report a failed delete. Same sync-throw guard as above.
     const clearCache = cacheDeleteFn
-      ? cacheDeleteFn().then(function () { return true; }).catch(function () { return false; })
+      ? new Promise(function (resolve) { resolve(cacheDeleteFn()); }).then(function () { return true; }).catch(function () { return false; })
       : Promise.resolve(true);
     return Promise.all([clearVectors, clearCache]).then(function (results) {
       // Preserve window.__embeddingVendor: the browser module map caches
