@@ -94,12 +94,12 @@
       return Promise.resolve([]);
     }
     if (!deps || typeof deps.embedQuery !== 'function' || typeof deps.getNoteVector !== 'function') {
-      return Promise.resolve(keywordFilter(notes, q));
+      return Promise.resolve(keywordFilter(notes, q).slice(0, maxResults));
     }
 
     return deps.embedQuery(q).then(function (queryVector) {
       if (!Array.isArray(queryVector) || queryVector.length === 0) {
-        return keywordFilter(notes, q);
+        return keywordFilter(notes, q).slice(0, maxResults);
       }
       const jobs = notes.map(function (note) {
         return deps.getNoteVector(note).then(function (vec) {
@@ -117,7 +117,7 @@
       return Promise.all(jobs).then(function (scored) {
         const hasSignal = scored.some(function (s) { return s.cosine !== 0 || s.keyword !== 0; });
         if (!hasSignal) {
-          return keywordFilter(notes, q);
+          return keywordFilter(notes, q).slice(0, maxResults);
         }
         const ranked = rankByScores(scored).filter(function (s) { return s.score >= minScore; });
         const limited = ranked.slice(0, maxResults).map(function (s) {
@@ -128,12 +128,12 @@
         // If semantic filtering is too aggressive (empty), fall back to
         // keyword matches rather than a surprising empty list.
         if (limited.length === 0) {
-          return keywordFilter(notes, q);
+          return keywordFilter(notes, q).slice(0, maxResults);
         }
         return limited;
       });
     }).catch(function () {
-      return keywordFilter(notes, q);
+      return keywordFilter(notes, q).slice(0, maxResults);
     });
   }
 

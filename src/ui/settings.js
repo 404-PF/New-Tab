@@ -1910,52 +1910,59 @@ function tSemantic(key, fallback, replacements) {
   return fallback;
 }
 
+function getSemanticServiceStatus() {
+  try {
+    if (window.EmbeddingService && typeof window.EmbeddingService.getStatus === 'function') {
+      return window.EmbeddingService.getStatus();
+    }
+  } catch { /* ignore service missing */ }
+  return { status: 'idle', progress: 0, error: '' };
+}
+
+function resolveSemanticStatusText(enabled, svcStatus) {
+  if (!enabled) return '';
+  if (enabled && svcStatus.status === 'loading') {
+    const pct = Math.round((svcStatus.progress || 0) * 100);
+    return tSemantic('notesSemanticDownloading', 'Downloading on-device model… ' + pct + '%', { percent: pct });
+  }
+  if (enabled && svcStatus.status === 'ready') {
+    return tSemantic('notesSemanticReady', 'Semantic search ready (on-device).');
+  }
+  if (enabled && svcStatus.status === 'error') {
+    return tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
+  }
+  if (readSemanticDownloadState() === 'error') {
+    return tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
+  }
+  return tSemantic('notesSemanticStarting', 'Starting download…');
+}
+
 function renderNotesSemanticSettings() {
   const els = getSemanticSettingsElements();
   const enabled = loadNotesSemanticEnabled();
-  let svcStatus = { status: 'idle', progress: 0, error: '' };
-  try {
-    if (window.EmbeddingService && typeof window.EmbeddingService.getStatus === 'function') {
-      svcStatus = window.EmbeddingService.getStatus();
-    }
-  } catch { /* ignore service missing */ }
-
+  const svcStatus = getSemanticServiceStatus();
   if (els.checkbox) els.checkbox.checked = enabled;
   const loading = enabled && svcStatus.status === 'loading';
   const ready = enabled && svcStatus.status === 'ready';
   const error = enabled && svcStatus.status === 'error';
-
   if (els.progress) {
     els.progress.hidden = !loading;
-    if (loading) {
-      els.progress.value = Math.round((svcStatus.progress || 0) * 100);
-    }
+    if (loading) els.progress.value = Math.round((svcStatus.progress || 0) * 100);
   }
   if (els.cancelBtn) els.cancelBtn.hidden = !loading;
   if (els.deleteBtn) els.deleteBtn.hidden = !(ready || error);
-
-  if (els.status) {
-    let text;
-    if (!enabled) {
-      text = '';
-    } else if (loading) {
-      const pct = Math.round((svcStatus.progress || 0) * 100);
-      text = tSemantic('notesSemanticDownloading', 'Downloading on-device model… ' + pct + '%', { percent: pct });
-    } else if (ready) {
-      text = tSemantic('notesSemanticReady', 'Semantic search ready (on-device).');
-    } else if (error) {
-      text = tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
-    } else if (readSemanticDownloadState() === 'error') {
-      text = tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
-    } else {
-      text = tSemantic('notesSemanticStarting', 'Starting download…');
-    }
-    els.status.textContent = text;
-  }
+  if (els.status) els.status.textContent = resolveSemanticStatusText(enabled, svcStatus);
 }
 
 function applyNotesSemanticEnabled() {
   renderNotesSemanticSettings();
+  // Disabling must drop semantic relevance order; otherwise the keyword
+  // pass keeps showing the last ranked list until another render happens.
+  try {
+    if (!loadNotesSemanticEnabled() && typeof window.renderNotes === 'function') {
+      window.renderNotes();
+    }
+  } catch { /* ignore */ }
 }
 
 // The embedding modules stay out of the bootstrap scriptSources path
@@ -2144,16 +2151,22 @@ function ensureModelHostPermission(requestIfMissing) {
       return Promise.resolve(true);
     }
     const query = { origins: MODEL_ORIGINS };
+    // Gestured opt-ins must call request() synchronously in the checkbox
+    // handler tick: awaiting contains() first lets the user gesture expire
+    // and Chrome rejects the request. request() resolves true when already
+    // granted, so skipping contains() never double-prompts.
+    if (requestIfMissing) {
+      try {
+        return perms.request(query).then(function (granted) {
+          return !!granted;
+        }, function () { return false; });
+      } catch {
+        return Promise.resolve(false);
+      }
+    }
+    // Passive resumes carry no gesture: only proceed when already granted.
     return perms.contains(query).then(function (has) {
-      if (has) return true;
-      // Page-load resumes carry no user gesture, so they only proceed when
-      // access was already granted; the toggle path asks explicitly.
-      if (!requestIfMissing) return false;
-      return perms.request(query).then(function (granted) {
-        return !!granted;
-      }, function () { return false; });
-      // Fail closed: a broken check must not launch a ~300MB fetch that is
-      // guaranteed to fail; the denied path shows the retryable error.
+      return !!has;
     }, function () { return false; });
   } catch {
     return Promise.resolve(true);
@@ -2233,86 +2246,101 @@ function startSemanticModelDownload(els, passive) {
   renderNotesSemanticSettings();
 }
 
-function initNotesSemanticSetting() {
-  const els = getSemanticSettingsElements();
-  if (els.checkbox && !els.checkbox.dataset.semanticBound) {
-    els.checkbox.dataset.semanticBound = 'true';
-    els.checkbox.addEventListener('change', function () {
-      const persisted = persistSetting('notesSemanticEnabled', this.checked);
+function cancelSemanticLoad() {
+  semanticStartGeneration += 1;
+  try {
+    if (window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
+      window.EmbeddingService.cancelLoad();
+    }
+  } catch { /* ignore */ }
+}
+
+function bindSemanticCheckbox(els) {
+  if (!els.checkbox || els.checkbox.dataset.semanticBound) return;
+  els.checkbox.dataset.semanticBound = 'true';
+  els.checkbox.addEventListener('change', function () {
+    const persisted = persistSetting('notesSemanticEnabled', this.checked);
+    renderNotesSemanticSettings();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+      return;
+    }
+    if (this.checked) {
+      startSemanticDownload();
+      return;
+    }
+    cancelSemanticLoad();
+    // Toggle-off is a deliberate stop, not an interruption: drop the
+    // resume marker so a later load cannot mistake it for a crash.
+    clearSemanticDownloadState();
+    renderNotesSemanticSettings();
+  });
+}
+
+function bindSemanticCancel(els) {
+  if (!els.cancelBtn || els.cancelBtn.dataset.semanticBound) return;
+  els.cancelBtn.dataset.semanticBound = 'true';
+  els.cancelBtn.addEventListener('click', function () {
+    cancelSemanticLoad();
+    clearSemanticDownloadState();
+    const persisted = persistSetting('notesSemanticEnabled', false);
+    renderNotesSemanticSettings();
+    if (!persisted) reportFeatureToggleSaveError();
+  });
+}
+
+function bindSemanticDelete(els) {
+  if (!els.deleteBtn || els.deleteBtn.dataset.semanticBound) return;
+  els.deleteBtn.dataset.semanticBound = 'true';
+  els.deleteBtn.addEventListener('click', function () {
+    const finishDelete = function (ok) {
+      if (ok) clearSemanticDownloadState();
+      const persisted = persistSetting('notesSemanticEnabled', ok ? false : loadNotesSemanticEnabled());
       renderNotesSemanticSettings();
-      if (!persisted) {
-        reportFeatureToggleSaveError();
+      if (!persisted) reportFeatureToggleSaveError();
+    };
+    try {
+      if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
+        window.EmbeddingService.deleteModel().then(function () {
+          finishDelete(true);
+        }).catch(function (err) {
+          console.warn('Failed to delete embedding model:', err);
+          finishDelete(false);
+          if (typeof window.showToast === 'function') {
+            window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+          }
+        });
         return;
       }
-      if (this.checked) {
-        startSemanticDownload();
-      } else {
-        semanticStartGeneration += 1;
-        try {
-          if (window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
-            window.EmbeddingService.cancelLoad();
-          }
-        } catch { /* ignore */ }
-        // Toggle-off is a deliberate stop, not an interruption: drop the
-        // resume marker so a later load cannot mistake it for a crash.
-        clearSemanticDownloadState();
-        renderNotesSemanticSettings();
-      }
-    });
-  }
-  if (els.cancelBtn && !els.cancelBtn.dataset.semanticBound) {
-    els.cancelBtn.dataset.semanticBound = 'true';
-    els.cancelBtn.addEventListener('click', function () {
-      semanticStartGeneration += 1;
-      try {
-        if (window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
-          window.EmbeddingService.cancelLoad();
-        }
-      } catch { /* ignore */ }
-      clearSemanticDownloadState();
-      const persisted = persistSetting('notesSemanticEnabled', false);
-      renderNotesSemanticSettings();
-      if (!persisted) {
-        reportFeatureToggleSaveError();
-      }
-    });
-  }
-  if (els.deleteBtn && !els.deleteBtn.dataset.semanticBound) {
-    els.deleteBtn.dataset.semanticBound = 'true';
-    els.deleteBtn.addEventListener('click', function () {
-      // Ordering matters: persist + clear only after the async delete
-      // settles. A reload mid-delete then resumes from a truthful state,
-      // and a failed delete keeps the flag so the error (with its Delete
-      // button) stays retryable instead of masking leftover files.
-      const finishDelete = function (ok) {
-        if (ok) {
-          clearSemanticDownloadState();
-        }
-        // On failure re-persist the unchanged flag: a no-op write that still
-        // surfaces a simultaneous bridge rejection via the shared reporting.
-        const persisted = persistSetting('notesSemanticEnabled', ok ? false : loadNotesSemanticEnabled());
-        renderNotesSemanticSettings();
-        if (!persisted) {
-          reportFeatureToggleSaveError();
-        }
-      };
-      try {
-        if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
-          window.EmbeddingService.deleteModel().then(function () {
-            finishDelete(true);
-          }).catch(function (err) {
-            console.warn('Failed to delete embedding model:', err);
-            finishDelete(false);
-            if (typeof window.showToast === 'function') {
-              window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
-            }
-          });
-          return;
-        }
-      } catch { /* ignore */ }
-      finishDelete(true);
-    });
-  }
+    } catch { /* ignore */ }
+    finishDelete(true);
+  });
+}
+
+function resumeSemanticIfNeeded() {
+  try {
+    if (!loadNotesSemanticEnabled()) return;
+    let alreadyReady = false;
+    try {
+      alreadyReady = !!(
+        window.EmbeddingService
+        && typeof window.EmbeddingService.isReady === 'function'
+        && window.EmbeddingService.isReady()
+      );
+    } catch { alreadyReady = false; }
+    if (alreadyReady) return;
+    const downloadState = readSemanticDownloadState();
+    if (downloadState === 'loading' || downloadState === 'ready' || downloadState === null) {
+      startSemanticDownload(false);
+    }
+  } catch { /* ignore */ }
+}
+
+function initNotesSemanticSetting() {
+  const els = getSemanticSettingsElements();
+  bindSemanticCheckbox(els);
+  bindSemanticCancel(els);
+  bindSemanticDelete(els);
   try {
     document.removeEventListener('embedding-status', renderNotesSemanticSettings);
   } catch { /* ignore */ }
@@ -2320,36 +2348,7 @@ function initNotesSemanticSetting() {
     document.addEventListener('embedding-status', renderNotesSemanticSettings);
   } catch { /* ignore */ }
   renderNotesSemanticSettings();
-  // Resume when the marker says the model should be here: 'loading' (a
-  // previous page died mid-fetch) or 'ready' (browser restart dropped the
-  // in-memory service; Cache Storage usually still holds the weights, so
-  // re-init is a fast cache hit — a rare eviction re-downloads in the
-  // background with progress visible in Settings). A null marker with the
-  // flag on (manual storage edit, or a restore that bypassed the prime
-  // below) is treated like 'loading' when nothing is running yet. 'error'
-  // never auto-retries: re-fetching ~300MB on every New Tab load would burn
-  // metered data — the user retries by toggling off and on. Already-ready
-  // services are skipped outright: without this, every initSettings() call
-  // (language change, import, settings re-open) would churn loading→ready
-  // and toast success with no action taken. Permission is not requested
-  // here (no gesture on page load); the resume proceeds only if already
-  // granted, else it silently resets the flag via the denied path.
-  try {
-    if (loadNotesSemanticEnabled()) {
-      let alreadyReady = false;
-      try {
-        alreadyReady = !!(window.EmbeddingService
-          && typeof window.EmbeddingService.isReady === 'function'
-          && window.EmbeddingService.isReady());
-      } catch { alreadyReady = false; }
-      if (!alreadyReady) {
-        const downloadState = readSemanticDownloadState();
-        if (downloadState === 'loading' || downloadState === 'ready' || downloadState === null) {
-          startSemanticDownload(false);
-        }
-      }
-    }
-  } catch { /* ignore */ }
+  resumeSemanticIfNeeded();
 }
 
 // Called by the data-manager import flow before it re-runs initSettings: a

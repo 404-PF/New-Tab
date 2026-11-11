@@ -2,8 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 import { injectScript } from './helpers/inject-script.js';
 
 function mockFactoryFor(vectorsByText) {
-  return function (docs, opts) {
-    void opts;
+  return function (docs) {
     const list = Array.isArray(docs) ? docs : [docs];
     return Promise.resolve(list.map(function (text) {
       const hit = Object.keys(vectorsByText).find(function (k) { return text.includes(k); });
@@ -218,6 +217,39 @@ describe('EmbeddingService state machine', () => {
     off();
     expect(seen).toContain('loading');
     expect(seen).toContain('ready');
+  });
+
+  it('prefers aggregate progress_total over per-file average and ignores stale generations', async () => {
+    let capturedCallback = null;
+    const fakeExtractor = function () { return Promise.resolve({ data: [1, 0] }); };
+    fakeExtractor.tokenizer = {
+      encode: function (text) { return Array.from(text).map(function (_, i) { return i + 1; }); },
+      decode: function (ids) { return 'x'.repeat(ids.length); }
+    };
+    window.__embeddingTestHooks = {
+      vendorLoader: function () {
+        return Promise.resolve({
+          pipeline: function (task, modelId, opts) {
+            capturedCallback = opts && opts.progress_callback;
+            // Per-file events average to 0.3; aggregate overrides to 0.8.
+            capturedCallback({ file: 'a.bin', progress: 20 });
+            capturedCallback({ file: 'b.bin', progress: 40 });
+            expect(window.EmbeddingService.getStatus().progress).toBeCloseTo(0.3, 2);
+            capturedCallback({ status: 'progress_total', progress: 80 });
+            expect(window.EmbeddingService.getStatus().progress).toBeCloseTo(0.8, 2);
+            return Promise.resolve(fakeExtractor);
+          },
+          env: {},
+          ort: { env: { wasm: {} } }
+        });
+      }
+    };
+    await window.EmbeddingService.ensureModel();
+    expect(window.EmbeddingService.getStatus().status).toBe('ready');
+    // Stale generation (cancel bumps the token) must throw instead of
+    // re-showing loading after cancel.
+    window.EmbeddingService.cancelLoad();
+    expect(function () { capturedCallback({ file: 'c.bin', progress: 90 }); }).toThrow('cancelled');
   });
 
   it('cancelLoad resets a loading state', () => {

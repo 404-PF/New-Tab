@@ -271,10 +271,16 @@
     const fileProgress = new Map();
     let aggregateProgress = null;
     return function (info) {
+      // Stale chain (cancel → re-enable): abort the pipeline via the progress
+      // hook so a cancelled download does not keep fetching in the
+      // background. Transformers.js treats a throw in progress_callback as a
+      // failure, which surfaces as AbortError and is ignored via generation.
+      if (typeof generation === 'number' && loadGeneration !== generation) {
+        const cancelErr = new Error('Embedding load cancelled');
+        cancelErr.name = 'AbortError';
+        throw cancelErr;
+      }
       try {
-        // Stale chain (cancel → re-enable): ignore late progress so the UI
-        // cannot show loading again after cancel.
-        if (typeof generation === 'number' && loadGeneration !== generation) return;
         // Transformers.js reports progress as a 0-100 percentage. The
         // aggregate `progress_total` event already accounts for every file,
         // so prefer it outright and only average per-file progress while no
@@ -337,8 +343,7 @@
       return input.slice(0, maxTokens * 4);
     }
 
-    return function (docs, opts) {
-      void opts;
+    return function (docs) {
       const list = Array.isArray(docs) ? docs : [docs];
       const jobs = list.map(function (text) {
         let result;
@@ -539,23 +544,27 @@
           return window.NotesVectorCache.clearCachedVectors(consts.modelId);
         }
       } catch { /* ignore */ }
-      return Promise.resolve(false);
+      return Promise.resolve(true);
     })();
     const clearCache = (function () {
       try {
         if (typeof caches !== 'undefined' && caches && typeof caches.delete === 'function') {
-          return caches.delete(TRANSFORMERS_CACHE_NAME).catch(function () { return false; });
+          // caches.delete resolves false when absent (success) and only
+          // rejects on failure; normalize absent to true so a missing cache
+          // does not report a failed delete.
+          return caches.delete(TRANSFORMERS_CACHE_NAME).then(function () { return true; }).catch(function () { return false; });
         }
       } catch { /* ignore */ }
-      return Promise.resolve(false);
+      return Promise.resolve(true);
     })();
-    return Promise.all([clearVectors, clearCache]).then(function () {
+    return Promise.all([clearVectors, clearCache]).then(function (results) {
       // Preserve window.__embeddingVendor: the browser module map caches
       // vendor/embedding-loader.mjs, so a re-injected script with the same
       // URL never re-runs and the next enable would wait for the load
       // timeout. The bridge is stateless, so keeping it is safe.
+      const ok = results[0] !== false && results[1] !== false;
       setState('idle', 0);
-      return true;
+      return ok;
     });
   }
 

@@ -912,11 +912,10 @@
       return;
     }
     invalidateNoteVector(id);
-    // Drop in-flight reranks (their base predates this edit) but deliberately
-    // do NOT re-render or schedule one: the textarea is focused, and typing
-    // must never churn the list. The displayed order goes stale w.r.t. the
-    // edited content until the next search keystroke re-ranks; membership
-    // cannot go stale since edits never add or remove notes.
+    // Drop in-flight reranks (their base predates this edit) but do NOT
+    // re-render here: the textarea is focused and typing must never churn
+    // the list. Blur re-ranks via handleNotesBlur so stale membership
+    // (edited text no longer matching the query) settles once editing ends.
     bumpSemanticGeneration();
     updateSemanticStatus('idle');
   }
@@ -1398,6 +1397,9 @@
       return;
     }
     updateNoteText(ta.dataset.id, text);
+    // Editing may have changed search membership; re-rank now that the
+    // editor is blurred (runSemanticRerank skips while a textarea is focused).
+    if (_activeSearchQuery && isNotesSemanticEnabled()) scheduleSemanticRerank();
   }
 
   function handleNotesKeydown(e) {
@@ -1677,6 +1679,7 @@ try {
   window.updateNoteText = updateNoteText;
   window.updateNoteTag = updateNoteTag;
   window.reorderNotes = reorderNotes;
+  window.renderNotes = renderNotes;
   window.getFilteredNotes = getFilteredNotes;
   window.getFilteredNotesRanked = getFilteredNotesRanked;
   window.isNotesSemanticEnabled = isNotesSemanticEnabled;

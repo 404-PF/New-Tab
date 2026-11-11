@@ -21,8 +21,12 @@
   function hashNoteText(text) {
     const input = typeof text === 'string' ? text : String(text || '');
     let hash = 5381;
+    // Int32Array enforces the 32-bit wrap that `| 0` would do (Sonar prefers
+    // Math.trunc over `| 0`, but truncation alone would not wrap).
+    const buf = new Int32Array(1);
     for (let i = 0; i < input.length; i += 1) {
-      hash = (((hash << 5) + hash) + input.charCodeAt(i)) | 0;
+      buf[0] = ((hash << 5) + hash + input.charCodeAt(i));
+      hash = buf[0];
     }
     return (hash >>> 0).toString(16);
   }
@@ -148,73 +152,94 @@
   // Deletes run in a single readwrite transaction: keys are resolved and
   // removed atomically, so an edit racing the delete cannot leave a stale
   // vector behind that a later hash check would silently resurrect.
+  function openWriteStore(database, errorMessage) {
+    let tx;
+    try {
+      tx = database.transaction([STORE_NAME], 'readwrite');
+    } catch (e) {
+      console.warn(errorMessage, e);
+      return null;
+    }
+    let store;
+    try {
+      store = tx.objectStore(STORE_NAME);
+    } catch (e) {
+      console.warn(errorMessage, e);
+      return null;
+    }
+    return { tx, store };
+  }
+
+  function removeKeysFromStore(store, keys, errorMessage) {
+    const list = Array.isArray(keys) ? keys : [];
+    for (let i = 0; i < list.length; i += 1) {
+      try {
+        store.delete(list[i]);
+      } catch (e) {
+        console.warn(errorMessage, e);
+      }
+    }
+  }
+
+  function deleteByIndex(store, match, done, errorMessage) {
+    let keySource = null;
+    try {
+      keySource = match.index ? store.index(match.index).getAllKeys(match.value) : null;
+    } catch {
+      keySource = null;
+    }
+    if (!keySource) return false;
+    keySource.onsuccess = function () {
+      removeKeysFromStore(store, keySource.result, errorMessage);
+    };
+    // A failed lookup must not report purged: tx.oncomplete would otherwise
+    // resolve true with nothing deleted.
+    keySource.onerror = function () { done(false); };
+    return true;
+  }
+
+  function deleteByFullScan(store, match, done, errorMessage) {
+    let allReq = null;
+    try {
+      allReq = store.getAll();
+    } catch (e) {
+      console.warn(errorMessage, e);
+      done(false);
+      return;
+    }
+    allReq.onsuccess = function () {
+      const rows = Array.isArray(allReq.result) ? allReq.result : [];
+      const keys = [];
+      for (let i = 0; i < rows.length; i += 1) {
+        if (rows[i] && match.test(rows[i])) keys.push(rows[i].key);
+      }
+      removeKeysFromStore(store, keys, errorMessage);
+    };
+    allReq.onerror = function () { done(false); };
+  }
+
   function deleteInSingleTransaction(match, errorMessage) {
+    // No IndexedDB (jsdom tests, private mode): nothing is stored, so a
+    // delete is vacuously successful instead of a failure.
+    if (!hasIndexedDB()) return Promise.resolve(true);
     return openVectorsDB().then(function (database) {
       return new Promise(function (resolve) {
         let settled = false;
         const done = function (ok) {
-          if (!settled) {
-            settled = true;
-            resolve(ok);
-          }
+          if (settled) return;
+          settled = true;
+          resolve(ok);
         };
-        let tx;
-        try {
-          tx = database.transaction([STORE_NAME], 'readwrite');
-        } catch (e) {
-          console.warn(errorMessage, e);
+        const opened = openWriteStore(database, errorMessage);
+        if (!opened) {
           done(false);
           return;
         }
-        tx.oncomplete = function () { done(true); };
-        tx.onabort = function () { done(false); };
-        tx.onerror = function () { done(false); };
-        let store = null;
-        try {
-          store = tx.objectStore(STORE_NAME);
-        } catch (e) {
-          console.warn(errorMessage, e);
-          done(false);
-          return;
-        }
-        const removeKeys = function (keys) {
-          (Array.isArray(keys) ? keys : []).forEach(function (k) {
-            try {
-              store.delete(k);
-            } catch (e) {
-              console.warn(errorMessage, e);
-            }
-          });
-        };
-        let keySource = null;
-        try {
-          keySource = match.index
-            ? store.index(match.index).getAllKeys(match.value)
-            : null;
-        } catch {
-          keySource = null;
-        }
-        if (keySource) {
-          keySource.onsuccess = function () { removeKeys(keySource.result); };
-          // A failed lookup must not report purged: the finally below would
-          // otherwise resolve true via tx.oncomplete with nothing deleted.
-          keySource.onerror = function () { done(false); };
-          return;
-        }
-        let allReq = null;
-        try {
-          allReq = store.getAll();
-        } catch (e) {
-          console.warn(errorMessage, e);
-          done(false);
-          return;
-        }
-        allReq.onsuccess = function () {
-          removeKeys((Array.isArray(allReq.result) ? allReq.result : [])
-            .filter(function (r) { return r && match.test(r); })
-            .map(function (r) { return r.key; }));
-        };
-        allReq.onerror = function () { done(false); };
+        opened.tx.oncomplete = function () { done(true); };
+        opened.tx.onabort = function () { done(false); };
+        opened.tx.onerror = function () { done(false); };
+        if (deleteByIndex(opened.store, match, done, errorMessage)) return;
+        deleteByFullScan(opened.store, match, done, errorMessage);
       });
     }).catch(function (error) {
       console.warn(errorMessage, error);

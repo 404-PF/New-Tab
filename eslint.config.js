@@ -428,6 +428,7 @@ const testGlobals = {
   updateNoteText: 'readonly',
   updateNoteTag: 'readonly',
   reorderNotes: 'readonly',
+  renderNotes: 'readonly',
   getFilteredNotes: 'readonly',
   getFilteredNotesRanked: 'readonly',
   isNotesSemanticEnabled: 'readonly',
