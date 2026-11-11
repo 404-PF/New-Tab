@@ -9,7 +9,7 @@
 // Consumers mark elements with `data-liquid-glass="icon|panel|pill"` (or call
 // `LiquidGlass.enhance(el, opts)`); the observer enhances marked elements that
 // are added to the DOM later, such as JS-built popovers. The T1 hero widgets
-// (search, motto, weather, clock, focus indicator) and the app icons mark
+// (motto, weather, focus indicator) and the app icons mark
 // themselves through markHeroWidgets()/markAppIcons().
 
 (function () {
@@ -433,14 +433,13 @@
 
   // ---- T1 hero widgets + mouse elasticity --------------------------------
 
-  // The five tier-1 hero surfaces (#1157) are marked with their own size
-  // class so enhanceAll()/the observer inject the glass layers exactly like
-  // the app icons; the same selectors drive mouse elasticity.
+  // The tier-1 hero surfaces (#1157) are marked with their own size class so
+  // enhanceAll()/the observer inject the glass layers exactly like the app
+  // icons; the same selectors drive mouse elasticity. The search bar and clock
+  // are not heroes and stay on the plain Classic markup.
   const HERO_GLASS = [
-    { selector: '.search-bar-wrapper', sizeClass: 'pill' },
     { selector: '#motto-container', sizeClass: 'panel' },
     { selector: '#weather-widget', sizeClass: 'panel' },
-    { selector: '#clock', sizeClass: 'panel' },
     { selector: '#focus-mode-indicator', sizeClass: 'pill' }
   ];
   const ELASTIC_SELECTORS = HERO_GLASS.map((hero) => hero.selector);

@@ -107,42 +107,12 @@ body.glass-liquid.light-theme .app-icon.folder-icon:not(.drag-over-folder):not(.
 }
 
 /* ===========================================================
-   T1 hero widgets (#1157): search, motto, weather, clock, focus.
+   T1 hero widgets (#1157): motto, weather, focus.
    Each ships with isolation, a backdrop-filter or an opaque fill for
    Classic styling — all backdrop-root or flat-sample blockers for the warp.
    Every rule below needs both body.glass-liquid and glass--liquid, which
    only exist while the effect is active, so Classic stays byte-identical.
    =========================================================== */
-
-/* Isolation on the search wrapper would make it a backdrop root and stop the
-   warp (its child) from sampling the wallpaper. The bar's own isolation only
-   scopes the search controls; reset both so the focus-within z-index is the
-   sole stacking mechanism while enhanced (#326 keeps guarding Classic). */
-body.glass-liquid .search-bar-wrapper.glass--liquid,
-body.glass-liquid .search-bar-wrapper.glass--liquid .search-bar {
-  isolation: auto;
-}
-
-/* Round the wrapper like the pill so the warp and highlight layers, which
-   inherit border-radius, follow the bar's shape instead of showing square
-   corners over it. */
-body.glass-liquid .search-bar-wrapper.glass--liquid {
-  border-radius: 25px;
-}
-
-/* The pill paints above the wrapper's warp, so its Classic fill must turn
-   translucent or the refraction stays hidden behind it. The light theme
-   also restates a backdrop-filter for .search-bar through glass.css; drop
-   it here or the warp would only ever see the frosted fill (#1066 trap). */
-body.glass-liquid .search-bar-wrapper.glass--liquid .search-bar {
-  background: rgba(240, 240, 240, 0.5);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-
-body.glass-liquid.light-theme .search-bar-wrapper.glass--liquid .search-bar {
-  background: rgba(255, 255, 255, 0.6);
-}
 
 /* Motto: glass.css restates the frosted fill at ID specificity for
    #motto-container, so the suppression needs an ID-level rule to win, and
@@ -174,22 +144,13 @@ body.glass-liquid.light-theme .focus-mode-indicator.glass--liquid {
   background: rgba(255, 255, 255, 0.62);
 }
 
-/* The clock has no fill to drop; round its warp canvas so the panel
-   displacement map fades at the corners instead of cutting off square. */
-body.glass-liquid #clock.glass--liquid {
-  border-radius: 24px;
-}
-
 /* Absolutely positioned layers paint above in-flow content, so the injected
    warp/highlight spans would cover these widgets' text and glyphs. Lift the
    widgets' own children back above the layers — the same treatment #1155
-   gave app-icon glyphs. The search wrapper is deliberately absent: its
-   children are positioned (bar, provider row, history panel) and already
-   paint above the warp in tree order. */
+   gave app-icon glyphs. */
 body.glass-liquid :is(
   #motto-container,
   #weather-widget,
-  #clock,
   #focus-mode-indicator
 ).glass--liquid > :not(.glass__warp):not(.glass__highlight):not(.glass__over-light):not(.glass__hover) {
   position: relative;
