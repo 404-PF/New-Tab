@@ -324,7 +324,7 @@
       const raw = window.i18n && typeof window.i18n.t === 'function'
         ? window.i18n.t('pomodoroStatsExportSuccess')
         : null;
-      window.showToast(raw && raw !== 'pomodoroStatsExportSuccess' ? raw : 'Focus stats exported.', 'success');
+      window.showToast(raw && raw !== 'pomodoroStatsExportSuccess' ? raw : 'Focus stats download started.', 'success');
     }
   }
   function boot() {
@@ -521,7 +521,9 @@
       const e = coerceEntry(store.days[rows[i].date]);
       s += e.sessions; m += e.minutes;
     }
-    return { sessions: s, minutes: m, formatted: window.formatPomodoroDuration(m) + ' / ' + s + ' sessions' };
+    const rawUnit = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('pomodoroStatsSessionsUnit') : null;
+    const unit = rawUnit && rawUnit !== 'pomodoroStatsSessionsUnit' ? rawUnit : 'sessions';
+    return { sessions: s, minutes: m, formatted: window.formatPomodoroDuration(m) + ' / ' + s + ' ' + unit };
   };
   // Day-over-day trend (today vs yesterday) for the dashboard badge.
   window.getPomodoroTrend = function () {

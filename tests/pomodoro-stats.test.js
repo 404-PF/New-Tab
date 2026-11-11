@@ -712,6 +712,9 @@ describe('Focus stats CSV export (issue #1171)', () => {
     });
     const toastSpy = vi.fn();
     window.showToast = toastSpy;
+    // The export schedules URL.revokeObjectURL on a timer; fake only setTimeout
+    // so the timer can be cleared before the URL mocks are restored.
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
 
     try {
       document.getElementById('pomodoro-stats-export').click();
@@ -722,8 +725,10 @@ describe('Focus stats CSV export (issue #1171)', () => {
       expect(capturedName).toBe(`focus-stats-${getToday()}.csv`);
       expect(capturedType).toBe('text/csv');
       expect(clickSpy).toHaveBeenCalledTimes(1);
-      expect(toastSpy).toHaveBeenCalledWith('Focus stats exported.', 'success');
+      expect(toastSpy).toHaveBeenCalledWith('Focus stats download started.', 'success');
     } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
       clickSpy.mockRestore();
       URL.createObjectURL = origCreateObjectURL;
       URL.revokeObjectURL = origRevokeObjectURL;

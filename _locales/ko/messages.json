@@ -856,8 +856,12 @@
     "message": "CSV 내보내기",
     "description": "Button that exports focus stats as CSV"
   },
+  "pomodoroStatsSessionsUnit": {
+    "message": "세션",
+    "description": "Unit word after the session count in the focus stats total"
+  },
   "pomodoroStatsExportSuccess": {
-    "message": "집중 통계를 내보냈습니다.",
+    "message": "집중 통계 다운로드를 시작했습니다.",
     "description": "Toast shown after focus stats CSV export succeeds"
   },
   "gamesLoading": {

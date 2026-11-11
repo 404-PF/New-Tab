@@ -856,8 +856,12 @@
     "message": "Exportar CSV",
     "description": "Button that exports focus stats as CSV"
   },
+  "pomodoroStatsSessionsUnit": {
+    "message": "sessões",
+    "description": "Unit word after the session count in the focus stats total"
+  },
   "pomodoroStatsExportSuccess": {
-    "message": "Estatísticas de foco exportadas.",
+    "message": "Download das estatísticas de foco iniciado.",
     "description": "Toast shown after focus stats CSV export succeeds"
   },
   "gamesLoading": {
