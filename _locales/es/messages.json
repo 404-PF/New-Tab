@@ -862,7 +862,7 @@
   },
   "pomodoroStatsExportSuccess": {
     "message": "Descarga de estadísticas de enfoque iniciada.",
-    "description": "Toast shown after focus stats CSV export succeeds"
+    "description": "Toast shown after focus stats CSV download is started"
   },
   "gamesLoading": {
     "message": "Cargando juegos…",

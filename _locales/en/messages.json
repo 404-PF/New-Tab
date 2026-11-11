@@ -1034,7 +1034,7 @@
   },
   "pomodoroStatsExportSuccess": {
     "message": "Focus stats download started.",
-    "description": "Toast shown after focus stats CSV export succeeds"
+    "description": "Toast shown after focus stats CSV download is started"
   },
   "gamesLoading": {
     "message": "Loading games…",
