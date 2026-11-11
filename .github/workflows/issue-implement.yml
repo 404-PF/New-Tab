@@ -17,9 +17,8 @@ on:
         required: true
         type: number
   schedule:
-    # Every 30 minutes, off the :00/:30 peak when GitHub drops scheduled runs.
-    # Dispatches the oldest eligible issue while open PRs <= 10.
-    - cron: '7,37 * * * *'
+    # Every 30 minutes: dispatch the oldest eligible issue while open PRs <= 10.
+    - cron: '*/30 * * * *'
 
 # Concurrency is declared on the implement job, not here. A workflow-level
 # group is taken before the permission gate runs, so a read-only MEMBER or

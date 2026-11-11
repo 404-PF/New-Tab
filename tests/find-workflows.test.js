@@ -44,9 +44,9 @@ describe('bug-find/feature-find split (#921)', () => {
     });
   });
 
-  it('offsets the schedules and serializes both find jobs through the shared group', () => {
-    expect(bug).toMatch(/cron: '17 \*\/6 \* \* \*'/);
-    expect(feature).toMatch(/cron: '47 \*\/6 \* \* \*'/);
+  it('runs both schedules on the hour and serializes both find jobs through the shared group', () => {
+    expect(bug).toMatch(/cron: '0 \*\/6 \* \* \*'/);
+    expect(feature).toMatch(/cron: '0 \*\/6 \* \* \*'/);
     expect(bug).toMatch(/group: find-issues/);
     expect(feature).toMatch(/group: find-issues/);
   });
