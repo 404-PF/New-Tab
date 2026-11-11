@@ -55,7 +55,7 @@
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
   },
   "shortcutOpenAi": {
-    "message": "Открыть ИИ-ассистент",
+    "message": "Открыть ИИ-ассистента",
     "description": "Label for the open AI assistant shortcut action"
   },
   "customBackgroundsLoadError": {

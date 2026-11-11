@@ -699,11 +699,8 @@ describe('Game saves save error translation (issue #1039)', () => {
 // label ships in every runtime locale table and every chrome.i18n
 // messages.json.
 describe('AI assistant shortcut translations (issue #1185)', () => {
-  it('defines a localized shortcutOpenAi for every supported language', () => {
+  it('defines a localized shortcutOpenAi in every runtime table and messages.json', () => {
     expectTranslationKeys(['shortcutOpenAi'], { differFromEnglish: true });
-  });
-
-  it('includes shortcutOpenAi in every _locales messages.json', () => {
     expectMessagesJsonKey('shortcutOpenAi');
   });
 });

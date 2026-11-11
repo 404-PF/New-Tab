@@ -621,7 +621,11 @@
 
     const combo = formatCombo(e);
 
-    if (isTextInputFocused() && combo !== activeShortcuts.toggleFocusMode) return;
+    // A modifier combo cannot be typed into a field, so the AI shortcut stays
+    // live while the assistant's own chat input has focus (it must close the
+    // modal from there). Plain-key rebinds remain guarded.
+    const isModifiedAiCombo = combo === activeShortcuts.openAi && (e.ctrlKey || e.metaKey || e.altKey);
+    if (isTextInputFocused() && combo !== activeShortcuts.toggleFocusMode && !isModifiedAiCombo) return;
 
     for (const action in activeShortcuts) {
       if (activeShortcuts[action] === combo) {

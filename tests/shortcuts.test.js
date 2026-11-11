@@ -604,6 +604,20 @@ describe('Shortcuts - openAi AI assistant shortcut (#1185)', () => {
     expect(window.AIService.open).not.toHaveBeenCalled();
   });
 
+  it('closes the open assistant when the chat input has focus', () => {
+    modal.classList.add('ai-modal-open');
+    const chatInput = document.createElement('textarea');
+    chatInput.id = 'ai-chat-input';
+    modal.appendChild(chatInput);
+    chatInput.focus();
+
+    pressOpenAi();
+
+    expect(window.AIService.close).toHaveBeenCalledTimes(1);
+    expect(modal.classList.contains('ai-modal-open')).toBe(false);
+    chatInput.remove();
+  });
+
   it('works regardless of the positional Alt+1..9 launcher toggle', () => {
     localStorage.setItem('appShortcutsEnabled', 'false');
 
