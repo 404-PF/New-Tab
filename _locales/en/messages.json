@@ -950,6 +950,10 @@
     "message": "Model failed to load. Check connection and retry.",
     "description": "Status when the embedding model fails to load"
   },
+  "notesSemanticDeleteError": {
+    "message": "Failed to delete the model. Check storage and try again.",
+    "description": "Error when the downloaded model cannot be deleted"
+  },
   "notesSemanticCancel": {
     "message": "Cancel download",
     "description": "Button to cancel the model download"

@@ -743,47 +743,51 @@
     "description": "Empty state when no notes match the search query"
   },
   "notesSemanticEnable": {
-    "message": "Enable semantic notes search",
+    "message": "의미 기반 메모 검색 사용",
     "description": "Label for the semantic notes search toggle"
   },
   "notesSemanticDesc": {
-    "message": "On-device Harrier model (~300MB) downloads once after opt-in for typo-tolerant, semantic matching.",
+    "message": "옵트인 후 온디바이스 Harrier 모델(약 300MB)을 한 번 다운로드하여 오타에 강하고 의미 기반 검색을 제공합니다.",
     "description": "Description for the semantic notes search setting"
   },
   "notesSemanticDownloading": {
-    "message": "Downloading on-device model… {percent}%",
+    "message": "온디바이스 모델 다운로드 중… {percent}%",
     "description": "Status while the embedding model downloads; {percent} is 0-100"
   },
   "notesSemanticReady": {
-    "message": "Semantic search ready (on-device).",
+    "message": "의미 기반 검색 준비 완료(온디바이스).",
     "description": "Status when the embedding model is ready"
   },
   "notesSemanticError": {
-    "message": "Model failed to load. Check connection and retry.",
+    "message": "모델을 불러오지 못했습니다. 연결을 확인하고 다시 시도하세요.",
     "description": "Status when the embedding model fails to load"
   },
+  "notesSemanticDeleteError": {
+    "message": "모델을 삭제하지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.",
+    "description": "Error when the downloaded model cannot be deleted"
+  },
   "notesSemanticCancel": {
-    "message": "Cancel download",
+    "message": "다운로드 취소",
     "description": "Button to cancel the model download"
   },
   "notesSemanticDelete": {
-    "message": "Delete model",
+    "message": "모델 삭제",
     "description": "Button to delete the downloaded model"
   },
   "notesSemanticSearching": {
-    "message": "Semantic search…",
+    "message": "의미 기반 검색 중…",
     "description": "Notes search status while semantic re-ranking"
   },
   "notesSemanticLoading": {
-    "message": "Loading on-device model…",
+    "message": "온디바이스 모델 로드 중…",
     "description": "Notes search status while the model loads"
   },
   "notesSemanticStarting": {
-    "message": "Starting download…",
+    "message": "다운로드 시작 중…",
     "description": "Status when the model download starts"
   },
   "notesSemanticPermissionDenied": {
-    "message": "Model download needs Hugging Face access, which was not granted.",
+    "message": "모델 다운로드에는 Hugging Face 접근 권한이 필요하지만 허용되지 않았습니다.",
     "description": "Error when the user denies the optional host permission for the model download"
   },
   "notesEmpty": {

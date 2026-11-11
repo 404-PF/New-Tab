@@ -743,47 +743,51 @@
     "description": "Empty state when no notes match the search query"
   },
   "notesSemanticEnable": {
-    "message": "Enable semantic notes search",
+    "message": "启用语义便签搜索",
     "description": "Label for the semantic notes search toggle"
   },
   "notesSemanticDesc": {
-    "message": "On-device Harrier model (~300MB) downloads once after opt-in for typo-tolerant, semantic matching.",
+    "message": "设备端 Harrier 模型（约 300MB）仅在您选择启用后下载一次，用于容错和语义匹配。",
     "description": "Description for the semantic notes search setting"
   },
   "notesSemanticDownloading": {
-    "message": "Downloading on-device model… {percent}%",
+    "message": "正在下载设备端模型… {percent}%",
     "description": "Status while the embedding model downloads; {percent} is 0-100"
   },
   "notesSemanticReady": {
-    "message": "Semantic search ready (on-device).",
+    "message": "语义搜索已就绪（设备端）。",
     "description": "Status when the embedding model is ready"
   },
   "notesSemanticError": {
-    "message": "Model failed to load. Check connection and retry.",
+    "message": "模型加载失败。请检查网络连接后重试。",
     "description": "Status when the embedding model fails to load"
   },
+  "notesSemanticDeleteError": {
+    "message": "删除模型失败。请检查存储空间后重试。",
+    "description": "Error when the downloaded model cannot be deleted"
+  },
   "notesSemanticCancel": {
-    "message": "Cancel download",
+    "message": "取消下载",
     "description": "Button to cancel the model download"
   },
   "notesSemanticDelete": {
-    "message": "Delete model",
+    "message": "删除模型",
     "description": "Button to delete the downloaded model"
   },
   "notesSemanticSearching": {
-    "message": "Semantic search…",
+    "message": "语义搜索中…",
     "description": "Notes search status while semantic re-ranking"
   },
   "notesSemanticLoading": {
-    "message": "Loading on-device model…",
+    "message": "正在加载设备端模型…",
     "description": "Notes search status while the model loads"
   },
   "notesSemanticStarting": {
-    "message": "Starting download…",
+    "message": "正在开始下载…",
     "description": "Status when the model download starts"
   },
   "notesSemanticPermissionDenied": {
-    "message": "Model download needs Hugging Face access, which was not granted.",
+    "message": "模型下载需要访问 Hugging Face，但未获得授权。",
     "description": "Error when the user denies the optional host permission for the model download"
   },
   "notesEmpty": {

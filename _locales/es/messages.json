@@ -743,47 +743,51 @@
     "description": "Empty state when no notes match the search query"
   },
   "notesSemanticEnable": {
-    "message": "Enable semantic notes search",
+    "message": "Activar búsqueda semántica de notas",
     "description": "Label for the semantic notes search toggle"
   },
   "notesSemanticDesc": {
-    "message": "On-device Harrier model (~300MB) downloads once after opt-in for typo-tolerant, semantic matching.",
+    "message": "El modelo Harrier en el dispositivo (~300 MB) se descarga una sola vez tras activarlo, para una coincidencia semántica tolerante a errores tipográficos.",
     "description": "Description for the semantic notes search setting"
   },
   "notesSemanticDownloading": {
-    "message": "Downloading on-device model… {percent}%",
+    "message": "Descargando modelo en el dispositivo… {percent}%",
     "description": "Status while the embedding model downloads; {percent} is 0-100"
   },
   "notesSemanticReady": {
-    "message": "Semantic search ready (on-device).",
+    "message": "Búsqueda semántica lista (en el dispositivo).",
     "description": "Status when the embedding model is ready"
   },
   "notesSemanticError": {
-    "message": "Model failed to load. Check connection and retry.",
+    "message": "No se pudo cargar el modelo. Revisa la conexión e inténtalo de nuevo.",
     "description": "Status when the embedding model fails to load"
   },
+  "notesSemanticDeleteError": {
+    "message": "No se pudo eliminar el modelo. Revisa el almacenamiento e inténtalo de nuevo.",
+    "description": "Error when the downloaded model cannot be deleted"
+  },
   "notesSemanticCancel": {
-    "message": "Cancel download",
+    "message": "Cancelar descarga",
     "description": "Button to cancel the model download"
   },
   "notesSemanticDelete": {
-    "message": "Delete model",
+    "message": "Eliminar modelo",
     "description": "Button to delete the downloaded model"
   },
   "notesSemanticSearching": {
-    "message": "Semantic search…",
+    "message": "Búsqueda semántica…",
     "description": "Notes search status while semantic re-ranking"
   },
   "notesSemanticLoading": {
-    "message": "Loading on-device model…",
+    "message": "Cargando modelo en el dispositivo…",
     "description": "Notes search status while the model loads"
   },
   "notesSemanticStarting": {
-    "message": "Starting download…",
+    "message": "Iniciando descarga…",
     "description": "Status when the model download starts"
   },
   "notesSemanticPermissionDenied": {
-    "message": "Model download needs Hugging Face access, which was not granted.",
+    "message": "La descarga del modelo necesita acceso a Hugging Face, que no se ha concedido.",
     "description": "Error when the user denies the optional host permission for the model download"
   },
   "notesEmpty": {

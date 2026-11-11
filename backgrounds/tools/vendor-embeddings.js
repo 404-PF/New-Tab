@@ -56,7 +56,19 @@ function rewriteBareSpecifiers(transformersPath) {
 
 function main() {
   const transformersBase = path.join(ROOT, 'node_modules', '@huggingface', 'transformers', 'dist');
-  const ortBase = path.join(ROOT, 'node_modules', 'onnxruntime-web', 'dist');
+  // Transformers 4.3.2 resolves its own nested ORT build
+  // (onnxruntime-web 1.31.0-dev.20260914 + onnxruntime-common 1.31.0-dev.20260911)
+  // which differs from the top-level pinned ORT. Copying from the top-level
+  // tree would combine a mismatched transformers + ORT pair, so prefer the
+  // nested tree transformers actually resolves and fall back to top-level
+  // only when npm hoists/dedupes the nested copy away. Both ORT packages
+  // must come from the same tree so the loaded runtime is a single
+  // consistent version set.
+  const nestedOrtBase = path.join(ROOT, 'node_modules', '@huggingface', 'transformers', 'node_modules', 'onnxruntime-web', 'dist');
+  const topOrtBase = path.join(ROOT, 'node_modules', 'onnxruntime-web', 'dist');
+  const ortBase = fs.existsSync(nestedOrtBase) ? nestedOrtBase : topOrtBase;
+  const nestedCommonEsmBase = path.join(ROOT, 'node_modules', '@huggingface', 'transformers', 'node_modules', 'onnxruntime-common', 'dist', 'esm');
+  const topCommonEsmBase = path.join(ROOT, 'node_modules', 'onnxruntime-common', 'dist', 'esm');
 
   if (!fs.existsSync(transformersBase)) {
     console.error('Missing node_modules/@huggingface/transformers. Run npm install first.');
@@ -96,9 +108,13 @@ function main() {
 
   // onnxruntime-common ships real ESM under dist/esm (its package.json has
   // no "module" field, so resolve the tree explicitly).
-  const commonEsmBase = path.join(ROOT, 'node_modules', 'onnxruntime-common', 'dist', 'esm');
+  const commonEsmBase = fs.existsSync(path.join(nestedCommonEsmBase, 'index.js'))
+    ? nestedCommonEsmBase
+    : topCommonEsmBase;
+  console.log('using ORT runtime from ' + path.relative(ROOT, ortBase));
+  console.log('using ORT common from ' + path.relative(ROOT, commonEsmBase));
   if (!fs.existsSync(path.join(commonEsmBase, 'index.js'))) {
-    console.error('Missing node_modules/onnxruntime-common/dist/esm/index.js. Run npm install first.');
+    console.error('Missing onnxruntime-common/dist/esm/index.js in both nested and top-level trees. Run npm install first.');
     process.exit(1);
   }
   fs.readdirSync(commonEsmBase).filter(function (f) { return f.endsWith('.js'); }).forEach(function (f) {

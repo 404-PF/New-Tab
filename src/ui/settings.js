@@ -2314,13 +2314,13 @@ function bindSemanticDelete(els) {
           // keep the toggle so the leftover data stays visible/retryable.
           finishDelete(ok !== false);
           if (ok === false && typeof window.showToast === 'function') {
-            window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+            window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
           }
         }).catch(function (err) {
           console.warn('Failed to delete embedding model:', err);
           finishDelete(false);
           if (typeof window.showToast === 'function') {
-            window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+            window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
           }
         });
         return;

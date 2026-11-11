@@ -350,6 +350,7 @@ globalThis.window.i18n = {
       notesSemanticDownloading: 'Downloading on-device model… {percent}%',
       notesSemanticReady: 'Semantic search ready (on-device).',
       notesSemanticError: 'Model failed to load. Check connection and retry.',
+      notesSemanticDeleteError: 'Failed to delete the model. Check storage and try again.',
       notesSemanticCancel: 'Cancel download',
       notesSemanticDelete: 'Delete model',
       notesSemanticSearching: 'Semantic search…',
