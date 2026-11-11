@@ -180,7 +180,7 @@ jobs:
       - name: Populate embedding vendor runtime
         run: |
           set -euo pipefail
-          npm install --no-save @huggingface/transformers onnxruntime-web
+          npm install --no-save --ignore-scripts @huggingface/transformers@4.3.2 onnxruntime-web@1.31.1
           node backgrounds/tools/vendor-embeddings.js
           for f in vendor/embedding-loader.mjs vendor/transformers/transformers.js vendor/onnxruntime-web/ort.web.mjs vendor/onnxruntime-web/ort.webgpu.min.mjs; do
             if [ ! -f "$f" ]; then

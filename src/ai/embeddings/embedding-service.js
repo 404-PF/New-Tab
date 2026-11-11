@@ -158,16 +158,22 @@
     });
   }
 
+  function getCachedVendor() {
+    try {
+      if (window.__embeddingVendor && window.__embeddingVendor.pipeline) {
+        return window.__embeddingVendor;
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
+
   function loadVendorModule(signal) {
     const hooks = getTestHooks();
     if (hooks && typeof hooks.vendorLoader === 'function') {
       return hooks.vendorLoader(signal);
     }
-    try {
-      if (window.__embeddingVendor && window.__embeddingVendor.pipeline) {
-        return Promise.resolve(window.__embeddingVendor);
-      }
-    } catch { /* ignore */ }
+    const cached = getCachedVendor();
+    if (cached) return Promise.resolve(cached);
 
     return checkVendorPresent().then(function () {
       return new Promise(function (resolve, reject) {
@@ -538,25 +544,27 @@
     liveProvider = null;
     loadPromise = null;
     const consts = getHarrierConsts();
-    const clearVectors = (function () {
-      try {
-        if (window.NotesVectorCache && typeof window.NotesVectorCache.clearCachedVectors === 'function') {
-          return window.NotesVectorCache.clearCachedVectors(consts.modelId);
-        }
-      } catch { /* ignore */ }
-      return Promise.resolve(true);
-    })();
-    const clearCache = (function () {
-      try {
-        if (typeof caches !== 'undefined' && caches && typeof caches.delete === 'function') {
-          // caches.delete resolves false when absent (success) and only
-          // rejects on failure; normalize absent to true so a missing cache
-          // does not report a failed delete.
-          return caches.delete(TRANSFORMERS_CACHE_NAME).then(function () { return true; }).catch(function () { return false; });
-        }
-      } catch { /* ignore */ }
-      return Promise.resolve(true);
-    })();
+    let vectorClearFn = null;
+    try {
+      if (window.NotesVectorCache && typeof window.NotesVectorCache.clearCachedVectors === 'function') {
+        vectorClearFn = window.NotesVectorCache.clearCachedVectors;
+      }
+    } catch { vectorClearFn = null; }
+    const clearVectors = vectorClearFn
+      ? vectorClearFn.call(window.NotesVectorCache, consts.modelId)
+      : Promise.resolve(true);
+    let cacheDeleteFn = null;
+    try {
+      if (typeof caches !== 'undefined' && caches && typeof caches.delete === 'function') {
+        cacheDeleteFn = caches.delete.bind(caches, TRANSFORMERS_CACHE_NAME);
+      }
+    } catch { cacheDeleteFn = null; }
+    // caches.delete resolves false when absent (success) and only rejects
+    // on failure; normalize absent to true so a missing cache does not
+    // report a failed delete.
+    const clearCache = cacheDeleteFn
+      ? cacheDeleteFn().then(function () { return true; }).catch(function () { return false; })
+      : Promise.resolve(true);
     return Promise.all([clearVectors, clearCache]).then(function (results) {
       // Preserve window.__embeddingVendor: the browser module map caches
       // vendor/embedding-loader.mjs, so a re-injected script with the same

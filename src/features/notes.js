@@ -1364,6 +1364,24 @@
     debouncedSave(ta.dataset.id, ta.value);
   }
 
+  function finishPreviewMouseDownBlur(ta, id, hadPending) {
+    const wasPreview = _previewMouseDownIsPreview;
+    _previewMouseDown = false;
+    _previewMouseDownIsPreview = false;
+    const text = ta.value || '';
+    if (text) {
+      updateNoteText(id, text);
+      return true;
+    }
+    if (wasPreview) {
+      const note = notes.find(n => n.id === id);
+      if ((hadPending || (note && note.text)) && !isImportedEmptyNote(id)) {
+        deleteNote(id);
+      }
+    }
+    return true;
+  }
+
   function handleNotesBlur(e) {
     const ta = e.target.closest('.note-textarea');
     if (!ta) return;
@@ -1375,25 +1393,12 @@
     }
     if (notePreviewModes[id] === true) return;
     if (_previewMouseDown) {
-      const wasPreview = _previewMouseDownIsPreview;
-      _previewMouseDown = false;
-      _previewMouseDownIsPreview = false;
-      const text = ta.value || '';
-      if (text) {
-        updateNoteText(id, text);
-      } else if (wasPreview) {
-        const note = notes.find(n => n.id === id);
-        if ((hadPending || (note && note.text)) && !isImportedEmptyNote(id)) {
-          deleteNote(id);
-        }
-      }
+      finishPreviewMouseDownBlur(ta, id, hadPending);
       return;
     }
     const text = ta.value || '';
     if (!text) {
-      if (!isImportedEmptyNote(id)) {
-        deleteNote(id);
-      }
+      if (!isImportedEmptyNote(id)) deleteNote(id);
       return;
     }
     updateNoteText(ta.dataset.id, text);

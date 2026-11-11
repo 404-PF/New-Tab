@@ -2142,35 +2142,41 @@ const MODEL_ORIGINS = [
   'https://*.hf.co/*'
 ];
 
-function ensureModelHostPermission(requestIfMissing) {
+function getModelHostPerms() {
   try {
-    const perms = window.chrome && window.chrome.permissions;
-    // No permissions API (tests without the mock, non-Chromium hosts):
-    // nothing to gate on, attempt the download and let it report.
-    if (!perms || typeof perms.contains !== 'function' || typeof perms.request !== 'function') {
-      return Promise.resolve(true);
-    }
-    const query = { origins: MODEL_ORIGINS };
-    // Gestured opt-ins must call request() synchronously in the checkbox
-    // handler tick: awaiting contains() first lets the user gesture expire
-    // and Chrome rejects the request. request() resolves true when already
-    // granted, so skipping contains() never double-prompts.
-    if (requestIfMissing) {
-      try {
-        return perms.request(query).then(function (granted) {
-          return !!granted;
-        }, function () { return false; });
-      } catch {
-        return Promise.resolve(false);
-      }
-    }
-    // Passive resumes carry no gesture: only proceed when already granted.
-    return perms.contains(query).then(function (has) {
-      return !!has;
-    }, function () { return false; });
+    return (window.chrome && window.chrome.permissions) || null;
   } catch {
+    return null;
+  }
+}
+
+function ensureModelHostPermission(requestIfMissing) {
+  const perms = getModelHostPerms();
+  // No permissions API (tests without the mock, non-Chromium hosts):
+  // nothing to gate on, attempt the download and let it report.
+  if (!perms || typeof perms.contains !== 'function' || typeof perms.request !== 'function') {
     return Promise.resolve(true);
   }
+  const query = { origins: MODEL_ORIGINS };
+  // Gestured opt-ins must call request() synchronously in the checkbox
+  // handler tick: awaiting contains() first lets the user gesture expire
+  // and Chrome rejects the request. request() resolves true when already
+  // granted, so skipping contains() never double-prompts.
+  if (requestIfMissing) {
+    let req;
+    try {
+      req = perms.request(query);
+    } catch {
+      return Promise.resolve(false);
+    }
+    return Promise.resolve(req).then(function (granted) {
+      return !!granted;
+    }, function () { return false; });
+  }
+  // Passive resumes carry no gesture: only proceed when already granted.
+  return Promise.resolve(perms.contains(query)).then(function (has) {
+    return !!has;
+  }, function () { return false; });
 }
 
 // Transient download marker (not a settings toggle: never exported). Lets a
