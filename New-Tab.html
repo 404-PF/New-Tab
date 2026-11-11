@@ -341,6 +341,29 @@
             <span class="todo-heatmap-label" data-i18n="last30Days">Last 30 Days</span>
             <div class="todo-heatmap" id="pomodoro-stats-heatmap"></div>
           </div>
+          <div class="todo-stats-grid pomodoro-stats-summary">
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-total">—</span>
+              <span class="todo-stat-label" data-i18n="pomodoroStatsTotal">30-Day Total</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-trend">—</span>
+              <span class="todo-stat-label" data-i18n="pomodoroStatsTrend">Trend vs Yesterday</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-best-day">—</span>
+              <span class="todo-stat-label" data-i18n="pomodoroStatsBestDay">Best Day</span>
+            </div>
+            <div class="todo-stat-card">
+              <span class="todo-stat-value" id="pomodoro-stats-rolling-avg">—</span>
+              <span class="todo-stat-label" data-i18n="pomodoroStatsRollingAvg">7-Day Avg (sessions/day)</span>
+            </div>
+          </div>
+          <div class="todo-heatmap-section">
+            <span class="todo-heatmap-label" data-i18n="pomodoroStatsByTodo">Minutes by Task This Week</span>
+            <span class="pomodoro-stats-by-todo" id="pomodoro-stats-by-todo">—</span>
+          </div>
+          <button type="button" class="todo-stats-export" id="pomodoro-stats-export" data-i18n="pomodoroStatsExport">Export CSV</button>
         </div>
 
       </div>

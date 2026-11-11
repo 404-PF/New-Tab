@@ -836,6 +836,38 @@
     "message": "Переключить панель статистики фокуса",
     "description": "Aria label for pomodoro stats toggle"
   },
+  "pomodoroStatsTotal": {
+    "message": "Итого за 30 дней",
+    "description": "Label for the 30-day focus stats total"
+  },
+  "pomodoroStatsTrend": {
+    "message": "Тренд к вчерашнему дню",
+    "description": "Label for the day-over-day focus stats trend"
+  },
+  "pomodoroStatsBestDay": {
+    "message": "Лучший день",
+    "description": "Label for the best focus stats day"
+  },
+  "pomodoroStatsRollingAvg": {
+    "message": "Среднее за 7 дней (сессий/день)",
+    "description": "Label for the 7-day rolling average focus stats"
+  },
+  "pomodoroStatsByTodo": {
+    "message": "Минуты по задачам за неделю",
+    "description": "Label for the minutes-by-todo focus stats list"
+  },
+  "pomodoroStatsExport": {
+    "message": "Экспорт CSV",
+    "description": "Button that exports focus stats as CSV"
+  },
+  "pomodoroStatsSessionsUnit": {
+    "message": "сессий",
+    "description": "Unit word after the session count in the focus stats total"
+  },
+  "pomodoroStatsExportSuccess": {
+    "message": "Загрузка статистики фокуса начата.",
+    "description": "Toast shown after focus stats CSV download is started"
+  },
   "gamesLoading": {
     "message": "Загрузка игр…",
     "description": "Loading state shown while game scripts are being fetched"

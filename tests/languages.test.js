@@ -27,7 +27,8 @@ function expectTranslationKeys(keys, options) {
 // Asserts a feedback key ships in every _locales/<locale>/messages.json with
 // its own non-empty message and description. Shared by the save-error keys
 // that must exist both as runtime translations and as chrome.i18n messages.
-function expectMessagesJsonKey(key) {
+function expectMessagesJsonKey(key, options) {
+  const allowEnglishCopy = Boolean(options && options.allowEnglishCopy);
   const localesDir = resolve(process.cwd(), '_locales');
   const locales = readdirSync(localesDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -50,7 +51,7 @@ function expectMessagesJsonKey(key) {
     expect(entry.description, `${locale}`).toBeTypeOf('string');
     // en and en_US are the English source strings, so every other locale
     // must ship its own copy rather than a copy of the English text.
-    if (locale !== 'en' && locale !== 'en_US') {
+    if (!allowEnglishCopy && locale !== 'en' && locale !== 'en_US') {
       expect(entry.message, `${locale}:${key}`).not.toBe(english);
     }
   });
@@ -234,6 +235,33 @@ describe('Pomodoro translations', () => {
         expect(window.i18n.t(key), code + ':' + key).not.toBe(key);
       });
     });
+  });
+});
+
+const FOCUS_STATS_SUMMARY_TRANSLATION_KEYS = [
+  'pomodoroStatsTotal',
+  'pomodoroStatsTrend',
+  'pomodoroStatsBestDay',
+  'pomodoroStatsRollingAvg',
+  'pomodoroStatsByTodo',
+  'pomodoroStatsExport',
+  'pomodoroStatsExportSuccess'
+];
+
+describe('Focus stats summary translations (issue #1171)', () => {
+  it('defines every focus stats summary label for all supported languages', () => {
+    expectTranslationKeys(FOCUS_STATS_SUMMARY_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+
+  // The session unit is a plain noun that is spelled the same in some
+  // languages (e.g. French "sessions"), so it is only required to exist.
+  it('defines the session unit for all supported languages', () => {
+    expectTranslationKeys(['pomodoroStatsSessionsUnit']);
+  });
+
+  it('ships every focus stats summary key in each _locales messages.json', () => {
+    FOCUS_STATS_SUMMARY_TRANSLATION_KEYS.forEach((key) => expectMessagesJsonKey(key));
+    expectMessagesJsonKey('pomodoroStatsSessionsUnit', { allowEnglishCopy: true });
   });
 });
 

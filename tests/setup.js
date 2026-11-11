@@ -465,6 +465,14 @@ globalThis.window.i18n = {
       pomodoroMinutesThisWeek: 'Minutes This Week',
       pomodoroStatsToggle: 'Focus stats',
       pomodoroStatsToggleAriaLabel: 'Toggle focus statistics panel',
+      pomodoroStatsTotal: '30-Day Total',
+      pomodoroStatsTrend: 'Trend vs Yesterday',
+      pomodoroStatsBestDay: 'Best Day',
+      pomodoroStatsRollingAvg: '7-Day Avg (sessions/day)',
+      pomodoroStatsByTodo: 'Minutes by Task This Week',
+      pomodoroStatsExport: 'Export CSV',
+      pomodoroStatsSessionsUnit: 'sessions',
+      pomodoroStatsExportSuccess: 'Focus stats download started.',
       clearStats: 'Clear Stats',
       completedToday: 'Completed Today',
       completedThisWeek: 'This Week',
@@ -1024,6 +1032,12 @@ document.body.appendChild(createStubElement('span', 'pomodoro-stats-today-minute
 document.body.appendChild(createStubElement('span', 'pomodoro-stats-week-minutes'));
 document.body.appendChild(createStubElement('div', 'pomodoro-stats-heatmap'));
 document.body.appendChild(createStubElement('button', 'pomodoro-stats-clear'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-total'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-trend'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-best-day'));
+document.body.appendChild(createStubElement('span', 'pomodoro-stats-rolling-avg'));
+document.body.appendChild(createStubElement('div', 'pomodoro-stats-by-todo'));
+document.body.appendChild(createStubElement('button', 'pomodoro-stats-export'));
 document.body.appendChild(createStubElement('input', 'custom-search-provider-name'));
 document.body.appendChild(createStubElement('input', 'custom-search-provider-url'));
 document.body.appendChild(createStubElement('input', 'custom-search-provider-suggestions-url'));

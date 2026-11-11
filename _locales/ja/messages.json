@@ -836,6 +836,38 @@
     "message": "集中統計パネルを切り替える",
     "description": "Aria label for pomodoro stats toggle"
   },
+  "pomodoroStatsTotal": {
+    "message": "30 日間の合計",
+    "description": "Label for the 30-day focus stats total"
+  },
+  "pomodoroStatsTrend": {
+    "message": "昨日比のトレンド",
+    "description": "Label for the day-over-day focus stats trend"
+  },
+  "pomodoroStatsBestDay": {
+    "message": "ベストデー",
+    "description": "Label for the best focus stats day"
+  },
+  "pomodoroStatsRollingAvg": {
+    "message": "7 日平均（セッション/日）",
+    "description": "Label for the 7-day rolling average focus stats"
+  },
+  "pomodoroStatsByTodo": {
+    "message": "今週のタスク別時間",
+    "description": "Label for the minutes-by-todo focus stats list"
+  },
+  "pomodoroStatsExport": {
+    "message": "CSV をエクスポート",
+    "description": "Button that exports focus stats as CSV"
+  },
+  "pomodoroStatsSessionsUnit": {
+    "message": "セッション",
+    "description": "Unit word after the session count in the focus stats total"
+  },
+  "pomodoroStatsExportSuccess": {
+    "message": "集中統計のダウンロードを開始しました。",
+    "description": "Toast shown after focus stats CSV download is started"
+  },
   "gamesLoading": {
     "message": "ゲームを読み込み中…",
     "description": "Loading state shown while game scripts are being fetched"

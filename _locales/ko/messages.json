@@ -836,6 +836,38 @@
     "message": "집중 통계 패널 전환",
     "description": "Aria label for pomodoro stats toggle"
   },
+  "pomodoroStatsTotal": {
+    "message": "30일 합계",
+    "description": "Label for the 30-day focus stats total"
+  },
+  "pomodoroStatsTrend": {
+    "message": "어제 대비 추세",
+    "description": "Label for the day-over-day focus stats trend"
+  },
+  "pomodoroStatsBestDay": {
+    "message": "최고의 날",
+    "description": "Label for the best focus stats day"
+  },
+  "pomodoroStatsRollingAvg": {
+    "message": "7일 평균 (세션/일)",
+    "description": "Label for the 7-day rolling average focus stats"
+  },
+  "pomodoroStatsByTodo": {
+    "message": "이번 주 작업별 시간",
+    "description": "Label for the minutes-by-todo focus stats list"
+  },
+  "pomodoroStatsExport": {
+    "message": "CSV 내보내기",
+    "description": "Button that exports focus stats as CSV"
+  },
+  "pomodoroStatsSessionsUnit": {
+    "message": "세션",
+    "description": "Unit word after the session count in the focus stats total"
+  },
+  "pomodoroStatsExportSuccess": {
+    "message": "집중 통계 다운로드를 시작했습니다.",
+    "description": "Toast shown after focus stats CSV download is started"
+  },
   "gamesLoading": {
     "message": "게임을 불러오는 중…",
     "description": "Loading state shown while game scripts are being fetched"
