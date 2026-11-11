@@ -522,6 +522,7 @@ window.i18n.__registerLocale('fr', {
   shortcutToggleSimpleMode: 'Basculer mode simple',
   shortcutToggleTodo: 'Basculer liste tâches',
   shortcutToggleNotes: 'Basculer notes',
+  shortcutOpenAi: 'Ouvrir l\'assistant IA',
   shortcutCloseModal: 'Fermer modal',
   shortcutPressAKey: 'Appuyez sur une touche...',
   shortcutAppLaunch: 'Lancer les applications avec Alt+1…9',

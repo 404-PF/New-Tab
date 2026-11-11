@@ -54,6 +54,10 @@
     "message": "No se pudieron guardar los cambios de los atajos. La última acción no se guardó.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
   },
+  "shortcutOpenAi": {
+    "message": "Abrir asistente de IA",
+    "description": "Label for the open AI assistant shortcut action"
+  },
   "customBackgroundsLoadError": {
     "message": "No se pudieron cargar los fondos personalizados. Inténtalo de nuevo.",
     "description": "Error shown when custom backgrounds cannot be listed"

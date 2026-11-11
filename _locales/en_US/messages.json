@@ -54,6 +54,10 @@
     "message": "Failed to save shortcut changes. Your last action was not saved.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
   },
+  "shortcutOpenAi": {
+    "message": "Open AI Assistant",
+    "description": "Label for the open AI assistant shortcut action"
+  },
   "customBackgroundsLoadError": {
     "message": "Failed to load custom backgrounds. Please try again.",
     "description": "Error shown when custom backgrounds cannot be listed"

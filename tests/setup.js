@@ -612,6 +612,7 @@ globalThis.window.i18n = {
       shortcutToggleSimpleMode: 'Toggle Simple Mode',
       shortcutToggleTodo: 'Toggle Todo List',
       shortcutToggleNotes: 'Toggle Notes',
+      shortcutOpenAi: 'Open AI Assistant',
       shortcutCloseModal: 'Close Modal / Dialog',
       shortcutPressAKey: 'Press a key...',
       shortcutAppLaunch: 'Launch apps with Alt+1…9',

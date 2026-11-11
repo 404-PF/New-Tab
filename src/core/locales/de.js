@@ -522,6 +522,7 @@ window.i18n.__registerLocale('de', {
   shortcutToggleSimpleMode: 'Einfachmodus umschalten',
   shortcutToggleTodo: 'Aufgabenliste umschalten',
   shortcutToggleNotes: 'Notizen umschalten',
+  shortcutOpenAi: 'KI-Assistent öffnen',
   shortcutCloseModal: 'Modal schließen',
   shortcutPressAKey: 'Taste drücken...',
   shortcutAppLaunch: 'Apps mit Alt+1…9 starten',

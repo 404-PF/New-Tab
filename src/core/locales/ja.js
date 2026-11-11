@@ -535,6 +535,7 @@ window.i18n.__registerLocale('ja', {
   shortcutToggleSimpleMode: 'シンプルモード切替',
   shortcutToggleTodo: 'Todoリスト切替',
   shortcutToggleNotes: 'メモ切替',
+  shortcutOpenAi: 'AI アシスタントを開く',
   shortcutCloseModal: 'モーダルを閉じる',
   shortcutPressAKey: 'キーを押してください...',
   shortcutAppLaunch: 'Alt+1…9でアプリを起動',

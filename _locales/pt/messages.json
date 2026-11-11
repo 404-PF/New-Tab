@@ -54,6 +54,10 @@
     "message": "Não foi possível salvar as alterações de atalhos. Sua última ação não foi salva.",
     "description": "Error shown when keyboard shortcut changes cannot be persisted"
   },
+  "shortcutOpenAi": {
+    "message": "Abrir assistente IA",
+    "description": "Label for the open AI assistant shortcut action"
+  },
   "customBackgroundsLoadError": {
     "message": "Não foi possível carregar os planos de fundo personalizados. Tente novamente.",
     "description": "Error shown when custom backgrounds cannot be listed"

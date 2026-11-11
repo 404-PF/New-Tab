@@ -248,6 +248,10 @@
     "message": "Toggle Notes",
     "description": "Label for the toggle notes shortcut action"
   },
+  "shortcutOpenAi": {
+    "message": "Open AI Assistant",
+    "description": "Label for the open AI assistant shortcut action"
+  },
   "shortcutCloseModal": {
     "message": "Close Modal / Dialog",
     "description": "Label for the close modal shortcut action"
