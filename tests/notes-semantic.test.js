@@ -159,4 +159,33 @@ describe('Notes semantic integration', () => {
     window.setNotesSearchQuery('');
     expect((await window.getFilteredNotesRanked()).map((n) => n.id)).toEqual(['1', '2', '3']);
   });
+
+  it('does not write back vectors for notes deleted mid-inference', async () => {
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    const putCalls = [];
+    const originalPut = window.NotesVectorCache.putCachedVector;
+    window.NotesVectorCache.putCachedVector = function (noteId, text, modelId, vec) {
+      putCalls.push(String(noteId));
+      return originalPut.apply(this, arguments);
+    };
+    window.EmbeddingService = {
+      isReady: function () { return true; },
+      getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 'test-model' }; },
+      embedQuery: function () { return Promise.resolve([1, 0]); },
+      embedTexts: function (texts) {
+        // Delete note 2 while inference is in flight, then resolve.
+        window.deleteNote('2');
+        const list = Array.isArray(texts) ? texts : [texts];
+        return Promise.resolve(list.map(function () { return [0.5, 0.5]; }));
+      }
+    };
+    try {
+      window.setNotesSearchQuery('feline');
+      await window.getFilteredNotesRanked();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(putCalls).not.toContain('2');
+    } finally {
+      window.NotesVectorCache.putCachedVector = originalPut;
+    }
+  });
 });

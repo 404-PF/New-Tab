@@ -205,4 +205,61 @@ describe('Semantic search settings', () => {
     window.primeNotesSemanticImport();
     expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
   });
+
+  it('re-renders the notes list when toggling semantic search off', () => {
+    installMockService({ status: 'ready', progress: 1, error: '', modelId: 'test-model' });
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    window.applyNotesSemanticEnabled();
+    let renderCalls = 0;
+    const originalRender = window.renderNotes;
+    window.renderNotes = function () { renderCalls += 1; };
+    try {
+      const checkbox = document.getElementById('notes-semantic-enabled-setting');
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+      expect(renderCalls).toBeGreaterThan(0);
+    } finally {
+      if (originalRender) window.renderNotes = originalRender;
+      else { try { delete window.renderNotes; } catch { /* ignore */ } }
+    }
+  });
+
+  it('keeps a fresh opt-in when a stale load fails', async () => {
+    let rejectFirst = null;
+    let scriptCalls = 0;
+    window.EmbeddingScripts = {
+      scriptsLoaded: function () { return true; },
+      ensureScripts: function () {
+        scriptCalls += 1;
+        if (scriptCalls === 1) {
+          return new Promise(function (_, reject) { rejectFirst = reject; });
+        }
+        return Promise.resolve();
+      }
+    };
+    installMockService({ status: 'loading', progress: 0.1, error: '', modelId: 'test-model' });
+    const checkbox = document.getElementById('notes-semantic-enabled-setting');
+    try {
+      // Stale opt-in A waits on the script chain.
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      // Off-toggle cancels A, re-check starts fresh opt-in B.
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      // A's chain now rejects: the stale catch must not clear B.
+      rejectFirst(new Error('offline'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+    } finally {
+      try { delete window.EmbeddingScripts; } catch { /* ignore */ }
+    }
+  });
 });

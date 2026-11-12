@@ -392,6 +392,13 @@
           const vec = Array.isArray(missed) && Array.isArray(missed[j]) ? missed[j] : null;
           if (vec && vec.length > 0) {
             vectors[noteIndex] = vec;
+            // The note may have been deleted (or edited) while the batch
+            // inference was in flight: deleteNote already invalidated its
+            // vectors, so writing them back would orphan rows until the
+            // model is cleared (PR #1187 human review). Only cache when
+            // the note still exists with unchanged embedding text.
+            const current = notes.find(function (n) { return n.id === base[noteIndex].id; });
+            if (!current || noteToEmbeddingText(current) !== inputs[noteIndex]) return;
             cache.putCachedVector(base[noteIndex].id, inputs[noteIndex], modelId, vec)
               .catch(function () { /* ignore */ });
           }

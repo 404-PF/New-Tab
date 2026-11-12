@@ -2136,7 +2136,7 @@ function startSemanticDownload(requestPermission) {
     if (!granted) {
       const persisted = persistSetting('notesSemanticEnabled', false);
       clearSemanticDownloadState();
-      renderNotesSemanticSettings();
+      applyNotesSemanticEnabled();
       if (!persisted) {
         reportFeatureToggleSaveError();
       }
@@ -2150,12 +2150,17 @@ function startSemanticDownload(requestPermission) {
     }
     startSemanticModelDownload(els, passive);
   }).catch(function (err) {
+    // A stale opt-in (A) rejecting after a re-enable (B) must not clear
+    // the fresh opt-in: B bumped semanticStartGeneration via its own
+    // startSemanticDownload, so only the current generation may reset
+    // the flag (PR #1187 human review).
+    if (startGeneration !== semanticStartGeneration) return;
     console.warn('Failed to load embedding modules:', err);
     // A dead runtime must not strand the toggle on with "Starting…"
     // forever: reset the flag (and toast only on the gestured path).
     persistSetting('notesSemanticEnabled', false);
     clearSemanticDownloadState();
-    renderNotesSemanticSettings();
+    applyNotesSemanticEnabled();
     if (!passive && typeof window.showToast === 'function') {
       window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
     }
@@ -2334,7 +2339,10 @@ function bindSemanticCheckbox(els) {
     // Toggle-off is a deliberate stop, not an interruption: drop the
     // resume marker so a later load cannot mistake it for a crash.
     clearSemanticDownloadState();
-    renderNotesSemanticSettings();
+    // Toggling off must drop the semantic relevance order: cancelLoad()
+    // only emits while loading, so a ready model would otherwise leave
+    // the stale ranked list on screen (PR #1187 human review).
+    applyNotesSemanticEnabled();
   });
 }
 
@@ -2345,7 +2353,7 @@ function bindSemanticCancel(els) {
     cancelSemanticLoad();
     clearSemanticDownloadState();
     const persisted = persistSetting('notesSemanticEnabled', false);
-    renderNotesSemanticSettings();
+    applyNotesSemanticEnabled();
     if (!persisted) reportFeatureToggleSaveError();
   });
 }
@@ -2364,7 +2372,7 @@ function bindSemanticDelete(els) {
       if (deleteGeneration !== semanticStartGeneration) return;
       if (ok) clearSemanticDownloadState();
       const persisted = persistSetting('notesSemanticEnabled', ok ? false : loadNotesSemanticEnabled());
-      renderNotesSemanticSettings();
+      applyNotesSemanticEnabled();
       if (!persisted) reportFeatureToggleSaveError();
     };
     try {
