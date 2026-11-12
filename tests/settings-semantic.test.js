@@ -148,8 +148,10 @@ describe('Semantic search settings', () => {
     let releaseDelete;
     const gate = new Promise(function (resolve) { releaseDelete = function () { resolve(true); }; });
     window.EmbeddingService = {
-      getStatus: function () { return { status: 'loading', progress: 0.1, error: '', modelId: 'test-model' }; },
-      isReady: function () { return false; },
+      // Ready so the Delete control is visible, matching the real UI state
+      // a user needs to begin deletion (PR #1187 review).
+      getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 'test-model' }; },
+      isReady: function () { return true; },
       ensureModel: function () { return Promise.resolve({ id: 'harrier-int8' }); },
       cancelLoad: function () {},
       deleteModel: function () { return gate; }
@@ -157,11 +159,16 @@ describe('Semantic search settings', () => {
     localStorage.setItem('notesSemanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.applyNotesSemanticEnabled();
+    // The race requires the visible Delete control (ready status).
+    expect(document.getElementById('notes-semantic-delete').hidden).toBe(false);
     document.getElementById('notes-semantic-delete').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    // Re-enable while cleanup is in flight (uncheck + re-check bumps the
-    // settings generation); the stale successful delete must not clear the
-    // fresh marker nor turn the new opt-in back off (PR #1187 human review).
+    // Uncheck then re-check to simulate a real re-enable: the off-toggle
+    // cancels (generation bump) and the on-toggle starts a fresh download
+    // (second bump). The stale successful delete must not clear the fresh
+    // marker nor turn the new opt-in back off (PR #1187 human review).
     const checkbox = document.getElementById('notes-semantic-enabled-setting');
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
     checkbox.checked = true;
     checkbox.dispatchEvent(new Event('change', { bubbles: true }));
     releaseDelete();
