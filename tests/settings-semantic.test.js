@@ -125,6 +125,55 @@ describe('Semantic search settings', () => {
     expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
   });
 
+  it('failed delete keeps the toggle and Delete visible with delete copy', async () => {
+    window.EmbeddingService = {
+      getStatus: function () { return { status: 'error', progress: 0, error: 'Failed to delete', modelId: 'test-model' }; },
+      isReady: function () { return false; },
+      deleteModel: function () { return Promise.resolve(false); }
+    };
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('notesSemanticDownload', 'ready');
+    window.applyNotesSemanticEnabled();
+    document.getElementById('notes-semantic-delete').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Leftover bytes stay visible/retryable: flag preserved, Delete shown,
+    // status uses the delete-specific locale key (PR #1187 human review).
+    expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+    expect(document.getElementById('notes-semantic-delete').hidden).toBe(false);
+    expect(document.getElementById('notes-semantic-settings-status').textContent).toContain('delete');
+  });
+
+  it('ignores a stale delete result after re-enable during cleanup', async () => {
+    let releaseDelete;
+    const gate = new Promise(function (resolve) { releaseDelete = function () { resolve(true); }; });
+    window.EmbeddingService = {
+      getStatus: function () { return { status: 'loading', progress: 0.1, error: '', modelId: 'test-model' }; },
+      isReady: function () { return false; },
+      ensureModel: function () { return Promise.resolve({ id: 'harrier-int8' }); },
+      cancelLoad: function () {},
+      deleteModel: function () { return gate; }
+    };
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('notesSemanticDownload', 'ready');
+    window.applyNotesSemanticEnabled();
+    document.getElementById('notes-semantic-delete').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    // Re-enable while cleanup is in flight (uncheck + re-check bumps the
+    // settings generation); the stale successful delete must not clear the
+    // fresh marker nor turn the new opt-in back off (PR #1187 human review).
+    const checkbox = document.getElementById('notes-semantic-enabled-setting');
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    releaseDelete();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+    // Fresh download owns the marker now (stale delete must not clear it).
+    expect(localStorage.getItem('notesSemanticDownload')).not.toBeNull();
+  });
+
   it('primes a fresh import for resume and leaves settled states alone', () => {
     localStorage.setItem('notesSemanticEnabled', 'true');
     localStorage.removeItem('notesSemanticDownload');

@@ -1929,6 +1929,12 @@ function resolveSemanticStatusText(enabled, svcStatus) {
     return tSemantic('notesSemanticReady', 'Semantic search ready (on-device).');
   }
   if (enabled && svcStatus.status === 'error') {
+    // A failed delete leaves the marker at 'ready' (bytes may remain)
+    // while the service reports error: surface the delete-specific copy
+    // instead of the load failure text (PR #1187 human review).
+    if (readSemanticDownloadState() === 'ready') {
+      return tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.');
+    }
     return tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
   }
   if (readSemanticDownloadState() === 'error') {
@@ -2348,7 +2354,14 @@ function bindSemanticDelete(els) {
   if (!els.deleteBtn || els.deleteBtn.dataset.semanticBound) return;
   els.deleteBtn.dataset.semanticBound = 'true';
   els.deleteBtn.addEventListener('click', function () {
+    // A re-enable (uncheck + re-check) during cleanup bumps
+    // semanticStartGeneration via startSemanticDownload: skip the flag and
+    // marker writes then so the fresh opt-in is not turned back off
+    // (PR #1187 human review). The service side already guards the
+    // registry with loadGeneration !== deleteGeneration for the same race.
+    const deleteGeneration = semanticStartGeneration;
     const finishDelete = function (ok) {
+      if (deleteGeneration !== semanticStartGeneration) return;
       if (ok) clearSemanticDownloadState();
       const persisted = persistSetting('notesSemanticEnabled', ok ? false : loadNotesSemanticEnabled());
       renderNotesSemanticSettings();

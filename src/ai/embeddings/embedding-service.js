@@ -578,7 +578,7 @@
       // timeout. The bridge is stateless, so keeping it is safe.
       const ok = results[0] !== false && results[1] !== false;
       // A re-enable racing this cleanup must win: skip the registry reset
-      // and idle transition so the freshly loaded model stays live.
+      // and status transition so the freshly loaded model stays live.
       if (loadGeneration !== deleteGeneration) return ok;
       // The registry still holds the live implementation after the bytes
       // are gone: replace it with a rejecting stub so registry consumers
@@ -599,8 +599,17 @@
           });
         }
       } catch { /* ignore registry reset failures */ }
+      if (!ok) {
+        // Failed cleanup must stay retryable (PR #1187 human review):
+        // idle would hide the Delete button via the ready||error check in
+        // renderNotesSemanticSettings while the marker still says 'ready',
+        // stranding the leftover bytes with no retry control. Report error
+        // so Delete stays visible and the status shows the delete failure.
+        setState('error', 0, 'Failed to delete the model. Check storage and try again.');
+        return false;
+      }
       setState('idle', 0);
-      return ok;
+      return true;
     });
   }
 

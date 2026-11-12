@@ -270,6 +270,22 @@ describe('EmbeddingService state machine', () => {
     expect(window.EmbeddingService.getStatus().status).toBe('idle');
   });
 
+  it('deleteModel reports failure without going idle so Delete stays retryable', async () => {
+    window.__embeddingTestHooks = { pipelineFactory: mockFactoryFor({}) };
+    await window.EmbeddingService.ensureModel();
+    const originalClear = window.NotesVectorCache.clearCachedVectors;
+    window.NotesVectorCache.clearCachedVectors = function () { return Promise.resolve(false); };
+    try {
+      expect(await window.EmbeddingService.deleteModel()).toBe(false);
+      expect(window.EmbeddingService.isReady()).toBe(false);
+      // Idle would hide the Delete button (ready||error check); error keeps
+      // it visible with the delete-specific copy (PR #1187 human review).
+      expect(window.EmbeddingService.getStatus().status).toBe('error');
+    } finally {
+      window.NotesVectorCache.clearCachedVectors = originalClear;
+    }
+  });
+
   it('reloads the model after deleteModel', async () => {
     window.__embeddingTestHooks = { pipelineFactory: mockFactoryFor({}) };
     await window.EmbeddingService.ensureModel();
