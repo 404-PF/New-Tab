@@ -573,6 +573,25 @@
       // URL never re-runs and the next enable would wait for the load
       // timeout. The bridge is stateless, so keeping it is safe.
       const ok = results[0] !== false && results[1] !== false;
+      // The registry still holds the live implementation after the bytes
+      // are gone: replace it with a rejecting stub so registry consumers
+      // cannot keep embedding after Delete (PR #1187 review). The next
+      // ensureModel publishes the live provider again via replace.
+      try {
+        const registry = window.EmbeddingRegistry;
+        if (registry && typeof registry.replaceEmbeddingProvider === 'function') {
+          const c = getHarrierConsts();
+          registry.replaceEmbeddingProvider({
+            id: c.providerId,
+            label: 'Harrier 270M INT8',
+            modelId: c.modelId,
+            dims: c.dims,
+            maxTokens: c.maxTokens,
+            embed: function () { return Promise.reject(new Error('Embedding model deleted')); },
+            embedQuery: function () { return Promise.reject(new Error('Embedding model deleted')); }
+          });
+        }
+      } catch { /* ignore registry reset failures */ }
       setState('idle', 0);
       return ok;
     });

@@ -2317,7 +2317,11 @@ function bindSemanticCheckbox(els) {
       // S9383: the returned promise is already handled inside
       // startSemanticDownload (toggle reset + toast), but it must still end
       // with a rejection handler so a late rejection is never unhandled.
-      startSemanticDownload().then(null, function () { /* handled inside */ });
+      // Log instead of swallowing: a rejection here means a bug in the
+      // inner .catch, and silent loss hides it (PR #1187 review).
+      startSemanticDownload().then(null, function (err) {
+        console.warn('Unexpected semantic download rejection:', err);
+      });
       return;
     }
     cancelSemanticLoad();

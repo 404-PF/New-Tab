@@ -31,3 +31,23 @@ describe('embedding loader parity', () => {
     });
   });
 });
+
+describe('embedding vendor self-hosting (PR #1187 CR7)', () => {
+  it('loader resolves ORT from vendor/ with no CDN fallback', () => {
+    const loader = readFileSync(resolve(process.cwd(), 'vendor/embedding-loader.mjs'), 'utf8');
+    expect(loader).toContain('./onnxruntime-web/');
+    expect(loader).toContain('wasmPaths');
+    expect(loader).not.toMatch(/jsdelivr/i);
+    expect(loader).not.toMatch(/unpkg/i);
+    expect(loader).not.toMatch(/https:\/\//);
+  });
+
+  it('vendor tooling copies the ORT glue modules the ESM entry imports', () => {
+    const tool = readFileSync(
+      resolve(process.cwd(), 'backgrounds/tools/vendor-embeddings.js'),
+      'utf8'
+    );
+    expect(tool).toContain('ort-wasm-');
+    expect(tool).toContain('onnxruntime-common');
+  });
+});

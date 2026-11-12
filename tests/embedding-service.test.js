@@ -280,6 +280,19 @@ describe('EmbeddingService state machine', () => {
     expect(window.EmbeddingService.getStatus().status).toBe('ready');
   });
 
+  it('resets the registry provider on deleteModel so stale embeds reject', async () => {
+    window.__embeddingTestHooks = { pipelineFactory: mockFactoryFor({ hi: [1, 0] }) };
+    await window.EmbeddingService.ensureModel();
+    const before = window.EmbeddingRegistry.getActiveEmbeddingProvider();
+    await expect(before.embed(['hi there'])).resolves.toEqual([[1, 0]]);
+    expect(await window.EmbeddingService.deleteModel()).toBe(true);
+    const after = window.EmbeddingRegistry.getActiveEmbeddingProvider();
+    expect(after).not.toBeNull();
+    expect(after.id).toBe('harrier-int8');
+    await expect(after.embed(['hi there'])).rejects.toThrow('deleted');
+    await expect(after.embedQuery('hi')).rejects.toThrow('deleted');
+  });
+
   it('reads the semantic opt-in flag', () => {
     expect(window.EmbeddingService.isSemanticEnabled()).toBe(false);
     localStorage.setItem('notesSemanticEnabled', 'true');
