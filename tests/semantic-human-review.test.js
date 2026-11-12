@@ -55,7 +55,7 @@ beforeEach(() => {
   if (searchInput) searchInput.value = '';
   window.initNotes();
   window.initNotesSemanticSetting();
-  const allBtn = document.querySelector('.note-tag-filter-btn[data-tag=\"\"]');
+  const allBtn = document.querySelector('.note-tag-filter-btn[data-tag=""]');
   if (allBtn) allBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   window.setNotesSearchQuery('');
 });
@@ -98,6 +98,13 @@ describe('PR #1187 human-review resolutions', () => {
     // Stale semantic order must not repaint with the feature off.
     expect(window.isNotesSemanticEnabled()).toBe(false);
     expect(document.querySelector('.notes-semantic-status')?.hidden ?? true).toBe(true);
+    // The stale rerank resolves after disable: it must not repaint note
+    // cards. The sync keyword pass for 'feline' is empty, so the list stays
+    // empty and the empty state is restored (not a blank list, not stale
+    // semantic order).
+    const shownAfterDisable = [...document.querySelectorAll('.note-item')].map((el) => el.dataset.id);
+    expect(shownAfterDisable).toEqual([]);
+    expect(document.getElementById('notes-empty').style.display).toBe('block');
   });
 
   it('does not write back vectors when the model is no longer ready', async () => {
@@ -202,6 +209,33 @@ describe('PR #1187 human-review resolutions', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(calls).toBeGreaterThan(0);
+  });
+
+  it('starts the deferred model on the first query after page load', async () => {
+    let calls = 0;
+    window.EmbeddingService = {
+      getStatus: function () { return { status: 'idle', progress: 0, error: '', modelId: 'test-model' }; },
+      isReady: function () { return false; },
+      ensureModel: function () {
+        calls += 1;
+        return Promise.resolve({ id: 'harrier-int8' });
+      },
+      cancelLoad: function () {}
+    };
+    grantModelHosts();
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('notesSemanticDownload', 'ready');
+    window.initNotesSemanticSetting();
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(calls).toBe(0);
+    // First semantic query warms the deferred model exactly once.
+    const searchInput = document.getElementById('notes-search');
+    searchInput.value = 'feline';
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(calls).toBe(1);
   });
 
   it('import primes nothing so no silent download starts', async () => {

@@ -587,9 +587,15 @@
           ? window.EmbeddingService.getStatus().status === 'loading'
           : false;
       } catch { loading = false; }
-      // Lazy load (PR #1187 human review): the page-load resume no longer
-      // warms the ~300MB model, so the first query with the flag on starts
-      // a passive (silent) load here. Already-loading short-circuits
+      // Lazy load (PR #1187 human review + follow-up): the page-load resume
+      // no longer warms the ~300MB model, so the first query with the flag
+      // on starts a passive load here. Passive means contains-only
+      // permission (no new grant prompt) and no toast; visibility comes
+      // from the notes loading status (once the service reports loading
+      // via embedding-status) and the Settings downloading row. Deferred
+      // to first query per the lazy-load decision; an import with an empty
+      // cache therefore waits for an explicit query instead of
+      // downloading silently on page load. Already-loading short-circuits
       // inside requestSemanticModelLoad via the service status guard.
       if (!loading) {
         try {

@@ -1940,7 +1940,25 @@ function resolveSemanticStatusText(enabled, svcStatus) {
   if (readSemanticDownloadState() === 'error') {
     return tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
   }
-  return tSemantic('notesSemanticStarting', 'Starting download…');
+  // Deferred lazy-load state (PR #1187 human review): the page-load resume
+  // no longer warms the ~300MB model, so an enabled flag with an idle
+  // service is expected until the first query. A 'ready' marker means the
+  // bytes are cached from a previous session: report ready (not starting)
+  // so Settings does not claim a download is running. A 'loading' marker
+  // is an interrupted download that the resume path will pick up: report
+  // starting. A null marker means never downloaded on this device: idle
+  // (empty) until the first query warms it, not a phantom download.
+  const deferredState = readSemanticDownloadState();
+  if (deferredState === 'ready') {
+    return tSemantic('notesSemanticReady', 'Semantic search ready (on-device).');
+  }
+  if (deferredState === 'loading') {
+    return tSemantic('notesSemanticStarting', 'Starting download…');
+  }
+  // Deferred null (never downloaded on this device): idle until the first
+  // query warms it. Fresh opt-ins briefly show idle here while permission
+  // and scripts resolve, then flip to downloading once the marker is set.
+  return '';
 }
 
 function renderNotesSemanticSettings() {
@@ -1951,12 +1969,19 @@ function renderNotesSemanticSettings() {
   const loading = enabled && svcStatus.status === 'loading';
   const ready = enabled && svcStatus.status === 'ready';
   const error = enabled && svcStatus.status === 'error';
+  // Deferred ready (PR #1187 review): bytes cached, ORT not warmed yet.
+  // Keep Delete visible so a 'ready'-marked model can be purged before
+  // the first search warms it; otherwise Settings hides Delete with
+  // 'Starting download...' and strands the bytes with no retry control.
+  let deferredReady;
+  try { deferredReady = enabled && svcStatus.status === 'idle' && readSemanticDownloadState() === 'ready'; } catch { deferredReady = false; }
+  const readyForUi = ready || deferredReady;
   if (els.progress) {
     els.progress.hidden = !loading;
     if (loading) els.progress.value = Math.round((svcStatus.progress || 0) * 100);
   }
   if (els.cancelBtn) els.cancelBtn.hidden = !loading;
-  if (els.deleteBtn) els.deleteBtn.hidden = !(ready || error);
+  if (els.deleteBtn) els.deleteBtn.hidden = !(readyForUi || error);
   if (els.status) els.status.textContent = resolveSemanticStatusText(enabled, svcStatus);
 }
 
@@ -2408,6 +2433,22 @@ function bindSemanticDelete(els) {
 
 let semanticResumeInFlight = false;
 
+// Shared passive launcher (PR #1187 review): keeps the async launch out
+// of try/catch (S4822) and de-duplicates resumeSemanticIfNeeded and
+// requestSemanticModelLoad. Sets/clears semanticResumeInFlight around the
+// gestured-free start so a second passive kick is a no-op while one runs.
+function launchPassiveSemanticDownload() {
+  if (semanticResumeInFlight) return;
+  semanticResumeInFlight = true;
+  Promise.resolve()
+    .then(function () { return startSemanticDownload(false); })
+    .then(function () {
+      semanticResumeInFlight = false;
+    }, function () {
+      semanticResumeInFlight = false;
+    });
+}
+
 // Lazy-load gate (PR #1187 human review): only an interrupted download
 // ('loading' marker) resumes automatically on page load. A previously
 // finished model ('ready') or legacy flag without a marker (null) defers
@@ -2415,6 +2456,7 @@ let semanticResumeInFlight = false;
 // requestSemanticModelLoad) or an explicit Settings opt-in, instead of
 // reading ~300MB from Cache Storage and initializing ORT on every New Tab.
 function resumeSemanticIfNeeded() {
+  let shouldLaunch;
   // S4822/S6544: keep promise creation out of try/catch. The sync checks
   // below may throw (storage bridge), but the async launch must not be
   // created inside try, and the launch result must not be tested as a
@@ -2434,15 +2476,9 @@ function resumeSemanticIfNeeded() {
     if (alreadyReady) return;
     const downloadState = readSemanticDownloadState();
     if (downloadState !== 'loading') return;
+    shouldLaunch = true;
   } catch { return; }
-  semanticResumeInFlight = true;
-  Promise.resolve()
-    .then(function () { return startSemanticDownload(false); })
-    .then(function () {
-      semanticResumeInFlight = false;
-    }, function () {
-      semanticResumeInFlight = false;
-    });
+  if (shouldLaunch) launchPassiveSemanticDownload();
 }
 
 // First-query lazy starter (PR #1187 human review): invoked from
@@ -2450,6 +2486,11 @@ function resumeSemanticIfNeeded() {
 // Passive (no toast, contains-only permission check): a missing grant or
 // cache simply leaves the keyword path until the user opts in via Settings.
 function requestSemanticModelLoad() {
+  // Passive first-query starter: contains-only permission (no new grant
+  // prompt), no toast. Visibility via notes loading status + Settings
+  // downloading row; missing grant/cache leaves keyword path until an
+  // explicit Settings opt-in. Deferred per lazy-load (loading-only resume)
+  // so New Tab never reads ~300MB + inits ORT until the first query.
   try {
     if (!loadNotesSemanticEnabled()) return;
     if (semanticResumeInFlight) return;
@@ -2463,22 +2504,14 @@ function requestSemanticModelLoad() {
   resumeSemanticIfNeeded();
   // Deferred states ('ready' marker from a previous session, or null)
   // never trigger the loading-only resume above: kick a passive start
-  // directly so the first search warms the model. The in-flight flag in
-  // resumeSemanticIfNeeded does not cover this path, so guard re-entry
-  // via the service status check above (loading short-circuits).
+  // directly so the first search warms the model. Guarded by the helper's
+  // in-flight flag (set by the resume above when it launched).
+  let shouldWarm;
   try {
     const st = readSemanticDownloadState();
-    if (st === 'ready' || st === null) {
-      semanticResumeInFlight = true;
-      Promise.resolve()
-        .then(function () { return startSemanticDownload(false); })
-        .then(function () {
-          semanticResumeInFlight = false;
-        }, function () {
-          semanticResumeInFlight = false;
-        });
-    }
+    if (st === 'ready' || st === null) shouldWarm = true;
   } catch { /* ignore */ }
+  if (shouldWarm) launchPassiveSemanticDownload();
 }
 
 function initNotesSemanticSetting() {
