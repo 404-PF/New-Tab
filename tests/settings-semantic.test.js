@@ -147,6 +147,7 @@ describe('Semantic search settings', () => {
   it('ignores a stale delete result after re-enable during cleanup', async () => {
     let releaseDelete;
     const gate = new Promise(function (resolve) { releaseDelete = function () { resolve(true); }; });
+    let deleteCalled = false;
     window.EmbeddingService = {
       // Ready so the Delete control is visible, matching the real UI state
       // a user needs to begin deletion (PR #1187 review).
@@ -154,7 +155,7 @@ describe('Semantic search settings', () => {
       isReady: function () { return true; },
       ensureModel: function () { return Promise.resolve({ id: 'harrier-int8' }); },
       cancelLoad: function () {},
-      deleteModel: function () { return gate; }
+      deleteModel: function () { deleteCalled = true; return gate; }
     };
     localStorage.setItem('notesSemanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'ready');
@@ -162,6 +163,9 @@ describe('Semantic search settings', () => {
     // The race requires the visible Delete control (ready status).
     expect(document.getElementById('notes-semantic-delete').hidden).toBe(false);
     document.getElementById('notes-semantic-delete').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    // The click binding must invoke deleteModel; otherwise the gate below
+    // could resolve without cleanup ever starting (PR #1187 review).
+    expect(deleteCalled).toBe(true);
     // Uncheck then re-check to simulate a real re-enable: the off-toggle
     // cancels (generation bump) and the on-toggle starts a fresh download
     // (second bump). The stale successful delete must not clear the fresh
