@@ -444,8 +444,6 @@ const testGlobals = {
   EmbeddingService: 'readonly',
   NotesVectorCache: 'readonly',
   NotesSemanticSearch: 'readonly',
-  EmbeddingScripts: 'readonly',
-  MODEL_ORIGINS: 'readonly',
   exportNotes: 'readonly',
   importNotes: 'readonly',
   validateNotesData: 'readonly',

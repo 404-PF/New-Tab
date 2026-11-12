@@ -87,7 +87,15 @@
     SOURCES.forEach(function (src) {
       chain = chain.then(function () { return loadScript(src); });
     });
-    scriptsPromise = chain.catch(function (err) {
+    // A classic script fires load even when it throws during evaluation,
+    // so verify registration before caching success. A failed check clears
+    // the cached promise so the next caller retries instead of reusing an
+    // unusable loader.
+    scriptsPromise = chain.then(function () {
+      if (!scriptsLoaded()) {
+        throw new Error('Embedding modules failed to register globals');
+      }
+    }).catch(function (err) {
       scriptsPromise = null;
       throw err;
     });

@@ -2314,7 +2314,10 @@ function bindSemanticCheckbox(els) {
       return;
     }
     if (this.checked) {
-      startSemanticDownload();
+      // S9383: the returned promise is already handled inside
+      // startSemanticDownload (toggle reset + toast), but it must still end
+      // with a rejection handler so a late rejection is never unhandled.
+      startSemanticDownload().then(null, function () { /* handled inside */ });
       return;
     }
     cancelSemanticLoad();
@@ -2373,6 +2376,11 @@ function bindSemanticDelete(els) {
 let semanticResumeInFlight = false;
 
 function resumeSemanticIfNeeded() {
+  // S4822/S6544: keep promise creation out of try/catch. The sync checks
+  // below may throw (storage bridge), but the async launch must not be
+  // created inside try, and the launch result must not be tested as a
+  // boolean (it is always a Promise). Promise.resolve().then() captures a
+  // synchronous startSemanticDownload throw as a rejection instead.
   try {
     if (semanticResumeInFlight) return;
     if (!loadNotesSemanticEnabled()) return;
@@ -2386,26 +2394,16 @@ function resumeSemanticIfNeeded() {
     } catch { alreadyReady = false; }
     if (alreadyReady) return;
     const downloadState = readSemanticDownloadState();
-    if (downloadState === 'loading' || downloadState === 'ready' || downloadState === null) {
-      semanticResumeInFlight = true;
-      let started = null;
-      try {
-        started = startSemanticDownload(false);
-      } catch (e) {
-        semanticResumeInFlight = false;
-        throw e;
-      }
-      if (started && typeof started.then === 'function') {
-        started.then(function () {
-          semanticResumeInFlight = false;
-        }, function () {
-          semanticResumeInFlight = false;
-        });
-      } else {
-        semanticResumeInFlight = false;
-      }
-    }
-  } catch { /* ignore */ }
+    if (downloadState !== 'loading' && downloadState !== 'ready' && downloadState !== null) return;
+  } catch { return; }
+  semanticResumeInFlight = true;
+  Promise.resolve()
+    .then(function () { return startSemanticDownload(false); })
+    .then(function () {
+      semanticResumeInFlight = false;
+    }, function () {
+      semanticResumeInFlight = false;
+    });
 }
 
 function initNotesSemanticSetting() {

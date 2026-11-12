@@ -115,4 +115,82 @@ describe('PR #1187 review follow-ups', () => {
     await new Promise(function (resolve) { setTimeout(resolve, 0); });
     expect(window.EmbeddingService.ensureModelCalls).toBe(1);
   });
+
+  it('delegates settings opt-in and notes load to the shared loader', async () => {
+    // Both callers must use window.EmbeddingScripts when present instead of
+    // their fallback twins. Simulate absent modules, stub the shared loader,
+    // then exercise one settings resume and one notes rerank.
+    // Flush any in-flight resume from the previous test (its async clear may
+    // still be pending when this test starts).
+    await Promise.resolve();
+    await new Promise(function (resolve) { setTimeout(resolve, 0); });
+    await new Promise(function (resolve) { setTimeout(resolve, 0); });
+    await new Promise(function (resolve) { setTimeout(resolve, 0); });
+    if (typeof window.setNotesSearchQuery !== 'function') {
+      injectScript('src/features/notes.js');
+    }
+    const shared = window.EmbeddingScripts;
+    expect(shared).toBeTruthy();
+    const origEnsure = shared.ensureScripts;
+    const origLoaded = shared.scriptsLoaded;
+    const saved = {
+      registry: window.EmbeddingRegistry,
+      harrier: window.HarrierProvider,
+      cache: window.NotesVectorCache,
+      search: window.NotesSemanticSearch
+    };
+    let loaded = false;
+    let calls = 0;
+    shared.scriptsLoaded = function () { return loaded; };
+    shared.ensureScripts = function () {
+      calls += 1;
+      loaded = true;
+      return Promise.resolve();
+    };
+    try {
+      try { delete window.EmbeddingRegistry; } catch { /* ignore */ }
+      try { delete window.HarrierProvider; } catch { /* ignore */ }
+      try { delete window.NotesVectorCache; } catch { /* ignore */ }
+      try { delete window.NotesSemanticSearch; } catch { /* ignore */ }
+      installMockService();
+      try {
+        (window.MODEL_ORIGINS || []).forEach(function (origin) {
+          chrome.permissions._granted[origin] = true;
+        });
+      } catch { /* ignore */ }
+      localStorage.setItem('notesSemanticEnabled', 'true');
+      localStorage.setItem('notesSemanticDownload', 'loading');
+      window.initNotesSemanticSetting();
+      await Promise.resolve();
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      expect(calls).toBeGreaterThan(0);
+      // Notes half: a query with the service not ready still triggers the
+      // shared loader via scheduleSemanticRerank (renderNotes path).
+      calls = 0;
+      loaded = false;
+      try { delete window.EmbeddingRegistry; } catch { /* ignore */ }
+      try { delete window.HarrierProvider; } catch { /* ignore */ }
+      try { delete window.NotesVectorCache; } catch { /* ignore */ }
+      try { delete window.NotesSemanticSearch; } catch { /* ignore */ }
+      window.setNotesSearchQuery('milk');
+      window.renderNotes();
+      await Promise.resolve();
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      expect(calls).toBeGreaterThan(0);
+    } finally {
+      shared.ensureScripts = origEnsure;
+      shared.scriptsLoaded = origLoaded;
+      if (saved.registry) window.EmbeddingRegistry = saved.registry;
+      if (saved.harrier) window.HarrierProvider = saved.harrier;
+      if (saved.cache) window.NotesVectorCache = saved.cache;
+      if (saved.search) window.NotesSemanticSearch = saved.search;
+      window.setNotesSearchQuery('');
+    }
+  });
 });

@@ -562,6 +562,12 @@
           : false;
       } catch { loading = false; }
       updateSemanticStatus(loading ? 'loading' : 'idle');
+      // Deleting the ready model must not leave a stale semantic order on
+      // screen: drop the ranked view and re-render keyword results.
+      if (_semanticRankedView) {
+        _semanticRankedView = false;
+        renderNotes();
+      }
       return;
     }
     clearSemanticDebounce();

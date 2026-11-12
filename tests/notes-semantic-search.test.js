@@ -70,7 +70,11 @@ describe('NotesSemanticSearch.rankNotesForQuery', () => {
       const ranked = await window.NotesSemanticSearch.rankNotesForQuery(notes, q, deps);
       expect(ranked.map((n) => n.id)).toEqual(notes.map((n) => n.id));
       ranked.forEach((n) => expect(n._semanticScore).toBeNull());
-      expect(ranked[0]).not.toBe(notes[0]);
+      // Every result must be isolated, not just the first.
+      ranked.forEach((n) => {
+        const src = notes.find((s) => s.id === n.id);
+        expect(n).not.toBe(src);
+      });
     }
   });
 
@@ -78,9 +82,17 @@ describe('NotesSemanticSearch.rankNotesForQuery', () => {
     const ranked = await window.NotesSemanticSearch.rankNotesForQuery(notes, 'milk', null);
     expect(ranked.map((n) => n.id).sort()).toEqual(['1', '3']);
     ranked.forEach((n) => expect(n._semanticScore).toBeNull());
-    // Callers must not be able to mutate stored notes through the results.
-    ranked[0].text = 'mutated';
-    expect(notes.find((n) => n.id === ranked[0].id).text).not.toBe('mutated');
+    // Every fallback result must be isolated: mutating any copy must not
+    // mutate the stored note with the same id.
+    ranked.forEach((n) => {
+      const src = notes.find((s) => s.id === n.id);
+      expect(n).not.toBe(src);
+    });
+    ranked.forEach((n, i) => {
+      const marker = 'mutated-' + i;
+      n.text = marker;
+      expect(notes.find((s) => s.id === n.id).text).not.toBe(marker);
+    });
   });
 
   it('finds semantically related notes with different wording', async () => {
