@@ -79,7 +79,7 @@ This workflow revises artifacts that already exist; it never creates missing one
    - If the change is already coherent, say so and propose no revisions.
 
 5. **Confirm and apply, one artifact at a time**
-   - This step performs every artifact write in this workflow; no earlier step edits an artifact.
+   - This step performs every artifact write in this workflow, including creating a confirmed new file under a partly populated glob artifact (step 4 procedure); no earlier step edits an artifact.
    - Show each proposed revision and why - including the requested edit drafted in step 4. Write only after the user confirms.
    - If the user rejects a revision, do not write it - leave that artifact unchanged.
    - When a substantial rewrite is needed, get that artifact's rules and template first:
@@ -89,7 +89,7 @@ This workflow revises artifacts that already exist; it never creates missing one
 
 6. **Point to the next step (guidance only - NEVER act on it)**
    - Artifacts with empty `existingOutputPaths` and status `ready` or `blocked` -> run `openspec status --change "<name>" --json` for the next artifact and point the user to `openspec instructions "<artifact-id>" --change "<name>" --json` for how to create it.
-   - Change already implemented (tasks checked off / already applied) -> the code may no longer match the revised plan; suggest `openspec-apply-change` to carry the delta into code.
+   - Change already implemented (tasks checked off / already applied) -> the code may no longer match the revised plan. Before suggesting `openspec-apply-change`, confirm with the user and add or reopen tasks for the revised requirements; apply reports completion when no tasks remain unchecked, so it will not pick up the revision otherwise.
    - Everything done and implemented -> suggest `openspec-archive-change`.
 
 **Output**

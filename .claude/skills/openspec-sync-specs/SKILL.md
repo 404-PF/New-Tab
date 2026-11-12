@@ -184,6 +184,7 @@ In both branches, never create the root as a side effect: do not run `openspec i
 
    After applying all changes, summarize:
    - Which capabilities were updated
+   - Which capabilities were blocked, and why; a blocked capability makes the sync partial
    - What changes were made (requirements added/modified/removed/renamed)
    - Any new main spec left with a TBD Purpose placeholder, so it gets written
      now rather than lingering
@@ -260,6 +261,8 @@ Unlike programmatic merging, you merge rather than overwrite:
 
 **Output On Success**
 
+Use this output only when every selected capability synced. When any capability was blocked, report a partial sync instead: list the blocked capabilities and why, and do not print this success output.
+
 ```markdown
 ## Specs Synced: <change-name>
 
@@ -288,3 +291,4 @@ Main specs are now updated. The change remains active - archive when implementat
 - Fetch specs instructions once for direct sync, or reuse the archive-supplied snapshot inline
 - Stop before every main-spec write on a non-zero or invalid JSON specs-instruction response
 - Artifact rules constrain only the specs being written and are never copied into output files
+- Never print the success output while a capability is blocked; report a partial sync instead

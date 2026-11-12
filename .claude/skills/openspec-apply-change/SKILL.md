@@ -192,6 +192,7 @@ What would you like to do?
 - Only mark a task `- [x]` when its specified behavior is fully implemented, not when it is partially done or deferred
 - Use contextFiles from CLI output, don't assume specific file names
 - Use each task's sourcePath and line to update its exact checkbox
+- Treat `planningHome`, `changeRoot`, and `actionContext` from the status JSON as edit constraints: edit only the paths they authorize, and when a task's required edits fall outside them, pause and ask the user instead of editing outside the authorized scope
 - Do not use context or operation guidance as proof that a task is complete
 - Apply relevant project context; report conflicts with controlling workflow inputs
 - Consider every guidance entry; explain any inapplicable or conflicting advice

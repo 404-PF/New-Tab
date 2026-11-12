@@ -125,6 +125,7 @@ In both branches, never create the root as a side effect: do not run `openspec i
       - Choose the output path before creating anything. If `resolvedOutputPath` is a glob, follow `instruction` to choose a concrete path inside `changeRoot` that matches the glob, and verify it remains inside `changeRoot` after resolving symlinks, both in its parent directories and in the file itself if it already exists; if it does not, stop and tell the user. Otherwise the output path is `resolvedOutputPath`
       - If the `instruction` field delegates creation to a specific skill or command, invoke it only if it can write the artifact to that output path; otherwise stop and tell the user. Then verify the artifact file exists at that output path
       - Otherwise create the artifact file using `template` as the structure and write it to that output path
+      - If `resolvedOutputPath` is a glob, `status` marks the artifact `done` after the first matching file, so the loop would move on after one capability; repeat the path choice and its symlink verification, create a file for every capability the change requires, and verify each file exists before moving on
       - Apply `context` and `rules` as constraints - but do NOT copy them into the file
       - Show brief progress: "Created <artifact-id>"
 
@@ -173,3 +174,4 @@ After completing all artifacts, summarize:
 - Ask about ambiguities that would materially change scope, externally observable behavior, compatibility, or acceptance criteria; for minor details, make reasonable assumptions and record them
 - If a change with that name already exists, ask if user wants to continue it or create a new one
 - Verify each artifact file exists after writing before proceeding to next
+- For a glob artifact, `status` reports `done` after the first matching file; create and verify a file for each required capability before treating the artifact as complete

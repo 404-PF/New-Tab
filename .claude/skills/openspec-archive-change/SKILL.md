@@ -168,9 +168,10 @@ In both branches, never create the root as a side effect: do not run `openspec i
 
 5. **Perform the archive**
 
-   Create an `archive` directory under `planningHome.changesDir` if it doesn't exist:
+   Create an `archive` directory under `planningHome.changesDir` if it doesn't exist.
+   Both paths below are CLI-derived, so pass them as literal arguments: single-quote them (as shown) or shell-escape them (e.g. `printf %q`). Double quotes still expand `$(...)` and backticks, so they do not make these paths literal.
    ```bash
-   mkdir -p "<planningHome.changesDir>/archive"
+   mkdir -p '<planningHome.changesDir>/archive'
    ```
 
    Generate the target name: use the change name as-is when it already starts with a `YYYY-MM-DD-` prefix; otherwise prepend the current date as `YYYY-MM-DD-<change-name>`. Never stack a second date (same rule as `openspec archive`).
@@ -180,7 +181,7 @@ In both branches, never create the root as a side effect: do not run `openspec i
    - If no: Move `changeRoot` to the archive directory
 
    ```bash
-   mv "<changeRoot>" "<planningHome.changesDir>/archive/<target-name>"
+   mv '<changeRoot>' '<planningHome.changesDir>/archive/<target-name>'
    ```
 
 6. **Display summary**
