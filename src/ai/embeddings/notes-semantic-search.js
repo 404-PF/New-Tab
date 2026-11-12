@@ -76,9 +76,22 @@
     });
   }
 
+  // One result shape for every path (PR #1187 review): semantic hits are
+  // copies carrying a numeric _semanticScore; keyword fallbacks are copies
+  // carrying _semanticScore: null so callers never receive stored-note
+  // references they could mutate and never branch on a missing field.
+  function copyWithScore(note, score) {
+    const copy = { ...(note || {}) };
+    copy._semanticScore = (typeof score === 'number' && Number.isFinite(score)) ? score : null;
+    return copy;
+  }
+
+  function keywordResults(list, q, max) {
+    return keywordFilter(list, q).slice(0, max).map(function (n) { return copyWithScore(n, null); });
+  }
+
   // deps: { embedQuery(query)->Promise<vector>, getNoteVector(note)->Promise<vector|null> }
-  // Returns ranked note array (new array, originals not mutated except for an
-  // optional non-enumerable score? we attach _semanticScore as own prop copy).
+  // Returns ranked note array (new array of copies; stored notes never mutated).
   function rankNotesForQuery(tagFilteredNotes, query, deps, options) {
     const opts = options || {};
     const alpha = opts.alpha !== undefined ? opts.alpha : DEFAULT_ALPHA;
@@ -88,18 +101,18 @@
     const q = (query || '').trim();
 
     if (!q) {
-      return Promise.resolve(notes.slice());
+      return Promise.resolve(notes.map(function (n) { return copyWithScore(n, null); }));
     }
     if (notes.length === 0) {
       return Promise.resolve([]);
     }
     if (!deps || typeof deps.embedQuery !== 'function' || typeof deps.getNoteVector !== 'function') {
-      return Promise.resolve(keywordFilter(notes, q).slice(0, maxResults));
+      return Promise.resolve(keywordResults(notes, q, maxResults));
     }
 
     return deps.embedQuery(q).then(function (queryVector) {
       if (!Array.isArray(queryVector) || queryVector.length === 0) {
-        return keywordFilter(notes, q).slice(0, maxResults);
+        return keywordResults(notes, q, maxResults);
       }
       const jobs = notes.map(function (note) {
         return deps.getNoteVector(note).then(function (vec) {
@@ -117,7 +130,7 @@
       return Promise.all(jobs).then(function (scored) {
         const hasSignal = scored.some(function (s) { return s.cosine !== 0 || s.keyword !== 0; });
         if (!hasSignal) {
-          return keywordFilter(notes, q).slice(0, maxResults);
+          return keywordResults(notes, q, maxResults);
         }
         const ranked = rankByScores(scored).filter(function (s) { return s.score >= minScore; });
         const limited = ranked.slice(0, maxResults).map(function (s) {
@@ -128,12 +141,12 @@
         // If semantic filtering is too aggressive (empty), fall back to
         // keyword matches rather than a surprising empty list.
         if (limited.length === 0) {
-          return keywordFilter(notes, q).slice(0, maxResults);
+          return keywordResults(notes, q, maxResults);
         }
         return limited;
       });
     }).catch(function () {
-      return keywordFilter(notes, q).slice(0, maxResults);
+      return keywordResults(notes, q, maxResults);
     });
   }
 

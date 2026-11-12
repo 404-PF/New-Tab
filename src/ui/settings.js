@@ -1967,10 +1967,12 @@ function applyNotesSemanticEnabled() {
 
 // The embedding modules stay out of the bootstrap scriptSources path
 // (issue #1186): they load on demand the first time the user opts in,
-// mirroring the games-app lazy loader. Twin implementation lives in
-// src/features/notes.js (ensureEmbeddingScripts); keep the source list in
-// sync. Duplication matches the existing loadScript precedent shared by
-// bootstrap.js and games-app.js.
+// mirroring the games-app lazy loader. The canonical source list and loader
+// live in src/ai/embeddings/embedding-scripts.js (loaded via bootstrap
+// before this file); the local functions below delegate to
+// window.EmbeddingScripts when present and fall back to the embedded twin
+// only when that shared file has not been loaded (unit tests that inject
+// this module in isolation).
 const EMBEDDING_SCRIPT_SOURCES = [
   'src/ai/embeddings/embedding-registry.js',
   'src/ai/embeddings/harrier-provider.js',
@@ -1983,6 +1985,11 @@ let embeddingScriptsPromise = null;
 
 function embeddingScriptsLoaded() {
   try {
+    if (window.EmbeddingScripts && typeof window.EmbeddingScripts.scriptsLoaded === 'function') {
+      return window.EmbeddingScripts.scriptsLoaded();
+    }
+  } catch { /* fall through to local check */ }
+  try {
     return !!(window.EmbeddingRegistry && window.HarrierProvider
       && window.NotesVectorCache && window.EmbeddingService && window.NotesSemanticSearch);
   } catch {
@@ -1991,6 +1998,11 @@ function embeddingScriptsLoaded() {
 }
 
 function loadEmbeddingScript(src) {
+  try {
+    if (window.EmbeddingScripts && typeof window.EmbeddingScripts.loadScript === 'function') {
+      return window.EmbeddingScripts.loadScript(src);
+    }
+  } catch { /* fall through to local loader */ }
   return new Promise(function (resolve, reject) {
     const fail = function (message) {
       reject(new Error(message || ('Failed to load ' + src)));
@@ -2062,6 +2074,11 @@ if (mottoEnabledSetting) {
 }
 
 function ensureEmbeddingScripts() {
+  try {
+    if (window.EmbeddingScripts && typeof window.EmbeddingScripts.ensureScripts === 'function') {
+      return window.EmbeddingScripts.ensureScripts();
+    }
+  } catch { /* fall through to local chain */ }
   if (embeddingScriptsLoaded()) return Promise.resolve();
   if (embeddingScriptsPromise) return embeddingScriptsPromise;
   let chain = Promise.resolve();
@@ -2076,6 +2093,13 @@ function ensureEmbeddingScripts() {
 }
 
 let semanticStartGeneration = 0;
+// Guards the page-load double resume (PR #1187 review): initNotesSemanticSetting
+// runs at script evaluation and again from initSettings(), so two passive
+// resumes would otherwise start back-to-back and the second would orphan the
+// first chain via semanticStartGeneration. While a resume setup is in flight,
+// further resume calls return early; explicit user opt-ins bypass this flag
+// via startSemanticDownload so a fresh gesture always wins over a passive
+// resume.;
 
 function startSemanticDownload(requestPermission) {
   const els = getSemanticSettingsElements();
@@ -2088,7 +2112,10 @@ function startSemanticDownload(requestPermission) {
   // Permission first: chrome.permissions.request needs the checkbox's user
   // gesture, and the script chain can outlive it. Re-check the opt-in flag
   // after each async hop so an off-toggle mid-setup cancels the start.
-  ensureModelHostPermission(!passive).then(function (granted) {
+  // Returned so resumeSemanticIfNeeded can clear its in-flight flag when
+  // the setup phase settles (the model download itself continues via
+  // startSemanticModelDownload and reports through embedding-status).
+  return ensureModelHostPermission(!passive).then(function (granted) {
     if (startGeneration !== semanticStartGeneration) return false;
     if (!granted) return false;
     if (!loadNotesSemanticEnabled()) return false;
@@ -2131,16 +2158,29 @@ function startSemanticDownload(requestPermission) {
 
 // Host access for the model download is requested at opt-in time via the
 // already-declared blanket optional_host_permissions (https://*/*), so
-// installing the extension never prompts for Hugging Face access. The extra
-// origins cover the Hub API plus its weight CDNs (LFS / Xet mirrors); a
-// redirect outside this set surfaces as a load error with retry instead of
-// hanging.
+// installing the extension never prompts for Hugging Face access. The Hub
+// API lives on huggingface.co / hf.co and weight shards redirect to its
+// first-party CDNs, all of which are subdomains of those two hosts and
+// therefore covered by the wildcard entries below:
+//   - cdn-lfs.huggingface.co / cdn-lfs.hf.co (LFS weight shards)
+//   - cas-bridge.xethub.huggingface.co (Xet CAS bridge)
+//   - *.static.huggingface.co (static weight mirrors)
+// A redirect outside this set (e.g. a third-party S3 mirror) surfaces as a
+// load error with retry instead of hanging; extend this list (and the
+// MODEL_ORIGINS coverage test) if the manual verification pass in
+// vendor/README.md ever observes a cross-host shard fetch.
 const MODEL_ORIGINS = [
   'https://huggingface.co/*',
   'https://*.huggingface.co/*',
   'https://hf.co/*',
   'https://*.hf.co/*'
 ];
+
+// Read by the MODEL_ORIGINS coverage test; the permission query above always
+// uses the const so the test guards the shipped value.
+try {
+  window.MODEL_ORIGINS = MODEL_ORIGINS;
+} catch { /* ignore */ }
 
 function getModelHostPerms() {
   try {
@@ -2330,8 +2370,11 @@ function bindSemanticDelete(els) {
   });
 }
 
+let semanticResumeInFlight = false;
+
 function resumeSemanticIfNeeded() {
   try {
+    if (semanticResumeInFlight) return;
     if (!loadNotesSemanticEnabled()) return;
     let alreadyReady = false;
     try {
@@ -2344,7 +2387,23 @@ function resumeSemanticIfNeeded() {
     if (alreadyReady) return;
     const downloadState = readSemanticDownloadState();
     if (downloadState === 'loading' || downloadState === 'ready' || downloadState === null) {
-      startSemanticDownload(false);
+      semanticResumeInFlight = true;
+      let started = null;
+      try {
+        started = startSemanticDownload(false);
+      } catch (e) {
+        semanticResumeInFlight = false;
+        throw e;
+      }
+      if (started && typeof started.then === 'function') {
+        started.then(function () {
+          semanticResumeInFlight = false;
+        }, function () {
+          semanticResumeInFlight = false;
+        });
+      } else {
+        semanticResumeInFlight = false;
+      }
     }
   } catch { /* ignore */ }
 }

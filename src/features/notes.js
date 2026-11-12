@@ -420,10 +420,12 @@
 
   // The embedding modules stay out of the bootstrap scriptSources path
   // (issue #1186): they load on demand the first time semantic search is
-  // enabled, mirroring the games-app lazy loader. Twin implementation lives
-  // in src/ui/settings.js (ensureEmbeddingScripts); keep the source list in
-  // sync. Duplication matches the existing loadScript precedent shared by
-  // bootstrap.js and games-app.js.
+  // enabled, mirroring the games-app lazy loader. The canonical source list
+  // and loader live in src/ai/embeddings/embedding-scripts.js (loaded via
+  // bootstrap before settings.js); the functions below delegate to
+  // window.EmbeddingScripts when present and fall back to the embedded twin
+  // only when that shared file has not been loaded (unit tests that inject
+  // this module in isolation).
   const EMBEDDING_SCRIPT_SOURCES = [
     'src/ai/embeddings/embedding-registry.js',
     'src/ai/embeddings/harrier-provider.js',
@@ -436,6 +438,11 @@
 
   function embeddingScriptsLoaded() {
     try {
+      if (window.EmbeddingScripts && typeof window.EmbeddingScripts.scriptsLoaded === 'function') {
+        return window.EmbeddingScripts.scriptsLoaded();
+      }
+    } catch { /* fall through to local check */ }
+    try {
       return !!(window.EmbeddingRegistry && window.HarrierProvider
         && window.NotesVectorCache && window.EmbeddingService && window.NotesSemanticSearch);
     } catch {
@@ -444,6 +451,11 @@
   }
 
   function loadEmbeddingScript(src) {
+    try {
+      if (window.EmbeddingScripts && typeof window.EmbeddingScripts.loadScript === 'function') {
+        return window.EmbeddingScripts.loadScript(src);
+      }
+    } catch { /* fall through to local loader */ }
     return new Promise(function (resolve, reject) {
       const fail = function (message) {
         reject(new Error(message || ('Failed to load ' + src)));
@@ -487,6 +499,11 @@
   }
 
   function ensureEmbeddingScripts() {
+    try {
+      if (window.EmbeddingScripts && typeof window.EmbeddingScripts.ensureScripts === 'function') {
+        return window.EmbeddingScripts.ensureScripts();
+      }
+    } catch { /* fall through to local chain */ }
     if (embeddingScriptsLoaded()) return Promise.resolve();
     if (_embeddingScriptsPromise) return _embeddingScriptsPromise;
     let chain = Promise.resolve();
@@ -1669,8 +1686,45 @@
     renderNotes();
   });
 
+  // The embedding service dispatches embedding-status on every download
+  // progress tick. Scheduling a rerank per tick is wasteful: while the model
+  // is still loading there is nothing to rank yet, and the status text has
+  // no percent to update. Rerank only on the transition into ready (when
+  // results can actually change) or out of ready (to drop the relevance
+  // view); loading ticks get a cheap status update with no debounce churn.
+  let _lastEmbeddingStatus = null;
+  function handleEmbeddingStatusEvent(event) {
+    let status = null;
+    try {
+      const detail = event && event.detail;
+      status = detail ? detail.status : null;
+    } catch { /* keep null */ }
+    if (!status) {
+      try {
+        status = window.EmbeddingService && typeof window.EmbeddingService.getStatus === 'function'
+          ? window.EmbeddingService.getStatus().status
+          : null;
+      } catch { /* keep null */ }
+    }
+    const prev = _lastEmbeddingStatus;
+    _lastEmbeddingStatus = status;
+    if (status === 'ready') {
+      if (prev !== 'ready') scheduleSemanticRerank();
+      return;
+    }
+    if (prev === 'ready') {
+      scheduleSemanticRerank();
+      return;
+    }
+    if (status === 'loading') {
+      if (prev !== 'loading') updateSemanticStatus('loading');
+      return;
+    }
+    if (prev !== status) updateSemanticStatus('idle');
+  }
+
   try {
-    document.addEventListener('embedding-status', scheduleSemanticRerank);
+    document.addEventListener('embedding-status', handleEmbeddingStatusEvent);
   } catch { /* ignore */ }
 
   const runNotesOnDomReady = window.onDomReady;

@@ -58,6 +58,11 @@
     'src/core/languages.js',
     'src/features/pomodoro.js',
     'src/features/pomodoro-stats.js',
+    // Shared lazy loader for the on-device embedding modules (issue #1186):
+    // settings.js and notes.js both delegate to window.EmbeddingScripts so
+    // the opt-in module set has one canonical source list and one
+    // in-flight promise instead of twin implementations that can drift.
+    'src/ai/embeddings/embedding-scripts.js',
     'src/ui/settings.js',
     'src/ai/conversation-validator.js',
     'src/features/data-manager.js',

@@ -63,9 +63,24 @@ describe('NotesSemanticSearch.rankNotesForQuery', () => {
     }
   };
 
-  it('returns the input unchanged for empty queries', async () => {
-    expect(await window.NotesSemanticSearch.rankNotesForQuery(notes, '', deps)).toEqual(notes);
-    expect(await window.NotesSemanticSearch.rankNotesForQuery(notes, '   ', deps)).toEqual(notes);
+  it('returns copies with null scores for empty queries', async () => {
+    // One shape for every path (PR #1187 review): empty-query results are
+    // copies with _semanticScore: null, never stored-note references.
+    for (const q of ['', '   ']) {
+      const ranked = await window.NotesSemanticSearch.rankNotesForQuery(notes, q, deps);
+      expect(ranked.map((n) => n.id)).toEqual(notes.map((n) => n.id));
+      ranked.forEach((n) => expect(n._semanticScore).toBeNull());
+      expect(ranked[0]).not.toBe(notes[0]);
+    }
+  });
+
+  it('returns copies with null scores for keyword fallbacks', async () => {
+    const ranked = await window.NotesSemanticSearch.rankNotesForQuery(notes, 'milk', null);
+    expect(ranked.map((n) => n.id).sort()).toEqual(['1', '3']);
+    ranked.forEach((n) => expect(n._semanticScore).toBeNull());
+    // Callers must not be able to mutate stored notes through the results.
+    ranked[0].text = 'mutated';
+    expect(notes.find((n) => n.id === ranked[0].id).text).not.toBe('mutated');
   });
 
   it('finds semantically related notes with different wording', async () => {
