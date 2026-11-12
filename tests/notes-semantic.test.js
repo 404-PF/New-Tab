@@ -183,6 +183,7 @@ describe('Notes semantic integration', () => {
       window.setNotesSearchQuery('feline');
       await window.getFilteredNotesRanked();
       await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(putCalls).toEqual(expect.arrayContaining(['1', '3']));
       expect(putCalls).not.toContain('2');
     } finally {
       window.NotesVectorCache.putCachedVector = originalPut;

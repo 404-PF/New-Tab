@@ -387,7 +387,11 @@
         }
       });
       if (missIndexes.length === 0) return vectors;
+      // O(1) live-note lookup for the write-back guard below: a per-miss
+      // Array.find over notes would be O(N*M) on the UI thread for an
+      // uncached search (PR #1187 review).
       return service.embedTexts(missIndexes.map(function (i) { return inputs[i]; })).then(function (missed) {
+        const liveById = new Map(notes.map(function (n) { return [n.id, n]; }));
         missIndexes.forEach(function (noteIndex, j) {
           const vec = Array.isArray(missed) && Array.isArray(missed[j]) ? missed[j] : null;
           if (vec && vec.length > 0) {
@@ -397,7 +401,7 @@
             // vectors, so writing them back would orphan rows until the
             // model is cleared (PR #1187 human review). Only cache when
             // the note still exists with unchanged embedding text.
-            const current = notes.find(function (n) { return n.id === base[noteIndex].id; });
+            const current = liveById.get(base[noteIndex].id);
             if (!current || noteToEmbeddingText(current) !== inputs[noteIndex]) return;
             cache.putCachedVector(base[noteIndex].id, inputs[noteIndex], modelId, vec)
               .catch(function () { /* ignore */ });
