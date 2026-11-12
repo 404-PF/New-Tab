@@ -189,7 +189,11 @@ describe('Semantic search settings', () => {
     localStorage.setItem('notesSemanticEnabled', 'true');
     localStorage.removeItem('notesSemanticDownload');
     window.primeNotesSemanticImport();
-    expect(localStorage.getItem('notesSemanticDownload')).toBe('loading');
+    // Lazy import (PR #1187 human review): an enabled flag with no marker
+    // defers to the first query instead of priming 'loading', so a fresh
+    // profile with an empty cache does not start a silent ~300MB download
+    // right after import.
+    expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.primeNotesSemanticImport();
     expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');

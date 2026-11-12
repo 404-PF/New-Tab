@@ -1964,6 +1964,14 @@ function applyNotesSemanticEnabled() {
   renderNotesSemanticSettings();
   // Disabling must drop semantic relevance order; otherwise the keyword
   // pass keeps showing the last ranked list until another render happens.
+  // Bump the rerank generation first so an in-flight batch cannot repaint
+  // semantic order after this sync pass (PR #1187 human review); the
+  // render below bumps again harmlessly via renderNotes.
+  try {
+    if (!loadNotesSemanticEnabled() && typeof window.invalidateSemanticRerank === 'function') {
+      window.invalidateSemanticRerank();
+    }
+  } catch { /* ignore */ }
   try {
     if (!loadNotesSemanticEnabled() && typeof window.renderNotes === 'function') {
       window.renderNotes();
@@ -2400,6 +2408,12 @@ function bindSemanticDelete(els) {
 
 let semanticResumeInFlight = false;
 
+// Lazy-load gate (PR #1187 human review): only an interrupted download
+// ('loading' marker) resumes automatically on page load. A previously
+// finished model ('ready') or legacy flag without a marker (null) defers
+// ensureModel() until the first semantic query (notes.js calls
+// requestSemanticModelLoad) or an explicit Settings opt-in, instead of
+// reading ~300MB from Cache Storage and initializing ORT on every New Tab.
 function resumeSemanticIfNeeded() {
   // S4822/S6544: keep promise creation out of try/catch. The sync checks
   // below may throw (storage bridge), but the async launch must not be
@@ -2419,7 +2433,7 @@ function resumeSemanticIfNeeded() {
     } catch { alreadyReady = false; }
     if (alreadyReady) return;
     const downloadState = readSemanticDownloadState();
-    if (downloadState !== 'loading' && downloadState !== 'ready' && downloadState !== null) return;
+    if (downloadState !== 'loading') return;
   } catch { return; }
   semanticResumeInFlight = true;
   Promise.resolve()
@@ -2429,6 +2443,42 @@ function resumeSemanticIfNeeded() {
     }, function () {
       semanticResumeInFlight = false;
     });
+}
+
+// First-query lazy starter (PR #1187 human review): invoked from
+// scheduleSemanticRerank when the flag is on but the model is idle.
+// Passive (no toast, contains-only permission check): a missing grant or
+// cache simply leaves the keyword path until the user opts in via Settings.
+function requestSemanticModelLoad() {
+  try {
+    if (!loadNotesSemanticEnabled()) return;
+    if (semanticResumeInFlight) return;
+    try {
+      if (window.EmbeddingService && typeof window.EmbeddingService.isReady === 'function'
+        && window.EmbeddingService.isReady()) return;
+      if (window.EmbeddingService && typeof window.EmbeddingService.getStatus === 'function'
+        && window.EmbeddingService.getStatus().status === 'loading') return;
+    } catch { /* fall through to passive start */ }
+  } catch { return; }
+  resumeSemanticIfNeeded();
+  // Deferred states ('ready' marker from a previous session, or null)
+  // never trigger the loading-only resume above: kick a passive start
+  // directly so the first search warms the model. The in-flight flag in
+  // resumeSemanticIfNeeded does not cover this path, so guard re-entry
+  // via the service status check above (loading short-circuits).
+  try {
+    const st = readSemanticDownloadState();
+    if (st === 'ready' || st === null) {
+      semanticResumeInFlight = true;
+      Promise.resolve()
+        .then(function () { return startSemanticDownload(false); })
+        .then(function () {
+          semanticResumeInFlight = false;
+        }, function () {
+          semanticResumeInFlight = false;
+        });
+    }
+  } catch { /* ignore */ }
 }
 
 function initNotesSemanticSetting() {
@@ -2449,10 +2499,13 @@ function initNotesSemanticSetting() {
 // Called by the data-manager import flow before it re-runs initSettings: a
 // backup carries the opt-in flag but never the model bytes (Cache Storage
 // and vectors are device-local), so a fresh profile must not keep a flag
-// pointing at nothing. Priming the marker to 'loading' lets the normal
-// resume path decide: already-granted (same profile) → re-init from cache;
-// never-granted (fresh profile) → silent reset to off. Absent settings
-// module (tests) degrades to a no-op via the typeof guard at the call site.
+// pointing at nothing. The marker is left unset here so the page-load
+// resume (loading-only, see above) does NOT start a silent ~300MB download
+// right after import when the cache is empty (PR #1187 human review): the
+// first semantic query (requestSemanticModelLoad) or an explicit Settings
+// re-toggle warms the model instead, and a missing host grant resets the
+// flag there. Absent settings module (tests) degrades to a no-op via the
+// typeof guard at the call site.
 function primeNotesSemanticImport() {
   try {
     // A disabled flag must not keep a leftover marker: the marker is
@@ -2462,9 +2515,9 @@ function primeNotesSemanticImport() {
       clearSemanticDownloadState();
       return;
     }
-    if (localStorage.getItem(SEMANTIC_DOWNLOAD_STATE_KEY) === null) {
-      writeSemanticDownloadState('loading');
-    }
+    // Enabled import: defer to first query. Do not prime to 'loading' —
+    // that would look like an interrupted download and trigger a silent
+    // resume even when Cache Storage is empty on this device.
   } catch (e) {
     console.warn('Failed to prime semantic download state:', e);
   }
@@ -3429,6 +3482,8 @@ window.loadNotesSemanticEnabled = loadNotesSemanticEnabled;
 window.applyNotesSemanticEnabled = applyNotesSemanticEnabled;
 window.initNotesSemanticSetting = initNotesSemanticSetting;
 window.primeNotesSemanticImport = primeNotesSemanticImport;
+window.requestSemanticModelLoad = requestSemanticModelLoad;
+window.resumeSemanticIfNeeded = resumeSemanticIfNeeded;
 window.applyMottoEnabled = applyMottoEnabled;
 window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;

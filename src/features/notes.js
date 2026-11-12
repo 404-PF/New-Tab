@@ -240,6 +240,15 @@
     _semanticGeneration += 1;
   }
 
+  // Public invalidation for disable/delete paths in settings.js
+  // (PR #1187 human review): applyNotesSemanticEnabled funnels through
+  // renderNotes (which bumps), but an early-return there (no DOM yet)
+  // must still drop the in-flight chain.
+  function invalidateSemanticRerank() {
+    bumpSemanticGeneration();
+    clearSemanticDebounce();
+  }
+
   function isNotesSemanticEnabled() {
     try {
       if (typeof window.loadNotesSemanticEnabled === 'function') {
@@ -403,6 +412,12 @@
             // the note still exists with unchanged embedding text.
             const current = liveById.get(base[noteIndex].id);
             if (!current || noteToEmbeddingText(current) !== inputs[noteIndex]) return;
+            // Delete/disable during inference must not resurrect vectors:
+            // deleteModel() clears rows for this modelId, so an
+            // unguarded put would write them back and break the Delete
+            // purge promise (PR #1187 human review). Skip when the model
+            // is no longer live.
+            if (!isNotesSemanticReady()) return;
             cache.putCachedVector(base[noteIndex].id, inputs[noteIndex], modelId, vec)
               .catch(function () { /* ignore */ });
           }
@@ -572,6 +587,17 @@
           ? window.EmbeddingService.getStatus().status === 'loading'
           : false;
       } catch { loading = false; }
+      // Lazy load (PR #1187 human review): the page-load resume no longer
+      // warms the ~300MB model, so the first query with the flag on starts
+      // a passive (silent) load here. Already-loading short-circuits
+      // inside requestSemanticModelLoad via the service status guard.
+      if (!loading) {
+        try {
+          if (typeof window.requestSemanticModelLoad === 'function') {
+            window.requestSemanticModelLoad();
+          }
+        } catch { /* ignore lazy-load failures; status line covers it */ }
+      }
       updateSemanticStatus(loading ? 'loading' : 'idle');
       // Deleting the ready model must not leave a stale semantic order on
       // screen: drop the ranked view and re-render keyword results.
@@ -596,6 +622,11 @@
     getFilteredNotesRanked().then(function (ranked) {
       if (generation !== _semanticGeneration) return;
       if (queryAtStart !== _activeSearchQuery) return;
+      // Disabled/deleted while inference was in flight: the sync pass in
+      // renderNotes (via applyNotesSemanticEnabled) already shows the
+      // keyword order, so dropping here avoids repainting a stale
+      // semantic order with the feature off (PR #1187 human review).
+      if (!isNotesSemanticEnabled() || !isNotesSemanticReady()) return;
       updateSemanticStatus('idle');
       // Never wipe an in-progress edit: if the user is typing in a note,
       // keep the sync render (the next renderNotes will re-rank anyway).
@@ -661,6 +692,12 @@
   function renderNotes() {
     const { notesList, notesEmpty } = elements;
     if (!notesList || !notesEmpty) return;
+    // Any sync re-render invalidates in-flight reranks: ranked results
+    // capture the tag base at start, so a tag click or import racing
+    // inference would otherwise paint stale tag-A order under tag B
+    // (PR #1187 human review). The disable/delete paths funnel through
+    // here via applyNotesSemanticEnabled for the same reason.
+    bumpSemanticGeneration();
     _semanticRankedView = false;
 
     const active = document.activeElement;
@@ -1760,6 +1797,7 @@ try {
   window.getFilteredNotesRanked = getFilteredNotesRanked;
   window.isNotesSemanticEnabled = isNotesSemanticEnabled;
   window.isNotesSemanticReady = isNotesSemanticReady;
+  window.invalidateSemanticRerank = invalidateSemanticRerank;
   window.setNotesSearchQuery = setSearchQuery;
   window.getNotesSearchQuery = getSearchQuery;
   window.cancelPendingNoteSaves = cancelPendingNoteSaves;
