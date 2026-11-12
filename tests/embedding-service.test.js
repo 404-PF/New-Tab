@@ -293,6 +293,32 @@ describe('EmbeddingService state machine', () => {
     await expect(after.embedQuery('hi')).rejects.toThrow('deleted');
   });
 
+  it('does not clobber a re-enabled model when delete cleanup settles late', async () => {
+    window.__embeddingTestHooks = { pipelineFactory: mockFactoryFor({ hi: [1, 0] }) };
+    await window.EmbeddingService.ensureModel();
+    expect(window.EmbeddingService.isReady()).toBe(true);
+    let releaseVectors;
+    const gate = new Promise(function (resolve) { releaseVectors = function () { resolve(true); }; });
+    const originalClear = window.NotesVectorCache.clearCachedVectors;
+    window.NotesVectorCache.clearCachedVectors = function () { return gate; };
+    let deleteResult;
+    try {
+      const deletePromise = window.EmbeddingService.deleteModel().then(function (ok) { deleteResult = ok; });
+      const reloaded = await window.EmbeddingService.ensureModel();
+      expect(reloaded).not.toBeNull();
+      expect(window.EmbeddingService.isReady()).toBe(true);
+      releaseVectors();
+      await deletePromise;
+      expect(deleteResult).toBe(true);
+      expect(window.EmbeddingService.isReady()).toBe(true);
+      expect(window.EmbeddingService.getStatus().status).toBe('ready');
+      const active = window.EmbeddingRegistry.getActiveEmbeddingProvider();
+      await expect(active.embed(['hi there'])).resolves.toEqual([[1, 0]]);
+    } finally {
+      window.NotesVectorCache.clearCachedVectors = originalClear;
+    }
+  });
+
   it('reads the semantic opt-in flag', () => {
     expect(window.EmbeddingService.isSemanticEnabled()).toBe(false);
     localStorage.setItem('notesSemanticEnabled', 'true');

@@ -541,6 +541,10 @@
 
   function deleteModel() {
     cancelLoad();
+    // Deletion generation: a re-enable (ensureModel) bumps loadGeneration.
+    // If cleanup below settles after that, it must not reset the registry
+    // or idle-transition the freshly loaded model (PR #1187 review).
+    const deleteGeneration = loadGeneration;
     liveProvider = null;
     loadPromise = null;
     const consts = getHarrierConsts();
@@ -573,6 +577,9 @@
       // URL never re-runs and the next enable would wait for the load
       // timeout. The bridge is stateless, so keeping it is safe.
       const ok = results[0] !== false && results[1] !== false;
+      // A re-enable racing this cleanup must win: skip the registry reset
+      // and idle transition so the freshly loaded model stays live.
+      if (loadGeneration !== deleteGeneration) return ok;
       // The registry still holds the live implementation after the bytes
       // are gone: replace it with a rejecting stub so registry consumers
       // cannot keep embedding after Delete (PR #1187 review). The next
