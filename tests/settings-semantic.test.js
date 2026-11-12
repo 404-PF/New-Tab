@@ -266,4 +266,64 @@ describe('Semantic search settings', () => {
       try { delete window.EmbeddingScripts; } catch { /* ignore */ }
     }
   });
+
+  it('loads scripts before deleting from a deferred-ready state', async () => {
+    // Fresh page: marker 'ready' from a previous session, service idle
+    // (modules not yet loaded). Delete must purge via deleteModel instead
+    // of clearing the marker as if cleanup succeeded (PR #1187 review).
+    try { delete window.EmbeddingService; } catch { /* ignore */ }
+    try { delete window.EmbeddingScripts; } catch { /* ignore */ }
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('notesSemanticDownload', 'ready');
+    let deleteCalled = false;
+    window.EmbeddingScripts = {
+      scriptsLoaded: function () { return false; },
+      ensureScripts: function () {
+        window.EmbeddingService = {
+          getStatus: function () { return { status: 'idle', progress: 0, error: '', modelId: 'test-model' }; },
+          isReady: function () { return false; },
+          deleteModel: function () {
+            deleteCalled = true;
+            return Promise.resolve(true);
+          }
+        };
+        return Promise.resolve();
+      }
+    };
+    try {
+      window.applyNotesSemanticEnabled();
+      expect(document.getElementById('notes-semantic-delete').hidden).toBe(false);
+      document.getElementById('notes-semantic-delete').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(deleteCalled).toBe(true);
+      expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+      expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
+    } finally {
+      try { delete window.EmbeddingScripts; } catch { /* ignore */ }
+    }
+  });
+
+  it('keeps the marker when script load fails for a deferred-ready delete', async () => {
+    try { delete window.EmbeddingService; } catch { /* ignore */ }
+    try { delete window.EmbeddingScripts; } catch { /* ignore */ }
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('notesSemanticDownload', 'ready');
+    window.EmbeddingScripts = {
+      scriptsLoaded: function () { return false; },
+      ensureScripts: function () { return Promise.reject(new Error('offline')); }
+    };
+    try {
+      window.applyNotesSemanticEnabled();
+      document.getElementById('notes-semantic-delete').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+      expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
+    } finally {
+      try { delete window.EmbeddingScripts; } catch { /* ignore */ }
+    }
+  });
 });

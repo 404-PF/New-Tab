@@ -445,23 +445,11 @@
   }
 
   // The embedding modules stay out of the bootstrap scriptSources path
-  // (issue #1186): they load on demand the first time semantic search is
-  // enabled, mirroring the games-app lazy loader. The canonical source list
-  // and loader live in src/ai/embeddings/embedding-scripts.js (loaded via
-  // bootstrap before settings.js); the functions below delegate to
-  // window.EmbeddingScripts when present and fall back to the embedded twin
-  // only when that shared file has not been loaded (unit tests that inject
-  // this module in isolation).
-  const EMBEDDING_SCRIPT_SOURCES = [
-    'src/ai/embeddings/embedding-registry.js',
-    'src/ai/embeddings/harrier-provider.js',
-    'src/ai/embeddings/notes-vector-cache.js',
-    'src/ai/embeddings/embedding-service.js',
-    'src/ai/embeddings/notes-semantic-search.js'
-  ];
-
-  let _embeddingScriptsPromise = null;
-
+  // (issue #1186): they load on demand, mirroring the games-app lazy
+  // loader. The canonical source list and loader live in
+  // src/ai/embeddings/embedding-scripts.js (loaded via bootstrap before
+  // settings.js); the thin wrappers below delegate to it with no local
+  // twin (PR #1187 review: twins drift and trip the duplication gate).
   function embeddingScriptsLoaded() {
     try {
       if (window.EmbeddingScripts && typeof window.EmbeddingScripts.scriptsLoaded === 'function') {
@@ -476,71 +464,16 @@
     }
   }
 
-  function loadEmbeddingScript(src) {
-    try {
-      if (window.EmbeddingScripts && typeof window.EmbeddingScripts.loadScript === 'function') {
-        return window.EmbeddingScripts.loadScript(src);
-      }
-    } catch { /* fall through to local loader */ }
-    return new Promise(function (resolve, reject) {
-      const fail = function (message) {
-        reject(new Error(message || ('Failed to load ' + src)));
-      };
-      try {
-        const existing = document.querySelector('script[data-embeddings-src="' + src + '"]');
-        if (existing) {
-          // Another caller (e.g. Settings) is already loading this module:
-          // wait for ITS load instead of resolving early. Resolving here
-          // would recurse schedule→ensure in microtasks and starve the
-          // module-execution task forever.
-          if (existing.dataset.embeddingsLoaded === 'true') {
-            resolve();
-            return;
-          }
-          existing.addEventListener('load', function () { resolve(); });
-          existing.addEventListener('error', function () { fail(); });
-          return;
-        }
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = false;
-        script.dataset.embeddingsSrc = src;
-        script.addEventListener('load', function () {
-          script.dataset.embeddingsLoaded = 'true';
-          resolve();
-        });
-        script.addEventListener('error', function () {
-          // Remove the dead tag so the next attempt recreates it instead of
-          // attaching to a tag that will never fire again.
-          if (script.parentNode) {
-            try { script.parentNode.removeChild(script); } catch { /* ignore */ }
-          }
-          fail();
-        });
-        document.body.appendChild(script);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  }
-
   function ensureEmbeddingScripts() {
     try {
       if (window.EmbeddingScripts && typeof window.EmbeddingScripts.ensureScripts === 'function') {
         return window.EmbeddingScripts.ensureScripts();
       }
-    } catch { /* fall through to local chain */ }
+    } catch (e) {
+      return Promise.reject(e);
+    }
     if (embeddingScriptsLoaded()) return Promise.resolve();
-    if (_embeddingScriptsPromise) return _embeddingScriptsPromise;
-    let chain = Promise.resolve();
-    EMBEDDING_SCRIPT_SOURCES.forEach(function (src) {
-      chain = chain.then(function () { return loadEmbeddingScript(src); });
-    });
-    _embeddingScriptsPromise = chain.catch(function (err) {
-      _embeddingScriptsPromise = null;
-      throw err;
-    });
-    return _embeddingScriptsPromise;
+    return Promise.reject(new Error('EmbeddingScripts not loaded'));
   }
 
   // Debounced so fast typing issues one inference pass per pause, not one

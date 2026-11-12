@@ -2008,20 +2008,11 @@ function applyNotesSemanticEnabled() {
 // (issue #1186): they load on demand the first time the user opts in,
 // mirroring the games-app lazy loader. The canonical source list and loader
 // live in src/ai/embeddings/embedding-scripts.js (loaded via bootstrap
-// before this file); the local functions below delegate to
-// window.EmbeddingScripts when present and fall back to the embedded twin
-// only when that shared file has not been loaded (unit tests that inject
-// this module in isolation).
-const EMBEDDING_SCRIPT_SOURCES = [
-  'src/ai/embeddings/embedding-registry.js',
-  'src/ai/embeddings/harrier-provider.js',
-  'src/ai/embeddings/notes-vector-cache.js',
-  'src/ai/embeddings/embedding-service.js',
-  'src/ai/embeddings/notes-semantic-search.js'
-];
-
-let embeddingScriptsPromise = null;
-
+// before this file); the thin wrappers below delegate to it. No local twin
+// is kept here: duplicating the loader across settings.js/notes.js tripped
+// the Sonar duplication gate and lets the copies drift (PR #1187 review).
+// Isolated unit tests inject embedding-scripts.js (or all five globals, in
+// which case embeddingScriptsLoaded short-circuits true).
 function embeddingScriptsLoaded() {
   try {
     if (window.EmbeddingScripts && typeof window.EmbeddingScripts.scriptsLoaded === 'function') {
@@ -2034,52 +2025,6 @@ function embeddingScriptsLoaded() {
   } catch {
     return false;
   }
-}
-
-function loadEmbeddingScript(src) {
-  try {
-    if (window.EmbeddingScripts && typeof window.EmbeddingScripts.loadScript === 'function') {
-      return window.EmbeddingScripts.loadScript(src);
-    }
-  } catch { /* fall through to local loader */ }
-  return new Promise(function (resolve, reject) {
-    const fail = function (message) {
-      reject(new Error(message || ('Failed to load ' + src)));
-    };
-    try {
-      const existing = document.querySelector('script[data-embeddings-src="' + src + '"]');
-      if (existing) {
-        // Another caller (e.g. Notes) is already loading this module: wait
-        // for ITS load instead of resolving early (see twin in notes.js).
-        if (existing.dataset.embeddingsLoaded === 'true') {
-          resolve();
-          return;
-        }
-        existing.addEventListener('load', function () { resolve(); });
-        existing.addEventListener('error', function () { fail(); });
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = false;
-      script.dataset.embeddingsSrc = src;
-      script.addEventListener('load', function () {
-        script.dataset.embeddingsLoaded = 'true';
-        resolve();
-      });
-      script.addEventListener('error', function () {
-        // Remove the dead tag so the next attempt recreates it instead of
-        // attaching to a tag that will never fire again.
-        if (script.parentNode) {
-          try { script.parentNode.removeChild(script); } catch { /* ignore */ }
-        }
-        fail();
-      });
-      document.body.appendChild(script);
-    } catch (e) {
-      reject(e);
-    }
-  });
 }
 
 // Motto enabled
@@ -2117,18 +2062,11 @@ function ensureEmbeddingScripts() {
     if (window.EmbeddingScripts && typeof window.EmbeddingScripts.ensureScripts === 'function') {
       return window.EmbeddingScripts.ensureScripts();
     }
-  } catch { /* fall through to local chain */ }
+  } catch (e) {
+    return Promise.reject(e);
+  }
   if (embeddingScriptsLoaded()) return Promise.resolve();
-  if (embeddingScriptsPromise) return embeddingScriptsPromise;
-  let chain = Promise.resolve();
-  EMBEDDING_SCRIPT_SOURCES.forEach(function (src) {
-    chain = chain.then(function () { return loadEmbeddingScript(src); });
-  });
-  embeddingScriptsPromise = chain.catch(function (err) {
-    embeddingScriptsPromise = null;
-    throw err;
-  });
-  return embeddingScriptsPromise;
+  return Promise.reject(new Error('EmbeddingScripts not loaded'));
 }
 
 let semanticStartGeneration = 0;
@@ -2408,26 +2346,68 @@ function bindSemanticDelete(els) {
       applyNotesSemanticEnabled();
       if (!persisted) reportFeatureToggleSaveError();
     };
-    try {
-      if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
-        window.EmbeddingService.deleteModel().then(function (ok) {
-          // deleteModel resolves false when vector or cache cleanup fails:
-          // keep the toggle so the leftover data stays visible/retryable.
-          finishDelete(ok !== false);
-          if (ok === false && typeof window.showToast === 'function') {
-            window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
-          }
-        }).catch(function (err) {
-          console.warn('Failed to delete embedding model:', err);
-          finishDelete(false);
-          if (typeof window.showToast === 'function') {
-            window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
-          }
-        });
-        return;
+    const runDelete = function () {
+      try {
+        if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
+          return window.EmbeddingService.deleteModel().then(function (ok) {
+            // deleteModel resolves false when vector or cache cleanup fails:
+            // keep the toggle so the leftover data stays visible/retryable.
+            finishDelete(ok !== false);
+            if (ok === false && typeof window.showToast === 'function') {
+              window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+            }
+          }).catch(function (err) {
+            console.warn('Failed to delete embedding model:', err);
+            finishDelete(false);
+            if (typeof window.showToast === 'function') {
+              window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to delete embedding model:', err);
+        finishDelete(false);
+        return Promise.resolve();
       }
-    } catch { /* ignore */ }
-    finishDelete(true);
+      // Deferred-ready Delete (PR #1187 review): the page-load resume no
+      // longer warms the service, so a fresh page can show Delete (marker
+      // 'ready') before the embedding modules are loaded. Falling through
+      // here used to clear the marker as if Cache Storage and vectors were
+      // purged. Load the modules first so deleteModel actually runs; on a
+      // load failure keep the marker/toggle so the bytes stay retryable.
+      return ensureEmbeddingScripts().then(function () {
+        if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
+          return window.EmbeddingService.deleteModel().then(function (ok) {
+            finishDelete(ok !== false);
+            if (ok === false && typeof window.showToast === 'function') {
+              window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+            }
+          });
+        }
+        finishDelete(false);
+        if (typeof window.showToast === 'function') {
+          window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+        }
+      }).catch(function (err) {
+        console.warn('Failed to load embedding modules for delete:', err);
+        finishDelete(false);
+        if (typeof window.showToast === 'function') {
+          window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+        }
+      });
+    };
+    const btn = els.deleteBtn;
+    if (btn) btn.disabled = true;
+    const done = function () { if (btn) btn.disabled = false; };
+    try {
+      const result = runDelete();
+      if (result && typeof result.then === 'function') result.then(done, done);
+      else done();
+    } catch (err) {
+      console.warn('Failed to delete embedding model:', err);
+      finishDelete(false);
+      done();
+    }
   });
 }
 
