@@ -466,7 +466,7 @@
     const binary = atob(match[2]);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+      bytes[i] = binary.codePointAt(i);
     }
     return new Blob([bytes], { type: match[1] });
   }

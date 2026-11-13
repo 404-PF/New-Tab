@@ -101,7 +101,7 @@ const BG_OVERLAY_DEFAULTS = {
 function readClampedOverlayInt(key, fallback, min, max) {
   const raw = localStorage.getItem(key);
   if (raw === null) return fallback;
-  const parsed = /^-?\d+$/.test(raw) ? Number(raw) : NaN;
+  const parsed = /^-?\d+$/.test(raw) ? Number(raw) : Number.NaN;
   const normalized = Number.isFinite(parsed)
     ? Math.min(max, Math.max(min, parsed))
     : fallback;

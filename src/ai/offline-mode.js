@@ -355,7 +355,7 @@ const OfflineMode = (function() {
       'kelvin': 'K', 'k': 'K'
     };
 
-    const value = parseFloat(match[1]);
+    const value = Number.parseFloat(match[1]);
     const fromUnit = match[2].toLowerCase();
     const toUnit = match[3].toLowerCase();
     const from = Object.hasOwn(unitMap, fromUnit) ? unitMap[fromUnit] : fromUnit;
