@@ -1345,7 +1345,10 @@ function initTimezoneSettings() {
   }
 
   picker.addEventListener('focus', function () {
-    renderOptions(this.value);
+    // Always show the full list on focus: after a selection the input holds a
+    // display label ("Chicago (UTC-6)") that never matches the filter corpus,
+    // so filtering by it would hide the list and collapse aria-expanded (#1200).
+    renderOptions('');
   });
 
   picker.addEventListener('input', function () {

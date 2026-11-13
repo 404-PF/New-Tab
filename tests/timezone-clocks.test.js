@@ -212,4 +212,23 @@ describe('timezone clocks', () => {
 
     expectRejectedAddState();
   });
+
+  // #1200: selection writes a display label ("Chicago (UTC-6)") into the
+  // picker; refocusing must still show the full zone list instead of filtering
+  // by a label that never matches the zone corpus.
+  it('shows the full zone list when the picker is refocused after a selection (#1200)', () => {
+    setupClocks();
+    selectChicago();
+
+    const picker = document.getElementById('timezone-picker');
+    const optionsList = document.getElementById('timezone-options');
+    expect(optionsList.hidden).toBe(true);
+    expect(picker.getAttribute('aria-expanded')).toBe('false');
+
+    picker.dispatchEvent(new Event('focus'));
+
+    expect(optionsList.hidden).toBe(false);
+    expect(picker.getAttribute('aria-expanded')).toBe('true');
+    expect(optionsList.querySelectorAll('button[data-zone]').length).toBe(window.POPULAR_ZONES.length);
+  });
 });
