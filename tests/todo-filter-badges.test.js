@@ -58,6 +58,7 @@ describe('todo filter badge preservation', () => {
     expect(document.getElementById('badge-all')).not.toBeNull();
     document.getElementById('badge-all').textContent = '5';
     document.getElementById('badge-pending').textContent = '3';
+    document.getElementById('badge-upcoming').textContent = '4';
 
     window.i18n.applyLanguage('zh');
     const missingAfterZh = ['badge-all', 'badge-pending', 'badge-completed', 'badge-overdue', 'badge-today', 'badge-upcoming', 'badge-high', 'badge-medium', 'badge-low'].filter(id => !document.getElementById(id));
@@ -65,7 +66,9 @@ describe('todo filter badge preservation', () => {
 
     expect(document.getElementById('badge-all').textContent).toBe('5');
     expect(document.getElementById('badge-pending').textContent).toBe('3');
+    expect(document.getElementById('badge-upcoming').textContent).toBe('4');
     expect(document.querySelector('[data-filter="all"]').textContent).toContain(window.i18n.t('filterAll'));
+    expect(document.querySelector('[data-filter="upcoming"]').textContent).toContain(window.i18n.t('filterUpcoming'));
     expect(document.querySelector('[data-filter="high"]').textContent).toContain(window.i18n.t('priorityHigh'));
     expect(document.querySelector('[data-filter="medium"]').textContent).toContain(window.i18n.t('priorityMedium'));
     expect(document.querySelector('[data-filter="low"]').textContent).toContain(window.i18n.t('priorityLow'));
@@ -73,6 +76,7 @@ describe('todo filter badge preservation', () => {
     window.i18n.applyLanguage('en');
     expect(document.getElementById('badge-all')).not.toBeNull();
     expect(document.getElementById('badge-all').textContent).toBe('5');
+    expect(document.getElementById('badge-upcoming').textContent).toBe('4');
     expect(document.querySelector('[data-filter="high"]').textContent).toContain(window.i18n.t('priorityHigh'));
   });
 
@@ -80,17 +84,21 @@ describe('todo filter badge preservation', () => {
     document.body.innerHTML = filterPillsHtml();
 
     document.getElementById('badge-all').textContent = '7';
+    document.getElementById('badge-upcoming').textContent = '4';
     window.i18n.applyLanguage('zh');
     const missing = ['badge-all', 'badge-pending', 'badge-completed', 'badge-overdue', 'badge-today', 'badge-upcoming', 'badge-high', 'badge-medium', 'badge-low'].filter(id => !document.getElementById(id));
     expect(missing, 'badges should survive with new markup').toEqual([]);
     expect(document.getElementById('badge-all').textContent).toBe('7');
+    expect(document.getElementById('badge-upcoming').textContent).toBe('4');
     expect(document.querySelector('.filter-pill[data-filter="all"] .filter-label').textContent).toBe(window.i18n.t('filterAll'));
+    expect(document.querySelector('.filter-pill[data-filter="upcoming"] .filter-label').textContent).toBe(window.i18n.t('filterUpcoming'));
     expect(document.querySelector('.filter-pill[data-filter="high"] .filter-label').textContent).toBe(window.i18n.t('priorityHigh'));
     expect(document.querySelector('.filter-pill[data-filter="medium"] .filter-label').textContent).toBe(window.i18n.t('priorityMedium'));
     expect(document.querySelector('.filter-pill[data-filter="low"] .filter-label').textContent).toBe(window.i18n.t('priorityLow'));
 
     window.i18n.applyLanguage('de');
     expect(document.getElementById('badge-all').textContent).toBe('7');
+    expect(document.getElementById('badge-upcoming').textContent).toBe('4');
     expect(document.querySelector('.filter-pill[data-filter="high"] .filter-label').textContent).toBe(window.i18n.t('priorityHigh'));
     expect(document.querySelector('.filter-pill[data-filter="medium"] .filter-label').textContent).toBe(window.i18n.t('priorityMedium'));
     expect(document.querySelector('.filter-pill[data-filter="low"] .filter-label').textContent).toBe(window.i18n.t('priorityLow'));

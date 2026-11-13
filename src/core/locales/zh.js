@@ -468,7 +468,7 @@ window.i18n.__registerLocale('zh', {
   filterCompleted: '已完成',
   filterOverdue: '已逾期',
   filterToday: '今天',
-  filterUpcoming: '即将',
+  filterUpcoming: '即将到期',
   priorityHigh: '高',
   priorityMedium: '中',
   priorityLow: '低',

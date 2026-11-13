@@ -458,30 +458,44 @@ describe('Todo filtering', () => {
   });
 
   it('filters todos due within the next 7 days under the upcoming filter (issue #1209)', () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const inThreeDays = new Date();
-    inThreeDays.setDate(inThreeDays.getDate() + 3);
-    const inEightDays = new Date();
-    inEightDays.setDate(inEightDays.getDate() + 8);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+    // Freeze the clock so a run that crosses local midnight between date
+    // setup and filtering can't shift the upcoming window (review thread).
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 12));
 
-    addTodo('Due tomorrow');
-    addTodo('Due in 3 days');
-    addTodo('Due in 8 days');
-    addTodo('Overdue');
-    addTodo('No date');
-    const list = loadTodos();
-    editTodo(list[0].id, 'Due tomorrow', null, formatDateISO(tomorrow));
-    editTodo(list[1].id, 'Due in 3 days', null, formatDateISO(inThreeDays));
-    editTodo(list[2].id, 'Due in 8 days', null, formatDateISO(inEightDays));
-    editTodo(list[3].id, 'Overdue', null, formatDateISO(yesterday));
+    try {
+      const today = new Date();
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const inThreeDays = new Date();
+      inThreeDays.setDate(inThreeDays.getDate() + 3);
+      const inSevenDays = new Date();
+      inSevenDays.setDate(inSevenDays.getDate() + 7);
+      const inEightDays = new Date();
+      inEightDays.setDate(inEightDays.getDate() + 8);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
 
-    setFilter('upcoming');
-    const filtered = filterTodos();
-    expect(filtered).toHaveLength(2);
-    expect(filtered.map(todo => todo.text).sort()).toEqual(['Due in 3 days', 'Due tomorrow']);
+      addTodo('Due today', formatDateISO(today));
+      addTodo('Due tomorrow', formatDateISO(tomorrow));
+      addTodo('Due in 3 days', formatDateISO(inThreeDays));
+      addTodo('Due in 7 days', formatDateISO(inSevenDays));
+      addTodo('Due in 8 days', formatDateISO(inEightDays));
+      addTodo('Overdue', formatDateISO(yesterday));
+      addTodo('No date');
+
+      setFilter('upcoming');
+      const filtered = filterTodos();
+      expect(filtered).toHaveLength(4);
+      expect(filtered.map(todo => todo.text).sort()).toEqual([
+        'Due in 3 days',
+        'Due in 7 days',
+        'Due today',
+        'Due tomorrow'
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('excludes completed todos from the upcoming filter', () => {
@@ -529,22 +543,30 @@ describe('Todo filtering', () => {
   });
 
   it('counts todos due in the next 7 days in badge-upcoming', () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const inThreeDays = new Date();
-    inThreeDays.setDate(inThreeDays.getDate() + 3);
-    const inEightDays = new Date();
-    inEightDays.setDate(inEightDays.getDate() + 8);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+    // Frozen clock keeps the badge window stable if the run crosses midnight.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 12));
 
-    addTodo('Due tomorrow', formatDateISO(tomorrow));
-    addTodo('Due in 3 days', formatDateISO(inThreeDays));
-    addTodo('Due in 8 days', formatDateISO(inEightDays));
-    addTodo('Overdue', formatDateISO(yesterday));
-    addTodo('No date');
-    // addTodo re-runs applyFilters, which refreshes the badge counts.
-    expect(document.getElementById('badge-upcoming').textContent).toBe('2');
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const inThreeDays = new Date();
+      inThreeDays.setDate(inThreeDays.getDate() + 3);
+      const inEightDays = new Date();
+      inEightDays.setDate(inEightDays.getDate() + 8);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      addTodo('Due tomorrow', formatDateISO(tomorrow));
+      addTodo('Due in 3 days', formatDateISO(inThreeDays));
+      addTodo('Due in 8 days', formatDateISO(inEightDays));
+      addTodo('Overdue', formatDateISO(yesterday));
+      addTodo('No date');
+      // addTodo re-runs applyFilters, which refreshes the badge counts.
+      expect(document.getElementById('badge-upcoming').textContent).toBe('2');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('sorts incomplete before completed', () => {
