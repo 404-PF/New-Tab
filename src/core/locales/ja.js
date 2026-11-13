@@ -275,6 +275,8 @@ window.i18n.__registerLocale('ja', {
   weatherHumidity: '湿度',
   weatherHourly: '時間別予報',
   weatherNow: '現在',
+  weatherHigh: '最高',
+  weatherLow: '最低',
   themeSettings: 'テーマ',
   themeSettingsDesc: '好みのインターフェーステーマを選択',
   dark: 'ダーク',

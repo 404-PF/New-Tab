@@ -2890,6 +2890,23 @@ body.light-theme .delete-preview-name {
   letter-spacing: -0.5px;
 }
 
+.weather-temp-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.weather-hl {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
 .weather-details {
   display: flex;
   flex-direction: column;
@@ -2954,6 +2971,10 @@ body.light-theme .weather-icon {
 
 body.light-theme .weather-temp {
   color: rgba(31, 41, 55, 0.95);
+}
+
+body.light-theme .weather-hl {
+  color: rgba(55, 65, 81, 0.7);
 }
 
 body.light-theme .weather-condition {

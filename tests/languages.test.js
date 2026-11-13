@@ -230,6 +230,13 @@ describe('Weather wind unit translations', () => {
   });
 });
 
+// Today's high/low labels rendered under the widget temperature (issue #1226).
+describe('Weather high/low translations', () => {
+  it('defines localized weatherHigh and weatherLow for every supported language', () => {
+    expectTranslationKeys(['weatherHigh', 'weatherLow'], { differFromEnglish: true });
+  });
+});
+
 describe('Pomodoro translations', () => {
   it('falls back to English for every supported language', () => {
     const languages = window.i18n.getSupportedLanguages();

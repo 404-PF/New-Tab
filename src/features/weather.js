@@ -355,13 +355,28 @@
     const icon = getWeatherIcon(info.type);
     const displayLocation = locationName || t('weatherUnknownLocation');
 
+    // Today's high/low from the daily block of the same cached payload the
+    // Weather app modal renders. Guarded like renderExpandedForecast so a
+    // payload without daily data simply omits the line (issue #1226).
+    const daily = data.daily;
+    const rawHigh = daily && daily.temperature_2m_max ? daily.temperature_2m_max[0] : undefined;
+    const rawLow = daily && daily.temperature_2m_min ? daily.temperature_2m_min[0] : undefined;
+    const highVal = rawHigh === null || rawHigh === undefined ? NaN : Number(rawHigh);
+    const lowVal = rawLow === null || rawLow === undefined ? NaN : Number(rawLow);
+    const highLowHtml = Number.isFinite(highVal) && Number.isFinite(lowVal)
+      ? `<div class="weather-hl"><span class="weather-hl-high">${t('weatherHigh')}: ${getTemp(highVal, unit)}\u00B0</span><span class="weather-hl-low">${t('weatherLow')}: ${getTemp(lowVal, unit)}\u00B0</span></div>`
+      : '';
+
     el.className = 'weather-widget weather-data';
 
     el.innerHTML = `
       <div class="weather-current">
         <div class="weather-main">
           <div class="weather-icon">${icon}</div>
-          <div class="weather-temp">${temp}${tempUnit}</div>
+          <div class="weather-temp-wrap">
+            <div class="weather-temp">${temp}${tempUnit}</div>
+            ${highLowHtml}
+          </div>
         </div>
         <div class="weather-details">
           <div class="weather-condition">${label}</div>
