@@ -105,6 +105,63 @@ describe('NotesSemanticSearch.rankNotesForQuery', () => {
     expect(ranked.map((n) => n.id)).toEqual(['1']);
   });
 
+  it('filters weak positive-cosine unrelated notes above the old floor (PR #1187)', async () => {
+    // Instruction-tuned models give unrelated pairs ~0.4 cosine: hybrid
+    // 0.65 * 0.7 = 0.455 clears the old 0.45 floor, returning almost every
+    // note ordered by a weak signal. The 0.5 floor blocks it, falling back
+    // to keyword matches (none here) instead of a full weak list.
+    const weakDeps = {
+      embedQuery: function () { return Promise.resolve([1, 0]); },
+      getNoteVector: function () {
+        // cosine 0.4 vector: [1, 0] vs normalized [0.4, sqrt(1-0.16)].
+        return Promise.resolve([0.4, Math.sqrt(1 - 0.16)]);
+      }
+    };
+    const many = [
+      { id: 'a', text: 'alpha note', tag: '', order: 0 },
+      { id: 'b', text: 'beta note', tag: '', order: 1 }
+    ];
+    const ranked = await window.NotesSemanticSearch.rankNotesForQuery(many, 'zzz-no-keyword', weakDeps);
+    expect(ranked).toEqual([]);
+  });
+
+  it('returns every keyword match without a cap (PR #1187)', async () => {
+    // The keyword-only path shows all matches; the semantic path must not
+    // drop matches beyond 50 once the model is ready.
+    const big = Array.from({ length: 60 }, (_, i) => ({
+      id: 'n' + i,
+      text: 'milk note ' + i,
+      tag: '',
+      order: i
+    }));
+    const fallback = await window.NotesSemanticSearch.rankNotesForQuery(big, 'milk', null);
+    expect(fallback).toHaveLength(60);
+    const readyDeps = {
+      embedQuery: function () { return Promise.resolve([1, 0]); },
+      getNoteVector: function () { return Promise.resolve([0, 1]); }
+    };
+    // Orthogonal vectors score 0.325 < floor, so the ranker falls back to
+    // keyword matches: all 60 must survive, not the first 50.
+    const ranked = await window.NotesSemanticSearch.rankNotesForQuery(big, 'milk', readyDeps);
+    expect(ranked).toHaveLength(60);
+    // An explicit maxResults still truncates the semantic list for callers
+    // that want it.
+    const two = [
+      { id: 'x1', text: 'x', tag: '', order: 0 },
+      { id: 'x2', text: 'x', tag: '', order: 1 }
+    ];
+    const capped = await window.NotesSemanticSearch.rankNotesForQuery(
+      two,
+      'x',
+      {
+        embedQuery: function () { return Promise.resolve([1, 0]); },
+        getNoteVector: function () { return Promise.resolve([1, 0]); }
+      },
+      { maxResults: 1 }
+    );
+    expect(capped).toHaveLength(1);
+  });
+
   it('keeps tag-filtered inputs ranked', async () => {
     const tagged = window.NotesSemanticSearch.filterByTag(notes, 'leisure');
     const ranked = await window.NotesSemanticSearch.rankNotesForQuery(tagged, 'novel', deps);
@@ -113,7 +170,7 @@ describe('NotesSemanticSearch.rankNotesForQuery', () => {
 
   it('falls back to keyword matches when semantic scores all miss the floor', async () => {
     // Every note embeds opposite the query (cosine -1): keyword hits score
-    // 0.35 and pure misses 0, both below the 0.45 floor, so the ranker yields
+    // 0.35 and pure misses 0, both below the 0.5 floor, so the ranker yields
     // to the keyword fast-path instead of a surprising empty list.
     const oppositeDeps = {
       embedQuery: function () { return Promise.resolve([1, 0]); },

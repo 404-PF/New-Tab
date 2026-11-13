@@ -153,6 +153,50 @@ describe('Notes semantic integration', () => {
     expect(stored).toEqual(['2', '1', '3']);
   });
 
+  it('moves by id in ranked view so non-contiguous subsets do not no-op (PR #1187)', async () => {
+    // Notes [A,B,C,D] ranked [D,A]: dragging D after A must move D after A
+    // in manual order ([A,D,B,C]), not no-op while still clearing search.
+    // Only A and D contain 'apple', so query 'apple' keyword-matches just
+    // those two; B/C score 0.325 < floor and are filtered, leaving [D,A]
+    // by cosine (D=1.0, A~0.99).
+    const four = [
+      { id: 'A', text: 'alpha apple', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'B', text: 'beta', tag: '', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'C', text: 'gamma', tag: '', order: 2, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'D', text: 'delta apple', tag: '', order: 3, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ];
+    setNotes(four);
+    window.initNotes();
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    window.EmbeddingService = {
+      isReady: function () { return true; },
+      getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 't' }; },
+      embedQuery: function () { return Promise.resolve([1, 0]); },
+      embedTexts: function (texts) {
+        const list = Array.isArray(texts) ? texts : [texts];
+        return Promise.resolve(list.map(function (t) {
+          const s = String(t).toLowerCase();
+          if (s.includes('delta')) return [1, 0];
+          if (s.includes('alpha')) return [0.9, 0.1];
+          return [0, 1];
+        }));
+      }
+    };
+    const searchInput = document.getElementById('notes-search');
+    searchInput.value = 'apple';
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    const shown = [...document.querySelectorAll('.note-item')].map((el) => el.dataset.id);
+    expect(shown).toEqual(['D', 'A']);
+    // Drag D (index 0) after A: in ranked coords that is 0 -> 2.
+    window.reorderNotes(0, 2);
+    const stored = JSON.parse(localStorage.getItem('notes')).map((n) => n.id);
+    expect(stored).toEqual(['A', 'D', 'B', 'C']);
+    // Leaving relevance view clears the query like addNote does.
+    expect(window.getNotesSearchQuery()).toBe('');
+    expect(searchInput.value).toBe('');
+  });
+
   it('returns tag-filtered notes for empty queries when ready', async () => {
     localStorage.setItem('notesSemanticEnabled', 'true');
     installMockService();

@@ -326,4 +326,56 @@ describe('Semantic search settings', () => {
       try { delete window.EmbeddingScripts; } catch { /* ignore */ }
     }
   });
+
+  it('ignores a stale model download rejection after re-enable (PR #1187)', async () => {
+    // Cancel bumps the generation; a late rejection from the cancelled load
+    // must not clear the fresh run's loading marker or write error over it.
+    const pending = [];
+    window.EmbeddingScripts = {
+      scriptsLoaded: function () { return true; },
+      ensureScripts: function () { return Promise.resolve(); }
+    };
+    window.EmbeddingService = {
+      getStatus: function () {
+        return { status: 'loading', progress: 0.1, error: '', modelId: 'test-model' };
+      },
+      isReady: function () { return false; },
+      ensureModel: function () {
+        let rejectFn;
+        const p = new Promise(function (_, reject) { rejectFn = reject; });
+        pending.push({ promise: p, reject: rejectFn });
+        // Attach a no-op catch now so the rejection is handled even before
+        // the service wires its own handlers (avoids unhandled rejection).
+        p.catch(function () {});
+        return p;
+      },
+      cancelLoad: function () {}
+    };
+    const checkbox = document.getElementById('notes-semantic-enabled-setting');
+    try {
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(pending).toHaveLength(1);
+      expect(localStorage.getItem('notesSemanticDownload')).toBe('loading');
+      // Off cancels (generation bump + marker clear), on starts a fresh run.
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(pending).toHaveLength(2);
+      expect(localStorage.getItem('notesSemanticDownload')).toBe('loading');
+      // Stale first load rejects: fresh run must stay loading + enabled.
+      pending[0].reject(new Error('offline'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+      expect(localStorage.getItem('notesSemanticDownload')).toBe('loading');
+    } finally {
+      try { delete window.EmbeddingScripts; } catch { /* ignore */ }
+    }
+  });
 });

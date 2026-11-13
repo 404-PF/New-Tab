@@ -301,13 +301,20 @@ const FEATURE_TOGGLE_RESYNC = {
     }
     // Rollback-to-enabled (a toggle-off write was rejected): the optimistic
     // toggle-off cancelled the in-flight load and cleared its marker, so
-    // re-rendering alone strands the UI on "Starting download…" with no
-    // worker. Re-enter the passive resume path so the download restarts (or
-    // the error state shows) instead of stalling until the next toggle.
+    // re-rendering alone strands the UI with no worker. initNotesSemanticSetting
+    // only resumes an interrupted ('loading') marker, but cancel cleared it
+    // to null: also kick the first-query lazy starter so a deferred
+    // ('ready'/null) marker warms the model instead of stalling with no
+    // download and no status text until the next search (PR #1187 review).
     if (enabled) {
       try {
         if (typeof window.initNotesSemanticSetting === 'function') {
           window.initNotesSemanticSetting();
+        }
+      } catch { /* ignore */ }
+      try {
+        if (typeof window.requestSemanticModelLoad === 'function') {
+          window.requestSemanticModelLoad();
         }
       } catch { /* ignore */ }
     }

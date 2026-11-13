@@ -2119,7 +2119,7 @@ function startSemanticDownload(requestPermission) {
       }
       return;
     }
-    startSemanticModelDownload(els, passive);
+    startSemanticModelDownload(els, passive, startGeneration);
   }).catch(function (err) {
     // A stale opt-in (A) rejecting after a re-enable (B) must not clear
     // the fresh opt-in: B bumped semanticStartGeneration via its own
@@ -2233,8 +2233,14 @@ function clearSemanticDownloadState() {
   writeSemanticDownloadState(null);
 }
 
-function startSemanticModelDownload(els, passive) {
+function startSemanticModelDownload(els, passive, startGeneration) {
   const silent = passive === true;
+  // Guard the async download against a stale rejection overwriting a newer
+  // run: cancel bumps semanticStartGeneration, so a late rejection from a
+  // cancelled load must not clear the loading marker or write error over
+  // the fresh run (PR #1187 human review). The sibling setup chain above
+  // already guards with startGeneration; this download needs the same.
+  const downloadGeneration = startGeneration !== undefined ? startGeneration : semanticStartGeneration;
   try {
     if (!window.EmbeddingService || typeof window.EmbeddingService.ensureModel !== 'function') {
       // Modules loaded but the service never materialized: same reset as a
@@ -2253,12 +2259,14 @@ function startSemanticModelDownload(els, passive) {
         renderNotesSemanticSettings();
       }
     }).then(function () {
+      if (downloadGeneration !== semanticStartGeneration) return;
       writeSemanticDownloadState('ready');
       renderNotesSemanticSettings();
       if (!silent && typeof window.showToast === 'function') {
         window.showToast(tSemantic('notesSemanticReady', 'Semantic search ready (on-device).'), 'success');
       }
     }).catch(function (err) {
+      if (downloadGeneration !== semanticStartGeneration) return;
       if (err && err.name === 'AbortError') {
         clearSemanticDownloadState();
       } else {

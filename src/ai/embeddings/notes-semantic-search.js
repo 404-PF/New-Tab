@@ -7,10 +7,16 @@
 
   const DEFAULT_ALPHA = 0.35;
   // Scores map cosine [-1,1] to [0,1] before blending, so a note with zero
-  // signal (keyword 0, cosine 0) still scores 0.325. The floor must sit above
-  // that: unrelated notes (~0.33) are filtered while weak-but-real matches
-  // (cosine 0.3 → 0.42 is still out; cosine 0.5 → 0.49 stays) survive.
-  const DEFAULT_MIN_SCORE = 0.45;
+  // signal (keyword 0, cosine 0) still scores 0.325. Instruction-tuned
+  // embedding models give unrelated pairs a clearly positive cosine
+  // (~0.3-0.4), so the floor must sit above the 0.455 hybrid that a
+  // cosine-0.4 unrelated note reaches: 0.65 * 0.7 = 0.455. A 0.5 floor
+  // blocks that weak-but-positive case while keeping weak-but-real matches
+  // (cosine 0.5 → 0.4875 is still out; cosine 0.6 → 0.52 stays; any keyword
+  // hit scores higher) and falls back to keyword matches when nothing
+  // passes. Calibrated against Harrier cosine behavior (PR #1187 review);
+  // re-check against real Harrier distributions if the model changes.
+  const DEFAULT_MIN_SCORE = 0.5;
   const DEFAULT_MAX_RESULTS = 50;
 
   function cosineSimilarity(a, b) {
@@ -80,23 +86,34 @@
   // copies carrying a numeric _semanticScore; keyword fallbacks are copies
   // carrying _semanticScore: null so callers never receive stored-note
   // references they could mutate and never branch on a missing field.
+  // Keyword fallbacks are never capped: the keyword-only path
+  // (getFilteredNotes) shows every match, so truncating fallbacks to 50
+  // would drop matches the user sees when the model is not ready
+  // (PR #1187 human review). Only an explicit maxResults option truncates,
+  // and then only the semantic ranked list.
   function copyWithScore(note, score) {
     const copy = { ...(note || {}) };
     copy._semanticScore = (typeof score === 'number' && Number.isFinite(score)) ? score : null;
     return copy;
   }
 
-  function keywordResults(list, q, max) {
-    return keywordFilter(list, q).slice(0, max).map(function (n) { return copyWithScore(n, null); });
+  function keywordResults(list, q) {
+    return keywordFilter(list, q).map(function (n) { return copyWithScore(n, null); });
   }
 
   // deps: { embedQuery(query)->Promise<vector>, getNoteVector(note)->Promise<vector|null> }
   // Returns ranked note array (new array of copies; stored notes never mutated).
+  // Keyword fallbacks return every match (no cap) to match the keyword-only
+  // path. The semantic ranked list is capped only when the caller passes an
+  // explicit maxResults; by default every note passing the floor is returned
+  // so enabling the model never drops keyword matches the user otherwise
+  // sees (PR #1187 human review). DEFAULT_MAX_RESULTS stays exported for
+  // callers that want an opt-in truncation.
   function rankNotesForQuery(tagFilteredNotes, query, deps, options) {
     const opts = options || {};
     const alpha = opts.alpha !== undefined ? opts.alpha : DEFAULT_ALPHA;
     const minScore = opts.minScore !== undefined ? opts.minScore : DEFAULT_MIN_SCORE;
-    const maxResults = opts.maxResults !== undefined ? opts.maxResults : DEFAULT_MAX_RESULTS;
+    const maxResults = opts.maxResults;
     const notes = Array.isArray(tagFilteredNotes) ? tagFilteredNotes : [];
     const q = (query || '').trim();
 
@@ -107,12 +124,12 @@
       return Promise.resolve([]);
     }
     if (!deps || typeof deps.embedQuery !== 'function' || typeof deps.getNoteVector !== 'function') {
-      return Promise.resolve(keywordResults(notes, q, maxResults));
+      return Promise.resolve(keywordResults(notes, q));
     }
 
     return deps.embedQuery(q).then(function (queryVector) {
       if (!Array.isArray(queryVector) || queryVector.length === 0) {
-        return keywordResults(notes, q, maxResults);
+        return keywordResults(notes, q);
       }
       const jobs = notes.map(function (note) {
         return deps.getNoteVector(note).then(function (vec) {
@@ -130,10 +147,11 @@
       return Promise.all(jobs).then(function (scored) {
         const hasSignal = scored.some(function (s) { return s.cosine !== 0 || s.keyword !== 0; });
         if (!hasSignal) {
-          return keywordResults(notes, q, maxResults);
+          return keywordResults(notes, q);
         }
         const ranked = rankByScores(scored).filter(function (s) { return s.score >= minScore; });
-        const limited = ranked.slice(0, maxResults).map(function (s) {
+        const capped = Number.isFinite(maxResults) ? ranked.slice(0, maxResults) : ranked;
+        const limited = capped.map(function (s) {
           const copy = { ...s.note };
           copy._semanticScore = s.score;
           return copy;
@@ -141,12 +159,12 @@
         // If semantic filtering is too aggressive (empty), fall back to
         // keyword matches rather than a surprising empty list.
         if (limited.length === 0) {
-          return keywordResults(notes, q, maxResults);
+          return keywordResults(notes, q);
         }
         return limited;
       });
     }).catch(function () {
-      return keywordResults(notes, q, maxResults);
+      return keywordResults(notes, q);
     });
   }
 

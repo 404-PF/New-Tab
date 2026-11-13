@@ -948,19 +948,75 @@
 
   function reorderNotes(fromIndex, toIndex) {
     if (fromIndex === toIndex) return;
-    // Semantic relevance order is computed, not user-owned: the next rerank
-    // would undo a move made inside it. Leave relevance view first (clearing
-    // the query like addNote does) so the manual order persists on screen.
+    // Relevance order is computed, not user-owned: the slot logic below maps
+    // displayed positions onto manual slots in notes-array order, which is a
+    // no-op when the ranked subset is non-contiguous (e.g. notes [A,B,C,D]
+    // ranked [D,A]: dragging D after A reassigns slots [0,3] to [A,D],
+    // leaving the order unchanged while still clearing the search as a side
+    // effect). Move by id in manual order instead so the drag has a visible
+    // effect, then leave the relevance view so the next rerank does not undo
+    // it (PR #1187 human review).
     if (_semanticRankedView) {
+      const visible = getVisibleNotes();
+      if (fromIndex < 0 || fromIndex >= visible.length || toIndex < 0 || toIndex > visible.length) return;
+      const movedNote = visible[fromIndex];
+      if (!movedNote) return;
+      const reorderedVisible = [...visible];
+      const [removed] = reorderedVisible.splice(fromIndex, 1);
+      const insertionIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
+      reorderedVisible.splice(Math.min(insertionIndex, reorderedVisible.length), 0, removed);
+      const activeElement = document.activeElement;
+      const shouldRestoreFocus = activeElement && activeElement.classList.contains('note-grip')
+        && activeElement.closest('.note-item')?.dataset.id === movedNote.id;
+      // Leave relevance view first so the manual result persists on screen.
       setSearchQuery('');
       try {
         const searchInput = elements.notesSearch || document.getElementById('notes-search');
         if (searchInput) searchInput.value = '';
       } catch { /* ignore */ }
       updateSemanticStatus('idle');
+      _semanticRankedView = false;
+      const previousNotes = notes.map(n => ({ ...n }));
+      const manualIndex = notes.findIndex(n => n.id === movedNote.id);
+      if (manualIndex === -1) {
+        renderNotes();
+        return;
+      }
+      const [manualMoved] = notes.splice(manualIndex, 1);
+      // Anchor around the new ranked neighbours in manual order: insert
+      // before the first successor still present, else after the predecessor.
+      const movedPos = reorderedVisible.findIndex(n => n.id === movedNote.id);
+      let anchorIndex = -1;
+      for (let i = movedPos + 1; i < reorderedVisible.length; i += 1) {
+        const idx = notes.findIndex(n => n.id === reorderedVisible[i].id);
+        if (idx !== -1) { anchorIndex = idx; break; }
+      }
+      if (anchorIndex !== -1) {
+        notes.splice(anchorIndex, 0, manualMoved);
+      } else {
+        let predIndex = -1;
+        for (let i = movedPos - 1; i >= 0; i -= 1) {
+          const idx = notes.findIndex(n => n.id === reorderedVisible[i].id);
+          if (idx !== -1) { predIndex = idx; break; }
+        }
+        if (predIndex !== -1) notes.splice(predIndex + 1, 0, manualMoved);
+        else notes.push(manualMoved);
+      }
+      notes.forEach((n, i) => { n.order = i; });
+      if (!saveNotes(notes)) {
+        notes = previousNotes;
+        renderNotes();
+        return;
+      }
+      bumpSemanticGeneration();
+      renderNotes();
+      if (shouldRestoreFocus) {
+        document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
+      }
+      return;
     }
-    // Operate on the displayed order (sync pass or semantic re-rank), so a
-    // drag while ranked moves the card the user actually grabbed.
+    // Operate on the displayed order (sync pass), so a drag moves the card
+    // the user actually grabbed.
     const filtered = getVisibleNotes();
     if (fromIndex < 0 || fromIndex >= filtered.length || toIndex < 0 || toIndex > filtered.length) return;
 
