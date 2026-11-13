@@ -77,6 +77,8 @@ window.i18n.__registerLocale('ja', {
   todoUndo: '元に戻す',
   todoInlinePrevMonth: '前月',
   todoInlineNextMonth: '翌月',
+  todoDueCount: '{count} 件の期限付きタスク',
+  todoDueCountPlural: '{count} 件の期限付きタスク',
   addTodo: 'Todoを追加',
   noTodos: 'まだTodoはありません。上で追加してください！',
   noTodosHint: '期限を設定して整理しましょう。',

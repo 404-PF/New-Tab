@@ -3189,6 +3189,89 @@ describe('Custom date picker open/close (issue #810)', () => {
   });
 });
 
+describe('Due-todo markers in the date pickers (issue #1195)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15)); // Sep 15, 2026
+    window.initCustomDatePicker();
+  });
+
+  afterEach(() => {
+    window.destroyCustomDatePicker();
+    vi.useRealTimers();
+  });
+
+  const getTrigger = () => document.getElementById('date-picker-trigger');
+  const getCalendar = () => document.getElementById('custom-calendar');
+  const click = (el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  const findMainDay = (dayNumber) =>
+    Array.from(document.querySelectorAll('#calendar-days .calendar-day'))
+      .find((el) => !el.classList.contains('other-month') && el.textContent === String(dayNumber));
+  const findTodo = (text) => loadTodos().find((todo) => todo.text === text);
+
+  it('marks incomplete due todos in the add-bar picker and refreshes while open', () => {
+    addTodo('Draft report', '2026-09-17');
+    addTodo('Review report', '2026-09-17');
+    addTodo('File report', '2026-09-17');
+    toggleTodo(findTodo('File report').id);
+    renderTodos();
+
+    click(getTrigger());
+    expect(getCalendar().classList.contains('visible')).toBe(true);
+
+    const day = findMainDay(17);
+    expect(day).toBeTruthy();
+    expect(day.getAttribute('data-due-count')).toBe('2');
+    expect(day.querySelector('.calendar-day-due')).not.toBeNull();
+    expect(day.textContent).toBe('17');
+
+    const markerlessDay = findMainDay(20);
+    expect(markerlessDay.hasAttribute('data-due-count')).toBe(false);
+    expect(markerlessDay.querySelector('.calendar-day-due')).toBeNull();
+
+    toggleTodo(findTodo('Draft report').id);
+    expect(findMainDay(17).getAttribute('data-due-count')).toBe('1');
+
+    toggleTodo(findTodo('Review report').id);
+    const clearedDay = findMainDay(17);
+    expect(clearedDay.hasAttribute('data-due-count')).toBe(false);
+    expect(clearedDay.querySelector('.calendar-day-due')).toBeNull();
+    expect(getCalendar().classList.contains('visible')).toBe(true);
+  });
+
+  it('marks incomplete due todos in the inline picker and clears markers as they complete', () => {
+    addTodo('Draft invoice', '2026-09-17');
+    addTodo('Send invoice', '2026-09-17');
+    addTodo('File invoice', '2026-09-17');
+    toggleTodo(findTodo('File invoice').id);
+    renderTodos();
+
+    const dueDateElement = document.querySelector('.todo-due-date.clickable');
+    expect(dueDateElement).not.toBeNull();
+    dueDateElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const picker = document.querySelector('.inline-date-picker');
+    expect(picker).not.toBeNull();
+    expect(picker.querySelector('.inline-calendar-month').textContent).toBe('September');
+
+    const day = () => picker.querySelector('.calendar-day[data-date="2026-09-17"]');
+    expect(day().getAttribute('data-due-count')).toBe('2');
+    expect(day().querySelector('.calendar-day-due')).not.toBeNull();
+    expect(day().textContent).toBe('17');
+
+    const markerlessDay = picker.querySelector('.calendar-day[data-date="2026-09-20"]');
+    expect(markerlessDay.hasAttribute('data-due-count')).toBe(false);
+    expect(markerlessDay.querySelector('.calendar-day-due')).toBeNull();
+
+    toggleTodo(findTodo('Draft invoice').id);
+    expect(day().getAttribute('data-due-count')).toBe('1');
+
+    toggleTodo(findTodo('Send invoice').id);
+    expect(day().hasAttribute('data-due-count')).toBe(false);
+    expect(day().querySelector('.calendar-day-due')).toBeNull();
+  });
+});
+
 describe('Todo storage bridge write failures', () => {
   const SAVE_ERROR_MESSAGE = 'Failed to save todo changes. Your last action was not saved.';
 

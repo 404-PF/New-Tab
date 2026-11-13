@@ -564,6 +564,22 @@ body.light-theme .heatmap-cell[data-level="3"] {
   color: rgba(255, 255, 255, 0.3);
 }
 
+.calendar-day .calendar-day-due {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #2196f3;
+  pointer-events: none;
+}
+
+.calendar-day.selected .calendar-day-due {
+  background: #ffffff;
+}
+
 .calendar-footer {
   display: flex;
   gap: 8px;
@@ -2175,6 +2191,11 @@ body.light-theme .inline-calendar-days .calendar-day.other-month {
 body.light-theme .calendar-day.selected,
 body.light-theme .inline-calendar-days .calendar-day.selected {
   color: #111827;
+}
+
+body.light-theme .calendar-day.selected .calendar-day-due,
+body.light-theme .inline-calendar-days .calendar-day.selected .calendar-day-due {
+  background: #111827;
 }
 
 body.light-theme .inline-clear-date,
