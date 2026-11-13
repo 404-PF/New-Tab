@@ -335,7 +335,7 @@
     if (e.repeat || !e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return false;
     const digit = /^Digit([1-9])$/.exec(e.code || '');
     if (!digit) return false;
-    const id = getAppShortcutSlotId(parseInt(digit[1], 10));
+    const id = getAppShortcutSlotId(Number.parseInt(digit[1], 10));
     if (!id) return false;
     return launchAppFromShortcut(id, e);
   }

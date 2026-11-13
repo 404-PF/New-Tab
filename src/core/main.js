@@ -904,7 +904,7 @@ function resolveSearchQuery(query) {
     return { query: '', providerId: activeProviderId, hasBang: false };
   }
 
-  const match = /^!([a-z0-9]{1,10})(?:\s+(.*))?$/i.exec(originalQuery);
+  const match = /^!([a-z0-9]{1,10})(?:\s(.*))?$/i.exec(originalQuery);
   if (!match) {
     return { query: originalQuery, providerId: activeProviderId, hasBang: false };
   }

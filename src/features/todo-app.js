@@ -21,8 +21,8 @@
   function loadTodoReminderLeadTime() {
     const val = localStorage.getItem('todoReminderLeadTime');
     if (val === null) return 30;
-    const num = parseInt(val, 10);
-    return isNaN(num) ? 30 : num;
+    const num = Number.parseInt(val, 10);
+    return Number.isNaN(num) ? 30 : num;
   }
 
   function loadTodoStatsEnabled() {
