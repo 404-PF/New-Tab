@@ -124,6 +124,23 @@ describe('Standalone Pomodoro control (issue #1211)', () => {
     expect(btn.style.display).toBe('none');
   });
 
+  it('re-translates its title on languageChanged', () => {
+    window.savePomodoroDurations({ enabled: true });
+    window.applyPomodoroEnabled();
+
+    const btn = getStandaloneControl();
+    expect(btn.title).toBe(window.i18n.t('pomodoroStartFocus'));
+
+    const originalTranslate = window.i18n.t;
+    window.i18n.t = (key) => (key === 'pomodoroStartFocus' ? 'Iniciar foco' : key);
+    try {
+      window.dispatchEvent(new Event('languageChanged'));
+      expect(btn.title).toBe('Iniciar foco');
+    } finally {
+      window.i18n.t = originalTranslate;
+    }
+  });
+
   it('startPomodoro(null) persists a todo-less session', async () => {
     window.savePomodoroDurations({ enabled: true, workDuration: 25 });
     window.applyPomodoroEnabled();

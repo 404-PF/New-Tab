@@ -296,7 +296,12 @@
     btn.id = 'pomodoro-standalone-start';
     btn.className = 'pomodoro-standalone-start';
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>';
-    header.appendChild(btn);
+    const ring = header.querySelector('.todo-progress-ring');
+    if (ring) {
+      header.insertBefore(btn, ring);
+    } else {
+      header.appendChild(btn);
+    }
     updateStandaloneStartControl();
     return btn;
   }
@@ -984,6 +989,7 @@
   function initPomodoro() {
     subscribeToTimerStateChanges();
     createStandaloneStartControl();
+    window.addEventListener('languageChanged', updateStandaloneStartControl);
 
     // A closing tab must not leave a coordination poll (or its lease reconcile)
     // pending; pagehide fires on navigation and tab/window close alike. A
