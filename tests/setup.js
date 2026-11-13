@@ -661,6 +661,8 @@ globalThis.window.i18n = {
       weatherWindKmh: 'km/h',
       weatherWindMph: 'mph',
       weatherHumidity: 'Humidity',
+      weatherHigh: 'High',
+      weatherLow: 'Low',
       weatherWidgetCloseLabel: 'Close weather widget',
       enableFocusMode: 'Enable focus mode',
       todoSubtasks: 'Subtasks',

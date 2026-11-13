@@ -382,6 +382,8 @@ const translations = {
     weatherHumidity: 'Humidity',
     weatherHourly: 'Hourly Forecast',
     weatherNow: 'Now',
+    weatherHigh: 'High',
+    weatherLow: 'Low',
 
     // Themes settings
     themeSettings: 'Theme',

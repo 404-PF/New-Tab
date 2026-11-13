@@ -262,6 +262,8 @@ window.i18n.__registerLocale('fr', {
   weatherHumidity: 'Humidité',
   weatherHourly: 'Prévisions horaires',
   weatherNow: 'Maintenant',
+  weatherHigh: 'Max',
+  weatherLow: 'Min',
   themeSettings: 'Thème',
   themeSettingsDesc: 'Choisissez le thème d\'interface de votre préférence',
   dark: 'Sombre',

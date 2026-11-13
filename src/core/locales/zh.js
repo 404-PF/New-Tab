@@ -297,6 +297,8 @@ window.i18n.__registerLocale('zh', {
   weatherHumidity: '湿度',
   weatherHourly: '逐时预报',
   weatherNow: '现在',
+  weatherHigh: '最高',
+  weatherLow: '最低',
 
   // Themes settings
   themeSettings: '主题',

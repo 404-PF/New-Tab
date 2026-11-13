@@ -738,6 +738,14 @@
     "message": "Jetzt",
     "description": "Label for the current hour in hourly forecast"
   },
+  "weatherHigh": {
+    "message": "Hoch",
+    "description": "Label for today's high temperature in the weather widget"
+  },
+  "weatherLow": {
+    "message": "Tief",
+    "description": "Label for today's low temperature in the weather widget"
+  },
   "notesSearchPlaceholder": {
     "message": "Notizen durchsuchen...",
     "description": "Placeholder text for the notes search input"

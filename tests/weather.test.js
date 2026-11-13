@@ -209,6 +209,66 @@ describe('Weather widget', () => {
     }
   });
 
+  it('renders today high/low under the temperature from cached daily data (#1226)', async () => {
+    configureAutoWeather();
+
+    await window.WeatherWidget.refresh();
+
+    const widget = document.getElementById('weather-widget');
+    const highLow = widget.querySelector('.weather-hl');
+    expect(highLow).not.toBeNull();
+    expect(highLow.parentElement.classList.contains('weather-temp-wrap')).toBe(true);
+    expect(widget.querySelector('.weather-hl-high').textContent).toBe('High: 22\u00B0');
+    expect(widget.querySelector('.weather-hl-low').textContent).toBe('Low: 12\u00B0');
+    expect(widget.querySelector('.weather-temp').textContent).toContain('22');
+    // Still no forecast markup on the widget (issue #1226 keeps scope to today).
+    expect(widget.querySelectorAll('.weather-forecast-card').length).toBe(0);
+    expect(widget.querySelector('.weather-forecast')).toBeNull();
+  });
+
+  it('converts today high/low when switching to Fahrenheit (#1226)', async () => {
+    configureAutoWeather();
+    installWeatherFetch();
+
+    const fahrenheitButton = document.querySelector(
+      '[data-weather-choice="unit"] [data-value="fahrenheit"]'
+    );
+    expect(fahrenheitButton).not.toBeNull();
+    fahrenheitButton.click();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(localStorage.getItem('weatherUnit')).toBe('fahrenheit');
+    const widget = document.getElementById('weather-widget');
+    expect(widget.querySelector('.weather-hl-high').textContent).toBe('High: 72\u00B0');
+    expect(widget.querySelector('.weather-hl-low').textContent).toBe('Low: 54\u00B0');
+    expect(widget.querySelector('.weather-temp').textContent).toContain('72');
+  });
+
+  it('omits high/low when the payload has no daily data (#1226)', async () => {
+    configureAutoWeather({ cacheData: { current: mockWeatherData.current } });
+
+    await window.WeatherWidget.refresh();
+
+    const widget = document.getElementById('weather-widget');
+    expect(widget.querySelector('.weather-temp')).not.toBeNull();
+    expect(widget.querySelector('.weather-hl')).toBeNull();
+  });
+
+  it('omits high/low when the daily arrays are incomplete (#1226)', async () => {
+    configureAutoWeather({
+      cacheData: {
+        ...mockWeatherData,
+        daily: { ...mockWeatherData.daily, temperature_2m_min: [] }
+      }
+    });
+
+    await window.WeatherWidget.refresh();
+
+    const widget = document.getElementById('weather-widget');
+    expect(widget.querySelector('.weather-temp')).not.toBeNull();
+    expect(widget.querySelector('.weather-hl')).toBeNull();
+  });
+
   const DEFAULT_AUTO_COORDINATES = {
     latitude: 37.7749,
     longitude: -122.4194

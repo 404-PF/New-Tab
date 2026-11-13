@@ -262,6 +262,8 @@ window.i18n.__registerLocale('ru', {
   weatherHumidity: 'Влажность',
   weatherHourly: 'Почасовой прогноз',
   weatherNow: 'Сейчас',
+  weatherHigh: 'Макс.',
+  weatherLow: 'Мин.',
   themeSettings: 'Тема',
   themeSettingsDesc: 'Выберите предпочитаемую тему интерфейса',
   dark: 'Тёмная',

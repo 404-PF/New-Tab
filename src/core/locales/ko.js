@@ -275,6 +275,8 @@ window.i18n.__registerLocale('ko', {
   weatherHumidity: '습도',
   weatherHourly: '시간별 예보',
   weatherNow: '지금',
+  weatherHigh: '최고',
+  weatherLow: '최저',
   themeSettings: '테마',
   themeSettingsDesc: '원하는 인터페이스 테마 선택',
   dark: '다크',
