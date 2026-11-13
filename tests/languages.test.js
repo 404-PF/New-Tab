@@ -191,8 +191,8 @@ describe('Todo delete undo translations (issue #1135)', () => {
 });
 
 describe('Due-todo calendar marker translations (issue #1195)', () => {
-  it('defines a localized todoDueCount for every supported language', () => {
-    expectTranslationKeys(['todoDueCount'], { differFromEnglish: true });
+  it('defines a localized todoDueCount and todoDueCountPlural for every supported language', () => {
+    expectTranslationKeys(['todoDueCount', 'todoDueCountPlural'], { differFromEnglish: true });
   });
 });
 

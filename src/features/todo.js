@@ -3277,41 +3277,44 @@ class CustomDatePicker {
   }
 
   setupEventListeners() {
+    this.boundListeners = [];
+    const bind = (target, type, handler) => {
+      if (!target) return;
+      target.addEventListener(type, handler);
+      this.boundListeners.push({ target, type, handler });
+    };
+
     // Trigger button
-    if (this.trigger) {
-      this.trigger.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.toggleCalendar();
-      });
-    }
+    bind(this.trigger, 'click', (e) => {
+      e.stopPropagation();
+      this.toggleCalendar();
+    });
 
     // Navigation buttons
-    if (this.prevBtn) {
-      this.prevBtn.addEventListener('click', () => this.navigateMonth(-1));
-    }
-    if (this.nextBtn) {
-      this.nextBtn.addEventListener('click', () => this.navigateMonth(1));
-    }
+    bind(this.prevBtn, 'click', () => this.navigateMonth(-1));
+    bind(this.nextBtn, 'click', () => this.navigateMonth(1));
 
     // Footer buttons
-    if (this.clearBtn) {
-      this.clearBtn.addEventListener('click', () => this.clearDate());
-    }
-    if (this.todayBtn) {
-      this.todayBtn.addEventListener('click', () => this.selectToday());
-    }
+    bind(this.clearBtn, 'click', () => this.clearDate());
+    bind(this.todayBtn, 'click', () => this.selectToday());
 
     // Click outside to close
-    document.addEventListener('click', (e) => {
+    bind(document, 'click', (e) => {
       if (this.isOpen && !this.trigger?.contains(e.target) && !this.calendar?.contains(e.target)) {
         this.closeCalendar();
       }
     });
 
     // Prevent calendar clicks from closing
-    if (this.calendar) {
-      this.calendar.addEventListener('click', (e) => e.stopPropagation());
-    }
+    bind(this.calendar, 'click', (e) => e.stopPropagation());
+  }
+
+  destroy() {
+    (this.boundListeners || []).forEach(({ target, type, handler }) => {
+      target.removeEventListener(type, handler);
+    });
+    this.boundListeners = [];
+    this.closeCalendar();
   }
 
   toggleCalendar() {
@@ -3459,7 +3462,17 @@ class CustomDatePicker {
 let customDatePicker;
 
 function initCustomDatePicker() {
+  if (customDatePicker) {
+    customDatePicker.destroy();
+  }
   customDatePicker = new CustomDatePicker();
+}
+
+function destroyCustomDatePicker() {
+  if (customDatePicker) {
+    customDatePicker.destroy();
+    customDatePicker = null;
+  }
 }
 
 // Re-render todo items and calendar when language changes
@@ -3498,6 +3511,7 @@ try {
   window.migrateTodos = migrateTodos;
   window.initTodo = initTodo;
   window.initCustomDatePicker = initCustomDatePicker;
+  window.destroyCustomDatePicker = destroyCustomDatePicker;
   window.renderTodos = renderTodos;
   window.reloadTodosState = reloadTodosState;
   window.filterTodos = filterTodos;

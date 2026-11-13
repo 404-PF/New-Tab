@@ -3197,7 +3197,7 @@ describe('Due-todo markers in the date pickers (issue #1195)', () => {
   });
 
   afterEach(() => {
-    window.initCustomDatePicker();
+    window.destroyCustomDatePicker();
     vi.useRealTimers();
   });
 

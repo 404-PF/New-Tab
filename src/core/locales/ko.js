@@ -78,6 +78,7 @@ window.i18n.__registerLocale('ko', {
   todoInlinePrevMonth: '이전 달',
   todoInlineNextMonth: '다음 달',
   todoDueCount: '{count}개 작업 마감 예정',
+  todoDueCountPlural: '{count}개 작업 마감 예정',
   addTodo: '할 일 추가',
   noTodos: '아직 할 일이 없습니다. 위에서 추가하세요!',
   noTodosHint: '마감일을 설정하여 더 잘 정리해보세요.',

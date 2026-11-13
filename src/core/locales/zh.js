@@ -79,6 +79,7 @@ window.i18n.__registerLocale('zh', {
   todoInlinePrevMonth: '上个月',
   todoInlineNextMonth: '下个月',
   todoDueCount: '{count} 项任务到期',
+  todoDueCountPlural: '{count} 项任务到期',
   addTodo: '添加待办',
   noTodos: '还没有待办事项。在上方添加一个！',
   noTodosHint: '尝试添加到期日期以更好地组织。',
