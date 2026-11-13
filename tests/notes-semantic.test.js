@@ -197,6 +197,92 @@ describe('Notes semantic integration', () => {
     expect(searchInput.value).toBe('');
   });
 
+  it('treats an unchanged visible order as a no-op in ranked view (PR #1187)', async () => {
+    // Notes [A,B,C,D] ranked [D,A]: dropping D in its own slot (0 -> 1)
+    // leaves the visible order [D,A] unchanged. It must not touch the
+    // manual list and must not clear the query (cubic P2).
+    const four = [
+      { id: 'A', text: 'alpha apple', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'B', text: 'beta', tag: '', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'C', text: 'gamma', tag: '', order: 2, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'D', text: 'delta apple', tag: '', order: 3, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ];
+    setNotes(four);
+    window.initNotes();
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    window.EmbeddingService = {
+      isReady: function () { return true; },
+      getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 't' }; },
+      embedQuery: function () { return Promise.resolve([1, 0]); },
+      embedTexts: function (texts) {
+        const list = Array.isArray(texts) ? texts : [texts];
+        return Promise.resolve(list.map(function (t) {
+          const s = String(t).toLowerCase();
+          if (s.includes('delta')) return [1, 0];
+          if (s.includes('alpha')) return [0.9, 0.1];
+          return [0, 1];
+        }));
+      }
+    };
+    const searchInput = document.getElementById('notes-search');
+    searchInput.value = 'apple';
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect([...document.querySelectorAll('.note-item')].map((el) => el.dataset.id)).toEqual(['D', 'A']);
+    window.reorderNotes(0, 1);
+    expect(JSON.parse(localStorage.getItem('notes')).map((n) => n.id)).toEqual(['A', 'B', 'C', 'D']);
+    expect(window.getNotesSearchQuery()).toBe('apple');
+    expect(searchInput.value).toBe('apple');
+  });
+
+  it('restores grip focus when a ranked reorder fails to save (PR #1187)', async () => {
+    const four = [
+      { id: 'A', text: 'alpha apple', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'B', text: 'beta', tag: '', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'C', text: 'gamma', tag: '', order: 2, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'D', text: 'delta apple', tag: '', order: 3, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ];
+    setNotes(four);
+    window.initNotes();
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    window.EmbeddingService = {
+      isReady: function () { return true; },
+      getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 't' }; },
+      embedQuery: function () { return Promise.resolve([1, 0]); },
+      embedTexts: function (texts) {
+        const list = Array.isArray(texts) ? texts : [texts];
+        return Promise.resolve(list.map(function (t) {
+          const s = String(t).toLowerCase();
+          if (s.includes('delta')) return [1, 0];
+          if (s.includes('alpha')) return [0.9, 0.1];
+          return [0, 1];
+        }));
+      }
+    };
+    const searchInput = document.getElementById('notes-search');
+    searchInput.value = 'apple';
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect([...document.querySelectorAll('.note-item')].map((el) => el.dataset.id)).toEqual(['D', 'A']);
+    const grip = document.querySelector('.note-item[data-id="D"] .note-grip');
+    expect(grip).toBeTruthy();
+    grip.focus();
+    expect(document.activeElement).toBe(grip);
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function (key, value) {
+      if (key === 'notes') return false;
+      return originalSetItem(key, value);
+    };
+    try {
+      window.reorderNotes(0, 2);
+    } finally {
+      localStorage.setItem = originalSetItem;
+    }
+    const restored = document.querySelector('.note-item[data-id="D"] .note-grip');
+    expect(restored).toBeTruthy();
+    expect(document.activeElement).toBe(restored);
+  });
+
   it('returns tag-filtered notes for empty queries when ready', async () => {
     localStorage.setItem('notesSemanticEnabled', 'true');
     installMockService();

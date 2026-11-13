@@ -965,6 +965,14 @@
       const [removed] = reorderedVisible.splice(fromIndex, 1);
       const insertionIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
       reorderedVisible.splice(Math.min(insertionIndex, reorderedVisible.length), 0, removed);
+      // A drop that leaves the visible order unchanged must not touch the
+      // manual list (cubic review): with notes [A,B,C,D] ranked [A,D],
+      // dropping D in its own slot would otherwise produce [A,D,B,C] via
+      // the neighbour anchor while still clearing the search. Treat it as
+      // a no-op so the manual order and the query both survive.
+      const sameVisibleOrder = reorderedVisible.length === visible.length
+        && reorderedVisible.every(function (n, i) { return n && visible[i] && n.id === visible[i].id; });
+      if (sameVisibleOrder) return;
       const activeElement = document.activeElement;
       const shouldRestoreFocus = activeElement && activeElement.classList.contains('note-grip')
         && activeElement.closest('.note-item')?.dataset.id === movedNote.id;
@@ -980,6 +988,9 @@
       const manualIndex = notes.findIndex(n => n.id === movedNote.id);
       if (manualIndex === -1) {
         renderNotes();
+        if (shouldRestoreFocus) {
+          document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
+        }
         return;
       }
       const [manualMoved] = notes.splice(manualIndex, 1);
@@ -1006,6 +1017,9 @@
       if (!saveNotes(notes)) {
         notes = previousNotes;
         renderNotes();
+        if (shouldRestoreFocus) {
+          document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
+        }
         return;
       }
       bumpSemanticGeneration();
