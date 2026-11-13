@@ -291,6 +291,31 @@ describe('AppFolders UI', () => {
       expect(html).toContain('folder-icon-empty');
       expect(html).not.toContain('folder-icon-preview');
     });
+
+    it('routes stacked preview icon failures through the shared globe fallback (#1223)', () => {
+      const folder = { id: 'f2', name: 'Preview', apps: ['settings-app'] };
+      const html = window.AppFolders.buildStackedPreviewHtml(folder);
+
+      expect(html).toContain('folder-icon-preview');
+      expect(html).toContain('data-app-icon');
+      expect(html).not.toContain('onerror=');
+
+      const wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      document.body.appendChild(wrap);
+
+      try {
+        const image = wrap.querySelector('img.folder-preview-icon');
+        expect(image).not.toBeNull();
+
+        image.dispatchEvent(new Event('error'));
+
+        expect(image.getAttribute('src')).toBe('images/icons/globe.svg');
+        expect(image.hasAttribute('data-app-icon')).toBe(false);
+      } finally {
+        wrap.remove();
+      }
+    });
   });
 
   describe('getFolderAppData', () => {
