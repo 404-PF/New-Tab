@@ -13,6 +13,13 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  const st = String(globalThis.setTimeout);
+  if (!vi.isFakeTimers() && st.includes('clock[')) {
+    process.stdout.write(`DIAG-STALE-fake-setTimeout at ${expect.getState().currentTestName}\n`);
+  }
+  if (vi.isFakeTimers()) {
+    process.stdout.write(`DIAG-FB fake-timers-active at ${expect.getState().currentTestName}\n`);
+  }
   // Reset the internal todos state to match the empty localStorage
   if (typeof initTodo === 'function') {
     initTodo();
@@ -592,6 +599,44 @@ describe('Todo filtering', () => {
       expect(document.getElementById('badge-overdue').textContent).toBe('1');
     } finally {
       currentFilters.status = previousStatus;
+      vi.useRealTimers();
+    }
+  });
+
+  it('never arms a NaN overdue timeout for a malformed persisted due date (issue #1205)', () => {
+    vi.useFakeTimers();
+    const previousStatus = currentFilters.status;
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
+
+    try {
+      initTodo();
+      // The Overdue filter hides the malformed row, so renderTodos returns
+      // before formatting its date and the refresh below still gets to arm.
+      setFilter('overdue');
+      // The write-error resync reloads todos without migrating them, so this
+      // malformed dueDate reaches scheduleTodoOverdueRefresh untouched.
+      localStorage.setItem('todos', JSON.stringify([{
+        id: 'malformed-due',
+        text: 'Malformed due',
+        completed: false,
+        createdAt: '2026-09-15T09:00:00.000Z',
+        priority: 'medium',
+        dueDate: 'not-a-date',
+        dueTime: '10:00'
+      }]));
+
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', { detail: { key: 'todos' } }));
+      vi.advanceTimersByTime(0);
+
+      // The resync body ran: the malformed todo is loaded and counted.
+      expect(document.getElementById('todo-count').textContent).toBe('0/1');
+      // An invalid Date parses to a NaN flip; arming the one-shot with it
+      // would make setTimeout fire immediately and re-render in a loop.
+      expect(setTimeoutSpy.mock.calls.some(call => Number.isNaN(call[1]))).toBe(false);
+    } finally {
+      setTimeoutSpy.mockRestore();
+      currentFilters.status = previousStatus;
+      localStorage.removeItem('todos');
       vi.useRealTimers();
     }
   });
@@ -3385,7 +3430,9 @@ describe('Todo storage bridge write failures', () => {
   }
 
   afterEach(async () => {
+    process.stdout.write(`DIAG-AB-ENTER fake=${vi.isFakeTimers()} st=${String(globalThis.setTimeout).slice(0, 50)}\n`);
     await flushDeferredFailureSync();
+    process.stdout.write('DIAG-AB-EXIT\n');
     if (restoreStorageSet) {
       restoreStorageSet();
       restoreStorageSet = null;

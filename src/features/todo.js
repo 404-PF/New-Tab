@@ -1528,11 +1528,16 @@ function scheduleTodoOverdueRefresh() {
     if (todo.completed || !todo.dueDate || !todo.dueTime) return;
     if (isOverdue(todo.dueDate, todo.dueTime)) return;
     const due = getDueDateTime(todo.dueDate, todo.dueTime);
+    // A malformed dueDate parses to an invalid Date, which is truthy but
+    // yields a NaN timestamp; arming with NaN would make setTimeout fire
+    // immediately and re-apply filters in a tight loop. Skip those todos.
+    const dueTimestamp = due?.getTime();
+    if (!Number.isFinite(dueTimestamp)) return;
     // isOverdue() is a strict `<`, so the row only flips one ms after the
     // due instant; arming for that ms avoids re-firing on the exact instant
     // and finding the todo still "not overdue".
-    const flip = due ? due.getTime() + 1 : null;
-    if (flip !== null && (flipAt === null || flip < flipAt)) {
+    const flip = dueTimestamp + 1;
+    if (flipAt === null || flip < flipAt) {
       flipAt = flip;
     }
   });
