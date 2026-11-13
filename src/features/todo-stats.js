@@ -271,7 +271,7 @@
   }
 
   function getTodoStatsRollingAverage(windowDays, stats) {
-    const n = typeof windowDays === 'number' && windowDays > 0 ? Math.min(windowDays, HEATMAP_DAYS) : 7;
+    const n = Number.isInteger(windowDays) && windowDays > 0 ? Math.min(windowDays, HEATMAP_DAYS) : 7;
     const rows = getHeatmapData(stats);
     const slice = rows.slice(rows.length - n);
     let total = 0;

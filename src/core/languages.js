@@ -1424,12 +1424,12 @@ function applyMigrateLegacyMerges(code) {
 // stats labels do.
 const todoStatsSummaryTranslations = {
   zh: {
-    todoStatsTotal: '30 天總計',
-    todoStatsTrend: '較昨日趨勢',
+    todoStatsTotal: '30 天总计',
+    todoStatsTrend: '较昨日趋势',
     todoStatsBestDay: '最佳一天',
     todoStatsRollingAvg: '7 日平均（完成/天）',
-    todoStatsExport: '匯出 CSV',
-    todoStatsExportSuccess: '待辦統計已開始下載。'
+    todoStatsExport: '导出 CSV',
+    todoStatsExportSuccess: '待办统计已开始下载。'
   },
   ja: {
     todoStatsTotal: '30 日間の合計',

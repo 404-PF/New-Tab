@@ -341,11 +341,11 @@
     "description": "Stats label for last 30 days"
   },
   "todoStatsTotal": {
-    "message": "30 天總計",
+    "message": "30 天总计",
     "description": "Label for the 30-day todo stats total"
   },
   "todoStatsTrend": {
-    "message": "較昨日趨勢",
+    "message": "较昨日趋势",
     "description": "Label for the day-over-day todo stats trend"
   },
   "todoStatsBestDay": {
@@ -357,11 +357,11 @@
     "description": "Label for the 7-day rolling average todo stats"
   },
   "todoStatsExport": {
-    "message": "匯出 CSV",
+    "message": "导出 CSV",
     "description": "Button that exports todo stats as CSV"
   },
   "todoStatsExportSuccess": {
-    "message": "待辦統計已開始下載。",
+    "message": "待办统计已开始下载。",
     "description": "Toast shown after todo stats CSV download is started"
   },
   "statsToggle": {
