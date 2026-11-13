@@ -340,6 +340,30 @@
     "message": "30 derniers jours",
     "description": "Stats label for last 30 days"
   },
+  "todoStatsTotal": {
+    "message": "Total (30 jours)",
+    "description": "Label for the 30-day todo stats total"
+  },
+  "todoStatsTrend": {
+    "message": "Tendance vs hier",
+    "description": "Label for the day-over-day todo stats trend"
+  },
+  "todoStatsBestDay": {
+    "message": "Meilleur jour",
+    "description": "Label for the best todo stats day"
+  },
+  "todoStatsRollingAvg": {
+    "message": "Moyenne 7 jours (tâches/jour)",
+    "description": "Label for the 7-day rolling average todo stats"
+  },
+  "todoStatsExport": {
+    "message": "Exporter CSV",
+    "description": "Button that exports todo stats as CSV"
+  },
+  "todoStatsExportSuccess": {
+    "message": "Téléchargement des statistiques de tâches lancé.",
+    "description": "Toast shown after todo stats CSV download is started"
+  },
   "statsToggle": {
     "message": "Statistiques",
     "description": "Label for the stats toggle button"

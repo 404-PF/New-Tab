@@ -340,6 +340,30 @@
     "message": "Últimos 30 dias",
     "description": "Stats label for last 30 days"
   },
+  "todoStatsTotal": {
+    "message": "Total (30 dias)",
+    "description": "Label for the 30-day todo stats total"
+  },
+  "todoStatsTrend": {
+    "message": "Tendência vs ontem",
+    "description": "Label for the day-over-day todo stats trend"
+  },
+  "todoStatsBestDay": {
+    "message": "Melhor dia",
+    "description": "Label for the best todo stats day"
+  },
+  "todoStatsRollingAvg": {
+    "message": "Média 7 dias (concluídos/dia)",
+    "description": "Label for the 7-day rolling average todo stats"
+  },
+  "todoStatsExport": {
+    "message": "Exportar CSV",
+    "description": "Button that exports todo stats as CSV"
+  },
+  "todoStatsExportSuccess": {
+    "message": "Download das estatísticas de tarefas iniciado.",
+    "description": "Toast shown after todo stats CSV download is started"
+  },
   "statsToggle": {
     "message": "Estatísticas",
     "description": "Label for the stats toggle button"

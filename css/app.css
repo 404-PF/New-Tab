@@ -211,6 +211,10 @@
   margin-top: 14px;
 }
 
+.todo-stats-summary {
+  margin-top: 14px;
+}
+
 .pomodoro-stats-by-todo {
   font-size: 0.8em;
   color: rgba(255, 255, 255, 0.7);

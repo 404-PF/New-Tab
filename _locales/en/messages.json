@@ -420,6 +420,30 @@
     "message": "Last 30 Days",
     "description": "Label for the heatmap period"
   },
+  "todoStatsTotal": {
+    "message": "30-Day Total",
+    "description": "Label for the 30-day todo stats total"
+  },
+  "todoStatsTrend": {
+    "message": "Trend vs Yesterday",
+    "description": "Label for the day-over-day todo stats trend"
+  },
+  "todoStatsBestDay": {
+    "message": "Best Day",
+    "description": "Label for the best todo stats day"
+  },
+  "todoStatsRollingAvg": {
+    "message": "7-Day Avg (completions/day)",
+    "description": "Label for the 7-day rolling average todo stats"
+  },
+  "todoStatsExport": {
+    "message": "Export CSV",
+    "description": "Button that exports todo stats as CSV"
+  },
+  "todoStatsExportSuccess": {
+    "message": "Todo stats download started.",
+    "description": "Toast shown after todo stats CSV download is started"
+  },
   "statsToggle": {
     "message": "Stats",
     "description": "Tooltip for the stats toggle button"
