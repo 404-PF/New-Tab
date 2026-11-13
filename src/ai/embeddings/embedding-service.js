@@ -399,9 +399,9 @@
     const opts = options || {};
     if (status === 'ready' && liveProvider) {
       // Already live: re-emit so late subscribers (Settings panel, notes
-      // rerank listener) observe the ready state. The notes handler only
-      // reranks on the ready transition, so without this a re-enable with
-      // an active query would leave the list in keyword order (PR #1187).
+      // rerank listener) observe the ready state. The notes handler reranks
+      // on each ready event while a query is active, so a re-enable with an
+      // active query would otherwise stay in keyword order (PR #1187).
       try { dispatchStatus(); } catch { /* ignore */ }
       return Promise.resolve(liveProvider);
     }

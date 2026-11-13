@@ -790,6 +790,10 @@
     "message": "Iniciando download…",
     "description": "Status when the model download starts"
   },
+  "notesSemanticNotDownloaded": {
+    "message": "Modelo ainda não baixado. Desligue e ligue novamente para baixar.",
+    "description": "Status when the model has never been downloaded on this device"
+  },
   "notesSemanticPermissionDenied": {
     "message": "O download do modelo precisa de acesso ao Hugging Face, que não foi concedido.",
     "description": "Error when the user denies the optional host permission for the model download"

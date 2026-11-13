@@ -790,6 +790,10 @@
     "message": "다운로드 시작 중…",
     "description": "Status when the model download starts"
   },
+  "notesSemanticNotDownloaded": {
+    "message": "모델이 아직 다운로드되지 않았습니다. 껐다가 다시 켜서 다운로드하세요.",
+    "description": "Status when the model has never been downloaded on this device"
+  },
   "notesSemanticPermissionDenied": {
     "message": "모델 다운로드에는 Hugging Face 접근 권한이 필요하지만 허용되지 않았습니다.",
     "description": "Error when the user denies the optional host permission for the model download"

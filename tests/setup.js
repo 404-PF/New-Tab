@@ -358,6 +358,7 @@ globalThis.window.i18n = {
       notesSemanticSearching: 'Semantic search…',
       notesSemanticLoading: 'Loading on-device model…',
       notesSemanticStarting: 'Starting download…',
+      notesSemanticNotDownloaded: 'Model not downloaded yet. Toggle off and on to download.',
       notesSemanticPermissionDenied: 'Model download needs Hugging Face access, which was not granted.',
       exportNotes: 'Export',
       importNotes: 'Import',

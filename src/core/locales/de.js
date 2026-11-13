@@ -97,6 +97,7 @@ window.i18n.__registerLocale('de', {
   notesSemanticSearching: 'Semantische Suche…',
   notesSemanticLoading: 'Geräteinternes Modell wird geladen…',
   notesSemanticStarting: 'Download wird gestartet…',
+  notesSemanticNotDownloaded: 'Modell noch nicht heruntergeladen. Zum Herunterladen aus- und wieder einschalten.',
   notesSemanticPermissionDenied: 'Für den Modell-Download ist Zugriff auf Hugging Face erforderlich, der nicht gewährt wurde.',
   notesPlaceholder: 'Schreibe deine Notiz hier...',
   notesDeleteTooltip: 'Notiz löschen',

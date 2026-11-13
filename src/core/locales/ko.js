@@ -97,6 +97,7 @@ window.i18n.__registerLocale('ko', {
   notesSemanticSearching: '의미 기반 검색 중…',
   notesSemanticLoading: '온디바이스 모델 로드 중…',
   notesSemanticStarting: '다운로드 시작 중…',
+  notesSemanticNotDownloaded: '모델이 아직 다운로드되지 않았습니다. 껐다가 다시 켜서 다운로드하세요.',
   notesSemanticPermissionDenied: '모델 다운로드에는 Hugging Face 접근 권한이 필요하지만 허용되지 않았습니다.',
   notesPlaceholder: '여기에 메모를 입력하세요...',
   notesDeleteTooltip: '메모 삭제',

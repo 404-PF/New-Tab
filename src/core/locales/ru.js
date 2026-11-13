@@ -97,6 +97,7 @@ window.i18n.__registerLocale('ru', {
   notesSemanticSearching: 'Семантический поиск…',
   notesSemanticLoading: 'Загрузка модели на устройство…',
   notesSemanticStarting: 'Начинается загрузка…',
+  notesSemanticNotDownloaded: 'Модель ещё не загружена. Выключите и снова включите, чтобы загрузить.',
   notesSemanticPermissionDenied: 'Для загрузки модели нужен доступ к Hugging Face, который не был предоставлен.',
   notesPlaceholder: 'Введите вашу заметку здесь...',
   notesDeleteTooltip: 'Удалить заметку',

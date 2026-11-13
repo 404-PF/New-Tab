@@ -1980,14 +1980,15 @@ function resolveSemanticStatusText(enabled, svcStatus) {
   if (readSemanticDownloadState() === 'error') {
     return tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
   }
-  // Deferred lazy-load state (PR #1187 human review): the page-load resume
-  // no longer warms the ~300MB model, so an enabled flag with an idle
-  // service is expected until the first query. A 'ready' marker means the
-  // bytes are cached from a previous session: report ready (not starting)
+  // Deferred lazy-load state (PR #1187 human review + cubic follow-up): the
+  // page-load resume only resumes an interrupted ('loading') download, and
+  // the first-query starter only warms a cached ('ready') marker. An enabled
+  // flag with an idle service is therefore expected: a 'ready' marker means
+  // the bytes are cached from a previous session: report ready (not starting)
   // so Settings does not claim a download is running. A 'loading' marker
   // is an interrupted download that the resume path will pick up: report
-  // starting. A null marker means never downloaded on this device: idle
-  // (empty) until the first query warms it, not a phantom download.
+  // starting. A null marker means never downloaded on this device and waits
+  // for an explicit Settings re-toggle, never a silent ~300MB fetch.
   const deferredState = readSemanticDownloadState();
   if (deferredState === 'ready') {
     return tSemantic('notesSemanticReady', 'Semantic search ready (on-device).');
@@ -1995,10 +1996,12 @@ function resolveSemanticStatusText(enabled, svcStatus) {
   if (deferredState === 'loading') {
     return tSemantic('notesSemanticStarting', 'Starting download…');
   }
-  // Deferred null (never downloaded on this device): idle until the first
-  // query warms it. Fresh opt-ins briefly show idle here while permission
-  // and scripts resolve, then flip to downloading once the marker is set.
-  return '';
+  // Deferred null (never downloaded on this device): waits for an explicit
+  // Settings re-toggle. Show a hint instead of blank so an enabled toggle
+  // with empty status does not look broken (PR #1187 review). Fresh opt-ins
+  // briefly show this while permission and scripts resolve, then flip to
+  // downloading once the marker is set.
+  return tSemantic('notesSemanticNotDownloaded', 'Model not downloaded yet. Toggle off and on to download.');
 }
 
 function renderNotesSemanticSettings() {
@@ -2299,7 +2302,16 @@ function startSemanticModelDownload(els, passive, startGeneration) {
       }
       return;
     }
-    writeSemanticDownloadState('loading');
+    // Cache warm must not clobber a 'ready' marker: a passive warm would
+    // overwrite it with 'loading', then a toggle-off during the warm clears
+    // it and strands ~300MB with no Delete control (PR #1187 review). Only
+    // passive warms preserve 'ready' here; explicit opt-ins always show
+    // 'loading' so a fresh download reports progress even with cached bytes.
+    let startedFromReady = false;
+    try {
+      startedFromReady = readSemanticDownloadState() === 'ready';
+    } catch { startedFromReady = false; }
+    if (!(silent && startedFromReady)) writeSemanticDownloadState('loading');
     window.EmbeddingService.ensureModel({
       onProgress: function () {
         renderNotesSemanticSettings();
@@ -2308,19 +2320,19 @@ function startSemanticModelDownload(els, passive, startGeneration) {
       if (downloadGeneration !== semanticStartGeneration) return;
       writeSemanticDownloadState('ready');
       renderNotesSemanticSettings();
-      // Re-enabling with an active query would otherwise leave the list in
-      // keyword order: ensureModel may have returned early (already ready)
-      // with no status transition for notes to observe (PR #1187 review).
-      try {
-        if (typeof window.scheduleSemanticRerank === 'function') window.scheduleSemanticRerank();
-      } catch { /* ignore */ }
+      // No direct rerank here: ensureModel emits 'embedding-status' ready on
+      // both paths (including the already-ready early return), and notes.js
+      // reranks from that event while a query is active (PR #1187 review).
       if (!silent && typeof window.showToast === 'function') {
         window.showToast(tSemantic('notesSemanticReady', 'Semantic search ready (on-device).'), 'success');
       }
     }).catch(function (err) {
       if (downloadGeneration !== semanticStartGeneration) return;
       if (err && err.name === 'AbortError') {
-        clearSemanticDownloadState();
+        // Cancel during a cache warm must not strand bytes: restore the
+        // 'ready' marker instead of clearing it (PR #1187 review).
+        if (startedFromReady) writeSemanticDownloadState('ready');
+        else clearSemanticDownloadState();
       } else {
         writeSemanticDownloadState('error');
       }
@@ -2387,7 +2399,11 @@ function bindSemanticCancel(els) {
   els.cancelBtn.dataset.semanticBound = 'true';
   els.cancelBtn.addEventListener('click', function () {
     cancelSemanticLoad();
-    clearSemanticDownloadState();
+    // Preserve a 'ready' marker (cache warm): clearing it would strand ~300MB
+    // with no Delete control (PR #1187 review). Same guard as toggle-off.
+    try {
+      if (readSemanticDownloadState() !== 'ready') clearSemanticDownloadState();
+    } catch { clearSemanticDownloadState(); }
     const persisted = persistSetting('notesSemanticEnabled', false);
     applyNotesSemanticEnabled();
     if (!persisted) reportFeatureToggleSaveError();
@@ -2494,12 +2510,13 @@ function launchPassiveSemanticDownload() {
     });
 }
 
-// Lazy-load gate (PR #1187 human review): only an interrupted download
-// ('loading' marker) resumes automatically on page load. A previously
-// finished model ('ready') or legacy flag without a marker (null) defers
-// ensureModel() until the first semantic query (notes.js calls
-// requestSemanticModelLoad) or an explicit Settings opt-in, instead of
-// reading ~300MB from Cache Storage and initializing ORT on every New Tab.
+// Lazy-load gate (PR #1187 human review + cubic follow-up): only an
+// interrupted download ('loading' marker) resumes automatically on page
+// load. A cached model ('ready') defers ensureModel() until the first query
+// (notes.js calls requestSemanticModelLoad); a null marker (never downloaded
+// on this device) waits for an explicit Settings re-toggle and never
+// auto-starts, instead of reading ~300MB from Cache Storage and initializing
+// ORT on every New Tab.
 function resumeSemanticIfNeeded() {
   let shouldLaunch;
   // S4822/S6544: keep promise creation out of try/catch. The sync checks

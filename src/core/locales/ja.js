@@ -97,6 +97,7 @@ window.i18n.__registerLocale('ja', {
   notesSemanticSearching: 'セマンティック検索中…',
   notesSemanticLoading: 'オンデバイスモデルを読み込み中…',
   notesSemanticStarting: 'ダウンロードを開始しています…',
+  notesSemanticNotDownloaded: 'モデルはまだダウンロードされていません。オフにしてからオンにしてダウンロードしてください。',
   notesSemanticPermissionDenied: 'モデルのダウンロードには Hugging Face へのアクセス権限が必要ですが、許可されていません。',
   notesPlaceholder: 'ここにメモを入力...',
   notesDeleteTooltip: 'メモを削除',

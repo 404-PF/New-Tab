@@ -790,6 +790,10 @@
     "message": "正在开始下载…",
     "description": "Status when the model download starts"
   },
+  "notesSemanticNotDownloaded": {
+    "message": "模型尚未下载。请先关闭再重新打开以下载。",
+    "description": "Status when the model has never been downloaded on this device"
+  },
   "notesSemanticPermissionDenied": {
     "message": "模型下载需要访问 Hugging Face，但未获得授权。",
     "description": "Error when the user denies the optional host permission for the model download"

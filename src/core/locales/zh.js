@@ -98,6 +98,7 @@ window.i18n.__registerLocale('zh', {
   notesSemanticSearching: '语义搜索中…',
   notesSemanticLoading: '正在加载设备端模型…',
   notesSemanticStarting: '正在开始下载…',
+  notesSemanticNotDownloaded: '模型尚未下载。请先关闭再重新打开以下载。',
   notesSemanticPermissionDenied: '模型下载需要访问 Hugging Face，但未获得授权。',
   notesPlaceholder: '在此输入你的便签...',
   notesDeleteTooltip: '删除便签',

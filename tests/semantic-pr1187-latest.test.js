@@ -135,7 +135,29 @@ describe('PR #1187 latest review resolutions', () => {
   });
 
   it('re-ranks after ready when re-enabling with an active query', async () => {
-    // Service already ready: ensureModel resolves immediately.
+    // Ranked fixture: keyword order is [A, D] (manual order), semantic order
+    // is [D, A] (D cosine 1.0 > A ~0.99). Starting disabled proves the
+    // re-enable/ready flow actually reranks instead of only exposing the
+    // scheduler (PR #1187 review).
+    localStorage.setItem('notes', JSON.stringify([
+      { id: 'A', text: 'alpha apple', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'B', text: 'beta', tag: '', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'C', text: 'gamma', tag: '', order: 2, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      { id: 'D', text: 'delta apple', tag: '', order: 3, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ]));
+    window.initNotes();
+    // Start disabled with an active query: keyword order [A, D].
+    localStorage.setItem('notesSemanticEnabled', 'false');
+    try { delete window.EmbeddingService; } catch { /* ignore */ }
+    window.setNotesSearchQuery('apple');
+    window.renderNotes();
+    await new Promise(function (resolve) { setTimeout(resolve, 100); });
+    const visibleIds = function () {
+      return Array.from(document.querySelectorAll('.note-item')).map(function (el) { return el.dataset.id; });
+    };
+    expect(visibleIds()).toEqual(['A', 'D']);
+    // Re-enable with a ready service: mimic the Settings ready path where
+    // ensureModel re-emits 'embedding-status' ready and notes reranks.
     window.EmbeddingService = {
       getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 't' }; },
       isReady: function () { return true; },
@@ -144,15 +166,23 @@ describe('PR #1187 latest review resolutions', () => {
       embedQuery: function () { return Promise.resolve([1, 0]); },
       embedTexts: function (texts) {
         const list = Array.isArray(texts) ? texts : [texts];
-        return Promise.resolve(list.map(function () { return [1, 0]; }));
+        return Promise.resolve(list.map(function (t) {
+          const s = String(t).toLowerCase();
+          if (s.includes('delta')) return [1, 0];
+          if (s.includes('alpha')) return [0.9, 0.1];
+          return [0, 1];
+        }));
       }
     };
     localStorage.setItem('notesSemanticEnabled', 'true');
-    window.setNotesSearchQuery('apple');
+    try {
+      document.dispatchEvent(new CustomEvent('embedding-status', { detail: { status: 'ready', progress: 1, error: '', modelId: 't' } }));
+    } catch { /* ignore */ }
     window.renderNotes();
     await new Promise(function (resolve) { setTimeout(resolve, 450); });
-    // scheduleSemanticRerank is exposed for the Settings ready path.
-    expect(typeof window.scheduleSemanticRerank).toBe('function');
+    // Semantic order [D, A] proves the re-enable reranked the active query.
+    expect(visibleIds()).toEqual(['D', 'A']);
+    window.setNotesSearchQuery('');
   });
 
   it('applies the single-thread guard to both ORT instances', async () => {

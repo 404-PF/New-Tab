@@ -790,6 +790,10 @@
     "message": "Начинается загрузка…",
     "description": "Status when the model download starts"
   },
+  "notesSemanticNotDownloaded": {
+    "message": "Модель ещё не загружена. Выключите и снова включите, чтобы загрузить.",
+    "description": "Status when the model has never been downloaded on this device"
+  },
   "notesSemanticPermissionDenied": {
     "message": "Для загрузки модели нужен доступ к Hugging Face, который не был предоставлен.",
     "description": "Error when the user denies the optional host permission for the model download"
