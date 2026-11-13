@@ -101,7 +101,7 @@ const BG_OVERLAY_DEFAULTS = {
 function readClampedOverlayInt(key, fallback, min, max) {
   const raw = localStorage.getItem(key);
   if (raw === null) return fallback;
-  const parsed = /^-?\d+$/.test(raw) ? Number(raw) : NaN;
+  const parsed = /^-?\d+$/.test(raw) ? Number(raw) : Number.NaN;
   const normalized = Number.isFinite(parsed)
     ? Math.min(max, Math.max(min, parsed))
     : fallback;
@@ -1250,8 +1250,15 @@ function initTimezoneSettings() {
   const currentList = document.getElementById('timezone-current-list');
   if (!picker || !optionsList || !addBtn || !currentList) return;
 
-  const zones = window.POPULAR_ZONES || [];
+  // Full IANA list (#1199); fall back to the curated shortlist when the
+  // helper is unavailable (settings can load without timezone-clocks.js).
+  const zones = typeof window.getTimeZoneOptions === 'function'
+    ? window.getTimeZoneOptions()
+    : (window.POPULAR_ZONES || []);
   let selectedZoneId = '';
+
+  const IDLE_OPTION_LIMIT = 40;
+  const MATCH_OPTION_LIMIT = 100;
 
   function getCurrentOffset(zone) {
     try {
@@ -1274,10 +1281,20 @@ function initTimezoneSettings() {
     return zone.city + ' (UTC' + (offset >= 0 ? '+' : '') + offset + ')';
   }
 
+  // A typed id the picker list may not contain (Intl.supportedValuesOf omits
+  // valid ids such as Etc/GMT+8) is still addable when the runtime's Intl
+  // accepts it (#1199).
+  function getTypedZoneId() {
+    const typed = picker.value.trim();
+    if (!typed || typeof window.isValidZoneId !== 'function') return '';
+    return window.isValidZoneId(typed) ? typed : '';
+  }
+
   function updateAddButton() {
     const saved = window.loadTimeZones ? window.loadTimeZones() : [];
     const atCapacity = saved.length >= (window.MAX_TIMEZONES || 5);
-    addBtn.disabled = atCapacity || !selectedZoneId || saved.indexOf(selectedZoneId) !== -1;
+    const zoneId = selectedZoneId || getTypedZoneId();
+    addBtn.disabled = atCapacity || !zoneId || saved.indexOf(zoneId) !== -1;
   }
 
   function renderOptions(filter) {
@@ -1286,7 +1303,11 @@ function initTimezoneSettings() {
     const matches = zones.filter(function (zone) {
       return !query || (zone.city + ' ' + zone.id).toLocaleLowerCase().indexOf(query) !== -1;
     });
-    matches.forEach(function (zone) {
+    // The full list is ~400 entries: idle focus shows the curated shortlist
+    // (kept first in getTimeZoneOptions) and queries are capped so focus
+    // never builds hundreds of buttons (#1199).
+    const visible = matches.slice(0, query ? MATCH_OPTION_LIMIT : IDLE_OPTION_LIMIT);
+    visible.forEach(function (zone) {
       const option = document.createElement('button');
       option.type = 'button';
       option.className = 'timezone-option';
@@ -1295,8 +1316,20 @@ function initTimezoneSettings() {
       option.textContent = getZoneLabel(zone);
       optionsList.appendChild(option);
     });
-    optionsList.hidden = matches.length === 0;
-    picker.setAttribute('aria-expanded', String(matches.length > 0));
+    if (matches.length > visible.length) {
+      // The cap silently hides the rest of the matches, so say how many are
+      // left instead of letting broad queries look complete (#1199).
+      const hint = document.createElement('div');
+      hint.className = 'timezone-options-more';
+      hint.setAttribute('role', 'presentation');
+      const i18n = window.i18n;
+      hint.textContent = i18n && typeof i18n.t === 'function'
+        ? i18n.t('timezoneMoreResults', { shown: visible.length, total: matches.length })
+        : visible.length + ' of ' + matches.length + ' time zones';
+      optionsList.appendChild(hint);
+    }
+    optionsList.hidden = visible.length === 0;
+    picker.setAttribute('aria-expanded', String(visible.length > 0));
   }
 
   function renderCurrentTimezones(options) {
@@ -1345,7 +1378,13 @@ function initTimezoneSettings() {
   }
 
   picker.addEventListener('focus', function () {
-    renderOptions(this.value);
+    // After a selection the input holds a display label ("Chicago (UTC-6)")
+    // that never matches the filter corpus, so bypass it only while a zone is
+    // selected; otherwise keep an in-progress search so the list stays in sync
+    // with the visible query (#1200). Selecting the text makes the first
+    // keystroke replace the label instead of appending to it.
+    renderOptions(selectedZoneId ? '' : this.value);
+    this.select();
   });
 
   picker.addEventListener('input', function () {
@@ -1367,13 +1406,14 @@ function initTimezoneSettings() {
   });
 
   addBtn.addEventListener('click', function () {
-    if (!selectedZoneId) return;
+    const zoneId = selectedZoneId || getTypedZoneId();
+    if (!zoneId) return;
     const saved = window.loadTimeZones ? window.loadTimeZones() : [];
-    if (saved.length >= (window.MAX_TIMEZONES || 5) || saved.indexOf(selectedZoneId) !== -1) {
+    if (saved.length >= (window.MAX_TIMEZONES || 5) || saved.indexOf(zoneId) !== -1) {
       renderCurrentTimezones();
       return;
     }
-    const added = window.addTimeZone ? window.addTimeZone(selectedZoneId) : true;
+    const added = window.addTimeZone ? window.addTimeZone(zoneId) : true;
     renderCurrentTimezones();
     if (added === false) {
       reportFeatureToggleSaveError();

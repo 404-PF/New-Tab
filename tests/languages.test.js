@@ -190,6 +190,12 @@ describe('Todo delete undo translations (issue #1135)', () => {
   });
 });
 
+describe('Due-todo calendar marker translations (issue #1195)', () => {
+  it('defines a localized todoDueCount and todoDueCountPlural for every supported language', () => {
+    expectTranslationKeys(['todoDueCount', 'todoDueCountPlural'], { differFromEnglish: true });
+  });
+});
+
 describe('Legacy migration takeover translations', () => {
   it('defines a localized migrateLegacySaveError for every supported language', () => {
     // differFromEnglish: the save-failure announcement shown by the
@@ -405,6 +411,12 @@ describe('Todo sort selector translations (issue #1013)', () => {
     // Presence-only: 'Manual' (es/pt) and 'A-Z' (every locale) legitimately
     // match the English source, so differFromEnglish would be wrong here.
     expectTranslationKeys(TODO_SORT_TRANSLATION_KEYS);
+  });
+});
+
+describe('Todo upcoming filter translations (issue #1209)', () => {
+  it('defines the upcoming filter label in each supported language', () => {
+    expectTranslationKeys(['filterUpcoming'], { differFromEnglish: true });
   });
 });
 
@@ -730,6 +742,16 @@ describe('AI assistant shortcut translations (issue #1185)', () => {
   it('defines a localized shortcutOpenAi in every runtime table and messages.json', () => {
     expectTranslationKeys(['shortcutOpenAi'], { differFromEnglish: true });
     expectMessagesJsonKey('shortcutOpenAi');
+  });
+});
+
+// Truncated time zone picker results (issue #1199): the "N of M time zones"
+// hint ships in every runtime locale table and every chrome.i18n
+// messages.json.
+describe('Timezone picker truncation hint translations (issue #1199)', () => {
+  it('defines timezoneMoreResults in every runtime table and messages.json', () => {
+    expectTranslationKeys(['timezoneMoreResults'], { differFromEnglish: true });
+    expectMessagesJsonKey('timezoneMoreResults');
   });
 });
 

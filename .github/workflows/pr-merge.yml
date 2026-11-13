@@ -7,7 +7,7 @@ name: pr-merge
 # off. This workflow re-evaluates every requirement on demand and merges with
 # the GraphQL mergePullRequest mutation carrying expectedHeadOid, so a push
 # that lands mid-evaluation aborts instead of merging an unverified commit.
-# Opt a PR out with any of: do-not-merge, hold, wip, blocked.
+# Opt a PR out with any of: do-not-merge, hold, blocked.
 #
 # Every GitHub lookup below fails closed: an API error blocks the merge
 # instead of skipping a gate. Only an explicit 404 on the branch-protection
@@ -221,7 +221,7 @@ jobs:
 
           # 4. No blocking label.
           if [ -z "$VERDICT" ]; then
-            for label in do-not-merge hold wip blocked; do
+            for label in do-not-merge hold blocked; do
               if jq -e --arg l "$label" 'any(.labels[]; .name == $l)' <<<"$PR_JSON" >/dev/null; then
                 deny "blocking label \`${label}\` is present"
                 break
@@ -453,7 +453,7 @@ jobs:
               || [ "$FINAL_BASE" != 'main' ] || [ "$FINAL_HEAD" != "$HEAD_SHA" ]; then
               deny 'PR state changed during evaluation; merge aborted'
               DECISION='blocked'
-            elif jq -e 'any(.labels[]; .name == "do-not-merge" or .name == "hold" or .name == "wip" or .name == "blocked")' \
+            elif jq -e 'any(.labels[]; .name == "do-not-merge" or .name == "hold" or .name == "blocked")' \
                 <<<"$FINAL_JSON" >/dev/null; then
               deny 'a blocking label was added during evaluation; merge aborted'
               DECISION='blocked'

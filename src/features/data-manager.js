@@ -476,7 +476,7 @@
     const binary = atob(match[2]);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+      bytes[i] = binary.codePointAt(i);
     }
     return new Blob([bytes], { type: match[1] });
   }
@@ -697,12 +697,10 @@
     clockFormat: function (v) { return typeof v === 'string'; },
     extraTimeZones: function (v) {
       if (!Array.isArray(v) || v.length > (window.MAX_TIMEZONES || 5)) return false;
-      const supportedZones = window.POPULAR_ZONES || [];
       const seen = {};
       return v.every(function (item) {
         if (typeof item !== 'string' || seen[item]) return false;
-        const supported = supportedZones.some(function (zone) { return zone.id === item; });
-        if (!supported) return false;
+        if (typeof window.isValidZoneId !== 'function' || !window.isValidZoneId(item)) return false;
         seen[item] = true;
         return true;
       });
@@ -1188,18 +1186,16 @@
                   count++;
                 }
               } else if (key === 'extraTimeZones') {
-                // Merge only supported, unique zones and preserve the five-zone limit.
+                // Merge only zones the runtime accepts (any valid IANA id,
+                // #1199) and preserve the five-zone limit.
                 const maxTimeZones = window.MAX_TIMEZONES || 5;
-                const supportedIds = Object.create(null);
-                (window.POPULAR_ZONES || []).forEach(function (zone) {
-                  supportedIds[zone.id] = true;
-                });
                 const mergedZones = [];
                 const seenZones = Object.create(null);
                 const zonesToMerge = (Array.isArray(current) ? current : []).concat(incoming);
                 zonesToMerge.forEach(function (zoneId) {
                   if (mergedZones.length >= maxTimeZones || typeof zoneId !== 'string' ||
-                      !supportedIds[zoneId] || seenZones[zoneId]) return;
+                      typeof window.isValidZoneId !== 'function' || !window.isValidZoneId(zoneId) ||
+                      seenZones[zoneId]) return;
                   seenZones[zoneId] = true;
                   mergedZones.push(zoneId);
                 });

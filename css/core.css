@@ -61,9 +61,10 @@
 }
 
 /* One slim scroll-bar treatment for every in-component scrollable
-   surface (#989). The selectors are scoped to body and its
-   descendants so the root scroller (html) — the dashboard viewport —
-   keeps the browser's native scrollbar (#1098).
+   surface (#989). The selectors are scoped to body's descendants
+   only — never bare body — so neither the root scroller (html) nor
+   body itself can reach the dashboard viewport scrollbar, which
+   keeps the browser's native default (#1098, #1207).
    The two branches are mutually exclusive: when a browser supports
    scrollbar-width/scrollbar-color AND ::-webkit-scrollbar-thumb
    (Chromium/Safari), setting the standard properties makes it ignore
@@ -74,7 +75,6 @@
    Hover brightening is a documented WebKit-only exception kept in the
    WebKit branch. */
 @supports not selector(::-webkit-scrollbar-thumb) {
-  body,
   body * {
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
@@ -82,24 +82,20 @@
 }
 
 @supports selector(::-webkit-scrollbar-thumb) {
-  body::-webkit-scrollbar,
   body *::-webkit-scrollbar {
     width: var(--scrollbar-size);
     height: var(--scrollbar-size);
   }
 
-  body::-webkit-scrollbar-track,
   body *::-webkit-scrollbar-track {
     background: var(--scrollbar-track);
   }
 
-  body::-webkit-scrollbar-thumb,
   body *::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb);
     border-radius: var(--scrollbar-radius);
   }
 
-  body::-webkit-scrollbar-thumb:hover,
   body *::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-thumb-hover);
   }
@@ -1418,12 +1414,21 @@ body.light-theme .timezone-picker-wrapper input {
 .timezone-option:focus {
   background: rgba(99, 102, 241, 0.3);
 }
+.timezone-options-more {
+  padding: 6px 8px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.8em;
+  text-align: center;
+}
 body.light-theme .timezone-options {
   background: #f1f5f9;
   border-color: rgba(0, 0, 0, 0.12);
 }
 body.light-theme .timezone-option {
   color: #1e293b;
+}
+body.light-theme .timezone-options-more {
+  color: #475569;
 }
 .timezone-add select {
   flex: 1;

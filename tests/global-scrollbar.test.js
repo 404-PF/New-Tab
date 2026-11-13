@@ -2,9 +2,9 @@
 // #989: one slim scroll-bar treatment for in-component scrollable
 // surfaces, sourced from :root custom properties in css/core.css
 // instead of the three divergent per-component blocks that used to live
-// in css/app.css and css/features.css. #1098: the rules are scoped to
-// body and its descendants so the dashboard viewport scroller (html)
-// keeps the browser's native scrollbar.
+// in css/app.css and css/features.css. #1098/#1207: the rules are
+// scoped to body's descendants only (never bare body) so the dashboard
+// viewport scroller (html) keeps the browser's native scrollbar.
 
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -33,11 +33,11 @@ describe('Shared slim scrollbars (#989, #1098)', () => {
   });
 
   it('styles component surfaces with one scoped rule set reading the variables', () => {
-    expect(CORE_CSS).toMatch(/body,\s*body \*\s*\{\s*scrollbar-width:\s*thin;\s*scrollbar-color:\s*var\(--scrollbar-thumb\)\s+var\(--scrollbar-track\);/);
-    expect(CORE_CSS).toMatch(/body::-webkit-scrollbar,\s*body \*::-webkit-scrollbar\s*\{\s*width:\s*var\(--scrollbar-size\);\s*height:\s*var\(--scrollbar-size\);/);
-    expect(CORE_CSS).toMatch(/body::-webkit-scrollbar-track,\s*body \*::-webkit-scrollbar-track\s*\{\s*background:\s*var\(--scrollbar-track\);/);
-    expect(CORE_CSS).toMatch(/body::-webkit-scrollbar-thumb,\s*body \*::-webkit-scrollbar-thumb\s*\{\s*background:\s*var\(--scrollbar-thumb\);\s*border-radius:\s*var\(--scrollbar-radius\);/);
-    expect(CORE_CSS).toMatch(/body::-webkit-scrollbar-thumb:hover,\s*body \*::-webkit-scrollbar-thumb:hover\s*\{\s*background:\s*var\(--scrollbar-thumb-hover\);/);
+    expect(CORE_CSS).toMatch(/body \*\s*\{\s*scrollbar-width:\s*thin;\s*scrollbar-color:\s*var\(--scrollbar-thumb\)\s+var\(--scrollbar-track\);/);
+    expect(CORE_CSS).toMatch(/body \*::-webkit-scrollbar\s*\{\s*width:\s*var\(--scrollbar-size\);\s*height:\s*var\(--scrollbar-size\);/);
+    expect(CORE_CSS).toMatch(/body \*::-webkit-scrollbar-track\s*\{\s*background:\s*var\(--scrollbar-track\);/);
+    expect(CORE_CSS).toMatch(/body \*::-webkit-scrollbar-thumb\s*\{\s*background:\s*var\(--scrollbar-thumb\);\s*border-radius:\s*var\(--scrollbar-radius\);/);
+    expect(CORE_CSS).toMatch(/body \*::-webkit-scrollbar-thumb:hover\s*\{\s*background:\s*var\(--scrollbar-thumb-hover\);/);
   });
 
   it('mirrors the dark values to black-on-light in the light theme', () => {
@@ -68,6 +68,13 @@ describe('Shared slim scrollbars (#989, #1098)', () => {
     expect(CORE_CSS).not.toMatch(/(?<!body )\*\s*\{\s*scrollbar-width/);
     expect(CORE_CSS).not.toMatch(/(?<!body )\*::-webkit-scrollbar/);
     expect(CORE_CSS.replace(/:root\s*\{[^}]*\}/, '')).not.toMatch(/(\bhtml|:root)\b\s*[,:{]/);
+
+    // #1207: no bare-body selector may remain in either branch —
+    // Chromium can resolve body::-webkit-scrollbar* against the
+    // viewport scrollbar, which must stay browser-default.
+    expect(CORE_CSS).not.toMatch(/(?<!\*)\bbody::-webkit-scrollbar/);
+    expect(CORE_CSS).not.toMatch(/(?<!\*)\bbody\s*\{[^}]*scrollbar-(?:width|color)/);
+    expect(CORE_CSS).not.toMatch(/(?<!\*)\bbody\s*,\s*body \*\s*\{/);
 
     // The light-theme root mirror only existed to theme the viewport
     // scrollbar, so it is gone with it; body.light-theme keeps the

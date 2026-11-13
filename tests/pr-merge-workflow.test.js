@@ -132,8 +132,8 @@ describe('pr-merge auto-merges fully-satisfied PRs (#920)', () => {
     expect(merge).toMatch(/if \[ -z "\$VERDICT" \] && \[ "\$DRAFT" = 'true' \]; then/);
   });
 
-  it('refuses the four blocking labels', () => {
-    expect(merge).toMatch(/for label in do-not-merge hold wip blocked; do/);
+  it('refuses the three blocking labels', () => {
+    expect(merge).toMatch(/for label in do-not-merge hold blocked; do/);
     expect(merge).toMatch(/blocking label \\`\$\{label\}\\` is present/);
   });
 

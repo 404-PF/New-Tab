@@ -457,6 +457,118 @@ describe('Todo filtering', () => {
     }
   });
 
+  it('filters todos due within the next 7 days under the upcoming filter (issue #1209)', () => {
+    // Freeze the clock so a run that crosses local midnight between date
+    // setup and filtering can't shift the upcoming window (review thread).
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 12));
+
+    try {
+      const today = new Date();
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const inThreeDays = new Date();
+      inThreeDays.setDate(inThreeDays.getDate() + 3);
+      const inSevenDays = new Date();
+      inSevenDays.setDate(inSevenDays.getDate() + 7);
+      const inEightDays = new Date();
+      inEightDays.setDate(inEightDays.getDate() + 8);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      addTodo('Due today', formatDateISO(today));
+      addTodo('Due tomorrow', formatDateISO(tomorrow));
+      addTodo('Due in 3 days', formatDateISO(inThreeDays));
+      addTodo('Due in 7 days', formatDateISO(inSevenDays));
+      addTodo('Due in 8 days', formatDateISO(inEightDays));
+      addTodo('Overdue', formatDateISO(yesterday));
+      addTodo('No date');
+
+      setFilter('upcoming');
+      const filtered = filterTodos();
+      expect(filtered).toHaveLength(4);
+      expect(filtered.map(todo => todo.text).sort()).toEqual([
+        'Due in 3 days',
+        'Due in 7 days',
+        'Due today',
+        'Due tomorrow'
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('excludes completed todos from the upcoming filter', () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    addTodo('Open tomorrow');
+    addTodo('Done tomorrow');
+    const list = loadTodos();
+    editTodo(list[0].id, 'Open tomorrow', null, formatDateISO(tomorrow));
+    editTodo(list[1].id, 'Done tomorrow', null, formatDateISO(tomorrow));
+    toggleTodo(list[1].id);
+    setFilter('upcoming');
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('Open tomorrow');
+  });
+
+  it('upcoming filter composes with priority and search', () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const inThreeDays = new Date();
+    inThreeDays.setDate(inThreeDays.getDate() + 3);
+    addTodo('Tomorrow high work', formatDateISO(tomorrow), 'high');
+    addTodo('Tomorrow low work', formatDateISO(tomorrow), 'low');
+    addTodo('Later high work', formatDateISO(inThreeDays), 'high');
+
+    currentFilters.status = 'upcoming';
+    currentFilters.priority = 'high';
+    try {
+      const byPriority = filterTodos();
+      expect(byPriority).toHaveLength(2);
+      expect(byPriority.map(todo => todo.text).sort()).toEqual(['Later high work', 'Tomorrow high work']);
+
+      // Priority stays active; a search narrows the same view further.
+      setTodoSearchQuery('tomorrow');
+      expect(filterTodos()).toHaveLength(1);
+      expect(filterTodos()[0].text).toBe('Tomorrow high work');
+      setTodoSearchQuery('low');
+      expect(filterTodos()).toHaveLength(0);
+    } finally {
+      setTodoSearchQuery('');
+      currentFilters.status = 'all';
+      currentFilters.priority = 'all';
+    }
+  });
+
+  it('counts todos due in the next 7 days in badge-upcoming', () => {
+    // Frozen clock keeps the badge window stable if the run crosses midnight.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 12));
+
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const inThreeDays = new Date();
+      inThreeDays.setDate(inThreeDays.getDate() + 3);
+      const inEightDays = new Date();
+      inEightDays.setDate(inEightDays.getDate() + 8);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      addTodo('Due tomorrow', formatDateISO(tomorrow));
+      addTodo('Due in 3 days', formatDateISO(inThreeDays));
+      addTodo('Due in 8 days', formatDateISO(inEightDays));
+      addTodo('Overdue', formatDateISO(yesterday));
+      addTodo('No date');
+      // addTodo re-runs applyFilters, which refreshes the badge counts.
+      expect(document.getElementById('badge-upcoming').textContent).toBe('2');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('sorts incomplete before completed', () => {
     addTodo('Later');
     addTodo('Sooner');
@@ -2913,6 +3025,81 @@ describe('Inline picker re-anchor after time-only edit (issue #1092)', () => {
   });
 });
 
+describe('Due-date highlight lands on the live chip after re-render (issue #1203)', () => {
+  let previousPrefersReducedMotion;
+
+  beforeEach(() => {
+    previousPrefersReducedMotion = window.prefersReducedMotion;
+    window.prefersReducedMotion = () => false;
+  });
+
+  afterEach(() => {
+    if (previousPrefersReducedMotion === undefined) {
+      delete window.prefersReducedMotion;
+    } else {
+      window.prefersReducedMotion = previousPrefersReducedMotion;
+    }
+  });
+
+  function openPickerForDueDate() {
+    addTodo('Pay rent', '2026-01-31');
+    renderTodos();
+
+    const dueDateElement = document.querySelector('.todo-due-date.clickable');
+    expect(dueDateElement).not.toBeNull();
+    dueDateElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const picker = document.querySelector('.inline-date-picker');
+    expect(picker).not.toBeNull();
+    return { dueDateElement, picker, todoId: picker.dataset.todoId };
+  }
+
+  function expectLiveChipFlashed(dueDateElement, todoId, toastText) {
+    const liveChip = document.querySelector(`.todo-due-date[data-todo-id="${todoId}"]`);
+    expect(liveChip).not.toBeNull();
+    expect(liveChip).not.toBe(dueDateElement);
+    expect(liveChip.style.transform).toBe('scale(1.05)');
+    expect(liveChip.style.backgroundColor).toBe('rgba(33, 150, 243, 0.3)');
+
+    // The discarded node must stay unstyled so the 300 ms cleanup timer
+    // only ever targets the live chip.
+    expect(dueDateElement.style.transform).toBe('');
+    expect(dueDateElement.style.backgroundColor).toBe('');
+    expect(document.contains(dueDateElement)).toBe(false);
+
+    expect(document.querySelector('.toast-notification')?.textContent).toContain(toastText);
+  }
+
+  it('flashes the rebuilt chip on a time-only edit', () => {
+    const { dueDateElement, picker, todoId } = openPickerForDueDate();
+
+    const timeInput = picker.querySelector('.inline-due-time');
+    expect(timeInput).not.toBeNull();
+    timeInput.value = '15:30';
+    timeInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expectLiveChipFlashed(dueDateElement, todoId, 'Due date updated to');
+  });
+
+  it('flashes the rebuilt chip when a calendar day is picked', () => {
+    const { dueDateElement, picker, todoId } = openPickerForDueDate();
+
+    const day = picker.querySelector('.calendar-day[data-date="2026-01-15"]');
+    expect(day).not.toBeNull();
+    day.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expectLiveChipFlashed(dueDateElement, todoId, 'Due date updated to');
+  });
+
+  it('flashes the rebuilt chip when the date is cleared', () => {
+    const { dueDateElement, picker, todoId } = openPickerForDueDate();
+
+    picker.querySelector('.inline-clear-date').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expectLiveChipFlashed(dueDateElement, todoId, 'Due date cleared');
+  });
+});
+
 describe('Custom date picker open/close (issue #810)', () => {
   const pickerIds = [
     'date-picker-trigger', 'selected-date-text', 'todo-due-date', 'todo-due-time',
@@ -3074,6 +3261,89 @@ describe('Custom date picker open/close (issue #810)', () => {
     expect(byId.month13.dueDate).toBeNull();
     expect(byId.leap.dueDate).toBe('2028-02-29');
     expect(byId.leap.dueTime).toBe('10:30');
+  });
+});
+
+describe('Due-todo markers in the date pickers (issue #1195)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15)); // Sep 15, 2026
+    window.initCustomDatePicker();
+  });
+
+  afterEach(() => {
+    window.destroyCustomDatePicker();
+    vi.useRealTimers();
+  });
+
+  const getTrigger = () => document.getElementById('date-picker-trigger');
+  const getCalendar = () => document.getElementById('custom-calendar');
+  const click = (el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  const findMainDay = (dayNumber) =>
+    Array.from(document.querySelectorAll('#calendar-days .calendar-day'))
+      .find((el) => !el.classList.contains('other-month') && el.textContent === String(dayNumber));
+  const findTodo = (text) => loadTodos().find((todo) => todo.text === text);
+
+  it('marks incomplete due todos in the add-bar picker and refreshes while open', () => {
+    addTodo('Draft report', '2026-09-17');
+    addTodo('Review report', '2026-09-17');
+    addTodo('File report', '2026-09-17');
+    toggleTodo(findTodo('File report').id);
+    renderTodos();
+
+    click(getTrigger());
+    expect(getCalendar().classList.contains('visible')).toBe(true);
+
+    const day = findMainDay(17);
+    expect(day).toBeTruthy();
+    expect(day.getAttribute('data-due-count')).toBe('2');
+    expect(day.querySelector('.calendar-day-due')).not.toBeNull();
+    expect(day.textContent).toBe('17');
+
+    const markerlessDay = findMainDay(20);
+    expect(markerlessDay.hasAttribute('data-due-count')).toBe(false);
+    expect(markerlessDay.querySelector('.calendar-day-due')).toBeNull();
+
+    toggleTodo(findTodo('Draft report').id);
+    expect(findMainDay(17).getAttribute('data-due-count')).toBe('1');
+
+    toggleTodo(findTodo('Review report').id);
+    const clearedDay = findMainDay(17);
+    expect(clearedDay.hasAttribute('data-due-count')).toBe(false);
+    expect(clearedDay.querySelector('.calendar-day-due')).toBeNull();
+    expect(getCalendar().classList.contains('visible')).toBe(true);
+  });
+
+  it('marks incomplete due todos in the inline picker and clears markers as they complete', () => {
+    addTodo('Draft invoice', '2026-09-17');
+    addTodo('Send invoice', '2026-09-17');
+    addTodo('File invoice', '2026-09-17');
+    toggleTodo(findTodo('File invoice').id);
+    renderTodos();
+
+    const dueDateElement = document.querySelector('.todo-due-date.clickable');
+    expect(dueDateElement).not.toBeNull();
+    dueDateElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const picker = document.querySelector('.inline-date-picker');
+    expect(picker).not.toBeNull();
+    expect(picker.querySelector('.inline-calendar-month').textContent).toBe('September');
+
+    const day = () => picker.querySelector('.calendar-day[data-date="2026-09-17"]');
+    expect(day().getAttribute('data-due-count')).toBe('2');
+    expect(day().querySelector('.calendar-day-due')).not.toBeNull();
+    expect(day().textContent).toBe('17');
+
+    const markerlessDay = picker.querySelector('.calendar-day[data-date="2026-09-20"]');
+    expect(markerlessDay.hasAttribute('data-due-count')).toBe(false);
+    expect(markerlessDay.querySelector('.calendar-day-due')).toBeNull();
+
+    toggleTodo(findTodo('Draft invoice').id);
+    expect(day().getAttribute('data-due-count')).toBe('1');
+
+    toggleTodo(findTodo('Send invoice').id);
+    expect(day().hasAttribute('data-due-count')).toBe(false);
+    expect(day().querySelector('.calendar-day-due')).toBeNull();
   });
 });
 
@@ -3910,5 +4180,338 @@ describe('Todo delete undo (issue #1135)', () => {
     action.click();
 
     expect(loadTodos().map(todo => todo.text)).toEqual(['Keep', 'Done one']);
+  });
+});
+
+describe('Todo natural-language due dates (issue #1192)', () => {
+  // Reference: Wednesday, November 11, 2026
+  const TODAY = new Date(2026, 10, 11);
+
+  let restoreWrites = null;
+  let warnSpy = null;
+
+  beforeEach(() => {
+    // Fake only Date so setTimeout-based helpers (e.g. flushDeferredFailureSync)
+    // still run; full fake timers would hang the afterEach flush.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(TODAY);
+    // Prior suites may leave the picker bound to detached nodes; re-bind to
+    // the live setup.js stubs so selectDate writes the element tests read.
+    window.initCustomDatePicker();
+    document.getElementById('todo-due-date').value = '';
+    document.getElementById('todo-due-time').value = '';
+    document.getElementById('todo-input').value = '';
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    await flushDeferredFailureSync();
+    if (restoreWrites) {
+      restoreWrites();
+      restoreWrites = null;
+    }
+    if (warnSpy) {
+      warnSpy.mockRestore();
+      warnSpy = null;
+    }
+  });
+
+  const submitViaEnter = (text) => {
+    const input = document.getElementById('todo-input');
+    input.value = text;
+    input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+  };
+
+  const submitViaButton = (text) => {
+    document.getElementById('todo-input').value = text;
+    document.getElementById('add-todo-btn').click();
+  };
+
+  describe('parseTodoDatePhrase', () => {
+    it('resolves tomorrow and strips only the matched span', () => {
+      expect(parseTodoDatePhrase('Pay rent tomorrow')).toEqual({
+        text: 'Pay rent',
+        dueDate: '2026-11-12'
+      });
+    });
+
+    it('resolves today, tonight, and next week', () => {
+      expect(parseTodoDatePhrase('Submit today').dueDate).toBe('2026-11-11');
+      expect(parseTodoDatePhrase('Party tonight').dueDate).toBe('2026-11-11');
+      expect(parseTodoDatePhrase('Ship next week')).toEqual({
+        text: 'Ship',
+        dueDate: '2026-11-18'
+      });
+    });
+
+    it('resolves bare weekdays to the next occurrence including today', () => {
+      // Today is Wednesday
+      expect(parseTodoDatePhrase('Standup Wednesday').dueDate).toBe('2026-11-11');
+      expect(parseTodoDatePhrase('Report Friday').dueDate).toBe('2026-11-13');
+      expect(parseTodoDatePhrase('Retro Monday').dueDate).toBe('2026-11-16');
+    });
+
+    it('resolves next + weekday as strictly future', () => {
+      expect(parseTodoDatePhrase('Call next Wednesday').dueDate).toBe('2026-11-18');
+      expect(parseTodoDatePhrase('Call next Friday').dueDate).toBe('2026-11-13');
+      expect(parseTodoDatePhrase('Call next Wednesday').text).toBe('Call');
+    });
+
+    it('keeps surrounding words when stripping a mid-phrase match', () => {
+      expect(parseTodoDatePhrase('Call mom on Friday')).toEqual({
+        text: 'Call mom on',
+        dueDate: '2026-11-13'
+      });
+      expect(parseTodoDatePhrase('Buy milk tomorrow for mom')).toEqual({
+        text: 'Buy milk for mom',
+        dueDate: '2026-11-12'
+      });
+    });
+
+    it('resolves ISO, slash, and month-day numeric forms', () => {
+      expect(parseTodoDatePhrase('Due 2026-11-15')).toEqual({
+        text: 'Due',
+        dueDate: '2026-11-15'
+      });
+      expect(parseTodoDatePhrase('Due 11/15').dueDate).toBe('2026-11-15');
+      expect(parseTodoDatePhrase('Due Nov 15').dueDate).toBe('2026-11-15');
+      expect(parseTodoDatePhrase('Due 11/15/2027').dueDate).toBe('2027-11-15');
+    });
+
+    it('rolls year-less month-day forms forward when already past', () => {
+      expect(parseTodoDatePhrase('Due 1/5').dueDate).toBe('2027-01-05');
+      expect(parseTodoDatePhrase('Due 12/31').dueDate).toBe('2026-12-31');
+    });
+
+    it('is case-insensitive and tolerates possessive forms', () => {
+      expect(parseTodoDatePhrase('Pay rent TOMORROW')).toEqual({
+        text: 'Pay rent',
+        dueDate: '2026-11-12'
+      });
+      expect(parseTodoDatePhrase('Pay rent tomorrow\'s').dueDate).toBe('2026-11-12');
+      expect(parseTodoDatePhrase('Ship by Friday\'s').dueDate).toBe('2026-11-13');
+    });
+
+    it('does not strip invalid calendar dates', () => {
+      expect(parseTodoDatePhrase('Pay rent 2026-02-31')).toEqual({
+        text: 'Pay rent 2026-02-31',
+        dueDate: null
+      });
+      expect(parseTodoDatePhrase('Due 13/45')).toEqual({
+        text: 'Due 13/45',
+        dueDate: null
+      });
+    });
+
+    it('leaves unsupported trailing-year slash dates unchanged', () => {
+      expect(parseTodoDatePhrase('Pay 11/15/27')).toEqual({
+        text: 'Pay 11/15/27',
+        dueDate: null
+      });
+      expect(parseTodoDatePhrase('Due 3/4/25')).toEqual({
+        text: 'Due 3/4/25',
+        dueDate: null
+      });
+    });
+
+    it('rolls Feb 29 forward to the next leap year', () => {
+      expect(parseTodoDatePhrase('Due Feb 29').dueDate).toBe('2028-02-29');
+      expect(parseTodoDatePhrase('Due 2/29').dueDate).toBe('2028-02-29');
+    });
+
+    it('adjusts whitespace only where the phrase was removed', () => {
+      expect(parseTodoDatePhrase('Call  mom tomorrow')).toEqual({
+        text: 'Call  mom',
+        dueDate: '2026-11-12'
+      });
+      expect(parseTodoDatePhrase('Pay tomorrow  later')).toEqual({
+        text: 'Pay later',
+        dueDate: '2026-11-12'
+      });
+    });
+
+    it('leaves no stray space before punctuation', () => {
+      expect(parseTodoDatePhrase('Call mom tomorrow.')).toEqual({
+        text: 'Call mom.',
+        dueDate: '2026-11-12'
+      });
+      expect(parseTodoDatePhrase('Meeting tomorrow, please')).toEqual({
+        text: 'Meeting, please',
+        dueDate: '2026-11-12'
+      });
+    });
+
+    it('returns input unchanged when nothing resolves', () => {
+      expect(parseTodoDatePhrase('Plain todo')).toEqual({
+        text: 'Plain todo',
+        dueDate: null
+      });
+      expect(parseTodoDatePhrase('tomorrowland trip')).toEqual({
+        text: 'tomorrowland trip',
+        dueDate: null
+      });
+      expect(parseTodoDatePhrase('')).toEqual({ text: '', dueDate: null });
+    });
+
+    it('keeps text verbatim when the phrase is the entire input', () => {
+      expect(parseTodoDatePhrase('tomorrow')).toEqual({
+        text: 'tomorrow',
+        dueDate: '2026-11-12'
+      });
+      expect(parseTodoDatePhrase('next week')).toEqual({
+        text: 'next week',
+        dueDate: '2026-11-18'
+      });
+    });
+  });
+
+  describe('add-todo handlers', () => {
+    it('Enter strips the phrase and stores the resolved due date', () => {
+      submitViaEnter('Pay rent tomorrow');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('Pay rent');
+      expect(stored[0].dueDate).toBe('2026-11-12');
+      expect(document.getElementById('todo-input').value).toBe('');
+    });
+
+    it('the add button resolves phrases the same way as Enter', () => {
+      submitViaButton('Submit report next week');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('Submit report');
+      expect(stored[0].dueDate).toBe('2026-11-18');
+    });
+
+    it('pre-selects the phrase date in the inline picker', () => {
+      restoreWrites = failStorageWritesFor('todos', 'sync');
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Save failure skips clearInputs, so the pre-selection stays visible.
+      submitViaEnter('Pay rent tomorrow');
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+      expect(document.getElementById('selected-date-text').textContent).not.toBe('Due Date');
+      expect(document.getElementById('todo-due-time').disabled).toBe(false);
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('keeps the picker date when the text has no phrase', () => {
+      document.getElementById('todo-due-date').value = '2026-12-01';
+
+      submitViaEnter('No phrase here');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('No phrase here');
+      expect(stored[0].dueDate).toBe('2026-12-01');
+    });
+
+    it('previews the phrase date in the picker while typing', () => {
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+      expect(document.getElementById('selected-date-text').textContent).not.toBe('Due Date');
+      expect(document.getElementById('todo-due-time').disabled).toBe(false);
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('keeps a manual picker date while typing text with no phrase', () => {
+      document.getElementById('todo-due-date').value = '2026-12-01';
+
+      const input = document.getElementById('todo-input');
+      input.value = 'No phrase here';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-12-01');
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('restores the earlier picker date when the phrase is deleted', () => {
+      document.getElementById('todo-due-date').value = '2026-12-01';
+
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+
+      input.value = 'Pay rent';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-12-01');
+      expect(document.getElementById('todo-due-time').disabled).toBe(false);
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('keeps a picker date chosen after the phrase preview when the phrase is removed', () => {
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+
+      // Manual pick while the preview is showing must win over the restore.
+      document.getElementById('todo-due-date').value = '2026-11-20';
+
+      input.value = 'Pay rent';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-20');
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('clears the preview when the phrase is removed and nothing was picked', () => {
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+
+      input.value = 'Pay rent';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('');
+      expect(document.getElementById('todo-due-time').disabled).toBe(true);
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('lets a phrase date win over a previously picked date', () => {
+      document.getElementById('todo-due-date').value = '2026-12-01';
+
+      submitViaEnter('Pay rent tomorrow');
+
+      const stored = loadTodos();
+      expect(stored[0].dueDate).toBe('2026-11-12');
+      expect(stored[0].text).toBe('Pay rent');
+    });
+
+    it('stores invalid ISO text verbatim with no due date', () => {
+      submitViaEnter('Pay rent 2026-02-31');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('Pay rent 2026-02-31');
+      expect(stored[0].dueDate).toBeNull();
+      expect(document.getElementById('todo-due-date').value).toBe('');
+    });
+
+    it('keeps a whole-input phrase as the todo text', () => {
+      submitViaEnter('tomorrow');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('tomorrow');
+      expect(stored[0].dueDate).toBe('2026-11-12');
+    });
+
+    it('resolves a weekday phrase on the add path', () => {
+      submitViaButton('Call mom on Friday');
+
+      const stored = loadTodos();
+      expect(stored[0].text).toBe('Call mom on');
+      expect(stored[0].dueDate).toBe('2026-11-13');
+    });
   });
 });

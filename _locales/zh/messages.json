@@ -466,6 +466,10 @@
     "message": "移除 {city} 时区",
     "description": "Accessible label for removing a specific time zone"
   },
+  "timezoneMoreResults": {
+    "message": "{total} 個時區中的 {shown} 個",
+    "description": "Hint shown when the time zone picker list is truncated"
+  },
   "games": {
     "message": "游戏",
     "description": "Games app name"

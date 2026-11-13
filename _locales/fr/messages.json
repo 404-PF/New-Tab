@@ -466,6 +466,10 @@
     "message": "Supprimer le fuseau horaire de {city}",
     "description": "Accessible label for removing a specific time zone"
   },
+  "timezoneMoreResults": {
+    "message": "{shown} sur {total} fuseaux horaires",
+    "description": "Hint shown when the time zone picker list is truncated"
+  },
   "games": {
     "message": "Jeux",
     "description": "Games app name"

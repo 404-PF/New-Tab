@@ -65,7 +65,7 @@ const AIRenderer = (function() {
   function getChatInputMaxHeight() {
     const input = elements.input;
     if (!input) return CHAT_INPUT_MAX_HEIGHT;
-    const computedMax = parseFloat(window.getComputedStyle(input).maxHeight);
+    const computedMax = Number.parseFloat(window.getComputedStyle(input).maxHeight);
     return Number.isFinite(computedMax) && computedMax > 0 ? computedMax : CHAT_INPUT_MAX_HEIGHT;
   }
 

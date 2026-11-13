@@ -290,6 +290,159 @@
     return new Date(year, month - 1, day);
   }
 
+  // Natural-language due-date phrases typed into the add bar (issue #1192).
+  // English words and numeric forms only; locale-specific wording is out of
+  // scope, as is recurrence/due-time parsing.
+  const DATE_PHRASE_MONTH_PREFIX = {
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+    jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
+  };
+
+  // Slash dates must not start right after "/" and must not be followed by
+  // another "/", so unsupported forms like 11/15/27 are never partially
+  // matched as a leading M/D (issue #1192).
+  const DATE_PHRASE_PATTERN = /\b(?:\d{4}-\d{1,2}-\d{1,2}|(?<!\/)\d{1,2}\/\d{1,2}(?:\/\d{4})?(?!\/)|next\s+week|today(?:'s)?|tonight(?:'s)?|tomorrow(?:'s)?|(?:next\s+)?(?:mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?:'s)?|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2})\b/gi;
+
+  function startOfLocalDay(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  function addLocalDays(date, days) {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result;
+  }
+
+  function buildLocalDate(year, month, day) {
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      return null;
+    }
+    return date;
+  }
+
+  function weekdayIndexFromPhrase(token) {
+    const key = token.toLowerCase();
+    if (key.startsWith('sun')) return 0;
+    if (key.startsWith('mon')) return 1;
+    if (key.startsWith('tue')) return 2;
+    if (key.startsWith('wed')) return 3;
+    if (key.startsWith('thu')) return 4;
+    if (key.startsWith('fri')) return 5;
+    if (key.startsWith('sat')) return 6;
+    return -1;
+  }
+
+  function resolveMonthDayPhrase(month, day, explicitYear, today) {
+    if (!(month >= 1 && month <= 12) || !(day >= 1 && day <= 31)) return null;
+    if (explicitYear !== null) {
+      const date = buildLocalDate(explicitYear, month, day);
+      return date ? formatDateISO(date) : null;
+    }
+    // Year-less forms: keep this year when the date is still ahead of (or
+    // equal to) today, otherwise roll forward — including invalid-this-year
+    // dates like Feb 29 on a non-leap year.
+    const thisYear = buildLocalDate(today.getFullYear(), month, day);
+    if (thisYear && thisYear >= today) return formatDateISO(thisYear);
+    // Search the next four years so Feb 29 skips non-leap years and still
+    // finds the next valid occurrence instead of returning null.
+    for (let year = today.getFullYear() + 1; year <= today.getFullYear() + 4; year += 1) {
+      const nextYear = buildLocalDate(year, month, day);
+      if (nextYear) return formatDateISO(nextYear);
+    }
+    return null;
+  }
+
+  // Resolve one matched phrase to YYYY-MM-DD, or null when it is not a real
+  // calendar date (e.g. 2026-02-31).
+  function resolveTodoDatePhrase(rawPhrase) {
+    const phrase = rawPhrase.trim().toLowerCase().replace(/'s$/, '');
+    const today = startOfLocalDay(new Date());
+
+    if (phrase === 'today' || phrase === 'tonight') return formatDateISO(today);
+    if (phrase === 'tomorrow') return formatDateISO(addLocalDays(today, 1));
+    if (phrase === 'next week') return formatDateISO(addLocalDays(today, 7));
+
+    let match = phrase.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (match) {
+      const iso = match[1] + '-' + String(Number(match[2])).padStart(2, '0') + '-' + String(Number(match[3])).padStart(2, '0');
+      return isValidDueDateString(iso) ? iso : null;
+    }
+
+    match = phrase.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);
+    if (match) {
+      return resolveMonthDayPhrase(Number(match[1]), Number(match[2]), match[3] ? Number(match[3]) : null, today);
+    }
+
+    match = phrase.match(/^(next\s+)?(mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)$/);
+    if (match) {
+      const target = weekdayIndexFromPhrase(match[2]);
+      if (target < 0) return null;
+      const todayIndex = today.getDay();
+      let delta = (target - todayIndex + 7) % 7;
+      // Bare weekday = next occurrence including today; "next <weekday>" is
+      // strictly future (same day rolls a full week ahead).
+      if (match[1] && delta === 0) delta = 7;
+      return formatDateISO(addLocalDays(today, delta));
+    }
+
+    match = phrase.match(/^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})$/);
+    if (match) {
+      const month = DATE_PHRASE_MONTH_PREFIX[match[1].slice(0, 3).toLowerCase()];
+      if (!month) return null;
+      return resolveMonthDayPhrase(month, Number(match[2]), null, today);
+    }
+
+    return null;
+  }
+
+  // Parse a natural-language due-date phrase out of add-bar text. Returns the
+  // text with only the matched span removed (whitespace adjusted only at the
+  // removal boundary) plus the resolved YYYY-MM-DD date, or the original text
+  // and null when no phrase resolves. A phrase that is the entire input keeps
+  // the text verbatim so the todo is never emptied by stripping.
+  function parseTodoDatePhrase(text) {
+    if (typeof text !== 'string' || !text) {
+      return { text: text, dueDate: null };
+    }
+
+    DATE_PHRASE_PATTERN.lastIndex = 0;
+    let resolved = null;
+    let matchStart = -1;
+    let matchEnd = -1;
+    let match;
+
+    while ((match = DATE_PHRASE_PATTERN.exec(text)) !== null) {
+      const dueDate = resolveTodoDatePhrase(match[0]);
+      if (dueDate) {
+        resolved = dueDate;
+        matchStart = match.index;
+        matchEnd = match.index + match[0].length;
+        break;
+      }
+    }
+
+    if (!resolved) {
+      return { text: text, dueDate: null };
+    }
+
+    // Remove only the matched span and tidy the whitespace right where it was
+    // removed; whitespace elsewhere in the text is left untouched. The boundary
+    // space is skipped when one side is empty or the remainder starts with
+    // punctuation, so 'Call mom tomorrow.' becomes 'Call mom.', not 'Call mom .'.
+    const before = text.slice(0, matchStart);
+    const after = text.slice(matchEnd);
+    const beforeText = before.replace(/\s+$/, '');
+    const afterText = after.replace(/^\s+/, '');
+    const hadBoundarySpace = /\s$/.test(before) || /^\s/.test(after);
+    const boundarySpace = hadBoundarySpace && beforeText && afterText && !/^[.,;:!?)]/.test(afterText) ? ' ' : '';
+    const stripped = (beforeText + boundarySpace + afterText).trim();
+    if (!stripped) {
+      return { text: text, dueDate: resolved };
+    }
+    return { text: stripped, dueDate: resolved };
+  }
+
   function getDisplayLocale() {
     if (typeof window.getDisplayLocale === 'function') {
       return window.getDisplayLocale();
@@ -566,6 +719,12 @@
 
     // Status filter
     if (currentFilters.status !== 'all') {
+      // Local-day window for the upcoming filter (issue #1209): today through
+      // today+7 inclusive, computed with plain local-day arithmetic.
+      const upcomingStartIso = formatDateISO(new Date());
+      const upcomingEndDate = new Date();
+      upcomingEndDate.setDate(upcomingEndDate.getDate() + 7);
+      const upcomingEndIso = formatDateISO(upcomingEndDate);
       filtered = filtered.filter(todo => {
         switch (currentFilters.status) {
           case 'pending':
@@ -576,6 +735,9 @@
             return !todo.completed && todo.dueDate && isOverdue(todo.dueDate, todo.dueTime);
           case 'today':
             return !todo.completed && !!todo.dueDate && todo.dueDate === formatDateISO(new Date());
+          case 'upcoming':
+            return !todo.completed && !!todo.dueDate &&
+              todo.dueDate >= upcomingStartIso && todo.dueDate <= upcomingEndIso;
           default:
             return true;
         }
@@ -663,6 +825,7 @@
     if (filteredTodos.length === 0) {
       updateTodoEmptyStateCopy(emptyState);
       emptyState.style.display = 'flex';
+      refreshOpenDatePickers();
       return;
     }
 
@@ -920,6 +1083,8 @@
         }
       });
     });
+
+    refreshOpenDatePickers();
   }
 
   function getInlineMonthLabel(monthIndex) {
@@ -1373,6 +1538,11 @@ function updateFilterCounts() {
   const overdue = todos.filter(t => !t.completed && t.dueDate && isOverdue(t.dueDate, t.dueTime)).length;
   const today = formatDateISO(new Date());
   const dueToday = todos.filter(t => !t.completed && t.dueDate === today).length;
+  const upcomingEndDate = new Date();
+  upcomingEndDate.setDate(upcomingEndDate.getDate() + 7);
+  const upcomingEndIso = formatDateISO(upcomingEndDate);
+  const dueUpcoming = todos.filter(t => !t.completed && t.dueDate &&
+    t.dueDate >= today && t.dueDate <= upcomingEndIso).length;
   const high = todos.filter(t => (t.priority || 'medium') === 'high').length;
   const medium = todos.filter(t => (t.priority || 'medium') === 'medium').length;
   const low = todos.filter(t => (t.priority || 'medium') === 'low').length;
@@ -1382,6 +1552,7 @@ function updateFilterCounts() {
   const badgeCompleted = document.getElementById('badge-completed');
   const badgeOverdue = document.getElementById('badge-overdue');
   const badgeToday = document.getElementById('badge-today');
+  const badgeUpcoming = document.getElementById('badge-upcoming');
   const badgeHigh = document.getElementById('badge-high');
   const badgeMedium = document.getElementById('badge-medium');
   const badgeLow = document.getElementById('badge-low');
@@ -1392,6 +1563,7 @@ function updateFilterCounts() {
   if (badgeCompleted) badgeCompleted.textContent = completed;
   if (badgeOverdue) badgeOverdue.textContent = overdue;
   if (badgeToday) badgeToday.textContent = dueToday;
+  if (badgeUpcoming) badgeUpcoming.textContent = dueUpcoming;
   if (badgeHigh) badgeHigh.textContent = high;
   if (badgeMedium) badgeMedium.textContent = medium;
   if (badgeLow) badgeLow.textContent = low;
@@ -1674,6 +1846,9 @@ function handleTodoSearchInput(event) {
 
 // Clear input fields
 function clearInputs() {
+  // A successful add ends any phrase preview; its displaced value must not
+  // resurface against the fresh input state (issue #1192).
+  phrasePreviewState = null;
   if (elements.todoInput) elements.todoInput.value = '';
   if (elements.todoDueDate) elements.todoDueDate.value = '';
   if (elements.todoDueTime) elements.todoDueTime.value = '';
@@ -1776,22 +1951,85 @@ function handleDrop(event) {
 }
 
 // Event handlers
+// Picker value displaced by an in-progress phrase preview: `saved` is the
+// selection on screen before the first preview overwrite and `applied` is the
+// phrase date the preview put in its place. The pair is restored only while
+// the picker still shows `applied`, so deleting the phrase brings an earlier
+// manual selection back while a pick made after the preview wins (issue #1192).
+let phrasePreviewState = null;
+
+// Applies a phrase-resolved date to the inline picker (or the plain hidden
+// input) so it is on screen before submit. Text without a phrase restores any
+// selection the preview displaced and otherwise leaves the picker untouched
+// (issue #1192).
+function applyPhraseDateToPicker(parsed) {
+  const currentPickerValue = elements.todoDueDate?.value || '';
+  if (parsed.dueDate) {
+    if (phrasePreviewState) {
+      phrasePreviewState.applied = parsed.dueDate;
+    } else {
+      phrasePreviewState = { saved: currentPickerValue, applied: parsed.dueDate };
+    }
+    if (customDatePicker) {
+      customDatePicker.selectDate(parseLocalDate(parsed.dueDate));
+    } else if (elements.todoDueDate) {
+      elements.todoDueDate.value = parsed.dueDate;
+      syncDueTimeInputState();
+    }
+    return;
+  }
+  if (!phrasePreviewState) return;
+  const { saved, applied } = phrasePreviewState;
+  phrasePreviewState = null;
+  // Only undo the preview while the picker still shows what it applied; a
+  // manual pick (or Clear) made after the preview is the newer intent.
+  if (currentPickerValue !== applied) return;
+  if (customDatePicker) {
+    if (saved) {
+      customDatePicker.selectDate(parseLocalDate(saved));
+    } else {
+      customDatePicker.clearDate();
+    }
+  } else if (elements.todoDueDate) {
+    elements.todoDueDate.value = saved;
+    syncDueTimeInputState();
+  }
+}
+
+// Shared by the add button and the Enter key so both paths resolve a
+// natural-language due-date phrase the same way (issue #1192).
+function submitTodoFromInput() {
+  const input = elements.todoInput;
+  if (!input) return;
+
+  const parsed = parseTodoDatePhrase(input.value);
+  // Phrase-derived dates pre-select in the inline picker; a picker value
+  // already on screen still wins when the text has no phrase.
+  applyPhraseDateToPicker(parsed);
+
+  const dueDate = parsed.dueDate || elements.todoDueDate?.value || null;
+  const dueTime = elements.todoDueTime?.value || null;
+  const priority = getSelectedPriority();
+  addTodo(parsed.text, dueDate, priority, null, dueTime);
+}
+
+// Preview the resolved phrase date in the picker while the user types, so the
+// date and the due-time control can be reviewed before Enter or Add saves
+// (issue #1192). The submission path is unchanged.
+function handleTodoInputChange() {
+  const input = elements.todoInput;
+  if (!input) return;
+  applyPhraseDateToPicker(parseTodoDatePhrase(input.value));
+}
+
 function handleKeyPress(event) {
   if (event.key === 'Enter') {
-    const input = elements.todoInput;
-    const dueDate = elements.todoDueDate?.value || null;
-    const dueTime = elements.todoDueTime?.value || null;
-    const priority = getSelectedPriority();
-    addTodo(input.value, dueDate, priority, null, dueTime);
+    submitTodoFromInput();
   }
 }
 
 function handleAddTodo() {
-  const input = elements.todoInput;
-  const dueDate = elements.todoDueDate?.value || null;
-  const dueTime = elements.todoDueTime?.value || null;
-  const priority = getSelectedPriority();
-  addTodo(input.value, dueDate, priority, null, dueTime);
+  submitTodoFromInput();
 }
 
 function getSelectedPriority() {
@@ -1946,8 +2184,47 @@ function positionPickerRelativeToElement(picker, targetElement) {
   picker.style.left = `${left}px`;
 }
 
+function getDueCountsByDate() {
+  const counts = new Map();
+  todos.forEach(todo => {
+    if (todo.completed || !todo.dueDate) return;
+    counts.set(todo.dueDate, (counts.get(todo.dueDate) || 0) + 1);
+  });
+  return counts;
+}
+
+function applyDueMarker(day, iso, dueCounts) {
+  const count = iso ? (dueCounts.get(iso) || 0) : 0;
+  if (count > 0) {
+    const nextCount = String(count);
+    if (day.dataset.dueCount !== nextCount) {
+      day.dataset.dueCount = nextCount;
+    }
+    if (!day.querySelector('.calendar-day-due')) {
+      const marker = document.createElement('span');
+      marker.className = 'calendar-day-due';
+      marker.setAttribute('aria-hidden', 'true');
+      day.appendChild(marker);
+    }
+  } else {
+    day.removeAttribute('data-due-count');
+    const marker = day.querySelector('.calendar-day-due');
+    if (marker) marker.remove();
+  }
+}
+
+function refreshOpenDatePickers() {
+  if (customDatePicker && customDatePicker.isOpen) {
+    customDatePicker.renderCalendar();
+  }
+  const dueCounts = getDueCountsByDate();
+  document.querySelectorAll('.inline-date-picker .calendar-day').forEach(day => {
+    applyDueMarker(day, day.dataset.date, dueCounts);
+  });
+}
+
 // Create calendar HTML for inline picker
-function createCalendarDayHtml(date, month, today, selectedDate) {
+function createCalendarDayHtml(date, month, today, selectedDate, dueCounts) {
   const isCurrentMonth = date.getMonth() === month;
   const isToday = date.toDateString() === today.toDateString();
   const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
@@ -1957,16 +2234,21 @@ function createCalendarDayHtml(date, month, today, selectedDate) {
   if (isToday) classes += ' today';
   if (isSelected) classes += ' selected';
 
-  return `<div class="${classes}" data-date="${formatDateISO(date)}">${date.getDate()}</div>`;
+  const iso = formatDateISO(date);
+  const dueCount = dueCounts ? (dueCounts.get(iso) || 0) : 0;
+  const dueAttrs = dueCount > 0 ? ` data-due-count="${dueCount}"` : '';
+  const dueMarker = dueCount > 0 ? '<span class="calendar-day-due" aria-hidden="true"></span>' : '';
+
+  return `<div class="${classes}" data-date="${iso}"${dueAttrs}>${date.getDate()}${dueMarker}</div>`;
 }
 
-function createCalendarDaysHtml(startDate, month, selectedDate) {
+function createCalendarDaysHtml(startDate, month, selectedDate, dueCounts) {
   const today = new Date();
   let daysHtml = '';
   for (let i = 0; i < 42; i++) {
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
-    daysHtml += createCalendarDayHtml(date, month, today, selectedDate);
+    daysHtml += createCalendarDayHtml(date, month, today, selectedDate, dueCounts);
   }
   return daysHtml;
 }
@@ -1979,7 +2261,7 @@ function createCalendarHtml(currentDate, selectedDateString, selectedDueTime) {
   const firstDay = new Date(year, month, 1);
   const startDate = new Date(firstDay);
   startDate.setDate(startDate.getDate() - firstDay.getDay());
-  const daysHtml = createCalendarDaysHtml(startDate, month, selectedDate);
+  const daysHtml = createCalendarDaysHtml(startDate, month, selectedDate, getDueCountsByDate());
 
   const timeValue = isValidDueTime(selectedDueTime) ? selectedDueTime : '';
   const timeDisabled = !selectedDateString ? 'disabled' : '';
@@ -2203,12 +2485,17 @@ function updateTodoDueDate(todoId, newDate, dueDateElement, newDueTime) {
   // Update the display with visual feedback
   updateDueDateDisplay(dueDateElement, todo.dueDate, todo.dueTime);
 
-  // Show visual feedback
-  showDateUpdateFeedback(dueDateElement, oldDate, todo.dueDate, oldTime, todo.dueTime);
-
-  // Re-run filters so overdue view refreshes immediately
+  // Re-run filters so overdue view refreshes immediately. renderTodos()
+  // replaces every row, so the chip passed in here is already detached by
+  // the time the highlight could paint (issue #1203).
   applyFilters();
   refreshInlineDatePickers(false);
+
+  // Flash the chip that is live in the DOM now; fall back to the passed
+  // element so the toast still fires when the todo is filtered out of view.
+  const freshDueDateElement = document.querySelector(`.todo-due-date[data-todo-id="${todoId}"]`);
+  showDateUpdateFeedback(freshDueDateElement || dueDateElement, oldDate, todo.dueDate, oldTime, todo.dueTime);
+
   scheduleTodoReminderCheck(todoId);
 }
 
@@ -2554,6 +2841,8 @@ function initTodo() {
   // Event listeners
   elements.addTodoBtn.addEventListener('click', handleAddTodo);
   elements.todoInput.addEventListener('keypress', handleKeyPress);
+  // Preview a recognized phrase date in the picker as it is typed (issue #1192).
+  elements.todoInput.addEventListener('input', handleTodoInputChange);
   if (elements.todoDueTime) {
     elements.todoDueTime.addEventListener('change', () => {
       if (!elements.todoDueDate?.value) {
@@ -2993,41 +3282,44 @@ class CustomDatePicker {
   }
 
   setupEventListeners() {
+    this.boundListeners = [];
+    const bind = (target, type, handler) => {
+      if (!target) return;
+      target.addEventListener(type, handler);
+      this.boundListeners.push({ target, type, handler });
+    };
+
     // Trigger button
-    if (this.trigger) {
-      this.trigger.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.toggleCalendar();
-      });
-    }
+    bind(this.trigger, 'click', (e) => {
+      e.stopPropagation();
+      this.toggleCalendar();
+    });
 
     // Navigation buttons
-    if (this.prevBtn) {
-      this.prevBtn.addEventListener('click', () => this.navigateMonth(-1));
-    }
-    if (this.nextBtn) {
-      this.nextBtn.addEventListener('click', () => this.navigateMonth(1));
-    }
+    bind(this.prevBtn, 'click', () => this.navigateMonth(-1));
+    bind(this.nextBtn, 'click', () => this.navigateMonth(1));
 
     // Footer buttons
-    if (this.clearBtn) {
-      this.clearBtn.addEventListener('click', () => this.clearDate());
-    }
-    if (this.todayBtn) {
-      this.todayBtn.addEventListener('click', () => this.selectToday());
-    }
+    bind(this.clearBtn, 'click', () => this.clearDate());
+    bind(this.todayBtn, 'click', () => this.selectToday());
 
     // Click outside to close
-    document.addEventListener('click', (e) => {
+    bind(document, 'click', (e) => {
       if (this.isOpen && !this.trigger?.contains(e.target) && !this.calendar?.contains(e.target)) {
         this.closeCalendar();
       }
     });
 
     // Prevent calendar clicks from closing
-    if (this.calendar) {
-      this.calendar.addEventListener('click', (e) => e.stopPropagation());
-    }
+    bind(this.calendar, 'click', (e) => e.stopPropagation());
+  }
+
+  destroy() {
+    (this.boundListeners || []).forEach(({ target, type, handler }) => {
+      target.removeEventListener(type, handler);
+    });
+    this.boundListeners = [];
+    this.closeCalendar();
   }
 
   toggleCalendar() {
@@ -3131,6 +3423,7 @@ class CustomDatePicker {
     startDate.setDate(startDate.getDate() - firstDay.getDay());
 
     // Generate 6 weeks of days
+    const dueCounts = getDueCountsByDate();
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
@@ -3158,6 +3451,8 @@ class CustomDatePicker {
         dayElement.classList.add('selected');
       }
 
+      applyDueMarker(dayElement, formatDateISO(date), dueCounts);
+
       // Add click handler
       if (isCurrentMonth) {
         dayElement.addEventListener('click', () => this.selectDate(date));
@@ -3172,7 +3467,17 @@ class CustomDatePicker {
 let customDatePicker;
 
 function initCustomDatePicker() {
+  if (customDatePicker) {
+    customDatePicker.destroy();
+  }
   customDatePicker = new CustomDatePicker();
+}
+
+function destroyCustomDatePicker() {
+  if (customDatePicker) {
+    customDatePicker.destroy();
+    customDatePicker = null;
+  }
 }
 
 // Re-render todo items and calendar when language changes
@@ -3211,6 +3516,7 @@ try {
   window.migrateTodos = migrateTodos;
   window.initTodo = initTodo;
   window.initCustomDatePicker = initCustomDatePicker;
+  window.destroyCustomDatePicker = destroyCustomDatePicker;
   window.renderTodos = renderTodos;
   window.reloadTodosState = reloadTodosState;
   window.filterTodos = filterTodos;
@@ -3224,6 +3530,7 @@ try {
   window.getNextDueDate = getNextDueDate;
   window.RECURRENCE_VALUES = RECURRENCE_VALUES;
   window.parseLocalDate = parseLocalDate;
+  window.parseTodoDatePhrase = parseTodoDatePhrase;
   window.getDueDateTime = getDueDateTime;
   window.formatDueTime = formatDueTime;
   window.isValidDueTime = isValidDueTime;

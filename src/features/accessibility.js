@@ -729,6 +729,12 @@
       }
       if (day.classList.contains('today')) label += ', ' + translate('today', 'today');
       if (isSelected) label += ', ' + translate('accessibilitySelected', 'selected');
+      const dueCount = parseInt(day.dataset.dueCount, 10);
+      if (dueCount > 0) {
+        const dueCountKey = dueCount === 1 ? 'todoDueCount' : 'todoDueCountPlural';
+        const dueCountFallback = dueCount === 1 ? '{count} task due' : '{count} tasks due';
+        label += ', ' + translate(dueCountKey, dueCountFallback, { count: dueCount });
+      }
       day.setAttribute('aria-label', label);
       day.tabIndex = day === selectedDay && !isDisabled ? 0 : -1;
     });
@@ -992,7 +998,7 @@
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['class', 'style', 'open']
+      attributeFilter: ['class', 'style', 'open', 'data-due-count']
     });
   }
 

@@ -620,4 +620,47 @@ describe('Accessibility - filters and calendars', () => {
     expect(days[1].getAttribute('aria-label')).toContain('selected');
     expect(days[1].tabIndex).toBe(0);
   });
+
+  it('appends the due-todo count to the day aria-label (issue #1195)', () => {
+    const calendar = document.getElementById('calendar-days');
+    calendar.innerHTML =
+      '<div class="calendar-day" data-date="2026-09-17" data-due-count="3">17</div>' +
+      '<div class="calendar-day" data-date="2026-09-18">18</div>';
+
+    window.Accessibility.refreshCalendars();
+
+    const days = calendar.querySelectorAll('.calendar-day');
+    expect(days[0].getAttribute('aria-label')).toContain('3 tasks due');
+    expect(days[1].getAttribute('aria-label')).not.toContain('tasks due');
+  });
+
+  it('keeps day textContent day-number-only when a due count is present (issue #1195)', () => {
+    const calendar = document.getElementById('calendar-days');
+    calendar.innerHTML =
+      '<div class="calendar-day" data-date="2026-09-17" data-due-count="3">17' +
+      '<span class="calendar-day-due" aria-hidden="true"></span></div>';
+
+    window.Accessibility.refreshCalendars();
+
+    const day = calendar.querySelector('.calendar-day');
+    expect(day.textContent).toBe('17');
+    expect(day.getAttribute('aria-label')).toContain('September');
+    expect(day.getAttribute('aria-label')).toContain('3 tasks due');
+  });
+
+  it('re-applies the due-count label when data-due-count changes', async () => {
+    window.Accessibility.init();
+    const calendar = document.getElementById('calendar-days');
+    calendar.innerHTML = '<div class="calendar-day" data-date="2026-09-17">17</div>';
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    window.Accessibility.refreshCalendars();
+
+    const day = calendar.querySelector('.calendar-day');
+    expect(day.getAttribute('aria-label')).not.toContain('tasks due');
+
+    day.setAttribute('data-due-count', '2');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(day.getAttribute('aria-label')).toContain('2 tasks due');
+  });
 });

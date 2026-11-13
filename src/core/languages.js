@@ -147,6 +147,8 @@ const translations = {
     todoUndo: 'Undo',
     todoInlinePrevMonth: 'Previous month',
     todoInlineNextMonth: 'Next month',
+    todoDueCount: '{count} task due',
+    todoDueCountPlural: '{count} tasks due',
     addTodo: 'Add Todo',
     noTodos: 'No todos yet. Add one above!',
     noTodosHint: 'Try adding due dates for better organization.',
@@ -362,6 +364,7 @@ const translations = {
     addTimezone: 'Add',
     removeTimezone: 'Remove',
     removeTimezoneLabel: 'Remove {city} time zone',
+    timezoneMoreResults: '{shown} of {total} time zones',
 
     // Weather settings
     weather: 'Weather',
@@ -565,6 +568,7 @@ const translations = {
     filterCompleted: 'Completed',
     filterOverdue: 'Overdue',
     filterToday: 'Today',
+    filterUpcoming: 'Upcoming',
     priorityHigh: 'High',
     priorityMedium: 'Medium',
     priorityLow: 'Low',

@@ -328,6 +328,8 @@ globalThis.window.i18n = {
       todoSaveError: 'Failed to save todo changes. Your last action was not saved.',
       todoDeletedUndo: 'Todo deleted.',
       todosDeletedUndo: '{count} todos deleted.',
+      todoDueCount: '{count} task due',
+      todoDueCountPlural: '{count} tasks due',
       todoUndo: 'Undo',
       notesPlaceholder: 'Type your note here...',
       notesDeleteTooltip: 'Delete Note',
@@ -411,6 +413,7 @@ globalThis.window.i18n = {
       filterCompleted: 'Completed',
       filterOverdue: 'Overdue',
       filterToday: 'Today',
+      filterUpcoming: 'Upcoming',
       clearCompletedText: 'Clear Completed',
       emptyStateTitle: 'No todos yet. Add one above!',
       emptyStateDesc: 'Try adding due dates for better organization.',
@@ -485,6 +488,10 @@ globalThis.window.i18n = {
       pomodoroStatsExport: 'Export CSV',
       pomodoroStatsSessionsUnit: 'sessions',
       pomodoroStatsExportSuccess: 'Focus stats download started.',
+      pomodoroStartFocus: 'Start Focus',
+      pomodoroStopFocus: 'Stop Focus',
+      pomodoroWorkComplete: 'Focus session complete!',
+      pomodoroWorkCompleteNoTaskBody: 'Time for a break.',
       clearStats: 'Clear Stats',
       completedToday: 'Completed Today',
       completedThisWeek: 'This Week',
@@ -704,6 +711,7 @@ globalThis.window.i18n = {
       searchProviderUrlAriaLabel: 'Search URL template',
       removeTimezone: 'Remove',
       removeTimezoneLabel: 'Remove {city} time zone',
+      timezoneMoreResults: '{shown} of {total} time zones',
       gamesScore: 'Score',
       gamesLevel: 'Level',
       gamesPlay: 'Play',
@@ -822,6 +830,7 @@ document.body.appendChild(createStubElement('span', 'badge-pending'));
 document.body.appendChild(createStubElement('span', 'badge-completed'));
 document.body.appendChild(createStubElement('span', 'badge-overdue'));
 document.body.appendChild(createStubElement('span', 'badge-today'));
+document.body.appendChild(createStubElement('span', 'badge-upcoming'));
 document.body.appendChild(createStubElement('span', 'todo-count'));
 document.body.appendChild(createStubElement('div', 'calendar-month'));
 document.body.appendChild(createStubElement('div', 'calendar-year'));

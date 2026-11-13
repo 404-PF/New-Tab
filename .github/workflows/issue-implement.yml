@@ -1,8 +1,8 @@
 name: issue-implement
 
 # Durable per-run issue marker (same pattern as pr-drive): the runs API does
-# not expose the workflow_dispatch input or the triggering issue, so the
-# scheduler attributes an active run to its issue through this title.
+# not expose the workflow_dispatch input or the triggering issue, so this
+# title is the only record of which issue a run is for.
 run-name: >-
   issue-implement #${{ github.event_name == 'workflow_dispatch'
     && github.event.inputs.issue_number || github.event.issue.number }}
@@ -16,9 +16,6 @@ on:
         description: 'Issue number to implement'
         required: true
         type: number
-  schedule:
-    # Every 30 minutes: dispatch the oldest eligible issue while open PRs <= 10.
-    - cron: '*/30 * * * *'
 
 # Concurrency is declared on the implement job, not here. A workflow-level
 # group is taken before the permission gate runs, so a read-only MEMBER or
@@ -27,115 +24,6 @@ on:
 # proceed=true (workflow_dispatch, OWNER, or a user the gate authorizes).
 
 jobs:
-  # Scheduled runs never reach authorize: auto-dispatch starts a normal
-  # workflow_dispatch run for the chosen issue instead.
-  auto-dispatch:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      actions: write
-      issues: read
-      pull-requests: read
-
-    steps:
-      - name: Dispatch the oldest eligible issue
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          SELF_RUN_ID: ${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          MAX_OPEN_PRS=10
-          OPEN_PRS="$(gh pr list --repo "$GH_REPO" --state open --limit 1000 --json number --jq 'length')"
-          if [ "$OPEN_PRS" -gt "$MAX_OPEN_PRS" ]; then
-            echo "Open PRs: $OPEN_PRS (more than $MAX_OPEN_PRS); not starting an issue."
-            exit 0
-          fi
-
-          # At most MAX_CONCURRENT implement runs at once: the scheduler run
-          # itself is excluded. Every status is queried server-side so a long
-          # history cannot hide an active run. Titles carry the issue number
-          # (run-name), so this pass also records which issues are busy.
-          MAX_CONCURRENT=5
-          ACTIVE_FILE="$RUNNER_TEMP/active-implements.txt"
-          : > "$ACTIVE_FILE"
-          for STATUS in queued in_progress waiting requested pending; do
-            gh run list --repo "$GH_REPO" --workflow issue-implement.yml --status "$STATUS" --limit 1000 \
-              --json databaseId,displayTitle \
-              --jq ".[] | select((.databaseId | tostring) != \"$SELF_RUN_ID\") | .displayTitle" \
-              >> "$ACTIVE_FILE"
-          done
-          ACTIVE="$(grep -c '^' "$ACTIVE_FILE" || true)"
-          if [ "$ACTIVE" -ge "$MAX_CONCURRENT" ]; then
-            echo "$ACTIVE issue-implement run(s) active (max $MAX_CONCURRENT); waiting for the next tick."
-            exit 0
-          fi
-          # Each in-flight run opens a PR when it finishes, so count them
-          # toward the open-PR limit as well as the PRs already open.
-          if [ "$((OPEN_PRS + ACTIVE))" -gt "$MAX_OPEN_PRS" ]; then
-            echo "Open PRs: $OPEN_PRS + $ACTIVE in-flight run(s) (more than $MAX_OPEN_PRS); not starting an issue."
-            exit 0
-          fi
-
-          # Issues already handled: referenced by any PR ("Fixes #N", open or
-          # closed), or commented on by this workflow's bot. Paginates the full
-          # PR history instead of stopping at the first page.
-          HANDLED_FILE="$RUNNER_TEMP/handled-issues.txt"
-          gh api "repos/$GH_REPO/pulls?state=all&per_page=100" --paginate --jq '.[].body // ""' \
-            | { grep -oE 'Fixes #[0-9]+' || true; } \
-            | { grep -oE '[0-9]+' || true; } \
-            | sort -u > "$HANDLED_FILE"
-
-          # Open issues in oldest-first order, paginated through GraphQL so
-          # more than 1,000 open issues cannot hide the oldest eligible one.
-          # Only maintainers' issues qualify: the dispatched run is
-          # workflow_dispatch and skips the /implement permission gate.
-          ISSUES_JSON="$(gh api graphql --paginate -F owner="${GH_REPO%%/*}" -F name="${GH_REPO#*/}" -f query='
-            query($owner: String!, $name: String!, $endCursor: String) {
-              repository(owner: $owner, name: $name) {
-                issues(first: 100, states: OPEN, orderBy: {field: CREATED_AT, direction: ASC}, after: $endCursor) {
-                  pageInfo { hasNextPage endCursor }
-                  nodes { number authorAssociation labels(first: 100) { nodes { name } } }
-                }
-              }
-            }' | jq -s '[.[].data.repository.issues.nodes[]]')"
-          CANDIDATES="$(jq -r '.[]
-            | select(.authorAssociation as $a | ["OWNER", "MEMBER", "COLLABORATOR"] | index($a))
-            | select(([.labels.nodes[].name] | index("wip")) | not)
-            | .number' <<<"$ISSUES_JSON")"
-
-          TARGET=''
-          for NUM in $CANDIDATES; do
-            if grep -qx "$NUM" "$HANDLED_FILE"; then
-              continue
-            fi
-            # An implement run still queued or running for this issue would
-            # be cancelled by a duplicate dispatch (concurrency group
-            # issue-implement-<number>); pick another eligible issue.
-            if grep -qxF "issue-implement #$NUM" "$ACTIVE_FILE"; then
-              echo "Issue #$NUM: an implement run is still active; skipping."
-              continue
-            fi
-            # Bot comments that mark an earlier /implement attempt (recorded
-            # start, opened PR, no-change result, or failure) exclude the issue.
-            # Paginated so a prior result after comment 100 is still seen.
-            BOT_COMMENTS="$(gh api "repos/$GH_REPO/issues/$NUM/comments?per_page=100" --paginate \
-              --jq '.[] | select(.user.login == "github-actions" or .user.login == "github-actions[bot]") | .body')"
-            if grep -qE 'Opened https://|/implement|Issue implementation failed' <<<"$BOT_COMMENTS"; then
-              continue
-            fi
-            TARGET="$NUM"
-            break
-          done
-          if [ -z "$TARGET" ]; then
-            echo 'No eligible issue to implement.'
-            exit 0
-          fi
-
-          gh workflow run issue-implement.yml --repo "$GH_REPO" -f issue_number="$TARGET"
-          echo "Dispatched issue-implement for #$TARGET (open PRs: $OPEN_PRS)."
-
   authorize:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -143,9 +31,9 @@ jobs:
     # (workflow_dispatch and /implement): the cap below is a check-then-act
     # snapshot, so two overlapping requests could each see four active runs
     # and both proceed above MAX_CONCURRENT. Under this group only one
-    # authorize runs at a time, and every run that passes stays an active
-    # non-schedule run — the reservation held for its whole implement run —
-    # so the next serialized count includes it and the ceiling holds.
+    # authorize runs at a time, and every run that passes stays an active run
+    # (the reservation held for its whole implement run), so the next
+    # serialized count includes it and the ceiling holds.
     # queue: max keeps every waiting request queued instead of letting a
     # newer one replace the single pending slot and silently drop an
     # /implement (same pattern as find-issues and issue-milestone).
@@ -153,11 +41,10 @@ jobs:
     # beyond it. A cancelled authorize job runs no steps, so an
     # in-workflow overflow notice or retry cannot exist. Reaching the
     # ceiling needs 100+ authorized entries waiting at once (write-capable
-    # /implement comments plus scheduler or manual dispatches), which this
-    # repo does not generate; each authorize run drains the queue in
-    # seconds. A request GitHub does cancel stays recoverable: no attempt
-    # marker was written, so re-commenting re-enters the group and the
-    # scheduler re-dispatches an untouched issue on its next 30-minute tick.
+    # /implement comments plus manual dispatches), which this repo does
+    # not generate; each authorize run drains the queue in seconds. A
+    # request GitHub does cancel stays recoverable: no attempt marker was
+    # written, so re-commenting re-enters the group and retries the issue.
     concurrency:
       group: issue-implement-capacity
       cancel-in-progress: false
@@ -233,13 +120,10 @@ jobs:
           echo 'proceed=true' >> "$GITHUB_OUTPUT"
 
       # Cap implement runs on every authorized entry path (workflow_dispatch
-      # and /implement), not only the scheduler. Scheduled runs are
-      # auto-dispatch only and never implement, so they are excluded: the
-      # scheduler run that just dispatched this one may still be active.
-      # Self is excluded so this run does not count itself. The job-level
-      # concurrency group above serializes this snapshot with every other
-      # entry, so concurrent requests cannot each see the same below-cap
-      # count and both proceed.
+      # and /implement). Self is excluded so this run does not count itself.
+      # The job-level concurrency group above serializes this snapshot with
+      # every other entry, so concurrent requests cannot each see the same
+      # below-cap count and both proceed.
       - name: Enforce concurrent run cap
         id: cap
         if: >
@@ -257,17 +141,14 @@ jobs:
           ACTIVE=0
           for STATUS in queued in_progress waiting requested pending; do
             COUNT="$(gh run list --repo "$GH_REPO" --workflow issue-implement.yml --status "$STATUS" --limit 1000 \
-              --json databaseId,event \
-              --jq "[.[] | select((.databaseId | tostring) != \"$SELF_RUN_ID\") | select(.event != \"schedule\")] | length")"
+              --json databaseId \
+              --jq "[.[] | select((.databaseId | tostring) != \"$SELF_RUN_ID\")] | length")"
             ACTIVE=$((ACTIVE + COUNT))
           done
           if [ "$ACTIVE" -ge "$MAX_CONCURRENT" ]; then
             echo "$ACTIVE issue-implement run(s) active (max $MAX_CONCURRENT); not starting implement."
             echo 'capped=true' >> "$GITHUB_OUTPUT"
             # Reply only to a comment request; a manual dispatcher sees the
-            # run log. Wording avoids the scheduler's bot-comment patterns
-            # (Opened https://, /implement, Issue implementation failed) so
-            # a capped request does not permanently exclude the issue.
             if [ "$EVENT_NAME" = 'issue_comment' ] && [ -n "$ISSUE_NUMBER" ]; then
               gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
                 --body "$ACTIVE issue-implement run(s) are already active (max $MAX_CONCURRENT); skipping this request. Try again after one finishes."
@@ -420,7 +301,7 @@ jobs:
           echo "triage-file=$GITHUB_WORKSPACE/.tmp/triage-comment.md" >> "$GITHUB_OUTPUT"
 
       # Record the attempt before implementation starts, so a no-change or
-      # failed run still excludes this issue from the scheduler. Fails closed:
+      # failed run still leaves a record for this issue. Fails closed:
       # if the comment cannot be posted, the run stops before OpenCode starts.
       - name: Record implementation attempt
         env:
@@ -596,8 +477,9 @@ jobs:
           # Single source of truth for the branch prefix, the commit subject,
           # and the PR title (issue #966). Inputs: $TITLE, $LABELS (comma-
           # joined), $STAGED_FILES (newline-separated), $ISSUE_NUMBER.
-          # Outputs: $TYPE, $SCOPE (may be empty), $SUBJECT (conventional
-          # subject hard-capped at 72 chars), $SLUG (40-char branch slug,
+          # Outputs: $TYPE, $SCOPE (may be empty), $SUBJECT (commit subject
+          # capped at 72 chars), $PR_TITLE (full conventional title capped at
+          # 256 chars, so it is not cropped), $SLUG (40-char branch slug,
           # behavior unchanged). tests/issue-implement-workflow.test.js
           # executes this block against a backfilled title set.
           #
@@ -717,24 +599,31 @@ jobs:
           fi
           [ -n "$DESC" ] || DESC='implement changes'
           if [ -n "$SCOPE" ]; then
-            SUBJECT="$TYPE($SCOPE): $DESC"
+            FULL_SUBJECT="$TYPE($SCOPE): $DESC"
           else
-            SUBJECT="$TYPE: $DESC"
+            FULL_SUBJECT="$TYPE: $DESC"
           fi
-          # Hard cap the subject at 72 chars with word-boundary truncation:
-          # drop the trailing partial word and any dangling punctuation the
-          # cut leaves behind. When the first description word alone exceeds
-          # the budget, that trim would eat the whole description and emit a
-          # bare `type(scope)`; keep the separator and hard-cut the long token
-          # instead.
-          if [ "${#SUBJECT}" -gt 72 ]; then
-            SUBJECT="${SUBJECT:0:72}"
-            TRIMMED="$(printf '%s' "$SUBJECT" | sed -E -e 's/ [^ ]*$//' -e 's/[^A-Za-z0-9)]+$//')"
-            case "$TRIMMED" in
-              *': '*) SUBJECT="$TRIMMED" ;;
-              *) SUBJECT="$(printf '%s' "$SUBJECT" | sed -E -e 's/[^A-Za-z0-9)]+$//')" ;;
-            esac
-          fi
+          # Word-boundary cap: drop the trailing partial word and any dangling
+          # punctuation the cut leaves behind. When the first description word
+          # alone exceeds the budget, that trim would eat the whole description
+          # and emit a bare `type(scope)`; keep the separator and hard-cut the
+          # long token instead.
+          cap_title() {
+            local max="$1" out="$2" trimmed
+            if [ "${#out}" -gt "$max" ]; then
+              out="${out:0:$max}"
+              trimmed="$(printf '%s' "$out" | sed -E -e 's/ [^ ]*$//' -e 's/[^A-Za-z0-9)]+$//')"
+              case "$trimmed" in
+                *': '*) out="$trimmed" ;;
+                *) out="$(printf '%s' "$out" | sed -E -e 's/[^A-Za-z0-9)]+$//')" ;;
+              esac
+            fi
+            printf '%s' "$out"
+          }
+          # The commit subject stays at 72 chars. The PR title keeps the full
+          # description (GitHub allows 256 chars), so it is not cropped.
+          SUBJECT="$(cap_title 72 "$FULL_SUBJECT")"
+          PR_TITLE="$(cap_title 256 "$FULL_SUBJECT")"
           # Branch slug stays exactly as before: 40 chars from the raw title.
           SLUG="$(printf '%s' "$TITLE" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9][^a-z0-9]*/-/g' -e 's/^-\+//' -e 's/-\+$//' | cut -c1-40 | sed -e 's/-\+$//')"
           [ -n "$SLUG" ] || SLUG="issue-$ISSUE_NUMBER"
@@ -796,7 +685,7 @@ jobs:
           } > "$GITHUB_WORKSPACE/.tmp/pr-body.md"
           # Open the PR as the token owner; GITHUB_TOKEN stays for the rest.
           PR_URL="$(GH_TOKEN="$GH_PAT" gh pr create --repo "$GH_REPO" --base main --head "$BRANCH" \
-            --title "$SUBJECT" \
+            --title "$PR_TITLE" \
             --body-file "$GITHUB_WORKSPACE/.tmp/pr-body.md")"
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
           echo "Opened $PR_URL"
