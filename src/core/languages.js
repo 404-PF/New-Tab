@@ -350,6 +350,7 @@ const translations = {
     addTimezone: 'Add',
     removeTimezone: 'Remove',
     removeTimezoneLabel: 'Remove {city} time zone',
+    timezoneMoreResults: '{shown} of {total} time zones',
 
     // Weather settings
     weather: 'Weather',

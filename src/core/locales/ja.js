@@ -12,6 +12,7 @@ window.i18n.__registerLocale('ja', {
   addTimezone: '追加',
   removeTimezone: '削除',
   removeTimezoneLabel: '{city} タイムゾーンを削除',
+  timezoneMoreResults: '{total} 件中 {shown} 件のタイムゾーン',
   searchPlaceholder: '検索またはURLを入力',
   searchWith: '検索',
   searchProviderGoogle: 'Google',

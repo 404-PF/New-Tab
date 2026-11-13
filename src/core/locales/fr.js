@@ -12,6 +12,7 @@ window.i18n.__registerLocale('fr', {
   addTimezone: 'Ajouter',
   removeTimezone: 'Supprimer',
   removeTimezoneLabel: 'Supprimer le fuseau horaire de {city}',
+  timezoneMoreResults: '{shown} sur {total} fuseaux horaires',
   searchPlaceholder: 'Rechercher ou saisir un site web',
   searchWith: 'Rechercher avec',
   searchProviderGoogle: 'Google',

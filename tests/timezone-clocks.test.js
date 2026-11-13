@@ -113,6 +113,132 @@ function expectRejectedAddState() {
 }
 
 describe('timezone clocks', () => {
+  it('accepts any zone the runtime validates, keeping the cap and rejections (#1199)', () => {
+    setupClocks();
+
+    expect(window.isValidZoneId('America/Bogota')).toBe(true);
+    expect(window.isValidZoneId('Europe/Kyiv')).toBe(true);
+    expect(window.isValidZoneId('Not/A_Zone')).toBe(false);
+    expect(window.isValidZoneId('')).toBe(false);
+    // Intl resolves these case-insensitively / as offsets, but they must not
+    // be storable next to the canonical spelling as duplicate clocks.
+    expect(window.isValidZoneId('america/new_york')).toBe(false);
+    expect(window.isValidZoneId('+05:30')).toBe(false);
+
+    expect(window.addTimeZone('America/Bogota')).toBe(true);
+    expect(window.addTimeZone('Europe/Kyiv')).toBe(true);
+    expect(window.addTimeZone('Asia/Kathmandu')).toBe(true);
+    expect(window.addTimeZone('Pacific/Fiji')).toBe(true);
+
+    // Rejected while the list is still under the cap, so these fail on the
+    // duplicate/invalid checks themselves rather than on the cap.
+    expect(window.addTimeZone('America/Bogota')).toBe(false);
+    expect(window.addTimeZone('Not/A_Zone')).toBe(false);
+    expect(window.addTimeZone('america/new_york')).toBe(false);
+
+    expect(window.addTimeZone('Australia/Sydney')).toBe(true);
+    // A sixth otherwise-valid zone is rejected only because the cap is full.
+    expect(window.addTimeZone('America/Chicago')).toBe(false);
+
+    expect(window.loadTimeZones()).toEqual([
+      'America/Bogota',
+      'Europe/Kyiv',
+      'Asia/Kathmandu',
+      'Pacific/Fiji',
+      'Australia/Sydney'
+    ]);
+    expect(clockChips().length).toBe(5);
+    expect(clockChips()[1].querySelector('.timezone-city').textContent).toBe('Kyiv');
+    expect(clockChips()[3].querySelector('.timezone-city').textContent).toBe('Fiji');
+  });
+
+  it('loads previously saved zones outside the shortlist unchanged (#1199)', () => {
+    localStorage.setItem('extraTimeZones', JSON.stringify(['America/Bogota', 'Asia/Kathmandu']));
+    setupClocks();
+
+    expect(window.loadTimeZones()).toEqual(['America/Bogota', 'Asia/Kathmandu']);
+    expect(clockChips().length).toBe(2);
+    expect(clockChips()[0].querySelector('.timezone-city').textContent).toBe('Bogota');
+    expect(clockChips()[1].querySelector('.timezone-city').textContent).toBe('Kathmandu');
+  });
+
+  it('builds picker options from Intl beyond the curated shortlist (#1199)', () => {
+    const options = window.getTimeZoneOptions();
+    const shortlist = window.POPULAR_ZONES;
+
+    expect(options.length).toBeGreaterThan(shortlist.length);
+    expect(options.slice(0, shortlist.length).map(zone => zone.id))
+      .toEqual(shortlist.map(zone => zone.id));
+    expect(options.map(zone => zone.id)).toContain('America/Bogota');
+    // Intl.supportedValuesOf omits UTC on this runtime; the picker must
+    // still offer it (#1199).
+    expect(options.map(zone => zone.id)).toContain('UTC');
+    expect(options.every(zone => typeof zone.id === 'string'
+      && typeof zone.city === 'string' && zone.city.length > 0)).toBe(true);
+  });
+
+  it('searches the full zone list in the settings picker and caps the idle list (#1199)', () => {
+    setupClocks();
+    const picker = document.getElementById('timezone-picker');
+
+    picker.value = 'bogota';
+    picker.dispatchEvent(new Event('input'));
+    const option = document.querySelector('#timezone-options button[data-zone="America/Bogota"]');
+    expect(option).not.toBeNull();
+    expect(option.textContent).toContain('Bogota');
+    // One match fits the cap, so no truncation hint is shown.
+    expect(document.querySelector('#timezone-options .timezone-options-more')).toBeNull();
+
+    option.click();
+    document.getElementById('add-timezone-btn').click();
+    expect(window.showToast).not.toHaveBeenCalled();
+    expect(clockChips().length).toBe(1);
+    expect(clockChips()[0].dataset.zone).toBe('America/Bogota');
+    expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['America/Bogota']);
+
+    picker.value = '';
+    picker.dispatchEvent(new Event('focus'));
+    const idleOptions = document.querySelectorAll('#timezone-options button');
+    expect(idleOptions.length).toBeGreaterThan(0);
+    expect(idleOptions.length).toBeLessThanOrEqual(40);
+    expect(document.querySelector('#timezone-options button[data-zone="America/Chicago"]')).not.toBeNull();
+    // The idle list is capped below the full set, so the hint says how many
+    // zones are hidden instead of letting the list look complete (#1199).
+    const hint = document.querySelector('#timezone-options .timezone-options-more');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toBe(window.i18n.t('timezoneMoreResults', {
+      shown: idleOptions.length,
+      total: window.getTimeZoneOptions().length
+    }));
+  });
+
+  it('adds a typed zone id that the picker list omits (#1199)', () => {
+    setupClocks();
+    const picker = document.getElementById('timezone-picker');
+    const addBtn = document.getElementById('add-timezone-btn');
+
+    // Etc/GMT+8 is accepted by Intl but missing from
+    // Intl.supportedValuesOf, so it never appears as an option; typing it
+    // must still enable Add.
+    picker.value = 'Etc/GMT+8';
+    picker.dispatchEvent(new Event('input'));
+    expect(addBtn.disabled).toBe(false);
+    addBtn.click();
+    expect(window.showToast).not.toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['Etc/GMT+8']);
+    expect(clockChips().length).toBe(1);
+    expect(clockChips()[0].dataset.zone).toBe('Etc/GMT+8');
+
+    // Non-canonical spellings and plain prose never enable Add.
+    picker.value = 'america/new_york';
+    picker.dispatchEvent(new Event('input'));
+    expect(addBtn.disabled).toBe(true);
+
+    picker.value = 'not a zone';
+    picker.dispatchEvent(new Event('input'));
+    expect(addBtn.disabled).toBe(true);
+  });
+
   it('re-renders generated controls when the language changes', () => {
     const clock = document.createElement('div');
     clock.id = 'clock';
@@ -229,7 +355,11 @@ describe('timezone clocks', () => {
 
     expect(optionsList.hidden).toBe(false);
     expect(picker.getAttribute('aria-expanded')).toBe('true');
-    expect(optionsList.querySelectorAll('button[data-zone]').length).toBe(window.POPULAR_ZONES.length);
+    // #1199 caps the idle list at 40, so "full" now means the whole corpus
+    // up to that cap rather than exactly the curated shortlist.
+    expect(optionsList.querySelectorAll('button[data-zone]').length)
+      .toBe(Math.min(window.getTimeZoneOptions().length, 40));
+    expect(optionsList.querySelector('button[data-zone="America/Chicago"]')).not.toBeNull();
   });
 
   // #1200 follow-up: refocus must select the display label so the first
@@ -253,7 +383,10 @@ describe('timezone clocks', () => {
 
     expect(optionsList.hidden).toBe(false);
     expect(optionsList.querySelectorAll('button[data-zone]').length).toBeGreaterThan(0);
-    expect(optionsList.querySelectorAll('button[data-zone]').length).toBeLessThan(window.POPULAR_ZONES.length);
+    // The keystroke filters on "L" alone: London matches, Chicago (the
+    // selected label's zone) does not — proving the label was replaced.
+    expect(optionsList.querySelector('button[data-zone="Europe/London"]')).not.toBeNull();
+    expect(optionsList.querySelector('button[data-zone="America/Chicago"]')).toBeNull();
   });
 
   // #1200 follow-up: refocus must not discard an in-progress search — the

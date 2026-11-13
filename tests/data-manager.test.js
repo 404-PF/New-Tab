@@ -198,6 +198,26 @@ describe('DataManager backup validation', () => {
     expect(window.DataManager.validateImportData({ version: 1, data: {
       extraTimeZones: supported
     } }).valid).toBe(false);
+    // Zones outside the curated shortlist are valid (#1199).
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      extraTimeZones: ['America/Bogota', 'Europe/Kyiv']
+    } })).toEqual({ valid: true });
+  });
+  it('round-trips a zone outside the curated shortlist through export/import (#1199)', async () => {
+    localStorage.setItem('extraTimeZones', JSON.stringify(['America/Bogota']));
+    const exported = await exportDataForTest();
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+
+    localStorage.removeItem('extraTimeZones');
+    const result = await importBackup(exported.data, 'replace');
+    expect(result.type).toBe('success');
+    expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['America/Bogota']);
+  });
+  it('merges valid off-shortlist zones and drops invalid ones on import (#1199)', async () => {
+    localStorage.setItem('extraTimeZones', JSON.stringify(['America/New_York', 'Bogus/Zone']));
+    await importBackup({ extraTimeZones: ['America/Bogota'] }, 'merge');
+    expect(JSON.parse(localStorage.getItem('extraTimeZones')))
+      .toEqual(['America/New_York', 'America/Bogota']);
   });
   it('lists only supported persistent keys in exports', () => {
     expect(window.DataManager.EXPORT_KEYS).toContain('appOrder');

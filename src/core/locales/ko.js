@@ -12,6 +12,7 @@ window.i18n.__registerLocale('ko', {
   addTimezone: '추가',
   removeTimezone: '제거',
   removeTimezoneLabel: '{city} 시간대 제거',
+  timezoneMoreResults: '시간대 {total}개 중 {shown}개',
   searchPlaceholder: '검색 또는 웹사이트 입력',
   searchWith: '검색',
   searchProviderGoogle: 'Google',

@@ -12,6 +12,7 @@ window.i18n.__registerLocale('ru', {
   addTimezone: 'Добавить',
   removeTimezone: 'Удалить',
   removeTimezoneLabel: 'Удалить часовой пояс {city}',
+  timezoneMoreResults: 'Показано {shown} из {total}',
   searchPlaceholder: 'Поиск или ввод сайта',
   searchWith: 'Поиск через',
   searchProviderGoogle: 'Google',

@@ -693,6 +693,7 @@ globalThis.window.i18n = {
       searchProviderUrlAriaLabel: 'Search URL template',
       removeTimezone: 'Remove',
       removeTimezoneLabel: 'Remove {city} time zone',
+      timezoneMoreResults: '{shown} of {total} time zones',
       gamesScore: 'Score',
       gamesLevel: 'Level',
       gamesPlay: 'Play',
