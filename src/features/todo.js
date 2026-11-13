@@ -2485,12 +2485,17 @@ function updateTodoDueDate(todoId, newDate, dueDateElement, newDueTime) {
   // Update the display with visual feedback
   updateDueDateDisplay(dueDateElement, todo.dueDate, todo.dueTime);
 
-  // Show visual feedback
-  showDateUpdateFeedback(dueDateElement, oldDate, todo.dueDate, oldTime, todo.dueTime);
-
-  // Re-run filters so overdue view refreshes immediately
+  // Re-run filters so overdue view refreshes immediately. renderTodos()
+  // replaces every row, so the chip passed in here is already detached by
+  // the time the highlight could paint (issue #1203).
   applyFilters();
   refreshInlineDatePickers(false);
+
+  // Flash the chip that is live in the DOM now; fall back to the passed
+  // element so the toast still fires when the todo is filtered out of view.
+  const freshDueDateElement = document.querySelector(`.todo-due-date[data-todo-id="${todoId}"]`);
+  showDateUpdateFeedback(freshDueDateElement || dueDateElement, oldDate, todo.dueDate, oldTime, todo.dueTime);
+
   scheduleTodoReminderCheck(todoId);
 }
 

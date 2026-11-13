@@ -3025,6 +3025,81 @@ describe('Inline picker re-anchor after time-only edit (issue #1092)', () => {
   });
 });
 
+describe('Due-date highlight lands on the live chip after re-render (issue #1203)', () => {
+  let previousPrefersReducedMotion;
+
+  beforeEach(() => {
+    previousPrefersReducedMotion = window.prefersReducedMotion;
+    window.prefersReducedMotion = () => false;
+  });
+
+  afterEach(() => {
+    if (previousPrefersReducedMotion === undefined) {
+      delete window.prefersReducedMotion;
+    } else {
+      window.prefersReducedMotion = previousPrefersReducedMotion;
+    }
+  });
+
+  function openPickerForDueDate() {
+    addTodo('Pay rent', '2026-01-31');
+    renderTodos();
+
+    const dueDateElement = document.querySelector('.todo-due-date.clickable');
+    expect(dueDateElement).not.toBeNull();
+    dueDateElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const picker = document.querySelector('.inline-date-picker');
+    expect(picker).not.toBeNull();
+    return { dueDateElement, picker, todoId: picker.dataset.todoId };
+  }
+
+  function expectLiveChipFlashed(dueDateElement, todoId, toastText) {
+    const liveChip = document.querySelector(`.todo-due-date[data-todo-id="${todoId}"]`);
+    expect(liveChip).not.toBeNull();
+    expect(liveChip).not.toBe(dueDateElement);
+    expect(liveChip.style.transform).toBe('scale(1.05)');
+    expect(liveChip.style.backgroundColor).toBe('rgba(33, 150, 243, 0.3)');
+
+    // The discarded node must stay unstyled so the 300 ms cleanup timer
+    // only ever targets the live chip.
+    expect(dueDateElement.style.transform).toBe('');
+    expect(dueDateElement.style.backgroundColor).toBe('');
+    expect(document.contains(dueDateElement)).toBe(false);
+
+    expect(document.querySelector('.toast-notification')?.textContent).toContain(toastText);
+  }
+
+  it('flashes the rebuilt chip on a time-only edit', () => {
+    const { dueDateElement, picker, todoId } = openPickerForDueDate();
+
+    const timeInput = picker.querySelector('.inline-due-time');
+    expect(timeInput).not.toBeNull();
+    timeInput.value = '15:30';
+    timeInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expectLiveChipFlashed(dueDateElement, todoId, 'Due date updated to');
+  });
+
+  it('flashes the rebuilt chip when a calendar day is picked', () => {
+    const { dueDateElement, picker, todoId } = openPickerForDueDate();
+
+    const day = picker.querySelector('.calendar-day[data-date="2026-01-15"]');
+    expect(day).not.toBeNull();
+    day.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expectLiveChipFlashed(dueDateElement, todoId, 'Due date updated to');
+  });
+
+  it('flashes the rebuilt chip when the date is cleared', () => {
+    const { dueDateElement, picker, todoId } = openPickerForDueDate();
+
+    picker.querySelector('.inline-clear-date').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expectLiveChipFlashed(dueDateElement, todoId, 'Due date cleared');
+  });
+});
+
 describe('Custom date picker open/close (issue #810)', () => {
   const pickerIds = [
     'date-picker-trigger', 'selected-date-text', 'todo-due-date', 'todo-due-time',
