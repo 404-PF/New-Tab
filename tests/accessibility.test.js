@@ -652,6 +652,7 @@ describe('Accessibility - filters and calendars', () => {
     window.Accessibility.init();
     const calendar = document.getElementById('calendar-days');
     calendar.innerHTML = '<div class="calendar-day" data-date="2026-09-17">17</div>';
+    await new Promise((resolve) => setTimeout(resolve, 0));
     window.Accessibility.refreshCalendars();
 
     const day = calendar.querySelector('.calendar-day');
