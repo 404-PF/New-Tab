@@ -114,12 +114,28 @@ describe.skipIf(!CAN_RUN_BASH)('issue-implement naming rule behavior (#966)', ()
     expect(result.SLUG).not.toMatch(/-$/);
   });
 
-  it('does not crop the PR title below the 256-char limit when the commit subject is capped', () => {
+  it('keeps the full PR title when it fits under 256 chars while the commit subject is capped', () => {
     const title = 'Polish the settings layout for the new tab page and the background rotation timer sync when focus mode is on';
     const result = derive({ title, files: ['src/ui/settings.js'] });
     expect(result.SUBJECT.length).toBeLessThanOrEqual(72);
     expect(result.PR_TITLE).toBe(`fix(ui): ${title}`);
     expect(result.PR_TITLE.length).toBeLessThanOrEqual(256);
+  });
+
+  it('caps the PR title at 256 chars on a word boundary when the full title overflows', () => {
+    const title = 'Polish the settings layout for the new tab page and the background rotation timer sync when focus mode is on while the weather widget keeps refreshing during app grid drag and drop reordering and folder rename sessions across multiple monitors with the pomodoro countdown visible in the corner at all times';
+    const full = `fix(ui): ${title}`;
+    expect(full.length).toBeGreaterThan(256);
+    const result = derive({ title, files: ['src/ui/settings.js'] });
+    expect(result.SUBJECT.length).toBeLessThanOrEqual(72);
+    expect(result.PR_TITLE.length).toBeLessThanOrEqual(256);
+    // The cap fires: a strict prefix of the uncapped conventional title, cut
+    // on a word boundary with no dangling partial word or punctuation.
+    expect(full.startsWith(result.PR_TITLE)).toBe(true);
+    expect(result.PR_TITLE.length).toBeLessThan(full.length);
+    expect(result.PR_TITLE.startsWith('fix(ui): ')).toBe(true);
+    expect(result.PR_TITLE).toMatch(/[A-Za-z0-9)]$/);
+    expect(result.PR_TITLE).not.toMatch(/ {2}/);
   });
 
   it('reuses an existing perf(startup): prefix without doubling it', () => {
