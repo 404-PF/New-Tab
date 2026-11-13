@@ -25,7 +25,7 @@ function derive({ title, labels = '', files = [], issueNumber = 966 }) {
   const script = [
     'set -euo pipefail',
     extractNamingRule(),
-    'echo "TYPE=$TYPE"; echo "SCOPE=$SCOPE"; echo "SUBJECT=$SUBJECT"; echo "SLUG=$SLUG"',
+    'echo "TYPE=$TYPE"; echo "SCOPE=$SCOPE"; echo "SUBJECT=$SUBJECT"; echo "PR_TITLE=$PR_TITLE"; echo "SLUG=$SLUG"',
   ].join('\n');
   const output = execFileSync('bash', ['-c', script], {
     encoding: 'utf-8',
@@ -48,17 +48,18 @@ function derive({ title, labels = '', files = [], issueNumber = 966 }) {
 }
 
 describe('issue-implement derives one bounded Conventional Commits name (#966)', () => {
-  it('stages first, then feeds a single SUBJECT into both the commit and the PR title', () => {
+  it('feeds the commit subject and the PR title from separate capped variables', () => {
     // The staged diff drives the naming rule, so git add must run before it.
     const addIdx = workflow.indexOf('git add -A -- . \':(exclude).tmp\'');
     const stagedIdx = workflow.indexOf('STAGED_FILES="$(git diff --cached --name-only)"');
     expect(addIdx).toBeGreaterThan(-1);
     expect(stagedIdx).toBeGreaterThan(addIdx);
 
-    // Single source of truth: the same $SUBJECT variable feeds the commit
-    // subject and `gh pr create --title`; no duplicated format string.
+    // The commit keeps the 72-char $SUBJECT; the PR title uses $PR_TITLE so
+    // it is not cropped to the commit-subject limit.
     expect(workflow).toMatch(/commit -m "\$SUBJECT" -m "Fixes #\$ISSUE_NUMBER"/);
-    expect(workflow).toMatch(/--title "\$SUBJECT" \\/);
+    expect(workflow).toMatch(/--title "\$PR_TITLE" \\/);
+    expect(workflow).not.toMatch(/--title "\$SUBJECT"/);
     expect(workflow).not.toMatch(/implement #\$ISSUE_NUMBER/);
     expect(workflow).not.toMatch(/\$PREFIX/);
     expect(workflow).not.toMatch(/commit -m "\$[A-Z_]+[^"]*#\$ISSUE_NUMBER/);
@@ -78,10 +79,11 @@ describe('issue-implement derives one bounded Conventional Commits name (#966)',
     expect(naming).toMatch(/SLUG="issue-\$ISSUE_NUMBER"/);
   });
 
-  it('hard-caps the subject at 72 chars with a word-boundary trim inside the naming rule', () => {
+  it('hard-caps the commit subject at 72 chars and the PR title at 256 with word-boundary trims', () => {
     const naming = extractNamingRule();
-    expect(naming).toMatch(/\[ "\$\{#SUBJECT\}" -gt 72 \]/);
-    expect(naming).toMatch(/SUBJECT="\$\{SUBJECT:0:72\}"/);
+    expect(naming).toMatch(/cap_title 72 "\$FULL_SUBJECT"/);
+    expect(naming).toMatch(/cap_title 256 "\$FULL_SUBJECT"/);
+    expect(naming).toMatch(/out="\$\{out:0:\$max\}"/);
     expect(naming).toMatch(/s\/ \[\^ \]\*\$\//);
     expect(naming).toMatch(/s\/\[\^A-Za-z0-9\)\]\+\$\//);
   });
@@ -110,6 +112,14 @@ describe.skipIf(!CAN_RUN_BASH)('issue-implement naming rule behavior (#966)', ()
     // 40-char branch slug behavior is unchanged.
     expect(result.SLUG.length).toBeLessThanOrEqual(40);
     expect(result.SLUG).not.toMatch(/-$/);
+  });
+
+  it('does not crop the PR title below the 256-char limit when the commit subject is capped', () => {
+    const title = 'Polish the settings layout for the new tab page and the background rotation timer sync when focus mode is on';
+    const result = derive({ title, files: ['src/ui/settings.js'] });
+    expect(result.SUBJECT.length).toBeLessThanOrEqual(72);
+    expect(result.PR_TITLE).toBe(`fix(ui): ${title}`);
+    expect(result.PR_TITLE.length).toBeLessThanOrEqual(256);
   });
 
   it('reuses an existing perf(startup): prefix without doubling it', () => {
