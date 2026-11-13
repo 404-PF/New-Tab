@@ -231,4 +231,51 @@ describe('timezone clocks', () => {
     expect(picker.getAttribute('aria-expanded')).toBe('true');
     expect(optionsList.querySelectorAll('button[data-zone]').length).toBe(window.POPULAR_ZONES.length);
   });
+
+  // #1200 follow-up: refocus must select the display label so the first
+  // keystroke replaces it instead of appending to it (which would filter
+  // against a label that never matches and empty the dropdown).
+  it('selects the display label on focus so the first keystroke replaces it (#1200)', () => {
+    setupClocks();
+    selectChicago();
+
+    const picker = document.getElementById('timezone-picker');
+    const optionsList = document.getElementById('timezone-options');
+    expect(picker.value).toContain('Chicago');
+
+    picker.dispatchEvent(new Event('focus'));
+
+    expect(picker.selectionStart).toBe(0);
+    expect(picker.selectionEnd).toBe(picker.value.length);
+
+    picker.value = 'L';
+    picker.dispatchEvent(new Event('input'));
+
+    expect(optionsList.hidden).toBe(false);
+    expect(optionsList.querySelectorAll('button[data-zone]').length).toBeGreaterThan(0);
+    expect(optionsList.querySelectorAll('button[data-zone]').length).toBeLessThan(window.POPULAR_ZONES.length);
+  });
+
+  // #1200 follow-up: refocus must not discard an in-progress search — the
+  // input keeps showing the query, so the reopened list has to stay filtered.
+  it('keeps an in-progress search filtered when the picker regains focus (#1200)', () => {
+    setupClocks();
+
+    const picker = document.getElementById('timezone-picker');
+    const optionsList = document.getElementById('timezone-options');
+
+    picker.dispatchEvent(new Event('focus'));
+    picker.value = 'Chicago';
+    picker.dispatchEvent(new Event('input'));
+
+    const filteredCount = optionsList.querySelectorAll('button[data-zone]').length;
+    expect(filteredCount).toBeGreaterThan(0);
+    expect(filteredCount).toBeLessThan(window.POPULAR_ZONES.length);
+
+    picker.dispatchEvent(new Event('focus'));
+
+    expect(picker.value).toBe('Chicago');
+    expect(optionsList.hidden).toBe(false);
+    expect(optionsList.querySelectorAll('button[data-zone]').length).toBe(filteredCount);
+  });
 });

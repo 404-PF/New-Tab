@@ -1345,10 +1345,13 @@ function initTimezoneSettings() {
   }
 
   picker.addEventListener('focus', function () {
-    // Always show the full list on focus: after a selection the input holds a
-    // display label ("Chicago (UTC-6)") that never matches the filter corpus,
-    // so filtering by it would hide the list and collapse aria-expanded (#1200).
-    renderOptions('');
+    // After a selection the input holds a display label ("Chicago (UTC-6)")
+    // that never matches the filter corpus, so bypass it only while a zone is
+    // selected; otherwise keep an in-progress search so the list stays in sync
+    // with the visible query (#1200). Selecting the text makes the first
+    // keystroke replace the label instead of appending to it.
+    renderOptions(selectedZoneId ? '' : this.value);
+    this.select();
   });
 
   picker.addEventListener('input', function () {
