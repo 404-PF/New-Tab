@@ -430,6 +430,7 @@ window.i18n.__registerLocale('ja', {
   filterCompleted: '完了',
   filterOverdue: '期限切れ',
   filterToday: '今日',
+  filterUpcoming: '近日',
   priorityHigh: '高',
   priorityMedium: '中',
   priorityLow: '低',
