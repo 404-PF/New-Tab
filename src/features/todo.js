@@ -1480,6 +1480,10 @@ function applyFilters() {
   updateProgressRing();
   updateFilterCounts();
   updateBulkActions();
+  // Add/complete/delete and filter changes all funnel through here, so
+  // re-arming here keeps the due-minute timer aligned with the list
+  // (issue #1205).
+  scheduleTodoOverdueRefresh();
 }
 
 // The Today filter and badge compare due dates against the current local
@@ -1500,6 +1504,44 @@ function scheduleTodoMidnightRefresh() {
     applyFilters();
     scheduleTodoMidnightRefresh();
   }, nextMidnight.getTime() - now.getTime());
+}
+
+// A timed todo flips overdue the instant its due minute passes, but nothing
+// re-rendered the list at that moment while the tab idled (issue #1205).
+// Arm a one-shot timeout for the earliest not-yet-overdue timed todo; each
+// fire re-applies the filters (row classes, Overdue badge and pill
+// membership), which re-arms for whatever is due next and leaves the timer
+// cleared when no incomplete timed todo is pending.
+let overdueRefreshTimer = null;
+
+// setTimeout delays are 32-bit signed ints (max ~24.8 days); a due instant
+// further out is armed for the cap and re-armed on fire until it is reached.
+const MAX_OVERDUE_TIMEOUT_MS = 2147483647;
+
+function scheduleTodoOverdueRefresh() {
+  if (overdueRefreshTimer) {
+    clearTimeout(overdueRefreshTimer);
+    overdueRefreshTimer = null;
+  }
+  let flipAt = null;
+  todos.forEach(todo => {
+    if (todo.completed || !todo.dueDate || !todo.dueTime) return;
+    if (isOverdue(todo.dueDate, todo.dueTime)) return;
+    const due = getDueDateTime(todo.dueDate, todo.dueTime);
+    // isOverdue() is a strict `<`, so the row only flips one ms after the
+    // due instant; arming for that ms avoids re-firing on the exact instant
+    // and finding the todo still "not overdue".
+    const flip = due ? due.getTime() + 1 : null;
+    if (flip !== null && (flipAt === null || flip < flipAt)) {
+      flipAt = flip;
+    }
+  });
+  if (flipAt === null) return;
+  const delay = Math.min(MAX_OVERDUE_TIMEOUT_MS, Math.max(1, flipAt - Date.now()));
+  overdueRefreshTimer = setTimeout(() => {
+    overdueRefreshTimer = null;
+    applyFilters();
+  }, delay);
 }
 
 // Update filter pill UI
@@ -3003,6 +3045,9 @@ function initTodo() {
   // Re-run the filters at the next local midnight so the Today list and
   // badge never go stale overnight (issue #1085).
   scheduleTodoMidnightRefresh();
+  // Re-arm the due-minute refresh so timed todos flip overdue without a
+  // click even after a re-init (issue #1205).
+  scheduleTodoOverdueRefresh();
 
   return true;
 }

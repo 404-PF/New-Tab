@@ -569,6 +569,33 @@ describe('Todo filtering', () => {
     }
   });
 
+  it('refreshes the overdue view and badge when a timed todo passes due (issue #1205)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 9, 59, 50)); // Sep 15, 2026 09:59:50
+    const previousStatus = currentFilters.status;
+
+    try {
+      // Re-init under fake timers so the due-minute refresh timer is armed
+      // against the faked clock instead of the real one.
+      initTodo();
+      addTodo('Due at 10:00', '2026-09-15', 'medium', null, '10:00');
+      setFilter('overdue');
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(0);
+      expect(document.getElementById('badge-overdue').textContent).toBe('0');
+
+      // Cross 10:00 with no further interaction; the scheduled refresh
+      // reruns applyFilters so rows, badge and pill membership agree.
+      vi.advanceTimersByTime(11000);
+      const row = document.querySelector('.todo-item');
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+      expect(row.classList.contains('overdue')).toBe(true);
+      expect(document.getElementById('badge-overdue').textContent).toBe('1');
+    } finally {
+      currentFilters.status = previousStatus;
+      vi.useRealTimers();
+    }
+  });
+
   it('sorts incomplete before completed', () => {
     addTodo('Later');
     addTodo('Sooner');
