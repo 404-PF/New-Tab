@@ -235,6 +235,11 @@ describe('Weather high/low translations', () => {
   it('defines localized weatherHigh and weatherLow for every supported language', () => {
     expectTranslationKeys(['weatherHigh', 'weatherLow'], { differFromEnglish: true });
   });
+
+  it('includes weatherHigh and weatherLow in every _locales messages.json', () => {
+    expectMessagesJsonKey('weatherHigh');
+    expectMessagesJsonKey('weatherLow');
+  });
 });
 
 describe('Pomodoro translations', () => {

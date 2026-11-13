@@ -738,6 +738,14 @@
     "message": "现在",
     "description": "Label for the current hour in hourly forecast"
   },
+  "weatherHigh": {
+    "message": "最高",
+    "description": "Label for today's high temperature in the weather widget"
+  },
+  "weatherLow": {
+    "message": "最低",
+    "description": "Label for today's low temperature in the weather widget"
+  },
   "notesSearchPlaceholder": {
     "message": "搜尋便箋...",
     "description": "Placeholder text for the notes search input"
