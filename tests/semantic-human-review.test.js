@@ -26,6 +26,49 @@ function grantModelHosts() {
   } catch { /* ignore */ }
 }
 
+function installPendingRerankMock(isReadyImpl) {
+  const holder = { resolveEmbed: null };
+  window.EmbeddingService = {
+    isReady: isReadyImpl || function () { return true; },
+    getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 'test-model' }; },
+    embedQuery: function () { return Promise.resolve([1, 0]); },
+    embedTexts: function () {
+      return new Promise(function (resolve) { holder.resolveEmbed = resolve; });
+    },
+    cancelLoad: function () {},
+    deleteModel: function () { return Promise.resolve(true); }
+  };
+  return holder;
+}
+
+function installCountingEnsureMock() {
+  const state = { calls: 0 };
+  window.EmbeddingService = {
+    getStatus: function () { return { status: 'idle', progress: 0, error: '', modelId: 'test-model' }; },
+    isReady: function () { return false; },
+    ensureModel: function () {
+      state.calls += 1;
+      return Promise.resolve({ id: 'harrier-int8' });
+    },
+    cancelLoad: function () {}
+  };
+  return state;
+}
+
+async function flushSettings(rounds) {
+  await Promise.resolve();
+  for (let i = 0; i < rounds; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+function startNotesQuery(value) {
+  const searchInput = document.getElementById('notes-search');
+  searchInput.value = value;
+  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+  return searchInput;
+}
+
 beforeAll(() => {
   injectScript('src/core/motion.js');
   injectScript('src/core/dom-ready.js');
@@ -68,30 +111,22 @@ afterEach(() => {
 describe('PR #1187 human-review resolutions', () => {
   it('drops an in-flight rerank when semantic search is turned off', async () => {
     localStorage.setItem('notesSemanticEnabled', 'true');
-    let resolveEmbed = null;
-    window.EmbeddingService = {
-      isReady: function () { return localStorage.getItem('notesSemanticEnabled') === 'true'; },
-      getStatus: function () {
-        return localStorage.getItem('notesSemanticEnabled') === 'true'
-          ? { status: 'ready', progress: 1, error: '', modelId: 'test-model' }
-          : { status: 'idle', progress: 0, error: '', modelId: 'test-model' };
-      },
-      embedQuery: function () { return Promise.resolve([1, 0]); },
-      embedTexts: function () {
-        return new Promise(function (resolve) { resolveEmbed = resolve; });
-      },
-      cancelLoad: function () {},
-      deleteModel: function () { return Promise.resolve(true); }
+    const pending = installPendingRerankMock(function () {
+      return localStorage.getItem('notesSemanticEnabled') === 'true';
+    });
+    // Keep the status shape of the original test: idle once disabled.
+    window.EmbeddingService.getStatus = function () {
+      return localStorage.getItem('notesSemanticEnabled') === 'true'
+        ? { status: 'ready', progress: 1, error: '', modelId: 'test-model' }
+        : { status: 'idle', progress: 0, error: '', modelId: 'test-model' };
     };
-    const searchInput = document.getElementById('notes-search');
-    searchInput.value = 'feline';
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    startNotesQuery('feline');
     await new Promise((resolve) => setTimeout(resolve, 250));
-    expect(typeof resolveEmbed).toBe('function');
+    expect(typeof pending.resolveEmbed).toBe('function');
     // Disable mid-flight: sync pass shows keyword order (empty for feline).
     localStorage.setItem('notesSemanticEnabled', 'false');
     window.applyNotesSemanticEnabled();
-    resolveEmbed([[1, 0], [0.2, 0.2], [0, 1]]);
+    pending.resolveEmbed([[1, 0], [0.2, 0.2], [0, 1]]);
     await Promise.resolve();
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -145,27 +180,17 @@ describe('PR #1187 human-review resolutions', () => {
 
   it('invalidates a tag-A rerank when the tag filter changes to B', async () => {
     localStorage.setItem('notesSemanticEnabled', 'true');
-    let resolveEmbed = null;
-    window.EmbeddingService = {
-      isReady: function () { return true; },
-      getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 'test-model' }; },
-      embedQuery: function () { return Promise.resolve([1, 0]); },
-      embedTexts: function () {
-        return new Promise(function (resolve) { resolveEmbed = resolve; });
-      }
-    };
+    const pending = installPendingRerankMock();
     // Filter to pets, start a query, then switch to work mid-flight.
     const petsBtn = [...document.querySelectorAll('.note-tag-filter-btn')].find((b) => b.dataset.tag === 'pets');
     expect(petsBtn).toBeTruthy();
     petsBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    const searchInput = document.getElementById('notes-search');
-    searchInput.value = 'e';
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    startNotesQuery('e');
     await new Promise((resolve) => setTimeout(resolve, 250));
-    expect(typeof resolveEmbed).toBe('function');
+    expect(typeof pending.resolveEmbed).toBe('function');
     const workBtn = [...document.querySelectorAll('.note-tag-filter-btn')].find((b) => b.dataset.tag === 'work');
     workBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    resolveEmbed([[1, 0], [0, 1]]);
+    pending.resolveEmbed([[1, 0], [0, 1]]);
     await Promise.resolve();
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -176,66 +201,38 @@ describe('PR #1187 human-review resolutions', () => {
   });
 
   it('defers the model load until the first query (no eager resume)', async () => {
-    let calls = 0;
-    window.EmbeddingService = {
-      getStatus: function () { return { status: 'idle', progress: 0, error: '', modelId: 'test-model' }; },
-      isReady: function () { return false; },
-      ensureModel: function () {
-        calls += 1;
-        return Promise.resolve({ id: 'harrier-int8' });
-      },
-      cancelLoad: function () {}
-    };
+    const tracker = installCountingEnsureMock();
     grantModelHosts();
     localStorage.setItem('notesSemanticEnabled', 'true');
     // Previously finished model: page load must NOT warm it.
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.initNotesSemanticSetting();
-    await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(calls).toBe(0);
+    await flushSettings(2);
+    expect(tracker.calls).toBe(0);
     // Legacy flag without a marker also defers.
     localStorage.removeItem('notesSemanticDownload');
     window.initNotesSemanticSetting();
-    await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(calls).toBe(0);
+    await flushSettings(1);
+    expect(tracker.calls).toBe(0);
     // An interrupted download still resumes eagerly.
     localStorage.setItem('notesSemanticDownload', 'loading');
     window.initNotesSemanticSetting();
-    await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(calls).toBeGreaterThan(0);
+    await flushSettings(3);
+    expect(tracker.calls).toBeGreaterThan(0);
   });
 
   it('starts the deferred model on the first query after page load', async () => {
-    let calls = 0;
-    window.EmbeddingService = {
-      getStatus: function () { return { status: 'idle', progress: 0, error: '', modelId: 'test-model' }; },
-      isReady: function () { return false; },
-      ensureModel: function () {
-        calls += 1;
-        return Promise.resolve({ id: 'harrier-int8' });
-      },
-      cancelLoad: function () {}
-    };
+    const tracker = installCountingEnsureMock();
     grantModelHosts();
     localStorage.setItem('notesSemanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.initNotesSemanticSetting();
-    await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(calls).toBe(0);
+    await flushSettings(2);
+    expect(tracker.calls).toBe(0);
     // First semantic query warms the deferred model exactly once.
-    const searchInput = document.getElementById('notes-search');
-    searchInput.value = 'feline';
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    startNotesQuery('feline');
     await new Promise((resolve) => setTimeout(resolve, 300));
-    expect(calls).toBe(1);
+    expect(tracker.calls).toBe(1);
   });
 
   it('import primes nothing so no silent download starts', async () => {
@@ -243,21 +240,10 @@ describe('PR #1187 human-review resolutions', () => {
     localStorage.removeItem('notesSemanticDownload');
     window.primeNotesSemanticImport();
     expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
-    let calls = 0;
-    window.EmbeddingService = {
-      getStatus: function () { return { status: 'idle', progress: 0, error: '', modelId: 'test-model' }; },
-      isReady: function () { return false; },
-      ensureModel: function () {
-        calls += 1;
-        return Promise.resolve({ id: 'harrier-int8' });
-      },
-      cancelLoad: function () {}
-    };
+    const tracker = installCountingEnsureMock();
     grantModelHosts();
     window.initNotesSemanticSetting();
-    await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(calls).toBe(0);
+    await flushSettings(2);
+    expect(tracker.calls).toBe(0);
   });
 });

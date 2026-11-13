@@ -11,6 +11,13 @@ function validDef(id) {
   };
 }
 
+function persistActiveAndReset(firstId, secondId, activeId) {
+  window.EmbeddingRegistry.registerEmbeddingProvider(validDef(firstId));
+  window.EmbeddingRegistry.registerEmbeddingProvider(validDef(secondId));
+  window.EmbeddingRegistry.setActiveEmbeddingProvider(activeId);
+  window.EmbeddingRegistry._resetForTests();
+}
+
 beforeAll(() => {
   injectScript('src/ai/embeddings/embedding-registry.js');
 });
@@ -68,10 +75,7 @@ describe('EmbeddingRegistry', () => {
   });
 
   it('restores the persisted provider on next registration', () => {
-    window.EmbeddingRegistry.registerEmbeddingProvider(validDef('one'));
-    window.EmbeddingRegistry.registerEmbeddingProvider(validDef('zero'));
-    window.EmbeddingRegistry.setActiveEmbeddingProvider('zero');
-    window.EmbeddingRegistry._resetForTests();
+    persistActiveAndReset('one', 'zero', 'zero');
     // Persisted id ('zero') survives the reset via localStorage.
     window.EmbeddingRegistry.registerEmbeddingProvider(validDef('zero'));
     expect(window.EmbeddingRegistry.getActiveEmbeddingProviderId()).toBe('zero');
@@ -80,10 +84,7 @@ describe('EmbeddingRegistry', () => {
   });
 
   it('activates the persisted provider even when registered second', () => {
-    window.EmbeddingRegistry.registerEmbeddingProvider(validDef('one'));
-    window.EmbeddingRegistry.registerEmbeddingProvider(validDef('two'));
-    window.EmbeddingRegistry.setActiveEmbeddingProvider('two');
-    window.EmbeddingRegistry._resetForTests();
+    persistActiveAndReset('one', 'two', 'two');
     window.EmbeddingRegistry.registerEmbeddingProvider(validDef('one'));
     expect(window.EmbeddingRegistry.getActiveEmbeddingProviderId()).toBe('one');
     window.EmbeddingRegistry.registerEmbeddingProvider(validDef('two'));

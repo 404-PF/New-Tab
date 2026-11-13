@@ -5,6 +5,52 @@ function setNotes(data) {
   localStorage.setItem('notes', JSON.stringify(data));
 }
 
+function fourAppleNotes() {
+  return [
+    { id: 'A', text: 'alpha apple', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+    { id: 'B', text: 'beta', tag: '', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+    { id: 'C', text: 'gamma', tag: '', order: 2, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+    { id: 'D', text: 'delta apple', tag: '', order: 3, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+  ];
+}
+
+function installAppleRankingMock() {
+  window.EmbeddingService = {
+    isReady: function () { return true; },
+    getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 't' }; },
+    embedQuery: function () { return Promise.resolve([1, 0]); },
+    embedTexts: function (texts) {
+      const list = Array.isArray(texts) ? texts : [texts];
+      return Promise.resolve(list.map(function (t) {
+        const s = String(t).toLowerCase();
+        if (s.includes('delta')) return [1, 0];
+        if (s.includes('alpha')) return [0.9, 0.1];
+        return [0, 1];
+      }));
+    }
+  };
+}
+
+function visibleNoteIds() {
+  return [...document.querySelectorAll('.note-item')].map((el) => el.dataset.id);
+}
+
+async function searchAppleNotes() {
+  const searchInput = document.getElementById('notes-search');
+  searchInput.value = 'apple';
+  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+  await new Promise((resolve) => setTimeout(resolve, 450));
+  return searchInput;
+}
+
+async function seedFourAndSearchApple() {
+  setNotes(fourAppleNotes());
+  window.initNotes();
+  localStorage.setItem('notesSemanticEnabled', 'true');
+  installAppleRankingMock();
+  return searchAppleNotes();
+}
+
 const SEED = [
   { id: '1', text: 'My cat Whiskers needs vet food', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
   { id: '2', text: 'Deploy the staging server Friday', tag: 'work', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
@@ -159,35 +205,8 @@ describe('Notes semantic integration', () => {
     // Only A and D contain 'apple', so query 'apple' keyword-matches just
     // those two; B/C score 0.325 < floor and are filtered, leaving [D,A]
     // by cosine (D=1.0, A~0.99).
-    const four = [
-      { id: 'A', text: 'alpha apple', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-      { id: 'B', text: 'beta', tag: '', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-      { id: 'C', text: 'gamma', tag: '', order: 2, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-      { id: 'D', text: 'delta apple', tag: '', order: 3, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
-    ];
-    setNotes(four);
-    window.initNotes();
-    localStorage.setItem('notesSemanticEnabled', 'true');
-    window.EmbeddingService = {
-      isReady: function () { return true; },
-      getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 't' }; },
-      embedQuery: function () { return Promise.resolve([1, 0]); },
-      embedTexts: function (texts) {
-        const list = Array.isArray(texts) ? texts : [texts];
-        return Promise.resolve(list.map(function (t) {
-          const s = String(t).toLowerCase();
-          if (s.includes('delta')) return [1, 0];
-          if (s.includes('alpha')) return [0.9, 0.1];
-          return [0, 1];
-        }));
-      }
-    };
-    const searchInput = document.getElementById('notes-search');
-    searchInput.value = 'apple';
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-    await new Promise((resolve) => setTimeout(resolve, 450));
-    const shown = [...document.querySelectorAll('.note-item')].map((el) => el.dataset.id);
-    expect(shown).toEqual(['D', 'A']);
+    const searchInput = await seedFourAndSearchApple();
+    expect(visibleNoteIds()).toEqual(['D', 'A']);
     // Drag D (index 0) after A: in ranked coords that is 0 -> 2.
     window.reorderNotes(0, 2);
     const stored = JSON.parse(localStorage.getItem('notes')).map((n) => n.id);
@@ -201,34 +220,8 @@ describe('Notes semantic integration', () => {
     // Notes [A,B,C,D] ranked [D,A]: dropping D in its own slot (0 -> 1)
     // leaves the visible order [D,A] unchanged. It must not touch the
     // manual list and must not clear the query (cubic P2).
-    const four = [
-      { id: 'A', text: 'alpha apple', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-      { id: 'B', text: 'beta', tag: '', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-      { id: 'C', text: 'gamma', tag: '', order: 2, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-      { id: 'D', text: 'delta apple', tag: '', order: 3, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
-    ];
-    setNotes(four);
-    window.initNotes();
-    localStorage.setItem('notesSemanticEnabled', 'true');
-    window.EmbeddingService = {
-      isReady: function () { return true; },
-      getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 't' }; },
-      embedQuery: function () { return Promise.resolve([1, 0]); },
-      embedTexts: function (texts) {
-        const list = Array.isArray(texts) ? texts : [texts];
-        return Promise.resolve(list.map(function (t) {
-          const s = String(t).toLowerCase();
-          if (s.includes('delta')) return [1, 0];
-          if (s.includes('alpha')) return [0.9, 0.1];
-          return [0, 1];
-        }));
-      }
-    };
-    const searchInput = document.getElementById('notes-search');
-    searchInput.value = 'apple';
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-    await new Promise((resolve) => setTimeout(resolve, 450));
-    expect([...document.querySelectorAll('.note-item')].map((el) => el.dataset.id)).toEqual(['D', 'A']);
+    const searchInput = await seedFourAndSearchApple();
+    expect(visibleNoteIds()).toEqual(['D', 'A']);
     window.reorderNotes(0, 1);
     expect(JSON.parse(localStorage.getItem('notes')).map((n) => n.id)).toEqual(['A', 'B', 'C', 'D']);
     expect(window.getNotesSearchQuery()).toBe('apple');
@@ -236,34 +229,8 @@ describe('Notes semantic integration', () => {
   });
 
   it('restores grip focus when a ranked reorder fails to save (PR #1187)', async () => {
-    const four = [
-      { id: 'A', text: 'alpha apple', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-      { id: 'B', text: 'beta', tag: '', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-      { id: 'C', text: 'gamma', tag: '', order: 2, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-      { id: 'D', text: 'delta apple', tag: '', order: 3, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
-    ];
-    setNotes(four);
-    window.initNotes();
-    localStorage.setItem('notesSemanticEnabled', 'true');
-    window.EmbeddingService = {
-      isReady: function () { return true; },
-      getStatus: function () { return { status: 'ready', progress: 1, error: '', modelId: 't' }; },
-      embedQuery: function () { return Promise.resolve([1, 0]); },
-      embedTexts: function (texts) {
-        const list = Array.isArray(texts) ? texts : [texts];
-        return Promise.resolve(list.map(function (t) {
-          const s = String(t).toLowerCase();
-          if (s.includes('delta')) return [1, 0];
-          if (s.includes('alpha')) return [0.9, 0.1];
-          return [0, 1];
-        }));
-      }
-    };
-    const searchInput = document.getElementById('notes-search');
-    searchInput.value = 'apple';
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-    await new Promise((resolve) => setTimeout(resolve, 450));
-    expect([...document.querySelectorAll('.note-item')].map((el) => el.dataset.id)).toEqual(['D', 'A']);
+    await seedFourAndSearchApple();
+    expect(visibleNoteIds()).toEqual(['D', 'A']);
     const grip = document.querySelector('.note-item[data-id="D"] .note-grip');
     expect(grip).toBeTruthy();
     grip.focus();
