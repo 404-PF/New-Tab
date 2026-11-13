@@ -298,7 +298,10 @@
     jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
   };
 
-  const DATE_PHRASE_PATTERN = /\b(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}(?:\/\d{4})?|next\s+week|today(?:'s)?|tonight(?:'s)?|tomorrow(?:'s)?|(?:next\s+)?(?:mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?:'s)?|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2})\b/gi;
+  // Slash dates must not start right after "/" and must not be followed by
+  // another "/", so unsupported forms like 11/15/27 are never partially
+  // matched as a leading M/D (issue #1192).
+  const DATE_PHRASE_PATTERN = /\b(?:\d{4}-\d{1,2}-\d{1,2}|(?<!\/)\d{1,2}\/\d{1,2}(?:\/\d{4})?(?!\/)|next\s+week|today(?:'s)?|tonight(?:'s)?|tomorrow(?:'s)?|(?:next\s+)?(?:mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?:'s)?|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2})\b/gi;
 
   function startOfLocalDay(date) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -341,8 +344,13 @@
     // dates like Feb 29 on a non-leap year.
     const thisYear = buildLocalDate(today.getFullYear(), month, day);
     if (thisYear && thisYear >= today) return formatDateISO(thisYear);
-    const nextYear = buildLocalDate(today.getFullYear() + 1, month, day);
-    return nextYear ? formatDateISO(nextYear) : null;
+    // Search the next four years so Feb 29 skips non-leap years and still
+    // finds the next valid occurrence instead of returning null.
+    for (let year = today.getFullYear() + 1; year <= today.getFullYear() + 4; year += 1) {
+      const nextYear = buildLocalDate(year, month, day);
+      if (nextYear) return formatDateISO(nextYear);
+    }
+    return null;
   }
 
   // Resolve one matched phrase to YYYY-MM-DD, or null when it is not a real
@@ -389,10 +397,10 @@
   }
 
   // Parse a natural-language due-date phrase out of add-bar text. Returns the
-  // text with only the matched span stripped (whitespace collapsed) plus the
-  // resolved YYYY-MM-DD date, or the original text and null when no phrase
-  // resolves. A phrase that is the entire input keeps the text verbatim so
-  // the todo is never emptied by stripping.
+  // text with only the matched span removed (whitespace adjusted only at the
+  // removal boundary) plus the resolved YYYY-MM-DD date, or the original text
+  // and null when no phrase resolves. A phrase that is the entire input keeps
+  // the text verbatim so the todo is never emptied by stripping.
   function parseTodoDatePhrase(text) {
     if (typeof text !== 'string' || !text) {
       return { text: text, dueDate: null };
@@ -418,7 +426,12 @@
       return { text: text, dueDate: null };
     }
 
-    const stripped = (text.slice(0, matchStart) + text.slice(matchEnd)).replace(/\s+/g, ' ').trim();
+    // Remove only the matched span and tidy the whitespace right where it was
+    // removed; whitespace elsewhere in the text is left untouched.
+    const before = text.slice(0, matchStart);
+    const after = text.slice(matchEnd);
+    const boundarySpace = /\s$/.test(before) || /^\s/.test(after) ? ' ' : '';
+    const stripped = (before.replace(/\s+$/, '') + boundarySpace + after.replace(/^\s+/, '')).trim();
     if (!stripped) {
       return { text: text, dueDate: resolved };
     }
@@ -1911,6 +1924,19 @@ function handleDrop(event) {
 }
 
 // Event handlers
+// Applies a phrase-resolved date to the inline picker (or the plain hidden
+// input) so it is on screen before submit. Text without a phrase leaves any
+// manual picker selection untouched (issue #1192).
+function applyPhraseDateToPicker(parsed) {
+  if (!parsed.dueDate) return;
+  if (customDatePicker) {
+    customDatePicker.selectDate(parseLocalDate(parsed.dueDate));
+  } else if (elements.todoDueDate) {
+    elements.todoDueDate.value = parsed.dueDate;
+    syncDueTimeInputState();
+  }
+}
+
 // Shared by the add button and the Enter key so both paths resolve a
 // natural-language due-date phrase the same way (issue #1192).
 function submitTodoFromInput() {
@@ -1918,20 +1944,23 @@ function submitTodoFromInput() {
   if (!input) return;
 
   const parsed = parseTodoDatePhrase(input.value);
-  if (parsed.dueDate) {
-    // Phrase-derived dates pre-select in the inline picker; a picker value
-    // already on screen still wins when the text has no phrase.
-    if (customDatePicker) {
-      customDatePicker.selectDate(parseLocalDate(parsed.dueDate));
-    } else if (elements.todoDueDate) {
-      elements.todoDueDate.value = parsed.dueDate;
-    }
-  }
+  // Phrase-derived dates pre-select in the inline picker; a picker value
+  // already on screen still wins when the text has no phrase.
+  applyPhraseDateToPicker(parsed);
 
   const dueDate = parsed.dueDate || elements.todoDueDate?.value || null;
   const dueTime = elements.todoDueTime?.value || null;
   const priority = getSelectedPriority();
   addTodo(parsed.text, dueDate, priority, null, dueTime);
+}
+
+// Preview the resolved phrase date in the picker while the user types, so the
+// date and the due-time control can be reviewed before Enter or Add saves
+// (issue #1192). The submission path is unchanged.
+function handleTodoInputChange() {
+  const input = elements.todoInput;
+  if (!input) return;
+  applyPhraseDateToPicker(parseTodoDatePhrase(input.value));
 }
 
 function handleKeyPress(event) {
@@ -2704,6 +2733,8 @@ function initTodo() {
   // Event listeners
   elements.addTodoBtn.addEventListener('click', handleAddTodo);
   elements.todoInput.addEventListener('keypress', handleKeyPress);
+  // Preview a recognized phrase date in the picker as it is typed (issue #1192).
+  elements.todoInput.addEventListener('input', handleTodoInputChange);
   if (elements.todoDueTime) {
     elements.todoDueTime.addEventListener('change', () => {
       if (!elements.todoDueDate?.value) {

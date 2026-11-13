@@ -4033,6 +4033,33 @@ describe('Todo natural-language due dates (issue #1192)', () => {
       });
     });
 
+    it('leaves unsupported trailing-year slash dates unchanged', () => {
+      expect(parseTodoDatePhrase('Pay 11/15/27')).toEqual({
+        text: 'Pay 11/15/27',
+        dueDate: null
+      });
+      expect(parseTodoDatePhrase('Due 3/4/25')).toEqual({
+        text: 'Due 3/4/25',
+        dueDate: null
+      });
+    });
+
+    it('rolls Feb 29 forward to the next leap year', () => {
+      expect(parseTodoDatePhrase('Due Feb 29').dueDate).toBe('2028-02-29');
+      expect(parseTodoDatePhrase('Due 2/29').dueDate).toBe('2028-02-29');
+    });
+
+    it('adjusts whitespace only where the phrase was removed', () => {
+      expect(parseTodoDatePhrase('Call  mom tomorrow')).toEqual({
+        text: 'Call  mom',
+        dueDate: '2026-11-12'
+      });
+      expect(parseTodoDatePhrase('Pay tomorrow  later')).toEqual({
+        text: 'Pay later',
+        dueDate: '2026-11-12'
+      });
+    });
+
     it('returns input unchanged when nothing resolves', () => {
       expect(parseTodoDatePhrase('Plain todo')).toEqual({
         text: 'Plain todo',
@@ -4099,6 +4126,28 @@ describe('Todo natural-language due dates (issue #1192)', () => {
       expect(stored).toHaveLength(1);
       expect(stored[0].text).toBe('No phrase here');
       expect(stored[0].dueDate).toBe('2026-12-01');
+    });
+
+    it('previews the phrase date in the picker while typing', () => {
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+      expect(document.getElementById('selected-date-text').textContent).not.toBe('Due Date');
+      expect(document.getElementById('todo-due-time').disabled).toBe(false);
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('keeps a manual picker date while typing text with no phrase', () => {
+      document.getElementById('todo-due-date').value = '2026-12-01';
+
+      const input = document.getElementById('todo-input');
+      input.value = 'No phrase here';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-12-01');
+      expect(loadTodos()).toEqual([]);
     });
 
     it('lets a phrase date win over a previously picked date', () => {
