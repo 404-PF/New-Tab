@@ -4024,3 +4024,336 @@ describe('Todo delete undo (issue #1135)', () => {
     expect(loadTodos().map(todo => todo.text)).toEqual(['Keep', 'Done one']);
   });
 });
+
+describe('Todo natural-language due dates (issue #1192)', () => {
+  // Reference: Wednesday, November 11, 2026
+  const TODAY = new Date(2026, 10, 11);
+
+  let restoreWrites = null;
+  let warnSpy = null;
+
+  beforeEach(() => {
+    // Fake only Date so setTimeout-based helpers (e.g. flushDeferredFailureSync)
+    // still run; full fake timers would hang the afterEach flush.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(TODAY);
+    // Prior suites may leave the picker bound to detached nodes; re-bind to
+    // the live setup.js stubs so selectDate writes the element tests read.
+    window.initCustomDatePicker();
+    document.getElementById('todo-due-date').value = '';
+    document.getElementById('todo-due-time').value = '';
+    document.getElementById('todo-input').value = '';
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    await flushDeferredFailureSync();
+    if (restoreWrites) {
+      restoreWrites();
+      restoreWrites = null;
+    }
+    if (warnSpy) {
+      warnSpy.mockRestore();
+      warnSpy = null;
+    }
+  });
+
+  const submitViaEnter = (text) => {
+    const input = document.getElementById('todo-input');
+    input.value = text;
+    input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true, cancelable: true }));
+  };
+
+  const submitViaButton = (text) => {
+    document.getElementById('todo-input').value = text;
+    document.getElementById('add-todo-btn').click();
+  };
+
+  describe('parseTodoDatePhrase', () => {
+    it('resolves tomorrow and strips only the matched span', () => {
+      expect(parseTodoDatePhrase('Pay rent tomorrow')).toEqual({
+        text: 'Pay rent',
+        dueDate: '2026-11-12'
+      });
+    });
+
+    it('resolves today, tonight, and next week', () => {
+      expect(parseTodoDatePhrase('Submit today').dueDate).toBe('2026-11-11');
+      expect(parseTodoDatePhrase('Party tonight').dueDate).toBe('2026-11-11');
+      expect(parseTodoDatePhrase('Ship next week')).toEqual({
+        text: 'Ship',
+        dueDate: '2026-11-18'
+      });
+    });
+
+    it('resolves bare weekdays to the next occurrence including today', () => {
+      // Today is Wednesday
+      expect(parseTodoDatePhrase('Standup Wednesday').dueDate).toBe('2026-11-11');
+      expect(parseTodoDatePhrase('Report Friday').dueDate).toBe('2026-11-13');
+      expect(parseTodoDatePhrase('Retro Monday').dueDate).toBe('2026-11-16');
+    });
+
+    it('resolves next + weekday as strictly future', () => {
+      expect(parseTodoDatePhrase('Call next Wednesday').dueDate).toBe('2026-11-18');
+      expect(parseTodoDatePhrase('Call next Friday').dueDate).toBe('2026-11-13');
+      expect(parseTodoDatePhrase('Call next Wednesday').text).toBe('Call');
+    });
+
+    it('keeps surrounding words when stripping a mid-phrase match', () => {
+      expect(parseTodoDatePhrase('Call mom on Friday')).toEqual({
+        text: 'Call mom on',
+        dueDate: '2026-11-13'
+      });
+      expect(parseTodoDatePhrase('Buy milk tomorrow for mom')).toEqual({
+        text: 'Buy milk for mom',
+        dueDate: '2026-11-12'
+      });
+    });
+
+    it('resolves ISO, slash, and month-day numeric forms', () => {
+      expect(parseTodoDatePhrase('Due 2026-11-15')).toEqual({
+        text: 'Due',
+        dueDate: '2026-11-15'
+      });
+      expect(parseTodoDatePhrase('Due 11/15').dueDate).toBe('2026-11-15');
+      expect(parseTodoDatePhrase('Due Nov 15').dueDate).toBe('2026-11-15');
+      expect(parseTodoDatePhrase('Due 11/15/2027').dueDate).toBe('2027-11-15');
+    });
+
+    it('rolls year-less month-day forms forward when already past', () => {
+      expect(parseTodoDatePhrase('Due 1/5').dueDate).toBe('2027-01-05');
+      expect(parseTodoDatePhrase('Due 12/31').dueDate).toBe('2026-12-31');
+    });
+
+    it('is case-insensitive and tolerates possessive forms', () => {
+      expect(parseTodoDatePhrase('Pay rent TOMORROW')).toEqual({
+        text: 'Pay rent',
+        dueDate: '2026-11-12'
+      });
+      expect(parseTodoDatePhrase('Pay rent tomorrow\'s').dueDate).toBe('2026-11-12');
+      expect(parseTodoDatePhrase('Ship by Friday\'s').dueDate).toBe('2026-11-13');
+    });
+
+    it('does not strip invalid calendar dates', () => {
+      expect(parseTodoDatePhrase('Pay rent 2026-02-31')).toEqual({
+        text: 'Pay rent 2026-02-31',
+        dueDate: null
+      });
+      expect(parseTodoDatePhrase('Due 13/45')).toEqual({
+        text: 'Due 13/45',
+        dueDate: null
+      });
+    });
+
+    it('leaves unsupported trailing-year slash dates unchanged', () => {
+      expect(parseTodoDatePhrase('Pay 11/15/27')).toEqual({
+        text: 'Pay 11/15/27',
+        dueDate: null
+      });
+      expect(parseTodoDatePhrase('Due 3/4/25')).toEqual({
+        text: 'Due 3/4/25',
+        dueDate: null
+      });
+    });
+
+    it('rolls Feb 29 forward to the next leap year', () => {
+      expect(parseTodoDatePhrase('Due Feb 29').dueDate).toBe('2028-02-29');
+      expect(parseTodoDatePhrase('Due 2/29').dueDate).toBe('2028-02-29');
+    });
+
+    it('adjusts whitespace only where the phrase was removed', () => {
+      expect(parseTodoDatePhrase('Call  mom tomorrow')).toEqual({
+        text: 'Call  mom',
+        dueDate: '2026-11-12'
+      });
+      expect(parseTodoDatePhrase('Pay tomorrow  later')).toEqual({
+        text: 'Pay later',
+        dueDate: '2026-11-12'
+      });
+    });
+
+    it('leaves no stray space before punctuation', () => {
+      expect(parseTodoDatePhrase('Call mom tomorrow.')).toEqual({
+        text: 'Call mom.',
+        dueDate: '2026-11-12'
+      });
+      expect(parseTodoDatePhrase('Meeting tomorrow, please')).toEqual({
+        text: 'Meeting, please',
+        dueDate: '2026-11-12'
+      });
+    });
+
+    it('returns input unchanged when nothing resolves', () => {
+      expect(parseTodoDatePhrase('Plain todo')).toEqual({
+        text: 'Plain todo',
+        dueDate: null
+      });
+      expect(parseTodoDatePhrase('tomorrowland trip')).toEqual({
+        text: 'tomorrowland trip',
+        dueDate: null
+      });
+      expect(parseTodoDatePhrase('')).toEqual({ text: '', dueDate: null });
+    });
+
+    it('keeps text verbatim when the phrase is the entire input', () => {
+      expect(parseTodoDatePhrase('tomorrow')).toEqual({
+        text: 'tomorrow',
+        dueDate: '2026-11-12'
+      });
+      expect(parseTodoDatePhrase('next week')).toEqual({
+        text: 'next week',
+        dueDate: '2026-11-18'
+      });
+    });
+  });
+
+  describe('add-todo handlers', () => {
+    it('Enter strips the phrase and stores the resolved due date', () => {
+      submitViaEnter('Pay rent tomorrow');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('Pay rent');
+      expect(stored[0].dueDate).toBe('2026-11-12');
+      expect(document.getElementById('todo-input').value).toBe('');
+    });
+
+    it('the add button resolves phrases the same way as Enter', () => {
+      submitViaButton('Submit report next week');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('Submit report');
+      expect(stored[0].dueDate).toBe('2026-11-18');
+    });
+
+    it('pre-selects the phrase date in the inline picker', () => {
+      restoreWrites = failStorageWritesFor('todos', 'sync');
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Save failure skips clearInputs, so the pre-selection stays visible.
+      submitViaEnter('Pay rent tomorrow');
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+      expect(document.getElementById('selected-date-text').textContent).not.toBe('Due Date');
+      expect(document.getElementById('todo-due-time').disabled).toBe(false);
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('keeps the picker date when the text has no phrase', () => {
+      document.getElementById('todo-due-date').value = '2026-12-01';
+
+      submitViaEnter('No phrase here');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('No phrase here');
+      expect(stored[0].dueDate).toBe('2026-12-01');
+    });
+
+    it('previews the phrase date in the picker while typing', () => {
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+      expect(document.getElementById('selected-date-text').textContent).not.toBe('Due Date');
+      expect(document.getElementById('todo-due-time').disabled).toBe(false);
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('keeps a manual picker date while typing text with no phrase', () => {
+      document.getElementById('todo-due-date').value = '2026-12-01';
+
+      const input = document.getElementById('todo-input');
+      input.value = 'No phrase here';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-12-01');
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('restores the earlier picker date when the phrase is deleted', () => {
+      document.getElementById('todo-due-date').value = '2026-12-01';
+
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+
+      input.value = 'Pay rent';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-12-01');
+      expect(document.getElementById('todo-due-time').disabled).toBe(false);
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('keeps a picker date chosen after the phrase preview when the phrase is removed', () => {
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+
+      // Manual pick while the preview is showing must win over the restore.
+      document.getElementById('todo-due-date').value = '2026-11-20';
+
+      input.value = 'Pay rent';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-20');
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('clears the preview when the phrase is removed and nothing was picked', () => {
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+
+      input.value = 'Pay rent';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('');
+      expect(document.getElementById('todo-due-time').disabled).toBe(true);
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('lets a phrase date win over a previously picked date', () => {
+      document.getElementById('todo-due-date').value = '2026-12-01';
+
+      submitViaEnter('Pay rent tomorrow');
+
+      const stored = loadTodos();
+      expect(stored[0].dueDate).toBe('2026-11-12');
+      expect(stored[0].text).toBe('Pay rent');
+    });
+
+    it('stores invalid ISO text verbatim with no due date', () => {
+      submitViaEnter('Pay rent 2026-02-31');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('Pay rent 2026-02-31');
+      expect(stored[0].dueDate).toBeNull();
+      expect(document.getElementById('todo-due-date').value).toBe('');
+    });
+
+    it('keeps a whole-input phrase as the todo text', () => {
+      submitViaEnter('tomorrow');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('tomorrow');
+      expect(stored[0].dueDate).toBe('2026-11-12');
+    });
+
+    it('resolves a weekday phrase on the add path', () => {
+      submitViaButton('Call mom on Friday');
+
+      const stored = loadTodos();
+      expect(stored[0].text).toBe('Call mom on');
+      expect(stored[0].dueDate).toBe('2026-11-13');
+    });
+  });
+});
