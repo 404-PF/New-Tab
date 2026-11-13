@@ -12,6 +12,7 @@ window.i18n.__registerLocale('de', {
   addTimezone: 'Hinzufügen',
   removeTimezone: 'Entfernen',
   removeTimezoneLabel: 'Zeitzone von {city} entfernen',
+  timezoneMoreResults: '{shown} von {total} Zeitzonen',
   searchPlaceholder: 'Suche oder Website eingeben',
   searchWith: 'Suchen mit',
   searchProviderGoogle: 'Google',

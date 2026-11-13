@@ -466,6 +466,10 @@
     "message": "Zeitzone von {city} entfernen",
     "description": "Accessible label for removing a specific time zone"
   },
+  "timezoneMoreResults": {
+    "message": "{shown} von {total} Zeitzonen",
+    "description": "Hint shown when the time zone picker list is truncated"
+  },
   "games": {
     "message": "Spiele",
     "description": "Games app name"

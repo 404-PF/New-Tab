@@ -1414,12 +1414,21 @@ body.light-theme .timezone-picker-wrapper input {
 .timezone-option:focus {
   background: rgba(99, 102, 241, 0.3);
 }
+.timezone-options-more {
+  padding: 6px 8px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.8em;
+  text-align: center;
+}
 body.light-theme .timezone-options {
   background: #f1f5f9;
   border-color: rgba(0, 0, 0, 0.12);
 }
 body.light-theme .timezone-option {
   color: #1e293b;
+}
+body.light-theme .timezone-options-more {
+  color: rgba(30, 41, 59, 0.55);
 }
 .timezone-add select {
   flex: 1;

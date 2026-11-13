@@ -120,16 +120,25 @@ describe('timezone clocks', () => {
     expect(window.isValidZoneId('Europe/Kyiv')).toBe(true);
     expect(window.isValidZoneId('Not/A_Zone')).toBe(false);
     expect(window.isValidZoneId('')).toBe(false);
+    // Intl resolves these case-insensitively / as offsets, but they must not
+    // be storable next to the canonical spelling as duplicate clocks.
+    expect(window.isValidZoneId('america/new_york')).toBe(false);
+    expect(window.isValidZoneId('+05:30')).toBe(false);
 
     expect(window.addTimeZone('America/Bogota')).toBe(true);
     expect(window.addTimeZone('Europe/Kyiv')).toBe(true);
     expect(window.addTimeZone('Asia/Kathmandu')).toBe(true);
     expect(window.addTimeZone('Pacific/Fiji')).toBe(true);
-    expect(window.addTimeZone('Australia/Sydney')).toBe(true);
 
+    // Rejected while the list is still under the cap, so these fail on the
+    // duplicate/invalid checks themselves rather than on the cap.
     expect(window.addTimeZone('America/Bogota')).toBe(false);
-    expect(window.addTimeZone('America/Chicago')).toBe(false);
     expect(window.addTimeZone('Not/A_Zone')).toBe(false);
+    expect(window.addTimeZone('america/new_york')).toBe(false);
+
+    expect(window.addTimeZone('Australia/Sydney')).toBe(true);
+    // A sixth otherwise-valid zone is rejected only because the cap is full.
+    expect(window.addTimeZone('America/Chicago')).toBe(false);
 
     expect(window.loadTimeZones()).toEqual([
       'America/Bogota',
@@ -161,6 +170,9 @@ describe('timezone clocks', () => {
     expect(options.slice(0, shortlist.length).map(zone => zone.id))
       .toEqual(shortlist.map(zone => zone.id));
     expect(options.map(zone => zone.id)).toContain('America/Bogota');
+    // Intl.supportedValuesOf omits UTC on this runtime; the picker must
+    // still offer it (#1199).
+    expect(options.map(zone => zone.id)).toContain('UTC');
     expect(options.every(zone => typeof zone.id === 'string'
       && typeof zone.city === 'string' && zone.city.length > 0)).toBe(true);
   });
@@ -174,6 +186,8 @@ describe('timezone clocks', () => {
     const option = document.querySelector('#timezone-options button[data-zone="America/Bogota"]');
     expect(option).not.toBeNull();
     expect(option.textContent).toContain('Bogota');
+    // One match fits the cap, so no truncation hint is shown.
+    expect(document.querySelector('#timezone-options .timezone-options-more')).toBeNull();
 
     option.click();
     document.getElementById('add-timezone-btn').click();
@@ -188,6 +202,41 @@ describe('timezone clocks', () => {
     expect(idleOptions.length).toBeGreaterThan(0);
     expect(idleOptions.length).toBeLessThanOrEqual(40);
     expect(document.querySelector('#timezone-options button[data-zone="America/Chicago"]')).not.toBeNull();
+    // The idle list is capped below the full set, so the hint says how many
+    // zones are hidden instead of letting the list look complete (#1199).
+    const hint = document.querySelector('#timezone-options .timezone-options-more');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toBe(window.i18n.t('timezoneMoreResults', {
+      shown: idleOptions.length,
+      total: window.getTimeZoneOptions().length
+    }));
+  });
+
+  it('adds a typed zone id that the picker list omits (#1199)', () => {
+    setupClocks();
+    const picker = document.getElementById('timezone-picker');
+    const addBtn = document.getElementById('add-timezone-btn');
+
+    // Etc/GMT+8 is accepted by Intl but missing from
+    // Intl.supportedValuesOf, so it never appears as an option; typing it
+    // must still enable Add.
+    picker.value = 'Etc/GMT+8';
+    picker.dispatchEvent(new Event('input'));
+    expect(addBtn.disabled).toBe(false);
+    addBtn.click();
+    expect(window.showToast).not.toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['Etc/GMT+8']);
+    expect(clockChips().length).toBe(1);
+    expect(clockChips()[0].dataset.zone).toBe('Etc/GMT+8');
+
+    // Non-canonical spellings and plain prose never enable Add.
+    picker.value = 'america/new_york';
+    picker.dispatchEvent(new Event('input'));
+    expect(addBtn.disabled).toBe(true);
+
+    picker.value = 'not a zone';
+    picker.dispatchEvent(new Event('input'));
+    expect(addBtn.disabled).toBe(true);
   });
 
   it('re-renders generated controls when the language changes', () => {

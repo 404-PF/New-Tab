@@ -739,6 +739,16 @@ describe('AI assistant shortcut translations (issue #1185)', () => {
   });
 });
 
+// Truncated time zone picker results (issue #1199): the "N of M time zones"
+// hint ships in every runtime locale table and every chrome.i18n
+// messages.json.
+describe('Timezone picker truncation hint translations (issue #1199)', () => {
+  it('defines timezoneMoreResults in every runtime table and messages.json', () => {
+    expectTranslationKeys(['timezoneMoreResults'], { differFromEnglish: true });
+    expectMessagesJsonKey('timezoneMoreResults');
+  });
+});
+
 describe('New-Tab.html i18n key completeness', () => {
   it('resolves every data-i18n key used in New-Tab.html in the en dictionary', () => {
     const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');

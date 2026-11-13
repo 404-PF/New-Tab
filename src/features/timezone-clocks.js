@@ -112,9 +112,13 @@
   }
 
   // Accepts any zone id the runtime's Intl can resolve, so users are not
-  // limited to the curated POPULAR_ZONES shortlist (#1199).
+  // limited to the curated POPULAR_ZONES shortlist (#1199). The canonical
+  // IANA shape is checked first because Intl resolves ids case-insensitively
+  // and accepts offset strings like +05:30, which would otherwise be stored
+  // next to the real spelling as a duplicate clock.
+  const IANA_ZONE_SHAPE = /^[A-Z][A-Za-z0-9_+-]*(\/[A-Z][A-Za-z0-9_+-]*)*$/;
   function isValidZoneId(zoneId) {
-    if (typeof zoneId !== 'string' || zoneId.length === 0) return false;
+    if (typeof zoneId !== 'string' || !IANA_ZONE_SHAPE.test(zoneId)) return false;
     try {
       new Intl.DateTimeFormat('en-US', { timeZone: zoneId });
       return true;
@@ -128,16 +132,20 @@
   // the city label for unknown ids mirrors the chip-rendering fallback.
   function getTimeZoneOptions() {
     const options = POPULAR_ZONES.slice();
-    if (typeof Intl.supportedValuesOf !== 'function') return options;
     const seen = Object.create(null);
     POPULAR_ZONES.forEach(function (zone) {
       seen[zone.id] = true;
     });
-    Intl.supportedValuesOf('timeZone').forEach(function (id) {
-      if (seen[id]) return;
-      seen[id] = true;
-      options.push({ id: id, city: id.split('/').pop().replace(/_/g, ' ') });
-    });
+    if (typeof Intl.supportedValuesOf === 'function') {
+      Intl.supportedValuesOf('timeZone').forEach(function (id) {
+        if (seen[id]) return;
+        seen[id] = true;
+        options.push({ id: id, city: id.split('/').pop().replace(/_/g, ' ') });
+      });
+    }
+    // UTC is a valid zone everywhere, but Intl.supportedValuesOf omits it on
+    // some runtimes, so the picker would otherwise never offer it (#1199).
+    if (!seen.UTC) options.push({ id: 'UTC', city: 'UTC' });
     return options;
   }
 
