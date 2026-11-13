@@ -4060,6 +4060,17 @@ describe('Todo natural-language due dates (issue #1192)', () => {
       });
     });
 
+    it('leaves no stray space before punctuation', () => {
+      expect(parseTodoDatePhrase('Call mom tomorrow.')).toEqual({
+        text: 'Call mom.',
+        dueDate: '2026-11-12'
+      });
+      expect(parseTodoDatePhrase('Meeting tomorrow, please')).toEqual({
+        text: 'Meeting, please',
+        dueDate: '2026-11-12'
+      });
+    });
+
     it('returns input unchanged when nothing resolves', () => {
       expect(parseTodoDatePhrase('Plain todo')).toEqual({
         text: 'Plain todo',
@@ -4147,6 +4158,52 @@ describe('Todo natural-language due dates (issue #1192)', () => {
       input.dispatchEvent(new Event('input', { bubbles: true }));
 
       expect(document.getElementById('todo-due-date').value).toBe('2026-12-01');
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('restores the earlier picker date when the phrase is deleted', () => {
+      document.getElementById('todo-due-date').value = '2026-12-01';
+
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+
+      input.value = 'Pay rent';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-12-01');
+      expect(document.getElementById('todo-due-time').disabled).toBe(false);
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('keeps a picker date chosen after the phrase preview when the phrase is removed', () => {
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+
+      // Manual pick while the preview is showing must win over the restore.
+      document.getElementById('todo-due-date').value = '2026-11-20';
+
+      input.value = 'Pay rent';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-20');
+      expect(loadTodos()).toEqual([]);
+    });
+
+    it('clears the preview when the phrase is removed and nothing was picked', () => {
+      const input = document.getElementById('todo-input');
+      input.value = 'Pay rent tomorrow';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(document.getElementById('todo-due-date').value).toBe('2026-11-12');
+
+      input.value = 'Pay rent';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(document.getElementById('todo-due-date').value).toBe('');
+      expect(document.getElementById('todo-due-time').disabled).toBe(true);
       expect(loadTodos()).toEqual([]);
     });
 

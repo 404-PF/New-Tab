@@ -427,11 +427,16 @@
     }
 
     // Remove only the matched span and tidy the whitespace right where it was
-    // removed; whitespace elsewhere in the text is left untouched.
+    // removed; whitespace elsewhere in the text is left untouched. The boundary
+    // space is skipped when one side is empty or the remainder starts with
+    // punctuation, so 'Call mom tomorrow.' becomes 'Call mom.', not 'Call mom .'.
     const before = text.slice(0, matchStart);
     const after = text.slice(matchEnd);
-    const boundarySpace = /\s$/.test(before) || /^\s/.test(after) ? ' ' : '';
-    const stripped = (before.replace(/\s+$/, '') + boundarySpace + after.replace(/^\s+/, '')).trim();
+    const beforeText = before.replace(/\s+$/, '');
+    const afterText = after.replace(/^\s+/, '');
+    const hadBoundarySpace = /\s$/.test(before) || /^\s/.test(after);
+    const boundarySpace = hadBoundarySpace && beforeText && afterText && !/^[.,;:!?)]/.test(afterText) ? ' ' : '';
+    const stripped = (beforeText + boundarySpace + afterText).trim();
     if (!stripped) {
       return { text: text, dueDate: resolved };
     }
@@ -1822,6 +1827,9 @@ function handleTodoSearchInput(event) {
 
 // Clear input fields
 function clearInputs() {
+  // A successful add ends any phrase preview; its displaced value must not
+  // resurface against the fresh input state (issue #1192).
+  phrasePreviewState = null;
   if (elements.todoInput) elements.todoInput.value = '';
   if (elements.todoDueDate) elements.todoDueDate.value = '';
   if (elements.todoDueTime) elements.todoDueTime.value = '';
@@ -1924,15 +1932,47 @@ function handleDrop(event) {
 }
 
 // Event handlers
+// Picker value displaced by an in-progress phrase preview: `saved` is the
+// selection on screen before the first preview overwrite and `applied` is the
+// phrase date the preview put in its place. The pair is restored only while
+// the picker still shows `applied`, so deleting the phrase brings an earlier
+// manual selection back while a pick made after the preview wins (issue #1192).
+let phrasePreviewState = null;
+
 // Applies a phrase-resolved date to the inline picker (or the plain hidden
-// input) so it is on screen before submit. Text without a phrase leaves any
-// manual picker selection untouched (issue #1192).
+// input) so it is on screen before submit. Text without a phrase restores any
+// selection the preview displaced and otherwise leaves the picker untouched
+// (issue #1192).
 function applyPhraseDateToPicker(parsed) {
-  if (!parsed.dueDate) return;
+  const currentPickerValue = elements.todoDueDate?.value || '';
+  if (parsed.dueDate) {
+    if (phrasePreviewState) {
+      phrasePreviewState.applied = parsed.dueDate;
+    } else {
+      phrasePreviewState = { saved: currentPickerValue, applied: parsed.dueDate };
+    }
+    if (customDatePicker) {
+      customDatePicker.selectDate(parseLocalDate(parsed.dueDate));
+    } else if (elements.todoDueDate) {
+      elements.todoDueDate.value = parsed.dueDate;
+      syncDueTimeInputState();
+    }
+    return;
+  }
+  if (!phrasePreviewState) return;
+  const { saved, applied } = phrasePreviewState;
+  phrasePreviewState = null;
+  // Only undo the preview while the picker still shows what it applied; a
+  // manual pick (or Clear) made after the preview is the newer intent.
+  if (currentPickerValue !== applied) return;
   if (customDatePicker) {
-    customDatePicker.selectDate(parseLocalDate(parsed.dueDate));
+    if (saved) {
+      customDatePicker.selectDate(parseLocalDate(saved));
+    } else {
+      customDatePicker.clearDate();
+    }
   } else if (elements.todoDueDate) {
-    elements.todoDueDate.value = parsed.dueDate;
+    elements.todoDueDate.value = saved;
     syncDueTimeInputState();
   }
 }
