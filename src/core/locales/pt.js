@@ -417,6 +417,7 @@ window.i18n.__registerLocale('pt', {
   filterCompleted: 'Concluídas',
   filterOverdue: 'Vencidas',
   filterToday: 'Hoje',
+  filterUpcoming: 'Próximos',
   priorityHigh: 'Alta',
   priorityMedium: 'Média',
   priorityLow: 'Baixa',

@@ -553,6 +553,7 @@ const translations = {
     filterCompleted: 'Completed',
     filterOverdue: 'Overdue',
     filterToday: 'Today',
+    filterUpcoming: 'Upcoming',
     priorityHigh: 'High',
     priorityMedium: 'Medium',
     priorityLow: 'Low',

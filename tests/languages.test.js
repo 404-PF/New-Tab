@@ -408,6 +408,12 @@ describe('Todo sort selector translations (issue #1013)', () => {
   });
 });
 
+describe('Todo upcoming filter translations (issue #1209)', () => {
+  it('defines the upcoming filter label in each supported language', () => {
+    expectTranslationKeys(['filterUpcoming'], { differFromEnglish: true });
+  });
+});
+
 const TODO_SEARCH_TRANSLATION_KEYS = [
   'todoSearchPlaceholder',
   'todoNoResults'

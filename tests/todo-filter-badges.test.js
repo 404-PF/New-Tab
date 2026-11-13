@@ -31,6 +31,7 @@ function filterPillsHtml() {
         <button type="button" class="filter-pill" data-filter="completed"><span class="filter-label" data-i18n="filterCompleted">Completed</span> <span class="filter-badge" id="badge-completed">0</span></button>
         <button type="button" class="filter-pill" data-filter="overdue"><span class="filter-label" data-i18n="filterOverdue">Overdue</span> <span class="filter-badge" id="badge-overdue">0</span></button>
         <button type="button" class="filter-pill" data-filter="today"><span class="filter-label" data-i18n="filterToday">Today</span> <span class="filter-badge" id="badge-today">0</span></button>
+        <button type="button" class="filter-pill" data-filter="upcoming"><span class="filter-label" data-i18n="filterUpcoming">Upcoming</span> <span class="filter-badge" id="badge-upcoming">0</span></button>
         <button type="button" class="filter-pill" data-filter="high" data-filter-type="priority"><span class="filter-label" data-i18n="priorityHigh">High</span> <span class="filter-badge" id="badge-high">0</span></button>
         <button type="button" class="filter-pill" data-filter="medium" data-filter-type="priority"><span class="filter-label" data-i18n="priorityMedium">Medium</span> <span class="filter-badge" id="badge-medium">0</span></button>
         <button type="button" class="filter-pill" data-filter="low" data-filter-type="priority"><span class="filter-label" data-i18n="priorityLow">Low</span> <span class="filter-badge" id="badge-low">0</span></button>
@@ -47,6 +48,7 @@ describe('todo filter badge preservation', () => {
         <button type="button" class="filter-pill" data-filter="completed" data-i18n="filterCompleted">Completed <span class="filter-badge" id="badge-completed">0</span></button>
         <button type="button" class="filter-pill" data-filter="overdue" data-i18n="filterOverdue">Overdue <span class="filter-badge" id="badge-overdue">0</span></button>
         <button type="button" class="filter-pill" data-filter="today" data-i18n="filterToday">Today <span class="filter-badge" id="badge-today">0</span></button>
+        <button type="button" class="filter-pill" data-filter="upcoming" data-i18n="filterUpcoming">Upcoming <span class="filter-badge" id="badge-upcoming">0</span></button>
         <button type="button" class="filter-pill" data-filter="high" data-filter-type="priority" data-i18n="priorityHigh">High <span class="filter-badge" id="badge-high">0</span></button>
         <button type="button" class="filter-pill" data-filter="medium" data-filter-type="priority" data-i18n="priorityMedium">Medium <span class="filter-badge" id="badge-medium">0</span></button>
         <button type="button" class="filter-pill" data-filter="low" data-filter-type="priority" data-i18n="priorityLow">Low <span class="filter-badge" id="badge-low">0</span></button>
@@ -58,7 +60,7 @@ describe('todo filter badge preservation', () => {
     document.getElementById('badge-pending').textContent = '3';
 
     window.i18n.applyLanguage('zh');
-    const missingAfterZh = ['badge-all', 'badge-pending', 'badge-completed', 'badge-overdue', 'badge-today', 'badge-high', 'badge-medium', 'badge-low'].filter(id => !document.getElementById(id));
+    const missingAfterZh = ['badge-all', 'badge-pending', 'badge-completed', 'badge-overdue', 'badge-today', 'badge-upcoming', 'badge-high', 'badge-medium', 'badge-low'].filter(id => !document.getElementById(id));
     expect(missingAfterZh, 'badges should survive zh').toEqual([]);
 
     expect(document.getElementById('badge-all').textContent).toBe('5');
@@ -79,7 +81,7 @@ describe('todo filter badge preservation', () => {
 
     document.getElementById('badge-all').textContent = '7';
     window.i18n.applyLanguage('zh');
-    const missing = ['badge-all', 'badge-pending', 'badge-completed', 'badge-overdue', 'badge-today', 'badge-high', 'badge-medium', 'badge-low'].filter(id => !document.getElementById(id));
+    const missing = ['badge-all', 'badge-pending', 'badge-completed', 'badge-overdue', 'badge-today', 'badge-upcoming', 'badge-high', 'badge-medium', 'badge-low'].filter(id => !document.getElementById(id));
     expect(missing, 'badges should survive with new markup').toEqual([]);
     expect(document.getElementById('badge-all').textContent).toBe('7');
     expect(document.querySelector('.filter-pill[data-filter="all"] .filter-label').textContent).toBe(window.i18n.t('filterAll'));
@@ -122,7 +124,7 @@ describe('todo filter badge preservation', () => {
     expect(document.getElementById('badge-all').textContent).toBe('4');
     expect(document.getElementById('badge-pending').textContent).toBe('2');
     // All badges still exist
-    ['badge-all','badge-pending','badge-completed','badge-overdue','badge-today','badge-high','badge-medium','badge-low'].forEach(id => {
+    ['badge-all','badge-pending','badge-completed','badge-overdue','badge-today','badge-upcoming','badge-high','badge-medium','badge-low'].forEach(id => {
       expect(document.getElementById(id), `${id} should exist after startup + language change`).not.toBeNull();
     });
   });

@@ -566,6 +566,12 @@
 
     // Status filter
     if (currentFilters.status !== 'all') {
+      // Local-day window for the upcoming filter (issue #1209): today through
+      // today+7 inclusive, computed with plain local-day arithmetic.
+      const upcomingStartIso = formatDateISO(new Date());
+      const upcomingEndDate = new Date();
+      upcomingEndDate.setDate(upcomingEndDate.getDate() + 7);
+      const upcomingEndIso = formatDateISO(upcomingEndDate);
       filtered = filtered.filter(todo => {
         switch (currentFilters.status) {
           case 'pending':
@@ -576,6 +582,9 @@
             return !todo.completed && todo.dueDate && isOverdue(todo.dueDate, todo.dueTime);
           case 'today':
             return !todo.completed && !!todo.dueDate && todo.dueDate === formatDateISO(new Date());
+          case 'upcoming':
+            return !todo.completed && !!todo.dueDate &&
+              todo.dueDate >= upcomingStartIso && todo.dueDate <= upcomingEndIso;
           default:
             return true;
         }
@@ -1373,6 +1382,11 @@ function updateFilterCounts() {
   const overdue = todos.filter(t => !t.completed && t.dueDate && isOverdue(t.dueDate, t.dueTime)).length;
   const today = formatDateISO(new Date());
   const dueToday = todos.filter(t => !t.completed && t.dueDate === today).length;
+  const upcomingEndDate = new Date();
+  upcomingEndDate.setDate(upcomingEndDate.getDate() + 7);
+  const upcomingEndIso = formatDateISO(upcomingEndDate);
+  const dueUpcoming = todos.filter(t => !t.completed && t.dueDate &&
+    t.dueDate >= today && t.dueDate <= upcomingEndIso).length;
   const high = todos.filter(t => (t.priority || 'medium') === 'high').length;
   const medium = todos.filter(t => (t.priority || 'medium') === 'medium').length;
   const low = todos.filter(t => (t.priority || 'medium') === 'low').length;
@@ -1382,6 +1396,7 @@ function updateFilterCounts() {
   const badgeCompleted = document.getElementById('badge-completed');
   const badgeOverdue = document.getElementById('badge-overdue');
   const badgeToday = document.getElementById('badge-today');
+  const badgeUpcoming = document.getElementById('badge-upcoming');
   const badgeHigh = document.getElementById('badge-high');
   const badgeMedium = document.getElementById('badge-medium');
   const badgeLow = document.getElementById('badge-low');
@@ -1392,6 +1407,7 @@ function updateFilterCounts() {
   if (badgeCompleted) badgeCompleted.textContent = completed;
   if (badgeOverdue) badgeOverdue.textContent = overdue;
   if (badgeToday) badgeToday.textContent = dueToday;
+  if (badgeUpcoming) badgeUpcoming.textContent = dueUpcoming;
   if (badgeHigh) badgeHigh.textContent = high;
   if (badgeMedium) badgeMedium.textContent = medium;
   if (badgeLow) badgeLow.textContent = low;

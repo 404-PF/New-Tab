@@ -417,6 +417,7 @@ window.i18n.__registerLocale('de', {
   filterCompleted: 'Erledigt',
   filterOverdue: 'Überfällig',
   filterToday: 'Heute',
+  filterUpcoming: 'Demnächst',
   priorityHigh: 'Hoch',
   priorityMedium: 'Mittel',
   priorityLow: 'Niedrig',

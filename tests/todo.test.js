@@ -457,6 +457,96 @@ describe('Todo filtering', () => {
     }
   });
 
+  it('filters todos due within the next 7 days under the upcoming filter (issue #1209)', () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const inThreeDays = new Date();
+    inThreeDays.setDate(inThreeDays.getDate() + 3);
+    const inEightDays = new Date();
+    inEightDays.setDate(inEightDays.getDate() + 8);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    addTodo('Due tomorrow');
+    addTodo('Due in 3 days');
+    addTodo('Due in 8 days');
+    addTodo('Overdue');
+    addTodo('No date');
+    const list = loadTodos();
+    editTodo(list[0].id, 'Due tomorrow', null, formatDateISO(tomorrow));
+    editTodo(list[1].id, 'Due in 3 days', null, formatDateISO(inThreeDays));
+    editTodo(list[2].id, 'Due in 8 days', null, formatDateISO(inEightDays));
+    editTodo(list[3].id, 'Overdue', null, formatDateISO(yesterday));
+
+    setFilter('upcoming');
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(2);
+    expect(filtered.map(todo => todo.text).sort()).toEqual(['Due in 3 days', 'Due tomorrow']);
+  });
+
+  it('excludes completed todos from the upcoming filter', () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    addTodo('Open tomorrow');
+    addTodo('Done tomorrow');
+    const list = loadTodos();
+    editTodo(list[0].id, 'Open tomorrow', null, formatDateISO(tomorrow));
+    editTodo(list[1].id, 'Done tomorrow', null, formatDateISO(tomorrow));
+    toggleTodo(list[1].id);
+    setFilter('upcoming');
+    const filtered = filterTodos();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe('Open tomorrow');
+  });
+
+  it('upcoming filter composes with priority and search', () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const inThreeDays = new Date();
+    inThreeDays.setDate(inThreeDays.getDate() + 3);
+    addTodo('Tomorrow high work', formatDateISO(tomorrow), 'high');
+    addTodo('Tomorrow low work', formatDateISO(tomorrow), 'low');
+    addTodo('Later high work', formatDateISO(inThreeDays), 'high');
+
+    currentFilters.status = 'upcoming';
+    currentFilters.priority = 'high';
+    try {
+      const byPriority = filterTodos();
+      expect(byPriority).toHaveLength(2);
+      expect(byPriority.map(todo => todo.text).sort()).toEqual(['Later high work', 'Tomorrow high work']);
+
+      // Priority stays active; a search narrows the same view further.
+      setTodoSearchQuery('tomorrow');
+      expect(filterTodos()).toHaveLength(1);
+      expect(filterTodos()[0].text).toBe('Tomorrow high work');
+      setTodoSearchQuery('low');
+      expect(filterTodos()).toHaveLength(0);
+    } finally {
+      setTodoSearchQuery('');
+      currentFilters.status = 'all';
+      currentFilters.priority = 'all';
+    }
+  });
+
+  it('counts todos due in the next 7 days in badge-upcoming', () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const inThreeDays = new Date();
+    inThreeDays.setDate(inThreeDays.getDate() + 3);
+    const inEightDays = new Date();
+    inEightDays.setDate(inEightDays.getDate() + 8);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    addTodo('Due tomorrow', formatDateISO(tomorrow));
+    addTodo('Due in 3 days', formatDateISO(inThreeDays));
+    addTodo('Due in 8 days', formatDateISO(inEightDays));
+    addTodo('Overdue', formatDateISO(yesterday));
+    addTodo('No date');
+    // addTodo re-runs applyFilters, which refreshes the badge counts.
+    expect(document.getElementById('badge-upcoming').textContent).toBe('2');
+  });
+
   it('sorts incomplete before completed', () => {
     addTodo('Later');
     addTodo('Sooner');
