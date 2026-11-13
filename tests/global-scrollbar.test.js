@@ -73,7 +73,7 @@ describe('Shared slim scrollbars (#989, #1098)', () => {
     // Chromium can resolve body::-webkit-scrollbar* against the
     // viewport scrollbar, which must stay browser-default.
     expect(CORE_CSS).not.toMatch(/(?<!\*)\bbody::-webkit-scrollbar/);
-    expect(CORE_CSS).not.toMatch(/(?<!\*)\bbody\s*\{\s*scrollbar-width/);
+    expect(CORE_CSS).not.toMatch(/(?<!\*)\bbody\s*\{[^}]*scrollbar-(?:width|color)/);
     expect(CORE_CSS).not.toMatch(/(?<!\*)\bbody\s*,\s*body \*\s*\{/);
 
     // The light-theme root mirror only existed to theme the viewport
