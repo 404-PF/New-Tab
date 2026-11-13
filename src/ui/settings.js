@@ -1345,7 +1345,13 @@ function initTimezoneSettings() {
   }
 
   picker.addEventListener('focus', function () {
-    renderOptions(this.value);
+    // After a selection the input holds a display label ("Chicago (UTC-6)")
+    // that never matches the filter corpus, so bypass it only while a zone is
+    // selected; otherwise keep an in-progress search so the list stays in sync
+    // with the visible query (#1200). Selecting the text makes the first
+    // keystroke replace the label instead of appending to it.
+    renderOptions(selectedZoneId ? '' : this.value);
+    this.select();
   });
 
   picker.addEventListener('input', function () {
