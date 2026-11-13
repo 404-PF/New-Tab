@@ -767,6 +767,12 @@ const translations = {
     statsToggle: 'Stats',
     statsToggleAriaLabel: 'Toggle statistics panel',
     heatmapCellTitle: '$1$: $2$ completed',
+    todoStatsTotal: '30-Day Total',
+    todoStatsTrend: 'Trend vs Yesterday',
+    todoStatsBestDay: 'Best Day',
+    todoStatsRollingAvg: '7-Day Avg (completions/day)',
+    todoStatsExport: 'Export CSV',
+    todoStatsExportSuccess: 'Todo stats download started.',
 
     // Pomodoro stats
     enablePomodoroStats: 'Enable focus stats',
@@ -1414,6 +1420,84 @@ function applyMigrateLegacyMerges(code) {
   Object.assign(target, values);
 }
 
+// Todo stats summary labels (issue #1225). en lives in the inline table
+// above; the remaining runtime locales arrive from src/core/locales/<code>.js
+// and receive these keys through applyLocaleMerges() the same way the focus
+// stats labels do.
+const todoStatsSummaryTranslations = {
+  zh: {
+    todoStatsTotal: '30 天总计',
+    todoStatsTrend: '较昨日趋势',
+    todoStatsBestDay: '最佳一天',
+    todoStatsRollingAvg: '7 日平均（完成/天）',
+    todoStatsExport: '导出 CSV',
+    todoStatsExportSuccess: '待办统计已开始下载。'
+  },
+  ja: {
+    todoStatsTotal: '30 日間の合計',
+    todoStatsTrend: '昨日比のトレンド',
+    todoStatsBestDay: 'ベストデー',
+    todoStatsRollingAvg: '7 日平均（完了/日）',
+    todoStatsExport: 'CSV をエクスポート',
+    todoStatsExportSuccess: 'ToDo 統計のダウンロードを開始しました。'
+  },
+  ko: {
+    todoStatsTotal: '30일 합계',
+    todoStatsTrend: '어제 대비 추세',
+    todoStatsBestDay: '최고의 날',
+    todoStatsRollingAvg: '7일 평균 (완료/일)',
+    todoStatsExport: 'CSV 내보내기',
+    todoStatsExportSuccess: '할 일 통계 다운로드를 시작했습니다.'
+  },
+  es: {
+    todoStatsTotal: 'Total (30 días)',
+    todoStatsTrend: 'Tendencia vs ayer',
+    todoStatsBestDay: 'Mejor día',
+    todoStatsRollingAvg: 'Promedio 7 días (tareas/día)',
+    todoStatsExport: 'Exportar CSV',
+    todoStatsExportSuccess: 'Descarga de estadísticas de tareas iniciada.'
+  },
+  fr: {
+    todoStatsTotal: 'Total (30 jours)',
+    todoStatsTrend: 'Tendance vs hier',
+    todoStatsBestDay: 'Meilleur jour',
+    todoStatsRollingAvg: 'Moyenne 7 jours (tâches/jour)',
+    todoStatsExport: 'Exporter CSV',
+    todoStatsExportSuccess: 'Téléchargement des statistiques de tâches lancé.'
+  },
+  de: {
+    todoStatsTotal: '30-Tage-Gesamt',
+    todoStatsTrend: 'Trend gegenüber gestern',
+    todoStatsBestDay: 'Bester Tag',
+    todoStatsRollingAvg: '7-Tage-Ø (Abschlüsse/Tag)',
+    todoStatsExport: 'CSV exportieren',
+    todoStatsExportSuccess: 'Download der Aufgaben-Statistiken gestartet.'
+  },
+  pt: {
+    todoStatsTotal: 'Total (30 dias)',
+    todoStatsTrend: 'Tendência vs ontem',
+    todoStatsBestDay: 'Melhor dia',
+    todoStatsRollingAvg: 'Média 7 dias (concluídos/dia)',
+    todoStatsExport: 'Exportar CSV',
+    todoStatsExportSuccess: 'Download das estatísticas de tarefas iniciado.'
+  },
+  ru: {
+    todoStatsTotal: 'Итого за 30 дней',
+    todoStatsTrend: 'Тренд к вчерашнему дню',
+    todoStatsBestDay: 'Лучший день',
+    todoStatsRollingAvg: 'Среднее за 7 дней (задач/день)',
+    todoStatsExport: 'Экспорт CSV',
+    todoStatsExportSuccess: 'Загрузка статистики задач начата.'
+  }
+};
+
+function applyTodoStatsSummaryMerges(code) {
+  const target = translations[code];
+  const values = todoStatsSummaryTranslations[code];
+  if (!target || !values) return;
+  Object.assign(target, values);
+}
+
 // Runs every feature-string merge pass for a single locale. en runs it at
 // evaluation time; registerLocale() runs it again for a locale whose table
 // arrives from src/core/locales/<code>.js so lazily loaded locales get the
@@ -1433,6 +1517,7 @@ function applyLocaleMerges(code) {
   applyFlappyBirdMerges(code);
   applyPacmanMerges(code);
   applyPomodoroMerges(code);
+  applyTodoStatsSummaryMerges(code);
   applyAccessibilityMerges(code);
   applyMigrateLegacyMerges(code);
 }

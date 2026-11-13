@@ -486,6 +486,12 @@ globalThis.window.i18n = {
       currentStreak: 'Current Streak',
       longestStreak: 'Longest Streak',
       last30Days: 'Last 30 Days',
+      todoStatsTotal: '30-Day Total',
+      todoStatsTrend: 'Trend vs Yesterday',
+      todoStatsBestDay: 'Best Day',
+      todoStatsRollingAvg: '7-Day Avg (completions/day)',
+      todoStatsExport: 'Export CSV',
+      todoStatsExportSuccess: 'Todo stats download started.',
       eyeCareReminderEnabled: 'Enable eye-care reminder',
       eyeCareReminderDescription: 'Follow the 20-20-20 rule with a gentle break prompt while this tab is visible.',
       eyeCareReminderInterval: 'Break interval',
@@ -1033,6 +1039,11 @@ document.body.appendChild(createStubElement('span', 'todo-stats-current-streak')
 document.body.appendChild(createStubElement('span', 'todo-stats-longest-streak'));
 document.body.appendChild(createStubElement('div', 'todo-stats-heatmap'));
 document.body.appendChild(createStubElement('button', 'todo-stats-clear'));
+document.body.appendChild(createStubElement('span', 'todo-stats-total'));
+document.body.appendChild(createStubElement('span', 'todo-stats-trend'));
+document.body.appendChild(createStubElement('span', 'todo-stats-best-day'));
+document.body.appendChild(createStubElement('span', 'todo-stats-rolling-avg'));
+document.body.appendChild(createStubElement('button', 'todo-stats-export'));
 
 // Pomodoro stats elements
 document.body.appendChild(createStubElement('button', 'pomodoro-stats-toggle'));

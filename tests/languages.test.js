@@ -283,6 +283,25 @@ describe('Focus stats summary translations (issue #1171)', () => {
   });
 });
 
+const TODO_STATS_SUMMARY_TRANSLATION_KEYS = [
+  'todoStatsTotal',
+  'todoStatsTrend',
+  'todoStatsBestDay',
+  'todoStatsRollingAvg',
+  'todoStatsExport',
+  'todoStatsExportSuccess'
+];
+
+describe('Todo stats summary translations (issue #1225)', () => {
+  it('defines every todo stats summary label for all supported languages', () => {
+    expectTranslationKeys(TODO_STATS_SUMMARY_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+
+  it('ships every todo stats summary key in each _locales messages.json', () => {
+    TODO_STATS_SUMMARY_TRANSLATION_KEYS.forEach((key) => expectMessagesJsonKey(key));
+  });
+});
+
 describe('Custom background error translations', () => {
   // Inspect getTranslations() directly rather than t(): t() silently falls
   // back to the English string when a locale omits the key, so a missing

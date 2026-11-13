@@ -35,6 +35,17 @@ const pomodoroStatsSummaryGlobals = {
   getPomodoroMinutesByTodoThisWeek: 'readonly',
 };
 
+// Todo stats summary globals (issue #1225), mirroring the focus-stats block.
+// Shared by srcGlobals and testGlobals so browser scripts and Vitest tests
+// expose the same API shape without drift.
+const todoStatsSummaryGlobals = {
+  exportTodoStatsCsv: 'readonly',
+  getTodoStatsTotal: 'readonly',
+  getTodoStatsTrend: 'readonly',
+  getTodoStatsBestDay: 'readonly',
+  getTodoStatsRollingAverage: 'readonly',
+};
+
 const srcGlobals = {
   ...globals.browser,
   chrome: 'readonly',
@@ -197,6 +208,7 @@ const srcGlobals = {
   loadTodoStatsEnabled: 'readonly',
   getCompletedToday: 'readonly',
   getCompletedThisWeek: 'readonly',
+  ...todoStatsSummaryGlobals,
   loadPomodoroStats: 'readonly',
   savePomodoroStats: 'readonly',
   recordPomodoroSession: 'readonly',
@@ -408,6 +420,7 @@ const testGlobals = {
   loadTodoStatsEnabled: 'readonly',
   getCompletedToday: 'readonly',
   getCompletedThisWeek: 'readonly',
+  ...todoStatsSummaryGlobals,
   loadPomodoroStats: 'readonly',
   savePomodoroStats: 'readonly',
   recordPomodoroSession: 'readonly',

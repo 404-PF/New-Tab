@@ -340,6 +340,30 @@
     "message": "Последние 30 дней",
     "description": "Stats label for last 30 days"
   },
+  "todoStatsTotal": {
+    "message": "Итого за 30 дней",
+    "description": "Label for the 30-day todo stats total"
+  },
+  "todoStatsTrend": {
+    "message": "Тренд к вчерашнему дню",
+    "description": "Label for the day-over-day todo stats trend"
+  },
+  "todoStatsBestDay": {
+    "message": "Лучший день",
+    "description": "Label for the best todo stats day"
+  },
+  "todoStatsRollingAvg": {
+    "message": "Среднее за 7 дней (задач/день)",
+    "description": "Label for the 7-day rolling average todo stats"
+  },
+  "todoStatsExport": {
+    "message": "Экспорт CSV",
+    "description": "Button that exports todo stats as CSV"
+  },
+  "todoStatsExportSuccess": {
+    "message": "Загрузка статистики задач начата.",
+    "description": "Toast shown after todo stats CSV download is started"
+  },
   "statsToggle": {
     "message": "Статистика",
     "description": "Label for the stats toggle button"
