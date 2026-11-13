@@ -12,7 +12,7 @@ window.i18n.__registerLocale('zh', {
   addTimezone: '添加',
   removeTimezone: '移除',
   removeTimezoneLabel: '移除 {city} 时区',
-  timezoneMoreResults: '{total} 个时区中的 {shown} 个',
+  timezoneMoreResults: '{total} 個時區中的 {shown} 個',
   // General UI
   searchPlaceholder: '搜索或输入网站',
   searchWith: '使用',

@@ -1428,7 +1428,7 @@ body.light-theme .timezone-option {
   color: #1e293b;
 }
 body.light-theme .timezone-options-more {
-  color: rgba(30, 41, 59, 0.55);
+  color: #475569;
 }
 .timezone-add select {
   flex: 1;

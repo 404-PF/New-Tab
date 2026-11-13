@@ -355,7 +355,11 @@ describe('timezone clocks', () => {
 
     expect(optionsList.hidden).toBe(false);
     expect(picker.getAttribute('aria-expanded')).toBe('true');
-    expect(optionsList.querySelectorAll('button[data-zone]').length).toBe(window.POPULAR_ZONES.length);
+    // #1199 caps the idle list at 40, so "full" now means the whole corpus
+    // up to that cap rather than exactly the curated shortlist.
+    expect(optionsList.querySelectorAll('button[data-zone]').length)
+      .toBe(Math.min(window.getTimeZoneOptions().length, 40));
+    expect(optionsList.querySelector('button[data-zone="America/Chicago"]')).not.toBeNull();
   });
 
   // #1200 follow-up: refocus must select the display label so the first
@@ -379,7 +383,10 @@ describe('timezone clocks', () => {
 
     expect(optionsList.hidden).toBe(false);
     expect(optionsList.querySelectorAll('button[data-zone]').length).toBeGreaterThan(0);
-    expect(optionsList.querySelectorAll('button[data-zone]').length).toBeLessThan(window.POPULAR_ZONES.length);
+    // The keystroke filters on "L" alone: London matches, Chicago (the
+    // selected label's zone) does not — proving the label was replaced.
+    expect(optionsList.querySelector('button[data-zone="Europe/London"]')).not.toBeNull();
+    expect(optionsList.querySelector('button[data-zone="America/Chicago"]')).toBeNull();
   });
 
   // #1200 follow-up: refocus must not discard an in-progress search — the

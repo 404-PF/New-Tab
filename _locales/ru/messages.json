@@ -467,7 +467,7 @@
     "description": "Accessible label for removing a specific time zone"
   },
   "timezoneMoreResults": {
-    "message": "{shown} из {total} часовых поясов",
+    "message": "Показано {shown} из {total}",
     "description": "Hint shown when the time zone picker list is truncated"
   },
   "games": {
