@@ -77,6 +77,7 @@ window.i18n.__registerLocale('fr', {
   todoUndo: 'Annuler',
   todoInlinePrevMonth: 'Mois précédent',
   todoInlineNextMonth: 'Mois suivant',
+  todoDueCount: '{count} tâches à échéance',
   addTodo: 'Ajouter une tâche',
   noTodos: 'Pas encore de tâches. Ajoutez-en une ci-dessus !',
   noTodosHint: 'Essayez d\'ajouter des dates d\'échéance pour mieux vous organiser.',

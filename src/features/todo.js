@@ -825,6 +825,7 @@
     if (filteredTodos.length === 0) {
       updateTodoEmptyStateCopy(emptyState);
       emptyState.style.display = 'flex';
+      refreshOpenDatePickers();
       return;
     }
 
@@ -1082,6 +1083,8 @@
         }
       });
     });
+
+    refreshOpenDatePickers();
   }
 
   function getInlineMonthLabel(monthIndex) {
@@ -2181,8 +2184,47 @@ function positionPickerRelativeToElement(picker, targetElement) {
   picker.style.left = `${left}px`;
 }
 
+function getDueCountsByDate() {
+  const counts = new Map();
+  todos.forEach(todo => {
+    if (todo.completed || !todo.dueDate) return;
+    counts.set(todo.dueDate, (counts.get(todo.dueDate) || 0) + 1);
+  });
+  return counts;
+}
+
+function applyDueMarker(day, iso, dueCounts) {
+  const count = iso ? (dueCounts.get(iso) || 0) : 0;
+  if (count > 0) {
+    const nextCount = String(count);
+    if (day.dataset.dueCount !== nextCount) {
+      day.dataset.dueCount = nextCount;
+    }
+    if (!day.querySelector('.calendar-day-due')) {
+      const marker = document.createElement('span');
+      marker.className = 'calendar-day-due';
+      marker.setAttribute('aria-hidden', 'true');
+      day.appendChild(marker);
+    }
+  } else {
+    day.removeAttribute('data-due-count');
+    const marker = day.querySelector('.calendar-day-due');
+    if (marker) marker.remove();
+  }
+}
+
+function refreshOpenDatePickers() {
+  if (customDatePicker && customDatePicker.isOpen) {
+    customDatePicker.renderCalendar();
+  }
+  const dueCounts = getDueCountsByDate();
+  document.querySelectorAll('.inline-date-picker .calendar-day').forEach(day => {
+    applyDueMarker(day, day.dataset.date, dueCounts);
+  });
+}
+
 // Create calendar HTML for inline picker
-function createCalendarDayHtml(date, month, today, selectedDate) {
+function createCalendarDayHtml(date, month, today, selectedDate, dueCounts) {
   const isCurrentMonth = date.getMonth() === month;
   const isToday = date.toDateString() === today.toDateString();
   const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
@@ -2192,16 +2234,21 @@ function createCalendarDayHtml(date, month, today, selectedDate) {
   if (isToday) classes += ' today';
   if (isSelected) classes += ' selected';
 
-  return `<div class="${classes}" data-date="${formatDateISO(date)}">${date.getDate()}</div>`;
+  const iso = formatDateISO(date);
+  const dueCount = dueCounts ? (dueCounts.get(iso) || 0) : 0;
+  const dueAttrs = dueCount > 0 ? ` data-due-count="${dueCount}"` : '';
+  const dueMarker = dueCount > 0 ? '<span class="calendar-day-due" aria-hidden="true"></span>' : '';
+
+  return `<div class="${classes}" data-date="${iso}"${dueAttrs}>${date.getDate()}${dueMarker}</div>`;
 }
 
-function createCalendarDaysHtml(startDate, month, selectedDate) {
+function createCalendarDaysHtml(startDate, month, selectedDate, dueCounts) {
   const today = new Date();
   let daysHtml = '';
   for (let i = 0; i < 42; i++) {
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
-    daysHtml += createCalendarDayHtml(date, month, today, selectedDate);
+    daysHtml += createCalendarDayHtml(date, month, today, selectedDate, dueCounts);
   }
   return daysHtml;
 }
@@ -2214,7 +2261,7 @@ function createCalendarHtml(currentDate, selectedDateString, selectedDueTime) {
   const firstDay = new Date(year, month, 1);
   const startDate = new Date(firstDay);
   startDate.setDate(startDate.getDate() - firstDay.getDay());
-  const daysHtml = createCalendarDaysHtml(startDate, month, selectedDate);
+  const daysHtml = createCalendarDaysHtml(startDate, month, selectedDate, getDueCountsByDate());
 
   const timeValue = isValidDueTime(selectedDueTime) ? selectedDueTime : '';
   const timeDisabled = !selectedDateString ? 'disabled' : '';
@@ -3368,6 +3415,7 @@ class CustomDatePicker {
     startDate.setDate(startDate.getDate() - firstDay.getDay());
 
     // Generate 6 weeks of days
+    const dueCounts = getDueCountsByDate();
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
@@ -3394,6 +3442,8 @@ class CustomDatePicker {
       if (isSelected) {
         dayElement.classList.add('selected');
       }
+
+      applyDueMarker(dayElement, formatDateISO(date), dueCounts);
 
       // Add click handler
       if (isCurrentMonth) {

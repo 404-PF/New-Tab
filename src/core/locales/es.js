@@ -77,6 +77,7 @@ window.i18n.__registerLocale('es', {
   todoUndo: 'Deshacer',
   todoInlinePrevMonth: 'Mes anterior',
   todoInlineNextMonth: 'Mes siguiente',
+  todoDueCount: '{count} tareas con fecha límite',
   addTodo: 'Agregar tarea',
   noTodos: '¡No hay tareas aún. Agrega una arriba!',
   noTodosHint: 'Prueba agregar fechas de vencimiento para organizarte mejor.',

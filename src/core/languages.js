@@ -147,6 +147,7 @@ const translations = {
     todoUndo: 'Undo',
     todoInlinePrevMonth: 'Previous month',
     todoInlineNextMonth: 'Next month',
+    todoDueCount: '{count} tasks due',
     addTodo: 'Add Todo',
     noTodos: 'No todos yet. Add one above!',
     noTodosHint: 'Try adding due dates for better organization.',

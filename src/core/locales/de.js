@@ -77,6 +77,7 @@ window.i18n.__registerLocale('de', {
   todoUndo: 'Rückgängig',
   todoInlinePrevMonth: 'Vorheriger Monat',
   todoInlineNextMonth: 'Nächster Monat',
+  todoDueCount: '{count} Aufgaben fällig',
   addTodo: 'Aufgabe hinzufügen',
   noTodos: 'Noch keine Aufgaben. Füge eine oben hinzu!',
   noTodosHint: 'Versuche, Fälligkeitsdaten hinzuzufügen, um dich besser zu organisieren.',

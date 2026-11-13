@@ -77,6 +77,7 @@ window.i18n.__registerLocale('ru', {
   todoUndo: 'Отменить',
   todoInlinePrevMonth: 'Предыдущий месяц',
   todoInlineNextMonth: 'Следующий месяц',
+  todoDueCount: '{count} задач с крайним сроком',
   addTodo: 'Добавить дело',
   noTodos: 'Пока нет дел. Добавьте одно выше!',
   noTodosHint: 'Попробуйте добавить сроки для лучшей организации.',

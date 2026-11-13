@@ -328,6 +328,7 @@ globalThis.window.i18n = {
       todoSaveError: 'Failed to save todo changes. Your last action was not saved.',
       todoDeletedUndo: 'Todo deleted.',
       todosDeletedUndo: '{count} todos deleted.',
+      todoDueCount: '{count} tasks due',
       todoUndo: 'Undo',
       notesPlaceholder: 'Type your note here...',
       notesDeleteTooltip: 'Delete Note',
