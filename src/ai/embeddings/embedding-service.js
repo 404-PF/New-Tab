@@ -398,6 +398,11 @@
   function ensureModel(options) {
     const opts = options || {};
     if (status === 'ready' && liveProvider) {
+      // Already live: re-emit so late subscribers (Settings panel, notes
+      // rerank listener) observe the ready state. The notes handler only
+      // reranks on the ready transition, so without this a re-enable with
+      // an active query would leave the list in keyword order (PR #1187).
+      try { dispatchStatus(); } catch { /* ignore */ }
       return Promise.resolve(liveProvider);
     }
     if (loadPromise) return loadPromise;
@@ -466,10 +471,17 @@
         throw err;
       }
       // MV3 has no cross-origin isolation: ORT must stay single-threaded.
+      // The pipeline runs on the webgpu ORT instance Transformers imports
+      // (rewritten to ort.webgpu.min.mjs), not on ort.web.mjs, so the guard
+      // must reach both (PR #1187 review). The loader already sets both;
+      // this re-applies defensively in case the vendor bridge was injected
+      // by another copy.
       try {
-        if (vendor.ort && vendor.ort.env && vendor.ort.env.wasm) {
-          vendor.ort.env.wasm.numThreads = 1;
-        }
+        [vendor.ort, vendor.ortWebGpu].forEach(function (ortModule) {
+          if (ortModule && ortModule.env && ortModule.env.wasm) {
+            ortModule.env.wasm.numThreads = 1;
+          }
+        });
       } catch { /* ignore */ }
       try {
         if (vendor.env) {

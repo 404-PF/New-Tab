@@ -232,6 +232,20 @@
   // user-owned): manual reorder is disabled there so the next re-rank does
   // not undo the move.
   let _semanticRankedView = false;
+  // A rerank that resolved while a drag or grip-focus was active is
+  // deferred (rendering would remove the dragged/focused card mid-gesture
+  // and strand drag listeners). Flushed after drop/cleanup (PR #1187).
+  let _pendingSemanticRerank = false;
+
+  function isSemanticRenderBlocked() {
+    try {
+      if (_dragSourceId) return true;
+      const active = document.activeElement;
+      if (active && active.classList && active.classList.contains('note-grip')
+        && active.closest('#notes-list')) return true;
+    } catch { /* ignore */ }
+    return false;
+  }
 
   // Any notes mutation invalidates in-flight semantic reranks: ranked
   // results capture `base` at start, so a delete/edit/reorder/add racing
@@ -489,7 +503,20 @@
     }
   }
 
+  function handleGripFocusOut() {
+    // A rerank deferred while a grip had focus must repaint once the focus
+    // leaves, otherwise the list stays in keyword order until the next
+    // keystroke (PR #1187 review). Drags flush via cleanupDrag; grip blurs
+    // flush here. A fresh schedule re-runs inference against current order.
+    if (!_pendingSemanticRerank) return;
+    if (isSemanticRenderBlocked()) return;
+    _pendingSemanticRerank = false;
+    try { scheduleSemanticRerank(); } catch { /* ignore */ }
+  }
+
   function scheduleSemanticRerank() {
+    // A new schedule supersedes any deferred rerank (fresh inference wins).
+    _pendingSemanticRerank = false;
     if (!_activeSearchQuery || !isNotesSemanticEnabled()) {
       clearSemanticDebounce();
       updateSemanticStatus('idle');
@@ -520,16 +547,17 @@
           ? window.EmbeddingService.getStatus().status === 'loading'
           : false;
       } catch { loading = false; }
-      // Lazy load (PR #1187 human review + follow-up): the page-load resume
-      // no longer warms the ~300MB model, so the first query with the flag
-      // on starts a passive load here. Passive means contains-only
-      // permission (no new grant prompt) and no toast; visibility comes
-      // from the notes loading status (once the service reports loading
-      // via embedding-status) and the Settings downloading row. Deferred
-      // to first query per the lazy-load decision; an import with an empty
-      // cache therefore waits for an explicit query instead of
-      // downloading silently on page load. Already-loading short-circuits
-      // inside requestSemanticModelLoad via the service status guard.
+      // Lazy load (PR #1187 human review + cubic follow-up): the page-load
+      // resume no longer warms the ~300MB model, so the first query with the
+      // flag on starts a passive load here when bytes are cached ('ready'
+      // marker). Passive means contains-only permission (no new grant
+      // prompt) and no toast; visibility comes from the notes loading
+      // status (once the service reports loading via embedding-status) and
+      // the Settings downloading row. A null marker (never downloaded on
+      // this device, e.g. after a backup import) never auto-starts: it
+      // waits for an explicit Settings toggle instead of downloading ~300MB
+      // on the first keystroke. Already-loading short-circuits inside
+      // requestSemanticModelLoad via the service status guard.
       if (!loading) {
         try {
           if (typeof window.requestSemanticModelLoad === 'function') {
@@ -574,6 +602,16 @@
         && activeEl.closest('#notes-list')) {
         return;
       }
+      // A drag or grip-focus in progress must not lose its card mid-gesture:
+      // renderSemanticResults clears the list, which would remove the dragged
+      // node before dragend and strand _dragSourceId/listeners (PR #1187).
+      // Defer and re-run after drop/cleanup instead of dropping the update.
+      if (isSemanticRenderBlocked()) {
+        _pendingSemanticRerank = true;
+        updateSemanticStatus('idle');
+        return;
+      }
+      _pendingSemanticRerank = false;
       // Second-pass render: only re-render when the order actually changed
       // on screen, to avoid focus churn while typing. An empty result must
       // still render so the hidden empty state (see renderNotes) is restored
@@ -1389,6 +1427,12 @@
     document.removeEventListener('dragover', handleDragOver);
     document.removeEventListener('dragend', handleDragEnd);
     document.removeEventListener('drop', handleDrop);
+    // A rerank deferred mid-drag must repaint once the gesture settles,
+    // otherwise the list stays in keyword order until the next keystroke.
+    if (_pendingSemanticRerank) {
+      _pendingSemanticRerank = false;
+      try { scheduleSemanticRerank(); } catch { /* ignore */ }
+    }
   }
 
   function handleNotesClick(e) {
@@ -1474,6 +1518,10 @@
     if (notePreviewModes[id] === true) return;
     if (_previewMouseDown) {
       finishPreviewMouseDownBlur(ta, id, hadPending);
+      // Preview-button blur saves the text but used to return without
+      // re-ranking, leaving a no-longer-matching note in the ranked results
+      // until an unrelated render (PR #1187). Blur settles search membership.
+      if (_activeSearchQuery && isNotesSemanticEnabled()) scheduleSemanticRerank();
       return;
     }
     const text = ta.value || '';
@@ -1727,6 +1775,8 @@
     document.addEventListener('keydown', handleNotesKeydown);
     document.addEventListener('mousedown', handlePreviewMouseDown, true);
     document.addEventListener('dragstart', handleDragStart, true);
+    document.removeEventListener('focusout', handleGripFocusOut);
+    document.addEventListener('focusout', handleGripFocusOut);
     // 'embedding-status' is subscribed once at file scope below; DOM
     // dedupes identical listeners, so initNotes must not re-add it here.
   }
@@ -1772,7 +1822,12 @@
     const prev = _lastEmbeddingStatus;
     _lastEmbeddingStatus = status;
     if (status === 'ready') {
-      if (prev !== 'ready') scheduleSemanticRerank();
+      // Rerank on every ready observation while a query is active, not only
+      // on the transition: ensureModel re-emits ready when already loaded
+      // (re-enable path), and without this the list would stay in keyword
+      // order until the next render (PR #1187). Debounced, so repeats are
+      // cheap.
+      if (prev !== 'ready' || _activeSearchQuery) scheduleSemanticRerank();
       return;
     }
     if (prev === 'ready') {
@@ -1807,6 +1862,7 @@ try {
   window.isNotesSemanticEnabled = isNotesSemanticEnabled;
   window.isNotesSemanticReady = isNotesSemanticReady;
   window.invalidateSemanticRerank = invalidateSemanticRerank;
+  window.scheduleSemanticRerank = scheduleSemanticRerank;
   window.setNotesSearchQuery = setSearchQuery;
   window.getNotesSearchQuery = getSearchQuery;
   window.cancelPendingNoteSaves = cancelPendingNoteSaves;

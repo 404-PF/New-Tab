@@ -17,17 +17,30 @@
 
 import * as Transformers from './transformers/transformers.js';
 import * as OrtWeb from './onnxruntime-web/ort.web.mjs';
+// Transformers.js imports 'onnxruntime-web/webgpu', which vendor-embeddings.js
+// rewrites to ort.webgpu.min.mjs: the pipeline runs on that ORT instance,
+// not on ort.web.mjs above. Both modules must stay single-threaded (MV3 has
+// no cross-origin isolation), otherwise the guard below never reaches the
+// runtime that runs inference (PR #1187 review). Importing the webgpu build
+// here shares the same module instance Transformers uses, so setting its
+// env affects the pipeline. Without cross-origin isolation ORT falls back to
+// one thread anyway; the explicit setting documents the intent.
+import * as OrtWebGpu from './onnxruntime-web/ort.webgpu.min.mjs';
 
 const { pipeline, env } = Transformers;
 
-try {
-  if (OrtWeb && OrtWeb.env && OrtWeb.env.wasm) {
-    // MV3 pages have no cross-origin isolation: keep ORT single-threaded.
-    OrtWeb.env.wasm.numThreads = 1;
+function applySingleThread(ortModule) {
+  try {
+    if (ortModule && ortModule.env && ortModule.env.wasm) {
+      ortModule.env.wasm.numThreads = 1;
+    }
+  } catch {
+    // Non-fatal: service re-applies numThreads defensively.
   }
-} catch {
-  // Non-fatal: service re-applies numThreads defensively.
 }
+
+applySingleThread(OrtWeb);
+applySingleThread(OrtWebGpu);
 
 try {
   if (env) {
@@ -44,7 +57,8 @@ try {
 window.__embeddingVendor = {
   pipeline,
   env,
-  ort: OrtWeb
+  ort: OrtWeb,
+  ortWebGpu: OrtWebGpu
 };
 
 try {

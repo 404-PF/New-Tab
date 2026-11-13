@@ -65,7 +65,22 @@
         }
       };
       request.onsuccess = function (e) {
-        resolve(e.target.result);
+        const database = e.target.result;
+        // If the browser closes the connection (e.g. site data cleared
+        // while the tab is open), every later transaction throws
+        // InvalidStateError and runStore would silently stop caching until
+        // reload. Drop the cached promise so the next call reopens
+        // (PR #1187 review).
+        try {
+          database.onclose = function () {
+            if (dbPromise === pending) dbPromise = null;
+          };
+          database.onversionchange = function () {
+            try { database.close(); } catch { /* ignore */ }
+            if (dbPromise === pending) dbPromise = null;
+          };
+        } catch { /* ignore */ }
+        resolve(database);
       };
       request.onerror = function (e) {
         reject(e.target.error || new Error('Failed to open vector cache'));
@@ -87,6 +102,12 @@
     dbPromise = null;
   }
 
+  function isStaleConnectionError(e) {
+    try {
+      return !!e && (e.name === 'InvalidStateError' || e.name === 'VersionError');
+    } catch { return false; }
+  }
+
   function runStore(mode, operation, errorMessage) {
     return openVectorsDB().then(function (database) {
       return new Promise(function (resolve, reject) {
@@ -96,6 +117,9 @@
           const store = tx.objectStore(STORE_NAME);
           request = operation(store);
         } catch (e) {
+          // Stale connection (see onclose above): drop the cached promise
+          // so the next call reopens instead of failing until reload.
+          if (isStaleConnectionError(e)) dbPromise = null;
           reject(e);
           return;
         }

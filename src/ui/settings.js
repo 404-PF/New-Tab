@@ -2016,12 +2016,18 @@ function renderNotesSemanticSettings() {
   let deferredReady;
   try { deferredReady = enabled && svcStatus.status === 'idle' && readSemanticDownloadState() === 'ready'; } catch { deferredReady = false; }
   const readyForUi = ready || deferredReady;
+  // Disabled but bytes still cached (~300MB): toggling off preserves the
+  // 'ready' marker so the purge stays reachable. Show Delete even with the
+  // flag off, otherwise the bytes stay on disk with no UI to remove them
+  // (PR #1187 review).
+  let markerReady;
+  try { markerReady = readSemanticDownloadState() === 'ready'; } catch { markerReady = false; }
   if (els.progress) {
     els.progress.hidden = !loading;
     if (loading) els.progress.value = Math.round((svcStatus.progress || 0) * 100);
   }
   if (els.cancelBtn) els.cancelBtn.hidden = !loading;
-  if (els.deleteBtn) els.deleteBtn.hidden = !(readyForUi || error);
+  if (els.deleteBtn) els.deleteBtn.hidden = !(readyForUi || error || markerReady);
   if (els.status) els.status.textContent = resolveSemanticStatusText(enabled, svcStatus);
 }
 
@@ -2302,6 +2308,12 @@ function startSemanticModelDownload(els, passive, startGeneration) {
       if (downloadGeneration !== semanticStartGeneration) return;
       writeSemanticDownloadState('ready');
       renderNotesSemanticSettings();
+      // Re-enabling with an active query would otherwise leave the list in
+      // keyword order: ensureModel may have returned early (already ready)
+      // with no status transition for notes to observe (PR #1187 review).
+      try {
+        if (typeof window.scheduleSemanticRerank === 'function') window.scheduleSemanticRerank();
+      } catch { /* ignore */ }
       if (!silent && typeof window.showToast === 'function') {
         window.showToast(tSemantic('notesSemanticReady', 'Semantic search ready (on-device).'), 'success');
       }
@@ -2355,9 +2367,14 @@ function bindSemanticCheckbox(els) {
       return;
     }
     cancelSemanticLoad();
-    // Toggle-off is a deliberate stop, not an interruption: drop the
-    // resume marker so a later load cannot mistake it for a crash.
-    clearSemanticDownloadState();
+    // Toggle-off is a deliberate stop, not an interruption: drop a
+    // 'loading' marker so a later load cannot mistake it for a crash, but
+    // preserve a 'ready' marker so the ~300MB bytes stay purgable via Delete
+    // (Delete is shown for a ready marker even with the flag off; clearing
+    // it would strand bytes with no UI control -- PR #1187 review).
+    try {
+      if (readSemanticDownloadState() !== 'ready') clearSemanticDownloadState();
+    } catch { clearSemanticDownloadState(); }
     // Toggling off must drop the semantic relevance order: cancelLoad()
     // only emits while loading, so a ready model would otherwise leave
     // the stale ranked list on screen (PR #1187 human review).
@@ -2509,10 +2526,11 @@ function resumeSemanticIfNeeded() {
   if (shouldLaunch) launchPassiveSemanticDownload();
 }
 
-// First-query lazy starter (PR #1187 human review): invoked from
-// scheduleSemanticRerank when the flag is on but the model is idle.
-// Passive (no toast, contains-only permission check): a missing grant or
-// cache simply leaves the keyword path until the user opts in via Settings.
+// First-query lazy starter (PR #1187 human review + cubic follow-up):
+// invoked from scheduleSemanticRerank when the flag is on but the model is
+// idle. Passive (no toast, contains-only permission check): a missing grant
+// or cache simply leaves the keyword path until the user opts in via
+// Settings.
 function requestSemanticModelLoad() {
   // Passive first-query starter: contains-only permission (no new grant
   // prompt), no toast. Visibility via notes loading status + Settings
@@ -2530,14 +2548,18 @@ function requestSemanticModelLoad() {
     } catch { /* fall through to passive start */ }
   } catch { return; }
   resumeSemanticIfNeeded();
-  // Deferred states ('ready' marker from a previous session, or null)
-  // never trigger the loading-only resume above: kick a passive start
-  // directly so the first search warms the model. Guarded by the helper's
-  // in-flight flag (set by the resume above when it launched).
+  // Deferred 'ready' marker (bytes cached from a previous session) never
+  // triggers the loading-only resume above: kick a passive start so the
+  // first search warms the model from cache. A null marker (never
+  // downloaded on this device, e.g. after a backup import) must NOT start a
+  // ~300MB download on the first keystroke with no toast and no explicit
+  // opt-in here: leave the keyword path until an explicit Settings toggle
+  // (cubic P2 follow-up on PR #1187). Guarded by the helper's in-flight
+  // flag (set by the resume above when it launched).
   let shouldWarm;
   try {
     const st = readSemanticDownloadState();
-    if (st === 'ready' || st === null) shouldWarm = true;
+    if (st === 'ready') shouldWarm = true;
   } catch { /* ignore */ }
   if (shouldWarm) launchPassiveSemanticDownload();
 }
@@ -2560,13 +2582,13 @@ function initNotesSemanticSetting() {
 // Called by the data-manager import flow before it re-runs initSettings: a
 // backup carries the opt-in flag but never the model bytes (Cache Storage
 // and vectors are device-local), so a fresh profile must not keep a flag
-// pointing at nothing. The marker is left unset here so the page-load
-// resume (loading-only, see above) does NOT start a silent ~300MB download
-// right after import when the cache is empty (PR #1187 human review): the
-// first semantic query (requestSemanticModelLoad) or an explicit Settings
-// re-toggle warms the model instead, and a missing host grant resets the
-// flag there. Absent settings module (tests) degrades to a no-op via the
-// typeof guard at the call site.
+// pointing at nothing. The marker is left unset here so neither the
+// page-load resume (loading-only) nor the first-query starter (ready-only)
+// starts a silent ~300MB download right after import when the cache is empty
+// (PR #1187 human review + cubic follow-up): an explicit Settings re-toggle
+// warms the model instead, and a missing host grant resets the flag there.
+// Absent settings module (tests) degrades to a no-op via the typeof guard
+// at the call site.
 function primeNotesSemanticImport() {
   try {
     // A disabled flag must not keep a leftover marker: the marker is
