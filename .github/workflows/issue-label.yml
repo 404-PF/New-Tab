@@ -109,12 +109,13 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content='eyes' >/dev/null || true
           echo 'proceed=true' >> "$GITHUB_OUTPUT"
 
-      # NOTE: do NOT add --ignore-scripts here. opencode-ai ships a JS wrapper
-      # whose postinstall selects the native binary; with --ignore-scripts the
-      # wrapper exits 1 and every run fails at `opencode run`.
+      # opencode-ai's JS wrapper needs its postinstall to select the native
+      # binary, so install with --ignore-scripts and run that script explicitly.
       - name: Install OpenCode
         if: github.event_name != 'issue_comment' || steps.gate.outputs.proceed == 'true'
-        run: npm install -g opencode-ai@1.19.4
+        run: |
+          npm install -g --ignore-scripts opencode-ai@1.19.4
+          (cd "$(npm root -g)/opencode-ai" && node ./postinstall.mjs)
 
       - name: Fetch existing labels
         id: labels
