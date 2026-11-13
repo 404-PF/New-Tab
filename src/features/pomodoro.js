@@ -284,6 +284,39 @@
     return PHASES.WORK;
   }
 
+  function createStandaloneStartControl() {
+    const header = document.querySelector('.todo-header');
+    if (!header) return null;
+
+    let btn = document.getElementById('pomodoro-standalone-start');
+    if (btn) return btn;
+
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'pomodoro-standalone-start';
+    btn.className = 'pomodoro-standalone-start';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>';
+    header.appendChild(btn);
+    updateStandaloneStartControl();
+    return btn;
+  }
+
+  function updateStandaloneStartControl() {
+    const btn = document.getElementById('pomodoro-standalone-start');
+    if (!btn) return;
+
+    const enabled = loadSettings().enabled;
+    btn.style.display = enabled ? '' : 'none';
+    if (!enabled) return;
+
+    const isActive = state.active && !state.todoId;
+    btn.classList.toggle('active', isActive);
+    const i18n = window.i18n;
+    const stopLabel = i18n ? i18n.t('pomodoroStopFocus') : 'Stop Focus';
+    const startLabel = i18n ? i18n.t('pomodoroStartFocus') : 'Start Focus';
+    btn.title = isActive ? stopLabel : startLabel;
+  }
+
   function createTimerWidget() {
     const header = document.querySelector('.todo-header');
     if (!header) return null;
@@ -347,6 +380,7 @@
 
   function updateWidget() {
     updateFocusButtons();
+    updateStandaloneStartControl();
 
     const widget = document.getElementById('pomodoro-widget');
     if (!widget) return;
@@ -883,6 +917,16 @@
   }
 
   function handleWidgetClick(e) {
+    const standaloneBtn = e.target.closest('.pomodoro-standalone-start');
+    if (standaloneBtn) {
+      e.stopPropagation();
+      if (state.active && !state.todoId) {
+        stopTimer();
+      } else {
+        runTimerAction('start', () => startTimer(null));
+      }
+      return;
+    }
     const pauseBtn = e.target.closest('.pomodoro-pause-btn');
     if (pauseBtn) {
       runTimerAction('pause', () => togglePause());
@@ -939,6 +983,7 @@
 
   function initPomodoro() {
     subscribeToTimerStateChanges();
+    createStandaloneStartControl();
 
     // A closing tab must not leave a coordination poll (or its lease reconcile)
     // pending; pagehide fires on navigation and tab/window close alike. A
@@ -1012,6 +1057,8 @@
     if (!loadSettings().enabled && state.active) {
       stopTimer();
     }
+    createStandaloneStartControl();
+    updateStandaloneStartControl();
   }
 
   function loadPomodoroDurations() {
@@ -1024,6 +1071,7 @@
     Object.assign(settings, durations);
     const persisted = saveSettings(settings);
     if (!persisted) return false;
+    updateStandaloneStartControl();
     if (state.active) {
       const newDuration = getPhaseDuration(state.phase);
       if (newDuration !== previousDuration) {
