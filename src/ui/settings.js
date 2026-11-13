@@ -1250,8 +1250,15 @@ function initTimezoneSettings() {
   const currentList = document.getElementById('timezone-current-list');
   if (!picker || !optionsList || !addBtn || !currentList) return;
 
-  const zones = window.POPULAR_ZONES || [];
+  // Full IANA list (#1199); fall back to the curated shortlist when the
+  // helper is unavailable (settings can load without timezone-clocks.js).
+  const zones = typeof window.getTimeZoneOptions === 'function'
+    ? window.getTimeZoneOptions()
+    : (window.POPULAR_ZONES || []);
   let selectedZoneId = '';
+
+  const IDLE_OPTION_LIMIT = 40;
+  const MATCH_OPTION_LIMIT = 100;
 
   function getCurrentOffset(zone) {
     try {
@@ -1286,7 +1293,11 @@ function initTimezoneSettings() {
     const matches = zones.filter(function (zone) {
       return !query || (zone.city + ' ' + zone.id).toLocaleLowerCase().indexOf(query) !== -1;
     });
-    matches.forEach(function (zone) {
+    // The full list is ~400 entries: idle focus shows the curated shortlist
+    // (kept first in getTimeZoneOptions) and queries are capped so focus
+    // never builds hundreds of buttons (#1199).
+    const visible = matches.slice(0, query ? MATCH_OPTION_LIMIT : IDLE_OPTION_LIMIT);
+    visible.forEach(function (zone) {
       const option = document.createElement('button');
       option.type = 'button';
       option.className = 'timezone-option';
@@ -1295,8 +1306,8 @@ function initTimezoneSettings() {
       option.textContent = getZoneLabel(zone);
       optionsList.appendChild(option);
     });
-    optionsList.hidden = matches.length === 0;
-    picker.setAttribute('aria-expanded', String(matches.length > 0));
+    optionsList.hidden = visible.length === 0;
+    picker.setAttribute('aria-expanded', String(visible.length > 0));
   }
 
   function renderCurrentTimezones(options) {

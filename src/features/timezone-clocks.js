@@ -53,7 +53,7 @@
       if (!Array.isArray(parsed)) return [];
       const seen = {};
       return parsed.filter(function (tz) {
-        if (typeof tz !== 'string' || tz.length === 0 || !getZoneInfo(tz) || seen[tz]) {
+        if (typeof tz !== 'string' || tz.length === 0 || !isValidZoneId(tz) || seen[tz]) {
           return false;
         }
         seen[tz] = true;
@@ -75,7 +75,7 @@
       if (!Array.isArray(zones) || zones.length > MAX_TIMEZONES) return false;
       const seen = {};
       const valid = zones.every(function (zoneId) {
-        if (typeof zoneId !== 'string' || !getZoneInfo(zoneId) || seen[zoneId]) return false;
+        if (typeof zoneId !== 'string' || !isValidZoneId(zoneId) || seen[zoneId]) return false;
         seen[zoneId] = true;
         return true;
       });
@@ -109,6 +109,36 @@
       }
     }
     return null;
+  }
+
+  // Accepts any zone id the runtime's Intl can resolve, so users are not
+  // limited to the curated POPULAR_ZONES shortlist (#1199).
+  function isValidZoneId(zoneId) {
+    if (typeof zoneId !== 'string' || zoneId.length === 0) return false;
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: zoneId });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Curated shortlist first, then every zone Intl.supportedValuesOf reports.
+  // Feature-detected: environments without the API keep the shortlist, and
+  // the city label for unknown ids mirrors the chip-rendering fallback.
+  function getTimeZoneOptions() {
+    const options = POPULAR_ZONES.slice();
+    if (typeof Intl.supportedValuesOf !== 'function') return options;
+    const seen = Object.create(null);
+    POPULAR_ZONES.forEach(function (zone) {
+      seen[zone.id] = true;
+    });
+    Intl.supportedValuesOf('timeZone').forEach(function (id) {
+      if (seen[id]) return;
+      seen[id] = true;
+      options.push({ id: id, city: id.split('/').pop().replace(/_/g, ' ') });
+    });
+    return options;
   }
 
   function formatZoneTime(date, zoneId, locale, clockFormat) {
@@ -216,7 +246,7 @@
 
   function addTimeZone(zoneId) {
     const zones = loadTimeZones();
-    if (!getZoneInfo(zoneId)) return false;
+    if (!isValidZoneId(zoneId)) return false;
     if (zones.length >= MAX_TIMEZONES) return false;
     if (zones.indexOf(zoneId) !== -1) return false;
     zones.push(zoneId);
@@ -293,6 +323,8 @@
   window.saveTimeZones = saveTimeZones;
   window.POPULAR_ZONES = POPULAR_ZONES;
   window.MAX_TIMEZONES = MAX_TIMEZONES;
+  window.isValidZoneId = isValidZoneId;
+  window.getTimeZoneOptions = getTimeZoneOptions;
 
   window.addEventListener('languageChanged', renderExtraClocks);
 

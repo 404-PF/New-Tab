@@ -113,6 +113,83 @@ function expectRejectedAddState() {
 }
 
 describe('timezone clocks', () => {
+  it('accepts any zone the runtime validates, keeping the cap and rejections (#1199)', () => {
+    setupClocks();
+
+    expect(window.isValidZoneId('America/Bogota')).toBe(true);
+    expect(window.isValidZoneId('Europe/Kyiv')).toBe(true);
+    expect(window.isValidZoneId('Not/A_Zone')).toBe(false);
+    expect(window.isValidZoneId('')).toBe(false);
+
+    expect(window.addTimeZone('America/Bogota')).toBe(true);
+    expect(window.addTimeZone('Europe/Kyiv')).toBe(true);
+    expect(window.addTimeZone('Asia/Kathmandu')).toBe(true);
+    expect(window.addTimeZone('Pacific/Fiji')).toBe(true);
+    expect(window.addTimeZone('Australia/Sydney')).toBe(true);
+
+    expect(window.addTimeZone('America/Bogota')).toBe(false);
+    expect(window.addTimeZone('America/Chicago')).toBe(false);
+    expect(window.addTimeZone('Not/A_Zone')).toBe(false);
+
+    expect(window.loadTimeZones()).toEqual([
+      'America/Bogota',
+      'Europe/Kyiv',
+      'Asia/Kathmandu',
+      'Pacific/Fiji',
+      'Australia/Sydney'
+    ]);
+    expect(clockChips().length).toBe(5);
+    expect(clockChips()[1].querySelector('.timezone-city').textContent).toBe('Kyiv');
+    expect(clockChips()[3].querySelector('.timezone-city').textContent).toBe('Fiji');
+  });
+
+  it('loads previously saved zones outside the shortlist unchanged (#1199)', () => {
+    localStorage.setItem('extraTimeZones', JSON.stringify(['America/Bogota', 'Asia/Kathmandu']));
+    setupClocks();
+
+    expect(window.loadTimeZones()).toEqual(['America/Bogota', 'Asia/Kathmandu']);
+    expect(clockChips().length).toBe(2);
+    expect(clockChips()[0].querySelector('.timezone-city').textContent).toBe('Bogota');
+    expect(clockChips()[1].querySelector('.timezone-city').textContent).toBe('Kathmandu');
+  });
+
+  it('builds picker options from Intl beyond the curated shortlist (#1199)', () => {
+    const options = window.getTimeZoneOptions();
+    const shortlist = window.POPULAR_ZONES;
+
+    expect(options.length).toBeGreaterThan(shortlist.length);
+    expect(options.slice(0, shortlist.length).map(zone => zone.id))
+      .toEqual(shortlist.map(zone => zone.id));
+    expect(options.map(zone => zone.id)).toContain('America/Bogota');
+    expect(options.every(zone => typeof zone.id === 'string'
+      && typeof zone.city === 'string' && zone.city.length > 0)).toBe(true);
+  });
+
+  it('searches the full zone list in the settings picker and caps the idle list (#1199)', () => {
+    setupClocks();
+    const picker = document.getElementById('timezone-picker');
+
+    picker.value = 'bogota';
+    picker.dispatchEvent(new Event('input'));
+    const option = document.querySelector('#timezone-options button[data-zone="America/Bogota"]');
+    expect(option).not.toBeNull();
+    expect(option.textContent).toContain('Bogota');
+
+    option.click();
+    document.getElementById('add-timezone-btn').click();
+    expect(window.showToast).not.toHaveBeenCalled();
+    expect(clockChips().length).toBe(1);
+    expect(clockChips()[0].dataset.zone).toBe('America/Bogota');
+    expect(JSON.parse(localStorage.getItem('extraTimeZones'))).toEqual(['America/Bogota']);
+
+    picker.value = '';
+    picker.dispatchEvent(new Event('focus'));
+    const idleOptions = document.querySelectorAll('#timezone-options button');
+    expect(idleOptions.length).toBeGreaterThan(0);
+    expect(idleOptions.length).toBeLessThanOrEqual(40);
+    expect(document.querySelector('#timezone-options button[data-zone="America/Chicago"]')).not.toBeNull();
+  });
+
   it('re-renders generated controls when the language changes', () => {
     const clock = document.createElement('div');
     clock.id = 'clock';
