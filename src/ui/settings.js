@@ -1916,6 +1916,171 @@ if (notesEnabledSetting) {
   });
 }
 
+// Semantic notes search (issue #1186): lazy opt-in. The ~300MB Harrier INT8
+// model downloads only after the user checks this box, with determinate
+// progress + cancel + delete. Vectors live in IndexedDB, never localStorage.
+function loadNotesSemanticEnabled() {
+  try {
+    return localStorage.getItem('notesSemanticEnabled') === 'true';
+  } catch (e) {
+    console.warn('Failed to read notesSemanticEnabled:', e);
+    return false;
+  }
+}
+
+function getSemanticSettingsElements() {
+  return {
+    checkbox: document.getElementById('notes-semantic-enabled-setting'),
+    progress: document.getElementById('notes-semantic-progress'),
+    cancelBtn: document.getElementById('notes-semantic-cancel'),
+    deleteBtn: document.getElementById('notes-semantic-delete'),
+    status: document.getElementById('notes-semantic-settings-status')
+  };
+}
+
+function tSemantic(key, fallback, replacements) {
+  try {
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const value = replacements
+        ? window.i18n.t(key, replacements)
+        : window.i18n.t(key);
+      if (value && value !== key) return value;
+    }
+  } catch { /* ignore */ }
+  return fallback;
+}
+
+function getSemanticServiceStatus() {
+  try {
+    if (window.EmbeddingService && typeof window.EmbeddingService.getStatus === 'function') {
+      return window.EmbeddingService.getStatus();
+    }
+  } catch { /* ignore service missing */ }
+  return { status: 'idle', progress: 0, error: '' };
+}
+
+function resolveSemanticStatusText(enabled, svcStatus) {
+  if (!enabled) return '';
+  if (enabled && svcStatus.status === 'loading') {
+    const pct = Math.round((svcStatus.progress || 0) * 100);
+    return tSemantic('notesSemanticDownloading', 'Downloading on-device model… ' + pct + '%', { percent: pct });
+  }
+  if (enabled && svcStatus.status === 'ready') {
+    return tSemantic('notesSemanticReady', 'Semantic search ready (on-device).');
+  }
+  if (enabled && svcStatus.status === 'error') {
+    // A failed delete leaves the marker at 'ready' (bytes may remain)
+    // while the service reports error: surface the delete-specific copy
+    // instead of the load failure text (PR #1187 human review).
+    if (readSemanticDownloadState() === 'ready') {
+      return tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.');
+    }
+    return tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
+  }
+  if (readSemanticDownloadState() === 'error') {
+    return tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.');
+  }
+  // Deferred lazy-load state (PR #1187 human review + cubic follow-up): the
+  // page-load resume only resumes an interrupted ('loading') download, and
+  // the first-query starter only warms a cached ('ready') marker. An enabled
+  // flag with an idle service is therefore expected: a 'ready' marker means
+  // the bytes are cached from a previous session: report ready (not starting)
+  // so Settings does not claim a download is running. A 'loading' marker
+  // is an interrupted download that the resume path will pick up: report
+  // starting. A null marker means never downloaded on this device and waits
+  // for an explicit Settings re-toggle, never a silent ~300MB fetch.
+  const deferredState = readSemanticDownloadState();
+  if (deferredState === 'ready') {
+    return tSemantic('notesSemanticReady', 'Semantic search ready (on-device).');
+  }
+  if (deferredState === 'loading') {
+    return tSemantic('notesSemanticStarting', 'Starting download…');
+  }
+  // Deferred null (never downloaded on this device): waits for an explicit
+  // Settings re-toggle. Show a hint instead of blank so an enabled toggle
+  // with empty status does not look broken (PR #1187 review). Fresh opt-ins
+  // briefly show this while permission and scripts resolve, then flip to
+  // downloading once the marker is set.
+  return tSemantic('notesSemanticNotDownloaded', 'Model not downloaded yet. Toggle off and on to download.');
+}
+
+function renderNotesSemanticSettings() {
+  const els = getSemanticSettingsElements();
+  const enabled = loadNotesSemanticEnabled();
+  const svcStatus = getSemanticServiceStatus();
+  if (els.checkbox) els.checkbox.checked = enabled;
+  const loading = enabled && svcStatus.status === 'loading';
+  const ready = enabled && svcStatus.status === 'ready';
+  const error = enabled && svcStatus.status === 'error';
+  // Deferred ready (PR #1187 review): bytes cached, ORT not warmed yet.
+  // Keep Delete visible so a 'ready'-marked model can be purged before
+  // the first search warms it; otherwise Settings hides Delete with
+  // 'Starting download...' and strands the bytes with no retry control.
+  let deferredReady;
+  try { deferredReady = enabled && svcStatus.status === 'idle' && readSemanticDownloadState() === 'ready'; } catch { deferredReady = false; }
+  const readyForUi = ready || deferredReady;
+  // Disabled but bytes still cached (~300MB): toggling off preserves the
+  // 'ready' marker so the purge stays reachable. Show Delete even with the
+  // flag off, otherwise the bytes stay on disk with no UI to remove them
+  // (PR #1187 review).
+  let markerReady;
+  try { markerReady = readSemanticDownloadState() === 'ready'; } catch { markerReady = false; }
+  if (els.progress) {
+    els.progress.hidden = !loading;
+    if (loading) els.progress.value = Math.round((svcStatus.progress || 0) * 100);
+  }
+  if (els.cancelBtn) els.cancelBtn.hidden = !loading;
+  // A failed cache warm leaves the 'error' marker with bytes possibly still
+  // cached: keep Delete reachable after a reload too (not only while the
+  // service still reports error).
+  let markerError;
+  try { markerError = readSemanticDownloadState() === 'error'; } catch { markerError = false; }
+  if (els.deleteBtn) els.deleteBtn.hidden = !(readyForUi || error || markerReady || markerError);
+  if (els.status) els.status.textContent = resolveSemanticStatusText(enabled, svcStatus);
+}
+
+function applyNotesSemanticEnabled() {
+  renderNotesSemanticSettings();
+  // Disabling must drop semantic relevance order; otherwise the keyword
+  // pass keeps showing the last ranked list until another render happens.
+  // Bump the rerank generation first so an in-flight batch cannot repaint
+  // semantic order after this sync pass (PR #1187 human review); the
+  // render below bumps again harmlessly via renderNotes.
+  try {
+    if (!loadNotesSemanticEnabled() && typeof window.invalidateSemanticRerank === 'function') {
+      window.invalidateSemanticRerank();
+    }
+  } catch { /* ignore */ }
+  try {
+    if (!loadNotesSemanticEnabled() && typeof window.renderNotes === 'function') {
+      window.renderNotes();
+    }
+  } catch { /* ignore */ }
+}
+
+// The embedding modules stay out of the bootstrap scriptSources path
+// (issue #1186): they load on demand the first time the user opts in,
+// mirroring the games-app lazy loader. The canonical source list and loader
+// live in src/ai/embeddings/embedding-scripts.js (loaded via bootstrap
+// before this file); the thin wrappers below delegate to it. No local twin
+// is kept here: duplicating the loader across settings.js/notes.js tripped
+// the Sonar duplication gate and lets the copies drift (PR #1187 review).
+// Isolated unit tests inject embedding-scripts.js (or all five globals, in
+// which case embeddingScriptsLoaded short-circuits true).
+function embeddingScriptsLoaded() {
+  try {
+    if (window.EmbeddingScripts && typeof window.EmbeddingScripts.scriptsLoaded === 'function') {
+      return window.EmbeddingScripts.scriptsLoaded();
+    }
+  } catch { /* fall through to local check */ }
+  try {
+    return !!(window.EmbeddingRegistry && window.HarrierProvider
+      && window.NotesVectorCache && window.EmbeddingService && window.NotesSemanticSearch);
+  } catch {
+    return false;
+  }
+}
+
 // Motto enabled
 function loadMottoEnabled() {
   return localStorage.getItem('mottoEnabled') !== 'false';
@@ -1944,6 +2109,558 @@ if (mottoEnabledSetting) {
       reportFeatureToggleSaveError();
     }
   });
+}
+
+function ensureEmbeddingScripts() {
+  try {
+    if (window.EmbeddingScripts && typeof window.EmbeddingScripts.ensureScripts === 'function') {
+      return window.EmbeddingScripts.ensureScripts();
+    }
+  } catch (e) {
+    return Promise.reject(e);
+  }
+  if (embeddingScriptsLoaded()) return Promise.resolve();
+  return Promise.reject(new Error('EmbeddingScripts not loaded'));
+}
+
+let semanticStartGeneration = 0;
+// Guards the page-load double resume (PR #1187 review): initNotesSemanticSetting
+// runs at script evaluation and again from initSettings(), so two passive
+// resumes would otherwise start back-to-back and the second would orphan the
+// first chain via semanticStartGeneration. While a resume setup is in flight,
+// further resume calls return early; explicit user opt-ins bypass this flag
+// via startSemanticDownload so a fresh gesture always wins over a passive
+// resume.;
+
+function startSemanticDownload(requestPermission) {
+  const els = getSemanticSettingsElements();
+  // Passive resumes (page load, no gesture) must stay silent: an error toast
+  // on every New Tab load with no interaction is spam. The Settings status
+  // line still reflects the failure; explicit opt-ins keep their toasts.
+  const passive = requestPermission === false;
+  const startGeneration = ++semanticStartGeneration;
+  renderNotesSemanticSettings();
+  // Permission first: chrome.permissions.request needs the checkbox's user
+  // gesture, and the script chain can outlive it. Re-check the opt-in flag
+  // after each async hop so an off-toggle mid-setup cancels the start.
+  // Returned so resumeSemanticIfNeeded can clear its in-flight flag when
+  // the setup phase settles (the model download itself continues via
+  // startSemanticModelDownload and reports through embedding-status).
+  return ensureModelHostPermission(!passive).then(function (granted) {
+    if (startGeneration !== semanticStartGeneration) return false;
+    if (!granted) return false;
+    if (!loadNotesSemanticEnabled()) return false;
+    return ensureEmbeddingScripts().then(function () {
+      if (startGeneration !== semanticStartGeneration) return false;
+      if (!loadNotesSemanticEnabled()) return false;
+      return true;
+    });
+  }).then(function (granted) {
+    if (startGeneration !== semanticStartGeneration) return;
+    if (!loadNotesSemanticEnabled()) return;
+    if (!granted) {
+      // Passive warm/resume with no host grant must not turn the opt-in
+      // off: clearing the flag and the 'ready' marker strands the cached
+      // ~300MB bytes with no Delete control (PR #1187). Leave both intact
+      // and stay on the keyword path until an explicit Settings opt-in;
+      // only the gestured path resets the flag/marker. A leftover
+      // 'loading' marker would show "Starting download…" forever with no
+      // resume (nothing re-kicks without a gesture) and hidden Cancel /
+      // Delete, so clear it to the not-downloaded hint; keep 'ready' so
+      // cached bytes stay purgable (cubic P2 on PR #1187).
+      if (passive) {
+        try {
+          if (readSemanticDownloadState() === 'loading') clearSemanticDownloadState();
+        } catch { /* ignore */ }
+        renderNotesSemanticSettings();
+        return;
+      }
+      const persisted = persistSetting('notesSemanticEnabled', false);
+      clearSemanticDownloadState();
+      applyNotesSemanticEnabled();
+      if (!persisted) {
+        reportFeatureToggleSaveError();
+      }
+      if (!passive && typeof window.showToast === 'function') {
+        window.showToast(
+          tSemantic('notesSemanticPermissionDenied', 'Model download needs Hugging Face access, which was not granted.'),
+          'error'
+        );
+      }
+      return;
+    }
+    startSemanticModelDownload(els, passive, startGeneration);
+  }).catch(function (err) {
+    // A stale opt-in (A) rejecting after a re-enable (B) must not clear
+    // the fresh opt-in: B bumped semanticStartGeneration via its own
+    // startSemanticDownload, so only the current generation may reset
+    // the flag (PR #1187 human review).
+    if (startGeneration !== semanticStartGeneration) return;
+    console.warn('Failed to load embedding modules:', err);
+    // Passive warm/resume failures (no grant on this device, offline
+    // scripts) must not turn the opt-in off either: same stranded-bytes
+    // reason as above (PR #1187). Only the gestured path resets. Clear a
+    // leftover 'loading' marker so Settings shows the not-downloaded hint
+    // instead of "Starting download…" forever; keep 'ready' so cached
+    // bytes stay purgable (cubic P2 on PR #1187).
+    if (passive) {
+      try {
+        if (readSemanticDownloadState() === 'loading') clearSemanticDownloadState();
+      } catch { /* ignore */ }
+      renderNotesSemanticSettings();
+      return;
+    }
+    // A dead runtime must not strand the toggle on with "Starting…"
+    // forever: reset the flag (and toast only on the gestured path).
+    persistSetting('notesSemanticEnabled', false);
+    clearSemanticDownloadState();
+    applyNotesSemanticEnabled();
+    if (!passive && typeof window.showToast === 'function') {
+      window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+    }
+  });
+}
+
+// Host access for the model download is requested at opt-in time via the
+// already-declared blanket optional_host_permissions (https://*/*), so
+// installing the extension never prompts for Hugging Face access. The Hub
+// API lives on huggingface.co / hf.co and weight shards redirect to its
+// first-party CDNs, all of which are subdomains of those two hosts and
+// therefore covered by the wildcard entries below:
+//   - cdn-lfs.huggingface.co / cdn-lfs.hf.co (LFS weight shards)
+//   - cas-bridge.xethub.huggingface.co (Xet CAS bridge)
+//   - *.static.huggingface.co (static weight mirrors)
+// A redirect outside this set (e.g. a third-party S3 mirror) surfaces as a
+// load error with retry instead of hanging; extend this list (and the
+// MODEL_ORIGINS coverage test) if the manual verification pass in
+// vendor/README.md ever observes a cross-host shard fetch.
+const MODEL_ORIGINS = [
+  'https://huggingface.co/*',
+  'https://*.huggingface.co/*',
+  'https://hf.co/*',
+  'https://*.hf.co/*'
+];
+
+// Read by the MODEL_ORIGINS coverage test; the permission query above always
+// uses the const so the test guards the shipped value.
+try {
+  window.MODEL_ORIGINS = MODEL_ORIGINS;
+} catch { /* ignore */ }
+
+function getModelHostPerms() {
+  try {
+    return (window.chrome && window.chrome.permissions) || null;
+  } catch {
+    return null;
+  }
+}
+
+function ensureModelHostPermission(requestIfMissing) {
+  const perms = getModelHostPerms();
+  // No permissions API (tests without the mock, non-Chromium hosts):
+  // nothing to gate on, attempt the download and let it report.
+  if (!perms || typeof perms.contains !== 'function' || typeof perms.request !== 'function') {
+    return Promise.resolve(true);
+  }
+  const query = { origins: MODEL_ORIGINS };
+  // Gestured opt-ins must call request() synchronously in the checkbox
+  // handler tick: awaiting contains() first lets the user gesture expire
+  // and Chrome rejects the request. request() resolves true when already
+  // granted, so skipping contains() never double-prompts.
+  if (requestIfMissing) {
+    // perms.request() may throw synchronously (e.g. expired user gesture).
+    // Promise.resolve(perms.request()) would let that throw escape
+    // startSemanticDownload's .catch (it is evaluated before the promise
+    // exists). The Promise constructor captures a sync throw as a rejection
+    // instead, so the toggle resets via the normal failure path. No
+    // try/catch here to avoid S4822 (rejection is handled below).
+    return new Promise(function (resolve) { resolve(perms.request(query)); }).then(function (granted) {
+      return !!granted;
+    }, function () { return false; });
+  }
+  // Passive resumes carry no gesture: only proceed when already granted.
+  // Same sync-throw guard as above so a throwing contains() rejects instead
+  // of escaping the caller's .catch.
+  return new Promise(function (resolve) { resolve(perms.contains(query)); }).then(function (has) {
+    return !!has;
+  }, function () { return false; });
+}
+
+// Transient download marker (not a settings toggle: never exported). Lets a
+// reload resume an *interrupted* download without re-fetching ~300MB after
+// every browser restart for a finished or failed one.
+const SEMANTIC_DOWNLOAD_STATE_KEY = 'notesSemanticDownload';
+
+function readSemanticDownloadState() {
+  try {
+    return localStorage.getItem(SEMANTIC_DOWNLOAD_STATE_KEY);
+  } catch (e) {
+    console.warn('Failed to read semantic download state:', e);
+    return null;
+  }
+}
+
+function writeSemanticDownloadState(value) {
+  try {
+    if (value === null) {
+      localStorage.removeItem(SEMANTIC_DOWNLOAD_STATE_KEY);
+    } else {
+      localStorage.setItem(SEMANTIC_DOWNLOAD_STATE_KEY, value);
+    }
+  } catch (e) {
+    console.warn('Failed to persist semantic download state:', e);
+  }
+}
+
+function clearSemanticDownloadState() {
+  writeSemanticDownloadState(null);
+}
+
+function startSemanticModelDownload(els, passive, startGeneration) {
+  const silent = passive === true;
+  // Guard the async download against a stale rejection overwriting a newer
+  // run: cancel bumps semanticStartGeneration, so a late rejection from a
+  // cancelled load must not clear the loading marker or write error over
+  // the fresh run (PR #1187 human review). The sibling setup chain above
+  // already guards with startGeneration; this download needs the same.
+  const downloadGeneration = startGeneration !== undefined ? startGeneration : semanticStartGeneration;
+  try {
+    if (!window.EmbeddingService || typeof window.EmbeddingService.ensureModel !== 'function') {
+      // Modules loaded but the service never materialized: same reset as a
+      // load failure so the toggle cannot stick on "Starting…".
+      persistSetting('notesSemanticEnabled', false);
+      writeSemanticDownloadState('error');
+      renderNotesSemanticSettings();
+      if (!silent && typeof window.showToast === 'function') {
+        window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+      }
+      return;
+    }
+    // Cache warm must not clobber a 'ready' marker: overwriting it with
+    // 'loading' and then toggling off or cancelling during the warm would
+    // clear the marker and strand ~300MB with no Delete control (PR #1187
+    // review). This applies to explicit re-enables too; progress is shown
+    // from the service status, not from the marker.
+    let startedFromReady = false;
+    try {
+      startedFromReady = readSemanticDownloadState() === 'ready';
+    } catch { startedFromReady = false; }
+    if (!startedFromReady) writeSemanticDownloadState('loading');
+    window.EmbeddingService.ensureModel({
+      onProgress: function () {
+        renderNotesSemanticSettings();
+      }
+    }).then(function () {
+      if (downloadGeneration !== semanticStartGeneration) return;
+      writeSemanticDownloadState('ready');
+      renderNotesSemanticSettings();
+      // No direct rerank here: ensureModel emits 'embedding-status' ready on
+      // both paths (including the already-ready early return), and notes.js
+      // reranks from that event while a query is active (PR #1187 review).
+      if (!silent && typeof window.showToast === 'function') {
+        window.showToast(tSemantic('notesSemanticReady', 'Semantic search ready (on-device).'), 'success');
+      }
+    }).catch(function (err) {
+      if (downloadGeneration !== semanticStartGeneration) return;
+      if (err && err.name === 'AbortError') {
+        // Cancel during a cache warm must not strand bytes: restore the
+        // 'ready' marker instead of clearing it (PR #1187 review).
+        if (startedFromReady) writeSemanticDownloadState('ready');
+        else clearSemanticDownloadState();
+      } else {
+        writeSemanticDownloadState('error');
+      }
+      renderNotesSemanticSettings();
+      if (err && err.name === 'AbortError') return;
+      if (!silent && typeof window.showToast === 'function') {
+        window.showToast(tSemantic('notesSemanticError', 'Model failed to load. Check connection and retry.'), 'error');
+      }
+    });
+  } catch (e) {
+    console.warn('Failed to start semantic model download:', e);
+  }
+  renderNotesSemanticSettings();
+}
+
+function cancelSemanticLoad() {
+  semanticStartGeneration += 1;
+  try {
+    if (window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
+      window.EmbeddingService.cancelLoad();
+    }
+  } catch { /* ignore */ }
+}
+
+function bindSemanticCheckbox(els) {
+  if (!els.checkbox || els.checkbox.dataset.semanticBound) return;
+  els.checkbox.dataset.semanticBound = 'true';
+  els.checkbox.addEventListener('change', function () {
+    const persisted = persistSetting('notesSemanticEnabled', this.checked);
+    renderNotesSemanticSettings();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+      return;
+    }
+    if (this.checked) {
+      // S9383: the returned promise is already handled inside
+      // startSemanticDownload (toggle reset + toast), but it must still end
+      // with a rejection handler so a late rejection is never unhandled.
+      // Log instead of swallowing: a rejection here means a bug in the
+      // inner .catch, and silent loss hides it (PR #1187 review).
+      startSemanticDownload().then(null, function (err) {
+        console.warn('Unexpected semantic download rejection:', err);
+      });
+      return;
+    }
+    cancelSemanticLoad();
+    // Toggle-off is a deliberate stop, not an interruption: drop a
+    // 'loading' marker so a later load cannot mistake it for a crash, but
+    // preserve a 'ready' marker so the ~300MB bytes stay purgable via Delete
+    // (Delete is shown for a ready marker even with the flag off; clearing
+    // it would strand bytes with no UI control -- PR #1187 review).
+    try {
+      if (readSemanticDownloadState() !== 'ready') clearSemanticDownloadState();
+    } catch { clearSemanticDownloadState(); }
+    // Toggling off must drop the semantic relevance order: cancelLoad()
+    // only emits while loading, so a ready model would otherwise leave
+    // the stale ranked list on screen (PR #1187 human review).
+    applyNotesSemanticEnabled();
+  });
+}
+
+function bindSemanticCancel(els) {
+  if (!els.cancelBtn || els.cancelBtn.dataset.semanticBound) return;
+  els.cancelBtn.dataset.semanticBound = 'true';
+  els.cancelBtn.addEventListener('click', function () {
+    cancelSemanticLoad();
+    // Preserve a 'ready' marker (cache warm): clearing it would strand ~300MB
+    // with no Delete control (PR #1187 review). Same guard as toggle-off.
+    try {
+      if (readSemanticDownloadState() !== 'ready') clearSemanticDownloadState();
+    } catch { clearSemanticDownloadState(); }
+    const persisted = persistSetting('notesSemanticEnabled', false);
+    applyNotesSemanticEnabled();
+    if (!persisted) reportFeatureToggleSaveError();
+  });
+}
+
+function bindSemanticDelete(els) {
+  if (!els.deleteBtn || els.deleteBtn.dataset.semanticBound) return;
+  els.deleteBtn.dataset.semanticBound = 'true';
+  els.deleteBtn.addEventListener('click', function () {
+    // A re-enable (uncheck + re-check) during cleanup bumps
+    // semanticStartGeneration via startSemanticDownload: skip the flag and
+    // marker writes then so the fresh opt-in is not turned back off
+    // (PR #1187 human review). The service side already guards the
+    // registry with loadGeneration !== deleteGeneration for the same race.
+    const deleteGeneration = semanticStartGeneration;
+    const finishDelete = function (ok) {
+      if (deleteGeneration !== semanticStartGeneration) return;
+      if (ok) clearSemanticDownloadState();
+      const persisted = persistSetting('notesSemanticEnabled', ok ? false : loadNotesSemanticEnabled());
+      applyNotesSemanticEnabled();
+      if (!persisted) reportFeatureToggleSaveError();
+    };
+    const runDelete = function () {
+      try {
+        if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
+          return window.EmbeddingService.deleteModel().then(function (ok) {
+            // deleteModel resolves false when vector or cache cleanup fails:
+            // keep the toggle so the leftover data stays visible/retryable.
+            finishDelete(ok !== false);
+            if (ok === false && typeof window.showToast === 'function') {
+              window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+            }
+          }).catch(function (err) {
+            console.warn('Failed to delete embedding model:', err);
+            finishDelete(false);
+            if (typeof window.showToast === 'function') {
+              window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to delete embedding model:', err);
+        finishDelete(false);
+        return Promise.resolve();
+      }
+      // Deferred-ready Delete (PR #1187 review): the page-load resume no
+      // longer warms the service, so a fresh page can show Delete (marker
+      // 'ready') before the embedding modules are loaded. Falling through
+      // here used to clear the marker as if Cache Storage and vectors were
+      // purged. Load the modules first so deleteModel actually runs; on a
+      // load failure keep the marker/toggle so the bytes stay retryable.
+      return ensureEmbeddingScripts().then(function () {
+        if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
+          return window.EmbeddingService.deleteModel().then(function (ok) {
+            finishDelete(ok !== false);
+            if (ok === false && typeof window.showToast === 'function') {
+              window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+            }
+          });
+        }
+        finishDelete(false);
+        if (typeof window.showToast === 'function') {
+          window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+        }
+      }).catch(function (err) {
+        console.warn('Failed to load embedding modules for delete:', err);
+        finishDelete(false);
+        if (typeof window.showToast === 'function') {
+          window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+        }
+      });
+    };
+    const btn = els.deleteBtn;
+    if (btn) btn.disabled = true;
+    const done = function () { if (btn) btn.disabled = false; };
+    try {
+      const result = runDelete();
+      if (result && typeof result.then === 'function') result.then(done, done);
+      else done();
+    } catch (err) {
+      console.warn('Failed to delete embedding model:', err);
+      finishDelete(false);
+      done();
+    }
+  });
+}
+
+let semanticResumeInFlight = false;
+
+// Shared passive launcher (PR #1187 review): keeps the async launch out
+// of try/catch (S4822) and de-duplicates resumeSemanticIfNeeded and
+// requestSemanticModelLoad. Sets/clears semanticResumeInFlight around the
+// gestured-free start so a second passive kick is a no-op while one runs.
+function launchPassiveSemanticDownload() {
+  if (semanticResumeInFlight) return;
+  semanticResumeInFlight = true;
+  Promise.resolve()
+    .then(function () { return startSemanticDownload(false); })
+    .then(function () {
+      semanticResumeInFlight = false;
+    }, function () {
+      semanticResumeInFlight = false;
+    });
+}
+
+// Lazy-load gate (PR #1187 human review + cubic follow-up): only an
+// interrupted download ('loading' marker) resumes automatically on page
+// load. A cached model ('ready') defers ensureModel() until the first query
+// (notes.js calls requestSemanticModelLoad); a null marker (never downloaded
+// on this device) waits for an explicit Settings re-toggle and never
+// auto-starts, instead of reading ~300MB from Cache Storage and initializing
+// ORT on every New Tab.
+function resumeSemanticIfNeeded() {
+  let shouldLaunch;
+  // S4822/S6544: keep promise creation out of try/catch. The sync checks
+  // below may throw (storage bridge), but the async launch must not be
+  // created inside try, and the launch result must not be tested as a
+  // boolean (it is always a Promise). Promise.resolve().then() captures a
+  // synchronous startSemanticDownload throw as a rejection instead.
+  try {
+    if (semanticResumeInFlight) return;
+    if (!loadNotesSemanticEnabled()) return;
+    let alreadyReady = false;
+    try {
+      alreadyReady = !!(
+        window.EmbeddingService
+        && typeof window.EmbeddingService.isReady === 'function'
+        && window.EmbeddingService.isReady()
+      );
+    } catch { alreadyReady = false; }
+    if (alreadyReady) return;
+    const downloadState = readSemanticDownloadState();
+    if (downloadState !== 'loading') return;
+    shouldLaunch = true;
+  } catch { return; }
+  if (shouldLaunch) launchPassiveSemanticDownload();
+}
+
+// First-query lazy starter (PR #1187 human review + cubic follow-up):
+// invoked from scheduleSemanticRerank when the flag is on but the model is
+// idle. Passive (no toast, contains-only permission check): a missing grant
+// or cache simply leaves the keyword path until the user opts in via
+// Settings.
+function requestSemanticModelLoad() {
+  // Passive first-query starter: contains-only permission (no new grant
+  // prompt), no toast. Visibility via notes loading status + Settings
+  // downloading row; missing grant/cache leaves keyword path until an
+  // explicit Settings opt-in. Deferred per lazy-load (loading-only resume)
+  // so New Tab never reads ~300MB + inits ORT until the first query.
+  try {
+    if (!loadNotesSemanticEnabled()) return;
+    if (semanticResumeInFlight) return;
+    try {
+      if (window.EmbeddingService && typeof window.EmbeddingService.isReady === 'function'
+        && window.EmbeddingService.isReady()) return;
+      if (window.EmbeddingService && typeof window.EmbeddingService.getStatus === 'function'
+        && window.EmbeddingService.getStatus().status === 'loading') return;
+    } catch { /* fall through to passive start */ }
+  } catch { return; }
+  resumeSemanticIfNeeded();
+  // Deferred 'ready' marker (bytes cached from a previous session) never
+  // triggers the loading-only resume above: kick a passive start so the
+  // first search warms the model from cache. A null marker (never
+  // downloaded on this device, e.g. after a backup import) must NOT start a
+  // ~300MB download on the first keystroke with no toast and no explicit
+  // opt-in here: leave the keyword path until an explicit Settings toggle
+  // (cubic P2 follow-up on PR #1187). Guarded by the helper's in-flight
+  // flag (set by the resume above when it launched).
+  let shouldWarm;
+  try {
+    const st = readSemanticDownloadState();
+    if (st === 'ready') shouldWarm = true;
+  } catch { /* ignore */ }
+  if (shouldWarm) launchPassiveSemanticDownload();
+}
+
+function initNotesSemanticSetting() {
+  const els = getSemanticSettingsElements();
+  bindSemanticCheckbox(els);
+  bindSemanticCancel(els);
+  bindSemanticDelete(els);
+  try {
+    document.removeEventListener('embedding-status', renderNotesSemanticSettings);
+  } catch { /* ignore */ }
+  try {
+    document.addEventListener('embedding-status', renderNotesSemanticSettings);
+  } catch { /* ignore */ }
+  renderNotesSemanticSettings();
+  resumeSemanticIfNeeded();
+}
+
+// Called by the data-manager import flow before it re-runs initSettings: a
+// backup carries the opt-in flag but never the model bytes (Cache Storage
+// and vectors are device-local), so a fresh profile must not keep a flag
+// pointing at nothing. The marker is left unset here so neither the
+// page-load resume (loading-only) nor the first-query starter (ready-only)
+// starts a silent ~300MB download right after import when the cache is empty
+// (PR #1187 human review + cubic follow-up): an explicit Settings re-toggle
+// warms the model instead, and a missing host grant resets the flag there.
+// Absent settings module (tests) degrades to a no-op via the typeof guard
+// at the call site.
+function primeNotesSemanticImport() {
+  try {
+    // A disabled flag must not keep a leftover marker: the marker is
+    // transient (never exported), so an imported `false` would otherwise
+    // strand a stale 'ready'/'loading' entry until the next opt-in.
+    if (localStorage.getItem('notesSemanticEnabled') !== 'true') {
+      clearSemanticDownloadState();
+      return;
+    }
+    // Enabled import: defer to first query. Do not prime to 'loading' —
+    // that would look like an interrupted download and trigger a silent
+    // resume even when Cache Storage is empty on this device.
+  } catch (e) {
+    console.warn('Failed to prime semantic download state:', e);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNotesSemanticSetting);
+} else {
+  initNotesSemanticSetting();
 }
 
 // Pomodoro settings
@@ -2813,6 +3530,7 @@ function initSettings() {
   applyPomodoroStatsEnabled();
   applyEyeCareReminderSettings();
   applyNotesEnabled();
+  initNotesSemanticSetting();
   applyMottoEnabled();
   applyGamesEnabled();
   applyGamesKeymap();
@@ -2894,6 +3612,18 @@ window.loadEyeCareReminderState = loadEyeCareReminderState;
 window.saveEyeCareReminderState = saveEyeCareReminderState;
 window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;
 window.applyNotesEnabled = applyNotesEnabled;
+window.loadNotesSemanticEnabled = loadNotesSemanticEnabled;
+window.applyNotesSemanticEnabled = applyNotesSemanticEnabled;
+window.initNotesSemanticSetting = initNotesSemanticSetting;
+window.primeNotesSemanticImport = primeNotesSemanticImport;
+window.requestSemanticModelLoad = requestSemanticModelLoad;
+window.resumeSemanticIfNeeded = resumeSemanticIfNeeded;
+// Test hook for passive-resume isolation (PR #1187): the in-flight flag
+// persists across tests in the same jsdom worker, and the async storage
+// bridge can leave a stale 'loading' marker visible to the next test's
+// beforeEach resume. Tests poll this to wait for idle before asserting
+// the passive path ran.
+try { window.__semanticResumeInFlight = function () { return semanticResumeInFlight; }; } catch { /* ignore */ }
 window.applyMottoEnabled = applyMottoEnabled;
 window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;

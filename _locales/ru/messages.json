@@ -778,6 +778,58 @@
     "message": "Нет подходящих заметок.",
     "description": "Empty state when no notes match the search query"
   },
+  "notesSemanticEnable": {
+    "message": "Включить семантический поиск заметок",
+    "description": "Label for the semantic notes search toggle"
+  },
+  "notesSemanticDesc": {
+    "message": "Модель Harrier на устройстве (~300 МБ) загружается один раз после согласия для семантического поиска с учётом опечаток.",
+    "description": "Description for the semantic notes search setting"
+  },
+  "notesSemanticDownloading": {
+    "message": "Загрузка модели на устройство… {percent}%",
+    "description": "Status while the embedding model downloads; {percent} is 0-100"
+  },
+  "notesSemanticReady": {
+    "message": "Семантический поиск готов (на устройстве).",
+    "description": "Status when the embedding model is ready"
+  },
+  "notesSemanticError": {
+    "message": "Не удалось загрузить модель. Проверьте подключение и повторите попытку.",
+    "description": "Status when the embedding model fails to load"
+  },
+  "notesSemanticDeleteError": {
+    "message": "Не удалось удалить модель. Проверьте хранилище и повторите попытку.",
+    "description": "Error when the downloaded model cannot be deleted"
+  },
+  "notesSemanticCancel": {
+    "message": "Отменить загрузку",
+    "description": "Button to cancel the model download"
+  },
+  "notesSemanticDelete": {
+    "message": "Удалить модель",
+    "description": "Button to delete the downloaded model"
+  },
+  "notesSemanticSearching": {
+    "message": "Семантический поиск…",
+    "description": "Notes search status while semantic re-ranking"
+  },
+  "notesSemanticLoading": {
+    "message": "Загрузка модели на устройство…",
+    "description": "Notes search status while the model loads"
+  },
+  "notesSemanticStarting": {
+    "message": "Начинается загрузка…",
+    "description": "Status when the model download starts"
+  },
+  "notesSemanticNotDownloaded": {
+    "message": "Модель ещё не загружена. Выключите и снова включите, чтобы загрузить.",
+    "description": "Status when the model has never been downloaded on this device"
+  },
+  "notesSemanticPermissionDenied": {
+    "message": "Для загрузки модели нужен доступ к Hugging Face, который не был предоставлен.",
+    "description": "Error when the user denies the optional host permission for the model download"
+  },
   "notesEmpty": {
     "message": "Пока нет заметок. Нажмите + чтобы добавить!",
     "description": "Empty state when no notes exist"

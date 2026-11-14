@@ -285,6 +285,40 @@ const FEATURE_TOGGLE_RESYNC = {
       window.applyNotesEnabled();
     }
   },
+  notesSemanticEnabled: function () {
+    let enabled = false;
+    try {
+      enabled = localStorage.getItem('notesSemanticEnabled') === 'true';
+    } catch { /* ignore */ }
+    try {
+      if (!enabled
+        && window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
+        window.EmbeddingService.cancelLoad();
+      }
+    } catch { /* ignore */ }
+    if (typeof window.applyNotesSemanticEnabled === 'function') {
+      window.applyNotesSemanticEnabled();
+    }
+    // Rollback-to-enabled (a toggle-off write was rejected): the optimistic
+    // toggle-off cancelled the in-flight load and cleared its marker, so
+    // re-rendering alone strands the UI with no worker. initNotesSemanticSetting
+    // only resumes an interrupted ('loading') marker, but cancel cleared it
+    // to null: also kick the first-query lazy starter so a deferred
+    // ('ready'/null) marker warms the model instead of stalling with no
+    // download and no status text until the next search (PR #1187 review).
+    if (enabled) {
+      try {
+        if (typeof window.initNotesSemanticSetting === 'function') {
+          window.initNotesSemanticSetting();
+        }
+      } catch { /* ignore */ }
+      try {
+        if (typeof window.requestSemanticModelLoad === 'function') {
+          window.requestSemanticModelLoad();
+        }
+      } catch { /* ignore */ }
+    }
+  },
   mottoEnabled: function () {
     if (typeof window.applyMottoEnabled === 'function') {
       window.applyMottoEnabled();
@@ -636,6 +670,10 @@ function featureToggleControlDesynced(key) {
     case 'notesEnabled': {
       const checkbox = document.getElementById('notes-enabled-setting');
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
+    }
+    case 'notesSemanticEnabled': {
+      const checkbox = document.getElementById('notes-semantic-enabled-setting');
+      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
     }
     case 'mottoEnabled': return desyncCheckboxControl('motto-enabled-setting', key, false);
     case 'eyeCareReminder': {

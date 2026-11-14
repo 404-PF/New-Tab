@@ -225,6 +225,9 @@ const srcGlobals = {
   getPomodoroHeatLevel: 'readonly',
   ...pomodoroStatsSummaryGlobals,
   getFilteredNotes: 'readonly',
+  getFilteredNotesRanked: 'readonly',
+  isNotesSemanticEnabled: 'readonly',
+  isNotesSemanticReady: 'readonly',
   setNotesSearchQuery: 'readonly',
   getNotesSearchQuery: 'readonly',
   cancelPendingNoteSaves: 'readonly',
@@ -444,10 +447,22 @@ const testGlobals = {
   updateNoteText: 'readonly',
   updateNoteTag: 'readonly',
   reorderNotes: 'readonly',
+  renderNotes: 'readonly',
   getFilteredNotes: 'readonly',
+  getFilteredNotesRanked: 'readonly',
+  isNotesSemanticEnabled: 'readonly',
+  isNotesSemanticReady: 'readonly',
   setNotesSearchQuery: 'readonly',
   getNotesSearchQuery: 'readonly',
   cancelPendingNoteSaves: 'readonly',
+  loadNotesSemanticEnabled: 'readonly',
+  applyNotesSemanticEnabled: 'readonly',
+  primeNotesSemanticImport: 'readonly',
+  EmbeddingRegistry: 'readonly',
+  HarrierProvider: 'readonly',
+  EmbeddingService: 'readonly',
+  NotesVectorCache: 'readonly',
+  NotesSemanticSearch: 'readonly',
   exportNotes: 'readonly',
   importNotes: 'readonly',
   validateNotesData: 'readonly',
@@ -531,7 +546,7 @@ const commonRules = {
 
 module.exports = [
   {
-    ignores: ['coverage/**', 'node_modules/**', 'eslint.config.js', '.tmp/**'],
+    ignores: ['coverage/**', 'node_modules/**', 'eslint.config.js', '.tmp/**', 'vendor/transformers/**', 'vendor/onnxruntime-*/**', 'vendor/onnxruntime-common/**'],
   },
   js.configs.recommended,
   {
@@ -617,6 +632,18 @@ module.exports = [
       sourceType: 'module',
       globals: {
         ...globals.worker,
+      },
+    },
+    rules: {
+      ...commonRules,
+    },
+  },
+  {
+    files: ['vendor/embedding-loader.mjs'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
       },
     },
     rules: {

@@ -173,6 +173,94 @@ jobs:
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.release_tag == ''
         run: npm test
 
+      # The on-device embedding runtime (issue #1186) is self-hosted under
+      # vendor/ because MV3 bans CDN. The JS/WASM runtime is built at release
+      # time (vendor-embeddings.js) so large binaries never bloat git; only
+      # the tiny loader (vendor/embedding-loader.mjs) is tracked. The npm
+      # packages are pinned in devDependencies, so the `npm ci
+      # --ignore-scripts` step above already installed the integrity-verified
+      # tree from package-lock.json — no registry resolution here.
+      - name: Populate embedding vendor runtime
+        run: |
+          set -euo pipefail
+          node backgrounds/tools/vendor-embeddings.js
+          for f in vendor/embedding-loader.mjs vendor/transformers/transformers.js vendor/onnxruntime-web/ort.web.mjs vendor/onnxruntime-web/ort.webgpu.min.mjs; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Missing $f after vendor population (see vendor/README.md)"
+              exit 1
+            fi
+          done
+          if ! ls vendor/onnxruntime-web/*.wasm >/dev/null 2>&1; then
+            echo "::error::Missing vendor/onnxruntime-web/*.wasm after vendor population (see vendor/README.md)"
+            exit 1
+          fi
+          echo "✓ Embedding vendor entry files present"
+
+      # transformers.js imports onnxruntime-common + onnxruntime-web/webgpu as
+      # bare specifiers, rewritten to vendored relative paths by
+      # backgrounds/tools/vendor-embeddings.js. A partial vendor/ copy (e.g.
+      # only onnxruntime-common/index.js) passes a file-existence check yet
+      # fails at runtime when the graph resolves siblings — so resolve every
+      # relative import in the vendor tree instead.
+      - name: Verify embedding vendor import graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const roots = [
+            'vendor/embedding-loader.mjs',
+            'vendor/transformers/transformers.js'
+          ];
+          const seen = new Set();
+          const missing = [];
+          // Minified bundles embed false-positive from"..." inside string
+          // literals; only plausible path-like specifiers count.
+          const plausible = /^[./][\w./-]+$/;
+          const queue = roots.slice();
+          // Extensionless relative imports never resolve in browsers.
+          function resolveSpec(dir, spec) {
+            const base = path.normalize(path.join(dir, spec));
+            if (!base.endsWith('.js') && !base.endsWith('.mjs')) return null;
+            return fs.existsSync(base) ? base : null;
+          }
+          while (queue.length > 0) {
+            const file = queue.pop();
+            if (seen.has(file)) continue;
+            seen.add(file);
+            if (!fs.existsSync(file)) {
+              missing.push(file + ' (missing file)');
+              continue;
+            }
+          const text = fs.readFileSync(file, 'utf8');
+          const specs = new Set();
+          for (const m of text.matchAll(/from\s*["']([^"']+)["']/g)) specs.add(m[1]);
+          for (const m of text.matchAll(/(?<![\w$])import\s*["']([^"']+)["']/g)) specs.add(m[1]);
+          for (const m of text.matchAll(/import\s*\(\s*["']([^"']+)["']\s*\)/g)) specs.add(m[1]);
+          for (const spec of specs) {
+            if (!spec.startsWith('.') || !plausible.test(spec)) continue;
+            // Non-module assets (wasm, json, css) load at runtime via fetch,
+            // not the module graph; only .js/.mjs resolution is verified.
+            if (/\.(\w+)$/.test(spec) && !/\.(m?js)$/.test(spec)) continue;
+            const resolved = resolveSpec(path.dirname(file), spec);
+            if (!resolved) {
+              missing.push(file + ' -> ' + spec);
+              continue;
+            }
+            if (!seen.has(resolved)) {
+              queue.push(resolved);
+            }
+          }
+          }
+          if (missing.length > 0) {
+            console.error('::error::Unresolved vendor imports:\n  ' + missing.join('\n  '));
+            process.exit(1);
+          }
+          console.log(`✓ Embedding vendor import graph resolves (${seen.size} files)`);
+          NODE
+
       # The extension is entirely static (vanilla HTML/CSS/JS with no
       # transpilation step).  If a build step is ever added, replace the
       # git archive below with the build output directory so the workflow
@@ -182,6 +270,26 @@ jobs:
           BUILD_DIR="/tmp/extension-build"
           mkdir -p "$BUILD_DIR"
           git archive --format=tar HEAD | tar x -C "$BUILD_DIR"
+          # git archive ships tracked files only; overlay the release-time
+          # vendor runtime (built above, never committed) so the opt-in works.
+          # Fail closed: any missing copy aborts the release instead of
+          # shipping a ZIP without the embedding runtime.
+          mkdir -p "$BUILD_DIR/vendor"
+          cp vendor/embedding-loader.mjs "$BUILD_DIR/vendor/"
+          mkdir -p "$BUILD_DIR/vendor/transformers" "$BUILD_DIR/vendor/onnxruntime-web" "$BUILD_DIR/vendor/onnxruntime-common"
+          cp vendor/transformers/* "$BUILD_DIR/vendor/transformers/"
+          cp vendor/onnxruntime-web/* "$BUILD_DIR/vendor/onnxruntime-web/"
+          cp vendor/onnxruntime-common/* "$BUILD_DIR/vendor/onnxruntime-common/"
+          for f in vendor/embedding-loader.mjs vendor/transformers/transformers.js vendor/onnxruntime-web/ort.web.mjs vendor/onnxruntime-web/ort.webgpu.min.mjs; do
+            if [ ! -f "$BUILD_DIR/$f" ]; then
+              echo "::error::Missing $BUILD_DIR/$f after vendor overlay"
+              exit 1
+            fi
+          done
+          if ! ls "$BUILD_DIR"/vendor/onnxruntime-web/*.wasm >/dev/null 2>&1; then
+            echo "::error::Missing $BUILD_DIR/vendor/onnxruntime-web/*.wasm after vendor overlay"
+            exit 1
+          fi
           echo "BUILD_DIR=$BUILD_DIR" >> "$GITHUB_ENV"
 
       - name: Strip development-only files

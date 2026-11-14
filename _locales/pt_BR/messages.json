@@ -778,6 +778,58 @@
     "message": "Nenhuma nota correspondente.",
     "description": "Empty state when no notes match the search query"
   },
+  "notesSemanticEnable": {
+    "message": "Ativar pesquisa semântica nas notas",
+    "description": "Label for the semantic notes search toggle"
+  },
+  "notesSemanticDesc": {
+    "message": "Modelo Harrier no dispositivo (~300 MB) é baixado uma vez após a ativação, para correspondências semânticas e tolerantes a erros de digitação.",
+    "description": "Description for the semantic notes search setting"
+  },
+  "notesSemanticDownloading": {
+    "message": "Baixando modelo no dispositivo… {percent}%",
+    "description": "Status while the embedding model downloads; {percent} is 0-100"
+  },
+  "notesSemanticReady": {
+    "message": "Pesquisa semântica pronta (no dispositivo).",
+    "description": "Status when the embedding model is ready"
+  },
+  "notesSemanticError": {
+    "message": "Falha ao carregar o modelo. Verifique a conexão e tente novamente.",
+    "description": "Status when the embedding model fails to load"
+  },
+  "notesSemanticDeleteError": {
+    "message": "Falha ao excluir o modelo. Verifique o armazenamento e tente novamente.",
+    "description": "Error when the downloaded model cannot be deleted"
+  },
+  "notesSemanticCancel": {
+    "message": "Cancelar download",
+    "description": "Button to cancel the model download"
+  },
+  "notesSemanticDelete": {
+    "message": "Excluir modelo",
+    "description": "Button to delete the downloaded model"
+  },
+  "notesSemanticSearching": {
+    "message": "Pesquisa semântica…",
+    "description": "Notes search status while semantic re-ranking"
+  },
+  "notesSemanticLoading": {
+    "message": "Carregando modelo no dispositivo…",
+    "description": "Notes search status while the model loads"
+  },
+  "notesSemanticStarting": {
+    "message": "Iniciando download…",
+    "description": "Status when the model download starts"
+  },
+  "notesSemanticNotDownloaded": {
+    "message": "Modelo ainda não baixado. Desligue e ligue novamente para baixar.",
+    "description": "Status when the model has never been downloaded on this device"
+  },
+  "notesSemanticPermissionDenied": {
+    "message": "O download do modelo precisa de acesso ao Hugging Face, que não foi concedido.",
+    "description": "Error when the user denies the optional host permission for the model download"
+  },
   "notesEmpty": {
     "message": "Ainda não há notas. Clique em + para adicionar!",
     "description": "Empty state when no notes exist"

@@ -778,6 +778,58 @@
     "message": "一致するメモがありません。",
     "description": "Empty state when no notes match the search query"
   },
+  "notesSemanticEnable": {
+    "message": "セマンティックなメモ検索を有効にする",
+    "description": "Label for the semantic notes search toggle"
+  },
+  "notesSemanticDesc": {
+    "message": "オンデバイスのHarrierモデル（約300MB）を、有効化後に一度だけダウンロードし、表記ゆれに強い意味ベースの検索を行います。",
+    "description": "Description for the semantic notes search setting"
+  },
+  "notesSemanticDownloading": {
+    "message": "オンデバイスモデルをダウンロード中… {percent}%",
+    "description": "Status while the embedding model downloads; {percent} is 0-100"
+  },
+  "notesSemanticReady": {
+    "message": "セマンティック検索の準備ができました（オンデバイス）。",
+    "description": "Status when the embedding model is ready"
+  },
+  "notesSemanticError": {
+    "message": "モデルの読み込みに失敗しました。接続を確認して再試行してください。",
+    "description": "Status when the embedding model fails to load"
+  },
+  "notesSemanticDeleteError": {
+    "message": "モデルの削除に失敗しました。ストレージを確認して再試行してください。",
+    "description": "Error when the downloaded model cannot be deleted"
+  },
+  "notesSemanticCancel": {
+    "message": "ダウンロードをキャンセル",
+    "description": "Button to cancel the model download"
+  },
+  "notesSemanticDelete": {
+    "message": "モデルを削除",
+    "description": "Button to delete the downloaded model"
+  },
+  "notesSemanticSearching": {
+    "message": "セマンティック検索中…",
+    "description": "Notes search status while semantic re-ranking"
+  },
+  "notesSemanticLoading": {
+    "message": "オンデバイスモデルを読み込み中…",
+    "description": "Notes search status while the model loads"
+  },
+  "notesSemanticStarting": {
+    "message": "ダウンロードを開始しています…",
+    "description": "Status when the model download starts"
+  },
+  "notesSemanticNotDownloaded": {
+    "message": "モデルはまだダウンロードされていません。オフにしてからオンにしてダウンロードしてください。",
+    "description": "Status when the model has never been downloaded on this device"
+  },
+  "notesSemanticPermissionDenied": {
+    "message": "モデルのダウンロードには Hugging Face へのアクセス権限が必要ですが、許可されていません。",
+    "description": "Error when the user denies the optional host permission for the model download"
+  },
   "notesEmpty": {
     "message": "まだメモがありません。+ をクリックして追加してください！",
     "description": "Empty state when no notes exist"

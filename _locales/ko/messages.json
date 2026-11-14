@@ -778,6 +778,58 @@
     "message": "일치하는 메모가 없습니다.",
     "description": "Empty state when no notes match the search query"
   },
+  "notesSemanticEnable": {
+    "message": "의미 기반 메모 검색 사용",
+    "description": "Label for the semantic notes search toggle"
+  },
+  "notesSemanticDesc": {
+    "message": "옵트인 후 온디바이스 Harrier 모델(약 300MB)을 한 번 다운로드하여 오타에 강하고 의미 기반 검색을 제공합니다.",
+    "description": "Description for the semantic notes search setting"
+  },
+  "notesSemanticDownloading": {
+    "message": "온디바이스 모델 다운로드 중… {percent}%",
+    "description": "Status while the embedding model downloads; {percent} is 0-100"
+  },
+  "notesSemanticReady": {
+    "message": "의미 기반 검색 준비 완료(온디바이스).",
+    "description": "Status when the embedding model is ready"
+  },
+  "notesSemanticError": {
+    "message": "모델을 불러오지 못했습니다. 연결을 확인하고 다시 시도하세요.",
+    "description": "Status when the embedding model fails to load"
+  },
+  "notesSemanticDeleteError": {
+    "message": "모델을 삭제하지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.",
+    "description": "Error when the downloaded model cannot be deleted"
+  },
+  "notesSemanticCancel": {
+    "message": "다운로드 취소",
+    "description": "Button to cancel the model download"
+  },
+  "notesSemanticDelete": {
+    "message": "모델 삭제",
+    "description": "Button to delete the downloaded model"
+  },
+  "notesSemanticSearching": {
+    "message": "의미 기반 검색 중…",
+    "description": "Notes search status while semantic re-ranking"
+  },
+  "notesSemanticLoading": {
+    "message": "온디바이스 모델 로드 중…",
+    "description": "Notes search status while the model loads"
+  },
+  "notesSemanticStarting": {
+    "message": "다운로드 시작 중…",
+    "description": "Status when the model download starts"
+  },
+  "notesSemanticNotDownloaded": {
+    "message": "모델이 아직 다운로드되지 않았습니다. 껐다가 다시 켜서 다운로드하세요.",
+    "description": "Status when the model has never been downloaded on this device"
+  },
+  "notesSemanticPermissionDenied": {
+    "message": "모델 다운로드에는 Hugging Face 접근 권한이 필요하지만 허용되지 않았습니다.",
+    "description": "Error when the user denies the optional host permission for the model download"
+  },
   "notesEmpty": {
     "message": "아직 메모가 없습니다. +를 클릭하여 추가하세요!",
     "description": "Empty state when no notes exist"

@@ -778,6 +778,58 @@
     "message": "没有匹配的便签。",
     "description": "Empty state when no notes match the search query"
   },
+  "notesSemanticEnable": {
+    "message": "启用语义便签搜索",
+    "description": "Label for the semantic notes search toggle"
+  },
+  "notesSemanticDesc": {
+    "message": "设备端 Harrier 模型（约 300MB）仅在您选择启用后下载一次，用于容错和语义匹配。",
+    "description": "Description for the semantic notes search setting"
+  },
+  "notesSemanticDownloading": {
+    "message": "正在下载设备端模型… {percent}%",
+    "description": "Status while the embedding model downloads; {percent} is 0-100"
+  },
+  "notesSemanticReady": {
+    "message": "语义搜索已就绪（设备端）。",
+    "description": "Status when the embedding model is ready"
+  },
+  "notesSemanticError": {
+    "message": "模型加载失败。请检查网络连接后重试。",
+    "description": "Status when the embedding model fails to load"
+  },
+  "notesSemanticDeleteError": {
+    "message": "删除模型失败。请检查存储空间后重试。",
+    "description": "Error when the downloaded model cannot be deleted"
+  },
+  "notesSemanticCancel": {
+    "message": "取消下载",
+    "description": "Button to cancel the model download"
+  },
+  "notesSemanticDelete": {
+    "message": "删除模型",
+    "description": "Button to delete the downloaded model"
+  },
+  "notesSemanticSearching": {
+    "message": "语义搜索中…",
+    "description": "Notes search status while semantic re-ranking"
+  },
+  "notesSemanticLoading": {
+    "message": "正在加载设备端模型…",
+    "description": "Notes search status while the model loads"
+  },
+  "notesSemanticStarting": {
+    "message": "正在开始下载…",
+    "description": "Status when the model download starts"
+  },
+  "notesSemanticNotDownloaded": {
+    "message": "模型尚未下载。请先关闭再重新打开以下载。",
+    "description": "Status when the model has never been downloaded on this device"
+  },
+  "notesSemanticPermissionDenied": {
+    "message": "模型下载需要访问 Hugging Face，但未获得授权。",
+    "description": "Error when the user denies the optional host permission for the model download"
+  },
   "notesEmpty": {
     "message": "还没有便签。点击 + 添加一个！",
     "description": "Empty state when no notes exist"

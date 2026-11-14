@@ -16,11 +16,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@huggingface/transformers": "4.3.2",
     "@vitest/coverage-v8": "^3.0.0",
     "eslint": "^10.4.0",
     "globals": "^17.6.0",
     "husky": "^9.0.0",
     "jsdom": "^26.0.0",
+    "onnxruntime-common": "1.31.0-dev.20260911-2a43ec07e",
+    "onnxruntime-web": "1.31.0-dev.20260914-8d85527a0",
     "vitest": "^3.0.0"
   }
 }
