@@ -1196,7 +1196,7 @@ body.light-theme .todo-priority-badge.priority-low {
   border-radius: 16px;
   padding: 24px;
   width: 90%;
-  max-width: min(var(--modal-width-sm), calc(100vw - 32px));
+  max-width: min(var(--modal-width-md), calc(100vw - 32px));
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 

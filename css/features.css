@@ -3224,7 +3224,7 @@ body.light-theme .weather-city-inline input:focus {
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
-  min-width: 320px;
+  min-width: min(320px, calc(100vw - 32px));
   max-width: min(var(--modal-width-lg), calc(100vw - 32px));
   width: 90%;
   max-height: var(--overlay-max-height);

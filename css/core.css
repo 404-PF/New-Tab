@@ -36,7 +36,7 @@
     0 8px 24px rgba(33, 150, 243, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
   --overlay-max-height: calc(100vh - 225px);
   /* Shared modal width scale (#1073). sm = delete/rename; md = add-app,
-     thumbnail, todo-edit, weather, release-notes, games; lg = settings;
+     thumbnail, todo-edit, settings, weather, release-notes, games; lg = todo-app;
      xl = ai chat. Each dialog pairs its step with a viewport-safe cap:
      max-width: min(var(--modal-width-*), calc(100vw - 32px)). */
   --modal-width-sm: 528px;
