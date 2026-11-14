@@ -1196,7 +1196,7 @@ body.light-theme .todo-priority-badge.priority-low {
   border-radius: 16px;
   padding: 24px;
   width: 90%;
-  max-width: 400px;
+  max-width: min(var(--modal-width-sm), calc(100vw - 32px));
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
@@ -2764,7 +2764,7 @@ body.light-theme .todo-date-btn.overdue:hover {
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  max-width: 400px;
+  max-width: min(var(--modal-width-sm), calc(100vw - 32px));
   min-width: 300px;
   opacity: 1;
   transform: scale(1) translateY(0);

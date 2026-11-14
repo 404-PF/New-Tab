@@ -317,7 +317,7 @@ body.light-theme .settings-section select option {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 28px 24px;
-  max-width: 360px;
+  max-width: min(var(--modal-width-sm), calc(100vw - 32px));
   width: 90%;
   text-align: center;
   opacity: 0;
@@ -518,7 +518,7 @@ body.light-theme #import-todos-dialog .ai-confirm-icon {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 28px 24px;
-  max-width: 360px;
+  max-width: min(var(--modal-width-sm), calc(100vw - 32px));
   width: 90%;
   text-align: center;
   opacity: 0;
@@ -3225,7 +3225,7 @@ body.light-theme .weather-city-inline input:focus {
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
   min-width: 320px;
-  max-width: 640px;
+  max-width: min(var(--modal-width-lg), calc(100vw - 32px));
   width: 90%;
   max-height: var(--overlay-max-height);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
@@ -3246,7 +3246,7 @@ body.light-theme .weather-city-inline input:focus {
 
 @media (min-width: 576px) {
   .todo-app-modal-content {
-    width: 640px;
+    width: var(--modal-width-lg);
   }
 }
 
@@ -3265,6 +3265,8 @@ body.light-theme .weather-city-inline input:focus {
 }
 
 .todo-app-body {
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 20px 24px 24px;
   overflow-y: auto;
 }
@@ -3976,7 +3978,7 @@ body.light-theme .games-app-modal-content {
 
 @media (min-width: 576px) {
   .games-app-modal-content {
-    width: min(600px, 90vw);
+    width: var(--modal-width-md);
   }
 }
 
