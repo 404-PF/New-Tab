@@ -13,13 +13,6 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  const st = String(globalThis.setTimeout);
-  if (!vi.isFakeTimers() && st.includes('clock[')) {
-    process.stdout.write(`DIAG-STALE-fake-setTimeout at ${expect.getState().currentTestName}\n`);
-  }
-  if (vi.isFakeTimers()) {
-    process.stdout.write(`DIAG-FB fake-timers-active at ${expect.getState().currentTestName}\n`);
-  }
   // Reset the internal todos state to match the empty localStorage
   if (typeof initTodo === 'function') {
     initTodo();
@@ -606,7 +599,16 @@ describe('Todo filtering', () => {
   it('never arms a NaN overdue timeout for a malformed persisted due date (issue #1205)', () => {
     vi.useFakeTimers();
     const previousStatus = currentFilters.status;
-    const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
+    // Hand-rolled recorder instead of vi.spyOn: a spy taken while fake
+    // timers are active keeps the fake setTimeout as its "original", so any
+    // later vi.restoreAllMocks() would write that stale fake back onto the
+    // global after the clock has been uninstalled.
+    const originalSetTimeout = window.setTimeout;
+    const setTimeoutCalls = [];
+    window.setTimeout = (...args) => {
+      setTimeoutCalls.push(args);
+      return originalSetTimeout.apply(window, args);
+    };
 
     try {
       initTodo();
@@ -632,9 +634,9 @@ describe('Todo filtering', () => {
       expect(document.getElementById('todo-count').textContent).toBe('0/1');
       // An invalid Date parses to a NaN flip; arming the one-shot with it
       // would make setTimeout fire immediately and re-render in a loop.
-      expect(setTimeoutSpy.mock.calls.some(call => Number.isNaN(call[1]))).toBe(false);
+      expect(setTimeoutCalls.some(call => Number.isNaN(call[1]))).toBe(false);
     } finally {
-      setTimeoutSpy.mockRestore();
+      window.setTimeout = originalSetTimeout;
       currentFilters.status = previousStatus;
       localStorage.removeItem('todos');
       vi.useRealTimers();
@@ -3430,9 +3432,7 @@ describe('Todo storage bridge write failures', () => {
   }
 
   afterEach(async () => {
-    process.stdout.write(`DIAG-AB-ENTER fake=${vi.isFakeTimers()} st=${String(globalThis.setTimeout).slice(0, 50)}\n`);
     await flushDeferredFailureSync();
-    process.stdout.write('DIAG-AB-EXIT\n');
     if (restoreStorageSet) {
       restoreStorageSet();
       restoreStorageSet = null;

@@ -1473,6 +1473,9 @@
 
 // Filter management
 function applyFilters() {
+  // Snapshot taken before filtering: a due instant crossed while the rows
+  // render must not be dropped by the re-arm below (review thread).
+  const renderStartedAt = Date.now();
   filterTodos();
   pruneTodoSelection();
   renderTodos();
@@ -1483,7 +1486,7 @@ function applyFilters() {
   // Add/complete/delete and filter changes all funnel through here, so
   // re-arming here keeps the due-minute timer aligned with the list
   // (issue #1205).
-  scheduleTodoOverdueRefresh();
+  scheduleTodoOverdueRefresh(renderStartedAt);
 }
 
 // The Today filter and badge compare due dates against the current local
@@ -1518,7 +1521,7 @@ let overdueRefreshTimer = null;
 // further out is armed for the cap and re-armed on fire until it is reached.
 const MAX_OVERDUE_TIMEOUT_MS = 2147483647;
 
-function scheduleTodoOverdueRefresh() {
+function scheduleTodoOverdueRefresh(renderStartedAt = Date.now()) {
   if (overdueRefreshTimer) {
     clearTimeout(overdueRefreshTimer);
     overdueRefreshTimer = null;
@@ -1526,7 +1529,6 @@ function scheduleTodoOverdueRefresh() {
   let flipAt = null;
   todos.forEach(todo => {
     if (todo.completed || !todo.dueDate || !todo.dueTime) return;
-    if (isOverdue(todo.dueDate, todo.dueTime)) return;
     const due = getDueDateTime(todo.dueDate, todo.dueTime);
     // A malformed dueDate parses to an invalid Date, which is truthy but
     // yields a NaN timestamp; arming with NaN would make setTimeout fire
@@ -1537,6 +1539,11 @@ function scheduleTodoOverdueRefresh() {
     // due instant; arming for that ms avoids re-firing on the exact instant
     // and finding the todo still "not overdue".
     const flip = dueTimestamp + 1;
+    // Boundaries passed before the caller started rendering were rendered
+    // as overdue; only a boundary crossed while rendering stays pending, so
+    // it re-applies the filters a ms later instead of being dropped
+    // (review thread).
+    if (flip <= renderStartedAt) return;
     if (flipAt === null || flip < flipAt) {
       flipAt = flip;
     }
@@ -1546,6 +1553,9 @@ function scheduleTodoOverdueRefresh() {
   overdueRefreshTimer = setTimeout(() => {
     overdueRefreshTimer = null;
     applyFilters();
+    // renderTodos() replaced every row; rebind an open inline date picker
+    // to its fresh anchor (or close it when the row left the view).
+    refreshInlineDatePickers(false);
   }, delay);
 }
 
