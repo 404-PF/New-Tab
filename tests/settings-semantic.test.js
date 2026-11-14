@@ -45,6 +45,20 @@ beforeEach(() => {
   window.applyNotesSemanticEnabled();
 });
 
+// Passive-resume isolation (PR #1187): the in-flight flag persists across
+// tests and the async storage bridge can leave a stale marker visible to
+// the next beforeEach resume. Poll until any stray passive settles before
+// asserting the passive path ran, so an early-return regression cannot
+// hide behind a stuck flag (cubic P2 on PR #1187).
+async function waitForSemanticPassiveIdle() {
+  for (let i = 0; i < 20; i += 1) {
+    try {
+      if (typeof window.__semanticResumeInFlight !== 'function' || !window.__semanticResumeInFlight()) return;
+    } catch { return; }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
 describe('Semantic search settings', () => {
   it('is disabled by default', () => {
     expect(window.loadNotesSemanticEnabled()).toBe(false);
@@ -389,25 +403,54 @@ describe('Semantic search settings', () => {
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.applyNotesSemanticEnabled();
     // Default permissions mock grants nothing, so the passive contains()
-    // check fails, matching a fresh device with no host grant.
-    window.requestSemanticModelLoad();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
-    expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
-  });
-
-  it('leaves the flag and marker intact on passive script failures (PR #1187)', async () => {
-    // Same stranded-bytes reason as above for the module-load catch block:
-    // an offline passive warm must not clear the opt-in.
-    try { delete window.EmbeddingService; } catch { /* ignore */ }
+    // check fails, matching a fresh device with no host grant. Spy the
+    // permission check so an early-return regression cannot pass green
+    // without exercising the passive path (cubic P2 on PR #1187).
     const originalContains = chrome.permissions.contains;
-    chrome.permissions.contains = async function () { return true; };
+    let containsCalls = 0;
+    chrome.permissions.contains = async function () { containsCalls += 1; return false; };
+    let scriptCalls = 0;
     window.EmbeddingScripts = {
       scriptsLoaded: function () { return false; },
-      ensureScripts: function () { return Promise.reject(new Error('offline')); }
+      ensureScripts: function () { scriptCalls += 1; return Promise.resolve(); }
     };
+    try {
+      // Drain any stray passive from the previous test's beforeEach resume
+      // (async storage bridge can leave a stale marker); otherwise this
+      // request no-ops on the stuck in-flight flag and the spy never runs.
+      await waitForSemanticPassiveIdle();
+      window.requestSemanticModelLoad();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(containsCalls).toBeGreaterThan(0);
+      // Permission denied short-circuits before scripts (PR #1187).
+      expect(scriptCalls).toBe(0);
+      expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+      expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
+    } finally {
+      chrome.permissions.contains = originalContains;
+      try { delete window.EmbeddingScripts; } catch { /* ignore */ }
+    }
+  });
+
+  it('clears a loading marker on passive script failures but keeps ready (PR #1187)', async () => {
+    // Same stranded-bytes reason as above for the module-load catch block:
+    // an offline passive warm must not clear the opt-in. A leftover
+    // 'loading' marker would show "Starting download…" forever with no
+    // resume, so it clears to the not-downloaded hint; 'ready' stays so
+    // cached bytes keep their Delete control (cubic P2 on PR #1187).
+    try { delete window.EmbeddingService; } catch { /* ignore */ }
+    const originalContains = chrome.permissions.contains;
+    let containsCalls = 0;
+    chrome.permissions.contains = async function () { containsCalls += 1; return true; };
+    let scriptCalls = 0;
+    window.EmbeddingScripts = {
+      scriptsLoaded: function () { return false; },
+      ensureScripts: function () { scriptCalls += 1; return Promise.reject(new Error('offline')); }
+    };
+    await waitForSemanticPassiveIdle();
     localStorage.setItem('notesSemanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'loading');
     try {
@@ -415,8 +458,12 @@ describe('Semantic search settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
+      // Assert the passive path ran: an early return would leave the
+      // marker untouched and pass green without exercising the failure.
+      expect(containsCalls).toBeGreaterThan(0);
+      expect(scriptCalls).toBeGreaterThan(0);
       expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
-      expect(localStorage.getItem('notesSemanticDownload')).toBe('loading');
+      expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
     } finally {
       chrome.permissions.contains = originalContains;
       try { delete window.EmbeddingScripts; } catch { /* ignore */ }

@@ -2158,8 +2158,15 @@ function startSemanticDownload(requestPermission) {
       // off: clearing the flag and the 'ready' marker strands the cached
       // ~300MB bytes with no Delete control (PR #1187). Leave both intact
       // and stay on the keyword path until an explicit Settings opt-in;
-      // only the gestured path resets the flag/marker.
+      // only the gestured path resets the flag/marker. A leftover
+      // 'loading' marker would show "Starting download…" forever with no
+      // resume (nothing re-kicks without a gesture) and hidden Cancel /
+      // Delete, so clear it to the not-downloaded hint; keep 'ready' so
+      // cached bytes stay purgable (cubic P2 on PR #1187).
       if (passive) {
+        try {
+          if (readSemanticDownloadState() === 'loading') clearSemanticDownloadState();
+        } catch { /* ignore */ }
         renderNotesSemanticSettings();
         return;
       }
@@ -2187,8 +2194,14 @@ function startSemanticDownload(requestPermission) {
     console.warn('Failed to load embedding modules:', err);
     // Passive warm/resume failures (no grant on this device, offline
     // scripts) must not turn the opt-in off either: same stranded-bytes
-    // reason as above (PR #1187). Only the gestured path resets.
+    // reason as above (PR #1187). Only the gestured path resets. Clear a
+    // leftover 'loading' marker so Settings shows the not-downloaded hint
+    // instead of "Starting download…" forever; keep 'ready' so cached
+    // bytes stay purgable (cubic P2 on PR #1187).
     if (passive) {
+      try {
+        if (readSemanticDownloadState() === 'loading') clearSemanticDownloadState();
+      } catch { /* ignore */ }
       renderNotesSemanticSettings();
       return;
     }
@@ -3600,6 +3613,12 @@ window.initNotesSemanticSetting = initNotesSemanticSetting;
 window.primeNotesSemanticImport = primeNotesSemanticImport;
 window.requestSemanticModelLoad = requestSemanticModelLoad;
 window.resumeSemanticIfNeeded = resumeSemanticIfNeeded;
+// Test hook for passive-resume isolation (PR #1187): the in-flight flag
+// persists across tests in the same jsdom worker, and the async storage
+// bridge can leave a stale 'loading' marker visible to the next test's
+// beforeEach resume. Tests poll this to wait for idle before asserting
+// the passive path ran.
+try { window.__semanticResumeInFlight = function () { return semanticResumeInFlight; }; } catch { /* ignore */ }
 window.applyMottoEnabled = applyMottoEnabled;
 window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;
