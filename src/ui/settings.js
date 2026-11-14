@@ -2030,7 +2030,12 @@ function renderNotesSemanticSettings() {
     if (loading) els.progress.value = Math.round((svcStatus.progress || 0) * 100);
   }
   if (els.cancelBtn) els.cancelBtn.hidden = !loading;
-  if (els.deleteBtn) els.deleteBtn.hidden = !(readyForUi || error || markerReady);
+  // A failed cache warm leaves the 'error' marker with bytes possibly still
+  // cached: keep Delete reachable after a reload too (not only while the
+  // service still reports error).
+  let markerError;
+  try { markerError = readSemanticDownloadState() === 'error'; } catch { markerError = false; }
+  if (els.deleteBtn) els.deleteBtn.hidden = !(readyForUi || error || markerReady || markerError);
   if (els.status) els.status.textContent = resolveSemanticStatusText(enabled, svcStatus);
 }
 
@@ -2331,16 +2336,16 @@ function startSemanticModelDownload(els, passive, startGeneration) {
       }
       return;
     }
-    // Cache warm must not clobber a 'ready' marker: a passive warm would
-    // overwrite it with 'loading', then a toggle-off during the warm clears
-    // it and strands ~300MB with no Delete control (PR #1187 review). Only
-    // passive warms preserve 'ready' here; explicit opt-ins always show
-    // 'loading' so a fresh download reports progress even with cached bytes.
+    // Cache warm must not clobber a 'ready' marker: overwriting it with
+    // 'loading' and then toggling off or cancelling during the warm would
+    // clear the marker and strand ~300MB with no Delete control (PR #1187
+    // review). This applies to explicit re-enables too; progress is shown
+    // from the service status, not from the marker.
     let startedFromReady = false;
     try {
       startedFromReady = readSemanticDownloadState() === 'ready';
     } catch { startedFromReady = false; }
-    if (!(silent && startedFromReady)) writeSemanticDownloadState('loading');
+    if (!startedFromReady) writeSemanticDownloadState('loading');
     window.EmbeddingService.ensureModel({
       onProgress: function () {
         renderNotesSemanticSettings();
