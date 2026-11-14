@@ -41,10 +41,10 @@ describe('Shared modal width scale (#1073)', () => {
 
     // toMatch (not the declaration helper): the scale sits behind a block
     // comment, which the helper's (?:^|;) anchor cannot cross.
-    expect(root).toMatch(/--modal-width-sm:\s*440px/);
-    expect(root).toMatch(/--modal-width-md:\s*560px/);
-    expect(root).toMatch(/--modal-width-lg:\s*720px/);
-    expect(root).toMatch(/--modal-width-xl:\s*900px/);
+    expect(root).toMatch(/--modal-width-sm:\s*528px/);
+    expect(root).toMatch(/--modal-width-md:\s*672px/);
+    expect(root).toMatch(/--modal-width-lg:\s*864px/);
+    expect(root).toMatch(/--modal-width-xl:\s*1080px/);
     expectDeclaration(root, '--overlay-max-height', 'calc(100vh - 225px)');
 
     // The pre-scale tokens had zero var() consumers; they must not linger
@@ -53,16 +53,16 @@ describe('Shared modal width scale (#1073)', () => {
     expect(CORE_CSS).not.toMatch(/--modal-min-height/);
   });
 
-  it('sizes settings from the lg step', () => {
+  it('sizes settings from the md step', () => {
     const body = ruleBody(
       CORE_CSS,
       /#settings-modal > div\s*\{([^}]*)\}/,
       '#settings-modal > div rule in css/core.css'
     );
 
-    expectDeclaration(body, 'width', 'min(var(--modal-width-lg), calc(100vw - 32px))');
+    expectDeclaration(body, 'width', 'min(var(--modal-width-md), calc(100vw - 32px))');
     expectDeclaration(body, 'min-width', '280px');
-    expectDeclaration(body, 'max-width', 'var(--modal-width-lg)');
+    expectDeclaration(body, 'max-width', 'var(--modal-width-md)');
     expectDeclaration(body, 'max-height', 'var(--overlay-max-height)');
   });
 
