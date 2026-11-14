@@ -49,13 +49,27 @@ beforeEach(() => {
 // tests and the async storage bridge can leave a stale marker visible to
 // the next beforeEach resume. Poll until any stray passive settles before
 // asserting the passive path ran, so an early-return regression cannot
-// hide behind a stuck flag (cubic P2 on PR #1187).
-async function waitForSemanticPassiveIdle() {
-  for (let i = 0; i < 20; i += 1) {
+// hide behind a stuck flag (cubic P2 on PR #1187). Fails explicitly on
+// timeout instead of returning while a launch is still in flight, and
+// never treats hook errors as idle: a throwing hook keeps polling until
+// the timeout so a broken helper cannot pass green.
+async function waitForSemanticPassiveIdle(timeoutMs) {
+  const timeout = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 2000;
+  const start = Date.now();
+  for (;;) {
+    let inFlight = true;
+    let hookMissing = false;
     try {
-      if (typeof window.__semanticResumeInFlight !== 'function' || !window.__semanticResumeInFlight()) return;
-    } catch { return; }
-    await new Promise((resolve) => setTimeout(resolve, 0));
+      if (typeof window.__semanticResumeInFlight !== 'function') hookMissing = true;
+      else inFlight = !!window.__semanticResumeInFlight();
+    } catch {
+      inFlight = true;
+    }
+    if (hookMissing || !inFlight) return;
+    if (Date.now() - start > timeout) {
+      throw new Error('Timed out waiting for semantic passive launch to settle');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
 
