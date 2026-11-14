@@ -1633,26 +1633,27 @@
             <polyline points="6,9 12,15 18,9"></polyline>
           </svg>
         </button>
-        
-        <!-- Custom Delete Confirmation Dialog -->
-        <div id="ai-confirm-dialog" class="ai-confirm-dialog" inert>
-          <div class="ai-confirm-overlay"></div>
-          <div class="ai-confirm-content" data-liquid-glass="panel">
-            <div class="ai-confirm-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-            </div>
-            <h3 class="ai-confirm-title" data-i18n="aiDeleteConfirmTitle">Delete Conversation?</h3>
-            <p class="ai-confirm-message" data-i18n="aiDeleteConfirmMessage">This action cannot be undone. The entire conversation will be permanently removed.</p>
-            <div class="ai-confirm-actions">
-              <button class="ai-confirm-cancel" data-i18n="cancel">Cancel</button>
-              <button class="ai-confirm-delete" data-i18n="deleteApp">Delete</button>
-            </div>
-          </div>
-        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Delete Confirmation Dialog (kept outside #ai-chat-modal: a
+       marked child never enhances inside an already enhanced ancestor) -->
+  <div id="ai-confirm-dialog" class="ai-confirm-dialog" inert>
+    <div class="ai-confirm-overlay"></div>
+    <div class="ai-confirm-content" data-liquid-glass="panel">
+      <div class="ai-confirm-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <h3 class="ai-confirm-title" data-i18n="aiDeleteConfirmTitle">Delete Conversation?</h3>
+      <p class="ai-confirm-message" data-i18n="aiDeleteConfirmMessage">This action cannot be undone. The entire conversation will be permanently removed.</p>
+      <div class="ai-confirm-actions">
+        <button class="ai-confirm-cancel" data-i18n="cancel">Cancel</button>
+        <button class="ai-confirm-delete" data-i18n="deleteApp">Delete</button>
       </div>
     </div>
   </div>

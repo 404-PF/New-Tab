@@ -286,6 +286,21 @@ body.glass-liquid .toast-notification.show.glass--liquid .glass__warp {
     -webkit-backdrop-filter 0.01s linear 0.3s allow-discrete;
 }
 
+/* The confirm dialogs fade and scale in over 0.25s via .ai-confirm-open, so
+   their warp waits out that entrance the same way the modals above do and
+   never re-samples the backdrop on every animated frame. */
+body.glass-liquid .ai-confirm-dialog:not(.ai-confirm-open) .ai-confirm-content.glass--liquid .glass__warp {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.glass-liquid .ai-confirm-dialog.ai-confirm-open .ai-confirm-content.glass--liquid .glass__warp {
+  -webkit-backdrop-filter: var(--lg-filter);
+  backdrop-filter: var(--lg-filter);
+  transition: backdrop-filter 0.01s linear 0.25s allow-discrete,
+    -webkit-backdrop-filter 0.01s linear 0.25s allow-discrete;
+}
+
 /* The context menu opens with the menuFadeIn keyframe instead of a class
    toggle, so its warp waits out the 0.2s fade with a delayed animation of
    its own. display:none discards the animation; re-showing the menu
@@ -394,13 +409,24 @@ body.glass-liquid .toast-notification.toast-warning.glass--liquid > .glass__warp
   background: rgba(255, 152, 0, 0.7);
 }
 
-/* The panel fill above is only a 0.55 tint, so over a bright wallpaper the
-   subtitle's 0.5-alpha colour lands on a far lighter backdrop than the
-   near-opaque Classic fill gave it (the opacity fade has always dipped
-   contrast the same way in Classic). Restate it at the glass secondary
-   weight while the effect is on so it stays readable on any wallpaper. */
-body.glass-liquid:not(.light-theme) #add-app-modal > div.glass--liquid .add-app-header-text p {
+/* The add-app wash above is only a 0.12 tint, so over a bright wallpaper the
+   pale labels land on a far lighter backdrop than the near-opaque Classic
+   fill gave them (the opacity fade has always dipped contrast the same way
+   in Classic). Restate them at the glass text weights while the effect is on
+   so they stay readable on any wallpaper. */
+body.glass-liquid:not(.light-theme) #add-app-modal > div.glass--liquid :is(
+  .add-app-header-text p,
+  .add-app-section > p
+) {
   color: var(--glass-text-secondary);
+}
+
+body.glass-liquid:not(.light-theme) #add-app-modal > div.glass--liquid :is(
+  #add-app-modal h3,
+  .add-app-section h4,
+  .quick-add-name
+) {
+  color: var(--glass-text-primary);
 }
 
 /* #1159 feature panels: sink the warp below in-flow content so panel text
@@ -463,6 +489,15 @@ body.glass-liquid :is(
   .ai-confirm-dialog
 ):has(.glass--liquid),
 body.glass-liquid :is(#weather-app-modal, #todo-app-modal, #games-app-modal).glass--liquid {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* The confirm overlay sits beside the glass panel, so its blurred, darkened
+   paint is what the panel's warp would sample. Drop the overlay blur once the
+   panel is enhanced, scoped through the wrapper because the overlay itself
+   never carries .glass--liquid. */
+body.glass-liquid .ai-confirm-dialog:has(.glass--liquid) .ai-confirm-overlay {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
