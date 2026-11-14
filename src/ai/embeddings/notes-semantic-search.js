@@ -105,9 +105,9 @@
   // Returns ranked note array (new array of copies; stored notes never mutated).
   // Keyword fallbacks return every match (no cap) to match the keyword-only
   // path. The semantic ranked list is capped only when the caller passes an
-  // explicit maxResults; by default every note passing the floor is returned
-  // so enabling the model never drops keyword matches the user otherwise
-  // sees (PR #1187 human review). DEFAULT_MAX_RESULTS stays exported for
+  // explicit maxResults; the score floor applies only to notes with no
+  // keyword match so enabling the model never drops keyword matches the user
+  // otherwise sees (PR #1187 human review). DEFAULT_MAX_RESULTS stays exported for
   // callers that want an opt-in truncation.
   function rankNotesForQuery(tagFilteredNotes, query, deps, options) {
     const opts = options || {};
@@ -149,7 +149,7 @@
         if (!hasSignal) {
           return keywordResults(notes, q);
         }
-        const ranked = rankByScores(scored).filter(function (s) { return s.score >= minScore; });
+        const ranked = rankByScores(scored).filter(function (s) { return s.score >= minScore || s.keyword > 0; });
         const capped = Number.isFinite(maxResults) ? ranked.slice(0, maxResults) : ranked;
         const limited = capped.map(function (s) {
           const copy = { ...s.note };

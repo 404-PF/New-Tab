@@ -202,4 +202,19 @@ describe('NotesSemanticSearch.rankNotesForQuery', () => {
     const ranked = await window.NotesSemanticSearch.rankNotesForQuery(notes, 'milk', emptyDeps);
     expect(ranked.map((n) => n.id).sort()).toEqual(['1', '3']);
   });
+
+  it('keeps keyword matches despite a very low cosine (PR #1187)', async () => {
+    // The floor applies only to notes with no keyword match: a keyword hit
+    // with cosine -1 (hybrid 0.35 < 0.5 floor) must survive instead of
+    // being dropped from the semantic list.
+    const oppositeDeps = {
+      embedQuery: function () { return Promise.resolve([1, 0]); },
+      getNoteVector: function () { return Promise.resolve([-1, 0]); }
+    };
+    const ranked = await window.NotesSemanticSearch.rankNotesForQuery(notes, 'milk', oppositeDeps);
+    expect(ranked.map((n) => n.id).sort()).toEqual(['1', '3']);
+    ranked.forEach((n) => {
+      expect(typeof n._semanticScore).toBe('number');
+    });
+  });
 });

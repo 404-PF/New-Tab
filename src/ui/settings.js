@@ -2154,6 +2154,15 @@ function startSemanticDownload(requestPermission) {
     if (startGeneration !== semanticStartGeneration) return;
     if (!loadNotesSemanticEnabled()) return;
     if (!granted) {
+      // Passive warm/resume with no host grant must not turn the opt-in
+      // off: clearing the flag and the 'ready' marker strands the cached
+      // ~300MB bytes with no Delete control (PR #1187). Leave both intact
+      // and stay on the keyword path until an explicit Settings opt-in;
+      // only the gestured path resets the flag/marker.
+      if (passive) {
+        renderNotesSemanticSettings();
+        return;
+      }
       const persisted = persistSetting('notesSemanticEnabled', false);
       clearSemanticDownloadState();
       applyNotesSemanticEnabled();
@@ -2176,6 +2185,13 @@ function startSemanticDownload(requestPermission) {
     // the flag (PR #1187 human review).
     if (startGeneration !== semanticStartGeneration) return;
     console.warn('Failed to load embedding modules:', err);
+    // Passive warm/resume failures (no grant on this device, offline
+    // scripts) must not turn the opt-in off either: same stranded-bytes
+    // reason as above (PR #1187). Only the gestured path resets.
+    if (passive) {
+      renderNotesSemanticSettings();
+      return;
+    }
     // A dead runtime must not strand the toggle on with "Starting…"
     // forever: reset the flag (and toast only on the gestured path).
     persistSetting('notesSemanticEnabled', false);

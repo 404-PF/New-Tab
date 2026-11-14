@@ -378,4 +378,48 @@ describe('Semantic search settings', () => {
       try { delete window.EmbeddingScripts; } catch { /* ignore */ }
     }
   });
+
+  it('leaves the flag and marker intact on passive failures (PR #1187)', async () => {
+    // First-query warm / page-load resume with no host grant must not turn
+    // the opt-in off: clearing the 'ready' marker strands the cached
+    // ~300MB bytes with no Delete control. Only the gestured path resets.
+    try { delete window.EmbeddingService; } catch { /* ignore */ }
+    try { delete window.EmbeddingScripts; } catch { /* ignore */ }
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('notesSemanticDownload', 'ready');
+    window.applyNotesSemanticEnabled();
+    // Default permissions mock grants nothing, so the passive contains()
+    // check fails, matching a fresh device with no host grant.
+    window.requestSemanticModelLoad();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+    expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
+  });
+
+  it('leaves the flag and marker intact on passive script failures (PR #1187)', async () => {
+    // Same stranded-bytes reason as above for the module-load catch block:
+    // an offline passive warm must not clear the opt-in.
+    try { delete window.EmbeddingService; } catch { /* ignore */ }
+    const originalContains = chrome.permissions.contains;
+    chrome.permissions.contains = async function () { return true; };
+    window.EmbeddingScripts = {
+      scriptsLoaded: function () { return false; },
+      ensureScripts: function () { return Promise.reject(new Error('offline')); }
+    };
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('notesSemanticDownload', 'loading');
+    try {
+      window.resumeSemanticIfNeeded();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+      expect(localStorage.getItem('notesSemanticDownload')).toBe('loading');
+    } finally {
+      chrome.permissions.contains = originalContains;
+      try { delete window.EmbeddingScripts; } catch { /* ignore */ }
+    }
+  });
 });
