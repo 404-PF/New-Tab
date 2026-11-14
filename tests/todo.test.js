@@ -569,6 +569,80 @@ describe('Todo filtering', () => {
     }
   });
 
+  it('refreshes the overdue view and badge when a timed todo passes due (issue #1205)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 9, 59, 50)); // Sep 15, 2026 09:59:50
+    const previousStatus = currentFilters.status;
+
+    try {
+      // Re-init under fake timers so the due-minute refresh timer is armed
+      // against the faked clock instead of the real one.
+      initTodo();
+      addTodo('Due at 10:00', '2026-09-15', 'medium', null, '10:00');
+      setFilter('overdue');
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(0);
+      expect(document.getElementById('badge-overdue').textContent).toBe('0');
+
+      // Cross 10:00 with no further interaction; the scheduled refresh
+      // reruns applyFilters so rows, badge and pill membership agree.
+      vi.advanceTimersByTime(11000);
+      const row = document.querySelector('.todo-item');
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+      expect(row.classList.contains('overdue')).toBe(true);
+      expect(document.getElementById('badge-overdue').textContent).toBe('1');
+    } finally {
+      currentFilters.status = previousStatus;
+      vi.useRealTimers();
+    }
+  });
+
+  it('never arms a NaN overdue timeout for a malformed persisted due date (issue #1205)', () => {
+    vi.useFakeTimers();
+    const previousStatus = currentFilters.status;
+    // Hand-rolled recorder instead of vi.spyOn: a spy taken while fake
+    // timers are active keeps the fake setTimeout as its "original", so any
+    // later vi.restoreAllMocks() would write that stale fake back onto the
+    // global after the clock has been uninstalled.
+    const originalSetTimeout = window.setTimeout;
+    const setTimeoutCalls = [];
+    window.setTimeout = (...args) => {
+      setTimeoutCalls.push(args);
+      return originalSetTimeout.apply(window, args);
+    };
+
+    try {
+      initTodo();
+      // The Overdue filter hides the malformed row, so renderTodos returns
+      // before formatting its date and the refresh below still gets to arm.
+      setFilter('overdue');
+      // The write-error resync reloads todos without migrating them, so this
+      // malformed dueDate reaches scheduleTodoOverdueRefresh untouched.
+      localStorage.setItem('todos', JSON.stringify([{
+        id: 'malformed-due',
+        text: 'Malformed due',
+        completed: false,
+        createdAt: '2026-09-15T09:00:00.000Z',
+        priority: 'medium',
+        dueDate: 'not-a-date',
+        dueTime: '10:00'
+      }]));
+
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', { detail: { key: 'todos' } }));
+      vi.advanceTimersByTime(0);
+
+      // The resync body ran: the malformed todo is loaded and counted.
+      expect(document.getElementById('todo-count').textContent).toBe('0/1');
+      // An invalid Date parses to a NaN flip; arming the one-shot with it
+      // would make setTimeout fire immediately and re-render in a loop.
+      expect(setTimeoutCalls.some(call => Number.isNaN(call[1]))).toBe(false);
+    } finally {
+      window.setTimeout = originalSetTimeout;
+      currentFilters.status = previousStatus;
+      localStorage.removeItem('todos');
+      vi.useRealTimers();
+    }
+  });
+
   it('sorts incomplete before completed', () => {
     addTodo('Later');
     addTodo('Sooner');

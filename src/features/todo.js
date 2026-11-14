@@ -1473,6 +1473,9 @@
 
 // Filter management
 function applyFilters() {
+  // Snapshot taken before filtering: a due instant crossed while the rows
+  // render must not be dropped by the re-arm below (review thread).
+  const renderStartedAt = Date.now();
   filterTodos();
   pruneTodoSelection();
   renderTodos();
@@ -1480,6 +1483,10 @@ function applyFilters() {
   updateProgressRing();
   updateFilterCounts();
   updateBulkActions();
+  // Add/complete/delete and filter changes all funnel through here, so
+  // re-arming here keeps the due-minute timer aligned with the list
+  // (issue #1205).
+  scheduleTodoOverdueRefresh(renderStartedAt);
 }
 
 // The Today filter and badge compare due dates against the current local
@@ -1500,6 +1507,56 @@ function scheduleTodoMidnightRefresh() {
     applyFilters();
     scheduleTodoMidnightRefresh();
   }, nextMidnight.getTime() - now.getTime());
+}
+
+// A timed todo flips overdue the instant its due minute passes, but nothing
+// re-rendered the list at that moment while the tab idled (issue #1205).
+// Arm a one-shot timeout for the earliest not-yet-overdue timed todo; each
+// fire re-applies the filters (row classes, Overdue badge and pill
+// membership), which re-arms for whatever is due next and leaves the timer
+// cleared when no incomplete timed todo is pending.
+let overdueRefreshTimer = null;
+
+// setTimeout delays are 32-bit signed ints (max ~24.8 days); a due instant
+// further out is armed for the cap and re-armed on fire until it is reached.
+const MAX_OVERDUE_TIMEOUT_MS = 2147483647;
+
+function scheduleTodoOverdueRefresh(renderStartedAt = Date.now()) {
+  if (overdueRefreshTimer) {
+    clearTimeout(overdueRefreshTimer);
+    overdueRefreshTimer = null;
+  }
+  let flipAt = null;
+  todos.forEach(todo => {
+    if (todo.completed || !todo.dueDate || !todo.dueTime) return;
+    const due = getDueDateTime(todo.dueDate, todo.dueTime);
+    // A malformed dueDate parses to an invalid Date, which is truthy but
+    // yields a NaN timestamp; arming with NaN would make setTimeout fire
+    // immediately and re-apply filters in a tight loop. Skip those todos.
+    const dueTimestamp = due?.getTime();
+    if (!Number.isFinite(dueTimestamp)) return;
+    // isOverdue() is a strict `<`, so the row only flips one ms after the
+    // due instant; arming for that ms avoids re-firing on the exact instant
+    // and finding the todo still "not overdue".
+    const flip = dueTimestamp + 1;
+    // Boundaries passed before the caller started rendering were rendered
+    // as overdue; only a boundary crossed while rendering stays pending, so
+    // it re-applies the filters a ms later instead of being dropped
+    // (review thread).
+    if (flip <= renderStartedAt) return;
+    if (flipAt === null || flip < flipAt) {
+      flipAt = flip;
+    }
+  });
+  if (flipAt === null) return;
+  const delay = Math.min(MAX_OVERDUE_TIMEOUT_MS, Math.max(1, flipAt - Date.now()));
+  overdueRefreshTimer = setTimeout(() => {
+    overdueRefreshTimer = null;
+    applyFilters();
+    // renderTodos() replaced every row; rebind an open inline date picker
+    // to its fresh anchor (or close it when the row left the view).
+    refreshInlineDatePickers(false);
+  }, delay);
 }
 
 // Update filter pill UI
@@ -3003,6 +3060,9 @@ function initTodo() {
   // Re-run the filters at the next local midnight so the Today list and
   // badge never go stale overnight (issue #1085).
   scheduleTodoMidnightRefresh();
+  // Re-arm the due-minute refresh so timed todos flip overdue without a
+  // click even after a re-init (issue #1205).
+  scheduleTodoOverdueRefresh();
 
   return true;
 }
