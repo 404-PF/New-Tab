@@ -285,6 +285,11 @@ body.light-theme .settings-section select option {
   transition: opacity 0.2s ease;
 }
 
+/* Sits outside #ai-chat-modal, so it must layer above the modal's z-index (10000) */
+#ai-confirm-dialog {
+  z-index: 10001;
+}
+
 .ai-confirm-dialog.ai-confirm-open {
   opacity: 1;
   pointer-events: auto;

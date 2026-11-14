@@ -178,9 +178,15 @@ body.glass-liquid :is(
 body.glass-liquid :is(
   #settings-modal > div,
   #add-app-modal > div,
+  .rename-app-modal-content,
+  .thumbnail-app-modal-content,
+  .delete-app-modal-content,
+  .move-to-folder-selector-content,
   .folder-popup-content,
   .app-context-menu,
   .search-history-panel,
+  .ai-confirm-content,
+  .todo-edit-content,
   .toast-notification
 ).glass--liquid {
   -webkit-backdrop-filter: none;
@@ -195,9 +201,15 @@ body.glass-liquid :is(
 body.glass-liquid.light-theme :is(
   #settings-modal > div,
   #add-app-modal > div,
+  .rename-app-modal-content,
+  .thumbnail-app-modal-content,
+  .delete-app-modal-content,
+  .move-to-folder-selector-content,
   .folder-popup-content,
   .app-context-menu,
   .search-history-panel,
+  .ai-confirm-content,
+  .todo-edit-content,
   .toast-notification
 ).glass--liquid {
   background: transparent;
@@ -210,9 +222,15 @@ body.glass-liquid.light-theme :is(
 body.glass-liquid :is(
   #settings-modal > div,
   #add-app-modal > div,
+  .rename-app-modal-content,
+  .thumbnail-app-modal-content,
+  .delete-app-modal-content,
+  .move-to-folder-selector-content,
   .folder-popup-content,
   .app-context-menu,
   .search-history-panel,
+  .ai-confirm-content,
+  .todo-edit-content,
   .toast-notification
 ).glass--liquid > *:not(.glass__warp):not(.glass__highlight):not(.glass__over-light):not(.glass__hover) {
   position: relative;
@@ -230,6 +248,9 @@ body.glass-liquid :is(
    which is why the base rules declare no transition of their own. */
 body.glass-liquid #settings-modal:not(.modal-open) > div.glass--liquid .glass__warp,
 body.glass-liquid #add-app-modal:not(.modal-open) > div.glass--liquid .glass__warp,
+body.glass-liquid #rename-app-modal:not(.modal-open) > div.glass--liquid .glass__warp,
+body.glass-liquid #thumbnail-app-modal:not(.modal-open) > div.glass--liquid .glass__warp,
+body.glass-liquid #delete-app-modal:not(.modal-open) > div.glass--liquid .glass__warp,
 body.glass-liquid .toast-notification:not(.show).glass--liquid .glass__warp {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -249,11 +270,35 @@ body.glass-liquid #add-app-modal.modal-open > div.glass--liquid .glass__warp {
     -webkit-backdrop-filter 0.01s linear 0.3s allow-discrete;
 }
 
+body.glass-liquid #rename-app-modal.modal-open > div.glass--liquid .glass__warp,
+body.glass-liquid #thumbnail-app-modal.modal-open > div.glass--liquid .glass__warp,
+body.glass-liquid #delete-app-modal.modal-open > div.glass--liquid .glass__warp {
+  -webkit-backdrop-filter: var(--lg-filter);
+  backdrop-filter: var(--lg-filter);
+  transition: backdrop-filter 0.01s linear 0.3s allow-discrete,
+    -webkit-backdrop-filter 0.01s linear 0.3s allow-discrete;
+}
+
 body.glass-liquid .toast-notification.show.glass--liquid .glass__warp {
   -webkit-backdrop-filter: var(--lg-filter);
   backdrop-filter: var(--lg-filter);
   transition: backdrop-filter 0.01s linear 0.3s allow-discrete,
     -webkit-backdrop-filter 0.01s linear 0.3s allow-discrete;
+}
+
+/* The confirm dialogs fade and scale in over 0.25s via .ai-confirm-open, so
+   their warp waits out that entrance the same way the modals above do and
+   never re-samples the backdrop on every animated frame. */
+body.glass-liquid .ai-confirm-dialog:not(.ai-confirm-open) .ai-confirm-content.glass--liquid .glass__warp {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.glass-liquid .ai-confirm-dialog.ai-confirm-open .ai-confirm-content.glass--liquid .glass__warp {
+  -webkit-backdrop-filter: var(--lg-filter);
+  backdrop-filter: var(--lg-filter);
+  transition: backdrop-filter 0.01s linear 0.25s allow-discrete,
+    -webkit-backdrop-filter 0.01s linear 0.25s allow-discrete;
 }
 
 /* The context menu opens with the menuFadeIn keyframe instead of a class
@@ -264,6 +309,21 @@ body.glass-liquid .app-context-menu.glass--liquid .glass__warp {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   animation: liquidGlassWarpIn 0.01s linear 0.2s forwards;
+}
+
+/* The menu's warp is the icon map, which carries no tint, so bright wallpaper
+   washes out the labels. A light scrim and a text shadow restore contrast
+   without changing the refraction. */
+body.glass-liquid .app-context-menu.glass--liquid > .glass__warp {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+body.glass-liquid.light-theme .app-context-menu.glass--liquid > .glass__warp {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+body.glass-liquid .app-context-menu.glass--liquid .context-menu-item {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 @keyframes liquidGlassWarpIn {
@@ -287,8 +347,13 @@ body.glass-liquid .app-context-menu.glass--liquid .glass__warp {
 body.glass-liquid :is(
   #settings-modal > div,
   #add-app-modal > div,
+  .rename-app-modal-content,
+  .thumbnail-app-modal-content,
+  .delete-app-modal-content,
+  .move-to-folder-selector-content,
   .folder-popup-content,
-  .app-context-menu,
+  .ai-confirm-content,
+  .todo-edit-content,
   .search-history-panel
 ).glass--liquid > .glass__warp {
   background: rgba(15, 23, 42, 0.55);
@@ -297,11 +362,27 @@ body.glass-liquid :is(
 body.glass-liquid.light-theme :is(
   #settings-modal > div,
   #add-app-modal > div,
+  .rename-app-modal-content,
+  .thumbnail-app-modal-content,
+  .delete-app-modal-content,
+  .move-to-folder-selector-content,
   .folder-popup-content,
-  .app-context-menu,
+  .ai-confirm-content,
+  .todo-edit-content,
   .search-history-panel
 ).glass--liquid > .glass__warp {
   background: rgba(255, 255, 255, 0.6);
+}
+
+/* The add-app panel is the densest form, so its tint is lighter than the
+   shared 0.55 scrim and its page overlay dims less, so the wallpaper and
+   refraction read through the panel. */
+body.glass-liquid #add-app-modal:has(.glass--liquid) {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+body.glass-liquid #add-app-modal > div.glass--liquid > .glass__warp {
+  background: rgba(15, 23, 42, 0.12);
 }
 
 body.glass-liquid .toast-notification.glass--liquid > .glass__warp {
@@ -328,13 +409,24 @@ body.glass-liquid .toast-notification.toast-warning.glass--liquid > .glass__warp
   background: rgba(255, 152, 0, 0.7);
 }
 
-/* The panel fill above is only a 0.55 tint, so over a bright wallpaper the
-   subtitle's 0.5-alpha colour lands on a far lighter backdrop than the
-   near-opaque Classic fill gave it (the opacity fade has always dipped
-   contrast the same way in Classic). Restate it at the glass secondary
-   weight while the effect is on so it stays readable on any wallpaper. */
-body.glass-liquid:not(.light-theme) #add-app-modal > div.glass--liquid .add-app-header-text p {
+/* The add-app wash above is only a 0.12 tint, so over a bright wallpaper the
+   pale labels land on a far lighter backdrop than the near-opaque Classic
+   fill gave them (the opacity fade has always dipped contrast the same way
+   in Classic). Restate them at the glass text weights while the effect is on
+   so they stay readable on any wallpaper. */
+body.glass-liquid:not(.light-theme) #add-app-modal > div.glass--liquid :is(
+  .add-app-header-text p,
+  .add-app-section > p
+) {
   color: var(--glass-text-secondary);
+}
+
+body.glass-liquid:not(.light-theme) #add-app-modal > div.glass--liquid :is(
+  #add-app-modal h3,
+  .add-app-section h4,
+  .quick-add-name
+) {
+  color: var(--glass-text-primary);
 }
 
 /* #1159 feature panels: sink the warp below in-flow content so panel text
@@ -378,6 +470,34 @@ body.glass-liquid .release-notes-dialog.glass--liquid {
    the dialog's warp inside it could only sample the overlay rather than the
    wallpaper behind it. Drop the overlay blur once the dialog is enhanced. */
 body.glass-liquid .release-notes-modal:has(.release-notes-dialog.glass--liquid) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Every other overlay that wraps a warped panel has the same backdrop-root
+   problem as the release-notes overlay, so it drops its blur once a child is
+   enhanced. Self-marked dialogs drop their own blur, as #ai-chat-modal does. */
+body.glass-liquid :is(
+  #settings-modal,
+  #add-app-modal,
+  #rename-app-modal,
+  #thumbnail-app-modal,
+  #delete-app-modal,
+  #folder-popup,
+  #todo-edit-modal,
+  .move-to-folder-selector,
+  .ai-confirm-dialog
+):has(.glass--liquid),
+body.glass-liquid :is(#weather-app-modal, #todo-app-modal, #games-app-modal).glass--liquid {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* The confirm overlay sits beside the glass panel, so its blurred, darkened
+   paint is what the panel's warp would sample. Drop the overlay blur once the
+   panel is enhanced, scoped through the wrapper because the overlay itself
+   never carries .glass--liquid. */
+body.glass-liquid .ai-confirm-dialog:has(.glass--liquid) .ai-confirm-overlay {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
