@@ -639,6 +639,11 @@
     for (let start = 0; start < list.length; start += EMBED_CHUNK_SIZE) {
       const chunk = list.slice(start, start + EMBED_CHUNK_SIZE);
       chain = chain.then(function () {
+        // deleteModel() clears liveProvider mid-batch; stop instead of
+        // running the remaining chunks on a provider that was torn down.
+        if (liveProvider !== provider) {
+          throw new Error('Embedding model deleted');
+        }
         return provider.embed(chunk);
       }).then(function (chunkVectors) {
         for (let j = 0; j < chunk.length; j++) {

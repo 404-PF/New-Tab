@@ -80,7 +80,7 @@ describe('EmbeddingService state machine', () => {
     await window.EmbeddingService.ensureModel();
     const inputs = Array.from({ length: 20 }, function (_, i) { return String(i); });
     const vectors = await window.EmbeddingService.embedTexts(inputs);
-    expect(Math.max(...batchSizes)).toBeLessThanOrEqual(8);
+    expect(batchSizes).toEqual([8, 8, 4]);
     expect(vectors).toHaveLength(20);
     expect(vectors.map(function (v) { return v[0]; })).toEqual(inputs.map(Number));
   });
