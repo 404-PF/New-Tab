@@ -31,6 +31,16 @@
   // en table and one line per non-English locale in src/core/locales/<code>.js —
   // or the modal falls back to RELEASE_NOTES_FALLBACK.
   const RELEASE_NOTES = {
+    '0.5.8': [
+      'releaseNotes058LiquidGlass',
+      'releaseNotes058Pomodoro',
+      'releaseNotes058TodoDates',
+      'releaseNotes058TodoFilters',
+      'releaseNotes058Weather',
+      'releaseNotes058TimezoneClocks',
+      'releaseNotes058NotesExport',
+      'releaseNotes058TodoStats'
+    ],
     '0.5.7': [
       'releaseNotes057AppIconUpload',
       'releaseNotes057TodoUndo',
