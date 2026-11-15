@@ -69,6 +69,22 @@ describe('EmbeddingService state machine', () => {
     expect(seen[0][0]).toBe(window.HarrierProvider.formatHarrierQuery('cat'));
   });
 
+  it('chunks large batches and keeps vectors aligned to input order', async () => {
+    const batchSizes = [];
+    window.__embeddingTestHooks = {
+      pipelineFactory: function (docs) {
+        batchSizes.push(docs.length);
+        return Promise.resolve(docs.map(function (text) { return [Number(text), 0]; }));
+      }
+    };
+    await window.EmbeddingService.ensureModel();
+    const inputs = Array.from({ length: 20 }, function (_, i) { return String(i); });
+    const vectors = await window.EmbeddingService.embedTexts(inputs);
+    expect(Math.max(...batchSizes)).toBeLessThanOrEqual(8);
+    expect(vectors).toHaveLength(20);
+    expect(vectors.map(function (v) { return v[0]; })).toEqual(inputs.map(Number));
+  });
+
   it('rejects embed calls before ready', async () => {
     await expect(window.EmbeddingService.embedTexts(['x'])).rejects.toThrow('not ready');
     await expect(window.EmbeddingService.embedQuery('x')).rejects.toThrow('not ready');

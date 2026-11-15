@@ -2642,11 +2642,12 @@ function initNotesSemanticSetting() {
 // at the call site.
 function primeNotesSemanticImport() {
   try {
-    // A disabled flag must not keep a leftover marker: the marker is
-    // transient (never exported), so an imported `false` would otherwise
-    // strand a stale 'ready'/'loading' entry until the next opt-in.
+    // A disabled flag must not keep a leftover loading/error marker: the
+    // marker is transient (never exported), so an imported `false` would
+    // otherwise strand a stale entry until the next opt-in. 'ready' is kept
+    // because the model bytes survive the import.
     if (localStorage.getItem('notesSemanticEnabled') !== 'true') {
-      clearSemanticDownloadState();
+      if (readSemanticDownloadState() !== 'ready') clearSemanticDownloadState();
       return;
     }
     // Enabled import: defer to first query. Do not prime to 'loading' —

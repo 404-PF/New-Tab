@@ -13,6 +13,9 @@
   // progress_callback instead, so this only guards a broken vendor/ setup.
   const VENDOR_LOAD_TIMEOUT_MS = 20000;
   const TRANSFORMERS_CACHE_NAME = 'transformers-cache';
+  // The pipeline runs on the UI thread (numThreads:1, no worker), so large
+  // batches are split and yielded between chunks to keep the page responsive.
+  const EMBED_CHUNK_SIZE = 8;
 
   let status = 'idle';
   let progress = 0;
@@ -629,11 +632,22 @@
     if (!isReady() || !liveProvider) {
       return Promise.reject(new Error('Embedding model not ready'));
     }
-    try {
-      return liveProvider.embed(texts);
-    } catch (e) {
-      return Promise.reject(e);
+    const provider = liveProvider;
+    const list = Array.isArray(texts) ? texts : [texts];
+    const vectors = [];
+    let chain = Promise.resolve();
+    for (let start = 0; start < list.length; start += EMBED_CHUNK_SIZE) {
+      const chunk = list.slice(start, start + EMBED_CHUNK_SIZE);
+      chain = chain.then(function () {
+        return provider.embed(chunk);
+      }).then(function (chunkVectors) {
+        for (let j = 0; j < chunk.length; j++) {
+          vectors.push(Array.isArray(chunkVectors) ? chunkVectors[j] : undefined);
+        }
+        return new Promise(function (resolve) { setTimeout(resolve, 0); });
+      });
     }
+    return chain.then(function () { return vectors; });
   }
 
   function embedQuery(text) {

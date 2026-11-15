@@ -452,6 +452,10 @@
 
   function invalidateNoteVector(noteId) {
     try {
+      // Vectors are only written while a model is ready, so with no download
+      // marker there is nothing to purge. Skipping avoids creating the
+      // IndexedDB store for users who never enabled semantic search.
+      if (localStorage.getItem('notesSemanticDownload') === null) return;
       if (window.NotesVectorCache && typeof window.NotesVectorCache.deleteCachedVectorsForNote === 'function') {
         window.NotesVectorCache.deleteCachedVectorsForNote(noteId).catch(function () { /* ignore */ });
       }

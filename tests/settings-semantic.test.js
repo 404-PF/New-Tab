@@ -231,11 +231,18 @@ describe('Semantic search settings', () => {
     expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
   });
 
-  it('clears a leftover marker when the import disables the flag', () => {
+  it('clears a leftover loading marker when the import disables the flag', () => {
+    localStorage.setItem('notesSemanticEnabled', 'false');
+    localStorage.setItem('notesSemanticDownload', 'loading');
+    window.primeNotesSemanticImport();
+    expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
+  });
+
+  it('keeps a ready marker when the import disables the flag so Delete stays reachable', () => {
     localStorage.setItem('notesSemanticEnabled', 'false');
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.primeNotesSemanticImport();
-    expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
+    expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
   });
 
   it('re-renders the notes list when toggling semantic search off', () => {
