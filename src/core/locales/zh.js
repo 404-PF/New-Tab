@@ -369,7 +369,7 @@ window.i18n.__registerLocale('zh', {
   releaseNotes057Accessibility: '仅图标的按钮现在带有屏幕阅读器标签',
   releaseNotes058LiquidGlass: 'Liquid Glass：弹窗、面板和主要小组件新增折射玻璃效果（可在设置中开关）',
   releaseNotes058Pomodoro: '番茄钟：新增独立的专注会话，无需关联待办',
-  releaseNotes058TodoDates: '待办：可以用自然语言输入截止日期，会自动识别',
+  releaseNotes058TodoDates: '待办：可以用英文日期表达（如 tomorrow、next friday）输入截止日期，会自动识别',
   releaseNotes058TodoFilters: '待办列表：新增「即将到期」和「中优先级」筛选',
   releaseNotes058Weather: '天气：现在会显示今日最高和最低气温',
   releaseNotes058TimezoneClocks: '时区时钟：可添加任何 IANA 时区，不再局限于预设城市',

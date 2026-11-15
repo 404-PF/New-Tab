@@ -328,7 +328,7 @@ window.i18n.__registerLocale('fr', {
   releaseNotes057Accessibility: 'Les boutons sans texte disposent désormais d\'étiquettes pour les lecteurs d\'écran',
   releaseNotes058LiquidGlass: 'Liquid Glass : les fenêtres modales, panneaux et widgets principaux bénéficient d\'un effet de verre réfracté (activable dans les paramètres)',
   releaseNotes058Pomodoro: 'Pomodoro : une session de concentration autonome, sans tâche associée',
-  releaseNotes058TodoDates: 'Tâches : saisissez les échéances en langage naturel, elles sont interprétées automatiquement',
+  releaseNotes058TodoDates: 'Tâches : saisissez les échéances en anglais (comme « tomorrow » ou « next friday »), elles sont interprétées automatiquement',
   releaseNotes058TodoFilters: 'Liste de tâches : nouveaux filtres « À venir » et priorité « Moyenne »',
   releaseNotes058Weather: 'Météo : les températures maximale et minimale du jour sont affichées',
   releaseNotes058TimezoneClocks: 'Horloges de fuseaux horaires : ajoutez n\'importe quel fuseau IANA, pas seulement les villes prédéfinies',

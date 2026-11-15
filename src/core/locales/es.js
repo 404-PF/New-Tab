@@ -328,7 +328,7 @@ window.i18n.__registerLocale('es', {
   releaseNotes057Accessibility: 'Los botones solo con icono ahora tienen etiquetas para lectores de pantalla',
   releaseNotes058LiquidGlass: 'Liquid Glass: los modales, paneles y widgets principales tienen un efecto de cristal refractivo (activable en Ajustes)',
   releaseNotes058Pomodoro: 'Pomodoro: una sesión de enfoque independiente que no requiere una tarea',
-  releaseNotes058TodoDates: 'Tareas: escribe las fechas límite en lenguaje natural y se interpretarán automáticamente',
+  releaseNotes058TodoDates: 'Tareas: escribe las fechas límite en inglés (como "tomorrow" o "next friday") y se interpretarán automáticamente',
   releaseNotes058TodoFilters: 'Lista de tareas: nuevos filtros Próximas y prioridad Media',
   releaseNotes058Weather: 'Clima: ahora se muestran las temperaturas máxima y mínima de hoy',
   releaseNotes058TimezoneClocks: 'Relojes de zona horaria: añade cualquier zona horaria IANA, no solo las predefinidas',

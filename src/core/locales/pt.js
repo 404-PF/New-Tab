@@ -328,7 +328,7 @@ window.i18n.__registerLocale('pt', {
   releaseNotes057Accessibility: 'Botões somente com ícone agora têm rótulos para leitores de tela',
   releaseNotes058LiquidGlass: 'Liquid Glass: modais, painéis e widgets principais ganham um efeito de vidro refrativo (ativável nas Configurações)',
   releaseNotes058Pomodoro: 'Pomodoro: uma sessão de foco independente que não precisa de uma tarefa',
-  releaseNotes058TodoDates: 'Tarefas: digite datas de vencimento em linguagem natural e elas serão interpretadas automaticamente',
+  releaseNotes058TodoDates: 'Tarefas: digite datas de vencimento em inglês (como "tomorrow" ou "next friday") e elas serão interpretadas automaticamente',
   releaseNotes058TodoFilters: 'Lista de tarefas: novos filtros "Próximas" e prioridade "Média"',
   releaseNotes058Weather: 'Clima: agora mostra as temperaturas máxima e mínima de hoje',
   releaseNotes058TimezoneClocks: 'Relógios de fuso horário: adicione qualquer fuso horário IANA, não só as cidades predefinidas',

@@ -328,7 +328,7 @@ window.i18n.__registerLocale('de', {
   releaseNotes057Accessibility: 'Schaltflächen ohne Text haben jetzt Bezeichnungen für Screenreader',
   releaseNotes058LiquidGlass: 'Liquid Glass: Modale, Panels und Haupt-Widgets erhalten einen lichtbrechenden Glaseffekt (in den Einstellungen abschaltbar)',
   releaseNotes058Pomodoro: 'Pomodoro: eigenständige Fokussitzung, die keine Aufgabe benötigt',
-  releaseNotes058TodoDates: 'Todo: Fälligkeitsdaten können in natürlicher Sprache eingegeben und automatisch erkannt werden',
+  releaseNotes058TodoDates: 'Todo: Fälligkeitsdaten auf Englisch eingeben (z. B. „tomorrow“ oder „next friday“), sie werden automatisch erkannt',
   releaseNotes058TodoFilters: 'Todo-Liste: neue Filter „Demnächst“ und „Mittlere Priorität“',
   releaseNotes058Weather: 'Wetter: Tageshöchst- und Tiefsttemperatur werden angezeigt',
   releaseNotes058TimezoneClocks: 'Zeitzonen-Uhren: beliebige IANA-Zeitzonen hinzufügen, nicht nur voreingestellte',
